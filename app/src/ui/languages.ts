@@ -1,10 +1,6 @@
 import { bundledLanguagesInfo } from 'shiki/langs';
 
 const extensionLanguages: Record<string, string> = {
-  cjs: 'javascript',
-  mjs: 'javascript',
-  cts: 'typescript',
-  mts: 'typescript',
   h: 'c',
   hpp: 'cpp',
   cc: 'cpp',

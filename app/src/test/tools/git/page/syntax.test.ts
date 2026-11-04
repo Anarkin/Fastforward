@@ -120,6 +120,9 @@ suite('Syntax', () => {
   test('knows the language from the file name', () => {
     assert.strictEqual(languageOf('src/app.ts'), 'typescript');
     assert.strictEqual(languageOf('esbuild.mjs'), 'javascript');
+    assert.strictEqual(languageOf('legacy.cjs'), 'javascript');
+    assert.strictEqual(languageOf('vitest.config.mts'), 'typescript');
+    assert.strictEqual(languageOf('types.cts'), 'typescript');
     assert.strictEqual(languageOf('docs/README.md'), 'markdown');
     assert.strictEqual(languageOf('lib/Program.CS'), 'csharp');
     assert.strictEqual(languageOf('Dockerfile'), 'docker');
