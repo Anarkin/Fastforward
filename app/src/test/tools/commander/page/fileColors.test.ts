@@ -44,7 +44,7 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('colors gold by default the prose read in an editor', () => {
+  test('colors gold by default the documents: the prose read in an editor, PDFs, Office and OpenDocument files, ebooks, the Google Drive shortcuts, OneNote and the emails saved', () => {
     for (const name of [
       'README.md',
       'notes.markdown',
@@ -52,6 +52,18 @@ suite('Commander file colors', () => {
       'guide.adoc',
       'notes.txt',
       'todo.org',
+      'invoice.pdf',
+      'letter.docx',
+      'old.DOC',
+      'budget.xlsx',
+      'slides.pptx',
+      'draft.odt',
+      'book.epub',
+      'plan.gdoc',
+      'sheet.gsheet',
+      'notes.one',
+      'reply.eml',
+      'outlook.msg',
     ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), document, name);
     }
@@ -75,8 +87,12 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('leaves plain by default the video extensions TypeScript uses, the subtitles, playlists, fonts and 3D models', () => {
+  test('leaves plain by default the video extensions TypeScript uses, the subtitles, playlists, fonts and 3D models, the Keynote extension private keys use, data in CSV and the contacts and calendars', () => {
     for (const name of [
+      'server.key',
+      'export.csv',
+      'contacts.vcf',
+      'meeting.ics',
       'recording.ts',
       'clip.mts',
       'movie.srt',
@@ -99,7 +115,6 @@ suite('Commander file colors', () => {
       '.gitignore',
       'LICENSE',
       'core.dll',
-      'report.pdf',
       'archive.zip',
       '.md',
     ]) {
