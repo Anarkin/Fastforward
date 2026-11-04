@@ -32,11 +32,7 @@ import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
 import { PreviewBody } from './previewBody';
 import { firstMode, previewOf } from './previews';
-import {
-  encodingChoices,
-  shownEncoding,
-  type EncodingChoice,
-} from './encodings';
+import { encodingMenu, shownEncoding, type EncodingChoice } from './encodings';
 
 export interface Viewing {
   readonly tab: string;
@@ -225,11 +221,7 @@ export function Viewer({
                   title={strings.commander.encoding}
                   trigger={encodingTrigger}
                   label={strings.commander.encodingShort[shown]}
-                  items={encodingChoices.map((choice) => ({
-                    label: strings.commander.encodings[choice],
-                    checked: choice === encoding,
-                    onClick: () => setEncoding(choice),
-                  }))}
+                  items={encodingMenu(encoding, shown, setEncoding)}
                 />
               </div>
             )}

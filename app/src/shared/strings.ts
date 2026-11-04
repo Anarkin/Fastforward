@@ -556,8 +556,9 @@ export const strings = {
       'windows-1252': 'Western (Windows-1252)',
       'windows-1250': 'Central European (Windows-1250)',
       'windows-1251': 'Cyrillic (Windows-1251)',
-      bytes: 'Bytes, one to a character',
+      bytes: 'Bytes',
     },
+    autoEncoding: (encoding: string) => `Auto: ${encoding}`,
     encodingShort: {
       'utf-8': 'UTF-8',
       'utf-16le': 'UTF-16 LE',

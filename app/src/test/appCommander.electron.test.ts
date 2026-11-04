@@ -2360,7 +2360,14 @@ suite('App commander', () => {
       'the end of the text',
     );
     await page.keyboard.press('e');
-    await page.getByText('Bytes, one to a character').click();
+    const encodingItems = page.locator('.viewer-encoding .menu-item');
+    assert.strictEqual(
+      await encodingItems
+        .and(page.locator('[aria-checked="true"]'))
+        .textContent(),
+      '✓Auto: UTF-16 LE',
+    );
+    await encodingItems.filter({ hasText: /^Bytes$/ }).click();
     await waitFor(
       async () => (await rowTexts()).join('').includes('2.9.9. .é.'),
       'the end of the file as bytes',
