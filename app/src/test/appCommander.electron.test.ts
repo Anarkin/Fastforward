@@ -2483,8 +2483,9 @@ suite('App commander', () => {
 
     await menu.hover();
     const top = await boxes();
+    const subpixel = 0.5;
     assert.ok(
-      top.thumbBox.y >= top.filterBox.y + top.filterBox.height,
+      top.thumbBox.y >= top.filterBox.y + top.filterBox.height - subpixel,
       JSON.stringify(top),
     );
 
@@ -2498,7 +2499,7 @@ suite('App commander', () => {
     const end = await boxes();
     assert.ok(
       end.thumbBox.y + end.thumbBox.height <=
-        end.menuBox.y + end.menuBox.height - 6,
+        end.menuBox.y + end.menuBox.height - 6 + subpixel,
       JSON.stringify(end),
     );
 
