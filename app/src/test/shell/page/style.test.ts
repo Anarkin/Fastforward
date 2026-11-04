@@ -3052,7 +3052,6 @@ suite('Style', () => {
     for (const group of [
       withClass(diff, 'nav-buttons'),
       withClass(diff, 'segmented'),
-      withClass(diff, 'pin-pair'),
     ]) {
       looks(group, { gap, border: undefined, padding: undefined });
     }
@@ -3085,37 +3084,27 @@ suite('Style', () => {
   });
 
   test('fills a pinned pair as one undimmed switched-on toggle, its buttons unfilled, and fills the layout buttons as one pill, lifting the chosen and the hovered one onto the panel inside it', () => {
-    const pinned = rendered(diffOptions({ pinned: true }));
-    const pair = withClass(pinned, 'pin-pair');
-    looks(pair, { background: 'var(--toggle-on-background)' });
-    const [entire, pin] = allWithClass(pair, 'nav-button', 'active');
-    assert.ok(entire.attributes.has('disabled'));
-    looks(entire, { opacity: '1', background: 'none' });
-    looks(pin, { background: 'none' });
     const fetching = withClass(
-      rendered(navButtons({ autoFetch: true, autoFetchMinutes: 5 })),
+      rendered(
+        navButtons({ autoFetch: true, autoFetchMinutes: 5, fetching: true }),
+      ),
       'pin-pair',
     );
     assert.ok(fetching.classes.includes('pinned'));
-    for (const button of allWithClass(fetching, 'nav-button')) {
-      looks(button, { background: 'none' });
+    looks(fetching, { background: 'var(--toggle-on-background)' });
+    const [fetch, pin] = allWithClass(fetching, 'nav-button');
+    assert.ok(fetch.attributes.has('disabled'));
+    looks(fetch, { opacity: '1', background: 'none' });
+    for (const button of [fetch, pin]) {
+      looks(button, { background: 'none', color: 'var(--color-foreground)' });
     }
-    looks(withClass(pinned, 'segmented'), {
+    const options = rendered(diffOptions());
+    looks(withClass(options, 'segmented'), {
       background: 'var(--button-background)',
       'box-shadow': undefined,
     });
-    for (const button of [
-      entire,
-      pin,
-      ...allWithClass(
-        withClass(rendered(diffOptions()), 'pin-pair'),
-        'nav-button',
-      ),
-    ]) {
-      looks(button, { color: 'var(--color-foreground)' });
-    }
     const [chosen, other] = allWithClass(
-      withClass(pinned, 'segmented'),
+      withClass(options, 'segmented'),
       'nav-button',
     );
     assert.ok(chosen.classes.includes('active'));

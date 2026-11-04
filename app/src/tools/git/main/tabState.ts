@@ -35,7 +35,6 @@ export interface TabState {
   index: number | undefined;
   path: string | undefined;
   area: ChangeArea | undefined;
-  entireFile: boolean;
   diffStale: boolean;
   changedFiles: Map<string, FileChange>;
   stagedFiles: Map<string, FileChange>;
@@ -91,7 +90,6 @@ export function newTabState(): TabState {
     index: undefined,
     path: undefined,
     area: undefined,
-    entireFile: false,
     diffStale: false,
     changedFiles: new Map(),
     stagedFiles: new Map(),
@@ -352,7 +350,6 @@ export function select(tab: TabState, hash: string | undefined): void {
   tab.index = positionOf(tab, hash);
   tab.path = undefined;
   tab.area = undefined;
-  tab.entireFile = false;
 }
 
 export function changesOf(tab: TabState): Map<string, FileChange> {

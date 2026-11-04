@@ -234,7 +234,6 @@ interface Comparing {
   readonly compared: Compared;
   running: AbortController | undefined;
   readonly stop: () => void;
-  entire: boolean;
   version: number;
 }
 
@@ -871,14 +870,11 @@ export class GitTool implements Tool<'git'> {
       case 'loadCompareTexts':
         await this.sendCompareTexts(session, message.requests);
         return;
-      case 'compareEntire':
-        if (session.comparing && typeof message.entire === 'boolean') {
-          session.comparing.entire = message.entire;
-          await this.sendCompare(session);
+      case 'setShowEntireFile': {
+        if (typeof message.show !== 'boolean') {
+          return;
         }
-        return;
-      case 'pinEntireFile': {
-        this.save(storage.setEntireFilePinned(message.pinned));
+        this.save(storage.setShowEntireFile(message.show));
         await this.sendCompare(session);
         const context = await this.context(session);
         this.staleDiffs(context, (tab) => tab.path !== undefined);
@@ -1093,25 +1089,11 @@ export class GitTool implements Tool<'git'> {
         break;
       case 'selectFile':
         if (this.isSelected(context, message.hash)) {
-          if (
-            context.tab.path !== message.path ||
-            context.tab.area !== message.area
-          ) {
-            context.tab.entireFile = false;
-          }
           context.tab.path = message.path;
           context.tab.area = message.area;
           await this.sendDiff(context, message.hash);
         }
         break;
-      case 'showEntireFile': {
-        const { hash, path: file } = context.tab;
-        context.tab.entireFile = message.entire;
-        if (hash !== undefined && file !== undefined) {
-          await this.sendDiff(context, hash);
-        }
-        break;
-      }
       case 'loadTexts':
         if (this.isSelected(context, message.hash)) {
           await this.sendTexts(context, message);
@@ -1428,10 +1410,7 @@ export class GitTool implements Tool<'git'> {
 
   private async showTab(context: Context): Promise<void> {
     const { tab } = context;
-    const resend =
-      (tab.entireFile && tab.path !== undefined) ||
-      (tab.diffStale && tab.opened);
-    tab.entireFile = false;
+    const resend = tab.diffStale && tab.opened;
     tab.diffStale = false;
     if (resend && tab.hash !== undefined) {
       await this.sendDiff(context, tab.hash);
@@ -1750,7 +1729,6 @@ export class GitTool implements Tool<'git'> {
       tab,
       compared,
       running: undefined,
-      entire: false,
       version: 0,
       stop: watchFiles(
         [compared.old, compared.new],
@@ -1825,8 +1803,7 @@ export class GitTool implements Tool<'git'> {
       return;
     }
     const { compared } = comparing;
-    const { entireFilePinned, ignoreWhitespace } = this.storage.layout;
-    const entire = comparing.entire || entireFilePinned;
+    const { showEntireFile: entire, ignoreWhitespace } = this.storage.layout;
     const version = ++comparing.version;
     comparing.running?.abort();
     const running = new AbortController();
@@ -3394,7 +3371,7 @@ export class GitTool implements Tool<'git'> {
     return (
       file !== undefined &&
       file === context.tab.path &&
-      (context.tab.entireFile || this.storage.entireFilePinned)
+      this.storage.showEntireFile
     );
   }
 
@@ -3714,7 +3691,6 @@ function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {
 function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
   switch (message.type) {
     case 'loadCommits':
-    case 'showEntireFile':
     case 'viewFile':
     case 'fetch':
     case 'pull':

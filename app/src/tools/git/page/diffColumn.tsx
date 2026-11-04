@@ -25,7 +25,6 @@ import {
   WhitespaceChangesIcon,
   ShowWhitespaceIcon,
   InlineIcon,
-  PinIcon,
   SideBySideIcon,
   WordWrapIcon,
 } from '../../../ui/icons';
@@ -134,13 +133,10 @@ export function filteredDiffFiles(
 
 export function DiffOptions({
   entire,
-  pinned,
-  canShow,
   showWhitespace,
   ignoreWhitespace,
   wordWrap,
   onEntire,
-  onPin,
   onShowWhitespace,
   onIgnoreWhitespace,
   onWordWrap,
@@ -149,13 +145,10 @@ export function DiffOptions({
   onLayout,
 }: {
   entire: boolean;
-  pinned: boolean;
-  canShow: boolean;
   showWhitespace: boolean;
   ignoreWhitespace: boolean;
   wordWrap: boolean;
   onEntire: (entire: boolean) => void;
-  onPin: (pinned: boolean) => void;
   onShowWhitespace: (show: boolean) => void;
   onIgnoreWhitespace: (ignore: boolean) => void;
   onWordWrap: (wrap: boolean) => void;
@@ -163,28 +156,16 @@ export function DiffOptions({
   layout: DiffLayout;
   onLayout: (layout: DiffLayout) => void;
 }) {
-  const shown = entire || pinned;
   return (
     <div className="nav-buttons diff-options">
-      <span className={`pin-pair ${pinned ? 'pinned' : ''}`}>
-        <button
-          className={`nav-button toggle ${shown ? 'active' : ''}`}
-          title={strings.diff.showEntireFile}
-          aria-pressed={shown}
-          disabled={!canShow || pinned}
-          onClick={() => onEntire(!entire)}
-        >
-          <EntireFileIcon />
-        </button>
-        <button
-          className={`nav-button toggle ${pinned ? 'active' : ''}`}
-          title={strings.diff.pinEntire}
-          aria-pressed={pinned}
-          onClick={() => onPin(!pinned)}
-        >
-          <PinIcon />
-        </button>
-      </span>
+      <button
+        className={`nav-button toggle ${entire ? 'active' : ''}`}
+        title={strings.diff.showEntireFile}
+        aria-pressed={entire}
+        onClick={() => onEntire(!entire)}
+      >
+        <EntireFileIcon />
+      </button>
       <span className="nav-button-space" />
       {language}
       <span className="nav-button-space" />

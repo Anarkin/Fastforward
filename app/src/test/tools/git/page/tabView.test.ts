@@ -24,9 +24,6 @@ const openTab = (view: TabView, worktree: string) =>
 
 const paths = (view: TabView) => changesShown(view).map((file) => file.path);
 
-const entire = (view: TabView) =>
-  reduceTabView(view, { type: 'showEntireFile', entire: true });
-
 function busyTab(): TabView {
   let view = reduceTabView(openTab(emptyTabView, 'one'), {
     type: 'commits',
@@ -69,36 +66,6 @@ suite('Tab view', () => {
     assert.deepStrictEqual(view.files, []);
     assert.strictEqual(view.patch, '');
     assert.strictEqual(view.history?.at(0)?.hash, 'a');
-  });
-
-  test('shows a file entire until another file, commit or tab is shown', () => {
-    const shown = reduceTabView(busyTab(), { type: 'showFile', path: 'x.ts' });
-    assert.strictEqual(shown.entireFile, false);
-    assert.strictEqual(entire(shown).entireFile, true);
-    assert.strictEqual(
-      reduceTabView(entire(shown), { type: 'showEntireFile', entire: false })
-        .entireFile,
-      false,
-    );
-    assert.strictEqual(
-      reduceTabView(entire(shown), { type: 'showFile', path: 'x.ts' })
-        .entireFile,
-      true,
-    );
-    assert.strictEqual(
-      reduceTabView(entire(shown), { type: 'showFile', path: 'y.ts' })
-        .entireFile,
-      false,
-    );
-    assert.strictEqual(
-      reduceTabView(entire(shown), { type: 'showCommit', hash: 'a' })
-        .entireFile,
-      false,
-    );
-    assert.strictEqual(
-      openTab(openTab(entire(shown), 'two'), 'one').entireFile,
-      false,
-    );
   });
 
   test('keeps the view when the tabs change but not the worktree shown, and starts over when another is shown', () => {

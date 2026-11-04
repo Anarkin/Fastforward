@@ -29,14 +29,13 @@ export function CompareView({
   compare,
   texts,
   onLoadTexts,
-  pinned,
   layout,
   wordWrap,
   showWhitespace,
   ignoreWhitespace,
   findAsked,
+  entire,
   onEntire,
-  onPin,
   onLayout,
   onWordWrap,
   onShowWhitespace,
@@ -46,14 +45,13 @@ export function CompareView({
   compare: Compared | undefined;
   texts: ReadonlyMap<string, LoadedText>;
   onLoadTexts: (requests: TextRequest[]) => void;
-  pinned: boolean;
   layout: DiffLayout;
   wordWrap: boolean;
   showWhitespace: boolean;
   ignoreWhitespace: boolean;
   findAsked: number;
+  entire: boolean;
   onEntire: (entire: boolean) => void;
-  onPin: (pinned: boolean) => void;
   onLayout: (layout: DiffLayout) => void;
   onWordWrap: (wrap: boolean) => void;
   onShowWhitespace: (show: boolean) => void;
@@ -98,11 +96,8 @@ export function CompareView({
           filter={undefined}
           options={
             <DiffOptions
-              entire={compare?.entire === true && !pinned}
-              pinned={pinned}
-              canShow
+              entire={entire}
               onEntire={onEntire}
-              onPin={onPin}
               showWhitespace={showWhitespace}
               onShowWhitespace={onShowWhitespace}
               ignoreWhitespace={ignoreWhitespace}

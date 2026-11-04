@@ -12,13 +12,10 @@ function diffOptionsProps(
 ): DiffOptionsProps {
   return {
     entire: false,
-    pinned: false,
-    canShow: true,
     showWhitespace: false,
     ignoreWhitespace: true,
     wordWrap: false,
     onEntire: noop,
-    onPin: noop,
     onShowWhitespace: noop,
     onIgnoreWhitespace: noop,
     onWordWrap: noop,
@@ -48,28 +45,12 @@ function diffOptionTitles(overrides: Partial<DiffOptionsProps>) {
   return diffOptionButtons(overrides).map((button) => button.props.title);
 }
 
-function entireFileButtons(
-  entire: boolean,
-  pinned: boolean,
-  canShow = true,
-  ignoreWhitespace = true,
-  wordWrap = false,
-  showWhitespace = false,
-) {
+function optionButtons(overrides: Partial<DiffOptionsProps> = {}) {
   const html = renderToStaticMarkup(
-    <DiffOptions
-      {...diffOptionsProps({
-        entire,
-        pinned,
-        canShow,
-        ignoreWhitespace,
-        wordWrap,
-        showWhitespace,
-      })}
-    />,
+    <DiffOptions {...diffOptionsProps(overrides)} />,
   );
   return [...html.matchAll(/<button[^>]*>/g)]
-    .slice(0, 5)
+    .slice(0, 4)
     .map(([button]) =>
       [
         button.includes('aria-pressed="true"') ? 'on' : 'off',
@@ -79,23 +60,14 @@ function entireFileButtons(
 }
 
 suite('Diff options', () => {
-  test('shows the file entire for now, or pinned for every file', () => {
-    assert.deepStrictEqual(entireFileButtons(false, false), [
-      'off enabled',
-      'off enabled',
-      'off enabled',
-      'off enabled',
-      'off enabled',
-    ]);
-    assert.deepStrictEqual(entireFileButtons(true, false), [
-      'on enabled',
+  test('shows the file entire on one toggle, kept for every file, and offers it whatever is selected, as it applies whenever one file is shown', () => {
+    assert.deepStrictEqual(optionButtons(), [
       'off enabled',
       'off enabled',
       'off enabled',
       'off enabled',
     ]);
-    assert.deepStrictEqual(entireFileButtons(false, true), [
-      'on disabled',
+    assert.deepStrictEqual(optionButtons({ entire: true }), [
       'on enabled',
       'off enabled',
       'off enabled',
@@ -103,36 +75,20 @@ suite('Diff options', () => {
     ]);
   });
 
-  test('offers the entire file only with a file selected, but the pin always', () => {
-    assert.deepStrictEqual(entireFileButtons(false, false, false), [
-      'off disabled',
+  test('shows whitespace, shows whitespace changes and wraps long lines on their own toggles, pressed while on, the two for whitespace apart from wrapping, all of them apart from the others on both sides, and the language menu on its own after the entire file, as the viewer has it before its toggles', () => {
+    assert.deepStrictEqual(optionButtons({ showWhitespace: true }), [
       'off enabled',
-      'off enabled',
+      'on enabled',
       'off enabled',
       'off enabled',
     ]);
-  });
-
-  test('shows whitespace, shows whitespace changes and wraps long lines on their own toggles, pressed while on, the two for whitespace apart from wrapping, all of them apart from the others on both sides, and the language menu on its own after the pin, as the viewer has it before its toggles', () => {
-    assert.deepStrictEqual(
-      entireFileButtons(false, false, true, true, false, true),
-      [
-        'off enabled',
-        'off enabled',
-        'on enabled',
-        'off enabled',
-        'off enabled',
-      ],
-    );
-    assert.deepStrictEqual(entireFileButtons(false, false, true, false), [
-      'off enabled',
+    assert.deepStrictEqual(optionButtons({ ignoreWhitespace: false }), [
       'off enabled',
       'off enabled',
       'on enabled',
       'off enabled',
     ]);
-    assert.deepStrictEqual(entireFileButtons(false, false, true, true, true), [
-      'off enabled',
+    assert.deepStrictEqual(optionButtons({ wordWrap: true }), [
       'off enabled',
       'off enabled',
       'off enabled',
@@ -141,28 +97,13 @@ suite('Diff options', () => {
     const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
     assert.match(
       html,
-      /<\/button><\/span><span class="nav-button-space"><\/span><span class="language-slot"><\/span><span class="nav-button-space"><\/span><button[^>]*title="Show Whitespace"[^>]*>.*?<\/button><button[^>]*title="Show Whitespace Changes"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
+      /^<div[^>]*><button[^>]*title="Show the Entire File"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><span class="language-slot"><\/span><span class="nav-button-space"><\/span><button[^>]*title="Show Whitespace"[^>]*>.*?<\/button><button[^>]*title="Show Whitespace Changes"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
     );
   });
 
-  test('holds the pin together with the entire file button, filling both as one while pinned', () => {
-    for (const pinned of [false, true]) {
-      const html = renderToStaticMarkup(
-        <DiffOptions {...diffOptionsProps({ pinned })} />,
-      );
-      assert.match(
-        html,
-        new RegExp(
-          `^<div[^>]*><span class="pin-pair ${pinned ? 'pinned' : ''}"><button[^>]*title="Show the Entire File"[^>]*>.*?</button><button[^>]*title="Pin Entire Files"[^>]*>.*?</button></span>`,
-        ),
-      );
-    }
-  });
-
   test('names each toggle by what it does while pressed, keeping the name whether it is pressed or not', () => {
-    assert.deepStrictEqual(diffOptionTitles({}).slice(0, 5), [
+    assert.deepStrictEqual(diffOptionTitles({}).slice(0, 4), [
       'Show the Entire File',
-      'Pin Entire Files',
       'Show Whitespace',
       'Show Whitespace Changes',
       'Wrap Long Lines',
@@ -173,19 +114,14 @@ suite('Diff options', () => {
         showWhitespace: true,
         ignoreWhitespace: false,
         wordWrap: true,
-      }).slice(0, 5),
+      }).slice(0, 4),
       [
         'Show the Entire File',
-        'Pin Entire Files',
         'Show Whitespace',
         'Show Whitespace Changes',
         'Wrap Long Lines',
       ],
     );
-    assert.deepStrictEqual(diffOptionTitles({ pinned: true }).slice(0, 2), [
-      'Show the Entire File',
-      'Pin Entire Files',
-    ]);
   });
 
   test('holds the inline and side by side buttons together, as only one of them is on at a time', () => {
@@ -196,7 +132,7 @@ suite('Diff options', () => {
     );
   });
 
-  test('shows the entire file, pins it, shows whitespace, shows whitespace changes, and wraps long lines on their toggles, and stops on them again', () => {
+  test('shows the entire file, shows whitespace, shows whitespace changes, and wraps long lines on their toggles, and stops on them again', () => {
     for (const on of [false, true]) {
       const flipped: boolean[] = [];
       const flip = (value: boolean) => {
@@ -204,7 +140,6 @@ suite('Diff options', () => {
       };
       const toggles: Partial<DiffOptionsProps>[] = [
         { entire: on, onEntire: flip },
-        { pinned: on, onPin: flip },
         { showWhitespace: on, onShowWhitespace: flip },
         {
           ignoreWhitespace: !on,
@@ -217,7 +152,7 @@ suite('Diff options', () => {
         assert.strictEqual(button.props['aria-pressed'], on);
         button.props.onClick?.();
       });
-      assert.deepStrictEqual(flipped, [!on, !on, !on, !on, !on]);
+      assert.deepStrictEqual(flipped, [!on, !on, !on, !on]);
     }
   });
 

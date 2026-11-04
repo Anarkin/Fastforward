@@ -248,9 +248,8 @@ export type GitToHost =
   | { readonly type: 'preloadWorktree'; readonly root: string }
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
-  | { readonly type: 'pinEntireFile'; readonly pinned: boolean }
+  | { readonly type: 'setShowEntireFile'; readonly show: boolean }
   | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
-  | { readonly type: 'compareEntire'; readonly entire: boolean }
   | {
       readonly type: 'loadCompareTexts';
       readonly requests: readonly TextRequest[];
@@ -265,7 +264,6 @@ export type GitToHost =
 export type TabMessage =
   | { readonly type: 'setBookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'setSolo'; readonly solo: boolean }
-  | { readonly type: 'showEntireFile'; readonly entire: boolean }
   | { readonly type: 'loadTree'; readonly hash: string }
   | { readonly type: 'showUpstream' }
   | { readonly type: 'showParent' }
@@ -357,7 +355,7 @@ export type GitToWebview =
       readonly columnWidths: readonly number[];
       readonly defaultColumnWidths: readonly number[];
       readonly collapseMerges: boolean;
-      readonly entireFilePinned: boolean;
+      readonly showEntireFile: boolean;
       readonly ignoreWhitespace: boolean;
       readonly diffLayout: DiffLayout;
       readonly showAllFiles: boolean;

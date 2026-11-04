@@ -99,7 +99,7 @@
     "git": {
       "collapseMerges": true,
       "showAllFiles": false,
-      "entireFilePinned": true,
+      "showEntireFile": true,
       "ignoreWhitespace": true,
       "diffLayout": "sideBySide",
       "solo": false,

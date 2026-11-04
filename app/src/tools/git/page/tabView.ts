@@ -34,7 +34,6 @@ export interface TabView {
   readonly patchLoading: boolean;
   readonly path: string | undefined;
   readonly area: ChangeArea | undefined;
-  readonly entireFile: boolean;
   readonly patch: string;
   readonly leftOut: readonly LeftOut[];
   readonly whitespaceOnly: readonly string[];
@@ -75,7 +74,6 @@ export const emptyTabView: TabView = {
   patchLoading: false,
   path: undefined,
   area: undefined,
-  entireFile: false,
   patch: '',
   leftOut: [],
   whitespaceOnly: [],
@@ -112,7 +110,6 @@ export type TabAction =
       readonly path: string | undefined;
       readonly area?: ChangeArea;
     }
-  | { readonly type: 'showEntireFile'; readonly entire: boolean }
   | { readonly type: 'requestTree'; readonly hash: string };
 
 function selected(state: TabView, hash: string | undefined): TabView {
@@ -127,7 +124,6 @@ function selected(state: TabView, hash: string | undefined): TabView {
     patchLoading: hash !== undefined,
     path: undefined,
     area: undefined,
-    entireFile: false,
     patch: '',
     leftOut: [],
     whitespaceOnly: [],
@@ -179,17 +175,11 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
           };
     case 'showCommit':
       return { ...selected(state, action.hash), selection: action.selection };
-    case 'showEntireFile':
-      return { ...state, entireFile: action.entire };
     case 'showFile':
       return {
         ...state,
         path: action.path,
         area: action.area,
-        entireFile:
-          action.path === state.path &&
-          action.area === state.area &&
-          state.entireFile,
         selectionKnown: true,
         patchLoading: state.hash !== undefined,
         patch: '',

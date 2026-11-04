@@ -107,7 +107,7 @@
 | Show whitespace | Draw the spaces, tabs and line ends | — | Advanced | ✅ Yes | `.` |
 | Line endings | Show changes of line endings, or ignore them | `git diff --ignore-cr-at-eol` | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it |
 | Encodings | Show files that aren't UTF-8 | `working-tree-encoding` in `.gitattributes` | Advanced | ❌ No | Files are read as UTF-8; git turns messages into UTF-8 |
-| Context | Show more lines around the changes, or the whole file | `git diff -U<n>` | Common | ✅ Yes | The whole file, for one file or pinned for all; no expanding a few lines at a time |
+| Context | Show more lines around the changes, or the whole file | `git diff -U<n>` | Common | ✅ Yes | The whole file of the file selected, on one toggle kept for every file and on by default; no expanding a few lines at a time |
 | Line wrapping | Wrap long lines | — | Common | ✅ Yes | W |
 | Find in the diff | Search the diff's text | — | Common | ✅ Yes | Mod+F |
 | Next change | Move from change to change | — | Common | ✅ Yes | J and K, from the files too |

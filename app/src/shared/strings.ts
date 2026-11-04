@@ -448,7 +448,6 @@ export const strings = {
     couldNotView: (file: string, reason: string) =>
       `Couldn't view ${file}. ${reason}`,
     showEntireFile: 'Show the Entire File',
-    pinEntire: 'Pin Entire Files',
     showWhitespaceChanges: 'Show Whitespace Changes',
     layout: 'Layout',
     inline: 'Inline',

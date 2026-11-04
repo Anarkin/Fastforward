@@ -185,7 +185,7 @@ suite('Git tool showing diffs', () => {
     });
   });
 
-  test('shows a file entire until it is left, or always when pinned', async () => {
+  test('shows the file selected entire while the entire file is on, as by default, and in hunks once off, remembering the choice for every file and tab', async () => {
     await withView(log, [long.root, other], async (view) => {
       const select = (file: string | undefined) =>
         view.connection.receive({
@@ -196,44 +196,25 @@ suite('Git tool showing diffs', () => {
         });
       const entire = () =>
         /^ line 1$/m.test(view.page.last('diff')?.patch ?? '');
-      await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+      assert.strictEqual(view.page.last('layout')?.showEntireFile, true);
       await view.connection.receive({
         type: 'selectCommit',
         root: long.root,
         hash: second,
       });
       await select('a.txt');
-      assert.strictEqual(entire(), false);
-      await view.connection.receive({
-        type: 'showEntireFile',
-        root: long.root,
-        entire: true,
-      });
       assert.strictEqual(entire(), true);
       await select('b.txt');
-      assert.strictEqual(entire(), false);
-      await select('a.txt');
-      assert.strictEqual(entire(), false);
+      assert.strictEqual(entire(), true);
 
-      await view.connection.receive({ type: 'pinEntireFile', pinned: true });
-      assert.strictEqual(entire(), true);
-      await select('b.txt');
-      assert.strictEqual(entire(), true);
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
+      assert.strictEqual(entire(), false);
       assert.strictEqual(
-        view.settings.settings.tools.git.entireFilePinned,
-        true,
+        view.settings.settings.tools.git.showEntireFile,
+        false,
       );
-      await view.connection.receive({ type: 'ready' });
-      assert.strictEqual(view.page.last('layout')?.entireFilePinned, true);
-      await view.connection.receive({ type: 'pinEntireFile', pinned: false });
-      assert.strictEqual(entire(), false);
-
       await select('a.txt');
-      await view.connection.receive({
-        type: 'showEntireFile',
-        root: long.root,
-        entire: true,
-      });
+      assert.strictEqual(entire(), false);
       await view.connection.receive({
         type: 'selectTab',
         tab: tabOf(view.page, other),
@@ -243,6 +224,16 @@ suite('Git tool showing diffs', () => {
         tab: tabOf(view.page, long.root),
       });
       assert.strictEqual(entire(), false);
+      await view.connection.receive({ type: 'ready' });
+      assert.strictEqual(view.page.last('layout')?.showEntireFile, false);
+
+      await view.connection.receive({ type: 'setShowEntireFile', show: true });
+      assert.strictEqual(entire(), true);
+      assert.strictEqual(view.settings.settings.tools.git.showEntireFile, true);
+      await view.connection.receive(
+        forged('{ "type": "setShowEntireFile", "show": "yes" }'),
+      );
+      assert.strictEqual(view.settings.settings.tools.git.showEntireFile, true);
     });
   });
 
@@ -250,7 +241,7 @@ suite('Git tool showing diffs', () => {
     await withView(log, [other, long.root], async (view) => {
       const entire = () =>
         /^ line 1$/m.test(view.page.last('diff')?.patch ?? '');
-      await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
       await view.connection.receive({
         type: 'selectTab',
         tab: tabOf(view.page, long.root),
@@ -266,11 +257,7 @@ suite('Git tool showing diffs', () => {
         hash: second,
         path: 'a.txt',
       });
-      await view.connection.receive({
-        type: 'showEntireFile',
-        root: long.root,
-        entire: true,
-      });
+      await view.connection.receive({ type: 'setShowEntireFile', show: true });
       assert.strictEqual(entire(), true);
       await view.connection.receive({
         type: 'closeTab',
@@ -283,7 +270,7 @@ suite('Git tool showing diffs', () => {
 
   test('keeps a tab as it is when it is clicked while active', async () => {
     await withView(log, [long.root, other], async (view) => {
-      await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
       await view.connection.receive({
         type: 'selectCommit',
         root: long.root,
@@ -295,11 +282,7 @@ suite('Git tool showing diffs', () => {
         hash: second,
         path: 'a.txt',
       });
-      await view.connection.receive({
-        type: 'showEntireFile',
-        root: long.root,
-        entire: true,
-      });
+      await view.connection.receive({ type: 'setShowEntireFile', show: true });
       view.page.clear();
       await view.connection.receive({
         type: 'selectTab',
@@ -307,11 +290,7 @@ suite('Git tool showing diffs', () => {
       });
       assert.strictEqual(view.page.last('commits'), undefined);
       assert.strictEqual(view.page.last('diff'), undefined);
-      await view.connection.receive({
-        type: 'showEntireFile',
-        root: long.root,
-        entire: false,
-      });
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
       const diff = view.page.last('diff');
       assert.strictEqual(diff?.path, 'a.txt');
       assert.match(diff.patch, /^\+changed$/m);
@@ -321,7 +300,7 @@ suite('Git tool showing diffs', () => {
 
   test('shows the diff of the last entire file choice when an earlier one answers last', async () => {
     await withView(log, [long.root], async (view) => {
-      await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
       await view.connection.receive({
         type: 'selectCommit',
         root: long.root,
@@ -353,16 +332,11 @@ suite('Git tool showing diffs', () => {
         });
       }
       const shown = view.connection.receive({
-        type: 'showEntireFile',
-        root: long.root,
-        entire: true,
+        type: 'setShowEntireFile',
+        show: true,
       });
       await waitFor(() => waiting, 'the entire file');
-      await view.connection.receive({
-        type: 'showEntireFile',
-        root: long.root,
-        entire: false,
-      });
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
       held.open();
       await shown;
       assert.doesNotMatch(view.page.last('diff')?.patch ?? '', /^ line 1$/m);
@@ -422,7 +396,7 @@ suite('Git tool showing diffs', () => {
   test('names the files whose changes ignoring whitespace leaves out of a diff, showing one entire as its new lines unchanged', async () => {
     await withView(log, [spaced.root], async (view) => {
       const diff = () => view.page.last('diff');
-      await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
       await view.connection.receive({
         type: 'selectCommit',
         root: spaced.root,
@@ -439,11 +413,7 @@ suite('Git tool showing diffs', () => {
       assert.strictEqual(diff()?.patch, '');
       assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt']);
 
-      await view.connection.receive({
-        type: 'showEntireFile',
-        root: spaced.root,
-        entire: true,
-      });
+      await view.connection.receive({ type: 'setShowEntireFile', show: true });
       assert.match(
         diff()?.patch ?? '',
         /^diff --git a\/a\.txt b\/a\.txt\n(?:(?!@@).*\n)*@@ -1,2 \+1,2 @@\n {3}one\n two\n$/,
@@ -476,10 +446,7 @@ suite('Git tool showing diffs', () => {
     write('c.txt', '\tone\nmore\n');
     await withView(log, [edited.root], async (view) => {
       const diff = () => view.page.last('diff');
-      await view.connection.receive({
-        type: 'pinEntireFile',
-        pinned: false,
-      });
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
       await view.connection.receive({
         type: 'selectCommit',
         root: edited.root,
@@ -508,10 +475,7 @@ suite('Git tool showing diffs', () => {
       await view.connection.refresh();
       assert.deepStrictEqual(diff()?.whitespaceOnly, ['a.txt', 'd.txt']);
 
-      await view.connection.receive({
-        type: 'pinEntireFile',
-        pinned: true,
-      });
+      await view.connection.receive({ type: 'setShowEntireFile', show: true });
       await view.connection.receive({
         type: 'selectFile',
         root: edited.root,
@@ -633,7 +597,7 @@ suite('Git tool showing diffs', () => {
           type: 'selectTab',
           tab: tabOf(view.page, root),
         });
-      await view.connection.receive({ type: 'pinEntireFile', pinned: false });
+      await view.connection.receive({ type: 'setShowEntireFile', show: false });
       await selectTab(tabbed.root);
       await view.connection.receive({
         type: 'selectCommit',
@@ -658,7 +622,7 @@ suite('Git tool showing diffs', () => {
       });
       assert.doesNotMatch(patch(), /^ line 40$/m);
       await selectTab(other);
-      await view.connection.receive({ type: 'pinEntireFile', pinned: true });
+      await view.connection.receive({ type: 'setShowEntireFile', show: true });
       await selectTab(tabbed.root);
       assert.match(patch(), /^ line 40$/m);
     });
@@ -817,7 +781,7 @@ suite('Git tool showing diffs', () => {
     await huge.commit('second', { 'huge.txt': lines.join('') });
     const [hash] = await huge.resolve('HEAD');
     await withView(log, [huge.root], async (view) => {
-      await view.connection.receive({ type: 'pinEntireFile', pinned: true });
+      await view.connection.receive({ type: 'setShowEntireFile', show: true });
       await view.connection.receive({
         type: 'selectCommit',
         root: huge.root,

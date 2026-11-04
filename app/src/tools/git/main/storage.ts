@@ -192,7 +192,7 @@ export class GitStorage {
       columnWidths: settings.columnWidths,
       defaultColumnWidths: this.userSettings.defaults.tools.git.columnWidths,
       collapseMerges: settings.collapseMerges,
-      entireFilePinned: settings.entireFilePinned,
+      showEntireFile: settings.showEntireFile,
       ignoreWhitespace: settings.ignoreWhitespace,
       diffLayout: settings.diffLayout,
       showAllFiles: settings.showAllFiles,
@@ -229,12 +229,12 @@ export class GitStorage {
     await this.userSettings.setIn('git', 'columnWidths', widths);
   }
 
-  get entireFilePinned(): boolean {
-    return this.settings.entireFilePinned;
+  get showEntireFile(): boolean {
+    return this.settings.showEntireFile;
   }
 
-  async setEntireFilePinned(pinned: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'entireFilePinned', pinned);
+  async setShowEntireFile(show: boolean): Promise<void> {
+    await this.userSettings.setIn('git', 'showEntireFile', show);
   }
 
   get ignoreWhitespace(): boolean {

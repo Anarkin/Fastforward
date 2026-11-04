@@ -397,10 +397,14 @@ suite('App', () => {
         async () => (await belowTop()) === Math.round(3 * row),
         'the change to be shown at its place',
       );
-      await page.getByRole('button', { name: 'Pin Entire Files' }).click();
+      await page.getByRole('button', { name: 'Show the Entire File' }).click();
       await page
         .getByRole('button', { name: 'Show the Entire File', pressed: false })
         .waitFor();
+      await waitFor(
+        () => savedSetting('showEntireFile') === false,
+        'the entire file turned off to be saved',
+      );
       await waitFor(
         async () =>
           (await page.locator('.diff-line').count()) < 20 &&
@@ -416,8 +420,8 @@ suite('App', () => {
         'the entire file to be shown at its change',
       );
       await waitFor(
-        () => savedSetting('entireFilePinned') === false,
-        'the unpinning to be saved',
+        () => savedSetting('showEntireFile') === undefined,
+        'the entire file left to the default again',
       );
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');

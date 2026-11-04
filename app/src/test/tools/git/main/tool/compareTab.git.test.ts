@@ -57,7 +57,7 @@ suite('Git tool comparing two files', () => {
     removeFolder(files);
   });
 
-  test('diffs the two files of a compare tab, the whole file when asked, again when one changes, and leaves the comparison for a repository tab', async () => {
+  test('diffs the two files of a compare tab, the whole file while the entire file is on, again when one changes, and leaves the comparison for a repository tab', async () => {
     const compare = {
       old: path.join(files, 'old.txt'),
       new: path.join(files, 'new.txt'),
@@ -71,7 +71,7 @@ suite('Git tool comparing two files', () => {
       { id: '1', tool: 'git', root: repository.root },
       tab,
     ]);
-    await opened.connection.receive({ type: 'pinEntireFile', pinned: false });
+    await opened.connection.receive({ type: 'setShowEntireFile', show: false });
     await opened.connection.receive({ type: 'selectTab', tab: '9' });
     const shown = lastCompare();
     assert.deepStrictEqual(
@@ -81,7 +81,7 @@ suite('Git tool comparing two files', () => {
     assert.ok(linesOf(shown).includes('changed'));
     assert.ok(!linesOf(shown).includes('line 0'));
 
-    await opened.connection.receive({ type: 'compareEntire', entire: true });
+    await opened.connection.receive({ type: 'setShowEntireFile', show: true });
     assert.strictEqual(lastCompare()?.entire, true);
     assert.ok(linesOf(lastCompare()).includes('line 0'));
     await opened.connection.receive({ type: 'selectTab', tab: '9' });

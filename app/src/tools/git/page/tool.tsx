@@ -169,7 +169,6 @@ export function GitTool({
     patchLoading,
     path,
     area,
-    entireFile,
     patch,
     leftOut,
     whitespaceOnly,
@@ -191,7 +190,7 @@ export function GitTool({
     commitSearch,
     error,
   } = tab;
-  const [entireFilePinned, setEntireFilePinned] = useState(false);
+  const [showEntireFile, setShowEntireFile] = useState(false);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
   const textView = useTextView();
   const { wordWrap, showWhitespace } = textView.view;
@@ -343,7 +342,7 @@ export function GitTool({
         case 'layout':
           loadColumnWidths(message.columnWidths, message.defaultColumnWidths);
           setCollapseMerges(message.collapseMerges);
-          setEntireFilePinned(message.entireFilePinned);
+          setShowEntireFile(message.showEntireFile);
           setIgnoreWhitespace(message.ignoreWhitespace);
           setDiffLayout(message.diffLayout);
           setShowAllFiles(message.showAllFiles);
@@ -686,10 +685,6 @@ export function GitTool({
     post({ type: 'setShowAllFiles', show });
   };
 
-  const showEntireFile = (entire: boolean) => {
-    dispatch({ type: 'showEntireFile', entire });
-    postTab({ type: 'showEntireFile', entire });
-  };
   const changeIgnoreWhitespace = (ignore: boolean) => {
     setIgnoreWhitespace(ignore);
     post({ type: 'setIgnoreWhitespace', ignore });
@@ -736,9 +731,9 @@ export function GitTool({
     setDiffLayout(layout);
     post({ type: 'setDiffLayout', layout });
   };
-  const pinEntireFile = (pinned: boolean) => {
-    setEntireFilePinned(pinned);
-    post({ type: 'pinEntireFile', pinned });
+  const changeShowEntireFile = (show: boolean) => {
+    setShowEntireFile(show);
+    post({ type: 'setShowEntireFile', show });
   };
 
   const changeCollapseMerges = (collapse: boolean) => {
@@ -882,16 +877,13 @@ export function GitTool({
                           onLoadTexts={(requests) =>
                             post({ type: 'loadCompareTexts', requests })
                           }
-                          pinned={entireFilePinned}
+                          entire={showEntireFile}
                           layout={diffLayout}
                           wordWrap={wordWrap}
                           showWhitespace={showWhitespace}
                           ignoreWhitespace={ignoreWhitespace}
                           findAsked={searchAsks.diff}
-                          onEntire={(entire) =>
-                            post({ type: 'compareEntire', entire })
-                          }
-                          onPin={pinEntireFile}
+                          onEntire={changeShowEntireFile}
                           onLayout={changeDiffLayout}
                           onWordWrap={changeWordWrap}
                           onShowWhitespace={changeShowWhitespace}
@@ -1096,17 +1088,13 @@ export function GitTool({
                                   findAsked={searchAsks.diff}
                                   filter={fileFilter}
                                   changeMarks={
-                                    path !== undefined &&
-                                    (entireFilePinned || entireFile)
+                                    path !== undefined && showEntireFile
                                   }
-                                  entire={entireFilePinned || entireFile}
+                                  entire={showEntireFile}
                                   options={
                                     <DiffOptions
-                                      entire={entireFile}
-                                      pinned={entireFilePinned}
-                                      canShow={path !== undefined}
-                                      onEntire={showEntireFile}
-                                      onPin={pinEntireFile}
+                                      entire={showEntireFile}
+                                      onEntire={changeShowEntireFile}
                                       showWhitespace={showWhitespace}
                                       onShowWhitespace={changeShowWhitespace}
                                       ignoreWhitespace={ignoreWhitespace}

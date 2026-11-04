@@ -106,13 +106,10 @@ export function diffOptions(
   return (
     <DiffOptions
       entire={false}
-      pinned={false}
-      canShow
       showWhitespace={false}
       ignoreWhitespace
       wordWrap={false}
       onEntire={noop}
-      onPin={noop}
       onShowWhitespace={noop}
       onIgnoreWhitespace={noop}
       onWordWrap={noop}
