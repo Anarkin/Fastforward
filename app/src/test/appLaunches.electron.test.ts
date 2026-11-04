@@ -136,6 +136,55 @@ suite('App with lists longer than their columns', () => {
   });
 });
 
+const dark = (page: Page) =>
+  page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
+
+suite('App with a theme', () => {
+  test('starts dark by default, turns light at once when Light is picked in the app menu, and starts light again from the theme saved', async () => {
+    const folder = tempFolder('themes');
+    const profile = path.join(folder, 'profile');
+    fs.mkdirSync(profile, { recursive: true });
+    const settingsFile = path.join(profile, 'settings.user.json');
+    fs.writeFileSync(settingsFile, JSON.stringify(baseSettings));
+    let app = await launchApp(profile);
+    try {
+      let page = await app.firstWindow();
+      await page.emulateMedia({ colorScheme: null });
+      const menu = page.locator('.tabs > .menu-button > button');
+      await menu.waitFor();
+      assert.strictEqual(await dark(page), true);
+      await menu.click();
+      await page.locator('.menu-item', { hasText: 'Theme' }).hover();
+      await page
+        .locator('.menu.submenu .menu-item', { hasText: 'Light' })
+        .click();
+      await waitFor(
+        async () => !(await dark(page)),
+        'the window to turn light',
+      );
+      await waitFor(() => {
+        const saved: unknown = JSON.parse(
+          fs.readFileSync(settingsFile, 'utf8'),
+        );
+        return (
+          typeof saved === 'object' &&
+          saved !== null &&
+          Reflect.get(saved, 'theme') === 'light'
+        );
+      }, 'the theme to be saved');
+      await closeOrKill(app);
+      app = await launchApp(profile);
+      page = await app.firstWindow();
+      await page.emulateMedia({ colorScheme: null });
+      await page.locator('.tabs > .menu-button > button').waitFor();
+      assert.strictEqual(await dark(page), false);
+    } finally {
+      await closeOrKill(app);
+      removeFolder(folder);
+    }
+  });
+});
+
 suite('App with several tabs', () => {
   test('moves a tab dragged past the middle of the next one while it is still dragged, keeping it under the pointer, opening it, and keeps that order once dropped', async () => {
     const folder = tempFolder('dragging-tabs');

@@ -3,6 +3,7 @@
     "autoSort": false,
     "recentFolders": 15
   },
+  "theme": "dark",
   "dateFormat": "YYYY-MM-DD HH:mm",
   "text": {
     "wordWrap": true,

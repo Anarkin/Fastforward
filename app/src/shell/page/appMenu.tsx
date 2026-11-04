@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { keymap } from '../shared/keymap';
-import type { UpdateStatus } from '../shared/protocol';
+import { themes, type Theme, type UpdateStatus } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import { MenuButton } from '../../ui/menu';
 import { useBinding } from '../../ui/shortcuts';
@@ -31,6 +31,8 @@ export function AppMenu({
   update,
   autoSortTabs,
   onAutoSortTabs,
+  theme,
+  onTheme,
   onSort,
   onOpenSettings,
   onOpenDefaultSettings,
@@ -43,6 +45,8 @@ export function AppMenu({
   update: UpdateStatus;
   autoSortTabs: boolean;
   onAutoSortTabs: (on: boolean) => void;
+  theme: Theme;
+  onTheme: (theme: Theme) => void;
   onSort: () => void;
   onOpenSettings: () => void;
   onOpenDefaultSettings: () => void;
@@ -70,6 +74,14 @@ export function AppMenu({
         ...(autoSortTabs
           ? []
           : [{ label: strings.tabs.sort, onClick: onSort }]),
+        {
+          label: strings.tabs.theme,
+          submenu: themes.map((each) => ({
+            label: strings.tabs.themes[each],
+            checked: each === theme,
+            onClick: () => onTheme(each),
+          })),
+        },
         { separator: true },
         {
           label: strings.tabs.openDefaultSettings,

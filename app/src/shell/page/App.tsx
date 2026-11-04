@@ -13,6 +13,7 @@ import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,
   TabInfo,
+  Theme,
   ToHost,
   ToWebview,
   ToWebviewOf,
@@ -179,6 +180,7 @@ export function App({ name, post, listen }: Props) {
   const [about, setAbout] = useState<AboutInfo>();
   const [installsCommand, setInstallsCommand] = useState(false);
   const [autoSortTabs, setAutoSortTabs] = useState(false);
+  const [theme, setTheme] = useState<Theme>('dark');
   const [dateFormat, setDateFormat] = useState(useContext(DateFormat));
   const [textView, setTextView] = useState(defaultTextView);
   const [imageView, setImageView] = useState(defaultImageView);
@@ -222,6 +224,9 @@ export function App({ name, post, listen }: Props) {
           break;
         case 'autoSortTabs':
           setAutoSortTabs(message.on);
+          break;
+        case 'theme':
+          setTheme(message.theme);
           break;
         case 'dateFormat':
           setDateFormat(message.format);
@@ -380,6 +385,11 @@ export function App({ name, post, listen }: Props) {
             onAutoSortTabs={(on) => {
               setAutoSortTabs(on);
               post({ type: 'setAutoSortTabs', on });
+            }}
+            theme={theme}
+            onTheme={(picked) => {
+              setTheme(picked);
+              post({ type: 'setTheme', theme: picked });
             }}
             onSort={() => post({ type: 'sortTabs' })}
             onOpenSettings={() => post({ type: 'openSettings' })}

@@ -186,6 +186,8 @@ export const strings = {
     settings: 'Settings',
     sort: 'Sort Tabs A-Z',
     sortAutomatically: 'Sort Tabs A-Z Automatically',
+    theme: 'Theme',
+    themes: { auto: 'Auto', light: 'Light', dark: 'Dark' },
     about: 'About',
     openDefaultSettings: 'Open Default Settings',
     openUserSettings: 'Open User Settings',

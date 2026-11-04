@@ -6,7 +6,7 @@ import {
   type Settings,
   type UserSettings,
 } from './settings';
-import type { ImageView, TextView } from '../shared/protocol';
+import type { ImageView, TextView, Theme } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings } from '../../shared/strings';
 import { isTool, type ToolId } from '../shared/tools';
@@ -233,6 +233,14 @@ export class Storage {
 
   get dateFormat(): string {
     return this.settings.dateFormat;
+  }
+
+  get theme(): Theme {
+    return this.settings.theme;
+  }
+
+  async setTheme(theme: Theme): Promise<void> {
+    await this.userSettings.set('theme', theme);
   }
 
   get autoSortTabs(): boolean {

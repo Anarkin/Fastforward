@@ -40,7 +40,7 @@ import {
   pressOfInput,
   setKeyPlatform,
 } from '../shell/shared/keymap';
-import type { ToHost, ToWebview } from '../shell/shared/protocol';
+import type { Theme, ToHost, ToWebview } from '../shell/shared/protocol';
 import { brand, strings } from '../shared/strings';
 import {
   readDefaults,
@@ -184,6 +184,7 @@ async function start(asked: readonly string[]): Promise<void> {
   for (const problem of userSettings.problems) {
     log.warn(problem);
   }
+  applyTheme(userSettings.settings.theme);
   const state = new JsonFileStore(path.join(profile, 'state.json'));
   for (const problem of state.problems) {
     log.warn(problem);
@@ -516,6 +517,7 @@ async function start(asked: readonly string[]): Promise<void> {
     log,
     storage,
     {
+      applyTheme,
       openSettings: async () => {
         if (!fs.existsSync(userSettingsFile)) {
           fs.writeFileSync(userSettingsFile, '{}\n');
@@ -582,6 +584,7 @@ async function start(asked: readonly string[]): Promise<void> {
     for (const problem of userSettings.problems) {
       log.warn(problem);
     }
+    applyTheme(userSettings.settings.theme);
     view.reloadSettings();
     window.webContents.reloadIgnoringCache();
   };
@@ -667,6 +670,10 @@ function distributionName(): string | undefined {
 async function searchGit(): Promise<GitSearch> {
   await withLoginShellEnv(process.platform, process.env);
   return findGit();
+}
+
+function applyTheme(theme: Theme): void {
+  nativeTheme.themeSource = theme === 'auto' ? 'system' : theme;
 }
 
 function createWindow(

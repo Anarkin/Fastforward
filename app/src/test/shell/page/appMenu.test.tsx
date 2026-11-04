@@ -2,21 +2,25 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import type { UpdateStatus } from '../../../shell/shared/protocol';
+import type { Theme, UpdateStatus } from '../../../shell/shared/protocol';
 import { AppMenu, updateLabel } from '../../../shell/page/appMenu';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { noop, renderedBy, stylesheet } from '../../fixtures';
+import { allWithClass, cascaded, rendered } from '../../cascade';
+import { noop, renderedBy } from '../../fixtures';
 
 function menuOf(
   update: UpdateStatus,
   picked: string[],
   autoSortTabs = true,
   installsCommand = false,
+  theme: Theme = 'dark',
 ): { items: readonly ContextMenuItem[]; marked: boolean } {
   const menu = renderedBy(AppMenu, {
     update,
     autoSortTabs,
     onAutoSortTabs: (on) => picked.push(`sort automatically ${on}`),
+    theme,
+    onTheme: (picking) => picked.push(`theme ${picking}`),
     onSort: () => picked.push('sort'),
     onOpenSettings: () => picked.push('settings'),
     onOpenDefaultSettings: () => picked.push('defaults'),
@@ -35,6 +39,44 @@ function menuOf(
 }
 
 suite('App menu', () => {
+  test('offers the themes in a submenu after sorting the tabs, checking the one in use and picking another', () => {
+    for (const theme of ['auto', 'light', 'dark'] as const) {
+      const picked: string[] = [];
+      const labels = menuOf(
+        { kind: 'idle' },
+        picked,
+        false,
+        false,
+        theme,
+      ).items.flatMap((item) => ('separator' in item ? [] : [item.label]));
+      assert.strictEqual(labels[labels.indexOf('Sort Tabs A-Z') + 1], 'Theme');
+      const submenu =
+        menuOf({ kind: 'idle' }, picked, false, false, theme).items.flatMap(
+          (item) =>
+            'separator' in item || item.label !== 'Theme' ? [] : [item.submenu],
+        )[0] ?? [];
+      const themes = submenu.flatMap((item) =>
+        'separator' in item ? [] : [item],
+      );
+      assert.deepStrictEqual(
+        themes.map((item) => [item.label, item.checked]),
+        [
+          ['Auto', theme === 'auto'],
+          ['Light', theme === 'light'],
+          ['Dark', theme === 'dark'],
+        ],
+      );
+      for (const item of themes) {
+        item.onClick?.();
+      }
+      assert.deepStrictEqual(picked, [
+        'theme auto',
+        'theme light',
+        'theme dark',
+      ]);
+    }
+  });
+
   test('offers sorting the tabs, opening the settings files, showing the shortcuts, checking for updates and the About', () => {
     const picked: string[] = [];
     const items = menuOf({ kind: 'idle' }, picked, false).items.flatMap(
@@ -45,6 +87,7 @@ suite('App menu', () => {
       [
         'Sort Tabs A-Z Automatically',
         'Sort Tabs A-Z',
+        'Theme',
         'Open Default Settings',
         'Open User Settings',
         'Shortcuts',
@@ -110,6 +153,8 @@ suite('App menu', () => {
           update={{ kind: 'idle' }}
           autoSortTabs
           onAutoSortTabs={noop}
+          theme="dark"
+          onTheme={noop}
           onSort={noop}
           onOpenSettings={noop}
           onOpenDefaultSettings={noop}
@@ -123,10 +168,28 @@ suite('App menu', () => {
     );
   });
 
-  test('drops its menu to the right, from the left end of the tab row', () => {
-    assert.match(
-      stylesheet(),
-      /\.tabs > \.menu-button \.menu \{[^}]*left: 0;[^}]*right: auto;/,
+  test('drops its menu to the right, from the left end of the tab row, opening its submenus beside it rather than over it', () => {
+    const bar = rendered(
+      <nav className="tabs">
+        <div className="menu-button">
+          <div className="menu">
+            <div className="menu submenu" />
+            <div className="menu submenu flipped" />
+          </div>
+        </div>
+      </nav>,
+    );
+    const [menu, submenu, flipped] = allWithClass(bar, 'menu');
+    assert.deepStrictEqual(
+      [menu, submenu, flipped].map((element) => [
+        cascaded(element, 'left'),
+        cascaded(element, 'right'),
+      ]),
+      [
+        ['0', 'auto'],
+        ['100%', 'auto'],
+        ['auto', '100%'],
+      ],
     );
   });
 

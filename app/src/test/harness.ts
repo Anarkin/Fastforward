@@ -14,6 +14,7 @@ import {
 } from '../tools/git/shared/protocol';
 import type {
   AboutInfo,
+  Theme,
   ToHost,
   ToWebview,
   UpdateStatus,
@@ -120,6 +121,11 @@ export class FakeHost implements ShellHost, GitHost {
     onPath: true,
   };
   readonly opened: string[] = [];
+  readonly themes: Theme[] = [];
+
+  applyTheme(theme: Theme): void {
+    this.themes.push(theme);
+  }
 
   canInstallCommand(): boolean {
     return this.commandPlace;
@@ -378,6 +384,7 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   preloadTab: true,
   sortTabs: true,
   setAutoSortTabs: true,
+  setTheme: true,
   newTab: true,
   openWith: true,
   openIn: true,

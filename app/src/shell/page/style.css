@@ -255,7 +255,7 @@ body {
     var(--hover-background);
 }
 
-.tabs > .menu-button .menu {
+.tabs > .menu-button .menu:not(.submenu) {
   left: 0;
   right: auto;
 }

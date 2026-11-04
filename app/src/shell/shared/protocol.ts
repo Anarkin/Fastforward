@@ -70,6 +70,14 @@ export type UpdateStatus =
   | { readonly kind: 'available'; readonly version: string }
   | { readonly kind: 'failed' };
 
+export const themes = ['auto', 'light', 'dark'] as const;
+
+export type Theme = (typeof themes)[number];
+
+export function isTheme(value: unknown): value is Theme {
+  return themes.some((theme) => theme === value);
+}
+
 export type ToHost =
   | { readonly type: 'ready' }
   | { readonly type: 'selectTab'; readonly tab: string }
@@ -78,6 +86,7 @@ export type ToHost =
   | { readonly type: 'preloadTab'; readonly tab: string }
   | { readonly type: 'sortTabs' }
   | { readonly type: 'setAutoSortTabs'; readonly on: boolean }
+  | { readonly type: 'setTheme'; readonly theme: Theme }
   | { readonly type: 'setTextView'; readonly view: TextView }
   | { readonly type: 'setImageView'; readonly view: ImageView }
   | { readonly type: 'newTab'; readonly tool: ToolId }
@@ -104,6 +113,7 @@ export type ToWebview =
       readonly active: string | undefined;
     }
   | { readonly type: 'autoSortTabs'; readonly on: boolean }
+  | { readonly type: 'theme'; readonly theme: Theme }
   | { readonly type: 'dateFormat'; readonly format: string }
   | { readonly type: 'textView'; readonly view: TextView }
   | { readonly type: 'imageView'; readonly view: ImageView }

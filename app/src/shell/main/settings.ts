@@ -6,13 +6,19 @@ import {
   type ToolSettings,
 } from '../shared/tools';
 import { strings } from '../../shared/strings';
-import type { ImageView, TextView } from '../shared/protocol';
+import {
+  themes,
+  type ImageView,
+  type TextView,
+  type Theme,
+} from '../shared/protocol';
 
 export interface Settings {
   readonly tabs: {
     readonly autoSort: boolean;
     readonly recentFolders: number;
   };
+  readonly theme: Theme;
   readonly dateFormat: string;
   readonly text: TextView;
   readonly images: ImageView;
@@ -73,7 +79,10 @@ function sameKind(fallback: unknown, value: unknown): boolean {
   );
 }
 
-const choices: ReadonlyMap<string, readonly string[]> = toolSettingChoices;
+const choices: ReadonlyMap<string, readonly string[]> = new Map([
+  ...toolSettingChoices,
+  ['theme', themes],
+]);
 
 function itemProblems(template: Json, item: unknown, name: string): string[] {
   if (!isObject(item)) {

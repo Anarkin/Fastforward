@@ -183,6 +183,30 @@ suite('Shell with no tab open', () => {
     }
   });
 
+  test('tells the page the theme of the settings, dark by default, and saves and applies at once the one picked', async () => {
+    const host = new FakeHost();
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('theme'), {
+          type: 'theme',
+          theme: 'dark',
+        });
+        await view.connection.receive({ type: 'setTheme', theme: 'light' });
+        assert.strictEqual(view.settings.settings.theme, 'light');
+        assert.deepStrictEqual(host.themes, ['light']);
+        assert.deepStrictEqual(view.page.last('theme'), {
+          type: 'theme',
+          theme: 'light',
+        });
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('tells the page the date format of the settings, which every tool writes its dates in', async () => {
     await withView(
       log,
@@ -335,6 +359,7 @@ suite('Shell with no tab open', () => {
         const warnings = warned.length;
         for (const message of [
           '{ "type": "setAutoSortTabs", "on": "yes" }',
+          '{ "type": "setTheme", "theme": "blue" }',
           '{ "type": "copyText", "text": 5 }',
           '{ "type": "log", "level": "warn", "message": "forged" }',
           '{ "type": "log", "level": "info", "message": { "forged": true } }',
@@ -346,6 +371,8 @@ suite('Shell with no tab open', () => {
           ['terminal', 'commander'],
         );
         assert.strictEqual(view.settings.settings.tabs.autoSort, false);
+        assert.strictEqual(view.settings.settings.theme, 'dark');
+        assert.deepStrictEqual(host.themes, []);
         assert.deepStrictEqual(host.opened, []);
         assert.strictEqual(warned.length, warnings);
         assert.ok(

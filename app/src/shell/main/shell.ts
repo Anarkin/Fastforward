@@ -1,12 +1,13 @@
 import * as path from 'node:path';
 import type { Log } from './log';
-import { isImageView, isTextView } from '../shared/protocol';
+import { isImageView, isTextView, isTheme } from '../shared/protocol';
 import type { CommandInstall, CommandState } from '../../main/terminalCommand';
 import { InFlight } from '../../shared/inFlight';
 import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,
   TabInfo,
+  Theme,
   ToHost,
   ToolChoice,
   ToWebview,
@@ -88,6 +89,7 @@ export interface Tool<K extends ToolId> {
 export type Tools = { readonly [K in ToolId]: Tool<K> };
 
 export interface ShellHost {
+  applyTheme(theme: Theme): void;
   openSettings(): Promise<void>;
   openDefaultSettings(): Promise<void>;
   settingsProblems(): readonly string[];
@@ -406,6 +408,14 @@ export class Shell {
         this.save(storage.setImageView(message.view));
         this.page?.post({ type: 'imageView', view: storage.imageView });
         return;
+      case 'setTheme':
+        if (!isTheme(message.theme)) {
+          return;
+        }
+        this.host.applyTheme(message.theme);
+        this.save(storage.setTheme(message.theme));
+        this.page?.post({ type: 'theme', theme: storage.theme });
+        return;
       case 'setAutoSortTabs':
         if (typeof message.on !== 'boolean') {
           return;
@@ -445,6 +455,7 @@ export class Shell {
   private async ready(page: Page): Promise<void> {
     const { storage, host } = this;
     page.post({ type: 'autoSortTabs', on: storage.autoSortTabs });
+    page.post({ type: 'theme', theme: storage.theme });
     page.post({ type: 'dateFormat', format: storage.dateFormat });
     page.post({ type: 'textView', view: storage.textView });
     page.post({ type: 'imageView', view: storage.imageView });
