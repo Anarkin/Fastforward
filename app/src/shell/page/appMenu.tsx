@@ -66,6 +66,7 @@ export function AppMenu({
           label: updateLabel(update),
           onClick: installs ? onInstallUpdate : onCheckForUpdates,
         },
+        { separator: true },
         ...(onInstallCommand
           ? [{ label: strings.tabs.installCommand, onClick: onInstallCommand }]
           : []),

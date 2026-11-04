@@ -32,7 +32,7 @@ function menuOf(
 }
 
 suite('App menu', () => {
-  test('offers opening the settings files, then checking for updates, the shortcuts and the About in a group of their own', () => {
+  test('offers opening the settings files, then checking for updates, then the shortcuts and the About, each in a group of its own', () => {
     const picked: string[] = [];
     const { items } = menuOf({ kind: 'idle' }, picked);
     assert.deepStrictEqual(
@@ -42,6 +42,7 @@ suite('App menu', () => {
         'Open User Settings',
         '-',
         'Check for Updates',
+        '-',
         'Shortcuts',
         'About',
       ],
@@ -60,16 +61,14 @@ suite('App menu', () => {
     ]);
   });
 
-  test('offers installing ff after checking for updates where the app installs it itself, on macOS and from an AppImage', () => {
+  test('offers installing ff before the shortcuts where the app installs it itself, on macOS and from an AppImage', () => {
     const picked: string[] = [];
-    const items = menuOf({ kind: 'idle' }, picked, true).items.flatMap(
-      (item) => ('separator' in item ? [] : [item]),
+    const { items: all } = menuOf({ kind: 'idle' }, picked, true);
+    assert.deepStrictEqual(
+      all.map((item) => ('separator' in item ? '-' : item.label)).slice(-4),
+      ['-', 'Install the ff Command', 'Shortcuts', 'About'],
     );
-    const labels = items.map((item) => item.label);
-    assert.strictEqual(
-      labels[labels.indexOf('Check for Updates') + 1],
-      'Install the ff Command',
-    );
+    const items = all.flatMap((item) => ('separator' in item ? [] : [item]));
     items.find((item) => item.label === 'Install the ff Command')?.onClick?.();
     assert.deepStrictEqual(picked, ['ff']);
   });
