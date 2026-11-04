@@ -109,6 +109,12 @@ export const keymap = {
     { ArrowDown: 'next', ArrowUp: 'previous', Home: 'first', End: 'last' },
     { repeats: true },
   ),
+  menuFilter: bind(
+    undefined,
+    strings.actions.menuFilter,
+    { ArrowDown: 'items', Enter: 'first' } as const,
+    { fields: true },
+  ),
   submenu: bind(undefined, strings.actions.submenu, {
     ArrowRight: 'open',
     ArrowLeft: 'back',

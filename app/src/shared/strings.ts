@@ -233,6 +233,8 @@ export const strings = {
     close: 'Close a menu or popup',
     dialogFocus: 'Move between the controls of a popup',
     menuItem: 'Move in a menu',
+    menuFilter:
+      'Move from the filter of a menu into its items, or choose the first',
     removeItem: 'Remove a recent item from a menu',
     submenu: 'Open a submenu, or go back from it',
     result: 'Move in the search results',
@@ -262,6 +264,7 @@ export const strings = {
     scrollFile: 'Scroll by a row, a page, or to the start or end',
     scrollSideways: 'Scroll sideways',
     chooseEncoding: 'Choose the encoding of the text',
+    chooseLanguage: 'Choose the language the text is colored in',
     findInFile: 'Search the file',
     viewDiffFile: 'View the file shown in a tab of its own',
     zoomPdf: 'Zoom a PDF in or out',
@@ -558,7 +561,10 @@ export const strings = {
       'windows-1251': 'Cyrillic (Windows-1251)',
       bytes: 'Bytes',
     },
-    autoEncoding: (encoding: string) => `Auto: ${encoding}`,
+    autoChoice: (chosen: string) => `Auto: ${chosen}`,
+    plainText: 'Plain Text',
+    language: 'Language',
+    findLanguage: 'Find a language',
     encodingShort: {
       'utf-8': 'UTF-8',
       'utf-16le': 'UTF-16 LE',

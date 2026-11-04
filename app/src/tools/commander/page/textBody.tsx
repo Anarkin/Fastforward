@@ -23,7 +23,6 @@ import {
   type WholeText,
 } from './textColors';
 import { colorer } from '../../../ui/syntax';
-import { languageOf } from '../../../ui/languages';
 import { ScrollBody, type Thumb } from './scrollBody';
 import type { ToViewer, Viewing } from './viewer';
 import type { ViewerFind } from './viewerFind';
@@ -210,14 +209,12 @@ export function useWholeText(
 }
 
 function useColors(
-  file: string,
+  language: string | undefined,
   encoding: TextEncoding,
   viewing: Viewing,
   post: (message: CommanderToHost) => void,
   listen: (handler: (message: ToViewer) => void) => () => void,
 ): ColoredText | undefined {
-  const { highlightSyntax } = useTextView().view;
-  const language = highlightSyntax ? languageOf(file) : undefined;
   const whole = useWholeText(
     viewing,
     post,
@@ -243,8 +240,8 @@ function useColors(
 }
 
 export function TextBody({
-  file,
   encoding,
+  language,
   viewing,
   find,
   finding = false,
@@ -253,8 +250,8 @@ export function TextBody({
   post,
   listen,
 }: {
-  file: string;
   encoding: TextEncoding;
+  language: string | undefined;
   viewing: Viewing;
   find?: ViewerFind;
   finding?: boolean;
@@ -530,7 +527,7 @@ export function TextBody({
     }
   }, [jumps]);
 
-  const colored = useColors(file, encoding, viewing, post, listen);
+  const colored = useColors(language, encoding, viewing, post, listen);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
   const whole = wrapAt === undefined;
   const widest = useMemo(

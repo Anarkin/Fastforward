@@ -1288,7 +1288,7 @@ suite('App commander', () => {
     }
   });
 
-  test('colors the code of a file viewed as the diff colors it, a long one from the top as its lines are done, none while syntax highlighting is off on its button, leaving a file over the size colored plain, and previews no Markdown over a size of its own', async () => {
+  test('colors the code of a file viewed as the diff colors it, a long one from the top as its lines are done, none while Plain Text is chosen from the menu L opens and a file in the language chosen there, found by what is typed, leaving a file over the size colored plain, and previews no Markdown over a size of its own', async () => {
     fs.writeFileSync(path.join(opened, 'code.ts'), 'const answer = 42;');
     await select('code');
     await page.keyboard.press('F3');
@@ -1308,23 +1308,59 @@ suite('App commander', () => {
         : [];
     });
     assert.notStrictEqual(colors[0], colors[1]);
-    const highlight = page.getByRole('button', { name: 'Highlight Syntax' });
-    await highlight.click();
+    const languageLabel = () =>
+      page.locator('.viewer-language .menu-button-label').textContent();
+    const checkedLanguage = () =>
+      page
+        .locator('.viewer-language .menu-item[aria-checked="true"]')
+        .textContent();
+    const chooseLanguage = async (typed: string) => {
+      await page.keyboard.press('l');
+      await page.locator('.viewer-language .menu-filter').waitFor();
+      await page.keyboard.type(typed);
+      await page.keyboard.press('Enter');
+      await page.locator('.viewer-language .menu').waitFor({
+        state: 'detached',
+      });
+    };
+    assert.strictEqual(await languageLabel(), 'TypeScript');
+    await page.keyboard.press('l');
+    assert.strictEqual(await checkedLanguage(), '✓Auto: TypeScript');
+    await page.keyboard.press('Escape');
+    await chooseLanguage('plain');
     await page.locator('.viewer-row .syntax-keyword').first().waitFor({
       state: 'detached',
     });
-    await waitFor(
-      () => savedText(profile, 'highlightSyntax') === false,
-      'no syntax highlighting saved',
-    );
-    await highlight.click();
+    assert.strictEqual(await languageLabel(), 'Plain Text');
+    await chooseLanguage('auto');
     await page.locator('.viewer-row .syntax-keyword').first().waitFor();
-    await waitFor(
-      () => savedText(profile, 'highlightSyntax') === undefined,
-      'syntax highlighting left to the default',
-    );
+    assert.strictEqual(await languageLabel(), 'TypeScript');
+    assert.strictEqual(savedText(profile, 'highlightSyntax'), undefined);
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
+
+    fs.writeFileSync(path.join(opened, 'script.txt'), 'const answer = 42;');
+    await select('script');
+    await page.keyboard.press('F3');
+    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    assert.strictEqual(await languageLabel(), 'Plain Text');
+    await chooseLanguage('javascript');
+    await waitFor(
+      async () =>
+        (await page
+          .locator('.viewer-row .syntax-keyword')
+          .first()
+          .textContent()) === 'const',
+      'the text colored in the language chosen',
+    );
+    assert.strictEqual(await languageLabel(), 'JavaScript');
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'script.txt'));
+    await waitFor(
+      async () => !(await rowNames()).includes('script.txt'),
+      'script.txt to be gone from the list',
+    );
 
     const lastKeyword = () =>
       page

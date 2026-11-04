@@ -21,7 +21,6 @@ import {
   PreviewIcon,
   RealSizeIcon,
   ShowWhitespaceIcon,
-  SyntaxIcon,
   TextIcon,
   WordWrapIcon,
 } from '../../../ui/icons';
@@ -33,6 +32,12 @@ import { ByteBody } from './hexBody';
 import { PreviewBody } from './previewBody';
 import { firstMode, previewOf } from './previews';
 import { encodingMenu, shownEncoding, type EncodingChoice } from './encodings';
+import {
+  languageLabel,
+  languageMenu,
+  shownLanguage,
+  type LanguageChoice,
+} from './languageChoice';
 
 export interface Viewing {
   readonly tab: string;
@@ -74,11 +79,13 @@ export function Viewer({
 }) {
   const [chosen, setChosen] = useState<ViewMode>();
   const [encoding, setEncoding] = useState<EncodingChoice>('auto');
+  const [languageChoice, setLanguageChoice] = useState<LanguageChoice>('auto');
   const place = useRef(0);
   const onPlace = useCallback((byte: number) => {
     place.current = byte;
   }, []);
   const encodingTrigger = useRef<HTMLButtonElement>(null);
+  const languageTrigger = useRef<HTMLButtonElement>(null);
   const preview = previewOf(file);
   const shownModes = modes.filter(
     (each) => each.mode !== 'preview' || preview !== undefined,
@@ -86,8 +93,9 @@ export function Viewer({
   const mode = chosen ?? firstMode(file);
   const shown = shownEncoding(encoding, viewing);
   const textView = useTextView();
-  const { wordWrap, showWhitespace, highlightSyntax } = textView.view;
+  const { wordWrap, showWhitespace } = textView.view;
   const readsText = mode === 'text' && shown !== 'bytes';
+  const language = shownLanguage(languageChoice, file);
   const showsImage = mode === 'preview' && preview === 'image';
   const imageView = useImageView();
   const { realSize } = imageView.view;
@@ -155,6 +163,14 @@ export function Viewer({
         ) {
           event.preventDefault();
           encodingTrigger.current?.click();
+          return;
+        }
+        if (
+          readsText &&
+          keyPressed(viewerKeymap.language, event) !== undefined
+        ) {
+          event.preventDefault();
+          languageTrigger.current?.click();
           return;
         }
         if (readsText && keyPressed(viewerKeymap.wrap, event) !== undefined) {
@@ -225,6 +241,17 @@ export function Viewer({
                 />
               </div>
             )}
+            {readsText && (
+              <div className="viewer-language">
+                <MenuButton
+                  title={strings.commander.language}
+                  trigger={languageTrigger}
+                  label={languageLabel(language)}
+                  filter={strings.commander.findLanguage}
+                  items={languageMenu(languageChoice, file, setLanguageChoice)}
+                />
+              </div>
+            )}
             {showsImage && <span className="nav-button-space" />}
             {showsImage && (
               <div className="viewer-toggles">
@@ -261,17 +288,6 @@ export function Viewer({
                   onClick={() => changeView({ wordWrap: !wordWrap })}
                 >
                   <WordWrapIcon />
-                </button>
-                <button
-                  className={`nav-button toggle ${highlightSyntax ? 'active' : ''}`}
-                  title={strings.common.highlightSyntax}
-                  aria-pressed={highlightSyntax}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() =>
-                    changeView({ highlightSyntax: !highlightSyntax })
-                  }
-                >
-                  <SyntaxIcon />
                 </button>
               </div>
             )}
@@ -311,8 +327,8 @@ export function Viewer({
       ) : (
         <TextBody
           key={shown}
-          file={file}
           encoding={shown}
+          language={language}
           viewing={viewing}
           find={finder.find}
           finding={finding}

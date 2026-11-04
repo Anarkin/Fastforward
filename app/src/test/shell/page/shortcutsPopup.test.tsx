@@ -80,6 +80,7 @@ suite('Shortcuts popup', () => {
         'Scroll sideways with the wheel',
         'View the file as text, hex or a preview',
         'Choose the encoding of the text',
+        'Choose the language the text is colored in',
         'Turn line wrapping on or off',
         'Show or hide whitespace',
         'Search the file',

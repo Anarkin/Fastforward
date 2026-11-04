@@ -17,6 +17,7 @@ export type ContextMenuItem =
       readonly onRemove?: () => void;
       readonly removeTitle?: string;
       readonly accessKey?: string;
+      readonly keywords?: string;
     }
   | { readonly separator: true };
 

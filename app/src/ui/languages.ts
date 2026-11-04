@@ -30,3 +30,11 @@ export function languageOf(path: string): string | undefined {
     languageIds.get(name)
   );
 }
+
+export const languages = bundledLanguagesInfo
+  .map(({ id, name, aliases = [] }) => ({
+    id,
+    name,
+    keywords: [id, ...aliases].join(' '),
+  }))
+  .toSorted((a, b) => a.name.localeCompare(b.name));

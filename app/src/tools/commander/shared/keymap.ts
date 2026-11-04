@@ -152,6 +152,7 @@ export const viewerKeymap = {
     '3': 'preview',
   }),
   encoding: bind('Viewer', strings.actions.chooseEncoding, { E: true }),
+  language: bind('Viewer', strings.actions.chooseLanguage, { L: true }),
   wrap: bind('Viewer', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Viewer', strings.actions.showWhitespace, { '.': true }),
   find: bind(

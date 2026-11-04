@@ -23,11 +23,10 @@ export function encodingMenu(
   shown: ShownEncoding,
   choose: (choice: EncodingChoice) => void,
 ): ContextMenuItem[] {
-  const { encodings, autoEncoding } = strings.commander;
+  const { encodings, autoChoice } = strings.commander;
   return [
     {
-      label:
-        choice === 'auto' ? autoEncoding(encodings[shown]) : encodings.auto,
+      label: choice === 'auto' ? autoChoice(encodings[shown]) : encodings.auto,
       checked: choice === 'auto',
       onClick: () => choose('auto'),
     },

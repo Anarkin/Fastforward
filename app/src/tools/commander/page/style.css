@@ -1,6 +1,7 @@
 .commander {
   --widest-layout-button: 104px;
   --widest-encoding-button: 88px;
+  --widest-language-button: 120px;
   --commander-row-height: round(
     var(--monospace-font-size) * var(--monospace-line-height),
     var(--device-pixel, 1px)
@@ -311,13 +312,17 @@
 
 .column-title:has(.viewer-actions) {
   padding-left: calc(
-    4px + 3 * 26px + 2px + 8px + var(--widest-encoding-button) + 8px + 26px +
-      8px + 3 * 26px + 2 * 2px + 8px
+    4px + 3 * 26px + 2px + 8px + var(--widest-encoding-button) + 8px +
+      var(--widest-language-button) + 8px + 26px + 8px + 2 * 26px + 2px + 8px
   );
   padding-right: calc(
-    4px + 3 * 26px + 2px + 8px + var(--widest-encoding-button) + 8px + 26px +
-      8px + 3 * 26px + 2 * 2px + 8px
+    4px + 3 * 26px + 2px + 8px + var(--widest-encoding-button) + 8px +
+      var(--widest-language-button) + 8px + 26px + 8px + 2 * 26px + 2px + 8px
   );
+}
+
+.viewer-language .menu-button-trigger {
+  max-width: var(--widest-language-button);
 }
 
 .viewer-toggles {
