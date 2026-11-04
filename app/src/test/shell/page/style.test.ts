@@ -26,7 +26,6 @@ import {
   FileHeader,
   HunkDivider,
   layoutVariables,
-  rowHeight,
 } from '../../../tools/git/page/diffView';
 import { ImageDiff } from '../../../tools/git/page/imagePreview';
 import { AboutPopup, CopyButton } from '../../../shell/page/aboutPopup';
@@ -56,7 +55,12 @@ import {
   type MarkupElement,
   type States,
 } from '../../cascade';
-import { fileChange, renderedBy, stylesheet } from '../../fixtures';
+import {
+  defaultSettings,
+  fileChange,
+  renderedBy,
+  stylesheet,
+} from '../../fixtures';
 import {
   searchButton,
   bubbles,
@@ -402,23 +406,6 @@ function skeletonRow(className?: string): MarkupElement {
 
 function soloButton(solo: boolean, applying: boolean): MarkupElement {
   return rendered(createElement(SoloButton, { solo, applying, onSolo: noop }));
-}
-
-function frameAndLine(row: MarkupElement): { frame: number; line: number } {
-  const padding = /^(\d+)px \d+px (\d+)px$/.exec(
-    cascaded(row, 'padding') ?? '',
-  );
-  assert.ok(padding);
-  const border = /^(\d+)px /.exec(cascaded(row, 'border-bottom') ?? '');
-  assert.ok(border);
-  const height = /^(\d+)px$/.exec(
-    cascaded(withClass(row, 'commit-line'), 'height') ?? '',
-  );
-  assert.ok(height);
-  return {
-    frame: Number(padding[1]) + Number(padding[2]) + Number(border[1]),
-    line: Number(height[1]),
-  };
 }
 
 function badgeRules(node: React.ReactNode): string[] {
@@ -2356,25 +2343,42 @@ suite('Style', () => {
     );
   });
 
-  test('draws a commit row and the one-line working tree row as tall as the list expects, as even lines of text', () => {
+  test('draws a commit row and the one-line working tree row as tall as the list expects, as lines of the line height of the settings with nothing above or below them but the border', () => {
     const commit = rendered(commitRow({ refs: repository.refs }));
-    const { frame, line } = frameAndLine(commit);
-    assert.strictEqual(frame + 2 * line, commitRowHeight);
-    const workingTree = frameAndLine(workingTreeRow(1));
-    assert.strictEqual(
-      workingTree.frame + workingTree.line,
-      workingTreeRowHeight,
-    );
+    for (const row of [commit, workingTreeRow(1)]) {
+      looks(row, {
+        padding: '0 8px',
+        'border-bottom': '1px solid var(--color-border)',
+      });
+      looks(withClass(row, 'commit-line'), {
+        height: 'var(--row-line-height)',
+      });
+    }
     looks(withClass(commit, 'commit-line', 'secondary'), {
-      height: `${line}px`,
+      height: 'var(--row-line-height)',
       margin: undefined,
       'margin-top': undefined,
       'margin-bottom': undefined,
     });
     looks(withClass(commit, 'bubble-line'), {
-      'line-height': `${bubbleLineHeight}px`,
+      'line-height': 'var(--row-line-height)',
     });
-    assert.strictEqual(bubbleLineHeight, line);
+    assert.deepStrictEqual(
+      [commitRowHeight, workingTreeRowHeight, bubbleLineHeight],
+      [2 * 18 + 1, 18 + 1, 18],
+    );
+  });
+
+  test('draws the rows of the lists as tall as one line of the line height of the settings, the size of the font rounded to the device pixel, with nothing above or below the text', () => {
+    looks(rendered(createElement('div', { className: 'row' })), {
+      height: 'var(--row-line-height)',
+      'line-height': 'var(--row-line-height)',
+      padding: '0 8px',
+    });
+    assert.match(
+      stylesheet(),
+      /--row-line-height: round\(\s*var\(--font-size\) \* var\(--line-height\),\s*var\(--device-pixel, 1px\)\s*\);/,
+    );
   });
 
   test('lets the graph of a row draw past its edges, so its lines can reach over the ends of those of the row above', () => {
@@ -2383,6 +2387,7 @@ suite('Style', () => {
         createElement(GraphCell, {
           row: { lane: 0, color: 0, lines: [] },
           height: commitRowHeight,
+          line: bubbleLineHeight,
           onToggleMerge: noop,
         }),
       ),
@@ -2406,10 +2411,9 @@ suite('Style', () => {
       });
       const margin = sidesOf(badge, 'margin');
       assert.strictEqual(margin.left, 'calc(-1 * var(--bubble-inset))');
-      assert.ok(
-        parseFloat(margin.top) + parseFloat(height ?? '') <=
-          parseFloat(line ?? ''),
-      );
+      assert.strictEqual(line, 'var(--row-line-height)');
+      assert.strictEqual(margin.top, '1px');
+      assert.strictEqual(height, 'calc(var(--row-line-height) - 2px)');
     }
     looks(withClass(commit, 'bubble-line'), {
       'margin-left': 'calc(-1 * var(--bubble-inset))',
@@ -2446,13 +2450,20 @@ suite('Style', () => {
     );
   });
 
-  test('gives a row of the other columns the fixed height of a diff row, whatever the font, so the columns line up', () => {
+  test('gives a row of the files column one line of the line height of the settings, its icons in the middle of it, as tall as a line of the diff at the default sizes, so the columns line up', () => {
     for (const row of [fileRow(fileChange('src/a.ts')), folderRow()]) {
       looks(row, {
         'box-sizing': 'border-box',
-        height: `${rowHeight({ kind: 'hunk', file: 0 })}px`,
+        height: 'var(--row-line-height)',
+        display: 'flex',
+        'align-items': 'center',
       });
     }
+    const { fonts } = defaultSettings();
+    assert.deepStrictEqual(
+      [fonts.size, fonts.lineHeight],
+      [fonts.monospaceSize, fonts.monospaceLineHeight],
+    );
   });
 
   test('puts the dots of a hunk divider under the line numbers, in both of them inline and in the one of a side by side', () => {

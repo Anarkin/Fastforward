@@ -25,6 +25,7 @@ export interface Settings {
   readonly fonts: {
     readonly family: string;
     readonly size: string;
+    readonly lineHeight: number;
     readonly monospaceFamily: string;
     readonly monospaceSize: string;
     readonly monospaceLineHeight: number;

@@ -23,6 +23,7 @@ export function themeCss({ fonts, sizes, colors, tools }: Settings): string {
     '  color-scheme: light;',
     `  --font-family: ${fonts.family};`,
     `  --font-size: ${fonts.size};`,
+    `  --line-height: ${fonts.lineHeight};`,
     `  --monospace-font-family: ${fonts.monospaceFamily};`,
     `  --monospace-font-size: ${fonts.monospaceSize};`,
     `  --monospace-line-height: ${fonts.monospaceLineHeight};`,

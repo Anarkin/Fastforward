@@ -59,6 +59,10 @@ body {
   );
   --button-background: var(--color-border);
   --repository-background: var(--color-panel-background);
+  --row-line-height: round(
+    var(--font-size) * var(--line-height),
+    var(--device-pixel, 1px)
+  );
   --tabs-top: 5px;
   --tabs-gap: 8px;
   --gutter-width: 4px;
@@ -1099,8 +1103,9 @@ body.resizing {
 
 .row {
   box-sizing: border-box;
-  height: 22px;
-  padding: 3px 8px;
+  height: var(--row-line-height);
+  padding: 0 8px;
+  line-height: var(--row-line-height);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1122,7 +1127,7 @@ body.resizing {
 }
 
 .commit {
-  padding: 5px 8px 4px;
+  padding: 0 8px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1686,6 +1691,7 @@ body.resizing {
 .row.folder,
 .row.group {
   display: flex;
+  align-items: center;
 }
 
 .row .path {

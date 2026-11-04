@@ -64,10 +64,13 @@ import { useCappedScroll } from '../../../ui/cappedVirtualizer';
 import { realHeight } from '../../../ui/cappedScroll';
 import { rowPlace } from '../../../ui/rowPlace';
 import { activeDescendant, rowId } from '../../../ui/virtualRows';
+import { useLineHeight } from '../../../ui/lineHeight';
 
-export const commitRowHeight = 50;
-export const workingTreeRowHeight = 30;
-export const bubbleLineHeight = 20;
+const defaultRowLineHeight = 18;
+const rowBorder = 1;
+export const commitRowHeight = 2 * defaultRowLineHeight + rowBorder;
+export const workingTreeRowHeight = defaultRowLineHeight + rowBorder;
+export const bubbleLineHeight = defaultRowLineHeight;
 const loadDelay = 80;
 const scrolledDelay = 150;
 const keyRepeatDelay = 75;
@@ -129,13 +132,13 @@ export function estimatedRowHeight(
   history: CommitHistory | undefined,
   offset: number,
   index: number,
+  line = defaultRowLineHeight,
 ): number {
   if (index < offset) {
-    return workingTreeRowHeight;
+    return line + rowBorder;
   }
-  return history?.hasBubbles(index - offset)
-    ? commitRowHeight + bubbleLineHeight
-    : commitRowHeight;
+  const lines = history?.hasBubbles(index - offset) ? 3 : 2;
+  return lines * line + rowBorder;
 }
 
 export function rowKeyOf(
@@ -739,9 +742,10 @@ export function Commits({
   const skeleton = useSkeleton(opening);
   const count = offset + (history?.total ?? (skeleton ? openingRows : 0));
 
+  const line = useLineHeight(list, defaultRowLineHeight);
   const rowHeight = useCallback(
-    (index: number) => estimatedRowHeight(history, offset, index),
-    [history, offset],
+    (index: number) => estimatedRowHeight(history, offset, index, line),
+    [history, offset, line],
   );
   const rowKey = useCallback(
     (index: number) => rowKeyOf(history, offset, index),
@@ -764,6 +768,7 @@ export function Commits({
   });
   const totalSize = virtualizer.getTotalSize();
   useLayoutEffect(resized, [resized, totalSize]);
+  useLayoutEffect(() => virtualizer.measure(), [virtualizer, line]);
   const rows = drawnRows(virtualizer, rowKey);
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
@@ -818,11 +823,7 @@ export function Commits({
         return;
       }
       const top = scrollTop(element);
-      const shifted = workingTreeShift(
-        top,
-        action.shiftBy,
-        workingTreeRowHeight,
-      );
+      const shifted = workingTreeShift(top, action.shiftBy, line + rowBorder);
       if (shifted !== undefined) {
         places.moved(shifted - top);
         virtualizer.scrollToOffset(shifted);
@@ -849,7 +850,7 @@ export function Commits({
       .getVirtualItems()
       .some((row) => row.index === index);
     virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
-  }, [history, scrollTarget, offset, virtualizer, scrollTop, places]);
+  }, [history, scrollTarget, offset, virtualizer, scrollTop, places, line]);
 
   const topNow = useCallback(() => {
     const element = list.current;
@@ -957,6 +958,7 @@ export function Commits({
         <GraphCell
           row={graphRow}
           height={height}
+          line={line}
           onToggleMerge={() => {
             const commit = history?.at(index - offset);
             if (commit) {
@@ -1039,7 +1041,7 @@ export function Commits({
     >
       {error && <div className="error-message">{error}</div>}
       <div
-        className="virtual-rows list"
+        className="virtual-rows list commit-rows"
         ref={list}
         tabIndex={0}
         {...{ [columnFocusAttribute]: '' }}

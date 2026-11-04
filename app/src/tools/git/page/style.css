@@ -188,12 +188,16 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   color: var(--muted-foreground);
 }
 
+.commit-rows {
+  line-height: var(--row-line-height);
+}
+
 .commit-line {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  height: 20px;
+  height: var(--row-line-height);
 }
 
 .commit-line.secondary {
@@ -290,7 +294,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .message-peek .subject {
-  line-height: 20px;
+  line-height: var(--row-line-height);
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -304,7 +308,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   align-self: flex-start;
   display: grid;
   align-items: center;
-  height: 20px;
+  height: var(--row-line-height);
   color: var(--muted-foreground);
   font-size: calc(var(--font-size) * 0.85);
 }
@@ -322,7 +326,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .message-more {
-  line-height: 20px;
+  line-height: var(--row-line-height);
   color: var(--muted-foreground);
   font-size: calc(var(--font-size) * 0.85);
 }
@@ -333,8 +337,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: var(--row-line-height);
+  height: var(--row-line-height);
   padding: 0;
   color: inherit;
   background: none;
@@ -348,13 +352,13 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 
 .message-body {
   margin-top: 8px;
-  line-height: 20px;
+  line-height: var(--row-line-height);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .message-peek:not(.pinned) .message-body {
-  max-height: calc(2.5 * 20px);
+  max-height: calc(2.5 * var(--row-line-height));
   overflow: hidden;
 }
 
@@ -437,17 +441,17 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   margin-left: calc(-1 * var(--bubble-inset));
   padding-left: var(--bubble-inset);
   overflow-x: clip;
-  line-height: 20px;
+  line-height: var(--row-line-height);
 }
 
 .bubble-line .badge {
   display: inline-block;
   max-width: calc(100% + var(--bubble-inset));
-  height: 18px;
+  height: calc(var(--row-line-height) - 2px);
   margin: 1px calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset));
   padding: 0 var(--bubble-inset);
   overflow: hidden;
-  line-height: 18px;
+  line-height: calc(var(--row-line-height) - 2px);
   text-overflow: ellipsis;
   vertical-align: top;
 }

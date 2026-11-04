@@ -9,9 +9,9 @@ import {
 } from '../../../../tools/git/page/graph';
 import { noop } from '../../../fixtures';
 
-const cell = (row: GraphRow, height = 30) =>
+const cell = (row: GraphRow, height = 30, line = 20) =>
   renderToStaticMarkup(
-    <GraphCell row={row} height={height} onToggleMerge={noop} />,
+    <GraphCell row={row} height={height} line={line} onToggleMerge={noop} />,
   );
 
 const attributes = (html: string, tag: string, name: string) =>
@@ -23,7 +23,7 @@ const titles = (html: string) =>
   [...html.matchAll(/<title>([^<]*)<\/title>/g)].map((match) => match[1]);
 
 suite('Graph cell', () => {
-  test('draws solid lines from 1 px above the row, over the ends of the lines of the row above, so rows meeting within a device pixel at scales like 125% leave no seam, and dashed ones from its top, keeping their dashes in step with those of the row above, to the foot of the row, curving between lanes', () => {
+  test('draws solid lines from 1 px above the row, over the ends of the lines of the row above, so rows meeting within a device pixel at scales like 125% leave no seam, and dashed ones from its top, keeping their dashes in step with those of the row above, to the foot of the row, curving between lanes over a line, with the dot in the middle of the first line', () => {
     const html = cell(
       {
         lane: 0,
@@ -40,12 +40,12 @@ suite('Graph cell', () => {
       50,
     );
     assert.deepStrictEqual(attributes(html, 'path', 'd'), [
-      'M 9 -1 V 15',
-      'M 9 -1 V 0 C 9 7.5 21 7.5 21 15',
-      'M 21 0 V 15',
-      'M 21 0 C 21 7.5 9 7.5 9 15',
-      'M 9 15 V 50',
-      'M 9 15 C 9 25 21 25 21 35 V 50',
+      'M 9 -1 V 10',
+      'M 9 -1 V 0 C 9 5 21 5 21 10',
+      'M 21 0 V 10',
+      'M 21 0 C 21 5 9 5 9 10',
+      'M 9 10 V 50',
+      'M 9 10 C 9 20 21 20 21 30 V 50',
     ]);
     assert.deepStrictEqual(
       [...html.matchAll(/<path[^>]*>/g)].map((match) =>
@@ -53,6 +53,26 @@ suite('Graph cell', () => {
       ),
       [false, false, true, true, false, true],
     );
+  });
+
+  test('puts the dot in the middle of the first line of the line height the list measured, curving over that line', () => {
+    const html = cell(
+      {
+        lane: 0,
+        color: 0,
+        lines: [
+          { from: 0, to: 0, color: 0, bottom: false },
+          { from: 0, to: 1, color: 1, bottom: true },
+        ],
+      },
+      35,
+      17,
+    );
+    assert.deepStrictEqual(attributes(html, 'path', 'd'), [
+      'M 9 -1 V 8.5',
+      'M 9 8.5 C 9 17 21 17 21 25.5 V 35',
+    ]);
+    assert.deepStrictEqual(attributes(html, 'circle', 'cy'), ['8.5']);
   });
 
   test('keeps a dashed and a solid copy of the same line apart', () => {
@@ -76,7 +96,7 @@ suite('Graph cell', () => {
     assert.deepStrictEqual(attributes(html, 'circle', 'fill'), [
       'var(--color-git-graph-blue)',
     ]);
-    assert.deepStrictEqual(attributes(html, 'path', 'd'), ['M 141 15 V 30']);
+    assert.deepStrictEqual(attributes(html, 'path', 'd'), ['M 141 10 V 30']);
     assert.deepStrictEqual(attributes(html, 'path', 'stroke'), [
       'var(--color-git-graph-green)',
     ]);

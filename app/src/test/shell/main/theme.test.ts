@@ -40,7 +40,7 @@ function uses(): Set<string> {
   const names = new Set<string>();
   for (const { text } of pageFiles()) {
     for (const match of text.matchAll(
-      /var\(\s*(--(?:(?:color|font|monospace-font)-[\w-]+|monospace-line-height|scrollbar-size|minimap-width))/g,
+      /var\(\s*(--(?:(?:color|font|monospace-font)-[\w-]+|line-height|monospace-line-height|scrollbar-size|minimap-width))/g,
     )) {
       names.add(match[1]);
     }
@@ -123,6 +123,7 @@ suite('Theme', () => {
       fonts: {
         family: 'Sans',
         size: '13px',
+        lineHeight: 1.5,
         monospaceFamily: 'Mono',
         monospaceSize: '12px',
         monospaceLineHeight: 1.4,
@@ -137,6 +138,7 @@ suite('Theme', () => {
         '  color-scheme: light;',
         '  --font-family: Sans;',
         '  --font-size: 13px;',
+        '  --line-height: 1.5;',
         '  --monospace-font-family: Mono;',
         '  --monospace-font-size: 12px;',
         '  --monospace-line-height: 1.4;',

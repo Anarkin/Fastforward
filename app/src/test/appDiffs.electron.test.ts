@@ -15,9 +15,11 @@ import {
 } from './appFixtures';
 import { waitFor } from './fixtures';
 
-async function codeRow(lineHeight = 1.4): Promise<number> {
-  const ratio = await page.evaluate(() => devicePixelRatio);
-  return Math.round(12 * lineHeight * ratio) / ratio;
+async function drawnCodeRow(): Promise<number> {
+  return page
+    .locator('.diff-line')
+    .first()
+    .evaluate((line) => parseFloat(getComputedStyle(line).lineHeight));
 }
 
 const commented = (answer: number) =>
@@ -392,7 +394,7 @@ suite('App', () => {
         .click();
       await page.locator('.row.file', { hasText: 'long.txt' }).click();
       await change.waitFor();
-      const row = await codeRow();
+      const row = await drawnCodeRow();
       await waitFor(
         async () => (await belowTop()) === Math.round(3 * row),
         'the change to be shown at its place',

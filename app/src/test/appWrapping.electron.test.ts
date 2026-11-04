@@ -18,7 +18,14 @@ import {
 } from './appFixtures';
 import { waitFor } from './fixtures';
 
-async function codeRow(lineHeight = 1.4): Promise<number> {
+async function drawnCodeRow(): Promise<number> {
+  return page
+    .locator('.diff-line')
+    .first()
+    .evaluate((line) => parseFloat(getComputedStyle(line).lineHeight));
+}
+
+async function codeRow(lineHeight: number): Promise<number> {
   const ratio = await page.evaluate(() => devicePixelRatio);
   return Math.round(12 * lineHeight * ratio) / ratio;
 }
@@ -136,7 +143,7 @@ suite('App', () => {
       has: page.locator('.code', { hasText: firstLongLine }),
     });
     await row.waitFor();
-    const lineHeight = await codeRow();
+    const lineHeight = await drawnCodeRow();
     const unwrapped = (await row.boundingBox())?.height;
     assert.ok(near(unwrapped, lineHeight), `${unwrapped} is not ${lineHeight}`);
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();

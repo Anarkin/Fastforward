@@ -133,6 +133,18 @@ suite('Commit list rows', () => {
     );
   });
 
+  test('sizes the rows from the line height measured, two lines and the border for a commit, a line more for its bubbles, one line and the border for the working tree', () => {
+    const history = new CommitHistory(3, [1]);
+    assert.deepStrictEqual(
+      [
+        estimatedRowHeight(history, 1, 0, 20),
+        estimatedRowHeight(history, 1, 1, 20),
+        estimatedRowHeight(history, 1, 2, 20),
+      ],
+      [21, 41, 61],
+    );
+  });
+
   test('keys a row by its commit, so it keeps its height as the list changes', () => {
     const history = new CommitHistory(3);
     history.add(0, [commitInfo('a'), commitInfo('b')]);
@@ -501,8 +513,14 @@ suite('Commit list working tree row', () => {
   });
 
   test('keeps a scrolled list in place when the working tree row appears above it', () => {
-    assert.strictEqual(workingTreeShift(500, 1, workingTreeRowHeight), 530);
-    assert.strictEqual(workingTreeShift(530, -1, workingTreeRowHeight), 500);
+    assert.strictEqual(
+      workingTreeShift(500, 1, workingTreeRowHeight),
+      500 + workingTreeRowHeight,
+    );
+    assert.strictEqual(
+      workingTreeShift(500 + workingTreeRowHeight, -1, workingTreeRowHeight),
+      500,
+    );
     assert.strictEqual(workingTreeShift(0, 1, workingTreeRowHeight), undefined);
   });
 
@@ -627,10 +645,11 @@ suite('Places told', () => {
   });
 
   test('keeps its place by what was scrolled since the place told, not by the list moving the rows in view down as the working tree row appears above them', () => {
+    const top = 20 * commitRowHeight;
     const places = new ReportedPlaces();
-    const told = places.told(1000);
-    const shifted = workingTreeShift(1000, 1, workingTreeRowHeight) ?? 0;
-    places.moved(shifted - 1000);
+    const told = places.told(top);
+    const shifted = workingTreeShift(top, 1, workingTreeRowHeight) ?? 0;
+    places.moved(shifted - top);
     const start = workingTreeRowHeight + 20 * commitRowHeight;
     assert.strictEqual(places.kept(start, 0, shifted, told), shifted);
     const later = places.told(shifted + 200);
@@ -642,8 +661,9 @@ suite('Places told', () => {
   });
 
   test('keeps its place by what was scrolled since the place told, not by the list keeping its rows in view as one above them is measured taller', () => {
+    const top = 20 * commitRowHeight;
     const places = new ReportedPlaces();
-    const scroller = laidOutElement({ clientHeight: 500, scrollTop: 1000 });
+    const scroller = laidOutElement({ clientHeight: 500, scrollTop: top });
     const virtualizer = new Virtualizer<Element, Element>({
       count: 100,
       estimateSize: () => commitRowHeight,
@@ -662,7 +682,7 @@ suite('Places told', () => {
     virtualizer.getVirtualItems();
     const told = places.told(scroller.scrollTop);
     virtualizer.resizeItem(5, commitRowHeight + bubbleLineHeight);
-    assert.strictEqual(scroller.scrollTop, 1000 + bubbleLineHeight);
+    assert.strictEqual(scroller.scrollTop, top + bubbleLineHeight);
     const start = 20 * commitRowHeight + bubbleLineHeight;
     assert.strictEqual(
       places.kept(start, 0, scroller.scrollTop, told),

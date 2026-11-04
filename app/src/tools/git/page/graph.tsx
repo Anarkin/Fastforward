@@ -7,9 +7,7 @@ import {
 import { strings } from '../../../shared/strings';
 
 const laneWidth = 12;
-const dotY = 15;
 const dotRadius = 4;
-const turn = 20;
 const overlap = 1;
 
 const colors = [
@@ -37,9 +35,11 @@ function color(index: number): string {
   return colors[index % graphColors];
 }
 
-function path(line: GraphLine, height: number): string {
+function path(line: GraphLine, height: number, lineHeight: number): string {
   const from = x(line.from);
   const to = x(line.to);
+  const dotY = lineHeight / 2;
+  const turn = lineHeight;
   if (!line.bottom) {
     const top = line.dashed ? 0 : -overlap;
     return from === to
@@ -54,26 +54,29 @@ function path(line: GraphLine, height: number): string {
 export function GraphCell({
   row,
   height,
+  line,
   onToggleMerge,
 }: {
   row: GraphRow;
   height: number;
+  line: number;
   onToggleMerge: () => void;
 }) {
   const cx = x(row.lane);
+  const dotY = line / 2;
   const laneColor = color(row.color);
   return (
     <svg className="graph" width={graphWidth(rowLanes(row))} height={height}>
-      {row.lines.map((line) => {
-        const d = path(line, height);
-        const stroke = color(line.color);
+      {row.lines.map((graphLine) => {
+        const d = path(graphLine, height, line);
+        const stroke = color(graphLine.color);
         return (
           <path
-            key={`${d} ${stroke} ${line.dashed ?? false}`}
+            key={`${d} ${stroke} ${graphLine.dashed ?? false}`}
             d={d}
             stroke={stroke}
             strokeWidth={2}
-            strokeDasharray={line.dashed ? '2 3' : undefined}
+            strokeDasharray={graphLine.dashed ? '2 3' : undefined}
             fill="none"
           />
         );
