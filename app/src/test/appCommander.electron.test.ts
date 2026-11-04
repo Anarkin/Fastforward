@@ -2010,6 +2010,7 @@ suite('App commander', () => {
     fs.mkdirSync(pictures);
     fs.writeFileSync(path.join(pictures, 'wide.png'), grayPng(600, 300));
     fs.writeFileSync(path.join(pictures, 'small.png'), grayPng(20, 10));
+    fs.writeFileSync(path.join(pictures, 'tall.png'), grayPng(300, 600));
     fs.writeFileSync(
       path.join(pictures, 'logo.svg'),
       '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200"/></svg>',
@@ -2045,6 +2046,16 @@ suite('App commander', () => {
       { width: 144, height: 72 },
     );
     assert.strictEqual(wide?.pixels, Math.round(144 * (wide?.ratio ?? 1)));
+    await waitFor(
+      async () => (await thumbnailOf('tall.png'))?.complete === true,
+      'the thumbnail of the tall image',
+    );
+    const tall = await thumbnailOf('tall.png');
+    assert.deepStrictEqual(
+      { width: tall?.width, height: tall?.height },
+      { width: 72, height: 144 },
+    );
+    assert.strictEqual(tall?.pixels, Math.round(72 * (tall?.ratio ?? 1)));
     await waitFor(
       async () => (await thumbnailOf('small.png'))?.complete === true,
       'the thumbnail of the small image',

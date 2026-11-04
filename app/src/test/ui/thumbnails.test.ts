@@ -1,10 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  fittedSize,
-  ThumbnailCache,
-  type Thumbnail,
-} from '../../ui/thumbnails';
+import { ThumbnailCache, type Thumbnail } from '../../ui/thumbnails';
 
 const deferred = () => Promise.withResolvers<Thumbnail | undefined>();
 
@@ -34,25 +30,6 @@ function cacheOf(limit = 500) {
 }
 
 suite('Thumbnails', () => {
-  test('fits an image within the box, keeping its shape, and never makes a small one larger', () => {
-    assert.deepStrictEqual(fittedSize({ width: 600, height: 300 }, 144), {
-      width: 144,
-      height: 72,
-    });
-    assert.deepStrictEqual(fittedSize({ width: 300, height: 600 }, 144), {
-      width: 72,
-      height: 144,
-    });
-    assert.deepStrictEqual(fittedSize({ width: 20, height: 10 }, 144), {
-      width: 20,
-      height: 10,
-    });
-    assert.deepStrictEqual(fittedSize({ width: 2000, height: 1 }, 144), {
-      width: 144,
-      height: 1,
-    });
-  });
-
   test('makes the thumbnail of an image once however often it is asked for, at the size of the box in pixels of the screen, and keeps it', async () => {
     const { cache, asked, finish } = cacheOf();
     const first = cache.hold('a.png', 144, 1.5);
@@ -69,25 +46,31 @@ suite('Thumbnails', () => {
     assert.strictEqual(cache.peek('a.png', 96, 1.5), undefined);
   });
 
-  test('makes two thumbnails at a time, in the order the tiles came into view, and none for a tile scrolled out of view before its turn', async () => {
+  test('makes four thumbnails at a time, one for each of its workers, in the order the tiles came into view, and none for a tile scrolled out of view before its turn', async () => {
     const { cache, asked, finish } = cacheOf();
     const scrolledAway = cache.hold('away.png', 144, 1);
-    for (const name of ['a', 'b', 'c']) {
+    for (const name of ['a', 'b', 'c', 'd', 'e']) {
       cache.hold(`${name}.png`, 144, 1);
     }
-    assert.deepStrictEqual(asked, ['away.png 144 1', 'a.png 144 1']);
+    assert.deepStrictEqual(asked, [
+      'away.png 144 1',
+      'a.png 144 1',
+      'b.png 144 1',
+      'c.png 144 1',
+    ]);
     cache.hold('gone.png', 144, 1).release();
-    cache.hold('d.png', 144, 1);
+    cache.hold('f.png', 144, 1);
     scrolledAway.release();
     await finish('away.png');
-    assert.deepStrictEqual(asked.at(-1), 'b.png 144 1');
-    await finish('a.png');
-    assert.deepStrictEqual(asked.at(-1), 'c.png 144 1');
-    await finish('b.png');
     assert.deepStrictEqual(asked.at(-1), 'd.png 144 1');
-    await finish('c.png');
-    await finish('d.png');
-    assert.strictEqual(asked.length, 5);
+    await finish('a.png');
+    assert.deepStrictEqual(asked.at(-1), 'e.png 144 1');
+    await finish('b.png');
+    assert.deepStrictEqual(asked.at(-1), 'f.png 144 1');
+    for (const name of ['c', 'd', 'e', 'f']) {
+      await finish(`${name}.png`);
+    }
+    assert.strictEqual(asked.length, 7);
   });
 
   test('lets go of the thumbnails shown least lately beyond its limit, keeping those still shown, and tries again for one that could not be made', async () => {

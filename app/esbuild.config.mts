@@ -30,6 +30,7 @@ export function webviewOptions(production: boolean): BuildOptions {
     entryPoints: {
       webview: 'src/shell/page/main.tsx',
       syntaxWorker: 'src/ui/syntaxWorker.ts',
+      thumbnailWorker: 'src/ui/thumbnailWorker.ts',
       pdfWorker: 'node_modules/pdfjs-dist/build/pdf.worker.mjs',
     },
     format: 'esm',

@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePixelRatio, type Size } from './images';
-import { boxedThumbnailUrl, madeThumbnailHeader } from '../shared/images';
+import type {
+  FromThumbnailWorker,
+  MadeThumbnail,
+  ToThumbnailWorker,
+} from './thumbnailMessages';
 
 export interface Thumbnail extends Size {
   readonly url: string;
@@ -29,13 +33,7 @@ interface Held {
   release(): void;
 }
 
-export function fittedSize(natural: Size, box: number): Size {
-  const scale = Math.min(1, box / Math.max(natural.width, natural.height, 1));
-  return {
-    width: Math.max(1, Math.round(natural.width * scale)),
-    height: Math.max(1, Math.round(natural.height * scale)),
-  };
-}
+const workerCount = 4;
 
 const keyOf = (url: string, box: number, pixelRatio: number) =>
   `${box} ${pixelRatio} ${url}`;
@@ -49,7 +47,7 @@ export class ThumbnailCache {
     private readonly make: Make,
     private readonly revoke: (url: string) => void,
     private readonly limit = 500,
-    private readonly parallel = 2,
+    private readonly parallel = workerCount,
   ) {}
 
   peek(url: string, box: number, pixelRatio: number): Thumbnail | undefined {
@@ -143,43 +141,64 @@ export class ThumbnailCache {
   }
 }
 
+class ThumbnailWorkers {
+  private readonly idle: Worker[] = [];
+  private asked = 0;
+
+  make(
+    url: string,
+    box: number,
+    pixelRatio: number,
+  ): Promise<MadeThumbnail | undefined> {
+    const worker =
+      this.idle.pop() ??
+      new Worker(new URL('thumbnailWorker.js', location.href), {
+        type: 'module',
+      });
+    const id = ++this.asked;
+    const { promise, resolve } = Promise.withResolvers<
+      MadeThumbnail | undefined
+    >();
+    const done = (made: MadeThumbnail | undefined) => {
+      worker.removeEventListener('message', answered);
+      worker.removeEventListener('error', failed);
+      this.idle.push(worker);
+      resolve(made);
+    };
+    const answered = ({ data }: MessageEvent<FromThumbnailWorker>) => {
+      if (data.id === id) {
+        done(data.made);
+      }
+    };
+    const failed = () => done(undefined);
+    worker.addEventListener('message', answered);
+    worker.addEventListener('error', failed);
+    worker.postMessage({
+      id,
+      url,
+      box,
+      pixelRatio,
+    } satisfies ToThumbnailWorker);
+    return promise;
+  }
+}
+
+const workers = new ThumbnailWorkers();
+
 async function madeThumbnail(
   url: string,
   box: number,
   pixelRatio: number,
 ): Promise<Thumbnail | undefined> {
-  const response = await fetch(boxedThumbnailUrl(url, box, pixelRatio));
-  if (!response.ok) {
-    return undefined;
-  }
-  const blob = await response.blob();
-  const bitmap = await createImageBitmap(blob);
-  if (response.headers.get(madeThumbnailHeader) !== null) {
-    const { width, height } = bitmap;
-    bitmap.close();
-    return {
-      url: URL.createObjectURL(blob),
-      width: width / pixelRatio,
-      height: height / pixelRatio,
-    };
-  }
-  try {
-    const shown = fittedSize(bitmap, box);
-    const canvas = new OffscreenCanvas(
-      Math.max(1, Math.round(shown.width * pixelRatio)),
-      Math.max(1, Math.round(shown.height * pixelRatio)),
-    );
-    const context = canvas.getContext('2d');
-    if (context === null) {
-      return undefined;
+  const made = await workers.make(url, box, pixelRatio);
+  return (
+    made && {
+      url: URL.createObjectURL(made.image),
+      width: made.width,
+      height: made.height,
+      ...(made.fresh && { made: made.image }),
     }
-    context.imageSmoothingQuality = 'high';
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const made = await canvas.convertToBlob({ type: 'image/webp' });
-    return { url: URL.createObjectURL(made), ...shown, made };
-  } finally {
-    bitmap.close();
-  }
+  );
 }
 
 const thumbnails = new ThumbnailCache(madeThumbnail, (url) =>
