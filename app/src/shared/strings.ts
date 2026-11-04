@@ -247,7 +247,7 @@ export const strings = {
     paste: 'Paste',
     leftToApp: 'Leave the key to the app rather than the shell',
     side: 'Go to the other side',
-    openFolder: 'Open the selected folder',
+    openFolder: 'Open the selected folder, or the selected file in its app',
     parentFolder: 'Go up to the parent folder',
     showHidden: 'Show or hide the hidden files',
     layout: 'Show the side as details or as thumbnails',
@@ -517,6 +517,8 @@ export const strings = {
       'The terminal process stopped, so the shell did too. Press Enter to start a new one.',
   },
   commander: {
+    openFailed: (name: string, reason: string) =>
+      `${name} could not be opened: ${reason}`,
     name: 'Name',
     extension: 'Ext',
     size: 'Size',

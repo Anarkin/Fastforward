@@ -4,6 +4,7 @@ import { formatSize } from '../../../../tools/commander/page/format';
 import {
   nameParts,
   nextSort,
+  goesInto,
   opens,
   rowsOf,
   selectionAfter,
@@ -187,7 +188,7 @@ suite('Commander listing', () => {
     );
   });
 
-  test('opens the parent and folders, not files', () => {
+  test('opens the parent, folders and files, but goes from the filter only into the parent and folders', () => {
     const [parent, src, file] = rowsOf(
       [folder('src'), entry('a.txt')],
       true,
@@ -196,6 +197,10 @@ suite('Commander listing', () => {
     );
     assert.deepStrictEqual(
       [opens(parent), opens(src), opens(file), opens(undefined)],
+      [true, true, true, false],
+    );
+    assert.deepStrictEqual(
+      [goesInto(parent), goesInto(src), goesInto(file), goesInto(undefined)],
       [true, true, false, false],
     );
   });

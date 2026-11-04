@@ -111,6 +111,7 @@ export interface CommanderAccess {
   readonly codePage: () => Promise<TextEncoding>;
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly realPath: (link: string) => Promise<string>;
+  readonly openFile?: (file: string) => Promise<string>;
   readonly shellMenu?: (
     files: readonly string[],
     at: { readonly x: number; readonly y: number },
@@ -685,10 +686,20 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     const entry = entries?.find((each) => each.name === name);
-    if (!entry?.folder) {
+    if (entry === undefined) {
       return;
     }
     const opened = path.join(folder, entry.name);
+    if (!entry.folder) {
+      const failure = await this.access.openFile?.(opened);
+      if (failure) {
+        this.shell.notice(page, {
+          level: 'error',
+          message: strings.commander.openFailed(entry.name, failure),
+        });
+      }
+      return;
+    }
     const target = entry.link
       ? await this.access.realPath(opened).catch(() => undefined)
       : undefined;

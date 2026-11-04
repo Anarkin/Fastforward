@@ -23,6 +23,7 @@ import { formatSize } from './format';
 import {
   filteredRows,
   filteredSelection,
+  goesInto,
   opens,
   passedKeys,
   menuKeys,
@@ -530,7 +531,7 @@ export function Pane({
                 const row =
                   selectedIndex === -1 ? undefined : rows[selectedIndex];
                 focusList();
-                if (row !== undefined && opens(row)) {
+                if (row !== undefined && goesInto(row)) {
                   onOpen(row.key);
                 }
               }}

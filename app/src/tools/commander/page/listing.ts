@@ -118,6 +118,10 @@ export function selectionAfter(
 }
 
 export function opens(row: Row | undefined): boolean {
+  return row !== undefined;
+}
+
+export function goesInto(row: Row | undefined): boolean {
   return row !== undefined && (row.entry === undefined || row.entry.folder);
 }
 

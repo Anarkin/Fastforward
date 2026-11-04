@@ -108,6 +108,7 @@ function commander(
   const saved: unknown[] = [];
   const watching: { folder: string; changed: () => void }[] = [];
   const iconsLoaded: string[] = [];
+  const opened: string[] = [];
   const menus: {
     readonly files: readonly string[];
     readonly at: { readonly x: number; readonly y: number };
@@ -166,6 +167,12 @@ function commander(
     shellMenu: (files, point, extended) => {
       menus.push({ files, at: point, extended });
       return Promise.resolve();
+    },
+    openFile: (opening) => {
+      opened.push(opening);
+      return Promise.resolve(
+        opening.endsWith('unknown.xyz') ? 'No app is associated with it' : '',
+      );
     },
     realPath: (link) =>
       link === at('Documents and Settings')
@@ -251,6 +258,7 @@ function commander(
     compared,
     tabs,
     menus,
+    opened,
     thumbnails,
     streamed,
     thumbnailsFull,
@@ -1136,6 +1144,31 @@ suite('Commander tool', () => {
       ]);
       assert.strictEqual(tool.folderOf({ ...tab, root: opened }), opened);
     });
+  });
+
+  test('opens a file in the app the system opens it with, a program by running it, staying in its folder, and says why one could not be opened', async () => {
+    const { tool, page, send, notices, opened } = commander({
+      [root]: [file('notes.txt'), file('setup.exe'), file('unknown.xyz')],
+    });
+    await tool.show(page, tab);
+    for (const name of ['notes.txt', 'setup.exe', 'unknown.xyz', 'gone.txt']) {
+      await send({ type: 'open', tab: '1', side: 'right', name });
+    }
+    assert.deepStrictEqual(opened, [
+      at('notes.txt'),
+      at('setup.exe'),
+      at('unknown.xyz'),
+    ]);
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.openFailed(
+          'unknown.xyz',
+          'No app is associated with it',
+        ),
+      },
+    ]);
+    assert.strictEqual(tool.folderOf(tab), root);
   });
 
   test('gives the folder of the active side as the folder of the tab, the right one until the page makes the left one active', async () => {
