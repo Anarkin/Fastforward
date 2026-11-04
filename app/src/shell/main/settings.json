@@ -6,7 +6,7 @@
   "dateFormat": "YYYY-MM-DD HH:mm",
   "text": {
     "wordWrap": true,
-    "showWhitespace": false,
+    "showWhitespace": true,
     "highlightSyntax": true
   },
   "images": {
