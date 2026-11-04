@@ -38,15 +38,22 @@ function body(
   end: number,
 ): ReadableStream<Uint8Array> {
   let handle: fs.promises.FileHandle | undefined;
+  let finished = false;
   let position = start;
   const finish = async () => {
+    finished = true;
     const open = handle;
     handle = undefined;
     await open?.close();
   };
   return new ReadableStream<Uint8Array>({
     start: async () => {
-      handle = await fs.promises.open(file, 'r');
+      const opened = await fs.promises.open(file, 'r');
+      if (finished) {
+        await opened.close();
+      } else {
+        handle = opened;
+      }
     },
     pull: async (controller) => {
       const length = Math.min(chunkBytes, end + 1 - position);

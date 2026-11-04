@@ -63,4 +63,34 @@ suite('Ranges of a file served', () => {
       removeFolder(folder);
     }
   });
+
+  test('closes the file of a body given up on while the file was still being opened, as a page may give up on it at once', async () => {
+    const folder = tempFolder('file-ranges');
+    const opened: fs.promises.FileHandle[] = [];
+    const open = fs.promises.open;
+    Reflect.set(
+      fs.promises,
+      'open',
+      async (...args: Parameters<typeof fs.promises.open>) => {
+        const handle = await open(...args);
+        opened.push(handle);
+        return handle;
+      },
+    );
+    try {
+      const file = path.join(folder, 'photo.png');
+      fs.writeFileSync(file, 'the image');
+      const response = await fileResponse(file, 'image/png', null);
+      await response.body?.cancel();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.strictEqual(opened.length, 1);
+      assert.deepStrictEqual(
+        opened.map((handle) => handle.fd),
+        [-1],
+      );
+    } finally {
+      Reflect.set(fs.promises, 'open', open);
+      removeFolder(folder);
+    }
+  });
 });
