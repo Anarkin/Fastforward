@@ -2823,7 +2823,7 @@ suite('Style', () => {
     });
   });
 
-  test("tints the About's copy button more on hovering, and fills it with the focus color while pressed and once it copied", () => {
+  test("tints the About's copy button more on hovering, and fills it with the focus color while pressed and once it copied, keeping the tint while focused from the keyboard so the outline of focus shows", () => {
     const copy = withClass(aboutPopup(), 'about-copy');
     looks(copy, { background: 'var(--color-background)' });
     looks(copy, { background: 'var(--selection-background)' }, hovered);
@@ -2832,12 +2832,15 @@ suite('Style', () => {
       background: 'var(--color-focus)',
     };
     looks(copy, filled, { active: true });
+    const copied = withClass(
+      rendered(createElement(CopyButton, { copied: true, onClick: noop })),
+      'about-copy',
+    );
+    looks(copied, filled);
     looks(
-      withClass(
-        rendered(createElement(CopyButton, { copied: true, onClick: noop })),
-        'about-copy',
-      ),
-      filled,
+      copied,
+      { color: 'inherit', background: 'var(--selection-background)' },
+      { focus: copied },
     );
   });
 
