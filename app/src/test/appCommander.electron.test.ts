@@ -474,7 +474,12 @@ suite('App commander', () => {
     await gitTab.locator('.tool-git').waitFor();
     await backToCommander();
 
-    fs.rmSync(path.join(opened, 'repo'), { recursive: true, force: true });
+    fs.rmSync(path.join(opened, 'repo'), {
+      recursive: true,
+      force: true,
+      maxRetries: 20,
+      retryDelay: 100,
+    });
     await waitFor(
       async () => !(await rowNames()).includes('repo'),
       'the repository to be gone from the list',
