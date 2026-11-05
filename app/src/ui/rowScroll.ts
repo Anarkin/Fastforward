@@ -26,7 +26,7 @@ export const Scrolling = createContext<ScrollSettings>({
   smooth: false,
 });
 
-export const rowGlide = 100;
+export const rowGlide = 150;
 
 export function glideRows(
   glide: Glide | undefined,
@@ -39,6 +39,7 @@ export function glideRows(
     to,
     start: now,
     duration: rowGlide,
+    power: 2,
   };
 }
 

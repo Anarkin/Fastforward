@@ -137,4 +137,16 @@ suite('Scrolling by whole rows', () => {
     assert.strictEqual(revealGlides(0, 8, 20, 400), false);
     assert.strictEqual(revealGlides(0, 4000, 20, 400), false);
   });
+
+  test('spreads a glide over its frames, never moving more than a quarter of the way in one frame of a display at 60 Hz, as most of it in the first frame looks like a jump that then lags', () => {
+    const glide = glideRows(undefined, 0, 0, 1000);
+    const frame = 1000 / 60;
+    let place = 0;
+    for (let time = frame; time < rowGlide + frame; time += frame) {
+      const next = glideAt(glide, time);
+      assert.ok(next - place <= 250, `${next - place} at ${time}`);
+      place = next;
+    }
+    assert.strictEqual(place, 1000);
+  });
 });
