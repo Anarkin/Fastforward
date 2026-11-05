@@ -19,6 +19,9 @@ export interface Settings {
   };
   readonly theme: Theme;
   readonly dateFormat: string;
+  readonly scrolling: {
+    readonly wheelRows: number;
+  };
   readonly text: TextView;
   readonly images: ImageView;
   readonly tools: ToolSettings;

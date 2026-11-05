@@ -4,6 +4,9 @@
   },
   "theme": "dark",
   "dateFormat": "YYYY-MM-DD HH:mm",
+  "scrolling": {
+    "wheelRows": 1
+  },
   "text": {
     "wordWrap": true,
     "showWhitespace": true,

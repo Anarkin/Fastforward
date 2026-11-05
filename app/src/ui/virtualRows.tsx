@@ -1,6 +1,7 @@
 import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
 import {
   useCallback,
+  useContext,
   useEffect,
   useEffectEvent,
   useId,
@@ -11,7 +12,7 @@ import {
 import { columnFocusAttribute } from './columnFocus';
 import { fullyVisible, type VisibleRows } from './listMoves';
 import { rowPlace } from './rowPlace';
-import { followRows, rowPadding } from './rowScroll';
+import { followRows, rowPadding, WheelRows } from './rowScroll';
 
 export const estimatedRowHeight = 22;
 
@@ -149,6 +150,8 @@ export function VirtualRows({
   wholeRows = false,
   initialOffset = 0,
   onScrolled,
+  wheelStep,
+  notchRows,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
@@ -162,6 +165,8 @@ export function VirtualRows({
   wholeRows?: boolean;
   initialOffset?: number;
   onScrolled?: (offset: number) => void;
+  wheelStep?: () => number;
+  notchRows?: number;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -195,6 +200,9 @@ export function VirtualRows({
   }, [fixedHeight, virtualizer]);
   const rowHeight = useEffectEvent(() => fixedHeight ?? estimatedRowHeight);
   const totalSize = useEffectEvent(() => virtualizer.getTotalSize());
+  const wheelRows = useContext(WheelRows);
+  const stepOf = useEffectEvent(() => wheelStep?.() ?? rowHeight());
+  const perNotch = useEffectEvent(() => notchRows ?? wheelRows);
   const [viewportHeight, setViewportHeight] = useState(0);
   const padding = wholeRows
     ? rowPadding(viewportHeight, fixedHeight ?? estimatedRowHeight)
@@ -208,6 +216,8 @@ export function VirtualRows({
     const stop = followRows(element, rowHeight, {
       limit: () =>
         totalSize() + rowPadding(viewport(), rowHeight()) - viewport(),
+      step: stepOf,
+      perNotch,
     });
     const measure = () => setViewportHeight(viewport());
     measure();

@@ -420,6 +420,7 @@ export class Shell {
   private async ready(page: Page): Promise<void> {
     const { storage, host } = this;
     page.post({ type: 'dateFormat', format: storage.dateFormat });
+    page.post({ type: 'scrolling', wheelRows: storage.wheelRows });
     page.post({ type: 'textView', view: storage.textView });
     page.post({ type: 'imageView', view: storage.imageView });
     page.post({ type: 'update', status: host.updateStatus() });

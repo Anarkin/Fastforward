@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useEffectEvent, useRef, useState } from 'react';
 import '@xterm/xterm/css/xterm.css';
 import './style.css';
 import { folderMenuItems } from './folderMenu';
 import { loadXterm, TerminalView } from './view';
+import { WheelRows } from '../../../ui/rowScroll';
 import type {
   TerminalToHost,
   TerminalToWebview,
@@ -29,6 +30,8 @@ export function TerminalTool({
   const [settings, setSettings] =
     useState<Omit<TerminalToWebviewOf<'settings'>, 'type'>>();
   const [folders, setFolders] = useState<readonly string[]>([]);
+  const wheelRows = useContext(WheelRows);
+  const wheelRowsOf = useEffectEvent(() => wheelRows);
 
   useEffect(
     () =>
@@ -87,6 +90,7 @@ export function TerminalTool({
           ...settings,
           post,
           onCopy,
+          wheelRows: wheelRowsOf,
         });
       }
     });

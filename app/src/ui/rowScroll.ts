@@ -1,9 +1,11 @@
+import { createContext } from 'react';
 import { pressedAlone } from '../shell/shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
 
 const onRow = 0.01;
 const lineMode = 1;
 const pageMode = 2;
+const notch = 120;
 
 export function snappedTop(top: number, row: number, max: number): number {
   if (row <= 0) {
@@ -12,18 +14,49 @@ export function snappedTop(top: number, row: number, max: number): number {
   return Math.max(0, Math.min(max, Math.ceil(top / row - onRow) * row));
 }
 
-export function wheelRows(
+export const WheelRows = createContext(1);
+
+export interface Wheel {
+  readonly deltaY: number;
+  readonly deltaMode: number;
+  readonly wheelDeltaY?: number;
+}
+
+export interface WheelSizes {
+  readonly row: number;
+  readonly step: number;
+  readonly page: number;
+  readonly perNotch: number;
+}
+
+export function notchesOf({
+  deltaY,
+  wheelDeltaY = 0,
+}: Wheel): number | undefined {
+  return deltaY !== 0 && wheelDeltaY !== 0 && wheelDeltaY % notch === 0
+    ? (Math.sign(deltaY) * Math.abs(wheelDeltaY)) / notch
+    : undefined;
+}
+
+export function wheelTurn(
   pending: number,
-  delta: number,
-  mode: number,
-  row: number,
-  page: number,
+  wheel: Wheel,
+  { row, step, page, perNotch }: WheelSizes,
 ): { readonly rows: number; readonly pending: number } {
+  const notches = notchesOf(wheel);
+  if (notches !== undefined) {
+    return { rows: notches * perNotch, pending: 0 };
+  }
+  const { deltaY, deltaMode } = wheel;
   const pixels =
-    mode === lineMode ? delta * row : mode === pageMode ? delta * page : delta;
+    deltaMode === lineMode
+      ? deltaY * step
+      : deltaMode === pageMode
+        ? ((deltaY * page) / row) * step
+        : deltaY;
   const total = pending + pixels;
-  const rows = Math.trunc(total / row + (total > 0 ? onRow : -onRow));
-  const left = total - rows * row;
+  const rows = Math.trunc(total / step + (total > 0 ? onRow : -onRow));
+  const left = total - rows * step;
   return { rows, pending: Math.abs(left) < onRow ? 0 : left };
 }
 
@@ -50,7 +83,14 @@ export function followRows(
   {
     keys = false,
     limit = () => element.scrollHeight - element.clientHeight,
-  }: { readonly keys?: boolean; readonly limit?: () => number } = {},
+    step = rowHeight,
+    perNotch = () => 1,
+  }: {
+    readonly keys?: boolean;
+    readonly limit?: () => number;
+    readonly step?: () => number;
+    readonly perNotch?: () => number;
+  } = {},
 ): () => void {
   let pending = 0;
   const max = () => Math.max(0, limit());
@@ -63,13 +103,12 @@ export function followRows(
       return;
     }
     event.preventDefault();
-    const turned = wheelRows(
-      pending,
-      event.deltaY,
-      event.deltaMode,
+    const turned = wheelTurn(pending, event, {
       row,
-      element.clientHeight,
-    );
+      step: step() > 0 ? step() : row,
+      page: element.clientHeight,
+      perNotch: perNotch(),
+    });
     pending = turned.pending;
     if (turned.rows !== 0) {
       goTo(snappedTop(element.scrollTop, row, max()) + turned.rows * row);

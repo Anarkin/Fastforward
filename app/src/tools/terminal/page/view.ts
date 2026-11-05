@@ -4,6 +4,8 @@ import type { WebglAddon } from '@xterm/addon-webgl';
 import type { Terminal } from '@xterm/xterm';
 import { terminalKey } from './keys';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
+import { notchesOf, type Wheel } from '../../../ui/rowScroll';
+import { pressedAlone, type Modifiers } from '../../../shell/shared/keymap';
 import {
   fontVariables,
   letterSpacingFor,
@@ -47,6 +49,25 @@ export function screenMargin(left: number, top: number, ratio: number): string {
   return `${snapOffset(top, ratio)}px 0 0 ${snapOffset(left, ratio)}px`;
 }
 
+export interface WheelScreen {
+  readonly buffer: 'normal' | 'alternate';
+  readonly mouse: string;
+}
+
+export function wheelLines(
+  wheel: Wheel & Modifiers,
+  { buffer, mouse }: WheelScreen,
+  perNotch: number,
+): number | undefined {
+  const notches = notchesOf(wheel);
+  return notches !== undefined &&
+    pressedAlone(wheel) &&
+    buffer === 'normal' &&
+    mouse === 'none'
+    ? notches * perNotch
+    : undefined;
+}
+
 export interface TerminalViewOptions {
   readonly tab: string;
   readonly renderer: Renderer;
@@ -55,6 +76,7 @@ export interface TerminalViewOptions {
   readonly windowsPty: WindowsPty | undefined;
   readonly post: (message: TerminalToHost) => void;
   readonly onCopy: (text: string) => void;
+  readonly wheelRows: () => number;
 }
 
 export class TerminalView {
@@ -93,6 +115,10 @@ export class TerminalView {
     this.terminal.onData((data) => this.typed(data));
     this.terminal.onResize(() => this.resized());
     this.terminal.open(element);
+    element.addEventListener('wheel', this.wheel, {
+      capture: true,
+      passive: false,
+    });
     if (options.renderer === 'webgl') {
       this.useWebgl();
     }
@@ -111,6 +137,21 @@ export class TerminalView {
     });
     this.terminal.focus();
   }
+
+  private readonly wheel = (event: WheelEvent) => {
+    const lines = wheelLines(
+      event,
+      {
+        buffer: this.terminal.buffer.active.type,
+        mouse: this.terminal.modes.mouseTrackingMode,
+      },
+      this.options.wheelRows(),
+    );
+    if (lines !== undefined) {
+      event.preventDefault();
+      this.terminal.scrollLines(lines);
+    }
+  };
 
   receive(message: TerminalToWebview): void {
     const { tab, post } = this.options;
@@ -144,6 +185,7 @@ export class TerminalView {
     clearTimeout(this.resizing);
     this.observer.disconnect();
     this.scheme.removeEventListener('change', this.followScheme);
+    this.element.removeEventListener('wheel', this.wheel, { capture: true });
     this.stopWatching();
     removeEventListener('resize', this.snapToPixels);
     this.terminal.dispose();

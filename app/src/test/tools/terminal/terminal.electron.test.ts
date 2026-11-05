@@ -9,6 +9,11 @@ import { closeOrKill, launchApp } from '../../appFixtures';
 import { waitFor } from '../../fixtures';
 import { removeFolder, tempFolder } from '../../repositories';
 
+const hundredLines =
+  process.platform === 'win32'
+    ? '1..100 | % { "line$_" }'
+    : 'for i in $(seq 1 100); do echo line$i; done';
+
 const shell =
   process.platform === 'win32'
     ? { shell: '', shellArgs: ['-NoLogo', '-NoProfile'] }
@@ -108,7 +113,10 @@ suite('Terminal', () => {
     );
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
-      JSON.stringify({ tools: { terminal: { ...shell, renderer: 'dom' } } }),
+      JSON.stringify({
+        scrolling: { wheelRows: 2 },
+        tools: { terminal: { ...shell, renderer: 'dom' } },
+      }),
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
@@ -125,6 +133,22 @@ suite('Terminal', () => {
     await waitForRow((row) => row === 'fastforward-ok', 'the echo');
     await run('ls');
     await waitForRow((row) => row.includes('marker-file.txt'), 'the listing');
+  });
+
+  test('scrolls back the rows of the setting for each notch of the wheel', async () => {
+    await run(hundredLines);
+    await waitForRow((row) => row === 'line100', 'the last line');
+    const before = await rows();
+    await page.locator('.terminal-screen').hover();
+    await page.mouse.wheel(0, -100);
+    await waitFor(
+      async () => (await rows())[0] !== before[0],
+      'the terminal to scroll back',
+    );
+    assert.deepStrictEqual(
+      (await rows()).slice(2),
+      before.slice(0, before.length - 2),
+    );
   });
 
   test('keeps the shell running while the page reloads, showing what it printed before', async () => {

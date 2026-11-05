@@ -106,6 +106,7 @@ export type ToWebview =
       readonly active: string | undefined;
     }
   | { readonly type: 'dateFormat'; readonly format: string }
+  | { readonly type: 'scrolling'; readonly wheelRows: number }
   | { readonly type: 'textView'; readonly view: TextView }
   | { readonly type: 'imageView'; readonly view: ImageView }
   | { readonly type: 'update'; readonly status: UpdateStatus }

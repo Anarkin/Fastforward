@@ -89,7 +89,12 @@ import {
   type RowBreak,
 } from '../../../ui/wordWrap';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
-import { followRows, rowPadding, snappedTop } from '../../../ui/rowScroll';
+import {
+  followRows,
+  rowPadding,
+  snappedTop,
+  WheelRows,
+} from '../../../ui/rowScroll';
 import { useTextView } from '../../../ui/textView';
 import {
   areaColumns,
@@ -2224,6 +2229,8 @@ export function DiffView({
   const endPadding = rowPadding(viewportHeight, lineHeight);
   const lineOf = useEffectEvent(() => lineHeight);
   const totalOf = useEffectEvent(() => virtualizer.getTotalSize());
+  const wheelRows = useContext(WheelRows);
+  const perNotch = useEffectEvent(() => wheelRows);
   useEffect(() => {
     const element = list.current;
     if (!element) {
@@ -2232,6 +2239,7 @@ export function DiffView({
     const viewport = () => element.getBoundingClientRect().height;
     const stop = followRows(element, lineOf, {
       limit: () => totalOf() + rowPadding(viewport(), lineOf()) - viewport(),
+      perNotch,
     });
     const measure = () => setViewportHeight(viewport());
     measure();

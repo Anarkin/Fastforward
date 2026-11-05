@@ -3023,7 +3023,7 @@ suite('App commander', () => {
     );
   });
 
-  test('scrolls the list by whole rows, with the wheel and the scrollbar alike, drawing it on a row at every frame while its scrollbar is dragged rather than between rows and then snapping', async () => {
+  test('scrolls the list by whole rows, a row for each notch of the wheel, as far as a touchpad goes, and with the scrollbar alike, drawing it on a row at every frame while its scrollbar is dragged rather than between rows and then snapping', async () => {
     const many = path.join(opened, 'many');
     fs.mkdirSync(many);
     for (let index = 0; index < 400; index++) {
@@ -3049,11 +3049,27 @@ suite('App commander', () => {
       });
 
     await list.hover();
-    await page.mouse.wheel(0, 30);
+    await page.mouse.wheel(0, 300);
     await waitFor(async () => (await offRow()).top > 0, 'the list to scroll');
-    assert.ok((await offRow()).off < 0.01, JSON.stringify(await offRow()));
+    const oneRow = await list.evaluate(
+      (element) =>
+        element.querySelector('.commander-row')?.getBoundingClientRect()
+          .height ?? 0,
+    );
+    assert.ok(
+      Math.abs((await offRow()).top - oneRow) < 0.01,
+      JSON.stringify(await offRow()),
+    );
 
-    await page.mouse.wheel(0, 3000);
+    await list.evaluate((element) =>
+      element.dispatchEvent(
+        new WheelEvent('wheel', {
+          deltaY: 2990,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    );
     await waitFor(async () => (await offRow()).top > 2000, 'a long way down');
     const firstRowOffset = await list.evaluate((element) => {
       const top = element.getBoundingClientRect().top;
@@ -3136,6 +3152,82 @@ suite('App commander', () => {
     fs.rmSync(many, { recursive: true });
     await waitFor(
       async () => !(await rowNames()).includes('many'),
+      'the folder to be gone from the list',
+    );
+  });
+
+  test('scrolls thumbnails a row of tiles for each notch of the wheel, and for as little touchpad as a row of text', async () => {
+    const many = path.join(opened, 'many tiles');
+    fs.mkdirSync(many);
+    for (let index = 0; index < 200; index++) {
+      fs.writeFileSync(path.join(many, `tile${index}.txt`), '');
+    }
+    await select('many tiles');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).includes('tile10.txt'),
+      'the folder of many files',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
+    const list = right().locator('.virtual-rows');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) > 0,
+      'the thumbnails',
+    );
+    const sizes = () =>
+      list.evaluate((element) => ({
+        top: element.scrollTop,
+        tile:
+          element.querySelector('.virtual-row')?.getBoundingClientRect()
+            .height ?? 0,
+        text:
+          element.querySelector('.commander-tile-name')?.getBoundingClientRect()
+            .height ?? 0,
+      }));
+    const { tile, text } = await sizes();
+    assert.ok(tile > text * 2 && text > 0, JSON.stringify(await sizes()));
+
+    await list.hover();
+    await page.mouse.wheel(0, 100);
+    await waitFor(async () => (await sizes()).top > 0, 'the tiles to scroll');
+    assert.ok(
+      Math.abs((await sizes()).top - tile) < 0.01,
+      JSON.stringify(await sizes()),
+    );
+
+    await list.evaluate(
+      (element, glide) =>
+        element.dispatchEvent(
+          new WheelEvent('wheel', {
+            deltaY: glide,
+            bubbles: true,
+            cancelable: true,
+          }),
+        ),
+      text + 1,
+    );
+    await waitFor(
+      async () => (await sizes()).top > tile + 0.01,
+      'the tiles to scroll by a row of text on a touchpad',
+    );
+    assert.ok(
+      Math.abs((await sizes()).top - tile * 2) < 0.01,
+      JSON.stringify(await sizes()),
+    );
+
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await right().locator('.commander-tile').count()) === 0,
+      'the details again',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('many tiles'),
+      'the parent folder',
+    );
+    fs.rmSync(many, { recursive: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('many tiles'),
       'the folder to be gone from the list',
     );
   });

@@ -199,6 +199,22 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('tells the page how many rows a notch of the mouse wheel scrolls, which every list that scrolls by rows and the terminal follow', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('scrolling'), {
+          type: 'scrolling',
+          wheelRows: 1,
+        });
+      },
+      true,
+      new FakeHost(),
+      noGit,
+    );
+  });
+
   test('offers ff once, in a notice, where the app installs it and it is not installed, as an update brings it to copies of the app no installer sets up', async () => {
     const host = new FakeHost();
     host.commandPlace = true;

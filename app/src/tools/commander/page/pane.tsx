@@ -56,7 +56,7 @@ import {
 import { listMoveOf, moveInList } from '../../../ui/listMoves';
 import { MenuButton } from '../../../ui/menu';
 import { keyPressed } from '../../../ui/shortcuts';
-import { VirtualRows } from '../../../ui/virtualRows';
+import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
 import { fileColorOf, type FileColorsByExtension } from './fileColors';
 
@@ -295,6 +295,9 @@ export function Pane({
   const tileWidth = tileWidthOf(thumbnailSize);
   const across = tileColumns(bodyWidth, tileWidth);
   const tiled = layout === 'thumbnails';
+  const tileTextRow = () =>
+    body.current?.querySelector('.commander-tile-name')?.getBoundingClientRect()
+      .height || estimatedRowHeight;
   const scrollKey = `${tab ?? ''} ${side} ${pane?.folder ?? ''} ${layout}`;
   const shownList = tiled
     ? bodyWidth > 0
@@ -632,6 +635,8 @@ export function Pane({
             selectedKey={pane?.selected}
             label={strings.commander.sides[side]}
             wholeRows
+            wheelStep={tiled ? tileTextRow : undefined}
+            notchRows={tiled ? 1 : undefined}
             onKeyDown={(event, visible) => {
               const permanently = keyPressed(
                 commanderKeymap.deleteItems,

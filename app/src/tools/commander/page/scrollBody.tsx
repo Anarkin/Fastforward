@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -12,6 +13,7 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { wheeled } from '../../../shell/shared/keymap';
 import { viewerKeymap } from '../shared/keymap';
 import { followDrag } from '../../../ui/followDrag';
+import { wheelTurn, WheelRows } from '../../../ui/rowScroll';
 import {
   hideAfter,
   overlayScrollbarClass,
@@ -213,6 +215,7 @@ export function ScrollBody({
   const [track, setTrack] = useState(0);
   const [screen, setScreen] = useState(1);
   const wheel = useRef(0);
+  const wheelRows = useContext(WheelRows);
   const [barShown, setBarShown] = useState(false);
   const [dragging, setDragging] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -298,11 +301,15 @@ export function ScrollBody({
         if (wheeled(viewerKeymap.wheelSideways, event) !== undefined) {
           return;
         }
-        wheel.current += event.deltaY;
-        const height = probe.current?.getBoundingClientRect().height ?? 1;
-        const rows = Math.trunc(wheel.current / height);
+        const height = probe.current?.getBoundingClientRect().height || 1;
+        const { rows, pending } = wheelTurn(wheel.current, event.nativeEvent, {
+          row: height,
+          step: height,
+          page: event.currentTarget.clientHeight,
+          perNotch: wheelRows,
+        });
+        wheel.current = pending;
         if (rows !== 0) {
-          wheel.current -= rows * height;
           moved(rows);
         }
       }}

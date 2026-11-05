@@ -41,6 +41,28 @@ suite('Storage', () => {
     }
   });
 
+  test('takes how many rows a notch of the mouse wheel scrolls from the settings, one unless set, as a whole number from one to fifty', () => {
+    assert.strictEqual(storageOf().wheelRows, 1);
+    for (const [set, taken] of [
+      [3, 3],
+      [2.6, 3],
+      [0, 1],
+      [-3, 1],
+      [500, 50],
+      [Number.NaN, 1],
+    ]) {
+      const settings = new UserSettings({
+        ...defaultSettings(),
+        scrolling: { wheelRows: set },
+      });
+      assert.strictEqual(
+        new Storage(settings, new FakeStore()).wheelRows,
+        taken,
+        String(set),
+      );
+    }
+  });
+
   test('reads state of the wrong shape, as a hand edit can leave it, as never saved', async () => {
     const store = new FakeStore();
     await store.update(tabsKey, 5);

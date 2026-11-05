@@ -17,6 +17,8 @@ const toolsKey = 'tools';
 const commandOfferedKey = 'terminalCommandOffered';
 export const maxRecentItems = 50;
 
+const maxWheelRows = 50;
+
 export interface Store {
   get(key: string): unknown;
   update(key: string, value: unknown): Promise<void>;
@@ -233,6 +235,13 @@ export class Storage {
 
   get dateFormat(): string {
     return this.settings.dateFormat;
+  }
+
+  get wheelRows(): number {
+    const rows = this.settings.scrolling.wheelRows;
+    return Number.isFinite(rows)
+      ? Math.min(maxWheelRows, Math.max(1, Math.round(rows)))
+      : 1;
   }
 
   get textView(): TextView {
