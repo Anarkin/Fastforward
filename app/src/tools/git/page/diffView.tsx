@@ -1380,6 +1380,8 @@ export function wholeChangeClass(
   return key !== undefined && words.get(key) === 'whole' ? 'whole-change' : '';
 }
 
+const beyondAscii = /[^\0-\x7f]/;
+
 export function codeProps(
   marks: LineMarks,
   key: string | undefined,
@@ -1397,7 +1399,7 @@ export function codeProps(
     current:
       key !== undefined && key === marks.foundKey ? marks.found : undefined,
     whitespace: marks.whitespace,
-    widths: marks.widths,
+    widths: beyondAscii.test(text) ? marks.widths : undefined,
   };
 }
 

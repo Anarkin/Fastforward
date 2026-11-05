@@ -1975,7 +1975,7 @@ suite('Drawing code', () => {
     );
   });
 
-  test('puts each character drawn wider or narrower than its columns in a box exactly as wide as them, as our terminal draws them on its grid, a blank shown in one too', () => {
+  test('puts each character drawn wider or narrower than its columns in a box exactly as wide as them, as our terminal draws them on its grid, a blank shown in one too, giving the widths only to a line with a character beyond ASCII, so measuring the font draws no other line again', () => {
     const boxing = {
       char: 10,
       of: () => 20,
@@ -2005,7 +2005,7 @@ suite('Drawing code', () => {
       drawn('a　b', true),
       `a<span class="blank cell wide" data-glyph="${strings.symbols.invisible}">　</span>b`,
     );
-    assert.strictEqual(
+    const widthsOf = (line: string) =>
       codeProps(
         {
           syntax: new Map(),
@@ -2017,11 +2017,11 @@ suite('Drawing code', () => {
           widths: boxing,
         },
         '0:1',
-        'x',
+        line,
         'added',
-      ).widths,
-      boxing,
-    );
+      ).widths;
+    assert.strictEqual(widthsOf('x 😀'), boxing);
+    assert.strictEqual(widthsOf('x'), undefined);
   });
 
   test('lets a wrapped line break where VS Code would, inside its colors too, keeping its indentation on the row with the code it indents', () => {
