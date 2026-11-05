@@ -1,4 +1,4 @@
-# FEATURES
+# FEATURES-TERMINAL
 
 - What a terminal can do, and how much of it Fastforward does
 
