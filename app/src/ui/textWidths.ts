@@ -104,7 +104,9 @@ interface TextMeasurer {
 }
 
 function canvasMeasurer(): TextMeasurer | null {
-  return new OffscreenCanvas(0, 0).getContext('2d');
+  return typeof OffscreenCanvas === 'undefined'
+    ? null
+    : new OffscreenCanvas(0, 0).getContext('2d');
 }
 
 export function textWidths(
@@ -158,18 +160,73 @@ export function textWidths(
   };
 }
 
-export function fontOf(element: HTMLElement): string {
+export function fontOf(element: Element): string {
   const { fontStyle, fontWeight, fontSize, fontFamily } =
     getComputedStyle(element);
   return `${fontStyle} ${fontWeight} ${fontSize} ${fontFamily}`;
 }
 
-export function spacingOf(element: HTMLElement): number {
+export function spacingOf(element: Element): number {
   const spacing = parseFloat(getComputedStyle(element).letterSpacing);
   return Number.isFinite(spacing) ? spacing : 0;
 }
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+export function elementWidths(
+  element: Element,
+  table: CellTable,
+): TextWidths | undefined {
+  const measurer = canvasMeasurer();
+  if (measurer === null) {
+    return undefined;
+  }
+  const font = fontOf(element);
+  measurer.font = font;
+  const char = measurer.measureText('0').width;
+  return char > 0
+    ? textWidths(char, font, spacingOf(element), table, () => measurer)
+    : undefined;
+}
+
+const cellClasses = ['cell zero', 'cell', 'cell wide'];
+
+export const cellClass = (cells: number): string =>
+  cellClasses[cells] ?? 'cell';
+
+const nonAscii = /[^\0-\x7f]/;
+
+export type CellPart =
+  | { readonly text: string; readonly cells?: undefined }
+  | {
+      readonly text: string;
+      readonly cells: number;
+      readonly scale: number | undefined;
+    };
+
+export function cellParts(text: string, widths: TextWidths): CellPart[] {
+  if (widths.boxed === undefined || !nonAscii.test(text)) {
+    return [{ text }];
+  }
+  const parts: CellPart[] = [];
+  let plain = '';
+  for (const { segment } of graphemes.segment(text)) {
+    const cells = nonAscii.test(segment) ? widths.boxed(segment) : undefined;
+    if (cells === undefined) {
+      plain += segment;
+      continue;
+    }
+    if (plain !== '') {
+      parts.push({ text: plain });
+      plain = '';
+    }
+    parts.push({ text: segment, cells, scale: widths.scaled?.(segment) });
+  }
+  if (plain !== '') {
+    parts.push({ text: plain });
+  }
+  return parts;
+}
 
 export function columnsOf(
   text: string,

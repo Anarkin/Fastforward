@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import { strings } from '../shared/strings';
-import type { TextWidths } from './textWidths';
+import { cellClass, cellParts, type TextWidths } from './textWidths';
 
 const blankSigns: Readonly<Record<string, string>> = {
   '\t': strings.symbols.tab,
@@ -13,49 +13,25 @@ const blank = /[ \t\r   -​  ⁠　﻿]/;
 
 const spacesBlanksAndText = / +|[ \t\r   -​  ⁠　﻿]|[^ \t\r   -​  ⁠　﻿]+/g;
 
-const nonAscii = /[^\0-\x7f]/;
-
-const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-
-const cellClasses = ['cell zero', 'cell', 'cell wide'];
-
-const cellClass = (cells: number) => cellClasses[cells] ?? 'cell';
-
-function cellStyle(
-  widths: TextWidths,
-  cluster: string,
-): React.CSSProperties | undefined {
-  const scale = widths.scaled?.(cluster);
-  return scale === undefined ? undefined : { fontSize: `${scale}em` };
-}
-
 function boxedText(text: string, widths: TextWidths): React.ReactNode {
-  if (widths.boxed === undefined || !nonAscii.test(text)) {
+  const parts = cellParts(text, widths);
+  if (parts.length === 1 && parts[0].cells === undefined) {
     return text;
   }
-  const parts: React.ReactNode[] = [];
-  let plain = '';
-  for (const { segment, index } of graphemes.segment(text)) {
-    const cells = nonAscii.test(segment) ? widths.boxed(segment) : undefined;
-    if (cells === undefined) {
-      plain += segment;
-      continue;
+  return parts.map((part, index) => {
+    if (part.cells === undefined) {
+      return part.text;
     }
-    if (plain !== '') {
-      parts.push(plain);
-      plain = '';
-    }
-    const style = cellStyle(widths, segment);
-    parts.push(
-      <span key={index} className={cellClass(cells)}>
-        {style === undefined ? segment : <span style={style}>{segment}</span>}
-      </span>,
+    return (
+      <span key={index} className={cellClass(part.cells)}>
+        {part.scale === undefined ? (
+          part.text
+        ) : (
+          <span style={{ fontSize: `${part.scale}em` }}>{part.text}</span>
+        )}
+      </span>
     );
-  }
-  if (plain !== '') {
-    parts.push(plain);
-  }
-  return parts;
+  });
 }
 
 function blankShown(

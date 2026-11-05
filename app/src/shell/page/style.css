@@ -1299,6 +1299,7 @@ body.resizing {
 }
 
 .markdown pre code {
+  --text-advance: 1ch;
   overflow-wrap: normal;
   white-space: pre;
 }

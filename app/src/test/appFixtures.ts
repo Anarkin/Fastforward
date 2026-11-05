@@ -68,6 +68,29 @@ export function barsOffGrid(code: readonly Element[]): number[] {
   return rows.map((left) => Math.round((left - ruler) * 10) / 10);
 }
 
+export function linesOffGrid(code: Element): number[] {
+  const lefts: number[] = [];
+  const range = document.createRange();
+  const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+  let line = 0;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!(node instanceof Text)) {
+      continue;
+    }
+    for (let at = 0; at < node.length; at++) {
+      if (node.data[at] === '\n') {
+        line++;
+      } else if (node.data[at] === '|') {
+        range.setStart(node, at);
+        range.setEnd(node, at + 1);
+        lefts[line] = range.getBoundingClientRect().left;
+      }
+    }
+  }
+  const [ruler, ...rows] = lefts;
+  return rows.map((left) => Math.round((left - ruler) * 10) / 10);
+}
+
 export function waitForCount(
   locator: Locator,
   count: number,

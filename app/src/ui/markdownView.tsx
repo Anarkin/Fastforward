@@ -11,10 +11,58 @@ import { mermaidDrawer, showDiagrams } from './diagrams';
 import { imagePath, markdownRenderer, type Render } from './markdownRender';
 import { onceMade } from './onceMade';
 import { codeSegments, colorCode } from './syntax';
+import {
+  cellClass,
+  cellParts,
+  elementWidths,
+  useCellTable,
+  type TextWidths,
+} from './textWidths';
 
 const codeLanguage = /(?:^|\s)language-(\S+)/;
 
-function colorCodeBlocks(element: ParentNode): () => void {
+function cellNodes(
+  code: Element,
+  text: string,
+  widths: TextWidths | undefined,
+): (Node | string)[] {
+  if (widths === undefined) {
+    return [text];
+  }
+  return cellParts(text, widths).map((part) => {
+    if (part.cells === undefined) {
+      return part.text;
+    }
+    const box = code.ownerDocument.createElement('span');
+    box.className = cellClass(part.cells);
+    if (part.scale === undefined) {
+      box.textContent = part.text;
+      return box;
+    }
+    const glyph = code.ownerDocument.createElement('span');
+    glyph.style.fontSize = `${part.scale}em`;
+    glyph.textContent = part.text;
+    box.append(glyph);
+    return box;
+  });
+}
+
+export function boxCodeBlocks(
+  element: ParentNode,
+  widths: TextWidths | undefined,
+): void {
+  for (const code of element.querySelectorAll('pre > code')) {
+    const shown = cellNodes(code, code.textContent, widths);
+    if (shown.some((node) => typeof node !== 'string')) {
+      code.replaceChildren(...shown);
+    }
+  }
+}
+
+function colorCodeBlocks(
+  element: ParentNode,
+  widths: TextWidths | undefined,
+): () => void {
   const leaving = new AbortController();
   for (const code of element.querySelectorAll('pre > code')) {
     const language = codeLanguage.exec(code.className)?.[1];
@@ -27,15 +75,17 @@ function colorCodeBlocks(element: ParentNode): () => void {
         return;
       }
       code.replaceChildren(
-        ...codeSegments(text, lines).map(({ text: part, kind }) => {
-          if (kind === undefined) {
-            return part;
-          }
-          const span = document.createElement('span');
-          span.className = `syntax-${kind}`;
-          span.textContent = part;
-          return span;
-        }),
+        ...codeSegments(text, lines)
+          .map(({ text: part, kind }) => {
+            if (kind === undefined) {
+              return cellNodes(code, part, widths);
+            }
+            const span = document.createElement('span');
+            span.className = `syntax-${kind}`;
+            span.append(...cellNodes(code, part, widths));
+            return [span];
+          })
+          .flat(),
       );
     });
   }
@@ -179,15 +229,16 @@ export function MarkdownPane({
   images: MarkdownImages | undefined;
 }) {
   const render = useRenderer();
+  const table = useCellTable();
   const dark = useDark();
   const imagePathOf = images?.path;
   const imageUrlOf = images?.url;
   const html = useMemo(() => {
-    if (!render || text === undefined) {
+    if (!render || text === undefined || table === undefined) {
       return undefined;
     }
     return render(text, imagePathOf ?? noImages);
-  }, [render, text, imagePathOf]);
+  }, [render, text, imagePathOf, table]);
   const content = useRef<HTMLDivElement>(null);
   const drawn = useRef(new Map<Element, () => void>());
   const drawnDark = useRef(dark);
@@ -218,8 +269,14 @@ export function MarkdownPane({
           fontFamily: getComputedStyle(element).fontFamily,
         }),
       );
+    const code = element.querySelector('pre > code');
+    const widths =
+      code === null || table === undefined
+        ? undefined
+        : elementWidths(code, table);
     for (const block of added) {
-      const stopColoring = colorCodeBlocks(block);
+      boxCodeBlocks(block, widths);
+      const stopColoring = colorCodeBlocks(block, widths);
       const stopDiagrams = showDiagrams(block, drawer);
       drawn.current.set(block, () => {
         stopColoring();
@@ -227,7 +284,7 @@ export function MarkdownPane({
       });
     }
     showDocumentImages(element);
-  }, [html, dark]);
+  }, [html, dark, table]);
   useEffect(() => {
     const element = content.current;
     const blocks = drawn.current;

@@ -4,7 +4,14 @@ import * as path from 'node:path';
 import type { JSHandle } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../shared/strings';
-import { page, profile, repository, sharedApp } from './appFixtures';
+import {
+  gridLines,
+  linesOffGrid,
+  page,
+  profile,
+  repository,
+  sharedApp,
+} from './appFixtures';
 import { waitFor } from './fixtures';
 
 const focusColor = () =>
@@ -55,6 +62,29 @@ suite('App', () => {
   sharedApp({
     'diagram.md':
       '# Diagram\n\n```mermaid\ngraph LR\n  Fetch["Fetch<br/>every remote"] --> Merge\n```\n',
+    'grid.md': ['# Grid', '', '```text', ...gridLines, '```', ''].join('\n'),
+  });
+
+  test('draws the code blocks of a Markdown document viewed on the grid of our terminal, as the viewer and the diff draw text, so code padded for a terminal lines up in the preview too', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'grid.md' }).click();
+    await page
+      .locator('.diff-view .file-header', { hasText: 'grid.md' })
+      .getByRole('button', { name: strings.diff.viewFile })
+      .click();
+    try {
+      const code = page.locator('.viewer .markdown pre code');
+      await code.waitFor();
+      const onGrid = gridLines.slice(1).map(() => 0);
+      await waitFor(
+        async () =>
+          JSON.stringify(await code.evaluate(linesOffGrid)) ===
+          JSON.stringify(onGrid),
+        'the bars on the grid',
+      );
+    } finally {
+      await closeViewer();
+    }
   });
 
   test('views a file of a diff in a tab of its own from the button on its header, its Markdown rendered with a Mermaid diagram drawn as an image of its SVG, its code hidden', async () => {

@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
 import { documentImagePath } from '../../ui/images';
-import { MarkdownPane } from '../../ui/markdownView';
+import { boxCodeBlocks, MarkdownPane } from '../../ui/markdownView';
 import { waitFor } from '../fixtures';
 
 const images = {
@@ -73,6 +73,28 @@ async function previewing(
 }
 
 suite('Markdown preview', () => {
+  test('puts each character of a code block drawn wider or narrower than its columns in a box exactly as wide as them, as the viewer and the diff do, shrinking a glyph wider than its box, and leaves the code outside blocks alone', () => {
+    const { document } = new JSDOM(
+      '<main><pre><code>a😀b中</code></pre><p><code>x😀</code></p><pre><code>plain</code></pre></main>',
+    ).window;
+    const main = document.querySelector('main');
+    assert.ok(main);
+    boxCodeBlocks(main, {
+      char: 10,
+      of: () => 20,
+      boxed: (cluster) => (/[😀中]/u.test(cluster) ? 2 : undefined),
+      scaled: (cluster) => (cluster === '😀' ? 0.875 : undefined),
+    });
+    assert.deepStrictEqual(
+      [...main.querySelectorAll('code')].map((code) => code.innerHTML),
+      [
+        'a<span class="cell wide"><span style="font-size: 0.875em;">😀</span></span>b<span class="cell wide">中</span>',
+        'x😀',
+        'plain',
+      ],
+    );
+  });
+
   test('loads the images of a document again once the colors switch between light and dark, as its blocks are drawn anew in the new colors', async () => {
     await previewing(async ({ preview, show, turnDark }) => {
       const logo = images.url('docs/logo.png');

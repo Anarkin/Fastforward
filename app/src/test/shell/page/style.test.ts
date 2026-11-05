@@ -1625,6 +1625,26 @@ suite('Style', () => {
     looks(tab, { 'text-indent': '0' }, { pseudoElement: '::before' });
   });
 
+  test('counts a column of a code block in a Markdown preview as one character of its font, as it puts no spacing between them, so its boxes keep the code on its grid', () => {
+    looks(
+      withClass(
+        rendered(
+          createElement(
+            'div',
+            { className: 'markdown' },
+            createElement(
+              'pre',
+              null,
+              createElement('code', { className: 'shown' }, 'a'),
+            ),
+          ),
+        ),
+        'shown',
+      ),
+      { '--text-advance': '1ch' },
+    );
+  });
+
   test('draws a character in a box exactly as many columns of the text wide as it takes and a line tall, its glyph centered, as our terminal draws it on its grid, in the diff and the viewer alike, never making its line taller, as a shrunk emoji made a wrapped line of the diff two rows tall', () => {
     looks(cell('cell'), {
       display: 'inline-flex',
