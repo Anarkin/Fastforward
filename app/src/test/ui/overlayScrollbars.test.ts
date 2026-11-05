@@ -20,7 +20,10 @@ import { stylesheet } from '../fixtures';
 
 const none = () => null;
 
-const painted = () => new Promise((resolve) => setTimeout(resolve, 10));
+const painted = () =>
+  new Promise((resolve) =>
+    setTimeout(() => setTimeout(() => setTimeout(resolve))),
+  );
 
 suite('Overlay scrollbars', () => {
   test('follows what comes under a pointer that stays put, hiding the scrollbar of an area once something with nothing to scroll comes over it there, such as a message pinned by a click, once the frame is painted', async () => {
