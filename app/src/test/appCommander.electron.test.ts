@@ -257,6 +257,7 @@ suite('App commander', () => {
             folder: row.querySelector('.commander-icon .folder-icon') !== null,
             file: row.querySelector('.commander-icon .file-icon') !== null,
             loaded: image !== null && image.complete && image.naturalWidth > 0,
+            loading: image?.classList.contains('loading') === true,
           };
         }),
       );
@@ -429,9 +430,9 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         (await icons()).every(
-          (icon) => icon.folder || icon.file || icon.loaded,
+          (icon) => !icon.loading && (icon.folder || icon.file || icon.loaded),
         ),
-      'every row to have its icon',
+      'every row to have its icon, none still loading',
     );
     const drawn = await icons();
     assert.deepStrictEqual(
