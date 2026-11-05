@@ -14,6 +14,7 @@ import {
   savedSetting,
   sharedApp,
   viewSaved,
+  whitespaceShownSaved,
   wrapsSaved,
 } from './appFixtures';
 import { waitFor } from './fixtures';
@@ -385,6 +386,10 @@ suite('App', () => {
     assert.strictEqual(
       shown.rows.length,
       wrappedLines(paddedLine, wrapColumns(shown.width, shown.char)),
+    );
+    await waitFor(
+      () => wrapsSaved() && whitespaceShownSaved(),
+      'the choices to be saved',
     );
   });
 

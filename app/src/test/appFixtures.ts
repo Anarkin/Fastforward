@@ -231,7 +231,7 @@ export function savedSetting(name: string): unknown {
     : undefined;
 }
 
-function savedWrap(): unknown {
+function savedText(name: string): unknown {
   const settings: unknown = JSON.parse(
     fs.readFileSync(path.join(profile, 'settings.user.json'), 'utf8'),
   );
@@ -240,18 +240,25 @@ function savedWrap(): unknown {
       ? Reflect.get(settings, 'text')
       : undefined;
   return typeof text === 'object' && text !== null
-    ? Reflect.get(text, 'wordWrap')
+    ? Reflect.get(text, name)
     : undefined;
 }
 
 export function wrapsSaved(): boolean {
-  return (savedWrap() ?? defaultSettings().text.wordWrap) === true;
+  return (savedText('wordWrap') ?? defaultSettings().text.wordWrap) === true;
+}
+
+export function whitespaceShownSaved(): boolean {
+  return (
+    (savedText('showWhitespace') ?? defaultSettings().text.showWhitespace) ===
+    true
+  );
 }
 
 export function viewSaved(wordWrap: boolean, diffLayout: string): boolean {
   const defaults = defaultSettings();
   return (
-    (savedWrap() ?? defaults.text.wordWrap) === wordWrap &&
+    (savedText('wordWrap') ?? defaults.text.wordWrap) === wordWrap &&
     (savedSetting('diffLayout') ?? defaults.tools.git.diffLayout) === diffLayout
   );
 }
