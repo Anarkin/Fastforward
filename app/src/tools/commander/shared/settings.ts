@@ -5,6 +5,7 @@ export type SortColumn = (typeof sortColumns)[number];
 export interface Sort {
   readonly column: SortColumn;
   readonly descending: boolean;
+  readonly groupByColor: boolean;
 }
 
 export const sizedColumns = ['extension', 'size', 'date'] as const;
@@ -44,7 +45,8 @@ export function isSort(value: unknown): value is Sort {
     typeof value === 'object' &&
     value !== null &&
     sortColumns.some((column) => column === Reflect.get(value, 'column')) &&
-    typeof Reflect.get(value, 'descending') === 'boolean'
+    typeof Reflect.get(value, 'descending') === 'boolean' &&
+    typeof Reflect.get(value, 'groupByColor') === 'boolean'
   );
 }
 

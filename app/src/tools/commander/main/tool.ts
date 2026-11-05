@@ -375,10 +375,10 @@ export class CommanderTool implements Tool<'commander'> {
         return undefined;
       case 'sort':
         if (isSide(message.side) && isSort(message.sort)) {
-          const { column, descending } = message.sort;
+          const { column, descending, groupByColor } = message.sort;
           await this.access.saveSorts({
             ...this.access.settings().sort,
-            [message.side]: { column, descending },
+            [message.side]: { column, descending, groupByColor },
           });
           this.postSettings(page);
         }

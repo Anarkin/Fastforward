@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import {
   driveOf,
   ExtensionCell,
+  layoutMenu,
   Pane,
 } from '../../../../tools/commander/page/pane';
 import { rowsOf } from '../../../../tools/commander/page/listing';
@@ -21,7 +22,7 @@ const pane = (elevated: boolean, hidden: readonly boolean[]): PaneView => ({
   back: false,
   forward: false,
   elevated,
-  sort: { column: 'extension', descending: false },
+  sort: { column: 'extension', descending: false, groupByColor: false },
   rows: [],
   selected: undefined,
   marked: new Set(),
@@ -39,6 +40,8 @@ const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
         thumbnailSize={144}
         fileColors={new Map()}
         onLayout={noop}
+        canGroupByColor
+        onGroupByColor={noop}
         onThumbnail={noop}
         columns={{ extension: 10, size: 15, date: 16 }}
         drives={[]}
@@ -66,6 +69,46 @@ const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
     ),
   )?.[1];
 suite('Commander pane', () => {
+  test('lists the layouts and, past a line, grouping by color, checked while the side groups by it, and only while there are colors to group by', () => {
+    const chosen: string[] = [];
+    const items = layoutMenu({
+      layout: 'thumbnails',
+      groupByColor: true,
+      canGroupByColor: true,
+      onLayout: (layout) => chosen.push(layout),
+      onGroupByColor: () => chosen.push('grouped'),
+    });
+    assert.deepStrictEqual(
+      items.map((item) =>
+        'separator' in item
+          ? '---'
+          : [item.label, item.checked ?? false, item.disabled ?? false],
+      ),
+      [
+        [strings.commander.layouts.details, false, false],
+        [strings.commander.layouts.thumbnails, true, false],
+        '---',
+        [strings.commander.groupByColor, true, false],
+      ],
+    );
+    for (const item of items) {
+      if (!('separator' in item)) {
+        item.onClick?.();
+      }
+    }
+    assert.deepStrictEqual(chosen, ['details', 'thumbnails', 'grouped']);
+
+    const none = layoutMenu({
+      layout: 'details',
+      groupByColor: false,
+      canGroupByColor: false,
+      onLayout: noop,
+      onGroupByColor: noop,
+    }).at(-1);
+    assert.ok(none !== undefined && !('separator' in none));
+    assert.deepStrictEqual([none.checked, none.disabled], [false, true]);
+  });
+
   test('shows the drive a folder is on, whatever the case of its letter', () => {
     const drives = ['C:\\', 'D:\\'];
     assert.strictEqual(driveOf('C:\\', drives), 'C:\\');
@@ -150,7 +193,7 @@ suite('Commander pane', () => {
       ],
       true,
       true,
-      { column: 'extension', descending: false },
+      { column: 'extension', descending: false, groupByColor: false },
       new Set(['app']),
     );
     const [parent, plain, repository, file] = [

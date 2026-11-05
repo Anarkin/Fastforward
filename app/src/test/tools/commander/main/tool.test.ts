@@ -312,8 +312,8 @@ const hiddenIn = (listed: string, ...hidden: string[]) =>
 const defaultColumns: ColumnWidths = { extension: 10, size: 15, date: 16 };
 
 const defaultSorts: Sorts = {
-  left: { column: 'extension', descending: false },
-  right: { column: 'extension', descending: false },
+  left: { column: 'extension', descending: false, groupByColor: false },
+  right: { column: 'extension', descending: false, groupByColor: false },
 };
 
 const forged = (json: string): CommanderToHost => JSON.parse(json);
@@ -2244,34 +2244,39 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(iconsLoaded, [at('notes.txt')]);
   });
 
-  test('saves the order of the side whose header was clicked, keeping the other, and tells the page', async () => {
+  test('saves the order of the side whose header was clicked, or whose files are grouped by color, keeping the other, and tells the page', async () => {
     const { tool, page, send, saved } = commander({});
     tool.ready(page);
 
     await send({
       type: 'sort',
       side: 'right',
-      sort: { column: 'size', descending: true },
+      sort: { column: 'size', descending: true, groupByColor: true },
     });
     await send(
       forged(
-        '{ "type": "sort", "side": "right", "sort": { "column": "owner", "descending": true } }',
+        '{ "type": "sort", "side": "right", "sort": { "column": "owner", "descending": true, "groupByColor": false } }',
       ),
     );
     await send(
       forged(
-        '{ "type": "sort", "side": "right", "sort": { "column": "size", "descending": "yes" } }',
+        '{ "type": "sort", "side": "right", "sort": { "column": "size", "descending": "yes", "groupByColor": false } }',
       ),
     );
     await send(
       forged(
-        '{ "type": "sort", "side": "middle", "sort": { "column": "size", "descending": true } }',
+        '{ "type": "sort", "side": "right", "sort": { "column": "size", "descending": true, "groupByColor": "yes" } }',
+      ),
+    );
+    await send(
+      forged(
+        '{ "type": "sort", "side": "middle", "sort": { "column": "size", "descending": true, "groupByColor": false } }',
       ),
     );
 
     const sorted: Sorts = {
       left: defaultSorts.left,
-      right: { column: 'size', descending: true },
+      right: { column: 'size', descending: true, groupByColor: true },
     };
     assert.deepStrictEqual(saved, [sorted]);
     assert.deepStrictEqual(page.of('settings').at(-1)?.sort, sorted);

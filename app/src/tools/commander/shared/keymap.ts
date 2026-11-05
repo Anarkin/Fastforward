@@ -77,6 +77,9 @@ export const commanderKeymap = {
     'Mod+1': 'details',
     'Mod+2': 'thumbnails',
   } as const),
+  groupByColor: bind('Folders', strings.actions.groupByColor, {
+    'Ctrl+G': true,
+  }),
   moveAcross: bind(
     'Folders',
     strings.actions.moveAcross,

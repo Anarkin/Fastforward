@@ -15,8 +15,11 @@ import {
 import { rowsOf, selectionAfter, type Row, type Selection } from './listing';
 import {
   fileColorsByExtension,
+  fileGroupsByExtension,
   noFileColors,
+  noFileGroups,
   type FileColorsByExtension,
+  type FileGroupsByExtension,
 } from './fileColors';
 
 interface Listed {
@@ -73,6 +76,7 @@ export interface CommanderView {
   readonly layouts: Layouts;
   readonly thumbnailSize: number;
   readonly fileColors: FileColorsByExtension;
+  readonly fileGroups: FileGroupsByExtension;
   readonly active: Side;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
   readonly kept: ReadonlyMap<string, KeptTab>;
@@ -100,8 +104,8 @@ export const emptyView: CommanderView = {
   viewing: undefined,
   showHidden: true,
   sorts: {
-    left: { column: 'extension', descending: false },
-    right: { column: 'extension', descending: false },
+    left: { column: 'extension', descending: false, groupByColor: true },
+    right: { column: 'extension', descending: false, groupByColor: true },
   },
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
@@ -109,6 +113,7 @@ export const emptyView: CommanderView = {
   layouts: defaultLayouts,
   thumbnailSize: 144,
   fileColors: noFileColors,
+  fileGroups: noFileGroups,
   active: 'right',
   panes: { left: undefined, right: undefined },
   kept: new Map(),
@@ -153,7 +158,21 @@ function selectionIn(pane: PaneView | undefined): Selection | undefined {
 }
 
 function sameSort(one: Sort, other: Sort): boolean {
-  return one.column === other.column && one.descending === other.descending;
+  return (
+    one.column === other.column &&
+    one.descending === other.descending &&
+    one.groupByColor === other.groupByColor
+  );
+}
+
+function sameGroups(
+  one: FileGroupsByExtension,
+  other: FileGroupsByExtension,
+): boolean {
+  return (
+    one.size === other.size &&
+    [...one].every(([extension, group]) => other.get(extension) === group)
+  );
 }
 
 function relisted(
@@ -161,10 +180,11 @@ function relisted(
   sort: Sort,
   { folder, hidden, entries, parent, back, forward, elevated }: Listed,
   showHidden: boolean,
+  groups: FileGroupsByExtension,
   selected: string | undefined,
 ): PaneView {
   const repositories = repositoriesKept(pane, folder);
-  const rows = rowsOf(entries, parent, showHidden, sort, repositories);
+  const rows = rowsOf(entries, parent, showHidden, sort, repositories, groups);
   return {
     folder,
     hidden,
@@ -196,7 +216,15 @@ function settledPanes(
   const settled = (side: Side) => {
     const pane = panes[side];
     return (
-      pane && relisted(pane, view.sorts[side], pane, view.showHidden, undefined)
+      pane &&
+      relisted(
+        pane,
+        view.sorts[side],
+        pane,
+        view.showHidden,
+        view.fileGroups,
+        undefined,
+      )
     );
   };
   return { left: settled('left'), right: settled('right') };
@@ -242,20 +270,25 @@ export function reduceView(
         canElevate: action.canElevate,
         thumbnailSize: action.thumbnailSize,
         fileColors: fileColorsByExtension(action.fileColors),
+        fileGroups: fileGroupsByExtension(action.fileColors),
       };
+      const regrouped = !sameGroups(view.fileGroups, settled.fileGroups);
       return sides.reduce((next, side) => {
         const pane = view.panes[side];
+        const sort = action.sort[side];
         return pane &&
           (action.showHidden !== view.showHidden ||
-            !sameSort(pane.sort, action.sort[side]))
+            !sameSort(pane.sort, sort) ||
+            (sort.groupByColor && regrouped))
           ? withPane(
               next,
               side,
               relisted(
                 pane,
-                action.sort[side],
+                sort,
                 pane,
                 action.showHidden,
+                settled.fileGroups,
                 undefined,
               ),
             )
@@ -272,6 +305,7 @@ export function reduceView(
               view.panes[action.side]?.sort ?? view.sorts[action.side],
               action,
               view.showHidden,
+              view.fileGroups,
               action.selected,
             ),
           )
@@ -295,6 +329,7 @@ export function reduceView(
           view.showHidden,
           pane.sort,
           repositories,
+          view.fileGroups,
         ),
       });
     }
@@ -341,6 +376,7 @@ export function reduceView(
           view.showHidden,
           action.sort,
           pane.repositories,
+          view.fileGroups,
         ),
       });
     }

@@ -1,6 +1,7 @@
 import { matchesFilter } from '../../../shared/fileFilter';
 import { parentFolder, type Entry } from '../shared/protocol';
 import type { Sort, SortColumn } from '../shared/settings';
+import { noFileGroups, type FileGroupsByExtension } from './fileColors';
 
 export interface Row {
   readonly key: string;
@@ -42,19 +43,28 @@ function compareBy(column: SortColumn, a: Row, b: Row): number {
   }
 }
 
-function sortedRows(rows: readonly Row[], { column, descending }: Sort): Row[] {
+function sortedRows(
+  rows: readonly Row[],
+  { column, descending }: Sort,
+  groupOf: (row: Row) => number,
+): Row[] {
   const direction = descending ? -1 : 1;
   const sortsFolders = column !== 'extension' && column !== 'size';
   return rows.toSorted((a, b) => {
     const folders = a.entry?.folder === true;
     const byColumn = folders && !sortsFolders ? 0 : compareBy(column, a, b);
     return (
+      groupOf(a) - groupOf(b) ||
       direction *
-      (byColumn ||
-        collator.compare(a.entry?.name ?? '', b.entry?.name ?? '') ||
-        (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+        (byColumn ||
+          collator.compare(a.entry?.name ?? '', b.entry?.name ?? '') ||
+          (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
     );
   });
+}
+
+function colorGroupOf(groups: FileGroupsByExtension): (row: Row) => number {
+  return (row) => groups.get(row.extension.toLowerCase()) ?? groups.size;
 }
 
 export function rowsOf(
@@ -63,6 +73,7 @@ export function rowsOf(
   showHidden: boolean,
   sort: Sort,
   repositories: ReadonlySet<string> = noRepositories,
+  groups: FileGroupsByExtension = noFileGroups,
 ): Row[] {
   const shown = entries
     .filter((entry) => showHidden || !entry.hidden)
@@ -87,18 +98,20 @@ export function rowsOf(
     ...sortedRows(
       shown.filter((row) => row.entry.folder),
       sort,
+      () => 0,
     ),
     ...sortedRows(
       shown.filter((row) => !row.entry.folder),
       sort,
+      sort.groupByColor ? colorGroupOf(groups) : () => 0,
     ),
   ];
 }
 
 export function nextSort(sort: Sort, column: SortColumn): Sort {
   return sort.column === column
-    ? { column, descending: !sort.descending }
-    : { column, descending: false };
+    ? { ...sort, descending: !sort.descending }
+    : { ...sort, column, descending: false };
 }
 
 export interface Selection {

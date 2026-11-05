@@ -15,6 +15,7 @@ import {
   filteredRows,
   filteredSelection,
 } from '../../../../tools/commander/page/listing';
+import { fileGroupsByExtension } from '../../../../tools/commander/page/fileColors';
 import type { Sort } from '../../../../tools/commander/shared/settings';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
 
@@ -31,13 +32,40 @@ const entry = (name: string, extra: Partial<Entry> = {}): Entry => ({
 const folder = (name: string, extra: Partial<Entry> = {}): Entry =>
   entry(name, { folder: true, size: undefined, ...extra });
 
-const defaultSort: Sort = { column: 'extension', descending: false };
+const defaultSort: Sort = {
+  column: 'extension',
+  descending: false,
+  groupByColor: false,
+};
 
 const keys = (
   entries: readonly Entry[],
   sort: Sort = defaultSort,
-  { parent = false, hidden = true } = {},
-) => rowsOf(entries, parent, hidden, sort).map((row) => row.key);
+  { parent = false, hidden = true, groups = fileGroupsByExtension([]) } = {},
+) =>
+  rowsOf(entries, parent, hidden, sort, undefined, groups).map(
+    (row) => row.key,
+  );
+
+const colors = { light: '#000', dark: '#fff' };
+
+const groups = fileGroupsByExtension([
+  { extensions: ['exe', '.COM'], colors },
+  { extensions: ['md', 'txt', 'exe'], colors },
+  { extensions: ['png'], colors },
+]);
+
+const grouped = [
+  entry('b.txt', { size: 2 }),
+  entry('a.png', { size: 1 }),
+  folder('src'),
+  entry('z.exe', { size: 1 }),
+  entry('c.md', { size: 1 }),
+  entry('README', { size: 9 }),
+  entry('y.com', { size: 2 }),
+  entry('d.zip', { size: 3 }),
+  entry('IMAGE.PNG', { size: 5 }),
+];
 
 suite('Commander listing', () => {
   test('splits a file name at its last dot, but not a leading one or a folder name', () => {
@@ -86,6 +114,7 @@ suite('Commander listing', () => {
       keys([entry('file10.txt'), entry('File2.txt'), entry('file1.txt')], {
         column: 'name',
         descending: false,
+        groupByColor: false,
       }),
       ['file1.txt', 'File2.txt', 'file10.txt'],
     );
@@ -99,11 +128,15 @@ suite('Commander listing', () => {
       folder('new', { modified: 2 }),
     ];
     assert.deepStrictEqual(
-      keys(entries, { column: 'size', descending: false }),
+      keys(entries, { column: 'size', descending: false, groupByColor: false }),
       ['new', 'old', 'small.bin', 'big.bin'],
     );
     assert.deepStrictEqual(
-      keys(entries, { column: 'date', descending: true }, { parent: true }),
+      keys(
+        entries,
+        { column: 'date', descending: true, groupByColor: false },
+        { parent: true },
+      ),
       ['..', 'new', 'old', 'small.bin', 'big.bin'],
     );
   });
@@ -123,14 +156,98 @@ suite('Commander listing', () => {
     );
   });
 
+  test('groups the files by the color their extension has, in the order of the groups and the files of no group last, by the column within each group, the folders first as ever', () => {
+    assert.deepStrictEqual(
+      keys(
+        grouped,
+        { column: 'name', descending: false, groupByColor: true },
+        { parent: true, groups },
+      ),
+      [
+        '..',
+        'src',
+        'y.com',
+        'z.exe',
+        'b.txt',
+        'c.md',
+        'a.png',
+        'IMAGE.PNG',
+        'd.zip',
+        'README',
+      ],
+    );
+  });
+
+  test('reverses the column within each group of colors, keeping the groups in their order', () => {
+    assert.deepStrictEqual(
+      keys(
+        grouped,
+        { column: 'size', descending: true, groupByColor: true },
+        { groups },
+      ),
+      [
+        'src',
+        'y.com',
+        'z.exe',
+        'b.txt',
+        'c.md',
+        'IMAGE.PNG',
+        'a.png',
+        'README',
+        'd.zip',
+      ],
+    );
+  });
+
+  test('leaves the groups of colors out of the order until it is asked to group by them', () => {
+    assert.deepStrictEqual(
+      keys(
+        grouped,
+        { column: 'name', descending: false, groupByColor: false },
+        { groups },
+      ),
+      [
+        'src',
+        'a.png',
+        'b.txt',
+        'c.md',
+        'd.zip',
+        'IMAGE.PNG',
+        'README',
+        'y.com',
+        'z.exe',
+      ],
+    );
+  });
+
+  test('keeps grouping by color when it sorts by another column or reverses it', () => {
+    const sort: Sort = {
+      column: 'extension',
+      descending: false,
+      groupByColor: true,
+    };
+    assert.deepStrictEqual(nextSort(sort, 'name'), {
+      column: 'name',
+      descending: false,
+      groupByColor: true,
+    });
+    assert.deepStrictEqual(nextSort(sort, 'extension'), {
+      column: 'extension',
+      descending: true,
+      groupByColor: true,
+    });
+  });
+
   test('sorts by another column ascending, and by the same one again the other way', () => {
     assert.deepStrictEqual(nextSort(defaultSort, 'name'), {
       column: 'name',
       descending: false,
+      groupByColor: false,
     });
     assert.deepStrictEqual(nextSort(defaultSort, 'extension'), {
       column: 'extension',
       descending: true,
+      groupByColor: false,
     });
   });
 
@@ -237,12 +354,10 @@ suite('Commander listing', () => {
       'zeta',
       'a.txt',
     ]);
-    assert.deepStrictEqual(sorted({ column: 'extension', descending: true }), [
-      'zeta',
-      'beta',
-      'alpha',
-      'a.txt',
-    ]);
+    assert.deepStrictEqual(
+      sorted({ column: 'extension', descending: true, groupByColor: false }),
+      ['zeta', 'beta', 'alpha', 'a.txt'],
+    );
   });
 
   test('writes sizes in bytes with thousands grouped, and none for a folder', () => {

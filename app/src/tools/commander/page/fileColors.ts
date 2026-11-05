@@ -5,13 +5,36 @@ export type FileColorsByExtension = ReadonlyMap<string, string>;
 
 export const noFileColors: FileColorsByExtension = new Map();
 
+export type FileGroupsByExtension = ReadonlyMap<string, number>;
+
+export const noFileGroups: FileGroupsByExtension = new Map();
+
+function extensionKey(extension: string): string {
+  return extension.replace(/^\./, '').toLowerCase();
+}
+
+export function fileGroupsByExtension(
+  groups: readonly FileColor[],
+): FileGroupsByExtension {
+  const byExtension = new Map<string, number>();
+  groups.forEach(({ extensions }, group) => {
+    for (const extension of extensions) {
+      const key = extensionKey(extension);
+      if (!byExtension.has(key)) {
+        byExtension.set(key, group);
+      }
+    }
+  });
+  return byExtension;
+}
+
 export function fileColorsByExtension(
   groups: readonly FileColor[],
 ): FileColorsByExtension {
   const byExtension = new Map<string, string>();
   for (const { extensions, colors } of groups) {
     for (const extension of extensions) {
-      const key = extension.replace(/^\./, '').toLowerCase();
+      const key = extensionKey(extension);
       if (!byExtension.has(key)) {
         byExtension.set(key, `light-dark(${colors.light}, ${colors.dark})`);
       }

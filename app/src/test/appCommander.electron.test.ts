@@ -303,7 +303,7 @@ suite('App commander', () => {
     removeFolder(folder);
   });
 
-  test('lists the folder it was opened with on the right, the active side, folders first and then files by extension, with their sizes', async () => {
+  test('lists the folder it was opened with on the right, the active side, folders first and then files by their colors and by extension, those of no color last, with their sizes', async () => {
     await waitForFocus(
       right().locator('.virtual-rows'),
       'the list of the right side',
@@ -311,8 +311,8 @@ suite('App commander', () => {
     assert.deepStrictEqual(await rowNames(), [
       '..',
       'src',
-      'big.bin',
       'notes.txt',
+      'big.bin',
     ]);
     assert.strictEqual(
       await right()
@@ -3579,8 +3579,8 @@ suite('App commander', () => {
       return (
         JSON.stringify(sort) ===
         JSON.stringify({
-          left: { column: 'extension', descending: false },
-          right: { column: 'size', descending: false },
+          left: { column: 'extension', descending: false, groupByColor: true },
+          right: { column: 'size', descending: false, groupByColor: true },
         })
       );
     }, 'the order of the right side to be saved');

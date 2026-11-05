@@ -56,6 +56,7 @@ import {
 } from '../../../ui/icons';
 import { listMoveOf, moveInList } from '../../../ui/listMoves';
 import { MenuButton } from '../../../ui/menu';
+import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { keyPressed } from '../../../ui/shortcuts';
 import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
@@ -178,6 +179,35 @@ function TileImage({
   );
 }
 
+export function layoutMenu({
+  layout,
+  groupByColor,
+  canGroupByColor,
+  onLayout,
+  onGroupByColor,
+}: {
+  readonly layout: Layout;
+  readonly groupByColor: boolean;
+  readonly canGroupByColor: boolean;
+  readonly onLayout: (layout: Layout) => void;
+  readonly onGroupByColor: () => void;
+}): ContextMenuItem[] {
+  return [
+    ...layouts.map((each) => ({
+      label: strings.commander.layouts[each],
+      checked: each === layout,
+      onClick: () => onLayout(each),
+    })),
+    { separator: true },
+    {
+      label: strings.commander.groupByColor,
+      checked: groupByColor && canGroupByColor,
+      disabled: !canGroupByColor,
+      onClick: onGroupByColor,
+    },
+  ];
+}
+
 export function Pane({
   tab,
   side,
@@ -187,6 +217,8 @@ export function Pane({
   thumbnailSize,
   fileColors,
   onLayout,
+  canGroupByColor,
+  onGroupByColor,
   onThumbnail,
   columns,
   drives,
@@ -219,6 +251,8 @@ export function Pane({
   thumbnailSize: number;
   fileColors: FileColorsByExtension;
   onLayout: (layout: Layout) => void;
+  canGroupByColor: boolean;
+  onGroupByColor: () => void;
   onThumbnail: (
     name: string,
     box: number,
@@ -632,11 +666,13 @@ export function Pane({
               <MenuButton
                 title={strings.commander.layout}
                 label={strings.commander.layouts[layout]}
-                items={layouts.map((each) => ({
-                  label: strings.commander.layouts[each],
-                  checked: each === layout,
-                  onClick: () => onLayout(each),
-                }))}
+                items={layoutMenu({
+                  layout,
+                  groupByColor: pane?.sort.groupByColor ?? false,
+                  canGroupByColor,
+                  onLayout,
+                  onGroupByColor,
+                })}
               />
             </div>
             <SearchButton

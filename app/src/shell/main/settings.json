@@ -87,8 +87,16 @@
     "commander": {
       "showHidden": true,
       "sort": {
-        "left": { "column": "extension", "descending": false },
-        "right": { "column": "extension", "descending": false }
+        "left": {
+          "column": "extension",
+          "descending": false,
+          "groupByColor": true
+        },
+        "right": {
+          "column": "extension",
+          "descending": false,
+          "groupByColor": true
+        }
       },
       "columns": { "extension": 10, "size": 15, "date": 16 },
       "thumbnailSize": 144,

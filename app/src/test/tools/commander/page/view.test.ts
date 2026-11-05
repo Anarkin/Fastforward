@@ -7,7 +7,10 @@ import {
   type ViewAction,
 } from '../../../../tools/commander/page/view';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
-import { defaultLayouts } from '../../../../tools/commander/shared/settings';
+import {
+  defaultLayouts,
+  type FileColor,
+} from '../../../../tools/commander/shared/settings';
 
 const entry = (name: string, extra: Partial<Entry> = {}): Entry => ({
   name,
@@ -46,18 +49,30 @@ const shown = (view: CommanderView) => ({
   selected: view.panes.left?.selected,
 });
 
-const sortedBy = (left: 'name' | 'size', showHidden = true): ViewAction => ({
+const colors = { light: '#000', dark: '#fff' };
+
+const sortedBy = (
+  left: 'name' | 'size',
+  showHidden = true,
+  {
+    groupByColor = false,
+    fileColors = [],
+  }: {
+    readonly groupByColor?: boolean;
+    readonly fileColors?: readonly FileColor[];
+  } = {},
+): ViewAction => ({
   type: 'settings',
   showHidden,
   sort: {
-    left: { column: left, descending: false },
-    right: { column: 'extension', descending: false },
+    left: { column: left, descending: false, groupByColor },
+    right: { column: 'extension', descending: false, groupByColor: false },
   },
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
   canElevate: false,
   thumbnailSize: 144,
-  fileColors: [],
+  fileColors,
 });
 
 const folderEntry = (name: string) => entry(name, { folder: true });
@@ -120,8 +135,12 @@ suite('Commander view', () => {
         type: 'settings',
         showHidden: false,
         sort: {
-          left: { column: 'extension', descending: false },
-          right: { column: 'extension', descending: false },
+          left: { column: 'extension', descending: false, groupByColor: false },
+          right: {
+            column: 'extension',
+            descending: false,
+            groupByColor: false,
+          },
         },
         columns: { extension: 4, size: 15, date: 10 },
         defaultColumns: { extension: 10, size: 15, date: 16 },
@@ -148,12 +167,12 @@ suite('Commander view', () => {
       {
         type: 'sort',
         side: 'left',
-        sort: { column: 'size', descending: false },
+        sort: { column: 'size', descending: false, groupByColor: false },
       },
       {
         type: 'sort',
         side: 'left',
-        sort: { column: 'size', descending: true },
+        sort: { column: 'size', descending: true, groupByColor: false },
       },
     );
 
@@ -164,6 +183,7 @@ suite('Commander view', () => {
     assert.deepStrictEqual(view.panes.left?.sort, {
       column: 'size',
       descending: true,
+      groupByColor: false,
     });
   });
 
@@ -201,7 +221,45 @@ suite('Commander view', () => {
     assert.deepStrictEqual(view.panes.left?.sort, {
       column: 'size',
       descending: false,
+      groupByColor: false,
     });
+  });
+
+  test('groups the files of a side by their colors once its sort asks to, and again in the new order of the groups once the settings change them', () => {
+    const files = [entry('a.txt'), entry('b.exe'), entry('c.md')];
+    const exeFirst = [
+      { extensions: ['exe'], colors },
+      { extensions: ['txt'], colors },
+    ];
+    const view = run(
+      sortedBy('name', true, { fileColors: exeFirst }),
+      { type: 'show', tab: '1' },
+      listing('/work', files),
+    );
+    assert.deepStrictEqual(shown(view).rows, ['..', 'a.txt', 'b.exe', 'c.md']);
+
+    const grouped = reduceView(
+      view,
+      sortedBy('name', true, { groupByColor: true, fileColors: exeFirst }),
+    );
+    assert.deepStrictEqual(shown(grouped).rows, [
+      '..',
+      'b.exe',
+      'a.txt',
+      'c.md',
+    ]);
+    assert.deepStrictEqual(
+      shown(
+        reduceView(
+          grouped,
+          sortedBy('name', true, {
+            groupByColor: true,
+            fileColors: exeFirst.toReversed(),
+          }),
+        ),
+      ).rows,
+      ['..', 'a.txt', 'b.exe', 'c.md'],
+    );
   });
 
   test('views the file of a viewing tab instead of the sides, and stops once another tab or none is shown', () => {
