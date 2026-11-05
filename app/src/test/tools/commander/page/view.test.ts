@@ -33,6 +33,7 @@ const listing = (
   back: false,
   forward: false,
   elevated: false,
+  hidden: [],
   selected: undefined,
   ...extra,
 });

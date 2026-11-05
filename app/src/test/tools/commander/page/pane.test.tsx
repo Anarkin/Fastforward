@@ -8,8 +8,9 @@ import { noop } from '../../../fixtures';
 import { shareOf, sideToFocus } from '../../../../tools/commander/page/tool';
 import { JSDOM } from 'jsdom';
 
-const pane = (elevated: boolean): PaneView => ({
+const pane = (elevated: boolean, hidden: readonly boolean[]): PaneView => ({
   folder: 'C:\\Config.Msi',
+  hidden,
   entries: [],
   parent: true,
   back: false,
@@ -20,14 +21,14 @@ const pane = (elevated: boolean): PaneView => ({
   selected: undefined,
   marked: new Set(),
 });
-const header = (elevated: boolean) =>
-  /<span class="column-name">(.*?)C:\\Config\.Msi<\/span>/.exec(
+const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
+  /<span class="column-name path-title">(.*?)<\/span><div class="column-actions">/.exec(
     renderToStaticMarkup(
       <Pane
         tab="1"
         side="left"
         active
-        pane={pane(elevated)}
+        pane={pane(elevated, hidden)}
         layout="details"
         thumbnailSize={144}
         fileColors={new Map()}
@@ -88,10 +89,21 @@ suite('Commander pane', () => {
     assert.match(
       header(true) ?? '',
       new RegExp(
-        `class="elevated-mark" title="${strings.commander.readAsAdministrator}"`,
+        `^<span class="elevated-mark" title="${strings.commander.readAsAdministrator}">.*<span class="path-folder">`,
       ),
     );
-    assert.strictEqual(header(false), '');
+    assert.match(header(false) ?? '', /^<span class="path-folder">/);
+  });
+
+  test('dims each hidden folder of its path, as its row is, and no other', () => {
+    assert.strictEqual(
+      header(false, [false, true]),
+      '<span class="path-folder"><span class="path-part">C:\\</span></span><span class="path-name hidden">Config.Msi</span>',
+    );
+    assert.strictEqual(
+      header(false),
+      '<span class="path-folder"><span class="path-part">C:\\</span></span><span class="path-name">Config.Msi</span>',
+    );
   });
 
   test('splits the sides where the divider is dragged, leaving each some room, and evenly before it is laid out', () => {

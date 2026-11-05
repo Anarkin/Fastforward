@@ -26,6 +26,7 @@ const pane = (
     back: false,
     forward: false,
     elevated: false,
+    hidden: [],
     sort: { column: 'extension', descending: false },
     rows: [
       { key: '..', entry: undefined, base: '..', extension: '' },

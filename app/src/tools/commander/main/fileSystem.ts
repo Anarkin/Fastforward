@@ -6,9 +6,13 @@ export interface FileSystem {
   drives(): Promise<readonly string[]>;
 }
 
+export interface LocalFileSystem extends FileSystem {
+  hidden(file: string): Promise<boolean>;
+}
+
 export async function fileSystemFor(
   platform: NodeJS.Platform,
-): Promise<FileSystem> {
+): Promise<LocalFileSystem> {
   if (platform !== 'win32') {
     return nodeFileSystem;
   }

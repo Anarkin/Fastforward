@@ -45,6 +45,7 @@ import { SkeletonRows } from '../../../ui/skeleton';
 import { VirtualRows } from '../../../ui/virtualRows';
 import { tabSize } from '../../../ui/wordWrap';
 import { TerminalTool } from '../../../tools/terminal/page/tool';
+import { PathTitle } from '../../../tools/commander/page/pathTitle';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import {
   allWithClass,
@@ -483,6 +484,20 @@ function commanderRowColor(className: string): string | undefined {
   );
 }
 
+function pathColors(
+  hidden: readonly boolean[],
+  color?: string,
+): (string | undefined)[] {
+  const title = rendered(
+    createElement(PathTitle, { path: 'C:/cache/notes.txt', hidden, color }),
+  );
+  return [
+    cascaded(title, 'color'),
+    ...allWithClass(title, 'path-part').map((part) => cascaded(part, 'color')),
+    cascaded(withClass(title, 'path-name'), 'color'),
+  ];
+}
+
 suite('Style', () => {
   test("keeps the commit column's title clear of its buttons and the gaps between them", () => {
     const title = commitColumnTitle(0);
@@ -612,6 +627,43 @@ suite('Style', () => {
     assert.strictEqual(
       commanderRowColor('marked colored'),
       'var(--color-error-foreground)',
+    );
+  });
+
+  test('draws the path of a commander title in the font of its rows, each part in the color its own row has, the folders giving way to an ellipsis first', () => {
+    const title = rendered(
+      createElement(PathTitle, { path: 'C:/notes.txt', hidden: [] }),
+    );
+    looks(title, {
+      display: 'flex',
+      'font-family': 'var(--monospace-font-family)',
+      'font-size': 'var(--monospace-font-size)',
+    });
+    looks(withClass(title, 'path-folder'), {
+      flex: '0 1000 auto',
+      'min-width': '0',
+      overflow: 'hidden',
+      'text-overflow': 'ellipsis',
+    });
+    looks(withClass(title, 'path-name'), {
+      flex: '0 1 auto',
+      'min-width': '0',
+      overflow: 'hidden',
+      'text-overflow': 'ellipsis',
+    });
+    const foreground = 'var(--color-foreground)';
+    const muted = 'var(--muted-foreground)';
+    assert.deepStrictEqual(
+      [
+        pathColors([]),
+        pathColors([false, true, false], 'orange'),
+        pathColors([false, false, true], 'orange'),
+      ],
+      [
+        [foreground, undefined, undefined, undefined],
+        [foreground, undefined, muted, 'var(--file-color)'],
+        [foreground, undefined, undefined, muted],
+      ],
     );
   });
 

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Entry } from '../shared/protocol';
-import type { FileSystem } from './fileSystem';
+import type { LocalFileSystem } from './fileSystem';
 
 async function statsOf(
   file: string,
@@ -33,10 +33,11 @@ async function entryOf(folder: string, found: fs.Dirent): Promise<Entry> {
   };
 }
 
-export const nodeFileSystem: FileSystem = {
+export const nodeFileSystem: LocalFileSystem = {
   async list(folder) {
     const found = await fs.promises.readdir(folder, { withFileTypes: true });
     return Promise.all(found.map((each) => entryOf(folder, each)));
   },
   drives: () => Promise.resolve([]),
+  hidden: (file) => Promise.resolve(path.basename(file).startsWith('.')),
 };

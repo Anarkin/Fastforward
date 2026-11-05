@@ -38,12 +38,15 @@ import {
   useLanguageChoice,
 } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
+import { colorOfFileNamed, type FileColorsByExtension } from './fileColors';
+import { nameOf, PathTitle } from './pathTitle';
 
 export interface Viewing {
   readonly tab: string;
   readonly size: number | undefined;
   readonly version?: string;
   readonly binary?: boolean;
+  readonly hidden?: readonly boolean[];
   readonly detected?: TextEncoding;
   readonly error?: string;
 }
@@ -68,11 +71,13 @@ const modes: readonly {
 
 export function Viewer({
   file,
+  fileColors,
   viewing,
   post,
   listen,
 }: {
   file: string;
+  fileColors: FileColorsByExtension;
   viewing: Viewing | undefined;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
@@ -293,7 +298,11 @@ export function Viewer({
               </div>
             )}
           </div>
-          <span className="column-name">{file}</span>
+          <PathTitle
+            path={file}
+            hidden={viewing?.hidden ?? []}
+            color={colorOfFileNamed(nameOf(file), fileColors)}
+          />
           <div className="column-actions">
             <SearchButton
               title={strings.commander.findInFile}

@@ -95,6 +95,7 @@ export function CommanderTool({
             size: message.size,
             ...(message.version !== undefined && { version: message.version }),
             ...(message.binary !== undefined && { binary: message.binary }),
+            ...(message.hidden !== undefined && { hidden: message.hidden }),
             ...(message.detected !== undefined && {
               detected: message.detected,
             }),
@@ -223,6 +224,7 @@ export function CommanderTool({
           <Viewer
             key={view.tab}
             file={view.viewing}
+            fileColors={view.fileColors}
             viewing={viewed?.tab === view.tab ? viewed : undefined}
             post={post}
             listen={listenViewer}

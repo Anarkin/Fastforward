@@ -32,7 +32,8 @@ import {
   type ColumnWidths,
   type CommanderSettings,
 } from '../shared/settings';
-import type { FileSystem } from './fileSystem';
+import type { LocalFileSystem } from './fileSystem';
+import { pathParts } from '../shared/paths';
 import type { WatchFolder } from './watch';
 import {
   fillsThumbnail,
@@ -90,7 +91,7 @@ interface PdfPlaceStore {
 
 export interface CommanderAccess {
   readonly pdfPlaces: PdfPlaceStore;
-  readonly fileSystem: () => Promise<FileSystem>;
+  readonly fileSystem: () => Promise<LocalFileSystem>;
   readonly settings: () => CommanderSettings;
   readonly defaultColumns: () => ColumnWidths;
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
@@ -124,6 +125,7 @@ export interface CommanderAccess {
 
 interface Pane {
   folder: string;
+  hidden?: readonly boolean[];
   entries: readonly Entry[] | undefined;
   asked: number;
   history: readonly string[];
@@ -233,7 +235,7 @@ export class CommanderTool implements Tool<'commander'> {
       readonly stop: () => void;
     }
   >();
-  private fileSystem: Promise<FileSystem> | undefined;
+  private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
   private viewingsAsked = 0;
@@ -856,8 +858,10 @@ export class CommanderTool implements Tool<'commander'> {
     let version: string;
     let binary: boolean;
     let detected: TextEncoding | undefined;
+    let hidden: readonly boolean[];
     try {
       const stats = await fs.promises.stat(file);
+      hidden = await this.hiddenParts(file);
       size = stats.size;
       version = fileVersion(stats);
       const first = await firstBytes(file);
@@ -898,6 +902,7 @@ export class CommanderTool implements Tool<'commander'> {
                 size: stats.size,
                 version: fileVersion(stats),
                 binary,
+                hidden,
                 ...(detected !== undefined && { detected }),
               });
             }
@@ -918,6 +923,7 @@ export class CommanderTool implements Tool<'commander'> {
       size,
       version,
       binary,
+      hidden,
       ...(detected !== undefined && { detected }),
     });
   }
@@ -1356,6 +1362,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
       return;
     }
+    const hidden = await this.hiddenParts(folder);
     if (pane.asked !== asked || (how === 'refresh' && pane.folder !== folder)) {
       return;
     }
@@ -1370,6 +1377,7 @@ export class CommanderTool implements Tool<'commander'> {
       pane.at = history.length - 1;
     }
     pane.folder = folder;
+    pane.hidden = hidden;
     pane.entries = listing.entries;
     pane.elevated = listing.elevated;
     this.postListing(page, tab, side, pane, selected);
@@ -1437,6 +1445,7 @@ export class CommanderTool implements Tool<'commander'> {
         tab,
         side,
         folder: pane.folder,
+        hidden: pane.hidden ?? [],
         entries: pane.entries ?? [],
         parent: parentOf(pane.folder) !== undefined,
         elevated: pane.elevated === true,
@@ -1447,7 +1456,12 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private files(): Promise<FileSystem> {
+  private async hiddenParts(file: string): Promise<readonly boolean[]> {
+    const files = await this.files();
+    return Promise.all(pathParts(file).map((part) => files.hidden(part.path)));
+  }
+
+  private files(): Promise<LocalFileSystem> {
     this.fileSystem ??= this.access.fileSystem();
     return this.fileSystem;
   }

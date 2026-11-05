@@ -2,13 +2,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import koffi, { type LibraryHandle } from 'koffi';
 import type { Entry } from '../shared/protocol';
-import type { FileSystem } from './fileSystem';
+import type { LocalFileSystem } from './fileSystem';
 
 const listDirectory = 0x1;
 const shareAll = 0x7;
 const openExisting = 3;
 const backupSemantics = 0x02000000;
 const invalidHandle = 0xffff_ffff_ffff_ffffn;
+const invalidAttributes = 0xffff_ffff;
 
 const fullDirectoryInformation = 2;
 const noMoreFiles = 0x8000_0006 | 0;
@@ -136,7 +137,7 @@ async function failure(folder: string): Promise<Error> {
   return new Error(folder);
 }
 
-export function windowsFileSystem(): FileSystem {
+export function windowsFileSystem(): LocalFileSystem {
   const kernel32 = koffi.load('kernel32.dll');
   const ntdll = koffi.load('ntdll.dll');
   const createFile = kernel32.func(
@@ -147,6 +148,9 @@ export function windowsFileSystem(): FileSystem {
     'int32_t NtQueryDirectoryFile(void *handle, void *event, void *apc, void *context, void *status, void *page, uint32_t length, int kind, bool single, void *name, bool restart)',
   );
   const logicalDrives = kernel32.func('uint32_t GetLogicalDrives()');
+  const fileAttributes = kernel32.func(
+    'uint32_t GetFileAttributesW(const char16_t *name)',
+  );
 
   async function foundIn(folder: string): Promise<Found[]> {
     const handle = await called(
@@ -207,6 +211,17 @@ export function windowsFileSystem(): FileSystem {
         Array.from({ length: 26 }, (_, index) => index)
           .filter((index) => (mask & (1 << index)) !== 0)
           .map((index) => `${String.fromCharCode(65 + index)}:\\`),
+      );
+    },
+    async hidden(file) {
+      if (path.dirname(file) === file) {
+        return false;
+      }
+      const attributes = Number(
+        await called(fileAttributes, path.toNamespacedPath(file)),
+      );
+      return (
+        attributes !== invalidAttributes && (attributes & hiddenAttribute) !== 0
       );
     },
   };

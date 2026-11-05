@@ -59,6 +59,7 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
 import { fileColorOf, type FileColorsByExtension } from './fileColors';
+import { PathTitle } from './pathTitle';
 
 declare module 'react' {
   interface CSSProperties {
@@ -580,7 +581,7 @@ export function Pane({
               </div>
             )}
           </div>
-          <span className="column-name">
+          <PathTitle path={pane?.folder ?? ''} hidden={pane?.hidden ?? []}>
             {pane?.elevated && (
               <span
                 className="elevated-mark"
@@ -589,8 +590,7 @@ export function Pane({
                 <ShieldIcon />
               </span>
             )}
-            {pane?.folder}
-          </span>
+          </PathTitle>
           <div className="column-actions">
             <div className="commander-layout">
               <MenuButton

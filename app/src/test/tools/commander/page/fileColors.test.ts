@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  colorOfFileNamed,
   fileColorOf,
   fileColorsByExtension,
 } from '../../../../tools/commander/page/fileColors';
@@ -172,5 +173,12 @@ suite('Commander file colors', () => {
       fileColorOf(file('icon.svg'), colors),
       'light-dark(#00a, #00f)',
     );
+  });
+
+  test('colors a file by the extension of its name alone, as the viewer knows no more of it', () => {
+    assert.strictEqual(colorOfFileNamed('report.PDF', defaults), document);
+    assert.strictEqual(colorOfFileNamed('setup.exe', defaults), executable);
+    assert.strictEqual(colorOfFileNamed('.bashrc', defaults), undefined);
+    assert.strictEqual(colorOfFileNamed('Makefile', defaults), undefined);
   });
 });

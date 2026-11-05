@@ -1,0 +1,41 @@
+import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { PathTitle } from '../../../../tools/commander/page/pathTitle';
+
+const titled = (
+  path: string,
+  hidden: readonly boolean[] = [],
+  color?: string,
+) =>
+  renderToStaticMarkup(<PathTitle path={path} hidden={hidden} color={color} />);
+
+suite('The path of a commander title', () => {
+  test('shows the folders apart from the name, as the folders give way first when the path is too long', () => {
+    assert.strictEqual(
+      titled('C:\\Downloads\\notes.txt'),
+      '<span class="column-name path-title"><span class="path-folder"><span class="path-part">C:\\</span><span class="path-part">Downloads</span>\\</span><span class="path-name">notes.txt</span></span>',
+    );
+  });
+
+  test('names the root of a drive whole, as it has no folders', () => {
+    assert.strictEqual(
+      titled('C:\\'),
+      '<span class="column-name path-title"><span class="path-name">C:\\</span></span>',
+    );
+  });
+
+  test('dims each hidden part, folders and name alike, as each own row is, leaving the others and the separators as they are', () => {
+    assert.strictEqual(
+      titled('C:\\ProgramData\\cache\\.lock', [false, true, false, true]),
+      '<span class="column-name path-title"><span class="path-folder"><span class="path-part">C:\\</span><span class="path-part hidden">ProgramData</span>\\<span class="path-part">cache</span>\\</span><span class="path-name hidden">.lock</span></span>',
+    );
+  });
+
+  test('colors the name alone, as only a file has a color', () => {
+    assert.strictEqual(
+      titled('C:\\Downloads\\order.eml', [false, false, false], 'orange'),
+      '<span class="column-name path-title"><span class="path-folder"><span class="path-part">C:\\</span><span class="path-part">Downloads</span>\\</span><span class="path-name colored" style="--file-color:orange">order.eml</span></span>',
+    );
+  });
+});

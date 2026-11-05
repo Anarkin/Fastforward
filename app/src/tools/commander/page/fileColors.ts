@@ -20,13 +20,19 @@ export function fileColorsByExtension(
   return byExtension;
 }
 
+export function colorOfFileNamed(
+  name: string,
+  byExtension: FileColorsByExtension,
+): string | undefined {
+  const dot = name.lastIndexOf('.');
+  return dot <= 0
+    ? undefined
+    : byExtension.get(name.slice(dot + 1).toLowerCase());
+}
+
 export function fileColorOf(
   entry: Entry,
   byExtension: FileColorsByExtension,
 ): string | undefined {
-  const dot = entry.name.lastIndexOf('.');
-  if (entry.folder || dot <= 0) {
-    return undefined;
-  }
-  return byExtension.get(entry.name.slice(dot + 1).toLowerCase());
+  return entry.folder ? undefined : colorOfFileNamed(entry.name, byExtension);
 }

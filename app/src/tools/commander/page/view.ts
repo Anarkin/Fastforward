@@ -21,6 +21,7 @@ import {
 
 interface Listed {
   readonly folder: string;
+  readonly hidden: readonly boolean[];
   readonly entries: readonly Entry[];
   readonly parent: boolean;
   readonly back: boolean;
@@ -141,13 +142,14 @@ function sameSort(one: Sort, other: Sort): boolean {
 function relisted(
   pane: PaneView | undefined,
   sort: Sort,
-  { folder, entries, parent, back, forward, elevated }: Listed,
+  { folder, hidden, entries, parent, back, forward, elevated }: Listed,
   showHidden: boolean,
   selected: string | undefined,
 ): PaneView {
   const rows = rowsOf(entries, parent, showHidden, sort);
   return {
     folder,
+    hidden,
     entries,
     parent,
     back,

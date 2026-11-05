@@ -148,6 +148,44 @@
   color: var(--muted-foreground);
 }
 
+.path-title {
+  display: flex;
+  align-items: center;
+  color: var(--color-foreground);
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  letter-spacing: calc(var(--commander-advance) - 1ch);
+}
+
+.path-title .elevated-mark {
+  flex: none;
+}
+
+.path-folder,
+.path-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.path-folder {
+  flex: 0 1000 auto;
+}
+
+.path-name {
+  flex: 0 1 auto;
+}
+
+.path-name.colored {
+  color: var(--file-color);
+}
+
+.path-part.hidden,
+.path-name.hidden {
+  color: var(--muted-foreground);
+}
+
 .commander-pane.inactive .row.selected:not(:hover) {
   background: none;
 }

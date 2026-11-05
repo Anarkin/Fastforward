@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   fileSystemFor,
-  type FileSystem,
+  type LocalFileSystem,
 } from '../../../../tools/commander/main/fileSystem';
 import { nodeFileSystem } from '../../../../tools/commander/main/nodeFileSystem';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
@@ -15,7 +15,7 @@ const windows = process.platform === 'win32';
 
 const implementations: readonly (readonly [
   string,
-  () => Promise<FileSystem>,
+  () => Promise<LocalFileSystem>,
 ])[] = [
   ['Node', () => Promise.resolve(nodeFileSystem)],
   ...(windows ? [['Windows', () => fileSystemFor('win32')] as const] : []),
@@ -35,7 +35,7 @@ const modified = new Date('2026-05-21T10:48:00Z');
 
 suite.each(implementations)('The file system of %s', (name, make) => {
   let folder: string;
-  let fileSystem: FileSystem;
+  let fileSystem: LocalFileSystem;
 
   beforeEach(async () => {
     folder = tempFolder('file-system');
@@ -89,6 +89,25 @@ suite.each(implementations)('The file system of %s', (name, make) => {
         [hiddenName, true],
         ['shown.txt', false],
       ],
+    );
+  });
+
+  test('tells whether a file or folder is hidden, by its attribute on Windows and by a leading dot elsewhere, but never a missing one or the root of a drive, which Windows marks hidden', async () => {
+    const hiddenName = name === 'Windows' ? 'cache' : '.cache';
+    fs.mkdirSync(path.join(folder, hiddenName));
+    hide(path.join(folder, hiddenName));
+    fs.writeFileSync(path.join(folder, 'shown.txt'), '');
+
+    assert.deepStrictEqual(
+      await Promise.all(
+        [
+          hiddenName,
+          'shown.txt',
+          'missing.txt',
+          path.relative(folder, path.parse(folder).root),
+        ].map((each) => fileSystem.hidden(path.join(folder, each))),
+      ),
+      [true, false, false, false],
     );
   });
 

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Notice, Page, Tab } from '../../../../shell/main/shell';
 import type { Compared } from '../../../../shell/main/storage';
 import type { ToWebview } from '../../../../shell/shared/protocol';
-import type { FileSystem } from '../../../../tools/commander/main/fileSystem';
+import type { LocalFileSystem } from '../../../../tools/commander/main/fileSystem';
 import {
   childToward,
   CommanderTool,
@@ -45,6 +45,7 @@ import {
   fileVersion,
   viewedFileUrl,
 } from '../../../../tools/commander/shared/files';
+import { pathParts } from '../../../../tools/commander/shared/paths';
 import type { PdfPlace } from '../../../../shared/pdf';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
@@ -128,7 +129,7 @@ function commander(
   const thumbnails = new Map<string, Uint8Array>();
   const streamed = new Set<string>();
   const thumbnailsFull = { now: false };
-  const fileSystem: FileSystem = {
+  const fileSystem: LocalFileSystem = {
     list: (each) => {
       const found = listed[each];
       if (found === undefined) {
@@ -141,6 +142,7 @@ function commander(
         : Promise.resolve(found);
     },
     drives: () => Promise.resolve(drives),
+    hidden: (each) => Promise.resolve(path.basename(each).startsWith('.')),
   };
   const places = new Map<string, { place: PdfPlace; file: string }>();
   const tool = new CommanderTool({
@@ -282,6 +284,9 @@ function commander(
 }
 
 const tab: Tab = { id: '1', tool: 'commander' };
+
+const hiddenIn = (listed: string, ...hidden: string[]) =>
+  pathParts(listed).map((part) => hidden.includes(part.path));
 
 const defaultColumns: ColumnWidths = { extension: 10, size: 15, date: 16 };
 
@@ -531,6 +536,57 @@ suite('Commander tool', () => {
       assert.deepStrictEqual(watched(), [opened, root].toSorted());
     });
 
+    test('tells which folders of the path a side lists are hidden, each as its own row would be', async () => {
+      const cache = path.join(opened, '.cache');
+      const deep = path.join(cache, 'deep');
+      fs.mkdirSync(deep, { recursive: true });
+      const { tool, page, send } = commander({
+        [root]: [],
+        [opened]: [folder('.cache')],
+        [cache]: [folder('deep')],
+        [deep]: [file('notes.txt')],
+      });
+      await tool.show(page, { ...tab, root: deep });
+      await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+      await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+      assert.deepStrictEqual(
+        page
+          .of('listing')
+          .map((listing) => [listing.side, listing.folder, listing.hidden]),
+        [
+          ['left', root, hiddenIn(root)],
+          ['right', deep, hiddenIn(deep, cache)],
+          ['right', cache, hiddenIn(cache, cache)],
+          ['right', opened, hiddenIn(opened)],
+        ],
+      );
+      assert.ok(hiddenIn(deep, cache).at(-2));
+    });
+
+    test('tells which parts of the path of a file viewed are hidden', async () => {
+      const cache = path.join(opened, '.cache');
+      fs.mkdirSync(cache);
+      const notes = path.join(cache, '.notes.txt');
+      fs.writeFileSync(notes, 'one');
+      const { tool, page } = commander({});
+
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      });
+
+      assert.deepStrictEqual(
+        page.of('viewing').map((viewing) => viewing.hidden),
+        [
+          pathParts(notes).map(
+            (part) => part.path === cache || part.path === notes,
+          ),
+        ],
+      );
+    });
+
     test('says it could not open the root once even the root is gone, rather than moving up from it again and again', async () => {
       const { tool, page, notices } = commander({});
 
@@ -557,6 +613,7 @@ suite('Commander tool', () => {
           size: 19,
           version: fileVersion(fs.statSync(notes)),
           binary: false,
+          hidden: pathParts(notes).map(() => false),
         },
       ]);
 

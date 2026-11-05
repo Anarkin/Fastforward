@@ -228,6 +228,7 @@ export type CommanderToWebview =
       readonly size: number | undefined;
       readonly version?: string;
       readonly binary?: boolean;
+      readonly hidden?: readonly boolean[];
       readonly detected?: TextEncoding;
       readonly error?: string;
     }
@@ -277,6 +278,7 @@ export type CommanderToWebview =
       readonly tab: string;
       readonly side: Side;
       readonly folder: string;
+      readonly hidden: readonly boolean[];
       readonly entries: readonly Entry[];
       readonly parent: boolean;
       readonly back: boolean;
