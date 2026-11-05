@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
@@ -145,6 +145,102 @@ suite('Commander pane', () => {
         tickets[images.indexOf(named('waiting') ?? images[0])],
       ]);
     } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
+  test('shows the generic file icon for an icon that has not come within a moment, until it comes, and never for one that came at once', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const rows = rowsOf(
+        ['slow.exe', 'fast.exe'].map((name) => ({
+          name,
+          folder: false,
+          link: false,
+          hidden: false,
+          size: 1,
+          modified: 0,
+        })),
+        false,
+        true,
+        { column: 'name', descending: false, groupByColor: false },
+      );
+      await act(async () => {
+        root.render(
+          <>
+            {rows.map((row) => (
+              <span key={row.key} data-name={row.key}>
+                <RowIcon
+                  row={row}
+                  source={{
+                    tab: '1',
+                    side: 'left',
+                    folder: '/work',
+                    name: row.key,
+                  }}
+                  onDropIcon={noop}
+                />
+              </span>
+            ))}
+          </>,
+        );
+      });
+      const looks = (name: string) => {
+        const icon = main.querySelector(`[data-name="${name}"]`);
+        return {
+          generic: icon?.querySelector('svg') !== null,
+          loading: icon?.querySelector('img')?.classList.contains('loading'),
+        };
+      };
+      await act(async () => {
+        main
+          .querySelector('[data-name="fast.exe"] img')
+          ?.dispatchEvent(new dom.window.Event('load'));
+      });
+      assert.deepStrictEqual(looks('slow.exe'), {
+        generic: false,
+        loading: false,
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+      assert.deepStrictEqual(looks('slow.exe'), {
+        generic: true,
+        loading: true,
+      });
+      assert.deepStrictEqual(looks('fast.exe'), {
+        generic: false,
+        loading: false,
+      });
+      await act(async () => {
+        main
+          .querySelector('[data-name="slow.exe"] img')
+          ?.dispatchEvent(new dom.window.Event('load'));
+      });
+      assert.deepStrictEqual(looks('slow.exe'), {
+        generic: false,
+        loading: false,
+      });
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      vi.useRealTimers();
       Object.assign(globalThis, saved);
     }
   });

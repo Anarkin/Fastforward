@@ -158,6 +158,10 @@
   height: 16px;
 }
 
+.commander-icon .system-icon.loading {
+  display: none;
+}
+
 .commander-line > .commander-name {
   margin-left: calc(var(--commander-advance) - var(--commander-gap));
 }

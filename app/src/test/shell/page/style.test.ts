@@ -475,6 +475,17 @@ function tagHoleReach(tag: MarkupElement): number {
   return Number(hole[1]) + Number(hole[2]);
 }
 
+function commanderIconDisplay(className: string): string | undefined {
+  const icon = rendered(
+    createElement(
+      'span',
+      { className: 'commander-icon' },
+      createElement('img', { className }),
+    ),
+  );
+  return cascaded(withClass(icon, 'system-icon'), 'display');
+}
+
 function commanderRowColor(className: string): string | undefined {
   return cascaded(
     rendered(
@@ -637,6 +648,11 @@ suite('Style', () => {
       { focus: cancel },
     );
     looks(ok, asTool, { focus: ok });
+  });
+
+  test('hides the icon of a file of the commander while it loads, the generic one standing in for it, and shows it once it came', () => {
+    assert.strictEqual(commanderIconDisplay('system-icon loading'), 'none');
+    assert.notStrictEqual(commanderIconDisplay('system-icon'), 'none');
   });
 
   test('colors the files of the commander with the color of their group, the selected row too, dimming hidden rows in their own color and leaving marked rows red', () => {

@@ -86,39 +86,53 @@ export function driveOf(
   );
 }
 
+const genericIconDelayMs = 100;
+
 function SystemIcon({
   source,
+  generic,
   onDropIcon,
   onFailed,
 }: {
   source: IconSource;
+  generic: React.ReactNode;
   onDropIcon: (ticket: string) => void;
   onFailed: () => void;
 }) {
   const ticket = useId();
   const came = useRef(false);
-  useEffect(
-    () => () => {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!came.current) {
+        setSlow(true);
+      }
+    }, genericIconDelayMs);
+    return () => {
+      clearTimeout(timer);
       if (!came.current) {
         onDropIcon(ticket);
       }
-    },
-    [ticket, onDropIcon],
-  );
+    };
+  }, [ticket, onDropIcon]);
   return (
-    <img
-      className="system-icon"
-      src={iconUrl(source, ticket)}
-      alt=""
-      draggable={false}
-      onLoad={() => {
-        came.current = true;
-      }}
-      onError={() => {
-        came.current = true;
-        onFailed();
-      }}
-    />
+    <>
+      {slow && generic}
+      <img
+        className={`system-icon${slow ? ' loading' : ''}`}
+        src={iconUrl(source, ticket)}
+        alt=""
+        draggable={false}
+        onLoad={() => {
+          came.current = true;
+          setSlow(false);
+        }}
+        onError={() => {
+          came.current = true;
+          onFailed();
+        }}
+      />
+    </>
   );
 }
 
@@ -132,21 +146,20 @@ export function RowIcon({
   onDropIcon: (ticket: string) => void;
 }) {
   const [failed, setFailed] = useState(false);
+  const generic =
+    row.entry === undefined || row.entry.folder ? <FolderIcon /> : <FileIcon />;
   if (source !== undefined && !failed) {
     return (
       <SystemIcon
         key={iconUrl(source)}
         source={source}
+        generic={generic}
         onDropIcon={onDropIcon}
         onFailed={() => setFailed(true)}
       />
     );
   }
-  return row.entry === undefined || row.entry.folder ? (
-    <FolderIcon />
-  ) : (
-    <FileIcon />
-  );
+  return generic;
 }
 
 export function ExtensionCell({
