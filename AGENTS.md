@@ -4,6 +4,7 @@
 - @README.md
 - @docs/ARCHITECTURE.md
 - @docs/FEATURES-GIT.md
+- @docs/FEATURES-TERMINAL.md
 
 ## Protected files
 
