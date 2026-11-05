@@ -610,6 +610,46 @@ suite('App commander', () => {
     );
   });
 
+  test('centers the path of a file viewed in the room between the buttons of its header, rather than in the whole header, the buttons staying at its edges', async () => {
+    await select('notes');
+    await page.keyboard.press('F3');
+    await page.locator('.viewer .path-title').waitFor();
+    const placesOf = () =>
+      page.locator('.viewer .column-title').evaluate((header) => {
+        const box = (selector: string) => {
+          const found = header.querySelector(selector);
+          if (found === null) {
+            throw new Error(selector);
+          }
+          return found.getBoundingClientRect();
+        };
+        const start = box('.column-start');
+        const actions = box('.column-actions');
+        const title = box('.path-title');
+        const edges = header.getBoundingClientRect();
+        return {
+          offCenter: Math.abs(
+            (title.left + title.right) / 2 - (start.right + actions.left) / 2,
+          ),
+          start: start.left - edges.left,
+          actions: edges.right - actions.right,
+        };
+      });
+    await waitFor(
+      async () => (await placesOf()).offCenter <= 1,
+      'the path centered between the buttons',
+    );
+    const placed = await placesOf();
+    assert.deepStrictEqual(
+      [Math.round(placed.start), Math.round(placed.actions)],
+      [4, 4],
+    );
+
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+  });
+
   test('filters the files of a side on Ctrl+F or Alt and a letter by every word anywhere in their names, moving among them with the arrows as one types, and clears the filter on Esc or once a folder opens', async () => {
     const names = ['alpha-report.txt', 'beta.txt', 'Report-gamma.md'];
     for (const name of names) {
