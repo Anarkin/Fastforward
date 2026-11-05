@@ -86,8 +86,6 @@ export function driveOf(
   );
 }
 
-const genericIconDelayMs = 100;
-
 function SystemIcon({
   source,
   generic,
@@ -101,31 +99,26 @@ function SystemIcon({
 }) {
   const ticket = useId();
   const came = useRef(false);
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!came.current) {
-        setSlow(true);
-      }
-    }, genericIconDelayMs);
-    return () => {
-      clearTimeout(timer);
+  const [shown, setShown] = useState(false);
+  useEffect(
+    () => () => {
       if (!came.current) {
         onDropIcon(ticket);
       }
-    };
-  }, [ticket, onDropIcon]);
+    },
+    [ticket, onDropIcon],
+  );
   return (
     <>
-      {slow && generic}
+      {!shown && generic}
       <img
-        className={`system-icon${slow ? ' loading' : ''}`}
+        className={`system-icon${shown ? '' : ' loading'}`}
         src={iconUrl(source, ticket)}
         alt=""
         draggable={false}
         onLoad={() => {
           came.current = true;
-          setSlow(false);
+          setShown(true);
         }}
         onError={() => {
           came.current = true;

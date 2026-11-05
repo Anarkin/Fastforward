@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { suite, test, vi } from 'vitest';
+import { suite, test } from 'vitest';
 import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
@@ -149,7 +149,7 @@ suite('Commander pane', () => {
     }
   });
 
-  test('shows the generic file icon for an icon that has not come within a moment, until it comes, and never for one that came at once', async () => {
+  test('shows the generic file icon at once for an icon that has not come yet, until it comes', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {
       window: dom.window,
@@ -161,7 +161,6 @@ suite('Commander pane', () => {
       Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
     );
     Object.assign(globalThis, globals);
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     try {
       const { createRoot } = await import('react-dom/client');
       const main = dom.window.document.querySelector('main');
@@ -207,25 +206,22 @@ suite('Commander pane', () => {
           loading: icon?.querySelector('img')?.classList.contains('loading'),
         };
       };
+      assert.deepStrictEqual(looks('slow.exe'), {
+        generic: true,
+        loading: true,
+      });
       await act(async () => {
         main
           .querySelector('[data-name="fast.exe"] img')
           ?.dispatchEvent(new dom.window.Event('load'));
       });
-      assert.deepStrictEqual(looks('slow.exe'), {
+      assert.deepStrictEqual(looks('fast.exe'), {
         generic: false,
         loading: false,
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(100);
       });
       assert.deepStrictEqual(looks('slow.exe'), {
         generic: true,
         loading: true,
-      });
-      assert.deepStrictEqual(looks('fast.exe'), {
-        generic: false,
-        loading: false,
       });
       await act(async () => {
         main
@@ -240,7 +236,6 @@ suite('Commander pane', () => {
         root.unmount();
       });
     } finally {
-      vi.useRealTimers();
       Object.assign(globalThis, saved);
     }
   });
