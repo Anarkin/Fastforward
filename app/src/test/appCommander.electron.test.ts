@@ -1482,7 +1482,7 @@ suite('App commander', () => {
     }
   });
 
-  test('wraps a line of Chinese and emoji in a file viewed by how wide they are drawn, as the diff does, so every row ends inside the viewer with its mark right after its text', async () => {
+  test('wraps a line of Chinese and emoji in a file viewed by how wide they are drawn, as the diff does, so every row ends inside the viewer with its mark within half a column of its text, as macOS drew rows of emoji over a pixel off their measured widths', async () => {
     const line = `${'中文'.repeat(150)} ${'✅ ok '.repeat(60)}end`;
     fs.writeFileSync(
       path.join(opened, 'chinese.txt'),
@@ -1506,12 +1506,14 @@ suite('App commander', () => {
             range.setEnd(last, last.length);
           }
           const textEnd = range.getBoundingClientRect().right;
-          const mark = row.querySelector('.viewer-break');
+          const mark = row
+            .querySelector('.viewer-break')
+            ?.getBoundingClientRect();
           return {
             inside: textEnd <= row.getBoundingClientRect().right + 0.5,
             marked:
-              mark === null ||
-              Math.abs(mark.getBoundingClientRect().left - textEnd) < 1,
+              mark === undefined ||
+              Math.abs(mark.left - textEnd) < mark.width / 2,
           };
         }),
       );
