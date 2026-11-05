@@ -1299,7 +1299,8 @@ body.resizing {
 }
 
 .markdown pre code {
-  --text-advance: 1ch;
+  --text-advance: round(1ch, var(--device-pixel, 1px));
+  letter-spacing: calc(var(--text-advance) - 1ch);
   overflow-wrap: normal;
   white-space: pre;
 }

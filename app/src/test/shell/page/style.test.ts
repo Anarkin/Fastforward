@@ -1625,7 +1625,7 @@ suite('Style', () => {
     looks(tab, { 'text-indent': '0' }, { pseudoElement: '::before' });
   });
 
-  test('counts a column of a code block in a Markdown preview as one character of its font, as it puts no spacing between them, so its boxes keep the code on its grid', () => {
+  test('counts a column of a code block in a Markdown preview as one character of its font on whole device pixels, spacing its characters to match, as the viewer does, so its boxes keep the code on its grid, as a column of a fraction of a pixel let a row of boxes drift from it', () => {
     looks(
       withClass(
         rendered(
@@ -1641,7 +1641,10 @@ suite('Style', () => {
         ),
         'shown',
       ),
-      { '--text-advance': '1ch' },
+      {
+        '--text-advance': 'round(1ch, var(--device-pixel, 1px))',
+        'letter-spacing': 'calc(var(--text-advance) - 1ch)',
+      },
     );
   });
 

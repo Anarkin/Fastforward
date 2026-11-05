@@ -182,10 +182,11 @@ export function elementWidths(
     return undefined;
   }
   const font = fontOf(element);
+  const spacing = spacingOf(element);
   measurer.font = font;
-  const char = measurer.measureText('0').width;
+  const char = measurer.measureText('0').width + spacing;
   return char > 0
-    ? textWidths(char, font, spacingOf(element), table, () => measurer)
+    ? textWidths(char, font, spacing, table, () => measurer)
     : undefined;
 }
 
