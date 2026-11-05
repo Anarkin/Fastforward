@@ -75,7 +75,7 @@ import {
   type LineWords,
 } from '../../../../tools/git/page/wordDiff';
 import { lineKey } from '../../../../tools/git/page/find';
-import type { TextWidths } from '../../../../tools/git/page/overflow';
+import type { TextWidths } from '../../../../ui/textWidths';
 import { countingReads, fileChange, tagsWith } from '../../../fixtures';
 
 const wideColumnsIn = (row: string) => (index: number) =>
@@ -1475,6 +1475,35 @@ suite('Diff row heights', () => {
     assert.deepStrictEqual(
       rows.map((_, index) => taller.estimateSize(index)),
       [204, 17, 17, 34, 68],
+    );
+  });
+
+  test('estimates a row of code by how wide its characters are drawn once measured, as the browser wraps a line of Chinese or emoji by their widths', () => {
+    const rows = diffRows(
+      parsePatch(
+        [
+          'diff --git a/a.md b/a.md',
+          '--- a/a.md',
+          '+++ b/a.md',
+          '@@ -0,0 +1 @@',
+          '+中文中文中文',
+        ].join('\n'),
+      ),
+      new Map(),
+      undefined,
+    );
+    const wide = {
+      char: 10,
+      of: (cluster: string) => (/[中文]/.test(cluster) ? 20 : 10),
+    };
+    const line = rows.findIndex((row) => row.kind === 'line');
+    assert.strictEqual(
+      rowMeasures(rows, { left: 7, right: 7 }).estimateSize(line),
+      22,
+    );
+    assert.strictEqual(
+      rowMeasures(rows, { left: 7, right: 7 }, 22, 1, wide).estimateSize(line),
+      44,
     );
   });
 

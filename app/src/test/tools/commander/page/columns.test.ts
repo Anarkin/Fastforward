@@ -48,6 +48,29 @@ suite('Columns of the rows of a file viewed', () => {
     });
   });
 
+  test('counts a character as wide as it is drawn once measured, an emoji over two columns and a Chinese character two, as the diff does, so the part of a row shown sideways starts where its text is drawn', () => {
+    const wide = {
+      char: 10,
+      of: (cluster: string) =>
+        ({ '✅': 25, 中: 20, 文: 20, '👍🏽': 25 })[cluster] ??
+        cluster.length * 10,
+    };
+    assert.strictEqual(columnsOf('a✅b', wide), 4.5);
+    assert.strictEqual(columnsOf('a👍🏽b', wide), 4.5);
+    assert.strictEqual(columnsOf(`✅${tab}x`, wide), 5);
+    assert.strictEqual(columnAt('a✅b', 2, 0, wide), 3.5);
+    assert.deepStrictEqual(shownWithin('中文中文', 0, 4, 2, 6, wide), {
+      from: 1,
+      to: 3,
+      column: 2,
+    });
+    assert.deepStrictEqual(shownWithin('中文中文', 0, 4, 3, 6, wide), {
+      from: 1,
+      to: 3,
+      column: 2,
+    });
+  });
+
   test('keeps to the part of the row a row on screen shows', () => {
     assert.deepStrictEqual(shownWithin('abcdefghij', 2, 8, 0, 4), {
       from: 2,

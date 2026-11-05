@@ -14,8 +14,8 @@ import {
   sideArea,
   textColumn,
   visibleColumns,
-  type TextWidths,
 } from '../../../../tools/git/page/overflow';
+import type { TextWidths } from '../../../../ui/textWidths';
 
 const monospace = (char: number): TextWidths => ({
   char,

@@ -40,6 +40,7 @@ import { useTextView } from '../../../ui/textView';
 import { columnAt, columnsOf, shownWithin } from './columns';
 import { strings } from '../../../shared/strings';
 import { blankRuns } from '../../../ui/wordWrap';
+import { textWidths } from '../../../ui/textWidths';
 
 const rowsAboveMatch = 2;
 
@@ -267,12 +268,29 @@ export function TextBody({
   });
   const [screen, setScreen] = useState(1);
   const [columns, setColumns] = useState<number>();
+  const [font, setFont] = useState({ char: 0, family: '', spacing: 0 });
+  const onFont = useCallback(
+    (char: number, family: string, spacing: number) =>
+      setFont((last) =>
+        last.char === char && last.family === family && last.spacing === spacing
+          ? last
+          : { char, family, spacing },
+      ),
+    [],
+  );
+  const widths = useMemo(
+    () =>
+      font.char > 0
+        ? textWidths(font.char, font.family, font.spacing)
+        : undefined,
+    [font],
+  );
   const { wordWrap, showWhitespace } = useTextView().view;
   const wrapAt =
     wordWrap && columns !== undefined && columns > 1 ? columns - 1 : undefined;
   const rows = useMemo(
-    () => screenRows(read.rows, wrapAt, encoding),
-    [read.rows, wrapAt, encoding],
+    () => screenRows(read.rows, wrapAt, encoding, widths),
+    [read.rows, wrapAt, encoding, widths],
   );
   const loaded: Shown = {
     read: read.rows,
@@ -307,9 +325,9 @@ export function TextBody({
     if (lastRows === undefined) {
       return undefined;
     }
-    const ending = screenRows(lastRows, wrapAt, encoding);
+    const ending = screenRows(lastRows, wrapAt, encoding, widths);
     return ending[Math.max(0, ending.length - screen)]?.start ?? 0;
-  }, [lastRows, wrapAt, encoding, screen]);
+  }, [lastRows, wrapAt, encoding, screen, widths]);
   const ends = useMemo(
     () =>
       new RowRequests<true>((request) =>
@@ -388,7 +406,7 @@ export function TextBody({
         if (pending === undefined) {
           return;
         }
-        const arrived = screenRows(message.rows, wrapAt, encoding);
+        const arrived = screenRows(message.rows, wrapAt, encoding, widths);
         const before = current.current.rows[current.current.top];
         const index = pending.follow
           ? message.rows.findIndex((row) => row.start === before?.row.start)
@@ -403,7 +421,7 @@ export function TextBody({
               );
         setRead({ rows: message.rows, top: placeOf(arrived[top]) });
       }),
-    [listen, tab, screen, requests, wrapAt, encoding],
+    [listen, tab, screen, requests, wrapAt, encoding, widths],
   );
 
   const move = useCallback(
@@ -534,9 +552,12 @@ export function TextBody({
   const widest = useMemo(
     () =>
       whole
-        ? rows.reduce((most, row) => Math.max(most, columnsOf(row.row.text)), 0)
+        ? rows.reduce(
+            (most, row) => Math.max(most, columnsOf(row.row.text, widths)),
+            0,
+          )
         : undefined,
-    [rows, whole],
+    [rows, whole, widths],
   );
   const widthKey = `${tab}:${encoding}`;
   const [wide, setWide] = useState({ key: widthKey, columns: 0 });
@@ -565,6 +586,7 @@ export function TextBody({
           row.to,
           Math.max(0, across - sidewaysMargin),
           across + shownColumns + sidewaysMargin,
+          widths,
         )
       : { from: row.from, to: row.to, column: row.indent },
   );
@@ -599,6 +621,7 @@ export function TextBody({
       thumb={textThumb(loaded, screen, size ?? 0, estimate?.perRow, lastTop)}
       onScreen={setScreen}
       onColumns={setColumns}
+      onFont={onFont}
       move={move}
       jump={jump}
       error={viewing.error}
@@ -609,7 +632,7 @@ export function TextBody({
         matched === undefined || matchStart === undefined
           ? undefined
           : {
-              column: columnAt(matched.row.text, matchStart),
+              column: columnAt(matched.row.text, matchStart, 0, widths),
               asked: jumps,
             }
       }

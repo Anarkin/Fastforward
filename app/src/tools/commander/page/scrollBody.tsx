@@ -1,3 +1,4 @@
+import { fontOf, spacingOf } from '../../../ui/textWidths';
 import {
   memo,
   useCallback,
@@ -157,6 +158,7 @@ export function ScrollBody({
   thumb,
   onScreen,
   onColumns,
+  onFont,
   move,
   jump,
   error,
@@ -173,6 +175,7 @@ export function ScrollBody({
   thumb: Thumb | undefined;
   onScreen: (screen: number) => void;
   onColumns?: (columns: number) => void;
+  onFont?: (char: number, font: string, spacing: number) => void;
   move: (by: number) => void;
   jump: (share: number) => void;
   error: string | undefined;
@@ -264,6 +267,7 @@ export function ScrollBody({
       inset.current = parseFloat(style.paddingLeft) || 0;
       advance.current =
         (row.getBoundingClientRect().width - padding) / probeText.length || 1;
+      onFont?.(advance.current, fontOf(row), spacingOf(row));
       onColumns?.(
         Math.max(
           1,
@@ -275,7 +279,7 @@ export function ScrollBody({
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [onScreen, onColumns]);
+  }, [onScreen, onColumns, onFont]);
 
   const moved = (by: number) => {
     showBar();

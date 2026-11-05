@@ -11,9 +11,14 @@ import {
   wrappedLines,
   wrapStarts,
 } from '../../ui/wordWrap';
+import type { TextWidths } from '../../ui/textWidths';
 
 function space(column: number) {
   return { column, tab: false };
+}
+
+function drawnAs(columns: Readonly<Record<string, number>>): TextWidths {
+  return { char: 10, of: (cluster) => (columns[cluster] ?? 1) * 10 };
 }
 
 function drawn(row: string): (index: number) => number {
@@ -89,6 +94,26 @@ suite('Word wrap', () => {
     assert.deepStrictEqual(wrapStarts('log.info(strings.log)', 12), [0, 8, 17]);
     assert.deepStrictEqual(wrapStarts('        abcdefgh', 10), [0, 10, 12, 14]);
     assert.deepStrictEqual(wrapStarts('    one two three', 9), [0, 8, 12]);
+  });
+
+  test('wraps a line by how wide its characters are drawn once measured, an emoji over two columns and a Chinese character two, breaking between Chinese characters and emoji as the browser does in the diff, but not before closing punctuation, after opening punctuation, nor inside a character of several code points', () => {
+    const wide = drawnAs({
+      中: 2,
+      文: 2,
+      '。': 2,
+      '「': 2,
+      '✅': 2.29,
+      '👍🏽': 2.29,
+    });
+    assert.deepStrictEqual(wrapStarts('x 中文中文', 6, 0, wide), [0, 4]);
+    assert.deepStrictEqual(wrapStarts('ab ✅✅✅', 6, 0, wide), [0, 4]);
+    assert.deepStrictEqual(wrapStarts('中文。中文', 5, 0, wide), [0, 1, 3]);
+    assert.deepStrictEqual(wrapStarts('中「中文', 5, 0, wide), [0, 1, 3]);
+    assert.deepStrictEqual(wrapStarts('👍🏽👍🏽', 3, 0, wide), [0, 4]);
+    assert.deepStrictEqual(wrapStarts('中文中文', 3, 0, wide), [0, 1, 2, 3]);
+    assert.deepStrictEqual(wrapStarts('abcdefgh', 4, 0, wide), [0, 4]);
+    assert.deepStrictEqual(wrapStarts('abc 中', 5, 0, wide), [0, 4]);
+    assert.strictEqual(wrappedLines('x 中文中文', 6, wide), 2);
   });
 
   test('never starts a row between the halves of a character outside the basic plane', () => {

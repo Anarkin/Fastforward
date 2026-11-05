@@ -7,6 +7,7 @@ import {
   type RowBreak,
 } from '../../../ui/wordWrap';
 import type { FindMark } from './findMarks';
+import { columnsOf, type TextWidths } from '../../../ui/textWidths';
 
 export interface ScreenRow {
   readonly start: number;
@@ -64,12 +65,13 @@ function rowsOf(
   columns: number | undefined,
   encoding: TextEncoding,
   continued: boolean,
+  widths: TextWidths | undefined,
 ): ScreenRow[] {
   const { text } = row;
   const indent =
     columns === undefined || continued ? 0 : wrapIndent(text, columns);
   const starts =
-    columns === undefined ? [0] : wrapStarts(text, columns, indent);
+    columns === undefined ? [0] : wrapStarts(text, columns, indent, widths);
   const breaks =
     columns === undefined || (starts.length === 1 && row.cut !== true)
       ? []
@@ -77,7 +79,7 @@ function rowsOf(
           text,
           row.cut === true ? [...starts, text.length] : starts,
           columns - 1,
-          undefined,
+          widths && ((part: string) => columnsOf(part, widths)),
           indent,
         );
   let start = row.start;
@@ -108,6 +110,7 @@ const wrapped = new WeakMap<
   {
     readonly columns: number | undefined;
     readonly encoding: TextEncoding;
+    readonly widths: TextWidths | undefined;
     readonly shown: ScreenRow[];
   }
 >();
@@ -116,19 +119,28 @@ export function screenRows(
   rows: readonly TextRow[],
   columns: number | undefined,
   encoding: TextEncoding,
+  widths?: TextWidths,
 ): ScreenRow[] {
   const known = wrapped.get(rows);
   if (
     known !== undefined &&
     known.columns === columns &&
-    known.encoding === encoding
+    known.encoding === encoding &&
+    known.widths === widths
   ) {
     return known.shown;
   }
   const shown = rows.flatMap((row, index) =>
-    rowsOf(row, index, columns, encoding, rows[index - 1]?.cut === true),
+    rowsOf(
+      row,
+      index,
+      columns,
+      encoding,
+      rows[index - 1]?.cut === true,
+      widths,
+    ),
   );
-  wrapped.set(rows, { columns, encoding, shown });
+  wrapped.set(rows, { columns, encoding, widths, shown });
   return shown;
 }
 

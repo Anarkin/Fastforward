@@ -102,7 +102,6 @@ import { useTextView } from '../../../ui/textView';
 import {
   areaColumns,
   codePadding,
-  columnsOf,
   hiddenChanges,
   inlineArea,
   lineWidth,
@@ -116,8 +115,14 @@ import {
   textColumn,
   type Sideways,
   type TextArea,
-  type TextWidths,
 } from './overflow';
+import {
+  columnsOf,
+  fontOf,
+  spacingOf,
+  textWidths,
+  type TextWidths,
+} from '../../../ui/textWidths';
 
 export interface WholeFile {
   readonly path: string;
@@ -235,16 +240,20 @@ function wrappedHeight(
   row: CodeRow,
   columns: WrapColumns,
   lineHeight: number,
+  widths: TextWidths | undefined,
 ): number {
   const lines =
     row.kind === 'split'
       ? Math.max(
-          row.left ? wrappedLines(row.left.line.text, columns.left) : 1,
-          row.right ? wrappedLines(row.right.line.text, columns.right) : 1,
+          row.left ? wrappedLines(row.left.line.text, columns.left, widths) : 1,
+          row.right
+            ? wrappedLines(row.right.line.text, columns.right, widths)
+            : 1,
         )
       : wrappedLines(
           row.kind === 'line' ? row.line.text : row.text,
           columns.left,
+          widths,
         );
   return lines * lineHeight;
 }
@@ -500,6 +509,7 @@ interface RowMeasures {
   readonly columns: WrapColumns | undefined;
   readonly lineHeight: number;
   readonly ratio: number;
+  readonly widths: TextWidths | undefined;
 }
 
 const measuresOfRows = new WeakMap<readonly DiffRow[], RowMeasures>();
@@ -510,6 +520,7 @@ export function rowMeasures(
   columns?: WrapColumns,
   lineHeight = uniformHeight,
   ratio = 1,
+  widths?: TextWidths,
 ): RowMeasures {
   let measures = measuresOfRows.get(rows);
   if (
@@ -517,9 +528,10 @@ export function rowMeasures(
     measures.columns?.left !== columns?.left ||
     measures.columns?.right !== columns?.right ||
     measures.lineHeight !== lineHeight ||
-    measures.ratio !== ratio
+    measures.ratio !== ratio ||
+    measures.widths !== widths
   ) {
-    measures = measuresOf(rows, columns, lineHeight, ratio);
+    measures = measuresOf(rows, columns, lineHeight, ratio, widths);
     measuresOfRows.set(rows, measures);
   }
   return measures;
@@ -530,6 +542,7 @@ function measuresOf(
   columns: WrapColumns | undefined,
   lineHeight: number,
   ratio: number,
+  widths: TextWidths | undefined,
 ): RowMeasures {
   const generation = wrapGeneration++;
   const wrapped: number[] = [];
@@ -538,7 +551,7 @@ function measuresOf(
       const row = rows[index];
       if (isCode(row)) {
         return columns
-          ? (wrapped[index] ??= wrappedHeight(row, columns, lineHeight))
+          ? (wrapped[index] ??= wrappedHeight(row, columns, lineHeight, widths))
           : lineHeight;
       }
       const kind = row.kind;
@@ -561,6 +574,7 @@ function measuresOf(
     columns,
     lineHeight,
     ratio,
+    widths,
   };
 }
 
@@ -1711,17 +1725,6 @@ export function wordPadding(line: Edges, text: Edges, scale: number): Edges {
 
 const unpadded: Edges = { top: 0, bottom: 0 };
 
-function fontOf(element: HTMLElement): string {
-  const { fontStyle, fontWeight, fontSize, fontFamily } =
-    getComputedStyle(element);
-  return `${fontStyle} ${fontWeight} ${fontSize} ${fontFamily}`;
-}
-
-function spacingOf(element: HTMLElement): number {
-  const spacing = parseFloat(getComputedStyle(element).letterSpacing);
-  return Number.isFinite(spacing) ? spacing : 0;
-}
-
 const sideSnaps: readonly React.CSSProperties[] = [
   { '--diff-side-snap': 'var(--diff-snap-left)' },
   { '--diff-side-snap': 'var(--diff-snap-right)' },
@@ -1800,48 +1803,6 @@ function sameSnap(one: CodeSnap, other: CodeSnap): boolean {
 function lineHeightOf(line: HTMLElement): number {
   const height = parseFloat(getComputedStyle(line).lineHeight);
   return height > 0 ? height : uniformHeight;
-}
-
-interface TextMeasurer {
-  font: string;
-  measureText(text: string): { readonly width: number };
-}
-
-function canvasMeasurer(): TextMeasurer | null {
-  return new OffscreenCanvas(0, 0).getContext('2d');
-}
-
-export function textWidths(
-  char: number,
-  font: string,
-  spacing: number,
-  measurer: () => TextMeasurer | null = canvasMeasurer,
-): TextWidths {
-  const drawn = new Map<string, number>();
-  let context: TextMeasurer | null | undefined;
-  const measure = (cluster: string) => {
-    if (context === undefined) {
-      context = measurer();
-      if (context) {
-        context.font = font;
-      }
-    }
-    return context
-      ? context.measureText(cluster).width + spacing
-      : cluster.length * char;
-  };
-  return {
-    char,
-    of: (cluster) => {
-      const known = drawn.get(cluster);
-      if (known !== undefined) {
-        return known;
-      }
-      const width = measure(cluster);
-      drawn.set(cluster, width);
-      return width;
-    },
-  };
 }
 
 export const TextProbe = memo(function TextProbe({
@@ -2209,6 +2170,7 @@ export function DiffView({
       wordWrap ? (columns ?? unmeasured) : undefined,
       lineHeight,
       scale,
+      widths,
     ),
     overscan: rowOverscan(dragged),
     observeElementOffset: observeOffset,

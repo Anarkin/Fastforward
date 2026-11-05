@@ -1,3 +1,5 @@
+import type { TextWidths } from './textWidths';
+
 export const tabSize = 4;
 
 export function tabStop(column: number): number {
@@ -118,11 +120,112 @@ function startRowAt(starts: number[], text: string, at: number): void {
   }
 }
 
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+const wideBreaking =
+  /[\p{Ideographic}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Extended_Pictographic}]/u;
+
+const keptBeforeNext = /[（「『【〔〈《［｛〘〖]$/u;
+
+const keptAfterPrevious = /^[）」』】〕〉》］｝〙〗。、，．！？：；]/u;
+
+function breaksBetween(before: string, after: string): boolean {
+  return (
+    (wideBreaking.test(before) || wideBreaking.test(after)) &&
+    !keptBeforeNext.test(before) &&
+    !keptAfterPrevious.test(after)
+  );
+}
+
+const nonAscii = /[^\0-\x7f]/;
+
+interface Cluster {
+  readonly start: number;
+  readonly text: string;
+  readonly columns: number;
+}
+
+function measuredStarts(
+  text: string,
+  columns: number,
+  indent: number,
+  widths: TextWidths,
+): number[] {
+  const clusters: Cluster[] = Array.from(
+    graphemes.segment(text),
+    ({ segment, index }) => ({
+      start: index,
+      text: segment,
+      columns: nonAscii.test(segment)
+        ? widths.of(segment) / widths.char
+        : segment.length,
+    }),
+  );
+  const blank = (at: number) =>
+    clusters[at].text === ' ' || clusters[at].text === '\t';
+  const breaksAhead = (at: number) =>
+    breaksAt(text, clusters[at].start) ||
+    breaksBetween(clusters[at - 1].text, clusters[at].text);
+  const starts = [0];
+  let column = 0;
+  let rowStart = indent;
+  let at = 0;
+  while (at < clusters.length) {
+    let end = at;
+    while (
+      end < clusters.length &&
+      !blank(end) &&
+      (end === at || !breaksAhead(end))
+    ) {
+      end++;
+    }
+    let width = 0;
+    for (let each = at; each < end; each++) {
+      width += clusters[each].columns;
+    }
+    if (width > 0 && column > rowStart && column + width > columns) {
+      starts.push(clusters[at].start);
+      column = indent;
+      rowStart = indent;
+    }
+    let from = at;
+    while (column + width > columns && from < end) {
+      let fits = from;
+      let used = 0;
+      while (fits < end && column + used + clusters[fits].columns <= columns) {
+        used += clusters[fits].columns;
+        fits++;
+      }
+      if (fits === from) {
+        used = clusters[from].columns;
+        fits = from + 1;
+      }
+      if (fits === end) {
+        break;
+      }
+      starts.push(clusters[fits].start);
+      column = indent;
+      rowStart = indent;
+      width -= used;
+      from = fits;
+    }
+    column += width;
+    for (at = end; at < clusters.length && blank(at); at++) {
+      column = clusters[at].text === '\t' ? tabStop(column) : column + 1;
+    }
+  }
+  return starts;
+}
+
 export function wrapStarts(
   text: string,
   columns: number,
   indent = wrapIndent(text, columns),
+  widths?: TextWidths,
 ): number[] {
+  if (widths !== undefined && widths.char > 0 && nonAscii.test(text)) {
+    return measuredStarts(text, columns, indent, widths);
+  }
   if (text.length <= columns && !text.includes('\t')) {
     return [0];
   }
@@ -159,8 +262,12 @@ export function wrapStarts(
   return starts;
 }
 
-export function wrappedLines(text: string, columns: number): number {
-  return wrapStarts(text, columns).length;
+export function wrappedLines(
+  text: string,
+  columns: number,
+  widths?: TextWidths,
+): number {
+  return wrapStarts(text, columns, undefined, widths).length;
 }
 
 const maxMarkedRows = 200;

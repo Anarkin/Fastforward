@@ -9,6 +9,11 @@ import {
   screenRows,
 } from '../../../../tools/commander/page/screenRows';
 
+const wide = {
+  char: 10,
+  of: (cluster: string) => (/[中文]/.test(cluster) ? 20 : 10),
+};
+
 const spans = (
   row: { start: number; end: number; text: string },
   encoding: Parameters<typeof screenRows>[2],
@@ -136,7 +141,7 @@ suite('Rows of a file viewed as the screen shows them', () => {
     );
   });
 
-  test('wraps the rows read once for as many as ask for them in the same columns and encoding, as rows of megabyte lines take long to wrap', () => {
+  test('wraps the rows read once for as many as ask for them in the same columns, encoding and widths, as rows of megabyte lines take long to wrap', () => {
     const rows = [{ start: 0, end: 12, text: 'one two three' }];
     const wrapped = screenRows(rows, 6, 'utf-8');
 
@@ -144,6 +149,21 @@ suite('Rows of a file viewed as the screen shows them', () => {
     assert.notStrictEqual(screenRows(rows, 7, 'utf-8'), wrapped);
     assert.notStrictEqual(screenRows(rows, 6, 'windows-1252'), wrapped);
     assert.notStrictEqual(screenRows([...rows], 6, 'utf-8'), wrapped);
+    assert.notStrictEqual(screenRows(rows, 6, 'utf-8', wide), wrapped);
+  });
+
+  test('wraps a row by how wide its characters are drawn once measured, as the diff does, marking where each row ends and the spaces hanging there by those widths', () => {
+    const rows = [{ start: 0, end: 30, text: '中文 中文中文' }];
+    assert.deepStrictEqual(
+      screenRows(rows, 6, 'utf-8', wide).map(
+        ({ from, to, breakAt, hanging }) => [from, to, breakAt, hanging],
+      ),
+      [
+        [0, 3, 5, [{ column: 4, tab: false }]],
+        [3, 6, 6, []],
+        [6, 7, undefined, []],
+      ],
+    );
   });
 
   test('finds the first row on screen of a row read, and the one that holds a character or a byte of it, never one of the next row read', () => {

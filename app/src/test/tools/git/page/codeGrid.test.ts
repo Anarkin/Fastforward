@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { codeSnapOf, textWidths } from '../../../../tools/git/page/diffView';
+import { codeSnapOf } from '../../../../tools/git/page/diffView';
+import { textWidths } from '../../../../ui/textWidths';
 
 function measuring(widths: Readonly<Record<string, number>>) {
   return () => ({

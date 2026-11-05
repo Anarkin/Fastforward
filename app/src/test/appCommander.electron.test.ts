@@ -1482,6 +1482,65 @@ suite('App commander', () => {
     }
   });
 
+  test('wraps a line of Chinese and emoji in a file viewed by how wide they are drawn, as the diff does, so every row ends inside the viewer with its mark right after its text', async () => {
+    const line = `${'中文'.repeat(150)} ${'✅ ok '.repeat(60)}end`;
+    fs.writeFileSync(
+      path.join(opened, 'chinese.txt'),
+      ['short', line, 'after'].join(String.fromCharCode(10)),
+    );
+    const rows = page.locator('.viewer-rows .viewer-row');
+    const laidOut = () =>
+      page.locator('.viewer-body').evaluate((body) =>
+        [...body.querySelectorAll('.viewer-rows .viewer-row')].map((row) => {
+          const texts: Text[] = [];
+          const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (node instanceof Text && node.length > 0) {
+              texts.push(node);
+            }
+          }
+          const last = texts.at(-1);
+          const range = document.createRange();
+          if (last !== undefined) {
+            range.setStart(last, last.length - 1);
+            range.setEnd(last, last.length);
+          }
+          const textEnd = range.getBoundingClientRect().right;
+          const mark = row.querySelector('.viewer-break');
+          return {
+            inside: textEnd <= row.getBoundingClientRect().right + 0.5,
+            marked:
+              mark === null ||
+              Math.abs(mark.getBoundingClientRect().left - textEnd) < 1,
+          };
+        }),
+      );
+    try {
+      await select('chinese');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()) === 'short',
+        'the first row',
+      );
+      await waitFor(async () => (await rows.count()) > 4, 'the line to wrap');
+      const shown = await laidOut();
+      assert.deepStrictEqual(
+        shown,
+        shown.map(() => ({ inside: true, marked: true })),
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'chinese.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('chinese.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
   test('scrolls a file viewed sideways while its lines are not wrapped, on its overlay scrollbar, Shift and the wheel, or Left and Right, keeping the width of the widest row seen as it scrolls away, drawing only the columns near the screen yet copying rows whole, and brings a match off to the side into view', async () => {
     const long = `start ${'x'.repeat(600)} found`;
     fs.writeFileSync(
