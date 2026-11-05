@@ -172,7 +172,16 @@
 }
 
 .row.commander-row.hidden {
-  color: var(--muted-foreground);
+  color: color-mix(
+    in srgb,
+    var(--file-color, var(--color-foreground)) var(--color-hidden-file),
+    transparent
+  );
+}
+
+.row.commander-line.hidden .commander-icon,
+.row.commander-tile.hidden .commander-thumbnail {
+  opacity: var(--color-hidden-file);
 }
 
 .path-title {
@@ -210,7 +219,11 @@
 
 .path-part.hidden,
 .path-name.hidden {
-  color: var(--muted-foreground);
+  color: color-mix(
+    in srgb,
+    var(--file-color, var(--color-foreground)) var(--color-hidden-file),
+    transparent
+  );
 }
 
 .commander-pane.inactive .row.selected:not(:hover) {

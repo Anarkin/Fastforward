@@ -93,6 +93,32 @@ const savedSetting = (
     : undefined;
 };
 
+const hiding = (element: Locator) =>
+  element.evaluate((shown) => {
+    const look = () => {
+      const icon = shown.querySelector('.commander-icon');
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d', {
+        willReadFrequently: true,
+      });
+      if (context === null) {
+        throw new Error('no canvas');
+      }
+      context.fillStyle = getComputedStyle(shown).color;
+      context.fillRect(0, 0, 1, 1);
+      return {
+        color: [...context.getImageData(0, 0, 1, 1).data],
+        icon:
+          icon === null ? undefined : Number(getComputedStyle(icon).opacity),
+      };
+    };
+    const before = look();
+    shown.classList.add('hidden');
+    const after = look();
+    shown.classList.remove('hidden');
+    return { before, after };
+  });
+
 const savedText = (profile: string, name: string): unknown =>
   savedSetting(profile, 'text', name);
 
@@ -321,6 +347,38 @@ suite('App commander', () => {
         .textContent(),
       '12,288',
     );
+  });
+
+  test('dims a hidden file in its own color, or the color of the text without one, its icon with it, by the share the theme gives hidden files, and a hidden folder of the path alike', async () => {
+    const share =
+      Number.parseFloat(
+        await page.evaluate(() =>
+          getComputedStyle(document.body).getPropertyValue(
+            '--color-hidden-file',
+          ),
+        ),
+      ) / 100;
+    assert.ok(share > 0.3 && share < 0.8, String(share));
+    const dimmed = async (element: Locator) => {
+      const { before, after } = await hiding(element);
+      assert.deepStrictEqual(after.color.slice(0, 3), before.color.slice(0, 3));
+      assert.ok(
+        Math.abs((after.color[3] ?? 0) / 255 - share) < 0.02,
+        `${after.color.join()} is not ${share} of ${before.color.join()}`,
+      );
+      return { before, after };
+    };
+    const rowOf = (name: string) =>
+      right().locator('.commander-row', { hasText: name });
+
+    const colored = await dimmed(rowOf('notes'));
+    const plain = await dimmed(rowOf('big'));
+    assert.notDeepStrictEqual(colored.before.color, plain.before.color);
+    for (const { before, after } of [colored, plain]) {
+      assert.strictEqual(before.icon, 1);
+      assert.ok(Math.abs((after.icon ?? 0) - share) < 0.01, String(after.icon));
+    }
+    await dimmed(right().locator('.path-title .path-part').first());
   });
 
   test('opens a folder with Enter and goes back up with Backspace, selecting the folder it came from', async () => {

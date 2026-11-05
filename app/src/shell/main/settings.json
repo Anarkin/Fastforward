@@ -334,6 +334,7 @@
     "light": {
       "foreground": "#000",
       "foreground-muted": "45%",
+      "hidden-file": "50%",
       "error-foreground": "#f00",
       "warning-foreground": "#e90",
 
@@ -377,6 +378,7 @@
     "dark": {
       "foreground": "#ddd",
       "foreground-muted": "45%",
+      "hidden-file": "50%",
       "error-foreground": "#f44",
       "warning-foreground": "#fb0",
 

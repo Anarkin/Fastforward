@@ -639,7 +639,7 @@ suite('Style', () => {
     looks(ok, asTool, { focus: ok });
   });
 
-  test('colors the files of the commander with the color of their group, the selected row too, leaving hidden rows muted and marked rows red', () => {
+  test('colors the files of the commander with the color of their group, the selected row too, dimming hidden rows in their own color and leaving marked rows red', () => {
     assert.strictEqual(commanderRowColor('colored'), 'var(--file-color)');
     assert.strictEqual(
       commanderRowColor('selected colored'),
@@ -647,7 +647,7 @@ suite('Style', () => {
     );
     assert.strictEqual(
       commanderRowColor('hidden colored'),
-      'var(--muted-foreground)',
+      'color-mix( in srgb, var(--file-color, var(--color-foreground)) var(--color-hidden-file), transparent )',
     );
     assert.strictEqual(
       commanderRowColor('marked colored'),
@@ -677,7 +677,8 @@ suite('Style', () => {
       'text-overflow': 'ellipsis',
     });
     const foreground = 'var(--color-foreground)';
-    const muted = 'var(--muted-foreground)';
+    const muted =
+      'color-mix( in srgb, var(--file-color, var(--color-foreground)) var(--color-hidden-file), transparent )';
     assert.deepStrictEqual(
       [
         pathColors([]),
