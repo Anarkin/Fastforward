@@ -1975,6 +1975,55 @@ suite('Drawing code', () => {
     );
   });
 
+  test('puts each character drawn wider or narrower than its columns in a box exactly as wide as them, as our terminal draws them on its grid, a blank shown in one too', () => {
+    const boxing = {
+      char: 10,
+      of: () => 20,
+      boxed: (cluster: string) => (/[😀中　]/u.test(cluster) ? 2 : undefined),
+    };
+    const drawn = (text: string, whitespace: boolean) =>
+      renderToStaticMarkup(
+        <>
+          {marked(
+            text,
+            [],
+            [],
+            'word-added',
+            [],
+            undefined,
+            whitespace,
+            undefined,
+            boxing,
+          )}
+        </>,
+      );
+    assert.strictEqual(
+      drawn('a😀b中c', false),
+      'a<span class="cell wide">😀</span>b<span class="cell wide">中</span>c',
+    );
+    assert.strictEqual(
+      drawn('a　b', true),
+      `a<span class="blank cell wide" data-glyph="${strings.symbols.invisible}">　</span>b`,
+    );
+    assert.strictEqual(
+      codeProps(
+        {
+          syntax: new Map(),
+          words: new Map(),
+          finds: new Map(),
+          foundKey: undefined,
+          found: undefined,
+          whitespace: false,
+          widths: boxing,
+        },
+        '0:1',
+        'x',
+        'added',
+      ).widths,
+      boxing,
+    );
+  });
+
   test('lets a wrapped line break where VS Code would, inside its colors too, keeping its indentation on the row with the code it indents', () => {
     assert.strictEqual(
       wrapMarkup('    a.b(c)', 4),

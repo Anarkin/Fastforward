@@ -1,7 +1,8 @@
 import type { ByteRange, TextRow } from '../shared/protocol';
 import type { CodeSegment } from '../../../ui/syntax';
 import { matchesIn } from '../../../shared/textMatches';
-import { blanksShown } from '../../../ui/blanks';
+import { drawnText } from '../../../ui/blanks';
+import type { TextWidths } from '../../../ui/textWidths';
 
 const groupBytes = 8;
 const hexPair = 2;
@@ -145,12 +146,14 @@ export function MarkedText({
   pieces,
   marks,
   blanks = false,
+  widths,
 }: {
   pieces: readonly CodeSegment[];
   marks: readonly FindMark[];
   blanks?: boolean;
+  widths?: TextWidths;
 }) {
-  const drawn = blanks ? blanksShown : (text: string) => text;
+  const drawn = drawnText(blanks, widths);
   if (marks.length === 0 && pieces.every((piece) => piece.kind === undefined)) {
     return <>{drawn(pieces.map((piece) => piece.text).join(''))}</>;
   }

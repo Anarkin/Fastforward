@@ -116,6 +116,14 @@ suite('Word wrap', () => {
     assert.strictEqual(wrappedLines('x 中文中文', 6, wide), 2);
   });
 
+  test('breaks around a character put in a box, before closing punctuation too, as the browser breaks around any box', () => {
+    const boxing = {
+      ...drawnAs({ 中: 2, 文: 2, '。': 2 }),
+      boxed: (cluster: string) => (/[中文。]/.test(cluster) ? 2 : undefined),
+    };
+    assert.deepStrictEqual(wrapStarts('中文。中文', 5, 0, boxing), [0, 2, 4]);
+  });
+
   test('never starts a row between the halves of a character outside the basic plane', () => {
     assert.deepStrictEqual(wrapStarts('a😀😀', 2), [0, 1, 3]);
   });

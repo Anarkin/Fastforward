@@ -122,4 +122,18 @@ suite('Matches marked in a file viewed', () => {
       'a<span class="spaces">   </span>b',
     );
   });
+
+  test('puts each character drawn wider or narrower than its columns in a box exactly as wide as them, as the diff does', () => {
+    const boxing = {
+      char: 10,
+      of: () => 20,
+      boxed: (cluster: string) => (cluster === '😀' ? 2 : undefined),
+    };
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText pieces={[{ text: 'a😀b' }]} marks={[]} widths={boxing} />,
+      ),
+      'a<span class="cell wide">😀</span>b',
+    );
+  });
 });

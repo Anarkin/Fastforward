@@ -1,9 +1,102 @@
+import { useEffect, useState } from 'react';
+import type { IUnicodeVersionProvider, Terminal } from '@xterm/xterm';
 import { tabStop } from './wordWrap';
+
+export type CellTable = (code: number) => number;
+
+export const plainCells: CellTable = (code) => (code < 0x20 ? 0 : 1);
+
+let loadedTable: CellTable | undefined;
+
+let loadingTable: Promise<CellTable> | undefined;
 
 export interface TextWidths {
   readonly char: number;
   readonly of: (cluster: string) => number;
+  readonly boxed?: (cluster: string) => number | undefined;
+  readonly scaled?: (cluster: string) => number | undefined;
 }
+
+type Registering = Pick<Terminal, 'unicode'>;
+
+interface TableAddon {
+  activate(terminal: Registering): void;
+}
+
+function tableOf(addon: TableAddon): CellTable {
+  const registered: IUnicodeVersionProvider[] = [];
+  addon.activate({
+    unicode: {
+      versions: [],
+      activeVersion: '',
+      register: (provider) => {
+        registered.push(provider);
+      },
+    },
+  });
+  const [provider] = registered;
+  return provider === undefined ? plainCells : (code) => provider.wcwidth(code);
+}
+
+export function terminalCells(): Promise<CellTable> {
+  loadingTable ??= import('@xterm/addon-unicode11').then(
+    ({ Unicode11Addon }) => {
+      loadedTable = tableOf(new Unicode11Addon());
+      return loadedTable;
+    },
+  );
+  return loadingTable;
+}
+
+export function useCellTable(): CellTable | undefined {
+  const [table, setTable] = useState(() => loadedTable);
+  useEffect(() => {
+    if (table === undefined) {
+      terminalCells().then(
+        (loaded) => setTable(() => loaded),
+        () => setTable(() => plainCells),
+      );
+    }
+  }, [table]);
+  return table;
+}
+
+const emojiSelector = '️';
+
+const textSelector = '︎';
+
+const isRegionalIndicator = (code: number) =>
+  code >= 0x1f1e6 && code <= 0x1f1ff;
+
+export function cellsOf(
+  cluster: string,
+  table: CellTable = loadedTable ?? plainCells,
+): number {
+  if (cluster.includes(emojiSelector)) {
+    return 2;
+  }
+  if (cluster.includes(textSelector)) {
+    return 1;
+  }
+  const first = cluster.codePointAt(0) ?? 0;
+  if (isRegionalIndicator(first)) {
+    return cluster.length > 2 ? 2 : 1;
+  }
+  return table(first);
+}
+
+const counted = new WeakMap<CellTable, TextWidths>();
+
+export function cellWidthsOf(table: CellTable): TextWidths {
+  let widths = counted.get(table);
+  if (widths === undefined) {
+    widths = { char: 1, of: (cluster) => cellsOf(cluster, table) };
+    counted.set(table, widths);
+  }
+  return widths;
+}
+
+const drawnLikeCells = 0.01;
 
 interface TextMeasurer {
   font: string;
@@ -18,6 +111,7 @@ export function textWidths(
   char: number,
   font: string,
   spacing: number,
+  table: CellTable,
   measurer: () => TextMeasurer | null = canvasMeasurer,
 ): TextWidths {
   const drawn = new Map<string, number>();
@@ -33,16 +127,33 @@ export function textWidths(
       ? context.measureText(cluster).width + spacing
       : cluster.length * char;
   };
+  const drawnWidth = (cluster: string) => {
+    const known = drawn.get(cluster);
+    if (known !== undefined) {
+      return known;
+    }
+    const width = measure(cluster);
+    drawn.set(cluster, width);
+    return width;
+  };
+  if (table === plainCells) {
+    return { char, of: drawnWidth };
+  }
   return {
     char,
-    of: (cluster) => {
-      const known = drawn.get(cluster);
-      if (known !== undefined) {
-        return known;
-      }
-      const width = measure(cluster);
-      drawn.set(cluster, width);
-      return width;
+    of: (cluster) => cellsOf(cluster, table) * char,
+    boxed: (cluster) => {
+      const cells = cellsOf(cluster, table);
+      return Math.abs(drawnWidth(cluster) - cells * char) > drawnLikeCells
+        ? cells
+        : undefined;
+    },
+    scaled: (cluster) => {
+      const room = cellsOf(cluster, table) * char;
+      const width = drawnWidth(cluster);
+      return room > 0 && width > room + drawnLikeCells
+        ? room / width
+        : undefined;
     },
   };
 }

@@ -40,7 +40,13 @@ import { useTextView } from '../../../ui/textView';
 import { columnAt, columnsOf, shownWithin } from './columns';
 import { strings } from '../../../shared/strings';
 import { blankRuns } from '../../../ui/wordWrap';
-import { textWidths } from '../../../ui/textWidths';
+import {
+  cellWidthsOf,
+  plainCells,
+  textWidths,
+  useCellTable,
+  type TextWidths,
+} from '../../../ui/textWidths';
 
 const rowsAboveMatch = 2;
 
@@ -160,6 +166,7 @@ function RowText({
   colored,
   marks,
   blanks,
+  widths,
 }: {
   shown: ScreenRow;
   from: number;
@@ -167,6 +174,7 @@ function RowText({
   colored: ColoredText | undefined;
   marks: readonly FindMark[];
   blanks: boolean;
+  widths: TextWidths | undefined;
 }) {
   const { row } = shown;
   const pieces = (colored && rowSegments(colored, row)) ?? [{ text: row.text }];
@@ -175,6 +183,7 @@ function RowText({
       pieces={piecesWithin(pieces, from, to)}
       marks={marksWithin(marks, from, to)}
       blanks={blanks}
+      widths={widths}
     />
   );
 }
@@ -278,19 +287,21 @@ export function TextBody({
       ),
     [],
   );
+  const table = useCellTable();
   const widths = useMemo(
     () =>
-      font.char > 0
-        ? textWidths(font.char, font.family, font.spacing)
+      font.char > 0 && table !== undefined
+        ? textWidths(font.char, font.family, font.spacing, table)
         : undefined,
-    [font],
+    [font, table],
   );
+  const counting = widths ?? cellWidthsOf(table ?? plainCells);
   const { wordWrap, showWhitespace } = useTextView().view;
   const wrapAt =
     wordWrap && columns !== undefined && columns > 1 ? columns - 1 : undefined;
   const rows = useMemo(
-    () => screenRows(read.rows, wrapAt, encoding, widths),
-    [read.rows, wrapAt, encoding, widths],
+    () => screenRows(read.rows, wrapAt, encoding, counting),
+    [read.rows, wrapAt, encoding, counting],
   );
   const loaded: Shown = {
     read: read.rows,
@@ -325,9 +336,9 @@ export function TextBody({
     if (lastRows === undefined) {
       return undefined;
     }
-    const ending = screenRows(lastRows, wrapAt, encoding, widths);
+    const ending = screenRows(lastRows, wrapAt, encoding, counting);
     return ending[Math.max(0, ending.length - screen)]?.start ?? 0;
-  }, [lastRows, wrapAt, encoding, screen, widths]);
+  }, [lastRows, wrapAt, encoding, screen, counting]);
   const ends = useMemo(
     () =>
       new RowRequests<true>((request) =>
@@ -406,7 +417,7 @@ export function TextBody({
         if (pending === undefined) {
           return;
         }
-        const arrived = screenRows(message.rows, wrapAt, encoding, widths);
+        const arrived = screenRows(message.rows, wrapAt, encoding, counting);
         const before = current.current.rows[current.current.top];
         const index = pending.follow
           ? message.rows.findIndex((row) => row.start === before?.row.start)
@@ -421,7 +432,7 @@ export function TextBody({
               );
         setRead({ rows: message.rows, top: placeOf(arrived[top]) });
       }),
-    [listen, tab, screen, requests, wrapAt, encoding, widths],
+    [listen, tab, screen, requests, wrapAt, encoding, counting],
   );
 
   const move = useCallback(
@@ -553,11 +564,11 @@ export function TextBody({
     () =>
       whole
         ? rows.reduce(
-            (most, row) => Math.max(most, columnsOf(row.row.text, widths)),
+            (most, row) => Math.max(most, columnsOf(row.row.text, counting)),
             0,
           )
         : undefined,
-    [rows, whole, widths],
+    [rows, whole, counting],
   );
   const widthKey = `${tab}:${encoding}`;
   const [wide, setWide] = useState({ key: widthKey, columns: 0 });
@@ -586,7 +597,7 @@ export function TextBody({
           row.to,
           Math.max(0, across - sidewaysMargin),
           across + shownColumns + sidewaysMargin,
-          widths,
+          counting,
         )
       : { from: row.from, to: row.to, column: row.indent },
   );
@@ -632,76 +643,78 @@ export function TextBody({
         matched === undefined || matchStart === undefined
           ? undefined
           : {
-              column: columnAt(matched.row.text, matchStart, 0, widths),
+              column: columnAt(matched.row.text, matchStart, 0, counting),
               asked: jumps,
             }
       }
       rowText={rowText}
     >
-      {shown.map((row, index) => (
-        <div
-          className="viewer-row"
-          key={`${row.row.start}:${row.from}`}
-          data-key={`${row.row.start}:${row.from}`}
-          data-continues={
-            row.to < row.row.text.length || row.row.cut === true
-              ? ''
-              : undefined
-          }
-          style={
-            (parts[index]?.column ?? 0) > 0
-              ? {
-                  paddingInlineStart: `calc(${parts[index]?.column ?? 0} * var(--commander-advance))`,
-                }
-              : undefined
-          }
-        >
-          <RowText
-            shown={row}
-            from={parts[index]?.from ?? row.from}
-            to={parts[index]?.to ?? row.to}
-            colored={colored}
-            marks={
-              find === undefined
-                ? []
-                : textMarks(row.row, find.query, find.matches, find.current)
+      {table !== undefined &&
+        shown.map((row, index) => (
+          <div
+            className="viewer-row"
+            key={`${row.row.start}:${row.from}`}
+            data-key={`${row.row.start}:${row.from}`}
+            data-continues={
+              row.to < row.row.text.length || row.row.cut === true
+                ? ''
+                : undefined
             }
-            blanks={showWhitespace}
-          />
-          {!showWhitespace &&
-            blankRuns(row.hanging).map(
-              ({ column, columns: run, tab: isTab }) => {
-                const left = `calc(${column} * var(--commander-advance))`;
-                return isTab ? (
-                  <span
-                    key={column}
-                    className="viewer-wrap-blank"
-                    data-glyph={strings.symbols.tab}
-                    style={{ left }}
-                  />
-                ) : (
-                  <span
-                    key={column}
-                    className="viewer-wrap-spaces"
-                    style={{
-                      left,
-                      width: `calc(${run} * var(--commander-advance))`,
-                    }}
-                  />
-                );
-              },
-            )}
-          {row.breakAt !== undefined && (
-            <span
-              className="viewer-break"
-              data-glyph={strings.symbols.breaks}
-              style={{
-                left: `calc(${row.breakAt} * var(--commander-advance))`,
-              }}
+            style={
+              (parts[index]?.column ?? 0) > 0
+                ? {
+                    paddingInlineStart: `calc(${parts[index]?.column ?? 0} * var(--commander-advance))`,
+                  }
+                : undefined
+            }
+          >
+            <RowText
+              shown={row}
+              from={parts[index]?.from ?? row.from}
+              to={parts[index]?.to ?? row.to}
+              colored={colored}
+              marks={
+                find === undefined
+                  ? []
+                  : textMarks(row.row, find.query, find.matches, find.current)
+              }
+              blanks={showWhitespace}
+              widths={widths}
             />
-          )}
-        </div>
-      ))}
+            {!showWhitespace &&
+              blankRuns(row.hanging).map(
+                ({ column, columns: run, tab: isTab }) => {
+                  const left = `calc(${column} * var(--commander-advance))`;
+                  return isTab ? (
+                    <span
+                      key={column}
+                      className="viewer-wrap-blank"
+                      data-glyph={strings.symbols.tab}
+                      style={{ left }}
+                    />
+                  ) : (
+                    <span
+                      key={column}
+                      className="viewer-wrap-spaces"
+                      style={{
+                        left,
+                        width: `calc(${run} * var(--commander-advance))`,
+                      }}
+                    />
+                  );
+                },
+              )}
+            {row.breakAt !== undefined && (
+              <span
+                className="viewer-break"
+                data-glyph={strings.symbols.breaks}
+                style={{
+                  left: `calc(${row.breakAt} * var(--commander-advance))`,
+                }}
+              />
+            )}
+          </div>
+        ))}
     </ScrollBody>
   );
 }

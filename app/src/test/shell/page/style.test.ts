@@ -139,6 +139,16 @@ function indented(wordWrap: boolean): MarkupElement {
   return shownRow(diffView({ wordWrap }, indentedLine()));
 }
 
+function cell(className: string): MarkupElement {
+  return withClass(
+    rendered(
+      createElement('span', { className }, '😀'),
+      withClass(indented(true), 'code'),
+    ),
+    'cell',
+  );
+}
+
 const spaceDots =
   'radial-gradient(circle, var(--muted-foreground) 0.08em, transparent 0.1em)';
 
@@ -1615,11 +1625,27 @@ suite('Style', () => {
     looks(tab, { 'text-indent': '0' }, { pseudoElement: '::before' });
   });
 
+  test('draws a character in a box exactly as many columns of the text wide as it takes and a line tall, its glyph centered, as our terminal draws it on its grid, in the diff and the viewer alike, never making its line taller, as a shrunk emoji made a wrapped line of the diff two rows tall', () => {
+    looks(cell('cell'), {
+      display: 'inline-flex',
+      'justify-content': 'center',
+      'align-items': 'center',
+      width: 'var(--text-advance)',
+      height: '1lh',
+      'vertical-align': 'top',
+    });
+    looks(cell('cell wide'), { width: 'calc(2 * var(--text-advance))' });
+    looks(cell('cell zero'), { width: '0' });
+    looks(withClass(diffView(), 'diff-view'), {
+      '--text-advance': 'var(--diff-advance)',
+    });
+  });
+
   test('draws a run of spaces shown as dots in its own background, one in the middle of each advance of the text, with no box over each space, as a box over every space of a padded table slowed scrolling down and let the browser break a run onto rows of its own', () => {
     const run = withClass(indented(true), 'spaces');
     looks(run, {
       position: undefined,
-      'background-size': 'var(--blank-advance) 100%',
+      'background-size': 'var(--text-advance) 100%',
       'background-repeat': 'repeat-x',
     });
     assert.strictEqual(compact(cascaded(run, 'background-image')), spaceDots);
@@ -1649,7 +1675,7 @@ suite('Style', () => {
       'viewer-wrap-spaces',
     );
     const dotted = {
-      'background-size': 'var(--blank-advance) 100%',
+      'background-size': 'var(--text-advance) 100%',
       'background-repeat': 'repeat-x',
     };
     looks(hanging(false), {

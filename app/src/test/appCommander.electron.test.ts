@@ -9,7 +9,14 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
 import { defaultSettings, waitFor } from './fixtures';
 import { pdfOf } from './pdfs';
-import { closeOrKill, launchApp, waitForFocus } from './appFixtures';
+import {
+  barsOffGrid,
+  closeOrKill,
+  gridLines,
+  gridRuler,
+  launchApp,
+  waitForFocus,
+} from './appFixtures';
 import { removeFolder, tempFolder } from './repositories';
 
 const colorOf = (locator: Locator) =>
@@ -1482,7 +1489,7 @@ suite('App commander', () => {
     }
   });
 
-  test('wraps a line of Chinese and emoji in a file viewed by how wide they are drawn, as the diff does, so every row ends inside the viewer with its mark within half a column of its text, as macOS drew rows of emoji over a pixel off their measured widths', async () => {
+  test('wraps a line of Chinese and emoji in a file viewed by the columns our terminal gives them, as the diff does, so every row ends inside the viewer with its mark after its text, at most past the spaces hanging there', async () => {
     const line = `${'中文'.repeat(150)} ${'✅ ok '.repeat(60)}end`;
     fs.writeFileSync(
       path.join(opened, 'chinese.txt'),
@@ -1499,21 +1506,28 @@ suite('App commander', () => {
               texts.push(node);
             }
           }
-          const last = texts.at(-1);
           const range = document.createRange();
-          if (last !== undefined) {
-            range.setStart(last, last.length - 1);
-            range.setEnd(last, last.length);
+          let textEnd = Number.NaN;
+          let visibleEnd = Number.NaN;
+          for (const node of texts) {
+            for (let at = 0; at < node.length; at++) {
+              range.setStart(node, at);
+              range.setEnd(node, at + 1);
+              textEnd = range.getBoundingClientRect().right;
+              if (node.data[at] !== ' ') {
+                visibleEnd = textEnd;
+              }
+            }
           }
-          const textEnd = range.getBoundingClientRect().right;
           const mark = row
             .querySelector('.viewer-break')
             ?.getBoundingClientRect();
           return {
-            inside: textEnd <= row.getBoundingClientRect().right + 0.5,
+            inside: visibleEnd <= row.getBoundingClientRect().right + 0.5,
             marked:
               mark === undefined ||
-              Math.abs(mark.left - textEnd) < mark.width / 2,
+              (mark.left > visibleEnd - mark.width / 2 &&
+                mark.left < textEnd + mark.width / 2),
           };
         }),
       );
@@ -1538,6 +1552,40 @@ suite('App commander', () => {
       fs.rmSync(path.join(opened, 'chinese.txt'));
       await waitFor(
         async () => !(await rowNames()).includes('chinese.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('draws a file viewed on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'grid.txt'),
+      gridLines.join(String.fromCharCode(10)),
+    );
+    const rows = page.locator('.viewer-rows .viewer-row');
+    try {
+      await select('grid');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()) === gridRuler,
+        'the first row',
+      );
+      await waitFor(
+        async () => (await rows.count()) === gridLines.length,
+        'every row',
+      );
+      assert.deepStrictEqual(
+        await rows.evaluateAll(barsOffGrid),
+        gridLines.slice(1).map(() => 0),
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'grid.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('grid.txt'),
         'the file to be gone from the list',
       );
     }

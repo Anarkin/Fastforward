@@ -1587,13 +1587,30 @@ body.resizing {
 .blank::before {
   position: absolute;
   left: 0;
-  width: var(--blank-advance);
+  width: var(--text-advance);
   text-align: center;
   text-indent: 0;
   pointer-events: none;
   user-select: none;
   content: attr(data-glyph);
   color: var(--muted-foreground);
+}
+
+.cell {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: var(--text-advance);
+  height: 1lh;
+  vertical-align: top;
+}
+
+.cell.wide {
+  width: calc(2 * var(--text-advance));
+}
+
+.cell.zero {
+  width: 0;
 }
 
 .spaces,
@@ -1604,7 +1621,7 @@ body.resizing {
     var(--muted-foreground) 0.08em,
     transparent 0.1em
   );
-  background-size: var(--blank-advance) 100%;
+  background-size: var(--text-advance) 100%;
   background-repeat: repeat-x;
 }
 

@@ -5,8 +5,10 @@ import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { wrapColumns, wrappedLines } from '../ui/wordWrap';
 import {
+  barsOffGrid,
   baseSettings,
   firstLongLine,
+  gridLines,
   longLines,
   openChangedFile,
   page,
@@ -46,6 +48,15 @@ const dottedLine = `        ${Array.from(
 
 const firsts = (rows: readonly { first: string }[]) =>
   rows.map((row) => row.first);
+
+const lineHeights = () =>
+  page
+    .locator('.diff-view .virtual-row .diff-line')
+    .evaluateAll((lines) =>
+      lines.map(
+        (line) => Math.round(line.getBoundingClientRect().height * 10) / 10,
+      ),
+    );
 
 const paddedLine = `| Feature${' '.repeat(100)}| What it does${' '.repeat(100)}| Notes${' '.repeat(50)}|`;
 
@@ -163,6 +174,7 @@ suite('App', () => {
     'hyphenated.txt': `${hyphenatedLine}\n`,
     'wrapped.txt': `${dottedLine}\n`,
     'padded.txt': `${paddedLine}\n`,
+    'grid.txt': `${gridLines.join('\n')}\n`,
   });
 
   test('lists the history and shows a commit entire, with its change, inline, then side by side on its button, the default, and inline again on the other, and wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, keeping the line at the top in place as it wraps and changes layout, saving each choice', async () => {
@@ -391,6 +403,36 @@ suite('App', () => {
       () => wrapsSaved() && whitespaceShownSaved(),
       'the choices to be saved',
     );
+  });
+
+  test('draws the lines of a diff on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up, each line a row tall when wrapped too, as a shrunk emoji made its line two', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'grid.txt' }).click();
+    const code = page.locator('.diff-view .virtual-row .diff-line .code');
+    await waitFor(
+      async () => (await code.count()) === gridLines.length,
+      'every line',
+    );
+    assert.deepStrictEqual(
+      await code.evaluateAll(barsOffGrid),
+      gridLines.slice(1).map(() => 0),
+    );
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    await page.locator('.diff-view.wrap').waitFor();
+    await waitFor(
+      async () => (await lineHeights()).length === gridLines.length,
+      'every line wrapped',
+    );
+    const tall = await lineHeights();
+    assert.deepStrictEqual(
+      tall,
+      tall.map(() => tall[0]),
+    );
+    assert.deepStrictEqual(
+      await code.evaluateAll(barsOffGrid),
+      gridLines.slice(1).map(() => 0),
+    );
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
   test('moves the marks of a wrapped line along once the browser breaks it elsewhere, as it does when it gets a few pixels narrower, though the app estimates as many characters to a row', async () => {

@@ -163,8 +163,11 @@ function measuredStarts(
   );
   const blank = (at: number) =>
     clusters[at].text === ' ' || clusters[at].text === '\t';
+  const boxed = (at: number) => widths.boxed?.(clusters[at].text) !== undefined;
   const breaksAhead = (at: number) =>
     breaksAt(text, clusters[at].start) ||
+    boxed(at - 1) ||
+    boxed(at) ||
     breaksBetween(clusters[at - 1].text, clusters[at].text);
   const starts = [0];
   let column = 0;

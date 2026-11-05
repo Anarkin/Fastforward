@@ -8,7 +8,7 @@
   );
   --commander-advance: round(1ch, var(--device-pixel, 1px));
   --commander-gap: calc(2 * var(--commander-advance));
-  --blank-advance: var(--commander-advance);
+  --text-advance: var(--commander-advance);
 }
 
 .commander .column-title:not(.searching) {

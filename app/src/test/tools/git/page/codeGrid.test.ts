@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { codeSnapOf } from '../../../../tools/git/page/diffView';
-import { textWidths } from '../../../../ui/textWidths';
+import { terminalCells, textWidths } from '../../../../ui/textWidths';
 
 function measuring(widths: Readonly<Record<string, number>>) {
   return () => ({
@@ -11,15 +11,17 @@ function measuring(widths: Readonly<Record<string, number>>) {
 }
 
 suite('Code grid', () => {
-  test('counts the spacing that puts characters on whole device pixels in the width of each character it measures', () => {
+  test('counts the spacing that puts characters on whole device pixels in the width of each character it measures, so one drawn a column wide with it stays out of a box', async () => {
     const widths = textWidths(
       7 + 1 / 3,
       '12px mono',
       2 / 15,
+      await terminalCells(),
       measuring({ é: 7.2, 漢: 14.4 }),
     );
-    assert.strictEqual(widths.of('é'), 7.2 + 2 / 15);
-    assert.strictEqual(widths.of('漢'), 14.4 + 2 / 15);
+    assert.strictEqual(widths.boxed?.('é'), undefined);
+    assert.strictEqual(widths.boxed?.('漢'), 2);
+    assert.strictEqual(widths.of('漢'), 2 * (7 + 1 / 3));
   });
 
   test('moves the start of code onto the nearest whole device pixel, keeping a side it cannot find where it was', () => {

@@ -53,7 +53,7 @@ import { wheeled, type Modifiers } from '../../../shell/shared/keymap';
 import { gitKeymap } from '../shared/keymap';
 import { glideAt, glideBy, glideEnded, type Glide } from '../../../ui/glide';
 import { strings } from '../../../shared/strings';
-import { blanksShown } from '../../../ui/blanks';
+import { drawnText } from '../../../ui/blanks';
 import { listMoveOf, type ListMove } from '../../../ui/listMoves';
 import { keyPressed } from '../../../ui/shortcuts';
 import {
@@ -117,10 +117,13 @@ import {
   type TextArea,
 } from './overflow';
 import {
+  cellWidthsOf,
   columnsOf,
   fontOf,
+  plainCells,
   spacingOf,
   textWidths,
+  useCellTable,
   type TextWidths,
 } from '../../../ui/textWidths';
 
@@ -943,6 +946,8 @@ const sideChanges: Record<keyof LinkTargets, Change> = {
   new: 'added',
 };
 
+const waitingRows: DiffRow[] = [{ kind: 'error' }];
+
 export function diffRows(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
@@ -1272,12 +1277,9 @@ export function marked(
   current: FindRange | undefined,
   whitespace = false,
   indent?: number,
+  widths?: TextWidths,
 ): React.ReactNode {
-  const shown = breakable(
-    text,
-    indent,
-    whitespace ? blanksShown : (piece: string) => piece,
-  );
+  const shown = breakable(text, indent, drawnText(whitespace, widths));
   if (words.length === 0 && syntax.length === 0 && finds.length === 0) {
     return shown(text, 0);
   }
@@ -1346,6 +1348,7 @@ export interface LineMarks {
   readonly foundKey: string | undefined;
   readonly found: FindRange | undefined;
   readonly whitespace: boolean;
+  readonly widths?: TextWidths;
 }
 
 interface CodeProps {
@@ -1357,6 +1360,7 @@ interface CodeProps {
   readonly current: FindRange | undefined;
   readonly whitespace: boolean;
   readonly indent?: number;
+  readonly widths?: TextWidths;
 }
 
 const unmarked: readonly never[] = [];
@@ -1393,6 +1397,7 @@ export function codeProps(
     current:
       key !== undefined && key === marks.foundKey ? marks.found : undefined,
     whitespace: marks.whitespace,
+    widths: marks.widths,
   };
 }
 
@@ -1405,6 +1410,7 @@ export const Code = memo(function Code({
   current,
   whitespace,
   indent,
+  widths,
 }: CodeProps) {
   return (
     <span
@@ -1424,6 +1430,7 @@ export const Code = memo(function Code({
         current,
         whitespace,
         indent,
+        widths,
       )}
     </span>
   );
@@ -1982,9 +1989,10 @@ export function DiffView({
   const [charWidth, setCharWidth] = useState(0);
   const [font, setFont] = useState('');
   const [spacing, setSpacing] = useState(0);
+  const table = useCellTable();
   const widths = useMemo(
-    () => textWidths(charWidth, font, spacing),
-    [charWidth, font, spacing],
+    () => textWidths(charWidth, font, spacing, table ?? plainCells),
+    [charWidth, font, spacing, table],
   );
   const columnsIn = useMemo<ColumnsIn | undefined>(
     () =>
@@ -2145,8 +2153,11 @@ export function DiffView({
   );
   const skeleton = useSkeleton(loading);
   const rows = useMemo(
-    () => diffRows(files, toggled, whole, skeleton, sideBySide),
-    [files, toggled, whole, skeleton, sideBySide],
+    () =>
+      table === undefined
+        ? waitingRows
+        : diffRows(files, toggled, whole, skeleton, sideBySide),
+    [files, toggled, whole, skeleton, sideBySide, table],
   );
 
   const wrapping = wordWrap ? columns : undefined;
@@ -2170,7 +2181,7 @@ export function DiffView({
       wordWrap ? (columns ?? unmeasured) : undefined,
       lineHeight,
       scale,
-      widths,
+      wordWrap && table !== undefined ? cellWidthsOf(table) : undefined,
     ),
     overscan: rowOverscan(dragged),
     observeElementOffset: observeOffset,
@@ -2390,6 +2401,7 @@ export function DiffView({
     foundKey,
     found,
     whitespace: showWhitespace,
+    widths,
   };
   const code = (
     key: string | undefined,
