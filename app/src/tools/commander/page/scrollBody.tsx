@@ -161,6 +161,7 @@ export function ScrollBody({
   jump,
   error,
   width,
+  wrapped = false,
   onSideways,
   reveal,
   rowText,
@@ -176,6 +177,7 @@ export function ScrollBody({
   jump: (share: number) => void;
   error: string | undefined;
   width?: number;
+  wrapped?: boolean;
   onSideways?: (column: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
   rowText?: (row: Element) => RowText | undefined;
@@ -367,7 +369,7 @@ export function ScrollBody({
           }
         >
           <div
-            className="viewer-rows"
+            className={`viewer-rows${wrapped ? ' wrapped' : ''}`}
             style={
               width === undefined
                 ? undefined

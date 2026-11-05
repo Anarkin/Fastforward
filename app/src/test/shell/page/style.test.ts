@@ -1626,6 +1626,17 @@ suite('Style', () => {
     looks(run, { content: undefined }, { pseudoElement: '::before' });
   });
 
+  test('lays the rows of a file viewed with wrapping out as wide as the viewer, clipping the spaces hanging past its edge, so they never scroll it sideways, as a row ending in a run of spaces did', () => {
+    looks(
+      rendered(createElement('div', { className: 'viewer-rows wrapped' })),
+      { width: '100%', 'overflow-x': 'clip' },
+    );
+    looks(rendered(createElement('div', { className: 'viewer-rows' })), {
+      width: 'max-content',
+      'overflow-x': undefined,
+    });
+  });
+
   test('marks the spaces hanging at the end of a wrapped row of the diff and the viewer with the same dots, on that row, leaving them to the spaces drawn in the diff while whitespace is shown', () => {
     const viewer = withClass(
       rendered(

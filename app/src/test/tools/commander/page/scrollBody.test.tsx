@@ -10,6 +10,7 @@ import {
 function scrollBody(
   barPinned: boolean,
   matches: readonly ByteRange[] = [],
+  wrapped = false,
 ): string {
   return renderToStaticMarkup(
     <ScrollBody
@@ -21,6 +22,7 @@ function scrollBody(
       barPinned={barPinned}
       matches={matches}
       size={1024}
+      wrapped={wrapped}
     >
       text
     </ScrollBody>,
@@ -34,6 +36,11 @@ suite('Commander scroll body', () => {
       /class="overlay-scrollbar viewer-thumb shown"/,
     );
     assert.match(scrollBody(false), /class="overlay-scrollbar viewer-thumb"/);
+  });
+
+  test('marks the rows of wrapped text as wrapped, to lay them out as wide as the viewer, and leaves rows not wrapped as wide as their text', () => {
+    assert.match(scrollBody(false, [], true), /class="viewer-rows wrapped"/);
+    assert.match(scrollBody(false), /class="viewer-rows"/);
   });
 
   test('ticks the track where the matches are in the file by their bytes, as the minimap of a diff does', () => {

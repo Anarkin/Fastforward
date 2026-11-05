@@ -260,6 +260,11 @@
   box-sizing: border-box;
 }
 
+.viewer-rows.wrapped {
+  width: 100%;
+  overflow-x: clip;
+}
+
 .viewer-row {
   position: relative;
   height: var(--commander-row-height);

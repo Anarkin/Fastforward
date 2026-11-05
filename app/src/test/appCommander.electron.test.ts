@@ -1421,6 +1421,67 @@ suite('App commander', () => {
     }
   });
 
+  test('keeps a file viewed with its lines wrapped as wide as the viewer, the runs of spaces hanging past its edge out of sight rather than scrolled to, whether whitespace is shown or not, and back at its left edge once wrapped after scrolling sideways', async () => {
+    const padded = `| a${' '.repeat(300)}| b${' '.repeat(300)}|`;
+    fs.writeFileSync(
+      path.join(opened, 'padded.txt'),
+      ['short', padded, ' '.repeat(400), 'after'].join(String.fromCharCode(10)),
+    );
+    const rows = page.locator('.viewer-rows .viewer-row');
+    const sideways = page.locator('.viewer-sideways');
+    const overflow = () =>
+      sideways.evaluate((element) => ({
+        wider: element.scrollWidth > element.clientWidth,
+        left: element.scrollLeft,
+      }));
+    try {
+      await select('padded');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()) === 'short',
+        'the first row',
+      );
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await waitFor(
+        async () => (await rows.count()) > 5,
+        'the padded line to wrap',
+      );
+      assert.deepStrictEqual(await overflow(), { wider: false, left: 0 });
+      await page.keyboard.press('.');
+      await page.locator('.viewer-rows .spaces').first().waitFor();
+      assert.deepStrictEqual(await overflow(), { wider: false, left: 0 });
+      await page.keyboard.press('w');
+      await waitFor(
+        async () => (await overflow()).wider,
+        'the lines whole, wider than the viewer',
+      );
+      await sideways.evaluate((element) => element.scrollBy({ left: 400 }));
+      await waitFor(async () => (await overflow()).left > 0, 'scrolled away');
+      await page.keyboard.press('w');
+      await waitFor(async () => {
+        const { wider, left } = await overflow();
+        return !wider && left === 0;
+      }, 'the lines wrapped again, from the left edge');
+      await page.keyboard.press('.');
+      await waitFor(
+        () =>
+          savedText(profile, 'showWhitespace') === undefined &&
+          savedText(profile, 'wordWrap') === undefined,
+        'the choices left to the defaults',
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'padded.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('padded.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
   test('scrolls a file viewed sideways while its lines are not wrapped, on its overlay scrollbar, Shift and the wheel, or Left and Right, keeping the width of the widest row seen as it scrolls away, drawing only the columns near the screen yet copying rows whole, and brings a match off to the side into view', async () => {
     const long = `start ${'x'.repeat(600)} found`;
     fs.writeFileSync(

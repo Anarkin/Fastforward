@@ -603,6 +603,7 @@ export function TextBody({
       jump={jump}
       error={viewing.error}
       width={whole && wide.key === widthKey ? wide.columns : undefined}
+      wrapped={!whole}
       onSideways={onSideways}
       reveal={
         matched === undefined || matchStart === undefined
