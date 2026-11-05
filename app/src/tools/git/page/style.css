@@ -754,6 +754,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 .virtual-row.diff-row {
   min-width: max(100%, var(--diff-content-width, 0px) + var(--minimap-width));
   width: max-content;
+  contain: layout style;
 }
 
 .virtual-row.diff-row.split-row {

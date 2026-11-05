@@ -89,6 +89,7 @@ import {
   type RowBreak,
 } from '../../../ui/wordWrap';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
+import { afterPaint } from '../../../ui/afterPaint';
 import {
   followRows,
   rowPadding,
@@ -2158,10 +2159,12 @@ export function DiffView({
     }
     const observer = new ResizeObserver(measureSideways);
     observer.observe(element);
-    element.addEventListener('scroll', measureSideways, { passive: true });
+    const painted = afterPaint(measureSideways);
+    element.addEventListener('scroll', painted.ask, { passive: true });
     return () => {
       observer.disconnect();
-      element.removeEventListener('scroll', measureSideways);
+      element.removeEventListener('scroll', painted.ask);
+      painted.cancel();
     };
   }, [measureSideways]);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(

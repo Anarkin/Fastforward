@@ -1,6 +1,7 @@
 import { clicked, keymap } from '../shell/shared/keymap';
 import { thumbDragged } from './cappedScroll';
 import { followDrag } from './followDrag';
+import { afterPaint } from './afterPaint';
 
 export const overlayScrollbarClass = 'overlay-scrollbar';
 export const ownScrollbarAttribute = 'data-own-vertical-scrollbar';
@@ -442,12 +443,21 @@ export function installOverlayScrollbars(): void {
     bars[0].show(scrollerOf(target, 'vertical'));
     bars[1].show(scrollerOf(target, 'horizontal'));
   };
+  let pointed: EventTarget | null = null;
+  const pointing = afterPaint(() => showFor(pointed));
   for (const type of ['pointermove', 'pointerover']) {
-    document.addEventListener(type, (event) => showFor(event.target), {
-      passive: true,
-    });
+    document.addEventListener(
+      type,
+      (event) => {
+        pointed = event.target;
+        pointing.ask();
+      },
+      { passive: true },
+    );
   }
-  const onScroll = ({ target }: Event) => {
+  let scrolled: EventTarget | null = null;
+  const scrolling = afterPaint(() => onScroll(scrolled));
+  const onScroll = (target: EventTarget | null) => {
     for (const bar of bars) {
       const scroller = scrolledScroller(bar.scroller, bar.shown, target, () =>
         scrollerOf(target, bar.axis),
@@ -458,7 +468,14 @@ export function installOverlayScrollbars(): void {
     }
   };
   for (const type of ['scroll', sidewaysScrollEvent]) {
-    document.addEventListener(type, onScroll, { capture: true, passive: true });
+    document.addEventListener(
+      type,
+      ({ target }) => {
+        scrolled = target;
+        scrolling.ask();
+      },
+      { capture: true, passive: true },
+    );
   }
   window.addEventListener('resize', () => bars.forEach((bar) => bar.hide()));
 }

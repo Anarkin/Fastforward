@@ -20,8 +20,10 @@ import { stylesheet } from '../fixtures';
 
 const none = () => null;
 
+const painted = () => new Promise((resolve) => setTimeout(resolve, 10));
+
 suite('Overlay scrollbars', () => {
-  test('follows what comes under a pointer that stays put, hiding the scrollbar of an area once something with nothing to scroll comes over it there, such as a message pinned by a click', () => {
+  test('follows what comes under a pointer that stays put, hiding the scrollbar of an area once something with nothing to scroll comes over it there, such as a message pinned by a click, once the frame is painted', async () => {
     const dom = new JSDOM(
       '<!doctype html><div id="list" style="overflow-y: auto"></div><div id="pinned"></div>',
     );
@@ -31,6 +33,9 @@ suite('Overlay scrollbars', () => {
       document,
       Element: dom.window.Element,
       getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+      requestAnimationFrame: (run: () => void) => setTimeout(run),
+      cancelAnimationFrame: (frame: ReturnType<typeof setTimeout>) =>
+        clearTimeout(frame),
     };
     const saved = Object.fromEntries(
       Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
@@ -49,11 +54,13 @@ suite('Overlay scrollbars', () => {
       list.dispatchEvent(
         new dom.window.MouseEvent('pointermove', { bubbles: true }),
       );
+      await painted();
       assert.ok(bar);
       assert.ok(bar.classList.contains('shown'));
       pinned.dispatchEvent(
         new dom.window.MouseEvent('pointerover', { bubbles: true }),
       );
+      await painted();
       assert.ok(!bar.classList.contains('shown'));
     } finally {
       Object.assign(globalThis, saved);
