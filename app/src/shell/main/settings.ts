@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   toolSettingChoices,
+  toolSettingProblems,
   type ThemeColors,
   type ToolSettings,
 } from '../shared/tools';
@@ -284,7 +285,7 @@ export class UserSettings {
     if (this.file === undefined) {
       const { settings, problems } = mergeSettings(this.base, this.inMemory);
       this.current = settings;
-      this.issues = problems;
+      this.issues = [...problems, ...toolSettingProblems(settings.tools)];
       return;
     }
     const text = readText(this.file);
@@ -314,7 +315,7 @@ export class UserSettings {
     const { settings, problems } = mergeSettings(this.base, parsed);
     this.current = this.withUnsaved(settings);
     this.broken = !isObject(parsed);
-    this.issues = problems;
+    this.issues = [...problems, ...toolSettingProblems(settings.tools)];
   }
 
   set<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {

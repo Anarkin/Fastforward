@@ -1,5 +1,5 @@
 import type { Entry } from '../shared/protocol';
-import type { FileColor } from '../shared/settings';
+import { extensionKey, type FileColor } from '../shared/settings';
 
 export type FileColorsByExtension = ReadonlyMap<string, string>;
 
@@ -8,10 +8,6 @@ export const noFileColors: FileColorsByExtension = new Map();
 export type FileGroupsByExtension = ReadonlyMap<string, number>;
 
 export const noFileGroups: FileGroupsByExtension = new Map();
-
-function extensionKey(extension: string): string {
-  return extension.replace(/^\./, '').toLowerCase();
-}
 
 export function fileGroupsByExtension(
   groups: readonly FileColor[],

@@ -810,6 +810,10 @@ export const strings = {
     },
     shouldBeOneOf: (name: string, choices: readonly string[]) =>
       `"${name}" should be ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
+    fileColorTwice: (extension: string, first: number, again: number) =>
+      `"tools.commander.fileColors[${again}]" lists "${extension}", which "tools.commander.fileColors[${first}]" lists already, so the earlier one colors it`,
+    fileColorEmpty: (group: number) =>
+      `"tools.commander.fileColors[${group}].extensions" lists an empty extension, which colors nothing`,
   },
   errors: {
     gitFailed: (command: string, said: string) =>

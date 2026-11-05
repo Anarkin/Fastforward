@@ -11,6 +11,7 @@ import {
   writeAtomically,
   writeReadOnly,
 } from '../../../shell/main/settings';
+import { strings } from '../../../shared/strings';
 import { defaultSettings, waitFor } from '../../fixtures';
 import { removeFolder, symlinkOrSkip, tempFolder } from '../../repositories';
 
@@ -331,6 +332,26 @@ suite('User settings file', () => {
       images: { realSize: true },
       tools: { git: { collapseMerges: false } },
     });
+  });
+
+  test('says when a color group of the commander lists an extension an earlier one does, keeping the colors as written', () => {
+    const colors = { light: '#000', dark: '#fff' };
+    const fileColors = [
+      { extensions: ['exe'], colors },
+      { extensions: ['EXE', 'md'], colors },
+    ];
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ tools: { commander: { fileColors } } }),
+    );
+    const user = new UserSettings(defaults, file);
+    assert.deepStrictEqual(
+      user.settings.tools.commander.fileColors,
+      fileColors,
+    );
+    assert.deepStrictEqual(user.problems, [
+      strings.settings.fileColorTwice('exe', 0, 1),
+    ]);
   });
 
   test('neither reads nor overwrites a file that is no valid JSON', async () => {

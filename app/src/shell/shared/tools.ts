@@ -9,6 +9,7 @@ import type {
   CommanderToWebview,
 } from '../../tools/commander/shared/protocol';
 import {
+  fileColorProblems,
   sortColumns,
   type CommanderSettings,
 } from '../../tools/commander/shared/settings';
@@ -92,3 +93,7 @@ export const toolSettingChoices: ReadonlyMap<string, readonly string[]> =
     ['tools.commander.sort.left.column', sortColumns],
     ['tools.commander.sort.right.column', sortColumns],
   ]);
+
+export function toolSettingProblems(settings: ToolSettings): string[] {
+  return fileColorProblems(settings.commander.fileColors);
+}

@@ -1,3 +1,5 @@
+import { strings } from '../../../shared/strings';
+
 export const sortColumns = ['name', 'extension', 'size', 'date'] as const;
 
 export type SortColumn = (typeof sortColumns)[number];
@@ -30,6 +32,30 @@ export interface CommanderSettings {
   readonly thumbnailSize: number;
   readonly thumbnailCacheMegabytes: number;
   readonly fileColors: readonly FileColor[];
+}
+
+export function extensionKey(extension: string): string {
+  return extension.replace(/^\./, '').toLowerCase();
+}
+
+export function fileColorProblems(groups: readonly FileColor[]): string[] {
+  const firstGroup = new Map<string, number>();
+  return groups.flatMap(({ extensions }, group) =>
+    extensions.flatMap((extension) => {
+      const key = extensionKey(extension);
+      if (key === '') {
+        return [strings.settings.fileColorEmpty(group)];
+      }
+      const first = firstGroup.get(key);
+      if (first === undefined) {
+        firstGroup.set(key, group);
+        return [];
+      }
+      return first === group
+        ? []
+        : [strings.settings.fileColorTwice(key, first, group)];
+    }),
+  );
 }
 
 export const layouts = ['details', 'thumbnails'] as const;
