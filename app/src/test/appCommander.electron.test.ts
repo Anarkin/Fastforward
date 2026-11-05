@@ -1489,7 +1489,7 @@ suite('App commander', () => {
     }
   });
 
-  test('wraps a line of Chinese and emoji in a file viewed by the columns our terminal gives them, as the diff does, so every row ends inside the viewer with its mark after its text, at most past the spaces hanging there', async () => {
+  test('wraps a line of Chinese and emoji in a file viewed by the columns our terminal gives them, as the diff does, so every row ends inside the viewer with its mark after its text, at most past the spaces hanging there, a character in a box ending where its box does, as a glyph drawn narrower is centered in it', async () => {
     const line = `${'中文'.repeat(150)} ${'✅ ok '.repeat(60)}end`;
     fs.writeFileSync(
       path.join(opened, 'chinese.txt'),
@@ -1513,7 +1513,8 @@ suite('App commander', () => {
             for (let at = 0; at < node.length; at++) {
               range.setStart(node, at);
               range.setEnd(node, at + 1);
-              textEnd = range.getBoundingClientRect().right;
+              const cell = node.parentElement?.closest('.cell');
+              textEnd = (cell ?? range).getBoundingClientRect().right;
               if (node.data[at] !== ' ') {
                 visibleEnd = textEnd;
               }
