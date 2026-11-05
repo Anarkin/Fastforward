@@ -107,7 +107,7 @@ function percent(value: number): string {
 
 type Scroller = Pick<
   Element,
-  'scrollTop' | 'addEventListener' | 'removeEventListener'
+  'scrollTop' | 'addEventListener' | 'removeEventListener' | 'dispatchEvent'
 >;
 
 function followScroll(
@@ -179,6 +179,19 @@ export function Minimap({
       window.clearTimeout(timer.current);
     };
   }, []);
+  useEffect(() => {
+    const strip = element.current;
+    const onWheel = (event: WheelEvent) => {
+      const target = scroller.current;
+      if (!target) {
+        return;
+      }
+      event.preventDefault();
+      target.dispatchEvent(new WheelEvent('wheel', event));
+    };
+    strip?.addEventListener('wheel', onWheel, { passive: false });
+    return () => strip?.removeEventListener('wheel', onWheel);
+  }, [scroller]);
   const scrolled = useRef(scrollTop);
   useEffect(() => {
     if (scrolled.current !== scrollTop) {

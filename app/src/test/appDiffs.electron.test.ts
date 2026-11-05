@@ -13,7 +13,7 @@ import {
   waitForCount,
   waitForFocus,
 } from './appFixtures';
-import { waitFor } from './fixtures';
+import { defaultSettings, waitFor } from './fixtures';
 
 async function drawnCodeRow(): Promise<number> {
   return page
@@ -435,6 +435,76 @@ suite('App', () => {
       await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
     }
     await page.locator('.commit.working-tree.empty').waitFor();
+  });
+
+  test('scrolls the diff on the wheel over its scrollbar as over its lines, rather than the column around it', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await page.locator('.diff-line', { hasText: 'line0 ' }).first().waitFor();
+    const list = page.locator('.diff-view .virtual-rows');
+    await list.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    const minimap = await page.locator('.diff-minimap').boundingBox();
+    assert.ok(minimap);
+    await page.mouse.move(
+      minimap.x + minimap.width / 2,
+      minimap.y + minimap.height / 2,
+    );
+    await page.mouse.wheel(0, 100);
+    const lines = () =>
+      list.evaluate((element) => {
+        const line =
+          element.querySelector('.diff-line')?.getBoundingClientRect().height ??
+          1;
+        return {
+          lines: element.scrollTop / line,
+          column: element.closest('.column-body')?.scrollTop ?? 0,
+        };
+      });
+    await waitFor(
+      async () =>
+        Math.abs(
+          (await lines()).lines - defaultSettings().scrolling.wheelRows,
+        ) < 0.01,
+      'the diff to scroll the lines of a notch',
+    );
+    assert.strictEqual((await lines()).column, 0);
+  });
+
+  test('never scrolls the column around the diff, which has its own scrollbar, even when the diff sticks out of it by a few pixels', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await page.locator('.diff-line', { hasText: 'line0 ' }).first().waitFor();
+    const taller = await page.addStyleTag({
+      content: '.diff-view { margin-bottom: 4px; }',
+    });
+    try {
+      const minimap = await page.locator('.diff-minimap').boundingBox();
+      assert.ok(minimap);
+      await page.mouse.move(
+        minimap.x + minimap.width / 2,
+        minimap.y + minimap.height / 2,
+      );
+      await page.mouse.move(
+        minimap.x + minimap.width / 2,
+        minimap.y + minimap.height / 2 + 10,
+      );
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => setTimeout(resolve, 50)),
+          ),
+      );
+      assert.strictEqual(
+        await page.locator('.overlay-scrollbar.vertical.shown').count(),
+        0,
+      );
+    } finally {
+      await taller.evaluate((element) =>
+        element.parentNode?.removeChild(element),
+      );
+    }
   });
 
   test('draws the rows of where its scrollbar is dragged to in the frame it scrolls there, rather than once the scroll event of the frame after comes, which left every other frame without new rows', async () => {

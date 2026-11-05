@@ -1438,6 +1438,10 @@ body.resizing {
   color: var(--color-error-foreground);
 }
 
+.column-body:has(> .diff-view) {
+  overflow: hidden;
+}
+
 .column-body:has(> .error-message) {
   display: flex;
   flex-direction: column;

@@ -27,6 +27,7 @@ function minimap(viewport: number, pinned = false): string {
     scrollTop: 100,
     addEventListener: () => {},
     removeEventListener: () => {},
+    dispatchEvent: () => true,
   };
   return renderToStaticMarkup(
     <Minimap
