@@ -22,7 +22,6 @@ import type { Timer } from '../tools/git/main/autoFetch';
 import { nodeFileSystem } from '../tools/commander/main/nodeFileSystem';
 import { isRepository } from '../tools/commander/main/repositories';
 import { CommanderTool } from '../tools/commander/main/tool';
-import { defaultLayouts } from '../tools/commander/shared/settings';
 import { TerminalTool, type HostListener } from '../tools/terminal/main/tool';
 import {
   GitTool,
@@ -342,8 +341,6 @@ export function newView(
           full: () => Promise.resolve(false),
           write: () => Promise.resolve(),
         },
-        layouts: () => defaultLayouts,
-        saveLayouts: () => Promise.resolve(),
         watch: () => () => {},
         realPath: (link) => Promise.resolve(link),
         fileIcon: () => Promise.resolve(new Uint8Array()),

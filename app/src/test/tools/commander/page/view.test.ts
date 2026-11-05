@@ -56,7 +56,6 @@ const sortedBy = (left: 'name' | 'size'): ViewAction => ({
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
   canElevate: false,
-  layouts: defaultLayouts,
   thumbnailSize: 144,
   fileColors: [],
 });
@@ -127,7 +126,6 @@ suite('Commander view', () => {
         columns: { extension: 4, size: 15, date: 10 },
         defaultColumns: { extension: 10, size: 15, date: 16 },
         canElevate: false,
-        layouts: defaultLayouts,
         thumbnailSize: 144,
         fileColors: [],
       },
@@ -217,6 +215,40 @@ suite('Commander view', () => {
 
     view = reduceView(view, listing('/work', files));
     assert.deepStrictEqual(shown(view).selected, 'b.txt');
+  });
+
+  test('shows the sides of each tab as details until that tab shows one as thumbnails, keeping the layouts of a tab while another is shown', () => {
+    let view = run(
+      { type: 'show', tab: '1' },
+      { type: 'layout', side: 'right', layout: 'thumbnails' },
+    );
+    assert.deepStrictEqual(view.layouts, {
+      left: 'details',
+      right: 'thumbnails',
+    });
+
+    view = reduceView(view, { type: 'show', tab: '2' });
+    assert.deepStrictEqual(view.layouts, defaultLayouts);
+    view = reduceView(view, {
+      type: 'layout',
+      side: 'left',
+      layout: 'thumbnails',
+    });
+    view = reduceView(view, { type: 'hide' });
+    view = reduceView(view, { type: 'show', tab: '1' });
+    assert.deepStrictEqual(view.layouts, {
+      left: 'details',
+      right: 'thumbnails',
+    });
+    view = reduceView(view, { type: 'show', tab: '2' });
+    assert.deepStrictEqual(view.layouts, {
+      left: 'thumbnails',
+      right: 'details',
+    });
+    assert.deepStrictEqual(
+      reduceView(view, { type: 'show', tab: '3' }).layouts,
+      defaultLayouts,
+    );
   });
 
   test('selects only rows there are', () => {

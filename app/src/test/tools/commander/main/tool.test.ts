@@ -19,7 +19,6 @@ import type {
 } from '../../../../tools/commander/shared/protocol';
 import type {
   ColumnWidths,
-  Layouts,
   Sorts,
 } from '../../../../tools/commander/shared/settings';
 import {
@@ -125,7 +124,6 @@ function commander(
     thumbnailCacheMegabytes: 8192,
     fileColors: [],
   };
-  let layouts: Layouts = { left: 'details', right: 'details' };
   const thumbnails = new Map<string, Uint8Array>();
   const streamed = new Set<string>();
   const thumbnailsFull = { now: false };
@@ -230,12 +228,6 @@ function commander(
       repositoriesAsked.push(checked);
       await repositoriesHeld.until;
       return repositories.has(checked);
-    },
-    layouts: () => layouts,
-    saveLayouts: (chosen) => {
-      saved.push(chosen);
-      layouts = chosen;
-      return Promise.resolve();
     },
     root,
   });
@@ -2285,26 +2277,18 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(page.of('settings').at(-1)?.sort, sorted);
   });
 
-  test('shows each side as details until it is shown as thumbnails, saving the layout of the side chosen and keeping the other, and tells the page with the size of the thumbnails', async () => {
+  test('tells the page the size of the thumbnails, and saves no layout, which each tab keeps for itself', async () => {
     const { tool, page, send, saved } = commander({});
     tool.ready(page);
-    assert.deepStrictEqual(page.of('settings').at(-1)?.layouts, {
-      left: 'details',
-      right: 'details',
-    });
     assert.strictEqual(page.of('settings').at(-1)?.thumbnailSize, 144);
+    const told = page.of('settings').length;
 
-    await send({ type: 'layout', side: 'right', layout: 'thumbnails' });
     await send(
-      forged('{ "type": "layout", "side": "right", "layout": "tiles" }'),
-    );
-    await send(
-      forged('{ "type": "layout", "side": "middle", "layout": "details" }'),
+      forged('{ "type": "layout", "side": "right", "layout": "thumbnails" }'),
     );
 
-    const chosen: Layouts = { left: 'details', right: 'thumbnails' };
-    assert.deepStrictEqual(saved, [chosen]);
-    assert.deepStrictEqual(page.of('settings').at(-1)?.layouts, chosen);
+    assert.deepStrictEqual(saved, []);
+    assert.strictEqual(page.of('settings').length, told);
   });
 
   test('lists the drives again when asked, as drives come and go', async () => {
@@ -2371,7 +2355,6 @@ suite('Commander tool', () => {
       columns: { extension: 6, size: 12, date: 16 },
       defaultColumns,
       canElevate: false,
-      layouts: { left: 'details', right: 'details' },
       thumbnailSize: 144,
       fileColors: [],
     });

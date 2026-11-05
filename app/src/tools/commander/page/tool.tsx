@@ -188,10 +188,8 @@ export function CommanderTool({
     () => post({ type: 'showHidden', shown: !view.showHidden }),
     shown && !viewing,
   );
-  const chooseLayout = (side: Side, layout: Layout) => {
+  const chooseLayout = (side: Side, layout: Layout) =>
     dispatch({ type: 'layout', side, layout });
-    post({ type: 'layout', side, layout });
-  };
   useBinding(
     commanderKeymap.layout,
     (layout) => chooseLayout(view.active, layout),

@@ -39,21 +39,6 @@ export type Layouts = Readonly<Record<'left' | 'right', Layout>>;
 
 export const defaultLayouts: Layouts = { left: 'details', right: 'details' };
 
-export function isLayout(value: unknown): value is Layout {
-  return layouts.some((layout) => layout === value);
-}
-
-export function layoutsOf(value: unknown): Layouts {
-  const of = (side: 'left' | 'right') => {
-    const layout: unknown =
-      typeof value === 'object' && value !== null
-        ? Reflect.get(value, side)
-        : undefined;
-    return isLayout(layout) ? layout : defaultLayouts[side];
-  };
-  return { left: of('left'), right: of('right') };
-}
-
 export function isSort(value: unknown): value is Sort {
   return (
     typeof value === 'object' &&

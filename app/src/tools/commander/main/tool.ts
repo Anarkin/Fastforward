@@ -25,9 +25,7 @@ import {
 } from '../shared/protocol';
 import {
   isColumnWidths,
-  isLayout,
   isSort,
-  type Layouts,
   type Sorts,
   type ColumnWidths,
   type CommanderSettings,
@@ -106,8 +104,6 @@ export interface CommanderAccess {
   };
   readonly streamed?: (file: string) => boolean | Promise<boolean>;
   readonly isRepository: (folder: string) => Promise<boolean>;
-  readonly layouts: () => Layouts;
-  readonly saveLayouts: (layouts: Layouts) => Promise<void>;
   readonly watch: WatchFolder;
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly platform: NodeJS.Platform;
@@ -383,15 +379,6 @@ export class CommanderTool implements Tool<'commander'> {
           await this.access.saveSorts({
             ...this.access.settings().sort,
             [message.side]: { column, descending },
-          });
-          this.postSettings(page);
-        }
-        return undefined;
-      case 'layout':
-        if (isSide(message.side) && isLayout(message.layout)) {
-          await this.access.saveLayouts({
-            ...this.access.layouts(),
-            [message.side]: message.layout,
           });
           this.postSettings(page);
         }
@@ -1540,7 +1527,6 @@ export class CommanderTool implements Tool<'commander'> {
       columns,
       defaultColumns: this.access.defaultColumns(),
       canElevate: this.access.elevate !== undefined,
-      layouts: this.access.layouts(),
       thumbnailSize,
       fileColors,
     });

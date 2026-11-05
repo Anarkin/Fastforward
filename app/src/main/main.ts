@@ -59,7 +59,6 @@ import { watchFolder } from '../tools/commander/main/watch';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
 import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
-import { layoutsOf } from '../tools/commander/shared/settings';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
 import { shellLaunch } from '../tools/terminal/main/shellLaunch';
@@ -440,7 +439,6 @@ async function start(asked: readonly string[]): Promise<void> {
       },
     },
   );
-  const commanderState = toolState(state, 'commander');
   const commanderTool = new CommanderTool({
     pdfPlaces: new PdfPlaces(path.join(profile, 'pdf-places.json')),
     fileSystem: () => fileSystemFor(process.platform),
@@ -475,8 +473,6 @@ async function start(asked: readonly string[]): Promise<void> {
         ).streamsFromGoogleDrive(file),
     }),
     isRepository,
-    layouts: () => layoutsOf(commanderState.get('layouts')),
-    saveLayouts: (chosen) => commanderState.update('layouts', chosen),
     watch: watchFolder,
     fileIcon: async (file) =>
       (await app.getFileIcon(file, { size: 'normal' })).toPNG(),

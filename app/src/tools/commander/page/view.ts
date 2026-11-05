@@ -80,6 +80,7 @@ export interface CommanderView {
 
 interface KeptTab {
   readonly active: Side;
+  readonly layouts: Layouts;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
 }
 
@@ -89,6 +90,7 @@ function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
   }
   return new Map(view.kept).set(view.tab, {
     active: view.active,
+    layouts: view.layouts,
     panes: view.panes,
   });
 }
@@ -203,6 +205,7 @@ export function reduceView(
         tab: action.tab,
         viewing: action.file,
         active: back?.active ?? emptyView.active,
+        layouts: back?.layouts ?? emptyView.layouts,
         panes: back?.panes ?? emptyView.panes,
         kept,
       };
@@ -212,6 +215,7 @@ export function reduceView(
         ...view,
         tab: undefined,
         viewing: undefined,
+        layouts: emptyView.layouts,
         panes: emptyView.panes,
         kept: keptAway(view),
       };
@@ -223,7 +227,6 @@ export function reduceView(
         columns: action.columns,
         defaultColumns: action.defaultColumns,
         canElevate: action.canElevate,
-        layouts: action.layouts,
         thumbnailSize: action.thumbnailSize,
         fileColors: fileColorsByExtension(action.fileColors),
       };

@@ -93,17 +93,6 @@ const savedSetting = (
     : undefined;
 };
 
-const savedRightLayout = (profile: string): unknown => {
-  const state: unknown = JSON.parse(
-    fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
-  );
-  const layouts: unknown = Reflect.get(
-    Reflect.get(Reflect.get(Object(state), 'tools') ?? {}, 'commander') ?? {},
-    'layouts',
-  );
-  return Reflect.get(Object(layouts), 'right');
-};
-
 const savedText = (profile: string, name: string): unknown =>
   savedSetting(profile, 'text', name);
 
@@ -2103,7 +2092,7 @@ suite('App commander', () => {
     );
   });
 
-  test('shows a side as thumbnails from the menu of its layout or on Mod+2, each file and folder a tile of its icon, name, size and date, moving among them as on a grid, and as details again on Mod+1, saving the layout in the state', async () => {
+  test('shows a side as thumbnails from the menu of its layout or on Mod+2, each file and folder a tile of its icon, name, size and date, moving among them as on a grid, and as details again on Mod+1, for its tab only, another tab showing details', async () => {
     const tiles = path.join(opened, 'tiles');
     fs.mkdirSync(tiles);
     for (let index = 1; index <= 7; index++) {
@@ -2162,10 +2151,6 @@ suite('App commander', () => {
       /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/,
     );
     await third.locator('.commander-thumbnail .commander-icon').waitFor();
-    await waitFor(
-      () => savedRightLayout(profile) === 'thumbnails',
-      'the layout saved',
-    );
 
     const names = await tileNames();
     const columns = await across();
@@ -2207,15 +2192,41 @@ suite('App commander', () => {
       'the details again',
     );
     assert.ok((await rowNames()).includes('t7.txt'));
-    await waitFor(
-      () => savedRightLayout(profile) === 'details',
-      'the details saved',
-    );
     await page.keyboard.press('ControlOrMeta+2');
     await waitFor(
       async () => (await tileNames()).length === 8,
       'the thumbnails again',
     );
+
+    await page.locator('.tab-add').click();
+    await page
+      .locator('.menu-item', { hasText: strings.tools.commander })
+      .click();
+    await waitFor(
+      async () => (await page.locator('.tabs [role="tab"]').count()) === 2,
+      'another commander tab',
+    );
+    await waitFor(
+      async () =>
+        (await layoutLabel()) === strings.commander.layouts.details &&
+        (await right().locator('.commander-row').count()) > 0,
+      'the other tab showing details',
+    );
+    assert.strictEqual(await right().locator('.commander-tile').count(), 0);
+    await page.keyboard.press('ControlOrMeta+W');
+    await waitFor(
+      async () => (await page.locator('.tabs [role="tab"]').count()) === 1,
+      'the other tab closed',
+    );
+    await waitFor(
+      async () => (await tileNames()).length === 8,
+      'the thumbnails of the first tab again',
+    );
+    assert.strictEqual(
+      await layoutLabel(),
+      strings.commander.layouts.thumbnails,
+    );
+    await right().locator('.commander-tile').first().click();
     await page.keyboard.press('ControlOrMeta+1');
     await waitFor(
       async () => (await right().locator('.commander-tile').count()) === 0,
@@ -2477,6 +2488,11 @@ suite('App commander', () => {
     fs.utimesSync(junk, atimeMs / 1000, mtimeMs / 1000);
     fs.renameSync(junk, wide);
     await page.reload();
+    await waitFor(
+      async () => (await rowNames()).includes('wide.png'),
+      'the files of the folder, as details once the page starts again',
+    );
+    await page.keyboard.press('ControlOrMeta+2');
     await waitFor(
       async () => (await shownThumbnailOf('wide.png')) > 0,
       'the thumbnail kept, as the image no longer decodes',
