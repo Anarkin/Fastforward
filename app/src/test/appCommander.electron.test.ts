@@ -7,7 +7,7 @@ import { crc32, deflateSync } from 'node:zlib';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
-import { waitFor } from './fixtures';
+import { defaultSettings, waitFor } from './fixtures';
 import { pdfOf } from './pdfs';
 import { closeOrKill, launchApp, waitForFocus } from './appFixtures';
 import { removeFolder, tempFolder } from './repositories';
@@ -3023,7 +3023,7 @@ suite('App commander', () => {
     );
   });
 
-  test('scrolls the list by whole rows, a row for each notch of the wheel, as far as a touchpad goes, and with the scrollbar alike, drawing it on a row at every frame while its scrollbar is dragged rather than between rows and then snapping', async () => {
+  test('scrolls the list by whole rows, the rows of the setting for each notch of the wheel, ten unless set, as far as a touchpad goes, and with the scrollbar alike, drawing it on a row at every frame while its scrollbar is dragged rather than between rows and then snapping', async () => {
     const many = path.join(opened, 'many');
     fs.mkdirSync(many);
     for (let index = 0; index < 400; index++) {
@@ -3057,7 +3057,9 @@ suite('App commander', () => {
           .height ?? 0,
     );
     assert.ok(
-      Math.abs((await offRow()).top - oneRow) < 0.01,
+      Math.abs(
+        (await offRow()).top - oneRow * defaultSettings().scrolling.wheelRows,
+      ) < 0.01,
       JSON.stringify(await offRow()),
     );
 

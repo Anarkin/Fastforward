@@ -41,8 +41,8 @@ suite('Storage', () => {
     }
   });
 
-  test('takes how many rows a notch of the mouse wheel scrolls from the settings, one unless set, as a whole number from one to fifty', () => {
-    assert.strictEqual(storageOf().wheelRows, 1);
+  test('takes how many rows a notch of the mouse wheel scrolls from the settings, ten unless set, as a whole number from one to fifty', () => {
+    assert.strictEqual(storageOf().wheelRows, 10);
     for (const [set, taken] of [
       [3, 3],
       [2.6, 3],

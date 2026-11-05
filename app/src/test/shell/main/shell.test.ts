@@ -206,7 +206,7 @@ suite('Shell with no tab open', () => {
       async (view) => {
         assert.deepStrictEqual(view.page.last('scrolling'), {
           type: 'scrolling',
-          wheelRows: 1,
+          wheelRows: 10,
         });
       },
       true,
