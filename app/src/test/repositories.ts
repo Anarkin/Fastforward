@@ -258,7 +258,11 @@ function runGit(
           },
           (error, stdout, stderr) => {
             if (error) {
-              reject(new Error(`git ${args.join(' ')} failed: ${stderr}`));
+              reject(
+                new Error(
+                  `git ${args.join(' ')} failed: ${stderr} (exit code ${String(error.code ?? 'none')}, signal ${error.signal ?? 'none'})`,
+                ),
+              );
             } else {
               resolve(stdout);
             }
