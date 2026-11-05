@@ -82,6 +82,7 @@ export function waitForFocus(locator: Locator, what: string): Promise<void> {
 }
 
 export const baseSettings = {
+  scrolling: { smooth: true },
   text: { wordWrap: false },
   tools: { git: { diffLayout: 'inline' } },
 };

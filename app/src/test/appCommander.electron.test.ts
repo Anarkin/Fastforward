@@ -295,6 +295,10 @@ suite('App commander', () => {
         activeTab: '1',
       }),
     );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ scrolling: { smooth: true } }),
+    );
     app = await launchApp(profile);
     page = await app.firstWindow();
     await right().locator('.commander-row').first().waitFor();
@@ -3063,7 +3067,7 @@ suite('App commander', () => {
     );
   });
 
-  test('scrolls the list by whole rows, the rows of the setting for each notch of the wheel, ten unless set, as far as a touchpad goes, a page on Page Down, gliding there unless set not to, and with the scrollbar alike, gliding after its thumb and coming to rest on a row', async () => {
+  test('scrolls the list by whole rows, the rows of the setting for each notch of the wheel, ten unless set, as far as a touchpad goes, a page on Page Down, gliding there once set to, and with the scrollbar alike, gliding after its thumb and coming to rest on a row', async () => {
     const many = path.join(opened, 'many');
     fs.mkdirSync(many);
     for (let index = 0; index < 400; index++) {
@@ -3217,7 +3221,7 @@ suite('App commander', () => {
     );
   });
 
-  test('scrolls thumbnails a row of tiles for each notch of the wheel, and for as little touchpad as a row of text, gliding there', async () => {
+  test('scrolls thumbnails a row of tiles for each notch of the wheel, and for as little touchpad as a row of text, gliding there once set to', async () => {
     const many = path.join(opened, 'many tiles');
     fs.mkdirSync(many);
     for (let index = 0; index < 200; index++) {
