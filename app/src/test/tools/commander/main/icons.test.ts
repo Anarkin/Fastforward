@@ -6,6 +6,7 @@ import { iconKey, Icons } from '../../../../tools/commander/main/icons';
 const at = (...names: string[]) => path.join(path.resolve('/'), ...names);
 
 const held = () => {
+  const clock = { now: 0 };
   const started: string[] = [];
   const finishes = new Map<string, () => void>();
   const icons = new Icons(
@@ -19,12 +20,13 @@ const held = () => {
     },
     'win32',
     2,
+    () => clock.now,
   );
   const finish = async (name: string) => {
     finishes.get(name)?.();
     await new Promise((resolve) => setImmediate(resolve));
   };
-  return { icons, started, finish };
+  return { icons, started, finish, clock };
 };
 
 suite('Commander icons', () => {
@@ -70,24 +72,27 @@ suite('Commander icons', () => {
     ]);
   });
 
-  test('loads a few icons at a time, the one asked for last first, as it is the one in view', async () => {
-    const { icons, started, finish } = held();
-    const asked = ['a', 'b', 'c', 'd', 'e'].map((name) =>
+  test('loads a few icons at a time, those asked for together in their order, top to bottom, and those asked for last before those asked for earlier, as they are the ones in view', async () => {
+    const { icons, started, finish, clock } = held();
+    const asked = ['a', 'b', 'c', 'd'].map((name) =>
       icons.of(at(`${name}.exe`), name),
     );
+    clock.now = 49;
+    asked.push(icons.of(at('e.exe'), 'e'));
+    clock.now = 200;
+    asked.push(...['f', 'g'].map((name) => icons.of(at(`${name}.exe`), name)));
     assert.deepStrictEqual(started, ['a.exe', 'b.exe']);
-    await finish('a.exe');
-    assert.deepStrictEqual(started, ['a.exe', 'b.exe', 'e.exe']);
-    await finish('b.exe');
-    await finish('e.exe');
-    await finish('d.exe');
-    await finish('c.exe');
+    for (const name of ['a', 'b', 'f', 'g', 'c', 'd', 'e']) {
+      await finish(`${name}.exe`);
+    }
     assert.deepStrictEqual(started, [
       'a.exe',
       'b.exe',
-      'e.exe',
-      'd.exe',
+      'f.exe',
+      'g.exe',
       'c.exe',
+      'd.exe',
+      'e.exe',
     ]);
     await Promise.all(asked);
   });

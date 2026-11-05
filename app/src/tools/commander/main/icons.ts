@@ -15,6 +15,8 @@ const maxIcons = 2000;
 
 const maxDropped = 5000;
 
+const batchGapMs = 50;
+
 export function iconKey(file: string, platform: NodeJS.Platform): string {
   const extension = path.extname(file).slice(1).toLowerCase();
   return platform === 'win32' && ownIconExtensions.has(extension)
@@ -34,7 +36,8 @@ interface Asked {
 
 export class Icons {
   private readonly cache = new Map<string, Promise<Uint8Array>>();
-  private readonly waiting: Asked[] = [];
+  private readonly batches: Asked[][] = [];
+  private lastAskedAt = Number.NEGATIVE_INFINITY;
   private readonly dropped = new Set<string>();
   private readonly started = new Set<string>();
   private loading = 0;
@@ -43,6 +46,7 @@ export class Icons {
     private readonly load: (file: string) => Promise<Uint8Array>,
     private readonly platform: NodeJS.Platform,
     private readonly atOnce = 4,
+    private readonly now: () => number = () => performance.now(),
   ) {}
 
   of(file: string, ticket?: string): Promise<Uint8Array> {
@@ -55,16 +59,24 @@ export class Icons {
       return Promise.reject(new IconDropped());
     }
     return new Promise((resolve, reject) => {
-      this.waiting.push({ key, file, ticket, resolve, reject });
+      const now = this.now();
+      if (now - this.lastAskedAt > batchGapMs || this.batches.length === 0) {
+        this.batches.push([]);
+      }
+      this.lastAskedAt = now;
+      this.batches.at(-1)?.push({ key, file, ticket, resolve, reject });
       this.next();
     });
   }
 
   drop(tickets: readonly string[]): void {
     for (const ticket of tickets) {
-      const index = this.waiting.findIndex((asked) => asked.ticket === ticket);
-      if (index >= 0) {
-        this.waiting.splice(index, 1)[0]?.reject(new IconDropped());
+      const batch = this.batches.find((each) =>
+        each.some((asked) => asked.ticket === ticket),
+      );
+      if (batch !== undefined) {
+        const index = batch.findIndex((asked) => asked.ticket === ticket);
+        batch.splice(index, 1)[0]?.reject(new IconDropped());
       } else if (!this.started.has(ticket)) {
         if (this.dropped.size >= maxDropped) {
           this.dropped.clear();
@@ -74,9 +86,24 @@ export class Icons {
     }
   }
 
+  private nextAsked(): Asked | undefined {
+    for (
+      let batch = this.batches.at(-1);
+      batch !== undefined;
+      batch = this.batches.at(-1)
+    ) {
+      const asked = batch.shift();
+      if (asked !== undefined) {
+        return asked;
+      }
+      this.batches.pop();
+    }
+    return undefined;
+  }
+
   private next(): void {
     while (this.loading < this.atOnce) {
-      const asked = this.waiting.pop();
+      const asked = this.nextAsked();
       if (asked === undefined) {
         return;
       }
