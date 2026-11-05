@@ -7,6 +7,7 @@ import {
   layoutMenu,
   Pane,
 } from '../../../../tools/commander/page/pane';
+import { noFileColors } from '../../../../tools/commander/page/fileColors';
 import { rowsOf } from '../../../../tools/commander/page/listing';
 import type { PaneView } from '../../../../tools/commander/page/view';
 import { strings } from '../../../../shared/strings';
@@ -38,7 +39,7 @@ const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
         pane={pane(elevated, hidden)}
         layout="details"
         thumbnailSize={144}
-        fileColors={new Map()}
+        fileColors={noFileColors}
         onLayout={noop}
         canGroupByColor
         onGroupByColor={noop}

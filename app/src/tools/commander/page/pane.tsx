@@ -60,7 +60,7 @@ import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { keyPressed } from '../../../ui/shortcuts';
 import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
-import { fileColorOf, type FileColorsByExtension } from './fileColors';
+import { fileColorOf, type FileColors } from './fileColors';
 import { PathTitle } from './pathTitle';
 
 declare module 'react' {
@@ -249,7 +249,7 @@ export function Pane({
   pane: PaneView | undefined;
   layout: Layout;
   thumbnailSize: number;
-  fileColors: FileColorsByExtension;
+  fileColors: FileColors;
   onLayout: (layout: Layout) => void;
   canGroupByColor: boolean;
   onGroupByColor: () => void;

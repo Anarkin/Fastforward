@@ -1,7 +1,7 @@
 import { matchesFilter } from '../../../shared/fileFilter';
 import { parentFolder, type Entry } from '../shared/protocol';
 import type { Sort, SortColumn } from '../shared/settings';
-import { noFileGroups, type FileGroupsByExtension } from './fileColors';
+import { groupOfFileNamed, noFileColors, type FileColors } from './fileColors';
 
 export interface Row {
   readonly key: string;
@@ -50,11 +50,13 @@ function sortedRows(
 ): Row[] {
   const direction = descending ? -1 : 1;
   const sortsFolders = column !== 'extension' && column !== 'size';
+  const groups = new Map(rows.map((row) => [row, groupOf(row)]));
+  const group = (row: Row) => groups.get(row) ?? 0;
   return rows.toSorted((a, b) => {
     const folders = a.entry?.folder === true;
     const byColumn = folders && !sortsFolders ? 0 : compareBy(column, a, b);
     return (
-      groupOf(a) - groupOf(b) ||
+      group(a) - group(b) ||
       direction *
         (byColumn ||
           collator.compare(a.entry?.name ?? '', b.entry?.name ?? '') ||
@@ -63,8 +65,10 @@ function sortedRows(
   });
 }
 
-function colorGroupOf(groups: FileGroupsByExtension): (row: Row) => number {
-  return (row) => groups.get(row.extension.toLowerCase()) ?? groups.size;
+function colorGroupOf(fileColors: FileColors): (row: Row) => number {
+  return (row) =>
+    groupOfFileNamed(row.entry?.name ?? '', fileColors) ??
+    fileColors.colors.length;
 }
 
 export function rowsOf(
@@ -73,7 +77,7 @@ export function rowsOf(
   showHidden: boolean,
   sort: Sort,
   repositories: ReadonlySet<string> = noRepositories,
-  groups: FileGroupsByExtension = noFileGroups,
+  fileColors: FileColors = noFileColors,
 ): Row[] {
   const shown = entries
     .filter((entry) => showHidden || !entry.hidden)
@@ -103,7 +107,7 @@ export function rowsOf(
     ...sortedRows(
       shown.filter((row) => !row.entry.folder),
       sort,
-      sort.groupByColor ? colorGroupOf(groups) : () => 0,
+      sort.groupByColor ? colorGroupOf(fileColors) : () => 0,
     ),
   ];
 }

@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import {
   toolSettingChoices,
   toolSettingProblems,
+  toolSettingStandIns,
   type ThemeColors,
   type ToolSettings,
 } from '../shared/tools';
@@ -102,8 +103,18 @@ function itemProblems(template: Json, item: unknown, name: string): string[] {
       return [strings.settings.missing(inner)];
     }
     const value = item[key];
+    const standIns = toolSettingStandIns.get(
+      inner.replaceAll(/\[\d+\]/g, '[]'),
+    );
+    if (standIns?.some((standIn) => standIn === value)) {
+      return [];
+    }
     if (!sameKind(fallback, value)) {
-      return [wrongKind(inner, fallback)];
+      return [
+        standIns === undefined
+          ? wrongKind(inner, fallback)
+          : strings.settings.shouldBeListOrOneOf(inner, standIns),
+      ];
     }
     return isObject(fallback) ? itemProblems(fallback, value, inner) : [];
   });

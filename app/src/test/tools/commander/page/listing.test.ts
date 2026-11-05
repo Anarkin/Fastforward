@@ -15,7 +15,7 @@ import {
   filteredRows,
   filteredSelection,
 } from '../../../../tools/commander/page/listing';
-import { fileGroupsByExtension } from '../../../../tools/commander/page/fileColors';
+import { fileColorsOf } from '../../../../tools/commander/page/fileColors';
 import type { Sort } from '../../../../tools/commander/shared/settings';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
 
@@ -41,7 +41,7 @@ const defaultSort: Sort = {
 const keys = (
   entries: readonly Entry[],
   sort: Sort = defaultSort,
-  { parent = false, hidden = true, groups = fileGroupsByExtension([]) } = {},
+  { parent = false, hidden = true, groups = fileColorsOf([]) } = {},
 ) =>
   rowsOf(entries, parent, hidden, sort, undefined, groups).map(
     (row) => row.key,
@@ -49,7 +49,7 @@ const keys = (
 
 const colors = { light: '#000', dark: '#fff' };
 
-const groups = fileGroupsByExtension([
+const groups = fileColorsOf([
   { extensions: ['exe', '.COM'], colors },
   { extensions: ['md', 'txt', 'exe'], colors },
   { extensions: ['png'], colors },
@@ -175,6 +175,30 @@ suite('Commander listing', () => {
         'd.zip',
         'README',
       ],
+    );
+  });
+
+  test('puts the files the viewer knows the language of where the group of the languages is, the files of an earlier group staying in it', () => {
+    assert.deepStrictEqual(
+      keys(
+        [
+          entry('b.txt'),
+          entry('main.ts'),
+          entry('Dockerfile'),
+          entry('a.png'),
+          entry('notes.md'),
+          entry('data.bin'),
+        ],
+        { column: 'name', descending: false, groupByColor: true },
+        {
+          groups: fileColorsOf([
+            { extensions: ['md', 'txt'], colors },
+            { extensions: 'languages', colors },
+            { extensions: ['png'], colors },
+          ]),
+        },
+      ),
+      ['b.txt', 'notes.md', 'Dockerfile', 'main.ts', 'a.png', 'data.bin'],
     );
   });
 

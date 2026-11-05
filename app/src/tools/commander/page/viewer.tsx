@@ -38,7 +38,7 @@ import {
   useLanguageChoice,
 } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
-import { colorOfFileNamed, type FileColorsByExtension } from './fileColors';
+import { colorOfFileNamed, type FileColors } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 
 export interface Viewing {
@@ -77,7 +77,7 @@ export function Viewer({
   listen,
 }: {
   file: string;
-  fileColors: FileColorsByExtension;
+  fileColors: FileColors;
   viewing: Viewing | undefined;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;

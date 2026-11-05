@@ -14,12 +14,10 @@ import {
 } from '../shared/settings';
 import { rowsOf, selectionAfter, type Row, type Selection } from './listing';
 import {
-  fileColorsByExtension,
-  fileGroupsByExtension,
+  fileColorsOf,
   noFileColors,
-  noFileGroups,
-  type FileColorsByExtension,
-  type FileGroupsByExtension,
+  sameGrouping,
+  type FileColors,
 } from './fileColors';
 
 interface Listed {
@@ -75,8 +73,7 @@ export interface CommanderView {
   readonly canElevate: boolean;
   readonly layouts: Layouts;
   readonly thumbnailSize: number;
-  readonly fileColors: FileColorsByExtension;
-  readonly fileGroups: FileGroupsByExtension;
+  readonly fileColors: FileColors;
   readonly active: Side;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
   readonly kept: ReadonlyMap<string, KeptTab>;
@@ -113,7 +110,6 @@ export const emptyView: CommanderView = {
   layouts: defaultLayouts,
   thumbnailSize: 144,
   fileColors: noFileColors,
-  fileGroups: noFileGroups,
   active: 'right',
   panes: { left: undefined, right: undefined },
   kept: new Map(),
@@ -165,26 +161,23 @@ function sameSort(one: Sort, other: Sort): boolean {
   );
 }
 
-function sameGroups(
-  one: FileGroupsByExtension,
-  other: FileGroupsByExtension,
-): boolean {
-  return (
-    one.size === other.size &&
-    [...one].every(([extension, group]) => other.get(extension) === group)
-  );
-}
-
 function relisted(
   pane: PaneView | undefined,
   sort: Sort,
   { folder, hidden, entries, parent, back, forward, elevated }: Listed,
   showHidden: boolean,
-  groups: FileGroupsByExtension,
+  fileColors: FileColors,
   selected: string | undefined,
 ): PaneView {
   const repositories = repositoriesKept(pane, folder);
-  const rows = rowsOf(entries, parent, showHidden, sort, repositories, groups);
+  const rows = rowsOf(
+    entries,
+    parent,
+    showHidden,
+    sort,
+    repositories,
+    fileColors,
+  );
   return {
     folder,
     hidden,
@@ -222,7 +215,7 @@ function settledPanes(
         view.sorts[side],
         pane,
         view.showHidden,
-        view.fileGroups,
+        view.fileColors,
         undefined,
       )
     );
@@ -269,10 +262,9 @@ export function reduceView(
         defaultColumns: action.defaultColumns,
         canElevate: action.canElevate,
         thumbnailSize: action.thumbnailSize,
-        fileColors: fileColorsByExtension(action.fileColors),
-        fileGroups: fileGroupsByExtension(action.fileColors),
+        fileColors: fileColorsOf(action.fileColors),
       };
-      const regrouped = !sameGroups(view.fileGroups, settled.fileGroups);
+      const regrouped = !sameGrouping(view.fileColors, settled.fileColors);
       return sides.reduce((next, side) => {
         const pane = view.panes[side];
         const sort = action.sort[side];
@@ -288,7 +280,7 @@ export function reduceView(
                 sort,
                 pane,
                 action.showHidden,
-                settled.fileGroups,
+                settled.fileColors,
                 undefined,
               ),
             )
@@ -305,7 +297,7 @@ export function reduceView(
               view.panes[action.side]?.sort ?? view.sorts[action.side],
               action,
               view.showHidden,
-              view.fileGroups,
+              view.fileColors,
               action.selected,
             ),
           )
@@ -329,7 +321,7 @@ export function reduceView(
           view.showHidden,
           pane.sort,
           repositories,
-          view.fileGroups,
+          view.fileColors,
         ),
       });
     }
@@ -376,7 +368,7 @@ export function reduceView(
           view.showHidden,
           action.sort,
           pane.repositories,
-          view.fileGroups,
+          view.fileColors,
         ),
       });
     }

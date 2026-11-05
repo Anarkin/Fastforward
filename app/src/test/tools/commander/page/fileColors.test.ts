@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import {
   colorOfFileNamed,
   fileColorOf,
-  fileColorsByExtension,
+  fileColorsOf,
 } from '../../../../tools/commander/page/fileColors';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
 import { defaultSettings } from '../../../fixtures';
@@ -18,13 +18,14 @@ const file = (name: string, extra: Partial<Entry> = {}): Entry => ({
   ...extra,
 });
 
-const defaults = fileColorsByExtension(
-  defaultSettings().tools.commander.fileColors,
-);
+const defaults = fileColorsOf(defaultSettings().tools.commander.fileColors);
 const executable = 'light-dark(#13692c, #5fd068)';
 const document = 'light-dark(#874c00, #f0a838)';
 const media = 'light-dark(#7a2f9e, #cf98ee)';
 const archive = 'light-dark(#00636f, #4fc8d6)';
+const language = 'light-dark(#7a6e00, #e0d070)';
+
+const colorsOf = (light: string) => ({ light, dark: light });
 
 suite('Commander file colors', () => {
   test('colors green by default the programs, installers and scripts that run when opened, whatever the case of their extension', () => {
@@ -115,14 +116,17 @@ suite('Commander file colors', () => {
     assert.strictEqual(fileColorOf(file('setup.msi'), defaults), executable);
   });
 
-  test('leaves plain by default the video extensions TypeScript uses, the subtitles, playlists, fonts and 3D models, the Keynote extension private keys use, data in CSV and the contacts and calendars', () => {
+  test('colors yellow by default the video extensions TypeScript uses and data in CSV, as the viewer reads them as TypeScript and CSV', () => {
+    for (const name of ['recording.ts', 'clip.mts', 'export.csv']) {
+      assert.strictEqual(fileColorOf(file(name), defaults), language, name);
+    }
+  });
+
+  test('leaves plain by default the subtitles, playlists, fonts and 3D models, the Keynote extension private keys use and the contacts and calendars', () => {
     for (const name of [
       'server.key',
-      'export.csv',
       'contacts.vcf',
       'meeting.ics',
-      'recording.ts',
-      'clip.mts',
       'movie.srt',
       'captions.vtt',
       'mix.m3u',
@@ -133,18 +137,23 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('leaves plain by default the source, config, libraries, scripts of the Windows Script Host and everything else', () => {
+  test('colors yellow by default the source and config the viewer knows the language of, by their extension or their whole name', () => {
     for (const name of [
       'main.ts',
       'esbuild.config.mts',
       'app.js',
       'package.json',
       'settings.yml',
-      '.gitignore',
-      'LICENSE',
-      'core.dll',
+      'Makefile',
+      'Dockerfile',
       '.md',
     ]) {
+      assert.strictEqual(fileColorOf(file(name), defaults), language, name);
+    }
+  });
+
+  test('leaves plain by default the libraries, the files the viewer knows no language of and everything else', () => {
+    for (const name of ['.gitignore', 'LICENSE', 'core.dll', 'data.bin']) {
       assert.strictEqual(fileColorOf(file(name), defaults), undefined, name);
     }
   });
@@ -157,7 +166,7 @@ suite('Commander file colors', () => {
   });
 
   test('takes the extensions of a group with or without their dot and in any case, the first group naming an extension giving its color', () => {
-    const colors = fileColorsByExtension([
+    const colors = fileColorsOf([
       { extensions: ['.PNG', 'jpg'], colors: { light: '#a0a', dark: '#f0f' } },
       { extensions: ['png', 'svg'], colors: { light: '#00a', dark: '#00f' } },
     ]);
@@ -175,10 +184,35 @@ suite('Commander file colors', () => {
     );
   });
 
-  test('colors a file by the extension of its name alone, as the viewer knows no more of it', () => {
+  test('colors a file by its name alone, as the viewer knows no more of it', () => {
     assert.strictEqual(colorOfFileNamed('report.PDF', defaults), document);
     assert.strictEqual(colorOfFileNamed('setup.exe', defaults), executable);
     assert.strictEqual(colorOfFileNamed('.bashrc', defaults), undefined);
-    assert.strictEqual(colorOfFileNamed('Makefile', defaults), undefined);
+    assert.strictEqual(colorOfFileNamed('Makefile', defaults), language);
+  });
+
+  test('colors the languages where their group is, an earlier group keeping its extensions and the first group of the languages counting alone', () => {
+    const last = fileColorsOf([
+      { extensions: ['ps1'], colors: colorsOf('#001') },
+      { extensions: 'languages', colors: colorsOf('#002') },
+      { extensions: 'languages', colors: colorsOf('#003') },
+    ]);
+    assert.strictEqual(
+      colorOfFileNamed('run.ps1', last),
+      'light-dark(#001, #001)',
+    );
+    assert.strictEqual(
+      colorOfFileNamed('main.rs', last),
+      'light-dark(#002, #002)',
+    );
+    const first = fileColorsOf([
+      { extensions: 'languages', colors: colorsOf('#002') },
+      { extensions: ['ps1'], colors: colorsOf('#001') },
+    ]);
+    assert.strictEqual(
+      colorOfFileNamed('run.ps1', first),
+      'light-dark(#002, #002)',
+    );
+    assert.strictEqual(colorOfFileNamed('setup.exe', first), undefined);
   });
 });

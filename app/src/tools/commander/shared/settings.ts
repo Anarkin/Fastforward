@@ -20,8 +20,10 @@ export const maxColumnWidth = 100;
 
 export type Sorts = Readonly<Record<'left' | 'right', Sort>>;
 
+export const languagesGroup = 'languages';
+
 export interface FileColor {
-  readonly extensions: readonly string[];
+  readonly extensions: readonly string[] | typeof languagesGroup;
   readonly colors: { readonly light: string; readonly dark: string };
 }
 
@@ -40,8 +42,16 @@ export function extensionKey(extension: string): string {
 
 export function fileColorProblems(groups: readonly FileColor[]): string[] {
   const firstGroup = new Map<string, number>();
-  return groups.flatMap(({ extensions }, group) =>
-    extensions.flatMap((extension) => {
+  let languages: number | undefined;
+  return groups.flatMap(({ extensions }, group) => {
+    if (extensions === languagesGroup) {
+      if (languages === undefined) {
+        languages = group;
+        return [];
+      }
+      return [strings.settings.fileColorLanguagesTwice(languages, group)];
+    }
+    return extensions.flatMap((extension) => {
       const key = extensionKey(extension);
       if (key === '') {
         return [strings.settings.fileColorEmpty(group)];
@@ -54,8 +64,8 @@ export function fileColorProblems(groups: readonly FileColor[]): string[] {
       return first === group
         ? []
         : [strings.settings.fileColorTwice(key, first, group)];
-    }),
-  );
+    });
+  });
 }
 
 export const layouts = ['details', 'thumbnails'] as const;

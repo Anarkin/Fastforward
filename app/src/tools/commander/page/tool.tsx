@@ -190,7 +190,7 @@ export function CommanderTool({
   );
   const chooseLayout = (side: Side, layout: Layout) =>
     dispatch({ type: 'layout', side, layout });
-  const canGroupByColor = view.fileGroups.size > 0;
+  const canGroupByColor = view.fileColors.colors.length > 0;
   const groupByColor = (side: Side) => {
     const current = view.panes[side]?.sort ?? view.sorts[side];
     const sort = { ...current, groupByColor: !current.groupByColor };

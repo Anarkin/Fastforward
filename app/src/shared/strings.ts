@@ -812,6 +812,10 @@ export const strings = {
       `"${name}" should be ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
     fileColorTwice: (extension: string, first: number, again: number) =>
       `"tools.commander.fileColors[${again}]" lists "${extension}", which "tools.commander.fileColors[${first}]" lists already, so the earlier one colors it`,
+    fileColorLanguagesTwice: (first: number, again: number) =>
+      `"tools.commander.fileColors[${again}]" colors the languages, which "tools.commander.fileColors[${first}]" colors already, so the earlier one colors them`,
+    shouldBeListOrOneOf: (name: string, choices: readonly string[]) =>
+      `"${name}" should be a list of strings or ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
     fileColorEmpty: (group: number) =>
       `"tools.commander.fileColors[${group}].extensions" lists an empty extension, which colors nothing`,
   },

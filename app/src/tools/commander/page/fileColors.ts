@@ -1,19 +1,31 @@
+import { languageOf } from '../../../ui/languages';
 import type { Entry } from '../shared/protocol';
-import { extensionKey, type FileColor } from '../shared/settings';
+import {
+  extensionKey,
+  languagesGroup,
+  type FileColor,
+} from '../shared/settings';
 
-export type FileColorsByExtension = ReadonlyMap<string, string>;
+export interface FileColors {
+  readonly colors: readonly string[];
+  readonly byExtension: ReadonlyMap<string, number>;
+  readonly languages: number | undefined;
+}
 
-export const noFileColors: FileColorsByExtension = new Map();
+export const noFileColors: FileColors = {
+  colors: [],
+  byExtension: new Map(),
+  languages: undefined,
+};
 
-export type FileGroupsByExtension = ReadonlyMap<string, number>;
-
-export const noFileGroups: FileGroupsByExtension = new Map();
-
-export function fileGroupsByExtension(
-  groups: readonly FileColor[],
-): FileGroupsByExtension {
+export function fileColorsOf(groups: readonly FileColor[]): FileColors {
   const byExtension = new Map<string, number>();
+  let languages: number | undefined;
   groups.forEach(({ extensions }, group) => {
+    if (extensions === languagesGroup) {
+      languages ??= group;
+      return;
+    }
     for (const extension of extensions) {
       const key = extensionKey(extension);
       if (!byExtension.has(key)) {
@@ -21,37 +33,49 @@ export function fileGroupsByExtension(
       }
     }
   });
-  return byExtension;
+  return {
+    colors: groups.map(
+      ({ colors }) => `light-dark(${colors.light}, ${colors.dark})`,
+    ),
+    byExtension,
+    languages,
+  };
 }
 
-export function fileColorsByExtension(
-  groups: readonly FileColor[],
-): FileColorsByExtension {
-  const byExtension = new Map<string, string>();
-  for (const { extensions, colors } of groups) {
-    for (const extension of extensions) {
-      const key = extensionKey(extension);
-      if (!byExtension.has(key)) {
-        byExtension.set(key, `light-dark(${colors.light}, ${colors.dark})`);
-      }
-    }
+export function sameGrouping(one: FileColors, other: FileColors): boolean {
+  return (
+    one.languages === other.languages &&
+    one.byExtension.size === other.byExtension.size &&
+    [...one.byExtension].every(
+      ([extension, group]) => other.byExtension.get(extension) === group,
+    )
+  );
+}
+
+export function groupOfFileNamed(
+  name: string,
+  { byExtension, languages }: FileColors,
+): number | undefined {
+  const dot = name.lastIndexOf('.');
+  const byName =
+    dot <= 0 ? undefined : byExtension.get(name.slice(dot + 1).toLowerCase());
+  if (languages === undefined || (byName !== undefined && byName < languages)) {
+    return byName;
   }
-  return byExtension;
+  return languageOf(name) === undefined ? byName : languages;
 }
 
 export function colorOfFileNamed(
   name: string,
-  byExtension: FileColorsByExtension,
+  fileColors: FileColors,
 ): string | undefined {
-  const dot = name.lastIndexOf('.');
-  return dot <= 0
-    ? undefined
-    : byExtension.get(name.slice(dot + 1).toLowerCase());
+  const group = groupOfFileNamed(name, fileColors);
+  return group === undefined ? undefined : fileColors.colors[group];
 }
 
 export function fileColorOf(
   entry: Entry,
-  byExtension: FileColorsByExtension,
+  fileColors: FileColors,
 ): string | undefined {
-  return entry.folder ? undefined : colorOfFileNamed(entry.name, byExtension);
+  return entry.folder ? undefined : colorOfFileNamed(entry.name, fileColors);
 }

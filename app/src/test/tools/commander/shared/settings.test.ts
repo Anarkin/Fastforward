@@ -22,6 +22,17 @@ suite('Commander settings', () => {
     );
   });
 
+  test('names a color group of the languages after an earlier one', () => {
+    assert.deepStrictEqual(
+      fileColorProblems([
+        { extensions: 'languages', colors },
+        { extensions: ['md'], colors },
+        { extensions: 'languages', colors },
+      ]),
+      [strings.settings.fileColorLanguagesTwice(0, 2)],
+    );
+  });
+
   test('finds nothing to say about color groups that each list their own extensions', () => {
     assert.deepStrictEqual(
       fileColorProblems([

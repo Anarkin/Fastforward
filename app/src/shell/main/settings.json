@@ -265,6 +265,10 @@
             "apk"
           ],
           "colors": { "light": "#00636f", "dark": "#4fc8d6" }
+        },
+        {
+          "extensions": "languages",
+          "colors": { "light": "#7a6e00", "dark": "#e0d070" }
         }
       ],
       "colors": {
