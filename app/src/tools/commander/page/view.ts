@@ -189,6 +189,19 @@ function withPane(
   return { ...view, panes: { ...view.panes, [side]: pane } };
 }
 
+function settledPanes(
+  view: CommanderView,
+  { panes }: KeptTab,
+): Readonly<Record<Side, PaneView | undefined>> {
+  const settled = (side: Side) => {
+    const pane = panes[side];
+    return (
+      pane && relisted(pane, view.sorts[side], pane, view.showHidden, undefined)
+    );
+  };
+  return { left: settled('left'), right: settled('right') };
+}
+
 export function reduceView(
   view: CommanderView,
   action: ViewAction,
@@ -206,7 +219,7 @@ export function reduceView(
         viewing: action.file,
         active: back?.active ?? emptyView.active,
         layouts: back?.layouts ?? emptyView.layouts,
-        panes: back?.panes ?? emptyView.panes,
+        panes: back === undefined ? emptyView.panes : settledPanes(view, back),
         kept,
       };
     }

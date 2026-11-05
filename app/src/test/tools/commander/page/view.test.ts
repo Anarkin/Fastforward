@@ -46,9 +46,9 @@ const shown = (view: CommanderView) => ({
   selected: view.panes.left?.selected,
 });
 
-const sortedBy = (left: 'name' | 'size'): ViewAction => ({
+const sortedBy = (left: 'name' | 'size', showHidden = true): ViewAction => ({
   type: 'settings',
-  showHidden: true,
+  showHidden,
   sort: {
     left: { column: left, descending: false },
     right: { column: 'extension', descending: false },
@@ -180,6 +180,28 @@ suite('Commander view', () => {
       'b.txt',
       'a.zip',
     ]);
+  });
+
+  test('shows a tab kept away in the order and with the hidden files the settings give once it is shown again, as the settings changed while it was away', () => {
+    const files = [
+      entry('b.txt', { size: 1 }),
+      entry('a.zip', { size: 2 }),
+      entry('cache.tmp', { hidden: true, size: 3 }),
+    ];
+    const view = run(
+      sortedBy('name'),
+      { type: 'show', tab: '1' },
+      listing('/work', files),
+      { type: 'show', tab: '2' },
+      sortedBy('size', false),
+      { type: 'show', tab: '1' },
+    );
+
+    assert.deepStrictEqual(shown(view).rows, ['..', 'b.txt', 'a.zip']);
+    assert.deepStrictEqual(view.panes.left?.sort, {
+      column: 'size',
+      descending: false,
+    });
   });
 
   test('views the file of a viewing tab instead of the sides, and stops once another tab or none is shown', () => {
