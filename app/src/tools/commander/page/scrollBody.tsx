@@ -15,8 +15,10 @@ import { viewerKeymap } from '../shared/keymap';
 import { followDrag } from '../../../ui/followDrag';
 import { Scrolling, wheelTurn } from '../../../ui/rowScroll';
 import {
+  grabbedAt,
   hideAfter,
   overlayScrollbarClass,
+  shareAt,
 } from '../../../ui/overlayScrollbars';
 
 export interface Thumb {
@@ -386,12 +388,10 @@ export function ScrollBody({
           onPointerDown={(event) => {
             event.preventDefault();
             const bar = event.currentTarget.getBoundingClientRect();
+            const grab = grabbedAt(event.clientY - bar.top, box);
             const at = (clientY: number) => {
-              const share =
-                Math.min(Math.max(clientY - bar.top, 0), bar.height) /
-                Math.max(1, bar.height);
               setDragging(true);
-              jump(share);
+              jump(shareAt(clientY, bar.top, bar.height, box.height, grab));
             };
             at(event.clientY);
             followDrag(

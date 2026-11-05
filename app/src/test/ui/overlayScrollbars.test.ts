@@ -6,10 +6,14 @@ import {
   draggedScroll,
   drawsOverlay,
   followedScroller,
+  grabbedAt,
   installOverlayScrollbars,
+  jumpedScroll,
   overlayScrollbarClass,
   scrolledScroller,
+  shareAt,
   thumbBox,
+  trackBox,
   trackOf,
   scrollPerPixel,
   sidewaysMetrics,
@@ -19,6 +23,8 @@ import {
 import { stylesheet } from '../fixtures';
 
 const none = () => null;
+
+const at = (clientX: number, clientY: number) => ({ clientX, clientY });
 
 const painted = () =>
   new Promise((resolve) =>
@@ -65,6 +71,82 @@ suite('Overlay scrollbars', () => {
       );
       await painted();
       assert.ok(!bar.classList.contains('shown'));
+    } finally {
+      Object.assign(globalThis, saved);
+      dom.window.close();
+    }
+  });
+
+  test('scrolls an area to where its track is pressed and follows the pointer while it is held, the thumb centered on it, without the press reaching what is under the track, while a press off the track does', async () => {
+    const dom = new JSDOM(
+      '<!doctype html><body style="--scrollbar-size: 20px"><div id="list" style="overflow-y: auto"><div id="row"></div></div></body>',
+    );
+    const { document } = dom.window;
+    const globals = {
+      window: dom.window,
+      document,
+      Element: dom.window.Element,
+      getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+      requestAnimationFrame: (run: () => void) => setTimeout(run),
+      cancelAnimationFrame: (frame: ReturnType<typeof setTimeout>) =>
+        clearTimeout(frame),
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    Object.assign(dom.window.Element.prototype, {
+      setPointerCapture: () => {},
+    });
+    try {
+      const list = document.getElementById('list');
+      const row = document.getElementById('row');
+      assert.ok(list && row);
+      Object.defineProperties(list, {
+        scrollHeight: { value: 1000 },
+        clientHeight: { value: 100 },
+        clientWidth: { value: 400 },
+        scrollTop: { value: 0, writable: true },
+      });
+      const pressedRows: number[] = [];
+      row.addEventListener('pointerdown', (event) =>
+        pressedRows.push(event.clientX),
+      );
+      installOverlayScrollbars();
+      const press = (clientX: number, clientY: number) =>
+        row.dispatchEvent(
+          new dom.window.MouseEvent('pointerdown', {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            buttons: 1,
+            clientX,
+            clientY,
+          }),
+        );
+
+      press(100, 50);
+      assert.deepStrictEqual(pressedRows, [100]);
+      assert.strictEqual(list.scrollTop, 0);
+
+      assert.strictEqual(press(390, 50), false);
+      assert.deepStrictEqual(pressedRows, [100]);
+      assert.strictEqual(list.scrollTop, 450);
+      const bar = document.querySelector(`.${overlayScrollbarClass}.vertical`);
+      assert.ok(bar);
+      bar.dispatchEvent(
+        new dom.window.MouseEvent('pointermove', {
+          buttons: 1,
+          clientX: 0,
+          clientY: 95,
+        }),
+      );
+      assert.strictEqual(list.scrollTop, 900);
+      bar.dispatchEvent(new dom.window.MouseEvent('pointerup', { buttons: 0 }));
+      bar.dispatchEvent(
+        new dom.window.MouseEvent('pointermove', { buttons: 1, clientY: 50 }),
+      );
+      assert.strictEqual(list.scrollTop, 900);
     } finally {
       Object.assign(globalThis, saved);
       dom.window.close();
@@ -256,5 +338,80 @@ suite('Overlay scrollbars', () => {
     }
     assert.strictEqual(sidewaysScroll(500, 1000, 0), 0);
     assert.strictEqual(sidewaysScroll(500, 0, 400), 0);
+  });
+
+  test('places the track a thumb runs along over the right edge, or the bottom, between the ends it keeps off, and none along an axis that fits', () => {
+    assert.deepStrictEqual(trackBox('vertical', scroller, 25), {
+      left: 101 + 400 - 25,
+      top: 51,
+      width: 25,
+      height: 500,
+    });
+    assert.deepStrictEqual(trackBox('horizontal', scroller, 25), {
+      left: 101,
+      top: 51 + 500 - 25,
+      width: 400,
+      height: 25,
+    });
+    const inset = {
+      ...scroller,
+      track: { top: 40, bottom: 6, left: 6, right: 6 },
+    };
+    assert.deepStrictEqual(trackBox('vertical', inset, 25), {
+      left: 101 + 400 - 25,
+      top: 51 + 40,
+      width: 25,
+      height: 454,
+    });
+    assert.deepStrictEqual(trackBox('horizontal', inset, 25), {
+      left: 101 + 6,
+      top: 51 + 500 - 25,
+      width: 388,
+      height: 25,
+    });
+    assert.strictEqual(
+      trackBox('horizontal', { ...scroller, scrollWidth: 400 }, 25),
+      undefined,
+    );
+  });
+
+  test('scrolls an area so that its thumb is centered where its track is pressed, as far as the ends allow', () => {
+    assert.strictEqual(
+      jumpedScroll('vertical', scroller, at(0, 51 + 300)),
+      350,
+    );
+    assert.strictEqual(jumpedScroll('vertical', scroller, at(0, 51 + 10)), 0);
+    assert.strictEqual(
+      jumpedScroll('vertical', scroller, at(0, 51 + 495)),
+      500,
+    );
+    assert.strictEqual(
+      jumpedScroll('horizontal', scroller, at(101 + 150, 0)),
+      100,
+    );
+    assert.strictEqual(
+      jumpedScroll(
+        'vertical',
+        { ...scroller, track: { top: 40, bottom: 6, left: 6, right: 6 } },
+        at(0, 51 + 40 + 227),
+      ),
+      250,
+    );
+  });
+
+  test('takes the share of the way along a track for a pointer holding a thumb at a point of it, the middle by default, as far as the ends allow, and none for a thumb with no room to move', () => {
+    assert.strictEqual(shareAt(60, 10, 100, 20), 0.5);
+    assert.strictEqual(shareAt(0, 10, 100, 20), 0);
+    assert.strictEqual(shareAt(200, 10, 100, 20), 1);
+    assert.strictEqual(shareAt(60, 10, 100, 20, 0), 0.625);
+    assert.strictEqual(shareAt(60, 10, 20, 20), 0);
+  });
+
+  test('holds a thumb pressed where it was pressed, and one whose track was pressed beside it by its middle', () => {
+    assert.strictEqual(grabbedAt(35, { top: 30, height: 20 }), 5);
+    assert.strictEqual(grabbedAt(30, { top: 30, height: 20 }), 0);
+    assert.strictEqual(grabbedAt(50, { top: 30, height: 20 }), 20);
+    assert.strictEqual(grabbedAt(80, { top: 30, height: 20 }), 10);
+    assert.strictEqual(grabbedAt(10, { top: 30, height: 20 }), 10);
   });
 });

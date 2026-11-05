@@ -257,6 +257,94 @@ export function thumbBox(
   );
 }
 
+export function trackBox(
+  axis: Axis,
+  scroller: ScrollerMetrics,
+  size: number,
+): ThumbBox | undefined {
+  if (!thumbBox(axis, scroller, size)) {
+    return undefined;
+  }
+  const left = scroller.left + scroller.clientLeft;
+  const top = scroller.top + scroller.clientTop;
+  const track = scroller.track ?? noTrackInsets;
+  return axis === 'vertical'
+    ? {
+        left: left + scroller.clientWidth - size,
+        top: top + track.top,
+        width: size,
+        height: verticalTrack(scroller),
+      }
+    : {
+        left: left + track.left,
+        top: top + scroller.clientHeight - size,
+        width: horizontalTrack(scroller),
+        height: size,
+      };
+}
+
+function contains(
+  box: ThumbBox,
+  pointer: { readonly clientX: number; readonly clientY: number },
+): boolean {
+  return (
+    pointer.clientX >= box.left &&
+    pointer.clientX < box.left + box.width &&
+    pointer.clientY >= box.top &&
+    pointer.clientY < box.top + box.height
+  );
+}
+
+export function shareAt(
+  pointer: number,
+  start: number,
+  track: number,
+  length: number,
+  grab = length / 2,
+): number {
+  const room = track - length;
+  return room > 0
+    ? Math.min(Math.max((pointer - start - grab) / room, 0), 1)
+    : 0;
+}
+
+export function grabbedAt(
+  pointer: number,
+  thumb: { readonly top: number; readonly height: number },
+): number {
+  return pointer >= thumb.top && pointer <= thumb.top + thumb.height
+    ? pointer - thumb.top
+    : thumb.height / 2;
+}
+
+export function jumpedScroll(
+  axis: Axis,
+  scroller: ScrollerMetrics,
+  pointer: { readonly clientX: number; readonly clientY: number },
+): number {
+  const track = scroller.track ?? noTrackInsets;
+  const [scrollSize, clientSize, along, start, length] =
+    axis === 'vertical'
+      ? [
+          scroller.scrollHeight,
+          scroller.clientHeight,
+          pointer.clientY,
+          scroller.top + scroller.clientTop + track.top,
+          verticalTrack(scroller),
+        ]
+      : [
+          scroller.scrollWidth,
+          scroller.clientWidth,
+          pointer.clientX,
+          scroller.left + scroller.clientLeft + track.left,
+          horizontalTrack(scroller),
+        ];
+  const thumb = thumbOf(scrollSize, clientSize, 0, length);
+  return thumb
+    ? shareAt(along, start, length, thumb.length) * (scrollSize - clientSize)
+    : 0;
+}
+
 function verticalTrack({ clientHeight, track }: ScrollerMetrics): number {
   return Math.max(0, clientHeight - (track?.top ?? 0) - (track?.bottom ?? 0));
 }
@@ -328,6 +416,12 @@ export function elementMetrics(scroller: Element): ScrollerMetrics {
   };
 }
 
+function barSize(): number {
+  return parseFloat(
+    getComputedStyle(document.body).getPropertyValue('--scrollbar-size'),
+  );
+}
+
 class Bar {
   readonly element = document.createElement('div');
   scroller: Element | null = null;
@@ -359,10 +453,7 @@ class Bar {
     if (!scroller?.isConnected) {
       return false;
     }
-    const size = parseFloat(
-      getComputedStyle(document.body).getPropertyValue('--scrollbar-size'),
-    );
-    const box = thumbBox(this.axis, metricsOf(scroller, this.axis), size);
+    const box = thumbBox(this.axis, metricsOf(scroller, this.axis), barSize());
     if (!box) {
       return false;
     }
@@ -395,20 +486,47 @@ class Bar {
     }, hideAfter);
   }
 
+  pressTrack(scroller: Element, event: PointerEvent): boolean {
+    const metrics = metricsOf(scroller, this.axis);
+    const track = trackBox(this.axis, metrics, barSize());
+    if (!track || !contains(track, event)) {
+      return false;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.scroller = scroller;
+    this.scroll(scroller, jumpedScroll(this.axis, metrics, event));
+    this.follow(scroller, event, (pointer) =>
+      jumpedScroll(this.axis, metrics, pointer),
+    );
+    this.show(scroller);
+    return true;
+  }
+
   private readonly onPointerDown = (event: PointerEvent) => {
     const { scroller } = this;
     if (!scroller || !clicked(keymap.drag, event)) {
       return;
     }
     event.preventDefault();
+    const drag = dragFrom(this.axis, metricsOf(scroller, this.axis), event);
+    this.follow(scroller, event, (pointer) =>
+      draggedScroll(this.axis, drag, pointer),
+    );
+  };
+
+  private follow(
+    scroller: Element,
+    event: PointerEvent,
+    scrollAt: (pointer: PointerEvent) => number,
+  ): void {
     this.element.setPointerCapture(event.pointerId);
     this.element.classList.add('dragging');
     this.dragging = true;
     thumbDragged.add(scroller);
-    const drag = dragFrom(this.axis, metricsOf(scroller, this.axis), event);
     followDrag(
       this.element,
-      (move: PointerEvent) => this.scroll(scroller, drag, move),
+      (pointer: PointerEvent) => this.scroll(scroller, scrollAt(pointer)),
       () => {
         this.dragging = false;
         thumbDragged.delete(scroller);
@@ -416,10 +534,9 @@ class Bar {
         this.hideLater();
       },
     );
-  };
+  }
 
-  private scroll(scroller: Element, drag: Drag, pointer: PointerEvent): void {
-    const scroll = draggedScroll(this.axis, drag, pointer);
+  private scroll(scroller: Element, scroll: number): void {
     const sideways = sidewaysScrollers.get(scroller);
     const rows = rowScrollers.get(scroller);
     if (this.axis === 'vertical' && rows) {
@@ -477,5 +594,20 @@ export function installOverlayScrollbars(): void {
       { capture: true, passive: true },
     );
   }
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (!clicked(keymap.drag, event)) {
+        return;
+      }
+      for (const bar of bars) {
+        const scroller = scrollerOf(event.target, bar.axis);
+        if (scroller && bar.pressTrack(scroller, event)) {
+          return;
+        }
+      }
+    },
+    { capture: true },
+  );
   window.addEventListener('resize', () => bars.forEach((bar) => bar.hide()));
 }

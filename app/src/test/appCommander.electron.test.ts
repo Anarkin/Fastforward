@@ -1118,7 +1118,7 @@ suite('App commander', () => {
     }
   });
 
-  test('shows the rows of a file viewed, moving a page with PageDown, to its end with End and anywhere with its scrollbar, its thumb moving with the rows while dragged rather than under the pointer and then jumping to them once let go', async () => {
+  test('shows the rows of a file viewed, moving a page with PageDown, to its end with End and anywhere with its scrollbar, centering its thumb where its track is pressed, its thumb moving with the rows while dragged rather than under the pointer and then jumping to them once let go', async () => {
     const lines = Array.from({ length: 200 }, (_, index) => `row ${index}`);
     fs.writeFileSync(
       path.join(opened, 'rows.txt'),
@@ -1244,6 +1244,18 @@ suite('App commander', () => {
       ),
       [],
     );
+
+    const thumbHeight = (await thumb.boundingBox())?.height ?? 0;
+    assert.ok(thumbHeight > 0);
+    const pressed = bar.y + thumbHeight * 1.5;
+    await page.mouse.click(x, pressed);
+    await waitFor(async () => {
+      const box = await thumb.boundingBox();
+      return (
+        box !== null &&
+        Math.abs(box.y + box.height / 2 - pressed) < box.height / 10
+      );
+    }, 'the thumb centered where its track was pressed');
 
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
@@ -3038,6 +3050,63 @@ suite('App commander', () => {
     await waitFor(
       async () => !(await rowNames()).includes('menu.ts'),
       'menu.ts to be gone from the list',
+    );
+  });
+
+  test('scrolls the language menu to where its track is pressed, the thumb centered there and following the pointer while held, without choosing the language under it or selecting text', async () => {
+    fs.writeFileSync(path.join(opened, 'track.ts'), 'const a = 1;');
+    await select('track');
+    await page.keyboard.press('F3');
+    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    const label = page.locator('.viewer .language-button .menu-button-label');
+    const language = await label.textContent();
+    await page.keyboard.press('l');
+    const menu = page.locator('.viewer .language-button .menu');
+    await menu.waitFor();
+    const thumb = page.locator('.overlay-scrollbar.vertical.shown');
+    await menu.hover();
+    await thumb.waitFor();
+    const [menuBox, top] = await Promise.all([
+      menu.boundingBox(),
+      thumb.boundingBox(),
+    ]);
+    assert.ok(menuBox && top);
+    const x = top.x + top.width / 2;
+    const trackTop = top.y;
+    const trackBottom = menuBox.y + menuBox.height - 6;
+    const centered = async (y: number) => {
+      const box = await thumb.boundingBox();
+      return box !== null && Math.abs(box.y + box.height / 2 - y) <= 1;
+    };
+
+    const middle = (trackTop + trackBottom) / 2;
+    await page.mouse.move(x, middle);
+    await page.mouse.down();
+    await waitFor(() => centered(middle), 'the thumb centered where pressed');
+    const lower = trackTop + ((trackBottom - trackTop) * 3) / 4;
+    await page.mouse.move(x, lower, { steps: 5 });
+    await waitFor(() => centered(lower), 'the thumb following the pointer');
+    await page.mouse.up();
+    await page.mouse.click(x, trackTop + 2);
+    await waitFor(
+      async () => (await thumb.boundingBox())?.y === top.y,
+      'the thumb back at the start of its track',
+    );
+
+    assert.strictEqual(await menu.count(), 1);
+    assert.strictEqual(
+      await page.evaluate(() => getSelection()?.toString() ?? ''),
+      '',
+    );
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached' });
+    assert.strictEqual(await label.textContent(), language);
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'track.ts'));
+    await waitFor(
+      async () => !(await rowNames()).includes('track.ts'),
+      'track.ts to be gone from the list',
     );
   });
 
