@@ -29,16 +29,24 @@ const pane = (
     hidden: [],
     sort: { column: 'extension', descending: false },
     rows: [
-      { key: '..', entry: undefined, base: '..', extension: '' },
+      {
+        key: '..',
+        entry: undefined,
+        base: '..',
+        extension: '',
+        repository: false,
+      },
       ...entries.map((each) => ({
         key: each.name,
         entry: each,
         base: each.name,
         extension: '',
+        repository: false,
       })),
     ],
     selected,
     marked: new Set(marked),
+    repositories: new Set(),
   };
 };
 

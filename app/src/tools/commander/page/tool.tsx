@@ -347,6 +347,11 @@ export function CommanderTool({
                 });
               }
             }}
+            onOpenRepository={(name) => {
+              if (tab !== undefined) {
+                post({ type: 'openRepository', tab, side, name });
+              }
+            }}
             onOpenOnSide={(target, name) => {
               if (tab !== undefined) {
                 post({

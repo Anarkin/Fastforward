@@ -1,7 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { driveOf, Pane } from '../../../../tools/commander/page/pane';
+import {
+  driveOf,
+  ExtensionCell,
+  Pane,
+} from '../../../../tools/commander/page/pane';
+import { rowsOf } from '../../../../tools/commander/page/listing';
 import type { PaneView } from '../../../../tools/commander/page/view';
 import { strings } from '../../../../shared/strings';
 import { noop } from '../../../fixtures';
@@ -20,6 +25,7 @@ const pane = (elevated: boolean, hidden: readonly boolean[]): PaneView => ({
   rows: [],
   selected: undefined,
   marked: new Set(),
+  repositories: new Set(),
 });
 const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
   /<span class="column-name path-title">(.*?)<\/span><div class="column-actions">/.exec(
@@ -48,6 +54,7 @@ const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
         onDrivesOpening={noop}
         onStep={noop}
         onOpenOnSide={noop}
+        onOpenRepository={noop}
         onView={noop}
         onDelete={noop}
         onShellMenu={noop}
@@ -111,5 +118,69 @@ suite('Commander pane', () => {
     assert.strictEqual(shareOf(10, 1000), 0.15);
     assert.strictEqual(shareOf(990, 1000), 0.85);
     assert.strictEqual(shareOf(10, 0), 0.5);
+  });
+
+  test('shows the extension of a file, and the git icon of a folder that is a repository as a button opening it in a git tab', () => {
+    const rows = rowsOf(
+      [
+        {
+          name: 'docs',
+          folder: true,
+          link: false,
+          hidden: false,
+          size: undefined,
+          modified: 0,
+        },
+        {
+          name: 'app',
+          folder: true,
+          link: false,
+          hidden: false,
+          size: undefined,
+          modified: 0,
+        },
+        {
+          name: 'notes.txt',
+          folder: false,
+          link: false,
+          hidden: false,
+          size: 1,
+          modified: 0,
+        },
+      ],
+      true,
+      true,
+      { column: 'extension', descending: false },
+      new Set(['app']),
+    );
+    const [parent, plain, repository, file] = [
+      '..',
+      'docs',
+      'app',
+      'notes.txt',
+    ].map((key) => rows.find((row) => row.key === key) ?? rows[0]);
+    const cell = (row: typeof parent) =>
+      renderToStaticMarkup(
+        <ExtensionCell row={row} words={[]} onOpenRepository={noop} />,
+      );
+
+    assert.strictEqual(
+      cell(parent),
+      '<span class="commander-extension"></span>',
+    );
+    assert.strictEqual(
+      cell(plain),
+      '<span class="commander-extension"></span>',
+    );
+    assert.match(
+      cell(repository),
+      new RegExp(
+        `^<span class="commander-extension"><button class="commander-mark" title="${strings.commander.openRepository}" tabindex="-1"><svg class="icon tool-icon tool-git"`,
+      ),
+    );
+    assert.match(
+      cell(file),
+      /^<span class="commander-extension">.*txt.*<\/span>$/,
+    );
   });
 });

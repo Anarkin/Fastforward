@@ -56,6 +56,11 @@ export interface ShellAccess {
   ): Promise<void>;
   openView(page: Page, tool: ToolId, file: string): Promise<void>;
   openCompare(page: Page, tool: ToolId, compare: Compared): Promise<void>;
+  openFolders(
+    page: Page,
+    tool: ToolId,
+    folders: readonly string[],
+  ): Promise<void>;
   setRoot(tab: string, root: string): void;
   visited(folder: string): void;
   recentFolders(): number;
@@ -120,6 +125,7 @@ export const unattachedShell: ShellAccess = {
   open: () => Promise.resolve(),
   openView: () => Promise.resolve(),
   openCompare: () => Promise.resolve(),
+  openFolders: () => Promise.resolve(),
   setRoot: () => undefined,
   visited: () => undefined,
   recentFolders: () => 0,
@@ -200,6 +206,8 @@ export class Shell {
         this.open(page, tool, [file], false, { view: true }),
       openCompare: (page, tool, compare) =>
         this.open(page, tool, [undefined], false, { compare }),
+      openFolders: (page, tool, folders) =>
+        this.tools[tool].open(page, folders),
       setRoot: (tab, root) => this.setRoot(tab, root),
       visited: (folder) => {
         for (const tool of toolIds) {

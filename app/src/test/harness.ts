@@ -20,6 +20,7 @@ import type {
 } from '../shell/shared/protocol';
 import type { Timer } from '../tools/git/main/autoFetch';
 import { nodeFileSystem } from '../tools/commander/main/nodeFileSystem';
+import { isRepository } from '../tools/commander/main/repositories';
 import { CommanderTool } from '../tools/commander/main/tool';
 import { defaultLayouts } from '../tools/commander/shared/settings';
 import { TerminalTool, type HostListener } from '../tools/terminal/main/tool';
@@ -328,6 +329,7 @@ export function newView(
           save: () => Promise.resolve(),
         },
         fileSystem: () => Promise.resolve(nodeFileSystem),
+        isRepository,
         codePage: () => Promise.resolve('windows-1252'),
         settings: () => settings.settings.tools.commander,
         defaultColumns: () => settings.defaults.tools.commander.columns,

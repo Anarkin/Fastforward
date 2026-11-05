@@ -52,6 +52,7 @@ import {
   FolderIcon,
   ForwardIcon,
   ShieldIcon,
+  ToolIcon,
 } from '../../../ui/icons';
 import { listMoveOf, moveInList } from '../../../ui/listMoves';
 import { MenuButton } from '../../../ui/menu';
@@ -106,6 +107,37 @@ function RowIcon({
     <FolderIcon />
   ) : (
     <FileIcon />
+  );
+}
+
+export function ExtensionCell({
+  row,
+  words,
+  onOpenRepository,
+}: {
+  row: Row;
+  words: readonly string[];
+  onOpenRepository: (name: string) => void;
+}) {
+  return (
+    <span className="commander-extension">
+      {row.repository ? (
+        <button
+          className="commander-mark"
+          title={strings.commander.openRepository}
+          tabIndex={-1}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenRepository(row.key);
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+        >
+          <ToolIcon tool="git" />
+        </button>
+      ) : (
+        <HighlightWords text={row.extension} words={words} />
+      )}
+    </span>
   );
 }
 
@@ -169,6 +201,7 @@ export function Pane({
   onDrivesOpening,
   onStep,
   onOpenOnSide,
+  onOpenRepository,
   onView,
   onShellMenu,
   onDelete,
@@ -205,6 +238,7 @@ export function Pane({
   onDrivesOpening: () => void;
   onStep: (step: -1 | 1) => void;
   onOpenOnSide: (target: Side, name: string) => void;
+  onOpenRepository: (name: string) => void;
   onView: (name: string) => void;
   onDelete: (names: readonly string[], permanently: boolean) => void;
   onShellMenu: (
@@ -444,9 +478,11 @@ export function Pane({
         <span className="commander-name">
           <HighlightWords text={row.base} words={words} />
         </span>
-        <span className="commander-extension">
-          <HighlightWords text={row.extension} words={words} />
-        </span>
+        <ExtensionCell
+          row={row}
+          words={words}
+          onOpenRepository={onOpenRepository}
+        />
         <span className="commander-size">{formatSize(entry?.size)}</span>
         <span className="commander-date">{dateOf(row)}</span>
       </div>
@@ -727,6 +763,17 @@ export function Pane({
                 event.preventDefault();
                 if (pane?.parent) {
                   onOpen(parentFolder);
+                }
+                return;
+              }
+              if (
+                keyPressed(commanderKeymap.openRepository, event) !== undefined
+              ) {
+                const row =
+                  selectedIndex === -1 ? undefined : rows[selectedIndex];
+                if (row?.repository === true) {
+                  event.preventDefault();
+                  onOpenRepository(row.key);
                 }
                 return;
               }

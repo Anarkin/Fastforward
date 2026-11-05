@@ -61,6 +61,23 @@ const sortedBy = (left: 'name' | 'size'): ViewAction => ({
   fileColors: [],
 });
 
+const folderEntry = (name: string) => entry(name, { folder: true });
+
+const repositoriesShown = (view: CommanderView) =>
+  view.panes.left?.rows.filter((row) => row.repository).map((row) => row.key);
+
+const named = (
+  names: readonly string[],
+  extra: Partial<Extract<ViewAction, { type: 'repositories' }>> = {},
+): ViewAction => ({
+  type: 'repositories',
+  tab: '1',
+  side: 'left',
+  folder: '/code',
+  names,
+  ...extra,
+});
+
 suite('Commander view', () => {
   test('selects the first row of a folder listed, and keeps it selected when the folder is listed again', () => {
     const files = [entry('a.txt'), entry('b.txt')];
@@ -273,5 +290,53 @@ suite('Commander view', () => {
 
     const elsewhere = reduceView(again, listing('/b', [entry('two.txt')]));
     assert.strictEqual(elsewhere.panes.left?.marked.size, 0);
+  });
+
+  test('marks the repositories named for the folder of a side, keeping its order and selection, and none named for another folder or tab', () => {
+    const listed = run(
+      { type: 'show', tab: '1' },
+      listing('/code', [folderEntry('app'), folderEntry('docs')], {
+        selected: 'docs',
+      }),
+    );
+
+    const found = reduceView(listed, named(['app']));
+    assert.deepStrictEqual(shown(found), {
+      rows: ['..', 'app', 'docs'],
+      selected: 'docs',
+    });
+    assert.deepStrictEqual(repositoriesShown(found), ['app']);
+
+    assert.strictEqual(
+      reduceView(listed, named(['app'], { folder: '/other' })),
+      listed,
+    );
+    assert.strictEqual(
+      reduceView(listed, named(['app'], { tab: '2' })),
+      listed,
+    );
+  });
+
+  test('keeps the repositories still listed when the folder is read again, until they are named again, and none in another folder', () => {
+    const found = run(
+      { type: 'show', tab: '1' },
+      listing('/code', [folderEntry('app'), folderEntry('docs')]),
+      {
+        type: 'repositories',
+        tab: '1',
+        side: 'left',
+        folder: '/code',
+        names: ['app', 'docs'],
+      },
+    );
+
+    const again = reduceView(found, listing('/code', [folderEntry('app')]));
+    assert.deepStrictEqual(repositoriesShown(again), ['app']);
+
+    const elsewhere = reduceView(
+      again,
+      listing('/other', [folderEntry('app')]),
+    );
+    assert.deepStrictEqual(repositoriesShown(elsewhere), []);
   });
 });

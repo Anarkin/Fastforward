@@ -14,6 +14,9 @@ export type ViewMode = 'text' | 'hex' | 'preview';
 
 export const commanderKeymap = {
   openFolder: bind('Folders', strings.actions.openFolder, { Enter: true }),
+  openRepository: bind('Folders', strings.actions.openRepository, {
+    'Shift+Enter': true,
+  }),
   parentFolder: bind('Folders', strings.actions.parentFolder, {
     Backspace: true,
   }),

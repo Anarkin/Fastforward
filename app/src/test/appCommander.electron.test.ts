@@ -12,6 +12,9 @@ import { pdfOf } from './pdfs';
 import { closeOrKill, launchApp, waitForFocus } from './appFixtures';
 import { removeFolder, tempFolder } from './repositories';
 
+const colorOf = (locator: Locator) =>
+  locator.evaluate((element) => getComputedStyle(element).color);
+
 const pngChunk = (type: string, body: Buffer) => {
   const length = Buffer.alloc(4);
   length.writeUInt32BE(body.length);
@@ -420,6 +423,61 @@ suite('App commander', () => {
     await waitForFocus(
       right().locator('.virtual-rows'),
       'the list of the right side',
+    );
+  });
+
+  test('marks a folder that is a repository with the git icon in its Ext column, and no other, opening it in a git tab on a click of the icon or Shift+Enter', async () => {
+    const made = path.join(folder, 'made-repository');
+    execFileSync('git', ['init', '--quiet', made]);
+    fs.renameSync(made, path.join(opened, 'repo'));
+    const markOf = (name: string) =>
+      right()
+        .locator('.commander-row', { hasText: name })
+        .locator('.commander-extension .commander-mark .tool-git');
+    await markOf('repo').waitFor();
+    assert.strictEqual(await markOf('src').count(), 0);
+    const repoRow = right().locator('.commander-row', { hasText: 'repo' });
+    const surroundOf = () =>
+      repoRow
+        .locator('.commander-mark')
+        .evaluate((element) => getComputedStyle(element).boxShadow);
+    await page.mouse.move(0, 0);
+    assert.strictEqual(await surroundOf(), 'none');
+    await repoRow.locator('.commander-mark').hover();
+    assert.strictEqual(
+      await colorOf(markOf('repo')),
+      await colorOf(repoRow.locator('.commander-name')),
+    );
+    assert.notStrictEqual(await surroundOf(), 'none');
+
+    const gitTab = page.locator('.tabs .tab.active', { hasText: 'repo' });
+    const backToCommander = async () => {
+      await page.keyboard.press('ControlOrMeta+W');
+      await gitTab.waitFor({ state: 'detached' });
+      await page
+        .locator('.tabs .tab.active', { hasText: 'Commander' })
+        .waitFor();
+    };
+    await markOf('repo').click();
+    await gitTab.locator('.tool-git').waitFor();
+    await backToCommander();
+
+    await right()
+      .locator('.commander-row', { hasText: 'repo' })
+      .locator('.commander-name')
+      .click();
+    await waitFor(
+      async () => (await selected()).includes('repo'),
+      'repo to be selected',
+    );
+    await page.keyboard.press('Shift+Enter');
+    await gitTab.locator('.tool-git').waitFor();
+    await backToCommander();
+
+    fs.rmSync(path.join(opened, 'repo'), { recursive: true, force: true });
+    await waitFor(
+      async () => !(await rowNames()).includes('repo'),
+      'the repository to be gone from the list',
     );
   });
 

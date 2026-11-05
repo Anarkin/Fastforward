@@ -129,6 +129,13 @@ function commander(
   const thumbnails = new Map<string, Uint8Array>();
   const streamed = new Set<string>();
   const thumbnailsFull = { now: false };
+  const repositories = new Set<string>();
+  const repositoriesAsked: string[] = [];
+  const repositoriesHeld: { until: Promise<unknown> | undefined } = {
+    until: undefined,
+  };
+  const tracking: Promise<unknown>[] = [];
+  const openedIn: { readonly tool: string; readonly folders: string[] }[] = [];
   const fileSystem: LocalFileSystem = {
     list: (each) => {
       const found = listed[each];
@@ -219,6 +226,11 @@ function commander(
       },
     },
     streamed: (checked) => streamed.has(checked),
+    isRepository: async (checked) => {
+      repositoriesAsked.push(checked);
+      await repositoriesHeld.until;
+      return repositories.has(checked);
+    },
     layouts: () => layouts,
     saveLayouts: (chosen) => {
       saved.push(chosen);
@@ -244,14 +256,26 @@ function commander(
       compared.push({ ...files, tool: toolOpened });
       return Promise.resolve();
     },
+    openFolders: (_page, toolOpened, folders) => {
+      openedIn.push({ tool: toolOpened, folders: [...folders] });
+      return Promise.resolve();
+    },
     setRoot: () => {},
     visited: () => {},
     recentFolders: () => 10,
     postTabs: () => {},
     notice: (_page, notice) => notices.push(notice),
-    track: (tracked) => tracked,
+    track: (tracked) => {
+      tracking.push(tracked);
+      return tracked;
+    },
     idle: () => Promise.resolve(),
   });
+  const settled = async () => {
+    while (tracking.length > 0) {
+      await Promise.all(tracking.splice(0));
+    }
+  };
   const send = (message: CommanderToHost, from: Page = page) =>
     tool.receive(from, message);
   const watched = () => watching.map((watch) => watch.folder).toSorted();
@@ -280,6 +304,11 @@ function commander(
     thumbnails,
     streamed,
     thumbnailsFull,
+    repositories,
+    repositoriesAsked,
+    repositoriesHeld,
+    settled,
+    openedIn,
   };
 }
 
@@ -1664,6 +1693,93 @@ suite('Commander tool', () => {
       { tool: 'git', old: at('notes.txt'), new: at('other.txt') },
       { tool: 'git', old: at('other.txt'), new: at('notes.txt') },
     ]);
+  });
+
+  test('names the folders a side lists that are repositories once it is listed, never asking about files, and again when the folder is read again', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('app'), folder('docs'), file('notes.txt')],
+    };
+    const { tool, page, change, repositories, repositoriesAsked, settled } =
+      commander(listed);
+    repositories.add(at('app'));
+    await tool.show(page, tab);
+    await settled();
+
+    assert.deepStrictEqual(page.of('repositories'), [
+      {
+        type: 'repositories',
+        tab: '1',
+        side: 'left',
+        folder: root,
+        names: ['app'],
+      },
+      {
+        type: 'repositories',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        names: ['app'],
+      },
+    ]);
+    assert.ok(!repositoriesAsked.includes(at('notes.txt')));
+
+    repositories.add(at('docs'));
+    await change(root);
+    await settled();
+    assert.deepStrictEqual(page.of('repositories').at(-1)?.names, [
+      'app',
+      'docs',
+    ]);
+  });
+
+  test('drops the repositories found in a folder a side has left meanwhile', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('app'), folder('Users')],
+      [at('Users')]: [folder('me')],
+    };
+    const { tool, page, send, repositories, settled, repositoriesHeld } =
+      commander(listed);
+    repositories.add(at('app'));
+    const held = Promise.withResolvers<void>();
+    repositoriesHeld.until = held.promise;
+    await tool.show(page, tab);
+    repositoriesHeld.until = undefined;
+    await send({ type: 'open', tab: '1', side: 'right', name: 'Users' });
+    held.resolve();
+    await settled();
+
+    assert.deepStrictEqual(
+      page
+        .of('repositories')
+        .map((found) => `${found.side} ${found.folder} ${found.names.join()}`)
+        .toSorted(),
+      [`left ${root} app`, `right ${at('Users')} `],
+    );
+  });
+
+  test('opens a repository a side lists in a git tab, and nothing for a folder that isn’t one, a file, .. , a name it doesn’t list or another tab', async () => {
+    const { tool, page, send, repositories, settled, openedIn } = commander({
+      [root]: [folder('app'), folder('docs'), file('notes.txt')],
+    });
+    repositories.add(at('app'));
+    await tool.show(page, tab);
+    await settled();
+    const open = (name: string, on = '1') =>
+      send({ type: 'openRepository', tab: on, side: 'left', name });
+
+    await open('app');
+    await open('docs');
+    await open('notes.txt');
+    await open('..');
+    await open('elsewhere');
+    await open('app', '2');
+    await send(
+      forged(
+        '{ "type": "openRepository", "tab": "1", "side": "up", "name": "app" }',
+      ),
+    );
+
+    assert.deepStrictEqual(openedIn, [{ tool: 'git', folders: [at('app')] }]);
   });
 
   test('gives a viewing tab the icon of its file, at an address naming the file, as a closed tab’s id comes back for another file, served for that tab and file only', async () => {

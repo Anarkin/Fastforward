@@ -73,6 +73,7 @@ import {
 } from '../../../shared/pdf';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
+import { repositoriesIn } from './repositories';
 import {
   iconSourceOf,
   thumbnailSourceOf,
@@ -104,6 +105,7 @@ export interface CommanderAccess {
     readonly write: (key: string, bytes: Uint8Array) => Promise<void>;
   };
   readonly streamed?: (file: string) => boolean | Promise<boolean>;
+  readonly isRepository: (folder: string) => Promise<boolean>;
   readonly layouts: () => Layouts;
   readonly saveLayouts: (layouts: Layouts) => Promise<void>;
   readonly watch: WatchFolder;
@@ -132,6 +134,8 @@ interface Pane {
   at: number;
   denied?: string;
   elevated?: boolean;
+  repositories: ReadonlySet<string>;
+  repositoriesAsked: number;
 }
 
 type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
@@ -144,7 +148,15 @@ const findProgressEvery = 150;
 const maxHistory = 100;
 
 function newPane(folder: string): Pane {
-  return { folder, entries: undefined, asked: 0, history: [folder], at: 0 };
+  return {
+    folder,
+    entries: undefined,
+    asked: 0,
+    history: [folder],
+    at: 0,
+    repositories: new Set(),
+    repositoriesAsked: 0,
+  };
 }
 
 export function childToward(folder: string, from: string): string | undefined {
@@ -346,6 +358,8 @@ export class CommanderTool implements Tool<'commander'> {
       }
       case 'openOnSide':
         return this.openOnSide(page, message);
+      case 'openRepository':
+        return this.openRepository(page, message);
       case 'elevate':
         return this.elevate(page, message.tab, message.side);
       case 'activate': {
@@ -1275,6 +1289,45 @@ export class CommanderTool implements Tool<'commander'> {
       : this.list(page, source.tab, side, target, 'visit');
   }
 
+  private openRepository(
+    page: Page,
+    { tab, side, name }: Extract<CommanderToHost, { type: 'openRepository' }>,
+  ): Promise<void> {
+    const shown = this.shownPane(page, tab, side);
+    return shown === undefined ||
+      typeof name !== 'string' ||
+      !shown.pane.repositories.has(name)
+      ? Promise.resolve()
+      : this.shell.openFolders(page, 'git', [
+          path.join(shown.pane.folder, name),
+        ]);
+  }
+
+  private async findRepositories(
+    page: Page,
+    tab: string,
+    side: Side,
+    pane: Pane,
+  ): Promise<void> {
+    const asked = ++pane.repositoriesAsked;
+    const { folder } = pane;
+    const folders = (pane.entries ?? [])
+      .filter((entry) => entry.folder)
+      .map((entry) => entry.name);
+    const names = await repositoriesIn(
+      folder,
+      folders,
+      this.access.isRepository,
+    );
+    if (pane.repositoriesAsked !== asked) {
+      return;
+    }
+    pane.repositories = new Set(names);
+    if (this.shown?.page === page && this.shown.tab === tab) {
+      this.post(page, { type: 'repositories', tab, side, folder, names });
+    }
+  }
+
   private step(
     page: Page,
     tab: unknown,
@@ -1376,12 +1429,16 @@ export class CommanderTool implements Tool<'commander'> {
       pane.history = history;
       pane.at = history.length - 1;
     }
+    if (pane.folder !== folder) {
+      pane.repositories = new Set();
+    }
     pane.folder = folder;
     pane.hidden = hidden;
     pane.entries = listing.entries;
     pane.elevated = listing.elevated;
     this.postListing(page, tab, side, pane, selected);
     this.watch(page, tab, side, folder);
+    void this.shell.track(this.findRepositories(page, tab, side, pane));
   }
 
   private async nearestFolder(gone: string): Promise<string> {

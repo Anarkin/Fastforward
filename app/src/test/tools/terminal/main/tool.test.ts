@@ -128,6 +128,7 @@ function terminal(seen: readonly FolderVisits[] = []) {
     },
     openView: () => Promise.resolve(),
     openCompare: () => Promise.resolve(),
+    openFolders: () => Promise.resolve(),
     setRoot: (tab, root) => moved.push([tab, root]),
     visited: () => {},
     recentFolders: () => recent.items,

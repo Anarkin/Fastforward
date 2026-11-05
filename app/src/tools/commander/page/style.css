@@ -130,6 +130,29 @@
   color: var(--muted-foreground);
 }
 
+.commander-line > .commander-extension {
+  display: flex;
+  align-items: center;
+}
+
+.commander-mark {
+  display: flex;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: 50%;
+}
+
+.commander-mark:hover {
+  background: var(--hover-background);
+  box-shadow: 0 0 0 3px var(--hover-background);
+}
+
+.commander-mark .icon {
+  color: inherit;
+}
+
 .commander-icon .system-icon {
   width: 16px;
   height: 16px;

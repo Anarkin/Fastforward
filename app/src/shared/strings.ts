@@ -285,6 +285,7 @@ export const strings = {
     markClick: 'Mark or unmark a file, or mark the files up to it',
     openOnSide:
       'Open the selected folder, or the one you are in, on the left or right side',
+    openRepository: 'Open the selected repository in a git tab',
   },
   shortcuts: {
     title: 'Shortcuts',
@@ -553,6 +554,7 @@ export const strings = {
     noAccess: (folder: string) => `You don't have access to ${folder}.`,
     asAdministrator: 'As Administrator',
     readAsAdministrator: 'Read as administrator',
+    openRepository: 'Open the repository in a git tab',
     helperFailed:
       "Couldn't start the helper that reads folders as administrator.",
     helperStopped:

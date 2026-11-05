@@ -174,6 +174,12 @@ export type CommanderToHost =
   | { readonly type: 'reread'; readonly tab: string; readonly side: Side }
   | { readonly type: 'elevate'; readonly tab: string; readonly side: Side }
   | {
+      readonly type: 'openRepository';
+      readonly tab: string;
+      readonly side: Side;
+      readonly name: string;
+    }
+  | {
       readonly type: 'openOnSide';
       readonly tab: string;
       readonly from: Side;
@@ -285,6 +291,13 @@ export type CommanderToWebview =
       readonly forward: boolean;
       readonly elevated: boolean;
       readonly selected: string | undefined;
+    }
+  | {
+      readonly type: 'repositories';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly names: readonly string[];
     };
 
 export type CommanderToWebviewOf<T extends CommanderToWebview['type']> =

@@ -54,6 +54,7 @@ import { themeCss } from '../shell/main/theme';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
 import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
+import { isRepository } from '../tools/commander/main/repositories';
 import { watchFolder } from '../tools/commander/main/watch';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
@@ -473,6 +474,7 @@ async function start(asked: readonly string[]): Promise<void> {
           await import('../tools/commander/main/windowsCloudFiles.js')
         ).streamsFromGoogleDrive(file),
     }),
+    isRepository,
     layouts: () => layoutsOf(commanderState.get('layouts')),
     saveLayouts: (chosen) => commanderState.update('layouts', chosen),
     watch: watchFolder,

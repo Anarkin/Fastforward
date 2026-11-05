@@ -7,7 +7,10 @@ export interface Row {
   readonly entry: Entry | undefined;
   readonly base: string;
   readonly extension: string;
+  readonly repository: boolean;
 }
+
+const noRepositories: ReadonlySet<string> = new Set();
 
 export function nameParts(entry: Entry): {
   readonly base: string;
@@ -59,10 +62,16 @@ export function rowsOf(
   hasParent: boolean,
   showHidden: boolean,
   sort: Sort,
+  repositories: ReadonlySet<string> = noRepositories,
 ): Row[] {
   const shown = entries
     .filter((entry) => showHidden || !entry.hidden)
-    .map((entry) => ({ key: entry.name, entry, ...nameParts(entry) }));
+    .map((entry) => ({
+      key: entry.name,
+      entry,
+      ...nameParts(entry),
+      repository: entry.folder && repositories.has(entry.name),
+    }));
   return [
     ...(hasParent
       ? [
@@ -71,6 +80,7 @@ export function rowsOf(
             entry: undefined,
             base: parentFolder,
             extension: '',
+            repository: false,
           },
         ]
       : []),

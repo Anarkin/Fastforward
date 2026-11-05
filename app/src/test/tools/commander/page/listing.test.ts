@@ -206,6 +206,45 @@ suite('Commander listing', () => {
     );
   });
 
+  test('marks the folders named as repositories, never a file or the parent', () => {
+    const rows = rowsOf(
+      [folder('app'), folder('docs'), entry('app.txt')],
+      true,
+      true,
+      defaultSort,
+      new Set(['app', 'app.txt', '..']),
+    );
+    assert.deepStrictEqual(
+      rows.map((row) => `${row.key} ${row.repository}`),
+      ['.. false', 'app true', 'docs false', 'app.txt false'],
+    );
+  });
+
+  test('keeps the folders in the order of their names by extension, whether they are repositories or not', () => {
+    const entries = [
+      folder('zeta'),
+      folder('beta'),
+      folder('alpha'),
+      entry('a.txt'),
+    ];
+    const repositories = new Set(['zeta', 'beta']);
+    const sorted = (sort: Sort) =>
+      rowsOf(entries, false, true, sort, repositories).map((row) => row.key);
+
+    assert.deepStrictEqual(sorted(defaultSort), [
+      'alpha',
+      'beta',
+      'zeta',
+      'a.txt',
+    ]);
+    assert.deepStrictEqual(sorted({ column: 'extension', descending: true }), [
+      'zeta',
+      'beta',
+      'alpha',
+      'a.txt',
+    ]);
+  });
+
   test('writes sizes in bytes with thousands grouped, and none for a folder', () => {
     assert.strictEqual(formatSize(12_288), '12,288');
     assert.strictEqual(formatSize(1_007_528), '1,007,528');
@@ -219,6 +258,7 @@ suite('Commander listing', () => {
       entry: undefined,
       base: key,
       extension: '',
+      repository: false,
     }));
     assert.deepStrictEqual(passedKeys(rows, 1, 3), ['b', 'c']);
     assert.deepStrictEqual(passedKeys(rows, 3, 1), ['d', 'c']);
@@ -231,6 +271,7 @@ suite('Commander listing', () => {
       entry: undefined,
       base: key,
       extension: '',
+      repository: false,
     }));
     assert.deepStrictEqual(rangeKeys(rows, 1, 3), ['b', 'c', 'd']);
     assert.deepStrictEqual(rangeKeys(rows, 2, 0), ['a', 'b', 'c']);
@@ -238,12 +279,19 @@ suite('Commander listing', () => {
 
   test('shows the menu of the system for every file marked when one marked is clicked, in the order listed, for the one clicked alone otherwise, and none for ..', () => {
     const rows = [
-      { key: '..', entry: undefined, base: '..', extension: '' },
+      {
+        key: '..',
+        entry: undefined,
+        base: '..',
+        extension: '',
+        repository: false,
+      },
       ...['a', 'b', 'c', 'd'].map((key) => ({
         key,
         entry: entry(key),
         base: key,
         extension: '',
+        repository: false,
       })),
     ];
     const marked = new Set(['d', 'b']);
@@ -257,12 +305,19 @@ suite('Commander listing', () => {
 
   test('deletes every file marked, in the order listed, wherever the selection is, and the selected one alone when none is marked, never ..', () => {
     const rows = [
-      { key: '..', entry: undefined, base: '..', extension: '' },
+      {
+        key: '..',
+        entry: undefined,
+        base: '..',
+        extension: '',
+        repository: false,
+      },
       ...['a', 'b', 'c', 'd'].map((key) => ({
         key,
         entry: entry(key),
         base: key,
         extension: '',
+        repository: false,
       })),
     ];
     const marked = new Set(['d', 'b']);
@@ -291,6 +346,7 @@ const filterRow = (key: string) => ({
         },
   base: key,
   extension: '',
+  repository: false,
 });
 suite('Filtering the rows of a side', () => {
   const rows = ['..', 'Report-Q3-2024.xlsx', 'notes.txt', 'report.md'].map(

@@ -34,9 +34,21 @@ export interface PaneView extends Listed {
   readonly rows: readonly Row[];
   readonly selected: string | undefined;
   readonly marked: ReadonlySet<string>;
+  readonly repositories: ReadonlySet<string>;
 }
 
 const noMarks: ReadonlySet<string> = new Set();
+
+const noRepositories: ReadonlySet<string> = new Set();
+
+function repositoriesKept(
+  pane: PaneView | undefined,
+  folder: string,
+): ReadonlySet<string> {
+  return pane === undefined || pane.folder !== folder
+    ? noRepositories
+    : pane.repositories;
+}
 
 function marksKept(
   pane: PaneView | undefined,
@@ -113,6 +125,9 @@ export type ViewAction =
   | (Omit<CommanderToWebviewOf<'listing'>, 'type'> & {
       readonly type: 'listing';
     })
+  | (Omit<CommanderToWebviewOf<'repositories'>, 'type'> & {
+      readonly type: 'repositories';
+    })
   | { readonly type: 'select'; readonly side: Side; readonly key: string }
   | {
       readonly type: 'mark';
@@ -146,7 +161,8 @@ function relisted(
   showHidden: boolean,
   selected: string | undefined,
 ): PaneView {
-  const rows = rowsOf(entries, parent, showHidden, sort);
+  const repositories = repositoriesKept(pane, folder);
+  const rows = rowsOf(entries, parent, showHidden, sort, repositories);
   return {
     folder,
     hidden,
@@ -159,6 +175,7 @@ function relisted(
     rows,
     selected: selectionAfter(selectionIn(pane), folder, rows, selected),
     marked: marksKept(pane, folder, rows),
+    repositories,
   };
 }
 
@@ -243,6 +260,28 @@ export function reduceView(
             ),
           )
         : view;
+    case 'repositories': {
+      const pane = view.panes[action.side];
+      if (
+        action.tab !== view.tab ||
+        pane === undefined ||
+        pane.folder !== action.folder
+      ) {
+        return view;
+      }
+      const repositories = new Set(action.names);
+      return withPane(view, action.side, {
+        ...pane,
+        repositories,
+        rows: rowsOf(
+          pane.entries,
+          pane.parent,
+          view.showHidden,
+          pane.sort,
+          repositories,
+        ),
+      });
+    }
     case 'select': {
       const pane = view.panes[action.side];
       return pane?.rows.some((row) => row.key === action.key)
@@ -280,7 +319,13 @@ export function reduceView(
       return withPane(view, action.side, {
         ...pane,
         sort: action.sort,
-        rows: rowsOf(pane.entries, pane.parent, view.showHidden, action.sort),
+        rows: rowsOf(
+          pane.entries,
+          pane.parent,
+          view.showHidden,
+          action.sort,
+          pane.repositories,
+        ),
       });
     }
     case 'layout':
