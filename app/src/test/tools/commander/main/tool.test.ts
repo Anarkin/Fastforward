@@ -2244,6 +2244,30 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(iconsLoaded, [at('notes.txt')]);
   });
 
+  test('loads no icon for a row the page dropped before its icon came, taking only tickets it can read', async () => {
+    const { tool, page, send, iconsLoaded } = commander({
+      [root]: [file('a.zip'), file('b.txt'), file('c.md')],
+    });
+    await tool.show(page, tab);
+    const icon = async (name: string, ticket: string) =>
+      (
+        await tool.icon(
+          new URL(
+            `fastforward://app${iconUrl({ tab: '1', side: 'left', folder: root, name }, ticket)}`,
+          ),
+        )
+      ).status;
+
+    await send({ type: 'dropIcons', tickets: ['7'] });
+    await send(forged('{ "type": "dropIcons", "tickets": [8] }'));
+    await send(forged('{ "type": "dropIcons", "tickets": "9" }'));
+
+    assert.strictEqual(await icon('a.zip', '7'), 404);
+    assert.strictEqual(await icon('b.txt', '8'), 200);
+    assert.strictEqual(await icon('c.md', '9'), 200);
+    assert.deepStrictEqual(iconsLoaded, [at('b.txt'), at('c.md')]);
+  });
+
   test('saves the order of the side whose header was clicked, or whose files are grouped by color, keeping the other, and tells the page', async () => {
     const { tool, page, send, saved } = commander({});
     tool.ready(page);

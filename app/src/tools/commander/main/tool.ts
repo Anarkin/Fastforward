@@ -74,6 +74,8 @@ import { Icons } from './icons';
 import { repositoriesIn } from './repositories';
 import {
   iconSourceOf,
+  iconTicketOf,
+  maxDroppedIcons,
   thumbnailSourceOf,
   viewerIconUrl,
   viewerOfIcon,
@@ -404,6 +406,15 @@ export class CommanderTool implements Tool<'commander'> {
         }
         return undefined;
       }
+      case 'dropIcons':
+        if (
+          Array.isArray(message.tickets) &&
+          message.tickets.length <= maxDroppedIcons &&
+          message.tickets.every((ticket) => typeof ticket === 'string')
+        ) {
+          this.icons.drop(message.tickets);
+        }
+        return undefined;
       case 'showHidden':
         if (typeof message.shown === 'boolean') {
           await this.access.saveShowHidden(message.shown);
@@ -543,7 +554,10 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return new Response(null, { status: 404 });
     }
-    return this.iconResponse(path.join(pane.folder, entry.name));
+    return this.iconResponse(
+      path.join(pane.folder, entry.name),
+      iconTicketOf(url),
+    );
   }
 
   private listedImage(
@@ -638,9 +652,9 @@ export class CommanderTool implements Tool<'commander'> {
     return (await this.access.thumbnails.full()) ? fullStatus : undefined;
   }
 
-  private async iconResponse(file: string): Promise<Response> {
+  private async iconResponse(file: string, ticket?: string): Promise<Response> {
     try {
-      const png = await this.icons.of(file);
+      const png = await this.icons.of(file, ticket);
       return new Response(Buffer.from(png), {
         headers: { 'content-type': 'image/png' },
       });

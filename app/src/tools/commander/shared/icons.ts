@@ -11,9 +11,18 @@ export interface IconSource {
   readonly name: string;
 }
 
-export function iconUrl({ tab, side, folder, name }: IconSource): string {
-  return `${iconRoute}?${new URLSearchParams({ tab, side, folder, name })}`;
+export function iconUrl(
+  { tab, side, folder, name }: IconSource,
+  ticket?: string,
+): string {
+  return `${iconRoute}?${new URLSearchParams({ tab, side, folder, name, ...(ticket === undefined ? {} : { ticket }) })}`;
 }
+
+export function iconTicketOf(url: URL): string | undefined {
+  return url.searchParams.get('ticket') ?? undefined;
+}
+
+export const maxDroppedIcons = 1000;
 
 export function viewerIconUrl(tab: string, file: string): string {
   return `${iconRoute}?${new URLSearchParams({ view: tab, file })}`;

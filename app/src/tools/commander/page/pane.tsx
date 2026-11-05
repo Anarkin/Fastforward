@@ -1,6 +1,7 @@
 import {
   useContext,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -85,22 +86,59 @@ export function driveOf(
   );
 }
 
-function RowIcon({
+function SystemIcon({
+  source,
+  onDropIcon,
+  onFailed,
+}: {
+  source: IconSource;
+  onDropIcon: (ticket: string) => void;
+  onFailed: () => void;
+}) {
+  const ticket = useId();
+  const came = useRef(false);
+  useEffect(
+    () => () => {
+      if (!came.current) {
+        onDropIcon(ticket);
+      }
+    },
+    [ticket, onDropIcon],
+  );
+  return (
+    <img
+      className="system-icon"
+      src={iconUrl(source, ticket)}
+      alt=""
+      draggable={false}
+      onLoad={() => {
+        came.current = true;
+      }}
+      onError={() => {
+        came.current = true;
+        onFailed();
+      }}
+    />
+  );
+}
+
+export function RowIcon({
   row,
   source,
+  onDropIcon,
 }: {
   row: Row;
   source: IconSource | undefined;
+  onDropIcon: (ticket: string) => void;
 }) {
   const [failed, setFailed] = useState(false);
   if (source !== undefined && !failed) {
     return (
-      <img
-        className="system-icon"
-        src={iconUrl(source)}
-        alt=""
-        draggable={false}
-        onError={() => setFailed(true)}
+      <SystemIcon
+        key={iconUrl(source)}
+        source={source}
+        onDropIcon={onDropIcon}
+        onFailed={() => setFailed(true)}
       />
     );
   }
@@ -153,15 +191,17 @@ function TileImage({
   source,
   box,
   onMade,
+  onDropIcon,
 }: {
   row: Row;
   source: IconSource | undefined;
   box: number;
   onMade: (made: Blob, pixelRatio: number) => void;
+  onDropIcon: (ticket: string) => void;
 }) {
   const icon = (
     <span className="commander-icon">
-      <RowIcon row={row} source={source} />
+      <RowIcon row={row} source={source} onDropIcon={onDropIcon} />
     </span>
   );
   const type = imageType(row.key);
@@ -219,6 +259,7 @@ export function Pane({
   onLayout,
   canGroupByColor,
   onGroupByColor,
+  onDropIcon,
   onThumbnail,
   columns,
   drives,
@@ -253,6 +294,7 @@ export function Pane({
   onLayout: (layout: Layout) => void;
   canGroupByColor: boolean;
   onGroupByColor: () => void;
+  onDropIcon: (ticket: string) => void;
   onThumbnail: (
     name: string,
     box: number,
@@ -507,7 +549,7 @@ export function Pane({
         {...itemEvents(row, index)}
       >
         <span className="commander-icon">
-          <RowIcon row={row} source={iconSource(row)} />
+          <RowIcon row={row} source={iconSource(row)} onDropIcon={onDropIcon} />
         </span>
         <span className="commander-name">
           <HighlightWords text={row.base} words={words} />
@@ -538,6 +580,7 @@ export function Pane({
           onMade={(made, pixelRatio) =>
             onThumbnail(row.key, thumbnailSize, pixelRatio, made)
           }
+          onDropIcon={onDropIcon}
         />
       </div>
       <div className="commander-tile-name">

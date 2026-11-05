@@ -198,7 +198,8 @@ export type CommanderToHost =
       readonly pixelRatio: number;
       readonly bytes: Uint8Array;
     }
-  | { readonly type: 'showHidden'; readonly shown: boolean };
+  | { readonly type: 'showHidden'; readonly shown: boolean }
+  | { readonly type: 'dropIcons'; readonly tickets: readonly string[] };
 
 export interface ByteRange {
   readonly start: number;

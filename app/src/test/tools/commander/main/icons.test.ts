@@ -5,6 +5,28 @@ import { iconKey, Icons } from '../../../../tools/commander/main/icons';
 
 const at = (...names: string[]) => path.join(path.resolve('/'), ...names);
 
+const held = () => {
+  const started: string[] = [];
+  const finishes = new Map<string, () => void>();
+  const icons = new Icons(
+    (file) => {
+      started.push(path.basename(file));
+      return new Promise((resolve) => {
+        finishes.set(path.basename(file), () =>
+          resolve(new Uint8Array([started.length])),
+        );
+      });
+    },
+    'win32',
+    2,
+  );
+  const finish = async (name: string) => {
+    finishes.get(name)?.();
+    await new Promise((resolve) => setImmediate(resolve));
+  };
+  return { icons, started, finish };
+};
+
 suite('Commander icons', () => {
   test('share one icon among the files of an extension, but not among programs, icons and shortcuts on Windows', () => {
     assert.strictEqual(iconKey(at('a.TXT'), 'win32'), 'extension:txt');
@@ -46,5 +68,56 @@ suite('Commander icons', () => {
       at('a.zip'),
       at('a.zip'),
     ]);
+  });
+
+  test('loads a few icons at a time, the one asked for last first, as it is the one in view', async () => {
+    const { icons, started, finish } = held();
+    const asked = ['a', 'b', 'c', 'd', 'e'].map((name) =>
+      icons.of(at(`${name}.exe`), name),
+    );
+    assert.deepStrictEqual(started, ['a.exe', 'b.exe']);
+    await finish('a.exe');
+    assert.deepStrictEqual(started, ['a.exe', 'b.exe', 'e.exe']);
+    await finish('b.exe');
+    await finish('e.exe');
+    await finish('d.exe');
+    await finish('c.exe');
+    assert.deepStrictEqual(started, [
+      'a.exe',
+      'b.exe',
+      'e.exe',
+      'd.exe',
+      'c.exe',
+    ]);
+    await Promise.all(asked);
+  });
+
+  test('never loads an icon dropped while it waits, or dropped before it was asked for, and still loads one dropped once loading', async () => {
+    const { icons, started, finish } = held();
+    const first = icons.of(at('a.exe'), '1');
+    const waiting = icons.of(at('b.exe'), '2');
+    const dropped = icons.of(at('c.exe'), '3');
+    icons.drop(['3', '1', '5']);
+    const early = icons.of(at('e.exe'), '5');
+    await assert.rejects(dropped);
+    await assert.rejects(early);
+    await finish('a.exe');
+    await finish('b.exe');
+    await first;
+    await waiting;
+    assert.deepStrictEqual(started, ['a.exe', 'b.exe']);
+  });
+
+  test('gives an icon loaded or loading to whoever asks for it, without waiting its turn or loading it again', async () => {
+    const { icons, started, finish } = held();
+    const one = icons.of(at('one.txt'), '1');
+    const other = icons.of(at('other.txt'), '2');
+    const third = icons.of(at('third.txt'), '3');
+    assert.deepStrictEqual(started, ['one.txt']);
+    await finish('one.txt');
+    await Promise.all([one, other, third]);
+    const again = icons.of(at('again.txt'), '4');
+    await again;
+    assert.deepStrictEqual(started, ['one.txt']);
   });
 });

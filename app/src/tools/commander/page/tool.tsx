@@ -12,6 +12,7 @@ import { Pane } from './pane';
 import { Viewer, type ToViewer, type Viewing } from './viewer';
 import { emptyView, reduceView } from './view';
 import { nextSort } from './listing';
+import { maxDroppedIcons } from '../shared/icons';
 import { filesToCompare } from './comparing';
 import type { ColumnWidths, Layout } from '../shared/settings';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
@@ -191,6 +192,24 @@ export function CommanderTool({
   const chooseLayout = (side: Side, layout: Layout) =>
     dispatch({ type: 'layout', side, layout });
   const canGroupByColor = view.fileColors.colors.length > 0;
+  const droppedIcons = useRef<string[]>([]);
+  const dropIcon = useCallback(
+    (ticket: string) => {
+      if (droppedIcons.current.push(ticket) > 1) {
+        return;
+      }
+      queueMicrotask(() => {
+        const tickets = droppedIcons.current.splice(0);
+        for (let from = 0; from < tickets.length; from += maxDroppedIcons) {
+          post({
+            type: 'dropIcons',
+            tickets: tickets.slice(from, from + maxDroppedIcons),
+          });
+        }
+      });
+    },
+    [post],
+  );
   const groupByColor = (side: Side) => {
     const current = view.panes[side]?.sort ?? view.sorts[side];
     const sort = { ...current, groupByColor: !current.groupByColor };
@@ -267,6 +286,7 @@ export function CommanderTool({
             onLayout={(layout) => chooseLayout(side, layout)}
             canGroupByColor={canGroupByColor}
             onGroupByColor={() => groupByColor(side)}
+            onDropIcon={dropIcon}
             onThumbnail={(name, box, pixelRatio, made) => {
               const folder = view.panes[side]?.folder;
               if (tab === undefined || folder === undefined) {
