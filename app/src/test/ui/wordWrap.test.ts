@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  blankRuns,
   breakOffsets,
   markedRowStarts,
   rowBreaksAt,
@@ -141,6 +142,25 @@ suite('Word wrap', () => {
     assert.deepStrictEqual(rowBreaksAt('中文中文 字', [0, 5], 10, drawn), [
       { end: 9, blanks: [space(8)] },
     ]);
+  });
+
+  test('joins the spaces hanging at the end of a row side by side into one run, and keeps each tab a blank of its own, so a row of padding is marked once rather than once a space', () => {
+    assert.deepStrictEqual(
+      blankRuns([
+        space(3),
+        space(4),
+        space(5),
+        { column: 6, tab: true },
+        space(8),
+        space(9),
+      ]),
+      [
+        { column: 3, columns: 3, tab: false },
+        { column: 6, columns: 1, tab: true },
+        { column: 8, columns: 2, tab: false },
+      ],
+    );
+    assert.deepStrictEqual(blankRuns([]), []);
   });
 
   test('ends a row where the browser broke it, between punctuation or inside a word too, and finds no breaks in a line on one row', () => {

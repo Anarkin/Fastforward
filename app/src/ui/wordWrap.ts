@@ -15,6 +15,30 @@ export interface RowBreak {
   readonly blanks: readonly Blank[];
 }
 
+interface BlankRun {
+  readonly column: number;
+  readonly columns: number;
+  readonly tab: boolean;
+}
+
+export function blankRuns(blanks: readonly Blank[]): BlankRun[] {
+  const runs: BlankRun[] = [];
+  for (const { column, tab } of blanks) {
+    const last = runs.at(-1);
+    if (
+      last !== undefined &&
+      !tab &&
+      !last.tab &&
+      last.column + last.columns === column
+    ) {
+      runs[runs.length - 1] = { ...last, columns: last.columns + 1 };
+    } else {
+      runs.push({ column, columns: 1, tab });
+    }
+  }
+  return runs;
+}
+
 const blankKind = 1;
 const breaksAfter = 2;
 const breaksBefore = 4;

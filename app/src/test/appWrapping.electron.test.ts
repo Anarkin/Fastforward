@@ -43,6 +43,11 @@ const dottedLine = `        ${Array.from(
   (_, index) => `part${index}`,
 ).join('.')};`;
 
+const firsts = (rows: readonly { first: string }[]) =>
+  rows.map((row) => row.first);
+
+const paddedLine = `| Feature${' '.repeat(100)}| What it does${' '.repeat(100)}| Notes${' '.repeat(50)}|`;
+
 function wrappedRows(
   line: Locator,
 ): Promise<{ last: string; follows: boolean }[]> {
@@ -79,6 +84,66 @@ function wrappedRows(
   });
 }
 
+function laidOutCode(line: Locator) {
+  return line.evaluate((element) => {
+    const code = element.querySelector<HTMLElement>('.code');
+    if (!code) {
+      throw new Error('No code');
+    }
+    const rows = new Map<
+      number,
+      { first: string; start: number; last: string; right: number }
+    >();
+    const range = document.createRange();
+    const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!(node instanceof Text)) {
+        continue;
+      }
+      for (let offset = 0; offset < node.length; offset++) {
+        range.setStart(node, offset);
+        range.setEnd(node, offset + 1);
+        const rect = range.getBoundingClientRect();
+        const character = node.data[offset];
+        const top = Math.round(rect.top);
+        const row = rows.get(top) ?? {
+          first: character,
+          start: NaN,
+          last: character,
+          right: rect.right,
+        };
+        if (Number.isNaN(row.start) && character !== ' ') {
+          row.start = rect.left;
+        }
+        rows.set(top, { ...row, last: character, right: rect.right });
+      }
+    }
+    const style = getComputedStyle(code);
+    const sample = document.createElement('span');
+    sample.style.font = style.font;
+    sample.style.letterSpacing = style.letterSpacing;
+    sample.style.whiteSpace = 'pre';
+    sample.textContent = '0'.repeat(100);
+    document.body.append(sample);
+    const char = sample.getBoundingClientRect().width / 100;
+    sample.remove();
+    return {
+      text: code.textContent ?? '',
+      rows: [...rows.values()],
+      marks: Array.from(
+        element.querySelectorAll('.wrap-break'),
+        (mark) => mark.getBoundingClientRect().left,
+      ),
+      width:
+        code.getBoundingClientRect().width -
+        parseFloat(style.paddingLeft) -
+        parseFloat(style.paddingRight) -
+        parseFloat(style.textIndent),
+      char,
+    };
+  });
+}
+
 const pressWrap = () => page.keyboard.press('w');
 
 const clickView = (name: string) => () =>
@@ -96,6 +161,7 @@ suite('App', () => {
     'long.txt': `${longLines.join('\n')}\n`,
     'hyphenated.txt': `${hyphenatedLine}\n`,
     'wrapped.txt': `${dottedLine}\n`,
+    'padded.txt': `${paddedLine}\n`,
   });
 
   test('lists the history and shows a commit entire, with its change, inline, then side by side on its button, the default, and inline again on the other, and wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, keeping the line at the top in place as it wraps and changes layout, saving each choice', async () => {
@@ -268,64 +334,7 @@ suite('App', () => {
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     const line = page.locator('.diff-line', { hasText: 'part0.part1.' });
     await line.locator('.wrap-break').first().waitFor();
-    const laidOut = () =>
-      line.evaluate((element) => {
-        const code = element.querySelector<HTMLElement>('.code');
-        if (!code) {
-          throw new Error('No code');
-        }
-        const rows = new Map<
-          number,
-          { first: string; start: number; last: string; right: number }
-        >();
-        const range = document.createRange();
-        const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
-        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-          if (!(node instanceof Text)) {
-            continue;
-          }
-          for (let offset = 0; offset < node.length; offset++) {
-            range.setStart(node, offset);
-            range.setEnd(node, offset + 1);
-            const rect = range.getBoundingClientRect();
-            const character = node.data[offset];
-            const top = Math.round(rect.top);
-            const row = rows.get(top) ?? {
-              first: character,
-              start: NaN,
-              last: character,
-              right: rect.right,
-            };
-            if (Number.isNaN(row.start) && character !== ' ') {
-              row.start = rect.left;
-            }
-            rows.set(top, { ...row, last: character, right: rect.right });
-          }
-        }
-        const style = getComputedStyle(code);
-        const sample = document.createElement('span');
-        sample.style.font = style.font;
-        sample.style.letterSpacing = style.letterSpacing;
-        sample.style.whiteSpace = 'pre';
-        sample.textContent = '0'.repeat(100);
-        document.body.append(sample);
-        const char = sample.getBoundingClientRect().width / 100;
-        sample.remove();
-        return {
-          text: code.textContent ?? '',
-          rows: [...rows.values()],
-          marks: Array.from(
-            element.querySelectorAll('.wrap-break'),
-            (mark) => mark.getBoundingClientRect().left,
-          ),
-          width:
-            code.getBoundingClientRect().width -
-            parseFloat(style.paddingLeft) -
-            parseFloat(style.paddingRight) -
-            parseFloat(style.textIndent),
-          char,
-        };
-      });
+    const laidOut = () => laidOutCode(line);
     await waitFor(async () => {
       const { rows, marks } = await laidOut();
       return rows.length > 2 && marks.length === rows.length - 1;
@@ -346,6 +355,39 @@ suite('App', () => {
       wrappedLines(text, wrapColumns(width, char)),
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
+  });
+
+  test('wraps a line padded with runs of spaces onto as many rows as the app estimates, the same whether whitespace is shown or not, each run hanging at the end of its row rather than broken onto rows of its own', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'padded.txt' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    const line = page.locator('.diff-line', { hasText: 'What it does' });
+    await line.locator('.wrap-break').first().waitFor();
+    const settled = async () => {
+      await waitFor(async () => {
+        const { rows, marks } = await laidOutCode(line);
+        return rows.length > 1 && marks.length === rows.length - 1;
+      }, 'a mark at the end of every row but the last');
+      return laidOutCode(line);
+    };
+    const shown = await settled();
+    await page
+      .getByRole('button', { name: 'Show Whitespace', exact: true })
+      .click();
+    await page
+      .locator('.diff-view.show-whitespace')
+      .waitFor({ state: 'detached' });
+    const hidden = await settled();
+    assert.strictEqual(shown.text, paddedLine);
+    assert.deepStrictEqual(firsts(shown.rows), firsts(hidden.rows));
+    assert.deepStrictEqual(
+      firsts(hidden.rows),
+      hidden.rows.map(() => '|'),
+    );
+    assert.strictEqual(
+      shown.rows.length,
+      wrappedLines(paddedLine, wrapColumns(shown.width, shown.char)),
+    );
   });
 
   test('moves the marks of a wrapped line along once the browser breaks it elsewhere, as it does when it gets a few pixels narrower, though the app estimates as many characters to a row', async () => {

@@ -105,7 +105,7 @@ suite('Matches marked in a file viewed', () => {
     );
     assert.ok(
       shown.includes(
-        '<mark class="find-match"><span class="blank" data-glyph="·"> </span></mark>',
+        '<mark class="find-match"><span class="spaces"> </span></mark>',
       ),
       shown,
     );
@@ -117,9 +117,9 @@ suite('Matches marked in a file viewed', () => {
     );
     assert.strictEqual(
       renderToStaticMarkup(
-        <MarkedText pieces={[{ text: 'a b' }]} marks={[]} blanks />,
+        <MarkedText pieces={[{ text: 'a   b' }]} marks={[]} blanks />,
       ),
-      'a<span class="blank" data-glyph="·"> </span>b',
+      'a<span class="spaces">   </span>b',
     );
   });
 });

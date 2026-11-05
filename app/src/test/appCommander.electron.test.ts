@@ -15,6 +15,13 @@ import { removeFolder, tempFolder } from './repositories';
 const colorOf = (locator: Locator) =>
   locator.evaluate((element) => getComputedStyle(element).color);
 
+const dotted = (drawn: Locator) =>
+  drawn
+    .first()
+    .evaluate((element) =>
+      getComputedStyle(element).backgroundImage.startsWith('radial-gradient'),
+    );
+
 const pngChunk = (type: string, body: Buffer) => {
   const length = Buffer.alloc(4);
   length.writeUInt32BE(body.length);
@@ -1375,26 +1382,21 @@ suite('App commander', () => {
         'the wrapping left to the default',
       );
 
-      const hanging = page.locator('.viewer-rows .viewer-wrap-blank');
+      const spaces = page.locator('.viewer-rows .spaces');
+      const hanging = page.locator('.viewer-rows .viewer-wrap-spaces');
       await waitFor(
-        async () => (await page.locator('.viewer-rows .blank').count()) > 0,
+        async () => (await spaces.count()) > 0,
         'the spaces drawn, as whitespace is shown by default',
       );
-      assert.strictEqual(
-        await page
-          .locator('.viewer-rows .blank')
-          .first()
-          .getAttribute('data-glyph'),
-        '·',
-      );
+      assert.strictEqual(await dotted(spaces), true);
       assert.strictEqual(await hanging.count(), 0);
       await page.keyboard.press('.');
       await waitFor(
-        async () => (await page.locator('.viewer-rows .blank').count()) === 0,
+        async () => (await spaces.count()) === 0,
         'the spaces plain',
       );
       assert.ok((await hanging.count()) > 0);
-      assert.strictEqual(await hanging.first().getAttribute('data-glyph'), '·');
+      assert.strictEqual(await dotted(hanging), true);
       await waitFor(
         () => savedText(profile, 'showWhitespace') === false,
         'whitespace hidden saved',
@@ -1402,7 +1404,7 @@ suite('App commander', () => {
       assert.strictEqual(savedText(profile, 'wordWrap'), undefined);
       await page.keyboard.press('.');
       await waitFor(
-        async () => (await page.locator('.viewer-rows .blank').count()) > 0,
+        async () => (await spaces.count()) > 0,
         'the spaces drawn again',
       );
       await waitFor(

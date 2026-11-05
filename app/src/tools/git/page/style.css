@@ -929,8 +929,14 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   color: var(--muted-foreground);
 }
 
-.show-whitespace .wrap-blank {
+.show-whitespace .wrap-blank,
+.show-whitespace .wrap-spaces {
   display: none;
+}
+
+.wrap-spaces {
+  position: absolute;
+  height: var(--diff-line-height);
 }
 
 .wrap-blank,

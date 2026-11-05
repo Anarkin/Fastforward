@@ -15,6 +15,7 @@ import { DiffOptions } from '../tools/git/page/diffColumn';
 import { FindField } from '../ui/search';
 import { gitKeymap } from '../tools/git/shared/keymap';
 import {
+  BreakMarks,
   Code,
   diffRowClass,
   DiffView,
@@ -448,6 +449,36 @@ export function indentedLine(): React.ReactElement {
   );
 }
 
+export function hangingSpacesLine(): React.ReactElement {
+  return diffRow(
+    <div className="diff-line text-line added">
+      <span className="number">1</span>
+      <span className="number">1</span>
+      <Code
+        text="a   b"
+        syntax={[]}
+        words={[]}
+        wordClass="word-added"
+        finds={[]}
+        current={undefined}
+        whitespace={false}
+      />
+      <span className="wrap-marks">
+        <BreakMarks
+          breaks={[
+            {
+              end: 4,
+              blanks: [1, 2, 3].map((column) => ({ column, tab: false })),
+            },
+          ]}
+          numbers={2}
+          lineHeight={18}
+        />
+      </span>
+    </div>,
+  );
+}
+
 export function splitLine(left: string, right: string): React.ReactElement {
   return diffRow(
     <div className="split-line">
@@ -465,7 +496,7 @@ export function splitLine(left: string, right: string): React.ReactElement {
 }
 
 export function diffView(
-  { sideBySide = false, wordWrap = false } = {},
+  { sideBySide = false, wordWrap = false, showWhitespace = false } = {},
   ...rows: React.ReactElement[]
 ): MarkupElement {
   const view = rendered(
@@ -486,6 +517,7 @@ export function diffView(
       firstChange={undefined}
       sideBySide={sideBySide}
       wordWrap={wordWrap}
+      showWhitespace={showWhitespace}
     />,
   );
   const spacer = withClass(view, 'virtual-spacer');

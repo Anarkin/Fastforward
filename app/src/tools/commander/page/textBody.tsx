@@ -39,6 +39,7 @@ import {
 import { useTextView } from '../../../ui/textView';
 import { columnAt, columnsOf, shownWithin } from './columns';
 import { strings } from '../../../shared/strings';
+import { blankRuns } from '../../../ui/wordWrap';
 
 const rowsAboveMatch = 2;
 
@@ -644,14 +645,28 @@ export function TextBody({
             blanks={showWhitespace}
           />
           {!showWhitespace &&
-            row.hanging.map(({ column, tab: isTab }) => (
-              <span
-                key={column}
-                className="viewer-wrap-blank"
-                data-glyph={isTab ? strings.symbols.tab : strings.symbols.space}
-                style={{ left: `calc(${column} * var(--commander-advance))` }}
-              />
-            ))}
+            blankRuns(row.hanging).map(
+              ({ column, columns: run, tab: isTab }) => {
+                const left = `calc(${column} * var(--commander-advance))`;
+                return isTab ? (
+                  <span
+                    key={column}
+                    className="viewer-wrap-blank"
+                    data-glyph={strings.symbols.tab}
+                    style={{ left }}
+                  />
+                ) : (
+                  <span
+                    key={column}
+                    className="viewer-wrap-spaces"
+                    style={{
+                      left,
+                      width: `calc(${run} * var(--commander-advance))`,
+                    }}
+                  />
+                );
+              },
+            )}
           {row.breakAt !== undefined && (
             <span
               className="viewer-break"

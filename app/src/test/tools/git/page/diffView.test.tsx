@@ -96,6 +96,10 @@ function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
 }
 
+function spaces(run: string): string {
+  return `<span class="spaces">${run}</span>`;
+}
+
 function wrapMarkup(
   text: string,
   indent: number | undefined,
@@ -1474,11 +1478,18 @@ suite('Diff row heights', () => {
     );
   });
 
-  test('marks where each row a line is broken into ends, right after its text, and the spaces and tabs hanging there, a whole advance of the text per column, leaving lines on one row unmarked', () => {
+  test('marks where each row a line is broken into ends, right after its text, the tabs hanging there, and each run of spaces hanging there once, as wide as its spaces, a whole advance of the text per column, leaving lines on one row unmarked', () => {
     const html = renderToStaticMarkup(
       <BreakMarks
         breaks={[
-          { end: 4, blanks: [{ column: 3, tab: false }] },
+          {
+            end: 6,
+            blanks: [
+              { column: 3, tab: false },
+              { column: 4, tab: false },
+              { column: 5, tab: false },
+            ],
+          },
           { end: 4, blanks: [{ column: 3, tab: true }] },
         ]}
         numbers={2}
@@ -1486,8 +1497,12 @@ suite('Diff row heights', () => {
       />,
     );
     assert.deepStrictEqual(wrapMarksOf(html), [
-      ['wrap-blank', wrapMarkAt('0', 3), strings.symbols.space],
-      ['wrap-break', wrapMarkAt('0', 4), strings.symbols.breaks],
+      [
+        'wrap-spaces',
+        `${wrapMarkAt('0', 3)};width:calc(3 * var(--diff-advance))`,
+        '',
+      ],
+      ['wrap-break', wrapMarkAt('0', 6), strings.symbols.breaks],
       ['wrap-blank', wrapMarkAt('17px', 3), strings.symbols.tab],
       ['wrap-break', wrapMarkAt('17px', 4), strings.symbols.breaks],
     ]);
@@ -1876,14 +1891,20 @@ suite('Drawing code', () => {
     );
   });
 
-  test('shows each space and tab as a sign over it when asked, inside the colors and matches, keeping the text as it is', () => {
-    const space = `<span class="blank" data-glyph="${strings.symbols.space}"> </span>`;
+  test('shows each run of spaces as one span dotted at each space and each tab as a sign over it when asked, inside the colors and matches, keeping the text as it is, as a sign over every space of a padded table slowed scrolling down', () => {
+    const space = spaces(' ');
     const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;
     assert.strictEqual(
       renderToStaticMarkup(
         <>{marked('a b\tc', [], [], 'word-added', [], undefined, true)}</>,
       ),
       `a${space}b${tab}c`,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>{marked('a   b  \t c', [], [], 'word-added', [], undefined, true)}</>,
+      ),
+      `a${spaces('   ')}b${spaces('  ')}${tab}${space}c`,
     );
     assert.strictEqual(
       renderToStaticMarkup(
@@ -1926,7 +1947,6 @@ suite('Drawing code', () => {
   });
 
   test('lets a wrapped line break where VS Code would, inside its colors too, keeping its indentation on the row with the code it indents', () => {
-    const space = `<span class="blank" data-glyph="${strings.symbols.space}"> </span>`;
     assert.strictEqual(
       wrapMarkup('    a.b(c)', 4),
       '<span class="lead">    </span>a.<wbr/>b<wbr/>(c)',
@@ -1941,7 +1961,7 @@ suite('Drawing code', () => {
     );
     assert.strictEqual(
       wrapMarkup('  a', 2, [], true),
-      `<span class="lead">${space}${space}</span>a`,
+      '<span class="lead"><span class="spaces">  </span></span>a',
     );
     assert.strictEqual(wrapMarkup('  a\tb.c', 0), '  a\tb.<wbr/>c');
     assert.strictEqual(wrapMarkup('    a.b(c)', undefined), '    a.b(c)');

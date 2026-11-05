@@ -1596,6 +1596,18 @@ body.resizing {
   color: var(--muted-foreground);
 }
 
+.spaces,
+.wrap-spaces,
+.viewer-wrap-spaces {
+  background-image: radial-gradient(
+    circle,
+    var(--muted-foreground) 0.08em,
+    transparent 0.1em
+  );
+  background-size: var(--blank-advance) 100%;
+  background-repeat: repeat-x;
+}
+
 .diff-minimap {
   position: absolute;
   top: 0;

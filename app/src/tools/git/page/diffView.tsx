@@ -77,6 +77,7 @@ import { SkeletonRows, useSkeleton } from '../../../ui/skeleton';
 import { Twisty } from './tree';
 import { renamedPath } from './fileStatus';
 import {
+  blankRuns,
   breakOffsets,
   leadLength,
   markedRowStarts,
@@ -450,11 +451,22 @@ export function BreakMarks({
     <>
       {breaks.map(({ end, blanks }, row) => (
         <Fragment key={row}>
-          {blanks.map(({ column, tab }) => (
-            <span key={column} className="wrap-blank" style={at(row, column)}>
-              {tab ? strings.symbols.tab : strings.symbols.space}
-            </span>
-          ))}
+          {blankRuns(blanks).map(({ column, columns, tab }) =>
+            tab ? (
+              <span key={column} className="wrap-blank" style={at(row, column)}>
+                {strings.symbols.tab}
+              </span>
+            ) : (
+              <span
+                key={column}
+                className="wrap-spaces"
+                style={{
+                  ...at(row, column),
+                  width: `calc(${columns} * var(--diff-advance))`,
+                }}
+              />
+            ),
+          )}
           <span className="wrap-break" style={at(row, end)}>
             {strings.symbols.breaks}
           </span>

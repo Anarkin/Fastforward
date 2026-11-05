@@ -122,7 +122,6 @@ export const strings = {
     hiddenLeft: '‹',
     hiddenRight: '›',
     breaks: '↵',
-    space: '·',
     tab: '→',
     carriageReturn: '␍',
     nonBreakingSpace: '⍽',

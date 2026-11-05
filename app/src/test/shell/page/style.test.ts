@@ -75,6 +75,7 @@ import {
   diffView,
   fileRow,
   folderRow,
+  hangingSpacesLine,
   historyMenu,
   indentedLine,
   inlineLine,
@@ -136,6 +137,16 @@ function activeEdge(): string {
 
 function indented(wordWrap: boolean): MarkupElement {
   return shownRow(diffView({ wordWrap }, indentedLine()));
+}
+
+const spaceDots =
+  'radial-gradient(circle, var(--muted-foreground) 0.08em, transparent 0.1em)';
+
+function hanging(showWhitespace: boolean): MarkupElement {
+  return withClass(
+    shownRow(diffView({ wordWrap: true, showWhitespace }, hangingSpacesLine())),
+    'wrap-spaces',
+  );
 }
 
 function pixels(value: string | undefined): number {
@@ -1596,12 +1607,60 @@ suite('Style', () => {
     });
   });
 
-  test('shows the sign of each blank of an indented wrapped line on that blank, as the indentation hanging its rows moved the signs aside, squeezing them together', () => {
-    looks(
-      withClass(indented(true), 'blank'),
-      { 'text-indent': '0' },
-      { pseudoElement: '::before' },
+  test('shows the sign of each tab and other blank of an indented wrapped line on that blank, as the indentation hanging its rows moved the signs aside, squeezing them together', () => {
+    const tab = rendered(
+      createElement('span', { className: 'blank', 'data-glyph': '→' }, '\t'),
+      withClass(indented(true), 'lead'),
     );
+    looks(tab, { 'text-indent': '0' }, { pseudoElement: '::before' });
+  });
+
+  test('draws a run of spaces shown as dots in its own background, one in the middle of each advance of the text, with no box over each space, as a box over every space of a padded table slowed scrolling down and let the browser break a run onto rows of its own', () => {
+    const run = withClass(indented(true), 'spaces');
+    looks(run, {
+      position: undefined,
+      'background-size': 'var(--blank-advance) 100%',
+      'background-repeat': 'repeat-x',
+    });
+    assert.strictEqual(compact(cascaded(run, 'background-image')), spaceDots);
+    looks(run, { content: undefined }, { pseudoElement: '::before' });
+  });
+
+  test('marks the spaces hanging at the end of a wrapped row of the diff and the viewer with the same dots, on that row, leaving them to the spaces drawn in the diff while whitespace is shown', () => {
+    const viewer = withClass(
+      rendered(
+        createElement(
+          'div',
+          { className: 'viewer-row' },
+          createElement('span', { className: 'viewer-wrap-spaces' }),
+        ),
+      ),
+      'viewer-wrap-spaces',
+    );
+    const dotted = {
+      'background-size': 'var(--blank-advance) 100%',
+      'background-repeat': 'repeat-x',
+    };
+    looks(hanging(false), {
+      position: 'absolute',
+      height: 'var(--diff-line-height)',
+      display: undefined,
+      ...dotted,
+    });
+    looks(hanging(true), { display: 'none' });
+    looks(viewer, {
+      position: 'absolute',
+      top: '0',
+      height: '100%',
+      'pointer-events': 'none',
+      ...dotted,
+    });
+    for (const marks of [hanging(false), viewer]) {
+      assert.strictEqual(
+        compact(cascaded(marks, 'background-image')),
+        spaceDots,
+      );
+    }
   });
 
   test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, but wraps lines under it, as text goes under the scrollbars everywhere else, with room for the sign of a break, so both sides wrap alike', () => {

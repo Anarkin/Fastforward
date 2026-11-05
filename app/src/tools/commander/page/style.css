@@ -287,6 +287,13 @@
   content: attr(data-glyph);
 }
 
+.viewer-wrap-spaces {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+}
+
 .commander-viewer-probe {
   position: absolute;
   width: max-content;
