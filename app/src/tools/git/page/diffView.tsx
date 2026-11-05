@@ -92,8 +92,9 @@ import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
 import {
   followRows,
   rowPadding,
+  Scrolling,
   snappedTop,
-  WheelRows,
+  type RowFollower,
 } from '../../../ui/rowScroll';
 import { useTextView } from '../../../ui/textView';
 import {
@@ -2199,8 +2200,14 @@ export function DiffView({
   });
   const scrollTarget = useRef<number>(undefined);
   const scrollFrame = useRef<number>(undefined);
+  const scrolling = useContext(Scrolling);
+  const follower = useRef<RowFollower>(undefined);
   const scrollToTop = useCallback(
     (top: number) => {
+      if (scrolling.smooth && follower.current) {
+        follower.current.scrollTo(top, true);
+        return;
+      }
       scrollTarget.current = snappedTop(top, lineHeight, Infinity);
       scrollFrame.current ??= requestAnimationFrame(() => {
         scrollFrame.current = undefined;
@@ -2214,7 +2221,7 @@ export function DiffView({
         }
       });
     },
-    [virtualizer, lineHeight],
+    [virtualizer, lineHeight, scrolling.smooth],
   );
   useEffect(
     () => () => {
@@ -2229,24 +2236,28 @@ export function DiffView({
   const endPadding = rowPadding(viewportHeight, lineHeight);
   const lineOf = useEffectEvent(() => lineHeight);
   const totalOf = useEffectEvent(() => virtualizer.getTotalSize());
-  const wheelRows = useContext(WheelRows);
-  const perNotch = useEffectEvent(() => wheelRows);
+  const perNotch = useEffectEvent(() => scrolling.wheelRows);
+  const smooth = useEffectEvent(() => scrolling.smooth);
   useEffect(() => {
     const element = list.current;
     if (!element) {
       return undefined;
     }
     const viewport = () => element.getBoundingClientRect().height;
-    const stop = followRows(element, lineOf, {
+    const following = followRows(element, lineOf, {
       limit: () => totalOf() + rowPadding(viewport(), lineOf()) - viewport(),
       perNotch,
+      smooth,
+      onPlace: (top) => offsetSeen.current?.(top),
     });
+    follower.current = following;
     const measure = () => setViewportHeight(viewport());
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => {
-      stop();
+      following.stop();
+      follower.current = undefined;
       observer.disconnect();
     };
   }, []);
@@ -2855,7 +2866,7 @@ export function DiffView({
               ? move &&
                 diffScrollTop(
                   move,
-                  event.currentTarget.scrollTop,
+                  follower.current?.aim() ?? event.currentTarget.scrollTop,
                   event.currentTarget.clientHeight,
                   virtualizer.getTotalSize(),
                   lineHeight,
@@ -2868,8 +2879,16 @@ export function DiffView({
                   step,
                   changeMargin(lineHeight),
                 );
-          if (top !== undefined) {
-            event.preventDefault();
+          if (top === undefined) {
+            return;
+          }
+          event.preventDefault();
+          if (follower.current) {
+            follower.current.scrollTo(
+              top,
+              step === undefined && (move === 'pageUp' || move === 'pageDown'),
+            );
+          } else {
             virtualizer.scrollToOffset(top);
           }
         }}

@@ -4,7 +4,12 @@ import type { WebglAddon } from '@xterm/addon-webgl';
 import type { Terminal } from '@xterm/xterm';
 import { terminalKey } from './keys';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
-import { notchesOf, type Wheel } from '../../../ui/rowScroll';
+import {
+  notchesOf,
+  rowGlide,
+  type ScrollSettings,
+  type Wheel,
+} from '../../../ui/rowScroll';
 import { pressedAlone, type Modifiers } from '../../../shell/shared/keymap';
 import {
   fontVariables,
@@ -68,6 +73,8 @@ export function wheelLines(
     : undefined;
 }
 
+const glideOf = (smooth: boolean) => (smooth ? rowGlide : 0);
+
 export interface TerminalViewOptions {
   readonly tab: string;
   readonly renderer: Renderer;
@@ -76,7 +83,7 @@ export interface TerminalViewOptions {
   readonly windowsPty: WindowsPty | undefined;
   readonly post: (message: TerminalToHost) => void;
   readonly onCopy: (text: string) => void;
-  readonly wheelRows: () => number;
+  readonly scrolling: () => ScrollSettings;
 }
 
 export class TerminalView {
@@ -104,6 +111,7 @@ export class TerminalView {
       allowProposedApi: true,
       scrollback: options.scrollback,
       minimumContrastRatio: options.minimumContrastRatio,
+      smoothScrollDuration: glideOf(options.scrolling().smooth),
       ...this.cells(),
       theme: this.theme(),
       ...(options.windowsPty && { windowsPty: options.windowsPty }),
@@ -145,13 +153,17 @@ export class TerminalView {
         buffer: this.terminal.buffer.active.type,
         mouse: this.terminal.modes.mouseTrackingMode,
       },
-      this.options.wheelRows(),
+      this.options.scrolling().wheelRows,
     );
     if (lines !== undefined) {
       event.preventDefault();
       this.terminal.scrollLines(lines);
     }
   };
+
+  glide(smooth: boolean): void {
+    this.terminal.options.smoothScrollDuration = glideOf(smooth);
+  }
 
   receive(message: TerminalToWebview): void {
     const { tab, post } = this.options;

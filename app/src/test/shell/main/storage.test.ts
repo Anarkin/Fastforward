@@ -53,7 +53,7 @@ suite('Storage', () => {
     ]) {
       const settings = new UserSettings({
         ...defaultSettings(),
-        scrolling: { wheelRows: set },
+        scrolling: { ...defaultSettings().scrolling, wheelRows: set },
       });
       assert.strictEqual(
         new Storage(settings, new FakeStore()).wheelRows,
@@ -61,6 +61,18 @@ suite('Storage', () => {
         String(set),
       );
     }
+  });
+
+  test('glides when scrolling by rows unless the settings turn it off', () => {
+    assert.strictEqual(storageOf().smoothScrolling, true);
+    const settings = new UserSettings({
+      ...defaultSettings(),
+      scrolling: { ...defaultSettings().scrolling, smooth: false },
+    });
+    assert.strictEqual(
+      new Storage(settings, new FakeStore()).smoothScrolling,
+      false,
+    );
   });
 
   test('reads state of the wrong shape, as a hand edit can leave it, as never saved', async () => {

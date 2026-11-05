@@ -142,6 +142,19 @@ export function setSidewaysScroller(
   }
 }
 
+const rowScrollers = new WeakMap<Element, (scrollTop: number) => void>();
+
+export function setRowScroller(
+  element: Element,
+  dragTo: ((scrollTop: number) => void) | undefined,
+): void {
+  if (dragTo) {
+    rowScrollers.set(element, dragTo);
+  } else {
+    rowScrollers.delete(element);
+  }
+}
+
 export function sidewaysMetrics(
   area: ScrollerMetrics,
   side: number,
@@ -407,7 +420,10 @@ class Bar {
   private scroll(scroller: Element, drag: Drag, pointer: PointerEvent): void {
     const scroll = draggedScroll(this.axis, drag, pointer);
     const sideways = sidewaysScrollers.get(scroller);
-    if (this.axis === 'vertical') {
+    const rows = rowScrollers.get(scroller);
+    if (this.axis === 'vertical' && rows) {
+      rows(scroll);
+    } else if (this.axis === 'vertical') {
       scroller.scrollTop = scroll;
     } else if (sideways) {
       sideways.scrollTo(scroll);

@@ -199,7 +199,7 @@ suite('Shell with no tab open', () => {
     );
   });
 
-  test('tells the page how many rows a notch of the mouse wheel scrolls, which every list that scrolls by rows and the terminal follow', async () => {
+  test('tells the page how many rows a notch of the mouse wheel scrolls and whether scrolling glides, which every list that scrolls by rows and the terminal follow', async () => {
     await withView(
       log,
       [],
@@ -207,6 +207,7 @@ suite('Shell with no tab open', () => {
         assert.deepStrictEqual(view.page.last('scrolling'), {
           type: 'scrolling',
           wheelRows: 10,
+          smooth: true,
         });
       },
       true,

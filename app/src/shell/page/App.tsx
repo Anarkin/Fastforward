@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { DateFormat } from '../../ui/dates';
-import { WheelRows } from '../../ui/rowScroll';
+import { Scrolling } from '../../ui/rowScroll';
 import { defaultTextView, TextViewContext } from '../../ui/textView';
 import { defaultImageView, ImageViewContext } from '../../ui/imageView';
 import {
@@ -180,7 +180,7 @@ export function App({ name, post, listen }: Props) {
   const [about, setAbout] = useState<AboutInfo>();
   const [installsCommand, setInstallsCommand] = useState(false);
   const [dateFormat, setDateFormat] = useState(useContext(DateFormat));
-  const [wheelRows, setWheelRows] = useState(useContext(WheelRows));
+  const [scrolling, setScrolling] = useState(useContext(Scrolling));
   const [textView, setTextView] = useState(defaultTextView);
   const [imageView, setImageView] = useState(defaultImageView);
   const [choosing, setChoosing] = useState<ToWebviewOf<'chooseTool'>>();
@@ -225,7 +225,10 @@ export function App({ name, post, listen }: Props) {
           setDateFormat(message.format);
           break;
         case 'scrolling':
-          setWheelRows(message.wheelRows);
+          setScrolling({
+            wheelRows: message.wheelRows,
+            smooth: message.smooth,
+          });
           break;
         case 'textView':
           setTextView(message.view);
@@ -452,7 +455,7 @@ export function App({ name, post, listen }: Props) {
       <Notices notices={notices} onDismiss={dismissNotice} />
       {emptyState(tabs)}
       <DateFormat value={dateFormat}>
-        <WheelRows value={wheelRows}>
+        <Scrolling value={scrolling}>
           <TextViewContext
             value={{
               view: textView,
@@ -485,7 +488,7 @@ export function App({ name, post, listen }: Props) {
               />
             </ImageViewContext>
           </TextViewContext>
-        </WheelRows>
+        </Scrolling>
       </DateFormat>
     </div>
   );

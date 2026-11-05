@@ -141,13 +141,10 @@ suite('Terminal', () => {
     const before = await rows();
     await page.locator('.terminal-screen').hover();
     await page.mouse.wheel(0, -100);
+    const expected = JSON.stringify(before.slice(0, before.length - 2));
     await waitFor(
-      async () => (await rows())[0] !== before[0],
-      'the terminal to scroll back',
-    );
-    assert.deepStrictEqual(
-      (await rows()).slice(2),
-      before.slice(0, before.length - 2),
+      async () => JSON.stringify((await rows()).slice(2)) === expected,
+      'the terminal to scroll back two rows',
     );
   });
 

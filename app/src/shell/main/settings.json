@@ -5,7 +5,8 @@
   "theme": "dark",
   "dateFormat": "YYYY-MM-DD HH:mm",
   "scrolling": {
-    "wheelRows": 10
+    "wheelRows": 10,
+    "smooth": true
   },
   "text": {
     "wordWrap": true,

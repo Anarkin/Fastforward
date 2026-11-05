@@ -13,7 +13,7 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { wheeled } from '../../../shell/shared/keymap';
 import { viewerKeymap } from '../shared/keymap';
 import { followDrag } from '../../../ui/followDrag';
-import { wheelTurn, WheelRows } from '../../../ui/rowScroll';
+import { Scrolling, wheelTurn } from '../../../ui/rowScroll';
 import {
   hideAfter,
   overlayScrollbarClass,
@@ -215,7 +215,7 @@ export function ScrollBody({
   const [track, setTrack] = useState(0);
   const [screen, setScreen] = useState(1);
   const wheel = useRef(0);
-  const wheelRows = useContext(WheelRows);
+  const { wheelRows } = useContext(Scrolling);
   const [barShown, setBarShown] = useState(false);
   const [dragging, setDragging] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);

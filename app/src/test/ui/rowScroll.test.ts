@@ -1,6 +1,14 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { rowPadding, snappedTop, wheelTurn } from '../../ui/rowScroll';
+import { glideAt } from '../../ui/glide';
+import {
+  glideRows,
+  revealGlides,
+  rowGlide,
+  rowPadding,
+  snappedTop,
+  wheelTurn,
+} from '../../ui/rowScroll';
 
 const touchpad = (deltaY: number, deltaMode = 0) => ({
   deltaY,
@@ -108,5 +116,25 @@ suite('Scrolling by whole rows', () => {
     assert.strictEqual(rowPadding(100, 20), 0);
     assert.strictEqual(rowPadding(110, 20), 10);
     assert.ok(Math.abs(rowPadding(500, 16.8) - 12.8) < 1e-9);
+  });
+
+  test('glides to the row it aims at in a moment, easing out, and from where it is on to a new aim, ending on the row', () => {
+    const glide = glideRows(undefined, 0, 1000, 200);
+    assert.strictEqual(glideAt(glide, 1000), 0);
+    const halfway = glideAt(glide, 1000 + rowGlide / 2);
+    assert.ok(halfway > 100 && halfway < 200, String(halfway));
+    assert.strictEqual(glideAt(glide, 1000 + rowGlide), 200);
+    const further = glideRows(glide, 50, 1000 + rowGlide / 2, 400);
+    assert.strictEqual(glideAt(further, 1000 + rowGlide / 2), halfway);
+    assert.strictEqual(glideAt(further, 1000 + rowGlide * 1.5), 400);
+  });
+
+  test('glides to a row revealed more than a row and at most a view away, as a page key moves, and jumps a row or far, as the arrows, Home, End and finding do', () => {
+    assert.strictEqual(revealGlides(0, 380, 20, 400), true);
+    assert.strictEqual(revealGlides(380, 0, 20, 400), true);
+    assert.strictEqual(revealGlides(0, 400, 20, 400), true);
+    assert.strictEqual(revealGlides(0, 20, 20, 400), false);
+    assert.strictEqual(revealGlides(0, 8, 20, 400), false);
+    assert.strictEqual(revealGlides(0, 4000, 20, 400), false);
   });
 });

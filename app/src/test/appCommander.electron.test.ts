@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
-import type { ElectronApplication, Page } from 'playwright-core';
+import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
 import { defaultSettings, waitFor } from './fixtures';
@@ -103,6 +103,46 @@ const savedRightLayout = (profile: string): unknown => {
 
 const savedText = (profile: string, name: string): unknown =>
   savedSetting(profile, 'text', name);
+
+async function scrollPlaces(
+  page: Page,
+  list: Locator,
+  scroll: () => Promise<void>,
+): Promise<number[]> {
+  await list.evaluate((element) => {
+    const places: number[] = [];
+    Reflect.set(window, 'scrollPlaces', places);
+    Reflect.set(window, 'scrollRested', false);
+    const record = () => {
+      places.push(element.scrollTop);
+      const resting = places.slice(-12);
+      if (
+        places.some((place) => place !== places[0]) &&
+        resting.length === 12 &&
+        resting.every((place) => place === resting[0])
+      ) {
+        Reflect.set(window, 'scrollRested', true);
+        return;
+      }
+      requestAnimationFrame(record);
+    };
+    requestAnimationFrame(record);
+  });
+  await scroll();
+  await waitFor(
+    () => page.evaluate(() => Reflect.get(window, 'scrollRested') === true),
+    'the list to come to rest',
+  );
+  return page.evaluate(() => {
+    const places: unknown = Reflect.get(window, 'scrollPlaces');
+    return Array.isArray(places) ? places.map(Number) : [];
+  });
+}
+
+const betweenRows = (places: readonly number[], row: number) =>
+  places.some(
+    (place) => Math.abs(place / row - Math.round(place / row)) > 0.01,
+  );
 
 suite('App commander', () => {
   let folder: string;
@@ -3023,7 +3063,7 @@ suite('App commander', () => {
     );
   });
 
-  test('scrolls the list by whole rows, the rows of the setting for each notch of the wheel, ten unless set, as far as a touchpad goes, and with the scrollbar alike, drawing it on a row at every frame while its scrollbar is dragged rather than between rows and then snapping', async () => {
+  test('scrolls the list by whole rows, the rows of the setting for each notch of the wheel, ten unless set, as far as a touchpad goes, a page on Page Down, gliding there unless set not to, and with the scrollbar alike, gliding after its thumb and coming to rest on a row', async () => {
     const many = path.join(opened, 'many');
     fs.mkdirSync(many);
     for (let index = 0; index < 400; index++) {
@@ -3049,8 +3089,9 @@ suite('App commander', () => {
       });
 
     await list.hover();
-    await page.mouse.wheel(0, 300);
-    await waitFor(async () => (await offRow()).top > 0, 'the list to scroll');
+    const notched = await scrollPlaces(page, list, () =>
+      page.mouse.wheel(0, 300),
+    );
     const oneRow = await list.evaluate(
       (element) =>
         element.querySelector('.commander-row')?.getBoundingClientRect()
@@ -3058,10 +3099,11 @@ suite('App commander', () => {
     );
     assert.ok(
       Math.abs(
-        (await offRow()).top - oneRow * defaultSettings().scrolling.wheelRows,
+        (notched.at(-1) ?? 0) - oneRow * defaultSettings().scrolling.wheelRows,
       ) < 0.01,
-      JSON.stringify(await offRow()),
+      JSON.stringify(notched),
     );
+    assert.ok(betweenRows(notched, oneRow), JSON.stringify(notched));
 
     await list.evaluate((element) =>
       element.dispatchEvent(
@@ -3141,10 +3183,27 @@ suite('App commander', () => {
     });
     assert.ok((await offRow()).top > 0, 'the list to scroll on its scrollbar');
     assert.ok(offs.length > 20, String(offs.length));
-    assert.deepStrictEqual(
-      offs.filter((off) => off >= 0.01),
-      [],
+    assert.ok(
+      offs.some((off) => off >= 0.01),
+      'the list to glide after the thumb',
     );
+    await waitFor(
+      async () => (await offRow()).off < 0.01,
+      'the list to come to rest on a row',
+    );
+
+    await list.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await waitFor(async () => (await offRow()).top === 0, 'the top again');
+    await list.focus();
+    await page.keyboard.press('PageDown');
+    const paged = await scrollPlaces(page, list, () =>
+      page.keyboard.press('PageDown'),
+    );
+    assert.ok((paged.at(-1) ?? 0) > oneRow * 5, JSON.stringify(paged));
+    assert.ok((await offRow()).off < 0.01, JSON.stringify(await offRow()));
+    assert.ok(betweenRows(paged, oneRow), JSON.stringify(paged));
 
     await page.keyboard.press('Backspace');
     await waitFor(
@@ -3158,7 +3217,7 @@ suite('App commander', () => {
     );
   });
 
-  test('scrolls thumbnails a row of tiles for each notch of the wheel, and for as little touchpad as a row of text', async () => {
+  test('scrolls thumbnails a row of tiles for each notch of the wheel, and for as little touchpad as a row of text, gliding there', async () => {
     const many = path.join(opened, 'many tiles');
     fs.mkdirSync(many);
     for (let index = 0; index < 200; index++) {
@@ -3190,32 +3249,31 @@ suite('App commander', () => {
     assert.ok(tile > text * 2 && text > 0, JSON.stringify(await sizes()));
 
     await list.hover();
-    await page.mouse.wheel(0, 100);
-    await waitFor(async () => (await sizes()).top > 0, 'the tiles to scroll');
-    assert.ok(
-      Math.abs((await sizes()).top - tile) < 0.01,
-      JSON.stringify(await sizes()),
+    const notched = await scrollPlaces(page, list, () =>
+      page.mouse.wheel(0, 100),
     );
+    assert.ok(
+      Math.abs((notched.at(-1) ?? 0) - tile) < 0.01,
+      JSON.stringify(notched),
+    );
+    assert.ok(betweenRows(notched, tile), JSON.stringify(notched));
 
-    await list.evaluate(
-      (element, glide) =>
+    const glided = await scrollPlaces(page, list, () =>
+      list.evaluate((element, glide) => {
         element.dispatchEvent(
           new WheelEvent('wheel', {
             deltaY: glide,
             bubbles: true,
             cancelable: true,
           }),
-        ),
-      text + 1,
-    );
-    await waitFor(
-      async () => (await sizes()).top > tile + 0.01,
-      'the tiles to scroll by a row of text on a touchpad',
+        );
+      }, text + 1),
     );
     assert.ok(
-      Math.abs((await sizes()).top - tile * 2) < 0.01,
-      JSON.stringify(await sizes()),
+      Math.abs((glided.at(-1) ?? 0) - tile * 2) < 0.01,
+      JSON.stringify(glided),
     );
+    assert.ok(betweenRows(glided, tile), JSON.stringify(glided));
 
     await page.keyboard.press('ControlOrMeta+1');
     await waitFor(

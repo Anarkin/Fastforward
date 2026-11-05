@@ -270,7 +270,7 @@ suite('App', () => {
     await page.locator('.commit.working-tree.empty').waitFor();
   });
 
-  test('scrolls the diff by whole lines, each line starting at the top of the view, at every frame while its scrollbar is dragged too rather than between lines and then snapping', async () => {
+  test('scrolls the diff by whole lines, gliding to each line, after its scrollbar dragged too, and coming to rest with a line at the top of the view', async () => {
     const file = path.join(repository.root, 'long.txt');
     fs.writeFileSync(
       file,
@@ -303,10 +303,10 @@ suite('App', () => {
         });
       await list.hover();
       await page.mouse.wheel(0, 50);
-      await waitFor(
-        async () => (await place()).scrolled > 0,
-        'the diff to scroll',
-      );
+      await waitFor(async () => {
+        const { scrolled, lines } = await place();
+        return scrolled > 0 && Math.abs(lines - Math.round(lines)) < 0.01;
+      }, 'the diff to scroll and come to rest on a line');
       const scrolled = await place();
       assert.ok(
         Math.abs(scrolled.lines - Math.round(scrolled.lines)) < 0.01 &&
@@ -352,10 +352,16 @@ suite('App', () => {
         return Array.isArray(recorded) ? recorded.map(Number) : [];
       });
       assert.ok((await place()).scrolled > scrolled.scrolled);
-      assert.deepStrictEqual(
-        offsets.filter((offset) => Math.abs(offset) >= 0.01),
-        [],
+      assert.ok(
+        offsets.some((offset) => Math.abs(offset) >= 0.01),
+        'the diff to glide after the scrollbar',
       );
+      await waitFor(async () => {
+        const { lines, offset } = await place();
+        return (
+          Math.abs(lines - Math.round(lines)) < 0.01 && Math.abs(offset) < 0.01
+        );
+      }, 'the diff to come to rest on a line');
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
     }

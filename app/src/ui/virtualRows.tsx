@@ -12,7 +12,13 @@ import {
 import { columnFocusAttribute } from './columnFocus';
 import { fullyVisible, type VisibleRows } from './listMoves';
 import { rowPlace } from './rowPlace';
-import { followRows, rowPadding, WheelRows } from './rowScroll';
+import {
+  followRows,
+  revealGlides,
+  rowPadding,
+  Scrolling,
+  type RowFollower,
+} from './rowScroll';
 
 export const estimatedRowHeight = 22;
 
@@ -200,9 +206,11 @@ export function VirtualRows({
   }, [fixedHeight, virtualizer]);
   const rowHeight = useEffectEvent(() => fixedHeight ?? estimatedRowHeight);
   const totalSize = useEffectEvent(() => virtualizer.getTotalSize());
-  const wheelRows = useContext(WheelRows);
+  const scrolling = useContext(Scrolling);
   const stepOf = useEffectEvent(() => wheelStep?.() ?? rowHeight());
-  const perNotch = useEffectEvent(() => notchRows ?? wheelRows);
+  const perNotch = useEffectEvent(() => notchRows ?? scrolling.wheelRows);
+  const smooth = useEffectEvent(() => scrolling.smooth);
+  const follower = useRef<RowFollower>(undefined);
   const [viewportHeight, setViewportHeight] = useState(0);
   const padding = wholeRows
     ? rowPadding(viewportHeight, fixedHeight ?? estimatedRowHeight)
@@ -213,18 +221,21 @@ export function VirtualRows({
       return undefined;
     }
     const viewport = () => exactHeight(element);
-    const stop = followRows(element, rowHeight, {
+    const following = followRows(element, rowHeight, {
       limit: () =>
         totalSize() + rowPadding(viewport(), rowHeight()) - viewport(),
       step: stepOf,
       perNotch,
+      smooth,
     });
+    follower.current = following;
     const measure = () => setViewportHeight(viewport());
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => {
-      stop();
+      following.stop();
+      follower.current = undefined;
       observer.disconnect();
     };
   }, [wholeRows]);
@@ -254,13 +265,22 @@ export function VirtualRows({
     if (index === -1 || !element || !row) {
       return;
     }
+    const scrolled = follower.current?.aim() ?? element.scrollTop;
     const offset = revealOffset(
       row,
-      element.scrollTop,
+      scrolled,
       element.clientHeight,
       ancestorsOf(index).reduce((sum, ancestor) => sum + heightOf(ancestor), 0),
     );
-    if (offset !== undefined) {
+    if (offset === undefined) {
+      return;
+    }
+    if (follower.current) {
+      follower.current.scrollTo(
+        offset,
+        revealGlides(scrolled, offset, rowHeight(), element.clientHeight),
+      );
+    } else {
       virtualizer.scrollToOffset(offset);
     }
   });

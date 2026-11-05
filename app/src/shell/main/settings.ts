@@ -21,6 +21,7 @@ export interface Settings {
   readonly dateFormat: string;
   readonly scrolling: {
     readonly wheelRows: number;
+    readonly smooth: boolean;
   };
   readonly text: TextView;
   readonly images: ImageView;
