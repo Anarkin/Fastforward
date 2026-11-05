@@ -2823,25 +2823,27 @@ suite('Style', () => {
     });
   });
 
-  test("tints the About's copy button more on hovering, and fills it with the focus color while pressed and once it copied, keeping the tint while focused from the keyboard so the outline of focus shows", () => {
+  test("paints the About's copy button as the default button of a dialog, in the color of focus hovered, pressed or once it copied, and tinted inside the outline of focus while focused from the keyboard", () => {
     const copy = withClass(aboutPopup(), 'about-copy');
-    looks(copy, { background: 'var(--color-background)' });
-    looks(copy, { background: 'var(--selection-background)' }, hovered);
     const filled = {
       color: 'var(--color-focus-foreground)',
       background: 'var(--color-focus)',
     };
+    looks(copy, filled);
+    looks(copy, filled, hovered);
     looks(copy, filled, { active: true });
     const copied = withClass(
       rendered(createElement(CopyButton, { copied: true, onClick: noop })),
       'about-copy',
     );
     looks(copied, filled);
-    looks(
-      copied,
-      { color: 'inherit', background: 'var(--selection-background)' },
-      { focus: copied },
-    );
+    for (const button of [copy, copied]) {
+      looks(
+        button,
+        { color: 'inherit', background: 'var(--selection-background)' },
+        { focus: button },
+      );
+    }
   });
 
   test('keeps a context menu within the window, scrolling one taller than it, as the repositories may be, unless it opens submenus, which scrolling would cut off', () => {

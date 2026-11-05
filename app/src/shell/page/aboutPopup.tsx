@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AboutInfo } from '../shared/protocol';
 import { brand, strings } from '../../shared/strings';
 import { useDismiss } from '../../ui/contextMenu';
@@ -25,12 +25,15 @@ export function aboutText({
 export function CopyButton({
   copied,
   onClick,
+  ref,
 }: {
   copied: boolean;
   onClick: () => void;
+  ref?: React.Ref<HTMLButtonElement>;
 }) {
   return (
     <button
+      ref={ref}
       className={`about-copy ${copied ? 'copied' : ''}`}
       title={strings.about.copyTitle}
       onClick={onClick}
@@ -54,6 +57,8 @@ export function AboutPopup({
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
   const [copied, setCopied] = useState(false);
+  const copying = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => copying.current?.focus(), []);
   useEffect(() => {
     if (!copied) {
       return undefined;
@@ -94,6 +99,7 @@ export function AboutPopup({
           <span>{strings.about.git(about.git)}</span>
           <span>{about.system}</span>
           <CopyButton
+            ref={copying}
             copied={copied}
             onClick={() => {
               onCopy(aboutText(about));

@@ -102,10 +102,14 @@ suite('App', () => {
     await shortcuts.waitFor({ state: 'detached' });
   });
 
-  test('shows About on Shift+F1, closing it on Esc or Shift+F1', async () => {
+  test('shows About on Shift+F1, its copy button focused, closing it on Esc or Shift+F1', async () => {
     const about = page.getByRole('dialog', { name: 'About' });
     await page.keyboard.press('Shift+F1');
     await about.waitFor();
+    await waitFor(
+      async () => (await focused()) === 'Copy',
+      'Copy to be focused',
+    );
     await page.keyboard.press('Escape');
     await about.waitFor({ state: 'detached' });
     await page.keyboard.press('Shift+F1');

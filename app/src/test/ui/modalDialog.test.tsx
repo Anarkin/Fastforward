@@ -213,21 +213,27 @@ suite('Modal dialogs', () => {
     });
   });
 
-  test('take the keyboard as they open, telling assistive technology the app behind waits, and give it back as they close', async () => {
+  test('take the keyboard as they open, on their default button or else on themselves, telling assistive technology the app behind waits, and give it back as they close', async () => {
     await inPage(async ({ document, before, show }) => {
-      for (const popup of [
-        <AboutPopup key="about" about={about} onCopy={noop} onClose={noop} />,
-        <ShortcutsPopup
-          groups={[]}
-          key="shortcuts"
-          mac={false}
-          onClose={noop}
-        />,
-      ]) {
+      for (const [popup, focused] of [
+        [
+          <AboutPopup key="about" about={about} onCopy={noop} onClose={noop} />,
+          '.about-copy',
+        ],
+        [
+          <ShortcutsPopup
+            groups={[]}
+            key="shortcuts"
+            mac={false}
+            onClose={noop}
+          />,
+          '[role="dialog"]',
+        ],
+      ] as const) {
         await show(popup);
         const dialog = document.querySelector('[role="dialog"]');
         assert.ok(dialog);
-        assert.ok(document.activeElement === dialog);
+        assert.ok(document.activeElement === document.querySelector(focused));
         assert.strictEqual(dialog.getAttribute('aria-modal'), 'true');
         await show(null);
         assert.ok(document.activeElement === before);
@@ -246,6 +252,7 @@ suite('Modal dialogs', () => {
       const first = stops[0];
       const last = stops.at(-1);
       assert.ok(first && last && stops.length === 3);
+      dialog.focus();
       assert.strictEqual(press(dialog, true), false);
       assert.ok(document.activeElement === last);
       assert.strictEqual(press(last), false);
