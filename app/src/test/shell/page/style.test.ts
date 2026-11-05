@@ -565,7 +565,7 @@ suite('Style', () => {
     assert.strictEqual(defaultSettings().tools.commander.columns.date, 16);
   });
 
-  test('moves the color of the default button of a dialog to the button the keyboard moved the focus to, as Enter presses that one', () => {
+  test('draws the button of a dialog the keyboard moved the focus to as the tool chooser draws its tool, tinted inside the outline of focus, the default button then plain, as Enter presses the one focused', () => {
     const row = rendered(
       createElement(
         'div',
@@ -575,19 +575,28 @@ suite('Style', () => {
       ),
     );
     const [cancel, ok] = allWithClass(row, 'confirm-button');
-    const pressed = {
+    const tool = rendered(
+      createElement('button', { className: 'open-with-tool' }, 'Terminal'),
+    );
+    const asTool = {
+      color: 'inherit',
+      background: cascaded(tool, 'background', { focus: tool }),
+      outline: cascaded(tool, 'outline', { focus: tool }),
+      'outline-offset': cascaded(tool, 'outline-offset', { focus: tool }),
+    };
+    assert.strictEqual(asTool.background, 'var(--selection-background)');
+    looks(ok, {
       color: 'var(--color-focus-foreground)',
       background: 'var(--color-focus)',
-    };
-    looks(ok, pressed);
+    });
     looks(cancel, { background: 'var(--color-background)' });
-    looks(cancel, pressed, { focus: cancel });
+    looks(cancel, asTool, { focus: cancel });
     looks(
       ok,
       { color: 'inherit', background: 'var(--color-background)' },
       { focus: cancel },
     );
-    looks(ok, pressed, { focus: ok });
+    looks(ok, asTool, { focus: ok });
   });
 
   test('colors the files of the commander with the color of their group, the selected row too, leaving hidden rows muted and marked rows red', () => {

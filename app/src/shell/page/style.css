@@ -448,8 +448,7 @@ body {
 .about-copy:active,
 .about-copy.copied,
 .confirm-button:active,
-.confirm-button.default,
-.confirm-button:focus-visible {
+.confirm-button.default {
   color: var(--color-focus-foreground);
   background: var(--color-focus);
 }
@@ -457,6 +456,11 @@ body {
 .confirm-buttons:has(:focus-visible) .default:not(:focus-visible) {
   color: inherit;
   background: var(--color-background);
+}
+
+.confirm-button:focus-visible {
+  color: inherit;
+  background: var(--selection-background);
 }
 
 .shortcuts-title {
