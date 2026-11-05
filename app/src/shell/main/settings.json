@@ -19,7 +19,7 @@
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",
     "lineHeight": 1.5,
-    "monospaceFamily": "'JetBrains Mono NL', 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, 'Droid Sans Mono', 'Courier New', monospace",
+    "monospaceFamily": "'JetBrains Mono NL', 'JetBrains Mono', ui-monospace, Menlo, 'Cascadia Mono', Consolas, monospace",
     "monospaceSize": "12px",
     "monospaceLineHeight": 1.5
   },
