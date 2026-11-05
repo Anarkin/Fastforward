@@ -10,7 +10,7 @@
   },
   "text": {
     "wordWrap": true,
-    "showWhitespace": true,
+    "showWhitespace": false,
     "highlightSyntax": true
   },
   "images": {

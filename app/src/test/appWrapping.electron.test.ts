@@ -370,14 +370,12 @@ suite('App', () => {
       }, 'a mark at the end of every row but the last');
       return laidOutCode(line);
     };
-    const shown = await settled();
+    const hidden = await settled();
     await page
       .getByRole('button', { name: 'Show Whitespace', exact: true })
       .click();
-    await page
-      .locator('.diff-view.show-whitespace')
-      .waitFor({ state: 'detached' });
-    const hidden = await settled();
+    await page.locator('.diff-view.show-whitespace').waitFor();
+    const shown = await settled();
     assert.strictEqual(shown.text, paddedLine);
     assert.deepStrictEqual(firsts(shown.rows), firsts(hidden.rows));
     assert.deepStrictEqual(

@@ -1274,7 +1274,7 @@ suite('App commander', () => {
     );
   });
 
-  test('wraps the long lines of a file viewed as the diff wraps its lines, indenting the rows they wrap onto and marking where they wrap and the spaces they wrap at, copies a wrapped line as one line, stops on W or its button for the diff too, and shows whitespace, as it does by default, until a dot', async () => {
+  test('wraps the long lines of a file viewed as the diff wraps its lines, indenting the rows they wrap onto and marking where they wrap and the spaces they wrap at, copies a wrapped line as one line, stops on W or its button for the diff too, and hides whitespace, as it does by default, until a dot', async () => {
     const words = Array.from({ length: 80 }, (_, index) => `word${index}`).join(
       ' ',
     );
@@ -1385,27 +1385,24 @@ suite('App commander', () => {
       const spaces = page.locator('.viewer-rows .spaces');
       const hanging = page.locator('.viewer-rows .viewer-wrap-spaces');
       await waitFor(
-        async () => (await spaces.count()) > 0,
-        'the spaces drawn, as whitespace is shown by default',
+        async () => (await hanging.count()) > 0,
+        'only the spaces the rows wrap at marked, as whitespace is hidden by default',
       );
+      assert.strictEqual(await dotted(hanging), true);
+      assert.strictEqual(await spaces.count(), 0);
+      await page.keyboard.press('.');
+      await waitFor(async () => (await spaces.count()) > 0, 'the spaces drawn');
       assert.strictEqual(await dotted(spaces), true);
       assert.strictEqual(await hanging.count(), 0);
-      await page.keyboard.press('.');
       await waitFor(
-        async () => (await spaces.count()) === 0,
-        'the spaces plain',
-      );
-      assert.ok((await hanging.count()) > 0);
-      assert.strictEqual(await dotted(hanging), true);
-      await waitFor(
-        () => savedText(profile, 'showWhitespace') === false,
-        'whitespace hidden saved',
+        () => savedText(profile, 'showWhitespace') === true,
+        'whitespace shown saved',
       );
       assert.strictEqual(savedText(profile, 'wordWrap'), undefined);
       await page.keyboard.press('.');
       await waitFor(
-        async () => (await spaces.count()) > 0,
-        'the spaces drawn again',
+        async () => (await spaces.count()) === 0,
+        'the spaces plain again',
       );
       await waitFor(
         () => savedText(profile, 'showWhitespace') === undefined,
