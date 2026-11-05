@@ -72,7 +72,7 @@ suite('Pushing', () => {
       );
     });
 
-  test('pushes the commit to main, and says it could not watch its CI run apart from a failed one when gh cannot', async () => {
+  test('pushes the commit to main, and says at once that it could not watch its CI run, apart from a failed one, when gh does not work here', async () => {
     await local.commit('local', { b: 'b' });
     const { code, said } = await pushing();
     assert.deepStrictEqual(
@@ -80,7 +80,10 @@ suite('Pushing', () => {
       await local.resolve('HEAD'),
     );
     assert.strictEqual(code, 2);
-    assert.match(said, /Pushed [0-9a-f]{40}, but could not watch its CI run/);
+    assert.match(
+      said,
+      /Pushed [0-9a-f]{40}, but could not watch its CI run, as gh does not work here/,
+    );
   });
 
   test('refuses to push from a branch other than main, leaving main on the remote as it was', async () => {

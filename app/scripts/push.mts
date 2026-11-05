@@ -15,8 +15,8 @@ interface Job {
 }
 
 const poll = 15_000;
-const retry = 3_000;
-const triesInARow = 3;
+const callWithin = 60_000;
+const failingWithin = 300_000;
 const appearWithin = 120_000;
 const finishWithin = 3_600_000;
 
@@ -24,7 +24,20 @@ const git = (...args: string[]) =>
   execFileSync('git', args, { encoding: 'utf8' }).trim();
 
 const gh = async (...args: string[]): Promise<string> =>
-  (await promisify(execFile)('gh', args, { encoding: 'utf8' })).stdout;
+  (
+    await promisify(execFile)('gh', args, {
+      encoding: 'utf8',
+      timeout: callWithin,
+    })
+  ).stdout;
+
+const cannotWork = (error: unknown) =>
+  error instanceof Error &&
+  (('code' in error && (error.code === 'ENOENT' || error.code === 4)) ||
+    ('stderr' in error &&
+      /failed to determine base repo|gh auth login/.test(
+        String(error.stderr),
+      )));
 
 if (git('branch', '--show-current') !== 'main') {
   console.error('Switch to the main branch before pushing.');
@@ -76,30 +89,33 @@ const failedJobsOf = async (run: Run): Promise<string> => {
   }
 };
 
-const unwatched = (error: unknown) => {
+const unwatched = (error: unknown, why: string) => {
   const said =
     error instanceof Error && 'stderr' in error
       ? String(error.stderr).trim()
       : String(error);
   console.error(
-    `Pushed ${commit}, but could not watch its CI run, as gh failed: ${said}\nCheck the run with gh run list --commit ${commit} --workflow ci.yml.`,
+    `Pushed ${commit}, but could not watch its CI run, as ${why}: ${said}\nCheck the run with gh run list --commit ${commit} --workflow ci.yml.`,
   );
   process.exit(2);
 };
 
 const started = Date.now();
-let failures = 0;
+let failingSince: number | undefined;
 for (;;) {
   let run: Run | undefined;
   try {
     run = await runOf();
-    failures = 0;
+    failingSince = undefined;
   } catch (error) {
-    failures++;
-    if (failures >= triesInARow) {
-      unwatched(error);
+    if (cannotWork(error)) {
+      unwatched(error, 'gh does not work here');
     }
-    await setTimeout(retry);
+    failingSince ??= Date.now();
+    if (Date.now() - failingSince >= failingWithin) {
+      unwatched(error, 'gh kept failing for 5 minutes');
+    }
+    await setTimeout(poll);
     continue;
   }
   const waited = Date.now() - started;
