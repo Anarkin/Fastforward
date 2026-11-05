@@ -580,6 +580,31 @@ suite('Style', () => {
     assert.strictEqual(defaultSettings().tools.commander.columns.date, 16);
   });
 
+  test('keeps the name of the commander one character after its icon, as the icon is not a column to stand apart from', () => {
+    for (const className of [
+      'commander-line commander-header',
+      'row commander-row commander-line',
+    ]) {
+      looks(
+        withClass(
+          rendered(
+            createElement(
+              'div',
+              { className },
+              createElement('span', { className: 'commander-icon' }),
+              createElement('span', { className: 'commander-name' }),
+            ),
+          ),
+          'commander-name',
+        ),
+        {
+          'margin-left':
+            'calc(var(--commander-advance) - var(--commander-gap))',
+        },
+      );
+    }
+  });
+
   test('draws the button of a dialog the keyboard moved the focus to as the tool chooser draws its tool, tinted inside the outline of focus, the default button then plain, as Enter presses the one focused', () => {
     const row = rendered(
       createElement(

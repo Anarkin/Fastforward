@@ -135,6 +135,10 @@
   height: 16px;
 }
 
+.commander-line > .commander-name {
+  margin-left: calc(var(--commander-advance) - var(--commander-gap));
+}
+
 .row.commander-line {
   height: var(--commander-row-height);
   padding: 0 calc(8px + var(--scrollbar-size)) 0 8px;
