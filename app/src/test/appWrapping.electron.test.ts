@@ -101,6 +101,11 @@ const breakLines = [
   ),
 ];
 
+const longestLine = Array.from(
+  { length: 4000 },
+  (_, index) => `word${index}`,
+).join(' ');
+
 const breakCharacters = [
   ...Array.from({ length: 94 }, (_, index) => String.fromCharCode(33 + index)),
   ...Array.from(
@@ -367,6 +372,7 @@ suite('App', () => {
     'wrapped.txt': `${dottedLine}\n`,
     'padded.txt': `${paddedLine}\n`,
     'breaks.txt': `${breakLines.join('\n')}\n`,
+    'longest.txt': `${longestLine}\n`,
     'grid.txt': `${gridLines.join('\n')}\n`,
   });
 
@@ -658,6 +664,68 @@ suite('App', () => {
       found.filter(({ browser, app }) => !isDeepStrictEqual(browser, app)),
       [],
     );
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
+  });
+
+  test('marks where each row of a line of over 200 rows ends, where the app expects the browser to break it, as reading where the browser broke it froze the page, drawing the marks near the rows in sight as it scrolls', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'longest.txt' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    const line = await diffLineNumbered(1);
+    const marks = line.locator('.wrap-break');
+    await marks.first().waitFor();
+    const laidOut = await browserStarts(line);
+    assert.ok(laidOut.starts.length > 200, String(laidOut.starts.length));
+    const offRows = async () => {
+      const rowTops = await line.evaluate((element, starts) => {
+        const walker = document.createTreeWalker(
+          element.querySelector('.code') ?? element,
+          NodeFilter.SHOW_TEXT,
+        );
+        const range = document.createRange();
+        const found: number[] = [];
+        let offset = 0;
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (!(node instanceof Text)) {
+            continue;
+          }
+          for (const at of starts) {
+            if (at >= offset && at < offset + node.length) {
+              range.setStart(node, at - offset);
+              range.setEnd(node, at - offset + 1);
+              found.push(range.getBoundingClientRect().top);
+            }
+          }
+          offset += node.length;
+        }
+        return found.slice(0, -1);
+      }, laidOut.starts);
+      const markTops = await marks.evaluateAll((all) =>
+        all.map((mark) => mark.getBoundingClientRect().top),
+      );
+      return markTops.filter(
+        (top) => !rowTops.some((row) => Math.abs(row - top) < 4),
+      );
+    };
+    assert.deepStrictEqual(await offRows(), []);
+    const list = page.locator('.diff-view .virtual-rows');
+    const half = await line.evaluate(
+      (element) => element.getBoundingClientRect().height / 2,
+    );
+    await list.evaluate((element, by) => {
+      element.scrollTop += by;
+    }, half);
+    await waitFor(async () => {
+      const shown = await list.evaluate((element) => {
+        const { top, bottom } = element.getBoundingClientRect();
+        return { top, bottom };
+      });
+      const tops = await marks.evaluateAll((all) =>
+        all.map((mark) => mark.getBoundingClientRect().top),
+      );
+      return tops.some((top) => top > shown.top && top < shown.bottom);
+    }, 'marks in sight in the middle of the line');
+    assert.deepStrictEqual(await offRows(), []);
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 

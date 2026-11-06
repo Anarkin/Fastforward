@@ -82,7 +82,7 @@ suite('Rows of a file viewed as the screen shows them', () => {
     );
   });
 
-  test('indents the rows a line wraps onto as far as the line, and marks where each wrapped row ends, at the last column at most, though the spaces hanging at its end go past it, finding the columns of those before the mark, as the diff draws them', () => {
+  test('indents the rows a line wraps onto as far as the line, and marks where each wrapped row ends and the spaces hanging there, one column past the last at most, with room for both kept after the last column, as the diff draws them', () => {
     const indented = { start: 0, end: 17, text: '    one two three' };
     const hanging = { start: 0, end: 13, text: 'abc      def' };
 
@@ -100,7 +100,7 @@ suite('Rows of a file viewed as the screen shows them', () => {
     );
     assert.deepStrictEqual(
       screenRows([hanging], 4, 'utf-8').map(({ breakAt }) => breakAt),
-      [4, undefined],
+      [5, undefined],
     );
     assert.deepStrictEqual(
       screenRows([indented], 9, 'utf-8').map((row) => row.hanging),
@@ -108,7 +108,13 @@ suite('Rows of a file viewed as the screen shows them', () => {
     );
     assert.deepStrictEqual(
       screenRows([hanging], 4, 'utf-8').map((row) => row.hanging),
-      [[{ column: 3, tab: false }], []],
+      [
+        [
+          { column: 3, tab: false },
+          { column: 4, tab: false },
+        ],
+        [],
+      ],
     );
   });
 

@@ -52,6 +52,8 @@ const rowsAboveMatch = 2;
 
 const sidewaysStep = 32;
 
+const marksColumns = 2;
+
 const sidewaysMargin = 64;
 
 interface Span {
@@ -298,7 +300,9 @@ export function TextBody({
   const counting = widths ?? cellWidthsOf(table ?? plainCells);
   const { wordWrap, showWhitespace } = useTextView().view;
   const wrapAt =
-    wordWrap && columns !== undefined && columns > 1 ? columns - 1 : undefined;
+    wordWrap && columns !== undefined && columns > marksColumns
+      ? columns - marksColumns
+      : undefined;
   const least = wrapAt === undefined ? screen * 3 : 1;
   const rows = useMemo(
     () => screenRows(read.rows, wrapAt, encoding, counting),

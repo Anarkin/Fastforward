@@ -939,6 +939,12 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   height: var(--diff-line-height);
 }
 
+.wrap-block {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
 .wrap-blank,
 .wrap-break {
   position: absolute;

@@ -78,7 +78,7 @@ function rowsOf(
       : rowBreaksAt(
           text,
           row.cut === true ? [...starts, text.length] : starts,
-          columns - 1,
+          columns,
           widths && ((part: string) => columnsOf(part, widths)),
           indent,
         );

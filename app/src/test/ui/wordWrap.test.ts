@@ -252,15 +252,15 @@ suite('Word wrap', () => {
     assert.ok(reads < 200 * 8, `${reads} reads`);
   });
 
-  test('marks the rows of a line of at most 200 rows, and of a longer one none, reading nothing of it, as reading thousands of rows froze the page', () => {
+  test('finds where the browser laid out the rows of a line of at most 200 rows, and leaves those of a longer one to the app, reading nothing of it, as reading thousands of rows froze the page', () => {
     let reads = 0;
     const rowOf = (offset: number) => {
       reads++;
       return Math.floor(offset / 10);
     };
-    assert.strictEqual(markedRowStarts(2000, 200, rowOf).length, 200);
+    assert.strictEqual(markedRowStarts(2000, 200, rowOf)?.length, 200);
     reads = 0;
-    assert.deepStrictEqual(markedRowStarts(2010, 201, rowOf), [0]);
+    assert.strictEqual(markedRowStarts(2010, 201, rowOf), undefined);
     assert.strictEqual(reads, 0);
   });
 

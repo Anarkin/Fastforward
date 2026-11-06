@@ -87,6 +87,7 @@ import {
   wrapColumns,
   wrapIndent,
   wrappedLines,
+  wrapStarts,
   type RowBreak,
 } from '../../../ui/wordWrap';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
@@ -261,7 +262,10 @@ function wrappedHeight(
   return lines * lineHeight;
 }
 
-function laidOutRowStarts(code: HTMLElement, lineHeight: number): number[] {
+function laidOutRowStarts(
+  code: HTMLElement,
+  lineHeight: number,
+): number[] | undefined {
   const box = code.getBoundingClientRect();
   const rows = Math.round(box.height / lineHeight);
   if (rows < 2) {
@@ -384,12 +388,14 @@ export function WrapMarks({
   numbers,
   lineHeight,
   columnsIn,
+  widths,
 }: {
   text: string;
   columns: number | undefined;
   numbers: number;
   lineHeight: number;
   columnsIn?: ColumnsIn;
+  widths?: TextWidths;
 }) {
   const marks = useRef<HTMLSpanElement>(null);
   const [breaks, setBreaks] = useState(
@@ -405,12 +411,14 @@ export function WrapMarks({
       return undefined;
     }
     const measure = () => {
+      const indent = wrapIndent(text, columns);
       const measured = rowBreaksAt(
         text,
-        laidOutRowStarts(code, lineHeight),
+        laidOutRowStarts(code, lineHeight) ??
+          wrapStarts(text, columns, indent, widths),
         columns,
         columnsIn,
-        wrapIndent(text, columns),
+        indent,
       );
       if (columnsIn !== undefined) {
         rememberBreaks(text, columns, lineHeight, columnsIn, measured);
@@ -432,13 +440,53 @@ export function WrapMarks({
     });
     observer.observe(code);
     return () => observer.disconnect();
-  }, [text, columns, columnsIn, lineHeight]);
+  }, [text, columns, columnsIn, widths, lineHeight]);
   if (columns === undefined) {
     return null;
   }
   return (
     <span className="wrap-marks" aria-hidden ref={marks}>
       <BreakMarks breaks={breaks} numbers={numbers} lineHeight={lineHeight} />
+    </span>
+  );
+}
+
+const blockRows = 64;
+
+function MarksBlock({
+  breaks,
+  top,
+  numbers,
+  lineHeight,
+}: {
+  breaks: readonly RowBreak[];
+  top: number;
+  numbers: number;
+  lineHeight: number;
+}) {
+  const block = useRef<HTMLSpanElement>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const element = block.current;
+    if (element === null) {
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => setNear(entries.some((entry) => entry.isIntersecting)),
+      { root: element.closest('.virtual-rows'), rootMargin: '100% 0px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <span
+      ref={block}
+      className="wrap-block"
+      style={{ top, height: breaks.length * lineHeight }}
+    >
+      {near && (
+        <BreakMarks breaks={breaks} numbers={numbers} lineHeight={lineHeight} />
+      )}
     </span>
   );
 }
@@ -454,6 +502,20 @@ export function BreakMarks({
 }) {
   if (breaks.length === 0) {
     return null;
+  }
+  if (breaks.length > blockRows) {
+    return Array.from(
+      { length: Math.ceil(breaks.length / blockRows) },
+      (_, block) => (
+        <MarksBlock
+          key={block}
+          breaks={breaks.slice(block * blockRows, (block + 1) * blockRows)}
+          top={block * blockRows * lineHeight}
+          numbers={numbers}
+          lineHeight={lineHeight}
+        />
+      ),
+    );
   }
   const at = (row: number, column: number) => ({
     top: row * lineHeight,
@@ -2577,6 +2639,7 @@ export function DiffView({
               numbers={2}
               lineHeight={lineHeight}
               columnsIn={columnsIn}
+              widths={widths}
             />
             {hiddenMarks(
               keys[index].at(0),
@@ -2619,6 +2682,7 @@ export function DiffView({
                     numbers={1}
                     lineHeight={lineHeight}
                     columnsIn={columnsIn}
+                    widths={widths}
                   />
                 )}
                 {cell &&
@@ -2651,6 +2715,7 @@ export function DiffView({
               numbers={1}
               lineHeight={lineHeight}
               columnsIn={columnsIn}
+              widths={widths}
             />
           </div>
         );

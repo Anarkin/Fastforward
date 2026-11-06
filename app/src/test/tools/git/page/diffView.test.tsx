@@ -1507,6 +1507,34 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('groups the marks of a line of more than 64 rows into blocks of 64 rows, each drawn only once near the rows in sight, as drawing the marks of every row of a line of thousands of rows made scrolling over it slow', () => {
+    const html = renderToStaticMarkup(
+      <BreakMarks
+        breaks={Array.from({ length: 100 }, () => ({ end: 6, blanks: [] }))}
+        numbers={2}
+        lineHeight={17}
+      />,
+    );
+
+    assert.strictEqual(
+      html,
+      [
+        `<span class="wrap-block" style="top:0;height:${64 * 17}px"></span>`,
+        `<span class="wrap-block" style="top:${64 * 17}px;height:${36 * 17}px"></span>`,
+      ].join(''),
+    );
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <BreakMarks
+          breaks={Array.from({ length: 64 }, () => ({ end: 6, blanks: [] }))}
+          numbers={2}
+          lineHeight={17}
+        />,
+      ),
+      /wrap-block/,
+    );
+  });
+
   test('marks where each row a line is broken into ends, right after its text, the tabs hanging there, and each run of spaces hanging there once, as wide as its spaces, a whole advance of the text per column, leaving lines on one row unmarked', () => {
     const html = renderToStaticMarkup(
       <BreakMarks

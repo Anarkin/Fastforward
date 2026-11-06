@@ -316,8 +316,8 @@ export function markedRowStarts(
   length: number,
   rows: number,
   rowOf: (offset: number) => number,
-): number[] {
-  return rows > maxMarkedRows ? [0] : rowStarts(length, rows, rowOf);
+): number[] | undefined {
+  return rows > maxMarkedRows ? undefined : rowStarts(length, rows, rowOf);
 }
 
 export function rowStarts(
