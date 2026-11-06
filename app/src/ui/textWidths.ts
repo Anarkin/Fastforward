@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import type { IUnicodeVersionProvider, Terminal } from '@xterm/xterm';
 import { tabStop } from './wordWrap';
 
-export type CellTable = (code: number) => number;
+export type CellTable = (cluster: string) => number;
 
-export const plainCells: CellTable = (code) => (code < 0x20 ? 0 : 1);
+export const plainCells: CellTable = (cluster) =>
+  (cluster.codePointAt(0) ?? 0) < 0x20 ? 0 : 1;
 
 let loadedTable: CellTable | undefined;
 
@@ -23,6 +24,28 @@ interface TableAddon {
   activate(terminal: Registering): void;
 }
 
+const graphemesVersion = '15-graphemes';
+
+const widthIn = (properties: number) => (properties >> 1) & 3;
+
+const joinsPreceding = (properties: number) => (properties & 1) !== 0;
+
+function cellsBy(provider: IUnicodeVersionProvider, cluster: string): number {
+  let cells = 0;
+  let preceding = 0;
+  for (const char of cluster) {
+    const properties = provider.charProperties(
+      char.codePointAt(0) ?? 0,
+      preceding,
+    );
+    cells +=
+      widthIn(properties) -
+      (joinsPreceding(properties) ? widthIn(preceding) : 0);
+    preceding = properties;
+  }
+  return cells;
+}
+
 function tableOf(addon: TableAddon): CellTable {
   const registered: IUnicodeVersionProvider[] = [];
   addon.activate({
@@ -34,14 +57,16 @@ function tableOf(addon: TableAddon): CellTable {
       },
     },
   });
-  const [provider] = registered;
-  return provider === undefined ? plainCells : (code) => provider.wcwidth(code);
+  const provider = registered.find((each) => each.version === graphemesVersion);
+  return provider === undefined
+    ? plainCells
+    : (cluster) => cellsBy(provider, cluster);
 }
 
 export function terminalCells(): Promise<CellTable> {
-  loadingTable ??= import('@xterm/addon-unicode11').then(
-    ({ Unicode11Addon }) => {
-      loadedTable = tableOf(new Unicode11Addon());
+  loadingTable ??= import('@xterm/addon-unicode-graphemes').then(
+    ({ UnicodeGraphemesAddon }) => {
+      loadedTable = tableOf(new UnicodeGraphemesAddon());
       return loadedTable;
     },
   );
@@ -61,28 +86,11 @@ export function useCellTable(): CellTable | undefined {
   return table;
 }
 
-const emojiSelector = '️';
-
-const textSelector = '︎';
-
-const isRegionalIndicator = (code: number) =>
-  code >= 0x1f1e6 && code <= 0x1f1ff;
-
 export function cellsOf(
   cluster: string,
   table: CellTable = loadedTable ?? plainCells,
 ): number {
-  if (cluster.includes(emojiSelector)) {
-    return 2;
-  }
-  if (cluster.includes(textSelector)) {
-    return 1;
-  }
-  const first = cluster.codePointAt(0) ?? 0;
-  if (isRegionalIndicator(first)) {
-    return cluster.length > 2 ? 2 : 1;
-  }
-  return table(first);
+  return table(cluster);
 }
 
 const counted = new WeakMap<CellTable, TextWidths>();

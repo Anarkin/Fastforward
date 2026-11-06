@@ -5,7 +5,12 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../../shared/strings';
-import { closeOrKill, launchApp } from '../../appFixtures';
+import {
+  barsOffGrid,
+  closeOrKill,
+  gridLines,
+  launchApp,
+} from '../../appFixtures';
 import { waitFor } from '../../fixtures';
 import { removeFolder, tempFolder } from '../../repositories';
 
@@ -126,6 +131,28 @@ suite('Terminal', () => {
   afterAll(async () => {
     await closeOrKill(app);
     removeFolder(folder);
+  });
+
+  test('draws what a program prints on the grid the viewer and the diff draw text on, an emoji joined from several code points or asked for by a selector two cells, so the same text lines up alike everywhere, to a pixel of the cell its renderer puts it in', async () => {
+    fs.writeFileSync(
+      path.join(folder, 'work', 'grid.txt'),
+      `${gridLines.join('\n')}\n`,
+    );
+    await run(
+      process.platform === 'win32'
+        ? 'Clear-Host; Get-Content -Encoding utf8 grid.txt'
+        : 'clear; cat grid.txt',
+    );
+    await waitForRow((row) => row.startsWith('⚠ text'), 'the grid');
+    const offsets = await page
+      .locator('.terminal-screen .xterm-rows > div')
+      .filter({ hasText: '|' })
+      .evaluateAll(barsOffGrid);
+    assert.deepStrictEqual(
+      offsets.map((offset) => Math.abs(offset) < 1),
+      gridLines.slice(1).map(() => true),
+      JSON.stringify(offsets),
+    );
   });
 
   test('runs a shell in the folder of its tab, showing what it prints', async () => {

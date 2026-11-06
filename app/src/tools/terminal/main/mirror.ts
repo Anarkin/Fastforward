@@ -1,5 +1,5 @@
 import { SerializeAddon } from '@xterm/addon-serialize';
-import { Unicode11Addon } from '@xterm/addon-unicode11';
+import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import { Terminal } from '@xterm/headless';
 import type { WindowsPty } from '../shared/protocol';
 
@@ -113,8 +113,7 @@ export function createMirror({
   });
   const serializer = new SerializeAddon();
   terminal.loadAddon(serializer);
-  terminal.loadAddon(new Unicode11Addon());
-  terminal.unicode.activeVersion = '11';
+  terminal.loadAddon(new UnicodeGraphemesAddon());
   const colors = trackColors(terminal);
   const mouseEncoding = trackMouseEncoding(terminal);
   return {

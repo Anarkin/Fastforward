@@ -10,10 +10,10 @@ function written(
 }
 
 suite('Terminal screen copy', () => {
-  test('counts an emoji two cells wide, by the rules of Unicode 11, as the page does', async () => {
+  test('counts an emoji two cells wide, an emoji joined from several code points or asked for by a selector two as well, by its grapheme clusters, as the page, the viewer and the diff do', async () => {
     const mirror = createMirror({ columns: 20, rows: 5, scrollback: 10 });
-    await written(mirror, '😀x');
-    assert.strictEqual(mirror.terminal.buffer.active.cursorX, 3);
+    await written(mirror, '😀x👨‍👩‍👧‍👦y⚠️z');
+    assert.strictEqual(mirror.terminal.buffer.active.cursorX, 9);
     mirror.dispose();
   });
 

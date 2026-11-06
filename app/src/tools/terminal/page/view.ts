@@ -1,5 +1,5 @@
 import type { FitAddon } from '@xterm/addon-fit';
-import type { Unicode11Addon } from '@xterm/addon-unicode11';
+import type { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import type { WebglAddon } from '@xterm/addon-webgl';
 import type { Terminal } from '@xterm/xterm';
 import { terminalKey } from './keys';
@@ -33,7 +33,7 @@ export interface Xterm {
   readonly Terminal: typeof Terminal;
   readonly FitAddon: typeof FitAddon;
   readonly WebglAddon: typeof WebglAddon;
-  readonly Unicode11Addon: typeof Unicode11Addon;
+  readonly UnicodeGraphemesAddon: typeof UnicodeGraphemesAddon;
 }
 
 export function loadXterm(): Promise<Xterm> {
@@ -41,12 +41,12 @@ export function loadXterm(): Promise<Xterm> {
     import('@xterm/xterm'),
     import('@xterm/addon-fit'),
     import('@xterm/addon-webgl'),
-    import('@xterm/addon-unicode11'),
+    import('@xterm/addon-unicode-graphemes'),
   ]).then(([xterm, fit, webgl, unicode]) => ({
     Terminal: xterm.Terminal,
     FitAddon: fit.FitAddon,
     WebglAddon: webgl.WebglAddon,
-    Unicode11Addon: unicode.Unicode11Addon,
+    UnicodeGraphemesAddon: unicode.UnicodeGraphemesAddon,
   }));
 }
 
@@ -117,8 +117,7 @@ export class TerminalView {
       ...(options.windowsPty && { windowsPty: options.windowsPty }),
     });
     this.terminal.loadAddon(this.fit);
-    this.terminal.loadAddon(new xterm.Unicode11Addon());
-    this.terminal.unicode.activeVersion = '11';
+    this.terminal.loadAddon(new xterm.UnicodeGraphemesAddon());
     this.terminal.attachCustomKeyEventHandler((event) => this.key(event));
     this.terminal.onData((data) => this.typed(data));
     this.terminal.onResize(() => this.resized());

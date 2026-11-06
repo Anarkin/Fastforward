@@ -59,7 +59,7 @@
 | Colors from programs | Let programs change the colors | OSC 4, OSC 10, OSC 11, OSC 12 | Common | ✅ Yes | By `xterm.js`; what they set is kept when the screen is shown again |
 | True color | Draw 24-bit colors | SGR 38;2, SGR 48;2 | Core | ✅ Yes | By `xterm.js` |
 | Minimum contrast | Lighten or darken text too close to its background | — | Advanced | ✅ Yes | A ratio of 4.5 by default, `tools.terminal.minimumContrastRatio` |
-| Wide characters | Draw emoji and East Asian characters two cells wide | — | Core | ✅ Yes | The widths of Unicode 11 |
+| Wide characters | Draw emoji and East Asian characters two cells wide | — | Core | ✅ Yes | The widths of Unicode 15 by grapheme cluster, an emoji joined from several code points two cells, as the viewer, the diff and Markdown code blocks count them |
 | Cursor style | A block, bar or underline, blinking or steady | DECSCUSR | Common | 🟡 Partial | Programs set it, by `xterm.js`; a steady block otherwise, with no setting |
 | Synchronized output | Draw a burst of changes at once rather than as it comes | `CSI ? 2026 h` | Advanced | ✅ Yes | By `xterm.js` |
 | Images | Show images in the terminal | Sixel, iTerm2 images, kitty graphics | Advanced | ❌ No |  |

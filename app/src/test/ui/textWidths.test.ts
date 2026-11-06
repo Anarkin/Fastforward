@@ -1,4 +1,6 @@
 import * as assert from 'node:assert';
+import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
+import { Terminal } from '@xterm/headless';
 import { suite, test } from 'vitest';
 import {
   cellParts,
@@ -6,6 +8,15 @@ import {
   terminalCells,
   textWidths,
 } from '../../ui/textWidths';
+
+async function terminalColumns(text: string): Promise<number> {
+  const terminal = new Terminal({ cols: 40, rows: 2, allowProposedApi: true });
+  terminal.loadAddon(new UnicodeGraphemesAddon());
+  await new Promise<void>((resolve) => terminal.write(text, resolve));
+  const columns = terminal.buffer.active.cursorX;
+  terminal.dispose();
+  return columns;
+}
 
 function measuring(widths: Readonly<Record<string, number>>) {
   return () => ({
@@ -30,18 +41,52 @@ suite('Widths of text in columns', () => {
       ['한', 2],
       ['😀', 2],
       ['✅', 2],
-      ['​', 0],
     ] as const) {
       assert.strictEqual(cellsOf(cluster, table), cells, cluster);
     }
   });
 
-  test('counts an emoji of several code points two columns, drawn as one, as Windows Terminal does: joined, with a skin tone, a flag, a keycap, or a symbol asked to be an emoji', async () => {
+  test('counts an emoji of several code points two columns, drawn as one, as our terminal and Windows Terminal do: joined, with a skin tone, a flag, a keycap, or a symbol asked to be an emoji', async () => {
     const table = await terminalCells();
     for (const cluster of ['👨‍👩‍👧‍👦', '👩‍💻', '👍🏽', '🏳️‍🌈', '🇭🇺', '1️⃣', '⚠️', '©️']) {
       assert.strictEqual(cellsOf(cluster, table), 2, cluster);
     }
-    assert.strictEqual(cellsOf('✅︎', table), 1);
+  });
+
+  test('counts every character as many columns as our terminal does, by its own table and its joining of grapheme clusters, so the viewer, the diff and the terminal draw a line alike', async () => {
+    const table = await terminalCells();
+    for (const cluster of [
+      'a',
+      '\u{e9}',
+      'e\u{301}',
+      '\u{2500}',
+      '\u{2190}',
+      '\u{a9}',
+      '\u{a9}\u{fe0f}',
+      '\u{26a0}',
+      '\u{26a0}\u{fe0f}',
+      '\u{4e2d}',
+      '\u{306e}',
+      '\u{d55c}',
+      '\u{3000}',
+      '\u{1f600}',
+      '\u{2705}',
+      '\u{2705}\u{fe0e}',
+      '\u{1fae0}',
+      '\u{1f468}\u{200d}\u{1f469}\u{200d}\u{1f467}\u{200d}\u{1f466}',
+      '\u{1f469}\u{200d}\u{1f4bb}',
+      '\u{1f44d}\u{1f3fd}',
+      '\u{1f3f3}\u{fe0f}\u{200d}\u{1f308}',
+      '\u{1f1ed}\u{1f1fa}',
+      '1\u{fe0f}\u{20e3}',
+      '\u{200b}',
+    ]) {
+      assert.strictEqual(
+        cellsOf(cluster, table),
+        await terminalColumns(cluster),
+        cluster,
+      );
+    }
   });
 
   test('splits text into the runs left as they are and the characters put in boxes, with the size a glyph wider than its box is shrunk to', () => {

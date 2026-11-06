@@ -82,7 +82,7 @@ suite('Release build', { timeout: 30_000 }, () => {
       '@xterm/xterm/lib/',
       '@xterm/addon-fit/',
       '@xterm/addon-webgl/',
-      '@xterm/addon-unicode11/',
+      '@xterm/addon-unicode-graphemes/',
       'pdfjs-dist/',
     ];
     const bundled = (files: Iterable<string>) =>

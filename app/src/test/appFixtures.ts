@@ -65,7 +65,7 @@ export function barsOffGrid(code: readonly Element[]): number[] {
     lefts.push(left);
   }
   const [ruler, ...rows] = lefts;
-  return rows.map((left) => Math.round((left - ruler) * 10) / 10);
+  return rows.map((left) => Math.round((left - ruler) * 10) / 10 + 0);
 }
 
 export function linesOffGrid(code: Element): number[] {
