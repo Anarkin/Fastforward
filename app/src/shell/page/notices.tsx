@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { CloseIcon } from '../../ui/icons';
 import { strings } from '../../shared/strings';
+import { useShell, useShellActions } from './store';
 
 export interface Notice {
   readonly id: number;
@@ -23,13 +24,9 @@ export function fading(
     }));
 }
 
-export function Notices({
-  notices,
-  onDismiss,
-}: {
-  notices: readonly Notice[];
-  onDismiss: (id: number) => void;
-}) {
+export function Notices() {
+  const notices = useShell((state) => state.notices);
+  const { dismissNotice: onDismiss } = useShellActions();
   useEffect(() => {
     const timers = fading(notices, performance.now()).map(({ id, after }) =>
       setTimeout(() => onDismiss(id), after),

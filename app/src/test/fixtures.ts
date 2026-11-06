@@ -159,13 +159,14 @@ export function countingReads<T extends object>(
 export function renderedBy<P>(
   component: (props: P) => React.ReactNode,
   props: P,
+  stores?: Parameters<typeof withStores>[1],
 ): React.ReactNode {
   let rendered: React.ReactNode;
   function Probe() {
     rendered = component(props);
     return null;
   }
-  renderToStaticMarkup(withStores(createElement(Probe)));
+  renderToStaticMarkup(withStores(createElement(Probe), stores));
   return rendered;
 }
 

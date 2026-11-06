@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import { OpenWithPopup } from '../../../shell/page/openWithPopup';
 import { strings } from '../../../shared/strings';
-import { noop } from '../../fixtures';
+import { renderIn } from '../../componentFixtures';
 
 function question(
   folders: readonly string[],
@@ -43,23 +43,14 @@ suite('Open With popup', () => {
       const root = createRoot(main);
       const focused = () => dom.window.document.activeElement?.textContent;
       await act(async () => {
-        root.render(
-          <OpenWithPopup
-            choice={question(['/plain'], 'commander')}
-            onOpen={noop}
-            onClose={noop}
-          />,
+        renderIn(
+          root,
+          <OpenWithPopup choice={question(['/plain'], 'commander')} />,
         );
       });
       assert.strictEqual(focused(), strings.tools.commander);
       await act(async () => {
-        root.render(
-          <OpenWithPopup
-            choice={question(['/repo'], 'git')}
-            onOpen={noop}
-            onClose={noop}
-          />,
-        );
+        renderIn(root, <OpenWithPopup choice={question(['/repo'], 'git')} />);
       });
       assert.strictEqual(focused(), strings.tools.git);
       await act(async () => {
@@ -101,12 +92,9 @@ suite('Open With popup', () => {
         return focused();
       };
       await act(async () => {
-        root.render(
-          <OpenWithPopup
-            choice={question(['/plain'], 'commander')}
-            onOpen={noop}
-            onClose={noop}
-          />,
+        renderIn(
+          root,
+          <OpenWithPopup choice={question(['/plain'], 'commander')} />,
         );
       });
       assert.strictEqual(focused(), strings.tools.commander);

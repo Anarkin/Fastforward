@@ -91,6 +91,8 @@ import {
   worktreeBar,
 } from '../../styleFixtures';
 import { defaultScrolling } from '../../../ui/rowScroll';
+import { tabsStore } from '../../componentFixtures';
+import { ShellStore } from '../../../shell/page/store';
 
 const css = stylesheet();
 
@@ -333,40 +335,41 @@ function tabBarIn(maximized: boolean, adding = false): MarkupElement {
     createElement(
       'div',
       maximized ? { 'data-maximized': '' } : {},
-      createElement(TabBar, {
-        adding,
-        tabs: [
-          { id: '/a', tool: 'git', root: '/a', name: 'a' },
-          { id: '/b', tool: 'git', root: '/b', name: 'b' },
-        ],
-        active: '/a',
-        onSelect: noop,
-        onPreload: noop,
-        onClose: noop,
-        onAdd: noop,
-        onLog: noop,
-      }),
+      createElement(
+        ShellStore,
+        {
+          value: tabsStore(
+            [
+              { id: '/a', tool: 'git', root: '/a', name: 'a' },
+              { id: '/b', tool: 'git', root: '/b', name: 'b' },
+            ],
+            '/a',
+            adding,
+          ),
+        },
+        createElement(TabBar, {}),
+      ),
     ),
   );
 }
 
 function tabRow(count: number, active: string): MarkupElement {
   return rendered(
-    createElement(TabBar, {
-      tabs: ['a', 'b', 'c'].slice(0, count).map((name) => ({
-        id: `/${name}`,
-        tool: 'git' as const,
-        root: `/${name}`,
-        name,
-      })),
-      active,
-      onSelect: noop,
-      onPreload: noop,
-      onClose: noop,
-      onMove: noop,
-      onAdd: noop,
-      onLog: noop,
-    }),
+    createElement(
+      ShellStore,
+      {
+        value: tabsStore(
+          ['a', 'b', 'c'].slice(0, count).map((name) => ({
+            id: `/${name}`,
+            tool: 'git' as const,
+            root: `/${name}`,
+            name,
+          })),
+          active,
+        ),
+      },
+      createElement(TabBar, {}),
+    ),
   );
 }
 
@@ -547,19 +550,20 @@ suite('Style', () => {
 
   test('colors the icon of each tool with its own color from the settings, so tabs of different tools for one folder tell apart at a glance', () => {
     const bar = rendered(
-      createElement(TabBar, {
-        tabs: [
-          { id: '1', tool: 'git', root: '/a', name: 'a' },
-          { id: '2', tool: 'commander', root: '/a', name: 'a' },
-          { id: '3', tool: 'terminal', root: '/a', name: 'a' },
-        ],
-        active: '1',
-        onSelect: noop,
-        onPreload: noop,
-        onClose: noop,
-        onAdd: noop,
-        onLog: noop,
-      }),
+      createElement(
+        ShellStore,
+        {
+          value: tabsStore(
+            [
+              { id: '1', tool: 'git', root: '/a', name: 'a' },
+              { id: '2', tool: 'commander', root: '/a', name: 'a' },
+              { id: '3', tool: 'terminal', root: '/a', name: 'a' },
+            ],
+            '1',
+          ),
+        },
+        createElement(TabBar, {}),
+      ),
     );
     assert.deepStrictEqual(
       allWithClass(bar, 'tool-icon').map((icon) => cascaded(icon, 'color')),

@@ -20,7 +20,27 @@ import {
 } from '../../../shell/page/tabBar';
 import { AddIcon } from '../../../ui/icons';
 import { rested } from '../../componentFixtures';
-import { noModifiers, noop, renderedBy } from '../../fixtures';
+import { noModifiers, renderedBy } from '../../fixtures';
+import { tabsStore } from '../../componentFixtures';
+import { ShellStore } from '../../../shell/page/store';
+import { createShellStore } from '../../../shell/page/store';
+
+function tabsShell(
+  tabs: readonly TabInfo[],
+  active: string,
+  seen: { readonly closed?: string[]; readonly preloaded?: string[] } = {},
+) {
+  return createShellStore(
+    (message) => {
+      if (message.type === 'closeTab') {
+        seen.closed?.push(message.tab);
+      } else if (message.type === 'preloadTab') {
+        seen.preloaded?.push(message.tab);
+      }
+    },
+    { tabs, active },
+  );
+}
 
 function tabsOf(nav: React.ReactNode): React.ReactElement[] {
   assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
@@ -34,16 +54,15 @@ function tabsOf(nav: React.ReactNode): React.ReactElement[] {
 function addButton(adding: boolean): Element | null {
   return new JSDOM(
     renderToStaticMarkup(
-      <TabBar
-        tabs={[{ id: '/repo', tool: 'git', root: '/repo', name: 'repo' }]}
-        active="/repo"
-        onSelect={noop}
-        onPreload={noop}
-        onClose={noop}
-        onAdd={noop}
-        onLog={noop}
-        adding={adding}
-      />,
+      <ShellStore
+        value={tabsStore(
+          [{ id: '/repo', tool: 'git', root: '/repo', name: 'repo' }],
+          '/repo',
+          adding,
+        )}
+      >
+        <TabBar />
+      </ShellStore>,
     ),
   ).window.document.querySelector('.tab-add');
 }
@@ -88,15 +107,9 @@ async function inStrip(
     const show = (tabs: readonly TabInfo[]) =>
       act(async () => {
         root.render(
-          <TabBar
-            tabs={tabs}
-            active={tabs[0]?.id}
-            onSelect={noop}
-            onPreload={noop}
-            onClose={noop}
-            onAdd={noop}
-            onLog={noop}
-          />,
+          <ShellStore value={tabsStore(tabs, tabs[0]?.id, false)}>
+            <TabBar />
+          </ShellStore>,
         );
       });
     const strip = () => {
@@ -227,24 +240,23 @@ suite('Tab bar', () => {
   test('draws the icon a tab gives instead of its tool’s, as a viewer tab gives its file’s', () => {
     const document = new JSDOM(
       renderToStaticMarkup(
-        <TabBar
-          tabs={[
-            { id: '1', tool: 'commander', name: 'Commander' },
-            {
-              id: '2',
-              tool: 'commander',
-              name: 'notes.txt',
-              icon: '/commander-icon?view=2',
-            },
-          ]}
-          active="2"
-          onSelect={noop}
-          onPreload={noop}
-          onClose={noop}
-          onAdd={noop}
-          onLog={noop}
-          adding={false}
-        />,
+        <ShellStore
+          value={tabsStore(
+            [
+              { id: '1', tool: 'commander', name: 'Commander' },
+              {
+                id: '2',
+                tool: 'commander',
+                name: 'notes.txt',
+                icon: '/commander-icon?view=2',
+              },
+            ],
+            '2',
+            false,
+          )}
+        >
+          <TabBar />
+        </ShellStore>,
       ),
     ).window.document;
     const [plain, viewer] = document.querySelectorAll('.tabs .tab');
@@ -322,15 +334,17 @@ suite('Tab bar', () => {
 
   test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
     const closed: string[] = [];
-    const nav = renderedBy(TabBar, {
-      tabs: [{ id: '/repo', tool: 'git', root: '/repo', name: 'repo' }],
-      active: '/repo',
-      onSelect: noop,
-      onPreload: noop,
-      onClose: (root) => closed.push(root),
-      onAdd: noop,
-      onLog: noop,
-    });
+    const nav = renderedBy(
+      TabBar,
+      {},
+      {
+        shell: tabsShell(
+          [{ id: '/repo', tool: 'git', root: '/repo', name: 'repo' }],
+          '/repo',
+          { closed },
+        ),
+      },
+    );
     const [tab] = tabsOf(nav);
     assert.ok(
       isValidElement<{
@@ -352,15 +366,16 @@ suite('Tab bar', () => {
   });
 
   test('closes a tab by its button without the button taking focus, as it goes and would leave the keys with nothing', () => {
-    const nav = renderedBy(TabBar, {
-      tabs: [{ id: '/repo', tool: 'git', root: '/repo', name: 'repo' }],
-      active: '/repo',
-      onSelect: noop,
-      onPreload: noop,
-      onClose: noop,
-      onAdd: noop,
-      onLog: noop,
-    });
+    const nav = renderedBy(
+      TabBar,
+      {},
+      {
+        shell: tabsShell(
+          [{ id: '/repo', tool: 'git', root: '/repo', name: 'repo' }],
+          '/repo',
+        ),
+      },
+    );
     const [tab] = tabsOf(nav);
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(tab));
     const close = tab.props.children.at(-1);
@@ -378,18 +393,20 @@ suite('Tab bar', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const preloaded: string[] = [];
     const closed: string[] = [];
-    const nav = renderedBy(TabBar, {
-      tabs: [
-        { id: '/a', tool: 'git', root: '/a', name: 'a' },
-        { id: '/b', tool: 'git', root: '/b', name: 'b' },
-      ],
-      active: '/a',
-      onSelect: noop,
-      onPreload: (root) => preloaded.push(root),
-      onClose: (root) => closed.push(root),
-      onAdd: noop,
-      onLog: noop,
-    });
+    const nav = renderedBy(
+      TabBar,
+      {},
+      {
+        shell: tabsShell(
+          [
+            { id: '/a', tool: 'git', root: '/a', name: 'a' },
+            { id: '/b', tool: 'git', root: '/b', name: 'b' },
+          ],
+          '/a',
+          { preloaded, closed },
+        ),
+      },
+    );
     const [a, b] = tabsOf(nav);
     type Tab = {
       onPointerEnter: () => void;
@@ -483,21 +500,9 @@ function roots(tabs: readonly { id: string }[]): string[] {
   return tabs.map((tab) => tab.id);
 }
 
-function draggable(
-  shown: readonly TabInfo[],
-  onMove?: (root: string, index: number) => void,
-): boolean[] {
+function draggable(shown: readonly TabInfo[]): boolean[] {
   return tabsOf(
-    renderedBy(TabBar, {
-      tabs: shown,
-      active: shown[0].id,
-      onSelect: noop,
-      onPreload: noop,
-      onClose: noop,
-      onMove,
-      onAdd: noop,
-      onLog: noop,
-    }),
+    renderedBy(TabBar, {}, { shell: tabsShell(shown, shown[0].id) }),
   ).map(
     (tab) =>
       isValidElement<{ onPointerDown?: unknown }>(tab) &&
@@ -543,16 +548,15 @@ suite('Tabs dragged', () => {
     assert.deepStrictEqual(roots(movedTab(four, '/x', 0)), roots(four));
   });
 
-  test('lets a tab be dragged only while the tabs are not sorted automatically, and only with another tab to pass, as a lone tab drags the window', () => {
+  test('lets a tab be dragged only with another tab to pass, as a lone tab drags the window', () => {
     const three = ['a', 'b', 'c'].map((name) => ({
       id: `/${name}`,
       tool: 'git' as const,
       root: `/${name}`,
       name,
     }));
-    assert.deepStrictEqual(draggable(three, noop), [true, true, true]);
-    assert.deepStrictEqual(draggable(three), [false, false, false]);
-    assert.deepStrictEqual(draggable(three.slice(0, 1), noop), [false]);
+    assert.deepStrictEqual(draggable(three), [true, true, true]);
+    assert.deepStrictEqual(draggable(three.slice(0, 1)), [false]);
   });
 });
 
@@ -560,20 +564,20 @@ suite('Tab bar for assistive technology', () => {
   test('tells that the tabs form a tab list, and which tab is open', () => {
     const document = new JSDOM(
       renderToStaticMarkup(
-        <TabBar
-          tabs={['a', 'b'].map((name) => ({
-            id: `/${name}`,
-            tool: 'git' as const,
-            root: `/${name}`,
-            name,
-          }))}
-          active="/b"
-          onSelect={noop}
-          onPreload={noop}
-          onClose={noop}
-          onAdd={noop}
-          onLog={noop}
-        />,
+        <ShellStore
+          value={tabsStore(
+            ['a', 'b'].map((name) => ({
+              id: `/${name}`,
+              tool: 'git' as const,
+              root: `/${name}`,
+              name,
+            })),
+            '/b',
+            false,
+          )}
+        >
+          <TabBar />
+        </ShellStore>,
       ),
     ).window.document;
     assert.strictEqual(
@@ -595,15 +599,15 @@ suite('Tab bar for assistive technology', () => {
   test('keeps the button that opens a repository outside the tab list, which scrolls, so it stays in view however many tabs are open', () => {
     const document = new JSDOM(
       renderToStaticMarkup(
-        <TabBar
-          tabs={[{ id: '/a', tool: 'git', root: '/a', name: 'a' }]}
-          active="/a"
-          onSelect={noop}
-          onPreload={noop}
-          onClose={noop}
-          onAdd={noop}
-          onLog={noop}
-        />,
+        <ShellStore
+          value={tabsStore(
+            [{ id: '/a', tool: 'git', root: '/a', name: 'a' }],
+            '/a',
+            false,
+          )}
+        >
+          <TabBar />
+        </ShellStore>,
       ),
     ).window.document;
     const list = document.querySelector('[role="tablist"]');
@@ -619,15 +623,15 @@ suite('Tab bar for assistive technology', () => {
   test("draws the button that opens a repository as a plus, straight lines as the close button's cross, named by what it does", () => {
     const document = new JSDOM(
       renderToStaticMarkup(
-        <TabBar
-          tabs={[{ id: '/a', tool: 'git', root: '/a', name: 'a' }]}
-          active="/a"
-          onSelect={noop}
-          onPreload={noop}
-          onClose={noop}
-          onAdd={noop}
-          onLog={noop}
-        />,
+        <ShellStore
+          value={tabsStore(
+            [{ id: '/a', tool: 'git', root: '/a', name: 'a' }],
+            '/a',
+            false,
+          )}
+        >
+          <TabBar />
+        </ShellStore>,
       ),
     ).window.document;
     const add = document.querySelector('.tab-add');
@@ -644,31 +648,31 @@ suite('Tab bar for assistive technology', () => {
   test('shows the folder that tells a tab apart dimmed after its name, as worktrees show theirs', () => {
     const document = new JSDOM(
       renderToStaticMarkup(
-        <TabBar
-          tabs={[
-            {
-              id: '/code/site',
-              tool: 'git',
-              root: '/code/site',
-              name: 'site',
-              folder: 'code',
-            },
-            {
-              id: '/code/x/site',
-              tool: 'git',
-              root: '/code/x/site',
-              name: 'site',
-              folder: 'x',
-            },
-            { id: '/app', tool: 'git', root: '/app', name: 'app' },
-          ]}
-          active="/app"
-          onSelect={noop}
-          onPreload={noop}
-          onClose={noop}
-          onAdd={noop}
-          onLog={noop}
-        />,
+        <ShellStore
+          value={tabsStore(
+            [
+              {
+                id: '/code/site',
+                tool: 'git',
+                root: '/code/site',
+                name: 'site',
+                folder: 'code',
+              },
+              {
+                id: '/code/x/site',
+                tool: 'git',
+                root: '/code/x/site',
+                name: 'site',
+                folder: 'x',
+              },
+              { id: '/app', tool: 'git', root: '/app', name: 'app' },
+            ],
+            '/app',
+            false,
+          )}
+        >
+          <TabBar />
+        </ShellStore>,
       ),
     ).window.document;
     assert.deepStrictEqual(

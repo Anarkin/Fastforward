@@ -4,25 +4,41 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type { UpdateStatus } from '../../../shell/shared/protocol';
 import { AppMenu, updateLabel } from '../../../shell/page/appMenu';
+import { createShellStore } from '../../../shell/page/store';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { allWithClass, cascaded, rendered } from '../../cascade';
-import { noop, renderedBy } from '../../fixtures';
+import { renderedBy } from '../../fixtures';
+import { withStores } from '../../componentFixtures';
 
 function menuOf(
   update: UpdateStatus,
   picked: string[],
   installsCommand = false,
 ): { items: readonly ContextMenuItem[]; marked: boolean } {
-  const menu = renderedBy(AppMenu, {
-    update,
-    onOpenSettings: () => picked.push('settings'),
-    onOpenDefaultSettings: () => picked.push('defaults'),
-    onShowShortcuts: () => picked.push('shortcuts'),
-    onCheckForUpdates: () => picked.push('check'),
-    onInstallUpdate: () => picked.push('install'),
-    onShowAbout: () => picked.push('about'),
-    onInstallCommand: installsCommand ? () => picked.push('ff') : undefined,
+  const shell = createShellStore(
+    (message) => {
+      const named: Partial<Record<string, string>> = {
+        openSettings: 'settings',
+        openDefaultSettings: 'defaults',
+        checkForUpdates: 'check',
+        installUpdate: 'install',
+        installTerminalCommand: 'ff',
+      };
+      const name = named[message.type];
+      if (name !== undefined) {
+        picked.push(name);
+      }
+    },
+    { update, installsCommand },
+  );
+  shell.subscribe((state, before) => {
+    for (const popup of state.popups) {
+      if (!before.popups.includes(popup)) {
+        picked.push(popup);
+      }
+    }
   });
+  const menu = renderedBy(AppMenu, {}, { shell });
   assert.ok(
     isValidElement<{ items: readonly ContextMenuItem[]; marked: boolean }>(
       menu,
@@ -75,17 +91,7 @@ suite('App menu', () => {
 
   test("opens from the app's icon, as the menu of the whole app", () => {
     assert.match(
-      renderToStaticMarkup(
-        <AppMenu
-          update={{ kind: 'idle' }}
-          onOpenSettings={noop}
-          onOpenDefaultSettings={noop}
-          onShowShortcuts={noop}
-          onCheckForUpdates={noop}
-          onInstallUpdate={noop}
-          onShowAbout={noop}
-        />,
-      ),
+      renderToStaticMarkup(withStores(<AppMenu />)),
       /^<div class="menu-button"><button [^>]*title="Settings"[^>]*><svg class="title-bar-icon"[^]*<\/svg><\/button><\/div>$/,
     );
   });

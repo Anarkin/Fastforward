@@ -3,8 +3,8 @@ import { createElement, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { vi } from 'vitest';
 import { createShellStore, ShellStore } from '../shell/page/store';
-import type { ToHost } from '../shell/shared/protocol';
-import { preloadDelay } from '../shell/page/tabBar';
+import type { TabInfo, ToHost } from '../shell/shared/protocol';
+import { newTabTrigger, preloadDelay } from '../shell/page/tabBar';
 import { createGitStore, GitStore } from '../tools/git/page/store';
 import {
   CommanderStore,
@@ -181,4 +181,22 @@ export function renderIn(
   node: React.ReactNode,
 ): void {
   root.render(withStores(node));
+}
+
+export function tabsStore(
+  tabs: readonly TabInfo[],
+  active: string | undefined,
+  adding = false,
+) {
+  return createShellStore(() => undefined, {
+    tabs,
+    active,
+    ...(adding && {
+      menu: {
+        tab: active,
+        id: 1,
+        menu: { x: 0, y: 0, items: [], trigger: newTabTrigger },
+      },
+    }),
+  });
 }

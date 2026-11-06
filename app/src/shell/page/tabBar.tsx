@@ -7,6 +7,7 @@ import { titleBarHeight } from '../shared/titleBar';
 import { clicked, keymap, released } from '../shared/keymap';
 import { strings } from '../../shared/strings';
 import { useBinding } from '../../ui/shortcuts';
+import { useShell, useShellActions } from './store';
 
 export function adjacentTab(
   tabs: readonly { readonly id: string }[],
@@ -569,29 +570,38 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
   ];
 }
 
-export function TabBar({
-  tabs,
-  active,
-  onSelect,
-  onPreload,
-  onClose,
-  onMove,
-  onAdd,
-  onLog,
-  menu,
-  adding = false,
-}: {
-  tabs: readonly TabInfo[];
-  active: string | undefined;
-  onSelect: (id: string) => void;
-  onPreload: (id: string) => void;
-  onClose: (id: string) => void;
-  onMove?: (id: string, index: number) => void;
-  onAdd: (event: React.MouseEvent) => void;
-  onLog: (message: string) => void;
-  menu?: React.ReactNode;
-  adding?: boolean;
-}) {
+export const newTabTrigger = '.tab-add';
+
+const noTabs: readonly TabInfo[] = [];
+
+export function TabBar({ menu }: { menu?: React.ReactNode }) {
+  const tabs = useShell((state) => state.tabs ?? noTabs);
+  const active = useShell((state) => state.active);
+  const adding = useShell(
+    (state) => state.menu?.menu.trigger === newTabTrigger,
+  );
+  const {
+    selectTab: onSelect,
+    preloadTab: onPreload,
+    closeTab: onClose,
+    moveTab: onMove,
+    log: onLog,
+    showMenu,
+    closeMenu,
+  } = useShellActions();
+  const onAdd = (event: React.MouseEvent) => {
+    if (adding) {
+      closeMenu();
+      return;
+    }
+    const button = event.currentTarget.getBoundingClientRect();
+    showMenu({
+      x: button.left,
+      y: button.bottom,
+      items: [],
+      trigger: newTabTrigger,
+    });
+  };
   const bar = useRef<HTMLElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);

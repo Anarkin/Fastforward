@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { ToWebviewOf } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import type { ToolId } from '../shared/tools';
@@ -7,6 +7,7 @@ import { nextMenuItem, useDismiss } from '../../ui/contextMenu';
 import { keyPressed } from '../../ui/shortcuts';
 import { CloseIcon, ToolIcon } from '../../ui/icons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
+import { useShellActions } from './store';
 
 function moveBetweenTools(event: React.KeyboardEvent<HTMLElement>): void {
   const move = keyPressed(keymap.menuItem, event);
@@ -33,13 +34,12 @@ function moveBetweenTools(event: React.KeyboardEvent<HTMLElement>): void {
 
 export function OpenWithPopup({
   choice,
-  onOpen,
-  onClose,
 }: {
   choice: ToWebviewOf<'chooseTool'>;
-  onOpen: (tool: ToolId) => void;
-  onClose: () => void;
 }) {
+  const { openWith } = useShellActions();
+  const onOpen = (tool: ToolId) => openWith(tool);
+  const onClose = useCallback(() => openWith(undefined), [openWith]);
   const popup = useRef<HTMLDivElement>(null);
   useDismiss(popup, onClose, { byKeyOnly: true });
   const dialog = useModalDialog(popup);

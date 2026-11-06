@@ -4,7 +4,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { addNotice } from '../../../shell/shared/notices';
 import { fading, Notices, type Notice } from '../../../shell/page/notices';
-import { renderedBy } from '../../fixtures';
+import { noop, renderedBy } from '../../fixtures';
+import { createShellStore } from '../../../shell/page/store';
+import { withStores } from '../../componentFixtures';
+
+const withNotices = (notices: readonly Notice[]) =>
+  withStores(<Notices />, { shell: createShellStore(noop, { notices }) });
 
 const notice = (id: number, message = `notice ${id}`): Notice => ({
   id,
@@ -43,31 +48,25 @@ suite('Notices', () => {
   });
 
   test('shows the newest notice on top, nearest the controls above', () => {
-    const html = renderToStaticMarkup(
-      <Notices notices={[notice(1), notice(2)]} onDismiss={() => undefined} />,
-    );
+    const html = renderToStaticMarkup(withNotices([notice(1), notice(2)]));
     assert.ok(html.indexOf('notice 2') < html.indexOf('notice 1'));
   });
 
   test('marks errors apart from information', () => {
     const html = renderToStaticMarkup(
-      <Notices
-        notices={[notice(1), { ...notice(2, 'fyi'), level: 'info' }]}
-        onDismiss={() => {}}
-      />,
+      withNotices([notice(1), { ...notice(2, 'fyi'), level: 'info' }]),
     );
     assert.match(html, /class="notice error"[^>]*><span[^>]*>notice 1</);
     assert.match(html, /class="notice info"[^>]*><span[^>]*>fyi</);
   });
 
   test('dismisses a notice by its close button, which takes no focus, as it goes and would leave the keys with nothing', () => {
-    const dismissed: number[] = [];
-    const shown = renderedBy(Notices, {
+    const shell = createShellStore(noop, {
       notices: [notice(1), notice(2)],
-      onDismiss: (id) => dismissed.push(id),
     });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(shown));
-    const older = shown.props.children[1];
+    const drawn = renderedBy(Notices, {}, { shell });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(drawn));
+    const older = drawn.props.children[1];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(older));
     const close = older.props.children[1];
     assert.ok(
@@ -80,7 +79,10 @@ suite('Notices', () => {
     close.props.onMouseDown({ preventDefault: () => prevented++ });
     assert.strictEqual(prevented, 1);
     close.props.onClick();
-    assert.deepStrictEqual(dismissed, [1]);
+    assert.deepStrictEqual(
+      shell.getState().notices.map((left) => left.id),
+      [2],
+    );
   });
 
   test('lets information fade by itself, but keeps errors until dismissed', () => {
@@ -102,7 +104,7 @@ suite('Notices', () => {
 
   test('keeps its live region, empty, while it shows no notice, as a screen reader announces nothing a region comes with', () => {
     assert.strictEqual(
-      renderToStaticMarkup(<Notices notices={[]} onDismiss={() => {}} />),
+      renderToStaticMarkup(withNotices([])),
       '<div class="notices" role="status"></div>',
     );
   });

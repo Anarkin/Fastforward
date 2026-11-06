@@ -50,6 +50,8 @@ import {
   type MarkupElement,
 } from './cascade';
 import { commitInfo, renderedBy } from './fixtures';
+import { createShellStore, ShellStore } from '../shell/page/store';
+import { tabsStore } from './componentFixtures';
 
 const noop = () => undefined;
 
@@ -108,29 +110,18 @@ export function menuButton(
 
 export const tabBar = memoized(() =>
   rendered(
-    <TabBar
-      tabs={[
-        { id: '/a', tool: 'git', root: '/a', name: 'a' },
-        { id: '/x/b', tool: 'git', root: '/x/b', name: 'b', folder: 'x' },
-      ]}
-      active="/a"
-      onSelect={noop}
-      onPreload={noop}
-      onClose={noop}
-      onAdd={noop}
-      onLog={noop}
-      menu={
-        <AppMenu
-          update={{ kind: 'idle' }}
-          onOpenSettings={noop}
-          onOpenDefaultSettings={noop}
-          onShowShortcuts={noop}
-          onCheckForUpdates={noop}
-          onInstallUpdate={noop}
-          onShowAbout={noop}
-        />
-      }
-    />,
+    <ShellStore
+      value={tabsStore(
+        [
+          { id: '/a', tool: 'git', root: '/a', name: 'a' },
+          { id: '/x/b', tool: 'git', root: '/x/b', name: 'b', folder: 'x' },
+        ],
+        '/a',
+        false,
+      )}
+    >
+      <TabBar menu={<AppMenu />} />
+    </ShellStore>,
   ),
 );
 
@@ -280,17 +271,20 @@ export const historyMenu = memoized(() =>
 
 export const notices = memoized((level) =>
   rendered(
-    <Notices
-      notices={[
-        {
-          id: 1,
-          level: level === 'info' ? 'info' : 'error',
-          message: 'failed',
-          shownAt: 0,
-        },
-      ]}
-      onDismiss={noop}
-    />,
+    <ShellStore
+      value={createShellStore(noop, {
+        notices: [
+          {
+            id: 1,
+            level: level === 'info' ? 'info' : 'error',
+            message: 'failed',
+            shownAt: 0,
+          },
+        ],
+      })}
+    >
+      <Notices />
+    </ShellStore>,
   ),
 );
 

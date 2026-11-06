@@ -20,7 +20,7 @@ import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../ui/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
 import { createShellStore, ShellStore, type Confirming } from './store';
-import { TabBar } from './tabBar';
+import { newTabTrigger, TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './titleBar';
 import {
   toolShortcuts,
@@ -29,8 +29,6 @@ import {
   ToolViews,
   type ToolListeners,
 } from './tools';
-
-const newTabTrigger = '.tab-add';
 
 export function emptyState(
   tabs: readonly TabInfo[] | undefined,
@@ -120,9 +118,7 @@ export function App({ name, post, listen }: Props) {
   const tabs = useStore(store, (state) => state.tabs);
   const active = useStore(store, (state) => state.active);
   const notices = useStore(store, (state) => state.notices);
-  const update = useStore(store, (state) => state.update);
   const about = useStore(store, (state) => state.about);
-  const installsCommand = useStore(store, (state) => state.installsCommand);
   const choosing = useStore(store, (state) => state.choosing);
   const popups = useStore(store, (state) => state.popups);
   const confirming = useStore(store, (state) => state.confirming);
@@ -131,26 +127,14 @@ export function App({ name, post, listen }: Props) {
   const toolTitles = useStore(store, (state) => state.toolTitles);
   const {
     dismissNotice,
-    showPopup,
     togglePopup,
-    showMenu,
     closeMenu,
     closeTab,
     confirm,
     cancel,
-    openWith,
-    moveTab,
     copyText,
     ready,
-    log,
-    selectTab,
-    preloadTab,
     newTab,
-    openSettings,
-    openDefaultSettings,
-    checkForUpdates,
-    installUpdate,
-    installTerminalCommand,
     openIn,
   } = store.getState();
   const [closeShortcuts] = useState(
@@ -183,20 +167,6 @@ export function App({ name, post, listen }: Props) {
         }
       : opened;
 
-  const openNewTab = (event: React.MouseEvent) => {
-    if (menu?.trigger === newTabTrigger) {
-      closeMenu();
-      return;
-    }
-    const button = event.currentTarget.getBoundingClientRect();
-    showMenu({
-      x: button.left,
-      y: button.bottom,
-      items: [],
-      trigger: newTabTrigger,
-    });
-  };
-
   useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
   useBinding(
     keymap.dismissNotice,
@@ -226,31 +196,7 @@ export function App({ name, post, listen }: Props) {
   return (
     <ShellStore value={store}>
       <div className="app">
-        <TabBar
-          tabs={tabs ?? []}
-          active={active}
-          onSelect={selectTab}
-          onPreload={preloadTab}
-          onClose={closeTab}
-          onMove={moveTab}
-          onAdd={openNewTab}
-          adding={menu?.trigger === newTabTrigger}
-          onLog={log}
-          menu={
-            <AppMenu
-              update={update}
-              onOpenSettings={openSettings}
-              onOpenDefaultSettings={openDefaultSettings}
-              onShowShortcuts={() => showPopup('shortcuts', true)}
-              onCheckForUpdates={checkForUpdates}
-              onInstallUpdate={installUpdate}
-              onShowAbout={() => showPopup('about', true)}
-              onInstallCommand={
-                installsCommand ? installTerminalCommand : undefined
-              }
-            />
-          }
-        />
+        <TabBar menu={<AppMenu />} />
         {menu && openedMenu && (
           <ContextMenu key={openedMenu.id} menu={menu} onClose={closeMenu} />
         )}
@@ -278,14 +224,7 @@ export function App({ name, post, listen }: Props) {
               );
             case 'openWith':
               return (
-                choosing && (
-                  <OpenWithPopup
-                    key={popup}
-                    choice={choosing}
-                    onOpen={openWith}
-                    onClose={() => openWith(undefined)}
-                  />
-                )
+                choosing && <OpenWithPopup key={popup} choice={choosing} />
               );
             default:
               return popup satisfies never;
@@ -298,7 +237,7 @@ export function App({ name, post, listen }: Props) {
             onCancel={cancel}
           />
         )}
-        <Notices notices={notices} onDismiss={dismissNotice} />
+        <Notices />
         {emptyState(tabs)}
         <ToolViews
           active={activeTool}

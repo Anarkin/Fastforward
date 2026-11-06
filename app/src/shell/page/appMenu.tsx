@@ -5,6 +5,7 @@ import { strings } from '../../shared/strings';
 import { MenuButton } from '../../ui/menu';
 import { useBinding } from '../../ui/shortcuts';
 import { AppIcon } from './titleBar';
+import { useShell, useShellActions } from './store';
 
 export function updateLabel(status: UpdateStatus): string {
   switch (status.kind) {
@@ -27,25 +28,20 @@ export function updateLabel(status: UpdateStatus): string {
   }
 }
 
-export function AppMenu({
-  update,
-  onOpenSettings,
-  onOpenDefaultSettings,
-  onShowShortcuts,
-  onCheckForUpdates,
-  onInstallUpdate,
-  onShowAbout,
-  onInstallCommand,
-}: {
-  update: UpdateStatus;
-  onOpenSettings: () => void;
-  onOpenDefaultSettings: () => void;
-  onShowShortcuts: () => void;
-  onCheckForUpdates: () => void;
-  onInstallUpdate: () => void;
-  onShowAbout: () => void;
-  onInstallCommand?: () => void;
-}) {
+export function AppMenu() {
+  const update = useShell((state) => state.update);
+  const installsCommand = useShell((state) => state.installsCommand);
+  const {
+    openSettings: onOpenSettings,
+    openDefaultSettings: onOpenDefaultSettings,
+    showPopup,
+    checkForUpdates: onCheckForUpdates,
+    installUpdate: onInstallUpdate,
+    installTerminalCommand,
+  } = useShellActions();
+  const onShowShortcuts = () => showPopup('shortcuts', true);
+  const onShowAbout = () => showPopup('about', true);
+  const onInstallCommand = installsCommand ? installTerminalCommand : undefined;
   const installs = update.kind === 'ready' || update.kind === 'available';
   const trigger = useRef<HTMLButtonElement>(null);
   useBinding(keymap.mainMenu, () => trigger.current?.click());
