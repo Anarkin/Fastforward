@@ -8,26 +8,32 @@ export interface ShellSystem extends IntegrationSystem {
   readonly env: NodeJS.ProcessEnv;
   readonly home: string;
   readonly version: string;
-  readonly isFolder: (folder: string) => boolean;
+  readonly isFolder: (folder: string) => Promise<boolean>;
 }
 
 const leftOut = /^(?:ELECTRON_|FASTFORWARD_)/i;
 
-export function shellLaunch(
+export async function shellLaunch(
   settings: TerminalSettings,
   folder: string | undefined,
   system: ShellSystem,
-): ShellLaunch {
+): Promise<ShellLaunch> {
+  const [launched, startsInFolder] = await Promise.all([
+    shellCommand(settings, system).then((command) =>
+      integrated(command, shellEnv(system), system),
+    ),
+    folder !== undefined && system.isFolder(folder),
+  ]);
   return {
-    ...integrated(shellCommand(settings, system), shellEnv(system), system),
-    cwd: folder !== undefined && system.isFolder(folder) ? folder : system.home,
+    ...launched,
+    cwd: folder !== undefined && startsInFolder ? folder : system.home,
   };
 }
 
-function shellCommand(
+async function shellCommand(
   settings: TerminalSettings,
   { platform, env, isFile }: ShellSystem,
-): Pick<ShellLaunch, 'file' | 'args'> {
+): Promise<Pick<ShellLaunch, 'file' | 'args'>> {
   const args = settings.shellArgs.filter((arg) => typeof arg === 'string');
   if (settings.shell !== '') {
     return { file: settings.shell, args };
@@ -35,7 +41,7 @@ function shellCommand(
   switch (platform) {
     case 'win32':
       return {
-        file: onPath('pwsh.exe', env, isFile) ?? 'powershell.exe',
+        file: (await onPath('pwsh.exe', env, isFile)) ?? 'powershell.exe',
         args,
       };
     case 'darwin':
@@ -48,16 +54,21 @@ function shellCommand(
   }
 }
 
-function onPath(
+async function onPath(
   name: string,
   env: NodeJS.ProcessEnv,
-  isFile: (file: string) => boolean,
-): string | undefined {
-  return (env.PATH ?? env.Path ?? '')
+  isFile: (file: string) => Promise<boolean>,
+): Promise<string | undefined> {
+  const files = (env.PATH ?? env.Path ?? '')
     .split(path.win32.delimiter)
     .filter(Boolean)
-    .map((folder) => path.win32.join(folder, name))
-    .find(isFile);
+    .map((folder) => path.win32.join(folder, name));
+  for (const file of files) {
+    if (await isFile(file)) {
+      return file;
+    }
+  }
+  return undefined;
 }
 
 function shellEnv({

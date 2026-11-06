@@ -312,12 +312,12 @@ export function newView(
           return { send: () => {}, dispose: () => {} };
         },
         () => settings.settings.tools.terminal,
-        () => ({ file: 'sh', args: [], cwd: '/', env: {} }),
+        () => Promise.resolve({ file: 'sh', args: [], cwd: '/', env: {} }),
         undefined,
         {
           store: toolState(store, 'terminal'),
           home: os.homedir(),
-          isFolder: () => true,
+          isFolder: () => Promise.resolve(true),
           now: () => Date.now(),
           choose: () => host.chooseFolders(),
         },

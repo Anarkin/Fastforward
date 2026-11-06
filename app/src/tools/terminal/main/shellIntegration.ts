@@ -4,7 +4,7 @@ import * as path from 'node:path';
 export interface IntegrationSystem {
   readonly platform: NodeJS.Platform;
   readonly integration: string;
-  readonly isFile: (file: string) => boolean;
+  readonly isFile: (file: string) => Promise<boolean>;
 }
 
 interface Command {
@@ -123,11 +123,11 @@ function withVariable(
   };
 }
 
-export function integrated(
+export async function integrated(
   { file, args }: Command,
   env: Env,
   { platform, integration, isFile }: IntegrationSystem,
-): Command & { readonly env: Env } {
+): Promise<Command & { readonly env: Env }> {
   switch (shellOf(file)) {
     case 'pwsh':
     case 'powershell':
@@ -159,7 +159,7 @@ export function integrated(
       };
     case 'zsh': {
       const folder = zshFolder(integration);
-      return isFile(path.join(folder, '.zshenv'))
+      return (await isFile(path.join(folder, '.zshenv')))
         ? {
             file,
             args,

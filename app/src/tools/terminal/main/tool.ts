@@ -60,7 +60,7 @@ interface Session {
 export interface FolderAccess {
   readonly store: Store;
   readonly home: string;
-  readonly isFolder: (folder: string) => boolean;
+  readonly isFolder: (folder: string) => Promise<boolean>;
   readonly now: () => number;
   readonly choose: () => Promise<readonly string[]>;
 }
@@ -75,12 +75,16 @@ export class TerminalTool implements Tool<'terminal'> {
   private readonly sessions = new Map<string, Session>();
   private shown: Shown | undefined;
   private quitting = false;
+  private queued: Promise<void> | undefined;
+  private foldersAsked = 0;
 
   constructor(
     private readonly log: Log,
     private readonly connect: ConnectHost,
     private readonly settings: () => TerminalSettings,
-    private readonly launch: (folder: string | undefined) => ShellLaunch,
+    private readonly launch: (
+      folder: string | undefined,
+    ) => Promise<ShellLaunch>,
     private readonly windowsPty: WindowsPty | undefined,
     private readonly folders: FolderAccess,
   ) {}
@@ -139,9 +143,7 @@ export class TerminalTool implements Tool<'terminal'> {
       case 'newTab':
         return this.newTab(page);
       case 'openFolder':
-        return this.listed().includes(message.folder)
-          ? this.open(page, [message.folder])
-          : Promise.resolve();
+        return this.openListed(page, message.folder);
       case 'browseFolders':
         return this.browse(page);
       case 'forgetFolder':
@@ -217,7 +219,7 @@ export class TerminalTool implements Tool<'terminal'> {
       default:
         return Promise.resolve(message satisfies never);
     }
-    return Promise.resolve();
+    return this.queued ?? Promise.resolve();
   }
 
   refreshShown(): Promise<void> {
@@ -254,6 +256,12 @@ export class TerminalTool implements Tool<'terminal'> {
     this.saveFolders(withVisit(this.visits(), folder, this.folders.now()));
   }
 
+  private async openListed(page: Page, folder: string): Promise<void> {
+    if ((await this.listed()).includes(folder)) {
+      await this.open(page, [folder]);
+    }
+  }
+
   open(page: Page, folders: readonly string[]): Promise<void> {
     for (const folder of folders) {
       this.visited(folder);
@@ -280,15 +288,20 @@ export class TerminalTool implements Tool<'terminal'> {
 
   private spawn({ tab, columns, rows }: Shown): void {
     const root = this.shell.tabs().find((each) => each.id === tab)?.root;
-    this.sessions.set(tab, { exited: false });
-    this.send({
-      type: 'spawn',
-      id: tab,
-      launch: this.launch(root),
-      columns,
-      rows,
-      scrollback: this.scrollback(),
-    });
+    const session: Session = { exited: false };
+    this.sessions.set(tab, session);
+    this.sendWhen(this.launch(root), (launch) =>
+      this.sessions.get(tab) === session
+        ? {
+            type: 'spawn',
+            id: tab,
+            launch,
+            columns,
+            rows,
+            scrollback: this.scrollback(),
+          }
+        : undefined,
+    );
   }
 
   private scrollback(): number {
@@ -307,11 +320,41 @@ export class TerminalTool implements Tool<'terminal'> {
   }
 
   private send(command: HostCommand): void {
+    if (this.queued === undefined) {
+      this.connected().send(command);
+    } else {
+      this.sendWhen(Promise.resolve(), () => command);
+    }
+  }
+
+  private sendWhen<T>(
+    ready: Promise<T>,
+    command: (value: T) => HostCommand | undefined,
+  ): void {
+    const queued = Promise.all([this.queued, ready])
+      .then(([, value]) => {
+        const sent = command(value);
+        if (sent !== undefined && !this.quitting) {
+          this.connected().send(sent);
+        }
+      })
+      .catch((error: unknown) => {
+        this.log.error(error);
+      });
+    this.queued = queued;
+    void queued.then(() => {
+      if (this.queued === queued) {
+        this.queued = undefined;
+      }
+    });
+  }
+
+  private connected(): HostConnection {
     this.host ??= this.connect({
       event: (event) => this.received(event),
       stopped: (code) => this.stopped(code),
     });
-    this.host.send(command);
+    return this.host;
   }
 
   private received(event: HostEvent): void {
@@ -425,23 +468,30 @@ export class TerminalTool implements Tool<'terminal'> {
     }
   }
 
-  private listed(): string[] {
+  private async listed(): Promise<string[]> {
     const { home, isFolder, now } = this.folders;
     const count = this.shell.recentFolders();
+    const ranked = rankedFolders(this.visits(), now()).filter(
+      (folder) => !sameRoot(folder, home),
+    );
     const listed: string[] = [];
-    for (const folder of rankedFolders(this.visits(), now())) {
-      if (listed.length >= count) {
-        break;
-      }
-      if (!sameRoot(folder, home) && isFolder(folder)) {
-        listed.push(folder);
-      }
+    let at = 0;
+    while (listed.length < count && at < ranked.length) {
+      const batch = ranked.slice(at, at + count - listed.length);
+      at += batch.length;
+      const folders = await Promise.all(batch.map(isFolder));
+      listed.push(...batch.filter((_, index) => folders[index]));
     }
     return listed;
   }
 
   private postFolders(page: Page): void {
-    this.post(page, { type: 'folders', folders: this.listed() });
+    const asked = ++this.foldersAsked;
+    void this.listed().then((folders) => {
+      if (asked === this.foldersAsked) {
+        this.post(page, { type: 'folders', folders });
+      }
+    });
   }
 
   private post(page: Page, message: TerminalToWebview): void {

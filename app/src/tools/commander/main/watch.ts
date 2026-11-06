@@ -26,8 +26,10 @@ function watched(
   }
 }
 
-function stampOf(stats: fs.Stats | undefined): string | undefined {
-  return stats && `${stats.ino}:${stats.mtimeMs}`;
+type Stat = (folder: string) => Promise<fs.Stats>;
+
+function stampOf(stats: fs.Stats): string {
+  return `${stats.ino}:${stats.mtimeMs}`;
 }
 
 export function watchFolder(
@@ -37,10 +39,16 @@ export function watchFolder(
   {
     settle = settleDelay,
     start = startWatching,
-  }: { readonly settle?: number; readonly start?: StartWatching } = {},
+    stat = fs.promises.stat,
+  }: {
+    readonly settle?: number;
+    readonly start?: StartWatching;
+    readonly stat?: Stat;
+  } = {},
 ): () => void {
   let pending: NodeJS.Timeout | undefined;
   let stopped = false;
+  let stopWatching: (() => void) | undefined;
   const changed = () => {
     if (stopped) {
       return;
@@ -50,34 +58,46 @@ export function watchFolder(
       onChange();
     }, delay);
   };
-  const stamp = stampOf(fs.statSync(folder, { throwIfNoEntry: false }));
-  const own = watched(start, folder, changed);
-  if (own === undefined) {
-    return () => {};
-  }
-  const settled = setTimeout(() => {
-    void fs.promises.stat(folder).then(
-      (stats) => stampOf(stats) !== stamp && changed(),
-      () => changed(),
-    );
-  }, settle);
-  own.on('error', changed);
-  const parent = path.dirname(folder);
-  const name = path.basename(folder);
-  const around =
-    parent === folder
-      ? undefined
-      : watched(start, parent, (_event, changedName) => {
-          if (changedName === name) {
-            changed();
-          }
-        });
-  around?.on('error', () => around.close());
+  const watchAnswered = (stamp: string): (() => void) | undefined => {
+    const own = watched(start, folder, changed);
+    if (own === undefined) {
+      return undefined;
+    }
+    const settled = setTimeout(() => {
+      void stat(folder).then(
+        (stats) => stampOf(stats) !== stamp && changed(),
+        () => changed(),
+      );
+    }, settle);
+    own.on('error', changed);
+    const parent = path.dirname(folder);
+    const name = path.basename(folder);
+    const around =
+      parent === folder
+        ? undefined
+        : watched(start, parent, (_event, changedName) => {
+            if (changedName === name) {
+              changed();
+            }
+          });
+    around?.on('error', () => around.close());
+    return () => {
+      clearTimeout(settled);
+      own.close();
+      around?.close();
+    };
+  };
+  void stat(folder).then(
+    (stats) => {
+      if (!stopped) {
+        stopWatching = watchAnswered(stampOf(stats));
+      }
+    },
+    () => {},
+  );
   return () => {
     stopped = true;
-    clearTimeout(settled);
     clearTimeout(pending);
-    own.close();
-    around?.close();
+    stopWatching?.();
   };
 }

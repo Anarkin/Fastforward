@@ -114,12 +114,16 @@ function same(reported: string, folder: string): boolean {
   }
 }
 
-function isFolder(folder: string): boolean {
-  return fs.statSync(folder, { throwIfNoEntry: false })?.isDirectory() ?? false;
+function isFolder(folder: string): Promise<boolean> {
+  return Promise.resolve(
+    fs.statSync(folder, { throwIfNoEntry: false })?.isDirectory() ?? false,
+  );
 }
 
-function isFile(file: string): boolean {
-  return fs.statSync(file, { throwIfNoEntry: false })?.isFile() ?? false;
+function isFile(file: string): Promise<boolean> {
+  return Promise.resolve(
+    fs.statSync(file, { throwIfNoEntry: false })?.isFile() ?? false,
+  );
 }
 
 const userVariables = new Set(['ZDOTDIR', 'XDG_CONFIG_HOME', 'PROMPT_COMMAND']);
@@ -158,7 +162,7 @@ suite('Terminal folders in real shells', () => {
             ([name]) => !userVariables.has(name.toUpperCase()),
           ),
         );
-        const launch = shellLaunch(
+        const launch = await shellLaunch(
           {
             shell: shell.file ?? '',
             shellArgs: [...shell.args],

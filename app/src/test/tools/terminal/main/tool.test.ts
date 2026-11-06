@@ -58,7 +58,16 @@ function launchIn(folder: string | undefined): ShellLaunch {
 
 const day = 24 * 3_600_000;
 
-function terminal(seen: readonly FolderVisits[] = []) {
+function terminal(
+  seen: readonly FolderVisits[] = [],
+  {
+    isFolder = (folder) => Promise.resolve(!folder.startsWith('/gone')),
+    launch = (folder) => Promise.resolve(launchIn(folder)),
+  }: {
+    readonly isFolder?: (folder: string) => Promise<boolean>;
+    readonly launch?: (folder: string | undefined) => Promise<ShellLaunch>;
+  } = {},
+) {
   const ptys = fakePtys();
   const clock = fakeTimer();
   const saved = new Map<string, unknown>([['folders', seen]]);
@@ -101,7 +110,7 @@ function terminal(seen: readonly FolderVisits[] = []) {
       scrollback: 5000,
       minimumContrastRatio: 30,
     }),
-    launchIn,
+    launch,
     { backend: 'conpty', buildNumber: 26200 },
     {
       store: {
@@ -112,7 +121,7 @@ function terminal(seen: readonly FolderVisits[] = []) {
         },
       },
       home: '/home/me',
-      isFolder: (folder) => !folder.startsWith('/gone'),
+      isFolder,
       now: () => 100 * day,
       choose: () => Promise.resolve(chosen),
     },
@@ -173,9 +182,10 @@ function terminal(seen: readonly FolderVisits[] = []) {
 }
 
 suite('Terminal tool', () => {
-  test('tells the page which renderer to use and how many lines to keep once it is ready, which build of Windows runs the shells, and the folders to offer', () => {
+  test('tells the page which renderer to use and how many lines to keep once it is ready, which build of Windows runs the shells, and the folders to offer', async () => {
     const { tool, page } = terminal();
     tool.ready(page);
+    await until(() => page.messages.length === 2);
     assert.deepStrictEqual(page.messages, [
       {
         type: 'settings',
@@ -272,6 +282,38 @@ suite('Terminal tool', () => {
     await send({ type: 'input', tab: '1', data: 'early' });
     assert.strictEqual(page.of('screen').length, 0);
     assert.deepStrictEqual(ptys.last().written, ['early']);
+  });
+
+  test('starts the shell once the system answers where it starts, holding nothing up meanwhile, and passes on what is typed meanwhile after it', async () => {
+    const answers: (() => void)[] = [];
+    const { tool, ptys, page, send } = terminal([], {
+      launch: (folder) =>
+        new Promise((resolve) => answers.push(() => resolve(launchIn(folder)))),
+    });
+    await tool.show(page, work);
+    const opened = send({ type: 'open', tab: '1', columns: 80, rows: 24 });
+    const typed = send({ type: 'input', tab: '1', data: 'early' });
+    assert.strictEqual(ptys.spawned.length, 0);
+    answers[0]?.();
+    await Promise.all([opened, typed]);
+    assert.deepStrictEqual(
+      [ptys.last().launch.cwd, ptys.last().written],
+      ['/work', ['early']],
+    );
+  });
+
+  test('starts no shell once quitting, though the system answers where it starts after', async () => {
+    const answers: (() => void)[] = [];
+    const { tool, ptys, page, send, listeners } = terminal([], {
+      launch: (folder) =>
+        new Promise((resolve) => answers.push(() => resolve(launchIn(folder)))),
+    });
+    await tool.show(page, work);
+    const opened = send({ type: 'open', tab: '1', columns: 80, rows: 24 });
+    tool.quit();
+    answers[0]?.();
+    await opened;
+    assert.deepStrictEqual([listeners.length, ptys.spawned.length], [0, 0]);
   });
 
   test('resizes the shell only to a whole number of columns and rows from 1 to 1000', async () => {
@@ -443,7 +485,7 @@ suite('Terminal tool', () => {
     );
   });
 
-  test('lists as many folders as the settings say, telling the page again once they change', () => {
+  test('lists as many folders as the settings say, telling the page again once they change', async () => {
     const { tool, page, listed, recent } = terminal(
       ['/a', '/b', '/c', '/d'].map((folder, index) => ({
         folder,
@@ -452,13 +494,15 @@ suite('Terminal tool', () => {
       })),
     );
     tool.ready(page);
+    await until(() => page.of('folders').length === 1);
     assert.deepStrictEqual(listed(), ['/a', '/b', '/c', '/d']);
     recent.items = 2;
     tool.reloadSettings();
+    await until(() => page.of('folders').length === 2);
     assert.deepStrictEqual(listed(), ['/a', '/b']);
   });
 
-  test('lists the folders it ranks first, those that still exist, leaving out the home folder, which a new terminal opens in anyway', () => {
+  test('lists the folders it ranks first, those that still exist, leaving out the home folder, which a new terminal opens in anyway', async () => {
     const folders = Array.from({ length: 12 }, (_, index) => `/code/${index}`);
     const { tool, page, listed } = terminal([
       { folder: '/home/me', visits: 500, last: 100 * day },
@@ -470,7 +514,51 @@ suite('Terminal tool', () => {
       })),
     ]);
     tool.ready(page);
+    await until(() => listed() !== undefined);
     assert.deepStrictEqual(listed(), folders.slice(0, 10));
+  });
+
+  test('lists the folders without holding anything up while one of them does not answer, as a share cut off from the network, telling the page once it does', async () => {
+    const answers: ((is: boolean) => void)[] = [];
+    const { tool, page, listed } = terminal(
+      [
+        { folder: '/share/work', visits: 2, last: 100 * day },
+        { folder: '/code/app', visits: 1, last: 100 * day },
+      ],
+      {
+        isFolder: (folder) =>
+          folder.startsWith('/share')
+            ? new Promise((resolve) => answers.push(resolve))
+            : Promise.resolve(true),
+      },
+    );
+    tool.ready(page);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.strictEqual(listed(), undefined);
+    answers[0]?.(true);
+    await until(() => listed() !== undefined);
+    assert.deepStrictEqual(listed(), ['/share/work', '/code/app']);
+  });
+
+  test('tells the page the folders as they are after the last change, though those of an earlier one answer later', async () => {
+    const answers: ((is: boolean) => void)[] = [];
+    const { tool, page, send, listed } = terminal(
+      [{ folder: '/share/work', visits: 1, last: 100 * day }],
+      {
+        isFolder: () =>
+          answers.length === 0
+            ? new Promise((resolve) => answers.push(resolve))
+            : Promise.resolve(true),
+      },
+    );
+    tool.ready(page);
+    await send({ type: 'forgetFolder', folder: '/share/work' });
+    await until(() => listed() !== undefined);
+    answers[0]?.(true);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.deepStrictEqual(page.of('folders'), [
+      { type: 'folders', folders: [] },
+    ]);
   });
 
   test('opens a folder it listed in a new tab, the folders picked on Browse, and a new tab in the home folder on New, but no folder it did not list', async () => {
@@ -496,7 +584,9 @@ suite('Terminal tool', () => {
       { folder: '/code/site', visits: 10, last: 100 * day },
     ]);
     tool.ready(page);
+    await until(() => page.of('folders').length === 1);
     await send({ type: 'forgetFolder', folder: '/code/app' });
+    await until(() => page.of('folders').length === 2);
     assert.deepStrictEqual(listed(), ['/code/site']);
     await tool.open(page, ['/code/app']);
     assert.strictEqual(visitsOf('/code/app'), 1);

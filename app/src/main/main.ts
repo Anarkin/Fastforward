@@ -56,6 +56,7 @@ import { systemCodePage } from '../tools/commander/main/codePages';
 import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
 import { isRepository } from '../tools/commander/main/repositories';
 import { watchFolder } from '../tools/commander/main/watch';
+import { isFolder } from '../tools/git/main/cli/repository';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
 import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
@@ -415,10 +416,8 @@ async function start(asked: readonly string[]): Promise<void> {
         env: process.env,
         home: os.homedir(),
         version: app.getVersion(),
-        isFolder: (each) =>
-          fs.statSync(each, { throwIfNoEntry: false })?.isDirectory() === true,
-        isFile: (file) =>
-          fs.statSync(file, { throwIfNoEntry: false })?.isFile() === true,
+        isFolder,
+        isFile,
         integration,
       });
     },
@@ -426,8 +425,7 @@ async function start(asked: readonly string[]): Promise<void> {
     {
       store: toolState(state, 'terminal'),
       home: os.homedir(),
-      isFolder: (each) =>
-        fs.statSync(each, { throwIfNoEntry: false })?.isDirectory() === true,
+      isFolder,
       now: () => Date.now(),
       choose: async () => {
         const chosen = await dialog.showOpenDialog(window, {
@@ -665,6 +663,13 @@ function distributionName(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function isFile(file: string): Promise<boolean> {
+  return fs.promises.stat(file).then(
+    (stats) => stats.isFile(),
+    () => false,
+  );
 }
 
 async function searchGit(): Promise<GitSearch> {
