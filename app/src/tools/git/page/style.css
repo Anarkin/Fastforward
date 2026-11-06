@@ -692,6 +692,11 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   border-top: 1px solid var(--color-border);
 }
 
+.locations-groups,
+.locations-group + .locations-group {
+  border-top-color: transparent;
+}
+
 .locations-heading {
   display: flex;
   align-items: baseline;

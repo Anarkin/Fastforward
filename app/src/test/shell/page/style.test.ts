@@ -2680,6 +2680,22 @@ suite('Style', () => {
     looks(columnTitle(null), { 'border-bottom-color': undefined });
   });
 
+  test("hides the lines of the search opened over the commit column's title, under its field and between its groups, keeping their pixel so the field stays where the title's was", () => {
+    const popup = locationsPopup('');
+    const groups = allWithClass(popup, 'locations-group');
+    assert.ok(groups.length > 1, String(groups.length));
+    looks(withClass(popup, 'locations-groups'), {
+      'border-top': '1px solid var(--color-border)',
+      'border-top-color': 'transparent',
+    });
+    for (const group of groups.slice(1)) {
+      looks(group, {
+        'border-top': '1px solid var(--color-border)',
+        'border-top-color': 'transparent',
+      });
+    }
+  });
+
   test('draws the rows of the lists as tall as one line of the line height of the settings, the size of the font rounded to the device pixel, with nothing above or below the text', () => {
     looks(rendered(createElement('div', { className: 'row' })), {
       height: 'var(--row-line-height)',
