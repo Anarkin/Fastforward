@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { clicked } from '../../../shell/shared/keymap';
 import './style.css';
@@ -9,8 +9,7 @@ import {
   type CommanderToWebview,
 } from '../shared/protocol';
 import { Pane } from './pane';
-import { Viewer, type ToViewer } from './viewer';
-import { viewerChoices } from './view';
+import { Viewer } from './viewer';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { followDrag } from '../../../ui/followDrag';
 import { useBinding } from '../../../ui/shortcuts';
@@ -18,7 +17,7 @@ import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { deleteQuestion } from './deleting';
 import { strings } from '../../../shared/strings';
 import { useShellActions } from '../../../shell/page/store';
-import { CommanderStore, createCommanderStore, isViewerStream } from './store';
+import { CommanderStore, createCommanderStore } from './store';
 
 const minimumShare = 0.15;
 
@@ -49,7 +48,6 @@ export function CommanderTool({
 }) {
   const [store] = useState(() => createCommanderStore(post));
   const view = useStore(store, (state) => state.view);
-  const viewed = useStore(store, (state) => state.viewed);
   const deleting = useStore(store, (state) => state.deleting);
   const noAccess = useStore(store, (state) => state.noAccess);
   const hasDrives = useStore(store, (state) => state.drives.length > 0);
@@ -60,20 +58,12 @@ export function CommanderTool({
     step,
     reread,
     toggleHidden,
-    choose,
     confirmDelete,
     cancelDelete,
     closeNoAccess,
     elevate,
   } = store.getState();
   const { closeTab: onClose } = useShellActions();
-  const viewerListeners = useRef(new Set<(message: ToViewer) => void>());
-  const listenViewer = useCallback((handler: (message: ToViewer) => void) => {
-    viewerListeners.current.add(handler);
-    return () => {
-      viewerListeners.current.delete(handler);
-    };
-  }, []);
   const [share, setShare] = useState(0.5);
   const columns = useRef<HTMLDivElement>(null);
   const triggers = {
@@ -81,18 +71,7 @@ export function CommanderTool({
     right: useRef<HTMLButtonElement>(null),
   };
 
-  useEffect(
-    () =>
-      listen((message) => {
-        store.getState().receive(message);
-        if (isViewerStream(message)) {
-          for (const handler of viewerListeners.current) {
-            handler(message);
-          }
-        }
-      }),
-    [listen, store],
-  );
+  useEffect(() => listen(store.getState().receive), [listen, store]);
 
   const shown = active && view.tab !== undefined;
   const viewing = shown && view.viewing !== undefined;
@@ -106,12 +85,6 @@ export function CommanderTool({
       document.activeElement,
     )?.focus();
   }, [shown, viewing, view.active]);
-
-  useEffect(() => {
-    if (view.tab !== undefined) {
-      post({ type: 'activate', tab: view.tab, side: view.active });
-    }
-  }, [post, view.tab, view.active]);
 
   useBinding(
     commanderKeymap.history,
@@ -172,20 +145,13 @@ export function CommanderTool({
 
   if (view.viewing !== undefined) {
     return (
-      <div className="repository commander">
-        <div className="columns viewer-columns">
-          <Viewer
-            key={view.tab}
-            file={view.viewing}
-            fileColors={view.fileColors}
-            viewing={viewed?.tab === view.tab ? viewed : undefined}
-            choices={viewerChoices(view)}
-            onChoose={choose}
-            post={post}
-            listen={listenViewer}
-          />
+      <CommanderStore value={store}>
+        <div className="repository commander">
+          <div className="columns viewer-columns">
+            <Viewer key={view.tab} />
+          </div>
         </div>
-      </div>
+      </CommanderStore>
     );
   }
 

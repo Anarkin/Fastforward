@@ -5,7 +5,7 @@ import {
   useState,
   useEffectEvent,
 } from 'react';
-import { maxBytesAsked, type CommanderToHost } from '../shared/protocol';
+import { maxBytesAsked } from '../shared/protocol';
 import { RowRequests } from './rowRequests';
 import type { ViewerFind } from './viewerFind';
 import { MarkedText, byteMarks, hexMarks } from './findMarks';
@@ -21,6 +21,7 @@ import {
   type LoadedBytes,
 } from './hex';
 import type { ToViewer, Viewing } from './viewer';
+import type { ViewerRequest } from './store';
 
 interface Bytes {
   readonly start: number;
@@ -47,7 +48,7 @@ export function ByteBody({
   finding?: boolean;
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
-  post: (message: CommanderToHost) => void;
+  post: (message: ViewerRequest) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const { tab } = viewing;

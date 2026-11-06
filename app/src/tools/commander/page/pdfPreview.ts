@@ -5,12 +5,12 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { CommanderToHost } from '../shared/protocol';
 import type { PdfPlace } from '../../../shared/pdf';
 import { strings } from '../../../shared/strings';
 import { matchCount } from '../../../shared/textMatches';
 import type { PdfFound, ShownPdf } from '../../../ui/pdfView';
 import type { ToViewer } from './viewer';
+import type { ViewerRequest } from './store';
 
 const placeWait = 2000;
 const placeEvery = 1000;
@@ -37,7 +37,7 @@ export interface PdfControls {
 
 export function usePdfPreview(
   tab: string | undefined,
-  post: (message: CommanderToHost) => void,
+  post: (message: ViewerRequest) => void,
   listen: (handler: (message: ToViewer) => void) => () => void,
 ) {
   const shown = useRef<ShownPdf>(undefined);

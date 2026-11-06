@@ -23,6 +23,19 @@ import {
 } from './view';
 import type { ToViewer, Viewing } from './viewer';
 
+export type ViewerRequest = Extract<
+  CommanderToHost,
+  {
+    readonly type:
+      | 'readText'
+      | 'readRows'
+      | 'readBytes'
+      | 'findText'
+      | 'readPdfPlace'
+      | 'savePdfPlace';
+  }
+>;
+
 interface Deleting {
   readonly tab: string;
   readonly side: Side;
@@ -48,6 +61,8 @@ interface CommanderSource {
 
 interface CommanderActions {
   readonly receive: (message: CommanderToWebview) => void;
+  readonly request: (message: ViewerRequest) => void;
+  readonly listenViewer: (handler: (message: ToViewer) => void) => () => void;
   readonly dispatch: (action: ViewAction) => void;
   readonly select: (side: Side, key: string) => void;
   readonly mark: (side: Side, keys: readonly string[], marked: boolean) => void;
@@ -110,9 +125,7 @@ const viewerStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
   ToViewer['type']
 >(['rows', 'text', 'bytes', 'found', 'pdfPlace']);
 
-export function isViewerStream(
-  message: CommanderToWebview,
-): message is ToViewer {
+function isViewerStream(message: CommanderToWebview): message is ToViewer {
   return viewerStreams.has(message.type);
 }
 
@@ -166,14 +179,28 @@ export function createCommanderStore(
   initial: Partial<CommanderSource> = {},
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
+  const viewerListeners = new Set<(message: ToViewer) => void>();
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
   return createStore<CommanderState>()((set, get) => {
+    const announced = (change: () => void) => {
+      const before = get().view;
+      change();
+      const { tab, active } = get().view;
+      if (
+        tab !== undefined &&
+        (tab !== before.tab || active !== before.active)
+      ) {
+        post({ type: 'activate', tab, side: active });
+      }
+    };
     const dispatch = (action: ViewAction) =>
-      set((state) => {
-        const view = reduceView(state.view, action);
-        return view === state.view ? state : { view };
-      });
+      announced(() =>
+        set((state) => {
+          const view = reduceView(state.view, action);
+          return view === state.view ? state : { view };
+        }),
+      );
     const onTab = (send: (tab: string) => void) => {
       const { tab } = get().view;
       if (tab !== undefined) {
@@ -191,7 +218,22 @@ export function createCommanderStore(
     return {
       ...commanderDefaults,
       ...initial,
-      receive: (message) => set((state) => received(state, message)),
+      receive: (message) => {
+        if (isViewerStream(message)) {
+          for (const handler of viewerListeners) {
+            handler(message);
+          }
+          return;
+        }
+        announced(() => set((state) => received(state, message)));
+      },
+      request: post,
+      listenViewer: (handler) => {
+        viewerListeners.add(handler);
+        return () => {
+          viewerListeners.delete(handler);
+        };
+      },
       dispatch,
       select: (side, key) => dispatch({ type: 'select', side, key }),
       mark: (side, keys, marked) =>

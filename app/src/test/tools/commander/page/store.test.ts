@@ -92,13 +92,37 @@ suite('Commander store', () => {
     ]);
   });
 
-  test('activates a side and switches sides on the page alone', () => {
-    const { posted, store } = shown();
+  test('tells the main process which side of which tab is active whenever either changes', () => {
+    const posted: CommanderToHost[] = [];
+    const store = createCommanderStore((message) => posted.push(message));
+    store.getState().receive({ type: 'show', tab: '1' });
     store.getState().activate('left');
-    assert.strictEqual(store.getState().view.active, 'left');
+    store.getState().activate('left');
     store.getState().switchSide();
     assert.strictEqual(store.getState().view.active, 'right');
-    assert.deepStrictEqual(posted, []);
+    assert.deepStrictEqual(posted, [
+      { type: 'activate', tab: '1', side: 'right' },
+      { type: 'activate', tab: '1', side: 'left' },
+      { type: 'activate', tab: '1', side: 'right' },
+    ]);
+  });
+
+  test('asks the main process for what the viewer reads, handing the replies to its listeners until each stops listening', () => {
+    const { posted, store } = shown();
+    const heard: string[] = [];
+    const stop = store
+      .getState()
+      .listenViewer((message) => heard.push(message.type));
+    store
+      .getState()
+      .request({ type: 'readText', tab: '1', encoding: 'utf-8', request: 1 });
+    store.getState().receive({ type: 'text', tab: '1', request: 1, text: 'x' });
+    stop();
+    store.getState().receive({ type: 'text', tab: '1', request: 2, text: 'y' });
+    assert.deepStrictEqual(heard, ['text']);
+    assert.deepStrictEqual(posted, [
+      { type: 'readText', tab: '1', encoding: 'utf-8', request: 1 },
+    ]);
   });
 
   test('sorts a side by the column clicked and groups it by color at once, telling the main process', () => {

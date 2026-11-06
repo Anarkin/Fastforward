@@ -10,7 +10,6 @@ import {
 import {
   maxColoredBytes,
   wholeLineBytes,
-  type CommanderToHost,
   type TextEncoding,
   type TextRow,
 } from '../shared/protocol';
@@ -49,6 +48,7 @@ import {
   useCellTable,
   type TextWidths,
 } from '../../../ui/textWidths';
+import type { ViewerRequest } from './store';
 
 const rowsAboveMatch = 2;
 
@@ -194,7 +194,7 @@ function RowText({
 
 export function useWholeText(
   viewing: Viewing,
-  post: (message: CommanderToHost) => void,
+  post: (message: ViewerRequest) => void,
   listen: (handler: (message: ToViewer) => void) => () => void,
   wanted: boolean,
   encoding: TextEncoding,
@@ -263,7 +263,7 @@ export function TextBody({
   finding?: boolean;
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
-  post: (message: CommanderToHost) => void;
+  post: (message: ViewerRequest) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const [read, setRead] = useState<Read>({

@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type {
-  ByteRange,
-  CommanderToHost,
-  TextEncoding,
-} from '../shared/protocol';
+import type { ByteRange, TextEncoding } from '../shared/protocol';
 import { strings } from '../../../shared/strings';
 import { matchCount, stepMatch } from '../../../shared/textMatches';
 import type { ToViewer, Viewing } from './viewer';
+import type { ViewerRequest } from './store';
 
 export interface ViewerFind {
   readonly query: string;
@@ -38,7 +35,7 @@ export function findCount(
 export function useViewerFind(
   viewing: Viewing | undefined,
   encoding: TextEncoding,
-  post: (message: CommanderToHost) => void,
+  post: (message: ViewerRequest) => void,
   listen: (handler: (message: ToViewer) => void) => () => void,
 ) {
   const [query, setQuery] = useState('');

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { maxPreviewBytes, type CommanderToHost } from '../shared/protocol';
+import { maxPreviewBytes } from '../shared/protocol';
 import { viewedFileUrl } from '../shared/files';
 import { strings } from '../../../shared/strings';
 import { documentImagePath, ImagePane } from '../../../ui/images';
@@ -12,6 +12,7 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { imageScrolled, previewUrl, type Preview } from './previews';
 import type { PdfControls } from './pdfPreview';
 import type { ToViewer, Viewing } from './viewer';
+import type { ViewerRequest } from './store';
 
 function MarkdownPreview({
   file,
@@ -21,7 +22,7 @@ function MarkdownPreview({
 }: {
   file: string;
   viewing: Viewing;
-  post: (message: CommanderToHost) => void;
+  post: (message: ViewerRequest) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const tooLarge = viewing.size !== undefined && viewing.size > maxPreviewBytes;
@@ -60,7 +61,7 @@ export function PreviewBody({
   viewing: Viewing;
   realSize: boolean;
   pdf: PdfControls;
-  post: (message: CommanderToHost) => void;
+  post: (message: ViewerRequest) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const body = useRef<HTMLDivElement>(null);

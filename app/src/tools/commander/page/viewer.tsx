@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type {
-  CommanderToHost,
-  CommanderToWebviewOf,
-  TextEncoding,
-} from '../shared/protocol';
+import type { CommanderToWebviewOf, TextEncoding } from '../shared/protocol';
 import { viewerKeymap, type ViewMode } from '../shared/keymap';
 import { keyPressed } from '../../../ui/shortcuts';
 import { columnFocusOf } from '../../../ui/columnFocus';
@@ -30,7 +26,6 @@ import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
 import { PreviewBody } from './previewBody';
 import { firstMode, previewOf } from './previews';
-import type { ViewerChoices } from './view';
 import { encodingMenu, shownEncoding, type EncodingChoice } from './encodings';
 import {
   LanguageButton,
@@ -38,8 +33,10 @@ import {
   useLanguageChoice,
 } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
-import { colorOfFileNamed, type FileColors } from './fileColors';
+import { colorOfFileNamed } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
+import { useCommander, useCommanderActions } from './store';
+import { viewerChoices } from './view';
 
 export interface Viewing {
   readonly tab: string;
@@ -69,23 +66,18 @@ const modes: readonly {
   },
 ];
 
-export function Viewer({
-  file,
-  fileColors,
-  viewing,
-  choices,
-  onChoose,
-  post,
-  listen,
-}: {
-  file: string;
-  fileColors: FileColors;
-  viewing: Viewing | undefined;
-  choices: ViewerChoices;
-  onChoose: (choices: ViewerChoices) => void;
-  post: (message: CommanderToHost) => void;
-  listen: (handler: (message: ToViewer) => void) => () => void;
-}) {
+export function Viewer() {
+  const file = useCommander((state) => state.view.viewing) ?? '';
+  const fileColors = useCommander((state) => state.view.fileColors);
+  const viewing = useCommander(({ viewed, view }) =>
+    viewed?.tab === view.tab ? viewed : undefined,
+  );
+  const choices = useCommander((state) => viewerChoices(state.view));
+  const {
+    choose: onChoose,
+    request: post,
+    listenViewer: listen,
+  } = useCommanderActions();
   const chosen = choices.mode;
   const setChosen = (mode: ViewMode) => onChoose({ ...choices, mode });
   const encoding = choices.encoding ?? 'auto';
