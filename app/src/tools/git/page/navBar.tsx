@@ -17,6 +17,8 @@ import { fetchStatus } from './fetchStatus';
 import { LocationsPopup } from './locations';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../shared/strings';
+import { useBinding } from '../../../ui/shortcuts';
+import { gitKeymap } from '../shared/keymap';
 
 const holdDelay = 400;
 
@@ -247,8 +249,19 @@ export function locationsPopupKey(
   return `${searches}\n${root ?? ''}`;
 }
 
-export function AddressBar({ asked }: { asked: number }) {
+export function AddressBar() {
   const open = useGit((state) => state.searching);
+  const findsHere = useGit((state) => state.activeColumn === 'commits');
+  const { search } = useGitActions();
+  const [asked, setAsked] = useState(0);
+  useBinding(
+    gitKeymap.find,
+    () => {
+      setAsked((count) => count + 1);
+      search(true);
+    },
+    findsHere,
+  );
   const root = useGit((state) => state.tab.root);
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),

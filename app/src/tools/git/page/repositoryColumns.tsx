@@ -1,102 +1,18 @@
-import { memo, useCallback, useMemo, useState } from 'react';
-import { strings } from '../../../shared/strings';
-import { SearchButton } from '../../../ui/search';
+import { memo, useMemo, useState } from 'react';
 import { useBinding } from '../../../ui/shortcuts';
 import { gitKeymap } from '../shared/keymap';
-import { listError } from './columns';
-import { Commits } from './commitList';
 import { Diff, DiffLanguage, DiffOptions, diffSelection } from './diffColumn';
 import { Files, filesTitle, noChangesText } from './filesColumn';
-import { AddressBar, NavButtons } from './navBar';
 import {
   fileFilterOf,
   folderViewOf,
   languageKeyOf,
-  layoutSelectionOf,
   openingOf,
   shownFoldersOf,
   useGit,
   useGitActions,
 } from './store';
 import { changesShown, treeOf } from './tabView';
-
-export const CommitColumn = memo(function CommitColumn() {
-  const history = useGit((state) => state.tab.history);
-  const worktree = useGit((state) => state.tab.root);
-  const opening = useGit(openingOf);
-  const scrollTarget = useGit((state) => state.tab.scrollTarget);
-  const workingTree = useGit((state) => state.tab.workingTree);
-  const refsByCommit = useGit((state) => state.refsByCommit);
-  const stashes = useGit((state) => state.stashCommits);
-  const selected = useGit((state) => state.tab.hash);
-  const collapseMerges = useGit((state) => state.collapseMerges);
-  const solo = useGit((state) => state.solo);
-  const headCommit = useGit((state) => state.tab.repository?.headCommit);
-  const searching = useGit((state) => state.searching);
-  const error = useGit((state) =>
-    listError(state.tab.error, layoutSelectionOf(state)),
-  );
-  const applyingSolo = useGit((state) => state.tab.applyingSolo);
-  const findsHere = useGit((state) => state.activeColumn === 'commits');
-  const {
-    selectCommit,
-    compareCommit,
-    toggleMerge,
-    changeCollapseMerges,
-    changeSolo,
-    scrolled,
-    loadCommits,
-    search,
-  } = useGitActions();
-  const [asked, setAsked] = useState(0);
-  useBinding(
-    gitKeymap.find,
-    () => {
-      setAsked((count) => count + 1);
-      search(true);
-    },
-    findsHere,
-  );
-  const onScrolled = useCallback(
-    (top: string, offset: number, report: number) =>
-      scrolled(worktree, top, offset, report),
-    [scrolled, worktree],
-  );
-  return (
-    <Commits
-      history={history}
-      worktree={worktree}
-      opening={opening}
-      scrollTarget={scrollTarget}
-      onScrolled={onScrolled}
-      onLoad={loadCommits}
-      workingTree={workingTree}
-      refsByCommit={refsByCommit}
-      stashes={stashes}
-      selected={selected}
-      onSelect={selectCommit}
-      onCompare={compareCommit}
-      onToggleMerge={toggleMerge}
-      collapseMerges={collapseMerges}
-      onCollapseMerges={changeCollapseMerges}
-      solo={solo}
-      headCommit={headCommit}
-      focusKey={worktree}
-      searching={searching}
-      error={error}
-      applyingSolo={applyingSolo}
-      onSolo={changeSolo}
-      navigation={<NavButtons />}
-      searchButton={
-        <SearchButton
-          title={strings.actions.search}
-          onClick={() => search(true)}
-        />
-      }
-      search={<AddressBar asked={asked} />}
-    />
-  );
-});
 
 export const FileColumn = memo(function FileColumn() {
   const hash = useGit((state) => state.tab.hash);

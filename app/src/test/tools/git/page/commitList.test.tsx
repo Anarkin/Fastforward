@@ -58,7 +58,7 @@ import {
 import { settling } from '../../../../tools/git/page/outbox';
 import { defaultDateFormat, formatDate } from '../../../../ui/dates';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
-import { GitStore } from '../../../../tools/git/page/store';
+import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { gitStore } from '../../../componentFixtures';
 import {
   commitInfo,
@@ -1464,8 +1464,15 @@ async function scrollingList(
     assert.ok(main);
     const root = createRoot(main);
     const told: ToldPlace[] = [];
-    const onScrolled = (hash: string, offset: number, report: number) =>
-      told.push({ hash, offset, report });
+    const store = createGitStore((message) => {
+      if (message.type === 'scrolled') {
+        told.push({
+          hash: message.hash,
+          offset: message.offset,
+          report: message.report,
+        });
+      }
+    });
     const list = () => {
       const found = main.querySelector('.list');
       assert.ok(found);
@@ -1474,29 +1481,19 @@ async function scrollingList(
     await check({
       show: async (worktree, history, scrollTarget) => {
         await act(async () => {
+          store.setState({
+            tab: {
+              ...store.getState().tab,
+              root: worktree,
+              history,
+              scrollTarget,
+            },
+          });
           renderIn(
             root,
-            <Commits
-              history={history}
-              worktree={worktree}
-              opening={false}
-              scrollTarget={scrollTarget}
-              onScrolled={onScrolled}
-              onLoad={noop}
-              workingTree={undefined}
-              refsByCommit={noRefs}
-              stashes={noStashes}
-              selected={undefined}
-              onSelect={noop}
-              onCompare={noop}
-              onToggleMerge={noop}
-              collapseMerges={false}
-              onCollapseMerges={noop}
-              solo={false}
-              headCommit={undefined}
-              applyingSolo={false}
-              onSolo={noop}
-            />,
+            <GitStore value={store}>
+              <Commits />
+            </GitStore>,
           );
         });
         await listSettled();
@@ -1518,9 +1515,6 @@ async function scrollingList(
     Object.assign(globalThis, saved);
   }
 }
-
-const noRefs: ReadonlyMap<string, readonly RefInfo[]> = new Map();
-const noStashes: ReadonlySet<string> = new Set();
 
 suite('Commit list places', () => {
   test('opens the history of another worktree where it was left, or at its top, also when it is drawn straight after the history it replaces, as the page may take both at once while busy', async () => {

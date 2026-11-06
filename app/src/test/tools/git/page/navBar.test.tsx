@@ -70,7 +70,7 @@ suite('Navigation bar', () => {
   test('shows nothing of the commit search until it is opened, as the button opening it sits among the buttons of the column', () => {
     const html = renderToStaticMarkup(
       <GitStore value={gitStore()}>
-        <AddressBar asked={0} />
+        <AddressBar />
       </GitStore>,
     );
     assert.doesNotMatch(html, /address-bar|Search…|<button/);

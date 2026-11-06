@@ -30,7 +30,14 @@ import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import { commitMenuTarget, useOpenMenu, type MenuTarget } from './menus';
 import { GraphCell, graphWidth, rowLanes } from './graph';
-import { detachedHead, useGit } from './store';
+import {
+  detachedHead,
+  layoutSelectionOf,
+  openingOf,
+  useGit,
+  useGitActions,
+} from './store';
+import { listError } from './columns';
 import { formatDate } from '../../../ui/dates';
 import { useShell } from '../../../shell/page/store';
 import { MenuButton } from '../../../ui/menu';
@@ -623,62 +630,45 @@ export function WorkingTreeRow({
 }
 
 export function Commits({
-  history,
-  worktree,
-  opening,
-  scrollTarget,
-  onScrolled,
-  onLoad,
-  workingTree,
-  refsByCommit,
-  stashes,
-  selected,
-  onSelect,
-  onCompare,
-  onToggleMerge,
-  collapseMerges,
-  onCollapseMerges,
-  solo,
-  headCommit,
-  applyingSolo,
-  onSolo,
   navigation,
   search,
   searchButton,
-  focusKey,
-  searching = false,
-  error,
 }: {
-  history: CommitHistory | undefined;
-  worktree?: string;
-  opening: boolean;
-  scrollTarget: ScrollTarget | undefined;
-  onScrolled: (hash: string, offset: number, report: number) => void;
-  onLoad: (start: number, count: number, generation: number) => void;
-  workingTree: number | undefined;
-  refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
-  stashes: ReadonlySet<string>;
-  selected: string | undefined;
-  onSelect: (
-    hash: string | undefined,
-    replace?: boolean,
-    repeat?: boolean,
-  ) => void;
-  onCompare: (hash: string) => void;
-  onToggleMerge: (hash: string) => void;
-  collapseMerges: boolean;
-  onCollapseMerges: (collapse: boolean) => void;
-  solo: boolean;
-  headCommit: string | undefined;
-  applyingSolo: boolean;
-  onSolo: (solo: boolean) => void;
   navigation?: React.ReactNode;
   search?: React.ReactNode;
   searchButton?: React.ReactNode;
-  focusKey?: string;
-  searching?: boolean;
-  error?: string;
 }) {
+  const history = useGit((state) => state.tab.history);
+  const worktree = useGit((state) => state.tab.root);
+  const opening = useGit(openingOf);
+  const scrollTarget = useGit((state) => state.tab.scrollTarget);
+  const workingTree = useGit((state) => state.tab.workingTree);
+  const refsByCommit = useGit((state) => state.refsByCommit);
+  const stashes = useGit((state) => state.stashCommits);
+  const selected = useGit((state) => state.tab.hash);
+  const collapseMerges = useGit((state) => state.collapseMerges);
+  const solo = useGit((state) => state.solo);
+  const headCommit = useGit((state) => state.tab.repository?.headCommit);
+  const searching = useGit((state) => state.searching);
+  const error = useGit((state) =>
+    listError(state.tab.error, layoutSelectionOf(state)),
+  );
+  const applyingSolo = useGit((state) => state.tab.applyingSolo);
+  const {
+    selectCommit: onSelect,
+    compareCommit: onCompare,
+    toggleMerge: onToggleMerge,
+    changeCollapseMerges: onCollapseMerges,
+    changeSolo: onSolo,
+    scrolled: reportScrolled,
+    loadCommits: onLoad,
+  } = useGitActions();
+  const onScrolled = useCallback(
+    (top: string, offset: number, report: number) =>
+      reportScrolled(worktree, top, offset, report),
+    [reportScrolled, worktree],
+  );
+  const focusKey = worktree;
   const version = useSyncExternalStore(
     history?.subscribe ?? noHistory,
     history?.getVersion ?? noVersion,
