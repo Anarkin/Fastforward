@@ -9,6 +9,7 @@ import {
   page,
   repository,
   savedSetting,
+  scrollPlaces,
   sharedApp,
   waitForCount,
   waitForFocus,
@@ -302,12 +303,11 @@ suite('App', () => {
           };
         });
       await list.hover();
-      await page.mouse.wheel(0, 50);
-      await waitFor(async () => {
-        const { scrolled, lines } = await place();
-        return scrolled > 0 && Math.abs(lines - Math.round(lines)) < 0.01;
-      }, 'the diff to scroll and come to rest on a line');
+      const wheeled = await scrollPlaces(page, list, () =>
+        page.mouse.wheel(0, 50),
+      );
       const scrolled = await place();
+      assert.ok((wheeled.at(-1) ?? 0) > 0, JSON.stringify(wheeled));
       assert.ok(
         Math.abs(scrolled.lines - Math.round(scrolled.lines)) < 0.01 &&
           Math.abs(scrolled.offset) < 0.01,
