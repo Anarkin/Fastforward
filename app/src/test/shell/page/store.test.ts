@@ -188,4 +188,33 @@ suite('Shell store', () => {
       'DD.MM.YYYY',
     );
   });
+
+  test('tells the main process the page is ready, logs, and asks it to show, preload and open tabs, open the settings, check for and install updates, install the command and open what is shown in another tool', () => {
+    const { posted, store } = posting();
+    const actions = store.getState();
+    actions.ready();
+    actions.log('drag started');
+    actions.selectTab('2');
+    actions.preloadTab('2');
+    actions.newTab('git');
+    actions.openSettings();
+    actions.openDefaultSettings();
+    actions.checkForUpdates();
+    actions.installUpdate();
+    actions.installTerminalCommand();
+    actions.openIn();
+    assert.deepStrictEqual(posted, [
+      { type: 'ready' },
+      { type: 'log', level: 'info', message: 'drag started' },
+      { type: 'selectTab', tab: '2' },
+      { type: 'preloadTab', tab: '2' },
+      { type: 'newTab', tool: 'git' },
+      { type: 'openSettings' },
+      { type: 'openDefaultSettings' },
+      { type: 'checkForUpdates' },
+      { type: 'installUpdate' },
+      { type: 'installTerminalCommand' },
+      { type: 'openIn' },
+    ]);
+  });
 });

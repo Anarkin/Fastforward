@@ -96,6 +96,17 @@ interface ShellActions {
   readonly changeTextView: (view: TextView) => void;
   readonly changeImageView: (view: ImageView) => void;
   readonly copyText: (text: string) => void;
+  readonly ready: () => void;
+  readonly log: (message: string) => void;
+  readonly selectTab: (id: string) => void;
+  readonly preloadTab: (id: string) => void;
+  readonly newTab: (tool: ToolId) => void;
+  readonly openSettings: () => void;
+  readonly openDefaultSettings: () => void;
+  readonly checkForUpdates: () => void;
+  readonly installUpdate: () => void;
+  readonly installTerminalCommand: () => void;
+  readonly openIn: () => void;
 }
 
 type ShellState = ShellSource & ShellActions;
@@ -247,6 +258,17 @@ export function createShellStore(
         post({ type: 'setImageView', view });
       },
       copyText: (text) => post({ type: 'copyText', text }),
+      ready: () => post({ type: 'ready' }),
+      log: (message) => post({ type: 'log', level: 'info', message }),
+      selectTab: (id) => post({ type: 'selectTab', tab: id }),
+      preloadTab: (id) => post({ type: 'preloadTab', tab: id }),
+      newTab: (tool) => post({ type: 'newTab', tool }),
+      openSettings: () => post({ type: 'openSettings' }),
+      openDefaultSettings: () => post({ type: 'openDefaultSettings' }),
+      checkForUpdates: () => post({ type: 'checkForUpdates' }),
+      installUpdate: () => post({ type: 'installUpdate' }),
+      installTerminalCommand: () => post({ type: 'installTerminalCommand' }),
+      openIn: () => post({ type: 'openIn' }),
     };
   });
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 import {
   appGroups,
@@ -140,12 +140,25 @@ export function App({ name, post, listen }: Props) {
     cancel,
     openWith,
     moveTab,
+    copyText,
+    ready,
+    log,
+    selectTab,
+    preloadTab,
+    newTab,
+    openSettings,
+    openDefaultSettings,
+    checkForUpdates,
+    installUpdate,
+    installTerminalCommand,
+    openIn,
   } = store.getState();
-  const closeShortcuts = useCallback(
-    () => showPopup('shortcuts', false),
-    [showPopup],
+  const [closeShortcuts] = useState(
+    () => () => store.getState().showPopup('shortcuts', false),
   );
-  const closeAbout = useCallback(() => showPopup('about', false), [showPopup]);
+  const [closeAbout] = useState(
+    () => () => store.getState().showPopup('about', false),
+  );
 
   const activeTab = tabs?.find((tab) => tab.id === active);
   const activeTool = activeTab?.tool;
@@ -157,23 +170,16 @@ export function App({ name, post, listen }: Props) {
         deliver(listeners, message.tool, message.message);
       }
     });
-    post({ type: 'ready' });
+    ready();
     return stop;
-  }, [post, listen, listeners, store]);
-
-  const log = useCallback(
-    (message: string) => post({ type: 'log', level: 'info', message }),
-    [post],
-  );
+  }, [listen, listeners, store, ready]);
 
   const opened = openedMenu?.menu;
   const menu =
     opened?.trigger === newTabTrigger
       ? {
           ...opened,
-          items: newTabItems(toolItems, (tool) =>
-            post({ type: 'newTab', tool }),
-          ),
+          items: newTabItems(toolItems, newTab),
         }
       : opened;
 
@@ -203,7 +209,7 @@ export function App({ name, post, listen }: Props) {
     notices.length > 0,
   );
   useBinding(keymap.about, () => togglePopup('about'));
-  useBinding(keymap.openIn, () => post({ type: 'openIn' }));
+  useBinding(keymap.openIn, openIn);
   useBinding(keymap.closeTab, () => {
     if (active !== undefined) {
       closeTab(active);
@@ -223,8 +229,8 @@ export function App({ name, post, listen }: Props) {
         <TabBar
           tabs={tabs ?? []}
           active={active}
-          onSelect={(tab) => post({ type: 'selectTab', tab })}
-          onPreload={(tab) => post({ type: 'preloadTab', tab })}
+          onSelect={selectTab}
+          onPreload={preloadTab}
           onClose={closeTab}
           onMove={moveTab}
           onAdd={openNewTab}
@@ -233,18 +239,14 @@ export function App({ name, post, listen }: Props) {
           menu={
             <AppMenu
               update={update}
-              onOpenSettings={() => post({ type: 'openSettings' })}
-              onOpenDefaultSettings={() =>
-                post({ type: 'openDefaultSettings' })
-              }
+              onOpenSettings={openSettings}
+              onOpenDefaultSettings={openDefaultSettings}
               onShowShortcuts={() => showPopup('shortcuts', true)}
-              onCheckForUpdates={() => post({ type: 'checkForUpdates' })}
-              onInstallUpdate={() => post({ type: 'installUpdate' })}
+              onCheckForUpdates={checkForUpdates}
+              onInstallUpdate={installUpdate}
               onShowAbout={() => showPopup('about', true)}
               onInstallCommand={
-                installsCommand
-                  ? () => post({ type: 'installTerminalCommand' })
-                  : undefined
+                installsCommand ? installTerminalCommand : undefined
               }
             />
           }
@@ -269,7 +271,7 @@ export function App({ name, post, listen }: Props) {
                   <AboutPopup
                     key={popup}
                     about={about}
-                    onCopy={(text) => post({ type: 'copyText', text })}
+                    onCopy={copyText}
                     onClose={closeAbout}
                   />
                 )
