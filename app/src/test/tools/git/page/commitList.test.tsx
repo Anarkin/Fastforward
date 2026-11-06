@@ -27,7 +27,6 @@ import {
   trailing,
   useScrollReports,
   atMostEvery,
-  settling,
   listKeyPosition,
   keySelection,
   keyboardMenuTarget,
@@ -56,6 +55,7 @@ import {
   workingTreeRowHeight,
   workingTreeShift,
 } from '../../../../tools/git/page/commitList';
+import { settling } from '../../../../tools/git/page/outbox';
 import { defaultDateFormat, formatDate } from '../../../../ui/dates';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { GitStore } from '../../../../tools/git/page/store';

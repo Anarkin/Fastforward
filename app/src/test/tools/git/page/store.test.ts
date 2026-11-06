@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import type {
   GitToHost,
   GitToWebviewOf,
@@ -15,6 +15,7 @@ import { checkoutOptions } from '../../../../tools/git/page/checkout';
 import { bookmarkOptions } from '../../../../tools/git/page/bookmarks';
 import type { ContextMenuItem } from '../../../../ui/contextMenu';
 import { strings } from '../../../../shared/strings';
+import { compareWith } from '../../../../tools/git/shared/comparisons';
 import { noop } from '../../../fixtures';
 
 const at = 'a'.repeat(40);
@@ -489,5 +490,202 @@ suite('Git store', () => {
     assert.strictEqual(pickedFor('one')(store.getState()), undefined);
     store.getState().pickLanguage(undefined, 'python');
     assert.strictEqual(store.getState().pickedLanguage, undefined);
+  });
+
+  test('selects a commit at once and asks the main process for it, holding the ask while a key repeats, unselecting the one selected again, and comparing another with it', () => {
+    vi.useFakeTimers();
+    try {
+      const { posted, store } = posting();
+      store.getState().receive(shown());
+      const other = 'b'.repeat(40);
+      store.getState().selectCommit(at);
+      assert.strictEqual(store.getState().tab.hash, at);
+      store.getState().selectCommit(at, true);
+      assert.strictEqual(store.getState().tab.hash, undefined);
+      store.getState().selectCommit(other, false, true);
+      assert.strictEqual(posted.length, 2);
+      vi.runAllTimers();
+      store.getState().compareCommit(at);
+      assert.deepStrictEqual(posted, [
+        {
+          type: 'selectCommit',
+          hash: at,
+          replace: false,
+          selection: 1,
+          root: '/repo',
+        },
+        {
+          type: 'selectCommit',
+          hash: undefined,
+          replace: true,
+          selection: 2,
+          root: '/repo',
+        },
+        {
+          type: 'selectCommit',
+          hash: other,
+          replace: false,
+          selection: 3,
+          root: '/repo',
+        },
+        {
+          type: 'selectCommit',
+          hash: compareWith(other, at),
+          replace: false,
+          selection: 4,
+          root: '/repo',
+        },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('loads the diff, the texts and a file of the commit selected, asking nothing while none is, nor anything before a worktree is shown', () => {
+    const { posted, store } = posting();
+    store.getState().navigate('back', 1);
+    store.getState().receive(shown());
+    const actions = store.getState();
+    actions.loadFileDiff('a.txt');
+    actions.loadTexts([{ path: 'a.txt', side: 'new', blob: 'b1' }]);
+    actions.selectFile('a.txt');
+    assert.deepStrictEqual(posted, []);
+    store.getState().selectCommit(at);
+    posted.length = 0;
+    const { diffs } = store.getState().tab;
+    actions.loadFileDiff('a.txt');
+    actions.loadTexts([{ path: 'a.txt', side: 'new', blob: 'b1' }]);
+    actions.selectFile('a.txt', 'staged');
+    assert.strictEqual(store.getState().tab.path, 'a.txt');
+    assert.deepStrictEqual(posted, [
+      {
+        type: 'loadFileDiff',
+        hash: at,
+        path: 'a.txt',
+        diff: diffs,
+        root: '/repo',
+      },
+      {
+        type: 'loadTexts',
+        hash: at,
+        diff: diffs,
+        texts: [{ path: 'a.txt', side: 'new', blob: 'b1' }],
+        root: '/repo',
+      },
+      {
+        type: 'selectFile',
+        hash: at,
+        path: 'a.txt',
+        area: 'staged',
+        root: '/repo',
+      },
+    ]);
+  });
+
+  test('asks the main process for the worktree shown to navigate, jump, search, fetch and load the commits, telling where the list of the worktree it was scrolled in stopped', () => {
+    const { posted, store } = posting();
+    store.getState().receive(shown());
+    const actions = store.getState();
+    actions.navigate('back', 2);
+    actions.jump(at);
+    actions.jump(undefined);
+    actions.showUpstream();
+    actions.showParent();
+    actions.lookupHash('abc');
+    actions.searchCommits('fix')();
+    actions.fetch();
+    actions.toggleMerge(at);
+    actions.scrolled('/other', at, 3, 1);
+    actions.loadCommits(0, 50, 2);
+    actions.viewFile({ path: 'a.txt', blob: 'b1' });
+    const root = '/repo';
+    assert.deepStrictEqual(posted, [
+      { type: 'navigate', direction: 'back', steps: 2, root },
+      { type: 'jump', hash: at, root },
+      { type: 'showUpstream', root },
+      { type: 'showParent', root },
+      { type: 'lookupHash', query: 'abc', root },
+      { type: 'searchCommits', query: 'fix', root },
+      { type: 'stopCommitSearch', root },
+      { type: 'fetch', root },
+      { type: 'toggleMerge', hash: at, root },
+      { type: 'scrolled', hash: at, offset: 3, report: 1, root: '/other' },
+      { type: 'loadCommits', generation: 2, start: 0, count: 50, root },
+      { type: 'viewFile', path: 'a.txt', blob: 'b1', root },
+    ]);
+  });
+
+  test('asks the main process to open, browse, clone and make repositories, and to show or preload a worktree, whatever is shown', () => {
+    const { posted, store } = posting();
+    const actions = store.getState();
+    actions.openRepository('/a');
+    actions.browseRepositories();
+    actions.openClone();
+    actions.initRepository();
+    actions.checkCloneTarget('/code', 'x');
+    actions.chooseCloneFolder('/code');
+    actions.startClone({
+      url: 'https://example.com/x.git',
+      folder: '/code',
+      name: 'x',
+    });
+    actions.stopClone();
+    actions.selectWorktree('/b');
+    actions.preloadWorktree('/b');
+    assert.deepStrictEqual(posted, [
+      { type: 'openRepository', root: '/a' },
+      { type: 'browseRepositories' },
+      { type: 'openClone' },
+      { type: 'initRepository' },
+      { type: 'checkCloneTarget', folder: '/code', name: 'x' },
+      { type: 'chooseCloneFolder', folder: '/code' },
+      {
+        type: 'clone',
+        url: 'https://example.com/x.git',
+        folder: '/code',
+        name: 'x',
+      },
+      { type: 'stopClone' },
+      { type: 'selectWorktree', root: '/b' },
+      { type: 'preloadWorktree', root: '/b' },
+    ]);
+  });
+
+  test('asks once for the tree of a commit shown with all its files, after the commit it was selected with', () => {
+    vi.useFakeTimers();
+    try {
+      const { posted, store } = posting();
+      store.getState().receive(shown());
+      store.getState().selectCommit(at, false, true);
+      store.getState().requestTree(at);
+      assert.strictEqual(store.getState().tab.treeRequested, at);
+      assert.strictEqual(posted.length, 0);
+      vi.runAllTimers();
+      assert.deepStrictEqual(
+        posted.map((message) => message.type),
+        ['selectCommit', 'loadTree'],
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('groups the refs by their commit and knows the commits of the stashes when the repository arrives, keeping them through other messages', () => {
+    const store = createGitStore(noop);
+    const main = { kind: 'branch', name: 'main', commit: at } as const;
+    const tag = { kind: 'tag', name: 'v1', commit: at } as const;
+    store.getState().receive({
+      type: 'repository',
+      head: 'main',
+      headCommit: at,
+      refs: [main, tag],
+      stashes: [{ name: 'stash@{0}', commit: 'c'.repeat(40), message: 'WIP' }],
+    });
+    const { refsByCommit, stashCommits } = store.getState();
+    assert.deepStrictEqual(refsByCommit, new Map([[at, [main, tag]]]));
+    assert.deepStrictEqual(stashCommits, new Set(['c'.repeat(40)]));
+    store.getState().receive({ type: 'pulling', running: true });
+    assert.strictEqual(store.getState().refsByCommit, refsByCommit);
+    assert.strictEqual(store.getState().stashCommits, stashCommits);
   });
 });

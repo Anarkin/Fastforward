@@ -2,16 +2,20 @@ import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../shared/strings';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
-import type { CloneView } from '../shared/clone';
+import type { CloneAsk, CloneView } from '../shared/clone';
+import { compareWith } from '../shared/comparisons';
 import type {
   Bookmark,
+  ChangeArea,
   CheckoutTarget,
+  Direction,
   CompareView,
   DiffLayout,
   GitToHost,
   GitToWebview,
   GitToWebviewOf,
   LastFetch,
+  RefInfo,
   RepositoryInfo,
   TabMessage,
   TextRequest,
@@ -23,7 +27,9 @@ import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import type { ChosenFolder, CloneTarget } from './clonePopup';
 import { resetWidth, widthsToLoad } from './columns';
 import { textKey, type LoadedText } from './diff';
+import type { ViewedSource } from './images';
 import type { MenuTarget } from './menus';
+import { settling } from './outbox';
 import { tagsOnRemote } from './tagPushes';
 import {
   emptyTabView,
@@ -75,6 +81,8 @@ interface GitCollections {
   readonly bookmarked: ReadonlySet<string>;
   readonly tagsOnRemote: ReadonlySet<string>;
   readonly elsewhere: ReadonlySet<string>;
+  readonly refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
+  readonly stashCommits: ReadonlySet<string>;
 }
 
 interface GitActions {
@@ -99,6 +107,46 @@ interface GitActions {
   readonly forgetRecent: (root: string) => void;
   readonly answerInit: (confirmed: boolean) => void;
   readonly closeClone: () => void;
+  readonly selectCommit: (
+    next: string | undefined,
+    replace?: boolean,
+    repeat?: boolean,
+  ) => void;
+  readonly compareCommit: (added: string) => void;
+  readonly selectFile: (path: string | undefined, area?: ChangeArea) => void;
+  readonly navigate: (direction: Direction, steps: number) => void;
+  readonly jump: (hash: string | undefined) => void;
+  readonly showUpstream: () => void;
+  readonly showParent: () => void;
+  readonly lookupHash: (query: string) => void;
+  readonly searchCommits: (query: string) => () => void;
+  readonly fetch: () => void;
+  readonly toggleMerge: (hash: string) => void;
+  readonly scrolled: (
+    root: string | undefined,
+    hash: string,
+    offset: number,
+    report: number,
+  ) => void;
+  readonly loadCommits: (
+    start: number,
+    count: number,
+    generation: number,
+  ) => void;
+  readonly loadFileDiff: (path: string) => void;
+  readonly loadTexts: (requests: readonly TextRequest[]) => void;
+  readonly viewFile: (source: ViewedSource) => void;
+  readonly requestTree: (hash: string) => void;
+  readonly openRepository: (root: string) => void;
+  readonly browseRepositories: () => void;
+  readonly openClone: () => void;
+  readonly initRepository: () => void;
+  readonly checkCloneTarget: (folder: string, name: string) => void;
+  readonly chooseCloneFolder: (folder: string) => void;
+  readonly startClone: (ask: CloneAsk) => void;
+  readonly stopClone: () => void;
+  readonly selectWorktree: (root: string) => void;
+  readonly preloadWorktree: (root: string) => void;
   readonly toggleCommits: () => void;
   readonly search: (open: boolean) => void;
   readonly checkout: (target: CheckoutTarget) => void;
@@ -245,6 +293,17 @@ function collected<T extends GitSource>(
       before.tab.root === source.tab.root
         ? before.elsewhere
         : elsewhereOf(source),
+    ...(before !== undefined && before.tab.repository === source.tab.repository
+      ? { refsByCommit: before.refsByCommit, stashCommits: before.stashCommits }
+      : {
+          refsByCommit: Map.groupBy(
+            source.tab.repository?.refs ?? [],
+            (info) => info.commit,
+          ),
+          stashCommits: new Set(
+            source.tab.repository?.stashes.map((stash) => stash.commit),
+          ),
+        }),
   };
 }
 
@@ -323,9 +382,12 @@ function received(state: GitState, message: GitToWebview): GitState {
 }
 
 export function createGitStore(
-  post: (message: GitToHost) => void,
+  postToHost: (message: GitToHost) => void,
   initial: Partial<GitSource> = {},
 ): StoreApi<GitState> {
+  const outbox = settling(postToHost);
+  const post = outbox.send;
+  let selections = 0;
   return createStore<GitState>()((set, get) => {
     const apply = (next: (state: GitState) => GitState) =>
       set((state) => {
@@ -338,6 +400,36 @@ export function createGitStore(
         post({ ...message, root });
       }
     };
+    const passTab = (message: TabMessage) => {
+      const { root } = get().tab;
+      if (root !== undefined) {
+        outbox.pass({ ...message, root });
+      }
+    };
+    const withHash = (send: (hash: string, diff: number) => void) => {
+      const { hash, diffs } = get().tab;
+      if (hash !== undefined) {
+        send(hash, diffs);
+      }
+    };
+    const selectCommit = (
+      next: string | undefined,
+      replace = false,
+      repeat = false,
+    ) => {
+      const { hash, root } = get().tab;
+      const target = next === hash ? undefined : next;
+      const selection = ++selections;
+      apply((state) =>
+        withTab(state, { type: 'showCommit', hash: target, selection }),
+      );
+      if (root !== undefined) {
+        outbox.settle(
+          { type: 'selectCommit', hash: target, replace, selection, root },
+          repeat,
+        );
+      }
+    };
     return {
       ...collected({ ...gitDefaults, ...initial }),
       receive: (message) => apply((state) => received(state, message)),
@@ -346,6 +438,70 @@ export function createGitStore(
         apply((state) => ({ ...state, bookmarks }));
         postTab({ type: 'setBookmarks', bookmarks });
       },
+      selectCommit,
+      compareCommit: (added) => {
+        const { hash } = get().tab;
+        const next = compareWith(hash, added);
+        if (next !== hash) {
+          selectCommit(next);
+        }
+      },
+      selectFile: (path, area) =>
+        withHash((hash) => {
+          apply((state) => withTab(state, { type: 'showFile', path, area }));
+          postTab({ type: 'selectFile', hash, path, area });
+        }),
+      navigate: (direction, steps) =>
+        postTab({ type: 'navigate', direction, steps }),
+      jump: (hash) => {
+        if (hash) {
+          postTab({ type: 'jump', hash });
+        }
+      },
+      showUpstream: () => postTab({ type: 'showUpstream' }),
+      showParent: () => postTab({ type: 'showParent' }),
+      lookupHash: (query) => postTab({ type: 'lookupHash', query }),
+      searchCommits: (query) => {
+        postTab({ type: 'searchCommits', query });
+        return () => postTab({ type: 'stopCommitSearch' });
+      },
+      fetch: () => postTab({ type: 'fetch' }),
+      toggleMerge: (hash) => postTab({ type: 'toggleMerge', hash }),
+      scrolled: (root, hash, offset, report) => {
+        if (root !== undefined) {
+          outbox.pass({ type: 'scrolled', hash, offset, report, root });
+        }
+      },
+      loadCommits: (start, count, generation) =>
+        passTab({ type: 'loadCommits', generation, start, count }),
+      loadFileDiff: (path) =>
+        withHash((hash, diff) =>
+          postTab({ type: 'loadFileDiff', hash, path, diff }),
+        ),
+      loadTexts: (requests) =>
+        withHash((hash, diff) =>
+          postTab({ type: 'loadTexts', hash, diff, texts: requests }),
+        ),
+      viewFile: (source) => postTab({ type: 'viewFile', ...source }),
+      requestTree: (hash) => {
+        apply((state) => withTab(state, { type: 'requestTree', hash }));
+        const { root } = get().tab;
+        if (root !== undefined) {
+          outbox.follow({ type: 'loadTree', hash, root });
+        }
+      },
+      openRepository: (root) => post({ type: 'openRepository', root }),
+      browseRepositories: () => post({ type: 'browseRepositories' }),
+      openClone: () => post({ type: 'openClone' }),
+      initRepository: () => post({ type: 'initRepository' }),
+      checkCloneTarget: (folder, name) =>
+        post({ type: 'checkCloneTarget', folder, name }),
+      chooseCloneFolder: (folder) =>
+        post({ type: 'chooseCloneFolder', folder }),
+      startClone: (ask) => post({ type: 'clone', ...ask }),
+      stopClone: () => post({ type: 'stopClone' }),
+      selectWorktree: (root) => post({ type: 'selectWorktree', root }),
+      preloadWorktree: (root) => post({ type: 'preloadWorktree', root }),
       pull: () => postTab({ type: 'pull' }),
       push: () => postTab({ type: 'push' }),
       pullBranch: (name) => postTab({ type: 'pullBranch', name }),

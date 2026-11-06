@@ -6,14 +6,7 @@ import { languageOf } from '../../../ui/languages';
 import './style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
-import {
-  type Direction,
-  type TabMessage,
-  type GitToHost,
-  type GitToWebview,
-  type ChangeArea,
-  type TextRequest,
-} from '../shared/protocol';
+import { type GitToHost, type GitToWebview } from '../shared/protocol';
 import {
   compareLanguageKey,
   createGitStore,
@@ -39,14 +32,12 @@ import {
   type ColumnName,
 } from './activeColumn';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
-import { Commits, settling } from './commitList';
+import { Commits } from './commitList';
 import { clicked } from '../../../shell/shared/keymap';
 import { useBinding } from '../../../ui/shortcuts';
 import { Diff, DiffOptions, diffSelection } from './diffColumn';
-import type { ViewedSource } from './images';
 import { Files, filesTitle, listsNothing, noChangesText } from './filesColumn';
 import { foldersOf } from './fileTree';
-import { compareWith } from '../shared/comparisons';
 import { strings } from '../../../shared/strings';
 import { AddressBar, NavButtons } from './navBar';
 import { SearchButton } from '../../../ui/search';
@@ -65,7 +56,6 @@ import { changesShown, treeOf, treeToLoad } from './tabView';
 import { repositoryMenuItems } from './repositoryMenu';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { ClonePopup } from './clonePopup';
-import type { CloneAsk } from '../shared/clone';
 
 export interface GitToolProps {
   active: boolean;
@@ -80,7 +70,6 @@ export function GitTool({
   listen,
   comparing,
 }: GitToolProps) {
-  const outbox = useMemo(() => settling(postToHost), [postToHost]);
   const {
     closeMenu,
     setToolItems,
@@ -88,10 +77,35 @@ export function GitTool({
     closeTab: onClose,
     changeTextView,
   } = useShellActions();
-  const post = outbox.send;
-  const [store] = useState(() => createGitStore(post));
+  const [store] = useState(() => createGitStore(postToHost));
   const {
-    dispatch,
+    selectCommit,
+    compareCommit,
+    selectFile,
+    navigate,
+    jump,
+    showUpstream,
+    showParent,
+    lookupHash,
+    searchCommits,
+    fetch: fetchRemotes,
+    toggleMerge,
+    scrolled,
+    loadCommits,
+    loadFileDiff,
+    loadTexts,
+    viewFile,
+    requestTree,
+    openRepository,
+    browseRepositories,
+    openClone,
+    initRepository,
+    checkCloneTarget,
+    chooseCloneFolder,
+    startClone,
+    stopClone,
+    selectWorktree,
+    preloadWorktree,
     changeShowAllFiles,
     changeCollapseMerges,
     changeSolo,
@@ -135,7 +149,6 @@ export function GitTool({
     },
     active && comparing !== undefined,
   );
-  const selections = useRef(0);
   const {
     root: activeTab,
     repository,
@@ -181,19 +194,22 @@ export function GitTool({
       setToolItems(
         'git',
         repositoryMenuItems(recent, {
-          onOpen: (root) => post({ type: 'openRepository', root }),
-          onBrowse: () => post({ type: 'browseRepositories' }),
-          onClone: () => post({ type: 'openClone' }),
-          onInit: () => post({ type: 'initRepository' }),
+          onOpen: openRepository,
+          onBrowse: browseRepositories,
+          onClone: openClone,
+          onInit: initRepository,
           onRemove: forgetRecent,
         }),
       ),
-    [recent, post, setToolItems, forgetRecent],
-  );
-  const checkCloneTarget = useCallback(
-    (folder: string, name: string) =>
-      post({ type: 'checkCloneTarget', folder, name }),
-    [post],
+    [
+      recent,
+      setToolItems,
+      forgetRecent,
+      openRepository,
+      browseRepositories,
+      openClone,
+      initRepository,
+    ],
   );
   useBinding(gitKeymap.commits, toggleCommits, repositoryShown);
   const commitColumnShown = commitsShown || searching;
@@ -288,43 +304,13 @@ export function GitTool({
     }
   }, [activeTab, closeMenu]);
 
-  const postTab = useCallback(
-    (message: TabMessage) => {
-      if (activeTab !== undefined) {
-        post({ ...message, root: activeTab });
-      }
-    },
-    [post, activeTab],
-  );
-  const passTab = useCallback(
-    (message: TabMessage) => {
-      if (activeTab !== undefined) {
-        outbox.pass({ ...message, root: activeTab });
-      }
-    },
-    [outbox, activeTab],
-  );
-
   const onScrolled = useCallback(
     (top: string, offset: number, report: number) =>
-      passTab({ type: 'scrolled', hash: top, offset, report }),
-    [passTab],
+      scrolled(activeTab, top, offset, report),
+    [scrolled, activeTab],
   );
-
-  const loadCommits = useCallback(
-    (start: number, count: number, generation: number) =>
-      passTab({ type: 'loadCommits', generation, start, count }),
-    [passTab],
-  );
-
-  const refsByCommit = useMemo(
-    () => Map.groupBy(repository?.refs ?? [], (info) => info.commit),
-    [repository],
-  );
-  const stashes = useMemo(
-    () => new Set(repository?.stashes.map((stash) => stash.commit)),
-    [repository],
-  );
+  const refsByCommit = useStore(store, (state) => state.refsByCommit);
+  const stashes = useStore(store, (state) => state.stashCommits);
 
   const opening = activeTab !== undefined && history === undefined && !error;
   const layoutSelection = shownSelection(hash, workingTree);
@@ -356,50 +342,6 @@ export function GitTool({
     }
   }, [activeShown, commitColumnShown, layoutSelection, diffShown, focusColumn]);
 
-  const selectCommit = (
-    next: string | undefined,
-    replace = false,
-    repeat = false,
-  ) => {
-    const target = next === hash ? undefined : next;
-    const selection = ++selections.current;
-    dispatch({ type: 'showCommit', hash: target, selection });
-    if (activeTab !== undefined) {
-      outbox.settle(
-        {
-          type: 'selectCommit',
-          hash: target,
-          replace,
-          selection,
-          root: activeTab,
-        },
-        repeat,
-      );
-    }
-  };
-  const compareCommit = (added: string) => {
-    const next = compareWith(hash, added);
-    if (next !== hash) {
-      selectCommit(next);
-    }
-  };
-  const lookupHash = useCallback(
-    (query: string) => postTab({ type: 'lookupHash', query }),
-    [postTab],
-  );
-  const searchCommits = useCallback(
-    (query: string) => {
-      postTab({ type: 'searchCommits', query });
-      return () => postTab({ type: 'stopCommitSearch' });
-    },
-    [postTab],
-  );
-  const navigate = useCallback(
-    (direction: Direction, steps: number) =>
-      postTab({ type: 'navigate', direction, steps }),
-    [postTab],
-  );
-
   useEffect(() => {
     if (!repositoryShown) {
       return undefined;
@@ -419,48 +361,13 @@ export function GitTool({
     (direction) => navigate(direction, 1),
     repositoryShown,
   );
-  const jump = (target: string | undefined) => {
-    if (target) {
-      postTab({ type: 'jump', hash: target });
-    }
-  };
   useBinding(
     gitKeymap.head,
     () => jump(repository?.headCommit),
     repositoryShown,
   );
-  useBinding(
-    gitKeymap.upstream,
-    () => postTab({ type: 'showUpstream' }),
-    repositoryShown,
-  );
-  useBinding(
-    gitKeymap.parent,
-    () => postTab({ type: 'showParent' }),
-    repositoryShown,
-  );
-  const loadFileDiff = useCallback(
-    (file: string) => {
-      if (hash) {
-        postTab({ type: 'loadFileDiff', hash, path: file, diff: diffs });
-      }
-    },
-    [hash, diffs, postTab],
-  );
-
-  const viewFile = useCallback(
-    (source: ViewedSource) => postTab({ type: 'viewFile', ...source }),
-    [postTab],
-  );
-  const loadTexts = useCallback(
-    (requests: TextRequest[]) => {
-      if (hash) {
-        postTab({ type: 'loadTexts', hash, diff: diffs, texts: requests });
-      }
-    },
-    [hash, diffs, postTab],
-  );
-
+  useBinding(gitKeymap.upstream, showUpstream, repositoryShown);
+  useBinding(gitKeymap.parent, showParent, repositoryShown);
   const imageOrigin = useMemo(
     () =>
       activeTab === undefined || hash === undefined
@@ -474,23 +381,12 @@ export function GitTool({
     [activeTab, hash, area, diffs, refreshes],
   );
 
-  const selectFile = (next: string | undefined, nextArea?: ChangeArea) => {
-    if (!hash) {
-      return;
-    }
-    dispatch({ type: 'showFile', path: next, area: nextArea });
-    postTab({ type: 'selectFile', hash, path: next, area: nextArea });
-  };
-
   const treeNeeded = showAllFiles ? treeToLoad(tab) : undefined;
   useEffect(() => {
     if (treeNeeded) {
-      dispatch({ type: 'requestTree', hash: treeNeeded });
-      if (activeTab !== undefined) {
-        outbox.follow({ type: 'loadTree', hash: treeNeeded, root: activeTab });
-      }
+      requestTree(treeNeeded);
     }
-  }, [treeNeeded, activeTab, outbox, dispatch]);
+  }, [treeNeeded, requestTree]);
 
   useEffect(() => {
     if (!showAllFiles || path === undefined) {
@@ -566,11 +462,9 @@ export function GitTool({
           chosenFolder={clone.folder}
           checked={clone.target}
           onCheck={checkCloneTarget}
-          onChooseFolder={(folder) =>
-            post({ type: 'chooseCloneFolder', folder })
-          }
-          onClone={(ask: CloneAsk) => post({ type: 'clone', ...ask })}
-          onStop={() => post({ type: 'stopClone' })}
+          onChooseFolder={chooseCloneFolder}
+          onClone={startClone}
+          onStop={stopClone}
           onClose={closeClone}
         />
       )}
@@ -608,8 +502,8 @@ export function GitTool({
             <WorktreeBar
               worktrees={worktrees}
               active={activeTab}
-              onSelect={(root) => post({ type: 'selectWorktree', root })}
-              onPreload={(root) => post({ type: 'preloadWorktree', root })}
+              onSelect={selectWorktree}
+              onPreload={preloadWorktree}
             />
             {
               <>
@@ -672,12 +566,7 @@ export function GitTool({
                     selected={hash}
                     onSelect={selectCommit}
                     onCompare={compareCommit}
-                    onToggleMerge={(merge) =>
-                      postTab({
-                        type: 'toggleMerge',
-                        hash: merge,
-                      })
-                    }
+                    onToggleMerge={toggleMerge}
                     collapseMerges={collapseMerges}
                     onCollapseMerges={changeCollapseMerges}
                     solo={solo}
@@ -698,7 +587,7 @@ export function GitTool({
                             : () => jump(repository.headCommit)
                         }
                         fetching={fetching}
-                        onFetch={() => postTab({ type: 'fetch' })}
+                        onFetch={fetchRemotes}
                         autoFetch={autoFetch}
                         autoFetchMinutes={autoFetchMinutes}
                         onAutoFetch={changeAutoFetch}
