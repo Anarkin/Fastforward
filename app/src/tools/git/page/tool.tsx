@@ -1,6 +1,6 @@
 import { compareKeymap, gitKeymap } from '../shared/keymap';
 import { CompareView } from './compareView';
-import { useTextView } from '../../../ui/textView';
+import { useShell, useShellActions } from '../../../shell/page/store';
 import {
   ChosenLanguage,
   LanguageButton,
@@ -50,7 +50,7 @@ import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { Commits, settling } from './commitList';
 import { clicked } from '../../../shell/shared/keymap';
 import { useBinding } from '../../../ui/shortcuts';
-import { type ContextMenuItem, type OpenMenu } from '../../../ui/contextMenu';
+import { type ContextMenuItem } from '../../../ui/contextMenu';
 import { OpenContextMenu, type MenuEvent, type MenuTarget } from './menus';
 import { Diff, DiffOptions, diffSelection } from './diffColumn';
 import type { ViewedSource } from './images';
@@ -84,11 +84,6 @@ export interface GitToolProps {
   active: boolean;
   post: (message: GitToHost) => void;
   listen: (handler: (message: GitToWebview) => void) => () => void;
-  showMenu: (menu: OpenMenu) => void;
-  closeMenu: () => void;
-  onNewTabItems: (items: readonly ContextMenuItem[]) => void;
-  onTitle: (title: string | undefined) => void;
-  onClose: (tab: string) => void;
   comparing: string | undefined;
 }
 
@@ -98,14 +93,17 @@ export function GitTool({
   active,
   post: postToHost,
   listen,
-  showMenu,
-  closeMenu,
-  onNewTabItems,
-  onTitle,
-  onClose,
   comparing,
 }: GitToolProps) {
   const outbox = useMemo(() => settling(postToHost), [postToHost]);
+  const {
+    showMenu,
+    closeMenu,
+    setToolItems,
+    setToolTitle,
+    closeTab: onClose,
+    changeTextView,
+  } = useShellActions();
   const post = outbox.send;
   const [store] = useState(() => createGitStore(post));
   const { dispatch, changeBookmarks } = store.getState();
@@ -169,8 +167,8 @@ export function GitTool({
   } = tab;
   const [showEntireFile, setShowEntireFile] = useState(false);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
-  const textView = useTextView();
-  const { wordWrap, showWhitespace } = textView.view;
+  const textView = useShell((state) => state.textView);
+  const { wordWrap, showWhitespace } = textView;
   const [autoFetch, setAutoFetch] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
   const [diffLayout, setDiffLayout] = useState<DiffLayout>('sideBySide');
@@ -189,7 +187,8 @@ export function GitTool({
   const [lastFetch, setLastFetch] = useState<LastFetch>({});
   useEffect(
     () =>
-      onNewTabItems(
+      setToolItems(
+        'git',
         repositoryMenuItems(recent, {
           onOpen: (root) => post({ type: 'openRepository', root }),
           onBrowse: () => post({ type: 'browseRepositories' }),
@@ -201,7 +200,7 @@ export function GitTool({
           },
         }),
       ),
-    [recent, post, onNewTabItems],
+    [recent, post, setToolItems],
   );
   const checkCloneTarget = useCallback(
     (folder: string, name: string) =>
@@ -370,8 +369,8 @@ export function GitTool({
   }, [listen, loadColumnWidths]);
 
   useEffect(
-    () => onTitle(comparing === undefined ? activeTab : undefined),
-    [activeTab, comparing, onTitle],
+    () => setToolTitle('git', comparing === undefined ? activeTab : undefined),
+    [activeTab, comparing, setToolTitle],
   );
   const menuWorktree = useRef(activeTab);
   useEffect(() => {
@@ -614,7 +613,7 @@ export function GitTool({
     post({ type: 'setIgnoreWhitespace', ignore });
   };
   const changeWordWrap = (wrap: boolean) =>
-    textView.change({ ...textView.view, wordWrap: wrap });
+    changeTextView({ ...textView, wordWrap: wrap });
   const languageTrigger = useRef<HTMLButtonElement>(null);
   const singleFile =
     comparing !== undefined
@@ -626,8 +625,13 @@ export function GitTool({
     comparing !== undefined
       ? shownCompare && languageOf(shownCompare.new)
       : path && languageOf(path);
-  const { choice: languageChoice, choose: chooseLanguage } =
-    useLanguageChoice(singleFile);
+  const { choice: languageChoice, choose: chooseLanguage } = useLanguageChoice(
+    singleFile,
+    {
+      on: textView.highlightSyntax,
+      change: (on) => changeTextView({ ...textView, highlightSyntax: on }),
+    },
+  );
   const chosenLanguage = shownLanguage(languageChoice, undefined);
   const languageButton = (
     <LanguageButton
@@ -645,7 +649,7 @@ export function GitTool({
   );
   useBinding(gitKeymap.wrap, () => changeWordWrap(!wordWrap), active);
   const changeShowWhitespace = (show: boolean) =>
-    textView.change({ ...textView.view, showWhitespace: show });
+    changeTextView({ ...textView, showWhitespace: show });
   useBinding(
     gitKeymap.showWhitespace,
     () => changeShowWhitespace(!showWhitespace),

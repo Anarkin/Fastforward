@@ -10,7 +10,6 @@ import { shortcutGroupsOf, type ShortcutGroup } from '../shared/keymap';
 import type { ToHost } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import type { ToolId, ToWebviewOfTool } from '../shared/tools';
-import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
 import { CommanderTool } from '../../tools/commander/page/tool';
 import {
   commanderGroups,
@@ -68,20 +67,12 @@ export function ToolViews({
   active,
   post,
   listeners,
-  showMenu,
-  closeMenu,
-  onNewTabItems,
-  onTitle,
   comparing,
 }: {
   active: ToolId | undefined;
   comparing: string | undefined;
   post: (message: ToHost) => void;
   listeners: ToolListeners;
-  showMenu: (menu: OpenMenu) => void;
-  closeMenu: () => void;
-  onNewTabItems: (tool: ToolId, items: readonly ContextMenuItem[]) => void;
-  onTitle: (tool: ToolId, title: string | undefined) => void;
 }) {
   const postGit = useCallback(
     (message: GitToHost) => post({ type: 'tool', tool: 'git', message }),
@@ -95,14 +86,6 @@ export function ToolViews({
       };
     },
     [listeners],
-  );
-  const gitItems = useCallback(
-    (items: readonly ContextMenuItem[]) => onNewTabItems('git', items),
-    [onNewTabItems],
-  );
-  const gitTitle = useCallback(
-    (title: string | undefined) => onTitle('git', title),
-    [onTitle],
   );
   const postTerminal = useCallback(
     (message: TerminalToHost) =>
@@ -132,42 +115,22 @@ export function ToolViews({
     },
     [listeners],
   );
-  const closeTab = useCallback(
-    (tab: string) => post({ type: 'closeTab', tab }),
-    [post],
-  );
-  const copyText = useCallback(
-    (text: string) => post({ type: 'copyText', text }),
-    [post],
-  );
-  const terminalItems = useCallback(
-    (items: readonly ContextMenuItem[]) => onNewTabItems('terminal', items),
-    [onNewTabItems],
-  );
   return (
     <>
       <TerminalTool
         active={active === 'terminal'}
         post={postTerminal}
         listen={listenTerminal}
-        onCopy={copyText}
-        onNewTabItems={terminalItems}
       />
       <CommanderTool
         active={active === 'commander'}
         post={postCommander}
         listen={listenCommander}
-        onClose={closeTab}
       />
       <GitTool
         active={active === 'git'}
         post={postGit}
         listen={listenGit}
-        showMenu={showMenu}
-        closeMenu={closeMenu}
-        onNewTabItems={gitItems}
-        onTitle={gitTitle}
-        onClose={closeTab}
         comparing={comparing}
       />
     </>

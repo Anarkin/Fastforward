@@ -95,12 +95,11 @@ import { afterPaint } from '../../../ui/afterPaint';
 import {
   followRows,
   rowPadding,
-  Scrolling,
   sidewaysColumns,
   snappedTop,
   type RowFollower,
 } from '../../../ui/rowScroll';
-import { useTextView } from '../../../ui/textView';
+import { useShell } from '../../../shell/page/store';
 import {
   areaColumns,
   codePadding,
@@ -2257,7 +2256,7 @@ export function DiffView({
   });
   const scrollTarget = useRef<number>(undefined);
   const scrollFrame = useRef<number>(undefined);
-  const scrolling = useContext(Scrolling);
+  const scrolling = useShell((state) => state.scrolling);
   const follower = useRef<RowFollower>(undefined);
   const scrollToTop = useCallback(
     (top: number) => {
@@ -2347,12 +2346,13 @@ export function DiffView({
     [rows],
   );
   const chosenLanguage = useContext(ChosenLanguage);
+  const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const syntax = useSyntax(
     files,
     whole,
     texts,
     open,
-    useTextView().view.highlightSyntax || chosenLanguage !== undefined,
+    highlightSyntax || chosenLanguage !== undefined,
     chosenLanguage,
   );
   const requestedTexts = useRef(new Set<string>());

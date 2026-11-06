@@ -11,11 +11,7 @@ import {
   type LanguageChoice,
 } from '../../ui/languageChoice';
 import { languages } from '../../ui/languages';
-import {
-  defaultTextView,
-  TextViewContext,
-  useTextView,
-} from '../../ui/textView';
+import { defaultTextView } from '../../ui/textView';
 import type { TextView } from '../../shell/shared/protocol';
 
 const first = languages[0];
@@ -36,13 +32,18 @@ interface Seen {
 
 function Probe({
   view,
+  change,
   onSeen,
 }: {
   view: TextView;
+  change: (view: TextView) => void;
   onSeen: (seen: Seen) => void;
 }) {
   const [file, setFile] = useState<string | undefined>('a.ts');
-  const { choice, choose } = useLanguageChoice(file);
+  const { choice, choose } = useLanguageChoice(file, {
+    on: view.highlightSyntax,
+    change: (on) => change({ ...view, highlightSyntax: on }),
+  });
   useLayoutEffect(() => {
     onSeen({ choice, choose, view, show: setFile });
   }, [onSeen, choice, choose, view]);
@@ -74,11 +75,14 @@ function KeptChoice({
   show: (file: string | undefined) => void;
   onSeen: (seen: Seen) => void;
 }) {
-  const { view } = useTextView();
-  const { choice, choose } = useLanguageChoice(file, kept);
+  const { choice, choose } = useLanguageChoice(
+    file,
+    { on: defaultTextView.highlightSyntax, change: () => undefined },
+    kept,
+  );
   useLayoutEffect(() => {
-    onSeen({ choice, choose, view, show });
-  }, [onSeen, choice, choose, view, show]);
+    onSeen({ choice, choose, view: defaultTextView, show });
+  }, [onSeen, choice, choose, show]);
   return null;
 }
 
@@ -87,11 +91,7 @@ function Saved({ onSeen }: { onSeen: (seen: Seen) => void }) {
     ...defaultTextView,
     highlightSyntax: false,
   });
-  return (
-    <TextViewContext value={{ view, change }}>
-      <Probe view={view} onSeen={onSeen} />
-    </TextViewContext>
-  );
+  return <Probe view={view} change={change} onSeen={onSeen} />;
 }
 
 suite('The language text is colored in', () => {
@@ -252,15 +252,7 @@ suite('The language text is colored in', () => {
         seen.current = latest;
       };
       const root = createRoot(main);
-      await act(async () =>
-        root.render(
-          <TextViewContext
-            value={{ view: defaultTextView, change: () => undefined }}
-          >
-            <KeptProbe onSeen={onSeen} />
-          </TextViewContext>,
-        ),
-      );
+      await act(async () => root.render(<KeptProbe onSeen={onSeen} />));
       assert.strictEqual(seen.current?.choice, 'auto');
 
       await act(async () => seen.current?.choose('python'));

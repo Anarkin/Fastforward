@@ -1,7 +1,6 @@
 import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
 import {
   useCallback,
-  useContext,
   useEffect,
   useEffectEvent,
   useId,
@@ -15,9 +14,10 @@ import { rowPlace } from './rowPlace';
 import {
   followRows,
   revealGlides,
+  defaultScrolling,
   rowPadding,
-  Scrolling,
   type RowFollower,
+  type ScrollSettings,
 } from './rowScroll';
 
 export const estimatedRowHeight = 22;
@@ -158,6 +158,7 @@ export function VirtualRows({
   onScrolled,
   wheelStep,
   notchRows,
+  scrolling = defaultScrolling,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
@@ -173,6 +174,7 @@ export function VirtualRows({
   onScrolled?: (offset: number) => void;
   wheelStep?: () => number;
   notchRows?: number;
+  scrolling?: ScrollSettings;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -206,7 +208,6 @@ export function VirtualRows({
   }, [fixedHeight, virtualizer]);
   const rowHeight = useEffectEvent(() => fixedHeight ?? estimatedRowHeight);
   const totalSize = useEffectEvent(() => virtualizer.getTotalSize());
-  const scrolling = useContext(Scrolling);
   const stepOf = useEffectEvent(() => wheelStep?.() ?? rowHeight());
   const perNotch = useEffectEvent(() => notchRows ?? scrolling.wheelRows);
   const smooth = useEffectEvent(() => scrolling.smooth);

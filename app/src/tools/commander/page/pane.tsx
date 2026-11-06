@@ -1,5 +1,4 @@
 import {
-  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -46,7 +45,8 @@ import {
   type SortColumn,
 } from '../shared/settings';
 import type { PaneView } from './view';
-import { DateFormat, formatDate } from '../../../ui/dates';
+import { formatDate } from '../../../ui/dates';
+import { useShell } from '../../../shell/page/store';
 import {
   BackIcon,
   FileIcon,
@@ -384,7 +384,8 @@ export function Pane({
       onSelect(selection);
     }
   };
-  const dateFormat = useContext(DateFormat);
+  const dateFormat = useShell((state) => state.dateFormat);
+  const scrolling = useShell((state) => state.scrolling);
   const listed = useMemo(
     () => ({
       count: rows.length,
@@ -758,6 +759,7 @@ export function Pane({
             wholeRows
             wheelStep={tiled ? tileTextRow : undefined}
             notchRows={tiled ? 1 : undefined}
+            scrolling={scrolling}
             onKeyDown={(event, visible) => {
               const permanently = keyPressed(
                 commanderKeymap.deleteItems,

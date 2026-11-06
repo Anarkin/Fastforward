@@ -1,0 +1,262 @@
+import { createContext, useContext } from 'react';
+import { createStore, useStore, type StoreApi } from 'zustand';
+import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
+import { defaultDateFormat } from '../../ui/dates';
+import { defaultImageView } from '../../ui/imageView';
+import { defaultScrolling, type ScrollSettings } from '../../ui/rowScroll';
+import { defaultTextView } from '../../ui/textView';
+import { addNotice } from '../shared/notices';
+import type {
+  AboutInfo,
+  ImageView,
+  TabInfo,
+  TextView,
+  ToHost,
+  ToWebview,
+  ToWebviewOf,
+  UpdateStatus,
+} from '../shared/protocol';
+import { confirmsClose, type ToolId } from '../shared/tools';
+import type { Notice } from './notices';
+import { movedTab } from './tabBar';
+
+export type Popup = 'shortcuts' | 'about' | 'openWith';
+
+export type Confirming =
+  { readonly kind: 'tab'; readonly tab: TabInfo } | { readonly kind: 'quit' };
+
+export interface TabMenu {
+  readonly tab: string | undefined;
+  readonly menu: OpenMenu;
+  readonly id: number;
+}
+
+export function nextMenu(
+  previous: TabMenu | undefined,
+  tab: string | undefined,
+  menu: OpenMenu,
+): TabMenu {
+  return { tab, menu, id: (previous?.id ?? 0) + 1 };
+}
+
+export function menuIn(
+  opened: TabMenu | undefined,
+  tab: string | undefined,
+): OpenMenu | undefined {
+  return opened !== undefined && opened.tab === tab ? opened.menu : undefined;
+}
+
+export function withPopup(
+  shown: readonly Popup[],
+  popup: Popup,
+  open: boolean,
+): readonly Popup[] {
+  if (shown.includes(popup) === open) {
+    return shown;
+  }
+  return open ? [...shown, popup] : shown.filter((other) => other !== popup);
+}
+
+interface ShellSource {
+  readonly tabs: readonly TabInfo[] | undefined;
+  readonly active: string | undefined;
+  readonly notices: readonly Notice[];
+  readonly update: UpdateStatus;
+  readonly about: AboutInfo | undefined;
+  readonly installsCommand: boolean;
+  readonly dateFormat: string;
+  readonly scrolling: ScrollSettings;
+  readonly textView: TextView;
+  readonly imageView: ImageView;
+  readonly choosing: ToWebviewOf<'chooseTool'> | undefined;
+  readonly popups: readonly Popup[];
+  readonly confirming: Confirming | undefined;
+  readonly menu: TabMenu | undefined;
+  readonly toolItems: Partial<Record<ToolId, readonly ContextMenuItem[]>>;
+  readonly toolTitles: Partial<Record<ToolId, string>>;
+}
+
+interface ShellActions {
+  readonly receive: (message: ToWebview) => void;
+  readonly dismissNotice: (id: number) => void;
+  readonly showPopup: (popup: Popup, open: boolean) => void;
+  readonly togglePopup: (popup: Popup) => void;
+  readonly showMenu: (menu: OpenMenu) => void;
+  readonly closeMenu: () => void;
+  readonly closeTab: (id: string) => void;
+  readonly confirm: () => void;
+  readonly cancel: () => void;
+  readonly openWith: (tool: ToolId | undefined) => void;
+  readonly moveTab: (id: string, index: number) => void;
+  readonly setToolItems: (
+    tool: ToolId,
+    items: readonly ContextMenuItem[],
+  ) => void;
+  readonly setToolTitle: (tool: ToolId, title: string | undefined) => void;
+  readonly changeTextView: (view: TextView) => void;
+  readonly changeImageView: (view: ImageView) => void;
+  readonly copyText: (text: string) => void;
+}
+
+type ShellState = ShellSource & ShellActions;
+
+const shellDefaults: ShellSource = {
+  tabs: undefined,
+  active: undefined,
+  notices: [],
+  update: { kind: 'idle' },
+  about: undefined,
+  installsCommand: false,
+  dateFormat: defaultDateFormat,
+  scrolling: defaultScrolling,
+  textView: defaultTextView,
+  imageView: defaultImageView,
+  choosing: undefined,
+  popups: [],
+  confirming: undefined,
+  menu: undefined,
+  toolItems: {},
+  toolTitles: {},
+};
+
+function received(
+  state: ShellSource,
+  message: ToWebview,
+  noticeId: () => number,
+): Partial<ShellSource> {
+  switch (message.type) {
+    case 'tabs':
+      return {
+        tabs: message.tabs,
+        active: message.active,
+        menu:
+          menuIn(state.menu, message.active) === undefined
+            ? undefined
+            : state.menu,
+      };
+    case 'dateFormat':
+      return { dateFormat: message.format };
+    case 'scrolling':
+      return {
+        scrolling: { wheelRows: message.wheelRows, smooth: message.smooth },
+      };
+    case 'textView':
+      return { textView: message.view };
+    case 'imageView':
+      return { imageView: message.view };
+    case 'notice':
+      return {
+        notices: addNotice(state.notices, {
+          id: noticeId(),
+          level: message.level,
+          message: message.message,
+          shownAt: performance.now(),
+        }),
+      };
+    case 'update':
+      return { update: message.status };
+    case 'about':
+      return { about: message };
+    case 'terminalCommand':
+      return { installsCommand: message.installable };
+    case 'confirmQuit':
+      return { confirming: { kind: 'quit' } };
+    case 'chooseTool':
+      return {
+        choosing: message,
+        popups: withPopup(state.popups, 'openWith', true),
+      };
+    default:
+      return {};
+  }
+}
+
+export function createShellStore(
+  post: (message: ToHost) => void,
+  initial: Partial<ShellSource> = {},
+): StoreApi<ShellState> {
+  let noticesShown = 0;
+  return createStore<ShellState>()((set, get) => {
+    return {
+      ...shellDefaults,
+      ...initial,
+      receive: (message) => {
+        if (message.type !== 'tool') {
+          set((state) => received(state, message, () => ++noticesShown));
+        }
+      },
+      dismissNotice: (id) =>
+        set((state) => ({
+          notices: state.notices.filter((notice) => notice.id !== id),
+        })),
+      showPopup: (popup, open) =>
+        set((state) => ({ popups: withPopup(state.popups, popup, open) })),
+      togglePopup: (popup) =>
+        set((state) => ({
+          popups: withPopup(state.popups, popup, !state.popups.includes(popup)),
+        })),
+      showMenu: (menu) =>
+        set((state) => ({ menu: nextMenu(state.menu, state.active, menu) })),
+      closeMenu: () => set({ menu: undefined }),
+      closeTab: (id) => {
+        const tab = get().tabs?.find((each) => each.id === id);
+        if (tab !== undefined && confirmsClose[tab.tool]) {
+          set({ confirming: { kind: 'tab', tab } });
+        } else {
+          post({ type: 'closeTab', tab: id });
+        }
+      },
+      confirm: () => {
+        const { confirming } = get();
+        if (confirming === undefined) {
+          return;
+        }
+        set({ confirming: undefined });
+        post(
+          confirming.kind === 'tab'
+            ? { type: 'closeTab', tab: confirming.tab.id }
+            : { type: 'quit' },
+        );
+      },
+      cancel: () => set({ confirming: undefined }),
+      openWith: (tool) => {
+        set((state) => ({
+          choosing: undefined,
+          popups: withPopup(state.popups, 'openWith', false),
+        }));
+        post({ type: 'openWith', tool });
+      },
+      moveTab: (id, index) => {
+        set((state) => ({
+          tabs: state.tabs && movedTab(state.tabs, id, index),
+        }));
+        post({ type: 'moveTab', tab: id, index });
+      },
+      setToolItems: (tool, items) =>
+        set((state) => ({ toolItems: { ...state.toolItems, [tool]: items } })),
+      setToolTitle: (tool, title) =>
+        set((state) => ({
+          toolTitles: { ...state.toolTitles, [tool]: title },
+        })),
+      changeTextView: (view) => {
+        set({ textView: view });
+        post({ type: 'setTextView', view });
+      },
+      changeImageView: (view) => {
+        set({ imageView: view });
+        post({ type: 'setImageView', view });
+      },
+      copyText: (text) => post({ type: 'copyText', text }),
+    };
+  });
+}
+
+export const ShellStore = createContext(createShellStore(() => undefined));
+
+export function useShell<T>(select: (state: ShellState) => T): T {
+  return useStore(useContext(ShellStore), select);
+}
+
+export function useShellActions(): ShellActions {
+  return useContext(ShellStore).getState();
+}

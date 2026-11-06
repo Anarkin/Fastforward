@@ -58,15 +58,7 @@ async function withTerminal(
       };
     };
     const show = (active: boolean, ...messages: TerminalToWebview[]) => {
-      root.render(
-        <TerminalTool
-          active={active}
-          post={noop}
-          listen={listen}
-          onCopy={noop}
-          onNewTabItems={noop}
-        />,
-      );
+      root.render(<TerminalTool active={active} post={noop} listen={listen} />);
       for (const message of messages) {
         for (const listener of listeners) {
           listener(message);

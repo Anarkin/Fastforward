@@ -9,12 +9,10 @@ import type { ToolId } from '../../../shell/shared/tools';
 import {
   App,
   emptyState,
-  menuIn,
   confirmation,
   newTabItems,
-  nextMenu,
-  withPopup,
 } from '../../../shell/page/App';
+import { menuIn, nextMenu, withPopup } from '../../../shell/page/store';
 import { noop, tagsWith } from '../../fixtures';
 
 suite('Window', () => {

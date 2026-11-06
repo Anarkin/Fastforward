@@ -56,11 +56,8 @@ import {
   workingTreeRowHeight,
   workingTreeShift,
 } from '../../../../tools/git/page/commitList';
-import {
-  DateFormat,
-  defaultDateFormat,
-  formatDate,
-} from '../../../../ui/dates';
+import { defaultDateFormat, formatDate } from '../../../../ui/dates';
+import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { GitStore } from '../../../../tools/git/page/store';
 import { gitStore } from '../../../componentFixtures';
 import {
@@ -1196,9 +1193,11 @@ suite('Commit row', () => {
     );
     assert.ok(
       renderToStaticMarkup(
-        <DateFormat value="DD.MM.YYYY">
+        <ShellStore
+          value={createShellStore(noop, { dateFormat: 'DD.MM.YYYY' })}
+        >
           <CommitRow {...props} />
-        </DateFormat>,
+        </ShellStore>,
       ).includes(
         `<span class="date">${formatDate(props.commit.commitDate, 'DD.MM.YYYY')}</span>`,
       ),

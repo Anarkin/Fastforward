@@ -31,7 +31,8 @@ import { CommitHistory } from './commitHistory';
 import { commitMenuTarget, OpenContextMenu, type MenuTarget } from './menus';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { detachedHead, useGit } from './store';
-import { DateFormat, formatDate } from '../../../ui/dates';
+import { formatDate } from '../../../ui/dates';
+import { useShell } from '../../../shell/page/store';
 import { MenuButton } from '../../../ui/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
 import { useSkeleton } from '../../../ui/skeleton';
@@ -1181,7 +1182,7 @@ export function CommitRow({
   children?: React.ReactNode;
 }) {
   const openMenu = useContext(OpenContextMenu);
-  const dateFormat = useContext(DateFormat);
+  const dateFormat = useShell((state) => state.dateFormat);
   return (
     <div
       {...itemProps}

@@ -3,7 +3,6 @@ import { strings } from '../shared/strings';
 import type { ContextMenuItem } from './contextMenu';
 import { languages } from './languages';
 import { MenuButton } from './menu';
-import { useTextView } from './textView';
 
 export type LanguageChoice = 'auto' | 'plain' | (string & {});
 
@@ -73,14 +72,19 @@ export interface KeptLanguage {
   readonly keep: (language: string | undefined) => void;
 }
 
+export interface Highlighting {
+  readonly on: boolean;
+  readonly change: (on: boolean) => void;
+}
+
 export function useLanguageChoice(
   file: string | undefined,
+  highlighting: Highlighting,
   kept?: KeptLanguage,
 ): {
   readonly choice: LanguageChoice;
   readonly choose: (choice: LanguageChoice) => void;
 } {
-  const textView = useTextView();
   const [picked, setPicked] = useState<{
     readonly file: string;
     readonly language: string;
@@ -105,14 +109,11 @@ export function useLanguageChoice(
       );
     }
   };
-  const choice = language ?? (textView.view.highlightSyntax ? 'auto' : 'plain');
+  const choice = language ?? (highlighting.on ? 'auto' : 'plain');
   const choose = (chosen: LanguageChoice) => {
     if (chosen === 'auto' || chosen === 'plain') {
       pick(undefined);
-      textView.change({
-        ...textView.view,
-        highlightSyntax: chosen === 'auto',
-      });
+      highlighting.change(chosen === 'auto');
     } else if (file !== undefined) {
       pick(chosen);
     }

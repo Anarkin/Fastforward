@@ -2,7 +2,6 @@ import { fontOf, spacingOf } from '../../../ui/textWidths';
 import {
   memo,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -14,7 +13,8 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { wheeled } from '../../../shell/shared/keymap';
 import { viewerKeymap } from '../shared/keymap';
 import { followDrag } from '../../../ui/followDrag';
-import { Scrolling, sidewaysColumns, wheelTurn } from '../../../ui/rowScroll';
+import { sidewaysColumns, wheelTurn } from '../../../ui/rowScroll';
+import { useShell } from '../../../shell/page/store';
 import {
   grabbedAt,
   hideAfter,
@@ -220,7 +220,7 @@ export function ScrollBody({
   const [track, setTrack] = useState(0);
   const [screen, setScreen] = useState(1);
   const wheel = useRef(0);
-  const { wheelRows } = useContext(Scrolling);
+  const { wheelRows } = useShell((state) => state.scrolling);
   const [barShown, setBarShown] = useState(false);
   const [dragging, setDragging] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);

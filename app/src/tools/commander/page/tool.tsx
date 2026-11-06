@@ -21,6 +21,7 @@ import { useBinding } from '../../../ui/shortcuts';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { deleteQuestion } from './deleting';
 import { strings } from '../../../shared/strings';
+import { useShellActions } from '../../../shell/page/store';
 
 const minimumShare = 0.15;
 
@@ -44,14 +45,13 @@ export function CommanderTool({
   active,
   post,
   listen,
-  onClose,
 }: {
   active: boolean;
-  onClose: (tab: string) => void;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: CommanderToWebview) => void) => () => void;
 }) {
   const [view, dispatch] = useReducer(reduceView, emptyView);
+  const { closeTab: onClose } = useShellActions();
   const [drives, setDrives] = useState<readonly string[]>([]);
   const [viewed, setViewed] = useState<Viewing>();
   const viewerListeners = useRef(new Set<(message: ToViewer) => void>());

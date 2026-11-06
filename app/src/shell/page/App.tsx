@@ -1,8 +1,5 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { DateFormat } from '../../ui/dates';
-import { Scrolling } from '../../ui/rowScroll';
-import { defaultTextView, TextViewContext } from '../../ui/textView';
-import { defaultImageView, ImageViewContext } from '../../ui/imageView';
+import { useCallback, useEffect, useState } from 'react';
+import { useStore } from 'zustand';
 import {
   appGroups,
   keymap,
@@ -10,36 +7,20 @@ import {
   tabGroups,
   type ShortcutGroup,
 } from '../shared/keymap';
-import { addNotice } from '../shared/notices';
-import type {
-  AboutInfo,
-  TabInfo,
-  ToHost,
-  ToWebview,
-  ToWebviewOf,
-  UpdateStatus,
-} from '../shared/protocol';
+import type { TabInfo, ToHost, ToWebview } from '../shared/protocol';
 import { strings } from '../../shared/strings';
-import {
-  confirmsClose,
-  tools,
-  type ToolId,
-  type ToWebviewOfTool,
-} from '../shared/tools';
+import { tools, type ToolId, type ToWebviewOfTool } from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
 import { ConfirmPopup } from './confirmPopup';
 import { AppMenu } from './appMenu';
-import {
-  ContextMenu,
-  type ContextMenuItem,
-  type OpenMenu,
-} from '../../ui/contextMenu';
+import { ContextMenu, type ContextMenuItem } from '../../ui/contextMenu';
 import { ToolIcon } from '../../ui/icons';
-import { Notices, type Notice } from './notices';
+import { Notices } from './notices';
 import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../ui/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
-import { movedTab, TabBar } from './tabBar';
+import { createShellStore, ShellStore, type Confirming } from './store';
+import { TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './titleBar';
 import {
   toolShortcuts,
@@ -59,27 +40,6 @@ export function emptyState(
   ) : null;
 }
 
-interface TabMenu {
-  readonly tab: string | undefined;
-  readonly menu: OpenMenu;
-  readonly id: number;
-}
-
-export function nextMenu(
-  previous: TabMenu | undefined,
-  tab: string | undefined,
-  menu: OpenMenu,
-): TabMenu {
-  return { tab, menu, id: (previous?.id ?? 0) + 1 };
-}
-
-export function menuIn(
-  opened: TabMenu | undefined,
-  tab: string | undefined,
-): OpenMenu | undefined {
-  return opened !== undefined && opened.tab === tab ? opened.menu : undefined;
-}
-
 export function newTabItems(
   items: Partial<Record<ToolId, readonly ContextMenuItem[]>>,
   onNewTab: (tool: ToolId) => void,
@@ -93,11 +53,6 @@ export function newTabItems(
       : { label, icon, submenu };
   });
 }
-
-type Popup = 'shortcuts' | 'about' | 'openWith';
-
-type Confirming =
-  { readonly kind: 'tab'; readonly tab: TabInfo } | { readonly kind: 'quit' };
 
 export function confirmation(confirming: Confirming): {
   title: string;
@@ -118,17 +73,6 @@ export function confirmation(confirming: Confirming): {
         message: strings.confirm.quitApp,
         confirm: strings.confirm.quit,
       };
-}
-
-export function withPopup(
-  shown: readonly Popup[],
-  popup: Popup,
-  open: boolean,
-): readonly Popup[] {
-  if (shown.includes(popup) === open) {
-    return shown;
-  }
-  return open ? [...shown, popup] : shown.filter((other) => other !== popup);
 }
 
 export function shortcutGroupsFor(
@@ -167,152 +111,75 @@ interface Props {
 }
 
 export function App({ name, post, listen }: Props) {
-  const [tabs, setTabs] = useState<readonly TabInfo[]>();
-  const [active, setActive] = useState<string>();
-  const [notices, setNotices] = useState<readonly Notice[]>([]);
-  const noticeCount = useRef(0);
-  const dismissNotice = useCallback(
-    (id: number) =>
-      setNotices((shown) => shown.filter((notice) => notice.id !== id)),
-    [],
-  );
-  const [update, setUpdate] = useState<UpdateStatus>({ kind: 'idle' });
-  const [about, setAbout] = useState<AboutInfo>();
-  const [installsCommand, setInstallsCommand] = useState(false);
-  const [dateFormat, setDateFormat] = useState(useContext(DateFormat));
-  const [scrolling, setScrolling] = useState(useContext(Scrolling));
-  const [textView, setTextView] = useState(defaultTextView);
-  const [imageView, setImageView] = useState(defaultImageView);
-  const [choosing, setChoosing] = useState<ToWebviewOf<'chooseTool'>>();
-  const [toolItems, setToolItems] = useState<
-    Partial<Record<ToolId, readonly ContextMenuItem[]>>
-  >({});
-  const [toolTitles, setToolTitles] = useState<Partial<Record<ToolId, string>>>(
-    {},
-  );
-  const [openedMenu, setMenu] = useState<TabMenu>();
-  const [popups, setPopups] = useState<readonly Popup[]>([]);
-  const [confirming, setConfirming] = useState<Confirming>();
-  const showPopup = useCallback(
-    (popup: Popup, open: boolean) =>
-      setPopups((shown) => withPopup(shown, popup, open)),
-    [],
-  );
-  const togglePopup = (popup: Popup) =>
-    setPopups((shown) => withPopup(shown, popup, !shown.includes(popup)));
-  const closeShortcuts = useCallback(
-    () => showPopup('shortcuts', false),
-    [showPopup],
-  );
-  const closeAbout = useCallback(() => showPopup('about', false), [showPopup]);
+  const [store] = useState(() => createShellStore(post));
   const [listeners] = useState<ToolListeners>(() => ({
     terminal: new Set(),
     commander: new Set(),
     git: new Set(),
   }));
+  const tabs = useStore(store, (state) => state.tabs);
+  const active = useStore(store, (state) => state.active);
+  const notices = useStore(store, (state) => state.notices);
+  const update = useStore(store, (state) => state.update);
+  const about = useStore(store, (state) => state.about);
+  const installsCommand = useStore(store, (state) => state.installsCommand);
+  const choosing = useStore(store, (state) => state.choosing);
+  const popups = useStore(store, (state) => state.popups);
+  const confirming = useStore(store, (state) => state.confirming);
+  const openedMenu = useStore(store, (state) => state.menu);
+  const toolItems = useStore(store, (state) => state.toolItems);
+  const toolTitles = useStore(store, (state) => state.toolTitles);
+  const {
+    dismissNotice,
+    showPopup,
+    togglePopup,
+    showMenu,
+    closeMenu,
+    closeTab,
+    confirm,
+    cancel,
+    openWith,
+    moveTab,
+  } = store.getState();
+  const closeShortcuts = useCallback(
+    () => showPopup('shortcuts', false),
+    [showPopup],
+  );
+  const closeAbout = useCallback(() => showPopup('about', false), [showPopup]);
 
   const activeTab = tabs?.find((tab) => tab.id === active);
   const activeTool = activeTab?.tool;
 
   useEffect(() => {
-    const onMessage = (message: ToWebview) => {
-      switch (message.type) {
-        case 'tabs':
-          setTabs(message.tabs);
-          setActive(message.active);
-          break;
-        case 'dateFormat':
-          setDateFormat(message.format);
-          break;
-        case 'scrolling':
-          setScrolling({
-            wheelRows: message.wheelRows,
-            smooth: message.smooth,
-          });
-          break;
-        case 'textView':
-          setTextView(message.view);
-          break;
-        case 'imageView':
-          setImageView(message.view);
-          break;
-        case 'notice': {
-          const id = ++noticeCount.current;
-          setNotices((shown) =>
-            addNotice(shown, {
-              id,
-              level: message.level,
-              message: message.message,
-              shownAt: performance.now(),
-            }),
-          );
-          break;
-        }
-        case 'update':
-          setUpdate(message.status);
-          break;
-        case 'about':
-          setAbout(message);
-          break;
-        case 'terminalCommand':
-          setInstallsCommand(message.installable);
-          break;
-        case 'confirmQuit':
-          setConfirming({ kind: 'quit' });
-          break;
-        case 'chooseTool':
-          setChoosing(message);
-          setPopups((shown) => withPopup(shown, 'openWith', true));
-          break;
-        case 'tool':
-          deliver(listeners, message.tool, message.message);
-          break;
+    const stop = listen((message) => {
+      store.getState().receive(message);
+      if (message.type === 'tool') {
+        deliver(listeners, message.tool, message.message);
       }
-    };
-    const stop = listen(onMessage);
+    });
     post({ type: 'ready' });
     return stop;
-  }, [post, listen, listeners]);
+  }, [post, listen, listeners, store]);
 
   const log = useCallback(
     (message: string) => post({ type: 'log', level: 'info', message }),
     [post],
   );
 
-  const onNewTabItems = useCallback(
-    (tool: ToolId, items: readonly ContextMenuItem[]) =>
-      setToolItems((all) => ({ ...all, [tool]: items })),
-    [],
-  );
-  const onTitle = useCallback(
-    (tool: ToolId, title: string | undefined) =>
-      setToolTitles((all) => ({ ...all, [tool]: title })),
-    [],
-  );
-
-  const openedIn = menuIn(openedMenu, active);
+  const opened = openedMenu?.menu;
   const menu =
-    openedIn?.trigger === newTabTrigger
+    opened?.trigger === newTabTrigger
       ? {
-          ...openedIn,
+          ...opened,
           items: newTabItems(toolItems, (tool) =>
             post({ type: 'newTab', tool }),
           ),
         }
-      : openedIn;
-  if (openedMenu && !menu) {
-    setMenu(undefined);
-  }
-  const closeMenu = useCallback(() => setMenu(undefined), []);
-  const showMenu = useCallback(
-    (opened: OpenMenu) =>
-      setMenu((previous) => nextMenu(previous, active, opened)),
-    [active],
-  );
+      : opened;
 
   const openNewTab = (event: React.MouseEvent) => {
     if (menu?.trigger === newTabTrigger) {
-      setMenu(undefined);
+      closeMenu();
       return;
     }
     const button = event.currentTarget.getBoundingClientRect();
@@ -337,14 +204,6 @@ export function App({ name, post, listen }: Props) {
   );
   useBinding(keymap.about, () => togglePopup('about'));
   useBinding(keymap.openIn, () => post({ type: 'openIn' }));
-  const closeTab = (id: string) => {
-    const tab = tabs?.find((each) => each.id === id);
-    if (tab !== undefined && confirmsClose[tab.tool]) {
-      setConfirming({ kind: 'tab', tab });
-    } else {
-      post({ type: 'closeTab', tab: id });
-    }
-  };
   useBinding(keymap.closeTab, () => {
     if (active !== undefined) {
       closeTab(active);
@@ -359,137 +218,93 @@ export function App({ name, post, listen }: Props) {
   );
 
   return (
-    <div className="app">
-      <TabBar
-        tabs={tabs ?? []}
-        active={active}
-        onSelect={(tab) => post({ type: 'selectTab', tab })}
-        onPreload={(tab) => post({ type: 'preloadTab', tab })}
-        onClose={closeTab}
-        onMove={(tab, index) => {
-          setTabs((shown) => shown && movedTab(shown, tab, index));
-          post({ type: 'moveTab', tab, index });
-        }}
-        onAdd={openNewTab}
-        adding={menu?.trigger === newTabTrigger}
-        onLog={log}
-        menu={
-          <AppMenu
-            update={update}
-            onOpenSettings={() => post({ type: 'openSettings' })}
-            onOpenDefaultSettings={() => post({ type: 'openDefaultSettings' })}
-            onShowShortcuts={() => showPopup('shortcuts', true)}
-            onCheckForUpdates={() => post({ type: 'checkForUpdates' })}
-            onInstallUpdate={() => post({ type: 'installUpdate' })}
-            onShowAbout={() => showPopup('about', true)}
-            onInstallCommand={
-              installsCommand
-                ? () => post({ type: 'installTerminalCommand' })
-                : undefined
-            }
-          />
-        }
-      />
-      {menu && openedMenu && (
-        <ContextMenu key={openedMenu.id} menu={menu} onClose={closeMenu} />
-      )}
-      {popups.map((popup) => {
-        switch (popup) {
-          case 'shortcuts':
-            return (
-              <ShortcutsPopup
-                key={popup}
-                groups={shortcutGroupsFor(activeTool, activeTab)}
-                mac={document.documentElement.dataset.platform === 'darwin'}
-                onClose={closeShortcuts}
-              />
-            );
-          case 'about':
-            return (
-              about && (
-                <AboutPopup
-                  key={popup}
-                  about={about}
-                  onCopy={(text) => post({ type: 'copyText', text })}
-                  onClose={closeAbout}
-                />
-              )
-            );
-          case 'openWith':
-            return (
-              choosing && (
-                <OpenWithPopup
-                  key={popup}
-                  choice={choosing}
-                  onOpen={(tool) => {
-                    setChoosing(undefined);
-                    showPopup('openWith', false);
-                    post({ type: 'openWith', tool });
-                  }}
-                  onClose={() => {
-                    setChoosing(undefined);
-                    showPopup('openWith', false);
-                    post({ type: 'openWith', tool: undefined });
-                  }}
-                />
-              )
-            );
-          default:
-            return popup satisfies never;
-        }
-      })}
-      {confirming && (
-        <ConfirmPopup
-          {...confirmation(confirming)}
-          onConfirm={() => {
-            setConfirming(undefined);
-            post(
-              confirming.kind === 'tab'
-                ? { type: 'closeTab', tab: confirming.tab.id }
-                : { type: 'quit' },
-            );
-          }}
-          onCancel={() => setConfirming(undefined)}
+    <ShellStore value={store}>
+      <div className="app">
+        <TabBar
+          tabs={tabs ?? []}
+          active={active}
+          onSelect={(tab) => post({ type: 'selectTab', tab })}
+          onPreload={(tab) => post({ type: 'preloadTab', tab })}
+          onClose={closeTab}
+          onMove={moveTab}
+          onAdd={openNewTab}
+          adding={menu?.trigger === newTabTrigger}
+          onLog={log}
+          menu={
+            <AppMenu
+              update={update}
+              onOpenSettings={() => post({ type: 'openSettings' })}
+              onOpenDefaultSettings={() =>
+                post({ type: 'openDefaultSettings' })
+              }
+              onShowShortcuts={() => showPopup('shortcuts', true)}
+              onCheckForUpdates={() => post({ type: 'checkForUpdates' })}
+              onInstallUpdate={() => post({ type: 'installUpdate' })}
+              onShowAbout={() => showPopup('about', true)}
+              onInstallCommand={
+                installsCommand
+                  ? () => post({ type: 'installTerminalCommand' })
+                  : undefined
+              }
+            />
+          }
         />
-      )}
-      <Notices notices={notices} onDismiss={dismissNotice} />
-      {emptyState(tabs)}
-      <DateFormat value={dateFormat}>
-        <Scrolling value={scrolling}>
-          <TextViewContext
-            value={{
-              view: textView,
-              change: (view) => {
-                setTextView(view);
-                post({ type: 'setTextView', view });
-              },
-            }}
-          >
-            <ImageViewContext
-              value={{
-                view: imageView,
-                change: (view) => {
-                  setImageView(view);
-                  post({ type: 'setImageView', view });
-                },
-              }}
-            >
-              <ToolViews
-                active={activeTool}
-                comparing={
-                  activeTab?.compare === true ? activeTab.id : undefined
-                }
-                post={post}
-                listeners={listeners}
-                showMenu={showMenu}
-                closeMenu={closeMenu}
-                onNewTabItems={onNewTabItems}
-                onTitle={onTitle}
-              />
-            </ImageViewContext>
-          </TextViewContext>
-        </Scrolling>
-      </DateFormat>
-    </div>
+        {menu && openedMenu && (
+          <ContextMenu key={openedMenu.id} menu={menu} onClose={closeMenu} />
+        )}
+        {popups.map((popup) => {
+          switch (popup) {
+            case 'shortcuts':
+              return (
+                <ShortcutsPopup
+                  key={popup}
+                  groups={shortcutGroupsFor(activeTool, activeTab)}
+                  mac={document.documentElement.dataset.platform === 'darwin'}
+                  onClose={closeShortcuts}
+                />
+              );
+            case 'about':
+              return (
+                about && (
+                  <AboutPopup
+                    key={popup}
+                    about={about}
+                    onCopy={(text) => post({ type: 'copyText', text })}
+                    onClose={closeAbout}
+                  />
+                )
+              );
+            case 'openWith':
+              return (
+                choosing && (
+                  <OpenWithPopup
+                    key={popup}
+                    choice={choosing}
+                    onOpen={openWith}
+                    onClose={() => openWith(undefined)}
+                  />
+                )
+              );
+            default:
+              return popup satisfies never;
+          }
+        })}
+        {confirming && (
+          <ConfirmPopup
+            {...confirmation(confirming)}
+            onConfirm={confirm}
+            onCancel={cancel}
+          />
+        )}
+        <Notices notices={notices} onDismiss={dismissNotice} />
+        {emptyState(tabs)}
+        <ToolViews
+          active={activeTool}
+          comparing={activeTab?.compare === true ? activeTab.id : undefined}
+          post={post}
+          listeners={listeners}
+        />
+      </div>
+    </ShellStore>
   );
 }

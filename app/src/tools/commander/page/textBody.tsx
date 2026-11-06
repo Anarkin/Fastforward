@@ -38,7 +38,7 @@ import {
   screenRows,
   type ScreenRow,
 } from './screenRows';
-import { useTextView } from '../../../ui/textView';
+import { useShell } from '../../../shell/page/store';
 import { columnAt, columnsOf, shownWithin, widestColumns } from './columns';
 import { strings } from '../../../shared/strings';
 import { blankRuns } from '../../../ui/wordWrap';
@@ -291,7 +291,7 @@ export function TextBody({
     [font, table],
   );
   const counting = widths ?? cellWidthsOf(table ?? plainCells);
-  const { wordWrap, showWhitespace } = useTextView().view;
+  const { wordWrap, showWhitespace } = useShell((state) => state.textView);
   const wrapAt =
     wordWrap && columns !== undefined && columns > marksColumns
       ? columns - marksColumns

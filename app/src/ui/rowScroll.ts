@@ -1,4 +1,3 @@
-import { createContext } from 'react';
 import { pressedAlone } from '../shell/shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
 import { glideAt, glideEnded, type Glide } from './glide';
@@ -21,10 +20,10 @@ export interface ScrollSettings {
   readonly smooth: boolean;
 }
 
-export const Scrolling = createContext<ScrollSettings>({
+export const defaultScrolling: ScrollSettings = {
   wheelRows: 1,
   smooth: false,
-});
+};
 
 export const rowGlide = 150;
 

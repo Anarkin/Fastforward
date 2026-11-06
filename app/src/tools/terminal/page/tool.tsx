@@ -1,28 +1,23 @@
-import { useContext, useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import '@xterm/xterm/css/xterm.css';
 import './style.css';
 import { folderMenuItems } from './folderMenu';
 import { loadXterm, TerminalView } from './view';
-import { Scrolling } from '../../../ui/rowScroll';
+import { useShell, useShellActions } from '../../../shell/page/store';
 import type {
   TerminalToHost,
   TerminalToWebview,
   TerminalToWebviewOf,
 } from '../shared/protocol';
-import type { ContextMenuItem } from '../../../ui/contextMenu';
 
 export function TerminalTool({
   active,
   post,
   listen,
-  onCopy,
-  onNewTabItems,
 }: {
   active: boolean;
   post: (message: TerminalToHost) => void;
   listen: (handler: (message: TerminalToWebview) => void) => () => void;
-  onCopy: (text: string) => void;
-  onNewTabItems: (items: readonly ContextMenuItem[]) => void;
 }) {
   const screen = useRef<HTMLDivElement>(null);
   const view = useRef<TerminalView>(undefined);
@@ -30,12 +25,14 @@ export function TerminalTool({
   const [settings, setSettings] =
     useState<Omit<TerminalToWebviewOf<'settings'>, 'type'>>();
   const [folders, setFolders] = useState<readonly string[]>([]);
-  const scrolling = useContext(Scrolling);
+  const scrolling = useShell((state) => state.scrolling);
+  const { copyText: onCopy, setToolItems } = useShellActions();
   const scrollingOf = useEffectEvent(() => scrolling);
 
   useEffect(
     () =>
-      onNewTabItems(
+      setToolItems(
+        'terminal',
         folderMenuItems(folders, {
           onNew: () => post({ type: 'newTab' }),
           onBrowse: () => post({ type: 'browseFolders' }),
@@ -46,7 +43,7 @@ export function TerminalTool({
           },
         }),
       ),
-    [folders, post, onNewTabItems],
+    [folders, post, setToolItems],
   );
 
   useEffect(

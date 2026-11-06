@@ -1,8 +1,4 @@
-import { createContext } from 'react';
-
 export const defaultDateFormat = 'YYYY-MM-DD HH:mm';
-
-export const DateFormat = createContext(defaultDateFormat);
 
 function pad(value: number, length = 2): string {
   return String(value).padStart(length, '0');

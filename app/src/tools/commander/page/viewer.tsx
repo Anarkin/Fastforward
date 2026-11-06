@@ -24,8 +24,7 @@ import {
   TextIcon,
   WordWrapIcon,
 } from '../../../ui/icons';
-import { useTextView } from '../../../ui/textView';
-import { useImageView } from '../../../ui/imageView';
+import { useShell, useShellActions } from '../../../shell/page/store';
 import { MenuButton } from '../../../ui/menu';
 import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
@@ -92,8 +91,15 @@ export function Viewer({
   const encoding = choices.encoding ?? 'auto';
   const setEncoding = (choice: EncodingChoice) =>
     onChoose({ ...choices, encoding: choice });
+  const textView = useShell((state) => state.textView);
+  const imageView = useShell((state) => state.imageView);
+  const { changeTextView, changeImageView } = useShellActions();
   const { choice: languageChoice, choose: chooseLanguage } = useLanguageChoice(
     file,
+    {
+      on: textView.highlightSyntax,
+      change: (on) => changeTextView({ ...textView, highlightSyntax: on }),
+    },
     {
       language: choices.language,
       keep: (language) => onChoose({ ...choices, language }),
@@ -111,18 +117,16 @@ export function Viewer({
   );
   const mode = chosen ?? firstMode(file);
   const shown = shownEncoding(encoding, viewing);
-  const textView = useTextView();
-  const { wordWrap, showWhitespace } = textView.view;
+  const { wordWrap, showWhitespace } = textView;
   const readsText = mode === 'text' && shown !== 'bytes';
   const detectedLanguage = languageOf(file);
   const language = shownLanguage(languageChoice, detectedLanguage);
   const showsImage = mode === 'preview' && preview === 'image';
-  const imageView = useImageView();
-  const { realSize } = imageView.view;
+  const { realSize } = imageView;
   const toggleRealSize = () =>
-    imageView.change({ ...imageView.view, realSize: !realSize });
-  const changeView = (changed: Partial<typeof textView.view>) =>
-    textView.change({ ...textView.view, ...changed });
+    changeImageView({ ...imageView, realSize: !realSize });
+  const changeView = (changed: Partial<typeof textView>) =>
+    changeTextView({ ...textView, ...changed });
   const choose = (wanted: ViewMode) => {
     if (shownModes.some((each) => each.mode === wanted)) {
       setChosen(wanted);
