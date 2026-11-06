@@ -1,19 +1,19 @@
 import { useEffect, useRef } from 'react';
 import type {
   CompareView as Compared,
-  DiffLayout,
   FileChange,
   LeftOut,
-  TextRequest,
 } from '../shared/protocol';
 import { strings } from '../../../shared/strings';
 import type { DiffFile, LoadedText } from './diff';
 import { Diff, DiffOptions } from './diffColumn';
+import { useGit, useGitActions } from './store';
 
 const noFiles: readonly FileChange[] = [];
 const noLeftOut: readonly LeftOut[] = [];
 const noPaths: readonly string[] = [];
 const noLargeFiles: ReadonlyMap<string, DiffFile> = new Map();
+const noTexts: ReadonlyMap<string, LoadedText> = new Map();
 const ignored = () => undefined;
 
 function noteOf(compare: Compared | undefined): string | undefined {
@@ -26,38 +26,21 @@ function noteOf(compare: Compared | undefined): string | undefined {
 }
 
 export function CompareView({
-  compare,
-  texts,
-  onLoadTexts,
-  layout,
-  wordWrap,
-  showWhitespace,
-  ignoreWhitespace,
+  comparing,
   findAsked,
-  entire,
-  onEntire,
-  onLayout,
-  onWordWrap,
-  onShowWhitespace,
-  onIgnoreWhitespace,
   language,
 }: {
-  compare: Compared | undefined;
-  texts: ReadonlyMap<string, LoadedText>;
-  onLoadTexts: (requests: TextRequest[]) => void;
-  layout: DiffLayout;
-  wordWrap: boolean;
-  showWhitespace: boolean;
-  ignoreWhitespace: boolean;
+  comparing: string;
   findAsked: number;
-  entire: boolean;
-  onEntire: (entire: boolean) => void;
-  onLayout: (layout: DiffLayout) => void;
-  onWordWrap: (wrap: boolean) => void;
-  onShowWhitespace: (show: boolean) => void;
-  onIgnoreWhitespace: (ignore: boolean) => void;
   language: React.ReactNode;
 }) {
+  const compare = useGit((state) =>
+    state.compare?.tab === comparing ? state.compare : undefined,
+  );
+  const texts = useGit((state) =>
+    state.compareTexts.tab === comparing ? state.compareTexts.texts : noTexts,
+  );
+  const { loadCompareTexts } = useGitActions();
   const view = useRef<HTMLDivElement>(null);
   const tab = compare?.tab;
   useEffect(() => {
@@ -83,32 +66,15 @@ export function CompareView({
           largeFiles={noLargeFiles}
           onLoadFile={ignored}
           texts={texts}
-          onLoadTexts={onLoadTexts}
+          onLoadTexts={loadCompareTexts}
           fileContent={undefined}
           error={compare?.error}
           changeMarks={compare?.entire ?? false}
           entire={compare?.entire ?? false}
-          sideBySide={layout === 'sideBySide'}
-          wordWrap={wordWrap}
-          showWhitespace={showWhitespace}
           origin={undefined}
           findAsked={findAsked}
           filter={undefined}
-          options={
-            <DiffOptions
-              entire={entire}
-              onEntire={onEntire}
-              showWhitespace={showWhitespace}
-              onShowWhitespace={onShowWhitespace}
-              ignoreWhitespace={ignoreWhitespace}
-              onIgnoreWhitespace={onIgnoreWhitespace}
-              wordWrap={wordWrap}
-              onWordWrap={onWordWrap}
-              language={language}
-              layout={layout}
-              onLayout={onLayout}
-            />
-          }
+          options={<DiffOptions language={language} />}
         />
       </div>
     </div>

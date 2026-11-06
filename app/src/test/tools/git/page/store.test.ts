@@ -69,7 +69,6 @@ suite('Git store', () => {
     const store = createGitStore(noop);
     store.getState().receive(shown());
     const before = store.getState();
-    store.getState().receive({ type: 'recent', recent: [] });
     store.getState().receive({ type: 'clearError', message: 'not shown' });
     assert.strictEqual(store.getState(), before);
   });
@@ -205,5 +204,203 @@ suite('Git store', () => {
       detachedHead(createGitStore(noop).getState()),
       undefined,
     );
+  });
+
+  test('keeps the layout the main process sends, with the column widths saved, or the default ones where they do not fit', () => {
+    const store = createGitStore(noop);
+    store.getState().receive({
+      ...layout(false),
+      columnWidths: [310],
+      defaultColumnWidths: [300, 200],
+      showEntireFile: false,
+      diffLayout: 'inline',
+    });
+    const state = store.getState();
+    assert.deepStrictEqual(state.columnWidths, [300, 200]);
+    assert.strictEqual(state.showEntireFile, false);
+    assert.strictEqual(state.diffLayout, 'inline');
+    assert.strictEqual(state.collapseMerges, true);
+    assert.strictEqual(state.autoFetchMinutes, 1);
+    store.getState().receive({
+      ...layout(false),
+      columnWidths: [310, 210],
+      defaultColumnWidths: [300, 200],
+    });
+    assert.deepStrictEqual(store.getState().columnWidths, [310, 210]);
+  });
+
+  test('changes a setting of the layout at once, telling the main process, and solo for the worktree shown', () => {
+    const { posted, store } = posting();
+    store.getState().receive(shown());
+    const {
+      changeShowEntireFile,
+      changeIgnoreWhitespace,
+      changeDiffLayout,
+      changeShowAllFiles,
+      changeCollapseMerges,
+      changeAutoFetch,
+      changeSolo,
+    } = store.getState();
+    changeShowEntireFile(true);
+    changeIgnoreWhitespace(true);
+    changeDiffLayout('inline');
+    changeShowAllFiles(true);
+    changeCollapseMerges(true);
+    changeAutoFetch(true);
+    changeSolo(true);
+    const state = store.getState();
+    assert.deepStrictEqual(
+      [
+        state.showEntireFile,
+        state.ignoreWhitespace,
+        state.diffLayout,
+        state.showAllFiles,
+        state.collapseMerges,
+        state.autoFetch,
+        state.solo,
+      ],
+      [true, true, 'inline', true, true, true, true],
+    );
+    assert.deepStrictEqual(posted, [
+      { type: 'setShowEntireFile', show: true },
+      { type: 'setIgnoreWhitespace', ignore: true },
+      { type: 'setDiffLayout', layout: 'inline' },
+      { type: 'setShowAllFiles', show: true },
+      { type: 'setCollapseMerges', collapse: true },
+      { type: 'setAutoFetch', on: true },
+      { type: 'setSolo', solo: true, root: '/repo' },
+    ]);
+    store.getState().receive({ type: 'solo', solo: false });
+    assert.strictEqual(store.getState().solo, false);
+  });
+
+  test('resizes a column and resets it to its default width, telling the main process', () => {
+    const { posted, store } = posting();
+    store.getState().receive({
+      ...layout(false),
+      columnWidths: [310, 210],
+      defaultColumnWidths: [300, 200],
+    });
+    store.getState().resizeColumns([320, 220]);
+    store.getState().resetColumn(1);
+    assert.deepStrictEqual(store.getState().columnWidths, [320, 200]);
+    assert.deepStrictEqual(posted, [
+      { type: 'setColumnWidths', widths: [320, 220] },
+      { type: 'setColumnWidths', widths: [320, 200] },
+    ]);
+  });
+
+  test('keeps the comparison shown and the texts loaded for it, starting the texts anew for another comparison', () => {
+    const { posted, store } = posting();
+    const compared = {
+      tab: 'c1',
+      old: '/a.txt',
+      new: '/b.txt',
+      name: 'b.txt',
+      patch: '',
+      version: 1,
+      entire: true,
+    };
+    store.getState().receive({ type: 'compare', compare: compared });
+    assert.strictEqual(store.getState().compare, compared);
+    const loaded = (tab: string, path: string) =>
+      store.getState().receive({
+        type: 'compareTexts',
+        tab,
+        texts: [{ path, side: 'new', blob: 'b', text: 'text' }],
+      });
+    loaded('c1', 'a.txt');
+    loaded('c1', 'b.txt');
+    assert.strictEqual(store.getState().compareTexts.tab, 'c1');
+    assert.strictEqual(store.getState().compareTexts.texts.size, 2);
+    loaded('c2', 'a.txt');
+    assert.strictEqual(store.getState().compareTexts.tab, 'c2');
+    assert.strictEqual(store.getState().compareTexts.texts.size, 1);
+    store
+      .getState()
+      .loadCompareTexts([{ path: 'a.txt', side: 'old', blob: 'a' }]);
+    assert.deepStrictEqual(posted, [
+      {
+        type: 'loadCompareTexts',
+        requests: [{ path: 'a.txt', side: 'old', blob: 'a' }],
+      },
+    ]);
+  });
+
+  test('keeps the recent repositories, forgetting one at once and telling the main process', () => {
+    const { posted, store } = posting();
+    const recent = [
+      { root: '/a', name: 'a', folder: '/' },
+      { root: '/b', name: 'b', folder: '/' },
+    ];
+    store.getState().receive({ type: 'recent', recent });
+    store.getState().forgetRecent('/a');
+    assert.deepStrictEqual(store.getState().recent, [recent[1]]);
+    assert.deepStrictEqual(posted, [{ type: 'forgetRecent', root: '/a' }]);
+  });
+
+  test('asks whether to make a repository inside another, making it only once confirmed', () => {
+    const { posted, store } = posting();
+    const asked = {
+      type: 'confirmInit',
+      folder: '/a/b',
+      repository: '/a',
+    } as const;
+    store.getState().receive(asked);
+    assert.strictEqual(store.getState().initAsked, asked);
+    store.getState().answerInit(false);
+    assert.strictEqual(store.getState().initAsked, undefined);
+    store.getState().receive(asked);
+    store.getState().answerInit(true);
+    assert.deepStrictEqual(posted, [{ type: 'initInside', folder: '/a/b' }]);
+  });
+
+  test('shows the clone form anew each time it opens, without the folder chosen for the last, and closes it, telling the main process', () => {
+    const { posted, store } = posting();
+    const form = { kind: 'form', url: '', folder: '/', name: '' } as const;
+    store.getState().receive({ type: 'clone', view: form });
+    const first = store.getState().clone.form;
+    store.getState().receive({ type: 'cloneFolder', folder: '/code' });
+    store
+      .getState()
+      .receive({ type: 'cloneTarget', folder: '/code', name: 'x' });
+    assert.deepStrictEqual(store.getState().clone.folder, { folder: '/code' });
+    assert.deepStrictEqual(store.getState().clone.target, {
+      type: 'cloneTarget',
+      folder: '/code',
+      name: 'x',
+    });
+    store.getState().receive({ type: 'clone', view: form });
+    assert.strictEqual(store.getState().clone.form, first + 1);
+    assert.strictEqual(store.getState().clone.folder, undefined);
+    store.getState().closeClone();
+    assert.strictEqual(store.getState().clone.view, undefined);
+    assert.deepStrictEqual(posted, [{ type: 'closeClone' }]);
+  });
+
+  test('keeps when the last fetch succeeded and failed', () => {
+    const store = createGitStore(noop);
+    store.getState().receive({ type: 'lastFetch', succeeded: 5, failed: 3 });
+    assert.deepStrictEqual(store.getState().lastFetch, {
+      type: 'lastFetch',
+      succeeded: 5,
+      failed: 3,
+    });
+  });
+
+  test('hides and shows the commit column, and opens and closes the search over it, on the page alone', () => {
+    const { posted, store } = posting();
+    assert.strictEqual(store.getState().commitsShown, true);
+    store.getState().toggleCommits();
+    assert.strictEqual(store.getState().commitsShown, false);
+    store.getState().search(true);
+    assert.strictEqual(store.getState().searching, true);
+    store.getState().search(false);
+    store.getState().toggleCommits();
+    assert.deepStrictEqual(
+      [store.getState().commitsShown, store.getState().searching],
+      [true, false],
+    );
+    assert.deepStrictEqual(posted, []);
   });
 });

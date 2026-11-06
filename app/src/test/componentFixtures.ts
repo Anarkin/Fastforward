@@ -1,12 +1,16 @@
 import * as assert from 'node:assert';
-import { isValidElement } from 'react';
+import { createElement, isValidElement } from 'react';
 import { vi } from 'vitest';
+import { createShellStore, ShellStore } from '../shell/page/store';
+import type { ToHost } from '../shell/shared/protocol';
 import { preloadDelay } from '../shell/page/tabBar';
-import { createGitStore } from '../tools/git/page/store';
+import { createGitStore, GitStore } from '../tools/git/page/store';
+import { defaultTextView } from '../ui/textView';
 import { emptyTabView, type TabView } from '../tools/git/page/tabView';
 import { FileRow } from '../tools/git/page/tree';
 import type {
   Bookmark,
+  DiffLayout,
   GitToHost,
   RefInfo,
 } from '../tools/git/shared/protocol';
@@ -70,4 +74,43 @@ export function gitStore(
       missing: false,
     })),
   });
+}
+
+export interface ShownOptions {
+  readonly entire?: boolean;
+  readonly showWhitespace?: boolean;
+  readonly ignoreWhitespace?: boolean;
+  readonly wordWrap?: boolean;
+  readonly layout?: DiffLayout;
+}
+
+export function optionStores(
+  shown: ShownOptions = {},
+  post: (message: GitToHost | ToHost) => void = () => undefined,
+) {
+  return {
+    git: createGitStore(post, {
+      showEntireFile: shown.entire ?? false,
+      ignoreWhitespace: shown.ignoreWhitespace ?? true,
+      diffLayout: shown.layout ?? 'inline',
+    }),
+    shell: createShellStore(post, {
+      textView: {
+        ...defaultTextView,
+        showWhitespace: shown.showWhitespace ?? false,
+        wordWrap: shown.wordWrap ?? false,
+      },
+    }),
+  };
+}
+
+export function inStores(
+  { git, shell }: ReturnType<typeof optionStores>,
+  node: React.ReactNode,
+): React.ReactElement {
+  return createElement(
+    ShellStore,
+    { value: shell },
+    createElement(GitStore, { value: git }, node),
+  );
 }

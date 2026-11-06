@@ -1,13 +1,14 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import {
   type ChangeArea,
-  type DiffLayout,
   type FileChange,
   type LeftOut,
   type TextRequest,
 } from '../shared/protocol';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
+import { useShell, useShellActions } from '../../../shell/page/store';
+import { useGit, useGitActions } from './store';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
 import { DiffView, type WholeFile } from './diffView';
 import { filterWords, matchesFilter } from '../../../shared/fileFilter';
@@ -131,31 +132,22 @@ export function filteredDiffFiles(
     : files.filter((file) => matchesFilter(words, file.path, file.oldPath));
 }
 
-export function DiffOptions({
-  entire,
-  showWhitespace,
-  ignoreWhitespace,
-  wordWrap,
-  onEntire,
-  onShowWhitespace,
-  onIgnoreWhitespace,
-  onWordWrap,
-  language,
-  layout,
-  onLayout,
-}: {
-  entire: boolean;
-  showWhitespace: boolean;
-  ignoreWhitespace: boolean;
-  wordWrap: boolean;
-  onEntire: (entire: boolean) => void;
-  onShowWhitespace: (show: boolean) => void;
-  onIgnoreWhitespace: (ignore: boolean) => void;
-  onWordWrap: (wrap: boolean) => void;
-  language: React.ReactNode;
-  layout: DiffLayout;
-  onLayout: (layout: DiffLayout) => void;
-}) {
+export function DiffOptions({ language }: { language: React.ReactNode }) {
+  const entire = useGit((state) => state.showEntireFile);
+  const ignoreWhitespace = useGit((state) => state.ignoreWhitespace);
+  const layout = useGit((state) => state.diffLayout);
+  const textView = useShell((state) => state.textView);
+  const { wordWrap, showWhitespace } = textView;
+  const {
+    changeShowEntireFile: onEntire,
+    changeIgnoreWhitespace: onIgnoreWhitespace,
+    changeDiffLayout: onLayout,
+  } = useGitActions();
+  const { changeTextView } = useShellActions();
+  const onShowWhitespace = (show: boolean) =>
+    changeTextView({ ...textView, showWhitespace: show });
+  const onWordWrap = (wrap: boolean) =>
+    changeTextView({ ...textView, wordWrap: wrap });
   return (
     <div className="nav-buttons diff-options">
       <button
@@ -244,9 +236,6 @@ export function Diff({
   options,
   changeMarks,
   entire,
-  sideBySide,
-  wordWrap,
-  showWhitespace,
   origin,
   findAsked,
   filter,
@@ -271,9 +260,6 @@ export function Diff({
   options: React.ReactNode;
   changeMarks: boolean;
   entire: boolean;
-  sideBySide: boolean;
-  wordWrap: boolean;
-  showWhitespace: boolean;
   origin: ImageOrigin | undefined;
   findAsked: number;
   filter: string | undefined;
@@ -281,6 +267,8 @@ export function Diff({
   onViewFile?: (source: ViewedSource) => void;
   viewAsked?: number;
 }) {
+  const sideBySide = useGit((state) => state.diffLayout === 'sideBySide');
+  const { wordWrap, showWhitespace } = useShell((state) => state.textView);
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
     () =>

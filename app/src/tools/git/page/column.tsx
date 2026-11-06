@@ -1,4 +1,22 @@
-import { Resizer } from './columns';
+import { dragColumn } from './columns';
+import { useGit, useGitActions } from './store';
+
+function Resizer({ index }: { index: number }) {
+  const widths = useGit((state) => state.columnWidths);
+  const commitsHidden = useGit(
+    (state) => !state.commitsShown && !state.searching,
+  );
+  const { resizeColumns, resetColumn } = useGitActions();
+  return (
+    <div
+      className="resizer"
+      onPointerDown={(event) =>
+        dragColumn(event, index, widths, [commitsHidden, false], resizeColumns)
+      }
+      onDoubleClick={() => resetColumn(index)}
+    />
+  );
+}
 
 export function Column({
   title,

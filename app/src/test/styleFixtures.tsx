@@ -7,10 +7,14 @@ import type {
 import type { ColumnName } from '../tools/git/page/activeColumn';
 import { changesTreeElement } from '../tools/git/page/changesTree';
 import { Column } from '../tools/git/page/column';
-import { ColumnResizingProvider } from '../tools/git/page/columns';
 import { CommitRow, WorkingTreeRow } from '../tools/git/page/commitList';
 import { ContextMenu } from '../ui/contextMenu';
-import { gitStore } from './componentFixtures';
+import {
+  gitStore,
+  inStores,
+  optionStores,
+  type ShownOptions,
+} from './componentFixtures';
 import { DiffOptions } from '../tools/git/page/diffColumn';
 import { FindField } from '../ui/search';
 import { gitKeymap } from '../tools/git/shared/keymap';
@@ -70,15 +74,13 @@ export function columnTitle(start: React.ReactNode): MarkupElement {
 
 export function columns(className: string, active?: ColumnName) {
   return rendered(
-    <ColumnResizingProvider value={{ start: noop, reset: noop }}>
-      <div className={className} data-active-column={active}>
-        {[0, 1, 2].map((index) => (
-          <Column key={index} index={index < 2 ? index : undefined}>
-            {null}
-          </Column>
-        ))}
-      </div>
-    </ColumnResizingProvider>,
+    <div className={className} data-active-column={active}>
+      {[0, 1, 2].map((index) => (
+        <Column key={index} index={index < 2 ? index : undefined}>
+          {null}
+        </Column>
+      ))}
+    </div>,
   );
 }
 
@@ -102,25 +104,8 @@ export function navButtons(
   );
 }
 
-export function diffOptions(
-  props: Partial<Parameters<typeof DiffOptions>[0]> = {},
-): React.ReactElement {
-  return (
-    <DiffOptions
-      entire={false}
-      showWhitespace={false}
-      ignoreWhitespace
-      wordWrap={false}
-      onEntire={noop}
-      onShowWhitespace={noop}
-      onIgnoreWhitespace={noop}
-      onWordWrap={noop}
-      language={undefined}
-      layout="inline"
-      onLayout={noop}
-      {...props}
-    />
-  );
+export function diffOptions(shown: ShownOptions = {}): React.ReactElement {
+  return inStores(optionStores(shown), <DiffOptions language={undefined} />);
 }
 
 export function menuButton(

@@ -1,24 +1,8 @@
 import { followDrag } from '../../../ui/followDrag';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
 import { workingTreeHash } from '../shared/protocol';
 
 export const minColumnWidths = [275, 150];
 export const minLastColumnWidth = 240;
-
-interface Resizing {
-  start: (index: number, event: React.PointerEvent) => void;
-  reset: (index: number) => void;
-}
-
-const ColumnResizing = createContext<Resizing | undefined>(undefined);
-export const ColumnResizingProvider = ColumnResizing.Provider;
 
 export function shownSelection(
   selected: string | undefined,
@@ -118,93 +102,45 @@ export function resetWidth(
   return widths.map((width, i) => (i === index ? defaults[i] : width));
 }
 
-export function useColumnWidths(
-  save: (widths: readonly number[]) => void,
+export function dragColumn(
+  event: React.PointerEvent<HTMLElement>,
+  index: number,
+  widths: readonly number[],
   hidden: readonly boolean[],
-) {
-  const [widths, setWidths] = useState<readonly number[]>([]);
-  const current = useRef(widths);
-  const defaults = useRef<readonly number[]>([]);
-  const container = useRef<HTMLDivElement>(null);
-
-  const update = useCallback((next: readonly number[]) => {
-    current.current = next;
-    setWidths(next);
-  }, []);
-
-  const load = useCallback(
-    (saved: readonly number[], fallback: readonly number[]) => {
-      defaults.current = fallback;
-      update(widthsToLoad(saved, fallback));
+  resized: (widths: readonly number[]) => void,
+): void {
+  event.preventDefault();
+  event.currentTarget.setPointerCapture(event.pointerId);
+  const startX = event.clientX;
+  const grid = event.currentTarget.closest<HTMLElement>('.columns');
+  const style = grid ? getComputedStyle(grid) : undefined;
+  const startWidths = style
+    ? drawnWidths(widths, hidden, style.gridTemplateColumns)
+    : widths;
+  const max = maxWidth(
+    startWidths,
+    hidden,
+    index,
+    grid?.clientWidth ?? Infinity,
+    style
+      ? parseFloat(style.paddingLeft) +
+          parseFloat(style.paddingRight) +
+          parseFloat(style.columnGap) * startWidths.length
+      : 0,
+  );
+  let current: readonly number[] = startWidths;
+  followDrag(
+    window,
+    (move: PointerEvent) => {
+      current = draggedWidths(startWidths, index, move.clientX - startX, max);
+      if (grid) {
+        grid.style.gridTemplateColumns = templateOf(current, hidden);
+      }
     },
-    [update],
+    () => {
+      document.body.classList.remove('resizing');
+      resized(current);
+    },
   );
-
-  const resizing = useMemo<Resizing>(
-    () => ({
-      start: (index, event) => {
-        event.preventDefault();
-        event.currentTarget.setPointerCapture(event.pointerId);
-        const startX = event.clientX;
-        const grid = container.current;
-        const style = grid ? getComputedStyle(grid) : undefined;
-        const startWidths = style
-          ? drawnWidths(current.current, hidden, style.gridTemplateColumns)
-          : current.current;
-        const max = maxWidth(
-          startWidths,
-          hidden,
-          index,
-          grid?.clientWidth ?? Infinity,
-          style
-            ? parseFloat(style.paddingLeft) +
-                parseFloat(style.paddingRight) +
-                parseFloat(style.columnGap) * startWidths.length
-            : 0,
-        );
-        const resizeGridWithoutRerendering = (move: PointerEvent) => {
-          current.current = draggedWidths(
-            startWidths,
-            index,
-            move.clientX - startX,
-            max,
-          );
-          if (container.current) {
-            container.current.style.gridTemplateColumns = templateOf(
-              current.current,
-              hidden,
-            );
-          }
-        };
-        followDrag(window, resizeGridWithoutRerendering, () => {
-          document.body.classList.remove('resizing');
-          update(current.current);
-          save(current.current);
-        });
-        document.body.classList.add('resizing');
-      },
-      reset: (index) => {
-        const next = resetWidth(current.current, index, defaults.current);
-        update(next);
-        save(next);
-      },
-    }),
-    [save, update, hidden],
-  );
-
-  return { container, template: templateOf(widths, hidden), load, resizing };
-}
-
-export function Resizer({ index }: { index: number }) {
-  const resizing = useContext(ColumnResizing);
-  if (!resizing) {
-    return null;
-  }
-  return (
-    <div
-      className="resizer"
-      onPointerDown={(event) => resizing.start(index, event)}
-      onDoubleClick={() => resizing.reset(index)}
-    />
-  );
+  document.body.classList.add('resizing');
 }

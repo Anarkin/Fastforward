@@ -14,17 +14,12 @@ import { useStore } from 'zustand';
 import {
   type Direction,
   type CheckoutTarget,
-  type RepositoryInfo,
   type TabMessage,
   type GitToHost,
   type GitToWebview,
-  type GitToWebviewOf,
   type Bookmark,
   type ChangeArea,
-  type DiffLayout,
-  type LastFetch,
   type TextRequest,
-  type CompareView as CompareViewOf,
 } from '../shared/protocol';
 import { createGitStore, detachedHead, GitStore } from './store';
 import { areaKey } from './changesTree';
@@ -34,8 +29,7 @@ import {
   showsDiff,
   listError,
   shownSelection,
-  ColumnResizingProvider,
-  useColumnWidths,
+  templateOf,
 } from './columns';
 import {
   columnOf,
@@ -76,9 +70,8 @@ import { changesShown, treeOf, treeToLoad } from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { repositoryMenuItems } from './repositoryMenu';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
-import { ClonePopup, type ChosenFolder, type CloneTarget } from './clonePopup';
-import type { CloneAsk, CloneView } from '../shared/clone';
-import { textKey, type LoadedText } from './diff';
+import { ClonePopup } from './clonePopup';
+import type { CloneAsk } from '../shared/clone';
 
 export interface GitToolProps {
   active: boolean;
@@ -86,8 +79,6 @@ export interface GitToolProps {
   listen: (handler: (message: GitToWebview) => void) => () => void;
   comparing: string | undefined;
 }
-
-const noCompareTexts: ReadonlyMap<string, LoadedText> = new Map();
 
 export function GitTool({
   active,
@@ -106,20 +97,43 @@ export function GitTool({
   } = useShellActions();
   const post = outbox.send;
   const [store] = useState(() => createGitStore(post));
-  const { dispatch, changeBookmarks } = store.getState();
+  const {
+    dispatch,
+    changeBookmarks,
+    changeShowAllFiles,
+    changeCollapseMerges,
+    changeSolo,
+    changeAutoFetch,
+    forgetRecent,
+    answerInit,
+    closeClone,
+    toggleCommits,
+    search,
+  } = store.getState();
   const tab = useStore(store, (state) => state.tab);
   const worktrees = useStore(store, (state) => state.worktrees);
   const bookmarks = useStore(store, (state) => state.bookmarks);
   const detached = useStore(store, detachedHead);
+  const recent = useStore(store, (state) => state.recent);
+  const initAsked = useStore(store, (state) => state.initAsked);
+  const clone = useStore(store, (state) => state.clone);
+  const showEntireFile = useStore(store, (state) => state.showEntireFile);
+  const showAllFiles = useStore(store, (state) => state.showAllFiles);
+  const collapseMerges = useStore(store, (state) => state.collapseMerges);
+  const solo = useStore(store, (state) => state.solo);
+  const autoFetch = useStore(store, (state) => state.autoFetch);
+  const autoFetchMinutes = useStore(store, (state) => state.autoFetchMinutes);
+  const lastFetch = useStore(store, (state) => state.lastFetch);
+  const columnWidths = useStore(store, (state) => state.columnWidths);
+  const commitsShown = useStore(store, (state) => state.commitsShown);
+  const searching = useStore(store, (state) => state.searching);
+  const comparedFile = useStore(store, ({ compare }) =>
+    compare !== undefined && compare.tab === comparing
+      ? compare.new
+      : undefined,
+  );
   useEffect(() => listen(store.getState().receive), [listen, store]);
-  const [compare, setCompare] = useState<CompareViewOf>();
-  const [compareTexts, setCompareTexts] = useState<{
-    readonly tab: string | undefined;
-    readonly texts: ReadonlyMap<string, LoadedText>;
-  }>({ tab: undefined, texts: new Map() });
   const repositoryShown = active && comparing === undefined;
-  const shownCompare =
-    compare !== undefined && compare.tab === comparing ? compare : undefined;
   useBinding(
     compareKeymap.closeCompare,
     () => {
@@ -129,12 +143,6 @@ export function GitTool({
     },
     active && comparing !== undefined,
   );
-  const [recent, setRecent] = useState<readonly RepositoryInfo[]>([]);
-  const [initAsked, setInitAsked] = useState<GitToWebviewOf<'confirmInit'>>();
-  const [cloneView, setCloneView] = useState<CloneView>();
-  const [cloneForm, setCloneForm] = useState(0);
-  const [cloneFolder, setCloneFolder] = useState<ChosenFolder>();
-  const [cloneTarget, setCloneTarget] = useState<CloneTarget>();
   const selections = useRef(0);
   const {
     root: activeTab,
@@ -165,16 +173,8 @@ export function GitTool({
     commitSearch,
     error,
   } = tab;
-  const [showEntireFile, setShowEntireFile] = useState(false);
-  const [ignoreWhitespace, setIgnoreWhitespace] = useState(false);
   const textView = useShell((state) => state.textView);
   const { wordWrap, showWhitespace } = textView;
-  const [autoFetch, setAutoFetch] = useState(false);
-  const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
-  const [diffLayout, setDiffLayout] = useState<DiffLayout>('sideBySide');
-  const [collapseMerges, setCollapseMerges] = useState(false);
-  const [solo, setSolo] = useState(false);
-  const [showAllFiles, setShowAllFiles] = useState(false);
   const [folders, setFolders] = useState<ViewFolders>(noFolders);
   const folderView = JSON.stringify([activeTab, hash]);
   useEffect(() => {
@@ -184,7 +184,6 @@ export function GitTool({
     folders,
     folderView,
   );
-  const [lastFetch, setLastFetch] = useState<LastFetch>({});
   useEffect(
     () =>
       setToolItems(
@@ -194,45 +193,20 @@ export function GitTool({
           onBrowse: () => post({ type: 'browseRepositories' }),
           onClone: () => post({ type: 'openClone' }),
           onInit: () => post({ type: 'initRepository' }),
-          onRemove: (root) => {
-            setRecent((shown) => shown.filter((other) => other.root !== root));
-            post({ type: 'forgetRecent', root });
-          },
+          onRemove: forgetRecent,
         }),
       ),
-    [recent, post, setToolItems],
+    [recent, post, setToolItems, forgetRecent],
   );
   const checkCloneTarget = useCallback(
     (folder: string, name: string) =>
       post({ type: 'checkCloneTarget', folder, name }),
     [post],
   );
-  const closeClone = useCallback(() => {
-    setCloneView(undefined);
-    post({ type: 'closeClone' });
-  }, [post]);
-  const saveColumnWidths = useCallback(
-    (widths: readonly number[]) => post({ type: 'setColumnWidths', widths }),
-    [post],
-  );
-  const [commitsShown, setCommitsShown] = useState(true);
-  const [searching, setSearching] = useState(false);
-  useBinding(
-    gitKeymap.commits,
-    () => setCommitsShown((shown) => !shown),
-    repositoryShown,
-  );
+  useBinding(gitKeymap.commits, toggleCommits, repositoryShown);
   const commitColumnShown = commitsShown || searching;
-  const hiddenColumns = useMemo(
-    () => [!commitColumnShown, false],
-    [commitColumnShown],
-  );
-  const {
-    container: columnsContainer,
-    template: columnsTemplate,
-    load: loadColumnWidths,
-    resizing,
-  } = useColumnWidths(saveColumnWidths, hiddenColumns);
+  const columnsContainer = useRef<HTMLDivElement>(null);
+  const columnsTemplate = templateOf(columnWidths, [!commitColumnShown, false]);
   const [activeColumn, setActiveColumn] = useState<ColumnName>('commits');
   const [searchAsks, setSearchAsks] = useState<Record<ColumnName, number>>({
     commits: 0,
@@ -270,7 +244,7 @@ export function GitTool({
         [activeColumn]: asks[activeColumn] + 1,
       }));
       if (activeColumn === 'commits') {
-        setSearching(true);
+        search(true);
       } else if (activeColumn === 'files' && fileFilter === undefined) {
         changeFileFilter('');
       }
@@ -309,64 +283,6 @@ export function GitTool({
     document.addEventListener('focusout', onFocusOut);
     return () => document.removeEventListener('focusout', onFocusOut);
   }, [columnsContainer, focusColumn, activeColumn]);
-
-  useEffect(() => {
-    const onMessage = (message: GitToWebview) => {
-      switch (message.type) {
-        case 'layout':
-          loadColumnWidths(message.columnWidths, message.defaultColumnWidths);
-          setCollapseMerges(message.collapseMerges);
-          setShowEntireFile(message.showEntireFile);
-          setIgnoreWhitespace(message.ignoreWhitespace);
-          setDiffLayout(message.diffLayout);
-          setShowAllFiles(message.showAllFiles);
-          setAutoFetch(message.autoFetch);
-          setAutoFetchMinutes(message.autoFetchMinutes);
-          break;
-        case 'solo':
-          setSolo(message.solo);
-          break;
-        case 'compare':
-          setCompare(message.compare);
-          break;
-        case 'compareTexts':
-          setCompareTexts((known) => {
-            const next = new Map(known.tab === message.tab ? known.texts : []);
-            for (const loaded of message.texts) {
-              next.set(textKey(loaded.path, loaded.side), {
-                blob: loaded.blob,
-                text: loaded.text,
-              });
-            }
-            return { tab: message.tab, texts: next };
-          });
-          break;
-        case 'recent':
-          setRecent(message.recent);
-          break;
-        case 'confirmInit':
-          setInitAsked(message);
-          break;
-        case 'clone':
-          setCloneView(message.view);
-          if (message.view?.kind === 'form') {
-            setCloneForm((shown) => shown + 1);
-            setCloneFolder(undefined);
-          }
-          break;
-        case 'cloneFolder':
-          setCloneFolder({ folder: message.folder });
-          break;
-        case 'cloneTarget':
-          setCloneTarget(message);
-          break;
-        case 'lastFetch':
-          setLastFetch(message);
-          break;
-      }
-    };
-    return listen(onMessage);
-  }, [listen, loadColumnWidths]);
 
   useEffect(
     () => setToolTitle('git', comparing === undefined ? activeTab : undefined),
@@ -603,15 +519,6 @@ export function GitTool({
   const toggleOpenFolder = toggleFolderOf('open');
   const toggleClosedFolder = toggleFolderOf('closed');
 
-  const changeShowAllFiles = (show: boolean) => {
-    setShowAllFiles(show);
-    post({ type: 'setShowAllFiles', show });
-  };
-
-  const changeIgnoreWhitespace = (ignore: boolean) => {
-    setIgnoreWhitespace(ignore);
-    post({ type: 'setIgnoreWhitespace', ignore });
-  };
   const changeWordWrap = (wrap: boolean) =>
     changeTextView({ ...textView, wordWrap: wrap });
   const languageTrigger = useRef<HTMLButtonElement>(null);
@@ -623,7 +530,7 @@ export function GitTool({
         : JSON.stringify([activeTab, hash, path]);
   const detectedLanguage =
     comparing !== undefined
-      ? shownCompare && languageOf(shownCompare.new)
+      ? comparedFile && languageOf(comparedFile)
       : path && languageOf(path);
   const { choice: languageChoice, choose: chooseLanguage } = useLanguageChoice(
     singleFile,
@@ -655,25 +562,6 @@ export function GitTool({
     () => changeShowWhitespace(!showWhitespace),
     active,
   );
-  const changeDiffLayout = (layout: DiffLayout) => {
-    setDiffLayout(layout);
-    post({ type: 'setDiffLayout', layout });
-  };
-  const changeShowEntireFile = (show: boolean) => {
-    setShowEntireFile(show);
-    post({ type: 'setShowEntireFile', show });
-  };
-
-  const changeCollapseMerges = (collapse: boolean) => {
-    setCollapseMerges(collapse);
-    post({ type: 'setCollapseMerges', collapse });
-  };
-
-  const changeSolo = (next: boolean) => {
-    setSolo(next);
-    postTab({ type: 'setSolo', solo: next });
-  };
-
   const isBookmark = (bookmark: Bookmark) => hasRef(bookmarks, bookmark);
   const toggle = (bookmark: Bookmark) =>
     changeBookmarks(toggleBookmark(bookmarks, bookmark));
@@ -741,12 +629,12 @@ export function GitTool({
 
   const popups = (
     <>
-      {cloneView && (
+      {clone.view && (
         <ClonePopup
-          view={cloneView}
-          formKey={cloneForm}
-          chosenFolder={cloneFolder}
-          checked={cloneTarget}
+          view={clone.view}
+          formKey={clone.form}
+          chosenFolder={clone.folder}
+          checked={clone.target}
           onCheck={checkCloneTarget}
           onChooseFolder={(folder) =>
             post({ type: 'chooseCloneFolder', folder })
@@ -764,11 +652,8 @@ export function GitTool({
             initAsked.repository,
           )}
           confirm={strings.confirm.init}
-          onConfirm={() => {
-            setInitAsked(undefined);
-            post({ type: 'initInside', folder: initAsked.folder });
-          }}
-          onCancel={() => setInitAsked(undefined)}
+          onConfirm={() => answerInit(true)}
+          onCancel={() => answerInit(false)}
         />
       )}
     </>
@@ -785,26 +670,8 @@ export function GitTool({
         <GitStore value={store}>
           {comparing !== undefined ? (
             <CompareView
-              compare={shownCompare}
-              texts={
-                compareTexts.tab === comparing
-                  ? compareTexts.texts
-                  : noCompareTexts
-              }
-              onLoadTexts={(requests) =>
-                post({ type: 'loadCompareTexts', requests })
-              }
-              entire={showEntireFile}
-              layout={diffLayout}
-              wordWrap={wordWrap}
-              showWhitespace={showWhitespace}
-              ignoreWhitespace={ignoreWhitespace}
+              comparing={comparing}
               findAsked={searchAsks.diff}
-              onEntire={changeShowEntireFile}
-              onLayout={changeDiffLayout}
-              onWordWrap={changeWordWrap}
-              onShowWhitespace={changeShowWhitespace}
-              onIgnoreWhitespace={changeIgnoreWhitespace}
               language={languageButton}
             />
           ) : (
@@ -816,7 +683,7 @@ export function GitTool({
                 onPreload={(root) => post({ type: 'preloadWorktree', root })}
               />
               {
-                <ColumnResizingProvider value={resizing}>
+                <>
                   <div
                     className={columnsClass(
                       commitColumnShown,
@@ -910,24 +777,21 @@ export function GitTool({
                           onFetch={() => postTab({ type: 'fetch' })}
                           autoFetch={autoFetch}
                           autoFetchMinutes={autoFetchMinutes}
-                          onAutoFetch={(on) => {
-                            setAutoFetch(on);
-                            post({ type: 'setAutoFetch', on });
-                          }}
+                          onAutoFetch={changeAutoFetch}
                           lastFetch={lastFetch}
                         />
                       }
                       searchButton={
                         <SearchButton
                           title={strings.actions.search}
-                          onClick={() => setSearching(true)}
+                          onClick={() => search(true)}
                         />
                       }
                       search={
                         <AddressBar
                           open={searching}
                           asked={searchAsks.commits}
-                          onOpen={setSearching}
+                          onOpen={search}
                           root={activeTab}
                           bookmarks={bookmarks}
                           repository={repository}
@@ -980,32 +844,15 @@ export function GitTool({
                       diffs={diffs}
                       fileContent={fileContent}
                       error={error}
-                      sideBySide={diffLayout === 'sideBySide'}
-                      wordWrap={wordWrap}
-                      showWhitespace={showWhitespace}
                       origin={imageOrigin}
                       findAsked={searchAsks.diff}
                       filter={fileFilter}
                       changeMarks={path !== undefined && showEntireFile}
                       entire={showEntireFile}
-                      options={
-                        <DiffOptions
-                          entire={showEntireFile}
-                          onEntire={changeShowEntireFile}
-                          showWhitespace={showWhitespace}
-                          onShowWhitespace={changeShowWhitespace}
-                          ignoreWhitespace={ignoreWhitespace}
-                          onIgnoreWhitespace={changeIgnoreWhitespace}
-                          wordWrap={wordWrap}
-                          onWordWrap={changeWordWrap}
-                          language={languageButton}
-                          layout={diffLayout}
-                          onLayout={changeDiffLayout}
-                        />
-                      }
+                      options={<DiffOptions language={languageButton} />}
                     />
                   </div>
-                </ColumnResizingProvider>
+                </>
               }
             </div>
           )}

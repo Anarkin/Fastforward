@@ -3,28 +3,14 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { DiffOptions } from '../../../../tools/git/page/diffColumn';
-import { noop } from '../../../fixtures';
+import { defaultTextView } from '../../../../ui/textView';
+import {
+  inStores,
+  optionStores,
+  type ShownOptions,
+} from '../../../componentFixtures';
 
-type DiffOptionsProps = Parameters<typeof DiffOptions>[0];
-
-function diffOptionsProps(
-  overrides: Partial<DiffOptionsProps> = {},
-): DiffOptionsProps {
-  return {
-    entire: false,
-    showWhitespace: false,
-    ignoreWhitespace: true,
-    wordWrap: false,
-    onEntire: noop,
-    onShowWhitespace: noop,
-    onIgnoreWhitespace: noop,
-    onWordWrap: noop,
-    language: <span className="language-slot" />,
-    layout: 'inline',
-    onLayout: noop,
-    ...overrides,
-  };
-}
+const language = <span className="language-slot" />;
 
 type OptionElement = React.ReactElement<{
   title?: string;
@@ -33,23 +19,36 @@ type OptionElement = React.ReactElement<{
   children?: OptionElement[];
 }>;
 
-function diffOptionButtons(overrides: Partial<DiffOptionsProps> = {}) {
-  const element = DiffOptions(diffOptionsProps(overrides));
+function diffOptionButtons(shown: ShownOptions = {}, posted: unknown[] = []) {
+  let element: React.ReactNode;
+  function Probe() {
+    element = DiffOptions({ language });
+    return null;
+  }
+  renderToStaticMarkup(
+    inStores(
+      optionStores(shown, (message) => posted.push(message)),
+      <Probe />,
+    ),
+  );
   assert.ok(isValidElement<{ children: OptionElement[] }>(element));
   return element.props.children.flatMap((child) =>
     child.type === 'button' ? [child] : (child.props.children ?? []),
   );
 }
 
-function diffOptionTitles(overrides: Partial<DiffOptionsProps>) {
-  return diffOptionButtons(overrides).map((button) => button.props.title);
+function diffOptionTitles(shown: ShownOptions) {
+  return diffOptionButtons(shown).map((button) => button.props.title);
 }
 
-function optionButtons(overrides: Partial<DiffOptionsProps> = {}) {
-  const html = renderToStaticMarkup(
-    <DiffOptions {...diffOptionsProps(overrides)} />,
+function optionsHtml(shown: ShownOptions = {}) {
+  return renderToStaticMarkup(
+    inStores(optionStores(shown), <DiffOptions language={language} />),
   );
-  return [...html.matchAll(/<button[^>]*>/g)]
+}
+
+function optionButtons(shown: ShownOptions = {}) {
+  return [...optionsHtml(shown).matchAll(/<button[^>]*>/g)]
     .slice(0, 4)
     .map(([button]) =>
       [
@@ -94,7 +93,7 @@ suite('Diff options', () => {
       'off enabled',
       'on enabled',
     ]);
-    const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
+    const html = optionsHtml();
     assert.match(
       html,
       /^<div[^>]*><button[^>]*title="Show the Entire File"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><span class="language-slot"><\/span><span class="nav-button-space"><\/span><button[^>]*title="Show Whitespace"[^>]*>.*?<\/button><button[^>]*title="Show Whitespace Changes"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
@@ -125,7 +124,7 @@ suite('Diff options', () => {
   });
 
   test('holds the inline and side by side buttons together, as only one of them is on at a time', () => {
-    const html = renderToStaticMarkup(<DiffOptions {...diffOptionsProps()} />);
+    const html = optionsHtml();
     assert.match(
       html,
       /<div class="segmented" role="group" aria-label="Layout"><button[^>]*title="Inline"[^>]*>.*?<\/button><button[^>]*title="Side by Side"[^>]*>.*?<\/button><\/div><\/div>$/,
@@ -134,35 +133,42 @@ suite('Diff options', () => {
 
   test('shows the entire file, shows whitespace, shows whitespace changes, and wraps long lines on their toggles, and stops on them again', () => {
     for (const on of [false, true]) {
-      const flipped: boolean[] = [];
-      const flip = (value: boolean) => {
-        flipped.push(value);
-      };
-      const toggles: Partial<DiffOptionsProps>[] = [
-        { entire: on, onEntire: flip },
-        { showWhitespace: on, onShowWhitespace: flip },
-        {
-          ignoreWhitespace: !on,
-          onIgnoreWhitespace: (ignore: boolean) => flip(!ignore),
-        },
-        { wordWrap: on, onWordWrap: flip },
+      const toggles: ShownOptions[] = [
+        { entire: on },
+        { showWhitespace: on },
+        { ignoreWhitespace: !on },
+        { wordWrap: on },
       ];
-      toggles.forEach((overrides, index) => {
-        const button = diffOptionButtons(overrides)[index];
+      const posted = toggles.map((shown, index) => {
+        const sent: unknown[] = [];
+        const button = diffOptionButtons(shown, sent)[index];
         assert.strictEqual(button.props['aria-pressed'], on);
         button.props.onClick?.();
+        return sent;
       });
-      assert.deepStrictEqual(flipped, [!on, !on, !on, !on]);
+      assert.deepStrictEqual(posted, [
+        [{ type: 'setShowEntireFile', show: !on }],
+        [
+          {
+            type: 'setTextView',
+            view: { ...defaultTextView, wordWrap: false, showWhitespace: !on },
+          },
+        ],
+        [{ type: 'setIgnoreWhitespace', ignore: on }],
+        [
+          {
+            type: 'setTextView',
+            view: { ...defaultTextView, wordWrap: !on, showWhitespace: false },
+          },
+        ],
+      ]);
     }
   });
 
   test('shows the diff inline or side by side, the chosen layout pressed, switching on the other', () => {
     for (const layout of ['inline', 'sideBySide'] as const) {
-      const picked: string[] = [];
-      const buttons = diffOptionButtons({
-        layout,
-        onLayout: (next) => picked.push(next),
-      }).filter(
+      const posted: unknown[] = [];
+      const buttons = diffOptionButtons({ layout }, posted).filter(
         (button) =>
           button.props.title === 'Inline' ||
           button.props.title === 'Side by Side',
@@ -180,7 +186,10 @@ suite('Diff options', () => {
       for (const button of buttons) {
         button.props.onClick?.();
       }
-      assert.deepStrictEqual(picked, ['inline', 'sideBySide']);
+      assert.deepStrictEqual(posted, [
+        { type: 'setDiffLayout', layout: 'inline' },
+        { type: 'setDiffLayout', layout: 'sideBySide' },
+      ]);
     }
   });
 });
