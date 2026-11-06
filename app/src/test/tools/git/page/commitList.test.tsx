@@ -61,12 +61,8 @@ import {
   defaultDateFormat,
   formatDate,
 } from '../../../../ui/dates';
-import {
-  BookmarkedCommits,
-  BranchActions,
-  CheckedOutBranch,
-  OtherBranchActions,
-} from '../../../../tools/git/page/bubbles';
+import { GitStore } from '../../../../tools/git/page/store';
+import { gitStore } from '../../../componentFixtures';
 import {
   commitInfo,
   keyPress,
@@ -75,6 +71,14 @@ import {
   withMacKeys,
 } from '../../../fixtures';
 import { laidOutElement } from '../../../elementFixtures';
+
+const tracking = { upstream: 'origin/main', ahead: 0, behind: 0 };
+
+function withoutButtons(node: React.ReactNode): string {
+  return renderToStaticMarkup(
+    <GitStore value={gitStore({ hideDimmed: true })}>{node}</GitStore>,
+  );
+}
 
 function laidOut() {
   const scroller = laidOutElement({ clientHeight: 500 });
@@ -198,11 +202,11 @@ suite('Commit list rows', () => {
   });
 
   test("puts a commit's bubbles on one line that can break between them", () => {
-    const html = renderToStaticMarkup(
+    const html = withoutButtons(
       <CommitBubbles
         hash={'a'.repeat(40)}
         refs={[
-          { kind: 'branch', name: 'main', commit: 'a'.repeat(40) },
+          { kind: 'branch', name: 'main', commit: 'a'.repeat(40), tracking },
           { kind: 'remote', name: 'origin/main', commit: 'a'.repeat(40) },
         ]}
         detached
@@ -217,17 +221,13 @@ suite('Commit list rows', () => {
 
   test("offers pull and push on the checked-out branch's bubble in a commit's row", () => {
     const html = renderToStaticMarkup(
-      <BranchActions.Provider
-        value={{ pulling: false, pushing: false, onPull: noop, onPush: noop }}
-      >
-        <CheckedOutBranch.Provider value="main">
-          <CommitBubbles
-            hash={'a'.repeat(40)}
-            refs={[{ kind: 'branch', name: 'main', commit: 'a'.repeat(40) }]}
-            detached={false}
-          />
-        </CheckedOutBranch.Provider>
-      </BranchActions.Provider>,
+      <GitStore value={gitStore({ head: 'main' })}>
+        <CommitBubbles
+          hash={'a'.repeat(40)}
+          refs={[{ kind: 'branch', name: 'main', commit: 'a'.repeat(40) }]}
+          detached={false}
+        />
+      </GitStore>,
     );
     assert.match(html, /class="bubble-action[^"]*" title="Pull:/);
     assert.match(html, /class="bubble-action[^"]*" title="Push:/);
@@ -235,11 +235,11 @@ suite('Commit list rows', () => {
 
   test("puts each remote's tag right after the local tag of its name, and the tags only on a remote after the rest", () => {
     const at = 'a'.repeat(40);
-    const html = renderToStaticMarkup(
+    const html = withoutButtons(
       <CommitBubbles
         hash={at}
         refs={[
-          { kind: 'branch', name: 'main', commit: at },
+          { kind: 'branch', name: 'main', commit: at, tracking },
           { kind: 'tag', name: 'v1', commit: at },
           { kind: 'tag', name: 'v2', commit: at },
           {
@@ -274,30 +274,20 @@ suite('Commit list rows', () => {
 
   test('offers pull and push on the bubble of a branch that is not checked out, with the counts of that branch', () => {
     const html = renderToStaticMarkup(
-      <OtherBranchActions.Provider
-        value={{
-          pulling: [],
-          pushing: [],
-          onPull: noop,
-          onPush: noop,
-          elsewhere: new Set(),
-        }}
-      >
-        <CheckedOutBranch.Provider value="main">
-          <CommitBubbles
-            hash={'a'.repeat(40)}
-            refs={[
-              {
-                kind: 'branch',
-                name: 'side',
-                commit: 'a'.repeat(40),
-                tracking: { upstream: 'origin/side', ahead: 3, behind: 0 },
-              },
-            ]}
-            detached={false}
-          />
-        </CheckedOutBranch.Provider>
-      </OtherBranchActions.Provider>,
+      <GitStore value={gitStore({ head: 'main' })}>
+        <CommitBubbles
+          hash={'a'.repeat(40)}
+          refs={[
+            {
+              kind: 'branch',
+              name: 'side',
+              commit: 'a'.repeat(40),
+              tracking: { upstream: 'origin/side', ahead: 3, behind: 0 },
+            },
+          ]}
+          detached={false}
+        />
+      </GitStore>,
     );
     assert.match(
       html,
@@ -318,12 +308,17 @@ suite('Commit list rows', () => {
     const at = 'a'.repeat(40);
     const bubbles = (refs: RefInfo[], stash: boolean) =>
       renderToStaticMarkup(
-        <BookmarkedCommits.Provider value={new Set([at])}>
+        <GitStore
+          value={gitStore({
+            bookmarks: [{ kind: 'commit', name: at }],
+            hideDimmed: true,
+          })}
+        >
           <CommitBubbles hash={at} refs={refs} stash={stash} detached={false} />
-        </BookmarkedCommits.Provider>,
+        </GitStore>,
       );
     assert.match(
-      bubbles([{ kind: 'branch', name: 'main', commit: at }], true),
+      bubbles([{ kind: 'branch', name: 'main', commit: at, tracking }], true),
       /^<div class="bubble-line"><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge hash" title="[^"]*aaaaaaaaaa[^"]*">aaaaaaa<\/span><wbr\/><span class="badge stash">[^<]*<\/span><\/div>$/,
     );
     assert.match(
@@ -336,9 +331,11 @@ suite('Commit list rows', () => {
     const at = 'a'.repeat(40);
     assert.match(
       renderToStaticMarkup(
-        <BookmarkedCommits.Provider value={new Set([at])}>
+        <GitStore
+          value={gitStore({ bookmarks: [{ kind: 'commit', name: at }] })}
+        >
           <CommitBubbles hash={at} refs={[]} detached />
-        </BookmarkedCommits.Provider>,
+        </GitStore>,
       ),
       /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
     );
@@ -347,9 +344,13 @@ suite('Commit list rows', () => {
   test('marks no commit bookmarked but the ones bookmarked', () => {
     assert.strictEqual(
       renderToStaticMarkup(
-        <BookmarkedCommits.Provider value={new Set(['b'.repeat(40)])}>
+        <GitStore
+          value={gitStore({
+            bookmarks: [{ kind: 'commit', name: 'b'.repeat(40) }],
+          })}
+        >
           <CommitBubbles hash={'a'.repeat(40)} refs={[]} detached={false} />
-        </BookmarkedCommits.Provider>,
+        </GitStore>,
       ),
       '',
     );

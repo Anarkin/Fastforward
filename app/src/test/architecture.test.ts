@@ -77,6 +77,19 @@ suite('Architecture', () => {
     );
   });
 
+  test('keeps the stores out of ui, whose components take only props', () => {
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) => file.startsWith('ui/'))
+        .filter(
+          (file) =>
+            /from 'zustand[/']/.test(read(file)) ||
+            importsOf(file).some((target) => target.endsWith('/store')),
+        ),
+      [],
+    );
+  });
+
   test("keeps the styles of the shell and of each tool in a sheet of their own, each tool's loaded by its page after the shell's", () => {
     assert.deepStrictEqual(
       sourceFiles.filter((file) => file.endsWith('.css')).toSorted(),

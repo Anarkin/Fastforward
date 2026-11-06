@@ -9,14 +9,8 @@ import {
 } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
 import './style.css';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useStore } from 'zustand';
 import {
   type Direction,
   type CheckoutTarget,
@@ -30,20 +24,9 @@ import {
   type DiffLayout,
   type LastFetch,
   type TextRequest,
-  type WorktreeInfo,
   type CompareView as CompareViewOf,
 } from '../shared/protocol';
-import {
-  BookmarkedCommits,
-  BranchActions,
-  CheckedOutBranch,
-  DetachedHead,
-  HideDimmedButtons,
-  OtherBranchActions,
-  TagActions,
-} from './bubbles';
-import { tagsOnRemote } from './tagPushes';
-import { trackingOf } from './tracking';
+import { createGitStore, detachedHead, GitStore } from './store';
 import { areaKey } from './changesTree';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import {
@@ -74,7 +57,7 @@ import type { ViewedSource } from './images';
 import { Files, filesTitle, listsNothing, noChangesText } from './filesColumn';
 import { foldersOf } from './fileTree';
 import { compareWith } from '../shared/comparisons';
-import { bookmarkedCommits, hasRef } from '../shared/refNames';
+import { hasRef } from '../shared/refNames';
 import { strings } from '../../../shared/strings';
 import { AddressBar, NavButtons } from './navBar';
 import { SearchButton } from '../../../ui/search';
@@ -89,13 +72,7 @@ import {
   type Folders,
   type ViewFolders,
 } from './viewFolders';
-import {
-  changesShown,
-  emptyTabView,
-  reduceTabView,
-  treeOf,
-  treeToLoad,
-} from './tabView';
+import { changesShown, treeOf, treeToLoad } from './tabView';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { repositoryMenuItems } from './repositoryMenu';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
@@ -130,7 +107,13 @@ export function GitTool({
 }: GitToolProps) {
   const outbox = useMemo(() => settling(postToHost), [postToHost]);
   const post = outbox.send;
-  const [worktrees, setWorktrees] = useState<readonly WorktreeInfo[]>();
+  const [store] = useState(() => createGitStore(post));
+  const { dispatch, changeBookmarks } = store.getState();
+  const tab = useStore(store, (state) => state.tab);
+  const worktrees = useStore(store, (state) => state.worktrees);
+  const bookmarks = useStore(store, (state) => state.bookmarks);
+  const detached = useStore(store, detachedHead);
+  useEffect(() => listen(store.getState().receive), [listen, store]);
   const [compare, setCompare] = useState<CompareViewOf>();
   const [compareTexts, setCompareTexts] = useState<{
     readonly tab: string | undefined;
@@ -155,7 +138,6 @@ export function GitTool({
   const [cloneFolder, setCloneFolder] = useState<ChosenFolder>();
   const [cloneTarget, setCloneTarget] = useState<CloneTarget>();
   const selections = useRef(0);
-  const [tab, dispatch] = useReducer(reduceTabView, emptyTabView);
   const {
     root: activeTab,
     repository,
@@ -178,11 +160,6 @@ export function GitTool({
     largeFiles,
     texts,
     fetching,
-    pulling,
-    pushing,
-    pushingTag,
-    pullingBranch,
-    pushingBranch,
     applyingSolo,
     back,
     forward,
@@ -196,7 +173,6 @@ export function GitTool({
   const { wordWrap, showWhitespace } = textView.view;
   const [autoFetch, setAutoFetch] = useState(false);
   const [autoFetchMinutes, setAutoFetchMinutes] = useState(0);
-  const [hideDimmed, setHideDimmed] = useState(false);
   const [diffLayout, setDiffLayout] = useState<DiffLayout>('sideBySide');
   const [collapseMerges, setCollapseMerges] = useState(false);
   const [solo, setSolo] = useState(false);
@@ -210,7 +186,6 @@ export function GitTool({
     folders,
     folderView,
   );
-  const [bookmarks, setBookmarks] = useState<readonly Bookmark[]>([]);
   const [lastFetch, setLastFetch] = useState<LastFetch>({});
   useEffect(
     () =>
@@ -348,7 +323,6 @@ export function GitTool({
           setShowAllFiles(message.showAllFiles);
           setAutoFetch(message.autoFetch);
           setAutoFetchMinutes(message.autoFetchMinutes);
-          setHideDimmed(message.hideDimmedButtons);
           break;
         case 'solo':
           setSolo(message.solo);
@@ -367,10 +341,6 @@ export function GitTool({
             }
             return { tab: message.tab, texts: next };
           });
-          break;
-        case 'worktrees':
-          setWorktrees(message.worktrees);
-          dispatch(message);
           break;
         case 'recent':
           setRecent(message.recent);
@@ -391,14 +361,9 @@ export function GitTool({
         case 'cloneTarget':
           setCloneTarget(message);
           break;
-        case 'bookmarks':
-          setBookmarks(message.bookmarks);
-          break;
         case 'lastFetch':
           setLastFetch(message);
           break;
-        default:
-          dispatch(message);
       }
     };
     return listen(onMessage);
@@ -446,44 +411,6 @@ export function GitTool({
   );
 
   const refs = repository?.refs ?? [];
-  const branchActions = useMemo(
-    () => ({
-      pulling,
-      pushing,
-      onPull: () => postTab({ type: 'pull' }),
-      onPush: () => postTab({ type: 'push' }),
-      tracking: trackingOf(repository?.refs ?? [], repository?.head),
-    }),
-    [pulling, pushing, postTab, repository],
-  );
-  const otherBranchActions = useMemo(
-    () => ({
-      pulling: pullingBranch,
-      pushing: pushingBranch,
-      onPull: (branch: string) => postTab({ type: 'pullBranch', name: branch }),
-      onPush: (branch: string) => postTab({ type: 'pushBranch', name: branch }),
-      elsewhere: new Set(
-        (worktrees ?? [])
-          .filter((worktree) => worktree.root !== activeTab)
-          .map((worktree) => worktree.name),
-      ),
-    }),
-    [pullingBranch, pushingBranch, postTab, worktrees, activeTab],
-  );
-  const tagRemote = repository?.tagRemote;
-  const repositoryRefs = repository?.refs;
-  const tagActions = useMemo(
-    () => ({
-      remote: tagRemote,
-      onRemote:
-        tagRemote === undefined
-          ? new Set<string>()
-          : tagsOnRemote(repositoryRefs ?? [], tagRemote),
-      pushing: pushingTag,
-      onPush: (tag: string) => postTab({ type: 'pushTag', name: tag }),
-    }),
-    [tagRemote, repositoryRefs, pushingTag, postTab],
-  );
   const refsByCommit = useMemo(
     () => Map.groupBy(repository?.refs ?? [], (info) => info.commit),
     [repository],
@@ -493,9 +420,6 @@ export function GitTool({
     [repository],
   );
 
-  const detached =
-    repository && !repository.head ? repository.headCommit : undefined;
-  const bookmarked = useMemo(() => bookmarkedCommits(bookmarks), [bookmarks]);
   const opening = activeTab !== undefined && history === undefined && !error;
   const layoutSelection = shownSelection(hash, workingTree);
   const commitTree = treeOf(tab);
@@ -660,7 +584,7 @@ export function GitTool({
         outbox.follow({ type: 'loadTree', hash: treeNeeded, root: activeTab });
       }
     }
-  }, [treeNeeded, activeTab, outbox]);
+  }, [treeNeeded, activeTab, outbox, dispatch]);
 
   useEffect(() => {
     if (!showAllFiles || path === undefined) {
@@ -744,11 +668,6 @@ export function GitTool({
   const changeSolo = (next: boolean) => {
     setSolo(next);
     postTab({ type: 'setSolo', solo: next });
-  };
-
-  const changeBookmarks = (next: readonly Bookmark[]) => {
-    setBookmarks(next);
-    postTab({ type: 'setBookmarks', bookmarks: next });
   };
 
   const isBookmark = (bookmark: Bookmark) => hasRef(bookmarks, bookmark);
@@ -859,268 +778,234 @@ export function GitTool({
     <OpenContextMenu.Provider value={openMenu}>
       <ChosenLanguage value={chosenLanguage}>
         {popups}
-        <CheckedOutBranch.Provider value={repository?.head}>
-          <BranchActions.Provider value={branchActions}>
-            <OtherBranchActions.Provider value={otherBranchActions}>
-              <TagActions.Provider value={tagActions}>
-                <HideDimmedButtons.Provider value={hideDimmed}>
-                  <DetachedHead.Provider value={detached}>
-                    <BookmarkedCommits.Provider value={bookmarked}>
-                      {comparing !== undefined ? (
-                        <CompareView
-                          compare={shownCompare}
-                          texts={
-                            compareTexts.tab === comparing
-                              ? compareTexts.texts
-                              : noCompareTexts
+        <GitStore value={store}>
+          {comparing !== undefined ? (
+            <CompareView
+              compare={shownCompare}
+              texts={
+                compareTexts.tab === comparing
+                  ? compareTexts.texts
+                  : noCompareTexts
+              }
+              onLoadTexts={(requests) =>
+                post({ type: 'loadCompareTexts', requests })
+              }
+              entire={showEntireFile}
+              layout={diffLayout}
+              wordWrap={wordWrap}
+              showWhitespace={showWhitespace}
+              ignoreWhitespace={ignoreWhitespace}
+              findAsked={searchAsks.diff}
+              onEntire={changeShowEntireFile}
+              onLayout={changeDiffLayout}
+              onWordWrap={changeWordWrap}
+              onShowWhitespace={changeShowWhitespace}
+              onIgnoreWhitespace={changeIgnoreWhitespace}
+              language={languageButton}
+            />
+          ) : (
+            <div className="repository">
+              <WorktreeBar
+                worktrees={worktrees}
+                active={activeTab}
+                onSelect={(root) => post({ type: 'selectWorktree', root })}
+                onPreload={(root) => post({ type: 'preloadWorktree', root })}
+              />
+              {
+                <ColumnResizingProvider value={resizing}>
+                  <div
+                    className={columnsClass(
+                      commitColumnShown,
+                      layoutSelection,
+                      diffShown,
+                    )}
+                    ref={columnsContainer}
+                    style={{ gridTemplateColumns: columnsTemplate }}
+                    data-active-column={activeColumn}
+                    onFocus={(event) => {
+                      const column = columnOf(
+                        event.target instanceof Element ? event.target : null,
+                      );
+                      if (column) {
+                        setActiveColumn(column);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      const target =
+                        event.target instanceof HTMLElement
+                          ? event.target
+                          : null;
+                      const forwarded = forwardedColumn(
+                        columnOf(target),
+                        event,
+                      );
+                      if (forwarded) {
+                        event.preventDefault();
+                        focusColumn(forwarded)?.dispatchEvent(
+                          new KeyboardEvent('keydown', event.nativeEvent),
+                        );
+                        return;
+                      }
+                      const step = columnStep(
+                        event,
+                        shownColumns(
+                          commitColumnShown,
+                          layoutSelection,
+                          diffShown,
+                        ),
+                        columnOf(target) ?? activeColumn,
+                        target?.hasAttribute(columnFocusAttribute) ?? true,
+                      );
+                      if (step?.preventDefault) {
+                        event.preventDefault();
+                      }
+                      if (step?.next) {
+                        focusColumn(step.next);
+                      }
+                    }}
+                  >
+                    <Commits
+                      history={history}
+                      worktree={activeTab}
+                      opening={opening}
+                      scrollTarget={scrollTarget}
+                      onScrolled={onScrolled}
+                      onLoad={loadCommits}
+                      workingTree={workingTree}
+                      refsByCommit={refsByCommit}
+                      stashes={stashes}
+                      selected={hash}
+                      onSelect={selectCommit}
+                      onCompare={compareCommit}
+                      onToggleMerge={(merge) =>
+                        postTab({
+                          type: 'toggleMerge',
+                          hash: merge,
+                        })
+                      }
+                      collapseMerges={collapseMerges}
+                      onCollapseMerges={changeCollapseMerges}
+                      solo={solo}
+                      headCommit={repository?.headCommit}
+                      focusKey={activeTab}
+                      searching={searching}
+                      error={listError(error, layoutSelection)}
+                      applyingSolo={applyingSolo}
+                      onSolo={changeSolo}
+                      navigation={
+                        <NavButtons
+                          back={back}
+                          forward={forward}
+                          onNavigate={navigate}
+                          onHome={
+                            repository?.headCommit === undefined
+                              ? undefined
+                              : () => jump(repository.headCommit)
                           }
-                          onLoadTexts={(requests) =>
-                            post({ type: 'loadCompareTexts', requests })
-                          }
-                          entire={showEntireFile}
-                          layout={diffLayout}
-                          wordWrap={wordWrap}
-                          showWhitespace={showWhitespace}
-                          ignoreWhitespace={ignoreWhitespace}
-                          findAsked={searchAsks.diff}
-                          onEntire={changeShowEntireFile}
-                          onLayout={changeDiffLayout}
-                          onWordWrap={changeWordWrap}
-                          onShowWhitespace={changeShowWhitespace}
-                          onIgnoreWhitespace={changeIgnoreWhitespace}
-                          language={languageButton}
+                          fetching={fetching}
+                          onFetch={() => postTab({ type: 'fetch' })}
+                          autoFetch={autoFetch}
+                          autoFetchMinutes={autoFetchMinutes}
+                          onAutoFetch={(on) => {
+                            setAutoFetch(on);
+                            post({ type: 'setAutoFetch', on });
+                          }}
+                          lastFetch={lastFetch}
                         />
-                      ) : (
-                        <div className="repository">
-                          <WorktreeBar
-                            worktrees={worktrees}
-                            active={activeTab}
-                            onSelect={(root) =>
-                              post({ type: 'selectWorktree', root })
-                            }
-                            onPreload={(root) =>
-                              post({ type: 'preloadWorktree', root })
-                            }
-                          />
-                          {
-                            <ColumnResizingProvider value={resizing}>
-                              <div
-                                className={columnsClass(
-                                  commitColumnShown,
-                                  layoutSelection,
-                                  diffShown,
-                                )}
-                                ref={columnsContainer}
-                                style={{ gridTemplateColumns: columnsTemplate }}
-                                data-active-column={activeColumn}
-                                onFocus={(event) => {
-                                  const column = columnOf(
-                                    event.target instanceof Element
-                                      ? event.target
-                                      : null,
-                                  );
-                                  if (column) {
-                                    setActiveColumn(column);
-                                  }
-                                }}
-                                onKeyDown={(event) => {
-                                  const target =
-                                    event.target instanceof HTMLElement
-                                      ? event.target
-                                      : null;
-                                  const forwarded = forwardedColumn(
-                                    columnOf(target),
-                                    event,
-                                  );
-                                  if (forwarded) {
-                                    event.preventDefault();
-                                    focusColumn(forwarded)?.dispatchEvent(
-                                      new KeyboardEvent(
-                                        'keydown',
-                                        event.nativeEvent,
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  const step = columnStep(
-                                    event,
-                                    shownColumns(
-                                      commitColumnShown,
-                                      layoutSelection,
-                                      diffShown,
-                                    ),
-                                    columnOf(target) ?? activeColumn,
-                                    target?.hasAttribute(
-                                      columnFocusAttribute,
-                                    ) ?? true,
-                                  );
-                                  if (step?.preventDefault) {
-                                    event.preventDefault();
-                                  }
-                                  if (step?.next) {
-                                    focusColumn(step.next);
-                                  }
-                                }}
-                              >
-                                <Commits
-                                  history={history}
-                                  worktree={activeTab}
-                                  opening={opening}
-                                  scrollTarget={scrollTarget}
-                                  onScrolled={onScrolled}
-                                  onLoad={loadCommits}
-                                  workingTree={workingTree}
-                                  refsByCommit={refsByCommit}
-                                  stashes={stashes}
-                                  selected={hash}
-                                  onSelect={selectCommit}
-                                  onCompare={compareCommit}
-                                  onToggleMerge={(merge) =>
-                                    postTab({
-                                      type: 'toggleMerge',
-                                      hash: merge,
-                                    })
-                                  }
-                                  collapseMerges={collapseMerges}
-                                  onCollapseMerges={changeCollapseMerges}
-                                  solo={solo}
-                                  headCommit={repository?.headCommit}
-                                  focusKey={activeTab}
-                                  searching={searching}
-                                  error={listError(error, layoutSelection)}
-                                  applyingSolo={applyingSolo}
-                                  onSolo={changeSolo}
-                                  navigation={
-                                    <NavButtons
-                                      back={back}
-                                      forward={forward}
-                                      onNavigate={navigate}
-                                      onHome={
-                                        repository?.headCommit === undefined
-                                          ? undefined
-                                          : () => jump(repository.headCommit)
-                                      }
-                                      fetching={fetching}
-                                      onFetch={() => postTab({ type: 'fetch' })}
-                                      autoFetch={autoFetch}
-                                      autoFetchMinutes={autoFetchMinutes}
-                                      onAutoFetch={(on) => {
-                                        setAutoFetch(on);
-                                        post({ type: 'setAutoFetch', on });
-                                      }}
-                                      lastFetch={lastFetch}
-                                    />
-                                  }
-                                  searchButton={
-                                    <SearchButton
-                                      title={strings.actions.search}
-                                      onClick={() => setSearching(true)}
-                                    />
-                                  }
-                                  search={
-                                    <AddressBar
-                                      open={searching}
-                                      asked={searchAsks.commits}
-                                      onOpen={setSearching}
-                                      root={activeTab}
-                                      bookmarks={bookmarks}
-                                      repository={repository}
-                                      hashLookup={hashLookup}
-                                      onLookupHash={lookupHash}
-                                      commitSearch={commitSearch}
-                                      onSearchCommits={searchCommits}
-                                      onJump={jump}
-                                    />
-                                  }
-                                />
-                                <Files
-                                  title={filesTitle(hash)}
-                                  noChanges={noChangesText(hash, error)}
-                                  showAll={showAllFiles}
-                                  onShowAll={changeShowAllFiles}
-                                  closedFolders={closedFolders}
-                                  onToggleClosedFolder={toggleClosedFolder}
-                                  files={files}
-                                  staged={staged}
-                                  loading={filesLoading || opening}
-                                  tree={commitTree}
-                                  openedFolders={openedFolders}
-                                  onToggleOpenFolder={toggleOpenFolder}
-                                  onReplaceFolders={(shown) =>
-                                    setFolders(
-                                      replaceFolders(folderView, shown),
-                                    )
-                                  }
-                                  selected={path}
-                                  area={area}
-                                  onSelect={selectFile}
-                                  view={folderView}
-                                  filter={fileFilter}
-                                  onFilter={changeFileFilter}
-                                  filterAsked={searchAsks.files}
-                                />
-                                <Diff
-                                  selection={diffSelection(
-                                    activeTab,
-                                    hash,
-                                    path,
-                                    area,
-                                  )}
-                                  path={path}
-                                  loading={patchLoading || opening}
-                                  largeFiles={largeFiles}
-                                  onLoadFile={loadFileDiff}
-                                  texts={texts}
-                                  onLoadTexts={loadTexts}
-                                  onViewFile={viewFile}
-                                  viewAsked={viewAsks}
-                                  files={changesShown(tab)}
-                                  patch={patch}
-                                  leftOut={leftOut}
-                                  whitespaceOnly={whitespaceOnly}
-                                  diffs={diffs}
-                                  fileContent={fileContent}
-                                  error={error}
-                                  sideBySide={diffLayout === 'sideBySide'}
-                                  wordWrap={wordWrap}
-                                  showWhitespace={showWhitespace}
-                                  origin={imageOrigin}
-                                  findAsked={searchAsks.diff}
-                                  filter={fileFilter}
-                                  changeMarks={
-                                    path !== undefined && showEntireFile
-                                  }
-                                  entire={showEntireFile}
-                                  options={
-                                    <DiffOptions
-                                      entire={showEntireFile}
-                                      onEntire={changeShowEntireFile}
-                                      showWhitespace={showWhitespace}
-                                      onShowWhitespace={changeShowWhitespace}
-                                      ignoreWhitespace={ignoreWhitespace}
-                                      onIgnoreWhitespace={
-                                        changeIgnoreWhitespace
-                                      }
-                                      wordWrap={wordWrap}
-                                      onWordWrap={changeWordWrap}
-                                      language={languageButton}
-                                      layout={diffLayout}
-                                      onLayout={changeDiffLayout}
-                                    />
-                                  }
-                                />
-                              </div>
-                            </ColumnResizingProvider>
-                          }
-                        </div>
-                      )}
-                    </BookmarkedCommits.Provider>
-                  </DetachedHead.Provider>
-                </HideDimmedButtons.Provider>
-              </TagActions.Provider>
-            </OtherBranchActions.Provider>
-          </BranchActions.Provider>
-        </CheckedOutBranch.Provider>
+                      }
+                      searchButton={
+                        <SearchButton
+                          title={strings.actions.search}
+                          onClick={() => setSearching(true)}
+                        />
+                      }
+                      search={
+                        <AddressBar
+                          open={searching}
+                          asked={searchAsks.commits}
+                          onOpen={setSearching}
+                          root={activeTab}
+                          bookmarks={bookmarks}
+                          repository={repository}
+                          hashLookup={hashLookup}
+                          onLookupHash={lookupHash}
+                          commitSearch={commitSearch}
+                          onSearchCommits={searchCommits}
+                          onJump={jump}
+                        />
+                      }
+                    />
+                    <Files
+                      title={filesTitle(hash)}
+                      noChanges={noChangesText(hash, error)}
+                      showAll={showAllFiles}
+                      onShowAll={changeShowAllFiles}
+                      closedFolders={closedFolders}
+                      onToggleClosedFolder={toggleClosedFolder}
+                      files={files}
+                      staged={staged}
+                      loading={filesLoading || opening}
+                      tree={commitTree}
+                      openedFolders={openedFolders}
+                      onToggleOpenFolder={toggleOpenFolder}
+                      onReplaceFolders={(shown) =>
+                        setFolders(replaceFolders(folderView, shown))
+                      }
+                      selected={path}
+                      area={area}
+                      onSelect={selectFile}
+                      view={folderView}
+                      filter={fileFilter}
+                      onFilter={changeFileFilter}
+                      filterAsked={searchAsks.files}
+                    />
+                    <Diff
+                      selection={diffSelection(activeTab, hash, path, area)}
+                      path={path}
+                      loading={patchLoading || opening}
+                      largeFiles={largeFiles}
+                      onLoadFile={loadFileDiff}
+                      texts={texts}
+                      onLoadTexts={loadTexts}
+                      onViewFile={viewFile}
+                      viewAsked={viewAsks}
+                      files={changesShown(tab)}
+                      patch={patch}
+                      leftOut={leftOut}
+                      whitespaceOnly={whitespaceOnly}
+                      diffs={diffs}
+                      fileContent={fileContent}
+                      error={error}
+                      sideBySide={diffLayout === 'sideBySide'}
+                      wordWrap={wordWrap}
+                      showWhitespace={showWhitespace}
+                      origin={imageOrigin}
+                      findAsked={searchAsks.diff}
+                      filter={fileFilter}
+                      changeMarks={path !== undefined && showEntireFile}
+                      entire={showEntireFile}
+                      options={
+                        <DiffOptions
+                          entire={showEntireFile}
+                          onEntire={changeShowEntireFile}
+                          showWhitespace={showWhitespace}
+                          onShowWhitespace={changeShowWhitespace}
+                          ignoreWhitespace={ignoreWhitespace}
+                          onIgnoreWhitespace={changeIgnoreWhitespace}
+                          wordWrap={wordWrap}
+                          onWordWrap={changeWordWrap}
+                          language={languageButton}
+                          layout={diffLayout}
+                          onLayout={changeDiffLayout}
+                        />
+                      }
+                    />
+                  </div>
+                </ColumnResizingProvider>
+              }
+            </div>
+          )}
+        </GitStore>
       </ChosenLanguage>
     </OpenContextMenu.Provider>
   );

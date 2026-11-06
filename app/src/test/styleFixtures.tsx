@@ -5,12 +5,12 @@ import type {
   WorktreeInfo,
 } from '../tools/git/shared/protocol';
 import type { ColumnName } from '../tools/git/page/activeColumn';
-import { CheckedOutBranch } from '../tools/git/page/bubbles';
 import { changesTreeElement } from '../tools/git/page/changesTree';
 import { Column } from '../tools/git/page/column';
 import { ColumnResizingProvider } from '../tools/git/page/columns';
 import { CommitRow, WorkingTreeRow } from '../tools/git/page/commitList';
 import { ContextMenu } from '../ui/contextMenu';
+import { gitStore } from './componentFixtures';
 import { DiffOptions } from '../tools/git/page/diffColumn';
 import { FindField } from '../ui/search';
 import { gitKeymap } from '../tools/git/shared/keymap';
@@ -23,6 +23,7 @@ import {
 } from '../tools/git/page/diffView';
 import type { FindRange } from '../shared/textMatches';
 import { LocationsPopup } from '../tools/git/page/locations';
+import { GitStore } from '../tools/git/page/store';
 import {
   MessageBody,
   MessageCorner,
@@ -560,9 +561,11 @@ export function bubbles(checkedOut?: string): MarkupElement[] {
   ].flatMap((node) =>
     allWithClass(
       rendered(
-        <CheckedOutBranch.Provider value={checkedOut}>
+        <GitStore
+          value={gitStore(checkedOut === undefined ? {} : { head: checkedOut })}
+        >
           {node}
-        </CheckedOutBranch.Provider>,
+        </GitStore>,
       ),
       'badge',
     ),

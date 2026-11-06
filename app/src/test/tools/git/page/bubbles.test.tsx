@@ -3,15 +3,10 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
-  BranchActions,
   type BranchActionsOf,
   BubbleActions,
-  HideDimmedButtons,
-  OtherBranchActions,
   OtherBranchButtons,
-  TagActions,
   TagPushAction,
-  CheckedOutBranch,
   CommitBubble,
   HeadBubble,
   RefBubble,
@@ -20,16 +15,24 @@ import {
   OpenContextMenu,
   type MenuTarget,
 } from '../../../../tools/git/page/menus';
+import { GitStore } from '../../../../tools/git/page/store';
+import type {
+  BookmarkRef,
+  GitToHost,
+} from '../../../../tools/git/shared/protocol';
+import { gitStore, type ShownGit } from '../../../componentFixtures';
 import { classesOf, noop, renderedBy, tagWith } from '../../../fixtures';
 
 const idle = { pulling: false, pushing: false, onPull: noop, onPush: noop };
 
-function onMain(node: React.ReactNode): string {
+function shownIn(shown: ShownGit, node: React.ReactNode): string {
   return renderToStaticMarkup(
-    <BranchActions.Provider value={idle}>
-      <CheckedOutBranch.Provider value="main">{node}</CheckedOutBranch.Provider>
-    </BranchActions.Provider>,
+    <GitStore value={gitStore(shown)}>{node}</GitStore>,
   );
+}
+
+function onMain(node: React.ReactNode): string {
+  return shownIn({ head: 'main' }, node);
 }
 
 function tagged(
@@ -38,19 +41,18 @@ function tagged(
   remote: string | undefined,
   hideDimmed = false,
 ): string {
-  return renderToStaticMarkup(
-    <HideDimmedButtons.Provider value={hideDimmed}>
-      <TagActions.Provider
-        value={{
-          remote,
-          onRemote: new Set(onRemote),
-          pushing: [],
-          onPush: noop,
-        }}
-      >
-        <RefBubble info={{ kind: 'tag', name }} actions />
-      </TagActions.Provider>
-    </HideDimmedButtons.Provider>,
+  return shownIn(
+    {
+      hideDimmed,
+      ...(remote === undefined ? {} : { tagRemote: remote }),
+      refs: onRemote.map((tag) => ({
+        kind: 'remote-tag',
+        name: `${remote}/${tag}`,
+        commit: 'a'.repeat(40),
+        ...(remote === undefined ? {} : { remote }),
+      })),
+    },
+    <RefBubble info={{ kind: 'tag', name }} actions />,
   );
 }
 
@@ -63,27 +65,54 @@ function otherBranch(
     pulling = [] as readonly string[],
   } = {},
 ): string {
-  return renderToStaticMarkup(
-    <HideDimmedButtons.Provider value={hideDimmed}>
-      <OtherBranchActions.Provider
-        value={{
-          pulling,
-          pushing: [],
-          onPull: noop,
-          onPush: noop,
-          elsewhere: new Set(elsewhere),
-        }}
-      >
-        <CheckedOutBranch.Provider value="main">
-          <RefBubble
-            info={{ kind: 'branch', name }}
-            tracking={tracking}
-            actions
-          />
-        </CheckedOutBranch.Provider>
-      </OtherBranchActions.Provider>
-    </HideDimmedButtons.Provider>,
+  return shownIn(
+    { head: 'main', hideDimmed, elsewhere, tab: { pullingBranch: pulling } },
+    <RefBubble info={{ kind: 'branch', name }} tracking={tracking} actions />,
   );
+}
+
+type Clickable = React.ReactElement<{
+  children?: React.ReactNode;
+  onClick?: (event: { stopPropagation: () => void }) => void;
+}>;
+
+function buttonsIn(node: React.ReactNode): Clickable[] {
+  if (Array.isArray(node)) {
+    return node.flatMap(buttonsIn);
+  }
+  if (
+    isValidElement<Parameters<typeof TagPushAction>[0]>(node) &&
+    node.type === TagPushAction
+  ) {
+    return buttonsIn(TagPushAction(node.props));
+  }
+  if (!isValidElement<Clickable['props']>(node)) {
+    return [];
+  }
+  return node.type === 'button' ? [node] : buttonsIn(node.props.children);
+}
+
+function clicksOn(info: BookmarkRef): GitToHost[] {
+  const posted: GitToHost[] = [];
+  let drawn: React.ReactNode;
+  function Probe() {
+    drawn = RefBubble({ info, actions: true });
+    return null;
+  }
+  renderToStaticMarkup(
+    <GitStore
+      value={gitStore(
+        { head: 'main', tagRemote: 'origin', tab: { root: '/repo' } },
+        (message) => posted.push(message),
+      )}
+    >
+      <Probe />
+    </GitStore>,
+  );
+  for (const button of buttonsIn(drawn)) {
+    button.props.onClick?.({ stopPropagation: noop });
+  }
+  return posted;
 }
 
 function idleIn(markup: string, title: string): boolean {
@@ -96,14 +125,13 @@ function checkedOut(
   tracking: BranchActionsOf['tracking'],
   hideDimmed: boolean,
 ): string {
-  return renderToStaticMarkup(
-    <HideDimmedButtons.Provider value={hideDimmed}>
-      <BranchActions.Provider value={{ ...idle, tracking }}>
-        <CheckedOutBranch.Provider value="main">
-          <RefBubble info={{ kind: 'branch', name: 'main' }} actions />
-        </CheckedOutBranch.Provider>
-      </BranchActions.Provider>
-    </HideDimmedButtons.Provider>,
+  return shownIn(
+    { head: 'main', hideDimmed },
+    <RefBubble
+      info={{ kind: 'branch', name: 'main' }}
+      tracking={tracking}
+      actions
+    />,
   );
 }
 
@@ -120,13 +148,13 @@ suite('Bubbles', () => {
   });
 
   test('marks only the branch checked out, and a ref gone missing', () => {
-    const html = renderToStaticMarkup(
-      <CheckedOutBranch.Provider value="main">
+    const html = onMain(
+      <>
         <RefBubble info={{ kind: 'branch', name: 'main' }} />
         <RefBubble info={{ kind: 'tag', name: 'main' }} />
         <RefBubble info={{ kind: 'branch', name: 'gone' }} missing />
         <CommitBubble hash={'b'.repeat(40)} />
-      </CheckedOutBranch.Provider>,
+      </>,
     );
     assert.match(
       tagWith(html, '', 'badge', 'branch', 'checked-out'),
@@ -145,7 +173,7 @@ suite('Bubbles', () => {
     );
   });
 
-  test('puts pull and push on the bubble of the checked-out branch where asked, and on no other bubble', () => {
+  test('puts pull and push on the bubble of the checked-out branch where asked, and on no bubble of a remote branch', () => {
     const withActions = onMain(
       <RefBubble info={{ kind: 'branch', name: 'main' }} actions />,
     );
@@ -163,7 +191,6 @@ suite('Bubbles', () => {
     );
     for (const without of [
       <RefBubble key="a" info={{ kind: 'branch', name: 'main' }} />,
-      <RefBubble key="b" info={{ kind: 'branch', name: 'feature' }} actions />,
       <RefBubble
         key="c"
         info={{ kind: 'remote', name: 'origin/main' }}
@@ -331,24 +358,12 @@ suite('Bubbles', () => {
       'idle',
     );
     assert.doesNotMatch(
-      renderToStaticMarkup(
-        <RefBubble info={{ kind: 'tag', name: 'v1' }} actions />,
-      ),
-      /bubble-action/,
-    );
-    assert.doesNotMatch(
-      renderToStaticMarkup(
-        <TagActions.Provider
-          value={{
-            remote: 'origin',
-            onRemote: new Set(),
-            pushing: [],
-            onPush: noop,
-          }}
-        >
+      shownIn(
+        { tagRemote: 'origin' },
+        <>
           <RefBubble info={{ kind: 'tag', name: 'v1' }} />
           <RefBubble info={{ kind: 'remote-tag', name: 'origin/v1' }} actions />
-        </TagActions.Provider>,
+        </>,
       ),
       /bubble-action/,
     );
@@ -400,19 +415,11 @@ suite('Bubbles', () => {
       /bubble-action|with-actions/,
     );
     assert.doesNotMatch(
-      renderToStaticMarkup(
-        <OtherBranchActions.Provider
-          value={{
-            pulling: [],
-            pushing: [],
-            onPull: noop,
-            onPush: noop,
-            elsewhere: new Set(),
-          }}
-        >
+      onMain(
+        <>
           <RefBubble info={{ kind: 'remote', name: 'origin/side' }} actions />
           <RefBubble info={{ kind: 'branch', name: 'side' }} />
-        </OtherBranchActions.Provider>,
+        </>,
       ),
       /bubble-action/,
     );
@@ -424,11 +431,11 @@ suite('Bubbles', () => {
       name: 'side',
       tracking: { upstream: 'origin/side', ahead: 0, behind: 2 },
       actions: {
-        pulling: [],
-        pushing: [],
+        pulling: false,
+        pushing: false,
+        elsewhere: false,
         onPull: (name) => pulled.push(`pull ${name}`),
         onPush: (name) => pulled.push(`push ${name}`),
-        elsewhere: new Set<string>(),
       },
     });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(action));
@@ -511,18 +518,12 @@ suite('Bubbles', () => {
       stopPropagation: () => calls.push('row left alone'),
     });
     assert.deepStrictEqual(calls, ['kept focus', 'row left alone', 'push v1']);
-    const html = renderToStaticMarkup(
-      <TagActions.Provider
-        value={{
-          remote: 'origin',
-          onRemote: new Set(),
-          pushing: ['v0', 'v1'],
-          onPush: noop,
-        }}
-      >
+    const html = shownIn(
+      { tagRemote: 'origin', tab: { pushingTag: ['v0', 'v1'] } },
+      <>
         <RefBubble info={{ kind: 'tag', name: 'v1' }} actions />
         <RefBubble info={{ kind: 'tag', name: 'v2' }} actions />
-      </TagActions.Provider>,
+      </>,
     );
     assert.match(
       tagWith(html, 'title="Push v1 to origin"', 'bubble-action', 'running'),
@@ -532,6 +533,20 @@ suite('Bubbles', () => {
       tagWith(html, 'title="Push v2 to origin"', 'bubble-action'),
       /disabled|running/,
     );
+  });
+
+  test('pulls and pushes the checked-out branch, another branch and a tag from their bubbles for the worktree shown', () => {
+    assert.deepStrictEqual(clicksOn({ kind: 'branch', name: 'main' }), [
+      { type: 'pull', root: '/repo' },
+      { type: 'push', root: '/repo' },
+    ]);
+    assert.deepStrictEqual(clicksOn({ kind: 'branch', name: 'side' }), [
+      { type: 'pullBranch', name: 'side', root: '/repo' },
+      { type: 'pushBranch', name: 'side', root: '/repo' },
+    ]);
+    assert.deepStrictEqual(clicksOn({ kind: 'tag', name: 'v1' }), [
+      { type: 'pushTag', name: 'v1', root: '/repo' },
+    ]);
   });
 
   test('offers the menu of a detached HEAD commit', () => {

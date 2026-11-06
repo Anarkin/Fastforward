@@ -25,18 +25,12 @@ import {
   type RefInfo,
   type ScrollTarget,
 } from '../shared/protocol';
-import {
-  BookmarkedCommits,
-  CommitBubble,
-  DetachedHead,
-  HeadBubble,
-  RefBubble,
-  StashBubble,
-} from './bubbles';
+import { CommitBubble, HeadBubble, RefBubble, StashBubble } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
 import { commitMenuTarget, OpenContextMenu, type MenuTarget } from './menus';
 import { GraphCell, graphWidth, rowLanes } from './graph';
+import { detachedHead, useGit } from './store';
 import { DateFormat, formatDate } from '../../../ui/dates';
 import { MenuButton } from '../../../ui/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
@@ -539,7 +533,7 @@ export function CommitBubbles({
   stash?: boolean;
   detached: boolean;
 }) {
-  const bookmarked = useContext(BookmarkedCommits).has(hash) && !detached;
+  const bookmarked = useGit((state) => state.bookmarked.has(hash)) && !detached;
   if (!detached && refs.length === 0 && !stash && !bookmarked) {
     return null;
   }
@@ -735,7 +729,7 @@ export function Commits({
   );
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();
-  const detached = useContext(DetachedHead);
+  const detached = useGit(detachedHead);
   const hasWorkingTree = workingTree !== undefined;
   const openMenu = useContext(OpenContextMenu);
   const offset = hasWorkingTree ? 1 : 0;

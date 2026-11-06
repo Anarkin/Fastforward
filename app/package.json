@@ -70,7 +70,8 @@
     "react-dom": "^19.3.0",
     "shiki": "^4.5.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "zustand": "^5.0.16"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",

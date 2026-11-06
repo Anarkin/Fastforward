@@ -598,7 +598,10 @@ suite('Commit results', () => {
       /<div [^>]*class="commit selected" style="padding-left:8px">.*?subject 0/,
     );
     assert.match(html, /class="commit checked-out".*subject 1/);
-    assert.match(html, /<span class="badge branch[^>]*>main<\/span>/);
+    assert.match(
+      html,
+      /<span class="badge branch[^>]*>(?:<span class="bubble-name">)?main<\/span>/,
+    );
     assert.match(html, /3 more; type more to narrow it down/);
   });
 

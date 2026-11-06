@@ -3,13 +3,8 @@ import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
-import {
-  BranchActions,
-  BubbleActions,
-  CheckedOutBranch,
-  RefBubble,
-  TagActions,
-} from '../../../tools/git/page/bubbles';
+import { BubbleActions, RefBubble } from '../../../tools/git/page/bubbles';
+import { GitStore } from '../../../tools/git/page/store';
 import { GraphCell } from '../../../tools/git/page/graph';
 import { listedFilesRows } from '../../../tools/git/page/changesTree';
 import { Column } from '../../../tools/git/page/column';
@@ -62,6 +57,7 @@ import {
   renderedBy,
   stylesheet,
 } from '../../fixtures';
+import { gitStore } from '../../componentFixtures';
 import {
   searchButton,
   bubbles,
@@ -2426,15 +2422,8 @@ suite('Style', () => {
     const tag = withClass(
       rendered(
         createElement(
-          TagActions.Provider,
-          {
-            value: {
-              remote: 'origin',
-              onRemote: new Set<string>(),
-              pushing: [],
-              onPush: noop,
-            },
-          },
+          GitStore,
+          { value: gitStore({ tagRemote: 'origin' }) },
           createElement(
             'div',
             { className: 'bubble-line' },
@@ -2456,24 +2445,20 @@ suite('Style', () => {
   test('keeps a bubble with buttons within its line, cutting off its long name with an ellipsis and never its buttons', () => {
     const line = rendered(
       createElement(
-        BranchActions.Provider,
+        GitStore,
         {
-          value: { pulling: false, pushing: false, onPull: noop, onPush: noop },
+          value: gitStore({ head: 'docs/a-branch-name-longer-than-its-line' }),
         },
         createElement(
-          CheckedOutBranch.Provider,
-          { value: 'docs/a-branch-name-longer-than-its-line' },
-          createElement(
-            'div',
-            { className: 'bubble-line' },
-            createElement(RefBubble, {
-              info: {
-                kind: 'branch',
-                name: 'docs/a-branch-name-longer-than-its-line',
-              },
-              actions: true,
-            }),
-          ),
+          'div',
+          { className: 'bubble-line' },
+          createElement(RefBubble, {
+            info: {
+              kind: 'branch',
+              name: 'docs/a-branch-name-longer-than-its-line',
+            },
+            actions: true,
+          }),
         ),
       ),
     );
@@ -2735,7 +2720,22 @@ suite('Style', () => {
   });
 
   test('draws bubbles in the flow of their line, starting where the other lines start, each kept within the line, cutting off its long name with an ellipsis', () => {
-    const commit = rendered(commitRow({ refs: repository.refs }));
+    const commit = rendered(
+      createElement(
+        GitStore,
+        { value: gitStore({ hideDimmed: true }) },
+        commitRow({
+          refs: repository.refs.map((ref) =>
+            ref.kind === 'branch'
+              ? {
+                  ...ref,
+                  tracking: { upstream: 'origin/main', ahead: 0, behind: 0 },
+                }
+              : ref,
+          ),
+        }),
+      ),
+    );
     const line = cascaded(withClass(commit, 'bubble-line'), 'line-height');
     for (const badge of allWithClass(commit, 'badge')) {
       const height = cascaded(badge, 'height');

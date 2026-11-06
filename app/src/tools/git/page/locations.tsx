@@ -23,16 +23,11 @@ import { pinnedRefs, type PinnedRefs } from './bookmarks';
 import { byName } from '../../../ui/byName';
 import { BackIcon } from '../../../ui/icons';
 import { columnFocusOf } from '../../../ui/columnFocus';
-import {
-  CommitBubble,
-  DetachedHead,
-  HeadBubble,
-  RefBubble,
-  useCheckedOut,
-} from './bubbles';
+import { CommitBubble, HeadBubble, RefBubble, useCheckedOut } from './bubbles';
 import { useDismiss } from '../../../ui/contextMenu';
 import { OpenContextMenu, refMenuTarget } from './menus';
 import { CommitRow } from './commitList';
+import { detachedHead, useGit } from './store';
 import { Highlight } from '../../../ui/highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../../../shell/shared/keymap';
@@ -444,7 +439,7 @@ function CommitResultsSection({
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
-  const detached = useContext(DetachedHead);
+  const detached = useGit(detachedHead);
   if (found.length === 0) {
     const status =
       lookingUp && hash !== undefined
@@ -611,7 +606,7 @@ export function LocationsPopup({
     [stashes, query],
   );
   const hasQuery = query.trim() !== '';
-  const detached = useContext(DetachedHead);
+  const detached = useGit(detachedHead);
   const head = repository?.head;
   const pinned = useMemo(
     () => pinnedRefs(bookmarks, refs, head, detached, query),
@@ -927,7 +922,7 @@ function PinnedSection({
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
-  const detached = useContext(DetachedHead);
+  const detached = useGit(detachedHead);
   if (items.length === 0) {
     return null;
   }
