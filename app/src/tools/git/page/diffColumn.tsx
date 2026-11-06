@@ -8,7 +8,10 @@ import {
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { pickedFor, useGit, useGitActions } from './store';
+import { languageKeyOf, pickedFor, useGit, useGitActions } from './store';
+import { LanguageButton, useLanguageChoice } from '../../../ui/languageChoice';
+import { languageOf } from '../../../ui/languages';
+import { useBinding } from '../../../ui/shortcuts';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
 import { DiffView, type WholeFile } from './diffView';
 import { filterWords, matchesFilter } from '../../../shared/fileFilter';
@@ -130,6 +133,40 @@ export function filteredDiffFiles(
   return path !== undefined || words.length === 0
     ? files
     : files.filter((file) => matchesFilter(words, file.path, file.oldPath));
+}
+
+export function DiffLanguage({ comparing }: { comparing: string | undefined }) {
+  const key = useGit((state) => languageKeyOf(comparing, state.tab));
+  const path = useGit((state) => state.tab.path);
+  const compared = useGit(({ compare }) =>
+    compare !== undefined && compare.tab === comparing
+      ? compare.new
+      : undefined,
+  );
+  const picked = useGit(pickedFor(key));
+  const textView = useShell((state) => state.textView);
+  const { changeTextView } = useShellActions();
+  const { pickLanguage } = useGitActions();
+  const { choice, choose } = useLanguageChoice(
+    key,
+    {
+      on: textView.highlightSyntax,
+      change: (on) => changeTextView({ ...textView, highlightSyntax: on }),
+    },
+    { language: picked, keep: (language) => pickLanguage(key, language) },
+  );
+  const trigger = useRef<HTMLButtonElement>(null);
+  useBinding(gitKeymap.language, () => trigger.current?.click());
+  const shown = comparing === undefined ? path : compared;
+  return (
+    <LanguageButton
+      choice={choice}
+      detected={shown && languageOf(shown)}
+      single={key !== undefined}
+      choose={choose}
+      trigger={trigger}
+    />
+  );
 }
 
 export function DiffOptions({ language }: { language: React.ReactNode }) {

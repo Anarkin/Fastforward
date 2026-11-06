@@ -8,8 +8,11 @@ import type {
 import {
   createGitStore,
   detachedHead,
+  fileFilterOf,
   pickedFor,
+  shownFoldersOf,
 } from '../../../../tools/git/page/store';
+import { areaKey } from '../../../../tools/git/page/changesTree';
 import { emptyTabView } from '../../../../tools/git/page/tabView';
 import { checkoutOptions } from '../../../../tools/git/page/checkout';
 import { bookmarkOptions } from '../../../../tools/git/page/bookmarks';
@@ -687,5 +690,55 @@ suite('Git store', () => {
     store.getState().receive({ type: 'pulling', running: true });
     assert.strictEqual(store.getState().refsByCommit, refsByCommit);
     assert.strictEqual(store.getState().stashCommits, stashCommits);
+  });
+
+  test('keeps the column that has the keyboard', () => {
+    const store = createGitStore(noop);
+    assert.strictEqual(store.getState().activeColumn, 'commits');
+    store.getState().activateColumn('files');
+    assert.strictEqual(store.getState().activeColumn, 'files');
+  });
+
+  test('keeps a filter of the files for each worktree, through another worktree shown, until it is cleared', () => {
+    const store = createGitStore(noop);
+    store.getState().receive(shown());
+    store.getState().filterFiles('src');
+    assert.strictEqual(fileFilterOf(store.getState()), 'src');
+    store
+      .getState()
+      .receive({ type: 'worktrees', worktree: '/other', worktrees: [] });
+    assert.strictEqual(fileFilterOf(store.getState()), undefined);
+    store.getState().receive(shown());
+    assert.strictEqual(fileFilterOf(store.getState()), 'src');
+    store.getState().filterFiles(undefined);
+    assert.strictEqual(fileFilterOf(store.getState()), undefined);
+  });
+
+  test('opens and closes the folders of the commit shown, none for another commit, and opens those of a file selected while all files are shown', () => {
+    const store = createGitStore(noop);
+    store.getState().receive(shown());
+    store.getState().selectCommit(at);
+    store.getState().toggleFolder('open', 'src');
+    store.getState().toggleFolder('closed', 'docs');
+    assert.deepStrictEqual(shownFoldersOf(store.getState()), {
+      view: JSON.stringify(['/repo', at]),
+      open: new Set(['src']),
+      closed: new Set(['docs']),
+    });
+    store.getState().selectCommit('b'.repeat(40));
+    assert.deepStrictEqual(shownFoldersOf(store.getState()).open, new Set());
+    store.getState().changeShowAllFiles(true);
+    store.getState().dispatch({ type: 'showFile', path: 'src/a/b.ts' });
+    assert.deepStrictEqual(
+      shownFoldersOf(store.getState()).open,
+      new Set([areaKey(undefined, 'src'), areaKey(undefined, 'src/a')]),
+    );
+    store
+      .getState()
+      .replaceFolders({ open: new Set(['x']), closed: new Set() });
+    assert.deepStrictEqual(
+      shownFoldersOf(store.getState()).open,
+      new Set(['x']),
+    );
   });
 });

@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useBinding } from '../../../ui/shortcuts';
+import { gitKeymap } from '../shared/keymap';
 import type {
   CompareView as Compared,
   FileChange,
@@ -6,7 +8,7 @@ import type {
 } from '../shared/protocol';
 import { strings } from '../../../shared/strings';
 import type { DiffFile, LoadedText } from './diff';
-import { Diff, DiffOptions } from './diffColumn';
+import { Diff, DiffLanguage, DiffOptions } from './diffColumn';
 import { compareLanguageKey, useGit, useGitActions } from './store';
 
 const noFiles: readonly FileChange[] = [];
@@ -25,15 +27,9 @@ function noteOf(compare: Compared | undefined): string | undefined {
     : undefined;
 }
 
-export function CompareView({
-  comparing,
-  findAsked,
-  language,
-}: {
-  comparing: string;
-  findAsked: number;
-  language: React.ReactNode;
-}) {
+export function CompareView({ comparing }: { comparing: string }) {
+  const [findAsked, setFindAsked] = useState(0);
+  useBinding(gitKeymap.find, () => setFindAsked((count) => count + 1));
   const compare = useGit((state) =>
     state.compare?.tab === comparing ? state.compare : undefined,
   );
@@ -74,7 +70,9 @@ export function CompareView({
           origin={undefined}
           findAsked={findAsked}
           filter={undefined}
-          options={<DiffOptions language={language} />}
+          options={
+            <DiffOptions language={<DiffLanguage comparing={comparing} />} />
+          }
           languageKey={compareLanguageKey(comparing)}
         />
       </div>

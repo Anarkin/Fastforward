@@ -22,15 +22,27 @@ import type {
   WorktreeInfo,
 } from '../shared/protocol';
 import { bookmarkedCommits, hasRef } from '../shared/refNames';
+import type { ColumnName } from './activeColumn';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
+import { areaKey } from './changesTree';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import type { ChosenFolder, CloneTarget } from './clonePopup';
-import { resetWidth, widthsToLoad } from './columns';
+import { resetWidth, shownSelection, widthsToLoad } from './columns';
 import { textKey, type LoadedText } from './diff';
+import { foldersOf } from './fileTree';
 import type { ViewedSource } from './images';
 import type { MenuTarget } from './menus';
 import { settling } from './outbox';
 import { tagsOnRemote } from './tagPushes';
+import {
+  noFolders,
+  openFolders,
+  replaceFolders,
+  shownFolders,
+  toggleFolder,
+  type Folders,
+  type ViewFolders,
+} from './viewFolders';
 import {
   emptyTabView,
   reduceTabView,
@@ -75,6 +87,9 @@ interface GitSource {
   readonly searching: boolean;
   readonly pickedLanguage:
     { readonly key: string; readonly language: string } | undefined;
+  readonly activeColumn: ColumnName;
+  readonly fileFilters: ReadonlyMap<string, string>;
+  readonly folders: ViewFolders;
 }
 
 interface GitCollections {
@@ -147,6 +162,10 @@ interface GitActions {
   readonly stopClone: () => void;
   readonly selectWorktree: (root: string) => void;
   readonly preloadWorktree: (root: string) => void;
+  readonly activateColumn: (column: ColumnName) => void;
+  readonly filterFiles: (filter: string | undefined) => void;
+  readonly toggleFolder: (kind: keyof Folders, folder: string) => void;
+  readonly replaceFolders: (folders: Folders) => void;
   readonly toggleCommits: () => void;
   readonly search: (open: boolean) => void;
   readonly checkout: (target: CheckoutTarget) => void;
@@ -182,13 +201,71 @@ const gitDefaults: GitSource = {
   commitsShown: true,
   searching: false,
   pickedLanguage: undefined,
+  activeColumn: 'commits',
+  fileFilters: new Map(),
+  folders: noFolders,
 };
+
+export function languageKeyOf(
+  comparing: string | undefined,
+  { root, hash, path }: TabView,
+): string | undefined {
+  return comparing !== undefined
+    ? compareLanguageKey(comparing)
+    : path === undefined
+      ? undefined
+      : fileLanguageKey(root, hash, path);
+}
+
+export function openingOf({ tab }: GitSource): boolean {
+  return tab.root !== undefined && tab.history === undefined && !tab.error;
+}
+
+export function layoutSelectionOf({ tab }: GitSource): string | undefined {
+  return shownSelection(tab.hash, tab.workingTree);
+}
+
+export function folderViewOf({ root, hash }: TabView): string {
+  return JSON.stringify([root, hash]);
+}
+
+export function shownFoldersOf(state: GitSource): Folders {
+  return shownFolders(state.folders, folderViewOf(state.tab));
+}
+
+export function fileFilterOf({
+  tab,
+  fileFilters,
+}: GitSource): string | undefined {
+  return tab.root === undefined ? undefined : fileFilters.get(tab.root);
+}
+
+function withSelectedFolders(state: GitState, before: GitState): GitState {
+  const { path, area } = state.tab;
+  const view = folderViewOf(state.tab);
+  if (
+    !state.showAllFiles ||
+    path === undefined ||
+    (before.showAllFiles &&
+      before.tab.path === path &&
+      before.tab.area === area &&
+      folderViewOf(before.tab) === view)
+  ) {
+    return state;
+  }
+  const folders = openFolders(
+    state.folders,
+    view,
+    foldersOf(path).map((folder) => areaKey(area, folder)),
+  );
+  return folders === state.folders ? state : { ...state, folders };
+}
 
 export function compareLanguageKey(comparing: string): string {
   return JSON.stringify(['compare', comparing]);
 }
 
-export function fileLanguageKey(
+function fileLanguageKey(
   root: string | undefined,
   hash: string | undefined,
   path: string,
@@ -255,7 +332,7 @@ function menuItemsOf(state: GitState, target: MenuTarget): ContextMenuItem[] {
 
 type GitData = GitSource & GitCollections;
 
-type GitState = GitData & GitActions;
+export type GitState = GitData & GitActions;
 
 const noNames: ReadonlySet<string> = new Set();
 
@@ -392,7 +469,9 @@ export function createGitStore(
     const apply = (next: (state: GitState) => GitState) =>
       set((state) => {
         const changed = next(state);
-        return changed === state ? state : collected(changed, state);
+        return changed === state
+          ? state
+          : collected(withSelectedFolders(changed, state), state);
       });
     const postTab = (message: TabMessage) => {
       const { root } = get().tab;
@@ -502,6 +581,34 @@ export function createGitStore(
       stopClone: () => post({ type: 'stopClone' }),
       selectWorktree: (root) => post({ type: 'selectWorktree', root }),
       preloadWorktree: (root) => post({ type: 'preloadWorktree', root }),
+      activateColumn: (column) => set({ activeColumn: column }),
+      filterFiles: (filter) =>
+        set((state) => {
+          const { root } = state.tab;
+          if (root === undefined) {
+            return state;
+          }
+          const fileFilters = new Map(state.fileFilters);
+          if (filter === undefined) {
+            fileFilters.delete(root);
+          } else {
+            fileFilters.set(root, filter);
+          }
+          return { fileFilters };
+        }),
+      toggleFolder: (kind, folder) =>
+        set((state) => ({
+          folders: toggleFolder(
+            state.folders,
+            folderViewOf(state.tab),
+            kind,
+            folder,
+          ),
+        })),
+      replaceFolders: (folders) =>
+        set((state) => ({
+          folders: replaceFolders(folderViewOf(state.tab), folders),
+        })),
       pull: () => postTab({ type: 'pull' }),
       push: () => postTab({ type: 'push' }),
       pullBranch: (name) => postTab({ type: 'pullBranch', name }),
@@ -520,7 +627,7 @@ export function createGitStore(
         post({ type: 'setDiffLayout', layout });
       },
       changeShowAllFiles: (show) => {
-        set({ showAllFiles: show });
+        apply((state) => ({ ...state, showAllFiles: show }));
         post({ type: 'setShowAllFiles', show });
       },
       changeCollapseMerges: (collapse) => {
