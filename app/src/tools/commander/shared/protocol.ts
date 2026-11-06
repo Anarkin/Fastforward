@@ -223,6 +223,7 @@ export type CommanderToWebview =
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'show'; readonly tab: string; readonly file?: string }
   | { readonly type: 'hide' }
+  | { readonly type: 'closed'; readonly tab: string }
   | {
       readonly type: 'viewing';
       readonly tab: string;

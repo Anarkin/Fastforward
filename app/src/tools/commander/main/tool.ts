@@ -311,7 +311,8 @@ export class CommanderTool implements Tool<'commander'> {
     return Promise.resolve();
   }
 
-  closed(_page: Page, tab: Tab): void {
+  closed(page: Page, tab: Tab): void {
+    this.post(page, { type: 'closed', tab: tab.id });
     this.panes.delete(tab.id);
     if (this.shown?.tab === tab.id) {
       this.shown = undefined;

@@ -68,7 +68,15 @@ export function languageMenu(
     : modes;
 }
 
-export function useLanguageChoice(file: string | undefined): {
+export interface KeptLanguage {
+  readonly language: string | undefined;
+  readonly keep: (language: string | undefined) => void;
+}
+
+export function useLanguageChoice(
+  file: string | undefined,
+  kept?: KeptLanguage,
+): {
   readonly choice: LanguageChoice;
   readonly choose: (choice: LanguageChoice) => void;
 } {
@@ -80,17 +88,33 @@ export function useLanguageChoice(file: string | undefined): {
   if (picked !== undefined && picked.file !== file) {
     setPicked(undefined);
   }
-  const language = picked?.file === file ? picked?.language : undefined;
+  const language =
+    kept === undefined
+      ? picked?.file === file
+        ? picked?.language
+        : undefined
+      : kept.language;
+  const pick = (chosen: string | undefined) => {
+    if (kept !== undefined) {
+      kept.keep(chosen);
+    } else {
+      setPicked(
+        chosen === undefined || file === undefined
+          ? undefined
+          : { file, language: chosen },
+      );
+    }
+  };
   const choice = language ?? (textView.view.highlightSyntax ? 'auto' : 'plain');
   const choose = (chosen: LanguageChoice) => {
     if (chosen === 'auto' || chosen === 'plain') {
-      setPicked(undefined);
+      pick(undefined);
       textView.change({
         ...textView.view,
         highlightSyntax: chosen === 'auto',
       });
     } else if (file !== undefined) {
-      setPicked({ file, language: chosen });
+      pick(chosen);
     }
   };
   return { choice, choose };

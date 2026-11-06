@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   emptyView,
   reduceView,
+  viewerChoices,
   type CommanderView,
   type ViewAction,
 } from '../../../../tools/commander/page/view';
@@ -329,6 +330,54 @@ suite('Commander view', () => {
       reduceView(view, { type: 'show', tab: '3' }).layouts,
       defaultLayouts,
     );
+  });
+
+  test('keeps what each viewing tab was chosen to show a file as, its encoding and its language while another tab is shown, for when it is shown again, and forgets them, and the layouts of a tab, once the tab is closed, as a tab opened later can take its id', () => {
+    const chosen = {
+      mode: 'text',
+      encoding: 'windows-1252',
+      language: 'python',
+    } as const;
+    let view = run({ type: 'show', tab: '3', file: '/work/notes.md' });
+    assert.deepStrictEqual(viewerChoices(view), {});
+    view = reduceView(view, { type: 'choose', choices: chosen });
+    assert.deepStrictEqual(viewerChoices(view), chosen);
+
+    view = reduceView(view, { type: 'show', tab: '4', file: '/work/a.md' });
+    assert.deepStrictEqual(viewerChoices(view), {});
+    view = reduceView(view, { type: 'hide' });
+    view = reduceView(view, { type: 'show', tab: '3', file: '/work/notes.md' });
+    assert.deepStrictEqual(viewerChoices(view), chosen);
+
+    view = reduceView(view, { type: 'show', tab: '1' });
+    view = reduceView(view, {
+      type: 'layout',
+      side: 'left',
+      layout: 'thumbnails',
+    });
+    view = reduceView(view, { type: 'show', tab: '2' });
+    view = reduceView(view, { type: 'closed', tab: '3' });
+    view = reduceView(view, { type: 'closed', tab: '1' });
+    view = reduceView(view, { type: 'show', tab: '3', file: '/work/b.md' });
+    assert.deepStrictEqual(viewerChoices(view), {});
+    view = reduceView(view, { type: 'show', tab: '1' });
+    assert.deepStrictEqual(view.layouts, defaultLayouts);
+
+    view = reduceView(view, { type: 'show', tab: '5', file: '/work/c.md' });
+    view = reduceView(view, { type: 'choose', choices: chosen });
+    view = reduceView(view, { type: 'closed', tab: '5' });
+    view = reduceView(view, { type: 'show', tab: '1' });
+    view = reduceView(view, {
+      type: 'layout',
+      side: 'right',
+      layout: 'thumbnails',
+    });
+    view = reduceView(view, { type: 'closed', tab: '1' });
+    view = reduceView(view, { type: 'hide' });
+    view = reduceView(view, { type: 'show', tab: '5', file: '/work/d.md' });
+    assert.deepStrictEqual(viewerChoices(view), {});
+    view = reduceView(view, { type: 'show', tab: '1' });
+    assert.deepStrictEqual(view.layouts, defaultLayouts);
   });
 
   test('selects only rows there are', () => {

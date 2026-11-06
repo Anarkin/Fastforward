@@ -2057,6 +2057,62 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
+  test('keeps what a viewing tab was switched to show its file as while another tab is shown, for when it is shown again, and views the file as at first in a tab opened after it closed, which can take its id', async () => {
+    fs.writeFileSync(path.join(opened, 'kept.md'), '# Kept\n');
+    const pressedMode = () =>
+      page
+        .locator('.viewer .segmented [aria-pressed="true"]')
+        .getAttribute('title');
+    const viewerTab = page.locator('.tabs [role="tab"]', {
+      hasText: 'kept.md',
+    });
+    try {
+      await select('kept');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await pressedMode()) === strings.commander.viewPreview,
+        'the preview',
+      );
+      await page
+        .locator('.viewer .segmented')
+        .getByRole('button', { name: strings.commander.viewText })
+        .click();
+      await waitFor(
+        async () => (await pressedMode()) === strings.commander.viewText,
+        'the text',
+      );
+
+      await page
+        .locator('.tabs [role="tab"]', { hasText: 'Commander' })
+        .click();
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+      await viewerTab.click();
+      await page.locator('.viewer').waitFor();
+      assert.strictEqual(await pressedMode(), strings.commander.viewText);
+
+      await page.locator('.viewer .column-body').first().focus();
+      await page.keyboard.press('Escape');
+      await viewerTab.waitFor({ state: 'detached' });
+      await select('kept');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await pressedMode()) === strings.commander.viewPreview,
+        'the preview of a tab opened anew',
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.locator('.viewer .column-body').first().focus();
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'kept.md'));
+      await waitFor(
+        async () => !(await rowNames()).includes('kept.md'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
   test('shows a binary file in hex, 16 bytes a row, to its last row with End, and switches to text and back with 2 and 1 or the buttons', async () => {
     fs.writeFileSync(
       path.join(opened, 'data.bin'),

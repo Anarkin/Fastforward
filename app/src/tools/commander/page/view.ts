@@ -12,6 +12,8 @@ import {
   type Sort,
   type Sorts,
 } from '../shared/settings';
+import type { ViewMode } from '../shared/keymap';
+import type { EncodingChoice } from './encodings';
 import { rowsOf, selectionAfter, type Row, type Selection } from './listing';
 import {
   fileColorsOf,
@@ -77,6 +79,34 @@ export interface CommanderView {
   readonly active: Side;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
   readonly kept: ReadonlyMap<string, KeptTab>;
+  readonly viewers: ReadonlyMap<string, ViewerChoices>;
+  readonly closedTab: string | undefined;
+}
+
+export interface ViewerChoices {
+  readonly mode?: ViewMode;
+  readonly encoding?: EncodingChoice;
+  readonly language?: string;
+}
+
+const noChoices: ViewerChoices = {};
+
+export function viewerChoices(view: CommanderView): ViewerChoices {
+  return view.tab === undefined
+    ? noChoices
+    : (view.viewers.get(view.tab) ?? noChoices);
+}
+
+function without<T>(
+  kept: ReadonlyMap<string, T>,
+  tab: string,
+): ReadonlyMap<string, T> {
+  if (!kept.has(tab)) {
+    return kept;
+  }
+  const left = new Map(kept);
+  left.delete(tab);
+  return left;
 }
 
 interface KeptTab {
@@ -86,7 +116,11 @@ interface KeptTab {
 }
 
 function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
-  if (view.tab === undefined || view.viewing !== undefined) {
+  if (
+    view.tab === undefined ||
+    view.viewing !== undefined ||
+    view.tab === view.closedTab
+  ) {
     return view.kept;
   }
   return new Map(view.kept).set(view.tab, {
@@ -113,6 +147,8 @@ export const emptyView: CommanderView = {
   active: 'right',
   panes: { left: undefined, right: undefined },
   kept: new Map(),
+  viewers: new Map(),
+  closedTab: undefined,
 };
 
 export type ViewAction =
@@ -122,6 +158,8 @@ export type ViewAction =
       readonly file?: string;
     }
   | { readonly type: 'hide' }
+  | CommanderToWebviewOf<'closed'>
+  | { readonly type: 'choose'; readonly choices: ViewerChoices }
   | (Omit<CommanderToWebviewOf<'settings'>, 'type'> & {
       readonly type: 'settings';
     })
@@ -242,6 +280,7 @@ export function reduceView(
         layouts: back?.layouts ?? emptyView.layouts,
         panes: back === undefined ? emptyView.panes : settledPanes(view, back),
         kept,
+        closedTab: undefined,
       };
     }
     case 'hide':
@@ -252,7 +291,22 @@ export function reduceView(
         layouts: emptyView.layouts,
         panes: emptyView.panes,
         kept: keptAway(view),
+        closedTab: undefined,
       };
+    case 'closed':
+      return {
+        ...view,
+        closedTab: view.tab === action.tab ? action.tab : view.closedTab,
+        kept: without(view.kept, action.tab),
+        viewers: without(view.viewers, action.tab),
+      };
+    case 'choose':
+      return view.tab === undefined || view.viewing === undefined
+        ? view
+        : {
+            ...view,
+            viewers: new Map(view.viewers).set(view.tab, action.choices),
+          };
     case 'settings': {
       const settled = {
         ...view,

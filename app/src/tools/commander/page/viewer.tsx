@@ -31,6 +31,7 @@ import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
 import { PreviewBody } from './previewBody';
 import { firstMode, previewOf } from './previews';
+import type { ViewerChoices } from './view';
 import { encodingMenu, shownEncoding, type EncodingChoice } from './encodings';
 import {
   LanguageButton,
@@ -73,19 +74,31 @@ export function Viewer({
   file,
   fileColors,
   viewing,
+  choices,
+  onChoose,
   post,
   listen,
 }: {
   file: string;
   fileColors: FileColors;
   viewing: Viewing | undefined;
+  choices: ViewerChoices;
+  onChoose: (choices: ViewerChoices) => void;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
-  const [chosen, setChosen] = useState<ViewMode>();
-  const [encoding, setEncoding] = useState<EncodingChoice>('auto');
-  const { choice: languageChoice, choose: chooseLanguage } =
-    useLanguageChoice(file);
+  const chosen = choices.mode;
+  const setChosen = (mode: ViewMode) => onChoose({ ...choices, mode });
+  const encoding = choices.encoding ?? 'auto';
+  const setEncoding = (choice: EncodingChoice) =>
+    onChoose({ ...choices, encoding: choice });
+  const { choice: languageChoice, choose: chooseLanguage } = useLanguageChoice(
+    file,
+    {
+      language: choices.language,
+      keep: (language) => onChoose({ ...choices, language }),
+    },
+  );
   const place = useRef(0);
   const onPlace = useCallback((byte: number) => {
     place.current = byte;

@@ -10,7 +10,7 @@ import {
 } from '../shared/protocol';
 import { Pane } from './pane';
 import { Viewer, type ToViewer, type Viewing } from './viewer';
-import { emptyView, reduceView } from './view';
+import { emptyView, reduceView, viewerChoices } from './view';
 import { nextSort } from './listing';
 import { maxDroppedIcons } from '../shared/icons';
 import { filesToCompare } from './comparing';
@@ -255,6 +255,8 @@ export function CommanderTool({
             file={view.viewing}
             fileColors={view.fileColors}
             viewing={viewed?.tab === view.tab ? viewed : undefined}
+            choices={viewerChoices(view)}
+            onChoose={(choices) => dispatch({ type: 'choose', choices })}
             post={post}
             listen={listenViewer}
           />

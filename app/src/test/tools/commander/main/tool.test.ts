@@ -1391,6 +1391,13 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(watched(), []);
   });
 
+  test('tells the page a tab was closed, so it forgets what it kept of the tab, as a tab opened later can take its id', async () => {
+    const { tool, page } = commander({ [root]: [] });
+    await tool.show(page, tab);
+    tool.closed(page, tab);
+    assert.deepStrictEqual(page.of('closed'), [{ type: 'closed', tab: '1' }]);
+  });
+
   test('goes on opening a folder when the folder it leaves changes meanwhile, and drops a listing of that folder begun before the opening', async () => {
     const opening = Promise.withResolvers<readonly Entry[]>();
     const listed: Record<string, Listed> = {
