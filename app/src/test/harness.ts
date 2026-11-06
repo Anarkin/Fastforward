@@ -345,12 +345,18 @@ export function newView(
         realPath: (link) => Promise.resolve(link),
         fileIcon: () => Promise.resolve(new Uint8Array()),
         platform: process.platform,
-        root: os.tmpdir(),
+        root: commanderRoot(),
       }),
       git: view,
     }),
   );
   return view;
+}
+
+function commanderRoot(): string {
+  const root = path.join(os.tmpdir(), 'fastforward-commander-root');
+  fs.mkdirSync(root, { recursive: true });
+  return root;
 }
 
 export function shellOf(view: GitTool): Shell {
