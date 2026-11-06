@@ -193,8 +193,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .commit-rows .commit,
-.locations-list .commit,
-.column:has(.commit-rows) > .column-title {
+.locations-list .commit {
   border-bottom-color: transparent;
 }
 
@@ -693,7 +692,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   border-top: 1px solid var(--color-border);
 }
 
-.locations-groups,
 .locations-group + .locations-group {
   border-top-color: transparent;
 }

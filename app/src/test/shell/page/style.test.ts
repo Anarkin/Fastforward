@@ -2658,7 +2658,7 @@ suite('Style', () => {
     );
   });
 
-  test('hides the lines between the commits and under the title of the commit column, keeping their pixel so the rows stay as tall as the list expects, and keeps the line under the titles of the other columns', () => {
+  test('hides the lines between the commits of the commit column, keeping their pixel so the rows stay as tall as the list expects, and keeps the line under its title, as the other columns have it', () => {
     const column = rendered(
       renderedBy(Column, {
         start: navButtons(),
@@ -2669,25 +2669,28 @@ suite('Style', () => {
         ),
       }),
     );
-    for (const line of [
+    looks(withClass(column, 'commit'), {
+      'border-bottom': '1px solid var(--color-border)',
+      'border-bottom-color': 'transparent',
+    });
+    for (const title of [
       withClass(column, 'column-title'),
-      withClass(column, 'commit'),
+      columnTitle(null),
     ]) {
-      looks(line, {
+      looks(title, {
         'border-bottom': '1px solid var(--color-border)',
-        'border-bottom-color': 'transparent',
+        'border-bottom-color': undefined,
       });
     }
-    looks(columnTitle(null), { 'border-bottom-color': undefined });
   });
 
-  test("hides the lines of the search opened over the commit column's title, under its field, between its groups and between the commits it found, keeping their pixel so the field stays where the title's was and the commits as tall as in the list", () => {
+  test("keeps the line under the field of the search opened over the commit column's title, where the title's is, and hides those between its groups and between the commits it found, keeping their pixel so the commits stay as tall as in the list", () => {
     const popup = locationsPopup('');
     const groups = allWithClass(popup, 'locations-group');
     assert.ok(groups.length > 1, String(groups.length));
     looks(withClass(popup, 'locations-groups'), {
       'border-top': '1px solid var(--color-border)',
-      'border-top-color': 'transparent',
+      'border-top-color': undefined,
     });
     for (const group of groups.slice(1)) {
       looks(group, {
