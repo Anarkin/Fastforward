@@ -5,6 +5,7 @@ import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type {
   Bookmark,
+  GitToWebviewOf,
   RefInfo,
   RepositoryState,
 } from '../../../../tools/git/shared/protocol';
@@ -43,6 +44,8 @@ import {
 } from '../../../fixtures';
 import { withStores } from '../../../componentFixtures';
 import { renderIn } from '../../../componentFixtures';
+import { createGitStore, GitStore } from '../../../../tools/git/page/store';
+import { emptyTabView } from '../../../../tools/git/page/tabView';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
 
@@ -458,33 +461,62 @@ suite('Locations popup', () => {
   });
 });
 
-const popup = (
-  query: string,
-  result?: Parameters<typeof LocationsPopup>[0]['lookup'],
-  props: Partial<Parameters<typeof LocationsPopup>[0]> = {},
-) =>
+interface Shown {
+  readonly repository?: RepositoryState;
+  readonly bookmarks?: readonly Bookmark[];
+  readonly commitSearch?: GitToWebviewOf<'commitSearch'>;
+  readonly lookup?: GitToWebviewOf<'hashLookup'>;
+  readonly query?: string;
+  readonly onJump?: (commit: string) => void;
+  readonly onClose?: () => void;
+}
+
+function locationsStore({
+  repository,
+  bookmarks = [],
+  commitSearch,
+  lookup,
+  onJump,
+  onClose,
+}: Shown = {}) {
+  const store = createGitStore(
+    (message) => {
+      if (message.type === 'jump') {
+        onJump?.(message.hash);
+      }
+    },
+    {
+      tab: {
+        ...emptyTabView,
+        root: '/repo',
+        repository,
+        hashLookup: lookup,
+        commitSearch,
+      },
+      bookmarks,
+      searching: true,
+    },
+  );
+  store.subscribe((state, before) => {
+    if (before.searching && !state.searching) {
+      onClose?.();
+    }
+  });
+  return store;
+}
+
+const popup = (query: string, result?: Shown['lookup'], shown: Shown = {}) =>
   renderToStaticMarkup(
-    <LocationsPopup
-      bookmarks={[]}
-      repository={undefined}
-      anchor={{ current: null }}
-      lookup={result}
-      onLookup={noop}
-      commitSearch={undefined}
-      onSearchCommits={() => noop}
-      onJump={noop}
-      onClose={noop}
-      query={query}
-      onQuery={noop}
-      {...props}
-    />,
+    <GitStore value={locationsStore({ ...shown, lookup: result })}>
+      <LocationsPopup anchor={{ current: null }} query={query} onQuery={noop} />
+    </GitStore>,
   );
 
 const found = (
   commits: string[],
   more = 0,
   query = 'abcd',
-): Parameters<typeof LocationsPopup>[0]['lookup'] => ({
+): GitToWebviewOf<'hashLookup'> => ({
   type: 'hashLookup',
   query,
   result: {
@@ -495,9 +527,7 @@ const found = (
   },
 });
 
-const searched = (
-  query: string,
-): Partial<Parameters<typeof LocationsPopup>[0]> => ({
+const searched = (query: string): Shown => ({
   commitSearch: {
     type: 'commitSearch',
     query,
@@ -764,19 +794,11 @@ const refState = repository(
 suite('Search', () => {
   test('offers a way back out beside its field', () => {
     let closed = 0;
-    const element = renderedBy(LocationsPopup, {
-      bookmarks: [],
-      repository: undefined,
-      anchor: { current: null },
-      lookup: undefined,
-      onLookup: noop,
-      commitSearch: undefined,
-      onSearchCommits: () => noop,
-      onJump: noop,
-      onClose: () => closed++,
-      query: '',
-      onQuery: noop,
-    });
+    const element = renderedBy(
+      LocationsPopup,
+      { anchor: { current: null }, query: '', onQuery: noop },
+      { git: locationsStore({ onClose: () => closed++ }) },
+    );
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(element));
     const row = element.props.children[0];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(row));
@@ -895,7 +917,7 @@ suite('Search', () => {
 });
 
 async function browsed(
-  props: Partial<Parameters<typeof LocationsPopup>[0]>,
+  props: Shown,
   check: (page: {
     readonly document: Document;
     readonly field: HTMLInputElement;
@@ -925,20 +947,13 @@ async function browsed(
     await act(async () => {
       renderIn(
         root,
-        <LocationsPopup
-          bookmarks={[]}
-          repository={undefined}
-          anchor={{ current: null }}
-          lookup={undefined}
-          onLookup={noop}
-          commitSearch={undefined}
-          onSearchCommits={() => noop}
-          onJump={noop}
-          onClose={noop}
-          query=""
-          onQuery={noop}
-          {...props}
-        />,
+        <GitStore value={locationsStore(props)}>
+          <LocationsPopup
+            anchor={{ current: null }}
+            query={props.query ?? ''}
+            onQuery={noop}
+          />
+        </GitStore>,
       );
     });
     const field = document.querySelector<HTMLInputElement>('input');

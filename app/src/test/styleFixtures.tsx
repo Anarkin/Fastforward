@@ -1,9 +1,11 @@
 import type {
   Bookmark,
   FileChange,
+  GitToWebviewOf,
   RepositoryState,
   WorktreeInfo,
 } from '../tools/git/shared/protocol';
+import { emptyTabView } from '../tools/git/page/tabView';
 import type { ColumnName } from '../tools/git/page/activeColumn';
 import { changesTreeElement } from '../tools/git/page/changesTree';
 import { Column } from '../tools/git/page/column';
@@ -28,7 +30,7 @@ import {
 } from '../tools/git/page/diffView';
 import type { FindRange } from '../shared/textMatches';
 import { LocationsPopup } from '../tools/git/page/locations';
-import { GitStore } from '../tools/git/page/store';
+import { createGitStore, GitStore } from '../tools/git/page/store';
 import {
   MessageBody,
   MessageCorner,
@@ -307,22 +309,24 @@ const bookmarks: readonly Bookmark[] = [
 
 function locationsPopupElement(
   query: string,
-  commitSearch?: Parameters<typeof LocationsPopup>[0]['commitSearch'],
+  commitSearch?: GitToWebviewOf<'commitSearch'>,
+  head: string | undefined = repository.head,
 ): React.ReactElement {
   return (
-    <LocationsPopup
-      bookmarks={bookmarks}
-      repository={repository}
-      anchor={{ current: null }}
-      lookup={undefined}
-      onLookup={noop}
-      commitSearch={commitSearch}
-      onSearchCommits={() => noop}
-      onJump={noop}
-      onClose={noop}
-      query={query}
-      onQuery={noop}
-    />
+    <GitStore
+      value={createGitStore(noop, {
+        tab: {
+          ...emptyTabView,
+          root: '/repo',
+          repository: { ...repository, head },
+          commitSearch,
+        },
+        bookmarks,
+        searching: true,
+      })}
+    >
+      <LocationsPopup anchor={{ current: null }} query={query} onQuery={noop} />
+    </GitStore>
   );
 }
 
@@ -528,9 +532,9 @@ export function bubbles(checkedOut?: string): MarkupElement[] {
   return [
     commitRow({ refs: repository.refs, stash: true, selected: 'a' }),
     commitRow({ refs: repository.refs, detached: true }),
-    locationsPopupElement(''),
-    locationsPopupElement('m'),
-    locationsPopupElement('stash'),
+    locationsPopupElement('', undefined, checkedOut),
+    locationsPopupElement('m', undefined, checkedOut),
+    locationsPopupElement('stash', undefined, checkedOut),
   ].flatMap((node) =>
     allWithClass(
       rendered(

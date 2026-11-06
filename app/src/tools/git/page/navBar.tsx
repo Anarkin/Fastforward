@@ -250,17 +250,6 @@ export function locationsPopupKey(
 export function AddressBar({ asked }: { asked: number }) {
   const open = useGit((state) => state.searching);
   const root = useGit((state) => state.tab.root);
-  const repository = useGit((state) => state.tab.repository);
-  const hashLookup = useGit((state) => state.tab.hashLookup);
-  const commitSearch = useGit((state) => state.tab.commitSearch);
-  const bookmarks = useGit((state) => state.bookmarks);
-  const {
-    search: onOpen,
-    lookupHash: onLookupHash,
-    searchCommits: onSearchCommits,
-    jump: onJump,
-  } = useGitActions();
-  const close = useCallback(() => onOpen(false), [onOpen]);
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),
   );
@@ -274,17 +263,9 @@ export function AddressBar({ asked }: { asked: number }) {
       {open && (
         <LocationsPopup
           key={locationsPopupKey(asked, root)}
-          repository={repository}
           anchor={container}
-          lookup={hashLookup}
-          onLookup={onLookupHash}
-          commitSearch={commitSearch}
-          onSearchCommits={onSearchCommits}
-          onJump={onJump}
-          onClose={close}
           query={query}
           onQuery={setQuery}
-          bookmarks={bookmarks}
         />
       )}
     </div>

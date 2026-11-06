@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -13,9 +14,7 @@ import type {
   CommitResults,
   RefInfo,
   RefKind,
-  RepositoryState,
   StashInfo,
-  GitToWebviewOf,
 } from '../shared/protocol';
 import { findRef } from '../shared/refNames';
 import { pinnedRefs, type PinnedRefs } from './bookmarks';
@@ -26,7 +25,7 @@ import { CommitBubble, HeadBubble, RefBubble, useCheckedOut } from './bubbles';
 import { useDismiss } from '../../../ui/contextMenu';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { CommitRow, noRefs } from './commitList';
-import { detachedHead, useGit } from './store';
+import { detachedHead, useGit, useGitActions } from './store';
 import { Highlight } from '../../../ui/highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../../../shell/shared/keymap';
@@ -543,30 +542,25 @@ export function popupKeyAction(
 }
 
 export function LocationsPopup({
-  repository,
   anchor,
-  lookup,
-  onLookup,
-  commitSearch,
-  onSearchCommits,
-  onJump,
-  onClose,
   query,
   onQuery,
-  bookmarks,
 }: {
-  bookmarks: readonly Bookmark[];
-  repository: RepositoryState | undefined;
   anchor: React.RefObject<HTMLElement | null>;
-  lookup: GitToWebviewOf<'hashLookup'> | undefined;
-  onLookup: (query: string) => void;
-  commitSearch: GitToWebviewOf<'commitSearch'> | undefined;
-  onSearchCommits: (query: string) => () => void;
-  onJump: (commit: string) => void;
-  onClose: () => void;
   query: string;
   onQuery: (query: string) => void;
 }) {
+  const bookmarks = useGit((state) => state.bookmarks);
+  const repository = useGit((state) => state.tab.repository);
+  const lookup = useGit((state) => state.tab.hashLookup);
+  const commitSearch = useGit((state) => state.tab.commitSearch);
+  const {
+    lookupHash: onLookup,
+    searchCommits: onSearchCommits,
+    jump: onJump,
+    search: openSearch,
+  } = useGitActions();
+  const onClose = useCallback(() => openSearch(false), [openSearch]);
   const popup = useRef<HTMLDivElement>(null);
   const height = usePopupHeight(popup);
   const input = useRef<HTMLInputElement>(null);
