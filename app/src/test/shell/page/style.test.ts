@@ -2657,6 +2657,29 @@ suite('Style', () => {
     );
   });
 
+  test('hides the lines between the commits and under the title of the commit column, keeping their pixel so the rows stay as tall as the list expects, and keeps the line under the titles of the other columns', () => {
+    const column = rendered(
+      renderedBy(Column, {
+        start: navButtons(),
+        children: createElement(
+          'div',
+          { className: 'virtual-rows list commit-rows' },
+          commitRow(),
+        ),
+      }),
+    );
+    for (const line of [
+      withClass(column, 'column-title'),
+      withClass(column, 'commit'),
+    ]) {
+      looks(line, {
+        'border-bottom': '1px solid var(--color-border)',
+        'border-bottom-color': 'transparent',
+      });
+    }
+    looks(columnTitle(null), { 'border-bottom-color': undefined });
+  });
+
   test('draws the rows of the lists as tall as one line of the line height of the settings, the size of the font rounded to the device pixel, with nothing above or below the text', () => {
     looks(rendered(createElement('div', { className: 'row' })), {
       height: 'var(--row-line-height)',
