@@ -72,11 +72,20 @@ suite('Watching a folder of the commander', () => {
         const elsewhere = path.join(folder, 'elsewhere');
         fs.mkdirSync(watched);
         fs.mkdirSync(elsewhere);
+        const listed = fs.statSync(watched);
+        let looked = false;
         let changes = 0;
         stops.push(
           watchFolder(watched, () => changes++, 10, {
             settle: 20,
             start: deaf(elsewhere),
+            stat: (asked) => {
+              if (looked) {
+                return fs.promises.stat(asked);
+              }
+              looked = true;
+              return Promise.resolve(listed);
+            },
           }),
         );
 
