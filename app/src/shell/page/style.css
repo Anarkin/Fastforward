@@ -1300,7 +1300,9 @@ body.resizing {
 
 .markdown pre code {
   --text-advance: round(1ch, var(--device-pixel, 1px));
+  display: block;
   letter-spacing: calc(var(--text-advance) - 1ch);
+  tab-size: 4;
   overflow-wrap: normal;
   white-space: pre;
 }

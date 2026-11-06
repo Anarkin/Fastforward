@@ -44,6 +44,18 @@ export const gridLines = [
       ['Árvíztűrő tükörfúrógép', 22],
       ['👨‍👩‍👧‍👦 family of four', 17],
       ['⚠ text      ⚠️ emoji', 20],
+      ['🇭🇺 flag', 7],
+      ['1️⃣ keycap', 9],
+      ['👍🏽 skin tone', 12],
+      ['Café au lait', 12],
+      ['ＡＢＣ fullwidth', 16],
+      ['├── ★ → ± ° …', 13],
+      ['abcd\t', 8],
+      ['abc😀\t', 8],
+      ['😀😀\t', 8],
+      ['x😀😀😀\t', 8],
+      ['ab中\t', 8],
+      ['中中中\t', 8],
     ] as const
   ).map(([text, columns]) => `${text}${' '.repeat(40 - columns)}|`),
 ];

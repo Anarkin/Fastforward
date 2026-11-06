@@ -65,7 +65,7 @@ suite('App', () => {
     'grid.md': ['# Grid', '', '```text', ...gridLines, '```', ''].join('\n'),
   });
 
-  test('draws the code blocks of a Markdown document viewed on the grid of our terminal, as the viewer and the diff draw text, so code padded for a terminal lines up in the preview too', async () => {
+  test('draws the code blocks of a Markdown document viewed on the grid of our terminal, as the viewer and the diff draw text, so code padded for a terminal lines up in the preview too, its tabs stopping on that grid rather than every eight spaces of the font of the pre around it', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'grid.md' }).click();
     await page
@@ -76,12 +76,12 @@ suite('App', () => {
       const code = page.locator('.viewer .markdown pre code');
       await code.waitFor();
       const onGrid = gridLines.slice(1).map(() => 0);
-      await waitFor(
-        async () =>
-          JSON.stringify(await code.evaluate(linesOffGrid)) ===
-          JSON.stringify(onGrid),
-        'the bars on the grid',
-      );
+      let offsets: number[] = [];
+      await waitFor(async () => {
+        offsets = await code.evaluate(linesOffGrid);
+        return JSON.stringify(offsets) === JSON.stringify(onGrid);
+      }, 'the bars on the grid').catch(() => undefined);
+      assert.deepStrictEqual(offsets, onGrid);
     } finally {
       await closeViewer();
     }
