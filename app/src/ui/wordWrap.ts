@@ -1,3 +1,9 @@
+import {
+  asciiBreakAt,
+  clusterBoundaries,
+  lineBreaks,
+  type Box,
+} from './lineBreaks';
 import type { TextWidths } from './textWidths';
 
 export const tabSize = 4;
@@ -120,21 +126,15 @@ function startRowAt(starts: number[], text: string, at: number): void {
   }
 }
 
-const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-
-const wideBreaking =
-  /[\p{Ideographic}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Extended_Pictographic}]/u;
-
-const keptBeforeNext = /[（「『【〔〈《［｛〘〖]$/u;
-
-const keptAfterPrevious = /^[）」』】〕〉》］｝〙〗。、，．！？：；]/u;
-
-function breaksBetween(before: string, after: string): boolean {
-  return (
-    (wideBreaking.test(before) || wideBreaking.test(after)) &&
-    !keptBeforeNext.test(before) &&
-    !keptAfterPrevious.test(after)
-  );
+function breaksOf(
+  text: string,
+  boxes: readonly Box[] = [],
+): (at: number) => boolean {
+  if (boxes.length === 0 && !nonAscii.test(text)) {
+    return (at) => breaksAt(text, at) || asciiBreakAt(text, at);
+  }
+  const flags = lineBreaks(text, boxes);
+  return (at) => flags[at] === 1 || breaksAt(text, at);
 }
 
 const nonAscii = /[^\0-\x7f]/;
@@ -145,30 +145,63 @@ interface Cluster {
   readonly columns: number;
 }
 
+const lastAscii = 0x7f;
+
+function clustersOf(text: string, widths: TextWidths): Cluster[] {
+  const clusters: Cluster[] = [];
+  let start = 0;
+  for (let at = 1; at <= text.length; at++) {
+    if (
+      at < text.length &&
+      (text.charCodeAt(at - 1) > lastAscii || text.charCodeAt(at) > lastAscii)
+    ) {
+      continue;
+    }
+    if (at - start === 1 && text.charCodeAt(start) <= lastAscii) {
+      clusters.push({ start, text: text[start], columns: 1 });
+    } else {
+      const stretch = text.slice(start, at);
+      const boundaries = clusterBoundaries(stretch);
+      for (let index = 1; index < boundaries.length; index++) {
+        const segment = stretch.slice(boundaries[index - 1], boundaries[index]);
+        clusters.push({
+          start: start + boundaries[index - 1],
+          text: segment,
+          columns: nonAscii.test(segment)
+            ? widths.of(segment) / widths.char
+            : segment.length,
+        });
+      }
+    }
+    start = at;
+  }
+  return clusters;
+}
+
 function measuredStarts(
   text: string,
   columns: number,
   indent: number,
   widths: TextWidths,
 ): number[] {
-  const clusters: Cluster[] = Array.from(
-    graphemes.segment(text),
-    ({ segment, index }) => ({
-      start: index,
-      text: segment,
-      columns: nonAscii.test(segment)
-        ? widths.of(segment) / widths.char
-        : segment.length,
-    }),
-  );
+  const clusters = clustersOf(text, widths);
+  let total = 0;
+  for (const cluster of clusters) {
+    total += cluster.columns;
+  }
+  if (total <= columns && !text.includes('\t')) {
+    return [0];
+  }
   const blank = (at: number) =>
     clusters[at].text === ' ' || clusters[at].text === '\t';
-  const boxed = (at: number) => widths.boxed?.(clusters[at].text) !== undefined;
-  const breaksAhead = (at: number) =>
-    breaksAt(text, clusters[at].start) ||
-    boxed(at - 1) ||
-    boxed(at) ||
-    breaksBetween(clusters[at - 1].text, clusters[at].text);
+  const boxes: Box[] = [];
+  for (const { start, text: cluster } of clusters) {
+    if (widths.boxed?.(cluster) !== undefined) {
+      boxes.push([start, start + cluster.length]);
+    }
+  }
+  const canBreak = breaksOf(text, boxes);
+  const breaksAhead = (at: number) => canBreak(clusters[at].start);
   const starts = [0];
   let column = 0;
   let rowStart = indent;
@@ -235,6 +268,7 @@ export function wrapStarts(
   if (text.length <= columns && !text.includes('\t')) {
     return [0];
   }
+  const canBreak = breaksOf(text);
   const starts = [0];
   let column = 0;
   let rowStart = indent;
@@ -244,7 +278,7 @@ export function wrapStarts(
     while (
       end < text.length &&
       !isBlankAt(text, end) &&
-      (end === at || !breaksAt(text, end))
+      (end === at || !canBreak(end))
     ) {
       end++;
     }

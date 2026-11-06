@@ -6,6 +6,7 @@
 - The page is not trusted: the main process checks everything the page sends before it acts on it, as the page shows content from outside the app
 - Use `oxlint` instead of `eslint`, because `typescript-eslint` does not support TypeScript 7 yet
 - Use `shiki` with its Oniguruma engine, the TextMate grammars and engine VS Code uses, so scope rules carry over from VS Code; semantic tokens are left out, as they need a language server
+- Lines are wrapped where Chromium would break them, as the diff lets the browser wrap them and the viewer wraps them itself: by Chromium's table between two characters of ASCII, and by ICU's line breaker beyond, asked through V8's `Intl.v8BreakIterator`, which also splits text into the characters it draws; the comparison of the two is a test, and without the iterator, as in Node, CJK characters and emoji break around them
 - Markdown is rendered with `markdown-it`, which VS Code's preview uses too
 - Mermaid diagrams in Markdown are drawn with `mermaid` on the page's main thread, as VS Code's preview draws them, since it measures text in the DOM and can't run in a worker
 - PDFs are drawn with the viewer components of `pdfjs-dist` inside the page, not in an iframe; the page reads a PDF through PDF.js's range transport, as PDF.js asks for ranges itself only over HTTP, and runs no scripts, forms or editors of a PDF

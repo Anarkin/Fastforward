@@ -130,6 +130,12 @@ suite('Word wrap', () => {
     assert.strictEqual(wrappedLines('ab cd\r', 2), 2);
   });
 
+  test('counts a character of several code points that starts with one of ASCII as one, as a letter with an accent or a keycap is drawn', () => {
+    const measured = drawnAs({ '1️⃣': 2 });
+    assert.deepStrictEqual(wrapStarts('xééééy', 3, 0, measured), [0, 5]);
+    assert.deepStrictEqual(wrapStarts('1️⃣1️⃣ab', 4, 0, measured), [0, 6]);
+  });
+
   test('never starts a row between the halves of a character outside the basic plane', () => {
     assert.deepStrictEqual(wrapStarts('a😀😀', 2), [0, 1, 3]);
   });
