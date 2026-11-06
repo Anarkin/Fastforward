@@ -124,6 +124,12 @@ suite('Word wrap', () => {
     assert.deepStrictEqual(wrapStarts('中文。中文', 5, 0, boxing), [0, 2, 4]);
   });
 
+  test('leaves the carriage return of a Windows line end hanging at the end of its row, as the browser does, rather than wrapping it onto a row of its own', () => {
+    assert.deepStrictEqual(wrapStarts('abc\r', 3), [0]);
+    assert.strictEqual(wrappedLines('abcdef\r', 3), 2);
+    assert.strictEqual(wrappedLines('ab cd\r', 2), 2);
+  });
+
   test('never starts a row between the halves of a character outside the basic plane', () => {
     assert.deepStrictEqual(wrapStarts('a😀😀', 2), [0, 1, 3]);
   });

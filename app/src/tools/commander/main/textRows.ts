@@ -114,11 +114,7 @@ function textOf(
   to: number,
   coding: TextCoding,
 ): string {
-  const end =
-    to - from >= coding.unit && endsWith(bytes, to, coding.carriageReturn)
-      ? to - coding.unit
-      : to;
-  return coding.decode(bytes.subarray(from, end));
+  return coding.decode(bytes.subarray(from, to));
 }
 
 function lineText(bytes: Buffer, coding: TextCoding): string {

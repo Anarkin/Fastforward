@@ -43,7 +43,7 @@ suite('Colors of the rows of a file viewed', () => {
     ]);
   });
 
-  test('counts the bytes of characters beyond ASCII, and the carriage returns of Windows line ends', () => {
+  test('counts the bytes of characters beyond ASCII, and the carriage returns of Windows line ends, coloring a row that keeps its carriage return too', () => {
     const text = colored('// é\r\nlet x;\r\n', [
       [{ start: 0, end: 5, kind: 'comment' }],
       [{ start: 0, end: 3, kind: 'keyword' }],
@@ -55,6 +55,10 @@ suite('Colors of the rows of a file viewed', () => {
     assert.deepStrictEqual(rowSegments(text, row(7, 15, 'let x;')), [
       { text: 'let', kind: 'keyword' },
       { text: ' x;' },
+    ]);
+    assert.deepStrictEqual(rowSegments(text, row(7, 15, 'let x;\r')), [
+      { text: 'let', kind: 'keyword' },
+      { text: ' x;\r' },
     ]);
   });
 

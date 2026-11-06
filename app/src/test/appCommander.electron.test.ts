@@ -1524,6 +1524,42 @@ suite('App commander', () => {
     }
   });
 
+  test('marks the carriage return of each Windows line end of a file viewed once whitespace is shown, as the diff does', async () => {
+    fs.writeFileSync(path.join(opened, 'crlf.txt'), 'one\r\ntwo\r\n');
+    const returns = page.locator(
+      `.viewer-rows .blank[data-glyph="${strings.symbols.carriageReturn}"]`,
+    );
+    try {
+      await select('crlf');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()).startsWith('one'),
+        'the first row',
+      );
+      assert.strictEqual(await returns.count(), 0);
+      await page.keyboard.press('.');
+      await waitFor(
+        async () => (await returns.count()) === 2,
+        'a sign at the end of each line',
+      );
+      await page.keyboard.press('.');
+      await waitFor(
+        () => savedText(profile, 'showWhitespace') === undefined,
+        'whitespace left to the default',
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'crlf.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('crlf.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
   test('draws a file viewed on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up', async () => {
     fs.writeFileSync(
       path.join(opened, 'grid.txt'),

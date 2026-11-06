@@ -46,11 +46,11 @@ const spans = (rows: readonly { start: number; end: number }[]) =>
   rows.map((row) => [row.start, row.end]);
 
 suite('Rows of text of a file', () => {
-  test('splits at line ends, dropping the carriage return of Windows line ends, and gives each row its bytes', async () => {
+  test('splits at line ends, keeping the carriage return of Windows line ends as the diff does, so whitespace shown marks it, and gives each row its bytes', async () => {
     const { read, size } = inMemory('one\r\ntwo\n\nthree');
 
     assert.deepStrictEqual(await rowsFrom(read, size, 0, 10), [
-      { start: 0, end: 5, text: 'one' },
+      { start: 0, end: 5, text: 'one\r' },
       { start: 5, end: 9, text: 'two' },
       { start: 9, end: 10, text: '' },
       { start: 10, end: 15, text: 'three' },
@@ -186,7 +186,7 @@ suite('Rows of text of a file', () => {
     assert.strictEqual(looksBinary(late), false);
   });
 
-  test('reads UTF-16 of either byte order, a line ending only where a whole unit is one, and its carriage returns dropped', async () => {
+  test('reads UTF-16 of either byte order, a line ending only where a whole unit is one, and its carriage returns kept', async () => {
     for (const encoding of ['utf-16le', 'utf-16be'] as const) {
       const little = Buffer.from('one\r\n਀two\né\n', 'utf16le');
       const bytes = encoding === 'utf-16le' ? little : little.swap16();
@@ -195,7 +195,7 @@ suite('Rows of text of a file', () => {
 
       const rows = await rowsFrom(read, size, 0, 10, coding);
 
-      assert.deepStrictEqual(texts(rows), ['one', '਀two', 'é'], encoding);
+      assert.deepStrictEqual(texts(rows), ['one\r', '਀two', 'é'], encoding);
       assert.deepStrictEqual(
         rows.map((row) => [row.start, row.end]),
         [
@@ -207,7 +207,7 @@ suite('Rows of text of a file', () => {
       );
       assert.deepStrictEqual(
         texts(await rowsBefore(read, size, 20, 10, coding)),
-        ['one', '਀two'],
+        ['one\r', '਀two'],
         encoding,
       );
       assert.strictEqual(await rowStartAt(read, 15, coding), 10, encoding);

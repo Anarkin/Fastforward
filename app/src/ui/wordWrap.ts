@@ -226,6 +226,9 @@ export function wrapStarts(
   indent = wrapIndent(text, columns),
   widths?: TextWidths,
 ): number[] {
+  if (text.endsWith('\r')) {
+    return wrapStarts(text.slice(0, -1), columns, indent, widths);
+  }
   if (widths !== undefined && widths.char > 0 && nonAscii.test(text)) {
     return measuredStarts(text, columns, indent, widths);
   }
