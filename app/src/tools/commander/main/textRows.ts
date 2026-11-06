@@ -1,9 +1,11 @@
 import * as fs from 'node:fs';
-import type { TextEncoding, TextRow } from '../shared/protocol';
+import {
+  wholeLineBytes,
+  type TextEncoding,
+  type TextRow,
+} from '../shared/protocol';
 
 export const rowBytes = 4096;
-
-export const wholeLineBytes = 64 * 1024;
 
 export const readBudgetBytes = 512 * 1024;
 

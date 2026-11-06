@@ -254,6 +254,8 @@
 
 .viewer-rows {
   user-select: text;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
   width: max-content;
   min-width: 100%;
   padding: 0 calc(var(--scrollbar-size) + 8px) 0 8px;

@@ -14,7 +14,7 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { wheeled } from '../../../shell/shared/keymap';
 import { viewerKeymap } from '../shared/keymap';
 import { followDrag } from '../../../ui/followDrag';
-import { Scrolling, wheelTurn } from '../../../ui/rowScroll';
+import { Scrolling, sidewaysColumns, wheelTurn } from '../../../ui/rowScroll';
 import {
   grabbedAt,
   hideAfter,
@@ -32,8 +32,6 @@ const minThumb = 24;
 const minTick = 2;
 
 const probeText = '0'.repeat(100);
-
-const sidewaysColumns = 4;
 
 const revealColumns = 8;
 

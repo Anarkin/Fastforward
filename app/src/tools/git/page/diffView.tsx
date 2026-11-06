@@ -96,6 +96,7 @@ import {
   followRows,
   rowPadding,
   Scrolling,
+  sidewaysColumns,
   snappedTop,
   type RowFollower,
 } from '../../../ui/rowScroll';
@@ -1133,18 +1134,18 @@ export function diffRows(
   return rows;
 }
 
-const sidewaysStep = 40;
-
 export function diffScrollLeft(
   step: 1 | -1,
   scrolled: number,
-  room?: number,
+  room: number | undefined,
+  advance: number,
 ): number | undefined {
+  const by = sidewaysColumns * advance;
   if (step === -1 && scrolled > 0) {
-    return Math.max(0, scrolled - sidewaysStep);
+    return Math.max(0, scrolled - by);
   }
   if (step === 1 && room !== undefined && scrolled < room) {
-    return Math.min(room, scrolled + sidewaysStep);
+    return Math.min(room, scrolled + by);
   }
   return undefined;
 }
@@ -2904,8 +2905,14 @@ export function DiffView({
                     side,
                     sideways,
                     sideRoom(event.currentTarget).widest,
+                    widths.char,
                   )
-                : diffScrollLeft(side, event.currentTarget.scrollLeft);
+                : diffScrollLeft(
+                    side,
+                    event.currentTarget.scrollLeft,
+                    undefined,
+                    widths.char,
+                  );
           if (left !== undefined) {
             event.preventDefault();
             if (scrollsSides) {

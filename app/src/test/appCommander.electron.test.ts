@@ -1797,6 +1797,59 @@ suite('App commander', () => {
     }
   });
 
+  test('knows the width of the widest line of a file viewed without wrapping as soon as it opens, however far down it is, as the diff knows the widest of its lines, rather than widening as rows are read', async () => {
+    const long = `start ${'x'.repeat(600)} end`;
+    fs.writeFileSync(
+      path.join(opened, 'widest last.txt'),
+      [
+        ...Array.from({ length: 3000 }, (_, index) => `row ${index}`),
+        long,
+      ].join(String.fromCharCode(10)),
+    );
+    const sideways = page.locator('.viewer-sideways');
+    try {
+      await select('widest last');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()) === 'row 0',
+        'the first row',
+      );
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await page.keyboard.press('w');
+      const widthAndAdvance = () =>
+        sideways.evaluate((element) => {
+          const range = document.createRange();
+          range.selectNodeContents(
+            element.querySelector('.viewer-rows .viewer-row') ?? element,
+          );
+          return {
+            width: element.scrollWidth,
+            char: range.getBoundingClientRect().width / 'row 0'.length,
+          };
+        });
+      await waitFor(async () => {
+        const { width, char } = await widthAndAdvance();
+        return char > 0 && width >= long.length * char;
+      }, 'the width of the last line');
+      assert.strictEqual(await firstViewerRow(), 'row 0');
+      await page.keyboard.press('w');
+      await waitFor(
+        () => savedText(profile, 'wordWrap') === undefined,
+        'the wrapping left to the default',
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'widest last.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('widest last.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
   test('colors the code of a file viewed as the diff colors it, a long one from the top as its lines are done, none while Plain Text is chosen from the menu L opens, which files viewed and diffs start in until Auto is, and a file in the language chosen there, found by what is typed, for as long as it is viewed, leaving a file over the size colored plain, and previews no Markdown over a size of its own', async () => {
     fs.writeFileSync(path.join(opened, 'code.ts'), 'const answer = 42;');
     await select('code');

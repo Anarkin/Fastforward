@@ -10,12 +10,12 @@ import {
   looksBinary,
   readingFile,
   rowBytes,
-  wholeLineBytes,
   rowStartAt,
   rowsBefore,
   rowsFrom,
   type ReadBytes,
 } from '../../../../tools/commander/main/textRows';
+import { wholeLineBytes } from '../../../../tools/commander/shared/protocol';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 function inMemory(text: string | Buffer): {

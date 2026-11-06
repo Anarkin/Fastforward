@@ -9,6 +9,7 @@ import {
 } from 'react';
 import {
   maxColoredBytes,
+  wholeLineBytes,
   type CommanderToHost,
   type TextEncoding,
   type TextRow,
@@ -28,6 +29,7 @@ import type { ToViewer, Viewing } from './viewer';
 import type { ViewerFind } from './viewerFind';
 import { MarkedText, textMarks, type FindMark } from './findMarks';
 import {
+  bytesOf,
   firstOf,
   marksWithin,
   piecesWithin,
@@ -37,7 +39,7 @@ import {
   type ScreenRow,
 } from './screenRows';
 import { useTextView } from '../../../ui/textView';
-import { columnAt, columnsOf, shownWithin } from './columns';
+import { columnAt, columnsOf, shownWithin, widestColumns } from './columns';
 import { strings } from '../../../shared/strings';
 import { blankRuns } from '../../../ui/wordWrap';
 import {
@@ -224,17 +226,8 @@ export function useWholeText(
 function useColors(
   language: string | undefined,
   encoding: TextEncoding,
-  viewing: Viewing,
-  post: (message: CommanderToHost) => void,
-  listen: (handler: (message: ToViewer) => void) => () => void,
+  whole: WholeText | undefined,
 ): ColoredText | undefined {
-  const whole = useWholeText(
-    viewing,
-    post,
-    listen,
-    language !== undefined,
-    encoding,
-  );
   const [colored, setColored] = useState<ColoredText>();
   useEffect(() => {
     if (language === undefined || whole === undefined) {
@@ -564,18 +557,36 @@ export function TextBody({
     }
   }, [jumps]);
 
-  const colored = useColors(language, encoding, viewing, post, listen);
-  const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
   const whole = wrapAt === undefined;
+  const text = useWholeText(
+    viewing,
+    post,
+    listen,
+    language !== undefined || whole,
+    encoding,
+  );
+  const colored = useColors(language, encoding, text);
+  const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
+  const widestLine = useMemo(
+    () =>
+      whole && text !== undefined
+        ? widestColumns(
+            text.text,
+            counting,
+            (line) => bytesOf(line, 0, line.length, encoding) <= wholeLineBytes,
+          )
+        : 0,
+    [whole, text, counting, encoding],
+  );
   const widest = useMemo(
     () =>
       whole
         ? rows.reduce(
             (most, row) => Math.max(most, columnsOf(row.row.text, counting)),
-            0,
+            widestLine,
           )
         : undefined,
-    [rows, whole, counting],
+    [rows, whole, counting, widestLine],
   );
   const widthKey = `${tab}:${encoding}`;
   const [wide, setWide] = useState({ key: widthKey, columns: 0 });

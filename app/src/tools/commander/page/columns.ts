@@ -1,4 +1,4 @@
-import { tabStop } from '../../../ui/wordWrap';
+import { tabSize, tabStop } from '../../../ui/wordWrap';
 import type { TextWidths } from '../../../ui/textWidths';
 
 const tab = 9;
@@ -66,6 +66,33 @@ export function columnAt(
 
 export function columnsOf(text: string, widths?: TextWidths): number {
   return columnAt(text, text.length, 0, widths);
+}
+
+const mostColumnsAUnit = tabSize;
+
+export function widestColumns(
+  text: string,
+  widths: TextWidths | undefined,
+  keptWhole: (line: string) => boolean,
+): number {
+  let widest = 0;
+  const others: string[] = [];
+  for (const line of text.split('\n')) {
+    if (!keptWhole(line)) {
+      continue;
+    }
+    if (printable.test(line)) {
+      widest = Math.max(widest, line.length);
+    } else {
+      others.push(line);
+    }
+  }
+  for (const line of others) {
+    if (line.length * mostColumnsAUnit > widest) {
+      widest = Math.max(widest, columnsOf(line, widths));
+    }
+  }
+  return widest;
 }
 
 export function shownWithin(

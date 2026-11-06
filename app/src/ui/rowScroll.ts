@@ -28,6 +28,8 @@ export const Scrolling = createContext<ScrollSettings>({
 
 export const rowGlide = 150;
 
+export const sidewaysColumns = 4;
+
 export function glideRows(
   glide: Glide | undefined,
   scrolled: number,

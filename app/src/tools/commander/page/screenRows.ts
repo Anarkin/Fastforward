@@ -42,7 +42,7 @@ function utf8Bytes(text: string, from: number, to: number): number {
   return bytes;
 }
 
-function bytesOf(
+export function bytesOf(
   text: string,
   from: number,
   to: number,
