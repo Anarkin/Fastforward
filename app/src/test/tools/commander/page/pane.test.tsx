@@ -9,9 +9,15 @@ import {
   Pane,
   RowIcon,
 } from '../../../../tools/commander/page/pane';
-import { noFileColors } from '../../../../tools/commander/page/fileColors';
 import { rowsOf } from '../../../../tools/commander/page/listing';
-import type { PaneView } from '../../../../tools/commander/page/view';
+import {
+  emptyView,
+  type PaneView,
+} from '../../../../tools/commander/page/view';
+import {
+  CommanderStore,
+  createCommanderStore,
+} from '../../../../tools/commander/page/store';
 import { strings } from '../../../../shared/strings';
 import { noop } from '../../../fixtures';
 import { shareOf, sideToFocus } from '../../../../tools/commander/page/tool';
@@ -34,42 +40,18 @@ const pane = (elevated: boolean, hidden: readonly boolean[]): PaneView => ({
 const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
   /<span class="column-name path-title">(.*?)<\/span><div class="column-actions">/.exec(
     renderToStaticMarkup(
-      <Pane
-        tab="1"
-        side="left"
-        active
-        pane={pane(elevated, hidden)}
-        layout="details"
-        thumbnailSize={144}
-        fileColors={noFileColors}
-        onLayout={noop}
-        canGroupByColor
-        onGroupByColor={noop}
-        onDropIcon={noop}
-        onThumbnail={noop}
-        columns={{ extension: 10, size: 15, date: 16 }}
-        drives={[]}
-        driveTrigger={null}
-        onSelect={noop}
-        onMark={noop}
-        onCompare={noop}
-        onOpen={noop}
-        onSort={noop}
-        onActivate={noop}
-        onSwitchSide={noop}
-        onDrive={noop}
-        onDrivesOpening={noop}
-        onStep={noop}
-        onOpenOnSide={noop}
-        onOpenRepository={noop}
-        onView={noop}
-        onDelete={noop}
-        onShellMenu={noop}
-        onResize={noop}
-        onResized={noop}
-        onReset={noop}
-        resizer={null}
-      />,
+      <CommanderStore
+        value={createCommanderStore(noop, {
+          view: {
+            ...emptyView,
+            tab: '1',
+            active: 'left',
+            panes: { left: pane(elevated, hidden), right: undefined },
+          },
+        })}
+      >
+        <Pane side="left" driveTrigger={null} resizer={null} />
+      </CommanderStore>,
     ),
   )?.[1];
 suite('Commander pane', () => {

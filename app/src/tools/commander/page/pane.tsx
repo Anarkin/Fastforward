@@ -37,14 +37,8 @@ import { HighlightWords } from '../../../ui/highlight';
 import { SearchButton, SearchRow } from '../../../ui/search';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { ColumnHeader } from './columnHeader';
-import {
-  layouts,
-  type ColumnWidths,
-  type Layout,
-  type SizedColumn,
-  type SortColumn,
-} from '../shared/settings';
-import type { PaneView } from './view';
+import { layouts, type Layout, type SortColumn } from '../shared/settings';
+import { shownColumns, useCommander, useCommanderActions } from './store';
 import { formatDate } from '../../../ui/dates';
 import { useShell } from '../../../shell/page/store';
 import {
@@ -61,7 +55,7 @@ import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { keyPressed } from '../../../ui/shortcuts';
 import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
-import { fileColorOf, type FileColors } from './fileColors';
+import { fileColorOf } from './fileColors';
 import { PathTitle } from './pathTitle';
 
 declare module 'react' {
@@ -255,85 +249,60 @@ export function layoutMenu({
 }
 
 export function Pane({
-  tab,
   side,
-  active,
-  pane,
-  layout,
-  thumbnailSize,
-  fileColors,
-  onLayout,
-  canGroupByColor,
-  onGroupByColor,
-  onDropIcon,
-  onThumbnail,
-  columns,
-  drives,
   driveTrigger,
-  onSelect,
-  onMark,
-  onOpen,
-  onSort,
-  onActivate,
-  onSwitchSide,
-  onDrive,
-  onDrivesOpening,
-  onStep,
-  onOpenOnSide,
-  onOpenRepository,
-  onView,
-  onShellMenu,
-  onDelete,
-  onCompare,
-  onResize,
-  onResized,
-  onReset,
   resizer,
 }: {
-  tab: string | undefined;
   side: Side;
-  active: boolean;
-  pane: PaneView | undefined;
-  layout: Layout;
-  thumbnailSize: number;
-  fileColors: FileColors;
-  onLayout: (layout: Layout) => void;
-  canGroupByColor: boolean;
-  onGroupByColor: () => void;
-  onDropIcon: (ticket: string) => void;
-  onThumbnail: (
+  driveTrigger: React.Ref<HTMLButtonElement>;
+  resizer: React.ReactNode;
+}) {
+  const tab = useCommander((state) => state.view.tab);
+  const active = useCommander((state) => state.view.active === side);
+  const pane = useCommander((state) => state.view.panes[side]);
+  const layout = useCommander((state) => state.view.layouts[side]);
+  const thumbnailSize = useCommander((state) => state.view.thumbnailSize);
+  const fileColors = useCommander((state) => state.view.fileColors);
+  const canGroupByColor = useCommander(
+    (state) => state.view.fileColors.colors.length > 0,
+  );
+  const columns = useCommander(shownColumns);
+  const drives = useCommander((state) => state.drives);
+  const actions = useCommanderActions();
+  const onLayout = (chosen: Layout) => actions.chooseLayout(side, chosen);
+  const onGroupByColor = () => actions.groupByColor(side);
+  const onDropIcon = actions.dropIcon;
+  const onThumbnail = (
     name: string,
     box: number,
     pixelRatio: number,
     made: Blob,
-  ) => void;
-  columns: ColumnWidths;
-  drives: readonly string[];
-  driveTrigger: React.Ref<HTMLButtonElement>;
-  onSelect: (key: string) => void;
-  onMark: (keys: readonly string[], marked: boolean) => void;
-  onOpen: (name: string) => void;
-  onSort: (column: SortColumn) => void;
-  onActivate: () => void;
-  onSwitchSide: () => void;
-  onDrive: (drive: string) => void;
-  onDrivesOpening: () => void;
-  onStep: (step: -1 | 1) => void;
-  onOpenOnSide: (target: Side, name: string) => void;
-  onOpenRepository: (name: string) => void;
-  onView: (name: string) => void;
-  onDelete: (names: readonly string[], permanently: boolean) => void;
-  onShellMenu: (
+  ) => void actions.saveThumbnail(side, name, box, pixelRatio, made);
+  const onSelect = (key: string) => actions.select(side, key);
+  const onMark = (keys: readonly string[], marked: boolean) =>
+    actions.mark(side, keys, marked);
+  const onOpen = (name: string) => actions.open(side, name);
+  const onSort = (column: SortColumn) => actions.sort(side, column);
+  const onActivate = () => actions.activate(side);
+  const onSwitchSide = actions.switchSide;
+  const onDrive = (drive: string) => actions.drive(side, drive);
+  const onDrivesOpening = actions.listDrives;
+  const onStep = (step: -1 | 1) => actions.step(side, step);
+  const onOpenOnSide = (target: Side, name: string) =>
+    actions.openOnSide(side, target, name);
+  const onOpenRepository = (name: string) => actions.openRepository(side, name);
+  const onView = (name: string) => actions.viewFile(side, name);
+  const onDelete = (names: readonly string[], permanently: boolean) =>
+    actions.askDelete(side, names, permanently);
+  const onShellMenu = (
     names: readonly string[],
     at: { readonly x: number; readonly y: number },
     extended: boolean,
-  ) => void;
-  onCompare: () => void;
-  onResize: (column: SizedColumn, width: number) => void;
-  onResized: (column: SizedColumn, width: number) => void;
-  onReset: (column: SizedColumn) => void;
-  resizer: React.ReactNode;
-}) {
+  ) => actions.shellMenu(side, names, at, extended);
+  const onCompare = actions.compare;
+  const onResize = actions.resizeColumn;
+  const onResized = actions.saveColumn;
+  const onReset = actions.resetColumn;
   const allRows = pane?.rows ?? noRows;
   const [filter, setFilter] = useState<{
     readonly folder: string | undefined;

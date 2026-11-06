@@ -90,12 +90,16 @@ suite('Architecture', () => {
     );
   });
 
-  test('lets ui make no context, as its components take only props', () => {
+  test('makes a context only to hand out the store of the shell or of a tool, so ui makes none, as its components take only props', () => {
     assert.deepStrictEqual(
       sourceFiles
-        .filter((file) => file.startsWith('ui/'))
-        .filter((file) => read(file).includes('createContext')),
-      [],
+        .filter((file) => read(file).includes('createContext'))
+        .toSorted(),
+      [
+        'shell/page/store.ts',
+        'tools/commander/page/store.ts',
+        'tools/git/page/store.ts',
+      ],
     );
   });
 
