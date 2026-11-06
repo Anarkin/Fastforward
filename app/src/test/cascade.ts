@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { stylesheet } from './fixtures';
+import { withStores } from './componentFixtures';
 
 export interface MarkupElement {
   readonly tag: string;
@@ -349,7 +350,7 @@ export function rendered(
   const top: MarkupElement[] = [];
   const open: MarkupElement[] = within ? [within] : [];
   for (const [, closing, tag, attributes, selfClosing] of renderToStaticMarkup(
-    node,
+    withStores(node),
   ).matchAll(/<(\/?)([\w-]+)([^>]*?)(\/?)>/g)) {
     if (closing) {
       open.pop();

@@ -6,6 +6,10 @@ import { createShellStore, ShellStore } from '../shell/page/store';
 import type { ToHost } from '../shell/shared/protocol';
 import { preloadDelay } from '../shell/page/tabBar';
 import { createGitStore, GitStore } from '../tools/git/page/store';
+import {
+  CommanderStore,
+  createCommanderStore,
+} from '../tools/commander/page/store';
 import { defaultTextView } from '../ui/textView';
 import { emptyTabView, type TabView } from '../tools/git/page/tabView';
 import { FileRow } from '../tools/git/page/tree';
@@ -147,4 +151,34 @@ export function renderedInGit<P>(
     createElement(GitStore, { value: store }, createElement(Probe)),
   );
   return rendered;
+}
+
+export function withStores(
+  node: React.ReactNode,
+  {
+    git = createGitStore(() => undefined),
+    shell = createShellStore(() => undefined),
+    commander = createCommanderStore(() => undefined),
+  }: {
+    readonly git?: ReturnType<typeof createGitStore>;
+    readonly shell?: ReturnType<typeof createShellStore>;
+    readonly commander?: ReturnType<typeof createCommanderStore>;
+  } = {},
+): React.ReactElement {
+  return createElement(
+    ShellStore,
+    { value: shell },
+    createElement(
+      GitStore,
+      { value: git },
+      createElement(CommanderStore, { value: commander }, node),
+    ),
+  );
+}
+
+export function renderIn(
+  root: { readonly render: (node: React.ReactNode) => void },
+  node: React.ReactNode,
+): void {
+  root.render(withStores(node));
 }

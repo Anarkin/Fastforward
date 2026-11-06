@@ -41,6 +41,7 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { fileRowKey } from './tree';
 import type { Folders } from './viewFolders';
 import { VirtualRows, type ListedRows } from '../../../ui/virtualRows';
+import { useShell } from '../../../shell/page/store';
 
 interface MovedCursor {
   readonly key: string;
@@ -262,6 +263,7 @@ export function Files({
   onFilter: (filter: string | undefined) => void;
   filterAsked?: number;
 }) {
+  const scrolling = useShell((state) => state.scrolling);
   const skeleton = useSkeleton(loading);
   const allPaths = showAll ? tree : undefined;
   const shownFilter = useSettled(
@@ -502,6 +504,7 @@ export function Files({
     >
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
+        scrolling={scrolling}
         rows={listed}
         renderRow={(index) => {
           const row = rows[index];

@@ -22,7 +22,7 @@ import {
 import type { VisibleRows } from '../../../../ui/listMoves';
 import type { Folders } from '../../../../tools/git/page/viewFolders';
 import { revealAgain, type ListedRows } from '../../../../ui/virtualRows';
-import { clickFile, type RowProps } from '../../../componentFixtures';
+import { clickFile, renderIn, type RowProps } from '../../../componentFixtures';
 import {
   fileChange as change,
   keyPress,
@@ -135,7 +135,7 @@ async function drawing(
     await check(
       (overrides) =>
         act(async () => {
-          root.render(<Drawn {...filesProps(overrides)} />);
+          renderIn(root, <Drawn {...filesProps(overrides)} />);
         }),
       () => column,
     );

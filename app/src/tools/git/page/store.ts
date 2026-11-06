@@ -689,14 +689,24 @@ export function createGitStore(
   });
 }
 
-export const GitStore = createContext(createGitStore(() => undefined));
+export const GitStore = createContext<StoreApi<GitState> | undefined>(
+  undefined,
+);
+
+function useGitStore(): StoreApi<GitState> {
+  const store = useContext(GitStore);
+  if (store === undefined) {
+    throw new Error(strings.errors.storeOutsideProvider('git'));
+  }
+  return store;
+}
 
 export function useGit<T>(select: (state: GitState) => T): T {
-  return useStore(useContext(GitStore), select);
+  return useStore(useGitStore(), select);
 }
 
 export function useGitActions(): GitActions {
-  return useContext(GitStore).getState();
+  return useGitStore().getState();
 }
 
 export function detachedHead({ tab }: GitData): string | undefined {

@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { JSDOM } from 'jsdom';
 import { Virtualizer } from '@tanstack/react-virtual';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { comparisonOf } from '../../../../tools/git/shared/comparisons';
 import {
   workingTreeHash,
@@ -68,6 +68,10 @@ import {
   withMacKeys,
 } from '../../../fixtures';
 import { laidOutElement } from '../../../elementFixtures';
+import { withStores } from '../../../componentFixtures';
+import { renderIn } from '../../../componentFixtures';
+const renderToStaticMarkup = (node: React.ReactNode) =>
+  markupOf(withStores(node));
 
 const tracking = { upstream: 'origin/main', ahead: 0, behind: 0 };
 
@@ -743,10 +747,11 @@ suite('Telling the place scrolled to', () => {
       assert.ok(main);
       const root = createRoot(main);
       await act(async () => {
-        root.render(<List history="before" />);
+        renderIn(root, <List history="before" />);
       });
       await act(async () => {
-        root.render(
+        renderIn(
+          root,
           <>
             <List history="after" />
             <ScrolledAsDrawn />
@@ -1469,7 +1474,8 @@ async function scrollingList(
     await check({
       show: async (worktree, history, scrollTarget) => {
         await act(async () => {
-          root.render(
+          renderIn(
+            root,
             <Commits
               history={history}
               worktree={worktree}

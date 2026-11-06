@@ -819,6 +819,8 @@ export const strings = {
       `"tools.commander.fileColors[${group}].extensions" lists an empty extension, which colors nothing`,
   },
   errors: {
+    storeOutsideProvider: (store: string) =>
+      `The ${store} store was read outside the component that hands it out`,
     gitFailed: (command: string, said: string) =>
       `git ${command} failed: ${said}`,
     gitExited: (command: string, code: number | null) =>

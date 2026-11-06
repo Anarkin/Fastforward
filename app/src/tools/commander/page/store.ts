@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
+import { strings } from '../../../shared/strings';
 import { maxDroppedIcons } from '../shared/icons';
 import type {
   CommanderToHost,
@@ -352,14 +353,22 @@ export function createCommanderStore(
   });
 }
 
-export const CommanderStore = createContext(
-  createCommanderStore(() => undefined),
-);
+export const CommanderStore = createContext<
+  StoreApi<CommanderState> | undefined
+>(undefined);
+
+function useCommanderStore(): StoreApi<CommanderState> {
+  const store = useContext(CommanderStore);
+  if (store === undefined) {
+    throw new Error(strings.errors.storeOutsideProvider('commander'));
+  }
+  return store;
+}
 
 export function useCommander<T>(select: (state: CommanderState) => T): T {
-  return useStore(useContext(CommanderStore), select);
+  return useStore(useCommanderStore(), select);
 }
 
 export function useCommanderActions(): CommanderActions {
-  return useContext(CommanderStore).getState();
+  return useCommanderStore().getState();
 }

@@ -14,7 +14,6 @@ import { rowPlace } from './rowPlace';
 import {
   followRows,
   revealGlides,
-  defaultScrolling,
   rowPadding,
   type RowFollower,
   type ScrollSettings,
@@ -158,7 +157,7 @@ export function VirtualRows({
   onScrolled,
   wheelStep,
   notchRows,
-  scrolling = defaultScrolling,
+  scrolling,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
@@ -174,7 +173,7 @@ export function VirtualRows({
   onScrolled?: (offset: number) => void;
   wheelStep?: () => number;
   notchRows?: number;
-  scrolling?: ScrollSettings;
+  scrolling: ScrollSettings;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();

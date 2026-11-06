@@ -90,6 +90,7 @@ import {
   worktree,
   worktreeBar,
 } from '../../styleFixtures';
+import { defaultScrolling } from '../../../ui/rowScroll';
 
 const css = stylesheet();
 
@@ -2914,6 +2915,7 @@ suite('Style', () => {
             rows: listedFilesRows([]),
             renderRow: noop,
             selectedKey: undefined,
+            scrolling: defaultScrolling,
           }),
           createElement('div', { key: 'empty', className: 'row empty' }),
         ],

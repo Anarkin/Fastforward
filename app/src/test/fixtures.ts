@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { withStores } from './componentFixtures';
 import {
   setKeyPlatform,
   type KeyPress,
@@ -164,7 +165,7 @@ export function renderedBy<P>(
     rendered = component(props);
     return null;
   }
-  renderToStaticMarkup(createElement(Probe));
+  renderToStaticMarkup(withStores(createElement(Probe)));
   return rendered;
 }
 

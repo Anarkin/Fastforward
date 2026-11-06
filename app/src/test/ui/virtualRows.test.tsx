@@ -12,6 +12,7 @@ import {
   VirtualRows,
 } from '../../ui/virtualRows';
 import { countingReads, noop } from '../fixtures';
+import { defaultScrolling } from '../../ui/rowScroll';
 
 suite('Virtual rows', () => {
   test('scrolls to the selected row again once it arrives, as a tree loads after its file was selected', () => {
@@ -61,6 +62,7 @@ suite('Virtual rows', () => {
     const keys = Array.from({ length: 10_000 }, (_, index) => `row:${index}`);
     renderToStaticMarkup(
       <VirtualRows
+        scrolling={defaultScrolling}
         rows={{
           count: keys.length,
           keyOf: (index) => keys[index],
@@ -82,6 +84,7 @@ suite('Virtual rows', () => {
   test('sizes the rows not drawn yet at the fixed height of a row, so the list is as long as it will be', () => {
     const html = renderToStaticMarkup(
       <VirtualRows
+        scrolling={defaultScrolling}
         rows={{
           count: 1000,
           keyOf: (index) => `row:${index}`,
@@ -170,6 +173,7 @@ suite('Virtual rows for assistive technology', () => {
     new JSDOM(
       renderToStaticMarkup(
         <VirtualRows
+          scrolling={defaultScrolling}
           rows={listed}
           renderRow={(index) => keys[index]}
           selectedKey={selectedKey}

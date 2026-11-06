@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
   type BranchActionsOf,
@@ -21,6 +21,9 @@ import type {
 } from '../../../../tools/git/shared/protocol';
 import { gitStore, type ShownGit } from '../../../componentFixtures';
 import { classesOf, noop, renderedBy, tagWith } from '../../../fixtures';
+import { withStores } from '../../../componentFixtures';
+const renderToStaticMarkup = (node: React.ReactNode) =>
+  markupOf(withStores(node));
 
 const idle = { pulling: false, pushing: false, onPull: noop, onPush: noop };
 

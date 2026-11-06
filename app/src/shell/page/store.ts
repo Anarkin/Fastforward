@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
+import { strings } from '../../shared/strings';
 import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
 import { defaultDateFormat } from '../../ui/dates';
 import { defaultImageView } from '../../ui/imageView';
@@ -273,12 +274,22 @@ export function createShellStore(
   });
 }
 
-export const ShellStore = createContext(createShellStore(() => undefined));
+export const ShellStore = createContext<StoreApi<ShellState> | undefined>(
+  undefined,
+);
+
+function useShellStore(): StoreApi<ShellState> {
+  const store = useContext(ShellStore);
+  if (store === undefined) {
+    throw new Error(strings.errors.storeOutsideProvider('shell'));
+  }
+  return store;
+}
 
 export function useShell<T>(select: (state: ShellState) => T): T {
-  return useStore(useContext(ShellStore), select);
+  return useStore(useShellStore(), select);
 }
 
 export function useShellActions(): ShellActions {
-  return useContext(ShellStore).getState();
+  return useShellStore().getState();
 }

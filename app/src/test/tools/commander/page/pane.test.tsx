@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { act } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import {
   driveOf,
   ExtensionCell,
@@ -22,6 +22,9 @@ import { strings } from '../../../../shared/strings';
 import { noop } from '../../../fixtures';
 import { shareOf, sideToFocus } from '../../../../tools/commander/page/tool';
 import { JSDOM } from 'jsdom';
+import { withStores } from '../../../componentFixtures';
+const renderToStaticMarkup = (node: React.ReactNode) =>
+  markupOf(withStores(node));
 
 const pane = (elevated: boolean, hidden: readonly boolean[]): PaneView => ({
   folder: 'C:\\Config.Msi',

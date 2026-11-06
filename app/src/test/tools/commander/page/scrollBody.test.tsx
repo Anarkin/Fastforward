@@ -1,11 +1,14 @@
 import * as assert from 'node:assert';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type { ByteRange } from '../../../../tools/commander/shared/protocol';
 import {
   matchTicks,
   ScrollBody,
 } from '../../../../tools/commander/page/scrollBody';
+import { withStores } from '../../../componentFixtures';
+const renderToStaticMarkup = (node: React.ReactNode) =>
+  markupOf(withStores(node));
 
 function scrollBody(
   barPinned: boolean,

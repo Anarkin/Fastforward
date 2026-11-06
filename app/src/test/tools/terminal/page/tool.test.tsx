@@ -5,6 +5,7 @@ import { suite, test, vi } from 'vitest';
 import { TerminalTool } from '../../../../tools/terminal/page/tool';
 import { noop } from '../../../fixtures';
 import type { TerminalToWebview } from '../../../../tools/terminal/shared/protocol';
+import { renderIn } from '../../../componentFixtures';
 
 const built = vi.hoisted((): string[] => []);
 
@@ -58,7 +59,10 @@ async function withTerminal(
       };
     };
     const show = (active: boolean, ...messages: TerminalToWebview[]) => {
-      root.render(<TerminalTool active={active} post={noop} listen={listen} />);
+      renderIn(
+        root,
+        <TerminalTool active={active} post={noop} listen={listen} />,
+      );
       for (const message of messages) {
         for (const listener of listeners) {
           listener(message);

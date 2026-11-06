@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act, isValidElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type {
   Bookmark,
@@ -41,6 +41,10 @@ import {
   tagsWith,
   tagWith,
 } from '../../../fixtures';
+import { withStores } from '../../../componentFixtures';
+import { renderIn } from '../../../componentFixtures';
+const renderToStaticMarkup = (node: React.ReactNode) =>
+  markupOf(withStores(node));
 
 const refs: RefInfo[] = [
   { kind: 'remote', name: 'origin/feat/EPMAISA-798-drop', commit: 'a' },
@@ -919,7 +923,8 @@ async function browsed(
     assert.ok(main);
     const root = createRoot(main);
     await act(async () => {
-      root.render(
+      renderIn(
+        root,
         <LocationsPopup
           bookmarks={[]}
           repository={undefined}
