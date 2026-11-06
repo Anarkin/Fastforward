@@ -21,6 +21,7 @@ import {
   savedSetting,
   sharedApp,
   viewSaved,
+  waitForFocus,
   whitespaceShownSaved,
   wrapsSaved,
 } from './appFixtures';
@@ -374,6 +375,7 @@ suite('App', () => {
     'breaks.txt': `${breakLines.join('\n')}\n`,
     'longest.txt': `${longestLine}\n`,
     'grid.txt': `${gridLines.join('\n')}\n`,
+    'grid.js': `${gridLines.join('\n')}\n`,
   });
 
   test('lists the history and shows a commit entire, with its change, inline, then side by side on its button, the default, and inline again on the other, and wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, keeping the line at the top in place as it wraps and changes layout, saving each choice', async () => {
@@ -764,10 +766,11 @@ suite('App', () => {
     );
   });
 
-  test('draws the lines of a diff on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up, each line a row tall when wrapped too, as a shrunk emoji made its line two', async () => {
+  test('draws the lines of a diff on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up, each line a row tall when wrapped too, as a shrunk emoji made its line two, colored by its syntax, with whitespace shown, and while a match found ends inside a character of several code points', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.row.file', { hasText: 'grid.txt' }).click();
+    await page.locator('.row.file', { hasText: 'grid.js' }).click();
     const code = page.locator('.diff-view .virtual-row .diff-line .code');
+    await page.locator('.diff-view [class^="syntax-"]').first().waitFor();
     await waitFor(
       async () => (await code.count()) === gridLines.length,
       'every line',
@@ -791,7 +794,29 @@ suite('App', () => {
       await code.evaluateAll(barsOffGrid),
       gridLines.slice(1).map(() => 0),
     );
-    await waitFor(() => wrapsSaved(), 'the choice to be saved');
+    await page
+      .getByRole('button', { name: 'Show Whitespace', exact: true })
+      .click();
+    await page.locator('.diff-view.show-whitespace').waitFor();
+    assert.deepStrictEqual(
+      await code.evaluateAll(barsOffGrid),
+      gridLines.slice(1).map(() => 0),
+    );
+    await page.locator('.diff-view .virtual-rows').focus();
+    await page.keyboard.press('ControlOrMeta+F');
+    const field = page.locator('.find-field-input');
+    await waitForFocus(field, 'the find field');
+    await field.fill('Cafe');
+    await page.locator('.diff-line .find-match').first().waitFor();
+    assert.deepStrictEqual(
+      await code.evaluateAll(barsOffGrid),
+      gridLines.slice(1).map(() => 0),
+    );
+    await field.press('Escape');
+    await waitFor(
+      () => wrapsSaved() && whitespaceShownSaved(),
+      'the choices to be saved',
+    );
   });
 
   test('moves the marks of a wrapped line along once the browser breaks it elsewhere, as it does when it gets a few pixels narrower, though the app estimates as many characters to a row', async () => {

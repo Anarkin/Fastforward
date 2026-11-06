@@ -1623,7 +1623,7 @@ suite('App commander', () => {
     }
   });
 
-  test('draws a file viewed on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up', async () => {
+  test('draws a file viewed on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up, a tab stopping on it, and keeps it there while a match found ends inside a character of several code points', async () => {
     fs.writeFileSync(
       path.join(opened, 'grid.txt'),
       gridLines.join(String.fromCharCode(10)),
@@ -1644,7 +1644,24 @@ suite('App commander', () => {
         await rows.evaluateAll(barsOffGrid),
         gridLines.slice(1).map(() => 0),
       );
+      await page.keyboard.press('ControlOrMeta+F');
+      await waitForFocus(
+        page.locator('.viewer .find-field-input'),
+        'the search',
+      );
+      await page.keyboard.type('Cafe');
+      await page.locator('.viewer .find-match').first().waitFor();
+      assert.deepStrictEqual(
+        await rows.evaluateAll(barsOffGrid),
+        gridLines.slice(1).map(() => 0),
+      );
     } finally {
+      if (await page.locator('.viewer .find-field').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page
+          .locator('.viewer .find-field')
+          .waitFor({ state: 'detached' });
+      }
       if (await page.locator('.viewer').isVisible()) {
         await page.keyboard.press('Escape');
         await page.locator('.viewer').waitFor({ state: 'detached' });

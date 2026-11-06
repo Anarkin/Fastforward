@@ -2188,6 +2188,30 @@ suite('Drawing code', () => {
     );
   });
 
+  test('marks the whole of a character of several code points a search match starts or ends inside, as the viewer does, as the accent left of a decomposed é or the rest of a keycap after its digit was drawn apart from it, a column further on', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <>
+          {marked(
+            'Café 1️⃣ é',
+            [],
+            [],
+            'word-added',
+            [
+              { start: 0, end: 4 },
+              { start: 6, end: 7 },
+              { start: 10, end: 11 },
+            ],
+            { start: 0, end: 4 },
+          )}
+        </>,
+      ),
+      '<mark class="find-match current">Café</mark> ' +
+        '<mark class="find-match ">1️⃣</mark> ' +
+        '<mark class="find-match ">é</mark>',
+    );
+  });
+
   test('draws the syntax colors inside the changed words, under the search matches', () => {
     assert.strictEqual(
       renderToStaticMarkup(

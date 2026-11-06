@@ -126,6 +126,7 @@ import {
   spacingOf,
   textWidths,
   useCellTable,
+  wholeClusters,
   type TextWidths,
 } from '../../../ui/textWidths';
 
@@ -1336,16 +1337,19 @@ export function marked(
   syntax: readonly SyntaxRange[],
   words: readonly FindRange[],
   wordClass: string,
-  finds: readonly FindRange[],
-  current: FindRange | undefined,
+  found: readonly FindRange[],
+  foundNow: FindRange | undefined,
   whitespace = false,
   indent?: number,
   widths?: TextWidths,
 ): React.ReactNode {
   const shown = breakable(text, indent, drawnText(whitespace, widths));
-  if (words.length === 0 && syntax.length === 0 && finds.length === 0) {
+  if (words.length === 0 && syntax.length === 0 && found.length === 0) {
     return shown(text, 0);
   }
+  const finds = wholeClusters(text, found);
+  const [current] =
+    foundNow === undefined ? [] : wholeClusters(text, [foundNow]);
   const edges = [
     ...new Set([
       0,

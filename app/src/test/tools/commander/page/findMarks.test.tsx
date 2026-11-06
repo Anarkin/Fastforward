@@ -86,6 +86,26 @@ suite('Matches marked in a file viewed', () => {
     ]);
   });
 
+  test('marks the whole of a character of several code points a match starts or ends inside, as the accent left of a decomposed é or the rest of a keycap after its digit was drawn apart from it, a column further on', () => {
+    assert.deepStrictEqual(
+      markPieces(
+        [{ text: 'Café 1️⃣ é' }],
+        [
+          { start: 0, end: 4, current: true },
+          { start: 6, end: 7, current: false },
+          { start: 10, end: 11, current: false },
+        ],
+      ),
+      [
+        { text: 'Café', kind: undefined, mark: 'current' },
+        { text: ' ', kind: undefined, mark: undefined },
+        { text: '1️⃣', kind: undefined, mark: 'match' },
+        { text: ' ', kind: undefined, mark: undefined },
+        { text: 'é', kind: undefined, mark: 'match' },
+      ],
+    );
+  });
+
   test('draws the spaces and tabs of a row as the diff does once whitespace is shown, in its pieces and marks alike, and leaves them plain otherwise', () => {
     const tab = String.fromCharCode(9);
     const pieces = [

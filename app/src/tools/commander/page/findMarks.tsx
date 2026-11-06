@@ -2,7 +2,7 @@ import type { ByteRange, TextRow } from '../shared/protocol';
 import type { CodeSegment } from '../../../ui/syntax';
 import { matchesIn } from '../../../shared/textMatches';
 import { drawnText } from '../../../ui/blanks';
-import type { TextWidths } from '../../../ui/textWidths';
+import { wholeClusters, type TextWidths } from '../../../ui/textWidths';
 
 const groupBytes = 8;
 const hexPair = 2;
@@ -108,8 +108,12 @@ export function hexMarks(marks: readonly FindMark[]): FindMark[] {
 
 export function markPieces(
   pieces: readonly CodeSegment[],
-  marks: readonly FindMark[],
+  found: readonly FindMark[],
 ): MarkedPiece[] {
+  const marks = wholeClusters(
+    pieces.map((piece) => piece.text).join(''),
+    found,
+  );
   const cuts = new Set<number>();
   for (const mark of marks) {
     cuts.add(mark.start);
