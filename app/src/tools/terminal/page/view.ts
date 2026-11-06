@@ -4,6 +4,7 @@ import type { WebglAddon } from '@xterm/addon-webgl';
 import type { Terminal } from '@xterm/xterm';
 import { terminalKey } from './keys';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
+import { dialogHoldsFocus } from '../../../ui/modalDialog';
 import {
   notchesOf,
   rowGlide,
@@ -142,7 +143,9 @@ export class TerminalView {
       columns: this.terminal.cols,
       rows: this.terminal.rows,
     });
-    this.terminal.focus();
+    if (!dialogHoldsFocus(element.ownerDocument)) {
+      this.terminal.focus();
+    }
   }
 
   private readonly wheel = (event: WheelEvent) => {

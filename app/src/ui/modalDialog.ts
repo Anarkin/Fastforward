@@ -23,6 +23,10 @@ function trapFocus(event: React.KeyboardEvent<HTMLElement>): void {
   }
 }
 
+export function dialogHoldsFocus(document: Document): boolean {
+  return document.activeElement?.closest('[role="dialog"]') != null;
+}
+
 export function useModalDialog(dialog: React.RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     const element = dialog.current;

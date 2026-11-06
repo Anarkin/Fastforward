@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
 import { AboutPopup } from '../../shell/page/aboutPopup';
-import { draggedTo } from '../../ui/modalDialog';
+import { dialogHoldsFocus, draggedTo } from '../../ui/modalDialog';
 import { ShortcutsPopup } from '../../shell/page/shortcutsPopup';
 import { noop } from '../fixtures';
 
@@ -263,5 +263,19 @@ suite('Modal dialogs', () => {
       assert.strictEqual(press(stops[1]), true);
       assert.strictEqual(press(stops[1], true), true);
     });
+  });
+
+  test('tell when one holds the keyboard, so a view that opens behind it, as a new terminal, leaves the keyboard with it', () => {
+    const { document } = new JSDOM(
+      '<!doctype html><div role="dialog" tabindex="-1"><button>OK</button></div><textarea></textarea>',
+    ).window;
+    const button = document.querySelector('button');
+    const textarea = document.querySelector('textarea');
+    assert.ok(button && textarea);
+    assert.strictEqual(dialogHoldsFocus(document), false);
+    button.focus();
+    assert.strictEqual(dialogHoldsFocus(document), true);
+    textarea.focus();
+    assert.strictEqual(dialogHoldsFocus(document), false);
   });
 });
