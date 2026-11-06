@@ -1394,6 +1394,69 @@ suite('App commander', () => {
     }
   });
 
+  test('keeps a line longer than 4 KiB whole in a file viewed, as the diff shows it, on one row without wrapping and wrapped onto rows that each start at a word, rather than broken where the file is read in pieces', async () => {
+    const line = `    ${Array.from({ length: 620 }, (_, index) => `word${index}`).join(' ')}`;
+    const pieceEnd = 4096 - 'short\n'.length;
+    assert.ok(
+      line.length > pieceEnd &&
+        /\w\w/.test(line.slice(pieceEnd - 1, pieceEnd + 1)),
+    );
+    fs.writeFileSync(
+      path.join(opened, 'longer.txt'),
+      ['short', line, 'after'].join(String.fromCharCode(10)),
+    );
+    const rows = page.locator('.viewer-rows .viewer-row');
+    try {
+      await select('longer');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()) === 'short',
+        'the first row',
+      );
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await page.keyboard.press('End');
+      await waitFor(
+        async () => (await rows.allTextContents()).at(-1) === 'after',
+        'the last row',
+      );
+      const wrapped = (await rows.allTextContents()).filter(
+        (row) => row !== 'short' && row !== 'after',
+      );
+      assert.ok(wrapped.length > 1, String(wrapped.length));
+      assert.deepStrictEqual(
+        wrapped.filter((row) => !/^( {4})?word\d+( |$)/.test(row)),
+        [],
+      );
+
+      await page.keyboard.press('w');
+      await page.keyboard.press('Home');
+      await waitFor(
+        async () => (await firstViewerRow()) === 'short',
+        'the first row again',
+      );
+      const whole = await rows.allTextContents();
+      assert.deepStrictEqual(
+        [whole.length, whole[0], line.startsWith(whole[1] ?? '-'), whole[2]],
+        [3, 'short', true, 'after'],
+      );
+      await page.keyboard.press('w');
+      await waitFor(
+        () => savedText(profile, 'wordWrap') === undefined,
+        'the wrapping left to the default',
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'longer.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('longer.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
   test('keeps a file viewed with its lines wrapped as wide as the viewer, the runs of spaces hanging past its edge out of sight rather than scrolled to, whether whitespace is shown or not, and back at its left edge once wrapped after scrolling sideways', async () => {
     const padded = `| a${' '.repeat(300)}| b${' '.repeat(300)}|`;
     fs.writeFileSync(

@@ -3,7 +3,31 @@ import type { TextEncoding, TextRow } from '../shared/protocol';
 
 export const rowBytes = 4096;
 
+export const wholeLineBytes = 64 * 1024;
+
+export const readBudgetBytes = 512 * 1024;
+
 const blockBytes = 64 * 1024;
+
+export interface ReadBudget {
+  readonly least: number;
+  readonly bytes: number;
+}
+
+function enough(
+  rows: readonly TextRow[],
+  count: number,
+  bytes: number,
+  budget: ReadBudget | undefined,
+): boolean {
+  return (
+    rows.length >= count ||
+    (budget !== undefined &&
+      rows.length >= budget.least &&
+      bytes >= budget.bytes)
+  );
+}
+
 const charLookahead = 4;
 
 export type ReadBytes = (position: number, length: number) => Promise<Buffer>;
@@ -195,10 +219,10 @@ function rowEndIn(
     end: line === -1 ? lineEnd : line + coding.unit,
     textEnd: lineEnd,
   };
-  if (startsLine && known && lineEnd - offset <= rowBytes) {
+  if (startsLine && known && lineEnd - offset <= wholeLineBytes) {
     return whole;
   }
-  if (startsLine && !known && block.length - offset <= rowBytes) {
+  if (startsLine && !known && block.length - offset <= wholeLineBytes) {
     return undefined;
   }
   const cut = cutAfter(block, position, offset, coding);
@@ -228,15 +252,18 @@ export async function rowsFrom(
   start: number,
   count: number,
   coding: TextCoding = utf8,
+  budget?: ReadBudget,
 ): Promise<TextRow[]> {
   const rows: TextRow[] = [];
+  let bytes = 0;
   let position = aligned(start, coding);
   let startsLine = await startsLineAt(read, position, coding);
-  while (rows.length < count && position < size) {
-    const block = await read(position, Math.min(blockBytes, size - position));
+  let length = blockBytes;
+  while (!enough(rows, count, bytes, budget) && position < size) {
+    const block = await read(position, Math.min(length, size - position));
     const atEnd = position + block.length >= size;
     let offset = 0;
-    while (rows.length < count && offset < block.length) {
+    while (!enough(rows, count, bytes, budget) && offset < block.length) {
       const row = rowEndIn(block, position, offset, startsLine, atEnd, coding);
       if (row === undefined) {
         break;
@@ -256,11 +283,17 @@ export async function rowsFrom(
             },
       );
       startsLine = row.textEnd !== undefined;
+      bytes += row.end - offset;
       offset = row.end;
     }
     if (offset === 0) {
-      break;
+      if (length > blockBytes) {
+        break;
+      }
+      length = blockBytes + wholeLineBytes;
+      continue;
     }
+    length = blockBytes;
     position += offset;
   }
   return rows;
@@ -301,6 +334,39 @@ async function cutBefore(
   return from + Math.max(0, lineStart);
 }
 
+async function lineStartBefore(
+  read: ReadBytes,
+  at: number,
+  coding: TextCoding,
+): Promise<number | undefined> {
+  for (const back of [rowBytes, wholeLineBytes]) {
+    const from = Math.max(0, at - back - coding.unit);
+    const line = lastNewlineIn(await read(from, at - from), coding);
+    if (line !== -1) {
+      return from + line + coding.unit;
+    }
+    if (from === 0) {
+      return 0;
+    }
+  }
+  return undefined;
+}
+
+async function lineEndsBy(
+  read: ReadBytes,
+  at: number,
+  end: number,
+  coding: TextCoding,
+): Promise<boolean> {
+  for (const wanted of [Math.min(rowBytes, end - at), end - at]) {
+    const ahead = await read(at, wanted);
+    if (ahead.length < wanted || nextNewline(ahead, 0, coding) !== -1) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function rowStartAt(
   read: ReadBytes,
   offset: number,
@@ -310,16 +376,17 @@ export async function rowStartAt(
   if (at <= 0) {
     return 0;
   }
-  const from = Math.max(0, at - rowBytes - coding.unit);
-  const line = lastNewlineIn(await read(from, at - from), coding);
-  const lineStart =
-    line === -1 ? (from === 0 ? 0 : undefined) : from + line + coding.unit;
-  if (lineStart !== undefined) {
-    const wanted = lineStart + rowBytes + coding.unit - at;
-    const ahead = await read(at, wanted);
-    if (ahead.length < wanted || nextNewline(ahead, 0, coding) !== -1) {
-      return lineStart;
-    }
+  const lineStart = await lineStartBefore(read, at, coding);
+  if (
+    lineStart !== undefined &&
+    (await lineEndsBy(
+      read,
+      at,
+      lineStart + wholeLineBytes + coding.unit,
+      coding,
+    ))
+  ) {
+    return lineStart;
   }
   return cutBefore(read, at, coding);
 }
@@ -330,10 +397,12 @@ export async function rowsBefore(
   end: number,
   count: number,
   coding: TextCoding = utf8,
+  budget?: ReadBudget,
 ): Promise<TextRow[]> {
   const rows: TextRow[] = [];
   let at = aligned(Math.min(end, size), coding);
-  while (rows.length < count && at > 0) {
+  const last = at;
+  while (!enough(rows, count, last - at, budget) && at > 0) {
     const start = await rowStartAt(read, at - coding.unit, coding);
     const bytes = await read(start, at - start);
     rows.unshift(

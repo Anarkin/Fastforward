@@ -56,6 +56,7 @@ import {
   utf16Order,
   readingFile,
   type BlockCache,
+  readBudgetBytes,
   rowsBefore,
   rowsFrom,
   rowStartAt,
@@ -1124,8 +1125,8 @@ export class CommanderTool implements Tool<'commander'> {
     message: Extract<CommanderToHost, { type: 'readRows' }>,
   ): Promise<void> {
     const { viewing } = this;
-    const { request, anchor, exact, before, after, encoding } = message;
-    const counts = [before, after].every(
+    const { request, anchor, exact, before, after, least, encoding } = message;
+    const counts = [before, after, least].every(
       (count) => Number.isInteger(count) && count >= 0 && count <= maxRowsAsked,
     );
     if (
@@ -1151,9 +1152,10 @@ export class CommanderTool implements Tool<'commander'> {
           const start = exact
             ? Math.min(anchor, size)
             : await rowStartAt(read, Math.min(anchor, size), coding);
+          const budget = { least, bytes: readBudgetBytes };
           return Promise.all([
-            rowsBefore(read, size, start, before, coding),
-            rowsFrom(read, size, start, after, coding),
+            rowsBefore(read, size, start, before, coding, budget),
+            rowsFrom(read, size, start, after, coding, budget),
           ]);
         },
       );

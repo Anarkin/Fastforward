@@ -76,7 +76,7 @@ export function shownWithin(
   endColumn: number,
   widths?: TextWidths,
 ): { readonly from: number; readonly to: number; readonly column: number } {
-  if (plainFor(widths).test(text)) {
+  if (plainFor(widths).test(text.slice(from, Math.min(to, from + endColumn)))) {
     const start = Math.min(to, from + startColumn);
     return {
       from: start,

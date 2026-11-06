@@ -39,6 +39,7 @@ import {
   maxImageSize,
   maxThumbnailBytes,
 } from '../../../../shared/images';
+import { readBudgetBytes } from '../../../../tools/commander/main/textRows';
 import { thumbnailKey } from '../../../../tools/commander/main/thumbnailStore';
 import {
   fileVersion,
@@ -647,6 +648,7 @@ suite('Commander tool', () => {
         exact: false,
         before: 1,
         after: 2,
+        least: 0,
       });
       const answer = page.of('rows').at(-1);
       assert.deepStrictEqual(
@@ -663,6 +665,8 @@ suite('Commander tool', () => {
         { anchor: -1 },
         { before: 100_000 },
         { after: 1.5 },
+        { least: -1 },
+        { least: 0.5 },
       ]) {
         await send({
           type: 'readRows',
@@ -673,15 +677,53 @@ suite('Commander tool', () => {
           exact: true,
           before: 0,
           after: 1,
+          least: 0,
           ...bad,
         });
       }
       await send(
         forged(
-          '{ "type": "readRows", "tab": "3", "encoding": "ebcdic", "request": 8, "anchor": 0, "exact": true, "before": 0, "after": 1 }',
+          '{ "type": "readRows", "tab": "3", "encoding": "ebcdic", "request": 8, "anchor": 0, "exact": true, "before": 0, "after": 1, "least": 0 }',
+        ),
+      );
+      await send(
+        forged(
+          '{ "type": "readRows", "tab": "3", "encoding": "utf-8", "request": 8, "anchor": 0, "exact": true, "before": 0, "after": 1 }',
         ),
       );
       assert.strictEqual(page.of('rows').length, 1);
+    });
+
+    test('reads rows of a file viewed only until they hold half a megabyte each way once it has the rows the page asks for at least, as long lines kept whole could make a screen of rows megabytes', async () => {
+      const longLines = path.join(opened, 'long lines.txt');
+      const line = 'x'.repeat(60_000);
+      fs.writeFileSync(longLines, `${line}\n`.repeat(30));
+      const { tool, page, send } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: longLines,
+        view: true,
+      });
+
+      for (const least of [2, 12]) {
+        await send({
+          type: 'readRows',
+          tab: '3',
+          encoding: 'utf-8',
+          request: least,
+          anchor: 0,
+          exact: true,
+          before: 0,
+          after: 30,
+          least,
+        });
+        assert.strictEqual(
+          page.of('rows').at(-1)?.rows.length,
+          Math.max(least, Math.ceil(readBudgetBytes / (line.length + 1))),
+          String(least),
+        );
+      }
     });
 
     test('finds text in a file viewed in the encoding asked for, answering with the bytes of each match, and checks what the page asks', async () => {
@@ -763,6 +805,7 @@ suite('Commander tool', () => {
         exact: true,
         before: 0,
         after: 5,
+        least: 0,
       });
       assert.deepStrictEqual(
         page

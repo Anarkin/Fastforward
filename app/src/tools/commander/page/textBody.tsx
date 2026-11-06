@@ -299,6 +299,7 @@ export function TextBody({
   const { wordWrap, showWhitespace } = useTextView().view;
   const wrapAt =
     wordWrap && columns !== undefined && columns > 1 ? columns - 1 : undefined;
+  const least = wrapAt === undefined ? screen * 3 : 1;
   const rows = useMemo(
     () => screenRows(read.rows, wrapAt, encoding, counting),
     [read.rows, wrapAt, encoding, counting],
@@ -351,9 +352,10 @@ export function TextBody({
           exact: true,
           before: screen,
           after: 0,
+          least,
         }),
       ),
-    [post, tab, encoding, size, screen],
+    [post, tab, encoding, size, screen, least],
   );
   useEffect(
     () =>
@@ -402,9 +404,10 @@ export function TextBody({
           exact: wanted.exact,
           before: wanted.before,
           after: wanted.after,
+          least,
         }),
       ),
-    [post, tab, encoding],
+    [post, tab, encoding, least],
   );
 
   useEffect(

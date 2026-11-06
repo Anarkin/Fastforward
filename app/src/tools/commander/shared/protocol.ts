@@ -141,6 +141,7 @@ export type CommanderToHost =
       readonly exact: boolean;
       readonly before: number;
       readonly after: number;
+      readonly least: number;
     }
   | {
       readonly type: 'view';
