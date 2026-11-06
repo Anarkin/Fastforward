@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -475,7 +476,9 @@ export function atMostEvery(
   };
 }
 
-export function CommitBubbles({
+export const noRefs: readonly RefInfo[] = [];
+
+export const CommitBubbles = memo(function CommitBubbles({
   hash,
   refs,
   stash = false,
@@ -510,7 +513,7 @@ export function CommitBubbles({
       )}
     </div>
   );
-}
+});
 
 function tagOf(ref: RefInfo): string {
   return withoutRemote(ref.name, ref.remote);
@@ -954,7 +957,7 @@ export function Commits({
         commit={commit}
         selected={selected}
         headCommit={headCommit}
-        refs={refsByCommit.get(commit.hash) ?? []}
+        refs={refsByCommit.get(commit.hash) ?? noRefs}
         stash={stashes.has(commit.hash)}
         detached={detached === commit.hash}
         indent={indent(index)}
@@ -1054,7 +1057,7 @@ export function Commits({
             commit={commit}
             selected={selected}
             headCommit={headCommit}
-            refs={refsByCommit.get(commit.hash) ?? []}
+            refs={refsByCommit.get(commit.hash) ?? noRefs}
             stash={stashes.has(commit.hash)}
             detached={detached === commit.hash}
             indent={rowIndent}

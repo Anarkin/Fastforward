@@ -25,7 +25,7 @@ import { columnFocusOf } from '../../../ui/columnFocus';
 import { CommitBubble, HeadBubble, RefBubble, useCheckedOut } from './bubbles';
 import { useDismiss } from '../../../ui/contextMenu';
 import { useOpenMenu, refMenuTarget } from './menus';
-import { CommitRow } from './commitList';
+import { CommitRow, noRefs } from './commitList';
 import { detachedHead, useGit } from './store';
 import { Highlight } from '../../../ui/highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
@@ -467,7 +467,7 @@ function CommitResultsSection({
             commit={commit}
             selected={active}
             headCommit={headCommit}
-            refs={refsByCommit.get(commit.hash) ?? []}
+            refs={refsByCommit.get(commit.hash) ?? noRefs}
             stash={stashCommits.has(commit.hash)}
             detached={detached === commit.hash}
             indent={commitIndent}
