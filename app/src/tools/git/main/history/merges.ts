@@ -15,6 +15,8 @@ const plain = 0;
 const collapsed = 1;
 const expanded = 2;
 
+export type IsExpanded = (at: number, isPull: boolean) => boolean;
+
 export class Shown {
   readonly positions: Positions;
 
@@ -113,7 +115,8 @@ export class Shown {
 export function headsOf(commits: Commits): Set<string> {
   const { length, parents } = commits;
   const hasChild = new Uint8Array(length);
-  for (const parent of parents) {
+  for (let index = 0; index < parents.length; index++) {
+    const parent = parents[index];
     if (parent < length) {
       hasChild[parent] = 1;
     }
@@ -179,13 +182,13 @@ export function mergesHiding(
 export function mergeExpanded(
   commits: Commits,
   hash: string,
-  isExpanded: (hash: string, isPull: boolean) => boolean,
+  isExpanded: IsExpanded,
 ): boolean {
   const at = commits.indexOf(hash);
   return (
     at !== undefined &&
     at < commits.length &&
-    isExpanded(hash, isPull(commits, at))
+    isExpanded(at, isPull(commits, at))
   );
 }
 
@@ -224,7 +227,7 @@ function childrenOf(commits: Commits): Children {
 export function showHistory(
   commits: Commits,
   tips: ReadonlySet<string>,
-  isExpanded: (hash: string, isPull: boolean) => boolean,
+  isExpanded: IsExpanded,
   partial = false,
 ): Shown {
   const { length, size, starts, parents } = commits;
@@ -245,7 +248,7 @@ export function showHistory(
     const first = starts[at];
     let end = starts[at + 1];
     if (end - first > 1) {
-      if (isExpanded(commits.hashAt(at), isPull(commits, at))) {
+      if (isExpanded(at, isPull(commits, at))) {
         expandedMerges[at] = 1;
       } else {
         end = first + 1;

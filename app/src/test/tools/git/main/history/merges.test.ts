@@ -33,7 +33,15 @@ function shownOf(
   isExpanded: (hash: string, isPull: boolean) => boolean,
   partial?: boolean,
 ): ShownEntry[] {
-  return rowsOf(showHistory(Commits.of(entries), tips, isExpanded, partial));
+  const commits = Commits.of(entries);
+  return rowsOf(
+    showHistory(
+      commits,
+      tips,
+      (at, isPull) => isExpanded(commits.hashAt(at), isPull),
+      partial,
+    ),
+  );
 }
 
 function pulled(entries: readonly HistoryEntry[]): string[] {

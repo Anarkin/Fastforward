@@ -116,6 +116,43 @@ suite('Tab state', () => {
     { hash: 'base', parents: [] },
   ];
 
+  test('lays out the history without decoding the hash of each merge, as that took a quarter of laying out the 1.5 million commits of Linux', () => {
+    const merges = 20;
+    const entries = Array.from({ length: merges }, (_, i) => [
+      { hash: `m${i}`, parents: [`m${i + 1}`, `s${i}`] },
+      { hash: `s${i}`, parents: [`m${i + 1}`] },
+    ]).flat();
+    const tab = newTabState();
+    loadHistory(
+      tab,
+      Commits.of([...entries, { hash: `m${merges}`, parents: [] }]),
+      { name: 'main', commit: 'm0' },
+      [],
+    );
+    toggleMerges(tab, ['m3']);
+    const decode = Buffer.prototype.toString;
+    let decoded = 0;
+    Buffer.prototype.toString = function (
+      this: Buffer,
+      ...args: Parameters<typeof decode>
+    ) {
+      decoded++;
+      return decode.apply(this, args);
+    };
+    try {
+      layOutHistory(tab, true, 'm0');
+    } finally {
+      Buffer.prototype.toString = decode;
+    }
+    assert.strictEqual(decoded, 0);
+    assert.deepStrictEqual(
+      rowsOf(tab.history)
+        .map((entry) => entry.hash)
+        .filter((hash) => hash.startsWith('s')),
+      ['s3'],
+    );
+  });
+
   test('expands a pull merge while merges are collapsed, as collapsing it would hide the merges that landed on the mainline, until it is toggled', () => {
     const tab = newTabState();
     loadHistory(tab, Commits.of(pull), { name: 'main', commit: 'p' }, []);

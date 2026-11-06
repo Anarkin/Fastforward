@@ -9,6 +9,7 @@ import {
   mergeExpanded,
   mergesHiding,
   showHistory,
+  type IsExpanded,
   type Positions,
   type Shown as ShownHistory,
 } from './history/merges';
@@ -237,7 +238,7 @@ export function layOutHistory(
   const shown = showHistory(
     tab.fullHistory,
     tips,
-    isExpanded(tab, collapse),
+    toggledAsLaidOut(tab, collapse),
     tab.partial,
   );
   const history = tab.partial ? shown.firstRows(partialRows) : shown;
@@ -333,12 +334,20 @@ export function expandMerges(
   }
 }
 
-function isExpanded(
-  tab: TabState,
-  collapse: boolean,
-): (hash: string, isPull: boolean) => boolean {
-  return (hash, isPull) =>
-    (collapse && !isPull) === tab.toggledMerges.has(hash);
+function isExpanded(tab: TabState, collapse: boolean): IsExpanded {
+  return (at, isPull) =>
+    (collapse && !isPull) === tab.toggledMerges.has(tab.fullHistory.hashAt(at));
+}
+
+function toggledAsLaidOut(tab: TabState, collapse: boolean): IsExpanded {
+  const toggled = new Set<number>();
+  for (const merge of tab.toggledMerges) {
+    const at = tab.fullHistory.indexOf(merge);
+    if (at !== undefined) {
+      toggled.add(at);
+    }
+  }
+  return (at, isPull) => (collapse && !isPull) === toggled.has(at);
 }
 
 export function mergesHidingCommit(tab: TabState, hash: string): string[] {
