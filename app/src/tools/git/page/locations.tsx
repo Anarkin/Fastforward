@@ -1,5 +1,4 @@
 import {
-  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -25,7 +24,7 @@ import { BackIcon } from '../../../ui/icons';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { CommitBubble, HeadBubble, RefBubble, useCheckedOut } from './bubbles';
 import { useDismiss } from '../../../ui/contextMenu';
-import { OpenContextMenu, refMenuTarget } from './menus';
+import { useOpenMenu, refMenuTarget } from './menus';
 import { CommitRow } from './commitList';
 import { detachedHead, useGit } from './store';
 import { Highlight } from '../../../ui/highlight';
@@ -966,7 +965,7 @@ function SearchResults({
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
-  const openMenu = useContext(OpenContextMenu);
+  const openMenu = useOpenMenu();
   return (
     <>
       {group.refs.map((ref) => (
@@ -1081,7 +1080,7 @@ function TreeChildren({
   rows: Rows;
   onSelect: (commit: string) => void;
 }) {
-  const openMenu = useContext(OpenContextMenu);
+  const openMenu = useOpenMenu();
   const { children } = node;
   const withFolders = children.some((child) => child.children.length > 0);
   const { shown, more } = shownChildren(children);

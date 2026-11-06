@@ -1,12 +1,10 @@
-import { createContext, useState } from 'react';
+import { useState } from 'react';
 import { strings } from '../shared/strings';
 import type { ContextMenuItem } from './contextMenu';
 import { languages } from './languages';
 import { MenuButton } from './menu';
 
 export type LanguageChoice = 'auto' | 'plain' | (string & {});
-
-export const ChosenLanguage = createContext<string | undefined>(undefined);
 
 export function shownLanguage(
   choice: LanguageChoice,

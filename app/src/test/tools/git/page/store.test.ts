@@ -5,7 +5,16 @@ import type {
   GitToWebviewOf,
   WorktreeInfo,
 } from '../../../../tools/git/shared/protocol';
-import { createGitStore, detachedHead } from '../../../../tools/git/page/store';
+import {
+  createGitStore,
+  detachedHead,
+  pickedFor,
+} from '../../../../tools/git/page/store';
+import { emptyTabView } from '../../../../tools/git/page/tabView';
+import { checkoutOptions } from '../../../../tools/git/page/checkout';
+import { bookmarkOptions } from '../../../../tools/git/page/bookmarks';
+import type { ContextMenuItem } from '../../../../ui/contextMenu';
+import { strings } from '../../../../shared/strings';
 import { noop } from '../../../fixtures';
 
 const at = 'a'.repeat(40);
@@ -39,6 +48,9 @@ const layout = (hideDimmedButtons: boolean): GitToWebviewOf<'layout'> => ({
   autoFetchMinutes: 1,
   hideDimmedButtons,
 });
+
+const labelled = (items: readonly ContextMenuItem[] | undefined) =>
+  (items ?? []).map((item) => ('separator' in item ? '-' : item.label));
 
 function posting() {
   const posted: GitToHost[] = [];
@@ -402,5 +414,80 @@ suite('Git store', () => {
       [true, false],
     );
     assert.deepStrictEqual(posted, []);
+  });
+
+  test('offers to check out a commit and to bookmark it or a ref on it, checking out and bookmarking for the worktree shown', () => {
+    const posted: GitToHost[] = [];
+    const refs = [
+      { kind: 'branch', name: 'main', commit: at },
+      { kind: 'branch', name: 'side', commit: at },
+    ] as const;
+    const store = createGitStore((message) => posted.push(message), {
+      tab: {
+        ...emptyTabView,
+        root: '/repo',
+        repository: { head: 'main', headCommit: at, refs, stashes: [] },
+      },
+    });
+    const [checkout, separator, bookmark] = store
+      .getState()
+      .menuItems({ kind: 'commit', hash: at });
+    assert.ok('separator' in separator);
+    assert.ok(!('separator' in checkout) && !('separator' in bookmark));
+    assert.strictEqual(checkout.label, strings.commits.checkout);
+    const options = checkoutOptions(at, refs, 'main', undefined);
+    assert.deepStrictEqual(
+      labelled(checkout.submenu),
+      options.map((option) => option.label),
+    );
+    const side = checkout.submenu?.[1];
+    assert.ok(side !== undefined && !('separator' in side));
+    side.onClick?.();
+    const marks = bookmarkOptions(at, refs);
+    assert.deepStrictEqual(
+      labelled(bookmark.submenu),
+      marks.map((option) => option.label),
+    );
+    const first = bookmark.submenu?.[0];
+    assert.ok(first !== undefined && !('separator' in first));
+    first.onClick?.();
+    assert.deepStrictEqual(store.getState().bookmarks, [marks[0].bookmark]);
+    assert.deepStrictEqual(posted, [
+      { type: 'checkout', target: options[1].target, root: '/repo' },
+      {
+        type: 'setBookmarks',
+        bookmarks: [marks[0].bookmark],
+        root: '/repo',
+      },
+    ]);
+    const onRef = () =>
+      labelled(
+        store
+          .getState()
+          .menuItems({ kind: 'ref', ref: { kind: 'branch', name: 'side' } }),
+      );
+    assert.deepStrictEqual(onRef(), [
+      strings.commits.checkout,
+      '-',
+      strings.commits.addBookmark,
+    ]);
+    store.getState().toggleBookmark({ kind: 'branch', name: 'side' });
+    assert.deepStrictEqual(onRef(), [
+      strings.commits.checkout,
+      '-',
+      strings.commits.removeBookmark,
+    ]);
+  });
+
+  test('keeps the language picked for the file it was picked for, and none for another or once picked again', () => {
+    const store = createGitStore(noop);
+    store.getState().pickLanguage('one', 'python');
+    assert.strictEqual(pickedFor('one')(store.getState()), 'python');
+    assert.strictEqual(pickedFor('two')(store.getState()), undefined);
+    assert.strictEqual(pickedFor(undefined)(store.getState()), undefined);
+    store.getState().pickLanguage('one', undefined);
+    assert.strictEqual(pickedFor('one')(store.getState()), undefined);
+    store.getState().pickLanguage(undefined, 'python');
+    assert.strictEqual(store.getState().pickedLanguage, undefined);
   });
 });

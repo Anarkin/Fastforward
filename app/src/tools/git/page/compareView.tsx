@@ -7,7 +7,7 @@ import type {
 import { strings } from '../../../shared/strings';
 import type { DiffFile, LoadedText } from './diff';
 import { Diff, DiffOptions } from './diffColumn';
-import { useGit, useGitActions } from './store';
+import { compareLanguageKey, useGit, useGitActions } from './store';
 
 const noFiles: readonly FileChange[] = [];
 const noLeftOut: readonly LeftOut[] = [];
@@ -75,6 +75,7 @@ export function CompareView({
           findAsked={findAsked}
           filter={undefined}
           options={<DiffOptions language={language} />}
+          languageKey={compareLanguageKey(comparing)}
         />
       </div>
     </div>

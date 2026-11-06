@@ -90,6 +90,15 @@ suite('Architecture', () => {
     );
   });
 
+  test('lets ui make no context, as its components take only props', () => {
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) => file.startsWith('ui/'))
+        .filter((file) => read(file).includes('createContext')),
+      [],
+    );
+  });
+
   test("keeps the styles of the shell and of each tool in a sheet of their own, each tool's loaded by its page after the shell's", () => {
     assert.deepStrictEqual(
       sourceFiles.filter((file) => file.endsWith('.css')).toSorted(),

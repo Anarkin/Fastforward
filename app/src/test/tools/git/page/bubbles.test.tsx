@@ -11,11 +11,10 @@ import {
   HeadBubble,
   RefBubble,
 } from '../../../../tools/git/page/bubbles';
-import {
-  OpenContextMenu,
-  type MenuTarget,
-} from '../../../../tools/git/page/menus';
+import type { MenuEvent } from '../../../../tools/git/page/menus';
 import { GitStore } from '../../../../tools/git/page/store';
+import { createShellStore, ShellStore } from '../../../../shell/page/store';
+import { strings } from '../../../../shared/strings';
 import type {
   BookmarkRef,
   GitToHost,
@@ -549,23 +548,37 @@ suite('Bubbles', () => {
     ]);
   });
 
-  test('offers the menu of a detached HEAD commit', () => {
+  test('offers the menu of a detached HEAD commit where it was clicked, to check it out or bookmark it', () => {
     const hash = 'c'.repeat(40);
-    const targets: MenuTarget[] = [];
-    let bubble: React.ReactElement<{ onContextMenu: () => void }> | undefined;
+    const shell = createShellStore(noop);
+    let bubble:
+      | React.ReactElement<{ onContextMenu: (event: MenuEvent) => void }>
+      | undefined;
     const Capture = () => (bubble = HeadBubble({ hash }));
     renderToStaticMarkup(
-      <OpenContextMenu.Provider value={(_, target) => targets.push(target)}>
-        <Capture />
-      </OpenContextMenu.Provider>,
+      <ShellStore value={shell}>
+        <GitStore value={gitStore()}>
+          <Capture />
+        </GitStore>
+      </ShellStore>,
     );
     assert.match(
       renderToStaticMarkup(bubble),
       new RegExp(`title="HEAD is detached at ${hash}">HEAD ccccccc<`),
     );
-    bubble?.props.onContextMenu();
-    assert.deepStrictEqual(targets, [
-      { kind: 'ref', ref: { kind: 'commit', name: hash } },
-    ]);
+    const kept: string[] = [];
+    bubble?.props.onContextMenu({
+      clientX: 3,
+      clientY: 4,
+      stopPropagation: () => kept.push('row'),
+      preventDefault: () => kept.push('browser menu'),
+    });
+    assert.deepStrictEqual(kept, ['row', 'browser menu']);
+    const shown = shell.getState().menu?.menu;
+    assert.deepStrictEqual([shown?.x, shown?.y], [3, 4]);
+    assert.deepStrictEqual(
+      shown?.items.map((item) => ('separator' in item ? '-' : item.label)),
+      [strings.commits.checkout, '-', strings.commits.addBookmark],
+    );
   });
 });

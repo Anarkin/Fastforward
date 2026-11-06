@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useContext,
   useEffect,
   useEffectEvent,
   useId,
@@ -28,7 +27,7 @@ import {
 import { CommitBubble, HeadBubble, RefBubble, StashBubble } from './bubbles';
 import { Column } from './column';
 import { CommitHistory } from './commitHistory';
-import { commitMenuTarget, OpenContextMenu, type MenuTarget } from './menus';
+import { commitMenuTarget, useOpenMenu, type MenuTarget } from './menus';
 import { GraphCell, graphWidth, rowLanes } from './graph';
 import { detachedHead, useGit } from './store';
 import { formatDate } from '../../../ui/dates';
@@ -732,7 +731,7 @@ export function Commits({
   const listId = useId();
   const detached = useGit(detachedHead);
   const hasWorkingTree = workingTree !== undefined;
-  const openMenu = useContext(OpenContextMenu);
+  const openMenu = useOpenMenu();
   const offset = hasWorkingTree ? 1 : 0;
   const skeleton = useSkeleton(opening);
   const count = offset + (history?.total ?? (skeleton ? openingRows : 0));
@@ -1181,7 +1180,7 @@ export function CommitRow({
   corner?: React.ReactNode;
   children?: React.ReactNode;
 }) {
-  const openMenu = useContext(OpenContextMenu);
+  const openMenu = useOpenMenu();
   const dateFormat = useShell((state) => state.dateFormat);
   return (
     <div

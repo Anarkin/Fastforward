@@ -1,8 +1,11 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
+import { strings } from '../../../shared/strings';
+import type { ContextMenuItem } from '../../../ui/contextMenu';
 import type { CloneView } from '../shared/clone';
 import type {
   Bookmark,
+  CheckoutTarget,
   CompareView,
   DiffLayout,
   GitToHost,
@@ -14,10 +17,13 @@ import type {
   TextRequest,
   WorktreeInfo,
 } from '../shared/protocol';
-import { bookmarkedCommits } from '../shared/refNames';
+import { bookmarkedCommits, hasRef } from '../shared/refNames';
+import { bookmarkOptions, toggleBookmark } from './bookmarks';
+import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import type { ChosenFolder, CloneTarget } from './clonePopup';
 import { resetWidth, widthsToLoad } from './columns';
 import { textKey, type LoadedText } from './diff';
+import type { MenuTarget } from './menus';
 import { tagsOnRemote } from './tagPushes';
 import {
   emptyTabView,
@@ -61,6 +67,8 @@ interface GitSource {
   readonly lastFetch: LastFetch;
   readonly commitsShown: boolean;
   readonly searching: boolean;
+  readonly pickedLanguage:
+    { readonly key: string; readonly language: string } | undefined;
 }
 
 interface GitCollections {
@@ -93,6 +101,13 @@ interface GitActions {
   readonly closeClone: () => void;
   readonly toggleCommits: () => void;
   readonly search: (open: boolean) => void;
+  readonly checkout: (target: CheckoutTarget) => void;
+  readonly toggleBookmark: (bookmark: Bookmark) => void;
+  readonly menuItems: (target: MenuTarget) => ContextMenuItem[];
+  readonly pickLanguage: (
+    key: string | undefined,
+    language: string | undefined,
+  ) => void;
 }
 
 const gitDefaults: GitSource = {
@@ -118,7 +133,77 @@ const gitDefaults: GitSource = {
   lastFetch: {},
   commitsShown: true,
   searching: false,
+  pickedLanguage: undefined,
 };
+
+export function compareLanguageKey(comparing: string): string {
+  return JSON.stringify(['compare', comparing]);
+}
+
+export function fileLanguageKey(
+  root: string | undefined,
+  hash: string | undefined,
+  path: string,
+): string {
+  return JSON.stringify([root, hash, path]);
+}
+
+export const pickedFor =
+  (key: string | undefined) =>
+  ({ pickedLanguage }: GitSource): string | undefined =>
+    pickedLanguage !== undefined && pickedLanguage.key === key
+      ? pickedLanguage.language
+      : undefined;
+
+function menuItemsOf(state: GitState, target: MenuTarget): ContextMenuItem[] {
+  const { repository } = state.tab;
+  const refs = repository?.refs ?? [];
+  const head = repository?.head;
+  const detached = detachedHead(state);
+  const marked = (bookmark: Bookmark) => hasRef(state.bookmarks, bookmark);
+  if (target.kind === 'commit') {
+    return [
+      {
+        label: strings.commits.checkout,
+        submenu: checkoutOptions(target.hash, refs, head, detached).map(
+          (option) => ({
+            label: option.label,
+            disabled: option.disabled,
+            onClick: () => state.checkout(option.target),
+          }),
+        ),
+      },
+      { separator: true },
+      {
+        label: strings.commits.bookmark,
+        submenu: bookmarkOptions(target.hash, refs).map((option) => ({
+          label: option.label,
+          checked: marked(option.bookmark),
+          onClick: () => state.toggleBookmark(option.bookmark),
+        })),
+      },
+    ];
+  }
+  const { ref } = target;
+  const option =
+    ref.kind === 'commit'
+      ? checkoutCommit(ref.name, detached)
+      : checkoutRef(ref, refs, head, detached);
+  return [
+    {
+      label: strings.commits.checkout,
+      disabled: option.disabled,
+      onClick: () => state.checkout(option.target),
+    },
+    { separator: true },
+    {
+      label: marked(ref)
+        ? strings.commits.removeBookmark
+        : strings.commits.addBookmark,
+      onClick: () => state.toggleBookmark(ref),
+    },
+  ];
+}
 
 type GitData = GitSource & GitCollections;
 
@@ -326,6 +411,17 @@ export function createGitStore(
       toggleCommits: () =>
         set((state) => ({ commitsShown: !state.commitsShown })),
       search: (open) => set({ searching: open }),
+      checkout: (target) => postTab({ type: 'checkout', target }),
+      toggleBookmark: (bookmark) =>
+        get().changeBookmarks(toggleBookmark(get().bookmarks, bookmark)),
+      menuItems: (target) => menuItemsOf(get(), target),
+      pickLanguage: (key, language) =>
+        set({
+          pickedLanguage:
+            key === undefined || language === undefined
+              ? undefined
+              : { key, language },
+        }),
     };
   });
 }

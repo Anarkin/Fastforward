@@ -6,7 +6,6 @@ import {
 import {
   memo,
   useCallback,
-  useContext,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -16,7 +15,6 @@ import {
   Fragment,
 } from 'react';
 import { collapseThreshold, type TextRequest } from '../shared/protocol';
-import { ChosenLanguage } from '../../../ui/languageChoice';
 import {
   changeBlocks,
   type DiffFile,
@@ -2027,6 +2025,7 @@ export function DiffView({
   finding = false,
   origin,
   viewOf,
+  chosenLanguage,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -2047,6 +2046,7 @@ export function DiffView({
   showWhitespace?: boolean;
   finding?: boolean;
   viewOf?: (file: number) => (() => void) | undefined;
+  chosenLanguage?: string;
 }) {
   const list = useRef<HTMLDivElement>(null);
   const [sideways, setSideways] = useState(0);
@@ -2345,7 +2345,6 @@ export function DiffView({
       ),
     [rows],
   );
-  const chosenLanguage = useContext(ChosenLanguage);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const syntax = useSyntax(
     files,

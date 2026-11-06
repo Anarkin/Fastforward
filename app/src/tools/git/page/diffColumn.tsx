@@ -8,7 +8,7 @@ import {
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { useGit, useGitActions } from './store';
+import { pickedFor, useGit, useGitActions } from './store';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
 import { DiffView, type WholeFile } from './diffView';
 import { filterWords, matchesFilter } from '../../../shared/fileFilter';
@@ -242,6 +242,7 @@ export function Diff({
   note,
   onViewFile,
   viewAsked = 0,
+  languageKey,
 }: {
   selection: string;
   path: string | undefined;
@@ -266,8 +267,10 @@ export function Diff({
   note?: string;
   onViewFile?: (source: ViewedSource) => void;
   viewAsked?: number;
+  languageKey?: string;
 }) {
   const sideBySide = useGit((state) => state.diffLayout === 'sideBySide');
+  const chosenLanguage = useGit(pickedFor(languageKey));
   const { wordWrap, showWhitespace } = useShell((state) => state.textView);
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -417,6 +420,7 @@ export function Diff({
         current={shown}
         jump={jump}
         firstChange={path === undefined ? undefined : firstChange}
+        chosenLanguage={chosenLanguage}
       />
     </Column>
   );

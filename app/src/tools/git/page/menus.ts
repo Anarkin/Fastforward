@@ -1,6 +1,7 @@
-import { createContext, useContext } from 'react';
+import { useShellActions } from '../../../shell/page/store';
 import type { Bookmark, BookmarkRef } from '../shared/protocol';
 import { refOf } from '../shared/refNames';
+import { useGitActions } from './store';
 
 export type MenuTarget =
   | { readonly kind: 'ref'; readonly ref: Bookmark }
@@ -26,12 +27,22 @@ export type MenuEvent = Pick<
   'stopPropagation' | 'preventDefault' | 'clientX' | 'clientY'
 >;
 
-export const OpenContextMenu = createContext<
-  (event: MenuEvent, target: MenuTarget) => void
->(() => {});
+export function useOpenMenu(): (event: MenuEvent, target: MenuTarget) => void {
+  const { menuItems } = useGitActions();
+  const { showMenu } = useShellActions();
+  return (event, target) => {
+    event.stopPropagation();
+    event.preventDefault();
+    showMenu({
+      x: event.clientX,
+      y: event.clientY,
+      items: menuItems(target),
+    });
+  };
+}
 
 export function useContextMenu(target: MenuTarget) {
-  const open = useContext(OpenContextMenu);
+  const open = useOpenMenu();
   return {
     onContextMenu: (event: React.MouseEvent) => open(event, target),
   };
