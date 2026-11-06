@@ -135,6 +135,33 @@ suite('Commits read from git', () => {
     assert.strictEqual(commits.hashAt(2), 'x');
   });
 
+  test('comes back the same from its parts, as sent from the thread that reads it', () => {
+    const builder = new CommitsBuilder([], true);
+    builder.add(Buffer.from('300 m a x\n200 a y\n'));
+    const commits = builder.finishNow();
+
+    const copy = Commits.fromParts(structuredClone(commits.parts()));
+
+    assert.deepStrictEqual(entriesOf(copy), entriesOf(commits));
+    assert.deepStrictEqual(
+      [copy.length, copy.size, [...(copy.times ?? [])]],
+      [2, 4, [300, 200]],
+    );
+    assert.deepStrictEqual(
+      ['m', 'a', 'x', 'y', 'z'].map((hash) => [
+        copy.indexOf(hash),
+        copy.has(hash),
+      ]),
+      [
+        [0, true],
+        [1, true],
+        [2, false],
+        [3, false],
+        [undefined, false],
+      ],
+    );
+  });
+
   test('finds no commit by a string whose characters only share their low bytes with its hash, as the page may send any characters', () => {
     const hash = sha1(1);
     const commits = Commits.of([{ hash, parents: [] }]);

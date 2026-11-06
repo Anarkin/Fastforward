@@ -1,5 +1,10 @@
 import { StringDecoder } from 'node:string_decoder';
-import { Commits, CommitsBuilder } from '../history/commits';
+import type { Commits } from '../history/commits';
+import {
+  readCommits,
+  type ReadCommits,
+  type ReadOptions,
+} from '../history/commitReads';
 import { extendHistory, keepsHistory, regionHistory } from '../history/extend';
 import { isHashPrefix } from '../../shared/hashes';
 import type {
@@ -124,25 +129,38 @@ export async function listHistory(
   tips: Iterable<string> = [],
 ): Promise<Commits> {
   const shownStashes = solo ? [] : stashes;
-  const reader = new CommitsBuilder(shownStashes, false, tips);
-  await runGitBytes(
-    gitPath,
-    cwd,
-    [
-      'rev-list',
-      '--date-order',
-      '--parents',
-      ...historyRefs(solo),
-      '--stdin',
-      '--',
-    ],
-    {
-      input: hashLines(shownStashes),
-      signal,
-      onOutput: (chunk) => reader.add(chunk),
-    },
+  const { commits } = await readHistory(
+    { stashes: shownStashes, tips },
+    (onOutput) =>
+      runGitBytes(
+        gitPath,
+        cwd,
+        [
+          'rev-list',
+          '--date-order',
+          '--parents',
+          ...historyRefs(solo),
+          '--stdin',
+          '--',
+        ],
+        { input: hashLines(shownStashes), signal, onOutput },
+      ),
   );
-  return reader.finish();
+  return commits;
+}
+
+async function readHistory(
+  options: ReadOptions,
+  run: (onOutput: (chunk: Buffer) => void) => Promise<unknown>,
+): Promise<ReadCommits> {
+  const reading = readCommits(options);
+  try {
+    await run((chunk) => reading.add(chunk));
+  } catch (error) {
+    reading.drop();
+    throw error;
+  }
+  return reading.finish();
 }
 
 export async function extendedHistory(
@@ -215,23 +233,25 @@ async function listSince(
   maxRegion: number,
   signal: AbortSignal | undefined,
 ): Promise<Commits | undefined> {
-  const reader = new CommitsBuilder(stashes, true, tips);
-  await runGitBytes(
-    gitPath,
-    cwd,
-    [
-      'rev-list',
-      '--date-order',
-      '--parents',
-      '--timestamp',
-      `--max-age=${since}`,
-      `--max-count=${maxRegion + 1}`,
-      '--stdin',
-      '--',
-    ],
-    { input: hashLines(tips), signal, onOutput: (chunk) => reader.add(chunk) },
+  const { commits: region } = await readHistory(
+    { stashes, timestamped: true, tips },
+    (onOutput) =>
+      runGitBytes(
+        gitPath,
+        cwd,
+        [
+          'rev-list',
+          '--date-order',
+          '--parents',
+          '--timestamp',
+          `--max-age=${since}`,
+          `--max-count=${maxRegion + 1}`,
+          '--stdin',
+          '--',
+        ],
+        { input: hashLines(tips), signal, onOutput },
+      ),
   );
-  const region = await reader.finish();
   return region.length > maxRegion ? undefined : region;
 }
 
@@ -245,27 +265,31 @@ async function listNewHistory(
   oldHeads: readonly string[],
   signal: AbortSignal | undefined,
 ): Promise<Commits> {
-  const reader = new CommitsBuilder(stashes, true, tips);
-  await runGitBytes(
-    gitPath,
-    cwd,
-    [
-      ...stopAtOldHeadsArgs,
-      'rev-list',
-      '--date-order',
-      '--parents',
-      '--timestamp',
-      '--ignore-missing',
-      '--stdin',
-      '--',
-    ],
-    {
-      input: hashLines(tips) + oldHeads.map((head) => `^${head}\n`).join(''),
-      signal,
-      onOutput: (chunk) => reader.add(chunk),
-    },
+  const { commits } = await readHistory(
+    { stashes, timestamped: true, tips },
+    (onOutput) =>
+      runGitBytes(
+        gitPath,
+        cwd,
+        [
+          ...stopAtOldHeadsArgs,
+          'rev-list',
+          '--date-order',
+          '--parents',
+          '--timestamp',
+          '--ignore-missing',
+          '--stdin',
+          '--',
+        ],
+        {
+          input:
+            hashLines(tips) + oldHeads.map((head) => `^${head}\n`).join(''),
+          signal,
+          onOutput,
+        },
+      ),
   );
-  return reader.finish();
+  return commits;
 }
 
 async function commitTimes(
@@ -311,27 +335,24 @@ export async function listRecentHistory(
   count = recentCommits,
   signal?: AbortSignal,
 ): Promise<{ history: Commits; whole: boolean }> {
-  const reader = new CommitsBuilder(stashes, false, tips);
-  await runGitBytes(
-    gitPath,
-    cwd,
-    [
-      'rev-list',
-      '--date-order',
-      '--parents',
-      `--max-count=${count}`,
-      '--ignore-missing',
-      'HEAD',
-      '--stdin',
-      '--',
-    ],
-    {
-      input: hashLines([...tips, ...stashes]),
-      signal,
-      onOutput: (chunk) => reader.add(chunk),
-    },
+  const { commits, read } = await readHistory({ stashes, tips }, (onOutput) =>
+    runGitBytes(
+      gitPath,
+      cwd,
+      [
+        'rev-list',
+        '--date-order',
+        '--parents',
+        `--max-count=${count}`,
+        '--ignore-missing',
+        'HEAD',
+        '--stdin',
+        '--',
+      ],
+      { input: hashLines([...tips, ...stashes]), signal, onOutput },
+    ),
   );
-  return { history: reader.finishNow(), whole: reader.read < count };
+  return { history: commits, whole: read < count };
 }
 
 const recentSeconds = 60 * 24 * 60 * 60;

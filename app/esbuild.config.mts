@@ -16,6 +16,7 @@ export function mainOptions(production: boolean): BuildOptions {
       preload: 'src/main/preload.ts',
       ptyHost: 'src/tools/terminal/main/ptyHost.ts',
       gitSpawner: 'src/tools/git/main/cli/gitSpawnerWorker.ts',
+      commitReader: 'src/tools/git/main/history/commitReaderWorker.ts',
     },
     format: 'cjs',
     platform: 'node',

@@ -831,6 +831,7 @@ export const strings = {
     keptGitTimedOut: 'The git kept running did not answer in time',
     keptGitOutOfStep: 'The git kept running answered for another request',
     gitStarterStopped: 'the thread that starts git stopped',
+    commitReaderStopped: 'the thread that reads the history stopped',
     pushStalled: (seconds: number) =>
       `git push printed nothing for ${seconds} seconds, so it was stopped`,
     fetchStalled: (seconds: number) =>

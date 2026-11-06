@@ -1,5 +1,35 @@
 import type { HistoryEntry } from '../cli/history';
 
+interface HashTableParts {
+  readonly bytes: Uint8Array<ArrayBuffer>;
+  readonly offsets: Int32Array<ArrayBuffer>;
+  readonly slots: Int32Array<ArrayBuffer>;
+  readonly size: number;
+}
+
+export interface CommitsParts {
+  readonly length: number;
+  readonly starts: Int32Array;
+  readonly parents: Int32Array;
+  readonly hashes: HashTableParts;
+  readonly times: Float64Array | undefined;
+}
+
+export function buffersOf(parts: CommitsParts): ArrayBuffer[] {
+  const { starts, parents, hashes, times } = parts;
+  const buffers = [
+    starts,
+    parents,
+    hashes.bytes,
+    hashes.offsets,
+    hashes.slots,
+    ...(times ? [times] : []),
+  ].map((array) => array.buffer);
+  return [...new Set(buffers)].filter(
+    (buffer): buffer is ArrayBuffer => buffer instanceof ArrayBuffer,
+  );
+}
+
 export class Commits {
   constructor(
     readonly length: number,
@@ -51,6 +81,22 @@ export class Commits {
     return new Commits(count + kept, starts, parents, hashes);
   }
 
+  static fromParts({
+    length,
+    starts,
+    parents,
+    hashes,
+    times,
+  }: CommitsParts): Commits {
+    return new Commits(
+      length,
+      starts,
+      parents,
+      HashTable.fromParts(hashes),
+      times,
+    );
+  }
+
   static of(entries: readonly HistoryEntry[]): Commits {
     const builder = new CommitsBuilder();
     for (const { hash, parents } of entries) {
@@ -61,6 +107,16 @@ export class Commits {
 
   get size(): number {
     return this.hashes.size;
+  }
+
+  parts(): CommitsParts {
+    return {
+      length: this.length,
+      starts: this.starts,
+      parents: this.parents,
+      hashes: this.hashes.parts(),
+      times: this.times,
+    };
   }
 
   indexOf(hash: string): number | undefined {
@@ -136,6 +192,25 @@ class HashTable {
       }
     }
     return table;
+  }
+
+  static fromParts({ bytes, offsets, slots, size }: HashTableParts): HashTable {
+    const table = new HashTable();
+    table.bytes = bytes;
+    table.offsets = offsets;
+    table.slots = slots;
+    table.size = size;
+    table.used = offsets[size];
+    return table;
+  }
+
+  parts(): HashTableParts {
+    return {
+      bytes: this.bytes,
+      offsets: this.offsets,
+      slots: this.slots,
+      size: this.size,
+    };
   }
 
   bytesOf(at: number): Uint8Array {

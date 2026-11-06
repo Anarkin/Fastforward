@@ -119,16 +119,20 @@ suite('Release build', { timeout: 30_000 }, () => {
     assert.strictEqual(build.npmRebuild, false);
   });
 
-  test('bundles the git starter next to the main bundle, importing only modules of Node, as it is read from the asar and run from its text in a worker thread, where nothing else can be loaded', async () => {
+  test('bundles the git starter and the commit reader next to the main bundle, importing only modules of Node, as they are read from the asar and run from their text in a worker thread, where nothing else can be loaded', async () => {
     const { outputs } = (await releaseBuild('mainOptions')).metafile;
-    const starter = outputs['dist/gitSpawner.js'];
-    assert.ok(starter);
-    assert.deepStrictEqual(
-      starter.imports.filter(
-        (imported) => !imported.external || !imported.path.startsWith('node:'),
-      ),
-      [],
-    );
+    for (const file of ['dist/gitSpawner.js', 'dist/commitReader.js']) {
+      const worker = outputs[file];
+      assert.ok(worker, file);
+      assert.deepStrictEqual(
+        worker.imports.filter(
+          (imported) =>
+            !imported.external || !imported.path.startsWith('node:'),
+        ),
+        [],
+        file,
+      );
+    }
   });
 
   test('leaves koffi out of the bundle and unpacked from the asar with the native module of each platform, which it looks for next to itself', async () => {
