@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { comparedOf, comparisonLabel, sideLabel } from '../shared/comparisons';
-import type {
-  Bookmark,
-  Direction,
-  LastFetch,
-  NavigationEntry,
-  RepositoryState,
-  GitToWebviewOf,
-} from '../shared/protocol';
+import type { Direction, LastFetch, NavigationEntry } from '../shared/protocol';
 import {
   onMenuKeyDown,
   useDismiss,
@@ -22,6 +15,7 @@ import {
 } from '../../../ui/icons';
 import { fetchStatus } from './fetchStatus';
 import { LocationsPopup } from './locations';
+import { useGit, useGitActions } from './store';
 import { strings } from '../../../shared/strings';
 
 const holdDelay = 400;
@@ -54,29 +48,21 @@ function useNow(): number {
   return now;
 }
 
-export function NavButtons({
-  back,
-  forward,
-  onNavigate,
-  onHome,
-  fetching,
-  onFetch,
-  autoFetch,
-  autoFetchMinutes,
-  onAutoFetch,
-  lastFetch,
-}: {
-  back: readonly NavigationEntry[];
-  forward: readonly NavigationEntry[];
-  onNavigate: (direction: Direction, steps: number) => void;
-  onHome: (() => void) | undefined;
-  fetching: boolean;
-  onFetch: () => void;
-  autoFetch: boolean;
-  autoFetchMinutes: number;
-  onAutoFetch: (on: boolean) => void;
-  lastFetch: LastFetch;
-}) {
+export function NavButtons() {
+  const back = useGit((state) => state.tab.back);
+  const forward = useGit((state) => state.tab.forward);
+  const fetching = useGit((state) => state.tab.fetching);
+  const headCommit = useGit((state) => state.tab.repository?.headCommit);
+  const autoFetch = useGit((state) => state.autoFetch);
+  const autoFetchMinutes = useGit((state) => state.autoFetchMinutes);
+  const lastFetch = useGit((state) => state.lastFetch);
+  const {
+    navigate: onNavigate,
+    jump,
+    fetch: onFetch,
+    changeAutoFetch: onAutoFetch,
+  } = useGitActions();
+  const onHome = headCommit === undefined ? undefined : () => jump(headCommit);
   const now = Math.max(
     useNow(),
     lastFetch.succeeded ?? 0,
@@ -261,31 +247,19 @@ export function locationsPopupKey(
   return `${searches}\n${root ?? ''}`;
 }
 
-export function AddressBar({
-  open,
-  asked,
-  onOpen,
-  root,
-  repository,
-  hashLookup,
-  onLookupHash,
-  commitSearch,
-  onSearchCommits,
-  onJump,
-  bookmarks,
-}: {
-  open: boolean;
-  asked: number;
-  onOpen: (open: boolean) => void;
-  root: string | undefined;
-  bookmarks: readonly Bookmark[];
-  hashLookup: GitToWebviewOf<'hashLookup'> | undefined;
-  onLookupHash: (query: string) => void;
-  commitSearch: GitToWebviewOf<'commitSearch'> | undefined;
-  onSearchCommits: (query: string) => () => void;
-  repository: RepositoryState | undefined;
-  onJump: (commit: string) => void;
-}) {
+export function AddressBar({ asked }: { asked: number }) {
+  const open = useGit((state) => state.searching);
+  const root = useGit((state) => state.tab.root);
+  const repository = useGit((state) => state.tab.repository);
+  const hashLookup = useGit((state) => state.tab.hashLookup);
+  const commitSearch = useGit((state) => state.tab.commitSearch);
+  const bookmarks = useGit((state) => state.bookmarks);
+  const {
+    search: onOpen,
+    lookupHash: onLookupHash,
+    searchCommits: onSearchCommits,
+    jump: onJump,
+  } = useGitActions();
   const close = useCallback(() => onOpen(false), [onOpen]);
   const [queries, setQueries] = useState<ReadonlyMap<string, string>>(
     new Map(),

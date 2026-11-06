@@ -13,6 +13,7 @@ import {
   gitStore,
   inStores,
   optionStores,
+  type ShownGit,
   type ShownOptions,
 } from './componentFixtures';
 import { DiffOptions } from '../tools/git/page/diffColumn';
@@ -84,23 +85,14 @@ export function columns(className: string, active?: ColumnName) {
   );
 }
 
-export function navButtons(
-  props: Partial<Parameters<typeof NavButtons>[0]> = {},
-): React.ReactElement {
+export function navButtons({
+  fetching = false,
+  ...shown
+}: ShownGit & { readonly fetching?: boolean } = {}): React.ReactElement {
   return (
-    <NavButtons
-      back={[]}
-      forward={[]}
-      onNavigate={noop}
-      onHome={noop}
-      fetching={false}
-      onFetch={noop}
-      autoFetch={false}
-      autoFetchMinutes={0}
-      onAutoFetch={noop}
-      lastFetch={{}}
-      {...props}
-    />
+    <GitStore value={gitStore({ ...shown, tab: { fetching } })}>
+      <NavButtons />
+    </GitStore>
   );
 }
 
@@ -155,12 +147,14 @@ export function worktreeBar(
   active?: string,
 ) {
   return rendered(
-    <WorktreeBar
-      worktrees={worktrees}
-      active={active}
-      onSelect={noop}
-      onPreload={noop}
-    />,
+    <GitStore
+      value={gitStore({
+        ...(worktrees && { worktrees }),
+        tab: { ...(active !== undefined && { root: active }) },
+      })}
+    >
+      <WorktreeBar />
+    </GitStore>,
   );
 }
 

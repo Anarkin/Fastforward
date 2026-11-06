@@ -8,18 +8,21 @@ import {
   adjacentWorktree,
   WorktreeBar,
 } from '../../../../tools/git/page/worktreeBar';
-import { rested } from '../../../componentFixtures';
-import { noop, renderedBy, tagsWith } from '../../../fixtures';
+import { GitStore } from '../../../../tools/git/page/store';
+import { gitStore, renderedInGit, rested } from '../../../componentFixtures';
+import { tagsWith } from '../../../fixtures';
 
 function rowsShown(worktrees: WorktreeInfo[] | undefined): number {
   return tagsWith(
     renderToStaticMarkup(
-      <WorktreeBar
-        worktrees={worktrees}
-        active="/a"
-        onSelect={noop}
-        onPreload={noop}
-      />,
+      <GitStore
+        value={gitStore({
+          ...(worktrees && { worktrees }),
+          tab: { root: '/a' },
+        })}
+      >
+        <WorktreeBar />
+      </GitStore>,
     ),
     'worktrees',
   ).length;
@@ -40,28 +43,45 @@ suite('Worktree bar', () => {
     selected: string[],
     preloaded: string[],
   ): React.ReactElement<Worktree>[] {
-    const nav = renderedBy(WorktreeBar, {
-      worktrees: [
-        { root: '/a', name: 'main', folder: 'app', main: true, missing: false },
+    const nav = renderedInGit(
+      gitStore(
         {
-          root: '/b',
-          name: 'gone',
-          folder: 'gone',
-          main: false,
-          missing: true,
+          worktrees: [
+            {
+              root: '/a',
+              name: 'main',
+              folder: 'app',
+              main: true,
+              missing: false,
+            },
+            {
+              root: '/b',
+              name: 'gone',
+              folder: 'gone',
+              main: false,
+              missing: true,
+            },
+            {
+              root: '/c',
+              name: 'feature',
+              folder: 'app-feature',
+              main: false,
+              missing: false,
+            },
+          ],
+          tab: { root: '/a' },
         },
-        {
-          root: '/c',
-          name: 'feature',
-          folder: 'app-feature',
-          main: false,
-          missing: false,
+        (message) => {
+          if (message.type === 'selectWorktree') {
+            selected.push(message.root);
+          } else if (message.type === 'preloadWorktree') {
+            preloaded.push(message.root);
+          }
         },
-      ],
-      active: '/a',
-      onSelect: (root) => selected.push(root),
-      onPreload: (root) => preloaded.push(root),
-    });
+      ),
+      WorktreeBar,
+      {},
+    );
     assert.ok(isValidElement<{ children: React.ReactElement }>(nav));
     const list = nav.props.children;
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(list));
@@ -148,21 +168,29 @@ suite('Worktree bar for assistive technology', () => {
   test('tells that the worktrees form a tab list, which one is open, and which are gone', () => {
     const document = new JSDOM(
       renderToStaticMarkup(
-        <WorktreeBar
-          worktrees={[
-            {
-              root: '/a',
-              name: 'main',
-              folder: 'a',
-              main: true,
-              missing: false,
-            },
-            { root: '/b', name: 'b', folder: 'b', main: false, missing: true },
-          ]}
-          active="/a"
-          onSelect={noop}
-          onPreload={noop}
-        />,
+        <GitStore
+          value={gitStore({
+            worktrees: [
+              {
+                root: '/a',
+                name: 'main',
+                folder: 'a',
+                main: true,
+                missing: false,
+              },
+              {
+                root: '/b',
+                name: 'b',
+                folder: 'b',
+                main: false,
+                missing: true,
+              },
+            ],
+            tab: { root: '/a' },
+          })}
+        >
+          <WorktreeBar />
+        </GitStore>,
       ),
     ).window.document;
     assert.strictEqual(

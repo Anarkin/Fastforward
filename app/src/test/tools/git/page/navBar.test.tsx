@@ -13,23 +13,45 @@ import {
   nextHistoryOpen,
   NavButtons,
 } from '../../../../tools/git/page/navBar';
+import { GitStore } from '../../../../tools/git/page/store';
+import type {
+  GitToHost,
+  NavigationEntry,
+} from '../../../../tools/git/shared/protocol';
+import {
+  gitStore,
+  renderedInGit,
+  type ShownGit,
+} from '../../../componentFixtures';
 import { classesOf, noop, renderedBy, tagWith } from '../../../fixtures';
 
-const buttons = (props: Partial<Parameters<typeof NavButtons>[0]>) =>
+const at = 'a'.repeat(40);
+
+const navStore = (
+  shown: ShownGit & {
+    readonly back?: readonly NavigationEntry[];
+    readonly forward?: readonly NavigationEntry[];
+    readonly fetching?: boolean;
+  } = {},
+  post: (message: GitToHost) => void = noop,
+) => {
+  const { back = [], forward = [], fetching = false, ...rest } = shown;
+  return gitStore(
+    {
+      headCommit: 'headCommit' in shown ? shown.headCommit : at,
+      autoFetchMinutes: 1,
+      ...rest,
+      tab: { root: '/repo', back, forward, fetching },
+    },
+    post,
+  );
+};
+
+const buttons = (shown: Parameters<typeof navStore>[0]) =>
   renderToStaticMarkup(
-    <NavButtons
-      back={[]}
-      forward={[]}
-      onNavigate={noop}
-      onHome={noop}
-      fetching={false}
-      onFetch={noop}
-      autoFetch={false}
-      autoFetchMinutes={1}
-      onAutoFetch={noop}
-      lastFetch={{}}
-      {...props}
-    />,
+    <GitStore value={navStore(shown)}>
+      <NavButtons />
+    </GitStore>,
   );
 
 const minute = 60_000;
@@ -47,19 +69,9 @@ suite('Navigation bar', () => {
 
   test('shows nothing of the commit search until it is opened, as the button opening it sits among the buttons of the column', () => {
     const html = renderToStaticMarkup(
-      <AddressBar
-        open={false}
-        asked={0}
-        onOpen={noop}
-        root="/repo"
-        bookmarks={[]}
-        repository={undefined}
-        hashLookup={undefined}
-        onLookupHash={noop}
-        commitSearch={undefined}
-        onSearchCommits={() => noop}
-        onJump={noop}
-      />,
+      <GitStore value={gitStore()}>
+        <AddressBar asked={0} />
+      </GitStore>,
     );
     assert.doesNotMatch(html, /address-bar|Search…|<button/);
   });
@@ -156,19 +168,12 @@ suite('Navigation bar', () => {
 
   test('fetches on its button, and pins fetching every few minutes on the pin, unpinning it again', () => {
     for (const autoFetch of [false, true]) {
-      const clicked: string[] = [];
-      const bar = renderedBy(NavButtons, {
-        back: [],
-        forward: [],
-        onNavigate: noop,
-        onHome: noop,
-        fetching: false,
-        onFetch: () => clicked.push('fetch'),
-        autoFetch,
-        autoFetchMinutes: 1,
-        onAutoFetch: (on) => clicked.push(`pin ${on}`),
-        lastFetch: {},
-      });
+      const posted: GitToHost[] = [];
+      const bar = renderedInGit(
+        navStore({ autoFetch }, (message) => posted.push(message)),
+        NavButtons,
+        {},
+      );
       assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
       const pair = bar.props.children[3];
       assert.ok(isValidElement<{ children: React.ReactElement[] }>(pair));
@@ -176,7 +181,10 @@ suite('Navigation bar', () => {
         assert.ok(isValidElement<{ onClick: () => void }>(button));
         button.props.onClick();
       }
-      assert.deepStrictEqual(clicked, ['fetch', `pin ${!autoFetch}`]);
+      assert.deepStrictEqual(posted, [
+        { type: 'fetch', root: '/repo' },
+        { type: 'setAutoFetch', on: !autoFetch },
+      ]);
     }
   });
 
@@ -192,30 +200,23 @@ suite('Navigation bar', () => {
   });
 
   test('selects the checked-out commit on a home button after forward, as H does, disabled while there is none', () => {
-    const clicked: string[] = [];
-    const bar = renderedBy(NavButtons, {
-      back: [],
-      forward: [],
-      onNavigate: noop,
-      onHome: () => clicked.push('home'),
-      fetching: false,
-      onFetch: noop,
-      autoFetch: false,
-      autoFetchMinutes: 1,
-      onAutoFetch: noop,
-      lastFetch: {},
-    });
+    const posted: GitToHost[] = [];
+    const bar = renderedInGit(
+      navStore({}, (message) => posted.push(message)),
+      NavButtons,
+      {},
+    );
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
     const home = bar.props.children[2];
     assert.ok(isValidElement<{ onClick: () => void }>(home));
     home.props.onClick();
-    assert.deepStrictEqual(clicked, ['home']);
+    assert.deepStrictEqual(posted, [{ type: 'jump', hash: at, root: '/repo' }]);
     assert.match(
       buttons({}),
       /title="Forward[^"]*"[^>]*>.*?<\/button><\/div><button class="nav-button" title="Select the checked-out commit">/,
     );
     assert.match(
-      buttons({ onHome: undefined }),
+      buttons({ headCommit: undefined }),
       /title="Select the checked-out commit" disabled=""/,
     );
   });

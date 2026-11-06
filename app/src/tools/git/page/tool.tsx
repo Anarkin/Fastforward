@@ -86,9 +86,6 @@ export function GitTool({
     jump,
     showUpstream,
     showParent,
-    lookupHash,
-    searchCommits,
-    fetch: fetchRemotes,
     toggleMerge,
     scrolled,
     loadCommits,
@@ -104,12 +101,9 @@ export function GitTool({
     chooseCloneFolder,
     startClone,
     stopClone,
-    selectWorktree,
-    preloadWorktree,
     changeShowAllFiles,
     changeCollapseMerges,
     changeSolo,
-    changeAutoFetch,
     forgetRecent,
     answerInit,
     closeClone,
@@ -118,8 +112,6 @@ export function GitTool({
     pickLanguage,
   } = store.getState();
   const tab = useStore(store, (state) => state.tab);
-  const worktrees = useStore(store, (state) => state.worktrees);
-  const bookmarks = useStore(store, (state) => state.bookmarks);
   const recent = useStore(store, (state) => state.recent);
   const initAsked = useStore(store, (state) => state.initAsked);
   const clone = useStore(store, (state) => state.clone);
@@ -127,9 +119,6 @@ export function GitTool({
   const showAllFiles = useStore(store, (state) => state.showAllFiles);
   const collapseMerges = useStore(store, (state) => state.collapseMerges);
   const solo = useStore(store, (state) => state.solo);
-  const autoFetch = useStore(store, (state) => state.autoFetch);
-  const autoFetchMinutes = useStore(store, (state) => state.autoFetchMinutes);
-  const lastFetch = useStore(store, (state) => state.lastFetch);
   const columnWidths = useStore(store, (state) => state.columnWidths);
   const commitsShown = useStore(store, (state) => state.commitsShown);
   const searching = useStore(store, (state) => state.searching);
@@ -170,12 +159,7 @@ export function GitTool({
     fileContent,
     largeFiles,
     texts,
-    fetching,
     applyingSolo,
-    back,
-    forward,
-    hashLookup,
-    commitSearch,
     error,
   } = tab;
   const textView = useShell((state) => state.textView);
@@ -499,12 +483,7 @@ export function GitTool({
           />
         ) : (
           <div className="repository">
-            <WorktreeBar
-              worktrees={worktrees}
-              active={activeTab}
-              onSelect={selectWorktree}
-              onPreload={preloadWorktree}
-            />
+            <WorktreeBar />
             {
               <>
                 <div
@@ -576,45 +555,14 @@ export function GitTool({
                     error={listError(error, layoutSelection)}
                     applyingSolo={applyingSolo}
                     onSolo={changeSolo}
-                    navigation={
-                      <NavButtons
-                        back={back}
-                        forward={forward}
-                        onNavigate={navigate}
-                        onHome={
-                          repository?.headCommit === undefined
-                            ? undefined
-                            : () => jump(repository.headCommit)
-                        }
-                        fetching={fetching}
-                        onFetch={fetchRemotes}
-                        autoFetch={autoFetch}
-                        autoFetchMinutes={autoFetchMinutes}
-                        onAutoFetch={changeAutoFetch}
-                        lastFetch={lastFetch}
-                      />
-                    }
+                    navigation={<NavButtons />}
                     searchButton={
                       <SearchButton
                         title={strings.actions.search}
                         onClick={() => search(true)}
                       />
                     }
-                    search={
-                      <AddressBar
-                        open={searching}
-                        asked={searchAsks.commits}
-                        onOpen={search}
-                        root={activeTab}
-                        bookmarks={bookmarks}
-                        repository={repository}
-                        hashLookup={hashLookup}
-                        onLookupHash={lookupHash}
-                        commitSearch={commitSearch}
-                        onSearchCommits={searchCommits}
-                        onJump={jump}
-                      />
-                    }
+                    search={<AddressBar asked={searchAsks.commits} />}
                   />
                   <Files
                     title={filesTitle(hash)}

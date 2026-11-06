@@ -3,6 +3,7 @@ import { type WorktreeInfo } from '../shared/protocol';
 import { gitKeymap } from '../shared/keymap';
 import { strings } from '../../../shared/strings';
 import { useBinding } from '../../../ui/shortcuts';
+import { useGit, useGitActions } from './store';
 import {
   adjacentTab,
   Cycle,
@@ -24,17 +25,11 @@ export function adjacentWorktree(
   );
 }
 
-export function WorktreeBar({
-  worktrees,
-  active,
-  onSelect,
-  onPreload,
-}: {
-  worktrees: readonly WorktreeInfo[] | undefined;
-  active: string | undefined;
-  onSelect: (root: string) => void;
-  onPreload: (root: string) => void;
-}) {
+export function WorktreeBar() {
+  const worktrees = useGit((state) => state.worktrees);
+  const active = useGit((state) => state.tab.root);
+  const { selectWorktree: onSelect, preloadWorktree: onPreload } =
+    useGitActions();
   const rest = useMemo(() => resting(preloadDelay), []);
   useEffect(() => rest.cancel, [rest]);
 

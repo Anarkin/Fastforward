@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { createElement, isValidElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { vi } from 'vitest';
 import { createShellStore, ShellStore } from '../shell/page/store';
 import type { ToHost } from '../shell/shared/protocol';
@@ -12,7 +13,9 @@ import type {
   Bookmark,
   DiffLayout,
   GitToHost,
+  LastFetch,
   RefInfo,
+  WorktreeInfo,
 } from '../tools/git/shared/protocol';
 
 export interface RowProps {
@@ -32,6 +35,11 @@ export const rested = () => vi.advanceTimersByTime(preloadDelay);
 
 export interface ShownGit {
   readonly head?: string;
+  readonly headCommit?: string;
+  readonly autoFetch?: boolean;
+  readonly autoFetchMinutes?: number;
+  readonly lastFetch?: LastFetch;
+  readonly worktrees?: readonly WorktreeInfo[];
   readonly refs?: readonly RefInfo[];
   readonly tagRemote?: string;
   readonly bookmarks?: readonly Bookmark[];
@@ -43,6 +51,11 @@ export interface ShownGit {
 export function gitStore(
   {
     head,
+    headCommit,
+    autoFetch = false,
+    autoFetchMinutes = 0,
+    lastFetch = {},
+    worktrees,
     refs = [],
     tagRemote,
     bookmarks = [],
@@ -57,7 +70,7 @@ export function gitStore(
       ...emptyTabView,
       repository: {
         head,
-        headCommit: undefined,
+        headCommit,
         refs,
         stashes: [],
         ...(tagRemote === undefined ? {} : { tagRemote }),
@@ -66,13 +79,18 @@ export function gitStore(
     },
     bookmarks,
     hideDimmed,
-    worktrees: elsewhere.map((name) => ({
-      root: `/${name}`,
-      name,
-      folder: `/${name}`,
-      main: false,
-      missing: false,
-    })),
+    autoFetch,
+    autoFetchMinutes,
+    lastFetch,
+    worktrees:
+      worktrees ??
+      elsewhere.map((name) => ({
+        root: `/${name}`,
+        name,
+        folder: `/${name}`,
+        main: false,
+        missing: false,
+      })),
   });
 }
 
@@ -113,4 +131,20 @@ export function inStores(
     { value: shell },
     createElement(GitStore, { value: git }, node),
   );
+}
+
+export function renderedInGit<P>(
+  store: ReturnType<typeof createGitStore>,
+  component: (props: P) => React.ReactNode,
+  props: P,
+): React.ReactNode {
+  let rendered: React.ReactNode;
+  function Probe() {
+    rendered = component(props);
+    return null;
+  }
+  renderToStaticMarkup(
+    createElement(GitStore, { value: store }, createElement(Probe)),
+  );
+  return rendered;
 }
