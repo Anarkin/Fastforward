@@ -193,6 +193,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .commit-rows .commit,
+.locations-list .commit,
 .column:has(.commit-rows) > .column-title {
   border-bottom-color: transparent;
 }

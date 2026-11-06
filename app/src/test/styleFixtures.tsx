@@ -331,7 +331,10 @@ const bookmarks: readonly Bookmark[] = [
   { kind: 'branch', name: 'gone' },
 ];
 
-function locationsPopupElement(query: string): React.ReactElement {
+function locationsPopupElement(
+  query: string,
+  commitSearch?: Parameters<typeof LocationsPopup>[0]['commitSearch'],
+): React.ReactElement {
   return (
     <LocationsPopup
       bookmarks={bookmarks}
@@ -339,7 +342,7 @@ function locationsPopupElement(query: string): React.ReactElement {
       anchor={{ current: null }}
       lookup={undefined}
       onLookup={noop}
-      commitSearch={undefined}
+      commitSearch={commitSearch}
       onSearchCommits={() => noop}
       onJump={noop}
       onClose={noop}
@@ -351,6 +354,22 @@ function locationsPopupElement(query: string): React.ReactElement {
 
 export const locationsPopup = memoized((query) =>
   rendered(locationsPopupElement(query)),
+);
+
+export const commitsFound = memoized((query) =>
+  rendered(
+    locationsPopupElement(query, {
+      type: 'commitSearch',
+      query,
+      result: {
+        commits: [
+          commitInfo('a', { subject: `${query} a` }),
+          commitInfo('b', { subject: `${query} b` }),
+        ],
+        capped: false,
+      },
+    }),
+  ),
 );
 
 export const searchButton = memoized(() =>

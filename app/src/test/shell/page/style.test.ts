@@ -68,6 +68,7 @@ import {
   columns,
   columnTitle,
   commitRow,
+  commitsFound,
   contextMenu,
   diffFind,
   diffOptions,
@@ -2680,7 +2681,7 @@ suite('Style', () => {
     looks(columnTitle(null), { 'border-bottom-color': undefined });
   });
 
-  test("hides the lines of the search opened over the commit column's title, under its field and between its groups, keeping their pixel so the field stays where the title's was", () => {
+  test("hides the lines of the search opened over the commit column's title, under its field, between its groups and between the commits it found, keeping their pixel so the field stays where the title's was and the commits as tall as in the list", () => {
     const popup = locationsPopup('');
     const groups = allWithClass(popup, 'locations-group');
     assert.ok(groups.length > 1, String(groups.length));
@@ -2692,6 +2693,14 @@ suite('Style', () => {
       looks(group, {
         'border-top': '1px solid var(--color-border)',
         'border-top-color': 'transparent',
+      });
+    }
+    const found = allWithClass(commitsFound('next'), 'commit');
+    assert.strictEqual(found.length, 2);
+    for (const commit of found) {
+      looks(commit, {
+        'border-bottom': '1px solid var(--color-border)',
+        'border-bottom-color': 'transparent',
       });
     }
   });
