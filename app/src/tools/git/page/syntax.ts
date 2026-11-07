@@ -181,10 +181,24 @@ function keyedLines(files: readonly DiffFile[], whole: WholeFile | undefined) {
   );
 }
 
+function coloredKeys(
+  files: readonly DiffFile[],
+  whole: WholeFile | undefined,
+  open: ReadonlySet<number> | undefined,
+  chosen: string | undefined,
+): ReadonlySet<string | undefined> {
+  return new Set(
+    syntaxSources(files, whole, undefined, open, chosen).flatMap(
+      (source) => source.keys,
+    ),
+  );
+}
+
 export function carriedRanges(
   before: Colored,
   files: readonly DiffFile[],
   whole?: WholeFile,
+  open?: ReadonlySet<number>,
 ): Map<string, readonly SyntaxRange[]> {
   const found = new Map<
     string,
@@ -202,10 +216,11 @@ export function carriedRanges(
       }
     }
   }
+  const colored = coloredKeys(files, whole, open, before.chosen);
   const carried = new Map<string, readonly SyntaxRange[]>();
   for (const { key, path, text } of keyedLines(files, whole)) {
     const same = found.get(`${path}\n${text}`);
-    if (same) {
+    if (same && colored.has(key)) {
       carried.set(
         key,
         same.ranges[Math.min(same.next, same.ranges.length - 1)],
@@ -221,13 +236,14 @@ export function startingRanges(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
   chosen: string | undefined,
+  open?: ReadonlySet<number>,
 ): Map<string, readonly SyntaxRange[]> {
   if (last === undefined || last.chosen !== chosen) {
     return new Map();
   }
   return last.files === files && last.whole === whole
     ? last.ranges
-    : carriedRanges(last, files, whole);
+    : carriedRanges(last, files, whole, open);
 }
 
 export function useSyntax(
@@ -245,7 +261,7 @@ export function useSyntax(
   const [colored, setColored] = useState<Colored>();
   const shown = useRef<Colored>(undefined);
   useLayoutEffect(() => {
-    const ranges = startingRanges(shown.current, files, whole, chosen);
+    const ranges = startingRanges(shown.current, files, whole, chosen, open);
     const publish = () => {
       shown.current = { files, whole, ranges: new Map(ranges), chosen };
       setColored(shown.current);
@@ -259,7 +275,7 @@ export function useSyntax(
           }
           publish();
         });
-  }, [sources, files, whole, chosen]);
+  }, [sources, files, whole, chosen, open]);
   return highlight && colored?.files === files && colored.whole === whole
     ? colored.ranges
     : noRanges;
