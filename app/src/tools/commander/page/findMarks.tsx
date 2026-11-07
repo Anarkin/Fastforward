@@ -1,8 +1,9 @@
-import type { ByteRange, TextRow } from '../shared/protocol';
+import type { ByteRange, TextEncoding, TextRow } from '../shared/protocol';
 import type { CodeSegment } from '../../../ui/syntax';
 import { matchesIn } from '../../../shared/textMatches';
 import { drawnText } from '../../../ui/blanks';
 import { wholeClusters, type TextWidths } from '../../../ui/textWidths';
+import { bytesOf } from './screenRows';
 
 const groupBytes = 8;
 const hexPair = 2;
@@ -49,13 +50,37 @@ function firstStartingFrom(
   return low;
 }
 
+function charAtByte(
+  text: string,
+  byte: number,
+  encoding: TextEncoding,
+): number {
+  let at = 0;
+  let bytes = 0;
+  while (at < text.length && bytes < byte) {
+    const next = at + ((text.codePointAt(at) ?? 0) > 0xffff ? 2 : 1);
+    bytes += bytesOf(text, at, next, encoding);
+    at = next;
+  }
+  return at;
+}
+
 export function textMarks(
   row: Pick<TextRow, 'start' | 'end' | 'text'>,
   query: string,
   matches: readonly ByteRange[],
   current: ByteRange | undefined,
+  encoding: TextEncoding,
 ): FindMark[] {
-  const ranges = matchesIn(row.text, query);
+  const isCurrent = (match: ByteRange) => match.start === current?.start;
+  const first = matches[firstEndingAfter(matches, row.start)];
+  const carried =
+    first !== undefined && first.start < row.start ? first : undefined;
+  const skip =
+    carried === undefined
+      ? 0
+      : charAtByte(row.text, carried.end - row.start, encoding);
+  const ranges = matchesIn(row.text.slice(skip), query);
   const currentIndex =
     current !== undefined &&
     current.start >= row.start &&
@@ -63,10 +88,30 @@ export function textMarks(
       ? firstStartingFrom(matches, current.start) -
         firstStartingFrom(matches, row.start)
       : -1;
-  return ranges.map((range, index) => ({
-    ...range,
-    current: index === currentIndex,
-  }));
+  const last = matches[firstStartingFrom(matches, row.end) - 1];
+  const leaving =
+    last !== undefined && last.start >= row.start && last.end > row.end
+      ? last
+      : undefined;
+  return [
+    ...(carried === undefined
+      ? []
+      : [{ start: 0, end: skip, current: isCurrent(carried) }]),
+    ...ranges.map((range, index) => ({
+      start: range.start + skip,
+      end: range.end + skip,
+      current: index === currentIndex,
+    })),
+    ...(leaving === undefined
+      ? []
+      : [
+          {
+            start: charAtByte(row.text, leaving.start - row.start, encoding),
+            end: row.text.length,
+            current: isCurrent(leaving),
+          },
+        ]),
+  ];
 }
 
 export function byteMarks(

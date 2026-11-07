@@ -91,6 +91,12 @@ interface Ask {
   readonly after: number;
   readonly topOf: (first: number, rows: readonly ScreenRow[]) => number;
   readonly follow?: boolean;
+  readonly refill?: boolean;
+}
+
+interface Placing {
+  readonly ask: Ask;
+  by: number;
 }
 
 const placeOf = (row: ScreenRow | undefined): Place => ({
@@ -304,14 +310,17 @@ export function TextBody({
       onPlace(topStart);
     }
   }, [topStart, onPlace]);
-  const { tab, size } = viewing;
+  const { tab, size, version } = viewing;
   const [lastScreen, setLastScreen] = useState<{
     readonly size: number | undefined;
+    readonly version: string | undefined;
     readonly screen: number;
     readonly rows: readonly TextRow[];
   }>();
   const lastRows =
-    lastScreen?.size === size && lastScreen?.screen === screen
+    lastScreen?.size === size &&
+    lastScreen?.version === version &&
+    lastScreen?.screen === screen
       ? lastScreen?.rows
       : undefined;
   const lastTop = useMemo(() => {
@@ -323,7 +332,7 @@ export function TextBody({
   }, [lastRows, wrapAt, encoding, screen, counting]);
   const ends = useMemo(
     () =>
-      new RowRequests<true>((request) =>
+      new RowRequests<{ readonly version: string | undefined }>((request) =>
         post({
           type: 'readRows',
           tab,
@@ -341,21 +350,27 @@ export function TextBody({
   useEffect(
     () =>
       listen((message) => {
-        if (
-          message.type === 'rows' &&
-          message.tab === tab &&
-          ends.answered(message.request) !== undefined
-        ) {
-          setLastScreen({ size, screen, rows: message.rows });
+        if (message.type !== 'rows' || message.tab !== tab) {
+          return;
+        }
+        const asked = ends.answered(message.request);
+        if (asked !== undefined) {
+          setLastScreen({
+            size,
+            version: asked.version,
+            screen,
+            rows: message.rows,
+          });
         }
       }),
     [listen, tab, ends, size, screen],
   );
   useEffect(() => {
     if (size !== undefined) {
-      ends.ask(true);
+      ends.restart();
+      ends.ask({ version });
     }
-  }, [ends, size]);
+  }, [ends, size, version]);
   const [estimate, setEstimate] = useState<{
     readonly size: number | undefined;
     readonly screen: number;
@@ -391,32 +406,13 @@ export function TextBody({
     [post, tab, encoding, least],
   );
 
-  useEffect(
-    () =>
-      listen((message) => {
-        if (message.tab !== tab || message.type !== 'rows') {
-          return;
-        }
-        const pending = requests.answered(message.request);
-        if (pending === undefined) {
-          return;
-        }
-        const arrived = screenRows(message.rows, wrapAt, encoding, counting);
-        const before = current.current.rows[current.current.top];
-        const index = pending.follow
-          ? message.rows.findIndex((row) => row.start === before?.row.start)
-          : -1;
-        const top =
-          index === -1 || before === undefined
-            ? pending.topOf(firstOf(arrived, message.anchorIndex), arrived)
-            : topWithin(
-                rowWithChar(arrived, firstOf(arrived, index), before.from),
-                arrived.length,
-                screen,
-              );
-        setRead({ rows: message.rows, top: placeOf(arrived[top]) });
-      }),
-    [listen, tab, screen, requests, wrapAt, encoding, counting],
+  const placing = useRef<Placing>(undefined);
+  const askPlace = useCallback(
+    (ask: Ask) => {
+      placing.current = { ask, by: 0 };
+      requests.ask(ask);
+    },
+    [requests],
   );
 
   const move = useCallback(
@@ -426,9 +422,14 @@ export function TextBody({
       if (from === undefined || by === 0) {
         return;
       }
+      const unanswered = placing.current;
+      if (unanswered !== undefined) {
+        unanswered.by += by;
+        return;
+      }
       const within = scrolled(shown, by, screen, size ?? 0);
       if (within === undefined) {
-        requests.ask({
+        askPlace({
           anchor: from.row.start,
           exact: true,
           before: Math.max(0, -by) + screen * 2,
@@ -452,6 +453,7 @@ export function TextBody({
           before: screen * 2,
           after: screen * 3,
           follow: true,
+          refill: true,
           topOf: (first, arrived) =>
             topWithin(
               rowWithChar(arrived, first, top.from),
@@ -461,7 +463,44 @@ export function TextBody({
         });
       }
     },
-    [requests, screen, size],
+    [requests, askPlace, screen, size],
+  );
+
+  useEffect(
+    () =>
+      listen((message) => {
+        if (message.tab !== tab || message.type !== 'rows') {
+          return;
+        }
+        const pending = requests.answered(message.request);
+        if (pending === undefined) {
+          return;
+        }
+        const arrived = screenRows(message.rows, wrapAt, encoding, counting);
+        const before = current.current.rows[current.current.top];
+        const index = pending.follow
+          ? message.rows.findIndex((row) => row.start === before?.row.start)
+          : -1;
+        if (pending.refill === true && index === -1) {
+          return;
+        }
+        const top =
+          index === -1 || before === undefined
+            ? pending.topOf(firstOf(arrived, message.anchorIndex), arrived)
+            : topWithin(
+                rowWithChar(arrived, firstOf(arrived, index), before.from),
+                arrived.length,
+                screen,
+              );
+        setRead({ rows: message.rows, top: placeOf(arrived[top]) });
+        const placed = placing.current;
+        if (placed?.ask === pending) {
+          placing.current = undefined;
+          current.current = { read: message.rows, rows: arrived, top };
+          move(placed.by);
+        }
+      }),
+    [listen, tab, screen, requests, wrapAt, encoding, counting, move],
   );
 
   const jump = useCallback(
@@ -470,7 +509,7 @@ export function TextBody({
         share *
           lastScreenStart(size ?? 0, screen, estimate?.perRow ?? 1, lastTop),
       );
-      requests.ask({
+      askPlace({
         anchor,
         exact: false,
         before: screen,
@@ -483,7 +522,7 @@ export function TextBody({
           ),
       });
     },
-    [requests, screen, size, estimate?.perRow, lastTop],
+    [askPlace, screen, size, estimate?.perRow, lastTop],
   );
 
   useEffect(() => {
@@ -493,6 +532,7 @@ export function TextBody({
     const from = current.current.rows[current.current.top];
     const placed = place.current;
     requests.restart();
+    placing.current = undefined;
     requests.ask({
       anchor: from?.row.start ?? placed,
       exact: from !== undefined,
@@ -520,7 +560,7 @@ export function TextBody({
       .slice(top, top + screen)
       .some((row) => target.start >= row.start && target.start < row.end);
     if (!onScreen) {
-      requests.ask({
+      askPlace({
         anchor: target.start,
         exact: false,
         before: screen * 2,
@@ -616,7 +656,7 @@ export function TextBody({
   const matchStart =
     matched === undefined || find === undefined
       ? undefined
-      : textMarks(matched.row, find.query, find.matches, target).find(
+      : textMarks(matched.row, find.query, find.matches, target, encoding).find(
           (mark) => mark.current,
         )?.start;
 
@@ -672,7 +712,13 @@ export function TextBody({
               marks={
                 find === undefined
                   ? []
-                  : textMarks(row.row, find.query, find.matches, find.current)
+                  : textMarks(
+                      row.row,
+                      find.query,
+                      find.matches,
+                      find.current,
+                      encoding,
+                    )
               }
               blanks={showWhitespace}
               widths={widths}

@@ -18,15 +18,83 @@ suite('Matches marked in a file viewed', () => {
       { start: 108, end: 115 },
     ];
 
-    assert.deepStrictEqual(textMarks(row, 'árvíz', matches, matches[2]), [
-      { start: 0, end: 5, current: false },
-      { start: 6, end: 11, current: true },
-    ]);
     assert.deepStrictEqual(
-      textMarks(row, 'árvíz', matches, matches[0]).map((mark) => mark.current),
+      textMarks(row, 'árvíz', matches, matches[2], 'utf-8'),
+      [
+        { start: 0, end: 5, current: false },
+        { start: 6, end: 11, current: true },
+      ],
+    );
+    assert.deepStrictEqual(
+      textMarks(row, 'árvíz', matches, matches[0], 'utf-8').map(
+        (mark) => mark.current,
+      ),
       [false, false],
     );
-    assert.deepStrictEqual(textMarks(row, '', matches, matches[1]), []);
+    assert.deepStrictEqual(
+      textMarks(row, '', matches, matches[1], 'utf-8'),
+      [],
+    );
+  });
+
+  test('marks a match across the cut of a line too long to keep whole in both rows of it, current or not, by the bytes it takes, as it was marked in neither', () => {
+    const cut = { start: 0, end: 6, text: 'aé ne', cut: true as const };
+    const rest = { start: 6, end: 18, text: 'edle needle' };
+    const matches = [
+      { start: 4, end: 10 },
+      { start: 11, end: 17 },
+    ];
+
+    assert.deepStrictEqual(
+      textMarks(cut, 'needle', matches, matches[0], 'utf-8'),
+      [{ start: 3, end: 5, current: true }],
+    );
+    assert.deepStrictEqual(
+      textMarks(rest, 'needle', matches, matches[0], 'utf-8'),
+      [
+        { start: 0, end: 4, current: true },
+        { start: 5, end: 11, current: false },
+      ],
+    );
+    assert.deepStrictEqual(
+      textMarks(rest, 'needle', matches, matches[1], 'utf-8'),
+      [
+        { start: 0, end: 4, current: false },
+        { start: 5, end: 11, current: true },
+      ],
+    );
+    assert.deepStrictEqual(
+      textMarks(
+        { start: 2, end: 4, text: 'aa' },
+        'aa',
+        [{ start: 1, end: 3 }],
+        undefined,
+        'utf-8',
+      ),
+      [{ start: 0, end: 1, current: false }],
+    );
+    assert.deepStrictEqual(
+      [
+        textMarks(
+          { start: 0, end: 10, text: 'ab ne' },
+          'needle',
+          [{ start: 6, end: 18 }],
+          undefined,
+          'utf-16le',
+        ),
+        textMarks(
+          { start: 10, end: 20, text: 'edle' },
+          'needle',
+          [{ start: 6, end: 18 }],
+          undefined,
+          'utf-16le',
+        ),
+      ],
+      [
+        [{ start: 3, end: 5, current: false }],
+        [{ start: 0, end: 4, current: false }],
+      ],
+    );
   });
 
   test('marks the bytes of a row that matches take, cut to the row, and the current one', () => {
