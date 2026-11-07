@@ -10,6 +10,7 @@ import {
   detachedHead,
   fileFilterOf,
   pickedFor,
+  searchQueryOf,
   shownFoldersOf,
 } from '../../../../tools/git/page/store';
 import { areaKey } from '../../../../tools/git/page/changesTree';
@@ -707,6 +708,19 @@ suite('Git store', () => {
     assert.strictEqual(store.getState().activeColumn, 'commits');
     store.getState().activateColumn('files');
     assert.strictEqual(store.getState().activeColumn, 'files');
+  });
+
+  test('keeps the query searched for in each worktree, through another worktree shown', () => {
+    const store = createGitStore(noop);
+    store.getState().receive(shown());
+    store.getState().searchFor('fix');
+    assert.strictEqual(searchQueryOf(store.getState()), 'fix');
+    store
+      .getState()
+      .receive({ type: 'worktrees', worktree: '/other', worktrees: [] });
+    assert.strictEqual(searchQueryOf(store.getState()), '');
+    store.getState().receive(shown());
+    assert.strictEqual(searchQueryOf(store.getState()), 'fix');
   });
 
   test('keeps a filter of the files for each worktree, through another worktree shown, until it is cleared', () => {

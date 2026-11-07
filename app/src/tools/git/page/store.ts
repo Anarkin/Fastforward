@@ -90,6 +90,7 @@ interface GitSource {
     { readonly key: string; readonly language: string } | undefined;
   readonly activeColumn: ColumnName;
   readonly fileFilters: ReadonlyMap<string, string>;
+  readonly searchQueries: ReadonlyMap<string, string>;
   readonly folders: ViewFolders;
 }
 
@@ -165,6 +166,7 @@ interface GitActions {
   readonly preloadWorktree: (root: string) => void;
   readonly activateColumn: (column: ColumnName) => void;
   readonly filterFiles: (filter: string | undefined) => void;
+  readonly searchFor: (query: string) => void;
   readonly toggleFolder: (kind: keyof Folders, folder: string) => void;
   readonly replaceFolders: (folders: Folders) => void;
   readonly toggleCommits: () => void;
@@ -205,6 +207,7 @@ const gitDefaults: GitSource = {
   pickedLanguage: undefined,
   activeColumn: 'commits',
   fileFilters: new Map(),
+  searchQueries: new Map(),
   folders: noFolders,
 };
 
@@ -233,6 +236,10 @@ export function folderViewOf({ root, hash }: TabView): string {
 
 export function shownFoldersOf(state: GitSource): Folders {
   return shownFolders(state.folders, folderViewOf(state.tab));
+}
+
+export function searchQueryOf({ tab, searchQueries }: GitSource): string {
+  return tab.root === undefined ? '' : (searchQueries.get(tab.root) ?? '');
 }
 
 export function fileFilterOf({
@@ -593,6 +600,13 @@ export function createGitStore(
       selectWorktree: (root) => post({ type: 'selectWorktree', root }),
       preloadWorktree: (root) => post({ type: 'preloadWorktree', root }),
       activateColumn: (column) => set({ activeColumn: column }),
+      searchFor: (query) =>
+        set((state) => {
+          const { root } = state.tab;
+          return root === undefined
+            ? state
+            : { searchQueries: new Map(state.searchQueries).set(root, query) };
+        }),
       filterFiles: (filter) =>
         set((state) => {
           const { root } = state.tab;
