@@ -1686,6 +1686,32 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('gives a wrapped row of plain text ending in a carriage return, as every line of a file with Windows line ends does, the height of one line too, as the carriage return hangs at the end of its row rather than wrapping', () => {
+    const columns = { left: 10, right: 10 };
+    for (const text of ['fits\r', '012345678\r']) {
+      assert.strictEqual(
+        rowHeight(
+          { kind: 'wholeLine', file: 0, number: 1, text },
+          true,
+          22,
+          columns,
+        ),
+        22,
+      );
+    }
+    for (const text of ['0123456789\r', 'tab\there\r', 'café\r', 'a\rb']) {
+      assert.strictEqual(
+        rowHeight(
+          { kind: 'wholeLine', file: 0, number: 1, text },
+          true,
+          22,
+          columns,
+        ),
+        undefined,
+      );
+    }
+  });
+
   test('keys the rows of code again when the rows or the width they wrap in change, so they are measured again, but no other row', () => {
     const rows = diffRows(wrapping, new Map(), undefined);
     const same = diffRows(wrapping, new Map(), undefined);

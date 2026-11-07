@@ -771,10 +771,11 @@ export function diffRowClass(kind: DiffRow['kind']): string {
   return `virtual-row diff-row ${extra}`;
 }
 
-const plainText = /^[\x20-\x7e]*$/;
+const plainText = /^[\x20-\x7e]*\r?$/;
 
 function fitsOneLine(text: string, columns: number): boolean {
-  return text.length < columns && plainText.test(text);
+  const length = text.endsWith('\r') ? text.length - 1 : text.length;
+  return length < columns && plainText.test(text);
 }
 
 function codeFits(row: CodeRow, columns: WrapColumns): boolean {
