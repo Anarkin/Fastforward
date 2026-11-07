@@ -256,10 +256,7 @@ export function sharedApp(files: Readonly<Record<string, string>>): void {
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
-      JSON.stringify({
-        ...savedTabs([repository.root], repository.root),
-        recentRepositories: [path.join(folder, 'other')],
-      }),
+      JSON.stringify(savedTabs([repository.root], repository.root)),
     );
     launched = await launchApp(profile);
     app = launched;

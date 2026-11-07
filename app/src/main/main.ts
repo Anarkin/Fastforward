@@ -49,7 +49,12 @@ import {
   writeReadOnly,
   type Settings,
 } from '../shell/main/settings';
-import { JsonFileStore, Storage, toolState } from '../shell/main/storage';
+import {
+  JsonFileStore,
+  migratedState,
+  Storage,
+  toolState,
+} from '../shell/main/storage';
 import { themeCss } from '../shell/main/theme';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
@@ -186,7 +191,10 @@ async function start(asked: readonly string[]): Promise<void> {
     log.warn(problem);
   }
   applyTheme(userSettings.settings.theme);
-  const state = new JsonFileStore(path.join(profile, 'state.json'));
+  const state = new JsonFileStore(
+    path.join(profile, 'state.json'),
+    migratedState,
+  );
   for (const problem of state.problems) {
     log.warn(problem);
   }
