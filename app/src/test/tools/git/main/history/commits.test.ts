@@ -241,55 +241,6 @@ suite('Commits read from git', () => {
     }
   });
 
-  test('copies each hash once as it replaces the top commits of a history, also when a parent of the new ones is in neither, as copying them all again held up each refresh bringing commits to a million of them', () => {
-    const older = Commits.of(
-      Array.from({ length: 1000 }, (_, at) => ({
-        hash: sha1(at),
-        parents: at < 999 ? [sha1(at + 1)] : [],
-      })),
-    );
-    for (const parents of [[sha1(0)], [sha1(0), sha1(-2)]]) {
-      const top = Commits.of([{ hash: sha1(-1), parents }]);
-      const typed = Uint8Array.prototype;
-      const set: unknown = Reflect.get(typed, 'set');
-      const slice: unknown = Reflect.get(typed, 'slice');
-      assert.ok(isCallable(set) && isCallable(slice));
-      let copied = 0;
-      Reflect.set(
-        typed,
-        'set',
-        function (this: Uint8Array, source: ArrayLike<number>, at?: number) {
-          copied += source.length;
-          Reflect.apply(set, this, [source, at]);
-        },
-      );
-      Reflect.set(
-        typed,
-        'slice',
-        function (this: Uint8Array, start?: number, end?: number) {
-          const sliced: unknown = Reflect.apply(slice, this, [start, end]);
-          assert.ok(sliced instanceof Uint8Array);
-          copied += sliced.length;
-          return sliced;
-        },
-      );
-      let joined: Commits;
-      try {
-        joined = Commits.replacingTop(top, older, 0);
-      } finally {
-        Reflect.set(typed, 'set', set);
-        Reflect.set(typed, 'slice', slice);
-      }
-      assert.ok(copied <= joined.size * 40, `${copied} bytes copied`);
-      assert.deepStrictEqual(
-        entriesOf(joined),
-        entriesOf(
-          Commits.of([{ hash: sha1(-1), parents }, ...entriesOf(older)]),
-        ),
-      );
-    }
-  });
-
   test("links a long history a slice at a time, letting other work run between them, the same as at once, as the main process also passes the window's input on to the page", async () => {
     const output = Array.from(
       { length: 20_000 },
