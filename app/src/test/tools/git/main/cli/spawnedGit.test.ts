@@ -73,6 +73,22 @@ suite('Starting git', () => {
     assert.strictEqual(code, 0);
   });
 
+  test('settles a stop asked for once git has closed but before it tells of closing, as that stop waited for ever, and quitting with it', async () => {
+    const starter = gitStarter(tempFolder('no-starter'));
+    const child = starter.spawn('git', ['--version'], options);
+    const stopped = new Promise<string>((resolve) => {
+      child.stdout.on('end', () => {
+        void child.stop().then(() => resolve('stopped'));
+      });
+    });
+    child.stdout.resume();
+    child.stdin.end();
+    const late = new Promise<string>((resolve) => {
+      setTimeout(() => resolve('late'), 2000);
+    });
+    assert.strictEqual(await Promise.race([stopped, late]), 'stopped');
+  });
+
   test('says git could not be started, as for a command not found', async () => {
     const child = gitStarter(tempFolder('no-starter')).spawn(
       'no-such-git-command',

@@ -49,10 +49,12 @@ export class GitChild extends EventEmitter {
   }
 
   stop(): Promise<void> {
-    this.stopping ??= new Promise((resolve) => {
-      this.endStopping = resolve;
-      this.send({ type: 'stop', id: this.id });
-    });
+    this.stopping ??= this.closed
+      ? Promise.resolve()
+      : new Promise((resolve) => {
+          this.endStopping = resolve;
+          this.send({ type: 'stop', id: this.id });
+        });
     return this.stopping;
   }
 
