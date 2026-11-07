@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../builtins';
+import { runGit } from '../../../../../tools/git/main/cli/run';
 import {
   ignoredPaths,
   watchRepository,
@@ -38,6 +39,15 @@ const start = async (git = askingGit()) => {
     ignored: git.ignored,
   });
 };
+
+async function monitor(): Promise<string> {
+  return (
+    await runGit(repository.gitPath, repository.root, [
+      'config',
+      'core.fsmonitor',
+    ])
+  ).trim();
+}
 
 suite('Watching a repository', () => {
   watchingRepositories();
@@ -398,6 +408,21 @@ suite('Watching a repository', () => {
       await repository.git('commit', '--allow-empty', '-m', `${commits++}`);
       return changes.includes(true);
     }, 'a commit');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  test("reads again whether git's own monitor is on once the config of the repository changes, as turning it on or off kept the one read first for as long as the app ran, watching folder by folder", async () => {
+    await start();
+    assert.strictEqual(await monitor(), 'false');
+    await repository.git('config', 'core.fsmonitor', 'true');
+    try {
+      await waitFor(
+        async () => (await monitor()) === 'true',
+        'the monitor to be read again',
+      );
+    } finally {
+      await repository.git('config', '--unset', 'core.fsmonitor');
+    }
     assert.deepStrictEqual(errors, []);
   });
 

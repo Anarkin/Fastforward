@@ -156,33 +156,59 @@ function gitCommand(gitPath: string): GitCommand {
 const monitors = new Map<string, Promise<string[]>>();
 
 function monitorArgs(gitPath: string, cwd: string): Promise<string[]> {
-  const key = `${gitPath}\0${cwd}`;
-  let args = monitors.get(key);
-  if (args === undefined) {
-    const { command, env } = gitCommand(gitPath);
-    args = printedBy(
-      spawnGit(
-        command,
-        [
-          ...unnamedBareRefused,
-          'config',
-          '--type=bool',
-          '--get',
-          'core.fsmonitor',
-        ],
-        {
-          cwd,
-          env: { ...gitEnv(), ...env },
-          detached: gitProcessOptions().detached,
-        },
-      ),
-    ).then((printed) => ['-c', `core.fsmonitor=${printed?.trim() === 'true'}`]);
-    monitors.set(key, args);
+  const key = monitorKey(gitPath, cwd);
+  const known = monitors.get(key);
+  if (known !== undefined) {
+    return known;
   }
+  const { command, env } = gitCommand(gitPath);
+  const read = answerOf(
+    spawnGit(
+      command,
+      [
+        ...unnamedBareRefused,
+        'config',
+        '--type=bool',
+        '--get',
+        'core.fsmonitor',
+      ],
+      {
+        cwd,
+        env: { ...gitEnv(), ...env },
+        detached: gitProcessOptions().detached,
+      },
+    ),
+  );
+  const args = read.then((answer) => {
+    if (answer === undefined && monitors.get(key) === args) {
+      monitors.delete(key);
+    }
+    return [
+      '-c',
+      `core.fsmonitor=${answer?.code === 0 && answer.printed.trim() === 'true'}`,
+    ];
+  });
+  monitors.set(key, args);
   return args;
 }
 
-function printedBy(child: GitChild): Promise<string | undefined> {
+function monitorKey(gitPath: string, cwd: string): string {
+  return `${gitPath}\0${cwd}`;
+}
+
+export function forgetMonitor(cwd: string): void {
+  for (const key of monitors.keys()) {
+    if (key.endsWith(monitorKey('', cwd))) {
+      monitors.delete(key);
+    }
+  }
+}
+
+const mostGitExitCode = 255;
+
+function answerOf(
+  child: GitChild,
+): Promise<{ readonly code: number; readonly printed: string } | undefined> {
   const chunks: Buffer[] = [];
   child.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
   child.stderr.resume();
@@ -190,7 +216,11 @@ function printedBy(child: GitChild): Promise<string | undefined> {
   return new Promise((resolve) => {
     child.on('error', () => resolve(undefined));
     child.on('close', (code) =>
-      resolve(code === 0 ? Buffer.concat(chunks).toString('utf8') : undefined),
+      resolve(
+        code === null || code > mostGitExitCode
+          ? undefined
+          : { code, printed: Buffer.concat(chunks).toString('utf8') },
+      ),
     );
   });
 }

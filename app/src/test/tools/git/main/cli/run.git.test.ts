@@ -900,6 +900,40 @@ suite('A file system monitor the repository sets', () => {
     }
   });
 
+  test("reads again whether git's own monitor is on once reading it failed, as a git Windows could not start kept the monitor off in the folder for as long as the app ran", async () => {
+    const repository = await tempRepository(tempFolder('daemon-unread'));
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    let failed = 0;
+    replaceBuiltin(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) => {
+        if (args.includes('core.fsmonitor') && failed === 0) {
+          failed++;
+          return spawn('fastforward-no-such-git', [], options);
+        }
+        return spawn(command, args, options);
+      },
+    );
+    try {
+      await repository.git('config', 'core.fsmonitor', 'true');
+      const monitor = async () =>
+        (
+          await runGit(repository.gitPath, repository.root, [
+            'config',
+            'core.fsmonitor',
+          ])
+        ).trim();
+      assert.strictEqual(await monitor(), 'false');
+      assert.strictEqual(await monitor(), 'true');
+      assert.strictEqual(failed, 1);
+    } finally {
+      replaceBuiltin(childProcess, 'spawn', spawn);
+      removeFolder(repository.root);
+    }
+  });
+
   test("reads whether git's own monitor is on only the first time it runs git in a folder, as reading it takes a git of its own", async () => {
     const repository = await tempRepository(tempFolder('daemon-later'));
     try {

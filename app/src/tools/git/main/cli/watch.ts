@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { InFlight } from '../../../../shared/inFlight';
 import { isMissing } from './files';
-import { runGit, splitNul } from './run';
+import { forgetMonitor, runGit, splitNul } from './run';
 
 export interface Watcher {
   dispose(): Promise<void>;
@@ -166,6 +166,9 @@ export async function watchRepository(
         if (/^info(?:[\\/]exclude)?$/.test(inside)) {
           rootTree?.ignoresChanged(root);
         }
+        if (/^config(?:\.worktree)?$/.test(inside)) {
+          forgetMonitor(root);
+        }
       }
       if (listed) {
         worktreesChanged();
@@ -283,6 +286,7 @@ export async function watchRepository(
   return {
     dispose: async () => {
       disposed = true;
+      forgetMonitor(root);
       clearTimeout(timer);
       clearTimeout(worktreesTimer);
       await Promise.all(watchers.map((watcher) => watcher.dispose()));
