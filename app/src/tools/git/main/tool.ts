@@ -144,7 +144,11 @@ import {
   type Tool,
 } from '../../../shell/main/shell';
 import { strings } from '../../../shared/strings';
-import { sameRoot, type Compared } from '../../../shell/main/storage';
+import {
+  maxRecentItems,
+  sameRoot,
+  type Compared,
+} from '../../../shell/main/storage';
 import { isBookmark, type GitStorage } from './storage';
 import {
   changesOf,
@@ -372,6 +376,7 @@ export class GitTool implements Tool<'git'> {
 
   quit(): void {
     this.quitting.abort();
+    this.save(this.storage.saveFetches());
   }
 
   reloadSettings(): void {
@@ -463,6 +468,7 @@ export class GitTool implements Tool<'git'> {
         this.forgetTab(root, state);
       }
     }
+    this.save(this.forgetUnused([closed]));
     this.sendRecent(this.sessionOf(page));
   }
 
@@ -855,6 +861,7 @@ export class GitTool implements Tool<'git'> {
         return;
       case 'forgetRecent':
         await this.storage.removeRecent(message.root);
+        await this.forgetUnused([message.root]);
         this.sendTabs(session);
         return;
       case 'preloadWorktree': {
@@ -1239,7 +1246,9 @@ export class GitTool implements Tool<'git'> {
         continue;
       }
       if (!location) {
-        this.save(storage.removeRecent(folder));
+        this.save(
+          storage.removeRecent(folder).then(() => this.forgetUnused([folder])),
+        );
         page().post({
           type: 'notice',
           level: 'error',
@@ -1270,7 +1279,7 @@ export class GitTool implements Tool<'git'> {
         this.save(storage.setWorktree(repository, worktree));
       }
       repositories.push(repository);
-      this.save(storage.addRecent(repository));
+      this.addRecent(repository);
       this.shell.visited(worktree ?? repository);
     }
     return repositories;
@@ -1311,8 +1320,33 @@ export class GitTool implements Tool<'git'> {
       return;
     }
     this.log.info(strings.log.tabOpen(context.root));
-    this.save(this.storage.addRecent(context.repository));
+    this.addRecent(context.repository);
     await allSettled([this.watch(context, session), this.showTab(context)]);
+  }
+
+  private addRecent(repository: string): void {
+    const last = this.storage.recent.slice(maxRecentItems - 1);
+    this.save(
+      this.storage.addRecent(repository).then(() => this.forgetUnused(last)),
+    );
+  }
+
+  private async forgetUnused(roots: readonly string[]): Promise<void> {
+    const { recent } = this.storage;
+    for (const root of roots) {
+      if (
+        !recent.some((kept) => sameRoot(kept, root)) &&
+        !this.hasRepository(root)
+      ) {
+        const worktrees = [...this.worktreeLists].find(([repository]) =>
+          sameRoot(repository, root),
+        )?.[1];
+        await this.storage.forget(
+          root,
+          (worktrees ?? []).map((worktree) => worktree.root),
+        );
+      }
+    }
   }
 
   private takeWorktrees(

@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { UserSettings } from '../../../../shell/main/settings';
+import type { Store } from '../../../../shell/main/storage';
 import {
   bookmarksKey,
   GitStorage,
@@ -14,7 +15,7 @@ import {
 import { FakeStore } from '../../../fakeStore';
 import { defaultSettings } from '../../../fixtures';
 
-function storageOf(state = new FakeStore()): GitStorage {
+function storageOf(state: Store = new FakeStore()): GitStorage {
   return new GitStorage(new UserSettings(defaultSettings()), state);
 }
 
@@ -87,11 +88,131 @@ suite('Git storage', () => {
     await storage.recordFetch(root, true, 1);
     await storage.recordFetch(root, false, 2);
     await storage.recordFetch(`${root}${path.sep}`, true, 3);
+    await storage.saveFetches();
     assert.deepStrictEqual(storageOf(state).lastFetchOf(root), {
       succeeded: 2,
       failed: 3,
     });
     assert.deepStrictEqual(storage.lastFetchOf(path.resolve('other')), {});
+  });
+
+  test('saves when the repositories last fetched at once, then at most every ten minutes, keeping the times between for the page until then or until saved', async () => {
+    const store = new FakeStore();
+    const saved: string[] = [];
+    const storage = storageOf({
+      get: (key) => store.get(key),
+      update: (key, value) => {
+        saved.push(key);
+        return store.update(key, value);
+      },
+    });
+    const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
+    const minute = 60_000;
+    const fetchedOf = (root: string) => storageOf(store).lastFetchOf(root);
+    await storage.recordFetch(r1, false, minute);
+    assert.deepStrictEqual(fetchedOf(r1), { succeeded: minute });
+    await storage.recordFetch(r1, false, 2 * minute);
+    await storage.recordFetch(r2, true, 3 * minute);
+    assert.deepStrictEqual(storage.lastFetchOf(r1), { succeeded: 2 * minute });
+    assert.deepStrictEqual(storage.lastFetchOf(r2), { failed: 3 * minute });
+    assert.deepStrictEqual(
+      [fetchedOf(r1), fetchedOf(r2)],
+      [{ succeeded: minute }, {}],
+    );
+    await storage.recordFetch(r1, true, 11 * minute);
+    assert.deepStrictEqual(
+      [fetchedOf(r1), fetchedOf(r2)],
+      [{ succeeded: 2 * minute, failed: 11 * minute }, { failed: 3 * minute }],
+    );
+    await storage.recordFetch(r2, false, 12 * minute);
+    await storage.saveFetches();
+    await storage.saveFetches();
+    assert.deepStrictEqual(fetchedOf(r2), {
+      succeeded: 12 * minute,
+      failed: 3 * minute,
+    });
+    assert.deepStrictEqual(saved, [
+      lastFetchesKey,
+      lastFetchesKey,
+      lastFetchesKey,
+    ]);
+  });
+
+  test('saves the recent repositories again only once they change, as each tab shown adds its repository', async () => {
+    const store = new FakeStore();
+    const saved: string[] = [];
+    const storage = storageOf({
+      get: (key) => store.get(key),
+      update: (key, value) => {
+        saved.push(key);
+        return store.update(key, value);
+      },
+    });
+    const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
+    await storage.addRecent(r1);
+    await storage.addRecent(r1);
+    await storage.addRecent(r2);
+    await storage.addRecent(r2);
+    await storage.addRecent(r1);
+    assert.deepStrictEqual(saved, [recentKey, recentKey, recentKey]);
+    assert.deepStrictEqual(storage.recent, [r1, r2]);
+  });
+
+  test('forgets all it keeps of a repository and its worktrees, whatever their spelling, keeping that of the others', async () => {
+    const store = new FakeStore();
+    const storage = storageOf(store);
+    const [gone, linked, kept] = ['gone', 'gone-linked', 'kept'].map((name) =>
+      path.resolve(name),
+    );
+    const tags = new Map([['v1', 'a'.repeat(40)]]);
+    const bookmarks = [{ kind: 'branch', name: 'main' }] as const;
+    for (const root of [gone, kept]) {
+      await storage.setBookmarks(root, bookmarks);
+      await storage.setRemoteTags(root, 'origin', tags);
+      await storage.recordFetch(root, false, 1);
+      await storage.setSolo(root, true);
+    }
+    await storage.setSolo(linked, true);
+    await storage.setWorktree(gone, linked);
+    await storage.setWorktree(kept, `${kept}-linked`);
+    await storage.recordFetch(gone, true, 2);
+
+    await storage.forget(`${gone}${path.sep}`, [linked]);
+    await storage.saveFetches();
+
+    for (const reading of [storage, storageOf(store)]) {
+      assert.strictEqual(reading.bookmarksOf(gone), undefined);
+      assert.deepStrictEqual(reading.remoteTagsOf(gone), new Map());
+      assert.deepStrictEqual(reading.lastFetchOf(gone), {});
+      assert.strictEqual(reading.soloOf(gone), false);
+      assert.strictEqual(reading.soloOf(linked), false);
+      assert.strictEqual(reading.worktreeOf(gone), gone);
+      assert.deepStrictEqual(reading.bookmarksOf(kept), bookmarks);
+      assert.deepStrictEqual(
+        reading.remoteTagsOf(kept),
+        new Map([['origin', tags]]),
+      );
+      assert.deepStrictEqual(reading.lastFetchOf(kept), { succeeded: 1 });
+      assert.strictEqual(reading.soloOf(kept), true);
+      assert.strictEqual(reading.worktreeOf(kept), `${kept}-linked`);
+    }
+  });
+
+  test('parses the tags of the remotes of a repository once until they change, as each refresh reads them', async () => {
+    const storage = storageOf();
+    const root = path.resolve('r');
+    const [a, b] = ['a', 'b'].map((digit) => digit.repeat(40));
+    await storage.setRemoteTags(root, 'origin', new Map([['v1', a]]));
+    await storage.setRemoteTags(root, 'upstream', new Map([['v1', a]]));
+    const read = storage.remoteTagsOf(root);
+    assert.strictEqual(
+      storage.remoteTagsOf(root).get('origin'),
+      read.get('origin'),
+    );
+    await storage.setRemoteTags(root, 'upstream', new Map([['v2', b]]));
+    const changed = storage.remoteTagsOf(root);
+    assert.strictEqual(changed.get('origin'), read.get('origin'));
+    assert.deepStrictEqual(changed.get('upstream'), new Map([['v2', b]]));
   });
 
   test('keeps the tags each remote of a repository had when last listed, for the next start, dropping remotes no longer there', async () => {

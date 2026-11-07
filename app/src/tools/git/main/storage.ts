@@ -22,8 +22,20 @@ export const lastFetchesKey = 'lastFetches';
 export const remoteTagsKey = 'remoteTags';
 export const cloneFolderKey = 'cloneFolder';
 const maxAutoFetchMinutes = Math.floor((2 ** 31 - 1) / 60_000);
+const fetchesSavedEvery = 10 * 60_000;
+const noRemoteTags: ReadonlyMap<
+  string,
+  ReadonlyMap<string, string>
+> = new Map();
 
 export class GitStorage {
+  private readonly unsavedFetches = new Map<string, LastFetch>();
+  private fetchesSavedAt: number | undefined;
+  private readonly parsedTags = new WeakMap<
+    object,
+    ReadonlyMap<string, string>
+  >();
+
   constructor(
     private readonly userSettings: UserSettings,
     private readonly state: Store,
@@ -59,7 +71,11 @@ export class GitStorage {
   }
 
   async addRecent(root: string): Promise<void> {
-    const recent = [root, ...this.recent.filter((r) => !sameRoot(r, root))];
+    const known = this.recent;
+    if (known[0] === root) {
+      return;
+    }
+    const recent = [root, ...known.filter((r) => !sameRoot(r, root))];
     await this.state.update(recentKey, recent.slice(0, maxRecentItems));
   }
 
@@ -101,6 +117,12 @@ export class GitStorage {
   }
 
   lastFetchOf(repository: string): LastFetch {
+    const unsaved = this.unsavedFetches.get(
+      keyIn(this.unsavedFetches, repository),
+    );
+    if (unsaved !== undefined) {
+      return unsaved;
+    }
     const all = this.lastFetches;
     const { succeeded, failed } = recordOf(all[keyOf(all, repository)]);
     return {
@@ -114,40 +136,62 @@ export class GitStorage {
     failed: boolean,
     at: number,
   ): Promise<void> {
-    const all = this.lastFetches;
-    await this.state.update(lastFetchesKey, {
-      ...all,
-      [keyOf(all, repository)]: {
-        ...this.lastFetchOf(repository),
-        [failed ? 'failed' : 'succeeded']: at,
-      },
+    this.unsavedFetches.set(keyIn(this.unsavedFetches, repository), {
+      ...this.lastFetchOf(repository),
+      [failed ? 'failed' : 'succeeded']: at,
     });
+    const savedAt = this.fetchesSavedAt;
+    if (savedAt === undefined || at - savedAt >= fetchesSavedEvery) {
+      this.fetchesSavedAt = at;
+      await this.saveFetches();
+    }
+  }
+
+  async saveFetches(): Promise<void> {
+    if (this.unsavedFetches.size === 0) {
+      return;
+    }
+    const all = this.lastFetches;
+    for (const [repository, fetched] of this.unsavedFetches) {
+      all[keyOf(all, repository)] = fetched;
+    }
+    this.unsavedFetches.clear();
+    await this.state.update(lastFetchesKey, all);
   }
 
   private get lastFetches(): Record<string, unknown> {
     return recordOf(this.state.get(lastFetchesKey));
   }
 
-  remoteTagsOf(repository: string): Map<string, Map<string, string>> {
+  remoteTagsOf(
+    repository: string,
+  ): ReadonlyMap<string, ReadonlyMap<string, string>> {
     const all = this.allRemoteTags;
+    const remotes = all[keyOf(all, repository)];
+    if (!isObject(remotes)) {
+      return noRemoteTags;
+    }
     return new Map(
-      Object.entries(recordOf(all[keyOf(all, repository)])).flatMap(
-        ([remote, tags]): [string, Map<string, string>][] =>
-          isObject(tags)
-            ? [
-                [
-                  remote,
-                  new Map(
-                    Object.entries(tags).filter(
-                      (tag): tag is [string, string] =>
-                        typeof tag[1] === 'string' && isFullHash(tag[1]),
-                    ),
-                  ),
-                ],
-              ]
-            : [],
+      Object.entries(remotes).flatMap(
+        ([remote, tags]): [string, ReadonlyMap<string, string>][] =>
+          isObject(tags) ? [[remote, this.tagsOf(tags)]] : [],
       ),
     );
+  }
+
+  private tagsOf(saved: Record<string, unknown>): ReadonlyMap<string, string> {
+    const known = this.parsedTags.get(saved);
+    if (known !== undefined) {
+      return known;
+    }
+    const tags = new Map(
+      Object.entries(saved).filter(
+        (tag): tag is [string, string] =>
+          typeof tag[1] === 'string' && isFullHash(tag[1]),
+      ),
+    );
+    this.parsedTags.set(saved, tags);
+    return tags;
   }
 
   async setRemoteTags(
@@ -183,6 +227,37 @@ export class GitStorage {
 
   private get allRemoteTags(): Record<string, unknown> {
     return recordOf(this.state.get(remoteTagsKey));
+  }
+
+  async forget(
+    repository: string,
+    worktrees: readonly string[],
+  ): Promise<void> {
+    this.unsavedFetches.delete(keyIn(this.unsavedFetches, repository));
+    const worktreesToo = [
+      repository,
+      this.worktreeOf(repository),
+      ...worktrees,
+    ];
+    await Promise.all([
+      ...[bookmarksKey, remoteTagsKey, lastFetchesKey, worktreesKey].map(
+        (key) => this.withoutRoots(key, [repository]),
+      ),
+      this.withoutRoots(soloKey, worktreesToo),
+    ]);
+  }
+
+  private async withoutRoots(
+    key: string,
+    roots: readonly string[],
+  ): Promise<void> {
+    const all = recordOf(this.state.get(key));
+    const kept = Object.entries(all).filter(
+      ([root]) => !roots.some((forgotten) => sameRoot(root, forgotten)),
+    );
+    if (kept.length < Object.keys(all).length) {
+      await this.state.update(key, Object.fromEntries(kept));
+    }
   }
 
   get layout(): GitToWebviewOf<'layout'> {
@@ -281,6 +356,10 @@ export class GitStorage {
 
 function keyOf(roots: Record<string, unknown>, root: string): string {
   return Object.keys(roots).find((key) => sameRoot(key, root)) ?? root;
+}
+
+function keyIn(roots: ReadonlyMap<string, unknown>, root: string): string {
+  return [...roots.keys()].find((key) => sameRoot(key, root)) ?? root;
 }
 
 function stringsIn(value: unknown): string[] {

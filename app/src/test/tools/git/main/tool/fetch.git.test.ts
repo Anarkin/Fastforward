@@ -270,6 +270,29 @@ suite('Git tool fetching', () => {
     }
   });
 
+  test('saves when it last fetched as the app quits, though while it runs it saves that at most every ten minutes, as each save writes the whole state', async () => {
+    const opened = await openView(log, [repository.root]);
+    const saved = () =>
+      new Map(
+        Object.entries(Object(gitState(opened.store).get(lastFetchesKey))),
+      );
+    try {
+      await opened.connection.receive({ type: 'fetch', root: repository.root });
+      const first = saved().get(repository.root);
+      await opened.connection.receive({ type: 'fetch', root: repository.root });
+      const last = opened.page.last('lastFetch');
+      assert.notDeepStrictEqual(first, { succeeded: last?.succeeded });
+      assert.deepStrictEqual(saved().get(repository.root), first);
+      opened.view.quit();
+      await opened.view.idle();
+      assert.deepStrictEqual(saved().get(repository.root), {
+        succeeded: last?.succeeded,
+      });
+    } finally {
+      opened.connection.dispose();
+    }
+  });
+
   test('counts no fetch made outside the app, as it records its fetches itself', async () => {
     const outside = await tempRepository(path.join(folder, 'outside'));
     await outside.commit('a');

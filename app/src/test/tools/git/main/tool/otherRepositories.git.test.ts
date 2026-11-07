@@ -5,8 +5,14 @@ import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../builtins';
 import { strings } from '../../../../../shared/strings';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import { sameRoot } from '../../../../../shell/main/storage';
-import { recentKey } from '../../../../../tools/git/main/storage';
+import { sameRoot, type Store } from '../../../../../shell/main/storage';
+import {
+  bookmarksKey,
+  lastFetchesKey,
+  recentKey,
+  remoteTagsKey,
+  soloKey,
+} from '../../../../../tools/git/main/storage';
 import {
   asIfOwnedByAnother,
   removeFolder,
@@ -35,6 +41,23 @@ import {
   shownTabs,
   gitState,
 } from '../../../../harness';
+
+const keptOf = (store: Store) =>
+  [bookmarksKey, remoteTagsKey, lastFetchesKey, soloKey].map((key) =>
+    Object.keys(Object(gitState(store).get(key))),
+  );
+
+const keepAll = async (store: Store, roots: readonly string[]) => {
+  const each = (value: unknown) =>
+    Object.fromEntries(roots.map((root) => [root, value]));
+  await gitState(store).update(
+    bookmarksKey,
+    each([{ kind: 'branch', name: 'main' }]),
+  );
+  await gitState(store).update(remoteTagsKey, each({ origin: {} }));
+  await gitState(store).update(lastFetchesKey, each({ succeeded: 1 }));
+  await gitState(store).update(soloKey, each(true));
+};
 
 suite('Git tool of other repositories', () => {
   let folder: string;
@@ -351,6 +374,60 @@ suite('Git tool of other repositories', () => {
         ),
       );
     });
+  });
+
+  test('forgets the bookmarks, remote tags, last fetch and solo of a repository once it is neither recent nor in a tab, keeping those of one only closed', async () => {
+    await withView(log, [repository.root, other], async (view) => {
+      await keepAll(view.store, [repository.root, other]);
+      await gitState(view.store).update(recentKey, [repository.root, other]);
+      await view.connection.receive({
+        type: 'closeTab',
+        tab: tabOf(view.page, other),
+      });
+      const closed = keptOf(view.store);
+      assert.ok(
+        closed.every(
+          (roots) => roots.includes(other) && roots.includes(repository.root),
+        ),
+        JSON.stringify(closed),
+      );
+      await view.connection.receive({ type: 'forgetRecent', root: other });
+      const forgotten = keptOf(view.store);
+      assert.ok(
+        forgotten.every(
+          (roots) => !roots.includes(other) && roots.includes(repository.root),
+        ),
+        JSON.stringify(forgotten),
+      );
+    });
+  });
+
+  test('forgets what it keeps of a repository pushed out of the recent ones by another, but not of one in a tab', async () => {
+    await withView(
+      log,
+      [repository.root],
+      async (view) => {
+        const older = Array.from({ length: 48 }, (_, index) =>
+          path.join(folder, `pushed-${index}`),
+        );
+        const pushedOut = path.join(folder, 'pushed-out');
+        await keepAll(view.store, [pushedOut, other]);
+        await gitState(view.store).update(recentKey, [
+          ...older,
+          other,
+          pushedOut,
+        ]);
+        await view.connection.receive({ type: 'ready' });
+        const kept = keptOf(view.store);
+        assert.ok(
+          kept.every(
+            (roots) => roots.includes(other) && !roots.includes(pushedOut),
+          ),
+          JSON.stringify(kept),
+        );
+      },
+      false,
+    );
   });
 
   for (const [opened, tabs] of [
