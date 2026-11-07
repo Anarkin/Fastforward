@@ -9,12 +9,18 @@ type TerminalSettings = Omit<TerminalToWebviewOf<'settings'>, 'type'>;
 
 type ToScreen = TerminalToWebviewOf<'screen' | 'output' | 'exited'>;
 
+export type FromScreen = Extract<
+  TerminalToHost,
+  { readonly type: 'open' | 'input' | 'resize' | 'ack' | 'restart' }
+>;
+
 export interface TerminalState {
   readonly shown: string | undefined;
   readonly settings: TerminalSettings | undefined;
   readonly folders: readonly string[];
   readonly receive: (message: TerminalToWebview) => void;
   readonly listenScreen: (handler: (message: ToScreen) => void) => () => void;
+  readonly send: (message: FromScreen) => void;
   readonly newTab: () => void;
   readonly browseFolders: () => void;
   readonly openFolder: (folder: string) => void;
@@ -62,6 +68,7 @@ export function createTerminalStore(
         screens.delete(handler);
       };
     },
+    send: post,
     newTab: () => post({ type: 'newTab' }),
     browseFolders: () => post({ type: 'browseFolders' }),
     openFolder: (folder) => post({ type: 'openFolder', folder }),

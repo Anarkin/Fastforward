@@ -26,6 +26,7 @@ export function TerminalTool({
   const {
     receive,
     listenScreen,
+    send,
     newTab,
     browseFolders,
     openFolder,
@@ -66,7 +67,7 @@ export function TerminalTool({
         view.current = new TerminalView(xterm, element, {
           tab: shown,
           ...settings,
-          post,
+          post: send,
           onCopy,
           scrolling: scrollingOf,
         });
@@ -77,7 +78,7 @@ export function TerminalTool({
       view.current?.dispose();
       view.current = undefined;
     };
-  }, [active, shown, settings, post, onCopy]);
+  }, [active, shown, settings, send, onCopy]);
 
   useEffect(() => {
     view.current?.glide(scrolling.smooth);

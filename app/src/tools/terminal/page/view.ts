@@ -20,13 +20,10 @@ import {
   terminalTheme,
   type TerminalFont,
 } from './theme';
-import {
-  inputChunks,
-  type TerminalToHost,
-  type TerminalToWebview,
-} from '../shared/protocol';
+import { inputChunks, type TerminalToWebview } from '../shared/protocol';
 import type { Renderer } from '../shared/settings';
 import type { WindowsPty } from '../shared/protocol';
+import type { FromScreen } from './store';
 
 const resizeDelay = 50;
 
@@ -82,7 +79,7 @@ export interface TerminalViewOptions {
   readonly scrollback: number;
   readonly minimumContrastRatio: number;
   readonly windowsPty: WindowsPty | undefined;
-  readonly post: (message: TerminalToHost) => void;
+  readonly post: (message: FromScreen) => void;
   readonly onCopy: (text: string) => void;
   readonly scrolling: () => ScrollSettings;
 }

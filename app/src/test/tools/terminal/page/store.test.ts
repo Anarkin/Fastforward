@@ -53,7 +53,7 @@ suite('Terminal store', () => {
     assert.strictEqual(screen.length, 2);
   });
 
-  test('forgets a folder at once while telling the main process, and asks it for a new tab, a folder to browse or one to open', () => {
+  test('forgets a folder at once while telling the main process, and asks it for a new tab, a folder to browse or one to open, and sends it what the screen types', () => {
     const posted: TerminalToHost[] = [];
     const store = createTerminalStore((message) => posted.push(message));
     store.getState().receive({ type: 'folders', folders: ['/a', '/b'] });
@@ -64,11 +64,13 @@ suite('Terminal store', () => {
     newTab();
     browseFolders();
     openFolder('/b');
+    store.getState().send({ type: 'input', tab: '1', data: 'ls' });
     assert.deepStrictEqual(posted, [
       { type: 'forgetFolder', folder: '/a' },
       { type: 'newTab' },
       { type: 'browseFolders' },
       { type: 'openFolder', folder: '/b' },
+      { type: 'input', tab: '1', data: 'ls' },
     ]);
   });
 });
