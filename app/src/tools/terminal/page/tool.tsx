@@ -4,11 +4,9 @@ import './style.css';
 import { folderMenuItems } from './folderMenu';
 import { loadXterm, TerminalView } from './view';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import type {
-  TerminalToHost,
-  TerminalToWebview,
-  TerminalToWebviewOf,
-} from '../shared/protocol';
+import { useStore } from 'zustand';
+import type { TerminalToHost, TerminalToWebview } from '../shared/protocol';
+import { createTerminalStore } from './store';
 
 export function TerminalTool({
   active,
@@ -21,10 +19,18 @@ export function TerminalTool({
 }) {
   const screen = useRef<HTMLDivElement>(null);
   const view = useRef<TerminalView>(undefined);
-  const [shown, setShown] = useState<string>();
-  const [settings, setSettings] =
-    useState<Omit<TerminalToWebviewOf<'settings'>, 'type'>>();
-  const [folders, setFolders] = useState<readonly string[]>([]);
+  const [store] = useState(() => createTerminalStore(post));
+  const shown = useStore(store, (state) => state.shown);
+  const settings = useStore(store, (state) => state.settings);
+  const folders = useStore(store, (state) => state.folders);
+  const {
+    receive,
+    listenScreen,
+    newTab,
+    browseFolders,
+    openFolder,
+    forgetFolder,
+  } = store.getState();
   const scrolling = useShell((state) => state.scrolling);
   const { copyText: onCopy, setToolItems } = useShellActions();
   const scrollingOf = useEffectEvent(() => scrolling);
@@ -34,44 +40,19 @@ export function TerminalTool({
       setToolItems(
         'terminal',
         folderMenuItems(folders, {
-          onNew: () => post({ type: 'newTab' }),
-          onBrowse: () => post({ type: 'browseFolders' }),
-          onOpen: (folder) => post({ type: 'openFolder', folder }),
-          onForget: (folder) => {
-            setFolders((listed) => listed.filter((other) => other !== folder));
-            post({ type: 'forgetFolder', folder });
-          },
+          onNew: newTab,
+          onBrowse: browseFolders,
+          onOpen: openFolder,
+          onForget: forgetFolder,
         }),
       ),
-    [folders, post, setToolItems],
+    [folders, newTab, browseFolders, openFolder, forgetFolder, setToolItems],
   );
 
+  useEffect(() => listen(receive), [listen, receive]);
   useEffect(
-    () =>
-      listen((message) => {
-        switch (message.type) {
-          case 'settings':
-            setSettings({
-              renderer: message.renderer,
-              scrollback: message.scrollback,
-              minimumContrastRatio: message.minimumContrastRatio,
-              windowsPty: message.windowsPty,
-            });
-            return;
-          case 'show':
-            setShown(message.tab);
-            return;
-          case 'hide':
-            setShown(undefined);
-            return;
-          case 'folders':
-            setFolders(message.folders);
-            return;
-          default:
-            view.current?.receive(message);
-        }
-      }),
-    [listen],
+    () => listenScreen((message) => view.current?.receive(message)),
+    [listenScreen],
   );
 
   useEffect(() => {
