@@ -1377,8 +1377,10 @@ async function scrollingList(
       worktree: string,
       history: CommitHistory | undefined,
       scrollTarget?: ScrollTarget,
+      headCommit?: string,
     ) => Promise<void>;
     readonly scroll: (top: number) => Promise<void>;
+    readonly select: (hash: string) => Promise<void>;
     readonly top: () => number;
     readonly told: () => ToldPlace | undefined;
   }) => Promise<void>,
@@ -1464,7 +1466,7 @@ async function scrollingList(
       return found;
     };
     await check({
-      show: async (worktree, history, scrollTarget) => {
+      show: async (worktree, history, scrollTarget, headCommit) => {
         await act(async () => {
           store.setState({
             tab: {
@@ -1472,6 +1474,9 @@ async function scrollingList(
               root: worktree,
               history,
               scrollTarget,
+              ...(headCommit !== undefined && {
+                repository: { head: 'main', headCommit, refs: [], stashes: [] },
+              }),
             },
           });
           renderIn(
@@ -1488,6 +1493,11 @@ async function scrollingList(
         await listSettled();
         list().dispatchEvent(new window.Event('scroll'));
         await listSettled();
+      },
+      select: async (hash) => {
+        await act(async () => {
+          store.setState({ tab: { ...store.getState().tab, hash } });
+        });
       },
       top: () => list().scrollTop,
       told: () => told.at(-1),
@@ -1520,6 +1530,54 @@ suite('Commit list places', () => {
       assert.strictEqual(top(), 2_000);
       await show('c', longHistory('c'));
       assert.strictEqual(top(), 0);
+    });
+  });
+});
+
+function countedHistory(count: number, reads: Map<string, number>) {
+  const read = (key: string) => reads.set(key, (reads.get(key) ?? 0) + 1);
+  const history = new CommitHistory(count);
+  history.add(
+    0,
+    Array.from({ length: count }, (_, index) => ({
+      ...commitInfo(`c${index}`),
+      get subject() {
+        read(`row c${index}`);
+        return `c${index}`;
+      },
+    })),
+    Array.from({ length: count }, (_, index): GraphRow => ({
+      lane: 0,
+      lines: [{ from: 0, to: 0, color: 0, bottom: true, dashed: true }],
+      get color() {
+        read(`graph c${index}`);
+        return 0;
+      },
+    })),
+  );
+  return history;
+}
+
+suite('Commit list drawing', () => {
+  test('draws a row and its graph again only when what they show changes, not on each frame of a scroll nor for another row selected, also above the checked-out commit, whose graph leaves out the line from the working tree', async () => {
+    const reads = new Map<string, number>();
+    const drawnAgain = (drawn: ReadonlyMap<string, number>) =>
+      [...drawn]
+        .filter(([key, count]) => reads.get(key) !== count)
+        .map(([key]) => key);
+    await scrollingList(async ({ show, scroll, select }) => {
+      await show('a', countedHistory(1000, reads), undefined, 'c500');
+      await scroll(200);
+      const drawn = new Map(reads);
+      assert.ok(drawn.has('row c10') && drawn.has('graph c10'));
+      await scroll(260);
+      assert.deepStrictEqual(drawnAgain(drawn), []);
+      const scrolled = new Map(reads);
+      await select('c12');
+      assert.deepStrictEqual(drawnAgain(scrolled), ['row c12']);
+      const selected = new Map(reads);
+      await select('c14');
+      assert.deepStrictEqual(drawnAgain(selected), ['row c12', 'row c14']);
     });
   });
 });

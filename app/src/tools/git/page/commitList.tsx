@@ -226,6 +226,8 @@ export function keyboardMenuTarget(
     : commitMenuTarget(hash);
 }
 
+const unlinkedRows = new WeakMap<GraphRow, GraphRow>();
+
 export function withoutWorkingTreeLink(
   row: GraphRow,
   position: number,
@@ -234,10 +236,16 @@ export function withoutWorkingTreeLink(
   if (headPosition !== undefined && position > headPosition) {
     return row;
   }
-  return {
+  const known = unlinkedRows.get(row);
+  if (known) {
+    return known;
+  }
+  const unlinked = {
     ...row,
     lines: row.lines.filter((line) => !(line.dashed && line.from === 0)),
   };
+  unlinkedRows.set(row, unlinked);
+  return unlinked;
 }
 
 interface PendingKey {
@@ -549,6 +557,13 @@ export function commitMoveOf(
 
 export function isCompareClick(event: Click): boolean {
   return clicked(gitKeymap.compare, event) !== undefined;
+}
+
+function selectionOfRow(
+  hash: string,
+  selection: string | undefined,
+): string | undefined {
+  return sidesOf(selection).includes(hash) ? selection : undefined;
 }
 
 function selectionClasses(hash: string, selection: string | undefined) {
@@ -891,12 +906,8 @@ export function Commits({
           row={graphRow}
           height={height}
           line={line}
-          onToggleMerge={() => {
-            const commit = history?.at(index - offset);
-            if (commit) {
-              onToggleMerge(commit.hash);
-            }
-          }}
+          hash={history?.at(index - offset)?.hash}
+          onToggleMerge={onToggleMerge}
         />
       )
     );
@@ -935,9 +946,9 @@ export function Commits({
       );
     }
     return (
-      <CommitRow
+      <ListedCommitRow
         commit={commit}
-        selected={selected}
+        selected={selectionOfRow(commit.hash, selected)}
         indent={indent(index)}
         onSelect={onSelect}
         onCompare={onCompare}
@@ -1142,3 +1153,5 @@ export function CommitRow({
     </div>
   );
 }
+
+const ListedCommitRow = memo(CommitRow);

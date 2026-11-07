@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import {
   graphColors,
   maxLanes,
@@ -51,16 +52,18 @@ function path(line: GraphLine, height: number, lineHeight: number): string {
     : `M ${from} ${dotY} C ${from} ${dotY + turn / 2} ${to} ${dotY + turn / 2} ${to} ${dotY + turn} V ${height}`;
 }
 
-export function GraphCell({
+export const GraphCell = memo(function GraphCell({
   row,
   height,
   line,
+  hash,
   onToggleMerge,
 }: {
   row: GraphRow;
   height: number;
   line: number;
-  onToggleMerge: () => void;
+  hash?: string;
+  onToggleMerge: (hash: string) => void;
 }) {
   const cx = x(row.lane);
   const dotY = line / 2;
@@ -96,7 +99,9 @@ export function GraphCell({
           className="merge-dot"
           onClick={(event) => {
             event.stopPropagation();
-            onToggleMerge();
+            if (hash !== undefined) {
+              onToggleMerge(hash);
+            }
           }}
         >
           <title>{mergeTitle(row)}</title>
@@ -125,7 +130,7 @@ export function GraphCell({
       )}
     </svg>
   );
-}
+});
 
 const ringSteps: readonly (readonly [number, number])[] = [
   [50, 6],
