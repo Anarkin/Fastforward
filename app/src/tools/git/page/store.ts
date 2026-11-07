@@ -159,7 +159,7 @@ interface GitActions {
   readonly browseRepositories: () => void;
   readonly openClone: () => void;
   readonly initRepository: () => void;
-  readonly checkCloneTarget: (folder: string, name: string) => void;
+  readonly checkCloneTarget: (folder: string, name: string) => () => void;
   readonly chooseCloneFolder: (folder: string) => void;
   readonly startClone: (ask: CloneAsk) => void;
   readonly stopClone: () => void;
@@ -182,6 +182,8 @@ interface GitActions {
   readonly seeLanguageKey: (key: string | undefined) => void;
 }
 
+const noComparedTexts: ComparedTexts = { tab: undefined, texts: new Map() };
+
 const gitDefaults: GitSource = {
   tab: emptyTabView,
   worktrees: undefined,
@@ -198,7 +200,7 @@ const gitDefaults: GitSource = {
   autoFetchMinutes: 0,
   solo: false,
   compare: undefined,
-  compareTexts: { tab: undefined, texts: new Map() },
+  compareTexts: noComparedTexts,
   recent: [],
   initAsked: undefined,
   clone: { view: undefined, form: 0, folder: undefined, target: undefined },
@@ -418,6 +420,17 @@ function withTexts(
   return { tab, texts: known };
 }
 
+function isTarget(
+  target: CloneTarget | undefined,
+  { folder, name }: CloneTarget,
+): boolean {
+  return target?.folder === folder && target.name === name;
+}
+
+function checking(clone: Cloning, target: CloneTarget): Cloning {
+  return isTarget(clone.target, target) ? clone : { ...clone, target };
+}
+
 function cloned(clone: Cloning, view: CloneView | undefined): Cloning {
   return view?.kind === 'form'
     ? { ...clone, view, form: clone.form + 1, folder: undefined }
@@ -450,7 +463,14 @@ function received(state: GitState, message: GitToWebview): GitState {
     case 'solo':
       return { ...state, solo: message.solo };
     case 'compare':
-      return { ...state, compare: message.compare };
+      return {
+        ...state,
+        compare: message.compare,
+        compareTexts:
+          message.compare?.tab === state.compareTexts.tab
+            ? state.compareTexts
+            : noComparedTexts,
+      };
     case 'compareTexts':
       return { ...state, compareTexts: withTexts(state.compareTexts, message) };
     case 'recent':
@@ -465,7 +485,9 @@ function received(state: GitState, message: GitToWebview): GitState {
         clone: { ...state.clone, folder: { folder: message.folder } },
       };
     case 'cloneTarget':
-      return { ...state, clone: { ...state.clone, target: message } };
+      return isTarget(state.clone.target, message)
+        ? { ...state, clone: { ...state.clone, target: message } }
+        : state;
     case 'lastFetch':
       return { ...state, lastFetch: message };
     default:
@@ -476,6 +498,8 @@ function received(state: GitState, message: GitToWebview): GitState {
 const hashLookupDelay = 150;
 
 const commitSearchDelay = 250;
+
+const cloneCheckDelay = 150;
 
 export function createGitStore(
   postToHost: (message: GitToHost) => void,
@@ -601,8 +625,13 @@ export function createGitStore(
       browseRepositories: () => post({ type: 'browseRepositories' }),
       openClone: () => post({ type: 'openClone' }),
       initRepository: () => post({ type: 'initRepository' }),
-      checkCloneTarget: (folder, name) =>
-        post({ type: 'checkCloneTarget', folder, name }),
+      checkCloneTarget: (folder, name) => {
+        set((state) => ({ clone: checking(state.clone, { folder, name }) }));
+        return startAfter(cloneCheckDelay, () => {
+          post({ type: 'checkCloneTarget', folder, name });
+          return () => undefined;
+        });
+      },
       chooseCloneFolder: (folder) =>
         post({ type: 'chooseCloneFolder', folder }),
       startClone: (ask) => post({ type: 'clone', ...ask }),

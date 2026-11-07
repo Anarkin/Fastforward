@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import type { Root } from 'react-dom/client';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import {
   ClonePopup,
   formProblem,
@@ -44,6 +44,7 @@ async function withPopup(
     Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
   );
   Object.assign(globalThis, globals);
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   try {
     const { createRoot } = await import('react-dom/client');
     const main = dom.window.document.querySelector('main');
@@ -88,9 +89,12 @@ async function withPopup(
       await act(async () => root.unmount());
     }
   } finally {
+    vi.useRealTimers();
     Object.assign(globalThis, saved);
   }
 }
+
+const paused = () => act(() => vi.advanceTimersByTimeAsync(150));
 
 function inputs(dom: JSDOM): HTMLInputElement[] {
   return [...dom.window.document.querySelectorAll('input')];
@@ -148,14 +152,18 @@ suite('Clone popup', () => {
         text(dom, '.clone-target'),
         'Clones into /code/Fastforward',
       );
+      assert.deepStrictEqual(checked, []);
+      await paused();
       assert.deepStrictEqual(checked, ['/code Fastforward']);
       await submit(dom);
       assert.deepStrictEqual(cloned, [
         { url: form.url, folder: '/code', name: 'Fastforward' },
       ]);
+      await type(dom, name, 'f');
       await type(dom, name, 'ff');
       assert.strictEqual(text(dom, '.clone-target'), 'Clones into /code/ff');
-      assert.deepStrictEqual(checked.at(-1), '/code ff');
+      await paused();
+      assert.deepStrictEqual(checked, ['/code Fastforward', '/code ff']);
       await submit(dom);
       assert.deepStrictEqual(cloned.at(-1), {
         url: form.url,

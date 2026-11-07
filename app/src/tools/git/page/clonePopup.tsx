@@ -72,9 +72,10 @@ function CloneForm({ form }: { form: Form }) {
   const derived = cloneName(url);
   const named = name === '' ? derived : name;
   useEffect(() => {
-    if (folder !== '' && nameProblem(named) === undefined) {
-      onCheck(folder, named);
+    if (folder === '' || nameProblem(named) !== undefined) {
+      return undefined;
     }
+    return onCheck(folder, named);
   }, [folder, named, onCheck]);
   const problem = formProblem(url, folder, named, checked);
   const message = edited ? problem : (form.message ?? problem);

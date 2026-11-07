@@ -57,6 +57,16 @@ const layout = (hideDimmedButtons: boolean): GitToWebviewOf<'layout'> => ({
 const labelled = (items: readonly ContextMenuItem[] | undefined) =>
   (items ?? []).map((item) => ('separator' in item ? '-' : item.label));
 
+const compare = (tab: string, version = 1) => ({
+  tab,
+  old: '/a.txt',
+  new: '/b.txt',
+  name: 'b.txt',
+  patch: '',
+  version,
+  entire: true,
+});
+
 function posting() {
   const posted: GitToHost[] = [];
   return { posted, store: createGitStore((message) => posted.push(message)) };
@@ -307,6 +317,29 @@ suite('Git store', () => {
     ]);
   });
 
+  test('lets go of the texts of a comparison once it closes or another is shown, keeping them while the files compared change', () => {
+    const store = createGitStore(noop);
+    const texts = () => store.getState().compareTexts.texts.size;
+    store.getState().receive({ type: 'compare', compare: compare('c1') });
+    store.getState().receive({
+      type: 'compareTexts',
+      tab: 'c1',
+      texts: [{ path: 'a.txt', side: 'new', blob: 'b', text: 'text' }],
+    });
+    store.getState().receive({ type: 'compare', compare: compare('c1', 2) });
+    assert.strictEqual(texts(), 1);
+    store.getState().receive({ type: 'compare', compare: compare('c2') });
+    assert.strictEqual(texts(), 0);
+    store.getState().receive({
+      type: 'compareTexts',
+      tab: 'c2',
+      texts: [{ path: 'a.txt', side: 'new', blob: 'b', text: 'text' }],
+    });
+    store.getState().receive({ type: 'compare', compare: undefined });
+    assert.strictEqual(texts(), 0);
+    assert.strictEqual(store.getState().compareTexts.tab, undefined);
+  });
+
   test('keeps the comparison shown and the texts loaded for it, starting the texts anew for another comparison', () => {
     const { posted, store } = posting();
     const compared = {
@@ -378,6 +411,7 @@ suite('Git store', () => {
     store.getState().receive({ type: 'clone', view: form });
     const first = store.getState().clone.form;
     store.getState().receive({ type: 'cloneFolder', folder: '/code' });
+    store.getState().checkCloneTarget('/code', 'x')();
     store
       .getState()
       .receive({ type: 'cloneTarget', folder: '/code', name: 'x' });
@@ -393,6 +427,52 @@ suite('Git store', () => {
     store.getState().closeClone();
     assert.strictEqual(store.getState().clone.view, undefined);
     assert.deepStrictEqual(posted, [{ type: 'closeClone' }]);
+  });
+
+  test('checks the folder to clone into once the typing pauses, asking nothing of what was typed past', () => {
+    const { posted, store } = posting();
+    vi.useFakeTimers();
+    try {
+      const { checkCloneTarget } = store.getState();
+      checkCloneTarget('/code', 'r')();
+      vi.advanceTimersByTime(150);
+      checkCloneTarget('/code', 're');
+      vi.advanceTimersByTime(149);
+      assert.deepStrictEqual(posted, []);
+      vi.advanceTimersByTime(1);
+    } finally {
+      vi.useRealTimers();
+    }
+    assert.deepStrictEqual(posted, [
+      { type: 'checkCloneTarget', folder: '/code', name: 're' },
+    ]);
+  });
+
+  test('takes the answer to the last check of the folder to clone into alone, as the main process may answer an earlier check after it, keeping what it found while it is checked again', () => {
+    const store = createGitStore(noop);
+    const ask = (name: string) =>
+      store.getState().checkCloneTarget('/code', name)();
+    const answer = (name: string, problem?: string) =>
+      store.getState().receive({
+        type: 'cloneTarget',
+        folder: '/code',
+        name,
+        ...(problem !== undefined && { problem }),
+      });
+    ask('rep');
+    ask('repo');
+    answer('repo', 'taken');
+    answer('rep');
+    assert.strictEqual(store.getState().clone.target?.name, 'repo');
+    assert.strictEqual(store.getState().clone.target?.problem, 'taken');
+    ask('repo');
+    assert.strictEqual(store.getState().clone.target?.problem, 'taken');
+    ask('repo2');
+    answer('repo', 'taken');
+    assert.deepStrictEqual(store.getState().clone.target, {
+      folder: '/code',
+      name: 'repo2',
+    });
   });
 
   test('keeps when the last fetch succeeded and failed', () => {
@@ -643,7 +723,6 @@ suite('Git store', () => {
     actions.browseRepositories();
     actions.openClone();
     actions.initRepository();
-    actions.checkCloneTarget('/code', 'x');
     actions.chooseCloneFolder('/code');
     actions.startClone({
       url: 'https://example.com/x.git',
@@ -658,7 +737,6 @@ suite('Git store', () => {
       { type: 'browseRepositories' },
       { type: 'openClone' },
       { type: 'initRepository' },
-      { type: 'checkCloneTarget', folder: '/code', name: 'x' },
       { type: 'chooseCloneFolder', folder: '/code' },
       {
         type: 'clone',
