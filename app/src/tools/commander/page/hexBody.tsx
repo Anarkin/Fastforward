@@ -5,7 +5,6 @@ import {
   useState,
   useEffectEvent,
 } from 'react';
-import { maxBytesAsked } from '../shared/protocol';
 import { RowRequests } from './rowRequests';
 import type { ViewerFind } from './viewerFind';
 import { MarkedText, byteMarks, hexMarks } from './findMarks';
@@ -99,11 +98,7 @@ export function ByteBody({
       rowBytes,
     );
     if (wanted !== undefined) {
-      requests.ask(
-        wanted.length > maxBytesAsked
-          ? { start: top * rowBytes, length: maxBytesAsked }
-          : wanted,
-      );
+      requests.ask(wanted);
     }
   }, [requests, top, screen, viewing, bytes, rowBytes]);
 

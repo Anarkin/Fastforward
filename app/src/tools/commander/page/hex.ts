@@ -1,3 +1,5 @@
+import { maxBytesAsked } from '../shared/protocol';
+
 export const hexRowBytes = 16;
 
 const groupBytes = 8;
@@ -64,24 +66,31 @@ export function bytesToAsk(
   loaded: LoadedBytes | undefined,
   rowBytes = hexRowBytes,
 ): LoadedBytes | undefined {
-  const shownFrom = topRow * rowBytes;
-  const shownTo = Math.min(size, (topRow + screen + 1) * rowBytes);
-  const margin = screen * rowBytes;
+  const rowCount = Math.ceil(size / rowBytes);
+  const askedRows = Math.max(
+    1,
+    Math.min(screen * 5, Math.floor(maxBytesAsked / rowBytes)),
+  );
+  const aboveRows = Math.max(0, Math.floor((askedRows - screen) / 2));
+  const marginRows = Math.floor(aboveRows / 2);
   if (loaded !== undefined) {
-    const loadedEnd = loaded.start + loaded.length;
-    const startHeld = loaded.start === 0 || shownFrom - margin >= loaded.start;
-    const endHeld = loadedEnd >= size || shownTo + margin <= loadedEnd;
+    const neededFrom = Math.max(0, topRow - marginRows);
+    const neededTo = Math.min(
+      size,
+      (topRow + screen + 1 + marginRows) * rowBytes,
+      (neededFrom + askedRows) * rowBytes,
+    );
     if (
-      shownFrom >= loaded.start &&
-      shownTo <= loadedEnd &&
-      startHeld &&
-      endHeld
+      loaded.start <= neededFrom * rowBytes &&
+      loaded.start + loaded.length >= neededTo
     ) {
       return undefined;
     }
   }
   return {
-    start: Math.max(0, topRow - screen * 2) * rowBytes,
-    length: screen * 5 * rowBytes,
+    start:
+      Math.max(0, Math.min(topRow - aboveRows, rowCount - askedRows)) *
+      rowBytes,
+    length: askedRows * rowBytes,
   };
 }

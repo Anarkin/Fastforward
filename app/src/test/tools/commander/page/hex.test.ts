@@ -6,6 +6,7 @@ import {
   hexRow,
   offsetDigits,
 } from '../../../../tools/commander/page/hex';
+import { maxBytesAsked } from '../../../../tools/commander/shared/protocol';
 
 suite('Hex rows of a file viewed', () => {
   test('shows the offset, the 16 bytes in two groups of 8, and the printable characters, a dot for the rest', () => {
@@ -57,6 +58,58 @@ suite('Hex rows of a file viewed', () => {
       byteText([0x41, 0x00, 0x0a, 0x7f, 0x85, 0xa0, 0xad, 0xe9, 0xff, 0x7e]),
       'A......éÿ~',
     );
+  });
+
+  test('asks for no more bytes than the main process reads at once, around the rows shown, holding what it was given while the rows move a little, as rows too wide for five screens of them were asked for again without end, and the row above the screen was blank', () => {
+    const size = 10_000_000;
+    const answer = (asked: { start: number; length: number }) => ({
+      start: asked.start,
+      length: Math.max(0, Math.min(asked.length, size - asked.start)),
+    });
+    for (const [rowBytes, screen] of [
+      [200, 66],
+      [500, 120],
+      [1000, 70],
+      [4000, 20],
+    ] as const) {
+      const rowCount = Math.ceil(size / rowBytes);
+      for (const top of [
+        0,
+        3,
+        1000,
+        rowCount - screen - 5,
+        rowCount - screen,
+      ]) {
+        const what = `${rowBytes} ${screen} ${top}`;
+        const asked = bytesToAsk(top, screen, size, undefined, rowBytes);
+        assert.ok(asked, what);
+        assert.ok(asked.length <= maxBytesAsked, what);
+        assert.strictEqual(asked.start % rowBytes, 0, what);
+        const loaded = answer(asked);
+        const shownFrom = top * rowBytes;
+        const shownTo = Math.min(size, (top + screen + 1) * rowBytes);
+        assert.ok(loaded.start <= shownFrom, what);
+        assert.ok(
+          loaded.start + loaded.length >=
+            Math.min(shownTo, shownFrom + maxBytesAsked - rowBytes),
+          what,
+        );
+        assert.strictEqual(
+          bytesToAsk(top, screen, size, loaded, rowBytes),
+          undefined,
+          what,
+        );
+        if (top > 3 && top < rowCount - screen && rowBytes * screen < 30_000) {
+          for (const moved of [top - 1, top + 1]) {
+            assert.strictEqual(
+              bytesToAsk(moved, screen, size, loaded, rowBytes),
+              undefined,
+              `${what} ${moved}`,
+            );
+          }
+        }
+      }
+    }
   });
 
   test('asks for the bytes of rows as wide as asked', () => {
