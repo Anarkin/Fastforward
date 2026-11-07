@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CommanderToWebviewOf, TextEncoding } from '../shared/protocol';
 import { viewerKeymap, type ViewMode } from '../shared/keymap';
-import { keyPressed } from '../../../ui/shortcuts';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import {
   FindActions,
@@ -37,6 +36,7 @@ import { colorOfFileNamed } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 import { useCommander, useCommanderActions } from './store';
 import { viewerChoices } from './view';
+import { viewerKey } from './viewerKeys';
 
 export interface Viewing {
   readonly tab: string;
@@ -169,52 +169,32 @@ export function Viewer() {
     <section
       className="column viewer"
       onKeyDown={(event) => {
-        if (keyPressed(viewerKeymap.find, event) !== undefined) {
-          event.preventDefault();
-          openFind();
+        const pressed = viewerKey(event, { mode, readsText, showsImage });
+        if (pressed === undefined) {
           return;
         }
-        const wanted = keyPressed(viewerKeymap.viewAs, event);
-        if (wanted !== undefined) {
-          event.preventDefault();
-          choose(wanted);
-          return;
-        }
-        if (
-          mode === 'text' &&
-          keyPressed(viewerKeymap.encoding, event) !== undefined
-        ) {
-          event.preventDefault();
-          encodingTrigger.current?.click();
-          return;
-        }
-        if (
-          readsText &&
-          keyPressed(viewerKeymap.language, event) !== undefined
-        ) {
-          event.preventDefault();
-          languageTrigger.current?.click();
-          return;
-        }
-        if (readsText && keyPressed(viewerKeymap.wrap, event) !== undefined) {
-          event.preventDefault();
-          changeTextView({ wordWrap: !wordWrap });
-          return;
-        }
-        if (
-          readsText &&
-          keyPressed(viewerKeymap.showWhitespace, event) !== undefined
-        ) {
-          event.preventDefault();
-          changeTextView({ showWhitespace: !showWhitespace });
-          return;
-        }
-        if (
-          showsImage &&
-          keyPressed(viewerKeymap.realSize, event) !== undefined
-        ) {
-          event.preventDefault();
-          toggleRealSize();
+        event.preventDefault();
+        switch (pressed.kind) {
+          case 'find':
+            openFind();
+            return;
+          case 'viewAs':
+            choose(pressed.mode);
+            return;
+          case 'encoding':
+            encodingTrigger.current?.click();
+            return;
+          case 'language':
+            languageTrigger.current?.click();
+            return;
+          case 'wrap':
+            changeTextView({ wordWrap: !wordWrap });
+            return;
+          case 'whitespace':
+            changeTextView({ showWhitespace: !showWhitespace });
+            return;
+          case 'realSize':
+            toggleRealSize();
         }
       }}
     >
