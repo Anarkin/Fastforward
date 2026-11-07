@@ -81,6 +81,7 @@ import {
   markedRowStarts,
   rowBreaksAt,
   tabSize,
+  tabStop,
   type ColumnsIn,
   wrapColumns,
   wrapIndent,
@@ -261,6 +262,106 @@ function wrappedHeight(
         );
   return lines * lineHeight;
 }
+
+interface TextSpan {
+  readonly columns: number;
+  readonly plain: boolean;
+}
+
+const noSpan: TextSpan = { columns: 0, plain: true };
+
+const tabCode = 9;
+
+const lastAscii = 0x7f;
+
+function spanOf(text: string, widths: TextWidths | undefined): TextSpan {
+  const length = text.endsWith('\r') ? text.length - 1 : text.length;
+  const measured =
+    widths !== undefined && widths.char > 0 && beyondAscii.test(text);
+  if (!measured && !text.includes('\t')) {
+    return { columns: length, plain: true };
+  }
+  let columns = 0;
+  for (let at = 0; at < length; at++) {
+    const code = text.codePointAt(at) ?? 0;
+    if (code === tabCode) {
+      columns = tabStop(columns);
+    } else if (code <= lastAscii || !measured) {
+      columns += 1;
+    } else {
+      const character = String.fromCodePoint(code);
+      columns += widths.of(character) / widths.char;
+      at += character.length - 1;
+    }
+  }
+  return { columns, plain: false };
+}
+
+function codeSpans(
+  row: CodeRow,
+  widths: TextWidths | undefined,
+): readonly TextSpan[] {
+  switch (row.kind) {
+    case 'split':
+      return [row.left, row.right].map((cell) =>
+        cell ? spanOf(cell.line.text, widths) : noSpan,
+      );
+    case 'line':
+      return [spanOf(row.line.text, widths)];
+    case 'wholeLine':
+      return [spanOf(row.text, widths)];
+    default:
+      return row satisfies never;
+  }
+}
+
+const sideColumns = (columns: WrapColumns, side: number) =>
+  side === 0 ? columns.left : columns.right;
+
+function onOneLine(spans: readonly TextSpan[], columns: WrapColumns): boolean {
+  for (const [side, span] of spans.entries()) {
+    if (!span.plain || span.columns > sideColumns(columns, side)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function guessedLines(
+  spans: readonly TextSpan[],
+  columns: WrapColumns,
+): number {
+  let lines = 1;
+  for (const [side, span] of spans.entries()) {
+    lines = Math.max(
+      lines,
+      Math.ceil(span.columns / sideColumns(columns, side)),
+    );
+  }
+  return lines;
+}
+
+const spansOfRows = new WeakMap<
+  readonly DiffRow[],
+  {
+    readonly widths: TextWidths | undefined;
+    readonly spans: (readonly TextSpan[] | undefined)[];
+  }
+>();
+
+function rowSpans(
+  rows: readonly DiffRow[],
+  widths: TextWidths | undefined,
+): (readonly TextSpan[] | undefined)[] {
+  let known = spansOfRows.get(rows);
+  if (!known || known.widths !== widths) {
+    known = { widths, spans: [] };
+    spansOfRows.set(rows, known);
+  }
+  return known.spans;
+}
+
+const nearRows = 1000;
 
 function laidOutRowStarts(
   code: HTMLElement,
@@ -575,6 +676,11 @@ interface RowMeasures {
   readonly lineHeight: number;
   readonly ratio: number;
   readonly widths: TextWidths | undefined;
+  readonly near: ShownRow | undefined;
+}
+
+interface ShownRow {
+  readonly current: number;
 }
 
 const measuresOfRows = new WeakMap<readonly DiffRow[], RowMeasures>();
@@ -586,6 +692,7 @@ export function rowMeasures(
   lineHeight = uniformHeight,
   ratio = 1,
   widths?: TextWidths,
+  near?: ShownRow,
 ): RowMeasures {
   let measures = measuresOfRows.get(rows);
   if (
@@ -594,9 +701,10 @@ export function rowMeasures(
     measures.columns?.right !== columns?.right ||
     measures.lineHeight !== lineHeight ||
     measures.ratio !== ratio ||
-    measures.widths !== widths
+    measures.widths !== widths ||
+    measures.near !== near
   ) {
-    measures = measuresOf(rows, columns, lineHeight, ratio, widths);
+    measures = measuresOf(rows, columns, lineHeight, ratio, widths, near);
     measuresOfRows.set(rows, measures);
   }
   return measures;
@@ -608,16 +716,31 @@ function measuresOf(
   lineHeight: number,
   ratio: number,
   widths: TextWidths | undefined,
+  near: ShownRow | undefined,
 ): RowMeasures {
   const generation = wrapGeneration++;
   const wrapped: number[] = [];
+  const spans = rowSpans(rows, widths);
+  const wrappedRow = (row: CodeRow, index: number, wrapsAt: WrapColumns) => {
+    const exact = wrapped[index];
+    if (exact !== undefined) {
+      return exact;
+    }
+    const spanned = (spans[index] ??= codeSpans(row, widths));
+    if (onOneLine(spanned, wrapsAt)) {
+      return lineHeight;
+    }
+    wrapped[index] =
+      Math.abs(index - (near?.current ?? 0)) > nearRows
+        ? guessedLines(spanned, wrapsAt) * lineHeight
+        : wrappedHeight(row, wrapsAt, lineHeight, widths);
+    return wrapped[index];
+  };
   return {
     estimateSize: (index) => {
       const row = rows[index];
       if (isCode(row)) {
-        return columns
-          ? (wrapped[index] ??= wrappedHeight(row, columns, lineHeight, widths))
-          : lineHeight;
+        return columns ? wrappedRow(row, index, columns) : lineHeight;
       }
       const kind = row.kind;
       return isMeasured(kind)
@@ -640,6 +763,7 @@ function measuresOf(
     lineHeight,
     ratio,
     widths,
+    near,
   };
 }
 
@@ -2285,6 +2409,7 @@ export function DiffView({
     },
     [],
   );
+  const shownRow = useRef(0);
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
@@ -2294,6 +2419,7 @@ export function DiffView({
       lineHeight,
       scale,
       wordWrap && table !== undefined ? cellWidthsOf(table) : undefined,
+      shownRow,
     ),
     overscan: rowOverscan(dragged),
     observeElementOffset: observeOffset,
@@ -2801,6 +2927,9 @@ export function DiffView({
   ];
 
   const items = virtualizer.getVirtualItems();
+  useLayoutEffect(() => {
+    shownRow.current = items[0]?.index ?? 0;
+  }, [items]);
   useLayoutEffect(() => {
     const element = list.current;
     if (element && scrollsSides && sideways > 0) {

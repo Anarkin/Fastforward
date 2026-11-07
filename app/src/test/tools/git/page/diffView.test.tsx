@@ -1188,6 +1188,14 @@ function wrapMarksOf(html: string): string[][] {
   );
 }
 
+const wholeRows = (...texts: readonly string[]): DiffRow[] =>
+  texts.map((text, index) => ({
+    kind: 'wholeLine',
+    file: 0,
+    number: index + 1,
+    text,
+  }));
+
 suite('Diff row heights', () => {
   test('places a row where it starts, telling its stripes how far down it is', () => {
     assert.deepStrictEqual(diffRowPlace(40, 17), {
@@ -1508,6 +1516,82 @@ suite('Diff row heights', () => {
       rowMeasures(rows, { left: 7, right: 7 }, 22, 1, wide).estimateSize(line),
       44,
     );
+  });
+
+  test('estimates a row of code over a thousand rows from those in view by the columns its text spans, finding where it wraps only for the rows nearer, a row that fits on one line as one either way, keeping each estimate until the rows are measured anew, as finding where every line of a large file wraps on each step of a resize took a quarter of a second', () => {
+    const wraps = 'one two three four five six';
+    const rows = wholeRows(
+      wraps,
+      ...Array.from({ length: 2998 }, () => 'fits'),
+      wraps,
+      'fits\r',
+      '\t\t\tab',
+      '中文中文',
+    );
+    const near = { current: 0 };
+    const measures = rowMeasures(
+      rows,
+      { left: 7, right: 7 },
+      22,
+      1,
+      undefined,
+      near,
+    );
+    assert.strictEqual(measures.estimateSize(0), 110);
+    assert.strictEqual(measures.estimateSize(2999), 88);
+    assert.strictEqual(measures.estimateSize(2998), 22);
+    assert.strictEqual(measures.estimateSize(3000), 22);
+    assert.strictEqual(measures.estimateSize(3001), 44);
+    assert.strictEqual(measures.estimateSize(3002), 22);
+    near.current = 2990;
+    assert.strictEqual(measures.estimateSize(2999), 88);
+    assert.strictEqual(measures.estimateSize(0), 110);
+    assert.strictEqual(
+      rowMeasures(rows, { left: 7, right: 7 }, 22, 1, undefined, near),
+      measures,
+    );
+    const anew = rowMeasures(
+      rows,
+      { left: 7, right: 7 },
+      17,
+      1,
+      undefined,
+      near,
+    );
+    assert.strictEqual(anew.estimateSize(2999), 85);
+    assert.strictEqual(anew.estimateSize(0), 68);
+  });
+
+  test('counts the columns the text of a row spans once for the rows and the widths their characters are drawn, rather than on every step of a resize', () => {
+    let measured = 0;
+    const widths = {
+      char: 10,
+      of: () => {
+        measured++;
+        return 10;
+      },
+    };
+    const rows = wholeRows(
+      ...Array.from({ length: 2999 }, () => 'fits'),
+      'é one two three four five',
+    );
+    const near = { current: 0 };
+    rowMeasures(rows, { left: 7, right: 7 }, 22, 1, widths, near).estimateSize(
+      2999,
+    );
+    const once = measured;
+    for (const columns of [8, 9, 10]) {
+      rowMeasures(
+        rows,
+        { left: columns, right: columns },
+        22,
+        1,
+        widths,
+        near,
+      ).estimateSize(2999);
+    }
+    assert.ok(once > 0);
+    assert.strictEqual(measured, once);
   });
 
   test('groups the marks of a line of more than 64 rows into blocks of 64 rows, each drawn only once near the rows in sight, as drawing the marks of every row of a line of thousands of rows made scrolling over it slow', () => {
