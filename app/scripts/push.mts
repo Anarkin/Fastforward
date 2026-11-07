@@ -1,13 +1,7 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { setTimeout } from 'node:timers/promises';
 import { promisify } from 'node:util';
-
-interface Run {
-  readonly databaseId: number;
-  readonly status: string;
-  readonly conclusion: string;
-  readonly url: string;
-}
+import { runOfPush, type Run } from './ciRun.mts';
 
 interface Job {
   readonly name: string;
@@ -57,24 +51,6 @@ try {
   process.exit(1);
 }
 
-const runOf = async (): Promise<Run | undefined> => {
-  const runs: readonly Run[] = JSON.parse(
-    await gh(
-      'run',
-      'list',
-      '--commit',
-      commit,
-      '--workflow',
-      'ci.yml',
-      '--limit',
-      '1',
-      '--json',
-      'databaseId,status,conclusion,url',
-    ),
-  );
-  return runs[0];
-};
-
 const failedJobsOf = async (run: Run): Promise<string> => {
   try {
     const { jobs }: { readonly jobs: readonly Job[] } = JSON.parse(
@@ -105,7 +81,7 @@ let failingSince: number | undefined;
 for (;;) {
   let run: Run | undefined;
   try {
-    run = await runOf();
+    run = await runOfPush(gh, commit);
     failingSince = undefined;
   } catch (error) {
     if (cannotWork(error)) {
