@@ -37,6 +37,18 @@ function shown() {
 }
 
 suite('Commander store', () => {
+  test('keeps where each list of a side was scrolled to, apart from the lists of another store', () => {
+    const store = createCommanderStore(noop);
+    assert.strictEqual(store.getState().scrollOf('left /work'), 0);
+    store.getState().keepScroll('left /work', 120);
+    assert.strictEqual(store.getState().scrollOf('left /work'), 120);
+    assert.strictEqual(store.getState().scrollOf('right /work'), 0);
+    assert.strictEqual(
+      createCommanderStore(noop).getState().scrollOf('left /work'),
+      0,
+    );
+  });
+
   test('applies the messages of the main process to its view through the view reducer, keeping the drives, what the viewer shows and a folder it may not read, and leaves the streams of the viewer to its listeners', () => {
     const store = createCommanderStore(noop);
     const { receive } = store.getState();

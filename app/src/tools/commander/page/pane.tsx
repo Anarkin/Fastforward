@@ -8,7 +8,6 @@ import {
   type CSSProperties,
 } from 'react';
 import { moveInGrid, tileColumns, tileWidthOf } from './tiles';
-import { ScrollPlaces } from './scrollPlaces';
 import { iconUrl, thumbnailUrl, type IconSource } from '../shared/icons';
 import { imageType, maxImageSize, vectorType } from '../../../shared/images';
 import {
@@ -68,8 +67,6 @@ declare module 'react' {
 }
 
 const noRows: readonly Row[] = [];
-
-const scrollPlaces = new ScrollPlaces();
 
 export function driveOf(
   folder: string,
@@ -391,7 +388,7 @@ export function Pane({
   const fillTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(fillTimer.current), []);
   const scrolledTo = (offset: number) => {
-    scrollPlaces.keep(scrollKey, offset);
+    actions.keepScroll(scrollKey, offset);
     if (!tiled) {
       return;
     }
@@ -707,7 +704,7 @@ export function Pane({
         {shownList !== undefined && (
           <VirtualRows
             key={shownList}
-            initialOffset={scrollPlaces.of(scrollKey)}
+            initialOffset={actions.scrollOf(scrollKey)}
             onScrolled={scrolledTo}
             rows={tiled ? tileRows : listed}
             renderRow={tiled ? renderTiles : renderRow}

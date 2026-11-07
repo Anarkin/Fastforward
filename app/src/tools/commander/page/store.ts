@@ -23,6 +23,7 @@ import {
   type ViewerChoices,
 } from './view';
 import type { ToViewer, Viewing } from './viewer';
+import { ScrollPlaces } from './scrollPlaces';
 
 export type ViewerRequest = Extract<
   CommanderToHost,
@@ -102,6 +103,8 @@ interface CommanderActions {
   readonly saveColumn: (column: SizedColumn, width: number) => void;
   readonly resetColumn: (column: SizedColumn) => void;
   readonly dropIcon: (ticket: string) => void;
+  readonly scrollOf: (key: string) => number;
+  readonly keepScroll: (key: string, offset: number) => void;
   readonly saveThumbnail: (
     side: Side,
     name: string,
@@ -180,6 +183,7 @@ export function createCommanderStore(
   initial: Partial<CommanderSource> = {},
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
+  const scrolls = new ScrollPlaces();
   const viewerListeners = new Set<(message: ToViewer) => void>();
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
@@ -317,6 +321,8 @@ export function createCommanderStore(
         const { columns, defaultColumns } = get().view;
         saveColumns({ ...columns, [column]: defaultColumns[column] });
       },
+      scrollOf: (key) => scrolls.of(key),
+      keepScroll: (key, offset) => scrolls.keep(key, offset),
       dropIcon: (ticket) => {
         if (dropped.push(ticket) > 1) {
           return;
