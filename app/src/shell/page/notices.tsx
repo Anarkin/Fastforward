@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 import { CloseIcon } from '../../ui/icons';
 import { strings } from '../../shared/strings';
-import { keymap } from '../shared/keymap';
-import { useBinding } from '../../ui/shortcuts';
 import { useShell, useShellActions } from './store';
 
 export interface Notice {
@@ -35,16 +33,6 @@ export function Notices() {
     );
     return () => timers.forEach(clearTimeout);
   }, [notices, onDismiss]);
-  useBinding(
-    keymap.dismissNotice,
-    () => {
-      const newest = notices.at(-1);
-      if (newest !== undefined) {
-        onDismiss(newest.id);
-      }
-    },
-    notices.length > 0,
-  );
 
   return (
     <div className="notices" role="status">

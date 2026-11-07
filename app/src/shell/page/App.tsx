@@ -98,11 +98,19 @@ export function App({ name, post, listen }: Props) {
     const tab = activeTabOf(state);
     return windowTitle((tab && state.toolTitles[tab.tool]) ?? tab?.root, name);
   });
+  const newestNotice = useStore(store, (state) => state.notices.at(-1)?.id);
   const aboutKnown = useStore(store, (state) => state.about !== undefined);
   const popups = useStore(store, (state) => state.popups);
   const confirming = useStore(store, (state) => state.confirming);
-  const { togglePopup, closeTab, confirm, cancel, ready, openIn } =
-    store.getState();
+  const {
+    togglePopup,
+    dismissNotice,
+    closeTab,
+    confirm,
+    cancel,
+    ready,
+    openIn,
+  } = store.getState();
 
   useEffect(() => {
     const stop = listen(store.getState().receive);
@@ -111,6 +119,15 @@ export function App({ name, post, listen }: Props) {
   }, [listen, store, ready]);
 
   useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
+  useBinding(
+    keymap.dismissNotice,
+    () => {
+      if (newestNotice !== undefined) {
+        dismissNotice(newestNotice);
+      }
+    },
+    newestNotice !== undefined,
+  );
   useBinding(keymap.about, () => togglePopup('about'));
   useBinding(keymap.openIn, openIn);
   useBinding(keymap.closeTab, () => {
