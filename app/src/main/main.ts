@@ -315,6 +315,7 @@ async function start(asked: readonly string[]): Promise<void> {
   app.on('window-all-closed', () => app.quit());
   flushBeforeQuit(
     app,
+    () => asking?.quit(),
     () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
     stopRunningGit,
   );
@@ -597,7 +598,6 @@ async function start(asked: readonly string[]): Promise<void> {
   }
   views.resolve({ shell: view, git: gitTool, commander: commanderTool });
   asking = view;
-  app.on('will-quit', () => view.quit());
   const applySettings = () => {
     log.info(strings.log.settingsChanged);
     for (const problem of userSettings.problems) {

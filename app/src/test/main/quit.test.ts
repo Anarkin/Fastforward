@@ -24,6 +24,7 @@ suite('Quitting', () => {
     const saved = Promise.withResolvers<void>();
     flushBeforeQuit(
       app,
+      () => {},
       () => saved.promise,
       () => Promise.resolve(),
     );
@@ -57,6 +58,7 @@ suite('Quitting', () => {
     const stopped = Promise.withResolvers<void>();
     flushBeforeQuit(
       app,
+      () => {},
       () => saved.promise,
       () => stopped.promise,
     );
@@ -69,6 +71,38 @@ suite('Quitting', () => {
     stopped.resolve();
     await settle();
     assert.deepStrictEqual(steps, ['released', 'quit']);
+  });
+
+  test('lets the tools end what they do once before waiting for what is being saved, as the times of the last fetches the git tool writes as it quits were left out of the state saved', async () => {
+    let quitting: ((event: { preventDefault(): void }) => void) | undefined;
+    const steps: string[] = [];
+    const app = {
+      on: (_event: 'will-quit', listener: typeof quitting) => {
+        quitting = listener;
+      },
+      quit: () => steps.push('quit'),
+      releaseSingleInstanceLock: () => {},
+    };
+    flushBeforeQuit(
+      app,
+      () => steps.push('tools quit'),
+      () => {
+        steps.push('saved');
+        return Promise.resolve();
+      },
+      () => Promise.resolve(),
+    );
+    quitting?.({ preventDefault: () => {} });
+    quitting?.({ preventDefault: () => {} });
+    await settle();
+    quitting?.({ preventDefault: () => {} });
+    assert.deepStrictEqual(steps, [
+      'tools quit',
+      'saved',
+      'saved',
+      'quit',
+      'quit',
+    ]);
   });
 
   test('says why it could not start and exits, as a process left without a window would keep the app from starting again', async () => {

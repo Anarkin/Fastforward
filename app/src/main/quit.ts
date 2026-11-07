@@ -25,15 +25,21 @@ export async function exitOnFailure(
 
 export function flushBeforeQuit(
   app: QuittingApp,
+  ending: () => void,
   saved: () => Promise<unknown>,
   stopped: () => Promise<unknown>,
 ): void {
   let flushed = false;
+  let ended = false;
   app.on('will-quit', (event) => {
     if (flushed) {
       return;
     }
     event.preventDefault();
+    if (!ended) {
+      ended = true;
+      ending();
+    }
     void Promise.all([
       saved().then(() => app.releaseSingleInstanceLock()),
       stopped(),
