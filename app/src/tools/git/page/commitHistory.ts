@@ -1,5 +1,6 @@
 import {
   commitPageSize,
+  commitPagesAsked,
   pageStart,
   type CommitInfo,
   type GraphRow,
@@ -97,7 +98,7 @@ export class CommitHistory {
         continue;
       }
       this.requested.add(start);
-      if (run && run.count < pagesAtOnce * commitPageSize) {
+      if (run && run.count < commitPagesAsked * commitPageSize) {
         run.count += commitPageSize;
       } else {
         run = { start, count: commitPageSize };
@@ -112,5 +113,3 @@ interface PageRun {
   readonly start: number;
   readonly count: number;
 }
-
-const pagesAtOnce = 4;

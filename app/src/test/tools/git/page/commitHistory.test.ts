@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   commitPageSize,
+  commitPagesAsked,
   pageStart,
 } from '../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../tools/git/page/commitHistory';
@@ -60,6 +61,13 @@ suite('Commit history', () => {
       { start: 3 * commitPageSize, count: 4 * commitPageSize },
       { start: 7 * commitPageSize, count: 2 * commitPageSize },
     ]);
+  });
+
+  test('asks for no more pages at once than the main process takes', () => {
+    const counts = new CommitHistory(100 * commitPageSize)
+      .takeMissingRuns(0, 50 * commitPageSize)
+      .map((run) => run.count);
+    assert.strictEqual(Math.max(...counts), commitPagesAsked * commitPageSize);
   });
 
   test('counts both pages a new history comes with as loaded', () => {

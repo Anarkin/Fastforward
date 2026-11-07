@@ -100,6 +100,8 @@ export function leftOutChanges(files: readonly FileChange[]): LeftOut[] {
 
 export const commitPageSize = 100;
 
+export const commitPagesAsked = 4;
+
 export function pageStart(index: number): number {
   return index - (index % commitPageSize);
 }

@@ -115,6 +115,7 @@ import { bookmarkedCommits, hasRef } from '../shared/refNames';
 import { imageSourceOf, imageType } from '../shared/images';
 import {
   commitPageSize,
+  commitPagesAsked,
   diffLayouts,
   includedChanges,
   leftOutChanges,
@@ -297,7 +298,7 @@ const maxBookmarks = 1000;
 
 const maxBookmarkName = 4096;
 
-const maxCommitsAsked = 4 * commitPageSize;
+const maxCommitsAsked = commitPagesAsked * commitPageSize;
 
 const maxTextsAsked = 10_000;
 
