@@ -39,18 +39,28 @@ export interface PdfEvents {
   readonly placeOf: (fingerprint: string) => Promise<PdfPlace | undefined>;
   readonly onPlace: (fingerprint: string, place: PdfPlace) => void;
   readonly onFound: (found: PdfFound) => void;
+  readonly onFailure: (error: unknown) => void;
 }
 
 const assetUrl = (path: string) => new URL(path, document.baseURI).href;
 
+const partialContent = 206;
+
 class FileRanges extends PDFDataRangeTransport {
   readonly #url: string;
   readonly #signal: AbortSignal;
+  readonly #onFailure: (error: unknown) => void;
 
-  constructor(url: string, size: number, signal: AbortSignal) {
+  constructor(
+    url: string,
+    size: number,
+    signal: AbortSignal,
+    onFailure: (error: unknown) => void,
+  ) {
     super(size, null);
     this.#url = url;
     this.#signal = signal;
+    this.#onFailure = onFailure;
   }
 
   override requestDataRange(begin: number, end: number): void {
@@ -58,11 +68,22 @@ class FileRanges extends PDFDataRangeTransport {
       headers: { range: `bytes=${begin}-${end - 1}` },
       signal: this.#signal,
     })
-      .then((response) => response.arrayBuffer())
-      .then(
-        (bytes) => this.onDataRange(begin, new Uint8Array(bytes)),
-        () => undefined,
-      );
+      .then((response) =>
+        response.status === partialContent
+          ? response.arrayBuffer()
+          : Promise.reject(new Error(strings.pdf.partUnread)),
+      )
+      .then((bytes) => {
+        if (bytes.byteLength !== end - begin) {
+          throw new Error(strings.pdf.partUnread);
+        }
+        this.onDataRange(begin, new Uint8Array(bytes));
+      })
+      .catch((error: unknown) => {
+        if (!this.#signal.aborted) {
+          this.#onFailure(error);
+        }
+      });
   }
 }
 
@@ -102,6 +123,9 @@ export async function showPdf(
   events: PdfEvents,
   signal: AbortSignal,
 ): Promise<ShownPdf | undefined> {
+  if (signal.aborted) {
+    return undefined;
+  }
   GlobalWorkerOptions.workerSrc ||= assetUrl('pdfWorker.js');
   const eventBus = new EventBus();
   const linkService = new PDFLinkService({ eventBus });
@@ -126,8 +150,16 @@ export async function showPdf(
   void text.translate(container);
   const viewer = new PDFViewer(options);
   linkService.setViewer(viewer);
+  const closed = Promise.withResolvers<undefined>();
+  let open = true;
+  const fail = (error: unknown) => {
+    if (open) {
+      close();
+      events.onFailure(error);
+    }
+  };
   const task = getDocument({
-    range: new FileRanges(assetUrl(url), size, signal),
+    range: new FileRanges(assetUrl(url), size, signal, fail),
     cMapUrl: assetUrl('pdfjs/cmaps/'),
     standardFontDataUrl: assetUrl('pdfjs/standard_fonts/'),
     wasmUrl: assetUrl('pdfjs/wasm/'),
@@ -137,6 +169,11 @@ export async function showPdf(
     disableStream: true,
   });
   const close = () => {
+    if (!open) {
+      return;
+    }
+    open = false;
+    closed.resolve(undefined);
     void text.destroy();
     viewer.cleanup();
     viewer.setDocument(null);
@@ -144,10 +181,13 @@ export async function showPdf(
     void task.destroy();
   };
   signal.addEventListener('abort', close, { once: true });
-  const pdf = await task.promise;
+  const pdf = await Promise.race([task.promise, closed.promise]);
+  if (pdf === undefined) {
+    return undefined;
+  }
   const fingerprint = pdf.fingerprints[0] ?? '';
   const remembered = await events.placeOf(fingerprint);
-  if (signal.aborted) {
+  if (!open) {
     return undefined;
   }
   let restored = false;

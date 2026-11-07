@@ -44,9 +44,18 @@ export function PdfPane({
       return undefined;
     }
     element.focus();
+    setFailure(undefined);
     const leaving = new AbortController();
-    void import('./pdfDocument.js').then(({ showPdf, pdfFailure }) =>
-      showPdf(
+    void import('./pdfDocument.js').then(({ showPdf, pdfFailure }) => {
+      if (leaving.signal.aborted) {
+        return;
+      }
+      const failed = (error: unknown) => {
+        if (!leaving.signal.aborted) {
+          setFailure(pdfFailure(error));
+        }
+      };
+      void showPdf(
         element,
         url,
         size,
@@ -54,22 +63,16 @@ export function PdfPane({
           placeOf: (fingerprint) => placeOfEvent(fingerprint),
           onPlace: (fingerprint, place) => placeEvent(fingerprint, place),
           onFound: (found) => foundEvent(found),
+          onFailure: failed,
         },
         leaving.signal,
-      ).then(
-        (opened: ShownPdf | undefined) => {
-          if (opened !== undefined && !leaving.signal.aborted) {
-            shown.current = opened;
-            shownEvent(opened);
-          }
-        },
-        (error: unknown) => {
-          if (!leaving.signal.aborted) {
-            setFailure(pdfFailure(error));
-          }
-        },
-      ),
-    );
+      ).then((opened: ShownPdf | undefined) => {
+        if (opened !== undefined && !leaving.signal.aborted) {
+          shown.current = opened;
+          shownEvent(opened);
+        }
+      }, failed);
+    });
     const zoom = (event: WheelEvent) => {
       if (wheeled(zoomKeys, event) === undefined || event.deltaY === 0) {
         return;

@@ -656,6 +656,8 @@ export const strings = {
     needsPassword:
       "This PDF is locked with a password, which the app doesn't ask for yet.",
     invalid: 'The file is not a PDF, or it is damaged.',
+    partUnread:
+      "Part of the file couldn't be read. It may have changed or been removed.",
   },
   find: {
     title: 'Search the diff',
@@ -811,7 +813,7 @@ export const strings = {
       object: (name: string) => `"${name}" should be a list of objects`,
     },
     notCssValue: (name: string) =>
-      `${name} should be a value CSS takes, its brackets and quotes closed, with no ; { or }`,
+      `${name} should be a value CSS takes, its brackets and quotes closed, with no ; { } \\ /* or control character`,
     shouldBeOneOf: (name: string, choices: readonly string[]) =>
       `"${name}" should be ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
     fileColorTwice: (extension: string, first: number, again: number) =>
@@ -848,6 +850,8 @@ export const strings = {
     outsideRepository: (path: string) => `${path} is outside the repository`,
     notInCommit: (path: string, hash: string) => `${path} is not in ${hash}`,
     notObject: (file: string) => `${file} is not a JSON object`,
+    commandScriptMissing: (file: string) =>
+      `The ff of ${brand} is missing from ${file}`,
     notFound: 'Not found',
   },
   log: {
