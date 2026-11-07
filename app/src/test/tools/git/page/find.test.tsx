@@ -61,7 +61,7 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(matchesIn('İ', 'i'), [{ start: 0, end: 1 }]);
   });
 
-  test('finds a letter with its accent however either side composes it, as macOS keeps names decomposed, and never the letter alone in it', () => {
+  test('finds a letter with its accent however either side composes it, as macOS keeps names decomposed, and the letter alone in it however the text composes it', () => {
     const decomposed = 'café.txt';
     assert.deepStrictEqual(matchesIn(decomposed, 'café'), [
       { start: 0, end: 5 },
@@ -72,8 +72,10 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(matchesIn(`x ${decomposed}`, 'txt'), [
       { start: 8, end: 11 },
     ]);
-    assert.deepStrictEqual(matchesIn('café', 'cafe'), []);
-    assert.deepStrictEqual(matchesIn(decomposed, 'cafe'), []);
+    assert.deepStrictEqual(matchesIn('café', 'cafe'), [{ start: 0, end: 4 }]);
+    assert.deepStrictEqual(matchesIn(decomposed, 'cafe'), [
+      { start: 0, end: 4 },
+    ]);
   });
 
   test('finds a capital sigma by its lowercase, also at the end of a word', () => {

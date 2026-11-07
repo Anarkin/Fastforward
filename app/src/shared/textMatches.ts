@@ -18,7 +18,7 @@ export function matchesIn(
   const needle = folded(query);
   const whole = folded(text);
   const ranges: FindRange[] = [];
-  if (whole.length === text.length && text === text.normalize('NFC')) {
+  if (whole.length === text.length) {
     let from = whole.indexOf(needle);
     while (from !== -1 && ranges.length < limit) {
       const end = from + needle.length;
@@ -38,10 +38,8 @@ export function matchesIn(
 }
 
 function folded(text: string): string {
-  return text.toLowerCase().replaceAll('ς', 'σ').normalize('NFC');
+  return text.toLowerCase().replaceAll('ς', 'σ').normalize('NFD');
 }
-
-const characters = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 function lowercased(text: string): {
   lowered: string;
@@ -51,13 +49,15 @@ function lowercased(text: string): {
   let lowered = '';
   const starts: number[] = [];
   const ends: number[] = [];
-  for (const { segment, index } of characters.segment(text)) {
-    const lower = folded(segment);
+  let index = 0;
+  for (const character of text) {
+    const lower = folded(character);
     for (let unit = 0; unit < lower.length; unit++) {
       starts.push(index);
-      ends.push(index + segment.length);
+      ends.push(index + character.length);
     }
     lowered += lower;
+    index += character.length;
   }
   return { lowered, starts, ends };
 }
