@@ -95,6 +95,10 @@ export const toolSettingChoices: ReadonlyMap<string, readonly string[]> =
     ['tools.commander.sort.right.column', sortColumns],
   ]);
 
+export const toolSettingListKinds: ReadonlyMap<string, 'string'> = new Map([
+  ['tools.terminal.shellArgs', 'string'],
+]);
+
 export const toolSettingStandIns: ReadonlyMap<string, readonly string[]> =
   new Map<string, readonly string[]>([
     ['tools.commander.fileColors[].extensions', [languagesGroup]],

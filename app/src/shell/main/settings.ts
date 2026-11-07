@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   toolSettingChoices,
+  toolSettingListKinds,
   toolSettingProblems,
   toolSettingStandIns,
   type ThemeColors,
@@ -49,7 +50,9 @@ export function isObject(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function jsonKind(value: unknown): 'boolean' | 'number' | 'string' | 'object' {
+type JsonKind = 'boolean' | 'number' | 'string' | 'object';
+
+function jsonKind(value: unknown): JsonKind {
   const kind = typeof value;
   switch (kind) {
     case 'boolean':
@@ -61,21 +64,31 @@ function jsonKind(value: unknown): 'boolean' | 'number' | 'string' | 'object' {
   }
 }
 
+function itemKind(
+  name: string,
+  fallback: readonly unknown[],
+): JsonKind | undefined {
+  return fallback.length > 0
+    ? jsonKind(fallback[0])
+    : toolSettingListKinds.get(name);
+}
+
 function wrongKind(name: string, fallback: unknown): string {
   if (Array.isArray(fallback)) {
-    return fallback.length > 0
-      ? strings.settings.shouldBeListOf[jsonKind(fallback[0])](name)
-      : strings.settings.shouldBe.list(name);
+    const kind = itemKind(name, fallback);
+    return kind === undefined
+      ? strings.settings.shouldBe.list(name)
+      : strings.settings.shouldBeListOf[kind](name);
   }
   return strings.settings.shouldBe[jsonKind(fallback)](name);
 }
 
-function sameKind(fallback: unknown, value: unknown): boolean {
+function sameKind(name: string, fallback: unknown, value: unknown): boolean {
   if (Array.isArray(fallback)) {
+    const kind = itemKind(name, fallback);
     return (
       Array.isArray(value) &&
-      (fallback.length === 0 ||
-        value.every((item) => typeof item === typeof fallback[0]))
+      (kind === undefined || value.every((item) => jsonKind(item) === kind))
     );
   }
   return (
@@ -94,7 +107,12 @@ const themed = /^(?:colors|fonts|sizes|tools\.[^.]+\.colors)\./;
 
 const closers: Readonly<Record<string, string>> = { '(': ')', '[': ']' };
 
+const readsPastValue = /[\\\p{Cc}]|\/\*/u;
+
 function isCssValue(text: string): boolean {
+  if (readsPastValue.test(text)) {
+    return false;
+  }
   const open: string[] = [];
   let quote: string | undefined;
   for (const character of text) {
@@ -134,7 +152,7 @@ function itemProblems(template: Json, item: unknown, name: string): string[] {
     if (standIns?.some((standIn) => standIn === value)) {
       return [];
     }
-    if (!sameKind(fallback, value)) {
+    if (!sameKind(inner, fallback, value)) {
       return [
         standIns === undefined
           ? wrongKind(inner, fallback)
@@ -183,7 +201,7 @@ function merge<T extends object>(
       } else {
         accepted[key] = value;
       }
-    } else if (!sameKind(fallback, value)) {
+    } else if (!sameKind(name, fallback, value)) {
       problems.push(wrongKind(name, fallback));
     } else if (allowed && !allowed.some((choice) => choice === value)) {
       problems.push(strings.settings.shouldBeOneOf(name, allowed));

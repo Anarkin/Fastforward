@@ -111,6 +111,22 @@ suite('Settings', () => {
     );
   });
 
+  test('takes for the arguments of the shell, whose default list is empty, only a list of strings, and says why, as an argument of another kind was dropped without a word', () => {
+    const { settings, problems } = mergeSettings(defaults, {
+      tools: { terminal: { shellArgs: ['-l', 2] } },
+    });
+    assert.deepStrictEqual(settings, defaults);
+    assert.deepStrictEqual(problems, [
+      '"tools.terminal.shellArgs" should be a list of strings',
+    ]);
+    assert.deepStrictEqual(
+      mergeSettings(defaults, {
+        tools: { terminal: { shellArgs: ['-l', '-i'] } },
+      }).settings.tools.terminal.shellArgs,
+      ['-l', '-i'],
+    );
+  });
+
   test('takes a list of objects whose every item has the keys of the first default item, each of its kind', () => {
     const fileColors = [
       { extensions: ['png', 'jpg'], colors: { light: '#a0a', dark: '#f0f' } },
@@ -196,6 +212,31 @@ suite('Settings', () => {
       settings.tools.git.colors.dark.bubble,
       defaults.tools.git.colors.dark.bubble,
     );
+  });
+
+  test('keeps the default of a color, font or size with a backslash, a comment or a control character, and says why, as CSS read past its end into the rest of the theme', () => {
+    const { settings, problems } = mergeSettings(defaults, {
+      colors: { light: { foreground: '12px /* big' } },
+      fonts: { family: '"\\"', monospaceFamily: '"Cascadia\nCode"' },
+      sizes: { scrollbar: '12px\\', minimap: '12px */' },
+    });
+    assert.deepStrictEqual(problems, [
+      strings.settings.notCssValue('colors.light.foreground'),
+      strings.settings.notCssValue('fonts.family'),
+      strings.settings.notCssValue('fonts.monospaceFamily'),
+      strings.settings.notCssValue('sizes.scrollbar'),
+    ]);
+    assert.strictEqual(
+      settings.colors.light.foreground,
+      defaults.colors.light.foreground,
+    );
+    assert.strictEqual(settings.fonts.family, defaults.fonts.family);
+    assert.strictEqual(
+      settings.fonts.monospaceFamily,
+      defaults.fonts.monospaceFamily,
+    );
+    assert.strictEqual(settings.sizes.scrollbar, defaults.sizes.scrollbar);
+    assert.strictEqual(settings.sizes.minimap, '12px */');
   });
 
   test('knows no setting by a name every object has', () => {
