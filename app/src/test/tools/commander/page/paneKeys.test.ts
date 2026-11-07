@@ -162,6 +162,13 @@ suite('Commander keys', () => {
       paneKey(pressed(' ', { code: 'Space' }), at('none')),
       {},
     );
+    for (const key of ['ArrowLeft', 'ArrowRight']) {
+      assert.deepStrictEqual(
+        paneKey(pressed(key, { shiftKey: true }), at('a.txt')),
+        {},
+        key,
+      );
+    }
   });
 
   test('moves the selection with the arrows, across the tiles only while they are shown, and leaves other keys alone', () => {

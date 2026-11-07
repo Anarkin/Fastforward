@@ -129,7 +129,8 @@ export function paneKey(
   }
   const marking = keyPressed(commanderKeymap.markMoving, event);
   if (marking !== undefined) {
-    if (row === undefined) {
+    const sideways = marking === 'left' || marking === 'right';
+    if (row === undefined || (sideways && !tiled)) {
       return done;
     }
     const moved = tiled
