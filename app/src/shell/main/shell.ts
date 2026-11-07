@@ -178,6 +178,15 @@ function commandNotice(installed: CommandInstall): Notice | undefined {
 
 const mostSpecificFirst: readonly ToolId[] = ['git', 'commander', 'terminal'];
 
+function isMessage(message: unknown): message is ToHost {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    'type' in message &&
+    typeof message.type === 'string'
+  );
+}
+
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -238,13 +247,15 @@ export class Shell {
     };
     return {
       receive: (message) =>
-        this.inFlight.track(
-          this.handle(message, page).catch((error: unknown) => {
-            this.log.error(strings.log.handlingFailed(message.type));
-            this.log.error(error);
-            this.notice(page, { level: 'error', message: reasonOf(error) });
-          }),
-        ),
+        isMessage(message)
+          ? this.inFlight.track(
+              this.handle(message, page).catch((error: unknown) => {
+                this.log.error(strings.log.handlingFailed(message.type));
+                this.log.error(error);
+                this.notice(page, { level: 'error', message: reasonOf(error) });
+              }),
+            )
+          : Promise.resolve(),
       refresh: () => {
         const tab = this.activeTab();
         return tab === undefined

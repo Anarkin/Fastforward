@@ -414,6 +414,36 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('leaves alone what the page sends that is no object with a kind, as handling it failed and so did saying so, its failure escaping unhandled', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const posted: unknown[] = [];
+        const connection = shellOf(view.view).connect((message) =>
+          posted.push(message),
+        );
+        try {
+          for (const message of [
+            'null',
+            '5',
+            '"ready"',
+            '[]',
+            '{ "type": 5 }',
+          ]) {
+            await connection.receive(JSON.parse(message));
+          }
+        } finally {
+          connection.dispose();
+        }
+        assert.deepStrictEqual(posted, []);
+      },
+      true,
+      undefined,
+      noGit,
+    );
+  });
+
   test('asks about the folders asked for at about the same time in one question, as Explorer starts the app once for each folder picked, each handing its folder over', async () => {
     const first = tempFolder('first');
     const second = tempFolder('second');
