@@ -1705,6 +1705,30 @@ export function foundScroll(
   }
 }
 
+export function foundMiddle(
+  found: Edges,
+  view: Edges,
+  row: { readonly top: number; readonly start: number },
+): number | undefined {
+  if (found.top >= view.top && found.bottom <= view.bottom) {
+    return undefined;
+  }
+  return row.start + (found.top + found.bottom) / 2 - row.top;
+}
+
+function foundEdges(element: Element): Edges | undefined {
+  const marks = Array.from(
+    element.querySelectorAll('mark.find-match.current'),
+    (mark) => mark.getBoundingClientRect(),
+  );
+  return marks.length === 0
+    ? undefined
+    : {
+        top: Math.min(...marks.map((mark) => mark.top)),
+        bottom: Math.max(...marks.map((mark) => mark.bottom)),
+      };
+}
+
 function sideRoom(element: HTMLElement): { side: number; widest: number } {
   const codes = Array.from(
     element.querySelectorAll<HTMLElement>('.split-code'),
@@ -2800,7 +2824,32 @@ export function DiffView({
       return;
     }
     setRevealing(undefined);
-    if (!found || index === -1 || wordWrap || widths.char === 0) {
+    if (!found || index === -1) {
+      return;
+    }
+    if (wordWrap) {
+      const row = element.querySelector(`.virtual-row[data-index="${index}"]`);
+      const edges = row ? foundEdges(row) : undefined;
+      const start = virtualizer
+        .getVirtualItems()
+        .find((item) => item.index === index)?.start;
+      if (row && edges && start !== undefined) {
+        const box = element.getBoundingClientRect();
+        const middle = foundMiddle(
+          edges,
+          {
+            top: box.top + rowLines.file * lineHeight,
+            bottom: box.top + element.clientHeight,
+          },
+          { top: row.getBoundingClientRect().top, start },
+        );
+        if (middle !== undefined) {
+          virtualizer.scrollToOffset(middle, { align: 'center' });
+        }
+      }
+      return;
+    }
+    if (widths.char === 0) {
       return;
     }
     const shown = shownSideways(
@@ -2824,6 +2873,8 @@ export function DiffView({
     scrollsSides,
     sideways,
     reveal,
+    virtualizer,
+    lineHeight,
   ]);
   const measurements = virtualizer.measurementsCache;
   const marks = useMemo(

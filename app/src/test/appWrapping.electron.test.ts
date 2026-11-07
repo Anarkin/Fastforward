@@ -358,6 +358,22 @@ function laidOutCode(line: Locator) {
 
 const pressWrap = () => page.keyboard.press('w');
 
+const matchInView = () =>
+  page.evaluate(() => {
+    const list = document.querySelector('.diff-view .virtual-rows');
+    const marks = [
+      ...document.querySelectorAll('.diff-view mark.find-match.current'),
+    ];
+    if (!list || marks.length === 0) {
+      return false;
+    }
+    const { top, bottom } = list.getBoundingClientRect();
+    return marks.every((mark) => {
+      const box = mark.getBoundingClientRect();
+      return box.top >= top && box.bottom <= bottom;
+    });
+  });
+
 const clickView = (name: string) => () =>
   page.getByRole('button', { name }).click();
 
@@ -750,6 +766,29 @@ suite('App', () => {
       laidOut.starts,
       wrapStarts(minifiedLine, wrapColumns(laidOut.width, laidOut.char)),
     );
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
+  });
+
+  test('scrolls a wrapped diff to each match found in a line wrapped onto more rows than the view holds, rather than to the middle of the line, as stepping between the matches of such a line left them out of view', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'longest.txt' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    await page.locator('.diff-view .virtual-row .wrap-break').first().waitFor();
+    await page.locator('.diff-view .virtual-rows').focus();
+    await page.keyboard.press('ControlOrMeta+F');
+    const field = page.locator('.find-field-input');
+    await waitForFocus(field, 'the find field');
+    await field.fill('999');
+    for (const match of [1, 2, 3, 4]) {
+      if (match > 1) {
+        await field.press('Enter');
+      }
+      await page
+        .locator('.find-field-count', { hasText: `${match} of 4` })
+        .waitFor();
+      await waitFor(matchInView, `match ${match} in view`);
+    }
+    await field.press('Escape');
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 

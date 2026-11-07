@@ -41,6 +41,7 @@ import {
   FileNote,
   sideChange,
   FileHeader,
+  foundMiddle,
   foundScroll,
   HunkDivider,
   keyedScrollTop,
@@ -2499,6 +2500,30 @@ suite('Diff sideways scrolling', () => {
     );
     assert.strictEqual(
       foundScroll({ kind: 'hunk', file: 0 }, foundOn(3), view, monospace),
+      undefined,
+    );
+  });
+});
+
+suite('Diff scrolling to a match', () => {
+  test('scrolls a wrapped diff to the middle of the match found once it is out of view, or under the stuck header, rather than to the middle of its row, as a line wrapped onto more rows than the view holds kept the match out of it, and leaves a match in view where it is', () => {
+    const view = { top: 22, bottom: 400 };
+    const row = { top: -1000, start: 5000 };
+    assert.strictEqual(
+      foundMiddle({ top: 900, bottom: 917 }, view, row),
+      6908.5,
+    );
+    assert.strictEqual(
+      foundMiddle({ top: -300, bottom: -283 }, view, row),
+      5708.5,
+    );
+    assert.strictEqual(foundMiddle({ top: 10, bottom: 27 }, view, row), 6018.5);
+    assert.strictEqual(
+      foundMiddle({ top: 390, bottom: 407 }, view, row),
+      6398.5,
+    );
+    assert.strictEqual(
+      foundMiddle({ top: 100, bottom: 117 }, view, row),
       undefined,
     );
   });
