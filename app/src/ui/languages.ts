@@ -19,7 +19,9 @@ export const languageIds = new Map(
 );
 
 export function languageOf(path: string): string | undefined {
-  const name = path.slice(path.lastIndexOf('/') + 1).toLowerCase();
+  const name = path
+    .slice(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1)
+    .toLowerCase();
   const extension = name.slice(name.lastIndexOf('.') + 1);
   return (
     languageIds.get(extensionLanguages[extension] ?? extension) ??

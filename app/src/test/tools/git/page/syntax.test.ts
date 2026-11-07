@@ -118,6 +118,12 @@ suite('Syntax', () => {
     assert.ok(policyOfPage().get('script-src')?.includes("'wasm-unsafe-eval'"));
   });
 
+  test('knows the language of a file without an extension from its name in a Windows path too, as a viewer tab gives the whole path', () => {
+    assert.strictEqual(languageOf('C:\\work\\Dockerfile'), 'docker');
+    assert.strictEqual(languageOf('C:\\my.work\\Makefile'), 'make');
+    assert.strictEqual(languageOf('C:\\my.work\\app.ts'), 'typescript');
+  });
+
   test('knows the language from the file name', () => {
     assert.strictEqual(languageOf('src/app.ts'), 'typescript');
     assert.strictEqual(languageOf('esbuild.mjs'), 'javascript');
