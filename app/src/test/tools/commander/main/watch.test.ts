@@ -38,14 +38,20 @@ suite('Watching a folder of the commander', () => {
   test('tells of files made in the folder, a burst of changes in far fewer calls than changes', async () => {
     let changes = 0;
     stops.push(watchFolder(folder, () => changes++, 200));
+    await waitFor(() => {
+      fs.writeFileSync(path.join(folder, 'ready.txt'), String(Date.now()));
+      return changes > 0;
+    }, 'the watching to start');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const before = changes;
 
     for (let index = 0; index < 20; index++) {
       fs.writeFileSync(path.join(folder, `file${index}.txt`), 'x');
     }
-    await waitFor(() => changes > 0, 'a change');
+    await waitFor(() => changes > before, 'a change');
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    assert.ok(changes < 5, String(changes));
+    assert.ok(changes - before < 5, String(changes - before));
   });
 
   test('tells of the folder removed itself, once the watching has started, which macOS does a moment after it is asked', async () => {
