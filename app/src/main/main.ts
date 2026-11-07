@@ -107,6 +107,7 @@ import {
 } from './terminalCommand';
 import { addExplorerMenu, explorerMenuOf } from './explorerMenu';
 import { runsAsAppImage, updateMode, Updates } from './updates';
+import { removeUnviewedCopies } from './viewedFiles';
 
 const dist = __dirname;
 const development = !app.isPackaged;
@@ -371,7 +372,12 @@ async function start(asked: readonly string[]): Promise<void> {
     distribution: process.platform === 'linux' ? distributionName() : undefined,
   });
   const viewedFiles = path.join(profile, 'viewed-files');
-  void fs.promises.rm(viewedFiles, { recursive: true, force: true });
+  await removeUnviewedCopies(
+    viewedFiles,
+    storage.savedTabs.flatMap((tab) =>
+      tab.view === true && tab.root !== undefined ? [tab.root] : [],
+    ),
+  );
   keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
   const gitTool = new GitTool(
     log,
