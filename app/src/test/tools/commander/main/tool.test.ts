@@ -306,6 +306,7 @@ function commander(
     streamed,
     thumbnailsFull,
     thumbnailWritesFail,
+    settings,
     repositories,
     repositoriesAsked,
     repositoriesHeld,
@@ -1455,6 +1456,23 @@ suite('Commander tool', () => {
     assert.strictEqual(tool.folderOf(tab), at('next'));
   });
 
+  test('holds the widths of the columns and the size of the tiles the settings give in the range they may take, as a width too wide failed every drag after it and a size below the least drew no tiles', async () => {
+    const { tool, page, settings } = commander({ [root]: [] });
+    settings.columns = { extension: 10.4, size: 0, date: 120 };
+    settings.thumbnailSize = -16;
+    tool.ready(page);
+    const told = page.of('settings').at(-1);
+    assert.deepStrictEqual(told?.columns, {
+      extension: 10,
+      size: 1,
+      date: 100,
+    });
+    assert.strictEqual(told.thumbnailSize, 16);
+    settings.thumbnailSize = 5000;
+    tool.ready(page);
+    assert.strictEqual(page.of('settings').at(-1)?.thumbnailSize, 1024);
+  });
+
   test('gives the folder of the active side as the folder of the tab, the right one until the page makes the left one active', async () => {
     const { tool, page, send } = commander({
       [root]: [folder('Users')],
@@ -1612,6 +1630,36 @@ suite('Commander tool', () => {
       `right ${at('Users')} ↑: me`,
       `right ${root}: Users notes.txt [Users]`,
     ]);
+  });
+
+  test('leaves a side going to another folder to get there when the folder it is leaving is deleted meanwhile, as listing the nearest folder still there took it elsewhere', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('fastforward-made-up')],
+      [at('fastforward-made-up')]: [folder('gone')],
+      [at('fastforward-made-up', 'gone')]: [],
+    };
+    const { tool, page, send, change } = commander(listed);
+    await tool.show(page, tab);
+    await send({
+      type: 'open',
+      tab: '1',
+      side: 'left',
+      name: 'fastforward-made-up',
+    });
+    await send({ type: 'open', tab: '1', side: 'left', name: 'gone' });
+    const slow = Promise.withResolvers<readonly Entry[]>();
+    listed[at('fastforward-made-up')] = slow.promise;
+    const going = send({ type: 'step', tab: '1', side: 'left', step: -1 });
+    delete listed[at('fastforward-made-up', 'gone')];
+    await change(at('fastforward-made-up', 'gone'));
+    slow.resolve([folder('gone')]);
+    await going;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const last = page
+      .of('listing')
+      .filter((each) => each.side === 'left')
+      .at(-1);
+    assert.strictEqual(last?.folder, at('fastforward-made-up'));
   });
 
   test('goes back and forward through the folders a side was in, selecting the folder it came from, and forgets those ahead once another is opened', async () => {

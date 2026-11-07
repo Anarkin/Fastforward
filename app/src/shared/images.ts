@@ -33,6 +33,10 @@ export interface ThumbnailBox {
   readonly pixelRatio: number;
 }
 
+export function heldBox(box: number): number {
+  return Math.min(largestBox, Math.max(smallestBox, Math.round(box)));
+}
+
 export function isThumbnailBox(box: unknown, pixelRatio: unknown): boolean {
   return (
     typeof box === 'number' &&

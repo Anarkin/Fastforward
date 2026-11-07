@@ -86,6 +86,18 @@ export function isSort(value: unknown): value is Sort {
   );
 }
 
+function heldWidth(width: number): number {
+  return Math.min(maxColumnWidth, Math.max(1, Math.round(width)));
+}
+
+export function heldColumns(columns: ColumnWidths): ColumnWidths {
+  return {
+    extension: heldWidth(columns.extension),
+    size: heldWidth(columns.size),
+    date: heldWidth(columns.date),
+  };
+}
+
 export function isColumnWidths(value: unknown): value is ColumnWidths {
   return (
     typeof value === 'object' &&

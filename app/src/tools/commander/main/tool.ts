@@ -24,6 +24,7 @@ import {
   type Side,
 } from '../shared/protocol';
 import {
+  heldColumns,
   isColumnWidths,
   isSort,
   type Sorts,
@@ -35,6 +36,7 @@ import { pathParts } from '../shared/paths';
 import type { WatchFolder } from './watch';
 import {
   fillsThumbnail,
+  heldBox,
   imageType,
   isThumbnailBox,
   type ThumbnailBox,
@@ -129,6 +131,7 @@ interface Pane {
   hidden?: readonly boolean[];
   entries: readonly Entry[] | undefined;
   asked: number;
+  landed: number;
   history: readonly string[];
   at: number;
   denied?: string;
@@ -151,6 +154,7 @@ function newPane(folder: string): Pane {
     folder,
     entries: undefined,
     asked: 0,
+    landed: 0,
     history: [folder],
     at: 0,
     repositories: new Set(),
@@ -1443,7 +1447,10 @@ export class CommanderTool implements Tool<'commander'> {
     try {
       listing = await this.listed(folder);
     } catch (error) {
-      if (pane.asked !== asked) {
+      if (
+        pane.asked !== asked ||
+        (how === 'refresh' && pane.landed !== asked)
+      ) {
         return;
       }
       const nearest =
@@ -1475,6 +1482,7 @@ export class CommanderTool implements Tool<'commander'> {
             message: strings.commander.couldNotOpen(folder, reasonOf(error)),
           });
         }
+        pane.landed = asked;
         this.postListing(page, tab, side, pane, undefined);
       }
       return;
@@ -1500,6 +1508,7 @@ export class CommanderTool implements Tool<'commander'> {
     pane.hidden = hidden;
     pane.entries = listing.entries;
     pane.elevated = listing.elevated;
+    pane.landed = asked;
     this.postListing(page, tab, side, pane, selected);
     this.watch(page, tab, side, folder);
     void this.shell.track(this.findRepositories(page, tab, side, pane));
@@ -1615,10 +1624,10 @@ export class CommanderTool implements Tool<'commander'> {
       type: 'settings',
       showHidden,
       sort,
-      columns,
+      columns: heldColumns(columns),
       defaultColumns: this.access.defaultColumns(),
       canElevate: this.access.elevate !== undefined,
-      thumbnailSize,
+      thumbnailSize: heldBox(thumbnailSize),
       fileColors,
     });
   }
