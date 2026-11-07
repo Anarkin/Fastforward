@@ -96,11 +96,21 @@ export function watchFolder(
   const begin = () =>
     void stat(folder).then(
       (stats) => {
-        if (!stopped) {
-          stopWatching = watchAnswered(stampOf(stats));
+        if (stopped) {
+          return;
+        }
+        stopWatching = watchAnswered(stampOf(stats));
+        if (stopWatching === undefined) {
+          watchAgain();
+        } else if (failures > 0) {
+          changed();
         }
       },
-      () => {},
+      () => {
+        if (!stopped) {
+          watchAgain();
+        }
+      },
     );
   const watchAgain = () => {
     stopWatching?.();

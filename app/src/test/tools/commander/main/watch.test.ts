@@ -209,6 +209,70 @@ suite('Watching a folder of the commander', () => {
     }, 'a change after');
   });
 
+  test('goes on trying to watch the folder while it does not answer, and tells of what changed meanwhile, as a share gone for longer than a moment was never watched again', async () => {
+    const own: fs.FSWatcher[] = [];
+    const start = (
+      watched: string,
+      listener: (event: string, name: string | null) => void,
+    ): fs.FSWatcher => {
+      const watcher = fs.watch(watched, { persistent: false }, listener);
+      if (watched === folder) {
+        own.push(watcher);
+      }
+      return watcher;
+    };
+    let answering = true;
+    let unanswered = 0;
+    const stat = (asked: string): Promise<fs.Stats> => {
+      if (answering) {
+        return fs.promises.stat(asked);
+      }
+      unanswered++;
+      return Promise.reject(new Error('ETIMEDOUT'));
+    };
+    let changes = 0;
+    stops.push(
+      watchFolder(folder, () => changes++, 10, { settle: 10, start, stat }),
+    );
+    await waitFor(() => own.length === 1, 'the watching to start');
+    answering = false;
+    const [failed] = own;
+    failed?.close();
+    failed?.emit('error', new Error('EPERM: operation not permitted, watch'));
+    await waitFor(() => unanswered >= 2, 'two looks unanswered');
+    fs.writeFileSync(path.join(folder, 'meanwhile.txt'), 'x');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    changes = 0;
+
+    answering = true;
+
+    await waitFor(() => own.length === 2, 'the watching to start again');
+    await waitFor(() => changes > 0, 'the change made meanwhile');
+  });
+
+  test('tries again to watch a folder the system would not watch', async () => {
+    let refusals = 0;
+    const counted = { started: 0 };
+    const start = (
+      watched: string,
+      listener: (event: string, name: string | null) => void,
+    ): fs.FSWatcher => {
+      if (watched === folder && refusals < 2) {
+        refusals++;
+        throw new Error('EMFILE: too many open files, watch');
+      }
+      return watching(counted)(watched, listener);
+    };
+    let changes = 0;
+    stops.push(watchFolder(folder, () => changes++, 10, { settle: 10, start }));
+
+    await waitFor(() => refusals === 2 && counted.started > 0, 'a watch');
+    await waitFor(() => {
+      fs.writeFileSync(path.join(folder, 'later.txt'), String(Math.random()));
+      return changes > 0;
+    }, 'a change after');
+  });
+
   test('tells nothing once stopped, nor for a folder it could not watch', async () => {
     let changes = 0;
     watchFolder(folder, () => changes++, 10)();
