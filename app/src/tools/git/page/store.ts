@@ -38,6 +38,7 @@ import {
   noFolders,
   openFolders,
   replaceFolders,
+  seeView,
   shownFolders,
   toggleFolder,
   type Folders,
@@ -238,6 +239,11 @@ export function fileFilterOf({
   fileFilters,
 }: GitSource): string | undefined {
   return tab.root === undefined ? undefined : fileFilters.get(tab.root);
+}
+
+function withSeenView(state: GitState): GitState {
+  const folders = seeView(state.folders, folderViewOf(state.tab));
+  return folders === state.folders ? state : { ...state, folders };
 }
 
 function withSelectedFolders(state: GitState, before: GitState): GitState {
@@ -471,7 +477,7 @@ export function createGitStore(
         const changed = next(state);
         return changed === state
           ? state
-          : collected(withSelectedFolders(changed, state), state);
+          : collected(withSelectedFolders(withSeenView(changed), state), state);
       });
     const postTab = (message: TabMessage) => {
       const { root } = get().tab;

@@ -714,6 +714,16 @@ suite('Git store', () => {
     assert.strictEqual(fileFilterOf(store.getState()), undefined);
   });
 
+  test('forgets the folders toggled for a commit once another is shown, so they open again on coming back to it', () => {
+    const store = createGitStore(noop);
+    store.getState().receive(shown());
+    store.getState().selectCommit(at);
+    store.getState().toggleFolder('closed', 'src');
+    store.getState().selectCommit('b'.repeat(40));
+    store.getState().selectCommit(at);
+    assert.deepStrictEqual(shownFoldersOf(store.getState()).closed, new Set());
+  });
+
   test('opens and closes the folders of the commit shown, none for another commit, and opens those of a file selected while all files are shown', () => {
     const store = createGitStore(noop);
     store.getState().receive(shown());
