@@ -8,7 +8,7 @@ import { suite, test } from 'vitest';
 import type * as lineBreaksModule from '../ui/lineBreaks';
 import type * as textWidthsModule from '../ui/textWidths';
 import type * as wordWrapModule from '../ui/wordWrap';
-import { wrapColumns, wrappedLines } from '../ui/wordWrap';
+import { wrapColumns, wrappedLines, wrapStarts } from '../ui/wordWrap';
 import {
   barsOffGrid,
   baseSettings,
@@ -106,6 +106,8 @@ const longestLine = Array.from(
   { length: 4000 },
   (_, index) => `word${index}`,
 ).join(' ');
+
+const minifiedLine = `    ${'abcdef.'.repeat(10_000)}`;
 
 const breakCharacters = [
   ...Array.from({ length: 94 }, (_, index) => String.fromCharCode(33 + index)),
@@ -374,6 +376,7 @@ suite('App', () => {
     'padded.txt': `${paddedLine}\n`,
     'breaks.txt': `${breakLines.join('\n')}\n`,
     'longest.txt': `${longestLine}\n`,
+    'minified.txt': `${minifiedLine}\n`,
     'grid.txt': `${gridLines.join('\n')}\n`,
     'grid.js': `${gridLines.join('\n')}\n`,
   });
@@ -728,6 +731,25 @@ suite('App', () => {
       return tops.some((top) => top > shown.top && top < shown.bottom);
     }, 'marks in sight in the middle of the line');
     assert.deepStrictEqual(await offRows(), []);
+    await waitFor(() => wrapsSaved(), 'the choice to be saved');
+  });
+
+  test('wraps a line longer than 64 KiB only where the browser breaks it, where the app expects it to, keeping its indentation on the row with its code, as the app expected breaks after punctuation it no longer marks in such a line, its marks drifting from the rows, and the browser broke it right after its indentation', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'minified.txt' }).click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    const line = await diffLineNumbered(1);
+    await line.locator('.wrap-break').first().waitFor();
+    const laidOut = await browserStarts(line);
+    assert.strictEqual(laidOut.text, minifiedLine);
+    assert.ok(
+      laidOut.starts[1] > 4,
+      `the first row ends at ${laidOut.starts[1]}`,
+    );
+    assert.deepStrictEqual(
+      laidOut.starts,
+      wrapStarts(minifiedLine, wrapColumns(laidOut.width, laidOut.char)),
+    );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 

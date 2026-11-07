@@ -2087,6 +2087,13 @@ suite('Drawing code', () => {
     assert.match(wrapMarkup('a.b(c) d.e(f)', 0), /<wbr/);
   });
 
+  test('keeps the indentation of a wrapped line longer than 64 KiB on the row with its code, as the app expects, as the browser broke such a line right after its indentation', () => {
+    const indented = `    ${'a.b(c) '.repeat(10_000)}`;
+    const markup = wrapMarkup(indented, 4);
+    assert.ok(markup.startsWith('<span class="lead">    </span>a.b(c) '));
+    assert.doesNotMatch(markup, /<wbr/);
+  });
+
   test('lets a wrapped line break where VS Code would, inside its colors too, keeping its indentation on the row with the code it indents', () => {
     assert.strictEqual(
       wrapMarkup('    a.b(c)', 4),

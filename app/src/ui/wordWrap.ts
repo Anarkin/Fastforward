@@ -87,8 +87,15 @@ function breaksAt(text: string, at: number): boolean {
   );
 }
 
+const longestMarkedLine = 64 * 1024;
+
+const breaksMarked = (text: string) => text.length <= longestMarkedLine;
+
 export function breakOffsets(text: string): number[] {
   const offsets: number[] = [];
+  if (!breaksMarked(text)) {
+    return offsets;
+  }
   for (let at = 1; at < text.length; at++) {
     if (breaksAt(text, at)) {
       offsets.push(at);
@@ -126,15 +133,19 @@ function startRowAt(starts: number[], text: string, at: number): void {
   }
 }
 
+const marksNoBreak = () => false;
+
 function breaksOf(
   text: string,
+  marked: boolean,
   boxes: readonly Box[] = [],
 ): (at: number) => boolean {
+  const markedAt = marked ? breaksAt : marksNoBreak;
   if (boxes.length === 0 && !nonAscii.test(text)) {
-    return (at) => breaksAt(text, at) || asciiBreakAt(text, at);
+    return (at) => markedAt(text, at) || asciiBreakAt(text, at);
   }
   const flags = lineBreaks(text, boxes);
-  return (at) => flags[at] === 1 || breaksAt(text, at);
+  return (at) => flags[at] === 1 || markedAt(text, at);
 }
 
 const nonAscii = /[^\0-\x7f]/;
@@ -183,6 +194,7 @@ function measuredStarts(
   columns: number,
   indent: number,
   widths: TextWidths,
+  marked: boolean,
 ): number[] {
   const clusters = clustersOf(text, widths);
   let total = 0;
@@ -200,7 +212,7 @@ function measuredStarts(
       boxes.push([start, start + cluster.length]);
     }
   }
-  const canBreak = breaksOf(text, boxes);
+  const canBreak = breaksOf(text, marked, boxes);
   const breaksAhead = (at: number) => canBreak(clusters[at].start);
   const starts = [0];
   let column = 0;
@@ -259,16 +271,29 @@ export function wrapStarts(
   indent = wrapIndent(text, columns),
   widths?: TextWidths,
 ): number[] {
-  if (text.endsWith('\r')) {
-    return wrapStarts(text.slice(0, -1), columns, indent, widths);
-  }
+  return startsOf(
+    text.endsWith('\r') ? text.slice(0, -1) : text,
+    columns,
+    indent,
+    widths,
+    breaksMarked(text),
+  );
+}
+
+function startsOf(
+  text: string,
+  columns: number,
+  indent: number,
+  widths: TextWidths | undefined,
+  marked: boolean,
+): number[] {
   if (widths !== undefined && widths.char > 0 && nonAscii.test(text)) {
-    return measuredStarts(text, columns, indent, widths);
+    return measuredStarts(text, columns, indent, widths, marked);
   }
   if (text.length <= columns && !text.includes('\t')) {
     return [0];
   }
-  const canBreak = breaksOf(text);
+  const canBreak = breaksOf(text, marked);
   const starts = [0];
   let column = 0;
   let rowStart = indent;

@@ -1305,14 +1305,12 @@ function firstFrom(offsets: readonly number[], at: number): number {
   return low;
 }
 
-const longestBreakableLine = 64 * 1024;
-
 function breakable(
   text: string,
   indent: number | undefined,
   shown: (piece: string) => React.ReactNode,
 ): (piece: string, start: number) => React.ReactNode {
-  if (indent === undefined || text.length > longestBreakableLine) {
+  if (indent === undefined) {
     return shown;
   }
   const lead = indent > 0 ? leadLength(text) : 0;

@@ -67,6 +67,30 @@ suite('Word wrap', () => {
     assert.strictEqual(wrappedLines('log.info(strings.log)', 12), 3);
   });
 
+  test('marks no place to break a line longer than 64 KiB where VS Code would, and wraps it only where the browser breaks it, as marking every such place in a minified file drew a node for each, keeping its indentation on the row with its code', () => {
+    const minified = 'abcdef.'.repeat(10_000);
+    assert.ok(minified.length > 64 * 1024);
+    assert.deepStrictEqual(breakOffsets(minified), []);
+    assert.deepStrictEqual(breakOffsets('abcdef.abcdef'), [7]);
+    const starts = wrapStarts(minified, 100);
+    assert.strictEqual(starts.length, 700);
+    assert.deepStrictEqual(starts.slice(0, 3), [0, 100, 200]);
+    assert.deepStrictEqual(wrapStarts('abcdef.'.repeat(20), 100), [0, 98]);
+    const measured = wrapStarts(`é${minified}`, 100, 0, drawnAs({}));
+    assert.strictEqual(measured.length, 701);
+    assert.deepStrictEqual(measured.slice(0, 3), [0, 100, 200]);
+    const longest = minified.slice(0, 64 * 1024);
+    assert.notDeepStrictEqual(breakOffsets(longest), []);
+    assert.strictEqual(wrapStarts(longest, 100)[1], 98);
+    assert.deepStrictEqual(breakOffsets(`${longest}\r`), []);
+    assert.strictEqual(wrapStarts(`${longest}\r`, 100)[1], 100);
+    const indented = `    ${'x'.repeat(70_000)}`;
+    assert.deepStrictEqual(
+      wrapStarts(indented, 100).slice(0, 3),
+      [0, 100, 196],
+    );
+  });
+
   test('indents the rows a line wraps onto as far as the line, as VS Code does, unless not even a wide character would fit after the indentation', () => {
     assert.strictEqual(wrapIndent('    a', 10), 4);
     assert.strictEqual(wrapIndent('\t\ta', 20), 8);
