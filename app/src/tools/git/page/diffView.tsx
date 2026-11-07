@@ -1209,6 +1209,26 @@ export function changeScrollTop(
   return target;
 }
 
+export function keyedScrollTop(
+  step: 1 | -1 | undefined,
+  move: ListMove | undefined,
+  scrolled: number,
+  viewport: number,
+  total: number,
+  lineHeight: number,
+  changeTops: () => readonly number[],
+): number | undefined {
+  if (step !== undefined) {
+    return changeScrollTop(
+      changeTops(),
+      scrolled,
+      step,
+      changeMargin(lineHeight),
+    );
+  }
+  return move && diffScrollTop(move, scrolled, viewport, total, lineHeight);
+}
+
 export function firstChangeTop(
   starts: readonly number[],
   margin: number,
@@ -2929,24 +2949,18 @@ export function DiffView({
           }
           const step = keyPressed(gitKeymap.change, event);
           const move = listMoveOf(event);
-          const top =
-            step === undefined
-              ? move &&
-                diffScrollTop(
-                  move,
-                  follower.current?.aim() ?? event.currentTarget.scrollTop,
-                  event.currentTarget.clientHeight,
-                  virtualizer.getTotalSize(),
-                  lineHeight,
-                )
-              : changeScrollTop(
-                  changeStarts(rows).map(
-                    (index) => virtualizer.measurementsCache[index]?.start ?? 0,
-                  ),
-                  event.currentTarget.scrollTop,
-                  step,
-                  changeMargin(lineHeight),
-                );
+          const top = keyedScrollTop(
+            step,
+            move,
+            follower.current?.aim() ?? event.currentTarget.scrollTop,
+            event.currentTarget.clientHeight,
+            virtualizer.getTotalSize(),
+            lineHeight,
+            () =>
+              changeStarts(rows).map(
+                (index) => virtualizer.measurementsCache[index]?.start ?? 0,
+              ),
+          );
           if (top === undefined) {
             return;
           }

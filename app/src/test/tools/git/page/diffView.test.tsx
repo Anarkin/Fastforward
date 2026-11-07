@@ -43,6 +43,7 @@ import {
   FileHeader,
   foundScroll,
   HunkDivider,
+  keyedScrollTop,
   largeDiffText,
   largeFilesToLoad,
   lineKeys,
@@ -2337,6 +2338,8 @@ suite('Diff keys', () => {
   });
 });
 
+const changeTops = () => [100, 500, 900];
+
 suite('Jumping between changes', () => {
   test('finds where each run of added or removed lines starts', () => {
     const rows = diffRows(
@@ -2399,6 +2402,26 @@ suite('Jumping between changes', () => {
     assert.strictEqual(changeScrollTop(starts, 40, -1, 60), undefined);
     assert.strictEqual(changeScrollTop(starts, 840, 1, 60), undefined);
     assert.strictEqual(changeScrollTop([30], 100, -1, 60), 0);
+  });
+
+  test('jumps to the change after or before where a smooth scroll is headed, as the arrows and page keys move from there too, as J pressed while the view glided went back to a change it had passed', () => {
+    const headedTo = 440;
+    assert.strictEqual(
+      keyedScrollTop(1, undefined, headedTo, 400, 2000, 22, changeTops),
+      834,
+    );
+    assert.strictEqual(
+      keyedScrollTop(-1, undefined, headedTo, 400, 2000, 22, changeTops),
+      434,
+    );
+    assert.strictEqual(
+      keyedScrollTop(undefined, 'down', headedTo, 400, 2000, 22, changeTops),
+      462,
+    );
+    assert.strictEqual(
+      keyedScrollTop(undefined, undefined, headedTo, 400, 2000, 22, changeTops),
+      undefined,
+    );
   });
 
   test('leaves room above a change for the file header stuck atop the diff, a line itself, and two lines, however tall the lines', () => {
