@@ -351,27 +351,32 @@ export function Pane({
   const marked = pane?.marked;
   const current = pane && driveOf(pane.folder, drives);
 
-  const [bodyWidth, setBodyWidth] = useState(0);
+  const tileWidth = tileWidthOf(thumbnailSize);
+  const [fitting, setFitting] = useState<number>();
   useLayoutEffect(() => {
     const element = body.current;
     if (!element) {
       return undefined;
     }
-    const measure = () => setBodyWidth(element.clientWidth);
+    const measure = () =>
+      setFitting(
+        element.clientWidth > 0
+          ? tileColumns(element.clientWidth, tileWidth)
+          : undefined,
+      );
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
-  const tileWidth = tileWidthOf(thumbnailSize);
-  const across = tileColumns(bodyWidth, tileWidth);
+  }, [tileWidth]);
+  const across = fitting ?? 1;
   const tiled = layout === 'thumbnails';
   const tileTextRow = () =>
     body.current?.querySelector('.commander-tile-name')?.getBoundingClientRect()
       .height || estimatedRowHeight;
   const scrollKey = `${tab ?? ''} ${side} ${pane?.folder ?? ''} ${layout}`;
   const shownList = tiled
-    ? bodyWidth > 0
+    ? fitting !== undefined
       ? `tiles ${thumbnailSize}`
       : undefined
     : 'details';
@@ -774,6 +779,7 @@ export function Pane({
             wholeRows
             wheelStep={tiled ? tileTextRow : undefined}
             notchRows={tiled ? 1 : undefined}
+            overscan={tiled ? 2 : undefined}
             scrolling={scrolling}
             onKeyDown={(event, visible) => {
               const pressed = paneKey(event, {

@@ -369,17 +369,20 @@ export function reduceView(
         return view;
       }
       const repositories = new Set(action.names);
+      if (
+        repositories.size === pane.repositories.size &&
+        [...repositories].every((name) => pane.repositories.has(name))
+      ) {
+        return view;
+      }
       return withPane(view, action.side, {
         ...pane,
         repositories,
-        rows: rowsOf(
-          pane.entries,
-          pane.parent,
-          view.showHidden,
-          pane.sort,
-          repositories,
-          view.fileColors,
-        ),
+        rows: pane.rows.map((row) => {
+          const repository =
+            row.entry?.folder === true && repositories.has(row.key);
+          return row.repository === repository ? row : { ...row, repository };
+        }),
       });
     }
     case 'select': {

@@ -157,6 +157,7 @@ export function VirtualRows({
   onScrolled,
   wheelStep,
   notchRows,
+  overscan = 20,
   scrolling,
 }: {
   rows: ListedRows;
@@ -173,6 +174,7 @@ export function VirtualRows({
   onScrolled?: (offset: number) => void;
   wheelStep?: () => number;
   notchRows?: number;
+  overscan?: number;
   scrolling: ScrollSettings;
 }) {
   const list = useRef<HTMLDivElement>(null);
@@ -196,7 +198,7 @@ export function VirtualRows({
       [wholeRows],
     ),
     getItemKey: rows.keyOf,
-    overscan: 20,
+    overscan,
     initialRect,
   });
 

@@ -94,6 +94,27 @@ const named = (
 });
 
 suite('Commander view', () => {
+  test('marks the folders that are repositories without sorting the rows again, and leaves a side alone when they are the ones it marks already', () => {
+    const listed = run(
+      { type: 'show', tab: '1' },
+      listing('/code', [
+        folderEntry('app'),
+        folderEntry('docs'),
+        entry('a.txt'),
+      ]),
+    );
+    const before = listed.panes.left?.rows ?? [];
+    const marked = reduceView(listed, named(['app']));
+    assert.deepStrictEqual(repositoriesShown(marked), ['app']);
+    const after = marked.panes.left?.rows ?? [];
+    assert.deepStrictEqual(
+      after.map((row, index) => row === before[index]),
+      before.map((row) => row.key !== 'app'),
+    );
+    assert.strictEqual(reduceView(marked, named(['app'])), marked);
+    assert.strictEqual(reduceView(listed, named([])), listed);
+  });
+
   test('selects the first row of a folder listed, and keeps it selected when the folder is listed again', () => {
     const files = [entry('a.txt'), entry('b.txt')];
     const view = run(
