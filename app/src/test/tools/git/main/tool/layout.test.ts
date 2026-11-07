@@ -34,6 +34,39 @@ suite('Git tool layout with no tab open', () => {
     );
   });
 
+  test('saves no column widths but two widths of a column, as the page is not trusted', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const widths = (sent: unknown) =>
+          view.connection.receive(
+            JSON.parse(
+              JSON.stringify({ type: 'setColumnWidths', widths: sent }),
+            ),
+          );
+        await widths([400, 250]);
+        for (const sent of [
+          [400],
+          [400, 250, 100],
+          ['wide', 250],
+          [400, -1],
+          [400, 1e9],
+          'wide',
+        ]) {
+          await widths(sent);
+        }
+        assert.deepStrictEqual(
+          view.settings.settings.tools.git.columnWidths,
+          [400, 250],
+        );
+      },
+      false,
+      undefined,
+      noGit,
+    );
+  });
+
   test('saves the merge setting with no tab open', async () => {
     await withView(
       log,

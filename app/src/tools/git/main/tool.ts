@@ -132,6 +132,7 @@ import {
   type GitToWebview,
   type WorktreeInfo,
 } from '../shared/protocol';
+import { isColumnWidths } from '../shared/settings';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import {
   unattachedShell,
@@ -280,6 +281,10 @@ function toAll(contexts: readonly Context[]): Context | undefined {
     },
   };
 }
+
+const maxBookmarks = 1000;
+
+const maxBookmarkName = 4096;
 
 class OpeningFailed {
   constructor(
@@ -855,7 +860,9 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'setColumnWidths':
-        this.save(storage.setColumnWidths(message.widths));
+        if (isColumnWidths(message.widths)) {
+          this.save(storage.setColumnWidths(message.widths));
+        }
         return;
       case 'setShowAllFiles':
         this.save(storage.setShowAllFiles(message.show));
@@ -936,12 +943,21 @@ export class GitTool implements Tool<'git'> {
         if (
           !this.hasRepository(repository) ||
           !Array.isArray(message.bookmarks) ||
-          !message.bookmarks.every(isBookmark)
+          message.bookmarks.length > maxBookmarks ||
+          !message.bookmarks.every(
+            (bookmark) =>
+              isBookmark(bookmark) && bookmark.name.length <= maxBookmarkName,
+          )
         ) {
           return;
         }
         const before = this.bookmarkedOf(repository);
-        this.save(storage.setBookmarks(repository, message.bookmarks));
+        this.save(
+          storage.setBookmarks(
+            repository,
+            message.bookmarks.map(({ kind, name }) => ({ kind, name })),
+          ),
+        );
         const after = this.bookmarkedOf(repository);
         if (
           before.size !== after.size ||

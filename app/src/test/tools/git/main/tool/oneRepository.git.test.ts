@@ -620,6 +620,30 @@ suite('Git tool of one repository', () => {
       });
     });
 
+    test('saves of the bookmarks the page sets only their kind and name, and none past the most it keeps, as the page is not trusted', async () => {
+      const main: BookmarkRef = { kind: 'branch', name: 'main' };
+      const set = (bookmarks: unknown) =>
+        connection.receive(
+          JSON.parse(
+            JSON.stringify({
+              type: 'setBookmarks',
+              root: repository.root,
+              bookmarks,
+            }),
+          ),
+        );
+      await set([{ ...main, note: 'kept aside' }]);
+      assert.deepStrictEqual(savedBookmarks(store, repository.root), [main]);
+      await set(
+        Array.from({ length: 1001 }, (_, index) => ({
+          kind: 'tag',
+          name: `v${index}`,
+        })),
+      );
+      await set([{ kind: 'tag', name: 'v'.repeat(5000) }]);
+      assert.deepStrictEqual(savedBookmarks(store, repository.root), [main]);
+    });
+
     test('takes a root the page spells another way as the one of its tab, adding no tab for it', async () => {
       const spelled = `${repository.root}${path.sep}.`;
       await connection.receive({ type: 'setSolo', root: spelled, solo: true });
