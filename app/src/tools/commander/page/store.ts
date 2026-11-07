@@ -366,7 +366,10 @@ export function createCommanderStore(
           }
         });
         post({ type: 'findText', tab, encoding, query, request });
-        return stop;
+        return () => {
+          stop();
+          post({ type: 'stopFind', tab, request });
+        };
       },
       readPdfPlace: (tab, fingerprint) =>
         new Promise((resolve) => {

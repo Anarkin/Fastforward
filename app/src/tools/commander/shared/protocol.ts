@@ -135,6 +135,11 @@ export type CommanderToHost =
       readonly request: number;
     }
   | {
+      readonly type: 'stopFind';
+      readonly tab: string;
+      readonly request: number;
+    }
+  | {
       readonly type: 'readRows';
       readonly tab: string;
       readonly encoding: TextEncoding;

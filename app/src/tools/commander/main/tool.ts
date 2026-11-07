@@ -234,6 +234,32 @@ function onSameVolume(file: string, other: string): boolean {
   return volumeOf(file) === volumeOf(other);
 }
 
+const entriesByName = new WeakMap<
+  readonly Entry[],
+  ReadonlyMap<string, Entry>
+>();
+
+function entryNamed(
+  entries: readonly Entry[] | undefined,
+  name: unknown,
+): Entry | undefined {
+  if (entries === undefined || typeof name !== 'string') {
+    return undefined;
+  }
+  let named = entriesByName.get(entries);
+  if (named === undefined) {
+    const built = new Map<string, Entry>();
+    for (const entry of entries) {
+      if (!built.has(entry.name)) {
+        built.set(entry.name, entry);
+      }
+    }
+    named = built;
+    entriesByName.set(entries, named);
+  }
+  return named.get(name);
+}
+
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
   private shown: { readonly page: Page; readonly tab: string } | undefined;
@@ -262,6 +288,7 @@ export class CommanderTool implements Tool<'commander'> {
     | undefined;
   private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
   private finding: AbortController | undefined;
+  private findingRequest: number | undefined;
   private readonly pdfTabs = new Map<string, string>();
 
   constructor(private readonly access: CommanderAccess) {
@@ -344,6 +371,17 @@ export class CommanderTool implements Tool<'commander'> {
         return this.readText(page, message);
       case 'findText':
         return this.findText(page, message);
+      case 'stopFind':
+        if (
+          this.findingRequest !== undefined &&
+          message.request === this.findingRequest &&
+          message.tab === this.viewing?.tab
+        ) {
+          this.finding?.abort();
+          this.finding = undefined;
+          this.findingRequest = undefined;
+        }
+        return;
       case 'readPdfPlace':
         return this.readPdfPlace(page, message);
       case 'savePdfPlace':
@@ -546,7 +584,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
     const source = iconSourceOf(url);
     const pane = source && this.panes.get(source.tab)?.[source.side];
-    const entry = pane?.entries?.find((each) => each.name === source?.name);
+    const entry = entryNamed(pane?.entries, source?.name);
     if (
       source === undefined ||
       pane === undefined ||
@@ -576,7 +614,7 @@ export class CommanderTool implements Tool<'commander'> {
         : undefined;
     const entry =
       pane !== undefined && pane.folder === folder
-        ? pane.entries?.find((each) => each.name === name)
+        ? entryNamed(pane.entries, name)
         : undefined;
     const type = entry && imageType(entry.name);
     return pane === undefined ||
@@ -708,7 +746,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
       return;
     }
-    const entry = entries?.find((each) => each.name === name);
+    const entry = entryNamed(entries, name);
     if (entry === undefined) {
       return;
     }
@@ -745,7 +783,7 @@ export class CommanderTool implements Tool<'commander'> {
     const shown = this.shownPane(page, tab, side);
     const entry =
       typeof name === 'string'
-        ? shown?.pane.entries?.find((each) => each.name === name)
+        ? entryNamed(shown?.pane.entries, name)
         : undefined;
     return shown === undefined || entry === undefined || entry.folder
       ? Promise.resolve()
@@ -851,7 +889,7 @@ export class CommanderTool implements Tool<'commander'> {
       const shown = this.shownPane(page, tab, side);
       const entry =
         typeof name === 'string'
-          ? shown?.pane.entries?.find((each) => each.name === name)
+          ? entryNamed(shown?.pane.entries, name)
           : undefined;
       return shown === undefined || entry === undefined || entry.folder
         ? undefined
@@ -1088,6 +1126,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.finding?.abort();
     const finding = new AbortController();
     this.finding = finding;
+    this.findingRequest = request;
     let told = Date.now();
     const found = await readingFile(viewing.file, (read) =>
       findInFile(read, viewing.size, query, encoding, {
@@ -1111,6 +1150,7 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     this.finding = undefined;
+    this.findingRequest = undefined;
     this.post(page, {
       type: 'found',
       tab,
@@ -1279,7 +1319,7 @@ export class CommanderTool implements Tool<'commander'> {
       return Promise.resolve();
     }
     const { folder, entries } = source.pane;
-    const entry = entries?.find((each) => each.name === name);
+    const entry = entryNamed(entries, name);
     const target =
       name === parentFolder
         ? parentOf(folder)

@@ -80,6 +80,11 @@ suite('Commander store', () => {
     stop();
     store.getState().receive({ ...answer, request: ask.request });
     assert.deepStrictEqual(found, [[{ start: 1, end: 7 }]]);
+    assert.deepStrictEqual(posted.at(-1), {
+      type: 'stopFind',
+      tab: '3',
+      request: ask.request,
+    });
   });
 
   test('reads where a PDF was left, giving up after a while without an answer', async () => {

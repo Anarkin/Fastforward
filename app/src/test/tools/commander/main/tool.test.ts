@@ -778,6 +778,36 @@ suite('Commander tool', () => {
       assert.strictEqual(page.of('found').length, 1);
     });
 
+    test('stops a find the page no longer wants, telling nothing more of it, and leaves a find of another request going', async () => {
+      const notes = path.join(opened, 'stop.txt');
+      fs.writeFileSync(notes, 'needle '.repeat(1000));
+      const { tool, page, send } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      });
+      const ask = (request: number) =>
+        send({
+          type: 'findText',
+          tab: '3',
+          encoding: 'utf-8',
+          query: 'needle',
+          request,
+        });
+
+      const stopped = ask(6);
+      await send({ type: 'stopFind', tab: '3', request: 6 });
+      await stopped;
+      assert.deepStrictEqual(page.of('found'), []);
+
+      const going = ask(7);
+      await send({ type: 'stopFind', tab: '3', request: 6 });
+      await going;
+      assert.strictEqual(page.of('found').at(-1)?.done, true);
+    });
+
     test('reads the rows and the whole text of a file viewed in the encoding asked for, the whole text with its byte order mark, from which the rows count their bytes, and tells of the encoding the mark names', async () => {
       const wide = path.join(opened, 'wide.txt');
       fs.writeFileSync(
