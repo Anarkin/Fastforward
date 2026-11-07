@@ -1,5 +1,5 @@
 import { lstat, readFile } from 'node:fs/promises';
-import { isAbsolute, join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 
 export async function gitDirOf(cwd: string): Promise<string | undefined> {
   const dotGit = join(cwd, '.git');
@@ -14,4 +14,11 @@ export async function gitDirOf(cwd: string): Promise<string | undefined> {
     return undefined;
   }
   return isAbsolute(named) ? named : join(cwd, named);
+}
+
+export async function commonDirOf(gitDir: string): Promise<string> {
+  const named = (
+    await readFile(join(gitDir, 'commondir'), 'utf8').catch(() => '')
+  ).trim();
+  return named === '' ? gitDir : resolve(gitDir, named);
 }

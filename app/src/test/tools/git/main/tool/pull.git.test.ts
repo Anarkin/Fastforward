@@ -202,7 +202,7 @@ suite('Git tool pulling', () => {
       takeErrorsLogged(
         logged,
         /^Fetching every remote failed$/,
-        /^git -c remote\.origin\.prune=true -c remote\.origin\.pruneTags=false fetch --progress --all --porcelain failed: /,
+        /^git -c remote\.origin\.prune=true -c remote\.origin\.pruneTags=false fetch --progress --no-auto-maintenance --all --porcelain failed: /,
       );
     } finally {
       await repository.git('remote', 'set-url', 'origin', remote.root);
@@ -221,7 +221,7 @@ suite('Git tool pulling', () => {
       takeErrorsLogged(
         logged,
         /^Fetching every remote failed$/,
-        /^git -c remote\.origin\.prune=true -c remote\.origin\.pruneTags=false -c remote\.gone\.prune=true -c remote\.gone\.pruneTags=false fetch --progress --all --porcelain failed: /,
+        /^git -c remote\.origin\.prune=true -c remote\.origin\.pruneTags=false -c remote\.gone\.prune=true -c remote\.gone\.pruneTags=false fetch --progress --no-auto-maintenance --all --porcelain failed: /,
       );
     } finally {
       await repository.git('remote', 'remove', 'gone');

@@ -1,10 +1,11 @@
 import type { ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { lstat, readFile, rm } from 'node:fs/promises';
-import { isAbsolute, join, win32 } from 'node:path';
+import { lstat, readdir, rm } from 'node:fs/promises';
+import { join, win32 } from 'node:path';
 import type { Readable } from 'node:stream';
 import { strings } from '../../../../shared/strings';
 import { withoutCredentials } from './credentials';
+import { commonDirOf, gitDirOf } from './gitDir';
 import { stopTree } from './gitSpawner';
 import { KeptGits } from './keptGit';
 import { GitChild, spawnGit } from './spawnedGit';
@@ -203,6 +204,7 @@ interface RunOptions {
   readonly runsUserCode?: boolean;
   readonly readsNoRepository?: boolean;
   readonly writes?: boolean;
+  readonly writesRefs?: boolean;
   readonly onOutput?: (chunk: Buffer) => void;
   readonly onErrorOutput?: (chunk: Buffer) => void;
   readonly onActivity?: () => void;
@@ -304,6 +306,7 @@ function runGitOnce(
     env,
     runsUserCode = false,
     writes = false,
+    writesRefs = false,
     onOutput,
     onErrorOutput,
     onActivity,
@@ -339,7 +342,19 @@ function runGitOnce(
       ),
       writes ? { cwd, since: Date.now() } : undefined,
     );
+    if (writesRefs) {
+      writingRefs.set(child, { cwd, since: Date.now() });
+      child.once('close', () => writingRefs.delete(child));
+    }
     const stop = () => void stopGit(child);
+    const fail = (reason: unknown) => {
+      const stopped = stopping.get(child);
+      if (stopped === undefined) {
+        reject(reason);
+      } else {
+        void stopped.then(() => reject(reason));
+      }
+    };
     let tooLarge = false;
     let printed = false;
     const collect = (
@@ -379,7 +394,7 @@ function runGitOnce(
       settled = true;
       signal?.removeEventListener('abort', stop);
       if (signal?.aborted) {
-        reject(signal.reason);
+        fail(signal.reason);
         return;
       }
       if (
@@ -413,7 +428,7 @@ function runGitOnce(
         : stopped
           ? `${reason}\n${said}`
           : strings.errors.gitFailed(command, said);
-      reject(
+      fail(
         Object.assign(new Error(message), { stderr: stopped ? message : said }),
       );
     };
@@ -455,6 +470,7 @@ interface Write {
 
 const running = new Map<GitChild, Promise<void>>();
 const writing = new Map<GitChild, Write>();
+const writingRefs = new Map<GitChild, Write>();
 const writeTime = 30_000;
 let writesDeadline: number | undefined;
 
@@ -529,20 +545,38 @@ export async function stopRunningGit(waitTime = writeTime): Promise<void> {
 }
 
 async function removeIndexLock({ cwd, since }: Write): Promise<void> {
-  const dotGit = join(cwd, '.git');
-  const stats = await lstat(dotGit).catch(() => undefined);
-  const gitDir = stats?.isFile()
-    ? /^gitdir: (.*)$/m
-        .exec(await readFile(dotGit, 'utf8').catch(() => ''))?.[1]
-        ?.trim()
-    : dotGit;
+  const gitDir = await gitDirOf(cwd);
+  if (gitDir !== undefined) {
+    await removeLockSince(join(gitDir, 'index.lock'), since);
+  }
+}
+
+const refsLockedIn = ['refs', 'reftable'];
+
+const lockedBesideRefs = ['packed-refs.lock', 'shallow.lock', 'config.lock'];
+
+async function removeRefLocks({ cwd, since }: Write): Promise<void> {
+  const gitDir = await gitDirOf(cwd);
   if (gitDir === undefined) {
     return;
   }
-  const lock = join(
-    isAbsolute(gitDir) ? gitDir : join(cwd, gitDir),
-    'index.lock',
+  const common = await commonDirOf(gitDir);
+  const inFolders = await Promise.all(
+    refsLockedIn.map(async (folder) =>
+      (await readdir(join(common, folder), { recursive: true }).catch(() => []))
+        .filter((entry) => entry.endsWith('.lock'))
+        .map((entry) => join(common, folder, entry)),
+    ),
   );
+  await Promise.all(
+    [
+      ...lockedBesideRefs.map((lock) => join(common, lock)),
+      ...inFolders.flat(),
+    ].map((lock) => removeLockSince(lock, since)),
+  );
+}
+
+async function removeLockSince(lock: string, since: number): Promise<void> {
   const locked = await lstat(lock).catch(() => undefined);
   if (locked !== undefined && locked.mtimeMs >= since - 1000) {
     await rm(lock, { force: true, maxRetries: 10 }).catch(() => undefined);
@@ -574,9 +608,18 @@ async function endGit(
   child: StoppableGit,
   platform: NodeJS.Platform,
 ): Promise<void> {
+  const refsLeft =
+    child instanceof GitChild &&
+    child.exitCode === null &&
+    child.signalCode === null
+      ? writingRefs.get(child)
+      : undefined;
   child.stdout?.destroy();
   child.stderr?.destroy();
   await (child instanceof GitChild ? child.stop() : stopTree(child, platform));
+  if (refsLeft !== undefined && platform === 'win32') {
+    await removeRefLocks(refsLeft);
+  }
 }
 
 export function exitedWith(

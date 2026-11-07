@@ -12,6 +12,7 @@ import {
   repositoryRoot,
 } from '../../../../../tools/git/main/cli/repository';
 import { gitErrorText } from '../../../../../tools/git/main/cli/errorText';
+import { waitFor } from '../../../../fixtures';
 import { renamingRepository } from '../../../../gitFixtures';
 import {
   asIfOwnedByAnother,
@@ -509,6 +510,71 @@ suite('Git repository', () => {
             await local.git('config', '--unset', setting);
             await local.git('tag', '-d', 'mine');
           }
+        } finally {
+          removeFolder(folder);
+        }
+      });
+
+      test("runs no maintenance of git's own after a fetch, as one stopped midway on Windows left its locks behind", async () => {
+        const folder = tempFolder('fetch-maintenance');
+        try {
+          const upstream = await tempRepository(path.join(folder, 'upstream'));
+          await upstream.commit('one');
+          const local = await tempRepository(path.join(folder, 'local'));
+          await local.git('remote', 'add', 'origin', upstream.root);
+          for (const [key, value] of [
+            ['maintenance.autoDetach', 'false'],
+            ['maintenance.gc.enabled', 'false'],
+            ['maintenance.commit-graph.enabled', 'true'],
+            ['maintenance.commit-graph.auto', '-1'],
+          ]) {
+            await local.git('config', key, value);
+          }
+          await fetchAllRemotes(gitPath, local.root);
+          assert.deepStrictEqual(
+            fs.readdirSync(path.join(local.root, '.git', 'objects', 'info')),
+            [],
+          );
+        } finally {
+          removeFolder(folder);
+        }
+      });
+
+      test('leaves no ref locked once a fetch is stopped while it writes the refs, as Windows stops git with no chance to remove its locks, and every later fetch failed', async () => {
+        const folder = tempFolder('fetch-stopped');
+        const started = path.join(folder, 'started').replaceAll('\\', '/');
+        try {
+          const upstream = await tempRepository(path.join(folder, 'upstream'));
+          await upstream.commit('one');
+          await upstream.git('tag', 'v1');
+          const local = await tempRepository(path.join(folder, 'local'));
+          await local.git('remote', 'add', 'origin', upstream.root);
+          const hook = path.join(
+            local.root,
+            '.git',
+            'hooks',
+            'reference-transaction',
+          );
+          fs.mkdirSync(path.dirname(hook), { recursive: true });
+          fs.writeFileSync(
+            hook,
+            `#!/bin/sh\nif [ "$1" = prepared ]; then echo > '${started}'; sleep 15; fi\n`,
+            { mode: 0o755 },
+          );
+          const stop = new AbortController();
+          const fetching = assert.rejects(
+            fetchAllRemotes(gitPath, local.root, { stop: stop.signal }),
+          );
+          await waitFor(() => fs.existsSync(started), 'the refs to be locked');
+          stop.abort();
+          await fetching;
+          const locks = fs
+            .readdirSync(path.join(local.root, '.git'), { recursive: true })
+            .map(String)
+            .filter((entry) => entry.endsWith('.lock'));
+          assert.deepStrictEqual(locks, []);
+          fs.rmSync(hook);
+          assert.strictEqual(await fetchAllRemotes(gitPath, local.root), true);
         } finally {
           removeFolder(folder);
         }

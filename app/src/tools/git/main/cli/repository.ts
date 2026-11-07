@@ -468,13 +468,14 @@ async function fetchWith(
     const output = await runGit(
       gitPath,
       root,
-      [...pruning, 'fetch', '--progress', ...fetching],
+      [...pruning, 'fetch', '--progress', '--no-auto-maintenance', ...fetching],
       {
         signal,
         env: interactive
           ? messagesInEnglish
           : { ...neverAsk, ...messagesInEnglish },
         runsUserCode: true,
+        writesRefs: true,
         onActivity: quiet.heard,
         progress: true,
       },
@@ -574,6 +575,7 @@ export async function pushRef(
       {
         signal: AbortSignal.any([quiet.stalled, stop]),
         runsUserCode: true,
+        writesRefs: true,
         onActivity: quiet.heard,
         progress: true,
       },
