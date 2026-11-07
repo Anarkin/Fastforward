@@ -159,6 +159,7 @@ interface Colored {
   readonly files: readonly DiffFile[];
   readonly whole: WholeFile | undefined;
   readonly ranges: Map<string, readonly SyntaxRange[]>;
+  readonly chosen?: string;
 }
 
 function keyedLines(files: readonly DiffFile[], whole: WholeFile | undefined) {
@@ -215,6 +216,20 @@ export function carriedRanges(
   return carried;
 }
 
+export function startingRanges(
+  last: Colored | undefined,
+  files: readonly DiffFile[],
+  whole: WholeFile | undefined,
+  chosen: string | undefined,
+): Map<string, readonly SyntaxRange[]> {
+  if (last === undefined || last.chosen !== chosen) {
+    return new Map();
+  }
+  return last.files === files && last.whole === whole
+    ? last.ranges
+    : carriedRanges(last, files, whole);
+}
+
 export function useSyntax(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
@@ -230,15 +245,9 @@ export function useSyntax(
   const [colored, setColored] = useState<Colored>();
   const shown = useRef<Colored>(undefined);
   useLayoutEffect(() => {
-    const last = shown.current;
-    const ranges =
-      last === undefined
-        ? new Map<string, readonly SyntaxRange[]>()
-        : last.files === files && last.whole === whole
-          ? last.ranges
-          : carriedRanges(last, files, whole);
+    const ranges = startingRanges(shown.current, files, whole, chosen);
     const publish = () => {
-      shown.current = { files, whole, ranges: new Map(ranges) };
+      shown.current = { files, whole, ranges: new Map(ranges), chosen };
       setColored(shown.current);
     };
     publish();
@@ -250,7 +259,7 @@ export function useSyntax(
           }
           publish();
         });
-  }, [sources, files, whole]);
+  }, [sources, files, whole, chosen]);
   return highlight && colored?.files === files && colored.whole === whole
     ? colored.ranges
     : noRanges;

@@ -1029,6 +1029,7 @@ export function Commits({
         </div>
       </div>
       <MessagePeek
+        key={worktree}
         list={list}
         commitAt={(index) =>
           index < offset ? undefined : history?.at(index - offset)

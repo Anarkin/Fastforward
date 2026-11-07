@@ -3,6 +3,7 @@ import { beforeAll, suite, test } from 'vitest';
 import { parsePatch, type LoadedText } from '../../../../tools/git/page/diff';
 import {
   carriedRanges,
+  startingRanges,
   languageOf,
   syntaxSources,
   textsToLoad,
@@ -494,6 +495,29 @@ suite('Syntax', () => {
         ['0:3', range('comment')],
         ['0:4', range('comment')],
       ]),
+    );
+  });
+
+  test('starts the colors of a diff from none once another language is chosen, as the colors of the language chosen before would stay where the language chosen next colors nothing, and keeps or carries them otherwise', () => {
+    const whole = { path: 'a.conf', content: 'x = 1', binary: false };
+    const ranges = new Map([['0:0', range('keyword')]]);
+    const python = {
+      files: [],
+      whole,
+      ranges,
+      chosen: 'python',
+    };
+    assert.deepStrictEqual(
+      startingRanges(python, python.files, whole, undefined),
+      new Map(),
+    );
+    assert.strictEqual(
+      startingRanges(python, python.files, whole, 'python'),
+      ranges,
+    );
+    assert.deepStrictEqual(
+      startingRanges(undefined, [], whole, 'python'),
+      new Map(),
     );
   });
 
