@@ -352,20 +352,10 @@ suite('Whitespace ignored', () => {
 suite('Pathspecs', () => {
   test('narrows to a path, or to the files given', () => {
     assert.deepStrictEqual(pathspecs({}), []);
-    assert.deepStrictEqual(pathspecs({ path: 'a' }), ['--', 'a']);
-    assert.deepStrictEqual(pathspecs({ path: 'b', oldPath: 'a' }), [
-      '--',
-      'a',
-      'b',
-    ]);
-    assert.deepStrictEqual(pathspecs({ path: 'a*b', include: ['x'] }), [
-      '--',
-      'a*b',
-    ]);
-    assert.deepStrictEqual(pathspecs({ include: ['[ab].md'] }), [
-      '--',
-      '[ab].md',
-    ]);
+    assert.deepStrictEqual(pathspecs({ path: 'a' }), ['a']);
+    assert.deepStrictEqual(pathspecs({ path: 'b', oldPath: 'a' }), ['a', 'b']);
+    assert.deepStrictEqual(pathspecs({ path: 'a*b', include: ['x'] }), ['a*b']);
+    assert.deepStrictEqual(pathspecs({ include: ['[ab].md'] }), ['[ab].md']);
   });
 
   test('drops the files inside a folder named like the file, whether git quotes their names or not', () => {

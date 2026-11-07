@@ -238,7 +238,9 @@ async function trackedListing(
   signal?: AbortSignal,
 ): Promise<FileChange[]> {
   const listed = (args: readonly string[]) =>
-    runGit(gitPath, cwd, [...workingTreeDiff(diff), ...args], { signal });
+    runGit(gitPath, cwd, [...workingTreeDiff(diff), ...args, '--'], {
+      signal,
+    });
   const counted = measured
     ? await listed(changesArgs).catch(() => undefined)
     : undefined;
@@ -440,6 +442,7 @@ export function stagedPatch(
       '-M',
       ...diffArgs,
       ...diffOptionArgs(scope),
+      '--',
       ...pathspecs(scope),
     ],
     { signal },
@@ -649,6 +652,7 @@ export async function workingTreePatch(
     [
       ...workingTreeDiff(workingTree),
       ...diffOptionArgs(scope),
+      '--',
       ...pathspecs(scope),
     ],
     { signal },

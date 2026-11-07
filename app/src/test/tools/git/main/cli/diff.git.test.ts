@@ -3,9 +3,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
+  commitPatch,
   compareFiles,
   comparePatch,
+  comparePatchArgs,
   leftOutOf,
+  pathspecs,
   readPatch,
   showFiles,
   showPatch,
@@ -33,6 +36,10 @@ import {
 
 function headers(patch: string): string[] {
   return patch.split('\n').filter((line) => line.startsWith('diff --git'));
+}
+
+function kinds(files: readonly { status: string; path: string }[]): string[][] {
+  return files.map((each) => [each.status, each.path]);
 }
 
 function changedLines(patch: string): string[] {
@@ -549,5 +556,69 @@ suite('Comparing two commits', () => {
       parsePatch(patch).map((file) => file.path),
       ['main.txt', 'other.txt', 'shared.txt'],
     );
+  });
+});
+
+suite('Revisions named like files', () => {
+  test('reads a commit, two compared and the working tree against a commit though files of the working tree are named like their hashes, as git refused each hash as ambiguous', async () => {
+    const named = await tempRepository(tempFolder('named-like-hashes'));
+    try {
+      await named.commit('first', { 'a.txt': 'one\n' });
+      await named.commit('second', { 'a.txt': 'two\n' });
+      const [first, second] = await named.resolve('HEAD~1', 'HEAD');
+      for (const hash of [first, second]) {
+        fs.writeFileSync(path.join(named.root, hash), '');
+      }
+      const { gitPath: git, root } = named;
+      const file = { path: 'a.txt' };
+      assert.deepStrictEqual(kinds(await showFiles(git, root, first)), [
+        ['A', 'a.txt'],
+      ]);
+      assert.deepStrictEqual(
+        changedLines((await commitPatch(git, root, first)).patch),
+        ['+one'],
+      );
+      for (const scope of [{}, file]) {
+        assert.deepStrictEqual(
+          changedLines(await showPatch(git, root, second, scope)),
+          ['-one', '+two'],
+        );
+        assert.deepStrictEqual(
+          changedLines(await comparePatch(git, root, first, second, scope)),
+          ['-one', '+two'],
+        );
+        for (const args of [
+          showPatchArgs(second, scope),
+          comparePatchArgs(first, second, scope),
+        ]) {
+          const read = await readPatch(git, root, [
+            [...args, ...pathspecs(scope)],
+          ]);
+          assert.deepStrictEqual(changedLines(read.patch), ['-one', '+two']);
+        }
+      }
+      assert.deepStrictEqual(
+        kinds(await compareFiles(git, root, first, second)),
+        [['M', 'a.txt']],
+      );
+      fs.writeFileSync(path.join(root, 'a.txt'), 'three\n');
+      const workingTree = await workingTreeFiles(git, root);
+      assert.deepStrictEqual(kinds(workingTree.all?.files ?? []), [
+        ['M', 'a.txt'],
+        ...[first, second].toSorted().map((hash) => ['U', hash]),
+      ]);
+      const sinceFirst = await workingTreeFiles(git, root, {
+        base: first,
+        reverse: false,
+      });
+      for (const scope of [{}, file]) {
+        assert.deepStrictEqual(
+          changedLines(await workingTreePatch(git, root, sinceFirst, scope)),
+          ['-one', '+three'],
+        );
+      }
+    } finally {
+      removeFolder(named.root);
+    }
   });
 });

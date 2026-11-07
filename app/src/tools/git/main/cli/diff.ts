@@ -144,7 +144,7 @@ export async function showFiles(
 ): Promise<FileChange[]> {
   return (
     (await keptFiles(gitPath, cwd, hash, signal)) ??
-    changedFiles(gitPath, cwd, [...showArgs, ...listArgs, hash], signal)
+    changedFiles(gitPath, cwd, [...showArgs, ...listArgs, hash, '--'], signal)
   );
 }
 
@@ -195,7 +195,7 @@ export function compareFiles(
   return changedFiles(
     gitPath,
     cwd,
-    [...compareArgs, ...listArgs, from, to],
+    [...compareArgs, ...listArgs, from, to, '--'],
     signal,
   );
 }
@@ -210,7 +210,7 @@ async function changedFiles(
 }
 
 export function showPatchArgs(hash: string, scope: PatchScope): string[] {
-  return [...showArgs, '--patch', ...diffOptionArgs(scope), hash];
+  return [...showArgs, '--patch', ...diffOptionArgs(scope), hash, '--'];
 }
 
 export function comparePatchArgs(
@@ -218,7 +218,7 @@ export function comparePatchArgs(
   to: string,
   scope: PatchScope,
 ): string[] {
-  return [...compareArgs, ...diffOptionArgs(scope), from, to];
+  return [...compareArgs, ...diffOptionArgs(scope), from, to, '--'];
 }
 
 export interface PatchSection {
@@ -603,9 +603,9 @@ export function diffOptionArgs({
 
 export function pathspecs({ path, oldPath, include }: PatchScope): string[] {
   if (path !== undefined) {
-    return oldPath ? ['--', oldPath, path] : ['--', path];
+    return oldPath ? [oldPath, path] : [path];
   }
-  return include ? ['--', ...include] : [];
+  return include ? [...include] : [];
 }
 
 export function withoutFilesInside(
@@ -665,7 +665,13 @@ function patchOf(
   return runGit(
     gitPath,
     cwd,
-    [...args, ...diffOptionArgs(scope), ...revisions, ...pathspecs(scope)],
+    [
+      ...args,
+      ...diffOptionArgs(scope),
+      ...revisions,
+      '--',
+      ...pathspecs(scope),
+    ],
     { signal },
   ).then((patch) => withoutFilesInside(patch, scope));
 }

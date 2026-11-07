@@ -93,7 +93,7 @@ suite('Git tool showing diffs', () => {
       (command: string, args: readonly string[], options: object) => {
         if (
           args.includes('--patch') &&
-          !args.includes('--') &&
+          args.at(-1) === '--' &&
           reading === undefined
         ) {
           reading = spawn(
