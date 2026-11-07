@@ -2,11 +2,14 @@ import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../shared/strings';
 import { maxDroppedIcons } from '../shared/icons';
+import type { PdfPlace } from '../../../shared/pdf';
 import {
   sides,
+  type ByteRange,
   type CommanderToHost,
   type CommanderToWebview,
   type Side,
+  type TextEncoding,
 } from '../shared/protocol';
 import type {
   ColumnWidths,
@@ -29,13 +32,7 @@ import { ScrollPlaces } from './scrollPlaces';
 export type ViewerRequest = Extract<
   CommanderToHost,
   {
-    readonly type:
-      | 'readText'
-      | 'readRows'
-      | 'readBytes'
-      | 'findText'
-      | 'readPdfPlace'
-      | 'savePdfPlace';
+    readonly type: 'readText' | 'readRows' | 'readBytes';
   }
 >;
 
@@ -72,6 +69,25 @@ interface CommanderActions {
   readonly receive: (message: CommanderToWebview) => void;
   readonly request: (message: ViewerRequest) => void;
   readonly listenViewer: (handler: (message: ToViewer) => void) => () => void;
+  readonly findText: (
+    tab: string,
+    encoding: TextEncoding,
+    query: string,
+    onFound: (found: {
+      readonly matches: readonly ByteRange[];
+      readonly done: boolean;
+    }) => void,
+  ) => () => void;
+  readonly readPdfPlace: (
+    tab: string,
+    fingerprint: string,
+  ) => Promise<PdfPlace | undefined>;
+  readonly keepPdfPlace: (
+    tab: string,
+    fingerprint: string,
+    place: PdfPlace,
+  ) => void;
+  readonly flushPdfPlace: () => void;
   readonly dispatch: (action: ViewAction) => void;
   readonly select: (side: Side, key: string) => void;
   readonly mark: (side: Side, keys: readonly string[], marked: boolean) => void;
@@ -246,6 +262,10 @@ function withoutTab(
   return kept;
 }
 
+const pdfPlaceWait = 2000;
+
+const pdfPlaceEvery = 1000;
+
 export function createCommanderStore(
   post: (message: CommanderToHost) => void,
   initial: Partial<CommanderSource> = {},
@@ -254,6 +274,30 @@ export function createCommanderStore(
   const scrolls = new ScrollPlaces();
   const places = new Map<string, number>();
   const viewerListeners = new Set<(message: ToViewer) => void>();
+  const listenViewer = (handler: (message: ToViewer) => void) => {
+    viewerListeners.add(handler);
+    return () => {
+      viewerListeners.delete(handler);
+    };
+  };
+  let viewerRequests = 0;
+  let pendingPdfPlace:
+    | {
+        readonly tab: string;
+        readonly fingerprint: string;
+        readonly place: PdfPlace;
+      }
+    | undefined;
+  let pdfPlaceTimer: ReturnType<typeof setTimeout> | undefined;
+  const flushPdfPlace = () => {
+    clearTimeout(pdfPlaceTimer);
+    pdfPlaceTimer = undefined;
+    const pending = pendingPdfPlace;
+    pendingPdfPlace = undefined;
+    if (pending !== undefined) {
+      post({ type: 'savePdfPlace', ...pending });
+    }
+  };
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
   return createStore<CommanderState>()((set, get) => {
@@ -310,12 +354,42 @@ export function createCommanderStore(
         }
       },
       request: post,
-      listenViewer: (handler) => {
-        viewerListeners.add(handler);
-        return () => {
-          viewerListeners.delete(handler);
-        };
+      listenViewer,
+      findText: (tab, encoding, query, onFound) => {
+        const request = ++viewerRequests;
+        const stop = listenViewer((message) => {
+          if (
+            message.type === 'found' &&
+            message.tab === tab &&
+            message.request === request
+          ) {
+            onFound({ matches: message.matches, done: message.done });
+          }
+        });
+        post({ type: 'findText', tab, encoding, query, request });
+        return stop;
       },
+      readPdfPlace: (tab, fingerprint) =>
+        new Promise((resolve) => {
+          const request = ++viewerRequests;
+          const answered = (place: PdfPlace | undefined) => {
+            clearTimeout(waiting);
+            stop();
+            resolve(place);
+          };
+          const waiting = setTimeout(() => answered(undefined), pdfPlaceWait);
+          const stop = listenViewer((message) => {
+            if (message.type === 'pdfPlace' && message.request === request) {
+              answered(message.place);
+            }
+          });
+          post({ type: 'readPdfPlace', tab, fingerprint, request });
+        }),
+      keepPdfPlace: (tab, fingerprint, place) => {
+        pendingPdfPlace = { tab, fingerprint, place };
+        pdfPlaceTimer ??= setTimeout(flushPdfPlace, pdfPlaceEvery);
+      },
+      flushPdfPlace,
       dispatch,
       select: (side, key) => dispatch({ type: 'select', side, key }),
       mark: (side, keys, marked) =>

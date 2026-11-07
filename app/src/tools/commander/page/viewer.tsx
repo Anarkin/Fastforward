@@ -75,11 +75,7 @@ export function Viewer() {
     viewed?.tab === view.tab ? viewed : undefined,
   );
   const choices = useCommander((state) => viewerChoices(state.view));
-  const {
-    choose: onChoose,
-    request: post,
-    listenViewer: listen,
-  } = useCommanderActions();
+  const { choose: onChoose } = useCommanderActions();
   const chosen = choices.mode;
   const setChosen = (mode: ViewMode) => onChoose({ mode });
   const encoding = choices.encoding ?? 'auto';
@@ -134,10 +130,8 @@ export function Viewer() {
   const finder = useViewerFind(
     viewing,
     mode === 'hex' || shown === 'bytes' ? 'windows-1252' : shown,
-    post,
-    listen,
   );
-  const pdf = usePdfPreview(viewing?.tab, post, listen);
+  const pdf = usePdfPreview(viewing?.tab);
   const searched =
     mode === 'preview' && preview === 'pdf'
       ? pdf.find

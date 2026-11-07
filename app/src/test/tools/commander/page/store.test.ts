@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import type { CommanderToHost } from '../../../../tools/commander/shared/protocol';
 import { maxDroppedIcons } from '../../../../tools/commander/shared/icons';
 import {
@@ -52,7 +52,81 @@ const listing = (folder: string, tab = '1') =>
     selected: undefined,
   }) as const;
 
+const place = { page: 2, zoom: 'auto', left: 0, top: 10 } as const;
+
 suite('Commander store', () => {
+  test('finds a text in a viewed file, handing on only what is found for that search, until it is stopped', () => {
+    const { posted, store } = shown();
+    const found: (readonly unknown[])[] = [];
+    const stop = store
+      .getState()
+      .findText('3', 'utf-8', 'needle', ({ matches }) => found.push(matches));
+    const [ask] = posted;
+    assert.ok(ask?.type === 'findText');
+    assert.deepStrictEqual(
+      { tab: ask.tab, encoding: ask.encoding, query: ask.query },
+      { tab: '3', encoding: 'utf-8', query: 'needle' },
+    );
+    const answer = {
+      type: 'found',
+      tab: '3',
+      matches: [{ start: 1, end: 7 }],
+      capped: false,
+      done: true,
+    } as const;
+    store.getState().receive({ ...answer, request: ask.request + 1 });
+    store.getState().receive({ ...answer, tab: '4', request: ask.request });
+    store.getState().receive({ ...answer, request: ask.request });
+    stop();
+    store.getState().receive({ ...answer, request: ask.request });
+    assert.deepStrictEqual(found, [[{ start: 1, end: 7 }]]);
+  });
+
+  test('reads where a PDF was left, giving up after a while without an answer', async () => {
+    const { posted, store } = shown();
+    const asked = store.getState().readPdfPlace('3', 'pdf-a');
+    const [ask] = posted;
+    assert.ok(ask?.type === 'readPdfPlace');
+    store
+      .getState()
+      .receive({ type: 'pdfPlace', tab: '3', request: ask.request, place });
+    assert.deepStrictEqual(await asked, place);
+    vi.useFakeTimers();
+    try {
+      const unanswered = store.getState().readPdfPlace('3', 'pdf-b');
+      vi.advanceTimersByTime(2000);
+      assert.strictEqual(await unanswered, undefined);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('saves where a PDF is at most once a second, the last place kept, and at once when the PDF closes', () => {
+    const { posted, store } = shown();
+    vi.useFakeTimers();
+    try {
+      const { keepPdfPlace, flushPdfPlace } = store.getState();
+      keepPdfPlace('3', 'pdf-a', { ...place, page: 1 });
+      keepPdfPlace('3', 'pdf-a', place);
+      assert.deepStrictEqual(posted, []);
+      vi.advanceTimersByTime(1000);
+      keepPdfPlace('3', 'pdf-a', { ...place, page: 5 });
+      flushPdfPlace();
+      flushPdfPlace();
+    } finally {
+      vi.useRealTimers();
+    }
+    assert.deepStrictEqual(posted, [
+      { type: 'savePdfPlace', tab: '3', fingerprint: 'pdf-a', place },
+      {
+        type: 'savePdfPlace',
+        tab: '3',
+        fingerprint: 'pdf-a',
+        place: { ...place, page: 5 },
+      },
+    ]);
+  });
+
   test('keeps where each viewer tab was in its file, forgetting it once the tab closes, as a tab opened later can take its id', () => {
     const { store } = shown();
     assert.strictEqual(store.getState().placeOf('3'), 0);

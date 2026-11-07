@@ -1,20 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PdfPlace } from '../../../shared/pdf';
 import { strings } from '../../../shared/strings';
 import { matchCount } from '../../../shared/textMatches';
 import type { PdfFound, ShownPdf } from '../../../ui/pdfView';
-import type { ToViewer } from './viewer';
-import type { ViewerRequest } from './store';
-
-const placeWait = 2000;
-const placeEvery = 1000;
-let lastAsk = 0;
+import { useCommanderActions } from './store';
 
 export function pdfFindCount(
   query: string,
@@ -35,62 +24,28 @@ export interface PdfControls {
   readonly onShown: (shown: ShownPdf | undefined) => void;
 }
 
-export function usePdfPreview(
-  tab: string | undefined,
-  post: (message: ViewerRequest) => void,
-  listen: (handler: (message: ToViewer) => void) => () => void,
-) {
+export function usePdfPreview(tab: string | undefined) {
   const shown = useRef<ShownPdf>(undefined);
   const [query, setQuery] = useState('');
   const [found, setFound] = useState<PdfFound>();
-  const pending = useRef<{ fingerprint: string; place: PdfPlace }>(undefined);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  const viewer = useRef(tab);
-  useLayoutEffect(() => {
-    viewer.current = tab;
-  });
-  const flush = useCallback(() => {
-    clearTimeout(timer.current);
-    timer.current = undefined;
-    const last = pending.current;
-    pending.current = undefined;
-    if (last !== undefined && viewer.current !== undefined) {
-      post({ type: 'savePdfPlace', tab: viewer.current, ...last });
-    }
-  }, [post]);
-  useEffect(() => flush, [flush]);
+  const { readPdfPlace, keepPdfPlace, flushPdfPlace } = useCommanderActions();
+  useEffect(() => flushPdfPlace, [flushPdfPlace]);
 
   const controls: PdfControls = {
     placeOf: (fingerprint) =>
-      new Promise((resolve) => {
-        if (tab === undefined) {
-          resolve(undefined);
-          return;
-        }
-        const request = ++lastAsk;
-        const answered = (place: PdfPlace | undefined) => {
-          clearTimeout(waiting);
-          stop();
-          resolve(place);
-        };
-        const waiting = setTimeout(() => answered(undefined), placeWait);
-        const stop = listen((message) => {
-          if (message.type === 'pdfPlace' && message.request === request) {
-            answered(message.place);
-          }
-        });
-        post({ type: 'readPdfPlace', tab, fingerprint, request });
-      }),
+      tab === undefined
+        ? Promise.resolve(undefined)
+        : readPdfPlace(tab, fingerprint),
     onPlace: (fingerprint, place) => {
-      pending.current = { fingerprint, place };
-      timer.current ??= setTimeout(flush, placeEvery);
+      if (tab !== undefined) {
+        keepPdfPlace(tab, fingerprint, place);
+      }
     },
     onFound: setFound,
     onShown: (opened) => {
       shown.current = opened;
       if (opened === undefined) {
-        flush();
+        flushPdfPlace();
       }
     },
   };
