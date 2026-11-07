@@ -1,9 +1,9 @@
 import type { HistoryEntry } from '../cli/history';
 
 interface HashTableParts {
-  readonly bytes: Uint8Array<ArrayBuffer>;
-  readonly offsets: Int32Array<ArrayBuffer>;
-  readonly slots: Int32Array<ArrayBuffer>;
+  readonly bytes: Uint8Array;
+  readonly offsets: Int32Array;
+  readonly slots: Int32Array;
   readonly size: number;
 }
 
@@ -60,12 +60,12 @@ export class Commits {
     }
     const shift = top.parents.length - older.starts[dropped];
     const kept = older.length - dropped;
-    const starts = new Int32Array(count + kept + 1);
+    const starts = sharedInts(count + kept + 1);
     starts.set(top.starts.subarray(0, count));
     for (let at = 0; at <= kept; at++) {
       starts[count + at] = older.starts[dropped + at] + shift;
     }
-    const parents = new Int32Array(starts[count + kept]);
+    const parents = sharedInts(starts[count + kept]);
     for (let parent = 0; parent < top.parents.length; parent++) {
       parents[parent] = index[top.parents[parent]];
     }
@@ -142,10 +142,10 @@ export class Commits {
 }
 
 class HashTable {
-  private bytes = new Uint8Array(1024);
+  private bytes: Uint8Array = new Uint8Array(1024);
   private used = 0;
-  private offsets = new Int32Array(64);
-  private slots = new Int32Array(128);
+  private offsets: Int32Array = new Int32Array(64);
+  private slots: Int32Array = new Int32Array(128);
   size = 0;
 
   static replacingTop(
@@ -160,11 +160,11 @@ class HashTable {
     const spareBytes = top.used - topUsed;
     const spareHashes = top.size - count;
     table.used = topUsed + older.used - olderFrom;
-    table.bytes = new Uint8Array(table.used + spareBytes);
+    table.bytes = sharedBytes(table.used + spareBytes);
     table.bytes.set(top.bytes.subarray(0, topUsed));
     table.bytes.set(older.bytes.subarray(olderFrom, older.used), topUsed);
     table.size = count + older.size - dropped;
-    table.offsets = new Int32Array(table.size + spareHashes + 1);
+    table.offsets = sharedInts(table.size + spareHashes + 1);
     table.offsets.set(top.offsets.subarray(0, count));
     for (let at = dropped; at <= older.size; at++) {
       table.offsets[count + at - dropped] =
@@ -172,7 +172,7 @@ class HashTable {
     }
     const most = table.size + spareHashes;
     if (most * 2 <= older.slots.length) {
-      const slots = new Int32Array(older.slots.length);
+      const slots = sharedInts(older.slots.length);
       table.slots = slots;
       const emptied: number[] = [];
       for (let slot = 0; slot < slots.length; slot++) {
@@ -197,7 +197,7 @@ class HashTable {
       while (most * 2 > slots) {
         slots *= 2;
       }
-      table.slots = new Int32Array(slots);
+      table.slots = sharedInts(slots);
       for (let at = 0; at < table.size; at++) {
         table.place(at);
       }
@@ -273,9 +273,16 @@ class HashTable {
     return this.findBytes(source, 0, source.length);
   }
 
-  trim(): void {
-    this.bytes = this.bytes.slice(0, this.used);
-    this.offsets = this.offsets.slice(0, this.size + 1);
+  share(): void {
+    const bytes = sharedBytes(this.used);
+    bytes.set(this.bytes.subarray(0, this.used));
+    const offsets = sharedInts(this.size + 1);
+    offsets.set(this.offsets.subarray(0, this.size + 1));
+    const slots = sharedInts(this.slots.length);
+    slots.set(this.slots);
+    this.bytes = bytes;
+    this.offsets = offsets;
+    this.slots = slots;
   }
 
   hashAt(at: number): string {
@@ -341,6 +348,22 @@ function hashBytes(source: Uint8Array, start: number, end: number): number {
     hash = Math.imul(hash ^ source[index], 0x01000193);
   }
   return hash >>> 0;
+}
+
+function sharedBytes(length: number): Uint8Array<SharedArrayBuffer> {
+  return new Uint8Array(new SharedArrayBuffer(length));
+}
+
+function sharedInts(length: number): Int32Array<SharedArrayBuffer> {
+  return new Int32Array(
+    new SharedArrayBuffer(length * Int32Array.BYTES_PER_ELEMENT),
+  );
+}
+
+function sharedTimes(length: number): Float64Array<SharedArrayBuffer> {
+  return new Float64Array(
+    new SharedArrayBuffer(length * Float64Array.BYTES_PER_ELEMENT),
+  );
 }
 
 function grownBytes(array: Uint8Array): Uint8Array<ArrayBuffer> {
@@ -414,7 +437,7 @@ export class CommitsBuilder {
 
   async finish(sliceTime = 10): Promise<Commits> {
     this.end();
-    const parents = new Int32Array(this.parentCount);
+    const parents = sharedInts(this.parentCount);
     let at = 0;
     while (at < this.parentCount) {
       const until = performance.now() + sliceTime;
@@ -432,7 +455,7 @@ export class CommitsBuilder {
 
   finishNow(): Commits {
     this.end();
-    const parents = new Int32Array(this.parentCount);
+    const parents = sharedInts(this.parentCount);
     this.resolve(parents, 0, this.parentCount);
     return this.built(parents);
   }
@@ -445,18 +468,15 @@ export class CommitsBuilder {
   }
 
   private built(parents: Int32Array): Commits {
-    const starts = this.starts.slice(0, this.count + 1);
+    const starts = sharedInts(this.count + 1);
+    starts.set(this.starts.subarray(0, this.count));
     starts[this.count] = this.parentCount;
     this.parentBytes = new Uint8Array(0);
     this.parentOffsets = new Int32Array(0);
-    this.hashes.trim();
-    return new Commits(
-      this.count,
-      starts,
-      parents,
-      this.hashes,
-      this.timestamped ? this.times.slice(0, this.count) : undefined,
-    );
+    this.hashes.share();
+    const times = this.timestamped ? sharedTimes(this.count) : undefined;
+    times?.set(this.times.subarray(0, this.count));
+    return new Commits(this.count, starts, parents, this.hashes, times);
   }
 
   private resolve(parents: Int32Array, from: number, to: number): void {

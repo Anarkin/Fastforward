@@ -1,11 +1,17 @@
 import { StringDecoder } from 'node:string_decoder';
 import type { Commits } from '../history/commits';
 import {
+  joinCommits,
   readCommits,
   type ReadCommits,
   type ReadOptions,
 } from '../history/commitReads';
-import { extendHistory, keepsHistory, regionHistory } from '../history/extend';
+import {
+  keepsHistory,
+  topOfExtension,
+  topOfRegion,
+  type Top,
+} from '../history/extend';
 import { isHashPrefix } from '../../shared/hashes';
 import { folded } from '../../../../shared/textMatches';
 import type {
@@ -187,10 +193,13 @@ export async function extendedHistory(
     commitTimes(gitPath, cwd, heads, signal),
   ]);
   const extension = { older, oldHeads, oldTimes, newer, tips };
-  const extended = extendHistory(extension);
+  const extended = topOfExtension(extension);
+  if (extended) {
+    return onTopOf(older, extended);
+  }
   const { times } = newer;
-  if (extended || !times || !keepsHistory(extension)) {
-    return extended;
+  if (!times || !keepsHistory(extension)) {
+    return undefined;
   }
   const since = times.reduce((oldest, time) => Math.min(oldest, time));
   const timeOf = (tip: string) => {
@@ -215,12 +224,17 @@ export async function extendedHistory(
   for (let at = region.length; at < region.size; at++) {
     below.push(region.hashAt(at));
   }
-  return regionHistory({
+  const top = topOfRegion({
     ...extension,
     region,
     since,
     belowTimes: await commitTimes(gitPath, cwd, below, signal),
   });
+  return top && onTopOf(older, top);
+}
+
+function onTopOf(older: Commits, { commits, dropped }: Top): Promise<Commits> {
+  return joinCommits(commits, older, dropped);
 }
 
 const maxRegionCommits = 100_000;

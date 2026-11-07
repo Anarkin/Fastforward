@@ -112,7 +112,20 @@ export class Shown {
   }
 }
 
+const knownHeads = new WeakMap<Commits, readonly string[]>();
+
+export function rememberHeads(
+  commits: Commits,
+  heads: readonly string[],
+): void {
+  knownHeads.set(commits, heads);
+}
+
 export function headsOf(commits: Commits): Set<string> {
+  const known = knownHeads.get(commits);
+  if (known !== undefined) {
+    return new Set(known);
+  }
   const { length, parents } = commits;
   const hasChild = new Uint8Array(length);
   for (let index = 0; index < parents.length; index++) {

@@ -1,4 +1,9 @@
-import { Commits } from './commits';
+import type { Commits } from './commits';
+
+export interface Top {
+  readonly commits: Commits;
+  readonly dropped: number;
+}
 
 export interface Extension {
   readonly older: Commits;
@@ -8,13 +13,13 @@ export interface Extension {
   readonly tips: ReadonlySet<string>;
 }
 
-export function extendHistory({
+export function topOfExtension({
   older,
   oldHeads,
   oldTimes,
   newer,
   tips,
-}: Extension): Commits | undefined {
+}: Extension): Top | undefined {
   const { times } = newer;
   if (!times || !keepsHistory({ older, oldHeads, newer, tips })) {
     return undefined;
@@ -32,7 +37,7 @@ export function extendHistory({
   ) {
     return undefined;
   }
-  return Commits.replacingTop(newer, older, 0);
+  return { commits: newer, dropped: 0 };
 }
 
 function tipsBuiltOnUntied({
@@ -129,7 +134,7 @@ export interface Region extends Extension {
   readonly belowTimes: ReadonlyMap<string, number>;
 }
 
-export function regionHistory({
+export function topOfRegion({
   older,
   oldHeads,
   oldTimes,
@@ -138,7 +143,7 @@ export function regionHistory({
   region,
   since,
   belowTimes,
-}: Region): Commits | undefined {
+}: Region): Top | undefined {
   const { times } = region;
   if (
     !times ||
@@ -159,7 +164,7 @@ export function regionHistory({
   ) {
     return undefined;
   }
-  return Commits.replacingTop(region, older, dropped);
+  return { commits: region, dropped };
 }
 
 function noneIn(commits: Commits, list: Commits): boolean {

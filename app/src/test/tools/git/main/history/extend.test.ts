@@ -5,10 +5,11 @@ import {
   CommitsBuilder,
 } from '../../../../../tools/git/main/history/commits';
 import {
-  extendHistory,
   keepsTiedOrder,
   ranksOf,
-  regionHistory,
+  topOfExtension,
+  topOfRegion,
+  type Top,
 } from '../../../../../tools/git/main/history/extend';
 import { entriesOf } from './historyFixtures';
 
@@ -25,18 +26,26 @@ function newerOf(lines: string): Commits {
   return builder.finishNow();
 }
 
+function onTopOf(history: Commits, top: Top | undefined) {
+  return top && Commits.replacingTop(top.commits, history, top.dropped);
+}
+
 function extended(
   lines: string,
   tips: readonly string[],
   oldTimes: Readonly<Record<string, number>> = { c2: 30, s1: 25 },
 ) {
-  return extendHistory({
-    older: Commits.of(older),
-    oldHeads: new Set(['c2', 's1']),
-    oldTimes: new Map(Object.entries(oldTimes)),
-    newer: newerOf(lines),
-    tips: new Set(tips),
-  });
+  const history = Commits.of(older);
+  return onTopOf(
+    history,
+    topOfExtension({
+      older: history,
+      oldHeads: new Set(['c2', 's1']),
+      oldTimes: new Map(Object.entries(oldTimes)),
+      newer: newerOf(lines),
+      tips: new Set(tips),
+    }),
+  );
 }
 
 function joined(newer: readonly { hash: string; parents: string[] }[]) {
@@ -156,16 +165,20 @@ suite('Extending a history among its newest commits', () => {
     belowTimes: Readonly<Record<string, number>> = { c0: 10 },
     tips: readonly string[] = ['m'],
   ) {
-    return regionHistory({
-      older: Commits.of(line),
-      oldHeads: new Set(['c2']),
-      oldTimes: new Map([['c2', 30]]),
-      newer: newerOf(newer),
-      tips: new Set(tips),
-      region: newerOf(region),
-      since: 15,
-      belowTimes: new Map(Object.entries(belowTimes)),
-    });
+    const history = Commits.of(line);
+    return onTopOf(
+      history,
+      topOfRegion({
+        older: history,
+        oldHeads: new Set(['c2']),
+        oldTimes: new Map([['c2', 30]]),
+        newer: newerOf(newer),
+        tips: new Set(tips),
+        region: newerOf(region),
+        since: 15,
+        belowTimes: new Map(Object.entries(belowTimes)),
+      }),
+    );
   }
 
   test('puts new commits among the newest old ones where git orders them, keeping the older ones below', () => {
@@ -263,9 +276,9 @@ suite('Extending a history among its newest commits', () => {
       since: 20,
       belowTimes: new Map([['c0', 5]]),
     };
-    assert.ok(regionHistory({ ...below, tips: new Set(['h', 'n', 'p', 'q']) }));
+    assert.ok(topOfRegion({ ...below, tips: new Set(['h', 'n', 'p', 'q']) }));
     assert.strictEqual(
-      regionHistory({ ...below, tips: new Set(['h', 'n', 'q', 'p']) }),
+      topOfRegion({ ...below, tips: new Set(['h', 'n', 'q', 'p']) }),
       undefined,
     );
   });
@@ -285,7 +298,7 @@ suite('Extending a history among its newest commits', () => {
       belowTimes: new Map([['p', 10]]),
     };
     assert.ok(
-      regionHistory({
+      topOfRegion({
         ...builtOn,
         oldTimes: new Map([
           ['p', 10],
@@ -294,7 +307,7 @@ suite('Extending a history among its newest commits', () => {
       }),
     );
     assert.strictEqual(
-      regionHistory({
+      topOfRegion({
         ...builtOn,
         oldTimes: new Map([
           ['p', 10],

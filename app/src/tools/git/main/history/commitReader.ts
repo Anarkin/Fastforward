@@ -1,4 +1,10 @@
-import { buffersOf, CommitsBuilder, type CommitsParts } from './commits';
+import {
+  buffersOf,
+  Commits,
+  CommitsBuilder,
+  type CommitsParts,
+} from './commits';
+import { headsOf } from './merges';
 
 export type ToReader =
   | {
@@ -10,7 +16,14 @@ export type ToReader =
     }
   | { readonly type: 'add'; readonly id: number; readonly chunk: Uint8Array }
   | { readonly type: 'finish'; readonly id: number }
-  | { readonly type: 'drop'; readonly id: number };
+  | { readonly type: 'drop'; readonly id: number }
+  | {
+      readonly type: 'join';
+      readonly id: number;
+      readonly top: CommitsParts;
+      readonly older: CommitsParts;
+      readonly dropped: number;
+    };
 
 export type FromReader =
   | {
@@ -18,6 +31,7 @@ export type FromReader =
       readonly id: number;
       readonly commits: CommitsParts;
       readonly read: number;
+      readonly heads?: readonly string[];
     }
   | { readonly type: 'failed'; readonly id: number; readonly message: string };
 
@@ -54,10 +68,37 @@ export function serveCommitReads(port: ReaderPort): void {
       case 'drop':
         builders.delete(message.id);
         return;
+      case 'join':
+        join(port, message);
+        return;
       default:
         message satisfies never;
     }
   });
+}
+
+function join(
+  port: ReaderPort,
+  { id, top, older, dropped }: Extract<ToReader, { type: 'join' }>,
+): void {
+  try {
+    const joined = Commits.replacingTop(
+      Commits.fromParts(top),
+      Commits.fromParts(older),
+      dropped,
+    );
+    const commits = joined.parts();
+    port.postMessage(
+      { type: 'read', id, commits, read: 0, heads: [...headsOf(joined)] },
+      buffersOf(commits),
+    );
+  } catch (error) {
+    port.postMessage({
+      type: 'failed',
+      id,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 async function answer(

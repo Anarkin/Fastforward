@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { strings } from '../../../../shared/strings';
 import { Commits } from './commits';
+import { rememberHeads } from './merges';
 import {
   serveCommitReads,
   type FromReader,
@@ -30,18 +31,45 @@ export interface CommitsReading {
 export interface CommitReads {
   readonly threaded: boolean;
   start(options?: ReadOptions): CommitsReading;
+  join(top: Commits, older: Commits, dropped: number): Promise<Commits>;
 }
 
 type Send = (message: ToReader, transfer?: readonly ArrayBuffer[]) => void;
 
+interface Answered {
+  receive(message: FromReader): void;
+  lost(error: Error): void;
+}
+
 interface Thread {
   readonly send: Send;
-  readonly readings: Map<number, Reading>;
+  readonly readings: Map<number, Answered>;
 }
 
 const batchBytes = 64 * 1024;
 
-class Reading implements CommitsReading {
+class Joining implements Answered {
+  constructor(
+    private readonly resolve: (commits: Commits) => void,
+    private readonly reject: (error: Error) => void,
+  ) {}
+
+  receive(message: FromReader): void {
+    if (message.type === 'read') {
+      const commits = Commits.fromParts(message.commits);
+      rememberHeads(commits, message.heads ?? []);
+      this.resolve(commits);
+    } else {
+      this.reject(new Error(message.message));
+    }
+  }
+
+  lost(error: Error): void {
+    this.reject(error);
+  }
+}
+
+class Reading implements CommitsReading, Answered {
   private answer:
     | {
         readonly resolve: (read: ReadCommits) => void;
@@ -103,7 +131,6 @@ class Reading implements CommitsReading {
   }
 
   receive(message: FromReader): void {
-    this.thread.readings.delete(this.id);
     if (message.type === 'read') {
       this.answer?.resolve({
         commits: Commits.fromParts(message.commits),
@@ -156,9 +183,12 @@ export function commitReads(folder: string): CommitReads {
   let current: Thread | undefined;
   let lastId = 0;
   const opened = (): Thread => {
-    const readings = new Map<number, Reading>();
-    const receive = (message: FromReader) =>
-      readings.get(message.id)?.receive(message);
+    const readings = new Map<number, Answered>();
+    const receive = (message: FromReader) => {
+      const answered = readings.get(message.id);
+      readings.delete(message.id);
+      answered?.receive(message);
+    };
     const thread: Thread = {
       send: threaded
         ? inWorker(file, receive, () => {
@@ -191,6 +221,19 @@ export function commitReads(folder: string): CommitReads {
       });
       return reading;
     },
+    join: (top, older, dropped) =>
+      new Promise((resolve, reject) => {
+        const id = ++lastId;
+        current ??= opened();
+        current.readings.set(id, new Joining(resolve, reject));
+        current.send({
+          type: 'join',
+          id,
+          top: top.parts(),
+          older: older.parts(),
+          dropped,
+        });
+      }),
   };
 }
 
@@ -199,4 +242,13 @@ let reads: CommitReads | undefined;
 export function readCommits(options?: ReadOptions): CommitsReading {
   reads ??= commitReads(__dirname);
   return reads.start(options);
+}
+
+export function joinCommits(
+  top: Commits,
+  older: Commits,
+  dropped: number,
+): Promise<Commits> {
+  reads ??= commitReads(__dirname);
+  return reads.join(top, older, dropped);
 }
