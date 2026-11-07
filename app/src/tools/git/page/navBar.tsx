@@ -51,15 +51,12 @@ function useNow(): number {
 }
 
 export function NavButtons() {
-  const back = useGit((state) => state.tab.back);
-  const forward = useGit((state) => state.tab.forward);
   const fetching = useGit((state) => state.tab.fetching);
   const headCommit = useGit((state) => state.tab.repository?.headCommit);
   const autoFetch = useGit((state) => state.autoFetch);
   const autoFetchMinutes = useGit((state) => state.autoFetchMinutes);
   const lastFetch = useGit((state) => state.lastFetch);
   const {
-    navigate: onNavigate,
     jump,
     fetch: onFetch,
     changeAutoFetch: onAutoFetch,
@@ -74,12 +71,8 @@ export function NavButtons() {
   const title = fetchTitle(lastFetch, status === 'failed', now);
   return (
     <div className="nav-buttons">
-      <HistoryButton direction="back" entries={back} onNavigate={onNavigate} />
-      <HistoryButton
-        direction="forward"
-        entries={forward}
-        onNavigate={onNavigate}
-      />
+      <HistoryButton direction="back" />
+      <HistoryButton direction="forward" />
       <button
         className="nav-button"
         title={strings.actions.head}
@@ -133,15 +126,11 @@ export function nextHistoryOpen(open: boolean, entries: number): boolean {
   return open && entries > 0;
 }
 
-function HistoryButton({
-  direction,
-  entries,
-  onNavigate,
-}: {
-  direction: Direction;
-  entries: readonly NavigationEntry[];
-  onNavigate: (direction: Direction, steps: number) => void;
-}) {
+function HistoryButton({ direction }: { direction: Direction }) {
+  const entries = useGit((state) =>
+    direction === 'back' ? state.tab.back : state.tab.forward,
+  );
+  const { navigate: onNavigate } = useGitActions();
   const [open, setOpen] = useState(false);
   const next = nextHistoryOpen(open, entries.length);
   if (next !== open) {

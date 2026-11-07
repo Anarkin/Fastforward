@@ -92,9 +92,9 @@ function buttonsIn(node: React.ReactNode): Clickable[] {
 
 function clicksOn(info: BookmarkRef): GitToHost[] {
   const posted: GitToHost[] = [];
-  let drawn: React.ReactNode;
+  let buttons: Clickable[] = [];
   function Probe() {
-    drawn = RefBubble({ info, actions: true });
+    buttons = buttonsIn(RefBubble({ info, actions: true }));
     return null;
   }
   renderToStaticMarkup(
@@ -107,7 +107,7 @@ function clicksOn(info: BookmarkRef): GitToHost[] {
       <Probe />
     </GitStore>,
   );
-  for (const button of buttonsIn(drawn)) {
+  for (const button of buttons) {
     button.props.onClick?.({ stopPropagation: noop });
   }
   return posted;
@@ -518,12 +518,20 @@ suite('Bubbles', () => {
 
   test('pushes the tag of its bubble without selecting its row or taking the keys from the list, marking only that tag as running while it pushes', () => {
     const calls: string[] = [];
-    const action = renderedBy(TagPushAction, {
-      tag: 'v1',
-      remote: 'origin',
-      running: false,
-      onPush: (name) => calls.push(`push ${name}`),
-    });
+    const action = renderedBy(
+      TagPushAction,
+      { tag: 'v1' },
+      {
+        git: gitStore(
+          { tagRemote: 'origin', tab: { root: '/repo' } },
+          (message) => {
+            if (message.type === 'pushTag') {
+              calls.push(`push ${message.name}`);
+            }
+          },
+        ),
+      },
+    );
     assert.ok(isValidElement<{ children: React.ReactElement }>(action));
     const button = action.props.children;
     assert.ok(

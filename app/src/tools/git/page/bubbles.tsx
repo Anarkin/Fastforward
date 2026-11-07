@@ -72,8 +72,7 @@ export function RefBubble({
   const elsewhere = useGit((state) => state.elsewhere.has(name));
   const tagRemote = useGit((state) => state.tab.repository?.tagRemote);
   const onRemote = useGit((state) => state.tagsOnRemote.has(name));
-  const pushingTag = useGit((state) => state.tab.pushingTag.includes(name));
-  const { pull, push, pullBranch, pushBranch, pushTag } = useGitActions();
+  const { pull, push, pullBranch, pushBranch } = useGitActions();
   const branchItems = (
     !actions
       ? []
@@ -115,15 +114,7 @@ export function RefBubble({
       {branchShown && (
         <span className="bubble-actions">{branchItems.map(actionButton)}</span>
       )}
-      {tagShown && (
-        <TagPushAction
-          tag={name}
-          remote={tagRemote}
-          running={pushingTag}
-          idle={tagIdle}
-          onPush={pushTag}
-        />
-      )}
+      {tagShown && <TagPushAction tag={name} idle={tagIdle} />}
     </span>
   );
 }
@@ -216,17 +207,14 @@ function otherBranchItems(
 
 export function TagPushAction({
   tag,
-  remote,
-  running,
   idle = false,
-  onPush,
 }: {
   tag: string;
-  remote: string | undefined;
-  running: boolean;
   idle?: boolean;
-  onPush: (tag: string) => void;
 }) {
+  const remote = useGit((state) => state.tab.repository?.tagRemote);
+  const running = useGit((state) => state.tab.pushingTag.includes(tag));
+  const { pushTag: onPush } = useGitActions();
   return (
     <span className="bubble-actions">
       {actionButton({

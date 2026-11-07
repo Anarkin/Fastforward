@@ -68,7 +68,9 @@ const modes: readonly {
 
 export function Viewer() {
   const file = useCommander((state) => state.view.viewing) ?? '';
-  const fileColors = useCommander((state) => state.view.fileColors);
+  const fileColor = useCommander((state) =>
+    colorOfFileNamed(nameOf(state.view.viewing ?? ''), state.view.fileColors),
+  );
   const viewing = useCommander(({ viewed, view }) =>
     viewed?.tab === view.tab ? viewed : undefined,
   );
@@ -307,7 +309,7 @@ export function Viewer() {
           <PathTitle
             path={file}
             hidden={viewing?.hidden ?? []}
-            color={colorOfFileNamed(nameOf(file), fileColors)}
+            color={fileColor}
           />
           <div className="column-actions">
             <SearchButton
