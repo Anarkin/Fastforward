@@ -4,6 +4,7 @@ import type { CommanderToHost } from '../../../../tools/commander/shared/protoco
 import { maxDroppedIcons } from '../../../../tools/commander/shared/icons';
 import {
   createCommanderStore,
+  filterOf,
   shownColumns,
 } from '../../../../tools/commander/page/store';
 import { nextSort } from '../../../../tools/commander/page/listing';
@@ -36,7 +37,46 @@ function shown() {
   return { posted, store };
 }
 
+const listing = (folder: string, tab = '1') =>
+  ({
+    type: 'listing',
+    tab,
+    side: 'left',
+    folder,
+    hidden: [],
+    entries: [],
+    parent: true,
+    back: false,
+    forward: false,
+    elevated: false,
+    selected: undefined,
+  }) as const;
+
 suite('Commander store', () => {
+  test('keeps the filter of each side of a tab while it shows the folder the filter was typed in, through another tab shown, forgetting it once the side shows another folder or the tab closes', () => {
+    const { store } = shown();
+    const filtered = () => filterOf(store.getState(), 'left');
+    store.getState().filterSide('left', 'png');
+    assert.strictEqual(filtered(), 'png');
+    assert.strictEqual(filterOf(store.getState(), 'right'), undefined);
+    store.getState().receive({ type: 'show', tab: '2' });
+    store.getState().receive(listing(left.folder, '2'));
+    assert.strictEqual(filtered(), undefined);
+    store.getState().receive({ type: 'show', tab: '1' });
+    assert.strictEqual(filtered(), 'png');
+    store.getState().receive(listing(`${left.folder}/src`));
+    store.getState().receive(listing(left.folder));
+    assert.strictEqual(filtered(), undefined);
+    store.getState().filterSide('left', 'jpg');
+    store.getState().receive({ type: 'closed', tab: '1' });
+    store.getState().receive({ type: 'show', tab: '1' });
+    store.getState().receive(listing(left.folder));
+    assert.strictEqual(filtered(), undefined);
+    store.getState().filterSide('left', 'gif');
+    store.getState().filterSide('left', undefined);
+    assert.strictEqual(filtered(), undefined);
+  });
+
   test('keeps where each list of a side was scrolled to, apart from the lists of another store', () => {
     const store = createCommanderStore(noop);
     assert.strictEqual(store.getState().scrollOf('left /work'), 0);

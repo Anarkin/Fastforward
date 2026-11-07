@@ -2,10 +2,11 @@ import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../shared/strings';
 import { maxDroppedIcons } from '../shared/icons';
-import type {
-  CommanderToHost,
-  CommanderToWebview,
-  Side,
+import {
+  sides,
+  type CommanderToHost,
+  type CommanderToWebview,
+  type Side,
 } from '../shared/protocol';
 import type {
   ColumnWidths,
@@ -59,6 +60,12 @@ interface CommanderSource {
   readonly noAccess: NoAccess | undefined;
   readonly resized:
     { readonly from: ColumnWidths; readonly widths: ColumnWidths } | undefined;
+  readonly filters: ReadonlyMap<string, PaneFilter>;
+}
+
+interface PaneFilter {
+  readonly folder: string;
+  readonly query: string;
 }
 
 interface CommanderActions {
@@ -104,6 +111,7 @@ interface CommanderActions {
   readonly resetColumn: (column: SizedColumn) => void;
   readonly dropIcon: (ticket: string) => void;
   readonly scrollOf: (key: string) => number;
+  readonly filterSide: (side: Side, query: string | undefined) => void;
   readonly keepScroll: (key: string, offset: number) => void;
   readonly saveThumbnail: (
     side: Side,
@@ -123,6 +131,7 @@ const commanderDefaults: CommanderSource = {
   deleting: undefined,
   noAccess: undefined,
   resized: undefined,
+  filters: new Map(),
 };
 
 const viewerStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
@@ -178,6 +187,63 @@ function received(
   }
 }
 
+function filterKey(tab: string, side: Side): string {
+  return JSON.stringify([tab, side]);
+}
+
+export function filterOf(
+  { view, filters }: CommanderSource,
+  side: Side,
+): string | undefined {
+  const filter =
+    view.tab === undefined ? undefined : filters.get(filterKey(view.tab, side));
+  return filter !== undefined && filter.folder === view.panes[side]?.folder
+    ? filter.query
+    : undefined;
+}
+
+function seenFilters({
+  view,
+  filters,
+}: CommanderSource): ReadonlyMap<string, PaneFilter> {
+  const { tab, panes } = view;
+  if (tab === undefined) {
+    return filters;
+  }
+  const left = sides
+    .map((side) => filterKey(tab, side))
+    .filter((key, index) => {
+      const filter = filters.get(key);
+      const folder = panes[sides[index]]?.folder;
+      return (
+        filter !== undefined && folder !== undefined && filter.folder !== folder
+      );
+    });
+  if (left.length === 0) {
+    return filters;
+  }
+  const kept = new Map(filters);
+  for (const key of left) {
+    kept.delete(key);
+  }
+  return kept;
+}
+
+function withoutTab(
+  filters: ReadonlyMap<string, PaneFilter>,
+  tab: string,
+): ReadonlyMap<string, PaneFilter> {
+  const keys = sides.map((side) => filterKey(tab, side));
+  if (!keys.some((key) => filters.has(key))) {
+    return filters;
+  }
+  const kept = new Map(filters);
+  for (const key of keys) {
+    kept.delete(key);
+  }
+  return kept;
+}
+
 export function createCommanderStore(
   post: (message: CommanderToHost) => void,
   initial: Partial<CommanderSource> = {},
@@ -191,6 +257,10 @@ export function createCommanderStore(
     const announced = (change: () => void) => {
       const before = get().view;
       change();
+      const filters = seenFilters(get());
+      if (filters !== get().filters) {
+        set({ filters });
+      }
       const { tab, active } = get().view;
       if (
         tab !== undefined &&
@@ -231,6 +301,9 @@ export function createCommanderStore(
           return;
         }
         announced(() => set((state) => received(state, message)));
+        if (message.type === 'closed') {
+          set((state) => ({ filters: withoutTab(state.filters, message.tab) }));
+        }
       },
       request: post,
       listenViewer: (handler) => {
@@ -322,6 +395,21 @@ export function createCommanderStore(
         saveColumns({ ...columns, [column]: defaultColumns[column] });
       },
       scrollOf: (key) => scrolls.of(key),
+      filterSide: (side, query) =>
+        set((state) => {
+          const { tab, panes } = state.view;
+          const folder = panes[side]?.folder;
+          if (tab === undefined) {
+            return state;
+          }
+          const filters = new Map(state.filters);
+          if (query === undefined || folder === undefined) {
+            filters.delete(filterKey(tab, side));
+          } else {
+            filters.set(filterKey(tab, side), { folder, query });
+          }
+          return { filters };
+        }),
       keepScroll: (key, offset) => scrolls.keep(key, offset),
       dropIcon: (ticket) => {
         if (dropped.push(ticket) > 1) {

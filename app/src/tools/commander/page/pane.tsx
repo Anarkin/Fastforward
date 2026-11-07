@@ -37,7 +37,12 @@ import { SearchButton, SearchRow } from '../../../ui/search';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { ColumnHeader } from './columnHeader';
 import { layouts, type Layout } from '../shared/settings';
-import { shownColumns, useCommander, useCommanderActions } from './store';
+import {
+  filterOf,
+  shownColumns,
+  useCommander,
+  useCommanderActions,
+} from './store';
 import { formatDate } from '../../../ui/dates';
 import { useShell } from '../../../shell/page/store';
 import {
@@ -297,17 +302,11 @@ export function Pane({
   ) => actions.shellMenu(side, names, at, extended);
   const onCompare = actions.compare;
   const allRows = pane?.rows ?? noRows;
-  const [filter, setFilter] = useState<{
-    readonly folder: string | undefined;
-    readonly query: string;
-  }>();
-  const [filteredFolder, setFilteredFolder] = useState(pane?.folder);
-  if (filteredFolder !== pane?.folder) {
-    setFilteredFolder(pane?.folder);
-    setFilter(undefined);
-  }
-  const filtering = filter !== undefined && filter.folder === pane?.folder;
-  const query = filtering ? filter.query : '';
+  const filter = useCommander((state) => filterOf(state, side));
+  const setFilter = (query: string | undefined) =>
+    actions.filterSide(side, query);
+  const filtering = filter !== undefined;
+  const query = filter ?? '';
   const words = useMemo(() => filterWords(query), [query]);
   const rows = useMemo(() => filteredRows(allRows, words), [allRows, words]);
   const filterInput = useRef<HTMLInputElement>(null);
@@ -323,7 +322,7 @@ export function Pane({
   }, [focusAsks]);
   const openFilter = () => {
     if (!filtering) {
-      setFilter({ folder: pane?.folder, query: '' });
+      setFilter('');
     }
     setFocusAsks(({ count }) => ({ count: count + 1, select: true }));
   };
@@ -333,7 +332,7 @@ export function Pane({
     setFilter(undefined);
   };
   const filterTo = (next: string) => {
-    setFilter({ folder: pane?.folder, query: next });
+    setFilter(next);
     const selection = filteredSelection(
       filteredRows(allRows, filterWords(next)),
       pane?.selected,
