@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
-import { BubbleActions, RefBubble } from '../../../tools/git/page/bubbles';
+import { RefBubble } from '../../../tools/git/page/bubbles';
 import { createGitStore, GitStore } from '../../../tools/git/page/store';
 import { emptyTabView } from '../../../tools/git/page/tabView';
 import { GraphCell } from '../../../tools/git/page/graph';
@@ -2495,13 +2495,15 @@ suite('Style', () => {
 
   test('dims an arrow of the blue bubble with nothing to do, and counts in figures of one width, so the bubble keeps its size as the counts change', () => {
     const actions = rendered(
-      createElement(BubbleActions, {
-        pulling: false,
-        pushing: false,
-        onPull: noop,
-        onPush: noop,
-        tracking: { upstream: 'origin/main', ahead: 0, behind: 12 },
-      }),
+      createElement(
+        GitStore,
+        { value: gitStore({ head: 'main' }) },
+        createElement(RefBubble, {
+          info: { kind: 'branch', name: 'main' },
+          tracking: { upstream: 'origin/main', ahead: 0, behind: 12 },
+          actions: true,
+        }),
+      ),
     );
     looks(withClass(actions, 'bubble-action', 'idle'), {
       opacity: 'var(--muted-opacity)',

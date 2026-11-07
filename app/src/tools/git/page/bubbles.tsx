@@ -13,7 +13,7 @@ export interface BranchActionsOf {
   readonly tracking?: Tracking;
 }
 
-export interface OtherBranchActionsOf {
+interface OtherBranchActionsOf {
   readonly pulling: boolean;
   readonly pushing: boolean;
   readonly elsewhere: boolean;
@@ -212,30 +212,6 @@ function otherBranchItems(
     tracking,
   });
   return [{ ...pull, idle: pull.idle || actions.elsewhere }, push];
-}
-
-export function OtherBranchButtons({
-  name,
-  tracking,
-  actions,
-}: {
-  name: string;
-  tracking: Tracking | undefined;
-  actions: OtherBranchActionsOf;
-}) {
-  return (
-    <span className="bubble-actions">
-      {otherBranchItems(name, tracking, actions).map(actionButton)}
-    </span>
-  );
-}
-
-export function BubbleActions(actions: BranchActionsOf) {
-  return (
-    <span className="bubble-actions">
-      {branchActionItems(actions).map(actionButton)}
-    </span>
-  );
 }
 
 export function TagPushAction({

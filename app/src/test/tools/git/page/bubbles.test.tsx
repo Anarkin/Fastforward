@@ -4,8 +4,6 @@ import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
   type BranchActionsOf,
-  BubbleActions,
-  OtherBranchButtons,
   TagPushAction,
   CommitBubble,
   HeadBubble,
@@ -24,8 +22,6 @@ import { classesOf, noop, renderedBy, tagWith } from '../../../fixtures';
 import { withStores } from '../../../componentFixtures';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
-
-const idle = { pulling: false, pushing: false, onPull: noop, onPush: noop };
 
 function shownIn(shown: ShownGit, node: React.ReactNode): string {
   return renderToStaticMarkup(
@@ -138,7 +134,31 @@ function checkedOut(
 }
 
 function actionsWith(tracking: BranchActionsOf['tracking']): string {
-  return renderToStaticMarkup(<BubbleActions {...idle} tracking={tracking} />);
+  return checkedOut(tracking, false);
+}
+
+function actionButtonsOf(bubble: React.ReactNode): React.ReactElement<{
+  onClick: (event: { stopPropagation: () => void }) => void;
+  onMouseDown: (event: { preventDefault: () => void }) => void;
+}>[] {
+  assert.ok(isValidElement<{ children: React.ReactNode[] }>(bubble));
+  const actions = bubble.props.children[1];
+  assert.ok(isValidElement<{ children: React.ReactElement[] }>(actions));
+  return actions.props.children.map((button) => {
+    assert.ok(
+      isValidElement<{
+        onClick: (event: { stopPropagation: () => void }) => void;
+        onMouseDown: (event: { preventDefault: () => void }) => void;
+      }>(button),
+    );
+    return button;
+  });
+}
+
+function postedTypes(posted: readonly GitToHost[]): string[] {
+  return posted.map((message) =>
+    'name' in message ? `${message.type} ${message.name}` : message.type,
+  );
 }
 
 suite('Bubbles', () => {
@@ -204,7 +224,7 @@ suite('Bubbles', () => {
   });
 
   test('names what pull and push do without naming the branch, as they sit on its bubble', () => {
-    const html = renderToStaticMarkup(<BubbleActions {...idle} />);
+    const html = actionsWith(undefined);
     tagWith(
       html,
       'title="Pull: fetch every remote, then fast-forward to the upstream"',
@@ -219,25 +239,24 @@ suite('Bubbles', () => {
 
   test('pulls and pushes from the bubble without selecting its row or taking the keys from the list', () => {
     const calls: string[] = [];
-    const actions = renderedBy(BubbleActions, {
-      ...idle,
-      onPull: () => calls.push('pull'),
-      onPush: () => calls.push('push'),
-    });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(actions));
-    for (const button of actions.props.children) {
-      assert.ok(
-        isValidElement<{
-          onClick: (event: { stopPropagation: () => void }) => void;
-          onMouseDown: (event: { preventDefault: () => void }) => void;
-        }>(button),
-      );
+    const posted: GitToHost[] = [];
+    const store = gitStore(
+      { head: 'main', tab: { root: '/repo' } },
+      (message) => posted.push(message),
+    );
+    const bubble = renderedBy(
+      RefBubble,
+      { info: { kind: 'branch', name: 'main' }, actions: true },
+      { git: store },
+    );
+    for (const button of actionButtonsOf(bubble)) {
       button.props.onMouseDown({
         preventDefault: () => calls.push('kept focus'),
       });
       button.props.onClick({
         stopPropagation: () => calls.push('row left alone'),
       });
+      calls.push(...postedTypes(posted.splice(0)));
     }
     assert.deepStrictEqual(calls, [
       'kept focus',
@@ -322,8 +341,9 @@ suite('Bubbles', () => {
       [{ pulling: true }, 'Pull:'],
       [{ pushing: true }, 'Push:'],
     ] as const) {
-      const html = renderToStaticMarkup(
-        <BubbleActions {...idle} {...running} />,
+      const html = shownIn(
+        { head: 'main', tab: running },
+        <RefBubble info={{ kind: 'branch', name: 'main' }} actions />,
       );
       const busy = tagWith(html, `title="${title}`, 'bubble-action', 'running');
       assert.match(busy, /disabled=""/);
@@ -428,28 +448,27 @@ suite('Bubbles', () => {
   });
 
   test('pulls and pushes the branch of its bubble, marking only the arrow of that branch as running', () => {
-    const pulled: string[] = [];
-    const action = renderedBy(OtherBranchButtons, {
-      name: 'side',
-      tracking: { upstream: 'origin/side', ahead: 0, behind: 2 },
-      actions: {
-        pulling: false,
-        pushing: false,
-        elsewhere: false,
-        onPull: (name) => pulled.push(`pull ${name}`),
-        onPush: (name) => pulled.push(`push ${name}`),
+    const posted: GitToHost[] = [];
+    const bubble = renderedBy(
+      RefBubble,
+      {
+        info: { kind: 'branch', name: 'side' },
+        tracking: { upstream: 'origin/side', ahead: 0, behind: 2 },
+        actions: true,
       },
-    });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(action));
-    for (const button of action.props.children) {
-      assert.ok(
-        isValidElement<{
-          onClick: (event: { stopPropagation: () => void }) => void;
-        }>(button),
-      );
+      {
+        git: gitStore({ head: 'main', tab: { root: '/repo' } }, (message) =>
+          posted.push(message),
+        ),
+      },
+    );
+    for (const button of actionButtonsOf(bubble)) {
       button.props.onClick({ stopPropagation: noop });
     }
-    assert.deepStrictEqual(pulled, ['pull side', 'push side']);
+    assert.deepStrictEqual(postedTypes(posted), [
+      'pullBranch side',
+      'pushBranch side',
+    ]);
     const busy = otherBranch(
       'side',
       { upstream: 'origin/side', ahead: 0, behind: 2 },
