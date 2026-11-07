@@ -747,6 +747,22 @@ suite('Running git in a repository', () => {
     );
   });
 
+  test('leaves the user and password of a URL out of what it says when git fails, as git itself does, the log and the notices showing it', async () => {
+    const url = 'https://x-token:ghp_secret@example.invalid/org/repo.git';
+    for (const args of [
+      ['rev-parse', url],
+      ['config', '--get', `remote.${url}.url`],
+    ]) {
+      await assert.rejects(runGit(gitPath, cwd, args), (error) => {
+        for (const said of [String(error), gitErrorText(error)]) {
+          assert.doesNotMatch(said, /x-token|ghp_secret/, said);
+        }
+        assert.match(String(error), /https:\/\/example\.invalid\/org\/repo/);
+        return true;
+      });
+    }
+  });
+
   test('starts git again when Windows could not initialize its process, as it fails now and then on a loaded machine before git runs at all', async (context) => {
     if (process.platform !== 'win32') {
       context.skip();

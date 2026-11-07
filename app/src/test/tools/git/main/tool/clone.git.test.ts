@@ -275,6 +275,59 @@ suite('Git tool cloning repositories', () => {
     });
   });
 
+  test('leaves the user and password of a URL out of the log and the notices, as git leaves them out of what it says', async () => {
+    const parent = into('credentials');
+    const missing = createServer((_request, response) => {
+      response.statusCode = 404;
+      response.end();
+    });
+    await new Promise<void>((listening) =>
+      missing.listen(0, '127.0.0.1', listening),
+    );
+    const address = missing.address();
+    assert.ok(address !== null && typeof address === 'object');
+    const shown = `http://127.0.0.1:${address.port}/app.git`;
+    const asked = shown.replace('//', '//x-token:ghp_secret@');
+    try {
+      await withView(log, [], async (view) => {
+        await withNotices(view.page, 'error', async (notices) => {
+          await view.connection.receive({ type: 'openClone' });
+          await view.connection.receive({
+            type: 'clone',
+            url: asked,
+            folder: parent,
+            name: 'app',
+          });
+          await view.connection.receive({ type: 'closeClone' });
+          await view.view.idle();
+          assert.strictEqual(notices.length, 1);
+          assert.ok(
+            notices[0].startsWith(`Couldn't clone ${shown}. `),
+            notices[0],
+          );
+        });
+        for (const line of [
+          ...info,
+          ...logged.map((entry) =>
+            entry instanceof Error ? `${entry.stack}` : String(entry),
+          ),
+        ]) {
+          assert.doesNotMatch(line, /x-token|ghp_secret/, line);
+        }
+        takeErrorsLogged(
+          logged,
+          /^Cloning http:\/\/127\.0\.0\.1:\d+\/app\.git failed$/,
+          /not found|404/,
+        );
+        assert.ok(
+          info.includes(`Cloning ${shown} into ${path.join(parent, 'app')}`),
+        );
+      });
+    } finally {
+      missing.close();
+    }
+  });
+
   test('clones once when asked twice at once, as a second git refused the folder and removed what the first was cloning into it', async () => {
     const parent = into('twice');
     const target = path.join(parent, 'app');

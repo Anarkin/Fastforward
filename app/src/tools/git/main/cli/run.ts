@@ -4,6 +4,7 @@ import { lstat, readFile, rm } from 'node:fs/promises';
 import { isAbsolute, join, win32 } from 'node:path';
 import type { Readable } from 'node:stream';
 import { strings } from '../../../../shared/strings';
+import { withoutCredentials } from './credentials';
 import { stopTree } from './gitSpawner';
 import { KeptGits } from './keptGit';
 import { GitChild, spawnGit } from './spawnedGit';
@@ -376,9 +377,11 @@ function runGitOnce(
         return;
       }
       const printedErrors = Buffer.concat(stderr).toString('utf8').trim();
-      const said = progress ? withoutProgress(printedErrors) : printedErrors;
+      const said = withoutCredentials(
+        progress ? withoutProgress(printedErrors) : printedErrors,
+      );
       const stopped = tooLarge || stoppedBy !== null;
-      const command = args.join(' ');
+      const command = withoutCredentials(args.join(' '));
       const reason = error
         ? strings.errors.gitFailed(command, error.message)
         : tooLarge

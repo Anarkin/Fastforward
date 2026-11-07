@@ -13,6 +13,7 @@ import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import type { Log } from '../../../shell/main/log';
 import { strings } from '../../../shared/strings';
 import { cloneRepository, cloneTargetProblem, removeClone } from './cli/clone';
+import { withoutCredentials } from './cli/credentials';
 import { gitErrorText } from './cli/errorText';
 import { isFolder } from './cli/repository';
 
@@ -150,13 +151,14 @@ export class Clones {
     this.running = running;
     this.form = undefined;
     this.host.saveFolder(ask.folder);
-    this.log.info(strings.log.cloning(ask.url, target));
+    this.log.info(strings.log.cloning(withoutCredentials(ask.url), target));
     this.show();
     this.host.track(this.run(running, existed));
   }
 
   private async run(running: Running, existed: boolean): Promise<void> {
     const { ask, target, stop } = running;
+    const url = withoutCredentials(ask.url);
     try {
       await cloneRepository(this.gitPath, ask.folder, ask.url, ask.name, {
         stop: AbortSignal.any([stop.signal, this.quitting]),
@@ -169,7 +171,7 @@ export class Clones {
       });
       this.running = undefined;
       if (stop.signal.aborted || this.quitting.aborted) {
-        this.log.info(strings.log.cloneStopped(ask.url));
+        this.log.info(strings.log.cloneStopped(url));
         this.form = { kind: 'form', ...ask };
         if (this.shown) {
           this.show();
@@ -177,7 +179,7 @@ export class Clones {
         return;
       }
       const text = gitErrorText(error);
-      this.log.error(strings.log.cloneFailed(ask.url));
+      this.log.error(strings.log.cloneFailed(url));
       this.log.error(error instanceof Error ? error : text);
       this.form = { kind: 'form', ...ask, message: text };
       if (this.shown) {
@@ -186,13 +188,13 @@ export class Clones {
         this.host.post({
           type: 'notice',
           level: 'error',
-          message: strings.messages.couldNotClone(ask.url, text),
+          message: strings.messages.couldNotClone(url, text),
         });
       }
       return;
     }
     this.running = undefined;
-    this.log.info(strings.log.cloned(ask.url, target));
+    this.log.info(strings.log.cloned(url, target));
     if (this.shown) {
       this.shown = false;
       this.host.post({ type: 'clone', view: undefined });
@@ -200,7 +202,7 @@ export class Clones {
       this.host.post({
         type: 'notice',
         level: 'info',
-        message: strings.messages.cloned(ask.url, target),
+        message: strings.messages.cloned(url, target),
       });
     }
     await this.host.open(target);
