@@ -37,11 +37,19 @@ import { SkeletonRows, useSkeleton } from '../../../ui/skeleton';
 import { gitKeymap } from '../shared/keymap';
 import { strings } from '../../../shared/strings';
 import { listMoveOf, type VisibleRows } from '../../../ui/listMoves';
-import { keyPressed } from '../../../ui/shortcuts';
+import { keyPressed, useBinding } from '../../../ui/shortcuts';
 import { fileRowKey } from './tree';
-import type { Folders } from './viewFolders';
 import { VirtualRows, type ListedRows } from '../../../ui/virtualRows';
 import { useShell } from '../../../shell/page/store';
+import {
+  fileFilterOf,
+  folderViewOf,
+  openingOf,
+  shownFoldersOf,
+  useGit,
+  useGitActions,
+} from './store';
+import { treeOf } from './tabView';
 
 interface MovedCursor {
   readonly key: string;
@@ -220,49 +228,41 @@ function headerTitle(area: ChangeArea | undefined): string {
       : strings.files.unstaged;
 }
 
-export function Files({
-  title = strings.files.title,
-  noChanges,
-  showAll,
-  onShowAll,
-  closedFolders,
-  onToggleClosedFolder,
-  files,
-  staged,
-  loading,
-  tree,
-  openedFolders,
-  onToggleOpenFolder,
-  onReplaceFolders,
-  selected,
-  area,
-  onSelect,
-  view,
-  filter,
-  onFilter,
-  filterAsked = 0,
-}: {
-  title?: string;
-  noChanges?: string;
-  showAll: boolean;
-  onShowAll: (show: boolean) => void;
-  closedFolders: ReadonlySet<string>;
-  onToggleClosedFolder: (folder: string) => void;
-  files: readonly FileChange[];
-  staged?: readonly FileChange[];
-  loading: boolean;
-  tree: readonly string[] | undefined;
-  openedFolders: ReadonlySet<string>;
-  onToggleOpenFolder: (folder: string) => void;
-  onReplaceFolders: (folders: Folders) => void;
-  selected: string | undefined;
-  area?: ChangeArea;
-  onSelect: (path: string | undefined, area?: ChangeArea) => void;
-  view: string;
-  filter?: string;
-  onFilter: (filter: string | undefined) => void;
-  filterAsked?: number;
-}) {
+export function Files() {
+  const hash = useGit((state) => state.tab.hash);
+  const title = filesTitle(hash);
+  const noChanges = useGit((state) =>
+    noChangesText(state.tab.hash, state.tab.error),
+  );
+  const showAll = useGit((state) => state.showAllFiles);
+  const files = useGit((state) => state.tab.files);
+  const staged = useGit((state) => state.tab.staged);
+  const loading = useGit((state) => state.tab.filesLoading || openingOf(state));
+  const tree = useGit((state) => treeOf(state.tab));
+  const { closed: closedFolders, open: openedFolders } = useGit(shownFoldersOf);
+  const selected = useGit((state) => state.tab.path);
+  const area = useGit((state) => state.tab.area);
+  const view = useGit((state) => folderViewOf(state.tab));
+  const filter = useGit(fileFilterOf);
+  const filtersHere = useGit((state) => state.activeColumn === 'files');
+  const {
+    changeShowAllFiles: onShowAll,
+    toggleFolder,
+    replaceFolders: onReplaceFolders,
+    selectFile: onSelect,
+    filterFiles: onFilter,
+  } = useGitActions();
+  const [filterAsked, setFilterAsked] = useState(0);
+  useBinding(
+    gitKeymap.find,
+    () => {
+      setFilterAsked((count) => count + 1);
+      if (filter === undefined) {
+        onFilter('');
+      }
+    },
+    filtersHere,
+  );
   const scrolling = useShell((state) => state.scrolling);
   const skeleton = useSkeleton(loading);
   const allPaths = showAll ? tree : undefined;
@@ -362,9 +362,9 @@ export function Files({
     if (filtering) {
       foldWhileFiltering(toggled(closedWhileFiltering, key));
     } else if (changed) {
-      onToggleClosedFolder(key);
+      toggleFolder('closed', key);
     } else {
-      onToggleOpenFolder(key);
+      toggleFolder('open', key);
     }
   };
   const onKeyDown = (event: React.KeyboardEvent, visible: VisibleRows) => {

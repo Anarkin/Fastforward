@@ -4,12 +4,18 @@ import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { comparisonOf } from '../../../../tools/git/shared/comparisons';
-import { workingTreeHash } from '../../../../tools/git/shared/protocol';
+import {
+  workingTreeHash,
+  type ChangeArea,
+  type FileChange,
+  type GitToHost,
+} from '../../../../tools/git/shared/protocol';
 import {
   changesTree,
   changesTreeRows,
   filesRows,
 } from '../../../../tools/git/page/changesTree';
+import { CommitHistory } from '../../../../tools/git/page/commitHistory';
 import {
   FileFilterField,
   Files,
@@ -19,6 +25,14 @@ import {
   listsNothing,
   noChangesText,
 } from '../../../../tools/git/page/filesColumn';
+import {
+  createGitStore,
+  fileFilterOf,
+  folderViewOf,
+  GitStore,
+  shownFoldersOf,
+} from '../../../../tools/git/page/store';
+import { emptyTabView, type TabView } from '../../../../tools/git/page/tabView';
 import type { VisibleRows } from '../../../../ui/listMoves';
 import type { Folders } from '../../../../tools/git/page/viewFolders';
 import { revealAgain, type ListedRows } from '../../../../ui/virtualRows';
@@ -31,25 +45,77 @@ import {
   tagWith,
 } from '../../../fixtures';
 
-type FilesProps = Parameters<typeof Files>[0];
+const commit = '0123456789abcdef0123456789abcdef01234567';
+const otherCommit = 'fedcba9876543210fedcba9876543210fedcba98';
 
-function filesProps(overrides: Partial<FilesProps> = {}): FilesProps {
+interface Shown {
+  readonly hash?: string | undefined;
+  readonly showAll?: boolean;
+  readonly files?: readonly FileChange[];
+  readonly staged?: readonly FileChange[];
+  readonly loading?: boolean;
+  readonly tree?: readonly string[] | undefined;
+  readonly closedFolders?: ReadonlySet<string>;
+  readonly openedFolders?: ReadonlySet<string>;
+  readonly selected?: string;
+  readonly area?: ChangeArea;
+  readonly filter?: string;
+}
+
+type Store = ReturnType<typeof createGitStore>;
+
+function filesState(shown: Shown) {
+  const hash = 'hash' in shown ? shown.hash : commit;
+  const tab: TabView = {
+    ...emptyTabView,
+    root: '/repo',
+    history: new CommitHistory(0),
+    hash,
+    files: shown.files ?? [],
+    staged: shown.staged,
+    filesLoading: shown.loading ?? false,
+    tree:
+      hash === undefined || shown.tree === undefined
+        ? undefined
+        : { type: 'tree', hash, paths: shown.tree },
+    path: shown.selected,
+    area: shown.area,
+  };
   return {
-    showAll: false,
-    onShowAll: noop,
-    closedFolders: new Set(),
-    onToggleClosedFolder: noop,
-    files: [],
-    loading: false,
-    tree: undefined,
-    openedFolders: new Set(),
-    onToggleOpenFolder: noop,
-    onReplaceFolders: noop,
-    view: 'one',
-    selected: undefined,
-    onSelect: noop,
-    onFilter: noop,
-    ...overrides,
+    tab,
+    showAllFiles: shown.showAll ?? false,
+    fileFilters: new Map(
+      shown.filter === undefined ? [] : [['/repo', shown.filter]],
+    ),
+    folders: {
+      view: folderViewOf(tab),
+      open: shown.openedFolders ?? new Set<string>(),
+      closed: shown.closedFolders ?? new Set<string>(),
+    },
+  };
+}
+
+function filesStore(
+  shown: Shown = {},
+  post: (message: GitToHost) => void = noop,
+): Store {
+  return createGitStore(post, filesState(shown));
+}
+
+function filesOf(store: Store): React.ReactNode {
+  return renderedBy(Files, {}, { git: store });
+}
+
+function foldersShown(store: Store): Folders {
+  const { open, closed } = shownFoldersOf(store.getState());
+  return { open, closed };
+}
+
+function picking(picked: (string | undefined)[]) {
+  return (message: GitToHost) => {
+    if (message.type === 'selectFile') {
+      picked.push(message.path);
+    }
   };
 }
 
@@ -82,8 +148,8 @@ function listOf(column: React.ReactNode) {
   };
 }
 
-function changesRows(overrides: Partial<FilesProps>) {
-  return listOf(renderedBy(Files, filesProps(overrides)));
+function changesRows(shown: Shown, post?: (message: GitToHost) => void) {
+  return listOf(filesOf(filesStore(shown, post)));
 }
 
 function startButton(column: React.ReactNode, title: string) {
@@ -108,8 +174,9 @@ function startButton(column: React.ReactNode, title: string) {
 
 async function drawing(
   check: (
-    draw: (overrides: Partial<FilesProps>) => Promise<void>,
+    draw: (shown: Shown) => Promise<void>,
     drawn: () => React.ReactNode,
+    store: Store,
   ) => Promise<void>,
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>');
@@ -127,17 +194,25 @@ async function drawing(
     const main = dom.window.document.querySelector('main');
     assert.ok(main);
     const root = createRoot(main);
+    const store = filesStore();
     let column: React.ReactNode;
-    function Drawn(props: FilesProps) {
-      column = Files(props);
+    function Drawn() {
+      column = Files();
       return null;
     }
     await check(
-      (overrides) =>
+      (shown) =>
         act(async () => {
-          renderIn(root, <Drawn {...filesProps(overrides)} />);
+          store.setState(filesState(shown));
+          renderIn(
+            root,
+            <GitStore value={store}>
+              <Drawn />
+            </GitStore>,
+          );
         }),
       () => column,
+      store,
     );
     await act(async () => {
       root.unmount();
@@ -147,15 +222,15 @@ async function drawing(
   }
 }
 
-function reveal(tree: string[] | undefined, showAll = true, view = 'one') {
+function reveal(tree: string[] | undefined, showAll = true, hash = commit) {
   return {
     key: 'file:b.ts',
     rows: changesRows({
+      hash,
       showAll,
       files: [change('b.ts')],
       tree,
       selected: 'b.ts',
-      view,
     }).revealWith,
   };
 }
@@ -185,15 +260,8 @@ function noChangesShown(
   loading: boolean,
   showAll = false,
 ): string {
-  const column = renderedBy(
-    Files,
-    filesProps({
-      noChanges: 'No changes',
-      showAll,
-      files,
-      loading,
-      tree: ['kept.ts'],
-    }),
+  const column = filesOf(
+    filesStore({ showAll, files, loading, tree: ['kept.ts'] }),
   );
   assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
   return renderToStaticMarkup(<>{column.props.children[2]}</>);
@@ -224,11 +292,8 @@ suite('Files column', () => {
 
   test('titles itself Files, showing all files only while its toggle is on', () => {
     for (const showAll of [false, true]) {
-      const picked: boolean[] = [];
-      const column = renderedBy(
-        Files,
-        filesProps({ showAll, onShowAll: (next) => picked.push(next) }),
-      );
+      const store = filesStore({ hash: undefined, showAll });
+      const column = filesOf(store);
       assert.ok(
         isValidElement<{ title: string; start: React.ReactElement }>(column),
       );
@@ -247,7 +312,7 @@ suite('Files column', () => {
         }>(column.props.start),
       );
       column.props.start.props.children[0].props.onClick();
-      assert.deepStrictEqual(picked, [!showAll]);
+      assert.strictEqual(store.getState().showAllFiles, !showAll);
     }
   });
 
@@ -312,20 +377,19 @@ suite('Files column', () => {
 
   test('collapses every folder, or expands every folder shown, the unchanged ones too while all files show', () => {
     for (const showAll of [false, true]) {
+      const store = filesStore({
+        showAll,
+        closedFolders: new Set(['src']),
+        files: [change('src/app/a.ts'), change('src/b.ts')],
+        tree: ['docs/guide/intro.md', 'src/app/a.ts', 'src/b.ts'],
+        openedFolders: new Set(['docs']),
+      });
+      const column = filesOf(store);
       const replaced: Folders[] = [];
-      const column = renderedBy(
-        Files,
-        filesProps({
-          showAll,
-          closedFolders: new Set(['src']),
-          files: [change('src/app/a.ts'), change('src/b.ts')],
-          tree: ['docs/guide/intro.md', 'src/app/a.ts', 'src/b.ts'],
-          openedFolders: new Set(['docs']),
-          onReplaceFolders: (folders) => replaced.push(folders),
-        }),
-      );
       startButton(column, 'Collapse All').props.onClick();
+      replaced.push(foldersShown(store));
       startButton(column, 'Expand All').props.onClick();
+      replaced.push(foldersShown(store));
       assert.deepStrictEqual(replaced, [
         { open: new Set(), closed: new Set(['src', 'src/app']) },
         {
@@ -349,12 +413,18 @@ suite('Files column', () => {
 
   test('shows All Changes above the staged and unstaged changes of the working tree, which it shows in sections, with a file in both', () => {
     const picked: [string | undefined, string | undefined][] = [];
-    const { keys, rows, selectedKey } = changesRows({
-      files: [change('a.ts')],
-      staged: [change('a.ts'), change('b.ts')],
-      area: 'unstaged',
-      onSelect: (path, area) => picked.push([path, area]),
-    });
+    const { keys, rows, selectedKey } = changesRows(
+      {
+        files: [change('a.ts')],
+        staged: [change('a.ts'), change('b.ts')],
+        area: 'unstaged',
+      },
+      (message) => {
+        if (message.type === 'selectFile') {
+          picked.push([message.path, message.area]);
+        }
+      },
+    );
     assert.deepStrictEqual(keys, [
       'changes',
       'staged:changes',
@@ -393,11 +463,10 @@ suite('Files column', () => {
 
   test('deselects the selected file on a click, and selects another', () => {
     const picked: (string | undefined)[] = [];
-    const { keys, rows, selectedKey } = changesRows({
-      files: [change('a.ts'), change('b.ts')],
-      selected: 'a.ts',
-      onSelect: (path) => picked.push(path),
-    });
+    const { keys, rows, selectedKey } = changesRows(
+      { files: [change('a.ts'), change('b.ts')], selected: 'a.ts' },
+      picking(picked),
+    );
     assert.strictEqual(selectedKey, 'file:a.ts');
     assert.deepStrictEqual(keys, ['changes', 'file:a.ts', 'file:b.ts']);
     clickFile(rows[1]);
@@ -407,10 +476,10 @@ suite('Files column', () => {
 
   test('selects all changes with their header, marked while no file is, leaving them be when they are', () => {
     const picked: (string | undefined)[] = [];
-    const [header] = changesRows({
-      files: [change('a.ts')],
-      onSelect: (path) => picked.push(path),
-    }).rows;
+    const [header] = changesRows(
+      { files: [change('a.ts')] },
+      picking(picked),
+    ).rows;
     assert.match(header.props.className, /\bselected\b/);
     assert.strictEqual(
       renderToStaticMarkup(header),
@@ -418,11 +487,10 @@ suite('Files column', () => {
     );
     header.props.onClick();
     assert.strictEqual(picked.length, 0);
-    const [unmarked] = changesRows({
-      files: [change('a.ts')],
-      selected: 'a.ts',
-      onSelect: (path) => picked.push(path),
-    }).rows;
+    const [unmarked] = changesRows(
+      { files: [change('a.ts')], selected: 'a.ts' },
+      picking(picked),
+    ).rows;
     assert.doesNotMatch(unmarked.props.className, /\bselected\b/);
     unmarked.props.onClick();
     assert.deepStrictEqual(picked, [undefined]);
@@ -431,18 +499,20 @@ suite('Files column', () => {
   test('puts the cursor on the nearest folder shown of a selected file a closed folder hides, going on from there with the keys', () => {
     const picked: (string | undefined)[] = [];
     const shown = (closed: string[], area?: 'unstaged') =>
-      changesRows({
-        files: [
-          change('src/app/a.ts'),
-          change('src/app/b.ts'),
-          change('src/lib/c.ts'),
-          change('z.ts'),
-        ],
-        ...(area ? { staged: [change('y.ts')], area } : {}),
-        selected: 'src/app/a.ts',
-        closedFolders: new Set(closed),
-        onSelect: (path) => picked.push(path),
-      });
+      changesRows(
+        {
+          files: [
+            change('src/app/a.ts'),
+            change('src/app/b.ts'),
+            change('src/lib/c.ts'),
+            change('z.ts'),
+          ],
+          ...(area ? { staged: [change('y.ts')], area } : {}),
+          selected: 'src/app/a.ts',
+          closedFolders: new Set(closed),
+        },
+        picking(picked),
+      );
     assert.strictEqual(shown(['src/app']).selectedKey, 'folder:src/app');
     assert.strictEqual(
       shown(['unstaged:src'], 'unstaged').selectedKey,
@@ -467,7 +537,7 @@ suite('Files column', () => {
     assert.ok(revealAgain(reveal(undefined), loaded));
     assert.ok(revealAgain(reveal(['a.ts', 'b.ts'], false), loaded));
     assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], false)));
-    assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], true, 'two')));
+    assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], true, otherCommit)));
   });
 
   test('scrolls to the cursor again once the folder it is on opens or closes, as a folder closed from its pinned row is left above the view', () => {
@@ -526,15 +596,14 @@ suite('Files search', () => {
 
   test('collapses and expands every folder the search shows while it is open, the unchanged ones too while all files show, leaving the folders of the commit as they were', async () => {
     for (const showAll of [false, true]) {
-      await drawing(async (draw, drawn) => {
-        const replaced: Folders[] = [];
+      await drawing(async (draw, drawn, store) => {
         await draw({
           filter: 'view',
           files: found,
           showAll,
           tree: ['lib/old/OldView.tsx', ...found.map(({ path }) => path)],
-          onReplaceFolders: (folders) => replaced.push(folders),
         });
+        const folders = store.getState().folders;
         const opened = listOf(drawn()).keys;
         await act(async () => {
           startButton(drawn(), 'Collapse All').props.onClick();
@@ -549,7 +618,7 @@ suite('Files search', () => {
           startButton(drawn(), 'Expand All').props.onClick();
         });
         assert.deepStrictEqual(listOf(drawn()).keys, opened);
-        assert.deepStrictEqual(replaced, []);
+        assert.strictEqual(store.getState().folders, folders);
       });
     }
   });
@@ -564,16 +633,13 @@ suite('Files search', () => {
         folder.props.onToggle('src');
       });
       assert.deepStrictEqual(listOf(drawn()).keys, ['changes', 'folder:src']);
-      await draw({ filter: 'view', files: found, view: 'two' });
+      await draw({ filter: 'view', files: found, hash: otherCommit });
       assert.deepStrictEqual(listOf(drawn()).keys, opened);
     });
   });
 
   test('says that no file matches the search, rather than showing nothing', () => {
-    const column = renderedBy(
-      Files,
-      filesProps({ noChanges: 'No changes', filter: 'zzz', files: found }),
-    );
+    const column = filesOf(filesStore({ filter: 'zzz', files: found }));
     assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
     assert.strictEqual(
       renderToStaticMarkup(<>{column.props.children[2]}</>),
@@ -582,11 +648,8 @@ suite('Files search', () => {
   });
 
   test('opens the search from its round magnifier, giving it the header while it is open, taking the keyboard only when asked so a tab switched back to keeps it where it was', () => {
-    const filters: (string | undefined)[] = [];
-    const closed = renderedBy(
-      Files,
-      filesProps({ onFilter: (next) => filters.push(next) }),
-    );
+    const store = filesStore();
+    const closed = filesOf(store);
     assert.ok(
       isValidElement<{
         search: React.ReactElement<{ title: string; onClick: () => void }>;
@@ -596,8 +659,8 @@ suite('Files search', () => {
     assert.strictEqual(closed.props.search.props.title, 'Search files');
     assert.ok(!closed.props.searching);
     closed.props.search.props.onClick();
-    assert.deepStrictEqual(filters, ['']);
-    const open = renderedBy(Files, filesProps({ filter: 'view' }));
+    assert.strictEqual(fileFilterOf(store.getState()), '');
+    const open = filesOf(filesStore({ filter: 'view' }));
     assert.ok(isValidElement<{ searching: React.ReactNode }>(open));
     const html = renderToStaticMarkup(<>{open.props.searching}</>);
     assert.match(html, /class="search-row"/);

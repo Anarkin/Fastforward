@@ -32,10 +32,8 @@ import { treeOf, treeToLoad } from './tabView';
 import { repositoryMenuItems } from './repositoryMenu';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { ClonePopup } from './clonePopup';
-import { FileColumn, RepositoryDiff } from './repositoryColumns';
-import { Commits } from './commitList';
+import { CommitColumn, FileColumn, RepositoryDiff } from './repositoryColumns';
 import { AddressBar, NavButtons } from './navBar';
-import { SearchButton } from '../../../ui/search';
 
 export interface GitToolProps {
   active: boolean;
@@ -56,6 +54,9 @@ function diffShownOf(state: GitState): boolean {
     }),
   );
 }
+
+const commitNavigation = <NavButtons />;
+const commitSearch = <AddressBar />;
 
 export function GitTool({
   active,
@@ -90,7 +91,6 @@ export function GitTool({
     closeClone,
     toggleCommits,
     activateColumn,
-    search,
   } = store.getState();
   const activeTab = useStore(store, (state) => state.tab.root);
   const recent = useStore(store, (state) => state.recent);
@@ -329,15 +329,9 @@ export function GitTool({
                 }
               }}
             >
-              <Commits
-                navigation={<NavButtons />}
-                searchButton={
-                  <SearchButton
-                    title={strings.actions.search}
-                    onClick={() => search(true)}
-                  />
-                }
-                search={<AddressBar />}
+              <CommitColumn
+                navigation={commitNavigation}
+                search={commitSearch}
               />
               <FileColumn />
               <RepositoryDiff />

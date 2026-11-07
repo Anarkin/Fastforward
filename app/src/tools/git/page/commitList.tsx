@@ -63,6 +63,7 @@ import {
 } from '../../../ui/listMoves';
 import { SoloIcon } from '../../../ui/icons';
 import { useCappedScroll } from '../../../ui/cappedVirtualizer';
+import { SearchButton } from '../../../ui/search';
 import { realHeight } from '../../../ui/cappedScroll';
 import { rowPlace } from '../../../ui/rowPlace';
 import { activeDescendant, rowId } from '../../../ui/virtualRows';
@@ -632,11 +633,9 @@ export function WorkingTreeRow({
 export function Commits({
   navigation,
   search,
-  searchButton,
 }: {
   navigation?: React.ReactNode;
   search?: React.ReactNode;
-  searchButton?: React.ReactNode;
 }) {
   const history = useGit((state) => state.tab.history);
   const worktree = useGit((state) => state.tab.root);
@@ -662,6 +661,7 @@ export function Commits({
     changeSolo: onSolo,
     scrolled: reportScrolled,
     loadCommits: onLoad,
+    search: openSearch,
   } = useGitActions();
   const onScrolled = useCallback(
     (top: string, offset: number, report: number) =>
@@ -960,7 +960,12 @@ export function Commits({
   return (
     <Column
       overlay={search}
-      search={searchButton}
+      search={
+        <SearchButton
+          title={strings.actions.search}
+          onClick={() => openSearch(true)}
+        />
+      }
       index={0}
       start={navigation}
       actions={
