@@ -1,4 +1,11 @@
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   type ChangeArea,
   type FileChange,
@@ -319,27 +326,34 @@ export function Diff({
       ),
     [parsed, path, files, leftOut, largeFiles, whitespaceOnly, filter],
   );
-  const errorRow = error ? (
-    <div className="error-message">{error}</div>
-  ) : (
-    note && <div className="diff-note">{note}</div>
+  const errorRow = useMemo(
+    () =>
+      error ? (
+        <div className="error-message">{error}</div>
+      ) : (
+        note && <div className="diff-note">{note}</div>
+      ),
+    [error, note],
   );
 
   const [query, setQuery] = useState('');
   const [current, setCurrent] = useState(0);
   const [jump, setJump] = useState(0);
   const input = useRef<HTMLInputElement>(null);
-  const viewOf = (index: number) => {
-    const view = onViewFile;
-    const file = diffFiles.at(index);
-    const source =
-      origin === undefined || view === undefined
-        ? undefined
-        : fileContent === undefined
-          ? file && viewedSource(origin, file)
-          : wholeViewedSource(origin, fileContent);
-    return source && view && (() => view(source));
-  };
+  const viewOf = useCallback(
+    (index: number) => {
+      const view = onViewFile;
+      const file = diffFiles.at(index);
+      const source =
+        origin === undefined || view === undefined
+          ? undefined
+          : fileContent === undefined
+            ? file && viewedSource(origin, file)
+            : wholeViewedSource(origin, fileContent);
+      return source && view && (() => view(source));
+    },
+    [onViewFile, diffFiles, origin, fileContent],
+  );
   const viewShown = useEffectEvent(() => {
     if (path !== undefined) {
       viewOf(0)?.();
