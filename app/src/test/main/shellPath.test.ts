@@ -41,6 +41,7 @@ suite('Login shell environment', () => {
     stdout.write('Update now? [y/N] ');
     const shell = Object.assign(new EventEmitter(), {
       stdout,
+      pid: undefined,
       kill: (signal: unknown) => signals.push(signal) > 0,
     });
     const { timer, waiting, fire } = fakeTimer();
@@ -55,10 +56,35 @@ suite('Login shell environment', () => {
     assert.ok(stdout.destroyed);
   });
 
+  test('kills what the profile started along with the shell it gives up on, its whole session, as a slow nvm or conda went on alone, and the shell alone where the system has no such group', async () => {
+    for (const groupKilled of [true, false]) {
+      const signals: unknown[] = [];
+      const shell = Object.assign(new EventEmitter(), {
+        stdout: new PassThrough(),
+        pid: 42,
+        kill: (signal: unknown) => signals.push(['shell', signal]) > 0,
+      });
+      const { timer, fire } = fakeTimer();
+      const found = envFromShell(shell, timer, (pid, signal) => {
+        if (!groupKilled) {
+          throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' });
+        }
+        signals.push(['group', pid, signal]);
+      });
+      await fire();
+      assert.strictEqual(await found, undefined);
+      assert.deepStrictEqual(
+        signals,
+        groupKilled ? [['group', 42, 'SIGKILL']] : [['shell', 'SIGKILL']],
+      );
+    }
+  });
+
   test('lets go of the output of a shell once it prints its environment, which what its profile starts in the background can hold open long after the shell is gone', async () => {
     const stdout = new PassThrough();
     const shell = Object.assign(new EventEmitter(), {
       stdout,
+      pid: undefined,
       kill: () => true,
     });
     const found = envFromShell(shell, fakeTimer().timer);

@@ -67,9 +67,28 @@ export function loginShellOptions(
   return { env, stdio: ['ignore', 'pipe', 'ignore'], detached: true };
 }
 
+type Shell = Pick<ChildProcess, 'stdout' | 'kill' | 'pid'> & EventEmitter;
+
+type GroupKill = (pid: number, signal: NodeJS.Signals) => void;
+
+const killGroup: GroupKill = (pid, signal) => process.kill(-pid, signal);
+
+function killedGroup(shell: Shell, kill: GroupKill): boolean {
+  if (shell.pid === undefined) {
+    return false;
+  }
+  try {
+    kill(shell.pid, 'SIGKILL');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function envFromShell(
-  shell: Pick<ChildProcess, 'stdout' | 'kill'> & EventEmitter,
+  shell: Shell,
   timer: Timer = realTimer,
+  kill: GroupKill = killGroup,
 ): Promise<ShellEnv | undefined> {
   return new Promise((resolve) => {
     let output = '';
@@ -79,7 +98,9 @@ export function envFromShell(
       resolve(found);
     };
     const cancel = timer(() => {
-      shell.kill('SIGKILL');
+      if (!killedGroup(shell, kill)) {
+        shell.kill('SIGKILL');
+      }
       finish(undefined);
     }, 5000);
     shell.on('error', () => finish(undefined));
