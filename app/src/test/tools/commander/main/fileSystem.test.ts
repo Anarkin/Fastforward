@@ -157,9 +157,9 @@ suite.each(implementations)('The file system of %s', (name, make) => {
 
   test('lists every entry of a folder too large to read in one go, with names in any script', async () => {
     const names = Array.from(
-      { length: 3000 },
+      { length: 400 },
       (_, index) =>
-        `file ${String(index).padStart(4, '0')} ünïcødé 文件 🙂.txt`,
+        `file ${String(index).padStart(4, '0')} ünïcødé 文件 🙂 ${'a long name '.repeat(17)}.txt`,
     );
     for (const each of names) {
       fs.writeFileSync(path.join(folder, each), '');
