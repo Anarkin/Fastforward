@@ -739,16 +739,14 @@ export function LocationsPopup({
         <PinnedSection
           title={strings.search.checkedOut}
           section="checkedOut"
-          items={pinned.checkedOut}
-          refs={refs}
+          pinned={pinnedItems}
           rows={rows}
           onJump={jump}
         />
         <PinnedSection
           title={strings.search.bookmarks}
           section="bookmarks"
-          items={pinned.bookmarks}
-          refs={refs}
+          pinned={pinnedItems}
           rows={rows}
           onJump={jump}
         />
@@ -882,18 +880,17 @@ function GroupHeading({ title, count }: { title: string; count: number }) {
 function PinnedSection({
   title,
   section,
-  items,
-  refs,
+  pinned,
   rows,
   onJump,
 }: {
   title: string;
   section: PinnedSectionName;
-  items: readonly Bookmark[];
-  refs: readonly RefInfo[];
+  pinned: readonly PinnedResult[];
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
+  const items = pinned.filter((item) => item.section === section);
   const detached = useGit(detachedHead);
   if (items.length === 0) {
     return null;
@@ -902,22 +899,21 @@ function PinnedSection({
     <section className="locations-group" role="group" aria-label={title}>
       <GroupHeading title={title} count={items.length} />
       <div className="locations-list">
-        {items.map((item) => {
-          const commit = pinnedCommit(item, refs);
-          const key = pinnedKey(section, item);
+        {items.map(({ bookmark, commit }) => {
+          const key = pinnedKey(section, bookmark);
           return (
             <div
-              key={`${item.kind}:${item.name}`}
+              key={`${bookmark.kind}:${bookmark.name}`}
               {...rowProps(rows, key, 1)}
               className={`row result pinned ${activeClass(rows, key)}`}
               onClick={() => commit && onJump(commit)}
             >
-              {item.kind !== 'commit' ? (
-                <RefBubble info={item} missing={commit === undefined} />
-              ) : item.name === detached ? (
-                <HeadBubble hash={item.name} />
+              {bookmark.kind !== 'commit' ? (
+                <RefBubble info={bookmark} missing={commit === undefined} />
+              ) : bookmark.name === detached ? (
+                <HeadBubble hash={bookmark.name} />
               ) : (
-                <CommitBubble hash={item.name} />
+                <CommitBubble hash={bookmark.name} />
               )}
             </div>
           );
