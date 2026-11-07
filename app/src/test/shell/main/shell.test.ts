@@ -393,6 +393,20 @@ suite('Shell with no tab open', () => {
           message: 'shown',
         });
         assert.strictEqual(info.at(-1), strings.log.webview('shown'));
+        const before = info.length;
+        for (const message of ['again', 'again', 'again', 'other', 'again']) {
+          await view.connection.receive({
+            type: 'log',
+            level: 'info',
+            message,
+          });
+        }
+        assert.deepStrictEqual(
+          info.slice(before),
+          ['again', 'other', 'again'].map((message) =>
+            strings.log.webview(message),
+          ),
+        );
       },
       true,
       host,

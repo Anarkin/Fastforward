@@ -89,6 +89,19 @@ suite('Log file', () => {
     assert.match(kept, /\[info\] next run\n$/);
   });
 
+  test('cuts the log down to about its newest 5 MB once it passes 20 MB while a run goes on, as a run logging an error at every frame grew it without end', () => {
+    const file = path.join(folder, 'Fastforward.log');
+    const log = fileLog(file);
+    const line = 'x'.repeat(megabyte);
+    for (let index = 0; index < 25; index++) {
+      log.info(`${index} ${line}`);
+    }
+    log.info('last');
+    const kept = fs.readFileSync(file, 'utf8');
+    assert.ok(kept.length <= 20 * megabyte, `kept ${kept.length} bytes`);
+    assert.match(kept, /\[info\] last\n$/);
+  });
+
   test('leaves a log of 10 MB as it is', () => {
     const file = path.join(folder, 'Fastforward.log');
     const old = oldLines(10 * megabyte);

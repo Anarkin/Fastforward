@@ -8,12 +8,28 @@ export interface Log {
 }
 
 export function fileLog(file: string, echo = false): Log {
-  const descriptor = openLogFile(file);
+  let descriptor = openLogFile(file);
+  let size = sizeOf(descriptor);
+  const cut = () => {
+    if (descriptor !== undefined) {
+      fs.closeSync(descriptor);
+    }
+    descriptor = undefined;
+    try {
+      cutToNewest(file);
+    } catch {}
+    descriptor = fs.openSync(file, 'a');
+    size = sizeOf(descriptor);
+  };
   const write = (level: string, text: string) => {
     const line = `${new Date().toISOString()} [${level}] ${text}\n`;
     try {
       if (descriptor !== undefined) {
         fs.writeSync(descriptor, line);
+        size += Buffer.byteLength(line);
+        if (size > largestWhileRunning) {
+          cut();
+        }
       }
     } catch {}
     if (echo) {
@@ -30,6 +46,15 @@ export function fileLog(file: string, echo = false): Log {
 const megabyte = 1024 * 1024;
 const largestLog = 10 * megabyte;
 const keptOnCut = 5 * megabyte;
+const largestWhileRunning = 2 * largestLog;
+
+function sizeOf(descriptor: number | undefined): number {
+  try {
+    return descriptor === undefined ? 0 : fs.fstatSync(descriptor).size;
+  } catch {
+    return 0;
+  }
+}
 
 function openLogFile(file: string): number | undefined {
   try {

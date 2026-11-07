@@ -185,6 +185,7 @@ function reasonOf(error: unknown): string {
 export class Shell {
   private page: Page | undefined;
   private shownTool: ToolId | undefined;
+  private lastPageLog: string | undefined;
   private askedFolders: readonly string[] = [];
   private asking: Asking | undefined;
   private askingFolders: Promise<void> = Promise.resolve();
@@ -344,8 +345,10 @@ export class Shell {
       case 'log':
         if (
           (message.level === 'info' || message.level === 'error') &&
-          typeof message.message === 'string'
+          typeof message.message === 'string' &&
+          message.message !== this.lastPageLog
         ) {
+          this.lastPageLog = message.message;
           this.log[message.level](strings.log.webview(message.message));
         }
         return;
