@@ -244,16 +244,10 @@ suite('Git worktrees', () => {
     await repository.git('push', '-q', bare.root, 'main');
     const main = path.join(layout, 'main');
     await bare.git('worktree', 'add', '-q', main, 'main');
-    const restoreEnv = savedEnv([
-      'GIT_CONFIG_COUNT',
-      'GIT_CONFIG_KEY_0',
-      'GIT_CONFIG_VALUE_0',
-    ]);
-    Object.assign(process.env, {
-      GIT_CONFIG_COUNT: '1',
-      GIT_CONFIG_KEY_0: 'safe.bareRepository',
-      GIT_CONFIG_VALUE_0: 'explicit',
-    });
+    const config = path.join(layout, 'global.gitconfig');
+    fs.writeFileSync(config, '[safe]\n\tbareRepository = explicit\n');
+    const restoreEnv = savedEnv(['GIT_CONFIG_GLOBAL']);
+    process.env.GIT_CONFIG_GLOBAL = config;
     try {
       const fromMain = await locateRepository(repository.gitPath, main);
       assert.ok(fromMain);

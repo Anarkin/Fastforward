@@ -47,12 +47,30 @@ const elsewhere = [
   'GIT_GLOB_PATHSPECS',
   'GIT_NOGLOB_PATHSPECS',
   'GIT_ICASE_PATHSPECS',
+  'GIT_NAMESPACE',
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_QUARANTINE_PATH',
+  'GIT_SHALLOW_FILE',
 ];
+
+const ofTheLauncher =
+  /^GIT_(?:CONFIG_(?:PARAMETERS|COUNT|KEY_\d+|VALUE_\d+)|EXEC_PATH|REFLOG_ACTION)$/;
+
+const askpassOfVsCode = /^VSCODE_GIT_(?:ASKPASS_|IPC_)/;
 
 function inheritedEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
-  for (const name of elsewhere) {
-    delete env[name];
+  const names = Object.keys(env);
+  const askedByVsCode = names.some((name) => askpassOfVsCode.test(name));
+  for (const name of names) {
+    if (
+      elsewhere.includes(name) ||
+      ofTheLauncher.test(name) ||
+      askpassOfVsCode.test(name) ||
+      (askedByVsCode && name === 'GIT_ASKPASS')
+    ) {
+      delete env[name];
+    }
   }
   return env;
 }

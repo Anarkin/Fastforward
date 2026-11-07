@@ -62,6 +62,56 @@ suite('Running git', () => {
     });
   });
 
+  test('leaves out the config the environment adds, the askpass of VS Code and what ties git to the git or the app it was started from, as they come from the app the app was started from, not from the user', async () => {
+    const inherited = {
+      GIT_CONFIG_PARAMETERS: "'core.fsmonitor'='true'",
+      GIT_CONFIG_COUNT: '2',
+      GIT_CONFIG_KEY_0: 'core.askPass',
+      GIT_CONFIG_VALUE_0: 'elsewhere',
+      GIT_CONFIG_KEY_1: 'core.hooksPath',
+      GIT_CONFIG_VALUE_1: 'elsewhere',
+      GIT_ASKPASS: 'askpass.sh',
+      VSCODE_GIT_ASKPASS_NODE: 'node',
+      VSCODE_GIT_ASKPASS_MAIN: 'askpass-main.js',
+      VSCODE_GIT_ASKPASS_EXTRA_ARGS: '',
+      VSCODE_GIT_IPC_HANDLE: 'handle',
+      GIT_EXEC_PATH: 'elsewhere',
+      GIT_NAMESPACE: 'elsewhere',
+      GIT_ALTERNATE_OBJECT_DIRECTORIES: 'elsewhere',
+      GIT_QUARANTINE_PATH: 'elsewhere',
+      GIT_SHALLOW_FILE: 'elsewhere',
+      GIT_REFLOG_ACTION: 'elsewhere',
+    };
+    await withEnv(inherited, () => {
+      for (const env of [gitEnv(), gitEnv(true)]) {
+        assert.deepStrictEqual(
+          Object.keys(inherited).filter((name) => name in env),
+          [],
+        );
+      }
+      return Promise.resolve();
+    });
+  });
+
+  test('keeps the askpass the user set and the files of config they chose, as their own git takes them', async () => {
+    const theirs = {
+      GIT_ASKPASS: 'askpass.sh',
+      SSH_ASKPASS: 'ssh-askpass.sh',
+      GIT_CONFIG_GLOBAL: 'global',
+      GIT_SSH_COMMAND: 'ssh -i key',
+    };
+    await withEnv(theirs, () => {
+      const env = gitEnv();
+      assert.deepStrictEqual(
+        Object.fromEntries(
+          Object.keys(theirs).map((name) => [name, env[name]]),
+        ),
+        theirs,
+      );
+      return Promise.resolve();
+    });
+  });
+
   test('starts git in a process group of its own outside Windows and stops the whole group, as git leaves running the ssh or https helper it started', async () => {
     assert.strictEqual(gitProcessOptions('win32').detached, false);
     assert.strictEqual(gitProcessOptions('linux').detached, true);
