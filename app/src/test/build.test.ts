@@ -1,11 +1,100 @@
 import * as assert from 'node:assert';
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as esbuild from 'esbuild';
 import { suite, test } from 'vitest';
 
 const appFolder = path.join(__dirname, '..', '..');
+
+interface ModuleFileMatcher {
+  readonly patterns: readonly string[];
+}
+
+interface FileMatchers {
+  readonly excludedExts: string;
+  getNodeModuleFileMatcher(
+    appDir: string,
+    destination: string,
+    macroExpander: (text: string) => string,
+    platformOptions: object,
+    packager: object,
+  ): ModuleFileMatcher;
+  FileMatcher: new (
+    from: string,
+    to: string,
+    macroExpander: (text: string) => string,
+    patterns: readonly string[],
+  ) => object;
+}
+
+interface NodeModuleCopyHelpers {
+  NodeModuleCopyHelper: new (
+    matcher: object,
+    packager: object,
+  ) => {
+    collectNodeModules(
+      module: { readonly dir: string; readonly name: string },
+      excludedExtensions: readonly string[],
+      destination: string,
+    ): Promise<string[]>;
+  };
+}
+
+const unexpanded = (text: string) => text;
+
+async function packedFilesOf(moduleFolder: string): Promise<string[]> {
+  const load = createRequire(__filename);
+  const builderLib = path.join(appFolder, 'node_modules', 'app-builder-lib');
+  const matchers: FileMatchers = load(
+    path.join(builderLib, 'out', 'fileMatcher.js'),
+  );
+  const { NodeModuleCopyHelper }: NodeModuleCopyHelpers = load(
+    path.join(builderLib, 'out', 'util', 'NodeModuleCopyHelper.js'),
+  );
+  const { build } = JSON.parse(
+    fs.readFileSync(path.join(appFolder, 'package.json'), 'utf8'),
+  );
+  const platformKeys: Partial<Record<NodeJS.Platform, string>> = {
+    win32: 'win',
+    darwin: 'mac',
+  };
+  const platformOptions = build[platformKeys[process.platform] ?? 'linux'];
+  const packager = {
+    config: build,
+    debugLogger: { isEnabled: false },
+    appInfo: { type: 'module' },
+    getWorkspaceRoot: () => Promise.resolve(appFolder),
+  };
+  const { patterns } = matchers.getNodeModuleFileMatcher(
+    appFolder,
+    'app',
+    unexpanded,
+    platformOptions,
+    packager,
+  );
+  const name = path
+    .relative(path.join(appFolder, 'node_modules'), moduleFolder)
+    .replaceAll('\\', '/');
+  const destination = path.join('node_modules', name);
+  const helper = new NodeModuleCopyHelper(
+    new matchers.FileMatcher(moduleFolder, destination, unexpanded, patterns),
+    packager,
+  );
+  return helper.collectNodeModules(
+    { dir: moduleFolder, name },
+    [
+      '.o',
+      '.obj',
+      ...matchers.excludedExts.split(',').map((extension) => `.${extension}`),
+      '.pdb',
+      ...(process.platform === 'win32' ? [] : ['.dll', '.exe']),
+    ],
+    destination,
+  );
+}
 
 type Options = (production: boolean) => esbuild.BuildOptions;
 
@@ -160,6 +249,46 @@ suite('Release build', { timeout: 30_000 }, () => {
     ]);
   });
 
+  test('packs every file koffi loads, leaving out only its sources, as an installed build could not load it otherwise, and the commander listed no folder', async () => {
+    const modules = path.join(appFolder, 'node_modules');
+    const required: string[] = JSON.parse(
+      execFileSync(
+        process.execPath,
+        [
+          '-e',
+          "require('koffi'); process.stdout.write(JSON.stringify(Object.keys(require.cache)))",
+        ],
+        { cwd: appFolder, encoding: 'utf8' },
+      ),
+    );
+    const loaded = required.filter((file) =>
+      file.startsWith(modules + path.sep),
+    );
+    const folders = new Set(
+      loaded.map((file) => {
+        const [scope, name] = path.relative(modules, file).split(path.sep);
+        return path.join(modules, scope, scope.startsWith('@') ? name : '');
+      }),
+    );
+    assert.deepStrictEqual(
+      [...folders].map((folder) => path.relative(modules, folder)).toSorted(),
+      [
+        'koffi',
+        path.join('@koromix', `koffi-${process.platform}-${process.arch}`),
+      ].toSorted(),
+    );
+    const packed = new Set(
+      (await Promise.all([...folders].map(packedFilesOf))).flat(),
+    );
+    assert.deepStrictEqual(
+      loaded.filter((file) => !packed.has(file)),
+      [],
+    );
+    assert.ok(
+      ![...packed].some((file) => /\.(?:cc|hh|inc|def|S|asm)$/.test(file)),
+    );
+  });
+
   test('turns off running the app as Node, NODE_OPTIONS and the inspector flags, and loads it only from its asar, as anything able to start it could run code in it through them', () => {
     const { build } = JSON.parse(
       fs.readFileSync(path.join(appFolder, 'package.json'), 'utf8'),
@@ -179,6 +308,16 @@ suite('Release build', { timeout: 30_000 }, () => {
         enableNodeCliInspectArguments: false,
         onlyLoadAppFromAsar: true,
       },
+    );
+  });
+
+  test('turns off the privileges Electron grants pages of file URLs beyond what a browser does, as the app serves its pages from a scheme of its own, so none needs them, and a page of a file URL would read other files through them', () => {
+    const { build } = JSON.parse(
+      fs.readFileSync(path.join(appFolder, 'package.json'), 'utf8'),
+    );
+    assert.strictEqual(
+      build.electronFuses.grantFileProtocolExtraPrivileges,
+      false,
     );
   });
 });

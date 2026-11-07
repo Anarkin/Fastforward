@@ -91,6 +91,7 @@
       "enableNodeOptionsEnvironmentVariable": false,
       "enableNodeCliInspectArguments": false,
       "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false,
       "resetAdHocDarwinSignature": true
     },
     "files": [
@@ -102,7 +103,8 @@
       "!node_modules/node-pty/**/*.pdb",
       "!node_modules/node-addon-api/**",
       "!node_modules/koffi/{doc,vendor,lib}/**",
-      "!node_modules/koffi/src/koffi/{src,CMakeLists.txt}",
+      "!node_modules/koffi/src/koffi/CMakeLists.txt",
+      "!node_modules/koffi/src/koffi/src/**/*.{cc,hh,inc,def,S,asm}",
       "!node_modules/@koromix/*/*/*.lib"
     ],
     "asarUnpack": [
