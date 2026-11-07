@@ -501,6 +501,8 @@ async function start(asked: readonly string[]): Promise<void> {
           windowsLauncher(
             process.execPath,
             process.defaultApp ? path.resolve(process.argv[1]) : undefined,
+            () =>
+              window.isDestroyed() ? undefined : window.getNativeWindowHandle(),
           ),
           process.platform,
         );
