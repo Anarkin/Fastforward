@@ -144,7 +144,7 @@ export async function listHistory(
           '--stdin',
           '--',
         ],
-        { input: hashLines(shownStashes), signal, onOutput },
+        { input: hashLines(shownStashes), signal, onOutput, unbounded: true },
       ),
   );
   return commits;
@@ -250,7 +250,7 @@ async function listSince(
           '--stdin',
           '--',
         ],
-        { input: hashLines(tips), signal, onOutput },
+        { input: hashLines(tips), signal, onOutput, unbounded: true },
       ),
   );
   return region.length > maxRegion ? undefined : region;
@@ -287,6 +287,7 @@ async function listNewHistory(
             hashLines(tips) + oldHeads.map((head) => `^${head}\n`).join(''),
           signal,
           onOutput,
+          unbounded: true,
         },
       ),
   );
@@ -350,7 +351,12 @@ export async function listRecentHistory(
         '--stdin',
         '--',
       ],
-      { input: hashLines([...tips, ...stashes]), signal, onOutput },
+      {
+        input: hashLines([...tips, ...stashes]),
+        signal,
+        onOutput,
+        unbounded: true,
+      },
     ),
   );
   return { history: commits, whole: read < count };

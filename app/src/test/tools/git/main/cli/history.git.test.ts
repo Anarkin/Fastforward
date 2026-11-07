@@ -110,6 +110,43 @@ suite('Git history', () => {
     }
   });
 
+  test('lists the whole history however much git prints, as one of over 3 million commits printed over 256 MB', async () => {
+    const [head] = await temp.resolve('HEAD');
+    const stash = 'a'.repeat(40);
+    const printing = `
+      const hidden = 'b'.repeat(65535);
+      process.stdout.write('${stash} ${'c'.repeat(40)} ' + hidden + '\\n');
+      let left = 4200;
+      const write = () => {
+        while (left-- > 0) {
+          if (!process.stdout.write(hidden + '\\n')) {
+            process.stdout.once('drain', write);
+            return;
+          }
+        }
+        process.stdout.end('${head}\\n');
+      };
+      write();
+    `;
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    replaceBuiltin(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: SpawnOptions) =>
+        args.includes('rev-list')
+          ? spawn(process.execPath, ['-e', printing], options)
+          : spawn(command, args, options),
+    );
+    try {
+      const history = await listHistory(gitPath, cwd, false, [stash]);
+      assert.ok(history.has(head));
+      assert.ok(history.has(stash));
+    } finally {
+      replaceBuiltin(childProcess, 'spawn', spawn);
+    }
+  });
+
   test('lists the commits a stash keeps its index and untracked files in when a ref points at them, as their tips missing from the history read it whole again on every refresh', async () => {
     const folder = tempFolder('stashTips');
     try {
