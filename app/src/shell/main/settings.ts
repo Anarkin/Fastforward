@@ -90,6 +90,31 @@ const choices: ReadonlyMap<string, readonly string[]> = new Map([
   ['theme', themes],
 ]);
 
+const themed = /^(?:colors|fonts|sizes|tools\.[^.]+\.colors)\./;
+
+const closers: Readonly<Record<string, string>> = { '(': ')', '[': ']' };
+
+function isCssValue(text: string): boolean {
+  const open: string[] = [];
+  let quote: string | undefined;
+  for (const character of text) {
+    if (quote !== undefined) {
+      quote = character === quote ? undefined : quote;
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character in closers) {
+      open.push(closers[character]);
+    } else if (character === ')' || character === ']') {
+      if (open.pop() !== character) {
+        return false;
+      }
+    } else if (character === ';' || character === '{' || character === '}') {
+      return false;
+    }
+  }
+  return quote === undefined && open.length === 0;
+}
+
 function itemProblems(template: Json, item: unknown, name: string): string[] {
   if (!isObject(item)) {
     return [strings.settings.shouldBe.object(name)];
@@ -162,6 +187,12 @@ function merge<T extends object>(
       problems.push(wrongKind(name, fallback));
     } else if (allowed && !allowed.some((choice) => choice === value)) {
       problems.push(strings.settings.shouldBeOneOf(name, allowed));
+    } else if (
+      typeof value === 'string' &&
+      themed.test(name) &&
+      !isCssValue(value)
+    ) {
+      problems.push(strings.settings.notCssValue(name));
     } else if (isObject(fallback) && isObject(value)) {
       accepted[key] = merge(fallback, value, `${name}.`, problems);
     } else {

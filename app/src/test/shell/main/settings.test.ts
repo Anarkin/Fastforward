@@ -168,6 +168,36 @@ suite('Settings', () => {
     ]);
   });
 
+  test('keeps the default of a color, font or size that CSS would not take whole, and says why, as one bracket left open swallowed the rest of the theme', () => {
+    const { settings, problems } = mergeSettings(defaults, {
+      colors: {
+        light: { foreground: 'rgb(0, 0, 0', background: 'rgb(0 0 0 / 50%)' },
+        dark: { foreground: 'red; color: blue' },
+      },
+      fonts: { family: "'Segoe UI, sans-serif", size: '13px' },
+      sizes: { scrollbar: 'calc(10px + 2px)' },
+      tools: { git: { colors: { dark: { bubble: '#444 }' } } } },
+    });
+    assert.deepStrictEqual(problems, [
+      strings.settings.notCssValue('colors.light.foreground'),
+      strings.settings.notCssValue('colors.dark.foreground'),
+      strings.settings.notCssValue('fonts.family'),
+      strings.settings.notCssValue('tools.git.colors.dark.bubble'),
+    ]);
+    assert.strictEqual(
+      settings.colors.light.foreground,
+      defaults.colors.light.foreground,
+    );
+    assert.strictEqual(settings.colors.light.background, 'rgb(0 0 0 / 50%)');
+    assert.strictEqual(settings.fonts.family, defaults.fonts.family);
+    assert.strictEqual(settings.fonts.size, '13px');
+    assert.strictEqual(settings.sizes.scrollbar, 'calc(10px + 2px)');
+    assert.strictEqual(
+      settings.tools.git.colors.dark.bubble,
+      defaults.tools.git.colors.dark.bubble,
+    );
+  });
+
   test('knows no setting by a name every object has', () => {
     const { settings, problems } = mergeSettings(
       defaults,

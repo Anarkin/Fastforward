@@ -810,6 +810,8 @@ export const strings = {
       string: (name: string) => `"${name}" should be a list of strings`,
       object: (name: string) => `"${name}" should be a list of objects`,
     },
+    notCssValue: (name: string) =>
+      `${name} should be a value CSS takes, its brackets and quotes closed, with no ; { or }`,
     shouldBeOneOf: (name: string, choices: readonly string[]) =>
       `"${name}" should be ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
     fileColorTwice: (extension: string, first: number, again: number) =>
