@@ -827,9 +827,10 @@ export class CommanderTool implements Tool<'commander'> {
     if (deleting === undefined) {
       return;
     }
+    const { folder } = shown.pane;
     for (const name of names) {
       try {
-        await deleting(path.join(shown.pane.folder, name));
+        await deleting(path.join(folder, name));
       } catch (error) {
         this.shell.notice(page, {
           level: 'error',
@@ -840,7 +841,9 @@ export class CommanderTool implements Tool<'commander'> {
         });
       }
     }
-    await this.list(page, shown.tab, shown.side, shown.pane.folder, 'show');
+    if (shown.pane.folder === folder) {
+      await this.list(page, shown.tab, shown.side, folder, 'show');
+    }
   }
 
   private async shellMenu(

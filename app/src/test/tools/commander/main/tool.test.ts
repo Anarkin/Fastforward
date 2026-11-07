@@ -133,6 +133,9 @@ function commander(
   const repositoriesHeld: { until: Promise<unknown> | undefined } = {
     until: undefined,
   };
+  const deletesHeld: { until: Promise<unknown> | undefined } = {
+    until: undefined,
+  };
   const tracking: Promise<unknown>[] = [];
   const openedIn: { readonly tool: string; readonly folders: string[] }[] = [];
   const fileSystem: LocalFileSystem = {
@@ -178,11 +181,12 @@ function commander(
       menus.push({ files, at: point, extended });
       return Promise.resolve();
     },
-    trash: (trashing) => {
+    trash: async (trashing) => {
       trashed.push(trashing);
-      return trashing.endsWith('locked.txt')
-        ? Promise.reject(new Error('It is in use'))
-        : Promise.resolve();
+      await deletesHeld.until;
+      if (trashing.endsWith('locked.txt')) {
+        throw new Error('It is in use');
+      }
     },
     remove: (removing) => {
       removed.push(removing);
@@ -300,6 +304,7 @@ function commander(
     repositories,
     repositoriesAsked,
     repositoriesHeld,
+    deletesHeld,
     settled,
     openedIn,
   };
@@ -1372,6 +1377,28 @@ suite('Commander tool', () => {
         message: strings.commander.deleteFailed('locked.txt', 'It is in use'),
       },
     ]);
+  });
+
+  test('deletes the items asked for from the folder they were listed in, also once the side has gone to another folder while they were being deleted, leaving the side where it went', async () => {
+    const { tool, page, send, trashed, deletesHeld } = commander({
+      [root]: [folder('big'), folder('dist'), folder('next')],
+      [at('next')]: [folder('dist')],
+    });
+    await tool.show(page, tab);
+    const slow = Promise.withResolvers<void>();
+    deletesHeld.until = slow.promise;
+    const deleting = send({
+      type: 'delete',
+      tab: '1',
+      side: 'right',
+      names: ['big', 'dist'],
+      permanently: false,
+    });
+    await send({ type: 'open', tab: '1', side: 'right', name: 'next' });
+    slow.resolve();
+    await deleting;
+    assert.deepStrictEqual(trashed, [at('big'), at('dist')]);
+    assert.strictEqual(tool.folderOf(tab), at('next'));
   });
 
   test('gives the folder of the active side as the folder of the tab, the right one until the page makes the left one active', async () => {
