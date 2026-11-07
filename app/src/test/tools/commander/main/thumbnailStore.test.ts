@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterEach, beforeEach, suite, test } from 'vitest';
+import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import {
   thumbnailKey,
   ThumbnailStore,
@@ -92,6 +92,57 @@ suite('Thumbnail store', () => {
       `${'b'.repeat(64)}.webp`,
       `${'d'.repeat(64)}.webp`,
     ]);
+  });
+
+  test('measures what it keeps a few files at a time, as a folder of hundreds of thousands of thumbnails asked the disk for all at once and held up every other file read', async () => {
+    fs.mkdirSync(folder, { recursive: true });
+    for (let index = 0; index < 200; index++) {
+      fs.writeFileSync(
+        path.join(folder, `${index.toString(16).padStart(64, '0')}.webp`),
+        bytes(1),
+      );
+      fs.writeFileSync(
+        path.join(
+          folder,
+          `${index.toString(16).padStart(64, '0')}.webp.1.${index}.tmp`,
+        ),
+        bytes(1),
+      );
+    }
+    let asking = 0;
+    let most = 0;
+    const counted =
+      <Arguments extends unknown[], Result>(
+        original: (...given: Arguments) => Promise<Result>,
+      ) =>
+      async (...given: Arguments): Promise<Result> => {
+        asking += 1;
+        most = Math.max(most, asking);
+        try {
+          return await original(...given);
+        } finally {
+          asking -= 1;
+        }
+      };
+    const originalStat = fs.promises.stat.bind(fs.promises);
+    const originalRm = fs.promises.rm.bind(fs.promises);
+    const stat = vi
+      .spyOn(fs.promises, 'stat')
+      .mockImplementation(counted(originalStat));
+    const rm = vi
+      .spyOn(fs.promises, 'rm')
+      .mockImplementation(counted(originalRm));
+    try {
+      const store = new ThumbnailStore(folder, () => 150);
+      assert.strictEqual(await store.full(), true);
+      await store.write('f'.repeat(64), bytes(1));
+    } finally {
+      stat.mockRestore();
+      rm.mockRestore();
+    }
+
+    assert.ok(most > 1 && most <= 16, `${most} at once`);
+    assert.strictEqual(fs.readdirSync(folder).length, 135);
   });
 
   test('reads nothing for a name that is no key, so no path can be asked for', async () => {

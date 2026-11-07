@@ -10,6 +10,8 @@ const keptShare = 0.9;
 
 const temporaryEnding = '.tmp';
 
+const askingAtOnce = 16;
+
 let writes = 0;
 
 export function thumbnailKey(
@@ -22,6 +24,24 @@ export function thumbnailKey(
   return createHash('sha256')
     .update(JSON.stringify([file, size, modified, box, pixelRatio]))
     .digest('hex');
+}
+
+async function eachFew<T, Result>(
+  items: readonly T[],
+  act: (item: T) => Promise<Result>,
+): Promise<Result[]> {
+  const results: Result[] = [];
+  let next = 0;
+  const work = async () => {
+    while (next < items.length) {
+      const at = next++;
+      results[at] = await act(items[at]);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(askingAtOnce, items.length) }, work),
+  );
+  return results;
 }
 
 export class ThumbnailStore {
@@ -111,28 +131,25 @@ export class ThumbnailStore {
     { readonly file: string; readonly size: number; readonly used: number }[]
   > {
     const names = await fs.promises.readdir(this.folder).catch(() => []);
-    const kept = await Promise.all(
-      names
-        .filter((name) => name.endsWith('.webp'))
-        .map(async (name) => {
-          const file = path.join(this.folder, name);
-          const stats = await fs.promises.stat(file).catch(() => undefined);
-          return stats && { file, size: stats.size, used: stats.mtimeMs };
-        }),
+    const kept = await eachFew(
+      names.filter((name) => name.endsWith('.webp')),
+      async (name) => {
+        const file = path.join(this.folder, name);
+        const stats = await fs.promises.stat(file).catch(() => undefined);
+        return stats && { file, size: stats.size, used: stats.mtimeMs };
+      },
     );
     return kept.filter((each) => each !== undefined);
   }
 
   private async measured(): Promise<number> {
     const names = await fs.promises.readdir(this.folder).catch(() => []);
-    await Promise.all(
-      names
-        .filter((name) => name.endsWith(temporaryEnding))
-        .map((name) =>
-          fs.promises
-            .rm(path.join(this.folder, name), { force: true })
-            .catch(() => undefined),
-        ),
+    await eachFew(
+      names.filter((name) => name.endsWith(temporaryEnding)),
+      (name) =>
+        fs.promises
+          .rm(path.join(this.folder, name), { force: true })
+          .catch(() => undefined),
     );
     return (await this.kept()).reduce((sum, each) => sum + each.size, 0);
   }
