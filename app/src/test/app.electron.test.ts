@@ -54,6 +54,17 @@ suite('App', () => {
     );
   });
 
+  test('gives the page no permission it asks for, as it needs none and shows content from outside the app', async () => {
+    assert.deepStrictEqual(
+      await page.evaluate(async () => [
+        await Notification.requestPermission(),
+        (await navigator.permissions.query({ name: 'notifications' })).state,
+        (await navigator.permissions.query({ name: 'geolocation' })).state,
+      ]),
+      ['denied', 'denied', 'denied'],
+    );
+  });
+
   test('focuses the commit list, whose keys start from the checked-out commit', async () => {
     await page.reload();
     await page.locator('.commit', { hasText: 'second' }).waitFor();

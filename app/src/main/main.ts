@@ -768,6 +768,11 @@ function createWindow(
       event.preventDefault();
     }
   });
+  const { session } = window.webContents;
+  session.setPermissionRequestHandler((_contents, _permission, answer) =>
+    answer(false),
+  );
+  session.setPermissionCheckHandler(() => false);
   window.webContents.on('before-input-event', (event, input) => {
     if (
       input.type === 'keyDown' &&
