@@ -143,11 +143,14 @@ suite('Terminal', () => {
         ? 'Clear-Host; Get-Content -Encoding utf8 grid.txt'
         : 'clear; cat grid.txt',
     );
-    await waitForRow((row) => row.startsWith('⚠ text'), 'the grid');
-    const offsets = await page
+    const bars = page
       .locator('.terminal-screen .xterm-rows > div')
-      .filter({ hasText: '|' })
-      .evaluateAll(barsOffGrid);
+      .filter({ hasText: '|' });
+    await waitFor(
+      async () => (await bars.count()) === gridLines.length,
+      'every line of the grid',
+    );
+    const offsets = await bars.evaluateAll(barsOffGrid);
     assert.deepStrictEqual(
       offsets.map((offset) => Math.abs(offset) < 1),
       gridLines.slice(1).map(() => true),
