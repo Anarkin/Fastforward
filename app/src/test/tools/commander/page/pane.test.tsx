@@ -134,6 +134,64 @@ suite('Commander pane', () => {
     }
   });
 
+  test('tries the icon of a file again once its row shows a file of the same name in another folder, after the icon of the first failed', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const [row] = rowsOf(
+        [
+          {
+            name: 'tool.exe',
+            folder: false,
+            link: false,
+            hidden: false,
+            size: 1,
+            modified: 0,
+          },
+        ],
+        false,
+        true,
+        { column: 'name', descending: false, groupByColor: false },
+      );
+      assert.ok(row);
+      const show = (folder: string) =>
+        act(async () => {
+          root.render(
+            <RowIcon
+              row={row}
+              source={{ tab: '1', side: 'left', folder, name: row.key }}
+              onDropIcon={noop}
+            />,
+          );
+        });
+      await show('/first');
+      await act(async () => {
+        main.querySelector('img')?.dispatchEvent(new dom.window.Event('error'));
+      });
+      assert.strictEqual(main.querySelector('img'), null);
+      await show('/second');
+      assert.ok(main.querySelector('img'));
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
   test('shows the generic file icon at once for an icon that has not come yet, until it comes', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {

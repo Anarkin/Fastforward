@@ -320,23 +320,23 @@ export interface FillItem {
   readonly name: string;
 }
 
-interface Filling {
-  readonly items: readonly FillItem[];
+interface Filling<Item> {
+  readonly items: readonly Item[];
   readonly box: number;
   readonly pixelRatio: number;
-  readonly filler: ThumbnailFiller<FillItem>;
+  readonly filler: ThumbnailFiller<Item>;
 }
 
-export function useThumbnailFill(
-  items: readonly FillItem[],
+export function useThumbnailFill<Item extends FillItem>(
+  items: readonly Item[],
   from: number,
   box: number,
   filling: boolean,
-  onMade: (name: string, made: Blob, pixelRatio: number) => void,
+  onMade: (item: Item, made: Blob, pixelRatio: number) => void,
 ): void {
   const pixelRatio = usePixelRatio();
   const made = useRef(onMade);
-  const kept = useRef<Filling>(undefined);
+  const kept = useRef<Filling<Item>>(undefined);
   useEffect(() => {
     made.current = onMade;
   }, [onMade]);
@@ -355,13 +355,18 @@ export function useThumbnailFill(
             items,
             box,
             pixelRatio,
-            filler: new ThumbnailFiller<FillItem>(async ({ url, name }) => {
-              if (thumbnails.peek(url, box, pixelRatio) !== undefined) {
+            filler: new ThumbnailFiller<Item>(async (item) => {
+              if (thumbnails.peek(item.url, box, pixelRatio) !== undefined) {
                 return 'stored';
               }
-              const answer = await workers.make(url, box, pixelRatio, true);
+              const answer = await workers.make(
+                item.url,
+                box,
+                pixelRatio,
+                true,
+              );
               if (answer.made?.fresh === true) {
-                made.current(name, answer.made.image, pixelRatio);
+                made.current(item, answer.made.image, pixelRatio);
               }
               return answer.outcome ?? (answer.made ? 'made' : 'failed');
             }),
@@ -472,8 +477,8 @@ function VectorThumbnail({
   box: number;
   fallback: React.ReactNode;
 }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
+  const [failed, setFailed] = useState<string>();
+  if (failed === url) {
     return fallback;
   }
   return (
@@ -483,7 +488,7 @@ function VectorThumbnail({
       alt=""
       draggable={false}
       style={{ maxWidth: box, maxHeight: box }}
-      onError={() => setFailed(true)}
+      onError={() => setFailed(url)}
     />
   );
 }

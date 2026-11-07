@@ -131,17 +131,18 @@ export function RowIcon({
   source: IconSource | undefined;
   onDropIcon: (ticket: string) => void;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string>();
   const generic =
     row.entry === undefined || row.entry.folder ? <FolderIcon /> : <FileIcon />;
-  if (source !== undefined && !failed) {
+  const url = source === undefined ? undefined : iconUrl(source);
+  if (source !== undefined && url !== failed) {
     return (
       <SystemIcon
-        key={iconUrl(source)}
+        key={url}
         source={source}
         generic={generic}
         onDropIcon={onDropIcon}
-        onFailed={() => setFailed(true)}
+        onFailed={() => setFailed(url)}
       />
     );
   }
@@ -271,12 +272,6 @@ export function Pane({
   const onLayout = (chosen: Layout) => actions.chooseLayout(side, chosen);
   const onGroupByColor = () => actions.groupByColor(side);
   const onDropIcon = actions.dropIcon;
-  const onThumbnail = (
-    name: string,
-    box: number,
-    pixelRatio: number,
-    made: Blob,
-  ) => void actions.saveThumbnail(side, name, box, pixelRatio, made);
   const onSelect = (key: string) => actions.select(side, key);
   const onMark = (keys: readonly string[], marked: boolean) =>
     actions.mark(side, keys, marked);
@@ -399,30 +394,37 @@ export function Pane({
   const shownFolder = pane?.folder;
   const fillItems = useMemo(
     () =>
-      rows.flatMap((row, index): (FillItem & { readonly index: number })[] => {
-        const type = imageType(row.key);
-        if (
-          tab === undefined ||
-          shownFolder === undefined ||
-          row.entry === undefined ||
-          row.entry.folder ||
-          type === undefined ||
-          type === vectorType ||
-          (row.entry.size ?? 0) > maxImageSize
-        ) {
-          return [];
-        }
-        return [
-          {
-            url: tileThumbnailUrl(
-              { tab, side, folder: shownFolder, name: row.key },
-              row.entry,
-            ),
-            name: row.key,
-            index,
-          },
-        ];
-      }),
+      rows.flatMap(
+        (
+          row,
+          index,
+        ): (FillItem & {
+          readonly index: number;
+          readonly source: IconSource;
+        })[] => {
+          const type = imageType(row.key);
+          if (
+            tab === undefined ||
+            shownFolder === undefined ||
+            row.entry === undefined ||
+            row.entry.folder ||
+            type === undefined ||
+            type === vectorType ||
+            (row.entry.size ?? 0) > maxImageSize
+          ) {
+            return [];
+          }
+          const source = { tab, side, folder: shownFolder, name: row.key };
+          return [
+            {
+              url: tileThumbnailUrl(source, row.entry),
+              name: row.key,
+              index,
+              source,
+            },
+          ];
+        },
+      ),
     [rows, tab, side, shownFolder],
   );
   useThumbnailFill(
@@ -433,8 +435,8 @@ export function Pane({
     ),
     thumbnailSize,
     tiled && shownList !== undefined,
-    (name, made, pixelRatio) =>
-      onThumbnail(name, thumbnailSize, pixelRatio, made),
+    (item, made, pixelRatio) =>
+      void actions.saveThumbnail(item.source, thumbnailSize, pixelRatio, made),
   );
   useLayoutEffect(() => {
     const focused = document.activeElement;
@@ -543,9 +545,17 @@ export function Pane({
           row={row}
           source={iconSource(row)}
           box={thumbnailSize}
-          onMade={(made, pixelRatio) =>
-            onThumbnail(row.key, thumbnailSize, pixelRatio, made)
-          }
+          onMade={(made, pixelRatio) => {
+            const source = iconSource(row);
+            if (source !== undefined) {
+              void actions.saveThumbnail(
+                source,
+                thumbnailSize,
+                pixelRatio,
+                made,
+              );
+            }
+          }}
           onDropIcon={onDropIcon}
         />
       </div>
@@ -754,7 +764,7 @@ export function Pane({
       >
         {shownList !== undefined && (
           <VirtualRows
-            key={shownList}
+            key={`${shownList} ${tab ?? ''}`}
             initialOffset={actions.scrollOf(scrollKey)}
             onScrolled={scrolledTo}
             rows={tiled ? tileRows : listed}

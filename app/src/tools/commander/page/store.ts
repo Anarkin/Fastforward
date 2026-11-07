@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../shared/strings';
-import { maxDroppedIcons } from '../shared/icons';
+import { maxDroppedIcons, type IconSource } from '../shared/icons';
 import type { PdfPlace } from '../../../shared/pdf';
 import {
   sides,
@@ -132,8 +132,7 @@ interface CommanderActions {
   readonly filterSide: (side: Side, query: string | undefined) => void;
   readonly keepScroll: (key: string, offset: number) => void;
   readonly saveThumbnail: (
-    side: Side,
-    name: string,
+    source: IconSource,
     box: number,
     pixelRatio: number,
     made: Blob,
@@ -507,23 +506,9 @@ export function createCommanderStore(
           }
         });
       },
-      saveThumbnail: async (side, name, box, pixelRatio, made) => {
-        const { tab, panes } = get().view;
-        const folder = panes[side]?.folder;
-        if (tab === undefined || folder === undefined) {
-          return;
-        }
+      saveThumbnail: async (source, box, pixelRatio, made) => {
         const bytes = new Uint8Array(await made.arrayBuffer());
-        post({
-          type: 'saveThumbnail',
-          tab,
-          side,
-          folder,
-          name,
-          box,
-          pixelRatio,
-          bytes,
-        });
+        post({ type: 'saveThumbnail', ...source, box, pixelRatio, bytes });
       },
     };
   });

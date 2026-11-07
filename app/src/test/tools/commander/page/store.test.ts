@@ -365,13 +365,12 @@ suite('Commander store', () => {
     ]);
   });
 
-  test('saves a thumbnail made of a file for the folder of its side', async () => {
+  test('saves a thumbnail made of a file for the folder it was made in, though its side shows another by the time it is made, so the main process takes it for no other file', async () => {
     const { posted, store } = shown();
     await store
       .getState()
       .saveThumbnail(
-        'left',
-        'a.png',
+        { tab: '1', side: 'left', folder: 'C:\\albums\\a', name: 'a.png' },
         64,
         2,
         new Blob([new Uint8Array([1, 2])]),
@@ -381,7 +380,7 @@ suite('Commander store', () => {
         type: 'saveThumbnail',
         tab: '1',
         side: 'left',
-        folder: 'C:\\code',
+        folder: 'C:\\albums\\a',
         name: 'a.png',
         box: 64,
         pixelRatio: 2,

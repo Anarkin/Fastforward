@@ -525,8 +525,8 @@ export function resting(delay: number): {
 }
 
 function TabIcon({ url, tool }: { url: string; tool: ToolId }) {
-  const [failed, setFailed] = useState(false);
-  return failed ? (
+  const [failed, setFailed] = useState<string>();
+  return failed === url ? (
     <ToolIcon tool={tool} />
   ) : (
     <img
@@ -534,7 +534,7 @@ function TabIcon({ url, tool }: { url: string; tool: ToolId }) {
       src={url}
       alt=""
       draggable={false}
-      onError={() => setFailed(true)}
+      onError={() => setFailed(url)}
     />
   );
 }
