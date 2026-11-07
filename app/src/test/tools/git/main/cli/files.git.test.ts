@@ -392,6 +392,34 @@ suite('Repository files', () => {
     }
   });
 
+  test('sends the git kept running no name holding a NUL or a newline, as it would take the rest for a request of its own and answer every later one out of step', async () => {
+    const folder = tempFolder('kept-split-name');
+    keepGitRunningWhile(() => true);
+    try {
+      const kept = await tempRepository(folder);
+      await kept.commit('first', { 'a.txt': 'one\n', 'b.txt': 'two\n' });
+      const [head = ''] = await kept.resolve('HEAD');
+      const read = (name: string) =>
+        readFile(kept.gitPath, kept.root, head, name).then(
+          (file) => file.content,
+          () => undefined,
+        );
+      assert.strictEqual(await read('a.txt'), 'one\n');
+      for (const name of [
+        `a.txt\0info ${head}:b.txt`,
+        `a.txt\ncontents ${head}:b.txt`,
+      ]) {
+        assert.notStrictEqual(await read(name), 'two\n');
+        assert.strictEqual(await read('b.txt'), 'two\n');
+        assert.strictEqual(await read('a.txt'), 'one\n');
+      }
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
   test('reads a file at a commit with one git', async () => {
     assert.deepStrictEqual(
       await gitsStarted(() =>

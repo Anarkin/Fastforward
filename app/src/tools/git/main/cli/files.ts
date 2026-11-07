@@ -143,6 +143,8 @@ function parsedInfo(header: string): ObjectInfo {
 
 const fixedName = /^[0-9a-f]{40}(?:[0-9a-f]{24})?(?:$|:|\^1$)/;
 
+const oneRequest = (name: string) => !/[\0\n]/.test(name);
+
 const mostKeptRead = 1024 * 1024;
 
 async function keptInfo(
@@ -151,7 +153,7 @@ async function keptInfo(
   names: readonly string[],
   signal?: AbortSignal,
 ): Promise<ObjectInfo[] | undefined> {
-  if (!names.every((name) => fixedName.test(name))) {
+  if (!names.every((name) => fixedName.test(name) && oneRequest(name))) {
     return undefined;
   }
   signal?.throwIfAborted();
