@@ -258,4 +258,21 @@ suite('Pinned refs of the search', () => {
       [],
     );
   });
+
+  test('folds the search and the names as every find does, so a letter finds its accented letter and either sigma the other', () => {
+    const folding: RefInfo[] = [
+      { kind: 'branch', name: 'feature/café', commit: 'a' },
+      { kind: 'tag', name: 'ΛΟΓΟΣ', commit: 'b' },
+    ];
+    const pinned = (query: string) =>
+      pinnedRefs(
+        [{ kind: 'tag', name: 'ΛΟΓΟΣ' }],
+        folding,
+        'feature/café',
+        undefined,
+        query,
+      );
+    assert.deepStrictEqual(names(pinned('CAFE').checkedOut), ['feature/café']);
+    assert.deepStrictEqual(names(pinned('λογοσ').bookmarks), ['ΛΟΓΟΣ']);
+  });
 });

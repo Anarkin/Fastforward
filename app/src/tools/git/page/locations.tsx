@@ -31,6 +31,7 @@ import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
 import { keyPressed } from '../../../ui/shortcuts';
+import { folded } from '../../../shared/textMatches';
 
 const groups: readonly { kind: RefKind; title: string }[] = [
   { kind: 'branch', title: strings.search.localBranches },
@@ -62,7 +63,7 @@ export function indexRefs(refs: readonly RefInfo[]): RefGroup[] {
     return {
       ...group,
       refs: sorted,
-      names: sorted.map((ref) => ref.name.toLowerCase()),
+      names: sorted.map((ref) => folded(ref.name)),
     };
   });
 }
@@ -72,7 +73,7 @@ export function searchRefs(
   query: string,
   limit = maxResults,
 ): SearchGroup[] {
-  const needle = query.trim().toLowerCase();
+  const needle = folded(query.trim());
   return index.map(({ kind, title, refs, names }) => {
     const found: RefInfo[] = [];
     let more = 0;
@@ -106,14 +107,12 @@ export function searchStashes(
   query: string,
   limit = maxResults,
 ): StashSearch {
-  const needle = query.trim().toLowerCase();
+  const needle = folded(query.trim());
   if (!needle) {
     return noStashes;
   }
   const found = stashes.filter((stash) =>
-    [stash.name, stash.message].some((text) =>
-      text.toLowerCase().includes(needle),
-    ),
+    [stash.name, stash.message].some((text) => folded(text).includes(needle)),
   );
   return cappedStashes(found, limit);
 }

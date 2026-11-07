@@ -120,6 +120,23 @@ suite('Locations search', () => {
     ]);
   });
 
+  test('folds the search and the names as every find does, so a letter finds its accented letter and either sigma the other', () => {
+    const folding: RefInfo[] = [
+      branchNamed('feature/café'),
+      { kind: 'tag', name: 'ΛΟΓΟΣ', commit: 'c' },
+    ];
+    assert.deepStrictEqual(names(searchRefs(indexRefs(folding), 'CAFE')), [
+      ['Local branches', ['feature/café']],
+      ['Remote branches', []],
+      ['Tags', []],
+    ]);
+    assert.deepStrictEqual(names(searchRefs(indexRefs(folding), 'λογοσ')), [
+      ['Local branches', []],
+      ['Remote branches', []],
+      ['Tags', ['ΛΟΓΟΣ']],
+    ]);
+  });
+
   test('leaves out spaces around the search, as pasted text may have', () => {
     assert.deepStrictEqual(
       names(searchRefs(indexRefs(refs), ' Epmaisa-798 ')),
@@ -313,6 +330,17 @@ suite('Locations search', () => {
     assert.deepStrictEqual(found('stash@{1}'), [['stash@{1}'], 0]);
     assert.deepStrictEqual(found('on main', 1), [['stash@{0}'], 2]);
     assert.deepStrictEqual(found(''), [[], 0]);
+  });
+
+  test('folds the search of stashes as every find does', () => {
+    const stashes = [
+      { name: 'stash@{0}', commit: 's0', message: 'On main: Café' },
+      { name: 'stash@{1}', commit: 's1', message: 'On main: ΟΔΟΣ' },
+    ];
+    const found = (query: string) =>
+      searchStashes(stashes, query).stashes.map((stash) => stash.name);
+    assert.deepStrictEqual(found('cafe'), ['stash@{0}']);
+    assert.deepStrictEqual(found('οδοσ'), ['stash@{1}']);
   });
 
   test('draws at most 200 stashes, searched or not, counting the rest', () => {

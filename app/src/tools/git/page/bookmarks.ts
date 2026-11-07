@@ -1,3 +1,4 @@
+import { folded } from '../../../shared/textMatches';
 import { shortHash } from '../shared/hashes';
 import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
 import {
@@ -91,9 +92,9 @@ export function pinnedRefs(
   detached: string | undefined,
   query: string,
 ): PinnedRefs {
-  const needle = query.trim().toLowerCase();
+  const needle = folded(query.trim());
   const matches = (bookmark: Bookmark) =>
-    bookmark.name.toLowerCase().includes(needle);
+    folded(bookmark.name).includes(needle);
   const checkedOut: Bookmark[] = detached
     ? [{ kind: 'commit', name: detached }]
     : checkedOutRefs(refs, head);
