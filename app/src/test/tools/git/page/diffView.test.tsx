@@ -2053,6 +2053,13 @@ suite('Drawing code', () => {
     assert.strictEqual(widthsOf('x'), undefined);
   });
 
+  test('leaves the breaking of a line longer than 64 KiB to the browser, as marking every place such a line may break draws a node for each, a minified file drawing a hundred thousand in one row', () => {
+    const long = 'a.b(c) '.repeat(10_000);
+    assert.ok(long.length > 64 * 1024);
+    assert.doesNotMatch(wrapMarkup(long, 0), /<wbr/);
+    assert.match(wrapMarkup('a.b(c) d.e(f)', 0), /<wbr/);
+  });
+
   test('lets a wrapped line break where VS Code would, inside its colors too, keeping its indentation on the row with the code it indents', () => {
     assert.strictEqual(
       wrapMarkup('    a.b(c)', 4),
