@@ -7,8 +7,8 @@ import {
 import {
   realHeight,
   scrolled,
+  scrollbarDrags,
   scrolledTo,
-  thumbDragged,
   type ScrollAnchor,
   type ScrollRange,
 } from './cappedScroll';
@@ -79,7 +79,7 @@ export function cappedScrolling<T extends Element>(scroll: CappedScroll) {
           scroll.anchor,
           real,
           rangeOf(instance, element),
-          thumbDragged.has(element),
+          scrollbarDrags.get(element),
         );
         scroll.anchor = next;
         if (next.real !== real) {

@@ -9,7 +9,15 @@ export interface ScrollRange {
 export interface ScrollAnchor {
   readonly real: number;
   readonly base: number;
+  readonly grab?: Grab;
 }
+
+interface Grab {
+  readonly real: number;
+  readonly home: number;
+}
+
+export type ScrollbarDrag = 'thumb' | 'track';
 
 export function realHeight(total: number): number {
   return Math.min(total, scrollCap);
@@ -81,20 +89,47 @@ function unstuck(anchor: ScrollAnchor, range: ScrollRange): ScrollAnchor {
   return stuck ? home(anchor.real + anchor.base, range) : anchor;
 }
 
-export const thumbDragged = new WeakSet<Element>();
+export const scrollbarDrags = new WeakMap<Element, ScrollbarDrag>();
+
+function grabOf(anchor: ScrollAnchor, range: ScrollRange): Grab {
+  return (
+    anchor.grab ?? {
+      real: anchor.real,
+      home: homeReal(anchor.real + anchor.base, range),
+    }
+  );
+}
+
+function heldHome(
+  { real: grabbed, home: placed }: Grab,
+  real: number,
+  end: number,
+): number {
+  if (real < grabbed) {
+    return (real * placed) / grabbed;
+  }
+  return grabbed >= end
+    ? placed
+    : placed + ((real - grabbed) * (end - placed)) / (end - grabbed);
+}
 
 export function scrolled(
   anchor: ScrollAnchor,
   real: number,
   range: ScrollRange,
-  dragged = false,
+  drag?: ScrollbarDrag,
 ): ScrollAnchor {
   if (range.total <= scrollCap) {
     return { real, base: 0 };
   }
   const spans = spansOf(range);
-  if (dragged) {
+  if (drag === 'track') {
     return { real, base: homeBase(real, spans) };
+  }
+  if (drag === 'thumb') {
+    const grab = grabOf(anchor, range);
+    const held = heldHome(grab, real, spans.real);
+    return { real, base: held + homeBase(held, spans) - real, grab };
   }
   const base = Math.min(Math.max(anchor.base, 0), spans.virtual - spans.real);
   return unstuck({ real, base }, range);

@@ -1,5 +1,5 @@
 import { clicked, keymap } from '../shell/shared/keymap';
-import { thumbDragged } from './cappedScroll';
+import { scrollbarDrags, type ScrollbarDrag } from './cappedScroll';
 import { followDrag } from './followDrag';
 import { afterPaint } from './afterPaint';
 
@@ -496,8 +496,11 @@ class Bar {
     event.stopPropagation();
     this.scroller = scroller;
     this.scroll(scroller, jumpedScroll(this.axis, metrics, event));
-    this.follow(scroller, event, (pointer) =>
-      jumpedScroll(this.axis, metrics, pointer),
+    this.follow(
+      scroller,
+      event,
+      (pointer) => jumpedScroll(this.axis, metrics, pointer),
+      'track',
     );
     this.show(scroller);
     return true;
@@ -510,8 +513,11 @@ class Bar {
     }
     event.preventDefault();
     const drag = dragFrom(this.axis, metricsOf(scroller, this.axis), event);
-    this.follow(scroller, event, (pointer) =>
-      draggedScroll(this.axis, drag, pointer),
+    this.follow(
+      scroller,
+      event,
+      (pointer) => draggedScroll(this.axis, drag, pointer),
+      'thumb',
     );
   };
 
@@ -519,17 +525,18 @@ class Bar {
     scroller: Element,
     event: PointerEvent,
     scrollAt: (pointer: PointerEvent) => number,
+    drag: ScrollbarDrag,
   ): void {
     this.element.setPointerCapture(event.pointerId);
     this.element.classList.add('dragging');
     this.dragging = true;
-    thumbDragged.add(scroller);
+    scrollbarDrags.set(scroller, drag);
     followDrag(
       this.element,
       (pointer: PointerEvent) => this.scroll(scroller, scrollAt(pointer)),
       () => {
         this.dragging = false;
-        thumbDragged.delete(scroller);
+        scrollbarDrags.delete(scroller);
         this.element.classList.remove('dragging');
         this.hideLater();
       },

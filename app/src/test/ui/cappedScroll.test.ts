@@ -110,14 +110,17 @@ suite('Capped scroll', () => {
     assert.strictEqual(virtualOf(wheeled), 26_240_950);
     const edge: ScrollAnchor = { real: 1_000_000, base: 0 };
     assert.strictEqual(
-      virtualOf(scrolled(edge, 1_000_002, long, true)),
+      virtualOf(scrolled(edge, 1_000_002, long, 'thumb')),
       homeVirtual(1_000_002, long),
     );
   });
 
   test('follows the scrollbar dragged along a long list one to one over its first and last million pixels, and in proportion between them, to either end', () => {
     assert.strictEqual(homeVirtual(1_000_000, long), 1_000_000);
-    assert.strictEqual(virtualOf(scrolled(top, 900_000, long, true)), 900_000);
+    assert.strictEqual(
+      virtualOf(scrolled(top, 900_000, long, 'thumb')),
+      900_000,
+    );
     assert.strictEqual(
       homeVirtual(realMax - 1_000_000, long),
       virtualMax - 1_000_000,
@@ -125,15 +128,15 @@ suite('Capped scroll', () => {
     assert.ok(
       homeVirtual(1_100_000, long) - homeVirtual(1_000_000, long) > 1_000_000,
     );
-    const middle = scrolled(top, realMax / 2, long, true);
+    const middle = scrolled(top, realMax / 2, long, 'thumb');
     assert.strictEqual(middle.real, realMax / 2);
     assert.strictEqual(virtualOf(middle), homeVirtual(realMax / 2, long));
     assert.ok(Math.abs(virtualOf(middle) - virtualMax / 2) < 1);
     assert.strictEqual(
-      virtualOf(scrolled(middle, realMax, long, true)),
+      virtualOf(scrolled(middle, realMax, long, 'thumb')),
       virtualMax,
     );
-    assert.strictEqual(virtualOf(scrolled(middle, 0, long, true)), 0);
+    assert.strictEqual(virtualOf(scrolled(middle, 0, long, 'thumb')), 0);
   });
 
   test('reaches the nearer end of a long list by scrolling on from a place jumped to, moving the scrollbar back at most twice', () => {
@@ -165,6 +168,51 @@ suite('Capped scroll', () => {
       }
       assert.strictEqual(virtualOf(at), 30_000_000 + step * 10_000);
     }
+  });
+
+  test('goes on from where a long list is when its thumb is grabbed after the wheel moved it, rather than jumping to where the thumb stands for, moving it about as far for each pixel', () => {
+    const jumped = scrolledTo(top, 14_000_000, long);
+    const wheeled = scrolled(jumped, jumped.real + 10_000, long);
+    const nudged = scrolled(wheeled, wheeled.real + 1, long, 'thumb');
+    const pixel =
+      homeVirtual(wheeled.real + 1, long) - homeVirtual(wheeled.real, long);
+    const moved = virtualOf(nudged) - virtualOf(wheeled);
+    assert.ok(moved > 0 && moved < 2 * pixel, `${moved}`);
+    const fromTop = scrolled(top, 3_000_000, long);
+    const grabbed = scrolled(fromTop, fromTop.real + 1, long, 'thumb');
+    assert.ok(
+      Math.abs(virtualOf(grabbed) - virtualOf(fromTop)) < 2 * pixel,
+      `${virtualOf(grabbed) - virtualOf(fromTop)}`,
+    );
+  });
+
+  test('reaches either end of a long list with a thumb grabbed after the wheel moved it, moving the list one way all along each way, and back to where it was grabbed', () => {
+    const fromTop = scrolled(top, 3_000_000, long);
+    const grabbed = scrolled(fromTop, fromTop.real, long, 'thumb');
+    assert.strictEqual(virtualOf(scrolled(grabbed, 0, long, 'thumb')), 0);
+    assert.strictEqual(
+      virtualOf(scrolled(grabbed, realMax, long, 'thumb')),
+      virtualMax,
+    );
+    let previous = -1;
+    let at = grabbed;
+    for (let real = 0; real <= realMax; real += realMax / 1000) {
+      at = scrolled(at, real, long, 'thumb');
+      assert.ok(virtualOf(at) > previous);
+      previous = virtualOf(at);
+    }
+    const back = scrolled(at, fromTop.real, long, 'thumb');
+    assert.ok(Math.abs(virtualOf(back) - virtualOf(fromTop)) < 1);
+    const wheeled = scrolled(back, back.real + 100, long);
+    assert.ok(Math.abs(virtualOf(wheeled) - virtualOf(back) - 100) < 1e-6);
+  });
+
+  test('goes to where a pressed track stands for in a long list, though the wheel moved it, and follows the pointer held there in proportion', () => {
+    const fromTop = scrolled(top, 3_000_000, long);
+    const pressed = scrolled(fromTop, realMax / 2, long, 'track');
+    assert.strictEqual(virtualOf(pressed), homeVirtual(realMax / 2, long));
+    const held = scrolled(pressed, realMax / 4, long, 'track');
+    assert.strictEqual(virtualOf(held), homeVirtual(realMax / 4, long));
   });
 
   test('keeps showing the end of a long list as it gets shorter, and its place once it fits', () => {
