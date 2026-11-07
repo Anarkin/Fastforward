@@ -76,12 +76,19 @@ export function terminalCells(): Promise<CellTable> {
 export function useCellTable(): CellTable | undefined {
   const [table, setTable] = useState(() => loadedTable);
   useEffect(() => {
-    if (table === undefined) {
-      terminalCells().then(
-        (loaded) => setTable(() => loaded),
-        () => setTable(() => plainCells),
-      );
+    if (table !== undefined) {
+      return undefined;
     }
+    let wanted = true;
+    const keep = (loaded: CellTable) => {
+      if (wanted) {
+        setTable(() => loaded);
+      }
+    };
+    terminalCells().then(keep, () => keep(plainCells));
+    return () => {
+      wanted = false;
+    };
   }, [table]);
   return table;
 }
