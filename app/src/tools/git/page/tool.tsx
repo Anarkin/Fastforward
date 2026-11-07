@@ -7,13 +7,14 @@ import {
 } from '../../../shell/page/store';
 import './style.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useStore } from 'zustand';
 import { type GitToHost, type GitToWebview } from '../shared/protocol';
 import {
   createGitStore,
   GitStore,
   layoutSelectionOf,
   openingOf,
+  useGit,
+  useGitActions,
   type GitState,
 } from './store';
 import { columnsClass, showsDiff, templateOf } from './columns';
@@ -61,57 +62,44 @@ function diffShownOf(state: GitState): boolean {
 const commitNavigation = <NavButtons />;
 const commitSearch = <AddressBar />;
 
-export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
-  const comparing = useShell(comparingOf);
+function GitPopups() {
+  const initAsked = useGit((state) => state.initAsked);
+  const cloneShown = useGit((state) => state.clone.view !== undefined);
+  const { answerInit } = useGitActions();
+  return (
+    <>
+      {cloneShown && <ClonePopup />}
+      {initAsked && (
+        <ConfirmPopup
+          title={strings.confirm.initTitle}
+          message={strings.confirm.initInside(
+            initAsked.folder,
+            initAsked.repository,
+          )}
+          confirm={strings.confirm.init}
+          onConfirm={() => answerInit(true)}
+          onCancel={() => answerInit(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function GitTitleAndMenus({ comparing }: { comparing: string | undefined }) {
+  const activeTab = useGit((state) => state.tab.root);
+  const recent = useGit((state) => state.recent);
+  const treeNeeded = useGit((state) =>
+    state.showAllFiles ? treeToLoad(state.tab) : undefined,
+  );
+  const { closeMenu, setToolItems, setToolTitle } = useShellActions();
   const {
-    closeMenu,
-    setToolItems,
-    setToolTitle,
-    closeTab: onClose,
-    changeTextView,
-  } = useShellActions();
-  const [store] = useState(() => createGitStore(postToHost));
-  const {
-    navigate,
-    jump,
-    showUpstream,
-    showParent,
-    requestTree,
     openRepository,
     browseRepositories,
     openClone,
     initRepository,
     forgetRecent,
-    answerInit,
-    toggleCommits,
-    activateColumn,
-  } = store.getState();
-  const activeTab = useStore(store, (state) => state.tab.root);
-  const recent = useStore(store, (state) => state.recent);
-  const initAsked = useStore(store, (state) => state.initAsked);
-  const cloneShown = useStore(store, (state) => state.clone.view !== undefined);
-  const columnWidths = useStore(store, (state) => state.columnWidths);
-  const commitsShown = useStore(store, (state) => state.commitsShown);
-  const searching = useStore(store, (state) => state.searching);
-  const activeColumn = useStore(store, (state) => state.activeColumn);
-  const layoutSelection = useStore(store, layoutSelectionOf);
-  const diffShown = useStore(store, diffShownOf);
-  const treeNeeded = useStore(store, (state) =>
-    state.showAllFiles ? treeToLoad(state.tab) : undefined,
-  );
-  useEffect(() => listen(store.getState().receive), [listen, store]);
-  const repositoryShown = active && comparing === undefined;
-  useBinding(
-    compareKeymap.closeCompare,
-    () => {
-      if (comparing !== undefined) {
-        onClose(comparing);
-      }
-    },
-    active && comparing !== undefined,
-  );
-  const wordWrap = useShell((state) => state.textView.wordWrap);
-  const showWhitespace = useShell((state) => state.textView.showWhitespace);
+    requestTree,
+  } = useGitActions();
   useEffect(
     () =>
       setToolItems(
@@ -134,7 +122,33 @@ export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
       initRepository,
     ],
   );
-  useBinding(gitKeymap.commits, toggleCommits, repositoryShown);
+  useEffect(
+    () => setToolTitle('git', comparing === undefined ? activeTab : undefined),
+    [activeTab, comparing, setToolTitle],
+  );
+  const menuWorktree = useRef(activeTab);
+  useEffect(() => {
+    if (menuWorktree.current !== activeTab) {
+      menuWorktree.current = activeTab;
+      closeMenu();
+    }
+  }, [activeTab, closeMenu]);
+  useEffect(() => {
+    if (treeNeeded) {
+      requestTree(treeNeeded);
+    }
+  }, [treeNeeded, requestTree]);
+  return null;
+}
+
+function RepositoryColumns() {
+  const columnWidths = useGit((state) => state.columnWidths);
+  const commitsShown = useGit((state) => state.commitsShown);
+  const searching = useGit((state) => state.searching);
+  const activeColumn = useGit((state) => state.activeColumn);
+  const layoutSelection = useGit(layoutSelectionOf);
+  const diffShown = useGit(diffShownOf);
+  const { activateColumn } = useGitActions();
   const commitColumnShown = commitsShown || searching;
   const columnsContainer = useRef<HTMLDivElement>(null);
   const columnsTemplate = templateOf(columnWidths, [!commitColumnShown, false]);
@@ -164,19 +178,6 @@ export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
     document.addEventListener('focusout', onFocusOut);
     return () => document.removeEventListener('focusout', onFocusOut);
   }, [columnsContainer, focusColumn, activeColumn]);
-
-  useEffect(
-    () => setToolTitle('git', comparing === undefined ? activeTab : undefined),
-    [activeTab, comparing, setToolTitle],
-  );
-  const menuWorktree = useRef(activeTab);
-  useEffect(() => {
-    if (menuWorktree.current !== activeTab) {
-      menuWorktree.current = activeTab;
-      closeMenu();
-    }
-  }, [activeTab, closeMenu]);
-
   const activeShown = shownColumns(
     commitColumnShown,
     layoutSelection,
@@ -194,7 +195,70 @@ export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
       }
     }
   }, [activeShown, commitColumnShown, layoutSelection, diffShown, focusColumn]);
+  return (
+    <div
+      className={columnsClass(commitColumnShown, layoutSelection, diffShown)}
+      ref={columnsContainer}
+      style={{ gridTemplateColumns: columnsTemplate }}
+      data-active-column={activeColumn}
+      onFocus={(event) => {
+        const column = columnOf(
+          event.target instanceof Element ? event.target : null,
+        );
+        if (column) {
+          activateColumn(column);
+        }
+      }}
+      onKeyDown={(event) => {
+        const target =
+          event.target instanceof HTMLElement ? event.target : null;
+        const forwarded = forwardedColumn(columnOf(target), event);
+        if (forwarded) {
+          event.preventDefault();
+          focusColumn(forwarded)?.dispatchEvent(
+            new KeyboardEvent('keydown', event.nativeEvent),
+          );
+          return;
+        }
+        const step = columnStep(
+          event,
+          shownColumns(commitColumnShown, layoutSelection, diffShown),
+          columnOf(target) ?? activeColumn,
+          target?.hasAttribute(columnFocusAttribute) ?? true,
+        );
+        if (step?.preventDefault) {
+          event.preventDefault();
+        }
+        if (step?.next) {
+          focusColumn(step.next);
+        }
+      }}
+    >
+      <CommitColumn navigation={commitNavigation} search={commitSearch} />
+      <FileColumn />
+      <RepositoryDiff />
+    </div>
+  );
+}
 
+export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
+  const comparing = useShell(comparingOf);
+  const { closeTab: onClose, toggleTextView } = useShellActions();
+  const [store] = useState(() => createGitStore(postToHost));
+  const { navigate, jump, showUpstream, showParent, toggleCommits } =
+    store.getState();
+  useEffect(() => listen(store.getState().receive), [listen, store]);
+  const repositoryShown = active && comparing === undefined;
+  useBinding(
+    compareKeymap.closeCompare,
+    () => {
+      if (comparing !== undefined) {
+        onClose(comparing);
+      }
+    },
+    active && comparing !== undefined,
+  );
+  useBinding(gitKeymap.commits, toggleCommits, repositoryShown);
   useEffect(() => {
     if (!repositoryShown) {
       return undefined;
@@ -221,99 +285,23 @@ export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
   );
   useBinding(gitKeymap.upstream, showUpstream, repositoryShown);
   useBinding(gitKeymap.parent, showParent, repositoryShown);
-
-  useEffect(() => {
-    if (treeNeeded) {
-      requestTree(treeNeeded);
-    }
-  }, [treeNeeded, requestTree]);
-
-  useBinding(
-    gitKeymap.wrap,
-    () => changeTextView({ wordWrap: !wordWrap }),
-    active,
-  );
+  useBinding(gitKeymap.wrap, () => toggleTextView('wordWrap'), active);
   useBinding(
     gitKeymap.showWhitespace,
-    () => changeTextView({ showWhitespace: !showWhitespace }),
+    () => toggleTextView('showWhitespace'),
     active,
   );
-  const popups = (
-    <>
-      {cloneShown && <ClonePopup />}
-      {initAsked && (
-        <ConfirmPopup
-          title={strings.confirm.initTitle}
-          message={strings.confirm.initInside(
-            initAsked.folder,
-            initAsked.repository,
-          )}
-          confirm={strings.confirm.init}
-          onConfirm={() => answerInit(true)}
-          onCancel={() => answerInit(false)}
-        />
-      )}
-    </>
-  );
-
-  if (!active) {
-    return <GitStore value={store}>{popups}</GitStore>;
-  }
 
   return (
     <GitStore value={store}>
-      {popups}
-      {comparing !== undefined ? (
+      <GitPopups />
+      <GitTitleAndMenus comparing={comparing} />
+      {!active ? null : comparing !== undefined ? (
         <CompareView comparing={comparing} />
       ) : (
         <div className="repository">
           <WorktreeBar />
-          <div
-            className={columnsClass(
-              commitColumnShown,
-              layoutSelection,
-              diffShown,
-            )}
-            ref={columnsContainer}
-            style={{ gridTemplateColumns: columnsTemplate }}
-            data-active-column={activeColumn}
-            onFocus={(event) => {
-              const column = columnOf(
-                event.target instanceof Element ? event.target : null,
-              );
-              if (column) {
-                activateColumn(column);
-              }
-            }}
-            onKeyDown={(event) => {
-              const target =
-                event.target instanceof HTMLElement ? event.target : null;
-              const forwarded = forwardedColumn(columnOf(target), event);
-              if (forwarded) {
-                event.preventDefault();
-                focusColumn(forwarded)?.dispatchEvent(
-                  new KeyboardEvent('keydown', event.nativeEvent),
-                );
-                return;
-              }
-              const step = columnStep(
-                event,
-                shownColumns(commitColumnShown, layoutSelection, diffShown),
-                columnOf(target) ?? activeColumn,
-                target?.hasAttribute(columnFocusAttribute) ?? true,
-              );
-              if (step?.preventDefault) {
-                event.preventDefault();
-              }
-              if (step?.next) {
-                focusColumn(step.next);
-              }
-            }}
-          >
-            <CommitColumn navigation={commitNavigation} search={commitSearch} />
-            <FileColumn />
-            <RepositoryDiff />
-          </div>
+          <RepositoryColumns />
         </div>
       )}
     </GitStore>

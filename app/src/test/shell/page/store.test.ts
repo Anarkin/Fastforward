@@ -188,6 +188,25 @@ suite('Shell store', () => {
     });
   });
 
+  test('turns wrapping or whitespace on or off from where it is now, telling the main process the whole view', () => {
+    const { posted, store } = posting();
+    store.getState().toggleTextView('wordWrap');
+    store.getState().toggleTextView('wordWrap');
+    store.getState().toggleTextView('showWhitespace');
+    const wrapped = { ...defaultTextView, wordWrap: !defaultTextView.wordWrap };
+    assert.deepStrictEqual(posted, [
+      { type: 'setTextView', view: wrapped },
+      { type: 'setTextView', view: defaultTextView },
+      {
+        type: 'setTextView',
+        view: {
+          ...defaultTextView,
+          showWhitespace: !defaultTextView.showWhitespace,
+        },
+      },
+    ]);
+  });
+
   test('changes what is asked of the text and image views at once, keeping the rest, telling the main process the whole view, and copies text through it', () => {
     const { posted, store } = posting();
     const view = { ...defaultTextView, showWhitespace: true };

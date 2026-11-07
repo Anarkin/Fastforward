@@ -134,6 +134,7 @@ interface ShellActions {
   ) => void;
   readonly setToolTitle: (tool: ToolId, title: string | undefined) => void;
   readonly changeTextView: (change: Partial<TextView>) => void;
+  readonly toggleTextView: (key: 'wordWrap' | 'showWhitespace') => void;
   readonly changeImageView: (change: Partial<ImageView>) => void;
   readonly copyText: (text: string) => void;
   readonly ready: () => void;
@@ -325,6 +326,11 @@ export function createShellStore(
         })),
       changeTextView: (change) => {
         const view = { ...get().textView, ...change };
+        set({ textView: view });
+        post({ type: 'setTextView', view });
+      },
+      toggleTextView: (key) => {
+        const view = { ...get().textView, [key]: !get().textView[key] };
         set({ textView: view });
         post({ type: 'setTextView', view });
       },
