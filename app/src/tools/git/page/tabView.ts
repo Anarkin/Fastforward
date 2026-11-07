@@ -147,6 +147,8 @@ function isLate(
   );
 }
 
+const noFiles: readonly FileChange[] = [];
+
 export function changesShown({
   area,
   files,
@@ -154,7 +156,7 @@ export function changesShown({
   all,
 }: TabView): readonly FileChange[] {
   if (area === 'staged') {
-    return staged ?? [];
+    return staged ?? noFiles;
   }
   return (area === undefined ? all : undefined) ?? files;
 }

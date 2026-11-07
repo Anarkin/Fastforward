@@ -59,6 +59,12 @@ function busyTab(): TabView {
 }
 
 suite('Tab view', () => {
+  test('hands out the same empty list while the staged changes are picked before they are listed, as the diff reads it through a selector that must not change on every call', () => {
+    const picked: TabView = { ...emptyTabView, area: 'staged' };
+    assert.deepStrictEqual(changesShown(picked), []);
+    assert.strictEqual(changesShown(picked), changesShown(picked));
+  });
+
   test('lets go of the selected commit, its files and diff when the app does', () => {
     const view = reduceTabView(busyTab(), { type: 'unselect' });
     assert.strictEqual(view.hash, undefined);
