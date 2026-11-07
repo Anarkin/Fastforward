@@ -176,6 +176,10 @@ export function CommanderTool({
     commanderKeymap.drive,
     (side) => {
       activate(side);
+      sideToFocus(
+        columns.current?.children[sides.indexOf(side)],
+        document.activeElement,
+      )?.focus();
       triggers[side].current?.click();
     },
     shown && !viewing && hasDrives,
