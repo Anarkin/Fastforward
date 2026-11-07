@@ -47,7 +47,17 @@ export function CommanderTool({
   listen: (handler: (message: CommanderToWebview) => void) => () => void;
 }) {
   const [store] = useState(() => createCommanderStore(post));
-  const view = useStore(store, (state) => state.view);
+  const tab = useStore(store, (state) => state.view.tab);
+  const viewsFile = useStore(
+    store,
+    (state) => state.view.viewing !== undefined,
+  );
+  const activeSide = useStore(store, (state) => state.view.active);
+  const canGroupByColor = useStore(
+    store,
+    (state) => state.view.fileColors.colors.length > 0,
+  );
+  const canElevate = useStore(store, (state) => state.view.canElevate);
   const deleting = useStore(store, (state) => state.deleting);
   const noAccess = useStore(store, (state) => state.noAccess);
   const hasDrives = useStore(store, (state) => state.drives.length > 0);
@@ -73,29 +83,29 @@ export function CommanderTool({
 
   useEffect(() => listen(store.getState().receive), [listen, store]);
 
-  const shown = active && view.tab !== undefined;
-  const viewing = shown && view.viewing !== undefined;
+  const shown = active && tab !== undefined;
+  const viewing = shown && viewsFile;
 
   useEffect(() => {
     if (!shown || viewing) {
       return;
     }
     sideToFocus(
-      columns.current?.children[sides.indexOf(view.active)],
+      columns.current?.children[sides.indexOf(activeSide)],
       document.activeElement,
     )?.focus();
-  }, [shown, viewing, view.active]);
+  }, [shown, viewing, activeSide]);
 
   useBinding(
     commanderKeymap.history,
-    (direction) => step(view.active, direction),
+    (direction) => step(activeSide, direction),
     shown && !viewing,
   );
   useBinding(
     viewerKeymap.closeViewer,
     () => {
-      if (view.tab !== undefined) {
-        onClose(view.tab);
+      if (tab !== undefined) {
+        onClose(tab);
       }
     },
     viewing,
@@ -105,7 +115,7 @@ export function CommanderTool({
     if (!shown) {
       return undefined;
     }
-    const side = view.active;
+    const side = activeSide;
     const onMouseUp = (event: MouseEvent) => {
       const direction = clicked(commanderKeymap.history, event);
       if (direction !== undefined) {
@@ -115,18 +125,17 @@ export function CommanderTool({
     };
     window.addEventListener('mouseup', onMouseUp);
     return () => window.removeEventListener('mouseup', onMouseUp);
-  }, [shown, view.active, step]);
+  }, [shown, activeSide, step]);
 
   useBinding(commanderKeymap.showHidden, toggleHidden, shown && !viewing);
-  const canGroupByColor = view.fileColors.colors.length > 0;
   useBinding(
     commanderKeymap.groupByColor,
-    () => groupByColor(view.active),
+    () => groupByColor(activeSide),
     shown && !viewing && canGroupByColor,
   );
   useBinding(
     commanderKeymap.layout,
-    (layout) => chooseLayout(view.active, layout),
+    (layout) => chooseLayout(activeSide, layout),
     shown && !viewing,
   );
   useBinding(
@@ -143,12 +152,12 @@ export function CommanderTool({
   }
   const resizer = <Resizer columns={columns} onShare={setShare} />;
 
-  if (view.viewing !== undefined) {
+  if (viewsFile) {
     return (
       <CommanderStore value={store}>
         <div className="repository commander">
           <div className="columns viewer-columns">
-            <Viewer key={view.tab} />
+            <Viewer key={tab} />
           </div>
         </div>
       </CommanderStore>
@@ -161,7 +170,7 @@ export function CommanderTool({
         <div
           className="columns commander-columns"
           ref={columns}
-          data-active-side={view.active}
+          data-active-side={activeSide}
           style={{
             gridTemplateColumns: `minmax(0, ${share}fr) minmax(0, ${1 - share}fr)`,
           }}
@@ -195,9 +204,7 @@ export function CommanderTool({
             onConfirm={closeNoAccess}
             onCancel={closeNoAccess}
             extra={
-              view.canElevate &&
-              noAccess.asAdministrator &&
-              view.tab !== undefined
+              canElevate && noAccess.asAdministrator && tab !== undefined
                 ? {
                     label: strings.commander.asAdministrator,
                     onClick: elevate,
