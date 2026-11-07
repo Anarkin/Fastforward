@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { strings } from '../shared/strings';
 import type { ContextMenuItem } from './contextMenu';
 import { languages } from './languages';
@@ -75,45 +74,21 @@ export interface Highlighting {
   readonly change: (on: boolean) => void;
 }
 
-export function useLanguageChoice(
+export function languageChoiceOf(
   file: string | undefined,
   highlighting: Highlighting,
-  kept?: KeptLanguage,
+  kept: KeptLanguage,
 ): {
   readonly choice: LanguageChoice;
   readonly choose: (choice: LanguageChoice) => void;
 } {
-  const [picked, setPicked] = useState<{
-    readonly file: string;
-    readonly language: string;
-  }>();
-  if (picked !== undefined && picked.file !== file) {
-    setPicked(undefined);
-  }
-  const language =
-    kept === undefined
-      ? picked?.file === file
-        ? picked?.language
-        : undefined
-      : kept.language;
-  const pick = (chosen: string | undefined) => {
-    if (kept !== undefined) {
-      kept.keep(chosen);
-    } else {
-      setPicked(
-        chosen === undefined || file === undefined
-          ? undefined
-          : { file, language: chosen },
-      );
-    }
-  };
-  const choice = language ?? (highlighting.on ? 'auto' : 'plain');
+  const choice = kept.language ?? (highlighting.on ? 'auto' : 'plain');
   const choose = (chosen: LanguageChoice) => {
     if (chosen === 'auto' || chosen === 'plain') {
-      pick(undefined);
+      kept.keep(undefined);
       highlighting.change(chosen === 'auto');
     } else if (file !== undefined) {
-      pick(chosen);
+      kept.keep(chosen);
     }
   };
   return { choice, choose };

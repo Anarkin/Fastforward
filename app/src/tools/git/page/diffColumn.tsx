@@ -9,7 +9,7 @@ import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { languageKeyOf, pickedFor, useGit, useGitActions } from './store';
-import { LanguageButton, useLanguageChoice } from '../../../ui/languageChoice';
+import { LanguageButton, languageChoiceOf } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
 import { useBinding } from '../../../ui/shortcuts';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
@@ -148,7 +148,7 @@ export function DiffLanguage({ comparing }: { comparing: string | undefined }) {
   const { changeTextView } = useShellActions();
   const { pickLanguage, seeLanguageKey } = useGitActions();
   useEffect(() => seeLanguageKey(key), [key, seeLanguageKey]);
-  const { choice, choose } = useLanguageChoice(
+  const { choice, choose } = languageChoiceOf(
     key,
     {
       on: highlightSyntax,

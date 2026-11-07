@@ -30,7 +30,7 @@ import { encodingMenu, shownEncoding, type EncodingChoice } from './encodings';
 import {
   LanguageButton,
   shownLanguage,
-  useLanguageChoice,
+  languageChoiceOf,
 } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
 import { colorOfFileNamed } from './fileColors';
@@ -88,7 +88,7 @@ export function Viewer() {
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const realSize = useShell((state) => state.imageView.realSize);
   const { changeTextView, changeImageView } = useShellActions();
-  const { choice: languageChoice, choose: chooseLanguage } = useLanguageChoice(
+  const { choice: languageChoice, choose: chooseLanguage } = languageChoiceOf(
     file,
     {
       on: highlightSyntax,

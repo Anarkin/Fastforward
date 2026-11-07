@@ -1,18 +1,12 @@
 import * as assert from 'node:assert';
-import { JSDOM } from 'jsdom';
-import { act, useLayoutEffect, useState } from 'react';
 import { suite, test } from 'vitest';
 import {
   languageButtonLabel,
   languageMenu,
   shownLanguage,
-  useLanguageChoice,
-  type KeptLanguage,
-  type LanguageChoice,
+  languageChoiceOf,
 } from '../../ui/languageChoice';
 import { languages } from '../../ui/languages';
-import { defaultTextView } from '../../ui/textView';
-import type { TextView } from '../../shell/shared/protocol';
 
 const first = languages[0];
 
@@ -22,77 +16,6 @@ const labels = (menu: ReturnType<typeof languageMenu>) =>
       ? '-'
       : `${item.checked === true ? '✓ ' : ''}${item.label}`,
   );
-
-interface Seen {
-  readonly choice: LanguageChoice;
-  readonly choose: (choice: LanguageChoice) => void;
-  readonly view: TextView;
-  readonly show: (file: string | undefined) => void;
-}
-
-function Probe({
-  view,
-  change,
-  onSeen,
-}: {
-  view: TextView;
-  change: (view: TextView) => void;
-  onSeen: (seen: Seen) => void;
-}) {
-  const [file, setFile] = useState<string | undefined>('a.ts');
-  const { choice, choose } = useLanguageChoice(file, {
-    on: view.highlightSyntax,
-    change: (on) => change({ ...view, highlightSyntax: on }),
-  });
-  useLayoutEffect(() => {
-    onSeen({ choice, choose, view, show: setFile });
-  }, [onSeen, choice, choose, view]);
-  return null;
-}
-
-function KeptProbe({ onSeen }: { onSeen: (seen: Seen) => void }) {
-  const [language, keep] = useState<string>();
-  const [file, setFile] = useState<string | undefined>('a.ts');
-  return (
-    <KeptChoice
-      key={file}
-      file={file}
-      kept={{ language, keep }}
-      show={setFile}
-      onSeen={onSeen}
-    />
-  );
-}
-
-function KeptChoice({
-  file,
-  kept,
-  show,
-  onSeen,
-}: {
-  file: string | undefined;
-  kept: KeptLanguage;
-  show: (file: string | undefined) => void;
-  onSeen: (seen: Seen) => void;
-}) {
-  const { choice, choose } = useLanguageChoice(
-    file,
-    { on: defaultTextView.highlightSyntax, change: () => undefined },
-    kept,
-  );
-  useLayoutEffect(() => {
-    onSeen({ choice, choose, view: defaultTextView, show });
-  }, [onSeen, choice, choose, show]);
-  return null;
-}
-
-function Saved({ onSeen }: { onSeen: (seen: Seen) => void }) {
-  const [view, change] = useState<TextView>({
-    ...defaultTextView,
-    highlightSyntax: false,
-  });
-  return <Probe view={view} change={change} onSeen={onSeen} />;
-}
 
 suite('The language text is colored in', () => {
   test('colors text in the language detected, in the one chosen, or in none for plain text', () => {
@@ -183,90 +106,34 @@ suite('The language text is colored in', () => {
     assert.deepStrictEqual(chosen, ['auto', 'plain', first?.id]);
   });
 
-  test('starts in Auto or Plain Text as saved, saves Auto and Plain Text when chosen, and keeps a language chosen only for the file it was chosen for', async () => {
-    const dom = new JSDOM('<!doctype html><main></main>');
-    const globals = {
-      window: dom.window,
-      document: dom.window.document,
-      IS_REACT_ACT_ENVIRONMENT: true,
-    };
-    const saved = Object.fromEntries(
-      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+  test('starts in Auto or Plain Text as saved, saves Auto and Plain Text when chosen, keeps a language chosen where it is told to, and chooses none without a file', () => {
+    const kept: (string | undefined)[] = [];
+    const turned: boolean[] = [];
+    const choiceOf = (
+      file: string | undefined,
+      on: boolean,
+      language: string | undefined,
+    ) =>
+      languageChoiceOf(
+        file,
+        { on, change: (next) => turned.push(next) },
+        { language, keep: (next) => kept.push(next) },
+      );
+    assert.strictEqual(choiceOf('a.ts', false, undefined).choice, 'plain');
+    assert.strictEqual(choiceOf('a.ts', true, undefined).choice, 'auto');
+    assert.strictEqual(choiceOf('a.ts', false, 'python').choice, 'python');
+    choiceOf('a.ts', false, undefined).choose('typescript');
+    assert.deepStrictEqual([kept, turned], [['typescript'], []]);
+    choiceOf('a.ts', false, 'typescript').choose('auto');
+    choiceOf('a.ts', true, undefined).choose('plain');
+    assert.deepStrictEqual(
+      [kept, turned],
+      [
+        ['typescript', undefined, undefined],
+        [true, false],
+      ],
     );
-    Object.assign(globalThis, globals);
-    try {
-      const { createRoot } = await import('react-dom/client');
-      const main = dom.window.document.querySelector('main');
-      assert.ok(main);
-      const seen: { current?: Seen } = {};
-      const onSeen = (latest: Seen) => {
-        seen.current = latest;
-      };
-      const root = createRoot(main);
-      await act(async () => root.render(<Saved onSeen={onSeen} />));
-      assert.strictEqual(seen.current?.choice, 'plain');
-
-      await act(async () => seen.current?.choose('typescript'));
-      assert.strictEqual(seen.current?.choice, 'typescript');
-      assert.strictEqual(seen.current?.view.highlightSyntax, false);
-
-      await act(async () => seen.current?.show('b.ts'));
-      assert.strictEqual(seen.current?.choice, 'plain');
-      await act(async () => seen.current?.show('a.ts'));
-      assert.strictEqual(seen.current?.choice, 'plain');
-
-      await act(async () => seen.current?.choose('auto'));
-      assert.strictEqual(seen.current?.choice, 'auto');
-      assert.strictEqual(seen.current?.view.highlightSyntax, true);
-
-      await act(async () => seen.current?.show(undefined));
-      await act(async () => seen.current?.choose('typescript'));
-      assert.strictEqual(seen.current?.choice, 'auto');
-
-      await act(async () => seen.current?.choose('plain'));
-      assert.strictEqual(seen.current?.choice, 'plain');
-      assert.strictEqual(seen.current?.view.highlightSyntax, false);
-      await act(async () => root.unmount());
-    } finally {
-      Object.assign(globalThis, saved);
-    }
-  });
-
-  test('keeps a language chosen where it is told to, so a viewer tab drawn anew once shown again still has it, and Auto or Plain Text saved for all', async () => {
-    const dom = new JSDOM('<!doctype html><main></main>');
-    const globals = {
-      window: dom.window,
-      document: dom.window.document,
-      IS_REACT_ACT_ENVIRONMENT: true,
-    };
-    const saved = Object.fromEntries(
-      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
-    );
-    Object.assign(globalThis, globals);
-    try {
-      const { createRoot } = await import('react-dom/client');
-      const main = dom.window.document.querySelector('main');
-      assert.ok(main);
-      const seen: { current?: Seen } = {};
-      const onSeen = (latest: Seen) => {
-        seen.current = latest;
-      };
-      const root = createRoot(main);
-      await act(async () => root.render(<KeptProbe onSeen={onSeen} />));
-      assert.strictEqual(seen.current?.choice, 'auto');
-
-      await act(async () => seen.current?.choose('python'));
-      await act(async () => seen.current?.show(undefined));
-      await act(async () => seen.current?.show('a.ts'));
-      assert.strictEqual(seen.current?.choice, 'python');
-
-      await act(async () => seen.current?.choose('auto'));
-      await act(async () => seen.current?.show(undefined));
-      await act(async () => seen.current?.show('a.ts'));
-      assert.strictEqual(seen.current?.choice, 'auto');
-      await act(async () => root.unmount());
-    } finally {
-      Object.assign(globalThis, saved);
-    }
+    choiceOf(undefined, true, undefined).choose('typescript');
+    assert.strictEqual(kept.length, 3);
   });
 });
