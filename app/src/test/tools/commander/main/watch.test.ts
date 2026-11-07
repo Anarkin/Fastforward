@@ -183,6 +183,32 @@ suite('Watching a folder of the commander', () => {
     },
   );
 
+  test('watches the folder again once its watching fails, as a network share gone for a moment stopped telling of its changes for good', async () => {
+    const own: fs.FSWatcher[] = [];
+    const start = (
+      watched: string,
+      listener: (event: string, name: string | null) => void,
+    ): fs.FSWatcher => {
+      const watcher = fs.watch(watched, { persistent: false }, listener);
+      if (watched === folder) {
+        own.push(watcher);
+      }
+      return watcher;
+    };
+    let changes = 0;
+    stops.push(watchFolder(folder, () => changes++, 10, { settle: 10, start }));
+    await waitFor(() => own.length === 1, 'the watching to start');
+    const [failed] = own;
+    failed?.close();
+    failed?.emit('error', new Error('EPERM: operation not permitted, watch'));
+    await waitFor(() => own.length === 2, 'the watching to start again');
+    changes = 0;
+    await waitFor(() => {
+      fs.writeFileSync(path.join(folder, 'later.txt'), String(Math.random()));
+      return changes > 0;
+    }, 'a change after');
+  });
+
   test('tells nothing once stopped, nor for a folder it could not watch', async () => {
     let changes = 0;
     watchFolder(folder, () => changes++, 10)();

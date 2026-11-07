@@ -5,6 +5,7 @@ export type WatchFolder = (folder: string, onChange: () => void) => () => void;
 
 const changeDelay = 50;
 const settleDelay = 250;
+const longestRetry = 60_000;
 
 type StartWatching = (
   folder: string,
@@ -47,6 +48,8 @@ export function watchFolder(
   } = {},
 ): () => void {
   let pending: NodeJS.Timeout | undefined;
+  let retrying: NodeJS.Timeout | undefined;
+  let failures = 0;
   let stopped = false;
   let stopWatching: (() => void) | undefined;
   const changed = () => {
@@ -69,7 +72,10 @@ export function watchFolder(
         () => changed(),
       );
     }, settle);
-    own.on('error', changed);
+    own.on('error', () => {
+      changed();
+      watchAgain();
+    });
     const parent = path.dirname(folder);
     const name = path.basename(folder);
     const around =
@@ -87,17 +93,29 @@ export function watchFolder(
       around?.close();
     };
   };
-  void stat(folder).then(
-    (stats) => {
-      if (!stopped) {
-        stopWatching = watchAnswered(stampOf(stats));
-      }
-    },
-    () => {},
-  );
+  const begin = () =>
+    void stat(folder).then(
+      (stats) => {
+        if (!stopped) {
+          stopWatching = watchAnswered(stampOf(stats));
+        }
+      },
+      () => {},
+    );
+  const watchAgain = () => {
+    stopWatching?.();
+    stopWatching = undefined;
+    clearTimeout(retrying);
+    retrying = setTimeout(
+      begin,
+      Math.min(settle * 2 ** failures++, longestRetry),
+    );
+  };
+  begin();
   return () => {
     stopped = true;
     clearTimeout(pending);
+    clearTimeout(retrying);
     stopWatching?.();
   };
 }
