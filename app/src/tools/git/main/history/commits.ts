@@ -131,6 +131,15 @@ export class Commits {
   hashAt(at: number): string {
     return this.hashes.hashAt(at);
   }
+
+  isMerge(hash: string): boolean {
+    const at = this.hashes.find(hash);
+    return (
+      at !== undefined &&
+      at < this.length &&
+      this.starts[at + 1] - this.starts[at] > 1
+    );
+  }
 }
 
 class HashTable {

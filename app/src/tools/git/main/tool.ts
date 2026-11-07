@@ -88,7 +88,7 @@ import {
   type Location,
   type Worktree,
 } from './cli/worktrees';
-import { step, visit } from './history/navigation';
+import { maxSteps, step, visit } from './history/navigation';
 import { ImageReads } from './imageReads';
 import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
@@ -115,6 +115,7 @@ import { bookmarkedCommits, hasRef } from '../shared/refNames';
 import { imageSourceOf, imageType } from '../shared/images';
 import {
   commitPageSize,
+  diffLayouts,
   includedChanges,
   leftOutChanges,
   workingTreeHash,
@@ -286,6 +287,10 @@ const maxBookmarks = 1000;
 
 const maxBookmarkName = 4096;
 
+const maxCommitsAsked = 4 * commitPageSize;
+
+const maxTextsAsked = 10_000;
+
 class OpeningFailed {
   constructor(
     readonly root: string,
@@ -455,6 +460,9 @@ export class GitTool implements Tool<'git'> {
   }
 
   receive(page: Page, message: GitToHost): Promise<void> {
+    if (!wellFormed(message)) {
+      return Promise.resolve();
+    }
     const session = this.sessionOf(page);
     return this.run(
       strings.log.handlingFailed(message.type),
@@ -603,16 +611,11 @@ export class GitTool implements Tool<'git'> {
 
   private async viewFile(
     context: Context,
-    file: unknown,
-    blob: unknown,
+    file: string,
+    blob: string | undefined,
   ): Promise<void> {
     const page = context.session?.page;
-    if (
-      page === undefined ||
-      typeof file !== 'string' ||
-      file.includes('\n') ||
-      (blob !== undefined && typeof blob !== 'string')
-    ) {
+    if (page === undefined) {
       return;
     }
     const notify = this.notify(context);
@@ -860,9 +863,7 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'setColumnWidths':
-        if (isColumnWidths(message.widths)) {
-          this.save(storage.setColumnWidths(message.widths));
-        }
+        this.save(storage.setColumnWidths(message.widths));
         return;
       case 'setShowAllFiles':
         this.save(storage.setShowAllFiles(message.show));
@@ -884,9 +885,6 @@ export class GitTool implements Tool<'git'> {
         await this.sendCompareTexts(session, message.requests);
         return;
       case 'setShowEntireFile': {
-        if (typeof message.show !== 'boolean') {
-          return;
-        }
         this.save(storage.setShowEntireFile(message.show));
         await this.sendCompare(session);
         const context = await this.context(session);
@@ -940,15 +938,7 @@ export class GitTool implements Tool<'git'> {
       }
       case 'setBookmarks': {
         const repository = this.repositoryOf(this.knownRoot(message.root));
-        if (
-          !this.hasRepository(repository) ||
-          !Array.isArray(message.bookmarks) ||
-          message.bookmarks.length > maxBookmarks ||
-          !message.bookmarks.every(
-            (bookmark) =>
-              isBookmark(bookmark) && bookmark.name.length <= maxBookmarkName,
-          )
-        ) {
+        if (!this.hasRepository(repository)) {
           return;
         }
         const before = this.bookmarkedOf(repository);
@@ -1028,8 +1018,10 @@ export class GitTool implements Tool<'git'> {
         );
         break;
       case 'toggleMerge':
-        toggleMerges(context.tab, [message.hash]);
-        await this.sendShownHistory(context, { scrollTo: message.hash });
+        if (context.tab.fullHistory.isMerge(message.hash)) {
+          toggleMerges(context.tab, [message.hash]);
+          await this.sendShownHistory(context, { scrollTo: message.hash });
+        }
         break;
       case 'checkout':
         await this.checkout(context, message.target, picked);
@@ -1779,29 +1771,28 @@ export class GitTool implements Tool<'git'> {
 
   private async sendCompareTexts(
     session: Session,
-    requests: unknown,
+    requests: readonly TextRequest[],
   ): Promise<void> {
     const { comparing } = session;
-    if (comparing === undefined || !Array.isArray(requests)) {
+    if (comparing === undefined) {
       return;
     }
-    const asked = requests.filter(
-      (request: unknown): request is TextRequest =>
-        typeof request === 'object' &&
-        request !== null &&
-        'path' in request &&
-        typeof request.path === 'string' &&
-        'blob' in request &&
-        typeof request.blob === 'string' &&
-        'side' in request &&
-        (request.side === 'old' || request.side === 'new'),
-    );
+    const sides = new Map<TextRequest['side'], Promise<string | undefined>>();
+    const sideText = (side: TextRequest['side']) => {
+      const known = sides.get(side);
+      if (known !== undefined) {
+        return known;
+      }
+      const reading = comparedText(comparing.compared, side);
+      sides.set(side, reading);
+      return reading;
+    };
     const texts = await Promise.all(
-      asked.map(async (request) => ({
+      uniqueTexts(requests).map(async (request) => ({
         path: request.path,
         side: request.side,
         blob: request.blob,
-        text: await comparedText(comparing.compared, request.side),
+        text: await sideText(request.side),
       })),
     );
     if (session.comparing === comparing && texts.length > 0) {
@@ -3124,6 +3115,9 @@ export class GitTool implements Tool<'git'> {
       return;
     }
     const { history, graph } = tab;
+    if (start >= history.length) {
+      return;
+    }
     const walked = graph.walkTo(start, () => tab.graph === graph);
     const commits = await logCommits(
       context.gitPath,
@@ -3402,11 +3396,7 @@ export class GitTool implements Tool<'git'> {
     { hash, diff, texts: asked }: Extract<TabMessage, { type: 'loadTexts' }>,
   ): Promise<void> {
     const { gitPath, root } = context;
-    const texts = [
-      ...new Map(
-        asked.map((request) => [`${request.side}\0${request.path}`, request]),
-      ).values(),
-    ];
+    const texts = uniqueTexts(asked);
     const fromDisk = (request: TextRequest) =>
       context.tab.area !== 'staged' && request.side === workingTreeSide(hash);
     const blobs = await this.blobTexts.read(
@@ -3736,6 +3726,196 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
     case 'loadTexts':
     case 'loadFileDiff':
       return hiddenSides(tab, message.hash).length === 0;
+    default:
+      return false;
+  }
+}
+
+function uniqueTexts(requests: readonly TextRequest[]): TextRequest[] {
+  return [
+    ...new Map(
+      requests.map((request) => [`${request.side}\0${request.path}`, request]),
+    ).values(),
+  ];
+}
+
+function isPathAsked(value: unknown): value is string {
+  return (
+    typeof value === 'string' && !value.includes('\0') && !value.includes('\n')
+  );
+}
+
+function isTextRequest(value: unknown): value is TextRequest {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'path' in value &&
+    isPathAsked(value.path) &&
+    'blob' in value &&
+    typeof value.blob === 'string' &&
+    'side' in value &&
+    (value.side === 'old' || value.side === 'new')
+  );
+}
+
+function areTextRequests(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length <= maxTextsAsked &&
+    value.every(isTextRequest)
+  );
+}
+
+function isCheckoutTarget(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || !('kind' in value)) {
+    return false;
+  }
+  return value.kind === 'commit'
+    ? 'hash' in value && typeof value.hash === 'string'
+    : (value.kind === 'branch' ||
+        value.kind === 'remote' ||
+        value.kind === 'tag') &&
+        'name' in value &&
+        typeof value.name === 'string';
+}
+
+function isWhole(value: number, least: number, most: number): boolean {
+  return Number.isInteger(value) && value >= least && value <= most;
+}
+
+function isOptional<T>(
+  value: T | undefined,
+  is: (value: T) => boolean,
+): boolean {
+  return value === undefined || is(value);
+}
+
+const isString = (value: unknown) => typeof value === 'string';
+
+const isBoolean = (value: unknown) => typeof value === 'boolean';
+
+function wellFormed(message: GitToHost): boolean {
+  if (typeof message !== 'object' || message === null) {
+    return false;
+  }
+  switch (message.type) {
+    case 'browseRepositories':
+    case 'initRepository':
+    case 'openClone':
+    case 'closeClone':
+    case 'stopClone':
+      return true;
+    case 'openRepository':
+    case 'forgetRecent':
+    case 'selectWorktree':
+    case 'preloadWorktree':
+      return isString(message.root);
+    case 'initInside':
+    case 'chooseCloneFolder':
+      return isString(message.folder);
+    case 'checkCloneTarget':
+      return isString(message.folder) && isString(message.name);
+    case 'clone':
+      return [message.url, message.folder, message.name].every(isString);
+    case 'setColumnWidths':
+      return isColumnWidths(message.widths);
+    case 'setCollapseMerges':
+      return isBoolean(message.collapse);
+    case 'setShowEntireFile':
+    case 'setShowAllFiles':
+      return isBoolean(message.show);
+    case 'setIgnoreWhitespace':
+      return isBoolean(message.ignore);
+    case 'setAutoFetch':
+      return isBoolean(message.on);
+    case 'setDiffLayout':
+      return diffLayouts.includes(message.layout);
+    case 'loadCompareTexts':
+      return areTextRequests(message.requests);
+    default:
+      return isString(message.root) && wellFormedInTab(message);
+  }
+}
+
+function wellFormedInTab(message: TabMessage): boolean {
+  switch (message.type) {
+    case 'showUpstream':
+    case 'showParent':
+    case 'fetch':
+    case 'pull':
+    case 'push':
+    case 'stopCommitSearch':
+      return true;
+    case 'setBookmarks':
+      return (
+        Array.isArray(message.bookmarks) &&
+        message.bookmarks.length <= maxBookmarks &&
+        message.bookmarks.every(
+          (bookmark) =>
+            isBookmark(bookmark) && bookmark.name.length <= maxBookmarkName,
+        )
+      );
+    case 'setSolo':
+      return isBoolean(message.solo);
+    case 'loadTree':
+    case 'jump':
+    case 'toggleMerge':
+      return isString(message.hash);
+    case 'pushTag':
+    case 'pullBranch':
+    case 'pushBranch':
+      return isString(message.name);
+    case 'lookupHash':
+    case 'searchCommits':
+      return isString(message.query);
+    case 'checkout':
+      return isCheckoutTarget(message.target);
+    case 'viewFile':
+      return isPathAsked(message.path) && isOptional(message.blob, isString);
+    case 'loadFileDiff':
+      return (
+        isString(message.hash) &&
+        isPathAsked(message.path) &&
+        Number.isFinite(message.diff)
+      );
+    case 'loadTexts':
+      return (
+        isString(message.hash) &&
+        Number.isFinite(message.diff) &&
+        areTextRequests(message.texts)
+      );
+    case 'navigate':
+      return (
+        (message.direction === 'back' || message.direction === 'forward') &&
+        isWhole(message.steps, 1, maxSteps)
+      );
+    case 'loadCommits':
+      return (
+        Number.isInteger(message.generation) &&
+        isWhole(message.start, 0, Number.MAX_SAFE_INTEGER) &&
+        isWhole(message.count, 1, maxCommitsAsked)
+      );
+    case 'scrolled':
+      return (
+        isString(message.hash) &&
+        Number.isFinite(message.offset) &&
+        Number.isFinite(message.report)
+      );
+    case 'selectCommit':
+      return (
+        isOptional(message.hash, isString) &&
+        isOptional(message.replace, isBoolean) &&
+        isOptional(message.selection, Number.isFinite)
+      );
+    case 'selectFile':
+      return (
+        isString(message.hash) &&
+        isOptional(message.path, isPathAsked) &&
+        isOptional(
+          message.area,
+          (area) => area === 'staged' || area === 'unstaged',
+        )
+      );
     default:
       return false;
   }

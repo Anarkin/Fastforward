@@ -7,7 +7,7 @@ export interface Navigation {
 
 export const noNavigation: Navigation = { back: [], forward: [] };
 
-const maxSteps = 100;
+export const maxSteps = 100;
 
 export function visit(
   navigation: Navigation,

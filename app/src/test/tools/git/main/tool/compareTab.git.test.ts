@@ -138,4 +138,47 @@ suite('Git tool comparing two files', () => {
     ]);
     await opened.connection.receive({ type: 'selectTab', tab: '1' });
   });
+
+  test('answers a text of a compare tab asked for twice once, and none from a list that is not all texts', async () => {
+    const compare = {
+      old: path.join(files, 'old.txt'),
+      new: path.join(files, 'new.txt'),
+    };
+    await opened.store.update(tabsKey, [
+      { id: '1', tool: 'git', root: repository.root },
+      { id: '11', tool: 'git', compare },
+    ]);
+    await opened.connection.receive({ type: 'selectTab', tab: '11' });
+    const asked = { path: 'new.txt', side: 'new', blob: 'b' } as const;
+    const answered = () =>
+      opened.page.messages.flatMap((message) =>
+        message.type === 'compareTexts' ? [message.texts] : [],
+      );
+    opened.page.clear();
+    await opened.connection.receive(
+      JSON.parse(
+        JSON.stringify({
+          type: 'loadCompareTexts',
+          requests: [asked, { ...asked, side: 'sideways' }],
+        }),
+      ),
+    );
+    assert.deepStrictEqual(answered(), []);
+    await opened.connection.receive({
+      type: 'loadCompareTexts',
+      requests: [asked, asked, { ...asked, side: 'old' }],
+    });
+    assert.deepStrictEqual(
+      answered().map((texts) =>
+        texts.map(({ path: file, side }) => [file, side]),
+      ),
+      [
+        [
+          ['new.txt', 'new'],
+          ['new.txt', 'old'],
+        ],
+      ],
+    );
+    await opened.connection.receive({ type: 'selectTab', tab: '1' });
+  });
 });
