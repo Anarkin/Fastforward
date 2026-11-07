@@ -60,6 +60,8 @@ if (root) {
     <ErrorBoundary
       title={fastforward.name}
       onError={(message) => post({ type: 'log', level: 'error', message })}
+      listen={listen}
+      onQuit={() => post({ type: 'quit' })}
     >
       <App name={fastforward.name} post={post} listen={listen} />
     </ErrorBoundary>,
