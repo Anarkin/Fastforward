@@ -118,6 +118,26 @@ suite('The elevated helper of the commander', () => {
     );
   });
 
+  test('waits for the helper only once the user has answered the prompt, as a user slow to type the password of an administrator was told the helper never came', async () => {
+    const elevated = await elevatedFileSystem(
+      async (address) => {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        runHelper(
+          address,
+          () => Promise.resolve(files),
+          () => {},
+        );
+        return true;
+      },
+      process.platform,
+      500,
+    );
+
+    assert.ok(elevated);
+    assert.deepStrictEqual(await elevated.list(root), [notes]);
+    elevated.close();
+  });
+
   test('answers only the helper that knows the secret, not another program connecting first', async () => {
     let strangerClosed = false;
     const elevated = await elevatedFileSystem(async (address) => {

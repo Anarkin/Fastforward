@@ -32,13 +32,8 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function connected(
-  server: net.Server,
-  token: string,
-  timeout: number,
-): Promise<net.Socket | undefined> {
+function connected(server: net.Server, token: string): Promise<net.Socket> {
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(undefined), timeout);
     server.on('connection', (socket) => {
       let answered = false;
       lines(socket, (value) => {
@@ -47,7 +42,6 @@ function connected(
         }
         answered = true;
         if (isObject(value) && value.token === token) {
-          clearTimeout(timer);
           resolve(socket);
         } else {
           socket.destroy();
@@ -55,6 +49,23 @@ function connected(
       });
     });
   });
+}
+
+async function within<T>(
+  waiting: Promise<T>,
+  timeout: number,
+): Promise<T | undefined> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      waiting,
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => resolve(undefined), timeout);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function overSocket(socket: net.Socket): ElevatedFileSystem {
@@ -136,11 +147,11 @@ export async function elevatedFileSystem(
     server.listen(address.pipe, resolve);
   });
   try {
-    const connecting = connected(server, address.token, timeout);
+    const connecting = connected(server, address.token);
     if (!(await launch(address))) {
       return undefined;
     }
-    const socket = await connecting;
+    const socket = await within(connecting, timeout);
     if (socket === undefined) {
       throw new Error(strings.commander.helperNotConnected);
     }

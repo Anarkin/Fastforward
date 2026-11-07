@@ -59,16 +59,18 @@ function shellExecuteEx(): Native {
 export function windowsLauncher(
   execPath: string,
   appPath: string | undefined,
+  owner: () => Buffer | undefined = () => undefined,
 ): LaunchHelper {
   return (address) => {
     const native = shellExecuteEx();
     const { file, parameters } = elevatedCommand(execPath, appPath, address);
+    const window = owner();
     return new Promise((resolve) => {
       native.async(
         {
           cbSize: koffi.sizeof('SHELLEXECUTEINFOW'),
           fMask: flagNoUi,
-          hwnd: null,
+          hwnd: window === undefined ? null : koffi.decode(window, 'void *'),
           lpVerb: 'runas',
           lpFile: file,
           lpParameters: parameters,
