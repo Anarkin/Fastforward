@@ -99,6 +99,8 @@ export interface StashSearch {
 
 const noStashes: StashSearch = { stashes: [], more: 0 };
 
+const noStashList: readonly StashInfo[] = [];
+
 export function searchStashes(
   stashes: readonly StashInfo[],
   query: string,
@@ -417,9 +419,6 @@ function CommitResultsSection({
   capped,
   query,
   active,
-  refsByCommit,
-  stashCommits,
-  headCommit,
   rows,
   onJump,
 }: {
@@ -431,12 +430,12 @@ function CommitResultsSection({
   capped: boolean;
   query: string;
   active: string | undefined;
-  refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
-  stashCommits: ReadonlySet<string>;
-  headCommit: string | undefined;
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
+  const refsByCommit = useGit((state) => state.refsByCommit);
+  const stashCommits = useGit((state) => state.stashCommits);
+  const headCommit = useGit((state) => state.tab.repository?.headCommit);
   const detached = useGit(detachedHead);
   if (found.length === 0) {
     const status =
@@ -551,7 +550,11 @@ export function LocationsPopup({
   onQuery: (query: string) => void;
 }) {
   const bookmarks = useGit((state) => state.bookmarks);
-  const repository = useGit((state) => state.tab.repository);
+  const refs = useGit((state) => state.tab.repository?.refs ?? noRefs);
+  const stashes = useGit(
+    (state) => state.tab.repository?.stashes ?? noStashList,
+  );
+  const head = useGit((state) => state.tab.repository?.head);
   const lookup = useGit((state) => state.tab.hashLookup);
   const commitSearch = useGit((state) => state.tab.commitSearch);
   const {
@@ -573,11 +576,6 @@ export function LocationsPopup({
     },
     [anchor],
   );
-  const refs = useMemo(() => repository?.refs ?? [], [repository]);
-  const refsByCommit = useMemo(
-    () => Map.groupBy(refs, (ref) => ref.commit),
-    [refs],
-  );
   const index = useMemo(() => indexRefs(refs), [refs]);
   const trees = useMemo(
     () =>
@@ -585,11 +583,6 @@ export function LocationsPopup({
     [index],
   );
   const search = useMemo(() => searchRefs(index, query), [index, query]);
-  const stashes = useMemo(() => repository?.stashes ?? [], [repository]);
-  const stashCommits = useMemo(
-    () => new Set(stashes.map((stash) => stash.commit)),
-    [stashes],
-  );
   const stashSearch = useMemo(
     () => searchStashes(stashes, query),
     [stashes, query],
@@ -600,7 +593,6 @@ export function LocationsPopup({
   );
   const hasQuery = query.trim() !== '';
   const detached = useGit(detachedHead);
-  const head = repository?.head;
   const pinned = useMemo(
     () => pinnedRefs(bookmarks, refs, head, detached, query),
     [bookmarks, refs, head, detached, query],
@@ -828,9 +820,6 @@ export function LocationsPopup({
             active={
               activeItem?.kind === 'commit' ? activeItem.commit.hash : undefined
             }
-            refsByCommit={refsByCommit}
-            stashCommits={stashCommits}
-            headCommit={repository?.headCommit}
             rows={rows}
             onJump={jump}
           />
