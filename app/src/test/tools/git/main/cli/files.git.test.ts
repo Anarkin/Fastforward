@@ -11,6 +11,7 @@ import {
   readBlobs,
   readFile,
   readImage,
+  untrackedListing,
   viewedFile,
 } from '../../../../../tools/git/main/cli/files';
 import {
@@ -18,6 +19,7 @@ import {
   keptGits,
 } from '../../../../../tools/git/main/cli/run';
 import { parsePatch } from '../../../../../tools/git/page/diff';
+import { replaceBuiltin } from '../../../../builtins';
 import { submoduleRepository } from '../../../../gitFixtures';
 import {
   gitsStarted,
@@ -53,6 +55,33 @@ suite('Repository files', () => {
     assert.deepStrictEqual(
       (await listTree(gitPath, cwd, undefined)).toSorted(),
       ['src/tracked.txt', 'untracked.txt'],
+    );
+  });
+
+  test('lists the untracked files of the working tree as the uncommitted changes list them, through git status with its cache of folders on Windows, as ls-files read each folder anew', async () => {
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    const started: string[][] = [];
+    replaceBuiltin(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) => {
+        started.push([...args]);
+        return spawn(command, args, options);
+      },
+    );
+    try {
+      assert.deepStrictEqual(
+        (await listTree(gitPath, cwd, undefined)).toSorted(),
+        ['src/tracked.txt', 'untracked.txt'],
+      );
+    } finally {
+      replaceBuiltin(childProcess, 'spawn', spawn);
+    }
+    const listing = untrackedListing().args.join(' ');
+    assert.ok(
+      started.some((args) => args.join(' ').endsWith(listing)),
+      JSON.stringify(started),
     );
   });
 
@@ -521,6 +550,39 @@ suite('Repository files', () => {
         await readFile(gitPath, links.root, hash, 'one-line.txt'),
         { content: 'README', binary: false },
       );
+    }
+  });
+
+  test('tells a link git checked out as a file of one line through the git kept running, starting none for each file read, and anew once the index changes, as a git started for each such file took a fraction of a second on Windows', async () => {
+    const folder = tempFolder('kept-links');
+    keepGitRunningWhile(() => true);
+    try {
+      const links = await tempRepository(folder);
+      await links.git('config', 'core.symlinks', 'false');
+      await links.commit('files', {
+        README: 'read me\n',
+        'a.txt': 'README',
+        'b.txt': 'README',
+      });
+      const read = (file: string) =>
+        readFile(links.gitPath, links.root, undefined, file);
+      const file = { content: 'README', binary: false };
+      await read('a.txt');
+      assert.deepStrictEqual(
+        await gitsStarted(async () => [
+          await read('a.txt'),
+          await read('b.txt'),
+        ]),
+        { result: [file, file], gits: 0 },
+      );
+      const [blob = ''] = await links.resolve('HEAD:a.txt');
+      await links.git('update-index', '--cacheinfo', `120000,${blob},b.txt`);
+      assert.deepStrictEqual(await read('b.txt'), { ...file, link: true });
+      assert.deepStrictEqual(await read('a.txt'), file);
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
     }
   });
 

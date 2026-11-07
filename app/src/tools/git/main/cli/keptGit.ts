@@ -247,12 +247,13 @@ export class KeptGits {
     gitPath: string,
     cwd: string,
     args: readonly string[],
+    asOf = '',
   ): Promise<KeptGit | undefined> {
     if (!this.enabled()) {
       this.stopAll();
       return Promise.resolve(undefined);
     }
-    const key = [gitPath, cwd, ...args].join('\0');
+    const key = [gitPath, cwd, asOf, ...args].join('\0');
     let kept = this.kept.get(key);
     if (kept !== undefined && gone(kept)) {
       this.forget(key);

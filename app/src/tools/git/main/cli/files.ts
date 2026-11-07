@@ -5,6 +5,7 @@ import { maxImageSize, type ImageSource } from '../../shared/images';
 import { linkMode } from '../../shared/protocol';
 import { isFullHash } from '../../shared/hashes';
 import { strings } from '../../../../shared/strings';
+import { gitDirOf } from './gitDir';
 import { headCommit } from './history';
 import { keptGits, runGit, runGitBytes, splitNul } from './run';
 
@@ -14,13 +15,11 @@ export async function listTree(
   hash: string | undefined,
 ): Promise<string[]> {
   if (hash === undefined) {
-    return uniquePaths(
-      await onDisk(gitPath, cwd, [
-        '--cached',
-        '--others',
-        '--exclude-standard',
-      ]),
-    );
+    const [untracked, indexed] = await Promise.all([
+      listUntracked(gitPath, cwd),
+      listIndex(gitPath, cwd),
+    ]);
+    return uniquePaths(untracked, indexed);
   }
   const output = await runGit(gitPath, cwd, [
     'ls-tree',
@@ -46,6 +45,43 @@ async function onDisk(
   ).flatMap((entry) =>
     entry === '' || entry.startsWith('S ') ? [] : [entry.slice(2)],
   );
+}
+
+export async function listUntracked(
+  gitPath: string,
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<readonly string[]> {
+  const { args, paths } = untrackedListing();
+  return paths(await runGit(gitPath, cwd, args, { signal }));
+}
+
+export function untrackedListing(platform = process.platform): {
+  readonly args: readonly string[];
+  readonly paths: (output: string) => string[];
+} {
+  if (platform !== 'win32') {
+    return {
+      args: ['ls-files', '--others', '--exclude-standard', '-z'],
+      paths: (output) => splitNul(output).filter(Boolean),
+    };
+  }
+  return {
+    args: [
+      '-c',
+      'core.fscache=true',
+      'status',
+      '--porcelain=v2',
+      '-z',
+      '--untracked-files=all',
+      '--ignore-submodules=all',
+      '--no-renames',
+    ],
+    paths: (output) =>
+      splitNul(output).flatMap((record) =>
+        record.startsWith('? ') ? [record.slice(2)] : [],
+      ),
+  };
 }
 
 export function uniquePaths(...lists: (readonly string[])[]): string[] {
@@ -90,13 +126,7 @@ async function linkCheckedOutAsFile(
   ) {
     return false;
   }
-  const mode = await runGit(
-    gitPath,
-    cwd,
-    ['cat-file', '-Z', '--batch-check=%(objectmode)'],
-    { input: `:0:${path}\0` },
-  );
-  return mode === `${linkMode}\0`;
+  return (await indexMode(gitPath, cwd, path)) === linkMode;
 }
 
 export function isBinary(buffer: Buffer): boolean {
@@ -144,6 +174,49 @@ function parsedInfo(header: string): ObjectInfo {
 const fixedName = /^[0-9a-f]{40}(?:[0-9a-f]{24})?(?:$|:|\^1$)/;
 
 const oneRequest = (name: string) => !/[\0\n]/.test(name);
+
+const modeCheck = ['cat-file', '--batch-check=%(objectmode)', '-Z'];
+
+async function indexStamp(cwd: string): Promise<string | undefined> {
+  const gitDir = await gitDirOf(cwd);
+  const stats =
+    gitDir === undefined
+      ? undefined
+      : await fs.stat(join(gitDir, 'index')).catch(() => undefined);
+  return stats && `${stats.size} ${stats.mtimeMs} ${stats.ino}`;
+}
+
+async function keptIndexMode(
+  gitPath: string,
+  cwd: string,
+  name: string,
+): Promise<string | undefined> {
+  const stamp = oneRequest(name) ? await indexStamp(cwd) : undefined;
+  const git =
+    stamp === undefined
+      ? undefined
+      : await keptGits.use(gitPath, cwd, modeCheck, stamp);
+  return git
+    ?.request(`${name}\0`, async (output) =>
+      (await output.until(0)).toString('utf8'),
+    )
+    .catch(() => undefined);
+}
+
+async function indexMode(
+  gitPath: string,
+  cwd: string,
+  path: string,
+): Promise<string> {
+  const name = `:0:${path}`;
+  return (
+    (await keptIndexMode(gitPath, cwd, name)) ??
+    (await runGit(gitPath, cwd, modeCheck, { input: `${name}\0` })).replace(
+      /\0$/,
+      '',
+    )
+  );
+}
 
 const mostKeptRead = 1024 * 1024;
 

@@ -16,7 +16,7 @@ import {
   withBytes,
   withoutFilesInside,
 } from './diff';
-import { isBinary, maxFileSize } from './files';
+import { isBinary, listUntracked, maxFileSize } from './files';
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';
 
@@ -325,43 +325,6 @@ async function addedOnDisk(
     deletions: 0,
     ...(bytes ? { bytes } : {}),
     ...(added === 'tooLarge' ? { uncounted: true } : {}),
-  };
-}
-
-async function listUntracked(
-  gitPath: string,
-  cwd: string,
-  signal?: AbortSignal,
-): Promise<readonly string[]> {
-  const { args, paths } = untrackedListing();
-  return paths(await runGit(gitPath, cwd, args, { signal }));
-}
-
-export function untrackedListing(platform = process.platform): {
-  readonly args: readonly string[];
-  readonly paths: (output: string) => string[];
-} {
-  if (platform !== 'win32') {
-    return {
-      args: ['ls-files', '--others', '--exclude-standard', '-z'],
-      paths: (output) => splitNul(output).filter(Boolean),
-    };
-  }
-  return {
-    args: [
-      '-c',
-      'core.fscache=true',
-      'status',
-      '--porcelain=v2',
-      '-z',
-      '--untracked-files=all',
-      '--ignore-submodules=all',
-      '--no-renames',
-    ],
-    paths: (output) =>
-      splitNul(output).flatMap((record) =>
-        record.startsWith('? ') ? [record.slice(2)] : [],
-      ),
   };
 }
 
