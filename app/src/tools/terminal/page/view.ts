@@ -210,6 +210,7 @@ export class TerminalView {
         webgl.dispose();
         this.webgl = false;
         this.terminal.options = this.cells();
+        this.layOut();
       });
       this.terminal.loadAddon(webgl);
       this.webgl = true;
