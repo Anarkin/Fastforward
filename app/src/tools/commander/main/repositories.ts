@@ -47,12 +47,25 @@ async function isGitDirectory(folder: string): Promise<boolean> {
   return head && objects === 'folder' && refs === 'folder';
 }
 
+function volumeOf(file: string): string {
+  const { root } = path.parse(path.resolve(file));
+  return process.platform === 'win32' ? root.toLowerCase() : root;
+}
+
+export function onSameVolume(file: string, other: string): boolean {
+  return volumeOf(file) === volumeOf(other);
+}
+
 async function pointsAtGitDirectory(
   folder: string,
   gitFile: string,
 ): Promise<boolean> {
   const target = gitFileTarget.exec((await startOf(gitFile)) ?? '')?.[1];
-  return target !== undefined && (await hasHead(path.resolve(folder, target)));
+  if (target === undefined) {
+    return false;
+  }
+  const gitDirectory = path.resolve(folder, target);
+  return onSameVolume(gitDirectory, folder) && hasHead(gitDirectory);
 }
 
 export async function isRepository(folder: string): Promise<boolean> {
@@ -71,12 +84,13 @@ export async function repositoriesIn(
   folder: string,
   names: readonly string[],
   isRepositoryAt: (folder: string) => Promise<boolean>,
+  wanted: () => boolean = () => true,
 ): Promise<string[]> {
   const asked = names.filter((name) => name !== gitFolder);
   const found = Array.from({ length: asked.length }, () => false);
   let next = 0;
   const look = async () => {
-    while (next < asked.length) {
+    while (next < asked.length && wanted()) {
       const at = next++;
       found[at] = await isRepositoryAt(path.join(folder, asked[at])).catch(
         () => false,

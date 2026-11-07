@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterEach, beforeEach, suite, test } from 'vitest';
+import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import {
   isRepository,
   repositoriesIn,
@@ -95,6 +95,37 @@ suite('Commander repositories', () => {
     }
   });
 
+  test.skipIf(process.platform !== 'win32')(
+    'follows a .git file only to a git folder on its own drive or share, as one in a folder unpacked could name a host of its own and have Windows sign in to it when the folder was listed',
+    async () => {
+      made({
+        'proj/sub/.git': 'gitdir: \\\\fileserver.invalid\\share\\x\n',
+        'proj/forward/.git': 'gitdir: //fileserver.invalid/share/x\n',
+      });
+      const opened: string[] = [];
+      const open = fs.promises.open.bind(fs.promises);
+      const spied = vi
+        .spyOn(fs.promises, 'open')
+        .mockImplementation((file, ...rest) => {
+          opened.push(String(file));
+          return String(file).startsWith(folder)
+            ? open(file, ...rest)
+            : Promise.reject(new Error('ENOENT'));
+        });
+      try {
+        assert.strictEqual(await at('proj/sub'), false);
+        assert.strictEqual(await at('proj/forward'), false);
+      } finally {
+        spied.mockRestore();
+      }
+
+      assert.deepStrictEqual(
+        opened.filter((file) => !file.startsWith(folder)),
+        [],
+      );
+    },
+  );
+
   test('names the folders that are repositories, in the order given, never the .git folder of the repository listed', async () => {
     const asked: string[] = [];
     const found = await repositoriesIn(
@@ -112,6 +143,25 @@ suite('Commander repositories', () => {
       path.join('/code', 'three'),
       path.join('/code', 'two'),
     ]);
+  });
+
+  test('stops looking once no longer wanted, as a scan replaced by a newer one went on to the last folder', async () => {
+    const asked: string[] = [];
+    let wanted = true;
+    const names = Array.from({ length: 100 }, (_, index) => `folder${index}`);
+    await repositoriesIn(
+      '/code',
+      names,
+      async (each) => {
+        asked.push(each);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        wanted = asked.length < 20;
+        return false;
+      },
+      () => wanted,
+    );
+
+    assert.ok(asked.length < 40, `${asked.length} asked`);
   });
 
   test('looks at a few folders at a time, so a folder of thousands asks no more of the disk at once', async () => {
