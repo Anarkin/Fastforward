@@ -103,7 +103,12 @@ export function resetWidth(
 }
 
 export function dragColumn(
-  event: React.PointerEvent<HTMLElement>,
+  event: {
+    readonly pointerId: number;
+    readonly clientX: number;
+    readonly currentTarget: HTMLElement;
+    readonly preventDefault: () => void;
+  },
   index: number,
   widths: readonly number[],
   hidden: readonly boolean[],
@@ -128,7 +133,7 @@ export function dragColumn(
           parseFloat(style.columnGap) * startWidths.length
       : 0,
   );
-  let current: readonly number[] = startWidths;
+  let current = widths;
   followDrag(
     window,
     (move: PointerEvent) => {

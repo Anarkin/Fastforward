@@ -1,9 +1,11 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
 import {
   columnsClass,
   showsDiff,
   listError,
+  dragColumn,
   draggedWidths,
   drawnWidths,
   maxWidth,
@@ -187,6 +189,45 @@ suite('Columns', () => {
     assert.strictEqual(showsDiff(undefined, false), true);
     assert.strictEqual(showsDiff(undefined, true), false);
     assert.strictEqual(showsDiff('Bad object', true), true);
+  });
+});
+
+suite('Column drags', () => {
+  test('keeps the widths saved when a resizer is pressed and let go without moving, though the window squeezes them as drawn, so a click or a double click to reset one leaves the others as they were saved', () => {
+    const dom = new JSDOM(
+      '<div class="columns" style="grid-template-columns: 387px 262px 240px; padding: 0px; column-gap: 0px"><div class="resizer"></div></div>',
+    );
+    const handle = dom.window.document.querySelector<HTMLElement>('.resizer');
+    assert.ok(handle);
+    handle.setPointerCapture = () => {};
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const kept: (readonly number[])[] = [];
+      dragColumn(
+        {
+          pointerId: 1,
+          clientX: 100,
+          currentTarget: handle,
+          preventDefault: () => {},
+        },
+        0,
+        [500, 400],
+        [false, false],
+        (widths) => kept.push(widths),
+      );
+      dom.window.dispatchEvent(new dom.window.Event('pointerup'));
+      assert.deepStrictEqual(kept, [[500, 400]]);
+    } finally {
+      Object.assign(globalThis, saved);
+    }
   });
 });
 
