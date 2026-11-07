@@ -64,12 +64,13 @@ export function gitEnv(pathspecMagic = false): NodeJS.ProcessEnv {
     LC_ALL: 'C',
     GIT_FLUSH: '0',
     GIT_TERMINAL_PROMPT: '0',
+    GIT_ADVICE: '0',
     GIT_LITERAL_PATHSPECS: pathspecMagic ? '0' : '1',
   };
 }
 
 function userCodeEnv(): NodeJS.ProcessEnv {
-  return { ...inheritedEnv(), GIT_TERMINAL_PROMPT: '0' };
+  return { ...inheritedEnv(), GIT_TERMINAL_PROMPT: '0', GIT_ADVICE: '0' };
 }
 
 export interface GitCommand {

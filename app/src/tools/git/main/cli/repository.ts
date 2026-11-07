@@ -357,6 +357,8 @@ const neverAsk = {
   SSH_ASKPASS_REQUIRE: 'never',
 };
 
+const messagesInEnglish = { LANGUAGE: 'C' };
+
 const unchangedRef = new Set(['=', '!']);
 
 const remoteBranches = 'refs/remotes/';
@@ -469,7 +471,9 @@ async function fetchWith(
       [...pruning, 'fetch', '--progress', ...fetching],
       {
         signal,
-        env: interactive ? {} : neverAsk,
+        env: interactive
+          ? messagesInEnglish
+          : { ...neverAsk, ...messagesInEnglish },
         runsUserCode: true,
         onActivity: quiet.heard,
         progress: true,

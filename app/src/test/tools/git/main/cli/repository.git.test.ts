@@ -8,6 +8,7 @@ import {
   pushRef,
   readHead,
   readRefs,
+  remotesNotFetched,
   repositoryRoot,
 } from '../../../../../tools/git/main/cli/repository';
 import { gitErrorText } from '../../../../../tools/git/main/cli/errorText';
@@ -19,6 +20,7 @@ import {
   savedEnv,
   tempFolder,
   tempRepository,
+  withEnv,
   type TempRepository,
 } from '../../../../repositories';
 
@@ -634,6 +636,36 @@ suite('Git repository', () => {
       );
       assert.match(said, /^fatal: the pack broke$/m);
       assert.doesNotMatch(said, /objects/);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test("fetches with git's messages in English, leaving the user's locale to ssh and the hooks, as which remotes could not be fetched is read from what git says", async () => {
+    const folder = tempFolder('fetch-language');
+    const seen = path.join(folder, 'seen.txt').replaceAll('\\', '/');
+    try {
+      const local = await tempRepository(path.join(folder, 'local'));
+      await local.git('remote', 'add', 'gone', 'ssh://gone.invalid/x');
+      await local.git('remote', 'add', 'missing', path.join(folder, 'missing'));
+      await local.git(
+        'config',
+        'core.sshCommand',
+        `echo "[$LANGUAGE][$LC_ALL]" > '${seen}'; false`,
+      );
+      await withEnv({ LANGUAGE: 'de', LC_ALL: 'de_DE.UTF-8' }, () =>
+        assert.rejects(fetchAllRemotes(gitPath, local.root), (error) => {
+          assert.deepStrictEqual(
+            remotesNotFetched(gitErrorText(error)).toSorted(),
+            ['gone', 'missing'],
+          );
+          return true;
+        }),
+      );
+      assert.strictEqual(
+        fs.readFileSync(seen, 'utf8').trim(),
+        '[C][de_DE.UTF-8]',
+      );
     } finally {
       removeFolder(folder);
     }

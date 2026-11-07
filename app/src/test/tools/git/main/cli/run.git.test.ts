@@ -733,6 +733,18 @@ suite('Running git in a repository', () => {
     assert.strictEqual(locale.trim(), '[C]');
   });
 
+  test("asks every git to give no advice, its own commands and those running the user's code, as git words its hints in the user's language, where they can't be told from what git says", async () => {
+    for (const runsUserCode of [false, true]) {
+      const advice = await runGit(
+        gitPath,
+        cwd,
+        ['-c', 'alias.advice=!echo "[$GIT_ADVICE]"', 'advice'],
+        { runsUserCode },
+      );
+      assert.strictEqual(advice.trim(), '[0]', String(runsUserCode));
+    }
+  });
+
   test('says only what git said when it fails, keeping the command for the log', async () => {
     await assert.rejects(
       switchToBranch(gitPath, cwd, 'no-such-branch'),
