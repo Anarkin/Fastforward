@@ -813,6 +813,30 @@ suite('Commander tool', () => {
       assert.strictEqual(page.of('found').at(-1)?.done, true);
     });
 
+    test('says the file viewed could not be read when a find cannot read it, rather than that nothing was found', async () => {
+      const notes = path.join(opened, 'gone.txt');
+      fs.writeFileSync(notes, 'needle');
+      const { tool, page, send } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      });
+      fs.rmSync(notes);
+      await send({
+        type: 'findText',
+        tab: '3',
+        encoding: 'utf-8',
+        query: 'needle',
+        request: 1,
+      });
+      assert.deepStrictEqual(page.of('found'), []);
+      const told = page.of('viewing').at(-1);
+      assert.strictEqual(told?.size, undefined);
+      assert.match(told?.error ?? '', /gone\.txt/);
+    });
+
     test('reads the rows and the whole text of a file viewed in the encoding asked for, the whole text with its byte order mark, from which the rows count their bytes, and tells of the encoding the mark names', async () => {
       const wide = path.join(opened, 'wide.txt');
       fs.writeFileSync(

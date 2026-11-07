@@ -1131,6 +1131,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.finding = finding;
     this.findingRequest = request;
     let told = Date.now();
+    let failed: unknown;
     const found = await readingFile(viewing.file, (read) =>
       findInFile(read, viewing.size, query, encoding, {
         signal: finding.signal,
@@ -1148,12 +1149,26 @@ export class CommanderTool implements Tool<'commander'> {
           }
         },
       }),
-    ).catch(() => ({ matches: [], capped: false }));
-    if (found === undefined || finding.signal.aborted) {
+    ).catch((error: unknown) => {
+      failed = error;
+      return undefined;
+    });
+    if (finding.signal.aborted) {
       return;
     }
     this.finding = undefined;
     this.findingRequest = undefined;
+    if (found === undefined) {
+      if (failed !== undefined && this.viewing === viewing) {
+        this.post(page, {
+          type: 'viewing',
+          tab,
+          size: undefined,
+          error: strings.commander.couldNotRead(viewing.file, reasonOf(failed)),
+        });
+      }
+      return;
+    }
     this.post(page, {
       type: 'found',
       tab,
