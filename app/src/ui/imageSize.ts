@@ -10,13 +10,13 @@ function text(bytes: Uint8Array, from: number, length: number): string {
   return String.fromCharCode(...bytes.subarray(from, from + length));
 }
 
-function longer(width: number, height: number): number | undefined {
-  return width > 0 && height > 0 ? Math.max(width, height) : undefined;
+function sized(width: number, height: number): PixelSize | undefined {
+  return width > 0 && height > 0 ? { width, height } : undefined;
 }
 
-function pngSide(bytes: Uint8Array, view: DataView): number | undefined {
+function pngSize(bytes: Uint8Array, view: DataView): PixelSize | undefined {
   return bytes.length >= 24 && text(bytes, 12, 4) === 'IHDR'
-    ? longer(view.getUint32(16), view.getUint32(20))
+    ? sized(view.getUint32(16), view.getUint32(20))
     : undefined;
 }
 
@@ -51,16 +51,16 @@ function storedJpegSize(
   return undefined;
 }
 
-function webpSide(bytes: Uint8Array, view: DataView): number | undefined {
+function webpSize(bytes: Uint8Array, view: DataView): PixelSize | undefined {
   const chunk = text(bytes, 12, 4);
   if (chunk === 'VP8X' && bytes.length >= 30) {
     const side = (at: number) =>
       (bytes[at] | (bytes[at + 1] << 8) | (bytes[at + 2] << 16)) + 1;
-    return longer(side(24), side(27));
+    return sized(side(24), side(27));
   }
   if (chunk === 'VP8L' && bytes.length >= 25 && bytes[20] === 0x2f) {
     const packed = view.getUint32(21, true);
-    return longer((packed & 0x3fff) + 1, ((packed >>> 14) & 0x3fff) + 1);
+    return sized((packed & 0x3fff) + 1, ((packed >>> 14) & 0x3fff) + 1);
   }
   if (
     chunk === 'VP8 ' &&
@@ -69,7 +69,7 @@ function webpSide(bytes: Uint8Array, view: DataView): number | undefined {
     bytes[24] === 0x01 &&
     bytes[25] === 0x2a
   ) {
-    return longer(
+    return sized(
       view.getUint16(26, true) & 0x3fff,
       view.getUint16(28, true) & 0x3fff,
     );
@@ -77,25 +77,25 @@ function webpSide(bytes: Uint8Array, view: DataView): number | undefined {
   return undefined;
 }
 
-export function longestSide(bytes: Uint8Array): number | undefined {
+export function storedSizeOf(bytes: Uint8Array): PixelSize | undefined {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (pngSignature.every((value, index) => bytes[index] === value)) {
-    return pngSide(bytes, view);
+    return pngSize(bytes, view);
   }
   if (bytes[0] === 0xff && bytes[1] === 0xd8) {
     const stored = storedJpegSize(bytes, view);
-    return stored && longer(stored.width, stored.height);
+    return stored && sized(stored.width, stored.height);
   }
   if (text(bytes, 0, 6) === 'GIF87a' || text(bytes, 0, 6) === 'GIF89a') {
     return bytes.length >= 10
-      ? longer(view.getUint16(6, true), view.getUint16(8, true))
+      ? sized(view.getUint16(6, true), view.getUint16(8, true))
       : undefined;
   }
   if (text(bytes, 0, 4) === 'RIFF' && text(bytes, 8, 4) === 'WEBP') {
-    return webpSide(bytes, view);
+    return webpSize(bytes, view);
   }
   if (text(bytes, 0, 2) === 'BM' && bytes.length >= 26) {
-    return longer(
+    return sized(
       Math.abs(view.getInt32(18, true)),
       Math.abs(view.getInt32(22, true)),
     );
@@ -114,6 +114,27 @@ export function targetSide(
   pixelRatio: number,
 ): number {
   return Math.max(1, Math.round(Math.min(box, longest) * pixelRatio));
+}
+
+export function bitmapResizing(
+  stored: PixelSize | undefined,
+  box: number,
+  pixelRatio: number,
+):
+  | { readonly resizeWidth: number }
+  | { readonly resizeHeight: number }
+  | undefined {
+  if (stored === undefined) {
+    return undefined;
+  }
+  const target = targetSide(
+    Math.max(stored.width, stored.height),
+    box,
+    pixelRatio,
+  );
+  return stored.width >= stored.height
+    ? { resizeWidth: target }
+    : { resizeHeight: target };
 }
 
 export function thumbnailPixels(drawn: PixelSize, target: number): PixelSize {

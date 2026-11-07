@@ -1,10 +1,11 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  bitmapResizing,
   halvings,
   jpegScaling,
   jpegSize,
-  longestSide,
+  storedSizeOf,
   targetSide,
   thumbnailPixels,
 } from '../../ui/imageSize';
@@ -78,46 +79,84 @@ const webp = (chunk: string, body: number[]) =>
   );
 
 suite('Image sizes', () => {
-  test('reads the longest side of a PNG, a JPEG of any frame type, a GIF and a BMP from its header, so a thumbnail is decoded at its size rather than whole', () => {
-    assert.strictEqual(longestSide(png(600, 300)), 600);
-    assert.strictEqual(longestSide(png(300, 600)), 600);
-    assert.strictEqual(longestSide(jpeg(4032, 3024)), 4032);
-    assert.strictEqual(longestSide(jpeg(3024, 4032, 0xc2)), 4032);
-    assert.strictEqual(longestSide(bytes('GIF89a', le16(20), le16(10))), 20);
-    assert.strictEqual(
-      longestSide(
+  test('reads the size of a PNG, a JPEG of any frame type, a GIF and a BMP from its header, so a thumbnail is decoded at its size rather than whole', () => {
+    assert.deepStrictEqual(storedSizeOf(png(600, 300)), {
+      width: 600,
+      height: 300,
+    });
+    assert.deepStrictEqual(storedSizeOf(png(300, 600)), {
+      width: 300,
+      height: 600,
+    });
+    assert.deepStrictEqual(storedSizeOf(jpeg(4032, 3024)), {
+      width: 4032,
+      height: 3024,
+    });
+    assert.deepStrictEqual(storedSizeOf(jpeg(3024, 4032, 0xc2)), {
+      width: 3024,
+      height: 4032,
+    });
+    assert.deepStrictEqual(storedSizeOf(bytes('GIF89a', le16(20), le16(10))), {
+      width: 20,
+      height: 10,
+    });
+    assert.deepStrictEqual(
+      storedSizeOf(
         bytes('BM', new Uint8Array(16), le32(1920), le32(-1080 >>> 0), [1, 0]),
       ),
-      1920,
+      { width: 1920, height: 1080 },
     );
   });
 
-  test('reads the longest side of a WebP, lossy, lossless or extended', () => {
-    assert.strictEqual(
-      longestSide(webp('VP8X', [0, 0, 0, 0, ...le24(639), ...le24(479)])),
-      640,
+  test('reads the size of a WebP, lossy, lossless or extended', () => {
+    assert.deepStrictEqual(
+      storedSizeOf(webp('VP8X', [0, 0, 0, 0, ...le24(639), ...le24(479)])),
+      { width: 640, height: 480 },
     );
     const lossless = (width: number, height: number) => {
       const packed = (width - 1) | ((height - 1) << 14);
       return webp('VP8L', [0x2f, ...le32(packed >>> 0)]);
     };
-    assert.strictEqual(longestSide(lossless(300, 500)), 500);
-    assert.strictEqual(
-      longestSide(
+    assert.deepStrictEqual(storedSizeOf(lossless(300, 500)), {
+      width: 300,
+      height: 500,
+    });
+    assert.deepStrictEqual(
+      storedSizeOf(
         webp('VP8 ', [0, 0, 0, 0x9d, 0x01, 0x2a, ...le16(800), ...le16(600)]),
       ),
-      800,
+      { width: 800, height: 600 },
     );
   });
 
   test('reads no size from what it does not know, so the image is decoded whole', () => {
-    assert.strictEqual(longestSide(bytes('not an image at all')), undefined);
-    assert.strictEqual(longestSide(png(600, 300).subarray(0, 20)), undefined);
-    assert.strictEqual(longestSide(bytes([0xff, 0xd8, 0xff, 0xda])), undefined);
+    assert.strictEqual(storedSizeOf(bytes('not an image at all')), undefined);
+    assert.strictEqual(storedSizeOf(png(600, 300).subarray(0, 20)), undefined);
+    assert.strictEqual(storedSizeOf(png(0, 300)), undefined);
     assert.strictEqual(
-      longestSide(bytes(new Uint8Array(4), 'ftypavif')),
+      storedSizeOf(bytes([0xff, 0xd8, 0xff, 0xda])),
       undefined,
     );
+    assert.strictEqual(
+      storedSizeOf(bytes(new Uint8Array(4), 'ftypavif')),
+      undefined,
+    );
+  });
+
+  test('decodes an image along its longest side at the length of the thumbnail, as a tall and narrow one was decoded widened and many times taller than needed', () => {
+    assert.deepStrictEqual(
+      bitmapResizing({ width: 100, height: 20_000 }, 144, 2),
+      { resizeHeight: 288 },
+    );
+    assert.deepStrictEqual(
+      bitmapResizing({ width: 600, height: 300 }, 144, 1),
+      { resizeWidth: 144 },
+    );
+    assert.deepStrictEqual(
+      bitmapResizing({ width: 300, height: 300 }, 144, 1.25),
+      { resizeWidth: 180 },
+    );
+    assert.strictEqual(bitmapResizing(undefined, 144, 1), undefined);
   });
 
   test('makes a thumbnail as long as the box in pixels of the screen, or as the image when it is smaller, so a small one is shown at its own size', () => {

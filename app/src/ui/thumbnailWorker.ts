@@ -4,10 +4,11 @@ import {
   madeThumbnailHeader,
 } from '../shared/images';
 import {
+  bitmapResizing,
   halvings,
   jpegScaling,
   jpegSize,
-  longestSide,
+  storedSizeOf,
   targetSide,
   thumbnailPixels,
   type PixelSize,
@@ -28,6 +29,8 @@ interface WorkerScope {
 }
 
 const scope: WorkerScope = Reflect.get(globalThis, 'self');
+
+const headerBytes = 1024 * 1024;
 
 async function stored(image: Blob, pixelRatio: number): Promise<MadeThumbnail> {
   const bitmap = await createImageBitmap(image);
@@ -78,7 +81,7 @@ async function encoded(
 }
 
 async function fromJpeg(
-  bytes: Uint8Array,
+  image: Blob,
   storedSize: PixelSize,
   box: number,
   pixelRatio: number,
@@ -90,7 +93,7 @@ async function fromJpeg(
   );
   const scaling = jpegScaling(storedSize, target);
   const decoder = new ImageDecoder({
-    data: bytes,
+    data: image.stream(),
     type: 'image/jpeg',
     ...(scaling && {
       desiredWidth: scaling.width,
@@ -98,16 +101,16 @@ async function fromJpeg(
     }),
   });
   try {
-    const { image } = await decoder.decode();
+    const { image: frame } = await decoder.decode();
     try {
       return await encoded(
-        image,
-        { width: image.displayWidth, height: image.displayHeight },
+        frame,
+        { width: frame.displayWidth, height: frame.displayHeight },
         target,
         pixelRatio,
       );
     } finally {
-      image.close();
+      frame.close();
     }
   } finally {
     decoder.close();
@@ -116,26 +119,24 @@ async function fromJpeg(
 
 async function fromBitmap(
   image: Blob,
-  longest: number | undefined,
+  storedSize: PixelSize | undefined,
   box: number,
   pixelRatio: number,
 ): Promise<MadeThumbnail> {
+  const resizing = bitmapResizing(storedSize, box, pixelRatio);
   const bitmap =
-    longest === undefined
+    resizing === undefined
       ? await createImageBitmap(image)
       : await createImageBitmap(image, {
-          resizeWidth: targetSide(longest, box, pixelRatio),
+          ...resizing,
           resizeQuality: 'high',
         });
   try {
+    const decoded = storedSize ?? bitmap;
     return await encoded(
       bitmap,
       bitmap,
-      targetSide(
-        longest ?? Math.max(bitmap.width, bitmap.height),
-        box,
-        pixelRatio,
-      ),
+      targetSide(Math.max(decoded.width, decoded.height), box, pixelRatio),
       pixelRatio,
     );
   } finally {
@@ -164,20 +165,22 @@ async function made(
   if (!response.ok) {
     return {};
   }
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const image = new Blob([bytes], {
-    type: response.headers.get('content-type') ?? '',
-  });
+  const image = await response.blob();
   if (response.headers.get(madeThumbnailHeader) !== null) {
     return { made: await stored(image, pixelRatio) };
   }
-  const jpeg = typeof ImageDecoder === 'function' ? jpegSize(bytes) : undefined;
+  const header = new Uint8Array(
+    await image.slice(0, headerBytes).arrayBuffer(),
+  );
+  const jpeg =
+    typeof ImageDecoder === 'function' ? jpegSize(header) : undefined;
   const decoded =
     jpeg &&
-    (await fromJpeg(bytes, jpeg, box, pixelRatio).catch(() => undefined));
+    (await fromJpeg(image, jpeg, box, pixelRatio).catch(() => undefined));
   return {
     made:
-      decoded ?? (await fromBitmap(image, longestSide(bytes), box, pixelRatio)),
+      decoded ??
+      (await fromBitmap(image, storedSizeOf(header), box, pixelRatio)),
   };
 }
 
