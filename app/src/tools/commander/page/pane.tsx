@@ -446,13 +446,14 @@ export function Pane({
   useLayoutEffect(() => {
     const focused = document.activeElement;
     if (
+      tab !== undefined &&
       shownList !== undefined &&
       active &&
       (focused === null || focused === document.body)
     ) {
       columnFocusOf(body.current)?.focus();
     }
-  }, [shownList, active]);
+  }, [shownList, active, tab]);
   const tileRows = useMemo(
     () => ({
       count: Math.ceil(rows.length / across),
