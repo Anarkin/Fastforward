@@ -403,13 +403,14 @@ export function Pane({
       setFillFrom(height > 0 ? Math.floor(offset / height + 0.01) * across : 0);
     }, fillDelay);
   };
+  const shownFolder = pane?.folder;
   const fillItems = useMemo(
     () =>
       rows.flatMap((row, index): (FillItem & { readonly index: number })[] => {
         const type = imageType(row.key);
         if (
           tab === undefined ||
-          pane === undefined ||
+          shownFolder === undefined ||
           row.entry === undefined ||
           row.entry.folder ||
           type === undefined ||
@@ -421,7 +422,7 @@ export function Pane({
         return [
           {
             url: tileThumbnailUrl(
-              { tab, side, folder: pane.folder, name: row.key },
+              { tab, side, folder: shownFolder, name: row.key },
               row.entry,
             ),
             name: row.key,
@@ -429,7 +430,7 @@ export function Pane({
           },
         ];
       }),
-    [rows, tab, side, pane],
+    [rows, tab, side, shownFolder],
   );
   useThumbnailFill(
     fillItems,
