@@ -111,6 +111,7 @@ export class FakeHost implements ShellHost, GitHost {
   readonly foldersAsked: [FolderPurpose, string | undefined][] = [];
   clipboard = '';
   problems: readonly string[] = [];
+  unsavedState: string[] = [];
   update: UpdateStatus = { kind: 'idle' };
   commandPlace = false;
   command: CommandState = 'missing';
@@ -163,6 +164,10 @@ export class FakeHost implements ShellHost, GitHost {
 
   settingsProblems(): readonly string[] {
     return this.problems;
+  }
+
+  stateProblems(): readonly string[] {
+    return this.unsavedState.splice(0);
   }
 
   checkForUpdates(): void {

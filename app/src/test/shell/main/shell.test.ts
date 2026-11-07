@@ -116,6 +116,25 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('says what was wrong with the saved state when the page loads, as the tabs and recent items it held were gone without a word', async () => {
+    const host = new FakeHost();
+    host.unsavedState = [strings.state.putAside('state.json.corrupt')];
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('notice'), {
+          type: 'notice',
+          level: 'error',
+          message: strings.state.putAside('state.json.corrupt'),
+        });
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('leaves updating to the app, sending how far it got when the page loads', async () => {
     const host = new FakeHost();
     host.update = { kind: 'ready', version: '7.0.0' };

@@ -96,6 +96,7 @@ export interface ShellHost {
   openSettings(): Promise<void>;
   openDefaultSettings(): Promise<void>;
   settingsProblems(): readonly string[];
+  stateProblems(): readonly string[];
   checkForUpdates(): void;
   installUpdate(): void;
   quit(): void;
@@ -450,6 +451,9 @@ export class Shell {
         level: 'error',
         message: strings.messages.settingsProblem(problem),
       });
+    }
+    for (const problem of host.stateProblems()) {
+      page.post({ type: 'notice', level: 'error', message: problem });
     }
     for (const tool of toolIds) {
       this.tools[tool].ready(page);

@@ -198,6 +198,7 @@ async function start(asked: readonly string[]): Promise<void> {
   for (const problem of state.problems) {
     log.warn(problem);
   }
+  const untoldStateProblems = [...state.problems];
   const views = Promise.withResolvers<{
     shell: Shell;
     git: GitTool;
@@ -538,6 +539,7 @@ async function start(asked: readonly string[]): Promise<void> {
         await openFile(log, defaultSettingsCopy);
       },
       settingsProblems: () => userSettings.problems,
+      stateProblems: () => untoldStateProblems.splice(0),
       checkForUpdates: () => updates.check(true),
       installUpdate: () => {
         if (
