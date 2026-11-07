@@ -788,6 +788,44 @@ suite('Git store', () => {
     assert.strictEqual(store.getState().stashCommits, stashCommits);
   });
 
+  test('indexes the refs of each kind for the search, sorted and as trees, when the repository arrives, keeping them through other messages, so the search does not index them again each time it opens', () => {
+    const store = createGitStore(noop);
+    const kinds = () =>
+      store
+        .getState()
+        .refIndex.map((group) => [
+          group.kind,
+          group.refs.map((ref) => ref.name),
+          group.tree.children.map((node) => node.name),
+        ]);
+    assert.deepStrictEqual(kinds(), [
+      ['branch', [], []],
+      ['remote', [], []],
+      ['tag', [], []],
+    ]);
+    store.getState().receive({
+      type: 'repository',
+      head: 'main',
+      headCommit: at,
+      refs: [
+        { kind: 'branch', name: 'main', commit: at },
+        { kind: 'tag', name: 'v2', commit: at },
+        { kind: 'branch', name: 'feat/a', commit: at },
+        { kind: 'tag', name: 'v1', commit: at },
+      ],
+      stashes: [],
+    });
+    const { refIndex } = store.getState();
+    assert.deepStrictEqual(kinds(), [
+      ['branch', ['feat/a', 'main'], ['feat', 'main']],
+      ['remote', [], []],
+      ['tag', ['v1', 'v2'], ['v1', 'v2']],
+    ]);
+    store.getState().receive({ type: 'pulling', running: true });
+    store.getState().searchFor('main');
+    assert.strictEqual(store.getState().refIndex, refIndex);
+  });
+
   test('keeps the column that has the keyboard', () => {
     const store = createGitStore(noop);
     assert.strictEqual(store.getState().activeColumn, 'commits');

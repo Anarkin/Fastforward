@@ -10,12 +10,10 @@ import type {
   RepositoryState,
 } from '../../../../tools/git/shared/protocol';
 import {
-  buildTree,
   currentActive,
   enterTarget,
   focusLeaves,
   foundCommits,
-  indexRefs,
   itemKey,
   leafIndent,
   LocationsPopup,
@@ -31,6 +29,7 @@ import {
   stickyRowHeight,
 } from '../../../../tools/git/page/locations';
 import { FolderRow } from '../../../../tools/git/page/tree';
+import { buildTree, indexRefs } from '../../../../tools/git/page/refIndex';
 import {
   commitInfo,
   keyPress,
@@ -174,22 +173,6 @@ suite('Locations search', () => {
       ['a1', 'b1'],
     );
     assert.strictEqual(branches.more, 1);
-  });
-
-  test('sorts the refs of each kind by name once, for every search after', () => {
-    const index = indexRefs([
-      branchNamed('b'),
-      { kind: 'tag', name: 'v1', commit: 'c' },
-      branchNamed('A'),
-    ]);
-    assert.deepStrictEqual(
-      index.map((group) => [group.kind, group.refs.map((ref) => ref.name)]),
-      [
-        ['branch', ['A', 'b']],
-        ['remote', []],
-        ['tag', ['v1']],
-      ],
-    );
   });
 
   test('searches nothing without a query', () => {
@@ -434,18 +417,6 @@ suite('Locations search', () => {
 });
 
 suite('Locations popup', () => {
-  test('orders a tree folders first, then by name', () => {
-    const tags = ['v2', 'v10', 'rel/a', 'alpha'].map((name): RefInfo => ({
-      kind: 'tag',
-      name,
-      commit: 'a',
-    }));
-    assert.deepStrictEqual(
-      buildTree(tags).children.map((node) => node.name),
-      ['rel', 'alpha', 'v10', 'v2'],
-    );
-  });
-
   test('draws at most the limit of folders and refs under a folder together, counting the rest', () => {
     const tree = buildTree(['a/1', 'b/1', 'c/1', 'd', 'e'].map(branchNamed));
     const { shown, more } = shownChildren(tree.children, 2);

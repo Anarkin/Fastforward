@@ -33,6 +33,7 @@ import { foldersOf } from './fileTree';
 import type { ViewedSource } from './images';
 import type { MenuTarget } from './menus';
 import { settling } from './outbox';
+import { indexRefs, type RefGroup } from './refIndex';
 import { startAfter } from './startAfter';
 import { tagsOnRemote } from './tagPushes';
 import {
@@ -101,6 +102,7 @@ interface GitCollections {
   readonly elsewhere: ReadonlySet<string>;
   readonly refsByCommit: ReadonlyMap<string, readonly RefInfo[]>;
   readonly stashCommits: ReadonlySet<string>;
+  readonly refIndex: readonly RefGroup[];
 }
 
 interface GitActions {
@@ -388,7 +390,11 @@ function collected<T extends GitSource>(
         ? before.elsewhere
         : elsewhereOf(source),
     ...(before !== undefined && before.tab.repository === source.tab.repository
-      ? { refsByCommit: before.refsByCommit, stashCommits: before.stashCommits }
+      ? {
+          refsByCommit: before.refsByCommit,
+          stashCommits: before.stashCommits,
+          refIndex: before.refIndex,
+        }
       : {
           refsByCommit: Map.groupBy(
             source.tab.repository?.refs ?? [],
@@ -397,6 +403,7 @@ function collected<T extends GitSource>(
           stashCommits: new Set(
             source.tab.repository?.stashes.map((stash) => stash.commit),
           ),
+          refIndex: indexRefs(source.tab.repository?.refs ?? []),
         }),
   };
 }
