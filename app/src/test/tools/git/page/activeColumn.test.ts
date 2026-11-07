@@ -6,6 +6,7 @@ import {
   columnOf,
   columnStep,
   forwardedColumn,
+  keyboardAmongColumns,
   keyboardDropped,
   shownColumns,
 } from '../../../../tools/git/page/activeColumn';
@@ -157,6 +158,18 @@ suite('Active column', () => {
     assert.strictEqual(keyboardDropped(lost(false), {}, body), false);
     assert.strictEqual(keyboardDropped(lost(true, true), {}, body), false);
     assert.strictEqual(keyboardDropped(lost(true), body, body), false);
+  });
+
+  test('hands the keyboard to a shown column once its own is hidden only from the columns or from nowhere, leaving it in a dialog over them, as a refresh that hid the diff while Clone... was open turned the URL typed into shortcuts', () => {
+    const body = {};
+    const inColumns = {};
+    const inDialog = {};
+    const columns = { contains: (focused: object) => focused === inColumns };
+    assert.strictEqual(keyboardAmongColumns(body, columns, body), true);
+    assert.strictEqual(keyboardAmongColumns(null, columns, body), true);
+    assert.strictEqual(keyboardAmongColumns(inColumns, columns, body), true);
+    assert.strictEqual(keyboardAmongColumns(inDialog, columns, body), false);
+    assert.strictEqual(keyboardAmongColumns(inDialog, null, body), false);
   });
 });
 

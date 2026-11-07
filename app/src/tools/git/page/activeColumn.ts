@@ -74,6 +74,18 @@ export function keyboardDropped(
   return focused === body && (!lost.isConnected || lost.matches(':disabled'));
 }
 
+export function keyboardAmongColumns<Focused>(
+  focused: Focused | null,
+  columns: { contains(focused: Focused): boolean } | null,
+  body: unknown,
+): boolean {
+  return (
+    focused === null ||
+    focused === body ||
+    (columns?.contains(focused) ?? false)
+  );
+}
+
 interface ColumnElement {
   readonly parentElement: { readonly children: ArrayLike<unknown> } | null;
 }

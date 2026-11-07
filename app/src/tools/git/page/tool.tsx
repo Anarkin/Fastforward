@@ -23,6 +23,7 @@ import {
   columnOrder,
   columnStep,
   forwardedColumn,
+  keyboardAmongColumns,
   keyboardDropped,
   shownColumns,
   type ColumnName,
@@ -190,7 +191,14 @@ function RepositoryColumns() {
         layoutSelection,
         diffShown,
       );
-      if (first) {
+      if (
+        first &&
+        keyboardAmongColumns(
+          document.activeElement,
+          columnsContainer.current,
+          document.body,
+        )
+      ) {
         focusColumn(first);
       }
     }
