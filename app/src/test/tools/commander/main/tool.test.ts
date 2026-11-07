@@ -844,6 +844,24 @@ suite('Commander tool', () => {
       assert.strictEqual(page.of('found').at(-1)?.done, true);
     });
 
+    test('says the file viewed could not be read once it is deleted, rather than going on showing what it held', async () => {
+      const notes = path.join(opened, 'vanishing.txt');
+      fs.writeFileSync(notes, 'here');
+      const { tool, page, change } = commander({});
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      });
+      fs.rmSync(notes);
+      await change(notes);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const told = page.of('viewing').at(-1);
+      assert.strictEqual(told?.size, undefined);
+      assert.match(told?.error ?? '', /vanishing\.txt/);
+    });
+
     test('says the file viewed could not be read when a find cannot read it, rather than that nothing was found', async () => {
       const notes = path.join(opened, 'gone.txt');
       fs.writeFileSync(notes, 'needle');

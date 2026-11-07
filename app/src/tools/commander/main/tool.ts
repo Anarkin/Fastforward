@@ -971,7 +971,16 @@ export class CommanderTool implements Tool<'commander'> {
               });
             }
           },
-          () => undefined,
+          (error: unknown) => {
+            if (this.viewing === viewing && this.shown?.tab === tab) {
+              this.post(page, {
+                type: 'viewing',
+                tab,
+                size: undefined,
+                error: strings.commander.couldNotRead(file, reasonOf(error)),
+              });
+            }
+          },
         );
       }),
     };
