@@ -102,6 +102,30 @@ suite('Log file', () => {
     assert.match(kept, /\[info\] last\n$/);
   });
 
+  test('goes on logging when the log cannot be cut or opened while a run goes on, as another program holding it without sharing stopped the logging for the rest of the run', () => {
+    const file = path.join(folder, 'Fastforward.log');
+    const log = fileLog(file);
+    const line = 'x'.repeat(megabyte);
+    const open = fs.openSync;
+    replaceBuiltin(fs, 'openSync', () => {
+      throw Object.assign(new Error('EBUSY: resource busy or locked, open'), {
+        code: 'EBUSY',
+      });
+    });
+    try {
+      for (let index = 0; index < 21; index++) {
+        log.info(`${index} ${line}`);
+      }
+      log.info('held');
+    } finally {
+      replaceBuiltin(fs, 'openSync', open);
+    }
+    log.info('let go');
+    const kept = fs.readFileSync(file, 'utf8');
+    assert.match(kept, /\[info\] held\n[^]*\[info\] let go\n$/);
+    assert.ok(kept.length <= 20 * megabyte, `kept ${kept.length} bytes`);
+  });
+
   test('leaves a log of 10 MB as it is', () => {
     const file = path.join(folder, 'Fastforward.log');
     const old = oldLines(10 * megabyte);

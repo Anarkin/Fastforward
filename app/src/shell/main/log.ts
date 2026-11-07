@@ -8,17 +8,12 @@ export interface Log {
 }
 
 export function fileLog(file: string, echo = false): Log {
-  let descriptor = openLogFile(file);
+  const descriptor = openLogFile(file);
   let size = sizeOf(descriptor);
   const cut = () => {
-    if (descriptor !== undefined) {
-      fs.closeSync(descriptor);
-    }
-    descriptor = undefined;
     try {
       cutToNewest(file);
     } catch {}
-    descriptor = fs.openSync(file, 'a');
     size = sizeOf(descriptor);
   };
   const write = (level: string, text: string) => {
