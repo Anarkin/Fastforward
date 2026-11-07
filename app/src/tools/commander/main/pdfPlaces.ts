@@ -29,6 +29,7 @@ function keptOf(value: unknown): Kept | undefined {
 export class PdfPlaces {
   private places: Promise<Map<string, Kept>> | undefined;
   private writing: Promise<void> = Promise.resolve();
+  private unreadable = false;
 
   constructor(
     private readonly file: string,
@@ -55,18 +56,37 @@ export class PdfPlaces {
     for (const [forgotten] of oldest) {
       places.delete(forgotten);
     }
+    if (this.unreadable) {
+      return;
+    }
     const text = JSON.stringify(Object.fromEntries(places), null, 2);
     const written = this.writing.then(() => writeAtomically(this.file, text));
     this.writing = written.catch(() => undefined);
     await written;
   }
 
+  saved(): Promise<void> {
+    return this.writing;
+  }
+
+  private async putAside(): Promise<void> {
+    await fs.promises.copyFile(this.file, `${this.file}.corrupt`).catch(() => {
+      this.unreadable = true;
+    });
+  }
+
   private loaded(): Promise<Map<string, Kept>> {
     this.places ??= fs.promises
       .readFile(this.file, 'utf8')
       .then(
-        (text) => {
-          const parsed: unknown = JSON.parse(text);
+        async (text) => {
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            await this.putAside();
+            return new Map<string, Kept>();
+          }
           const places = new Map<string, Kept>();
           if (typeof parsed === 'object' && parsed !== null) {
             for (const [fingerprint, value] of Object.entries(parsed)) {
@@ -78,7 +98,12 @@ export class PdfPlaces {
           }
           return places;
         },
-        () => new Map<string, Kept>(),
+        (error: unknown) => {
+          if (Reflect.get(Object(error), 'code') !== 'ENOENT') {
+            this.unreadable = true;
+          }
+          return new Map<string, Kept>();
+        },
       )
       .catch(() => new Map<string, Kept>());
     return this.places;

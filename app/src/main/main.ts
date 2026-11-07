@@ -199,6 +199,7 @@ async function start(asked: readonly string[]): Promise<void> {
     log.warn(problem);
   }
   const untoldStateProblems = [...state.problems];
+  const pdfPlaces = new PdfPlaces(path.join(profile, 'pdf-places.json'));
   const views = Promise.withResolvers<{
     shell: Shell;
     git: GitTool;
@@ -313,7 +314,7 @@ async function start(asked: readonly string[]): Promise<void> {
   app.on('window-all-closed', () => app.quit());
   flushBeforeQuit(
     app,
-    () => Promise.all([state.saved(), userSettings.saved()]),
+    () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
     stopRunningGit,
   );
   const loading = window.loadURL(`${appOrigin}/index.html`);
@@ -447,7 +448,7 @@ async function start(asked: readonly string[]): Promise<void> {
     },
   );
   const commanderTool = new CommanderTool({
-    pdfPlaces: new PdfPlaces(path.join(profile, 'pdf-places.json')),
+    pdfPlaces,
     fileSystem: () => fileSystemFor(process.platform),
     codePage: () => systemCodePage(process.platform),
     settings: () => userSettings.settings.tools.commander,

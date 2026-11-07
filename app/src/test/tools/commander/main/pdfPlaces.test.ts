@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
+import { replaceBuiltin } from '../../../builtins';
 import { PdfPlaces } from '../../../../tools/commander/main/pdfPlaces';
 import { removeFolder, tempFolder } from '../../../repositories';
 
@@ -79,6 +80,41 @@ suite('Places in PDFs', () => {
       const places = new PdfPlaces(file, () => 0);
       assert.strictEqual(await places.of('aa11'), undefined);
       assert.deepStrictEqual(await places.of('bb22'), third);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('puts a damaged file aside before saving a place afresh, and leaves one it cannot read as it is, as saving over either lost every place it held', async () => {
+    const folder = tempFolder('pdf-places');
+    try {
+      const file = path.join(folder, 'pdf-places.json');
+      fs.writeFileSync(file, '{ "aa11": { not json');
+      await new PdfPlaces(file, () => 1).save('bb22', third, 'two.pdf');
+      assert.strictEqual(
+        fs.readFileSync(`${file}.corrupt`, 'utf8'),
+        '{ "aa11": { not json',
+      );
+      assert.deepStrictEqual(await new PdfPlaces(file).of('bb22'), third);
+
+      const held = JSON.stringify({
+        cc33: { ...tenth, file: 'x.pdf', read: 1 },
+      });
+      fs.writeFileSync(file, held);
+      const read = fs.promises.readFile;
+      replaceBuiltin(fs.promises, 'readFile', () =>
+        Promise.reject(
+          Object.assign(new Error('EBUSY: resource busy or locked'), {
+            code: 'EBUSY',
+          }),
+        ),
+      );
+      try {
+        await new PdfPlaces(file, () => 2).save('dd44', third, 'four.pdf');
+      } finally {
+        replaceBuiltin(fs.promises, 'readFile', read);
+      }
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), held);
     } finally {
       removeFolder(folder);
     }
