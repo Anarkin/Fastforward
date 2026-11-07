@@ -559,6 +559,9 @@ export const strings = {
       "Couldn't start the helper that reads folders as administrator.",
     helperStopped:
       'The helper that read folders as administrator stopped, so they are no longer shown.',
+    helperGone: 'The helper that reads folders as administrator stopped.',
+    helperNotConnected:
+      "The helper that reads folders as administrator didn't connect.",
     gone: "It doesn't exist anymore.",
     couldNotRead: (file: string, reason: string) =>
       `Couldn't read ${file}. ${reason}`,

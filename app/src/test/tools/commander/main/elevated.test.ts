@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import * as net from 'node:net';
+import { strings } from '../../../../shared/strings';
 import { suite, test } from 'vitest';
 import { elevatedFileSystem } from '../../../../tools/commander/main/elevated';
 import type { FileSystem } from '../../../../tools/commander/main/fileSystem';
@@ -113,6 +114,7 @@ suite('The elevated helper of the commander', () => {
     );
     await assert.rejects(
       elevatedFileSystem(() => Promise.resolve(true), process.platform, 50),
+      { message: strings.commander.helperNotConnected },
     );
   });
 
@@ -156,7 +158,7 @@ suite('The elevated helper of the commander', () => {
     assert.ok(elevated && socketOfHelper);
     const waiting = elevated.list(root);
     socketOfHelper();
-    await assert.rejects(waiting);
+    await assert.rejects(waiting, { message: strings.commander.helperGone });
     await elevated.closed;
   });
 });

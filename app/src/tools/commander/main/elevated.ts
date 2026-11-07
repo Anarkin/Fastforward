@@ -1,4 +1,5 @@
 import * as net from 'node:net';
+import { strings } from '../../../shared/strings';
 import type { Entry } from '../shared/protocol';
 import type { FileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
@@ -69,7 +70,7 @@ function overSocket(socket: net.Socket): ElevatedFileSystem {
   const closed = new Promise<void>((resolve) => {
     socket.on('close', () => {
       for (const { reject } of waiting.values()) {
-        reject(new Error('The helper stopped'));
+        reject(new Error(strings.commander.helperGone));
       }
       waiting.clear();
       resolve();
@@ -141,7 +142,7 @@ export async function elevatedFileSystem(
     }
     const socket = await connecting;
     if (socket === undefined) {
-      throw new Error('The helper did not connect');
+      throw new Error(strings.commander.helperNotConnected);
     }
     return overSocket(socket);
   } finally {
