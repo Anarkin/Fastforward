@@ -175,6 +175,49 @@ suite('Running git in a repository', () => {
     assert.ok(taken > 255 * 1024 * 1024, `${taken}`);
   });
 
+  test('takes no bare repository it was not named, as a folder inside a cloned repository can be one whose config makes git run its commands', async () => {
+    const folder = tempFolder('bare');
+    try {
+      const { execFileSync } = process.getBuiltinModule('node:child_process');
+      const marker = path.join(folder, 'ran').replaceAll('\\', '/');
+      const bare = path.join(folder, 'evil');
+      const inBare = (...args: string[]) =>
+        execFileSync(gitPath, ['-C', bare, ...args], { stdio: 'pipe' });
+      execFileSync(gitPath, ['init', '-q', '--bare', bare]);
+      inBare('config', 'core.bare', 'false');
+      inBare('config', 'core.worktree', '..');
+      inBare('config', 'filter.run.clean', `echo ran > "${marker}"; cat`);
+      fs.mkdirSync(path.join(bare, 'info'), { recursive: true });
+      fs.writeFileSync(path.join(bare, 'info', 'attributes'), '* filter=run\n');
+      fs.writeFileSync(path.join(folder, 'a.txt'), 'a\n');
+      execFileSync(
+        gitPath,
+        [
+          '--git-dir',
+          bare,
+          '--work-tree',
+          folder,
+          '-c',
+          'filter.run.clean=cat',
+          'add',
+          'a.txt',
+        ],
+        { cwd: folder, stdio: 'pipe' },
+      );
+      fs.appendFileSync(path.join(folder, 'a.txt'), 'b\n');
+      inBare('diff');
+      assert.ok(fs.existsSync(marker), 'git runs the filter of the folder');
+      fs.rmSync(marker);
+      await assert.rejects(runGit(gitPath, bare, ['diff']));
+      await assert.rejects(
+        runGit(gitPath, bare, ['fetch', '--all'], { runsUserCode: true }),
+      );
+      assert.ok(!fs.existsSync(marker));
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('reads and switches the repository it was given, though the environment names another', async () => {
     const other = await tempRepository(tempFolder('other'));
     try {

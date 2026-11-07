@@ -63,7 +63,7 @@ export async function isRepository(folder: string): Promise<boolean> {
     case 'file':
       return pointsAtGitDirectory(folder, git);
     default:
-      return isGitDirectory(folder);
+      return false;
   }
 }
 

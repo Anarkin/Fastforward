@@ -8,6 +8,8 @@ import { stopTree } from './gitSpawner';
 import { KeptGits } from './keptGit';
 import { GitChild, spawnGit } from './spawnedGit';
 
+const unnamedBareRefused = ['-c', 'safe.bareRepository=explicit'];
+
 const gitConfigArgs = [
   '-c',
   'core.quotePath=false',
@@ -138,11 +140,21 @@ function monitorArgs(gitPath: string, cwd: string): Promise<string[]> {
   if (args === undefined) {
     const { command, env } = gitCommand(gitPath);
     args = printedBy(
-      spawnGit(command, ['config', '--type=bool', '--get', 'core.fsmonitor'], {
-        cwd,
-        env: { ...gitEnv(), ...env },
-        detached: gitProcessOptions().detached,
-      }),
+      spawnGit(
+        command,
+        [
+          ...unnamedBareRefused,
+          'config',
+          '--type=bool',
+          '--get',
+          'core.fsmonitor',
+        ],
+        {
+          cwd,
+          env: { ...gitEnv(), ...env },
+          detached: gitProcessOptions().detached,
+        },
+      ),
     ).then((printed) => ['-c', `core.fsmonitor=${printed?.trim() === 'true'}`]);
     monitors.set(key, args);
   }
@@ -235,11 +247,15 @@ export async function startGit(
   const monitor = await monitorArgs(gitPath, cwd);
   const started = gitCommand(gitPath);
   return keptRunning(
-    spawnGit(started.command, [...gitConfigArgs, ...monitor, ...args], {
-      cwd,
-      env: { ...gitEnv(), ...started.env, GIT_FLUSH: '1' },
-      detached: gitProcessOptions().detached,
-    }),
+    spawnGit(
+      started.command,
+      [...unnamedBareRefused, ...gitConfigArgs, ...monitor, ...args],
+      {
+        cwd,
+        env: { ...gitEnv(), ...started.env, GIT_FLUSH: '1' },
+        detached: gitProcessOptions().detached,
+      },
+    ),
   );
 }
 
@@ -285,7 +301,12 @@ function runGitOnce(
     const child = keptRunning(
       spawnGit(
         started.command,
-        [...(runsUserCode ? [] : gitConfigArgs), ...monitor, ...args],
+        [
+          ...unnamedBareRefused,
+          ...(runsUserCode ? [] : gitConfigArgs),
+          ...monitor,
+          ...args,
+        ],
         {
           cwd,
           env: {

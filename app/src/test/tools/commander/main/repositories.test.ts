@@ -39,7 +39,7 @@ suite('Commander repositories', () => {
 
   const at = (name: string) => isRepository(path.join(folder, name));
 
-  test('is a repository with a .git folder, a .git file as worktrees and submodules have, or the HEAD, objects and refs of a bare one', async () => {
+  test('is a repository with a .git folder or a .git file as worktrees and submodules have, never a bare one, as git is told to take no bare repository it was not named', async () => {
     made({
       ...gitFolder('cloned/.git'),
       ...gitFolder('main/.git'),
@@ -50,7 +50,7 @@ suite('Commander repositories', () => {
         '0123456789abcdef0123456789abcdef01234567\n',
       'parent/sub/.git': 'gitdir: ../.git/modules/sub\n',
       ...gitFolder('bare.git'),
-      ...gitFolder('detached', `${'a'.repeat(64)}\n`),
+      ...gitFolder('detached/.git', `${'a'.repeat(64)}\n`),
       'headless/objects': undefined,
       'headless/refs': undefined,
       'plain/README.md': '',
@@ -62,12 +62,11 @@ suite('Commander repositories', () => {
       'linked',
       'parent',
       'parent/sub',
-      'bare.git',
       'detached',
     ]) {
       assert.strictEqual(await at(name), true, name);
     }
-    for (const name of ['headless', 'plain', 'gone']) {
+    for (const name of ['bare.git', 'headless', 'plain', 'gone']) {
       assert.strictEqual(await at(name), false, name);
     }
   });
