@@ -444,6 +444,34 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('keeps a notice of the app told while the page reloads until the page is ready, as one about an update was lost then', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const shell = shellOf(view.view);
+        view.connection.dispose();
+        shell.notify({ level: 'info', message: 'update ready' });
+        const posted: string[] = [];
+        const reloaded = shell.connect((message) => {
+          if (message.type === 'notice') {
+            posted.push(message.message);
+          }
+        });
+        try {
+          assert.deepStrictEqual(posted, []);
+          await reloaded.receive({ type: 'ready' });
+          assert.deepStrictEqual(posted, ['update ready']);
+        } finally {
+          reloaded.dispose();
+        }
+      },
+      true,
+      undefined,
+      noGit,
+    );
+  });
+
   test('asks about the folders asked for at about the same time in one question, as Explorer starts the app once for each folder picked, each handing its folder over', async () => {
     const first = tempFolder('first');
     const second = tempFolder('second');

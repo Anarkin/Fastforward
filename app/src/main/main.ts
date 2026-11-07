@@ -350,6 +350,8 @@ async function start(asked: readonly string[]): Promise<void> {
         window.webContents.send('message', message);
       }
     },
+    (notice) =>
+      void views.promise.then(({ shell: view }) => view.notify(notice)),
     log,
     (url) => void shell.openExternal(url),
     writesEnded,

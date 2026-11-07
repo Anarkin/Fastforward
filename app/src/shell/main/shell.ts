@@ -315,6 +315,10 @@ export class Shell {
     this.page?.post({ type: 'confirmQuit' });
   }
 
+  notify(notice: Notice): void {
+    this.notice(undefined, notice);
+  }
+
   private activeTab(): Tab | undefined {
     const { savedTabs, activeTabId } = this.storage;
     return savedTabs.find((tab) => tab.id === activeTabId);

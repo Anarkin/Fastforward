@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { realTimer, type Timer } from '../tools/git/main/autoFetch';
 import type { Log } from '../shell/main/log';
+import type { Notice } from '../shell/main/shell';
 import type { ToWebview, UpdateStatus } from '../shell/shared/protocol';
 import { strings } from '../shared/strings';
 
@@ -117,6 +118,7 @@ export class Updates {
     private readonly version: string,
     private readonly updater: Updater,
     private readonly post: (message: ToWebview) => void,
+    private readonly tell: (notice: Notice) => void,
     log: Log,
     private readonly open: (url: string) => void,
     private readonly writesEnded: () => Promise<unknown>,
@@ -265,6 +267,6 @@ export class Updates {
   }
 
   private notice(level: 'info' | 'error', message: string): void {
-    this.post({ type: 'notice', level, message });
+    this.tell({ level, message });
   }
 }

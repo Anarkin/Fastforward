@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import { suite, test } from 'vitest';
+import type { Notice } from '../../shell/main/shell';
 import type { ToWebview, UpdateStatus } from '../../shell/shared/protocol';
 import { strings } from '../../shared/strings';
 import {
@@ -52,6 +53,7 @@ function withUpdates(
 ) {
   const updater = new FakeUpdater();
   const posted: ToWebview[] = [];
+  const told: Notice[] = [];
   const opened: string[] = [];
   const { timer, waiting, fire } = fakeTimer();
   const { log, error } = recordingLog();
@@ -60,6 +62,7 @@ function withUpdates(
     '6.0.0',
     updater,
     (message) => posted.push(message),
+    (notice) => told.push(notice),
     log,
     (url) => opened.push(url),
     writesEnded,
@@ -72,12 +75,8 @@ function withUpdates(
     waiting,
     fire,
     logged: error,
-    notices: () =>
-      posted.flatMap((message) =>
-        message.type === 'notice'
-          ? [`${message.level}: ${message.message}`]
-          : [],
-      ),
+    posted,
+    notices: () => told.map((notice) => `${notice.level}: ${notice.message}`),
     statuses: () =>
       posted.flatMap((message): UpdateStatus[] =>
         message.type === 'update' ? [message.status] : [],
@@ -291,6 +290,20 @@ suite('Updates', () => {
     assert.strictEqual(waiting().length, 0);
     updates.check(true);
     assert.strictEqual(updater.checks.length, 1);
+  });
+
+  test('leaves its notices to the shell, which keeps them for a page not ready, posting only how far it got, as a notice that came while the page reloaded after the settings were saved was lost, only the status being sent again', async () => {
+    const { updates, updater, posted, notices } = withUpdates();
+    updates.start();
+    updater.checks[0].resolve(found(Promise.resolve([])));
+    await settle();
+    assert.deepStrictEqual(notices(), [
+      `info: ${strings.messages.updateReady('7.0.0')}`,
+    ]);
+    assert.deepStrictEqual(
+      posted.map((message) => message.type),
+      ['update', 'update', 'update'],
+    );
   });
 
   test('restarts into a downloaded update silently, starting the app again', async () => {
