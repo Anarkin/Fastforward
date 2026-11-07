@@ -3,7 +3,7 @@ import { useStore } from 'zustand';
 import { keymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { strings } from '../../shared/strings';
-import { tools, type ToolId, type ToWebviewOfTool } from '../shared/tools';
+import { tools, type ToolId } from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
 import { ConfirmPopup } from './confirmPopup';
 import { AppMenu } from './appMenu';
@@ -23,7 +23,7 @@ import {
 } from './store';
 import { newTabTrigger, TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './titleBar';
-import { ToolViews, type ToolListeners } from './tools';
+import { ToolViews } from './tools';
 
 export function emptyState(noTab: boolean): React.ReactNode {
   return noTab ? <div className="empty-state">{strings.app.noTab}</div> : null;
@@ -64,16 +64,6 @@ export function confirmation(confirming: Confirming): {
       };
 }
 
-function deliver<K extends ToolId>(
-  listeners: ToolListeners,
-  tool: K,
-  message: ToWebviewOfTool<K>,
-): void {
-  for (const listener of listeners[tool]) {
-    listener(message);
-  }
-}
-
 function ShellMenu() {
   const opened = useShell((state) => state.menu);
   const toolItems = useShell((state) => state.toolItems);
@@ -103,11 +93,6 @@ interface Props {
 
 export function App({ name, post, listen }: Props) {
   const [store] = useState(() => createShellStore(post));
-  const [listeners] = useState<ToolListeners>(() => ({
-    terminal: new Set(),
-    commander: new Set(),
-    git: new Set(),
-  }));
   const noTab = useStore(store, (state) => state.tabs?.length === 0);
   const title = useStore(store, (state) => {
     const tab = activeTabOf(state);
@@ -120,15 +105,10 @@ export function App({ name, post, listen }: Props) {
     store.getState();
 
   useEffect(() => {
-    const stop = listen((message) => {
-      store.getState().receive(message);
-      if (message.type === 'tool') {
-        deliver(listeners, message.tool, message.message);
-      }
-    });
+    const stop = listen(store.getState().receive);
     ready();
     return stop;
-  }, [listen, listeners, store, ready]);
+  }, [listen, store, ready]);
 
   useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
   useBinding(keymap.about, () => togglePopup('about'));
@@ -168,7 +148,7 @@ export function App({ name, post, listen }: Props) {
         )}
         <Notices />
         {emptyState(noTab)}
-        <ToolViews post={post} listeners={listeners} />
+        <ToolViews />
       </div>
     </ShellStore>
   );

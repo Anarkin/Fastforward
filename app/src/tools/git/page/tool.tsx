@@ -1,6 +1,10 @@
 import { compareKeymap, gitKeymap } from '../shared/keymap';
 import { CompareView } from './compareView';
-import { useShell, useShellActions } from '../../../shell/page/store';
+import {
+  comparingOf,
+  useShell,
+  useShellActions,
+} from '../../../shell/page/store';
 import './style.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
@@ -39,7 +43,6 @@ export interface GitToolProps {
   active: boolean;
   post: (message: GitToHost) => void;
   listen: (handler: (message: GitToWebview) => void) => () => void;
-  comparing: string | undefined;
 }
 
 function diffShownOf(state: GitState): boolean {
@@ -58,12 +61,8 @@ function diffShownOf(state: GitState): boolean {
 const commitNavigation = <NavButtons />;
 const commitSearch = <AddressBar />;
 
-export function GitTool({
-  active,
-  post: postToHost,
-  listen,
-  comparing,
-}: GitToolProps) {
+export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
+  const comparing = useShell(comparingOf);
   const {
     closeMenu,
     setToolItems,

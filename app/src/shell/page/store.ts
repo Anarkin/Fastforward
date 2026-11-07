@@ -17,11 +17,49 @@ import type {
   ToWebviewOf,
   UpdateStatus,
 } from '../shared/protocol';
-import { confirmsClose, type ToolId } from '../shared/tools';
+import {
+  confirmsClose,
+  type ToHostOf,
+  type ToolId,
+  type ToWebviewOfTool,
+} from '../shared/tools';
 import type { Notice } from './notices';
 import { movedTab } from './tabBar';
 
 export type Popup = 'shortcuts' | 'about' | 'openWith';
+
+interface ToolChannel<K extends ToolId> {
+  readonly post: (message: ToHostOf<K>) => void;
+  readonly listen: (
+    handler: (message: ToWebviewOfTool<K>) => void,
+  ) => () => void;
+}
+
+type ToolChannels = { readonly [K in ToolId]: ToolChannel<K> };
+
+type ToolListeners = {
+  readonly [K in ToolId]: Set<(message: ToWebviewOfTool<K>) => void>;
+};
+
+function listening<M>(
+  listeners: Set<(message: M) => void>,
+  handler: (message: M) => void,
+): () => void {
+  listeners.add(handler);
+  return () => {
+    listeners.delete(handler);
+  };
+}
+
+function deliver<K extends ToolId>(
+  listeners: ToolListeners,
+  tool: K,
+  message: ToWebviewOfTool<K>,
+): void {
+  for (const listener of listeners[tool]) {
+    listener(message);
+  }
+}
 
 export type Confirming =
   { readonly kind: 'tab'; readonly tab: TabInfo } | { readonly kind: 'quit' };
@@ -79,6 +117,7 @@ interface ShellSource {
 
 interface ShellActions {
   readonly receive: (message: ToWebview) => void;
+  readonly channels: ToolChannels;
   readonly dismissNotice: (id: number) => void;
   readonly showPopup: (popup: Popup, open: boolean) => void;
   readonly togglePopup: (popup: Popup) => void;
@@ -190,20 +229,47 @@ export function activeTabOf({
   return tabs?.find((tab) => tab.id === active);
 }
 
+export function comparingOf(state: ShellSource): string | undefined {
+  const tab = activeTabOf(state);
+  return tab?.compare === true ? tab.id : undefined;
+}
+
 export function createShellStore(
   post: (message: ToHost) => void,
   initial: Partial<ShellSource> = {},
 ): StoreApi<ShellState> {
   let noticesShown = 0;
+  const listeners: ToolListeners = {
+    terminal: new Set(),
+    commander: new Set(),
+    git: new Set(),
+  };
+  const channels: ToolChannels = {
+    terminal: {
+      post: (message) => post({ type: 'tool', tool: 'terminal', message }),
+      listen: (handler) => listening(listeners.terminal, handler),
+    },
+    commander: {
+      post: (message) => post({ type: 'tool', tool: 'commander', message }),
+      listen: (handler) => listening(listeners.commander, handler),
+    },
+    git: {
+      post: (message) => post({ type: 'tool', tool: 'git', message }),
+      listen: (handler) => listening(listeners.git, handler),
+    },
+  };
   return createStore<ShellState>()((set, get) => {
     return {
       ...shellDefaults,
       ...initial,
       receive: (message) => {
-        if (message.type !== 'tool') {
+        if (message.type === 'tool') {
+          deliver(listeners, message.tool, message.message);
+        } else {
           set((state) => received(state, message, () => ++noticesShown));
         }
       },
+      channels,
       dismissNotice: (id) =>
         set((state) => ({
           notices: state.notices.filter((notice) => notice.id !== id),
