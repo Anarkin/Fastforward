@@ -64,7 +64,7 @@ interface CommanderSource {
 }
 
 interface PaneFilter {
-  readonly folder: string;
+  readonly folder: string | undefined;
   readonly query: string;
 }
 
@@ -111,6 +111,8 @@ interface CommanderActions {
   readonly resetColumn: (column: SizedColumn) => void;
   readonly dropIcon: (ticket: string) => void;
   readonly scrollOf: (key: string) => number;
+  readonly placeOf: (tab: string) => number;
+  readonly keepPlace: (tab: string, byte: number) => void;
   readonly filterSide: (side: Side, query: string | undefined) => void;
   readonly keepScroll: (key: string, offset: number) => void;
   readonly saveThumbnail: (
@@ -250,6 +252,7 @@ export function createCommanderStore(
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
   const scrolls = new ScrollPlaces();
+  const places = new Map<string, number>();
   const viewerListeners = new Set<(message: ToViewer) => void>();
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
@@ -302,6 +305,7 @@ export function createCommanderStore(
         }
         announced(() => set((state) => received(state, message)));
         if (message.type === 'closed') {
+          places.delete(message.tab);
           set((state) => ({ filters: withoutTab(state.filters, message.tab) }));
         }
       },
@@ -395,6 +399,10 @@ export function createCommanderStore(
         saveColumns({ ...columns, [column]: defaultColumns[column] });
       },
       scrollOf: (key) => scrolls.of(key),
+      placeOf: (tab) => places.get(tab) ?? 0,
+      keepPlace: (tab, byte) => {
+        places.set(tab, byte);
+      },
       filterSide: (side, query) =>
         set((state) => {
           const { tab, panes } = state.view;
@@ -403,7 +411,7 @@ export function createCommanderStore(
             return state;
           }
           const filters = new Map(state.filters);
-          if (query === undefined || folder === undefined) {
+          if (query === undefined) {
             filters.delete(filterKey(tab, side));
           } else {
             filters.set(filterKey(tab, side), { folder, query });

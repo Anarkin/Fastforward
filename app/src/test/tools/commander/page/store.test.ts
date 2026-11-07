@@ -53,6 +53,26 @@ const listing = (folder: string, tab = '1') =>
   }) as const;
 
 suite('Commander store', () => {
+  test('keeps where each viewer tab was in its file, forgetting it once the tab closes, as a tab opened later can take its id', () => {
+    const { store } = shown();
+    assert.strictEqual(store.getState().placeOf('3'), 0);
+    store.getState().keepPlace('3', 4096);
+    assert.strictEqual(store.getState().placeOf('3'), 4096);
+    assert.strictEqual(store.getState().placeOf('4'), 0);
+    store.getState().receive({ type: 'closed', tab: '3' });
+    assert.strictEqual(store.getState().placeOf('3'), 0);
+  });
+
+  test('opens the filter of a side whose folder is not listed yet, forgetting it once the folder comes, as the filter belongs to a folder', () => {
+    const store = createCommanderStore(noop, {
+      view: { ...emptyView, tab: '1' },
+    });
+    store.getState().filterSide('left', '');
+    assert.strictEqual(filterOf(store.getState(), 'left'), '');
+    store.getState().receive(listing(left.folder));
+    assert.strictEqual(filterOf(store.getState(), 'left'), undefined);
+  });
+
   test('keeps the filter of each side of a tab while it shows the folder the filter was typed in, through another tab shown, forgetting it once the side shows another folder or the tab closes', () => {
     const { store } = shown();
     const filtered = () => filterOf(store.getState(), 'left');

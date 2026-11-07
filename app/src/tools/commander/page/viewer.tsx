@@ -101,10 +101,18 @@ export function Viewer() {
       keep: (language) => onChoose({ language }),
     },
   );
-  const place = useRef(0);
-  const onPlace = useCallback((byte: number) => {
-    place.current = byte;
-  }, []);
+  const tab = useCommander((state) => state.view.tab);
+  const { placeOf, keepPlace } = useCommanderActions();
+  const place = useRef(tab === undefined ? 0 : placeOf(tab));
+  const onPlace = useCallback(
+    (byte: number) => {
+      place.current = byte;
+      if (tab !== undefined) {
+        keepPlace(tab, byte);
+      }
+    },
+    [tab, keepPlace],
+  );
   const encodingTrigger = useRef<HTMLButtonElement>(null);
   const languageTrigger = useRef<HTMLButtonElement>(null);
   const preview = previewOf(file);
