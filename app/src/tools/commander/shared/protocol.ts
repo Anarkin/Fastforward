@@ -3,6 +3,7 @@ import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';
 
 export interface ComparedFile {
   readonly side: Side;
+  readonly folder: string;
   readonly name: string;
 }
 
@@ -88,6 +89,7 @@ export type CommanderToHost =
       readonly type: 'open';
       readonly tab: string;
       readonly side: Side;
+      readonly folder: string;
       readonly name: string;
     }
   | {
@@ -154,12 +156,14 @@ export type CommanderToHost =
       readonly type: 'view';
       readonly tab: string;
       readonly side: Side;
+      readonly folder: string;
       readonly name: string;
     }
   | {
       readonly type: 'shellMenu';
       readonly tab: string;
       readonly side: Side;
+      readonly folder: string;
       readonly names: readonly string[];
       readonly x: number;
       readonly y: number;
@@ -169,6 +173,7 @@ export type CommanderToHost =
       readonly type: 'delete';
       readonly tab: string;
       readonly side: Side;
+      readonly folder: string;
       readonly names: readonly string[];
       readonly permanently: boolean;
     }
@@ -178,6 +183,7 @@ export type CommanderToHost =
       readonly type: 'openRepository';
       readonly tab: string;
       readonly side: Side;
+      readonly folder: string;
       readonly name: string;
     }
   | {
@@ -185,6 +191,7 @@ export type CommanderToHost =
       readonly tab: string;
       readonly from: Side;
       readonly side: Side;
+      readonly folder: string;
       readonly name: string;
     }
   | {

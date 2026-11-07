@@ -6,6 +6,7 @@ import {
   createCommanderStore,
   filterOf,
   shownColumns,
+  shownRowsOf,
 } from '../../../../tools/commander/page/store';
 import { nextSort } from '../../../../tools/commander/page/listing';
 import {
@@ -53,6 +54,34 @@ const listing = (folder: string, tab = '1') =>
   }) as const;
 
 const place = { page: 2, zoom: 'auto', left: 0, top: 10 } as const;
+
+const withFiles = (folder: string, ...names: string[]) => ({
+  ...listing(folder),
+  entries: names.map((name) => ({
+    name,
+    folder: false,
+    link: false,
+    hidden: false,
+    size: 1,
+    modified: 0,
+  })),
+});
+
+function byName() {
+  return createCommanderStore(noop, {
+    view: {
+      ...emptyView,
+      tab: '1',
+      panes: {
+        left: { ...left, sort: { ...left.sort, column: 'name' } },
+        right: undefined,
+      },
+    },
+  });
+}
+
+const selectedOf = (store: ReturnType<typeof byName>) =>
+  store.getState().view.panes.left?.selected;
 
 suite('Commander store', () => {
   test('finds a text in a viewed file, handing on only what is found for that search, until it is stopped', () => {
@@ -203,6 +232,59 @@ suite('Commander store', () => {
     assert.strictEqual(filtered(), undefined);
   });
 
+  test('filters the rows of a side once for each change of its rows or its filter, counting the files shown and listed', () => {
+    const store = byName();
+    const { receive, filterSide, select } = store.getState();
+    receive(withFiles(left.folder, 'a.txt', 'b.log', 'c.txt'));
+    const all = shownRowsOf(store.getState(), 'left');
+    assert.strictEqual(all.rows, store.getState().view.panes.left?.rows);
+    assert.strictEqual(shownRowsOf(store.getState(), 'left'), all);
+
+    filterSide('left', 'txt');
+    const filtered = shownRowsOf(store.getState(), 'left');
+    select('left', 'c.txt');
+
+    assert.deepStrictEqual(
+      filtered.rows.map((row) => row.key),
+      ['..', 'a.txt', 'c.txt'],
+    );
+    assert.deepStrictEqual([filtered.files, filtered.total], [2, 3]);
+    assert.strictEqual(shownRowsOf(store.getState(), 'left'), filtered);
+  });
+
+  test('selects the first file the filter shows as it is typed, keeping the one selected while the filter shows it', () => {
+    const store = byName();
+    const { receive, filterSide, select } = store.getState();
+    receive(withFiles(left.folder, 'a.txt', 'b.log', 'c.txt'));
+    select('left', '..');
+    filterSide('left', '');
+    assert.strictEqual(selectedOf(store), '..');
+    filterSide('left', 'log');
+    assert.strictEqual(selectedOf(store), 'b.log');
+    filterSide('left', 'lo');
+    assert.strictEqual(selectedOf(store), 'b.log');
+    filterSide('left', 'txt');
+    assert.strictEqual(selectedOf(store), 'a.txt');
+    filterSide('left', undefined);
+    assert.strictEqual(selectedOf(store), 'a.txt');
+  });
+
+  test('selects the nearest file the filter shows once the folder is listed again without the one selected, as the selection fell on a file the filter hid, where Delete did nothing', () => {
+    const store = byName();
+    const { receive, filterSide, select } = store.getState();
+    receive(withFiles(left.folder, 'a.txt', 'b.log', 'c.txt'));
+    filterSide('left', 'txt');
+    select('left', 'a.txt');
+
+    receive(withFiles(left.folder, 'b.log', 'c.txt'));
+    assert.strictEqual(selectedOf(store), 'c.txt');
+
+    receive(withFiles(left.folder, 'a.txt', 'b.log', 'c.txt'));
+    select('left', 'c.txt');
+    receive(withFiles(left.folder, 'a.txt', 'b.log'));
+    assert.strictEqual(selectedOf(store), 'a.txt');
+  });
+
   test('keeps where each list of a side was scrolled to, apart from the lists of another store', () => {
     const store = createCommanderStore(noop);
     assert.strictEqual(store.getState().scrollOf('left /work'), 0);
@@ -240,6 +322,33 @@ suite('Commander store', () => {
     assert.strictEqual(store.getState(), state);
   });
 
+  test('keeps what the viewer shows when the main process tells it again unchanged, as every telling read, found and colored the whole file anew', () => {
+    const store = createCommanderStore(noop);
+    const { receive } = store.getState();
+    const viewing = (version: string, hidden: readonly boolean[]) =>
+      receive({
+        type: 'viewing',
+        tab: '1',
+        size: 10,
+        version,
+        binary: false,
+        hidden,
+        detected: 'utf-16le',
+      });
+    viewing('1', [false, true]);
+    const state = store.getState();
+
+    viewing('1', [false, true]);
+    assert.strictEqual(store.getState(), state);
+
+    viewing('1', [false, false]);
+    assert.deepStrictEqual(store.getState().viewed?.hidden, [false, false]);
+    viewing('2', [false, false]);
+    assert.strictEqual(store.getState().viewed?.version, '2');
+    receive({ type: 'viewing', tab: '1', size: undefined, error: 'Gone' });
+    assert.strictEqual(store.getState().viewed?.error, 'Gone');
+  });
+
   test('opens, steps, views and reads again on the side asked, for the tab shown, and nothing before a tab is shown', () => {
     const empty: CommanderToHost[] = [];
     createCommanderStore((message) => empty.push(message))
@@ -258,11 +367,30 @@ suite('Commander store', () => {
     actions.reread();
     actions.toggleHidden();
     assert.deepStrictEqual(posted, [
-      { type: 'open', tab: '1', side: 'left', name: 'a' },
+      { type: 'open', tab: '1', side: 'left', folder: left.folder, name: 'a' },
       { type: 'step', tab: '1', side: 'left', step: -1 },
-      { type: 'view', tab: '1', side: 'left', name: 'a.txt' },
-      { type: 'openRepository', tab: '1', side: 'left', name: 'repo' },
-      { type: 'openOnSide', tab: '1', from: 'left', side: 'right', name: 'a' },
+      {
+        type: 'view',
+        tab: '1',
+        side: 'left',
+        folder: left.folder,
+        name: 'a.txt',
+      },
+      {
+        type: 'openRepository',
+        tab: '1',
+        side: 'left',
+        folder: left.folder,
+        name: 'repo',
+      },
+      {
+        type: 'openOnSide',
+        tab: '1',
+        from: 'left',
+        side: 'right',
+        folder: left.folder,
+        name: 'a',
+      },
       { type: 'drive', tab: '1', side: 'left', drive: 'D:' },
       { type: 'listDrives' },
       { type: 'reread', tab: '1', side: 'right' },
@@ -323,6 +451,7 @@ suite('Commander store', () => {
     assert.deepStrictEqual(store.getState().deleting, {
       tab: '1',
       side: 'left',
+      folder: left.folder,
       names: ['a'],
       permanently: true,
     });
@@ -336,10 +465,28 @@ suite('Commander store', () => {
         type: 'delete',
         tab: '1',
         side: 'left',
+        folder: left.folder,
         names: ['b'],
         permanently: false,
       },
     ]);
+  });
+
+  test('drops the question to delete once the side shows another folder or another tab is shown, as the files it names belong to the folder they were seen in', () => {
+    const { posted, store } = shown();
+    store.getState().askDelete('left', ['a'], true);
+    store.getState().receive(listing(left.folder));
+    assert.strictEqual(store.getState().deleting?.folder, left.folder);
+    store.getState().receive(listing(`${left.folder}/sub`));
+    assert.strictEqual(store.getState().deleting, undefined);
+    store.getState().askDelete('left', ['b'], true);
+    store.getState().receive({ type: 'show', tab: '2' });
+    assert.strictEqual(store.getState().deleting, undefined);
+    store.getState().confirmDelete();
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'delete'),
+      [],
+    );
   });
 
   test('reads a folder it may not as administrator once asked, forgetting the question either way', () => {

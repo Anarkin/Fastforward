@@ -17,8 +17,15 @@ import type {
   SizedColumn,
   SortColumn,
 } from '../shared/settings';
+import { filterWords } from '../../../shared/fileFilter';
 import { filesToCompare } from './comparing';
-import { nextSort } from './listing';
+import {
+  filteredRows,
+  filteredSelection,
+  nearestShown,
+  nextSort,
+  type Row,
+} from './listing';
 import {
   emptyView,
   reduceView,
@@ -39,6 +46,7 @@ type ViewerRequest = Extract<
 interface Deleting {
   readonly tab: string;
   readonly side: Side;
+  readonly folder: string;
   readonly names: readonly string[];
   readonly permanently: boolean;
 }
@@ -182,6 +190,20 @@ function viewedOf(message: Extract<CommanderToWebview, { type: 'viewing' }>) {
   };
 }
 
+function sameViewed(shown: Viewing | undefined, told: Viewing): boolean {
+  return (
+    shown !== undefined &&
+    shown.tab === told.tab &&
+    shown.size === told.size &&
+    shown.version === told.version &&
+    shown.binary === told.binary &&
+    shown.detected === told.detected &&
+    shown.error === told.error &&
+    shown.hidden?.length === told.hidden?.length &&
+    (shown.hidden ?? []).every((part, index) => part === told.hidden?.[index])
+  );
+}
+
 function received(
   state: CommanderSource,
   message: CommanderToWebview,
@@ -192,8 +214,10 @@ function received(
   switch (message.type) {
     case 'drives':
       return { drives: message.drives };
-    case 'viewing':
-      return { viewed: viewedOf(message) };
+    case 'viewing': {
+      const viewed = viewedOf(message);
+      return sameViewed(state.viewed, viewed) ? state : { viewed };
+    }
     case 'noAccess':
       return {
         noAccess: {
@@ -207,6 +231,10 @@ function received(
       return view === state.view ? state : { view };
     }
   }
+}
+
+function stillShown(view: CommanderView, { tab, side, folder }: Deleting) {
+  return view.tab === tab && view.panes[side]?.folder === folder;
 }
 
 function filterKey(tab: string, side: Side): string {
@@ -266,6 +294,45 @@ function withoutTab(
   return kept;
 }
 
+export interface ShownRows {
+  readonly rows: readonly Row[];
+  readonly files: number;
+  readonly total: number;
+}
+
+const noRows: readonly Row[] = [];
+
+const shownByRows = new WeakMap<
+  readonly Row[],
+  { readonly query: string; readonly shown: ShownRows }
+>();
+
+function filesIn(rows: readonly Row[]): number {
+  return rows.reduce(
+    (count, row) => (row.entry === undefined ? count : count + 1),
+    0,
+  );
+}
+
+function shownRowsIn(all: readonly Row[], query: string): ShownRows {
+  const kept = shownByRows.get(all);
+  if (kept?.query === query) {
+    return kept.shown;
+  }
+  const rows = filteredRows(all, filterWords(query));
+  const total = filesIn(all);
+  const shown = { rows, files: rows === all ? total : filesIn(rows), total };
+  shownByRows.set(all, { query, shown });
+  return shown;
+}
+
+export function shownRowsOf(state: CommanderSource, side: Side): ShownRows {
+  return shownRowsIn(
+    state.view.panes[side]?.rows ?? noRows,
+    filterOf(state, side) ?? '',
+  );
+}
+
 const pdfPlaceWait = 2000;
 
 const pdfPlaceEvery = 1000;
@@ -312,6 +379,30 @@ export function createCommanderStore(
       if (filters !== get().filters) {
         set({ filters });
       }
+      const { deleting } = get();
+      if (deleting !== undefined && !stillShown(get().view, deleting)) {
+        set({ deleting: undefined });
+      }
+      for (const side of sides) {
+        const pane = get().view.panes[side];
+        const nearest =
+          pane === undefined || pane.rows === before.panes[side]?.rows
+            ? undefined
+            : nearestShown(
+                pane.rows,
+                shownRowsOf(get(), side).rows,
+                pane.selected,
+              );
+        if (nearest !== undefined && nearest !== pane?.selected) {
+          set((state) => ({
+            view: reduceView(state.view, {
+              type: 'select',
+              side,
+              key: nearest,
+            }),
+          }));
+        }
+      }
       const { tab, active } = get().view;
       if (
         tab !== undefined &&
@@ -331,6 +422,16 @@ export function createCommanderStore(
       const { tab } = get().view;
       if (tab !== undefined) {
         send(tab);
+      }
+    };
+    const onPane = (
+      side: Side,
+      send: (tab: string, folder: string) => void,
+    ) => {
+      const { tab, panes } = get().view;
+      const folder = panes[side]?.folder;
+      if (tab !== undefined && folder !== undefined) {
+        send(tab, folder);
       }
     };
     const sortOf = (side: Side) => {
@@ -427,15 +528,23 @@ export function createCommanderStore(
         sortBy(side, { ...current, groupByColor: !current.groupByColor });
       },
       open: (side, name) =>
-        onTab((tab) => post({ type: 'open', tab, side, name })),
+        onPane(side, (tab, folder) =>
+          post({ type: 'open', tab, side, folder, name }),
+        ),
       step: (side, step) =>
         onTab((tab) => post({ type: 'step', tab, side, step })),
       viewFile: (side, name) =>
-        onTab((tab) => post({ type: 'view', tab, side, name })),
+        onPane(side, (tab, folder) =>
+          post({ type: 'view', tab, side, folder, name }),
+        ),
       openRepository: (side, name) =>
-        onTab((tab) => post({ type: 'openRepository', tab, side, name })),
+        onPane(side, (tab, folder) =>
+          post({ type: 'openRepository', tab, side, folder, name }),
+        ),
       openOnSide: (from, side, name) =>
-        onTab((tab) => post({ type: 'openOnSide', tab, from, side, name })),
+        onPane(from, (tab, folder) =>
+          post({ type: 'openOnSide', tab, from, side, folder, name }),
+        ),
       drive: (side, drive) =>
         onTab((tab) => post({ type: 'drive', tab, side, drive })),
       listDrives: () => post({ type: 'listDrives' }),
@@ -445,18 +554,23 @@ export function createCommanderStore(
         post({ type: 'showHidden', shown: !get().view.showHidden }),
       compare: () =>
         onTab((tab) => {
-          const { active, panes } = get().view;
-          const files = filesToCompare(active, panes);
+          const state = get();
+          const { active, panes } = state.view;
+          const files = filesToCompare(active, panes, {
+            left: shownRowsOf(state, 'left').rows,
+            right: shownRowsOf(state, 'right').rows,
+          });
           if (files !== undefined) {
             post({ type: 'compare', tab, files });
           }
         }),
       shellMenu: (side, names, at, extended) =>
-        onTab((tab) =>
+        onPane(side, (tab, folder) =>
           post({
             type: 'shellMenu',
             tab,
             side,
+            folder,
             names,
             x: at.x,
             y: at.y,
@@ -464,7 +578,9 @@ export function createCommanderStore(
           }),
         ),
       askDelete: (side, names, permanently) =>
-        onTab((tab) => set({ deleting: { tab, side, names, permanently } })),
+        onPane(side, (tab, folder) =>
+          set({ deleting: { tab, side, folder, names, permanently } }),
+        ),
       confirmDelete: () => {
         const { deleting } = get();
         if (deleting !== undefined) {
@@ -503,7 +619,7 @@ export function createCommanderStore(
       keepPlace: (tab, byte) => {
         places.set(tab, byte);
       },
-      filterSide: (side, query) =>
+      filterSide: (side, query) => {
         set((state) => {
           const { tab, panes } = state.view;
           const folder = panes[side]?.folder;
@@ -517,7 +633,16 @@ export function createCommanderStore(
             filters.set(filterKey(tab, side), { folder, query });
           }
           return { filters };
-        }),
+        });
+        const selected = get().view.panes[side]?.selected;
+        const selection =
+          query === undefined || filterWords(query).length === 0
+            ? undefined
+            : filteredSelection(shownRowsOf(get(), side).rows, selected);
+        if (selection !== undefined && selection !== selected) {
+          dispatch({ type: 'select', side, key: selection });
+        }
+      },
       keepScroll: (key, offset) => scrolls.keep(key, offset),
       dropIcon: (ticket) => {
         if (dropped.push(ticket) > 1) {

@@ -100,6 +100,15 @@ const file = (name: string): Entry => ({
 
 type Listed = readonly Entry[] | Error | Promise<readonly Entry[]>;
 
+type Naming =
+  'open' | 'view' | 'shellMenu' | 'delete' | 'openRepository' | 'openOnSide';
+
+type Unnamed<Message> = Message extends { readonly type: Naming }
+  ? Omit<Message, 'folder'> & { readonly folder?: string }
+  : Message;
+
+type FromPage = Unnamed<CommanderToHost>;
+
 function commander(
   listed: Record<string, Listed>,
   drives: readonly string[] = [],
@@ -277,8 +286,33 @@ function commander(
       await Promise.all(tracking.splice(0));
     }
   };
-  const send = (message: CommanderToHost, from: Page = page) =>
-    tool.receive(from, message);
+  const folderShown = (tab: string, side: Side) =>
+    page
+      .of('listing')
+      .findLast((listing) => listing.tab === tab && listing.side === side)
+      ?.folder ?? '';
+  const named = (message: FromPage): CommanderToHost => {
+    switch (message.type) {
+      case 'open':
+      case 'view':
+      case 'shellMenu':
+      case 'delete':
+      case 'openRepository':
+        return {
+          ...message,
+          folder: message.folder ?? folderShown(message.tab, message.side),
+        };
+      case 'openOnSide':
+        return {
+          ...message,
+          folder: message.folder ?? folderShown(message.tab, message.from),
+        };
+      default:
+        return message;
+    }
+  };
+  const send = (message: FromPage, from: Page = page) =>
+    tool.receive(from, named(message));
   const watched = () => watching.map((watch) => watch.folder).toSorted();
   const change = async (changed: string) => {
     for (const watch of watching.filter((each) => each.folder === changed)) {
@@ -1474,6 +1508,92 @@ suite('Commander tool', () => {
     assert.strictEqual(tool.folderOf(tab), at('next'));
   });
 
+  test('acts on the files a page names only in the folder it names, which the side must still show, as Delete right after Backspace trashed a file of the same name in the folder the side went to', async () => {
+    const {
+      tool,
+      page,
+      send,
+      trashed,
+      removed,
+      opened,
+      viewed,
+      menus,
+      compared,
+      openedIn,
+      repositories,
+      settled,
+    } = commander({
+      [root]: [folder('sub'), folder('same'), file('same.txt')],
+      [at('sub')]: [folder('same'), file('same.txt')],
+      [at('same')]: [],
+    });
+    repositories.add(at('same'));
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'right', name: 'sub' });
+    await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+    await settled();
+    const left = at('sub');
+    const named = { tab: '1', side: 'right', folder: left } as const;
+    const listings = page.listings().length;
+
+    await send({
+      type: 'delete',
+      ...named,
+      names: ['same.txt'],
+      permanently: false,
+    });
+    await send({
+      type: 'delete',
+      ...named,
+      names: ['same.txt'],
+      permanently: true,
+    });
+    await send({ type: 'open', ...named, name: 'same.txt' });
+    await send({ type: 'open', ...named, name: 'same' });
+    await send({ type: 'open', ...named, name: '..' });
+    await send({ type: 'view', ...named, name: 'same.txt' });
+    await send({
+      type: 'shellMenu',
+      ...named,
+      names: ['same.txt'],
+      x: 1,
+      y: 2,
+      extended: false,
+    });
+    await send({
+      type: 'openOnSide',
+      tab: '1',
+      from: 'right',
+      side: 'left',
+      folder: left,
+      name: 'same',
+    });
+    await send({
+      type: 'compare',
+      tab: '1',
+      files: [
+        { side: 'right', folder: left, name: 'same.txt' },
+        { side: 'right', folder: root, name: 'same.txt' },
+      ],
+    });
+    await send({ type: 'openRepository', ...named, name: 'same' });
+
+    assert.deepStrictEqual(
+      { trashed, removed, opened, viewed, menus, compared, openedIn },
+      {
+        trashed: [],
+        removed: [],
+        opened: [],
+        viewed: [],
+        menus: [],
+        compared: [],
+        openedIn: [],
+      },
+    );
+    assert.strictEqual(page.listings().length, listings);
+    assert.strictEqual(tool.folderOf(tab), root);
+  });
+
   test('holds the widths of the columns and the size of the tiles the settings give in the range they may take, as a width too wide failed every drag after it and a size below the least drew no tiles', async () => {
     const { tool, page, settings } = commander({ [root]: [] });
     settings.columns = { extension: 10.4, size: 0, date: 120 };
@@ -1917,8 +2037,8 @@ suite('Commander tool', () => {
         type: 'compare',
         tab: on,
         files: [
-          { side: one[0], name: one[1] },
-          { side: other[0], name: other[1] },
+          { side: one[0], folder: root, name: one[1] },
+          { side: other[0], folder: root, name: other[1] },
         ],
       });
 
@@ -1967,11 +2087,63 @@ suite('Commander tool', () => {
     assert.ok(!repositoriesAsked.includes(at('notes.txt')));
 
     repositories.add(at('docs'));
+    listed[root] = [
+      folder('app'),
+      { ...folder('docs'), modified: 1 },
+      file('notes.txt'),
+    ];
     await change(root);
     await settled();
     assert.deepStrictEqual(page.of('repositories').at(-1)?.names, [
       'app',
       'docs',
+    ]);
+  });
+
+  test('looks again only at the folders that came or changed once a side is listed again as its folder changes, keeping what it found of the others, as each change looked at every folder again', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('app'), folder('docs'), folder('lib')],
+    };
+    const {
+      tool,
+      page,
+      send,
+      change,
+      repositories,
+      repositoriesAsked,
+      settled,
+    } = commander(listed);
+    repositories.add(at('app'));
+    repositories.add(at('new'));
+    await tool.show(page, tab);
+    await settled();
+    repositoriesAsked.length = 0;
+
+    listed[root] = [
+      folder('app'),
+      { ...folder('docs'), modified: 1 },
+      folder('new'),
+    ];
+    await change(root);
+    await settled();
+
+    assert.deepStrictEqual(repositoriesAsked.toSorted(), [
+      at('docs'),
+      at('docs'),
+      at('new'),
+      at('new'),
+    ]);
+    assert.deepStrictEqual(page.of('repositories').at(-1)?.names, [
+      'app',
+      'new',
+    ]);
+    repositoriesAsked.length = 0;
+    await send({ type: 'reread', tab: '1', side: 'left' });
+    await settled();
+    assert.deepStrictEqual(repositoriesAsked.toSorted(), [
+      at('app'),
+      at('docs'),
+      at('new'),
     ]);
   });
 
@@ -2205,6 +2377,52 @@ suite('Commander tool', () => {
     await send({ type: 'open', tab: '1', side: 'left', name: '..' });
     await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
     assert.deepStrictEqual(page.of('noAccess').length, 3);
+  });
+
+  test('lists the other side through the helper already running, and lists a folder denied before no more once a side has moved on, as a second helper was started and the first left running', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Config.Msi'), folder('System Volume Information')],
+    };
+    const closed: string[] = [];
+    const helperNamed = (name: string): ElevatedFileSystem => ({
+      list: (each) =>
+        Promise.resolve([file(`${path.basename(each)} by ${name}.txt`)]),
+      drives: () => Promise.resolve([]),
+      watch: () => () => {},
+      closed: new Promise(() => {}),
+      close: () => closed.push(name),
+    });
+    let asked = 0;
+    const { tool, page, send } = commander(listed, [], () =>
+      Promise.resolve(helperNamed(`helper ${++asked}`)),
+    );
+    for (const each of ['Config.Msi', 'System Volume Information']) {
+      listed[at(each)] = Object.assign(new Error('denied'), { code: 'EPERM' });
+    }
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({
+      type: 'open',
+      tab: '1',
+      side: 'right',
+      name: 'System Volume Information',
+    });
+
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+    await tool.show(page, tab);
+    await send({ type: 'elevate', tab: '1', side: 'right' });
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+
+    assert.strictEqual(asked, 1);
+    assert.deepStrictEqual(closed, []);
+    assert.deepStrictEqual(page.listings().slice(4), [
+      `left ${at('Config.Msi')} ↑: Config.Msi by helper 1.txt`,
+      `right ${root}: Config.Msi System Volume Information`,
+      `left ${at('Config.Msi')} ↑: Config.Msi by helper 1.txt`,
+      `right ${at('System Volume Information')} ↑: System Volume Information by helper 1.txt`,
+      `left ${root}: Config.Msi System Volume Information [Config.Msi]`,
+    ]);
   });
 
   test('opens where a link points when the link itself can’t be listed, as Documents and Settings, which no one may list', async () => {

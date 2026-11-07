@@ -115,6 +115,46 @@ suite('Commander view', () => {
     assert.strictEqual(reduceView(listed, named([])), listed);
   });
 
+  test('keeps the rows of a folder listed again unchanged, and those of its files unchanged when others come, go or change, as each listing sorted the whole folder again', () => {
+    const files = [
+      folderEntry('src'),
+      entry('a.txt'),
+      entry('b.md'),
+      entry('c.txt'),
+    ];
+    const listed = run({ type: 'show', tab: '1' }, listing('/work', files));
+    const before = listed.panes.left?.rows ?? [];
+
+    const again = reduceView(
+      listed,
+      listing(
+        '/work',
+        files.map((each) => ({ ...each })),
+      ),
+    );
+    const changed = reduceView(
+      listed,
+      listing('/work', [
+        entry('c.txt'),
+        entry('a.txt', { size: 9 }),
+        folderEntry('src'),
+        entry('0.md'),
+      ]),
+    );
+
+    assert.strictEqual(again.panes.left?.rows, before);
+    const after = changed.panes.left?.rows ?? [];
+    assert.deepStrictEqual(
+      after.map((row) => row.key),
+      ['..', 'src', '0.md', 'a.txt', 'c.txt'],
+    );
+    assert.deepStrictEqual(
+      after.map((row) => before.includes(row)),
+      [true, true, false, false, true],
+    );
+    assert.strictEqual(after[3]?.entry?.size, 9);
+  });
+
   test('selects the first row of a folder listed, and keeps it selected when the folder is listed again', () => {
     const files = [entry('a.txt'), entry('b.txt')];
     const view = run(

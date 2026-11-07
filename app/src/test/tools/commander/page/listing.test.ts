@@ -468,6 +468,99 @@ suite('Commander listing', () => {
     assert.deepStrictEqual(deleteKeys(rows, '..', undefined), []);
     assert.deepStrictEqual(deleteKeys(rows, undefined, undefined), []);
   });
+
+  test('orders the rows of a folder listed again as it would order them afresh, starting from the rows it had, whatever came, went or changed, by every column either way and grouped by color', () => {
+    const random = (() => {
+      let seed = 7;
+      return (below: number) => {
+        seed = (seed * 48271) % 2147483647;
+        return seed % below;
+      };
+    })();
+    const names = ['a', 'B', 'file10', 'file9', 'é', 'z.txt', 'Z.TXT', 'x.md'];
+    const listed = () =>
+      Array.from({ length: 30 }, (_, index) =>
+        entry(
+          `${names[random(names.length)]}${index}.${['txt', 'md', 'png', ''][random(4)]}`,
+          {
+            folder: random(5) === 0,
+            size: random(4),
+            modified: random(4),
+            hidden: random(6) === 0,
+          },
+        ),
+      ).filter(() => random(4) !== 0);
+    for (const column of ['name', 'extension', 'size', 'date'] as const) {
+      for (const descending of [false, true]) {
+        const sort = { column, descending, groupByColor: column === 'name' };
+        for (const showHidden of [true, false]) {
+          let previous = listed();
+          let rows = rowsOf(
+            previous,
+            true,
+            showHidden,
+            sort,
+            undefined,
+            groups,
+          );
+          for (let round = 0; round < 10; round++) {
+            const entries =
+              round % 3 === 0
+                ? previous.map((each) => ({ ...each }))
+                : [
+                    ...rows.flatMap((row) =>
+                      row.entry === undefined || random(4) === 0
+                        ? []
+                        : [
+                            random(3) === 0
+                              ? { ...row.entry, size: random(4) }
+                              : row.entry,
+                          ],
+                    ),
+                    ...listed().slice(0, random(5)),
+                  ].filter(
+                    (each, index, all) =>
+                      all.findIndex((other) => other.name === each.name) ===
+                      index,
+                  );
+            const afresh = rowsOf(
+              entries,
+              true,
+              showHidden,
+              sort,
+              undefined,
+              groups,
+            );
+            rows = rowsOf(entries, true, showHidden, sort, undefined, groups, {
+              entries: previous,
+              rows,
+            });
+            previous = entries;
+            assert.deepStrictEqual(
+              rows,
+              afresh,
+              `${column} ${descending} ${round}`,
+            );
+          }
+        }
+      }
+    }
+  });
+
+  test('deletes the selected file when every file marked is hidden by the filter, as Delete did nothing then', () => {
+    const rows = ['a', 'b'].map((key) => ({
+      key,
+      entry: entry(key),
+      base: key,
+      extension: '',
+      repository: false,
+    }));
+
+    assert.deepStrictEqual(deleteKeys(rows, 'a', new Set(['hidden'])), ['a']);
+    assert.deepStrictEqual(deleteKeys(rows, 'a', new Set(['b', 'hidden'])), [
+      'b',
+    ]);
+  });
 });
 
 const filterRow = (key: string) => ({

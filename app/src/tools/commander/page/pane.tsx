@@ -19,15 +19,7 @@ import { commanderKeymap } from '../shared/keymap';
 import { clicked } from '../../../shell/shared/keymap';
 import type { Entry, Side } from '../shared/protocol';
 import { formatSize } from './format';
-import {
-  filteredRows,
-  filteredSelection,
-  goesInto,
-  opens,
-  menuKeys,
-  rangeKeys,
-  type Row,
-} from './listing';
+import { goesInto, opens, menuKeys, rangeKeys, type Row } from './listing';
 import { filterStep, PaneFilter } from './paneFilter';
 import { filterWords } from '../../../shared/fileFilter';
 import { HighlightWords } from '../../../ui/highlight';
@@ -38,6 +30,7 @@ import { layouts, type Layout } from '../shared/settings';
 import {
   filterOf,
   shownColumns,
+  shownRowsOf,
   useCommander,
   useCommanderActions,
 } from './store';
@@ -67,8 +60,6 @@ declare module 'react' {
     readonly '--file-color'?: string;
   }
 }
-
-const noRows: readonly Row[] = [];
 
 export function driveOf(
   folder: string,
@@ -293,14 +284,15 @@ export function Pane({
     extended: boolean,
   ) => actions.shellMenu(side, names, at, extended);
   const onCompare = actions.compare;
-  const allRows = pane?.rows ?? noRows;
   const filter = useCommander((state) => filterOf(state, side));
+  const { rows, files, total } = useCommander((state) =>
+    shownRowsOf(state, side),
+  );
   const setFilter = (query: string | undefined) =>
     actions.filterSide(side, query);
   const filtering = filter !== undefined;
   const query = filter ?? '';
   const words = useMemo(() => filterWords(query), [query]);
-  const rows = useMemo(() => filteredRows(allRows, words), [allRows, words]);
   const filterInput = useRef<HTMLInputElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
@@ -323,20 +315,7 @@ export function Pane({
     focusList();
     setFilter(undefined);
   };
-  const filterTo = (next: string) => {
-    setFilter(next);
-    const selection = filteredSelection(
-      filteredRows(allRows, filterWords(next)),
-      pane?.selected,
-    );
-    if (
-      filterWords(next).length > 0 &&
-      selection !== undefined &&
-      selection !== pane?.selected
-    ) {
-      onSelect(selection);
-    }
-  };
+  const filterTo = (next: string) => setFilter(next);
   const dateFormat = useShell((state) => state.dateFormat);
   const scrolling = useShell((state) => state.scrolling);
   const listed = useMemo(
@@ -660,8 +639,8 @@ export function Pane({
           <SearchRow onClose={closeFilter}>
             <PaneFilter
               query={query}
-              shown={rows.filter((row) => row.entry !== undefined).length}
-              total={allRows.filter((row) => row.entry !== undefined).length}
+              shown={files}
+              total={total}
               input={filterInput}
               onQuery={filterTo}
               onMove={(move) => {

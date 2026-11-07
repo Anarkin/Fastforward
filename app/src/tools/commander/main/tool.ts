@@ -74,7 +74,7 @@ import {
 } from '../../../shared/pdf';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
-import { repositoriesIn } from './repositories';
+import { onSameVolume, repositoriesIn } from './repositories';
 import {
   iconSourceOf,
   iconTicketOf,
@@ -138,6 +138,10 @@ interface Pane {
   elevated?: boolean;
   repositories: ReadonlySet<string>;
   repositoriesAsked: number;
+  looked?: {
+    readonly folder: string;
+    readonly folders: ReadonlyMap<string, number | undefined>;
+  };
 }
 
 type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
@@ -227,15 +231,6 @@ async function isFolder(folder: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-function volumeOf(file: string): string {
-  const { root } = path.parse(path.resolve(file));
-  return process.platform === 'win32' ? root.toLowerCase() : root;
-}
-
-function onSameVolume(file: string, other: string): boolean {
-  return volumeOf(file) === volumeOf(other);
 }
 
 const entriesByName = new WeakMap<
@@ -354,7 +349,11 @@ export class CommanderTool implements Tool<'commander'> {
   async receive(page: Page, message: CommanderToHost): Promise<void> {
     switch (message.type) {
       case 'open':
-        return this.openEntry(page, message.tab, message.side, message.name);
+        return this.openEntry(
+          page,
+          this.namingPane(page, message.tab, message.side, message.folder),
+          message.name,
+        );
       case 'drive':
         return this.drive(page, message.tab, message.side, message.drive);
       case 'listDrives':
@@ -362,7 +361,11 @@ export class CommanderTool implements Tool<'commander'> {
       case 'step':
         return this.step(page, message.tab, message.side, message.step);
       case 'view':
-        return this.view(page, message.tab, message.side, message.name);
+        return this.view(
+          page,
+          this.namingPane(page, message.tab, message.side, message.folder),
+          message.name,
+        );
       case 'shellMenu':
         return this.shellMenu(page, message);
       case 'delete':
@@ -734,13 +737,21 @@ export class CommanderTool implements Tool<'commander'> {
     return pane && { tab: this.shown.tab, side, pane };
   }
 
-  private async openEntry(
+  private namingPane(
     page: Page,
     tab: unknown,
     side: unknown,
+    folder: unknown,
+  ): ShownPane | undefined {
+    const shown = this.shownPane(page, tab, side);
+    return shown?.pane.folder === folder ? shown : undefined;
+  }
+
+  private async openEntry(
+    page: Page,
+    shown: ShownPane | undefined,
     name: unknown,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
     if (shown === undefined || typeof name !== 'string') {
       return;
     }
@@ -782,11 +793,9 @@ export class CommanderTool implements Tool<'commander'> {
 
   private view(
     page: Page,
-    tab: unknown,
-    side: unknown,
+    shown: ShownPane | undefined,
     name: unknown,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
     const entry =
       typeof name === 'string'
         ? entryNamed(shown?.pane.entries, name)
@@ -805,11 +814,12 @@ export class CommanderTool implements Tool<'commander'> {
     {
       tab,
       side,
+      folder: named,
       names,
       permanently,
     }: Extract<CommanderToHost, { type: 'delete' }>,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.namingPane(page, tab, side, named);
     const listed = new Set(shown?.pane.entries?.map((entry) => entry.name));
     if (
       shown === undefined ||
@@ -857,13 +867,14 @@ export class CommanderTool implements Tool<'commander'> {
     {
       tab,
       side,
+      folder,
       names,
       x,
       y,
       extended,
     }: Extract<CommanderToHost, { type: 'shellMenu' }>,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.namingPane(page, tab, side, folder);
     const listed = new Set(shown?.pane.entries?.map((entry) => entry.name));
     if (
       shown === undefined ||
@@ -894,8 +905,9 @@ export class CommanderTool implements Tool<'commander'> {
         return undefined;
       }
       const side = 'side' in file ? file.side : undefined;
+      const folder = 'folder' in file ? file.folder : undefined;
       const name = 'name' in file ? file.name : undefined;
-      const shown = this.shownPane(page, tab, side);
+      const shown = this.namingPane(page, tab, side, folder);
       const entry =
         typeof name === 'string'
           ? entryNamed(shown?.pane.entries, name)
@@ -1264,6 +1276,10 @@ export class CommanderTool implements Tool<'commander'> {
     if (shown === undefined || folder === undefined || elevate === undefined) {
       return;
     }
+    if (this.elevated !== undefined) {
+      await this.list(page, shown.tab, shown.side, folder, 'visit');
+      return;
+    }
     this.elevating ??= elevate().then(
       (elevated) => {
         this.elevating = undefined;
@@ -1287,7 +1303,7 @@ export class CommanderTool implements Tool<'commander'> {
         return undefined;
       },
     );
-    if ((this.elevated ?? (await this.elevating)) !== undefined) {
+    if ((await this.elevating) !== undefined) {
       await this.list(page, shown.tab, shown.side, folder, 'visit');
     }
   }
@@ -1345,9 +1361,15 @@ export class CommanderTool implements Tool<'commander'> {
 
   private openOnSide(
     page: Page,
-    { tab, from, side, name }: Extract<CommanderToHost, { type: 'openOnSide' }>,
+    {
+      tab,
+      from,
+      side,
+      folder: named,
+      name,
+    }: Extract<CommanderToHost, { type: 'openOnSide' }>,
   ): Promise<void> {
-    const source = this.shownPane(page, tab, from);
+    const source = this.namingPane(page, tab, from, named);
     if (source === undefined || !isSide(side) || typeof name !== 'string') {
       return Promise.resolve();
     }
@@ -1368,9 +1390,14 @@ export class CommanderTool implements Tool<'commander'> {
 
   private openRepository(
     page: Page,
-    { tab, side, name }: Extract<CommanderToHost, { type: 'openRepository' }>,
+    {
+      tab,
+      side,
+      folder,
+      name,
+    }: Extract<CommanderToHost, { type: 'openRepository' }>,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.namingPane(page, tab, side, folder);
     return shown === undefined ||
       typeof name !== 'string' ||
       !shown.pane.repositories.has(name)
@@ -1385,23 +1412,42 @@ export class CommanderTool implements Tool<'commander'> {
     tab: string,
     side: Side,
     pane: Pane,
+    again: boolean,
   ): Promise<void> {
     const asked = ++pane.repositoriesAsked;
     const { folder } = pane;
-    const folders = (pane.entries ?? [])
-      .filter((entry) => entry.folder)
-      .map((entry) => entry.name);
+    const folders = new Map(
+      (pane.entries ?? [])
+        .filter((entry) => entry.folder)
+        .map((entry) => [entry.name, entry.modified]),
+    );
+    const looked =
+      again && pane.looked?.folder === folder ? pane.looked.folders : undefined;
+    const unchanged = (name: string) =>
+      looked?.has(name) === true && looked.get(name) === folders.get(name);
+    const kept = [...pane.repositories].filter(
+      (name) => folders.has(name) && unchanged(name),
+    );
     const names = await repositoriesIn(
       folder,
-      folders,
+      [...folders.keys()].filter((name) => !unchanged(name)),
       this.access.isRepository,
+      () => pane.repositoriesAsked === asked,
     );
     if (pane.repositoriesAsked !== asked) {
       return;
     }
-    pane.repositories = new Set(names);
+    pane.looked = { folder, folders };
+    const found = new Set([...kept, ...names]);
+    pane.repositories = found;
     if (this.shown?.page === page && this.shown.tab === tab) {
-      this.post(page, { type: 'repositories', tab, side, folder, names });
+      this.post(page, {
+        type: 'repositories',
+        tab,
+        side,
+        folder,
+        names: [...folders.keys()].filter((name) => found.has(name)),
+      });
     }
   }
 
@@ -1513,6 +1559,9 @@ export class CommanderTool implements Tool<'commander'> {
     if (pane.folder !== folder) {
       pane.repositories = new Set();
     }
+    if (how === 'visit' || typeof how === 'object' || pane.denied === folder) {
+      pane.denied = undefined;
+    }
     pane.folder = folder;
     pane.hidden = hidden;
     pane.entries = listing.entries;
@@ -1520,7 +1569,9 @@ export class CommanderTool implements Tool<'commander'> {
     pane.landed = asked;
     this.postListing(page, tab, side, pane, selected);
     this.watch(page, tab, side, folder);
-    void this.shell.track(this.findRepositories(page, tab, side, pane));
+    void this.shell.track(
+      this.findRepositories(page, tab, side, pane, how === 'refresh'),
+    );
   }
 
   private async nearestFolder(gone: string): Promise<string> {

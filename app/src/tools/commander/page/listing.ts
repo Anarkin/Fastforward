@@ -28,12 +28,37 @@ const collator = new Intl.Collator(undefined, {
   sensitivity: 'base',
 });
 
-function compareBy(column: SortColumn, a: Row, b: Row): number {
+function rankedExtensions(rows: readonly Row[]): (a: Row, b: Row) => number {
+  const extensions = [...new Set(rows.map((row) => row.extension))].toSorted(
+    collator.compare,
+  );
+  const ranks = new Map<string, number>();
+  extensions.forEach((extension, index) => {
+    const before = extensions[index - 1];
+    const rank =
+      before !== undefined && collator.compare(before, extension) === 0
+        ? (ranks.get(before) ?? index)
+        : index;
+    ranks.set(extension, rank);
+  });
+  return (a, b) =>
+    (ranks.get(a.extension) ?? 0) - (ranks.get(b.extension) ?? 0);
+}
+
+const byExtension = (a: Row, b: Row): number =>
+  collator.compare(a.extension, b.extension);
+
+function compareBy(
+  column: SortColumn,
+  a: Row,
+  b: Row,
+  extensionOrder: (a: Row, b: Row) => number,
+): number {
   switch (column) {
     case 'name':
       return collator.compare(a.base, b.base);
     case 'extension':
-      return collator.compare(a.extension, b.extension);
+      return extensionOrder(a, b);
     case 'size':
       return (a.entry?.size ?? 0) - (b.entry?.size ?? 0);
     case 'date':
@@ -43,18 +68,27 @@ function compareBy(column: SortColumn, a: Row, b: Row): number {
   }
 }
 
-function sortedRows(
-  rows: readonly Row[],
+function comparerOf(
   { column, descending }: Sort,
   groupOf: (row: Row) => number,
-): Row[] {
+  extensionOrder: (a: Row, b: Row) => number,
+): (a: Row, b: Row) => number {
   const direction = descending ? -1 : 1;
   const sortsFolders = column !== 'extension' && column !== 'size';
-  const groups = new Map(rows.map((row) => [row, groupOf(row)]));
-  const group = (row: Row) => groups.get(row) ?? 0;
-  return rows.toSorted((a, b) => {
+  const groups = new Map<Row, number>();
+  const group = (row: Row) => {
+    const known = groups.get(row);
+    if (known !== undefined) {
+      return known;
+    }
+    const found = groupOf(row);
+    groups.set(row, found);
+    return found;
+  };
+  return (a, b) => {
     const folders = a.entry?.folder === true;
-    const byColumn = folders && !sortsFolders ? 0 : compareBy(column, a, b);
+    const byColumn =
+      folders && !sortsFolders ? 0 : compareBy(column, a, b, extensionOrder);
     return (
       group(a) - group(b) ||
       direction *
@@ -62,13 +96,146 @@ function sortedRows(
           collator.compare(a.entry?.name ?? '', b.entry?.name ?? '') ||
           (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
     );
-  });
+  };
+}
+
+function sortedRows(
+  rows: readonly Row[],
+  sort: Sort,
+  groupOf: (row: Row) => number,
+): Row[] {
+  return rows.toSorted(
+    comparerOf(
+      sort,
+      groupOf,
+      sort.column === 'extension' ? rankedExtensions(rows) : byExtension,
+    ),
+  );
+}
+
+function mergedRows(
+  kept: readonly Row[],
+  added: readonly Row[],
+  sort: Sort,
+  groupOf: (row: Row) => number,
+): readonly Row[] {
+  if (added.length === 0) {
+    return kept;
+  }
+  if (added.length * Math.log2(kept.length + 2) > kept.length) {
+    return sortedRows([...kept, ...added], sort, groupOf);
+  }
+  const compare = comparerOf(sort, groupOf, byExtension);
+  const merged: Row[] = [];
+  let from = 0;
+  for (const row of added.toSorted(compare)) {
+    let low = from;
+    let high = kept.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (compare(kept[middle], row) < 0) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    for (; from < low; from++) {
+      merged.push(kept[from]);
+    }
+    merged.push(row);
+  }
+  for (; from < kept.length; from++) {
+    merged.push(kept[from]);
+  }
+  return merged;
 }
 
 function colorGroupOf(fileColors: FileColors): (row: Row) => number {
   return (row) =>
     groupOfFileNamed(row.entry?.name ?? '', fileColors) ??
     fileColors.colors.length;
+}
+
+const parentRow: Row = {
+  key: parentFolder,
+  entry: undefined,
+  base: parentFolder,
+  extension: '',
+  repository: false,
+};
+
+function rowOf(
+  entry: Entry,
+  repositories: ReadonlySet<string>,
+): Row & { readonly entry: Entry } {
+  return {
+    key: entry.name,
+    entry,
+    ...nameParts(entry),
+    repository: entry.folder && repositories.has(entry.name),
+  };
+}
+
+function ordersAlike(one: Entry, other: Entry): boolean {
+  return (
+    one.folder === other.folder &&
+    one.size === other.size &&
+    one.modified === other.modified
+  );
+}
+
+function sameEntry(one: Entry, other: Entry): boolean {
+  return (
+    ordersAlike(one, other) &&
+    one.link === other.link &&
+    one.hidden === other.hidden &&
+    one.online === other.online
+  );
+}
+
+function sameEntries(one: readonly Entry[], other: readonly Entry[]): boolean {
+  return (
+    one.length === other.length &&
+    one.every(
+      (entry, index) =>
+        entry.name === other[index].name && sameEntry(entry, other[index]),
+    )
+  );
+}
+
+function rowsAgain(
+  before: readonly Row[],
+  shown: readonly Entry[],
+  hasParent: boolean,
+  repositories: ReadonlySet<string>,
+): {
+  readonly kept: readonly Row[];
+  readonly added: readonly Row[];
+  readonly same: boolean;
+} {
+  const unseen = new Map(shown.map((entry) => [entry.name, entry]));
+  const kept: Row[] = [];
+  let same = (before[0]?.entry === undefined) === hasParent;
+  for (const row of before) {
+    if (row.entry === undefined) {
+      continue;
+    }
+    const entry = unseen.get(row.key);
+    if (entry === undefined || !ordersAlike(entry, row.entry)) {
+      same = false;
+      continue;
+    }
+    unseen.delete(row.key);
+    const repository = entry.folder && repositories.has(entry.name);
+    if (sameEntry(entry, row.entry) && repository === row.repository) {
+      kept.push(row);
+    } else {
+      kept.push({ ...row, entry, repository });
+      same = false;
+    }
+  }
+  const added = [...unseen.values()].map((entry) => rowOf(entry, repositories));
+  return { kept, added, same: same && added.length === 0 };
 }
 
 export function rowsOf(
@@ -78,36 +245,60 @@ export function rowsOf(
   sort: Sort,
   repositories: ReadonlySet<string> = noRepositories,
   fileColors: FileColors = noFileColors,
-): Row[] {
-  const shown = entries
-    .filter((entry) => showHidden || !entry.hidden)
-    .map((entry) => ({
-      key: entry.name,
-      entry,
-      ...nameParts(entry),
-      repository: entry.folder && repositories.has(entry.name),
-    }));
+  sortedBefore?: {
+    readonly entries: readonly Entry[];
+    readonly rows: readonly Row[];
+  },
+): readonly Row[] {
+  const shown = entries.filter((entry) => showHidden || !entry.hidden);
+  const fileGroup = sort.groupByColor ? colorGroupOf(fileColors) : () => 0;
+  const parent = hasParent ? [parentRow] : [];
+  const before = sortedBefore?.rows;
+  if (before === undefined) {
+    const rows = shown.map((entry) => rowOf(entry, repositories));
+    return [
+      ...parent,
+      ...sortedRows(
+        rows.filter((row) => row.entry.folder),
+        sort,
+        () => 0,
+      ),
+      ...sortedRows(
+        rows.filter((row) => !row.entry.folder),
+        sort,
+        fileGroup,
+      ),
+    ];
+  }
+  if (
+    sameEntries(sortedBefore?.entries ?? [], entries) &&
+    (before[0]?.entry === undefined) === hasParent
+  ) {
+    return before;
+  }
+  const { kept, added, same } = rowsAgain(
+    before,
+    shown,
+    hasParent,
+    repositories,
+  );
+  if (same) {
+    return before;
+  }
+  const inFolders = (row: Row) => row.entry?.folder === true;
   return [
-    ...(hasParent
-      ? [
-          {
-            key: parentFolder,
-            entry: undefined,
-            base: parentFolder,
-            extension: '',
-            repository: false,
-          },
-        ]
-      : []),
-    ...sortedRows(
-      shown.filter((row) => row.entry.folder),
+    ...parent,
+    ...mergedRows(
+      kept.filter(inFolders),
+      added.filter(inFolders),
       sort,
       () => 0,
     ),
-    ...sortedRows(
-      shown.filter((row) => !row.entry.folder),
+    ...mergedRows(
+      kept.filter((row) => !inFolders(row)),
+      added.filter((row) => !inFolders(row)),
       sort,
-      sort.groupByColor ? colorGroupOf(fileColors) : () => 0,
+      fileGroup,
     ),
   ];
 }
@@ -183,10 +374,14 @@ export function deleteKeys(
   selected: string | undefined,
   marked: ReadonlySet<string> | undefined,
 ): string[] {
-  if (marked !== undefined && marked.size > 0) {
-    return rows
-      .filter((row) => row.entry !== undefined && marked.has(row.key))
-      .map((row) => row.key);
+  const markedShown =
+    marked === undefined || marked.size === 0
+      ? []
+      : rows
+          .filter((row) => row.entry !== undefined && marked.has(row.key))
+          .map((row) => row.key);
+  if (markedShown.length > 0) {
+    return markedShown;
   }
   const row = rows.find((each) => each.key === selected);
   return row?.entry === undefined ? [] : [row.key];
@@ -217,6 +412,25 @@ export function filteredRows(
     : rows.filter(
         (row) => row.entry === undefined || matchesFilter(words, row.key),
       );
+}
+
+export function nearestShown(
+  rows: readonly Row[],
+  shown: readonly Row[],
+  selected: string | undefined,
+): string | undefined {
+  if (shown === rows || shown.some((row) => row.key === selected)) {
+    return selected;
+  }
+  const kept = new Set(shown.map((row) => row.key));
+  const at = Math.max(
+    0,
+    rows.findIndex((row) => row.key === selected),
+  );
+  const nearest =
+    rows.slice(at).find((row) => kept.has(row.key)) ??
+    rows.slice(0, at).findLast((row) => kept.has(row.key));
+  return nearest?.key;
 }
 
 export function filteredSelection(

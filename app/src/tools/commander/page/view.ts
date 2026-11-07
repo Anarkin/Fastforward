@@ -206,6 +206,7 @@ function relisted(
   showHidden: boolean,
   fileColors: FileColors,
   selected: string | undefined,
+  sortedBefore?: PaneView,
 ): PaneView {
   const repositories = repositoriesKept(pane, folder);
   const rows = rowsOf(
@@ -215,6 +216,7 @@ function relisted(
     sort,
     repositories,
     fileColors,
+    sortedBefore,
   );
   return {
     folder,
@@ -344,21 +346,24 @@ export function reduceView(
           : next;
       }, settled);
     }
-    case 'listing':
+    case 'listing': {
+      const pane = view.panes[action.side];
       return action.tab === view.tab
         ? withPane(
             view,
             action.side,
             relisted(
-              view.panes[action.side],
-              view.panes[action.side]?.sort ?? view.sorts[action.side],
+              pane,
+              pane?.sort ?? view.sorts[action.side],
               action,
               view.showHidden,
               view.fileColors,
               action.selected,
+              pane?.folder === action.folder ? pane : undefined,
             ),
           )
         : view;
+    }
     case 'repositories': {
       const pane = view.panes[action.side];
       if (
