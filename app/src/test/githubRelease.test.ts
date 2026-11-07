@@ -27,7 +27,7 @@ async function githubRelease(): Promise<GithubRelease> {
 const built = 'a'.repeat(40);
 
 function fakeGh(
-  state: 'missing' | 'draft' | 'published',
+  state: 'missing' | 'draft' | 'published' | 'unreachable',
   tagCommit: string = built,
 ) {
   const calls: string[][] = [];
@@ -38,7 +38,14 @@ function fakeGh(
     }
     if (args[0] === 'release' && args[1] === 'view') {
       if (state === 'missing') {
-        throw new Error('release not found');
+        throw new Error(
+          `Command failed: gh ${args.join(' ')}\nrelease not found\n`,
+        );
+      }
+      if (state === 'unreachable') {
+        throw new Error(
+          `Command failed: gh ${args.join(' ')}\nHTTP 502: Bad Gateway (https://api.github.com/graphql)\n`,
+        );
       }
       return state === 'draft' ? 'true\n' : 'false\n';
     }
@@ -80,6 +87,20 @@ suite('GitHub release', () => {
     const draft = fakeGh('draft');
     draftRelease(draft.gh, 'v7.0.0', built);
     assert.deepStrictEqual(draft.calls, [commitOf, view]);
+  });
+
+  test('makes no draft when GitHub cannot tell whether the release is there, failing with what it said, as the release may be there already and a second draft would be made', async () => {
+    const { draftRelease, uploadRelease } = await githubRelease();
+    const unreachable = fakeGh('unreachable');
+    assert.throws(
+      () => draftRelease(unreachable.gh, 'v7.0.0', built),
+      /HTTP 502: Bad Gateway/,
+    );
+    assert.throws(
+      () => uploadRelease(unreachable.gh, 'v7.0.0', built, ['a.exe']),
+      /HTTP 502: Bad Gateway/,
+    );
+    assert.deepStrictEqual(unreachable.calls, [commitOf, view, commitOf, view]);
   });
 
   test('uploads the installers to the draft, again over those a run before uploaded', async () => {

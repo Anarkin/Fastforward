@@ -41,8 +41,11 @@ function stateOf(gh: Gh, tag: string) {
       '--jq',
       '.isDraft',
     ]);
-  } catch {
-    return 'missing';
+  } catch (error) {
+    if (error instanceof Error && /release not found/.test(error.message)) {
+      return 'missing';
+    }
+    throw error;
   }
   return isDraft.trim() === 'true' ? 'draft' : 'published';
 }
