@@ -439,10 +439,12 @@ export class CommanderTool implements Tool<'commander'> {
           message.bytes.length <= maxThumbnailBytes &&
           isWebp(message.bytes)
         ) {
-          await this.access.thumbnails.write(
-            this.thumbnailKeyOf(listed, message.box, message.pixelRatio),
-            message.bytes,
-          );
+          await this.access.thumbnails
+            .write(
+              this.thumbnailKeyOf(listed, message.box, message.pixelRatio),
+              message.bytes,
+            )
+            .catch(() => undefined);
         }
         return undefined;
       }

@@ -128,6 +128,7 @@ function commander(
   const thumbnails = new Map<string, Uint8Array>();
   const streamed = new Set<string>();
   const thumbnailsFull = { now: false };
+  const thumbnailWritesFail = { now: false };
   const repositories = new Set<string>();
   const repositoriesAsked: string[] = [];
   const repositoriesHeld: { until: Promise<unknown> | undefined } = {
@@ -224,6 +225,9 @@ function commander(
       has: (key) => Promise.resolve(thumbnails.has(key)),
       full: () => Promise.resolve(thumbnailsFull.now),
       write: (key, made) => {
+        if (thumbnailWritesFail.now) {
+          return Promise.reject(new Error('ENOSPC: no space left on device'));
+        }
         thumbnails.set(key, made);
         return Promise.resolve();
       },
@@ -301,6 +305,7 @@ function commander(
     thumbnails,
     streamed,
     thumbnailsFull,
+    thumbnailWritesFail,
     repositories,
     repositoriesAsked,
     repositoriesHeld,
@@ -389,6 +394,31 @@ suite('Commander tool', () => {
       assert.strictEqual(await thumbnail({ folder: root }), 404);
       assert.strictEqual(await thumbnail({ side: 'left' }), 404);
       assert.strictEqual(await thumbnail({ tab: '2' }), 404);
+    });
+
+    test('goes on quietly when a thumbnail the page made cannot be kept, as the page shows it already and a full disk told of it for every image', async () => {
+      fs.writeFileSync(path.join(opened, 'dot.png'), 'the image');
+      const { tool, page, send, thumbnails, thumbnailWritesFail } = commander({
+        [root]: [],
+        [opened]: [file('dot.png')],
+      });
+      await tool.show(page, { ...tab, root: opened });
+      const save = (box: number) =>
+        send({
+          type: 'saveThumbnail',
+          tab: '1',
+          side: 'right',
+          folder: opened,
+          name: 'dot.png',
+          box,
+          pixelRatio: 1.5,
+          bytes: new Uint8Array(Buffer.from('RIFF\0\0\0\0WEBPVP8 made')),
+        });
+      await save(144);
+      assert.strictEqual(thumbnails.size, 1);
+      thumbnailWritesFail.now = true;
+      await assert.doesNotReject(save(96));
+      assert.strictEqual(thumbnails.size, 1);
     });
 
     test('keeps the thumbnail the page made of an image a side lists, serving it in place of the image for a box of the same size and pixels, but takes nothing else, as the page is not trusted', async () => {

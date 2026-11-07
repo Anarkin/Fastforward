@@ -8,6 +8,10 @@ const largestStore = 256 * 1024 * 1024;
 
 const keptShare = 0.9;
 
+const temporaryEnding = '.tmp';
+
+let writes = 0;
+
 export function thumbnailKey(
   file: string,
   size: number,
@@ -22,6 +26,8 @@ export function thumbnailKey(
 
 export class ThumbnailStore {
   private stored: number | undefined;
+  private measuring: Promise<number> | undefined;
+  private readonly writing = new Map<string, Promise<void>>();
 
   constructor(
     private readonly folder: string,
@@ -41,8 +47,13 @@ export class ThumbnailStore {
   }
 
   async full(): Promise<boolean> {
-    this.stored ??= await this.measured();
-    return this.stored >= this.limit();
+    return (await this.storedNow()) >= this.limit();
+  }
+
+  private async storedNow(): Promise<number> {
+    this.measuring ??= this.measured();
+    this.stored ??= await this.measuring;
+    return this.stored;
   }
 
   async read(key: string): Promise<Uint8Array | undefined> {
@@ -60,16 +71,33 @@ export class ThumbnailStore {
     }
   }
 
-  async write(key: string, bytes: Uint8Array): Promise<void> {
+  write(key: string, bytes: Uint8Array): Promise<void> {
     if (!keyPattern.test(key)) {
-      return;
+      return Promise.resolve();
     }
+    const running = this.writing.get(key);
+    if (running !== undefined) {
+      return running;
+    }
+    const written = this.written(key, bytes).finally(() =>
+      this.writing.delete(key),
+    );
+    this.writing.set(key, written);
+    return written;
+  }
+
+  private async written(key: string, bytes: Uint8Array): Promise<void> {
     await fs.promises.mkdir(this.folder, { recursive: true });
     const file = this.fileOf(key);
-    const temporary = `${file}.${process.pid}.tmp`;
-    await fs.promises.writeFile(temporary, bytes);
-    await fs.promises.rename(temporary, file);
-    this.stored = (this.stored ?? (await this.measured())) + bytes.length;
+    const temporary = `${file}.${process.pid}.${++writes}${temporaryEnding}`;
+    try {
+      await fs.promises.writeFile(temporary, bytes);
+      await fs.promises.rename(temporary, file);
+    } catch (error) {
+      await fs.promises.rm(temporary, { force: true }).catch(() => undefined);
+      throw error;
+    }
+    this.stored = (await this.storedNow()) + bytes.length;
     if (this.stored > this.limit()) {
       await this.trim();
     }
@@ -96,6 +124,16 @@ export class ThumbnailStore {
   }
 
   private async measured(): Promise<number> {
+    const names = await fs.promises.readdir(this.folder).catch(() => []);
+    await Promise.all(
+      names
+        .filter((name) => name.endsWith(temporaryEnding))
+        .map((name) =>
+          fs.promises
+            .rm(path.join(this.folder, name), { force: true })
+            .catch(() => undefined),
+        ),
+    );
     return (await this.kept()).reduce((sum, each) => sum + each.size, 0);
   }
 

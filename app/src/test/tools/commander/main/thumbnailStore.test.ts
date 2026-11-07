@@ -45,6 +45,32 @@ suite('Thumbnail store', () => {
     assert.deepStrictEqual(fs.readdirSync(folder), [`${'a'.repeat(64)}.webp`]);
   });
 
+  test('keeps a thumbnail written twice at once, as both writes shared one temporary file and the second failed', async () => {
+    const store = new ThumbnailStore(folder);
+    const keys = Array.from({ length: 50 }, (_, index) =>
+      index.toString(16).padStart(64, '0'),
+    );
+    for (const key of keys) {
+      await Promise.all([
+        store.write(key, bytes(10, 1)),
+        store.write(key, bytes(10, 2)),
+      ]);
+    }
+    assert.deepStrictEqual(
+      fs.readdirSync(folder).toSorted(),
+      keys.map((key) => `${key}.webp`).toSorted(),
+    );
+  });
+
+  test('deletes the temporary files an earlier run left, counting none of them', async () => {
+    fs.mkdirSync(folder, { recursive: true });
+    const left = `${'c'.repeat(64)}.webp.1.2.tmp`;
+    fs.writeFileSync(path.join(folder, left), bytes(100));
+    const store = new ThumbnailStore(folder, () => 50);
+    assert.strictEqual(await store.full(), false);
+    assert.deepStrictEqual(fs.readdirSync(folder), []);
+  });
+
   test('deletes the thumbnails asked for least lately once they take more than its limit, keeping the newest', async () => {
     const store = new ThumbnailStore(folder, () => 25);
     const old = Date.now() / 1000 - 1000;
