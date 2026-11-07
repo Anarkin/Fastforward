@@ -4,7 +4,6 @@ import {
   nameProblem,
   targetPath,
   urlProblem,
-  type CloneAsk,
   type CloneView,
 } from '../shared/clone';
 import { strings } from '../../../shared/strings';
@@ -12,6 +11,7 @@ import { useDismiss } from '../../../ui/contextMenu';
 import { CloseIcon } from '../../../ui/icons';
 import { moveBetweenButtons } from '../../../ui/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../../ui/modalDialog';
+import { useGit, useGitActions } from './store';
 
 export interface ChosenFolder {
   readonly folder: string;
@@ -44,23 +44,15 @@ export function formProblem(
   );
 }
 
-function CloneForm({
-  form,
-  chosenFolder,
-  checked,
-  onCheck,
-  onChooseFolder,
-  onClone,
-  onCancel,
-}: {
-  form: Form;
-  chosenFolder: ChosenFolder | undefined;
-  checked: CloneTarget | undefined;
-  onCheck: (folder: string, name: string) => void;
-  onChooseFolder: (from: string) => void;
-  onClone: (ask: CloneAsk) => void;
-  onCancel: () => void;
-}) {
+function CloneForm({ form }: { form: Form }) {
+  const chosenFolder = useGit((state) => state.clone.folder);
+  const checked = useGit((state) => state.clone.target);
+  const {
+    checkCloneTarget: onCheck,
+    chooseCloneFolder: onChooseFolder,
+    startClone: onClone,
+    closeClone: onCancel,
+  } = useGitActions();
   const [url, setUrl] = useState(form.url);
   const [folder, setFolder] = useState(form.folder);
   const [name, setName] = useState(form.name);
@@ -170,13 +162,8 @@ function CloneForm({
   );
 }
 
-function CloneRunning({
-  running,
-  onStop,
-}: {
-  running: Running;
-  onStop: () => void;
-}) {
+function CloneRunning({ running }: { running: Running }) {
+  const { stopClone: onStop } = useGitActions();
   const { progress } = running;
   return (
     <div className="clone-body">
@@ -216,32 +203,15 @@ function CloneRunning({
   );
 }
 
-export function ClonePopup({
-  view,
-  formKey,
-  chosenFolder,
-  checked,
-  onCheck,
-  onChooseFolder,
-  onClone,
-  onStop,
-  onClose,
-}: {
-  view: CloneView;
-  formKey: number;
-  chosenFolder: ChosenFolder | undefined;
-  checked: CloneTarget | undefined;
-  onCheck: (folder: string, name: string) => void;
-  onChooseFolder: (from: string) => void;
-  onClone: (ask: CloneAsk) => void;
-  onStop: () => void;
-  onClose: () => void;
-}) {
+export function ClonePopup() {
+  const view = useGit((state) => state.clone.view);
+  const formKey = useGit((state) => state.clone.form);
+  const { closeClone: onClose } = useGitActions();
   const popup = useRef<HTMLDivElement>(null);
   useDismiss(popup, onClose, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
-  const { kind } = view;
+  const kind = view?.kind;
   useEffect(() => {
     const first = popup.current?.querySelector<HTMLElement>(
       kind === 'form' ? '.clone-input' : '.confirm-button',
@@ -251,6 +221,9 @@ export function ClonePopup({
       first.select();
     }
   }, [kind]);
+  if (view === undefined) {
+    return null;
+  }
   return (
     <div
       className="backdrop"
@@ -276,18 +249,9 @@ export function ClonePopup({
           </button>
         </div>
         {view.kind === 'form' ? (
-          <CloneForm
-            key={formKey}
-            form={view}
-            chosenFolder={chosenFolder}
-            checked={checked}
-            onCheck={onCheck}
-            onChooseFolder={onChooseFolder}
-            onClone={onClone}
-            onCancel={onClose}
-          />
+          <CloneForm key={formKey} form={view} />
         ) : (
-          <CloneRunning running={view} onStop={onStop} />
+          <CloneRunning running={view} />
         )}
       </div>
     </div>

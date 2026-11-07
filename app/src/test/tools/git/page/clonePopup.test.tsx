@@ -11,6 +11,7 @@ import {
 } from '../../../../tools/git/page/clonePopup';
 import type { CloneAsk, CloneView } from '../../../../tools/git/shared/clone';
 import { strings } from '../../../../shared/strings';
+import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 
 interface Shown {
   readonly dom: JSDOM;
@@ -49,20 +50,34 @@ async function withPopup(
     assert.ok(main);
     const root = createRoot(main);
     const shown: Shown = { dom, root, cloned: [], checked: [], asked: [] };
+    const store = createGitStore((message) => {
+      if (message.type === 'checkCloneTarget') {
+        shown.checked.push(`${message.folder} ${message.name}`);
+      } else if (message.type === 'chooseCloneFolder') {
+        shown.asked.push(`choose ${message.folder}`);
+      } else if (message.type === 'clone') {
+        const { type: _type, ...ask } = message;
+        shown.cloned.push(ask);
+      } else if (message.type === 'stopClone') {
+        shown.asked.push('stop');
+      } else if (message.type === 'closeClone') {
+        shown.asked.push('close');
+      }
+    });
     const show = async (next: Props) => {
       await act(async () => {
+        store.setState({
+          clone: {
+            view: next.view,
+            form: next.formKey ?? 1,
+            folder: next.chosenFolder,
+            target: next.target,
+          },
+        });
         root.render(
-          <ClonePopup
-            view={next.view}
-            formKey={next.formKey ?? 1}
-            chosenFolder={next.chosenFolder}
-            checked={next.target}
-            onCheck={(folder, name) => shown.checked.push(`${folder} ${name}`)}
-            onChooseFolder={(from) => shown.asked.push(`choose ${from}`)}
-            onClone={(ask) => shown.cloned.push(ask)}
-            onStop={() => shown.asked.push('stop')}
-            onClose={() => shown.asked.push('close')}
-          />,
+          <GitStore value={store}>
+            <ClonePopup />
+          </GitStore>,
         );
       });
     };

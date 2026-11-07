@@ -82,20 +82,15 @@ export function GitTool({
     browseRepositories,
     openClone,
     initRepository,
-    checkCloneTarget,
-    chooseCloneFolder,
-    startClone,
-    stopClone,
     forgetRecent,
     answerInit,
-    closeClone,
     toggleCommits,
     activateColumn,
   } = store.getState();
   const activeTab = useStore(store, (state) => state.tab.root);
   const recent = useStore(store, (state) => state.recent);
   const initAsked = useStore(store, (state) => state.initAsked);
-  const clone = useStore(store, (state) => state.clone);
+  const cloneShown = useStore(store, (state) => state.clone.view !== undefined);
   const columnWidths = useStore(store, (state) => state.columnWidths);
   const commitsShown = useStore(store, (state) => state.commitsShown);
   const searching = useStore(store, (state) => state.searching);
@@ -246,19 +241,7 @@ export function GitTool({
   );
   const popups = (
     <>
-      {clone.view && (
-        <ClonePopup
-          view={clone.view}
-          formKey={clone.form}
-          chosenFolder={clone.folder}
-          checked={clone.target}
-          onCheck={checkCloneTarget}
-          onChooseFolder={chooseCloneFolder}
-          onClone={startClone}
-          onStop={stopClone}
-          onClose={closeClone}
-        />
-      )}
+      {cloneShown && <ClonePopup />}
       {initAsked && (
         <ConfirmPopup
           title={strings.confirm.initTitle}
@@ -275,70 +258,65 @@ export function GitTool({
   );
 
   if (!active) {
-    return popups;
+    return <GitStore value={store}>{popups}</GitStore>;
   }
 
   return (
-    <>
+    <GitStore value={store}>
       {popups}
-      <GitStore value={store}>
-        {comparing !== undefined ? (
-          <CompareView comparing={comparing} />
-        ) : (
-          <div className="repository">
-            <WorktreeBar />
-            <div
-              className={columnsClass(
-                commitColumnShown,
-                layoutSelection,
-                diffShown,
-              )}
-              ref={columnsContainer}
-              style={{ gridTemplateColumns: columnsTemplate }}
-              data-active-column={activeColumn}
-              onFocus={(event) => {
-                const column = columnOf(
-                  event.target instanceof Element ? event.target : null,
+      {comparing !== undefined ? (
+        <CompareView comparing={comparing} />
+      ) : (
+        <div className="repository">
+          <WorktreeBar />
+          <div
+            className={columnsClass(
+              commitColumnShown,
+              layoutSelection,
+              diffShown,
+            )}
+            ref={columnsContainer}
+            style={{ gridTemplateColumns: columnsTemplate }}
+            data-active-column={activeColumn}
+            onFocus={(event) => {
+              const column = columnOf(
+                event.target instanceof Element ? event.target : null,
+              );
+              if (column) {
+                activateColumn(column);
+              }
+            }}
+            onKeyDown={(event) => {
+              const target =
+                event.target instanceof HTMLElement ? event.target : null;
+              const forwarded = forwardedColumn(columnOf(target), event);
+              if (forwarded) {
+                event.preventDefault();
+                focusColumn(forwarded)?.dispatchEvent(
+                  new KeyboardEvent('keydown', event.nativeEvent),
                 );
-                if (column) {
-                  activateColumn(column);
-                }
-              }}
-              onKeyDown={(event) => {
-                const target =
-                  event.target instanceof HTMLElement ? event.target : null;
-                const forwarded = forwardedColumn(columnOf(target), event);
-                if (forwarded) {
-                  event.preventDefault();
-                  focusColumn(forwarded)?.dispatchEvent(
-                    new KeyboardEvent('keydown', event.nativeEvent),
-                  );
-                  return;
-                }
-                const step = columnStep(
-                  event,
-                  shownColumns(commitColumnShown, layoutSelection, diffShown),
-                  columnOf(target) ?? activeColumn,
-                  target?.hasAttribute(columnFocusAttribute) ?? true,
-                );
-                if (step?.preventDefault) {
-                  event.preventDefault();
-                }
-                if (step?.next) {
-                  focusColumn(step.next);
-                }
-              }}
-            >
-              <CommitColumn
-                navigation={commitNavigation}
-                search={commitSearch}
-              />
-              <FileColumn />
-              <RepositoryDiff />
-            </div>
+                return;
+              }
+              const step = columnStep(
+                event,
+                shownColumns(commitColumnShown, layoutSelection, diffShown),
+                columnOf(target) ?? activeColumn,
+                target?.hasAttribute(columnFocusAttribute) ?? true,
+              );
+              if (step?.preventDefault) {
+                event.preventDefault();
+              }
+              if (step?.next) {
+                focusColumn(step.next);
+              }
+            }}
+          >
+            <CommitColumn navigation={commitNavigation} search={commitSearch} />
+            <FileColumn />
+            <RepositoryDiff />
           </div>
-        )}
-      </GitStore>
-    </>
+        </div>
+      )}
+    </GitStore>
   );
 }
