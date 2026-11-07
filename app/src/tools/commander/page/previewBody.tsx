@@ -12,7 +12,6 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { imageScrolled, previewUrl, type Preview } from './previews';
 import type { PdfControls } from './pdfPreview';
 import type { Viewing } from './viewer';
-import { useCommanderActions } from './store';
 
 function MarkdownPreview({
   file,
@@ -21,9 +20,8 @@ function MarkdownPreview({
   file: string;
   viewing: Viewing;
 }) {
-  const { request: post, listenViewer: listen } = useCommanderActions();
   const tooLarge = viewing.size !== undefined && viewing.size > maxPreviewBytes;
-  const text = useWholeText(viewing, post, listen, !tooLarge, 'utf-8')?.text;
+  const text = useWholeText(viewing, !tooLarge, 'utf-8')?.text;
   const { tab, version } = viewing;
   const images = useMemo(() => {
     const document = file.replaceAll('\\', '/');

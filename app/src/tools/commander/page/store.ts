@@ -29,7 +29,7 @@ import {
 import type { ToViewer, Viewing } from './viewer';
 import { ScrollPlaces } from './scrollPlaces';
 
-export type ViewerRequest = Extract<
+type ViewerRequest = Extract<
   CommanderToHost,
   {
     readonly type: 'readText' | 'readRows' | 'readBytes';
@@ -77,6 +77,11 @@ interface CommanderActions {
       readonly matches: readonly ByteRange[];
       readonly done: boolean;
     }) => void,
+  ) => () => void;
+  readonly readWholeText: (
+    tab: string,
+    encoding: TextEncoding,
+    onText: (text: string) => void,
   ) => () => void;
   readonly readPdfPlace: (
     tab: string,
@@ -371,6 +376,21 @@ export function createCommanderStore(
           post({ type: 'stopFind', tab, request });
         };
       },
+      readWholeText: (tab, encoding, onText) => {
+        const request = ++viewerRequests;
+        const stop = listenViewer((message) => {
+          if (
+            message.type === 'text' &&
+            message.tab === tab &&
+            message.request === request &&
+            message.text !== undefined
+          ) {
+            onText(message.text);
+          }
+        });
+        post({ type: 'readText', tab, encoding, request });
+        return stop;
+      },
       readPdfPlace: (tab, fingerprint) =>
         new Promise((resolve) => {
           const request = ++viewerRequests;
@@ -462,12 +482,16 @@ export function createCommanderStore(
       },
       closeNoAccess: () => set({ noAccess: undefined }),
       resizeColumn: (column, width) =>
-        set((state) => ({
-          resized: {
-            from: state.view.columns,
-            widths: { ...shownColumns(state), [column]: width },
-          },
-        })),
+        set((state) =>
+          shownColumns(state)[column] === width
+            ? state
+            : {
+                resized: {
+                  from: state.view.columns,
+                  widths: { ...shownColumns(state), [column]: width },
+                },
+              },
+        ),
       saveColumn: (column, width) =>
         saveColumns({ ...get().view.columns, [column]: width }),
       resetColumn: (column) => {

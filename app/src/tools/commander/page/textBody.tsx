@@ -24,7 +24,7 @@ import {
 } from './textColors';
 import { colorer } from '../../../ui/syntax';
 import { ScrollBody, type Thumb } from './scrollBody';
-import type { ToViewer, Viewing } from './viewer';
+import type { Viewing } from './viewer';
 import type { ViewerFind } from './viewerFind';
 import { MarkedText, textMarks, type FindMark } from './findMarks';
 import {
@@ -48,7 +48,7 @@ import {
   useCellTable,
   type TextWidths,
 } from '../../../ui/textWidths';
-import { useCommanderActions, type ViewerRequest } from './store';
+import { useCommanderActions } from './store';
 
 const rowsAboveMatch = 2;
 
@@ -194,32 +194,18 @@ function RowText({
 
 export function useWholeText(
   viewing: Viewing,
-  post: (message: ViewerRequest) => void,
-  listen: (handler: (message: ToViewer) => void) => () => void,
   wanted: boolean,
   encoding: TextEncoding,
 ): WholeText | undefined {
   const [text, setText] = useState<WholeText>();
-  const asked = useRef(0);
+  const { readWholeText } = useCommanderActions();
   useEffect(() => {
     const { tab, size } = viewing;
     if (!wanted || size === undefined || size > maxColoredBytes) {
       return undefined;
     }
-    const request = ++asked.current;
-    const stop = listen((message) => {
-      if (
-        message.type === 'text' &&
-        message.tab === tab &&
-        message.request === request &&
-        message.text !== undefined
-      ) {
-        setText(wholeText(message.text));
-      }
-    });
-    post({ type: 'readText', tab, encoding, request });
-    return stop;
-  }, [wanted, viewing, listen, post, encoding]);
+    return readWholeText(tab, encoding, (read) => setText(wholeText(read)));
+  }, [wanted, viewing, encoding, readWholeText]);
   return text;
 }
 
@@ -556,13 +542,7 @@ export function TextBody({
   }, [jumps]);
 
   const whole = wrapAt === undefined;
-  const text = useWholeText(
-    viewing,
-    post,
-    listen,
-    language !== undefined || whole,
-    encoding,
-  );
+  const text = useWholeText(viewing, language !== undefined || whole, encoding);
   const colored = useColors(language, encoding, text);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
   const widestLine = useMemo(

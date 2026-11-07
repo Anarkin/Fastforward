@@ -87,6 +87,33 @@ suite('Commander store', () => {
     });
   });
 
+  test('reads the whole text of a viewed file, taking only the answer to that ask, as an answer to an earlier ask is in another encoding', () => {
+    const { posted, store } = shown();
+    const read: string[] = [];
+    store.getState().readWholeText('3', 'utf-8', (text) => read.push(text));
+    const stop = store
+      .getState()
+      .readWholeText('3', 'windows-1252', (text) => read.push(text));
+    const asks = posted.filter((message) => message.type === 'readText');
+    const [first, second] = asks;
+    assert.ok(first?.type === 'readText' && second?.type === 'readText');
+    assert.notStrictEqual(first.request, second.request);
+    store.getState().receive({
+      type: 'text',
+      tab: '3',
+      request: second.request,
+      text: 'b',
+    });
+    stop();
+    store.getState().receive({
+      type: 'text',
+      tab: '3',
+      request: second.request,
+      text: 'c',
+    });
+    assert.deepStrictEqual(read, ['b']);
+  });
+
   test('reads where a PDF was left, giving up after a while without an answer', async () => {
     const { posted, store } = shown();
     const asked = store.getState().readPdfPlace('3', 'pdf-a');

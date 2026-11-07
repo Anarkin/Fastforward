@@ -94,7 +94,7 @@ export function ByteBody({
     const wanted = bytesToAsk(
       top,
       screen,
-      size,
+      viewing.size ?? 0,
       bytes && { start: bytes.start, length: bytes.data.length },
       rowBytes,
     );
@@ -105,7 +105,7 @@ export function ByteBody({
           : wanted,
       );
     }
-  }, [requests, top, screen, size, bytes, rowBytes]);
+  }, [requests, top, screen, viewing, bytes, rowBytes]);
 
   const move = useCallback(
     (by: number) =>
