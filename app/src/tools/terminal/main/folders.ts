@@ -7,6 +7,10 @@ export interface FolderPlace {
 
 const drivePath = /^\/(?:cygdrive\/)?([a-z]):?(?:\/(.*))?$/is;
 
+const devicePath = /^\\\\[.?]\\/;
+
+const shareRoot = /^\\\\([^\\]+)\\/;
+
 export function folderOfPath(
   reported: string,
   { platform }: FolderPlace,
@@ -21,9 +25,20 @@ export function folderOfPath(
   const windowsFolder = drive
     ? `${drive[1].toUpperCase()}:\\${drive[2] ?? ''}`
     : folder;
+  const normalized = path.win32.normalize(windowsFolder);
   return path.win32.isAbsolute(windowsFolder) &&
-    path.win32.parse(windowsFolder).root.length > 1
-    ? path.win32.normalize(windowsFolder)
+    path.win32.parse(windowsFolder).root.length > 1 &&
+    !devicePath.test(normalized)
+    ? normalized
+    : undefined;
+}
+
+export function serverOf(
+  folder: string,
+  { platform }: FolderPlace,
+): string | undefined {
+  return platform === 'win32'
+    ? shareRoot.exec(path.win32.normalize(folder))?.[1].toLowerCase()
     : undefined;
 }
 

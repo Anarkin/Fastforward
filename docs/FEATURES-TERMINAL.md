@@ -32,7 +32,7 @@
 | Recent folders | Open a shell in a folder worked in before | — | Advanced | ✅ Yes | Browse... and the folders worked in most, weighted by how recently, in the Terminal submenu of the + menu, as many as `tabs.recentFolders` says, 15 by default; removed with their X or Delete |
 | Open from other tools | Open a shell in the folder of a file manager, editor or git client | — | Common | ✅ Yes | Mod+Shift+O in a git or commander tab, `ff <folder>` in a terminal, and Open in Fastforward in the Windows Explorer menu, through the Open With popup |
 | New tab in the same folder | Open another shell where this one is | — | Common | ❌ No | Mod+Shift+O offers the other tools only |
-| Folder of the shell | Know the folder the shell is in | OSC 7, OSC 9;9 | Common | ✅ Yes | PowerShell, bash, zsh, fish and the Command Prompt are set up to tell it at each prompt; it names the tab and is where Mod+Shift+O opens |
+| Folder of the shell | Know the folder the shell is in | OSC 7, OSC 9;9 | Common | ✅ Yes | PowerShell, bash, zsh, fish and the Command Prompt are set up to tell it at each prompt; it names the tab and is where Mod+Shift+O opens; a folder on a share is taken only on the server the shell started on, as what a program prints could name any host |
 | Background shells | Keep shells running in the tabs not shown | — | Core | ✅ Yes | A headless `xterm.js` keeps each screen, so a tab shown again gets it back whole |
 | Survive a reload | Keep the shells running while the window's page reloads | — | Niche | ✅ Yes | The shells run in a utility process of their own; the page reloads as the settings are saved |
 | Restore after a restart | Reopen the tabs and their shells once the app starts again | — | Common | 🟡 Partial | The tabs come back, each with a new shell in the folder it was last in, without their output |
@@ -76,7 +76,7 @@
 | Copy on select | Copy what is selected, and paste on a middle click | — | Common | ❌ No |  |
 | Context menu | Copy, paste and more from a right click | — | Common | ❌ No |  |
 | Selection | Select words and lines by clicking | — | Core | ✅ Yes | By `xterm.js`: a double click selects a word, a triple click a line |
-| Keys left to programs | Send the shell the keys the app doesn't need | — | Core | ✅ Yes | Every key but Ctrl+Tab, Ctrl+Shift+Tab, Mod+Shift+T, Mod+Shift+W and Mod+Shift+O reaches the shell, and Mod+C while text is selected |
+| Keys left to programs | Send the shell the keys the app doesn't need | — | Core | ✅ Yes | Every key but Ctrl+Tab, Ctrl+Shift+Tab, Mod+Shift+T, Mod+Shift+W, Mod+Shift+O and Mod+Shift+I, which opens the developer tools, reaches the shell, and Mod+C while text is selected |
 | Key bindings | Change the shortcuts | — | Common | ❌ No |  |
 | Option as Meta | Send Option as Meta on macOS | — | Common | ❌ No | Option types characters as macOS has it |
 | Full keyboard reporting | Tell programs every key and modifier | kitty keyboard protocol | Advanced | ❌ No |  |

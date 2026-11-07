@@ -224,6 +224,41 @@ suite('Terminal sessions', () => {
     }
   });
 
+  test('frees a shell that exited on its own when its tab closes, the host is disposed or a new shell starts before its exit is told, but signals none on other systems', async () => {
+    for (const windowsPty of [
+      { backend: 'conpty', buildNumber: 26100 } as const,
+      undefined,
+    ]) {
+      for (const close of [
+        (ptyHost: PtyHost) => ptyHost.receive({ type: 'kill', id: '1' }),
+        (ptyHost: PtyHost) => ptyHost.dispose(),
+        (ptyHost: PtyHost) =>
+          ptyHost.receive({
+            type: 'spawn',
+            id: '1',
+            launch,
+            columns: 80,
+            rows: 24,
+            scrollback: 1000,
+          }),
+      ]) {
+        const { ptyHost, ptys, clock, start, attach } = host({}, windowsPty);
+        start();
+        await attach();
+        const [exited] = ptys.spawned;
+        exited.exit(0);
+        close(ptyHost);
+        assert.strictEqual(exited.killed, windowsPty !== undefined);
+        assert.deepStrictEqual(
+          clock
+            .waiting()
+            .filter((entry) => entry.ms === flowLimits.exitMilliseconds),
+          [],
+        );
+      }
+    }
+  });
+
   test('goes on when a shell that is exiting refuses to be resized, as one process carries every shell', async () => {
     const { ptyHost, ptys, start, attach } = host();
     start();
@@ -332,6 +367,37 @@ suite('Terminal sessions', () => {
       '/home/me',
       '/home/me/work',
     ]);
+  });
+
+  test('tells a folder on a share only on the server the shell started on, as a program could print one on a host of its own, which Windows would sign in to once its folder was looked at', async () => {
+    const reports = [
+      '\x1b]9;9;\\\\evil.example\\share\x07',
+      '\x1b]7;file:////evil.example/share\x1b\\',
+      '\x1b]7;file://box//evil.example/share\x1b\\',
+      '\x1b]9;9;\\\\FILESERVER\\other\x07',
+      '\x1b]9;9;C:\\work\x07',
+    ].join('');
+    for (const [cwd, told] of [
+      ['C:\\Users\\me', ['C:\\work']],
+      ['\\\\fileserver\\team', ['\\\\FILESERVER\\other\\', 'C:\\work']],
+    ] as const) {
+      const { ptyHost, ptys, clock, folders } = host(
+        {},
+        { backend: 'conpty', buildNumber: 26100 },
+      );
+      ptyHost.receive({
+        type: 'spawn',
+        id: '1',
+        launch: { ...launch, cwd },
+        columns: 80,
+        rows: 24,
+        scrollback: 1000,
+      });
+      ptys.last().print(reports);
+      await clock.fire();
+      await until(() => folders().includes('C:\\work'));
+      assert.deepStrictEqual(folders(), told, cwd);
+    }
   });
 
   test('tells why a shell could not start, as an exit', async () => {

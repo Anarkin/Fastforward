@@ -1,6 +1,11 @@
 import * as os from 'node:os';
 import { Backlog, flowLimits, type FlowLimits } from './flowControl';
-import { folderOfPath, folderOfUrl, type FolderPlace } from './folders';
+import {
+  folderOfPath,
+  folderOfUrl,
+  serverOf,
+  type FolderPlace,
+} from './folders';
 import type { HostCommand, HostEvent, ShellLaunch } from './hostProtocol';
 import { createMirror, type Mirror } from './mirror';
 import type { WindowsPty } from '../shared/protocol';
@@ -55,6 +60,7 @@ function attempt(act: () => void): void {
 
 class Session {
   private pty: Pty | undefined;
+  private exitedPty: Pty | undefined;
   private listeners: Disposable[] = [];
   private readonly mirror: Mirror;
   private readonly toMirror: Backlog;
@@ -69,6 +75,7 @@ class Session {
   private paused = false;
   private exited = false;
   private started = false;
+  private startedOn: string | undefined;
   constructor(
     private readonly id: string,
     private columns: number,
@@ -79,7 +86,7 @@ class Session {
     private readonly timer: Timer,
     scrollback: number,
     private readonly windowsPty: WindowsPty | undefined,
-    place: FolderPlace,
+    private readonly place: FolderPlace,
   ) {
     this.mirror = createMirror({ columns, rows, scrollback, windowsPty });
     this.toMirror = new Backlog(limits);
@@ -107,9 +114,11 @@ class Session {
   start(launch: ShellLaunch): void {
     this.cancelExit?.();
     this.cancelExit = undefined;
+    this.freeExited();
     this.stopListening();
     this.exited = false;
     this.paused = false;
+    this.startedOn = serverOf(launch.cwd, this.place);
     if (this.started) {
       this.take(cleanScreen(this.rows));
     }
@@ -129,14 +138,13 @@ class Session {
       pty.onData((data) => this.take(data)),
       pty.onExit(({ exitCode }) => {
         this.pty = undefined;
+        this.exitedPty = pty;
         this.cancelExit = this.timer(() => {
           this.cancelExit = undefined;
           this.stopListening();
           this.take(line(strings.terminal.exited(exitCode)));
           this.end();
-          if (this.windowsPty !== undefined) {
-            attempt(() => pty.kill());
-          }
+          this.freeExited();
         }, this.limits.exitMilliseconds);
       }),
     ];
@@ -200,9 +208,18 @@ class Session {
     this.stopListening();
     this.cancelFlush?.();
     this.cancelExit?.();
+    this.freeExited();
     this.pty?.kill();
     this.pty = undefined;
     this.mirror.dispose();
+  }
+
+  private freeExited(): void {
+    const exited = this.exitedPty;
+    this.exitedPty = undefined;
+    if (exited !== undefined && this.windowsPty !== undefined) {
+      attempt(() => exited.kill());
+    }
   }
 
   private take(data: string): void {
@@ -240,7 +257,11 @@ class Session {
   }
 
   private reported(folder: string | undefined): boolean {
-    if (folder !== undefined) {
+    if (folder === undefined) {
+      return true;
+    }
+    const server = serverOf(folder, this.place);
+    if (server === undefined || server === this.startedOn) {
       this.post({ type: 'folder', id: this.id, folder });
     }
     return true;

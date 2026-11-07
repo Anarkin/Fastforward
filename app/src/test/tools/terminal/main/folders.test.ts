@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   folderOfPath,
   folderOfUrl,
+  serverOf,
   type FolderPlace,
 } from '../../../../tools/terminal/main/folders';
 
@@ -45,6 +46,34 @@ suite('Terminal folders', () => {
     for (const reported of ['work', '', 'C:\\work']) {
       assert.strictEqual(folderOfPath(reported, linux), undefined, reported);
     }
+  });
+
+  test('takes no device path on Windows, as one reaches a share on another host too', () => {
+    for (const reported of [
+      '\\\\?\\UNC\\evil.example\\share',
+      '\\\\.\\UNC\\evil.example\\share',
+      '//?/UNC/evil.example/share',
+      '\\\\?\\GLOBALROOT\\Device\\Mup\\evil.example\\share',
+      '\\\\?\\C:\\work',
+    ]) {
+      assert.strictEqual(folderOfPath(reported, windows), undefined, reported);
+    }
+    assert.strictEqual(
+      folderOfUrl('file:////?/UNC/evil.example/share', windows),
+      undefined,
+    );
+  });
+
+  test('tells the server of a folder on a share on Windows, ignoring case, whichever slashes it has', () => {
+    assert.strictEqual(
+      serverOf('\\\\FileServer\\team\\work', windows),
+      'fileserver',
+    );
+    assert.strictEqual(serverOf('//fileserver/team', windows), 'fileserver');
+    for (const local of ['C:\\work', 'D:\\']) {
+      assert.strictEqual(serverOf(local, windows), undefined, local);
+    }
+    assert.strictEqual(serverOf('//fileserver/team', linux), undefined);
   });
 
   test('takes the folder of a file URL on this machine, decoding it, the semicolons nushell encodes too', () => {
