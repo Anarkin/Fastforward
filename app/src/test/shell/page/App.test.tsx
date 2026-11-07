@@ -22,16 +22,10 @@ suite('Window', () => {
     );
     assert.strictEqual(tagsWith(html, 'tabs').length, 1);
     assert.doesNotMatch(html, /No tab is open/);
-    assert.strictEqual(emptyState(undefined), null);
+    assert.strictEqual(emptyState(false), null);
     assert.strictEqual(
-      renderToStaticMarkup(<>{emptyState([])}</>),
+      renderToStaticMarkup(<>{emptyState(true)}</>),
       '<div class="empty-state">No tab is open. Use + to open one, or click the Fastforward icon at the top left for the menu.</div>',
-    );
-    assert.strictEqual(
-      emptyState([
-        { id: '1', tool: 'commander', name: strings.tools.commander },
-      ]),
-      null,
     );
   });
 

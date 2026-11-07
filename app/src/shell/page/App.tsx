@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 import { keymap } from '../shared/keymap';
-import type { TabInfo, ToHost, ToWebview } from '../shared/protocol';
+import type { ToHost, ToWebview } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import { tools, type ToolId, type ToWebviewOfTool } from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
@@ -13,17 +13,20 @@ import { Notices } from './notices';
 import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../ui/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
-import { createShellStore, ShellStore, type Confirming } from './store';
+import {
+  activeTabOf,
+  createShellStore,
+  ShellStore,
+  useShell,
+  useShellActions,
+  type Confirming,
+} from './store';
 import { newTabTrigger, TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './titleBar';
 import { ToolViews, type ToolListeners } from './tools';
 
-export function emptyState(
-  tabs: readonly TabInfo[] | undefined,
-): React.ReactNode {
-  return tabs?.length === 0 ? (
-    <div className="empty-state">{strings.app.noTab}</div>
-  ) : null;
+export function emptyState(noTab: boolean): React.ReactNode {
+  return noTab ? <div className="empty-state">{strings.app.noTab}</div> : null;
 }
 
 export function newTabItems(
@@ -71,6 +74,27 @@ function deliver<K extends ToolId>(
   }
 }
 
+function ShellMenu() {
+  const opened = useShell((state) => state.menu);
+  const toolItems = useShell((state) => state.toolItems);
+  const { closeMenu, newTab } = useShellActions();
+  if (opened === undefined) {
+    return null;
+  }
+  const { menu } = opened;
+  return (
+    <ContextMenu
+      key={opened.id}
+      menu={
+        menu.trigger === newTabTrigger
+          ? { ...menu, items: newTabItems(toolItems, newTab) }
+          : menu
+      }
+      onClose={closeMenu}
+    />
+  );
+}
+
 interface Props {
   name: string;
   post: (message: ToHost) => void;
@@ -84,29 +108,16 @@ export function App({ name, post, listen }: Props) {
     commander: new Set(),
     git: new Set(),
   }));
-  const tabs = useStore(store, (state) => state.tabs);
-  const active = useStore(store, (state) => state.active);
-  const notices = useStore(store, (state) => state.notices);
+  const noTab = useStore(store, (state) => state.tabs?.length === 0);
+  const title = useStore(store, (state) => {
+    const tab = activeTabOf(state);
+    return windowTitle((tab && state.toolTitles[tab.tool]) ?? tab?.root, name);
+  });
   const aboutKnown = useStore(store, (state) => state.about !== undefined);
   const popups = useStore(store, (state) => state.popups);
   const confirming = useStore(store, (state) => state.confirming);
-  const openedMenu = useStore(store, (state) => state.menu);
-  const toolItems = useStore(store, (state) => state.toolItems);
-  const toolTitles = useStore(store, (state) => state.toolTitles);
-  const {
-    dismissNotice,
-    togglePopup,
-    closeMenu,
-    closeTab,
-    confirm,
-    cancel,
-    ready,
-    newTab,
-    openIn,
-  } = store.getState();
-
-  const activeTab = tabs?.find((tab) => tab.id === active);
-  const activeTool = activeTab?.tool;
+  const { togglePopup, closeTab, confirm, cancel, ready, openIn } =
+    store.getState();
 
   useEffect(() => {
     const stop = listen((message) => {
@@ -119,48 +130,23 @@ export function App({ name, post, listen }: Props) {
     return stop;
   }, [listen, listeners, store, ready]);
 
-  const opened = openedMenu?.menu;
-  const menu =
-    opened?.trigger === newTabTrigger
-      ? {
-          ...opened,
-          items: newTabItems(toolItems, newTab),
-        }
-      : opened;
-
   useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
-  useBinding(
-    keymap.dismissNotice,
-    () => {
-      const newest = notices.at(-1);
-      if (newest !== undefined) {
-        dismissNotice(newest.id);
-      }
-    },
-    notices.length > 0,
-  );
   useBinding(keymap.about, () => togglePopup('about'));
   useBinding(keymap.openIn, openIn);
   useBinding(keymap.closeTab, () => {
+    const { active } = store.getState();
     if (active !== undefined) {
       closeTab(active);
     }
   });
 
-  useWindowTitle(
-    windowTitle(
-      (activeTool && toolTitles[activeTool]) ?? activeTab?.root,
-      name,
-    ),
-  );
+  useWindowTitle(title);
 
   return (
     <ShellStore value={store}>
       <div className="app">
         <TabBar menu={<AppMenu />} />
-        {menu && openedMenu && (
-          <ContextMenu key={openedMenu.id} menu={menu} onClose={closeMenu} />
-        )}
+        <ShellMenu />
         {popups.map((popup) => {
           switch (popup) {
             case 'shortcuts':
@@ -181,7 +167,7 @@ export function App({ name, post, listen }: Props) {
           />
         )}
         <Notices />
-        {emptyState(tabs)}
+        {emptyState(noTab)}
         <ToolViews post={post} listeners={listeners} />
       </div>
     </ShellStore>
