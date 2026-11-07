@@ -112,16 +112,18 @@ export async function findInFile(
   const overlap = query.length * widestCharacter + widestCharacter;
   let position = 0;
   while (position < size && matches.length < limit) {
-    const bytes = await read(position, chunk + overlap);
+    const asked = chunk + overlap;
+    const bytes = await read(position, asked);
     if (signal?.aborted) {
       return undefined;
     }
-    const last = position + bytes.length >= size;
+    const ended = bytes.length < asked;
+    const last = ended || position + bytes.length >= size;
     const end = last
       ? bytes.length
       : coding.boundaryBefore(bytes, bytes.length);
     const core =
-      position + chunk >= size
+      last || position + chunk >= size
         ? end
         : Math.max(
             coding.unit,
@@ -144,6 +146,9 @@ export async function findInFile(
     onChunk?.(matches);
     if (signal?.aborted) {
       return undefined;
+    }
+    if (ended) {
+      break;
     }
   }
   return { matches, capped: matches.length >= limit };

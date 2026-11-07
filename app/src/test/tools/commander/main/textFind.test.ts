@@ -117,6 +117,31 @@ suite('Finding text in a file viewed', () => {
     assert.strictEqual(found, undefined);
   });
 
+  test('ends at the end of the file once it is shorter than it was when the find began, as a file cut short meanwhile kept the find reading nothing for ever', async () => {
+    const { read } = inMemory(Buffer.from('xx match xx', 'utf8'));
+
+    for (const chunk of [3, 1024]) {
+      const calledOff = new AbortController();
+      let reads = 0;
+      const counted: typeof read = (position, length) => {
+        reads++;
+        if (reads > 50) {
+          calledOff.abort();
+        }
+        return read(position, length);
+      };
+      const found = await findInFile(counted, 5000, 'match', 'utf-8', {
+        chunk,
+        signal: calledOff.signal,
+      });
+      assert.deepStrictEqual(
+        found?.matches,
+        [{ start: 3, end: 8 }],
+        `${chunk}`,
+      );
+    }
+  });
+
   test('finds nothing for an empty query', async () => {
     const { read, size } = inMemory(Buffer.from('abc'));
 
