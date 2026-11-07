@@ -37,7 +37,7 @@ export function matchesIn(
   return ranges;
 }
 
-function folded(text: string): string {
+export function folded(text: string): string {
   return text.toLowerCase().replaceAll('ς', 'σ').normalize('NFD');
 }
 

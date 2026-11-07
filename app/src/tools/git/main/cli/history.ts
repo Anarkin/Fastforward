@@ -7,6 +7,7 @@ import {
 } from '../history/commitReads';
 import { extendHistory, keepsHistory, regionHistory } from '../history/extend';
 import { isHashPrefix } from '../../shared/hashes';
+import { folded } from '../../../../shared/textMatches';
 import type {
   CommitInfo,
   CommitResults,
@@ -430,9 +431,9 @@ export function parseSearchedCommit(record: string): SearchedCommit {
 }
 
 export function matchesCommit(commit: SearchedCommit, query: string): boolean {
-  const needle = query.toLowerCase();
+  const needle = folded(query);
   return [commit.author, commit.committer, commit.message].some((field) =>
-    field.toLowerCase().includes(needle),
+    folded(field).includes(needle),
   );
 }
 

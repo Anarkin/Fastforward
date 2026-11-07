@@ -148,6 +148,14 @@ suite('Commit search matching', () => {
     assert.strictEqual(matchesCommit(commit, 'body'), true);
     assert.strictEqual(matchesCommit(commit, 'nothing'), false);
   });
+
+  test('folds the text as every find of the page does, so a final sigma and letters composed or not match alike', () => {
+    const greek = parseSearchedCommit(
+      'bbb\0Ada\0ada@example.com\0Ada\0ada@example.com\0ΟΔΟΣ and élan\n',
+    );
+    assert.strictEqual(matchesCommit(greek, 'οδοσ'), true);
+    assert.strictEqual(matchesCommit(greek, 'ÉLAN'), true);
+  });
 });
 
 suite('Commit search stream', () => {
