@@ -332,7 +332,7 @@ suite('Tab bar', () => {
     assert.strictEqual(closed.getAttribute('aria-expanded'), 'false');
   });
 
-  test('stops the middle button from autoscrolling, so a middle click closes the tab', () => {
+  test('keeps the focus where it is when a tab is pressed, and stops the middle button from autoscrolling, as pressing the open terminal tab left the keys with nothing, and so a middle click closes the tab', () => {
     const closed: string[] = [];
     const nav = renderedBy(
       TabBar,
@@ -358,9 +358,9 @@ suite('Tab bar', () => {
     let prevented = 0;
     const preventDefault = () => prevented++;
     tab.props.onMouseDown({ button: 0, ...noModifiers, preventDefault });
-    assert.strictEqual(prevented, 0);
-    tab.props.onMouseDown({ button: 1, ...noModifiers, preventDefault });
     assert.strictEqual(prevented, 1);
+    tab.props.onMouseDown({ button: 1, ...noModifiers, preventDefault });
+    assert.strictEqual(prevented, 2);
     tab.props.onAuxClick({ button: 1, ...noModifiers });
     assert.deepStrictEqual(closed, ['/repo']);
   });

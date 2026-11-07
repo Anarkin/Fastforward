@@ -706,9 +706,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
                   tab.id !== active && rest.start(() => onPreload(tab.id))
                 }
                 onPointerLeave={rest.cancel}
-                onMouseDown={(event) =>
-                  clicked(keymap.closeTab, event) && event.preventDefault()
-                }
+                onMouseDown={(event) => event.preventDefault()}
                 onAuxClick={(event) =>
                   clicked(keymap.closeTab, event) && onClose(tab.id)
                 }
