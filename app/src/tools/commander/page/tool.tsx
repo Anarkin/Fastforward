@@ -17,7 +17,12 @@ import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { deleteQuestion } from './deleting';
 import { strings } from '../../../shared/strings';
 import { useShellActions } from '../../../shell/page/store';
-import { CommanderStore, createCommanderStore } from './store';
+import {
+  CommanderStore,
+  createCommanderStore,
+  useCommander,
+  useCommanderActions,
+} from './store';
 
 const minimumShare = 0.15;
 
@@ -35,6 +40,48 @@ export function sideToFocus(
     ? undefined
     : (column.querySelector<HTMLElement>(`[${columnFocusAttribute}]`) ??
         undefined);
+}
+
+function CommanderPopups() {
+  const tab = useCommander((state) => state.view.tab);
+  const canElevate = useCommander((state) => state.view.canElevate);
+  const deleting = useCommander((state) => state.deleting);
+  const noAccess = useCommander((state) => state.noAccess);
+  const { confirmDelete, cancelDelete, closeNoAccess, elevate } =
+    useCommanderActions();
+  return (
+    <>
+      {deleting !== undefined && (
+        <ConfirmPopup
+          {...deleteQuestion(
+            deleting.names,
+            deleting.permanently,
+            document.documentElement.dataset.platform,
+          )}
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
+      )}
+      {noAccess !== undefined && (
+        <ConfirmPopup
+          title={strings.commander.noAccessTitle}
+          message={strings.commander.noAccess(noAccess.folder)}
+          confirm={strings.confirm.ok}
+          cancel={null}
+          onConfirm={closeNoAccess}
+          onCancel={closeNoAccess}
+          extra={
+            canElevate && noAccess.asAdministrator && tab !== undefined
+              ? {
+                  label: strings.commander.asAdministrator,
+                  onClick: elevate,
+                }
+              : undefined
+          }
+        />
+      )}
+    </>
+  );
 }
 
 export function CommanderTool({
@@ -57,22 +104,9 @@ export function CommanderTool({
     store,
     (state) => state.view.fileColors.colors.length > 0,
   );
-  const canElevate = useStore(store, (state) => state.view.canElevate);
-  const deleting = useStore(store, (state) => state.deleting);
-  const noAccess = useStore(store, (state) => state.noAccess);
   const hasDrives = useStore(store, (state) => state.drives.length > 0);
-  const {
-    activate,
-    chooseLayout,
-    groupByColor,
-    step,
-    reread,
-    toggleHidden,
-    confirmDelete,
-    cancelDelete,
-    closeNoAccess,
-    elevate,
-  } = store.getState();
+  const { activate, chooseLayout, groupByColor, step, reread, toggleHidden } =
+    store.getState();
   const { closeTab: onClose } = useShellActions();
   const [share, setShare] = useState(0.5);
   const columns = useRef<HTMLDivElement>(null);
@@ -184,35 +218,7 @@ export function CommanderTool({
             />
           ))}
         </div>
-        {deleting !== undefined && (
-          <ConfirmPopup
-            {...deleteQuestion(
-              deleting.names,
-              deleting.permanently,
-              document.documentElement.dataset.platform,
-            )}
-            onConfirm={confirmDelete}
-            onCancel={cancelDelete}
-          />
-        )}
-        {noAccess !== undefined && (
-          <ConfirmPopup
-            title={strings.commander.noAccessTitle}
-            message={strings.commander.noAccess(noAccess.folder)}
-            confirm={strings.confirm.ok}
-            cancel={null}
-            onConfirm={closeNoAccess}
-            onCancel={closeNoAccess}
-            extra={
-              canElevate && noAccess.asAdministrator && tab !== undefined
-                ? {
-                    label: strings.commander.asAdministrator,
-                    onClick: elevate,
-                  }
-                : undefined
-            }
-          />
-        )}
+        <CommanderPopups />
       </div>
     </CommanderStore>
   );
