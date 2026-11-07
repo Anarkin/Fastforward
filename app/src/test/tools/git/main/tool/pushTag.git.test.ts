@@ -158,6 +158,41 @@ suite('Git tool pushing tags', () => {
     assert.strictEqual(await onRemote('v7'), b);
   });
 
+  test('keeps a tag pushed while the tags of its remote were being listed, as the listing begun before the push wrote over it and offered to push the tag again', async () => {
+    await repository.git('tag', 'v8', a);
+    await connection.refresh();
+    const held = gate();
+    let listed = false;
+    const restore = Reflect.get(view, 'tagsOfRemote');
+    stubMethod(view, 'tagsOfRemote', async (original, ...args) => {
+      const tags = await original(...args);
+      listed = true;
+      await held.opened;
+      return tags;
+    });
+    try {
+      await connection.receive({ type: 'fetch', root: repository.root });
+      await waitFor(() => listed, 'the tags of origin to be listed');
+      Reflect.set(view, 'tagsOfRemote', restore);
+      assert.deepStrictEqual(await pushedWith('info', 'v8'), [
+        'Pushed tag v8 to origin',
+      ]);
+      held.open();
+      await view.idle();
+    } finally {
+      Reflect.set(view, 'tagsOfRemote', restore);
+      held.open();
+    }
+    await connection.refresh();
+    assert.deepStrictEqual(
+      page
+        .last('repository')
+        ?.refs.filter((ref) => ref.kind === 'remote-tag')
+        .map((ref) => [ref.name, ref.commit]),
+      [['origin/v8', a]],
+    );
+  });
+
   test('pushes nothing over a tag of the same name the remote has on another commit, saying so', async () => {
     await repository.git('tag', 'v2', b);
     await repository.git('push', 'origin', 'v2');

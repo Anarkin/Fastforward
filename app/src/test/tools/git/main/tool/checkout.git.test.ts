@@ -74,6 +74,42 @@ suite('Git tool checking out', () => {
     }
   });
 
+  test('keeps the branches of a checkout shown though the repository is sent again from refs read before it, as those were shown last and stayed until the refs changed again', async () => {
+    const held = gate();
+    let read = false;
+    const restoreRefs = Reflect.get(fastforward, 'refsOf');
+    stubMethod(fastforward, 'refsOf', async (original, ...args) => {
+      const refs = await original(...args);
+      read = true;
+      await held.opened;
+      return refs;
+    });
+    try {
+      const resent: Promise<void> = Reflect.apply(
+        Reflect.get(fastforward, 'resendRepositoryShown'),
+        fastforward,
+        [repository.root],
+      );
+      await waitFor(() => read, 'the refs to be read');
+      Reflect.set(fastforward, 'refsOf', restoreRefs);
+      await connection.receive({
+        type: 'checkout',
+        root: repository.root,
+        target: { kind: 'branch', name: 'feature' },
+      });
+      assert.strictEqual(page.last('repository')?.head, 'feature');
+      held.open();
+      await resent;
+      assert.strictEqual(page.last('repository')?.head, 'feature');
+      await connection.refresh();
+      assert.strictEqual(page.last('repository')?.head, 'feature');
+    } finally {
+      Reflect.set(fastforward, 'refsOf', restoreRefs);
+      held.open();
+      await restore();
+    }
+  });
+
   test('checks out a branch and a commit', async () => {
     try {
       await connection.receive({

@@ -207,6 +207,12 @@ interface TabWork extends TabState {
   readonly closed: AbortController;
   untrackedPatches: UntrackedPatches;
   indexPaths: readonly string[] | undefined;
+  refsRead: number;
+  repositoryShown: number;
+}
+
+interface ReadRefs extends Refs {
+  readonly read: number;
 }
 
 export type FolderPurpose = 'init' | 'clone';
@@ -315,6 +321,7 @@ export class GitTool implements Tool<'git'> {
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
   private readonly clones: Clones;
+  private tagsRecorded = 0;
   private collapseMerges: boolean;
   private soloDefault: boolean;
   private initAsked: string | undefined;
@@ -1501,14 +1508,19 @@ export class GitTool implements Tool<'git'> {
 
   private async sendRepository(
     context: Context,
-    refs: Promise<Refs>,
+    refs: Promise<ReadRefs>,
   ): Promise<void> {
-    const { head, refs: listed, remotes, stashes } = await refs;
+    const { head, refs: listed, remotes, stashes, read } = await refs;
     const tagRemote = await tagRemoteOf(
       context.gitPath,
       context.root,
       remotes,
     ).catch(() => undefined);
+    const { tab } = context;
+    if (read < tab.repositoryShown) {
+      return;
+    }
+    tab.repositoryShown = read;
     context.post({
       type: 'repository',
       head: head?.name,
@@ -1618,16 +1630,20 @@ export class GitTool implements Tool<'git'> {
         closed: new AbortController(),
         untrackedPatches: new UntrackedPatches(maxKeptUntrackedChars),
         indexPaths: undefined,
+        refsRead: 0,
+        repositoryShown: 0,
       };
       this.tabStates.set(root, tab);
     }
     return tab;
   }
 
-  private async refsOf(context: Context): Promise<Refs> {
+  private async refsOf(context: Context): Promise<ReadRefs> {
+    const read = ++context.tab.refsRead;
     const refs = await readRefs(context.gitPath, context.root);
     return {
       ...refs,
+      read,
       refs: [
         ...refs.refs,
         ...remoteTagRefs(
@@ -2218,6 +2234,7 @@ export class GitTool implements Tool<'git'> {
     if (pushedTo === undefined || known === undefined) {
       return;
     }
+    this.tagsRecorded++;
     await this.storage.setRemoteTags(
       context.repository,
       pushedTo,
@@ -2330,10 +2347,16 @@ export class GitTool implements Tool<'git'> {
     let newlyKnown = false;
     for (const remote of remotes.filter((name) => !notFetched.includes(name))) {
       try {
-        const tags = await listRemoteTags(gitPath, root, remote, {
+        const recorded = this.tagsRecorded;
+        const tags = await this.tagsOfRemote(
+          gitPath,
+          root,
+          remote,
           interactive,
-          stop: this.quitting.signal,
-        });
+        );
+        if (this.tagsRecorded !== recorded) {
+          continue;
+        }
         const known = this.storage.remoteTagsOf(repository).get(remote);
         if (!sameTags(known, tags)) {
           await this.storage.setRemoteTags(repository, remote, tags);
@@ -2354,6 +2377,18 @@ export class GitTool implements Tool<'git'> {
     } else if (newlyKnown) {
       await this.resendRepositoryShown(repository);
     }
+  }
+
+  private tagsOfRemote(
+    gitPath: string,
+    root: string,
+    remote: string,
+    interactive: boolean,
+  ): Promise<Map<string, string>> {
+    return listRemoteTags(gitPath, root, remote, {
+      interactive,
+      stop: this.quitting.signal,
+    });
   }
 
   private async resendRepositoryShown(repository: string): Promise<void> {
