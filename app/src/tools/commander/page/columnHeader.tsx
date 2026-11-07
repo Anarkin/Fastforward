@@ -1,13 +1,14 @@
 import {
   maxColumnWidth,
   sizedColumns,
-  type ColumnWidths,
   type SizedColumn,
   type Sort,
   type SortColumn,
 } from '../shared/settings';
 import { followDrag } from '../../../ui/followDrag';
 import { strings } from '../../../shared/strings';
+import type { Side } from '../shared/protocol';
+import { shownColumns, useCommander, useCommanderActions } from './store';
 
 const columnLabels: Readonly<Record<SortColumn, string>> = {
   name: strings.commander.name,
@@ -47,21 +48,16 @@ function SortButton({
   );
 }
 
-export function ColumnHeader({
-  sort,
-  columns,
-  onSort,
-  onResize,
-  onResized,
-  onReset,
-}: {
-  sort: Sort | undefined;
-  columns: ColumnWidths;
-  onSort: (column: SortColumn) => void;
-  onResize: (column: SizedColumn, width: number) => void;
-  onResized: (column: SizedColumn, width: number) => void;
-  onReset: (column: SizedColumn) => void;
-}) {
+export function ColumnHeader({ side }: { side: Side }) {
+  const sort = useCommander((state) => state.view.panes[side]?.sort);
+  const columns = useCommander(shownColumns);
+  const actions = useCommanderActions();
+  const onSort = (column: SortColumn) => actions.sort(side, column);
+  const {
+    resizeColumn: onResize,
+    saveColumn: onResized,
+    resetColumn: onReset,
+  } = actions;
   const startResizing = (
     column: SizedColumn,
     event: React.PointerEvent<HTMLElement>,

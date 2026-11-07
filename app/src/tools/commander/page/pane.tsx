@@ -37,7 +37,7 @@ import { HighlightWords } from '../../../ui/highlight';
 import { SearchButton, SearchRow } from '../../../ui/search';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { ColumnHeader } from './columnHeader';
-import { layouts, type Layout, type SortColumn } from '../shared/settings';
+import { layouts, type Layout } from '../shared/settings';
 import { shownColumns, useCommander, useCommanderActions } from './store';
 import { formatDate } from '../../../ui/dates';
 import { useShell } from '../../../shell/page/store';
@@ -282,7 +282,6 @@ export function Pane({
   const onMark = (keys: readonly string[], marked: boolean) =>
     actions.mark(side, keys, marked);
   const onOpen = (name: string) => actions.open(side, name);
-  const onSort = (column: SortColumn) => actions.sort(side, column);
   const onActivate = () => actions.activate(side);
   const onSwitchSide = actions.switchSide;
   const onDrive = (drive: string) => actions.drive(side, drive);
@@ -300,9 +299,6 @@ export function Pane({
     extended: boolean,
   ) => actions.shellMenu(side, names, at, extended);
   const onCompare = actions.compare;
-  const onResize = actions.resizeColumn;
-  const onResized = actions.saveColumn;
-  const onReset = actions.resetColumn;
   const allRows = pane?.rows ?? noRows;
   const [filter, setFilter] = useState<{
     readonly folder: string | undefined;
@@ -701,16 +697,7 @@ export function Pane({
           </div>
         </header>
       )}
-      {!tiled && (
-        <ColumnHeader
-          sort={pane?.sort}
-          columns={columns}
-          onSort={onSort}
-          onResize={onResize}
-          onResized={onResized}
-          onReset={onReset}
-        />
-      )}
+      {!tiled && <ColumnHeader side={side} />}
       <div
         className="column-body"
         ref={body}
