@@ -1,14 +1,15 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { QuitGuard } from '../../main/quitGuard';
+import { fakeTimer } from '../fakeTimer';
 
-function guarded(asks = true) {
+function guarded(asks = true, timer = fakeTimer().timer) {
   const done: string[] = [];
   const shell = {
     asksBeforeQuit: () => asks,
     askToQuit: () => done.push('asked'),
   };
-  const guard = new QuitGuard(() => shell);
+  const guard = new QuitGuard(() => shell, timer);
   return { guard, done };
 }
 
@@ -77,6 +78,26 @@ suite('Quit guard', () => {
     assert.strictEqual(
       new QuitGuard(() => undefined).holds(() => undefined),
       false,
+    );
+  });
+
+  test('asks before quitting again a while after the system said it would shut down or log off, as another app may have stopped it, and quitting went on unasked for the rest of the run', async () => {
+    const { timer, waiting, fire } = fakeTimer();
+    const { guard } = guarded(true, timer);
+    guard.systemEnding();
+    assert.strictEqual(
+      guard.holds(() => undefined),
+      false,
+    );
+    guard.systemEnding();
+    assert.deepStrictEqual(
+      waiting().map((entry) => entry.ms),
+      [10_000],
+    );
+    await fire();
+    assert.strictEqual(
+      guard.holds(() => undefined),
+      true,
     );
   });
 });
