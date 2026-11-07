@@ -4,7 +4,8 @@ import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { BubbleActions, RefBubble } from '../../../tools/git/page/bubbles';
-import { GitStore } from '../../../tools/git/page/store';
+import { createGitStore, GitStore } from '../../../tools/git/page/store';
+import { emptyTabView } from '../../../tools/git/page/tabView';
 import { GraphCell } from '../../../tools/git/page/graph';
 import { listedFilesRows } from '../../../tools/git/page/changesTree';
 import { Column } from '../../../tools/git/page/column';
@@ -433,7 +434,18 @@ function skeletonRow(className?: string): MarkupElement {
 }
 
 function soloButton(solo: boolean, applying: boolean): MarkupElement {
-  return rendered(createElement(SoloButton, { solo, applying, onSolo: noop }));
+  return rendered(
+    createElement(
+      GitStore,
+      {
+        value: createGitStore(noop, {
+          solo,
+          tab: { ...emptyTabView, applyingSolo: applying },
+        }),
+      },
+      createElement(SoloButton),
+    ),
+  );
 }
 
 function badgeRules(node: React.ReactNode): string[] {

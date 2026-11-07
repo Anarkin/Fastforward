@@ -59,6 +59,7 @@ import { settling } from '../../../../tools/git/page/outbox';
 import { defaultDateFormat, formatDate } from '../../../../ui/dates';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
+import { emptyTabView } from '../../../../tools/git/page/tabView';
 import { gitStore } from '../../../componentFixtures';
 import {
   commitInfo,
@@ -1112,16 +1113,25 @@ suite('Commit list keys', () => {
   });
 });
 
+function soloButton(applying: boolean): string {
+  return renderToStaticMarkup(
+    <GitStore
+      value={createGitStore(noop, {
+        solo: true,
+        tab: { ...emptyTabView, applyingSolo: applying },
+      })}
+    >
+      <SoloButton />
+    </GitStore>,
+  );
+}
+
 suite('Solo button', () => {
   test('spins its icon and takes no clicks while the history reloads', () => {
-    const idle = renderToStaticMarkup(
-      <SoloButton solo applying={false} onSolo={noop} />,
-    );
+    const idle = soloButton(false);
     assert.match(idle, /class="nav-button toggle active\s*"/);
     assert.doesNotMatch(idle, /disabled/);
-    const applying = renderToStaticMarkup(
-      <SoloButton solo applying onSolo={noop} />,
-    );
+    const applying = soloButton(true);
     assert.match(applying, /class="nav-button toggle active running"/);
     assert.match(applying, /disabled=""/);
     assert.match(applying, /<span class="spin-icon"><svg/);

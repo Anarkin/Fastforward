@@ -646,19 +646,16 @@ export function Commits({
   const stashes = useGit((state) => state.stashCommits);
   const selected = useGit((state) => state.tab.hash);
   const collapseMerges = useGit((state) => state.collapseMerges);
-  const solo = useGit((state) => state.solo);
   const headCommit = useGit((state) => state.tab.repository?.headCommit);
   const searching = useGit((state) => state.searching);
   const error = useGit((state) =>
     listError(state.tab.error, layoutSelectionOf(state)),
   );
-  const applyingSolo = useGit((state) => state.tab.applyingSolo);
   const {
     selectCommit: onSelect,
     compareCommit: onCompare,
     toggleMerge: onToggleMerge,
     changeCollapseMerges: onCollapseMerges,
-    changeSolo: onSolo,
     scrolled: reportScrolled,
     loadCommits: onLoad,
     search: openSearch,
@@ -970,7 +967,7 @@ export function Commits({
       start={navigation}
       actions={
         <>
-          <SoloButton solo={solo} applying={applyingSolo} onSolo={onSolo} />
+          <SoloButton />
           <MenuButton
             title={strings.commits.settings}
             items={[
@@ -1066,15 +1063,10 @@ export function Commits({
   );
 }
 
-export function SoloButton({
-  solo,
-  applying,
-  onSolo,
-}: {
-  solo: boolean;
-  applying: boolean;
-  onSolo: (solo: boolean) => void;
-}) {
+export function SoloButton() {
+  const solo = useGit((state) => state.solo);
+  const applying = useGit((state) => state.tab.applyingSolo);
+  const { changeSolo: onSolo } = useGitActions();
   return (
     <button
       className={`nav-button toggle ${solo ? 'active' : ''} ${applying ? 'running' : ''}`}
