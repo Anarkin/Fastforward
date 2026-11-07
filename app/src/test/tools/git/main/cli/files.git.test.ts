@@ -198,6 +198,47 @@ suite('Repository files', () => {
     );
   });
 
+  test('gives a copy of a blob asked for many times at once, as two copies at once clashed on one file', async () => {
+    const copies = path.join(parent, 'viewed-at-once');
+    const blob = (
+      await repository.git('rev-parse', 'HEAD:src/tracked.txt')
+    ).trim();
+    const viewed = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        viewedFile(gitPath, cwd, 'src/tracked.txt', blob, copies),
+      ),
+    );
+    for (const each of viewed) {
+      assert.deepStrictEqual(each, {
+        kind: 'file',
+        file: path.join(copies, blob, 'tracked.txt'),
+      });
+    }
+    assert.deepStrictEqual(fs.readdirSync(path.join(copies, blob)), [
+      'tracked.txt',
+    ]);
+  });
+
+  test('gives a copy of a blob whose name Windows takes no file by, as a file another system named so could not be viewed', async () => {
+    const copies = path.join(parent, 'viewed-named');
+    const blob = (
+      await repository.git('rev-parse', 'HEAD:src/tracked.txt')
+    ).trim();
+    const viewed = await viewedFile(
+      gitPath,
+      cwd,
+      'src/what?.txt',
+      blob,
+      copies,
+    );
+    assert.ok(viewed.kind === 'file');
+    assert.strictEqual(
+      path.basename(viewed.file),
+      process.platform === 'win32' ? 'what_.txt' : 'what?.txt',
+    );
+    assert.strictEqual(fs.readFileSync(viewed.file, 'utf8'), 'one\n');
+  });
+
   test('gives no file to view outside the repository, missing from the working tree, or of a blob it does not have', async () => {
     const copies = path.join(parent, 'viewed');
     await assert.rejects(

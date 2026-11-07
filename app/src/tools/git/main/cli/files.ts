@@ -549,7 +549,34 @@ export async function viewedFile(
   if (!isFullHash(blob)) {
     return { kind: 'missing' };
   }
-  const copy = join(copies, blob.toLowerCase(), basename(file));
+  const copy = join(copies, blob.toLowerCase(), copyName(basename(file)));
+  const copying = copiesBeingWritten.get(copy);
+  if (copying !== undefined) {
+    return copying;
+  }
+  const written = copied(gitPath, cwd, blob, copy).finally(() =>
+    copiesBeingWritten.delete(copy),
+  );
+  copiesBeingWritten.set(copy, written);
+  return written;
+}
+
+const copiesBeingWritten = new Map<string, Promise<ViewedFile>>();
+
+const unnamedOnWindows = /[<>:"|?*]/g;
+
+function copyName(name: string): string {
+  return process.platform === 'win32'
+    ? name.replaceAll(unnamedOnWindows, '_')
+    : name;
+}
+
+async function copied(
+  gitPath: string,
+  cwd: string,
+  blob: string,
+  copy: string,
+): Promise<ViewedFile> {
   if ((await lstatIfThere(copy))?.isFile()) {
     return { kind: 'file', file: copy };
   }
