@@ -54,6 +54,7 @@ import {
 import type { Commits } from './history/commits';
 import {
   fetchRemote,
+  hasGitFolder,
   initRepository,
   isFolder,
   listRemoteTags,
@@ -460,12 +461,17 @@ export class GitTool implements Tool<'git'> {
 
   refreshShown(page: Page): Promise<void> {
     const session = this.sessionOf(page);
-    return this.run(strings.log.refreshingFailed, session, async () => {
-      const context = await this.context(session);
-      if (context) {
-        await this.refresh(context);
-      }
-    });
+    return this.run(
+      strings.log.refreshingFailed,
+      session,
+      async () => {
+        const context = await this.context(session);
+        if (context) {
+          await this.refresh(context);
+        }
+      },
+      this.activeWorktree,
+    );
   }
 
   names(tabs: readonly Tab[]): ReadonlyMap<string, TabName> {
@@ -770,7 +776,7 @@ export class GitTool implements Tool<'git'> {
 
   private async folderGone(root: string): Promise<boolean> {
     const tab = this.tabStates.get(root);
-    if (!tab || (await isFolder(root))) {
+    if (!tab || ((await isFolder(root)) && (await hasGitFolder(root)))) {
       return false;
     }
     tab.isRepository = false;

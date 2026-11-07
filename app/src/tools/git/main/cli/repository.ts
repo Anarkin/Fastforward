@@ -50,6 +50,13 @@ export async function repositoryRoot(
   return (await sameFolder(root, top)) ? root : path.resolve(top);
 }
 
+export function hasGitFolder(folder: string): Promise<boolean> {
+  return fs
+    .lstat(path.join(folder, '.git'))
+    .then(() => true)
+    .catch(() => false);
+}
+
 export function isFolder(folder: string): Promise<boolean> {
   return fs.stat(folder).then(
     (stats) => stats.isDirectory(),

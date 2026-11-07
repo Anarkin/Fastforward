@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../builtins';
+import { strings } from '../../../../../shared/strings';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { sameRoot } from '../../../../../shell/main/storage';
 import { recentKey } from '../../../../../tools/git/main/storage';
@@ -731,6 +732,25 @@ suite('Git tool of other repositories', () => {
       /^Listing the worktrees of .*plain failed$/,
       /^git worktree list .* failed: fatal: not a git repository/,
     );
+  });
+
+  test('says the folder of a tab is no repository once its .git is deleted while it is open, rather than what git said', async () => {
+    const unmade = await tempRepository(path.join(folder, 'unmade'));
+    await unmade.commit('first');
+    await withView(log, [unmade.root], async (view) => {
+      fs.rmSync(path.join(unmade.root, '.git'), {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+      });
+      view.page.clear();
+      await view.connection.refresh();
+      assert.strictEqual(
+        view.page.last('error')?.message,
+        strings.messages.notRepository(unmade.root),
+      );
+    });
+    takeErrorsLogged(logged, /^Refreshing the tab failed$/, /^git .* failed: /);
   });
 
   test('opens the tab shown again when it is clicked once its folder, missing as it opened, is a repository', async () => {
