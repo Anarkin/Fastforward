@@ -325,8 +325,6 @@ export function Viewer() {
           preview={preview}
           viewing={viewing}
           realSize={realSize}
-          post={post}
-          listen={listen}
           pdf={pdf.controls}
         />
       ) : mode === 'hex' || shown === 'bytes' ? (
@@ -337,8 +335,6 @@ export function Viewer() {
           finding={finding}
           place={place}
           onPlace={onPlace}
-          post={post}
-          listen={listen}
         />
       ) : (
         <TextBody
@@ -350,8 +346,6 @@ export function Viewer() {
           finding={finding}
           place={place}
           onPlace={onPlace}
-          post={post}
-          listen={listen}
         />
       )}
     </section>

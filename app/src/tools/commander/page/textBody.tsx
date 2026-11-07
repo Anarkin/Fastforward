@@ -48,7 +48,7 @@ import {
   useCellTable,
   type TextWidths,
 } from '../../../ui/textWidths';
-import type { ViewerRequest } from './store';
+import { useCommanderActions, type ViewerRequest } from './store';
 
 const rowsAboveMatch = 2;
 
@@ -253,8 +253,6 @@ export function TextBody({
   finding = false,
   place,
   onPlace,
-  post,
-  listen,
 }: {
   encoding: TextEncoding;
   language: string | undefined;
@@ -263,9 +261,8 @@ export function TextBody({
   finding?: boolean;
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
-  post: (message: ViewerRequest) => void;
-  listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
+  const { request: post, listenViewer: listen } = useCommanderActions();
   const [read, setRead] = useState<Read>({
     rows: [],
     top: { index: 0, from: 0 },

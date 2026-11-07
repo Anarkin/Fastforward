@@ -20,8 +20,8 @@ import {
   offsetDigits,
   type LoadedBytes,
 } from './hex';
-import type { ToViewer, Viewing } from './viewer';
-import type { ViewerRequest } from './store';
+import type { Viewing } from './viewer';
+import { useCommanderActions } from './store';
 
 interface Bytes {
   readonly start: number;
@@ -39,8 +39,6 @@ export function ByteBody({
   finding = false,
   place,
   onPlace,
-  post,
-  listen,
 }: {
   layout: ByteLayout;
   viewing: Viewing;
@@ -48,9 +46,8 @@ export function ByteBody({
   finding?: boolean;
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
-  post: (message: ViewerRequest) => void;
-  listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
+  const { request: post, listenViewer: listen } = useCommanderActions();
   const { tab } = viewing;
   const size = viewing.size ?? 0;
   const [screen, setScreen] = useState(1);

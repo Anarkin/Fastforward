@@ -11,20 +11,17 @@ import { useWholeText } from './textBody';
 import { keyPressed } from '../../../ui/shortcuts';
 import { imageScrolled, previewUrl, type Preview } from './previews';
 import type { PdfControls } from './pdfPreview';
-import type { ToViewer, Viewing } from './viewer';
-import type { ViewerRequest } from './store';
+import type { Viewing } from './viewer';
+import { useCommanderActions } from './store';
 
 function MarkdownPreview({
   file,
   viewing,
-  post,
-  listen,
 }: {
   file: string;
   viewing: Viewing;
-  post: (message: ViewerRequest) => void;
-  listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
+  const { request: post, listenViewer: listen } = useCommanderActions();
   const tooLarge = viewing.size !== undefined && viewing.size > maxPreviewBytes;
   const text = useWholeText(viewing, post, listen, !tooLarge, 'utf-8')?.text;
   const { tab, version } = viewing;
@@ -53,16 +50,12 @@ export function PreviewBody({
   viewing,
   realSize,
   pdf,
-  post,
-  listen,
 }: {
   file: string;
   preview: Preview;
   viewing: Viewing;
   realSize: boolean;
   pdf: PdfControls;
-  post: (message: ViewerRequest) => void;
-  listen: (handler: (message: ToViewer) => void) => () => void;
 }) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => body.current?.focus(), []);
@@ -127,12 +120,7 @@ export function PreviewBody({
           <ImagePane key={imageUrl} url={imageUrl} realSize={imageRealSize} />
         </div>
       ) : (
-        <MarkdownPreview
-          file={file}
-          viewing={viewing}
-          post={post}
-          listen={listen}
-        />
+        <MarkdownPreview file={file} viewing={viewing} />
       )}
     </div>
   );
