@@ -88,6 +88,23 @@ suite('Finding text in a file viewed', () => {
     );
   });
 
+  test('gives the bytes of matches in UTF-16 after its byte order mark, in every chunk, as the mark left out of the text put each match 2 bytes early', async () => {
+    for (const encoding of ['utf-16le', 'utf-16be'] as const) {
+      const little = Buffer.from('﻿abc needle', 'utf16le');
+      const bytes = encoding === 'utf-16le' ? little : little.swap16();
+      const { read, size } = inMemory(bytes);
+
+      for (const chunk of [4, 1024]) {
+        assert.deepStrictEqual(
+          (await findInFile(read, size, 'needle', encoding, { chunk }))
+            ?.matches,
+          [{ start: 10, end: 22 }],
+          `${encoding} ${chunk}`,
+        );
+      }
+    }
+  });
+
   test('stops at the most matches the diff finds, saying it stopped', async () => {
     const { read, size } = inMemory(Buffer.from('a'.repeat(30)));
 

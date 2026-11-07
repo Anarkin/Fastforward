@@ -71,13 +71,23 @@ function utf8Offsets(
   };
 }
 
+const utf16Marks = {
+  'utf-16le': [0xff, 0xfe],
+  'utf-16be': [0xfe, 0xff],
+} as const;
+
 function byteOffsets(
   text: string,
   bytes: Uint8Array,
   encoding: TextEncoding,
 ): (index: number) => number {
   if (encoding === 'utf-16le' || encoding === 'utf-16be') {
-    return (index) => index * 2;
+    const skipped =
+      text.codePointAt(0) !== byteOrderMark &&
+      utf16Marks[encoding].every((byte, index) => bytes[index] === byte)
+        ? 2
+        : 0;
+    return (index) => skipped + index * 2;
   }
   if (encoding !== 'utf-8') {
     return (index) => index;
