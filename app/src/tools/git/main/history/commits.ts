@@ -58,7 +58,6 @@ export class Commits {
           hashes.add(bytes, 0, bytes.length);
       }
     }
-    hashes.trim();
     const shift = top.parents.length - older.starts[dropped];
     const kept = older.length - dropped;
     const starts = new Int32Array(count + kept + 1);
@@ -158,30 +157,33 @@ class HashTable {
     const table = new HashTable();
     const topUsed = top.offsets[count];
     const olderFrom = older.offsets[dropped];
+    const spareBytes = top.used - topUsed;
+    const spareHashes = top.size - count;
     table.used = topUsed + older.used - olderFrom;
-    table.bytes = new Uint8Array(table.used);
+    table.bytes = new Uint8Array(table.used + spareBytes);
     table.bytes.set(top.bytes.subarray(0, topUsed));
     table.bytes.set(older.bytes.subarray(olderFrom, older.used), topUsed);
     table.size = count + older.size - dropped;
-    table.offsets = new Int32Array(table.size + 1);
+    table.offsets = new Int32Array(table.size + spareHashes + 1);
     table.offsets.set(top.offsets.subarray(0, count));
     for (let at = dropped; at <= older.size; at++) {
       table.offsets[count + at - dropped] =
         older.offsets[at] - olderFrom + topUsed;
     }
-    if (table.size * 2 <= older.slots.length) {
-      table.slots = older.slots.slice();
+    const most = table.size + spareHashes;
+    if (most * 2 <= older.slots.length) {
+      const slots = new Int32Array(older.slots.length);
+      table.slots = slots;
       const emptied: number[] = [];
-      for (let slot = 0; slot < table.slots.length; slot++) {
-        const value = table.slots[slot];
+      for (let slot = 0; slot < slots.length; slot++) {
+        const value = older.slots[slot];
         if (value === 0) {
           continue;
         }
         if (value - 1 < dropped) {
-          table.slots[slot] = 0;
           emptied.push(slot);
         } else {
-          table.slots[slot] = value - dropped + count;
+          slots[slot] = value - dropped + count;
         }
       }
       for (const slot of emptied) {
@@ -192,7 +194,7 @@ class HashTable {
       }
     } else {
       let slots = older.slots.length;
-      while (table.size * 2 > slots) {
+      while (most * 2 > slots) {
         slots *= 2;
       }
       table.slots = new Int32Array(slots);
