@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { suite, test } from 'vitest';
 import { foldersHandedOff, foldersOf, handOff } from '../../main/commandLine';
 
@@ -52,6 +53,14 @@ suite('Command line', () => {
         path.join(started, 'a b'),
         path.join(started, '--'),
       ],
+    );
+  });
+
+  test('opens the folder a file URL names, as a folder dropped on the launcher of a Linux desktop comes as one, which was taken for a path inside the folder started in', () => {
+    const dropped = path.join(started, 'a b');
+    assert.deepStrictEqual(
+      foldersOf([app, pathToFileURL(dropped).href], false, started),
+      [dropped],
     );
   });
 

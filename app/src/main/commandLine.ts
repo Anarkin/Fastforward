@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const switchTerminator = '--';
 
@@ -15,7 +16,18 @@ export function foldersOf(
     ...(fromSource ? positional.slice(1) : positional),
     ...(terminator === -1 ? [] : args.slice(terminator + 1)),
   ];
-  return folders.map((folder) => path.resolve(startedIn, folder));
+  return folders.map((folder) => folderOf(folder, startedIn));
+}
+
+function folderOf(arg: string, startedIn: string): string {
+  if (arg.startsWith('file://')) {
+    try {
+      return fileURLToPath(arg);
+    } catch {
+      return path.resolve(startedIn, arg);
+    }
+  }
+  return path.resolve(startedIn, arg);
 }
 
 export function handOff(folders: readonly string[]): {
