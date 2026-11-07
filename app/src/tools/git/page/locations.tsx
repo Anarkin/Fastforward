@@ -338,21 +338,6 @@ export function nextActive(
   return Math.max(0, Math.min(items.length - 1, active + step));
 }
 
-const hashLookupDelay = 150;
-
-const commitSearchDelay = 250;
-
-export function startAfter(delay: number, start: () => () => void): () => void {
-  let stop: (() => void) | undefined;
-  const timer = setTimeout(() => {
-    stop = start();
-  }, delay);
-  return () => {
-    clearTimeout(timer);
-    stop?.();
-  };
-}
-
 const minSearchLength = 3;
 
 const commitIndent = 8;
@@ -596,8 +581,7 @@ export function LocationsPopup({
     if (!hash) {
       return undefined;
     }
-    const timer = setTimeout(() => onLookup(hash), hashLookupDelay);
-    return () => clearTimeout(timer);
+    return onLookup(hash);
   }, [hash, onLookup]);
   const found = hash && lookup?.query === hash ? lookup.result : undefined;
   const text = textQuery(query);
@@ -605,7 +589,7 @@ export function LocationsPopup({
     if (!text) {
       return undefined;
     }
-    return startAfter(commitSearchDelay, () => onSearchCommits(text));
+    return onSearchCommits(text);
   }, [text, onSearchCommits]);
   const textFound =
     text && commitSearch?.query === text ? commitSearch.result : undefined;

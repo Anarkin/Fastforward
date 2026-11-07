@@ -33,6 +33,7 @@ import { foldersOf } from './fileTree';
 import type { ViewedSource } from './images';
 import type { MenuTarget } from './menus';
 import { settling } from './outbox';
+import { startAfter } from './startAfter';
 import { tagsOnRemote } from './tagPushes';
 import {
   noFolders,
@@ -135,7 +136,7 @@ interface GitActions {
   readonly jump: (hash: string | undefined) => void;
   readonly showUpstream: () => void;
   readonly showParent: () => void;
-  readonly lookupHash: (query: string) => void;
+  readonly lookupHash: (query: string) => () => void;
   readonly searchCommits: (query: string) => () => void;
   readonly fetch: () => void;
   readonly toggleMerge: (hash: string) => void;
@@ -472,6 +473,10 @@ function received(state: GitState, message: GitToWebview): GitState {
   }
 }
 
+const hashLookupDelay = 150;
+
+const commitSearchDelay = 250;
+
 export function createGitStore(
   postToHost: (message: GitToHost) => void,
   initial: Partial<GitSource> = {},
@@ -553,15 +558,20 @@ export function createGitStore(
       },
       showUpstream: () => postTab({ type: 'showUpstream' }),
       showParent: () => postTab({ type: 'showParent' }),
-      lookupHash: (query) => postTab({ type: 'lookupHash', query }),
-      searchCommits: (query) => {
-        const { root } = get().tab;
-        if (root === undefined) {
+      lookupHash: (query) =>
+        startAfter(hashLookupDelay, () => {
+          postTab({ type: 'lookupHash', query });
           return () => undefined;
-        }
-        post({ type: 'searchCommits', query, root });
-        return () => post({ type: 'stopCommitSearch', root });
-      },
+        }),
+      searchCommits: (query) =>
+        startAfter(commitSearchDelay, () => {
+          const { root } = get().tab;
+          if (root === undefined) {
+            return () => undefined;
+          }
+          post({ type: 'searchCommits', query, root });
+          return () => post({ type: 'stopCommitSearch', root });
+        }),
       fetch: () => postTab({ type: 'fetch' }),
       toggleMerge: (hash) => postTab({ type: 'toggleMerge', hash }),
       scrolled: (root, hash, offset, report) => {

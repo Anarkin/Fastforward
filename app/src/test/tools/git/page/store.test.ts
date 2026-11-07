@@ -605,8 +605,15 @@ suite('Git store', () => {
     actions.jump(undefined);
     actions.showUpstream();
     actions.showParent();
-    actions.lookupHash('abc');
-    actions.searchCommits('fix')();
+    vi.useFakeTimers();
+    try {
+      actions.lookupHash('abc');
+      const stop = actions.searchCommits('fix');
+      vi.advanceTimersByTime(250);
+      stop();
+    } finally {
+      vi.useRealTimers();
+    }
     actions.fetch();
     actions.toggleMerge(at);
     actions.scrolled('/other', at, 3, 1);
@@ -741,14 +748,45 @@ suite('Git store', () => {
   test('stops a search of the commits in the worktree it was started in, though another is shown by then', () => {
     const { posted, store } = posting();
     store.getState().receive(shown());
-    const stop = store.getState().searchCommits('fix');
-    store
-      .getState()
-      .receive({ type: 'worktrees', worktree: '/other', worktrees: [] });
-    stop();
+    vi.useFakeTimers();
+    try {
+      const stop = store.getState().searchCommits('fix');
+      vi.advanceTimersByTime(250);
+      store
+        .getState()
+        .receive({ type: 'worktrees', worktree: '/other', worktrees: [] });
+      stop();
+    } finally {
+      vi.useRealTimers();
+    }
     assert.deepStrictEqual(posted, [
       { type: 'searchCommits', query: 'fix', root: '/repo' },
       { type: 'stopCommitSearch', root: '/repo' },
+    ]);
+  });
+
+  test('looks up a hash and searches the commits only once the typing pauses, asking nothing of what was typed past', () => {
+    const { posted, store } = posting();
+    store.getState().receive(shown());
+    vi.useFakeTimers();
+    try {
+      const { lookupHash, searchCommits } = store.getState();
+      lookupHash('ab')();
+      searchCommits('fi')();
+      vi.advanceTimersByTime(250);
+      assert.deepStrictEqual(posted, []);
+      lookupHash('abc');
+      vi.advanceTimersByTime(149);
+      assert.deepStrictEqual(posted, []);
+      vi.advanceTimersByTime(1);
+      searchCommits('fix');
+      vi.advanceTimersByTime(250);
+    } finally {
+      vi.useRealTimers();
+    }
+    assert.deepStrictEqual(posted, [
+      { type: 'lookupHash', query: 'abc', root: '/repo' },
+      { type: 'searchCommits', query: 'fix', root: '/repo' },
     ]);
   });
 

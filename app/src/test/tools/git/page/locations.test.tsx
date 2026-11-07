@@ -27,7 +27,6 @@ import {
   searchStashes,
   shownChildren,
   shownStashes,
-  startAfter,
   type Highlighted,
   stickyRowHeight,
 } from '../../../../tools/git/page/locations';
@@ -46,6 +45,7 @@ import { withStores } from '../../../componentFixtures';
 import { renderIn } from '../../../componentFixtures';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../tools/git/page/tabView';
+import { startAfter } from '../../../../tools/git/page/startAfter';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
 
