@@ -71,7 +71,7 @@ interface CommanderActions {
   readonly activate: (side: Side) => void;
   readonly switchSide: () => void;
   readonly chooseLayout: (side: Side, layout: Layout) => void;
-  readonly choose: (choices: ViewerChoices) => void;
+  readonly choose: (choices: Partial<ViewerChoices>) => void;
   readonly sort: (side: Side, column: SortColumn) => void;
   readonly groupByColor: (side: Side) => void;
   readonly open: (side: Side, name: string) => void;

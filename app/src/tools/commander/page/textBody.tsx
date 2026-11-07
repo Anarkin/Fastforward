@@ -291,7 +291,8 @@ export function TextBody({
     [font, table],
   );
   const counting = widths ?? cellWidthsOf(table ?? plainCells);
-  const { wordWrap, showWhitespace } = useShell((state) => state.textView);
+  const wordWrap = useShell((state) => state.textView.wordWrap);
+  const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const wrapAt =
     wordWrap && columns !== undefined && columns > marksColumns
       ? columns - marksColumns

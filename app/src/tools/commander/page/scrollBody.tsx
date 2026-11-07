@@ -220,7 +220,7 @@ export function ScrollBody({
   const [track, setTrack] = useState(0);
   const [screen, setScreen] = useState(1);
   const wheel = useRef(0);
-  const { wheelRows } = useShell((state) => state.scrolling);
+  const wheelRows = useShell((state) => state.scrolling.wheelRows);
   const [barShown, setBarShown] = useState(false);
   const [dragging, setDragging] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);

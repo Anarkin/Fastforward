@@ -110,8 +110,8 @@ export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
     },
     active && comparing !== undefined,
   );
-  const textView = useShell((state) => state.textView);
-  const { wordWrap, showWhitespace } = textView;
+  const wordWrap = useShell((state) => state.textView.wordWrap);
+  const showWhitespace = useShell((state) => state.textView.showWhitespace);
   useEffect(
     () =>
       setToolItems(
@@ -230,12 +230,12 @@ export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
 
   useBinding(
     gitKeymap.wrap,
-    () => changeTextView({ ...textView, wordWrap: !wordWrap }),
+    () => changeTextView({ wordWrap: !wordWrap }),
     active,
   );
   useBinding(
     gitKeymap.showWhitespace,
-    () => changeTextView({ ...textView, showWhitespace: !showWhitespace }),
+    () => changeTextView({ showWhitespace: !showWhitespace }),
     active,
   );
   const popups = (

@@ -144,15 +144,15 @@ export function DiffLanguage({ comparing }: { comparing: string | undefined }) {
       : undefined,
   );
   const picked = useGit(pickedFor(key));
-  const textView = useShell((state) => state.textView);
+  const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const { changeTextView } = useShellActions();
   const { pickLanguage, seeLanguageKey } = useGitActions();
   useEffect(() => seeLanguageKey(key), [key, seeLanguageKey]);
   const { choice, choose } = useLanguageChoice(
     key,
     {
-      on: textView.highlightSyntax,
-      change: (on) => changeTextView({ ...textView, highlightSyntax: on }),
+      on: highlightSyntax,
+      change: (on) => changeTextView({ highlightSyntax: on }),
     },
     { language: picked, keep: (language) => pickLanguage(key, language) },
   );
@@ -174,8 +174,8 @@ export function DiffOptions({ language }: { language: React.ReactNode }) {
   const entire = useGit((state) => state.showEntireFile);
   const ignoreWhitespace = useGit((state) => state.ignoreWhitespace);
   const layout = useGit((state) => state.diffLayout);
-  const textView = useShell((state) => state.textView);
-  const { wordWrap, showWhitespace } = textView;
+  const wordWrap = useShell((state) => state.textView.wordWrap);
+  const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const {
     changeShowEntireFile: onEntire,
     changeIgnoreWhitespace: onIgnoreWhitespace,
@@ -183,9 +183,8 @@ export function DiffOptions({ language }: { language: React.ReactNode }) {
   } = useGitActions();
   const { changeTextView } = useShellActions();
   const onShowWhitespace = (show: boolean) =>
-    changeTextView({ ...textView, showWhitespace: show });
-  const onWordWrap = (wrap: boolean) =>
-    changeTextView({ ...textView, wordWrap: wrap });
+    changeTextView({ showWhitespace: show });
+  const onWordWrap = (wrap: boolean) => changeTextView({ wordWrap: wrap });
   return (
     <div className="nav-buttons diff-options">
       <button
@@ -307,9 +306,6 @@ export function Diff({
   viewAsked?: number;
   languageKey?: string;
 }) {
-  const sideBySide = useGit((state) => state.diffLayout === 'sideBySide');
-  const chosenLanguage = useGit(pickedFor(languageKey));
-  const { wordWrap, showWhitespace } = useShell((state) => state.textView);
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
     () =>
@@ -449,16 +445,13 @@ export function Diff({
         texts={texts}
         onLoadTexts={onLoadTexts}
         changeMarks={changeMarks}
-        sideBySide={sideBySide}
-        wordWrap={wordWrap}
-        showWhitespace={showWhitespace}
         finding={finding}
         origin={origin}
         matches={matches}
         current={shown}
         jump={jump}
         firstChange={path === undefined ? undefined : firstChange}
-        chosenLanguage={chosenLanguage}
+        languageKey={languageKey}
       />
     </Column>
   );

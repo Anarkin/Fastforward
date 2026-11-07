@@ -133,8 +133,8 @@ interface ShellActions {
     items: readonly ContextMenuItem[],
   ) => void;
   readonly setToolTitle: (tool: ToolId, title: string | undefined) => void;
-  readonly changeTextView: (view: TextView) => void;
-  readonly changeImageView: (view: ImageView) => void;
+  readonly changeTextView: (change: Partial<TextView>) => void;
+  readonly changeImageView: (change: Partial<ImageView>) => void;
   readonly copyText: (text: string) => void;
   readonly ready: () => void;
   readonly log: (message: string) => void;
@@ -323,11 +323,13 @@ export function createShellStore(
         set((state) => ({
           toolTitles: { ...state.toolTitles, [tool]: title },
         })),
-      changeTextView: (view) => {
+      changeTextView: (change) => {
+        const view = { ...get().textView, ...change };
         set({ textView: view });
         post({ type: 'setTextView', view });
       },
-      changeImageView: (view) => {
+      changeImageView: (change) => {
+        const view = { ...get().imageView, ...change };
         set({ imageView: view });
         post({ type: 'setImageView', view });
       },

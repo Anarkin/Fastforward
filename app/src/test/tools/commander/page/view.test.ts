@@ -332,6 +332,19 @@ suite('Commander view', () => {
     );
   });
 
+  test('keeps what a viewing tab was chosen to show a file as, its encoding and its language one by one, each choice keeping the others', () => {
+    let view = run({ type: 'show', tab: '3', file: '/work/notes.md' });
+    view = reduceView(view, { type: 'choose', choices: { mode: 'text' } });
+    view = reduceView(view, {
+      type: 'choose',
+      choices: { language: 'python' },
+    });
+    assert.deepStrictEqual(viewerChoices(view), {
+      mode: 'text',
+      language: 'python',
+    });
+  });
+
   test('keeps what each viewing tab was chosen to show a file as, its encoding and its language while another tab is shown, for when it is shown again, and forgets them, and the layouts of a tab, once the tab is closed, as a tab opened later can take its id', () => {
     const chosen = {
       mode: 'text',

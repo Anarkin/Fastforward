@@ -79,22 +79,24 @@ export function Viewer() {
     listenViewer: listen,
   } = useCommanderActions();
   const chosen = choices.mode;
-  const setChosen = (mode: ViewMode) => onChoose({ ...choices, mode });
+  const setChosen = (mode: ViewMode) => onChoose({ mode });
   const encoding = choices.encoding ?? 'auto';
   const setEncoding = (choice: EncodingChoice) =>
-    onChoose({ ...choices, encoding: choice });
-  const textView = useShell((state) => state.textView);
-  const imageView = useShell((state) => state.imageView);
+    onChoose({ encoding: choice });
+  const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
+  const wordWrap = useShell((state) => state.textView.wordWrap);
+  const showWhitespace = useShell((state) => state.textView.showWhitespace);
+  const realSize = useShell((state) => state.imageView.realSize);
   const { changeTextView, changeImageView } = useShellActions();
   const { choice: languageChoice, choose: chooseLanguage } = useLanguageChoice(
     file,
     {
-      on: textView.highlightSyntax,
-      change: (on) => changeTextView({ ...textView, highlightSyntax: on }),
+      on: highlightSyntax,
+      change: (on) => changeTextView({ highlightSyntax: on }),
     },
     {
       language: choices.language,
-      keep: (language) => onChoose({ ...choices, language }),
+      keep: (language) => onChoose({ language }),
     },
   );
   const place = useRef(0);
@@ -109,16 +111,11 @@ export function Viewer() {
   );
   const mode = chosen ?? firstMode(file);
   const shown = shownEncoding(encoding, viewing);
-  const { wordWrap, showWhitespace } = textView;
   const readsText = mode === 'text' && shown !== 'bytes';
   const detectedLanguage = languageOf(file);
   const language = shownLanguage(languageChoice, detectedLanguage);
   const showsImage = mode === 'preview' && preview === 'image';
-  const { realSize } = imageView;
-  const toggleRealSize = () =>
-    changeImageView({ ...imageView, realSize: !realSize });
-  const changeView = (changed: Partial<typeof textView>) =>
-    changeTextView({ ...textView, ...changed });
+  const toggleRealSize = () => changeImageView({ realSize: !realSize });
   const choose = (wanted: ViewMode) => {
     if (shownModes.some((each) => each.mode === wanted)) {
       setChosen(wanted);
@@ -191,7 +188,7 @@ export function Viewer() {
         }
         if (readsText && keyPressed(viewerKeymap.wrap, event) !== undefined) {
           event.preventDefault();
-          changeView({ wordWrap: !wordWrap });
+          changeTextView({ wordWrap: !wordWrap });
           return;
         }
         if (
@@ -199,7 +196,7 @@ export function Viewer() {
           keyPressed(viewerKeymap.showWhitespace, event) !== undefined
         ) {
           event.preventDefault();
-          changeView({ showWhitespace: !showWhitespace });
+          changeTextView({ showWhitespace: !showWhitespace });
           return;
         }
         if (
@@ -290,7 +287,7 @@ export function Viewer() {
                   aria-pressed={showWhitespace}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() =>
-                    changeView({ showWhitespace: !showWhitespace })
+                    changeTextView({ showWhitespace: !showWhitespace })
                   }
                 >
                   <ShowWhitespaceIcon />
@@ -300,7 +297,7 @@ export function Viewer() {
                   title={strings.common.wrap}
                   aria-pressed={wordWrap}
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => changeView({ wordWrap: !wordWrap })}
+                  onClick={() => changeTextView({ wordWrap: !wordWrap })}
                 >
                   <WordWrapIcon />
                 </button>

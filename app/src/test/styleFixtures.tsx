@@ -497,25 +497,29 @@ export function diffView(
   ...rows: React.ReactElement[]
 ): MarkupElement {
   const view = rendered(
-    <DiffView
-      error={null}
-      files={[]}
-      whole={undefined}
-      origin={undefined}
-      loading={false}
-      diff={1}
-      onLoad={noop}
-      texts={new Map()}
-      onLoadTexts={noop}
-      changeMarks
-      matches={[]}
-      current={0}
-      jump={0}
-      firstChange={undefined}
-      sideBySide={sideBySide}
-      wordWrap={wordWrap}
-      showWhitespace={showWhitespace}
-    />,
+    inStores(
+      optionStores({
+        layout: sideBySide ? 'sideBySide' : 'inline',
+        wordWrap,
+        showWhitespace,
+      }),
+      <DiffView
+        error={null}
+        files={[]}
+        whole={undefined}
+        origin={undefined}
+        loading={false}
+        diff={1}
+        onLoad={noop}
+        texts={new Map()}
+        onLoadTexts={noop}
+        changeMarks
+        matches={[]}
+        current={0}
+        jump={0}
+        firstChange={undefined}
+      />,
+    ),
   );
   const spacer = withClass(view, 'virtual-spacer');
   for (const row of rows) {

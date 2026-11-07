@@ -159,7 +159,7 @@ export type ViewAction =
     }
   | { readonly type: 'hide' }
   | CommanderToWebviewOf<'closed'>
-  | { readonly type: 'choose'; readonly choices: ViewerChoices }
+  | { readonly type: 'choose'; readonly choices: Partial<ViewerChoices> }
   | (Omit<CommanderToWebviewOf<'settings'>, 'type'> & {
       readonly type: 'settings';
     })
@@ -305,7 +305,10 @@ export function reduceView(
         ? view
         : {
             ...view,
-            viewers: new Map(view.viewers).set(view.tab, action.choices),
+            viewers: new Map(view.viewers).set(view.tab, {
+              ...viewerChoices(view),
+              ...action.choices,
+            }),
           };
     case 'settings': {
       const settled = {

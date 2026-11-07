@@ -98,6 +98,7 @@ import {
   type RowFollower,
 } from '../../../ui/rowScroll';
 import { useShell } from '../../../shell/page/store';
+import { pickedFor, useGit } from './store';
 import {
   areaColumns,
   codePadding,
@@ -2019,13 +2020,10 @@ export function DiffView({
   current,
   jump,
   firstChange,
-  sideBySide,
-  wordWrap,
-  showWhitespace = false,
   finding = false,
   origin,
   viewOf,
-  chosenLanguage,
+  languageKey,
 }: {
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -2041,13 +2039,14 @@ export function DiffView({
   current: number;
   jump: number;
   firstChange: number | undefined;
-  sideBySide: boolean;
-  wordWrap: boolean;
-  showWhitespace?: boolean;
   finding?: boolean;
   viewOf?: (file: number) => (() => void) | undefined;
-  chosenLanguage?: string;
+  languageKey?: string;
 }) {
+  const sideBySide = useGit((state) => state.diffLayout === 'sideBySide');
+  const chosenLanguage = useGit(pickedFor(languageKey));
+  const wordWrap = useShell((state) => state.textView.wordWrap);
+  const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const list = useRef<HTMLDivElement>(null);
   const [sideways, setSideways] = useState(0);
   const scrolledSideways = useRef(sideways);

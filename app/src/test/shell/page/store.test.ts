@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { ToHost, TabInfo } from '../../../shell/shared/protocol';
 import { createShellStore } from '../../../shell/page/store';
+import { defaultTextView } from '../../../ui/textView';
 import { noop } from '../../fixtures';
 
 const terminal: TabInfo = { id: '1', tool: 'terminal', name: 'repo' };
@@ -187,17 +188,13 @@ suite('Shell store', () => {
     });
   });
 
-  test('changes the text and image views at once, telling the main process, and copies text through it', () => {
+  test('changes what is asked of the text and image views at once, keeping the rest, telling the main process the whole view, and copies text through it', () => {
     const { posted, store } = posting();
-    const view = {
-      wordWrap: false,
-      showWhitespace: true,
-      highlightSyntax: true,
-    };
-    store.getState().changeTextView(view);
+    const view = { ...defaultTextView, showWhitespace: true };
+    store.getState().changeTextView({ showWhitespace: true });
     store.getState().changeImageView({ realSize: true });
     store.getState().copyText('hash');
-    assert.strictEqual(store.getState().textView, view);
+    assert.deepStrictEqual(store.getState().textView, view);
     assert.deepStrictEqual(store.getState().imageView, { realSize: true });
     assert.deepStrictEqual(posted, [
       { type: 'setTextView', view },
