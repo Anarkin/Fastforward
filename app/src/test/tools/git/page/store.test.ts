@@ -714,6 +714,20 @@ suite('Git store', () => {
     assert.strictEqual(fileFilterOf(store.getState()), undefined);
   });
 
+  test('stops a search of the commits in the worktree it was started in, though another is shown by then', () => {
+    const { posted, store } = posting();
+    store.getState().receive(shown());
+    const stop = store.getState().searchCommits('fix');
+    store
+      .getState()
+      .receive({ type: 'worktrees', worktree: '/other', worktrees: [] });
+    stop();
+    assert.deepStrictEqual(posted, [
+      { type: 'searchCommits', query: 'fix', root: '/repo' },
+      { type: 'stopCommitSearch', root: '/repo' },
+    ]);
+  });
+
   test('forgets the folders toggled for a commit once another is shown, so they open again on coming back to it', () => {
     const store = createGitStore(noop);
     store.getState().receive(shown());

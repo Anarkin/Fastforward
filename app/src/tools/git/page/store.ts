@@ -547,8 +547,12 @@ export function createGitStore(
       showParent: () => postTab({ type: 'showParent' }),
       lookupHash: (query) => postTab({ type: 'lookupHash', query }),
       searchCommits: (query) => {
-        postTab({ type: 'searchCommits', query });
-        return () => postTab({ type: 'stopCommitSearch' });
+        const { root } = get().tab;
+        if (root === undefined) {
+          return () => undefined;
+        }
+        post({ type: 'searchCommits', query, root });
+        return () => post({ type: 'stopCommitSearch', root });
       },
       fetch: () => postTab({ type: 'fetch' }),
       toggleMerge: (hash) => postTab({ type: 'toggleMerge', hash }),
