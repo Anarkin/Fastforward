@@ -44,7 +44,7 @@
 | Hidden files | Show or hide hidden and system files | — | Core | ✅ Yes | Ctrl+H, shown by default and dimmed, saved; on Windows by their attribute, elsewhere by a leading dot |
 | File colors | Color files by their extension | — | Advanced | ✅ Yes | Color groups in the settings, the files whose language the viewer knows yellow by default; a notice when an extension is in two groups |
 | Group by color | Gather the files of each color together | — | Niche | ✅ Yes | Ctrl+G, in the order of the color groups, on by default |
-| Filter | Show only the files whose names match what is typed | — | Common | ✅ Yes | Mod+F, or Alt and a letter, by every word anywhere in the name, counting what is left; Escape clears it |
+| Filter | Show only the files whose names match what is typed | — | Common | ✅ Yes | Mod+F, or Alt and a letter, by every word anywhere in the name, counting what is left; kept for each side of a tab, through a file viewed or another tool shown, until the side shows another folder; Escape clears it |
 | Quick search | Jump to a file by typing the start of its name | — | Common | 🟡 Partial | Alt and a letter starts the filter rather than jumping |
 | Folder sizes | Count the size of folders | Ctrl+L | Common | ❌ No |  |
 | Flat view | List the files of every subfolder together | Ctrl+B | Advanced | ❌ No |  |
@@ -85,7 +85,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| View a file | Show a file without its app | F3 | Common | ✅ Yes | In a viewer tab of its own, named and iconed after the file, keeping the text, hex or preview, the encoding and the language chosen while it is open; Escape closes it |
+| View a file | Show a file without its app | F3 | Common | ✅ Yes | In a viewer tab of its own, named and iconed after the file, keeping the text, hex or preview, the encoding, the language chosen and where it was in the file while it is open; Escape closes it |
 | Quick view | Show the selected file on the other side as it is selected | Ctrl+Q | Common | ❌ No |  |
 | Text | Show a file as text, of any size | — | Core | ✅ Yes | Read by byte position a screen at a time, so a gigabyte opens as fast as a kilobyte, each line of up to 64 KiB whole, as the diff shows it, a longer one in rows of 4 KiB; 2 |
 | Hex | Show a file as bytes | — | Common | ✅ Yes | 1: its offset, 16 bytes a row and their printable characters |
