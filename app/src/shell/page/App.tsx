@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useStore } from 'zustand';
 import { keymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { strings } from '../../shared/strings';
@@ -91,26 +90,68 @@ interface Props {
   listen: (handler: (message: ToWebview) => void) => () => void;
 }
 
-export function App({ name, post, listen }: Props) {
-  const [store] = useState(() => createShellStore(post));
-  const noTab = useStore(store, (state) => state.tabs?.length === 0);
-  const title = useStore(store, (state) => {
+function WindowTitle({ name }: { name: string }) {
+  const title = useShell((state) => {
     const tab = activeTabOf(state);
     return windowTitle((tab && state.toolTitles[tab.tool]) ?? tab?.root, name);
   });
-  const newestNotice = useStore(store, (state) => state.notices.at(-1)?.id);
-  const aboutKnown = useStore(store, (state) => state.about !== undefined);
-  const popups = useStore(store, (state) => state.popups);
-  const confirming = useStore(store, (state) => state.confirming);
-  const {
-    togglePopup,
-    dismissNotice,
-    closeTab,
-    confirm,
-    cancel,
-    ready,
-    openIn,
-  } = store.getState();
+  useWindowTitle(title);
+  return null;
+}
+
+function Popups() {
+  const aboutKnown = useShell((state) => state.about !== undefined);
+  const popups = useShell((state) => state.popups);
+  const confirming = useShell((state) => state.confirming);
+  const { confirm, cancel } = useShellActions();
+  return (
+    <>
+      {popups.map((popup) => {
+        switch (popup) {
+          case 'shortcuts':
+            return <ShortcutsPopup key={popup} />;
+          case 'about':
+            return aboutKnown && <AboutPopup key={popup} />;
+          case 'openWith':
+            return <OpenWithPopup key={popup} />;
+          default:
+            return popup satisfies never;
+        }
+      })}
+      {confirming && (
+        <ConfirmPopup
+          {...confirmation(confirming)}
+          onConfirm={confirm}
+          onCancel={cancel}
+        />
+      )}
+    </>
+  );
+}
+
+function EmptyState() {
+  const noTab = useShell((state) => state.tabs?.length === 0);
+  return emptyState(noTab);
+}
+
+function NoticeKey() {
+  const newest = useShell((state) => state.notices.at(-1)?.id);
+  const { dismissNotice } = useShellActions();
+  useBinding(
+    keymap.dismissNotice,
+    () => {
+      if (newest !== undefined) {
+        dismissNotice(newest);
+      }
+    },
+    newest !== undefined,
+  );
+  return null;
+}
+
+export function App({ name, post, listen }: Props) {
+  const [store] = useState(() => createShellStore(post));
+  const { togglePopup, closeTab, ready, openIn } = store.getState();
 
   useEffect(() => {
     const stop = listen(store.getState().receive);
@@ -119,15 +160,6 @@ export function App({ name, post, listen }: Props) {
   }, [listen, store, ready]);
 
   useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
-  useBinding(
-    keymap.dismissNotice,
-    () => {
-      if (newestNotice !== undefined) {
-        dismissNotice(newestNotice);
-      }
-    },
-    newestNotice !== undefined,
-  );
   useBinding(keymap.about, () => togglePopup('about'));
   useBinding(keymap.openIn, openIn);
   useBinding(keymap.closeTab, () => {
@@ -137,35 +169,17 @@ export function App({ name, post, listen }: Props) {
     }
   });
 
-  useWindowTitle(title);
-
   return (
     <ShellStore value={store}>
       <div className="app">
+        <WindowTitle name={name} />
         <TabBar menu={<AppMenu />} />
         <ShellMenu />
-        {popups.map((popup) => {
-          switch (popup) {
-            case 'shortcuts':
-              return <ShortcutsPopup key={popup} />;
-            case 'about':
-              return aboutKnown && <AboutPopup key={popup} />;
-            case 'openWith':
-              return <OpenWithPopup key={popup} />;
-            default:
-              return popup satisfies never;
-          }
-        })}
-        {confirming && (
-          <ConfirmPopup
-            {...confirmation(confirming)}
-            onConfirm={confirm}
-            onCancel={cancel}
-          />
-        )}
+        <Popups />
         <Notices />
-        {emptyState(noTab)}
+        <EmptyState />
         <ToolViews />
+        <NoticeKey />
       </div>
     </ShellStore>
   );
