@@ -60,7 +60,7 @@ import { defaultDateFormat, formatDate } from '../../../../ui/dates';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../tools/git/page/tabView';
-import { gitStore } from '../../../componentFixtures';
+import { gitStore, type ShownGit } from '../../../componentFixtures';
 import {
   commitInfo,
   keyPress,
@@ -76,9 +76,11 @@ const renderToStaticMarkup = (node: React.ReactNode) =>
 
 const tracking = { upstream: 'origin/main', ahead: 0, behind: 0 };
 
-function withoutButtons(node: React.ReactNode): string {
+function bubblesOf(hash: string, shown: ShownGit = {}): string {
   return renderToStaticMarkup(
-    <GitStore value={gitStore({ hideDimmed: true })}>{node}</GitStore>,
+    <GitStore value={gitStore(shown)}>
+      <CommitBubbles hash={hash} />
+    </GitStore>,
   );
 }
 
@@ -204,16 +206,14 @@ suite('Commit list rows', () => {
   });
 
   test("puts a commit's bubbles on one line that can break between them", () => {
-    const html = withoutButtons(
-      <CommitBubbles
-        hash={'a'.repeat(40)}
-        refs={[
-          { kind: 'branch', name: 'main', commit: 'a'.repeat(40), tracking },
-          { kind: 'remote', name: 'origin/main', commit: 'a'.repeat(40) },
-        ]}
-        detached
-      />,
-    );
+    const html = bubblesOf('a'.repeat(40), {
+      hideDimmed: true,
+      headCommit: 'a'.repeat(40),
+      refs: [
+        { kind: 'branch', name: 'main', commit: 'a'.repeat(40), tracking },
+        { kind: 'remote', name: 'origin/main', commit: 'a'.repeat(40) },
+      ],
+    });
     assert.strictEqual(html.match(/class="bubble-line"/g)?.length, 1);
     assert.match(
       html,
@@ -222,50 +222,42 @@ suite('Commit list rows', () => {
   });
 
   test("offers pull and push on the checked-out branch's bubble in a commit's row", () => {
-    const html = renderToStaticMarkup(
-      <GitStore value={gitStore({ head: 'main' })}>
-        <CommitBubbles
-          hash={'a'.repeat(40)}
-          refs={[{ kind: 'branch', name: 'main', commit: 'a'.repeat(40) }]}
-          detached={false}
-        />
-      </GitStore>,
-    );
+    const html = bubblesOf('a'.repeat(40), {
+      head: 'main',
+      refs: [{ kind: 'branch', name: 'main', commit: 'a'.repeat(40) }],
+    });
     assert.match(html, /class="bubble-action[^"]*" title="Pull:/);
     assert.match(html, /class="bubble-action[^"]*" title="Push:/);
   });
 
   test("puts each remote's tag right after the local tag of its name, and the tags only on a remote after the rest", () => {
     const at = 'a'.repeat(40);
-    const html = withoutButtons(
-      <CommitBubbles
-        hash={at}
-        refs={[
-          { kind: 'branch', name: 'main', commit: at, tracking },
-          { kind: 'tag', name: 'v1', commit: at },
-          { kind: 'tag', name: 'v2', commit: at },
-          {
-            kind: 'remote-tag',
-            name: 'origin/v1',
-            commit: at,
-            remote: 'origin',
-          },
-          {
-            kind: 'remote-tag',
-            name: 'origin/v3',
-            commit: at,
-            remote: 'origin',
-          },
-          {
-            kind: 'remote-tag',
-            name: 'second/v1',
-            commit: at,
-            remote: 'second',
-          },
-        ]}
-        detached={false}
-      />,
-    );
+    const html = bubblesOf(at, {
+      hideDimmed: true,
+      refs: [
+        { kind: 'branch', name: 'main', commit: at, tracking },
+        { kind: 'tag', name: 'v1', commit: at },
+        { kind: 'tag', name: 'v2', commit: at },
+        {
+          kind: 'remote-tag',
+          name: 'origin/v1',
+          commit: at,
+          remote: 'origin',
+        },
+        {
+          kind: 'remote-tag',
+          name: 'origin/v3',
+          commit: at,
+          remote: 'origin',
+        },
+        {
+          kind: 'remote-tag',
+          name: 'second/v1',
+          commit: at,
+          remote: 'second',
+        },
+      ],
+    });
     assert.deepStrictEqual(
       [...html.matchAll(/class="badge [^"]*"[^>]*>([^<]+)</g)].map(
         ([, name]) => name,
@@ -275,22 +267,17 @@ suite('Commit list rows', () => {
   });
 
   test('offers pull and push on the bubble of a branch that is not checked out, with the counts of that branch', () => {
-    const html = renderToStaticMarkup(
-      <GitStore value={gitStore({ head: 'main' })}>
-        <CommitBubbles
-          hash={'a'.repeat(40)}
-          refs={[
-            {
-              kind: 'branch',
-              name: 'side',
-              commit: 'a'.repeat(40),
-              tracking: { upstream: 'origin/side', ahead: 3, behind: 0 },
-            },
-          ]}
-          detached={false}
-        />
-      </GitStore>,
-    );
+    const html = bubblesOf('a'.repeat(40), {
+      head: 'main',
+      refs: [
+        {
+          kind: 'branch',
+          name: 'side',
+          commit: 'a'.repeat(40),
+          tracking: { upstream: 'origin/side', ahead: 3, behind: 0 },
+        },
+      ],
+    });
     assert.match(
       html,
       /title="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">3<\/span>/,
@@ -299,9 +286,7 @@ suite('Commit list rows', () => {
 
   test('marks a detached HEAD on a commit without refs', () => {
     assert.match(
-      renderToStaticMarkup(
-        <CommitBubbles hash={'a'.repeat(40)} refs={[]} detached />,
-      ),
+      bubblesOf('a'.repeat(40), { headCommit: 'a'.repeat(40) }),
       /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
     );
   });
@@ -309,16 +294,12 @@ suite('Commit list rows', () => {
   test("marks a bookmarked commit with its hash after its refs and before the stash, as the search's bookmarks show it", () => {
     const at = 'a'.repeat(40);
     const bubbles = (refs: RefInfo[], stash: boolean) =>
-      renderToStaticMarkup(
-        <GitStore
-          value={gitStore({
-            bookmarks: [{ kind: 'commit', name: at }],
-            hideDimmed: true,
-          })}
-        >
-          <CommitBubbles hash={at} refs={refs} stash={stash} detached={false} />
-        </GitStore>,
-      );
+      bubblesOf(at, {
+        bookmarks: [{ kind: 'commit', name: at }],
+        hideDimmed: true,
+        refs,
+        stashes: stash ? [{ name: 'stash@{0}', commit: at, message: '' }] : [],
+      });
     assert.match(
       bubbles([{ kind: 'branch', name: 'main', commit: at, tracking }], true),
       /^<div class="bubble-line"><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge hash" title="[^"]*aaaaaaaaaa[^"]*">aaaaaaa<\/span><wbr\/><span class="badge stash">[^<]*<\/span><\/div>$/,
@@ -332,39 +313,25 @@ suite('Commit list rows', () => {
   test('leaves the hash of a bookmarked commit to its HEAD bubble when HEAD is detached at it', () => {
     const at = 'a'.repeat(40);
     assert.match(
-      renderToStaticMarkup(
-        <GitStore
-          value={gitStore({ bookmarks: [{ kind: 'commit', name: at }] })}
-        >
-          <CommitBubbles hash={at} refs={[]} detached />
-        </GitStore>,
-      ),
+      bubblesOf(at, {
+        bookmarks: [{ kind: 'commit', name: at }],
+        headCommit: at,
+      }),
       /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
     );
   });
 
   test('marks no commit bookmarked but the ones bookmarked', () => {
     assert.strictEqual(
-      renderToStaticMarkup(
-        <GitStore
-          value={gitStore({
-            bookmarks: [{ kind: 'commit', name: 'b'.repeat(40) }],
-          })}
-        >
-          <CommitBubbles hash={'a'.repeat(40)} refs={[]} detached={false} />
-        </GitStore>,
-      ),
+      bubblesOf('a'.repeat(40), {
+        bookmarks: [{ kind: 'commit', name: 'b'.repeat(40) }],
+      }),
       '',
     );
   });
 
   test('draws no bubble line for a commit without refs', () => {
-    assert.strictEqual(
-      renderToStaticMarkup(
-        <CommitBubbles hash={'a'.repeat(40)} refs={[]} detached={false} />,
-      ),
-      '',
-    );
+    assert.strictEqual(bubblesOf('a'.repeat(40)), '');
   });
 });
 
@@ -1188,13 +1155,19 @@ suite('Commit row', () => {
         commitDate: Date.UTC(2026, 8, 30, 11, 56),
       }),
       selected: undefined,
-      headCommit: 'a',
-      refs: [{ kind: 'branch' as const, name: 'main', commit: 'a' }],
-      detached: false,
       indent: 26,
       onSelect: (hash: string) => (picked = hash),
     };
-    const html = renderToStaticMarkup(<CommitRow {...props} />);
+    const store = gitStore({
+      head: 'main',
+      headCommit: 'a',
+      refs: [{ kind: 'branch', name: 'main', commit: 'a' }],
+    });
+    const html = renderToStaticMarkup(
+      <GitStore value={store}>
+        <CommitRow {...props} />
+      </GitStore>,
+    );
     assert.match(
       html,
       /^<div class="commit checked-out" style="padding-left:26px">/,
@@ -1211,7 +1184,9 @@ suite('Commit row', () => {
         <ShellStore
           value={createShellStore(noop, { dateFormat: 'DD.MM.YYYY' })}
         >
-          <CommitRow {...props} />
+          <GitStore value={store}>
+            <CommitRow {...props} />
+          </GitStore>
         </ShellStore>,
       ).includes(
         `<span class="date">${formatDate(props.commit.commitDate, 'DD.MM.YYYY')}</span>`,
@@ -1219,7 +1194,7 @@ suite('Commit row', () => {
     );
     assert.match(html, />main</);
     assert.doesNotMatch(html, /class="count"/);
-    const row = renderedBy(CommitRow, props);
+    const row = renderedBy(CommitRow, props, { git: store });
     assert.ok(
       isValidElement<{ onClick: (event: typeof plainClick) => void }>(row),
     );
@@ -1232,9 +1207,6 @@ suite('Commit row', () => {
       <CommitRow
         commit={commitInfo('a')}
         selected={undefined}
-        headCommit={undefined}
-        refs={[]}
-        detached={false}
         indent={8}
         onSelect={() => undefined}
         corner={<span className="corner" />}
@@ -1248,17 +1220,20 @@ suite('Commit row', () => {
 
   test('puts what it is given after its bubbles, as the whole message of a commit adds the rest of the message there', () => {
     const html = renderToStaticMarkup(
-      <CommitRow
-        commit={commitInfo('a')}
-        selected={undefined}
-        headCommit={undefined}
-        refs={[{ kind: 'branch', name: 'main', commit: 'a' }]}
-        detached={false}
-        indent={8}
-        onSelect={() => undefined}
+      <GitStore
+        value={gitStore({
+          refs: [{ kind: 'branch', name: 'main', commit: 'a' }],
+        })}
       >
-        <div className="added" />
-      </CommitRow>,
+        <CommitRow
+          commit={commitInfo('a')}
+          selected={undefined}
+          indent={8}
+          onSelect={() => undefined}
+        >
+          <div className="added" />
+        </CommitRow>
+      </GitStore>,
     );
     assert.match(html, />main<.*<div class="added"><\/div><\/div>$/s);
   });
@@ -1267,20 +1242,23 @@ suite('Commit row', () => {
     const props = {
       commit: commitInfo('s', { subject: 'On main: kept' }),
       selected: undefined,
-      headCommit: undefined,
-      refs: [],
-      stash: true,
-      detached: false,
       indent: 0,
       onSelect: noop,
     };
-    const html = renderToStaticMarkup(<CommitRow {...props} />);
+    const stashed = gitStore({
+      stashes: [{ name: 'stash@{0}', commit: 's', message: 'On main: kept' }],
+    });
+    const html = renderToStaticMarkup(
+      <GitStore value={stashed}>
+        <CommitRow {...props} />
+      </GitStore>,
+    );
     assert.match(html, /<span class="badge stash">stash<\/span>/);
     assert.doesNotMatch(html, /@\{/);
-    const row = renderedBy(CommitRow, props);
+    const row = renderedBy(CommitRow, props, { git: stashed });
     assert.ok(isValidElement<{ onContextMenu?: unknown }>(row));
     assert.strictEqual(row.props.onContextMenu, undefined);
-    const commitRow = renderedBy(CommitRow, { ...props, stash: false });
+    const commitRow = renderedBy(CommitRow, props);
     assert.ok(isValidElement<{ onContextMenu?: unknown }>(commitRow));
     assert.strictEqual(typeof commitRow.props.onContextMenu, 'function');
   });
@@ -1291,9 +1269,6 @@ suite('Commit row', () => {
     const row = renderedBy(CommitRow, {
       commit: commitInfo('a'),
       selected: 'b',
-      headCommit: undefined,
-      refs: [],
-      detached: false,
       indent: 0,
       onSelect: (hash: string) => picked.push(hash),
       onCompare: (hash: string) => compared.push(hash),

@@ -433,10 +433,6 @@ function CommitResultsSection({
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
-  const refsByCommit = useGit((state) => state.refsByCommit);
-  const stashCommits = useGit((state) => state.stashCommits);
-  const headCommit = useGit((state) => state.tab.repository?.headCommit);
-  const detached = useGit(detachedHead);
   if (found.length === 0) {
     const status =
       lookingUp && hash !== undefined
@@ -464,10 +460,6 @@ function CommitResultsSection({
             key={commit.hash}
             commit={commit}
             selected={active}
-            headCommit={headCommit}
-            refs={refsByCommit.get(commit.hash) ?? noRefs}
-            stash={stashCommits.has(commit.hash)}
-            detached={detached === commit.hash}
             indent={commitIndent}
             onSelect={onJump}
             highlight={query}

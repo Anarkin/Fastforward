@@ -19,6 +19,7 @@ import type {
   GitToHost,
   LastFetch,
   RefInfo,
+  StashInfo,
   WorktreeInfo,
 } from '../tools/git/shared/protocol';
 
@@ -45,6 +46,7 @@ export interface ShownGit {
   readonly lastFetch?: LastFetch;
   readonly worktrees?: readonly WorktreeInfo[];
   readonly refs?: readonly RefInfo[];
+  readonly stashes?: readonly StashInfo[];
   readonly tagRemote?: string;
   readonly bookmarks?: readonly Bookmark[];
   readonly hideDimmed?: boolean;
@@ -61,6 +63,7 @@ export function gitStore(
     lastFetch = {},
     worktrees,
     refs = [],
+    stashes = [],
     tagRemote,
     bookmarks = [],
     hideDimmed = false,
@@ -76,7 +79,7 @@ export function gitStore(
         head,
         headCommit,
         refs,
-        stashes: [],
+        stashes,
         ...(tagRemote === undefined ? {} : { tagRemote }),
       },
       ...tab,

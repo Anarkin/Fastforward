@@ -2743,20 +2743,17 @@ suite('Style', () => {
 
   test('draws bubbles in the flow of their line, starting where the other lines start, each kept within the line, cutting off its long name with an ellipsis', () => {
     const commit = rendered(
-      createElement(
-        GitStore,
-        { value: gitStore({ hideDimmed: true }) },
-        commitRow({
-          refs: repository.refs.map((ref) =>
-            ref.kind === 'branch'
-              ? {
-                  ...ref,
-                  tracking: { upstream: 'origin/main', ahead: 0, behind: 0 },
-                }
-              : ref,
-          ),
-        }),
-      ),
+      commitRow({
+        hideDimmed: true,
+        refs: repository.refs.map((ref) =>
+          ref.kind === 'branch'
+            ? {
+                ...ref,
+                tracking: { upstream: 'origin/main', ahead: 0, behind: 0 },
+              }
+            : ref,
+        ),
+      }),
     );
     const line = cascaded(withClass(commit, 'bubble-line'), 'line-height');
     for (const badge of allWithClass(commit, 'badge')) {

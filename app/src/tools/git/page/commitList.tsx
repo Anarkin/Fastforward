@@ -488,15 +488,12 @@ export const noRefs: readonly RefInfo[] = [];
 
 export const CommitBubbles = memo(function CommitBubbles({
   hash,
-  refs,
-  stash = false,
-  detached,
 }: {
   hash: string;
-  refs: readonly RefInfo[];
-  stash?: boolean;
-  detached: boolean;
 }) {
+  const refs = useGit((state) => state.refsByCommit.get(hash) ?? noRefs);
+  const stash = useGit((state) => state.stashCommits.has(hash));
+  const detached = useGit((state) => detachedHead(state) === hash);
   const bookmarked = useGit((state) => state.bookmarked.has(hash)) && !detached;
   if (!detached && refs.length === 0 && !stash && !bookmarked) {
     return null;
@@ -642,7 +639,6 @@ export function Commits({
   const opening = useGit(openingOf);
   const scrollTarget = useGit((state) => state.tab.scrollTarget);
   const workingTree = useGit((state) => state.tab.workingTree);
-  const refsByCommit = useGit((state) => state.refsByCommit);
   const stashes = useGit((state) => state.stashCommits);
   const selected = useGit((state) => state.tab.hash);
   const collapseMerges = useGit((state) => state.collapseMerges);
@@ -672,7 +668,6 @@ export function Commits({
   );
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();
-  const detached = useGit(detachedHead);
   const hasWorkingTree = workingTree !== undefined;
   const openMenu = useOpenMenu();
   const offset = hasWorkingTree ? 1 : 0;
@@ -943,10 +938,6 @@ export function Commits({
       <CommitRow
         commit={commit}
         selected={selected}
-        headCommit={headCommit}
-        refs={refsByCommit.get(commit.hash) ?? noRefs}
-        stash={stashes.has(commit.hash)}
-        detached={detached === commit.hash}
         indent={indent(index)}
         onSelect={onSelect}
         onCompare={onCompare}
@@ -1048,10 +1039,6 @@ export function Commits({
             corner={corner}
             commit={commit}
             selected={selected}
-            headCommit={headCommit}
-            refs={refsByCommit.get(commit.hash) ?? noRefs}
-            stash={stashes.has(commit.hash)}
-            detached={detached === commit.hash}
             indent={rowIndent}
             onSelect={noSelect}
           >
@@ -1097,10 +1084,6 @@ export function commitClass(
 export function CommitRow({
   commit,
   selected,
-  headCommit,
-  refs,
-  stash,
-  detached,
   indent,
   onSelect,
   onCompare,
@@ -1111,10 +1094,6 @@ export function CommitRow({
 }: {
   commit: CommitInfo;
   selected: string | undefined;
-  headCommit: string | undefined;
-  refs: readonly RefInfo[];
-  stash?: boolean;
-  detached: boolean;
   indent: number;
   onSelect: (hash: string) => void;
   onCompare?: (hash: string) => void;
@@ -1125,6 +1104,8 @@ export function CommitRow({
 }) {
   const openMenu = useOpenMenu();
   const dateFormat = useShell((state) => state.dateFormat);
+  const headCommit = useGit((state) => state.tab.repository?.headCommit);
+  const stash = useGit((state) => state.stashCommits.has(commit.hash));
   return (
     <div
       {...itemProps}
@@ -1155,12 +1136,7 @@ export function CommitRow({
           {formatDate(commit.commitDate, dateFormat)}
         </span>
       </div>
-      <CommitBubbles
-        hash={commit.hash}
-        refs={refs}
-        stash={stash}
-        detached={detached}
-      />
+      <CommitBubbles hash={commit.hash} />
       {children}
     </div>
   );

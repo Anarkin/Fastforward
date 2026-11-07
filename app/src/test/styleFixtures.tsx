@@ -2,6 +2,7 @@ import type {
   Bookmark,
   FileChange,
   GitToWebviewOf,
+  RefInfo,
   RepositoryState,
   WorktreeInfo,
 } from '../tools/git/shared/protocol';
@@ -151,25 +152,52 @@ export function worktreeBar(
   );
 }
 
-export function commitRow(
-  props: Partial<Parameters<typeof CommitRow>[0]> = {},
-): React.ReactElement {
+interface RowShown extends Partial<Parameters<typeof CommitRow>[0]> {
+  readonly refs?: readonly RefInfo[];
+  readonly stash?: boolean;
+  readonly detached?: boolean;
+  readonly head?: string;
+  readonly headCommit?: string;
+  readonly hideDimmed?: boolean;
+}
+
+export function commitRow({
+  refs = [],
+  stash = false,
+  detached = false,
+  head,
+  headCommit,
+  hideDimmed = false,
+  ...props
+}: RowShown = {}): React.ReactElement {
+  const commit = props.commit ?? commitInfo('a');
   return (
-    <CommitRow
-      commit={commitInfo('a')}
-      selected={undefined}
-      headCommit={undefined}
-      refs={[]}
-      detached={false}
-      indent={0}
-      onSelect={noop}
-      {...props}
-    />
+    <GitStore
+      value={gitStore({
+        head: detached
+          ? undefined
+          : (head ?? (headCommit === undefined ? undefined : 'main')),
+        headCommit: detached ? commit.hash : headCommit,
+        refs,
+        stashes: stash
+          ? [{ name: 'stash@{0}', commit: commit.hash, message: '' }]
+          : [],
+        hideDimmed,
+      })}
+    >
+      <CommitRow
+        commit={commit}
+        selected={undefined}
+        indent={0}
+        onSelect={noop}
+        {...props}
+      />
+    </GitStore>
   );
 }
 
 export function messagePanel(
-  props: Partial<Parameters<typeof CommitRow>[0]> = {},
+  props: RowShown = {},
   pinned = false,
 ): MarkupElement {
   return rendered(
@@ -534,7 +562,12 @@ export function shownRow(view: MarkupElement): MarkupElement {
 
 export function bubbles(checkedOut?: string): MarkupElement[] {
   return [
-    commitRow({ refs: repository.refs, stash: true, selected: 'a' }),
+    commitRow({
+      refs: repository.refs,
+      stash: true,
+      selected: 'a',
+      head: checkedOut,
+    }),
     commitRow({ refs: repository.refs, detached: true }),
     locationsPopupElement('', undefined, checkedOut),
     locationsPopupElement('m', undefined, checkedOut),
