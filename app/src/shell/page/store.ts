@@ -183,6 +183,13 @@ function received(
   }
 }
 
+export function activeTabOf({
+  tabs,
+  active,
+}: ShellSource): TabInfo | undefined {
+  return tabs?.find((tab) => tab.id === active);
+}
+
 export function createShellStore(
   post: (message: ToHost) => void,
   initial: Partial<ShellSource> = {},

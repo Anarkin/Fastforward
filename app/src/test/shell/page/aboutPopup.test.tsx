@@ -7,6 +7,9 @@ import {
   aboutText,
   CopyButton,
 } from '../../../shell/page/aboutPopup';
+import type { AboutInfo, ToHost } from '../../../shell/shared/protocol';
+import { createShellStore } from '../../../shell/page/store';
+import { withStores } from '../../componentFixtures';
 import { noop, renderedBy, tagWith } from '../../fixtures';
 
 const about = {
@@ -15,6 +18,16 @@ const about = {
   git: '2.56.0',
   system: 'Windows 11, build 26300, x64',
 };
+
+function aboutStore(shown: AboutInfo, post: (message: ToHost) => void = noop) {
+  return createShellStore(post, { about: shown, popups: ['about'] });
+}
+
+function aboutMarkup(shown: AboutInfo): string {
+  return renderToStaticMarkup(
+    withStores(<AboutPopup />, { shell: aboutStore(shown) }),
+  );
+}
 
 function buttonsIn(node: unknown): { onClick: () => void }[] {
   if (Array.isArray(node)) {
@@ -29,9 +42,7 @@ function buttonsIn(node: unknown): { onClick: () => void }[] {
 
 suite('About popup', () => {
   test('names the app, its version, the git it runs and where it lives, the address opening in the browser', () => {
-    const html = renderToStaticMarkup(
-      <AboutPopup about={about} onCopy={noop} onClose={noop} />,
-    );
+    const html = aboutMarkup(about);
     assert.match(html, /role="dialog"/);
     assert.match(html, />Fastforward</);
     assert.match(html, />Version 16\.0\.0 Dev</);
@@ -48,13 +59,7 @@ suite('About popup', () => {
       html.indexOf('git 2.56.0') < html.indexOf('Windows 11, build 26300, x64'),
     );
     assert.match(
-      renderToStaticMarkup(
-        <AboutPopup
-          about={{ ...about, development: false }}
-          onCopy={noop}
-          onClose={noop}
-        />,
-      ),
+      aboutMarkup({ ...about, development: false }),
       />Version 16\.0\.0</,
     );
   });
@@ -81,13 +86,17 @@ suite('About popup', () => {
       ].join('\n'),
     );
     const done: string[] = [];
-    const popup = renderedBy(AboutPopup, {
-      about,
-      onCopy: (text) => done.push(text),
-      onClose: () => done.push('closed'),
+    const store = aboutStore(about, (message) => {
+      if (message.type === 'copyText') {
+        done.push(message.text);
+      }
     });
+    const popup = renderedBy(AboutPopup, {}, { shell: store });
     for (const button of buttonsIn(popup)) {
       button.onClick();
+    }
+    if (!store.getState().popups.includes('about')) {
+      done.push('closed');
     }
     assert.deepStrictEqual(
       done.toSorted(),

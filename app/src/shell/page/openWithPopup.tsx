@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { ToWebviewOf } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import type { ToolId } from '../shared/tools';
 import { keymap } from '../shared/keymap';
@@ -7,7 +6,7 @@ import { nextMenuItem, useDismiss } from '../../ui/contextMenu';
 import { keyPressed } from '../../ui/shortcuts';
 import { CloseIcon, ToolIcon } from '../../ui/icons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
-import { useShellActions } from './store';
+import { useShell, useShellActions } from './store';
 
 function moveBetweenTools(event: React.KeyboardEvent<HTMLElement>): void {
   const move = keyPressed(keymap.menuItem, event);
@@ -32,11 +31,8 @@ function moveBetweenTools(event: React.KeyboardEvent<HTMLElement>): void {
   }
 }
 
-export function OpenWithPopup({
-  choice,
-}: {
-  choice: ToWebviewOf<'chooseTool'>;
-}) {
+export function OpenWithPopup() {
+  const choice = useShell((state) => state.choosing);
   const { openWith } = useShellActions();
   const onOpen = (tool: ToolId) => openWith(tool);
   const onClose = useCallback(() => openWith(undefined), [openWith]);
@@ -44,12 +40,15 @@ export function OpenWithPopup({
   useDismiss(popup, onClose, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
-  const { picked } = choice;
+  const picked = choice?.picked;
   useEffect(() => {
     popup.current
       ?.querySelector<HTMLElement>(`[data-tool="${picked}"]`)
       ?.focus();
   }, [picked]);
+  if (choice === undefined) {
+    return null;
+  }
   return (
     <div
       className="backdrop"

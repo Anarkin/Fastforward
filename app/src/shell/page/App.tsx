@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
-import {
-  appGroups,
-  keymap,
-  shortcutGroupsOf,
-  tabGroups,
-  type ShortcutGroup,
-} from '../shared/keymap';
+import { keymap } from '../shared/keymap';
 import type { TabInfo, ToHost, ToWebview } from '../shared/protocol';
 import { strings } from '../../shared/strings';
 import { tools, type ToolId, type ToWebviewOfTool } from '../shared/tools';
@@ -22,13 +16,7 @@ import { ShortcutsPopup } from './shortcutsPopup';
 import { createShellStore, ShellStore, type Confirming } from './store';
 import { newTabTrigger, TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './titleBar';
-import {
-  toolShortcuts,
-  viewerShortcuts,
-  compareShortcuts,
-  ToolViews,
-  type ToolListeners,
-} from './tools';
+import { ToolViews, type ToolListeners } from './tools';
 
 export function emptyState(
   tabs: readonly TabInfo[] | undefined,
@@ -73,25 +61,6 @@ export function confirmation(confirming: Confirming): {
       };
 }
 
-export function shortcutGroupsFor(
-  tool: ToolId | undefined,
-  kind: Pick<TabInfo, 'view' | 'compare'> = {},
-): ShortcutGroup[] {
-  return [
-    ...[
-      ...shortcutGroupsOf(tabGroups, strings.shortcuts.groups, keymap),
-      ...shortcutGroupsOf(appGroups, strings.shortcuts.groups, keymap),
-    ].map((group) => ({ ...group, pinned: true })),
-    ...(tool === undefined
-      ? []
-      : tool === 'commander' && kind.view === true
-        ? viewerShortcuts
-        : tool === 'git' && kind.compare === true
-          ? compareShortcuts
-          : toolShortcuts[tool]),
-  ];
-}
-
 function deliver<K extends ToolId>(
   listeners: ToolListeners,
   tool: K,
@@ -118,8 +87,7 @@ export function App({ name, post, listen }: Props) {
   const tabs = useStore(store, (state) => state.tabs);
   const active = useStore(store, (state) => state.active);
   const notices = useStore(store, (state) => state.notices);
-  const about = useStore(store, (state) => state.about);
-  const choosing = useStore(store, (state) => state.choosing);
+  const aboutKnown = useStore(store, (state) => state.about !== undefined);
   const popups = useStore(store, (state) => state.popups);
   const confirming = useStore(store, (state) => state.confirming);
   const openedMenu = useStore(store, (state) => state.menu);
@@ -132,17 +100,10 @@ export function App({ name, post, listen }: Props) {
     closeTab,
     confirm,
     cancel,
-    copyText,
     ready,
     newTab,
     openIn,
   } = store.getState();
-  const [closeShortcuts] = useState(
-    () => () => store.getState().showPopup('shortcuts', false),
-  );
-  const [closeAbout] = useState(
-    () => () => store.getState().showPopup('about', false),
-  );
 
   const activeTab = tabs?.find((tab) => tab.id === active);
   const activeTool = activeTab?.tool;
@@ -203,29 +164,11 @@ export function App({ name, post, listen }: Props) {
         {popups.map((popup) => {
           switch (popup) {
             case 'shortcuts':
-              return (
-                <ShortcutsPopup
-                  key={popup}
-                  groups={shortcutGroupsFor(activeTool, activeTab)}
-                  mac={document.documentElement.dataset.platform === 'darwin'}
-                  onClose={closeShortcuts}
-                />
-              );
+              return <ShortcutsPopup key={popup} />;
             case 'about':
-              return (
-                about && (
-                  <AboutPopup
-                    key={popup}
-                    about={about}
-                    onCopy={copyText}
-                    onClose={closeAbout}
-                  />
-                )
-              );
+              return aboutKnown && <AboutPopup key={popup} />;
             case 'openWith':
-              return (
-                choosing && <OpenWithPopup key={popup} choice={choosing} />
-              );
+              return <OpenWithPopup key={popup} />;
             default:
               return popup satisfies never;
           }
@@ -239,12 +182,7 @@ export function App({ name, post, listen }: Props) {
         )}
         <Notices />
         {emptyState(tabs)}
-        <ToolViews
-          active={activeTool}
-          comparing={activeTab?.compare === true ? activeTab.id : undefined}
-          post={post}
-          listeners={listeners}
-        />
+        <ToolViews post={post} listeners={listeners} />
       </div>
     </ShellStore>
   );

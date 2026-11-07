@@ -2,14 +2,44 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { keyLabels, keymap } from '../../../shell/shared/keymap';
+import type { TabInfo } from '../../../shell/shared/protocol';
+import type { ToolId } from '../../../shell/shared/tools';
+import {
+  keyLabels,
+  keymap,
+  setKeyPlatform,
+} from '../../../shell/shared/keymap';
 import { gitKeymap } from '../../../tools/git/shared/keymap';
-import { shortcutGroupsFor } from '../../../shell/page/App';
-import { ShortcutsPopup } from '../../../shell/page/shortcutsPopup';
-import { renderedBy, tagsWith } from '../../fixtures';
+import {
+  shortcutGroupsFor,
+  ShortcutsPopup,
+} from '../../../shell/page/shortcutsPopup';
+import { createShellStore } from '../../../shell/page/store';
+import { withStores } from '../../componentFixtures';
+import { noop, renderedBy, tagsWith } from '../../fixtures';
 
-const noop = () => undefined;
 const shortcutGroups = shortcutGroupsFor('git');
+
+function shortcutsStore(
+  tool?: ToolId,
+  kind: Pick<TabInfo, 'view' | 'compare'> = {},
+) {
+  return createShellStore(noop, {
+    popups: ['shortcuts'],
+    ...(tool === undefined
+      ? {}
+      : { tabs: [{ id: '1', tool, name: 'repo', ...kind }], active: '1' }),
+  });
+}
+
+function shortcutsMarkup(
+  tool?: ToolId,
+  kind?: Pick<TabInfo, 'view' | 'compare'>,
+): string {
+  return renderToStaticMarkup(
+    withStores(<ShortcutsPopup />, { shell: shortcutsStore(tool, kind) }),
+  );
+}
 
 function titles(
   tool: Parameters<typeof shortcutGroupsFor>[0],
@@ -19,29 +49,20 @@ function titles(
 }
 
 function pinnedRow(tool: 'git' | undefined): string | undefined {
-  return tagsWith(
-    renderToStaticMarkup(
-      <ShortcutsPopup
-        groups={shortcutGroupsFor(tool)}
-        mac={false}
-        onClose={noop}
-      />,
-    ),
-    'shortcuts-pinned',
-  )[0];
+  return tagsWith(shortcutsMarkup(tool), 'shortcuts-pinned')[0];
 }
 
 const lists = (tool: 'commander' | 'git', kind?: { view: true }) =>
-  tagsWith(
-    renderToStaticMarkup(
-      <ShortcutsPopup
-        groups={shortcutGroupsFor(tool, kind)}
-        mac={false}
-        onClose={noop}
-      />,
-    ),
-    'shortcuts-halves',
-  ).length;
+  tagsWith(shortcutsMarkup(tool, kind), 'shortcuts-halves').length;
+
+function onMac<T>(draw: () => T): T {
+  setKeyPlatform('darwin');
+  try {
+    return draw();
+  } finally {
+    setKeyPlatform('win32');
+  }
+}
 
 suite('Shortcuts popup', () => {
   test('splits the shortcuts of a single group below the pinned ones into two halves side by side under its heading, and leaves several groups to flow', () => {
@@ -232,13 +253,7 @@ suite('Shortcuts popup', () => {
 
   test('pins the shortcuts of the tabs and the app in a row of their own atop those of the tool, so they stay in place whatever tab is open', () => {
     for (const tool of ['git', undefined] as const) {
-      const html = renderToStaticMarkup(
-        <ShortcutsPopup
-          groups={shortcutGroupsFor(tool)}
-          mac={false}
-          onClose={noop}
-        />,
-      );
+      const html = shortcutsMarkup(tool);
       const [pinned] = tagsWith(html, 'shortcuts-pinned');
       assert.ok(pinned);
       const headings = [
@@ -265,9 +280,7 @@ suite('Shortcuts popup', () => {
   });
 
   test('says under the shortcuts that the keys moving in lists and closing popups work everywhere, as they are left off the screen', () => {
-    const html = renderToStaticMarkup(
-      <ShortcutsPopup groups={shortcutGroups} mac={false} onClose={noop} />,
-    );
+    const html = shortcutsMarkup('git');
     const [note] = tagsWith(html, 'shortcuts-note');
     assert.ok(note);
     assert.match(
@@ -284,17 +297,13 @@ suite('Shortcuts popup', () => {
   });
 
   test('takes its title from the menu entry that opens it, so both name it alike', () => {
-    const html = renderToStaticMarkup(
-      <ShortcutsPopup groups={shortcutGroups} mac={false} onClose={noop} />,
-    );
+    const html = shortcutsMarkup('git');
     assert.match(html, /aria-label="Shortcuts"/);
     assert.match(html, /<span>Shortcuts<\/span>/);
   });
 
   test('draws each group under its heading, every key in a key cap', () => {
-    const html = renderToStaticMarkup(
-      <ShortcutsPopup groups={shortcutGroups} mac={false} onClose={noop} />,
-    );
+    const html = shortcutsMarkup('git');
     assert.match(html, /role="dialog"/);
     assert.strictEqual(
       tagsWith(html, 'shortcuts-heading').length,
@@ -307,20 +316,14 @@ suite('Shortcuts popup', () => {
     assert.strictEqual(html.match(/<kbd>/g)?.length, caps);
     assert.match(html, /<kbd>Ctrl<\/kbd>\+<kbd>T<\/kbd>/);
     assert.match(
-      renderToStaticMarkup(
-        <ShortcutsPopup groups={shortcutGroups} mac onClose={noop} />,
-      ),
+      onMac(() => shortcutsMarkup('git')),
       /<kbd>\u2318<\/kbd>\+<kbd>T<\/kbd>/,
     );
   });
 
   test('closes on its close button', () => {
-    let closed = 0;
-    const popup = renderedBy(ShortcutsPopup, {
-      groups: shortcutGroups,
-      mac: false,
-      onClose: () => closed++,
-    });
+    const store = shortcutsStore('git');
+    const popup = renderedBy(ShortcutsPopup, {}, { shell: store });
     assert.ok(isValidElement<{ children: React.ReactElement }>(popup));
     const dialog = popup.props.children;
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(dialog));
@@ -330,6 +333,6 @@ suite('Shortcuts popup', () => {
     assert.ok(isValidElement<{ title: string; onClick: () => void }>(close));
     assert.strictEqual(close.props.title, 'Close');
     close.props.onClick();
-    assert.strictEqual(closed, 1);
+    assert.deepStrictEqual(store.getState().popups, []);
   });
 });

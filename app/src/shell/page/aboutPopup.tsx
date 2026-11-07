@@ -1,9 +1,16 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { AboutInfo } from '../shared/protocol';
 import { brand, strings } from '../../shared/strings';
 import { useDismiss } from '../../ui/contextMenu';
 import { CloseIcon } from '../../ui/icons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
+import { useShell, useShellActions } from './store';
 
 const copiedFor = 1500;
 
@@ -43,15 +50,10 @@ export function CopyButton({
   );
 }
 
-export function AboutPopup({
-  about,
-  onCopy,
-  onClose,
-}: {
-  about: AboutInfo;
-  onCopy: (text: string) => void;
-  onClose: () => void;
-}) {
+export function AboutPopup() {
+  const about = useShell((state) => state.about);
+  const { copyText: onCopy, showPopup } = useShellActions();
+  const onClose = useCallback(() => showPopup('about', false), [showPopup]);
   const popup = useRef<HTMLDivElement>(null);
   useDismiss(popup, onClose, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
@@ -66,6 +68,9 @@ export function AboutPopup({
     const timer = setTimeout(() => setCopied(false), copiedFor);
     return () => clearTimeout(timer);
   }, [copied]);
+  if (about === undefined) {
+    return null;
+  }
   return (
     <div
       className="backdrop"

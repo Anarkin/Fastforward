@@ -5,6 +5,8 @@ import { suite, test } from 'vitest';
 import { AboutPopup } from '../../shell/page/aboutPopup';
 import { dialogHoldsFocus, draggedTo } from '../../ui/modalDialog';
 import { ShortcutsPopup } from '../../shell/page/shortcutsPopup';
+import { createShellStore } from '../../shell/page/store';
+import { withStores } from '../componentFixtures';
 import { noop } from '../fixtures';
 
 const about = {
@@ -18,6 +20,7 @@ async function inPage(
   check: (page: {
     readonly document: Document;
     readonly before: HTMLElement;
+    readonly shell: ReturnType<typeof createShellStore>;
     readonly show: (popup: React.ReactNode) => Promise<void>;
     readonly press: (target: Element, shiftKey?: boolean) => boolean;
   }) => Promise<void>,
@@ -43,12 +46,14 @@ async function inPage(
     assert.ok(before && main);
     before.focus();
     const root = createRoot(main);
+    const shell = createShellStore(noop, { about });
     await check({
       document,
       before,
+      shell,
       show: (popup) =>
         act(async () => {
-          root.render(popup);
+          root.render(withStores(popup, { shell }));
         }),
       press: (target, shiftKey = false) =>
         target.dispatchEvent(
@@ -101,19 +106,16 @@ suite('Modal dialogs', () => {
   });
 
   test('move by dragging their header but not its close button, closing only by it or Escape, not by a click outside or the window losing focus, and a click on the backdrop leaving the keyboard with it', async () => {
-    await inPage(async ({ document, before, show }) => {
+    await inPage(async ({ document, before, shell, show }) => {
       const window = document.defaultView;
       assert.ok(window);
-      for (const shown of [
-        (onClose: () => void) => (
-          <AboutPopup about={about} onCopy={noop} onClose={onClose} />
-        ),
-        (onClose: () => void) => (
-          <ShortcutsPopup groups={[]} mac={false} onClose={onClose} />
-        ),
-      ]) {
-        let closed = 0;
-        await show(shown(() => closed++));
+      for (const [shown, popup] of [
+        [<AboutPopup key="about" />, 'about'],
+        [<ShortcutsPopup key="shortcuts" />, 'shortcuts'],
+      ] as const) {
+        shell.getState().showPopup(popup, true);
+        const open = () => shell.getState().popups.includes(popup);
+        await show(shown);
         const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
         const header = dialog?.querySelector('.shortcuts-title');
         const close = header?.querySelector('button');
@@ -161,13 +163,13 @@ suite('Modal dialogs', () => {
         await act(async () => {
           window.dispatchEvent(new window.Event('blur'));
         });
-        assert.strictEqual(closed, 0);
+        assert.ok(open());
         await act(async () => {
           window.dispatchEvent(
             new window.KeyboardEvent('keydown', { key: 'Escape' }),
           );
         });
-        assert.strictEqual(closed, 1);
+        assert.ok(!open());
         await show(null);
       }
     });
@@ -177,7 +179,7 @@ suite('Modal dialogs', () => {
     await inPage(async ({ document, show }) => {
       const window = document.defaultView;
       assert.ok(window);
-      await show(<AboutPopup about={about} onCopy={noop} onClose={noop} />);
+      await show(<AboutPopup />);
       const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
       const header = dialog?.querySelector('.shortcuts-title');
       assert.ok(dialog && header);
@@ -216,19 +218,8 @@ suite('Modal dialogs', () => {
   test('take the keyboard as they open, on their default button or else on themselves, telling assistive technology the app behind waits, and give it back as they close', async () => {
     await inPage(async ({ document, before, show }) => {
       for (const [popup, focused] of [
-        [
-          <AboutPopup key="about" about={about} onCopy={noop} onClose={noop} />,
-          '.about-copy',
-        ],
-        [
-          <ShortcutsPopup
-            groups={[]}
-            key="shortcuts"
-            mac={false}
-            onClose={noop}
-          />,
-          '[role="dialog"]',
-        ],
+        [<AboutPopup key="about" />, '.about-copy'],
+        [<ShortcutsPopup key="shortcuts" />, '[role="dialog"]'],
       ] as const) {
         await show(popup);
         const dialog = document.querySelector('[role="dialog"]');
@@ -243,7 +234,7 @@ suite('Modal dialogs', () => {
 
   test('keep Tab and Shift+Tab among their own controls, going round from the last to the first and back', async () => {
     await inPage(async ({ document, show, press }) => {
-      await show(<AboutPopup about={about} onCopy={noop} onClose={noop} />);
+      await show(<AboutPopup />);
       const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
       assert.ok(dialog);
       const stops = Array.from(

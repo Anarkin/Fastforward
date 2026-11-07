@@ -34,7 +34,6 @@ import {
   markerWidth,
   numberWidth,
 } from '../../../tools/git/page/overflow';
-import { shortcutGroupsFor } from '../../../shell/page/App';
 import { ShortcutsPopup } from '../../../shell/page/shortcutsPopup';
 import { SkeletonRows } from '../../../ui/skeleton';
 import { VirtualRows } from '../../../ui/virtualRows';
@@ -92,7 +91,7 @@ import {
 } from '../../styleFixtures';
 import { defaultScrolling } from '../../../ui/rowScroll';
 import { tabsStore } from '../../componentFixtures';
-import { ShellStore } from '../../../shell/page/store';
+import { createShellStore, ShellStore } from '../../../shell/page/store';
 
 const css = stylesheet();
 
@@ -296,16 +295,20 @@ function commitColumnTitle(autoFetchMinutes: number): MarkupElement {
 function aboutPopup(): MarkupElement {
   return withClass(
     rendered(
-      createElement(AboutPopup, {
-        about: {
-          version: '1.0.0',
-          development: false,
-          git: '2.52.0',
-          system: 'Linux 6.8.0, x64',
+      createElement(
+        ShellStore,
+        {
+          value: createShellStore(noop, {
+            about: {
+              version: '1.0.0',
+              development: false,
+              git: '2.52.0',
+              system: 'Linux 6.8.0, x64',
+            },
+          }),
         },
-        onCopy: noop,
-        onClose: noop,
-      }),
+        createElement(AboutPopup),
+      ),
     ),
     'shortcuts-popup',
   );
@@ -380,11 +383,13 @@ function divider(tab: MarkupElement): MarkupElement {
 function shortcutsPopup(): MarkupElement {
   return withClass(
     rendered(
-      createElement(ShortcutsPopup, {
-        groups: shortcutGroupsFor('git'),
-        mac: false,
-        onClose: noop,
-      }),
+      createElement(
+        ShellStore,
+        {
+          value: tabsStore([{ id: '1', tool: 'git', name: 'repo' }], '1'),
+        },
+        createElement(ShortcutsPopup),
+      ),
     ),
     'shortcuts-popup',
   );

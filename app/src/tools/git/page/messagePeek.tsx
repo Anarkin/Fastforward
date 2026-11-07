@@ -22,7 +22,7 @@ import { strings } from '../../../shared/strings';
 import { listenForDismiss } from '../../../ui/contextMenu';
 import { CloseIcon, PinIcon } from '../../../ui/icons';
 import { useBinding } from '../../../ui/shortcuts';
-import { KeyCombo } from '../../../shell/page/shortcutsPopup';
+import { KeyCombo } from '../../../ui/keyCombo';
 
 export type Holding = 'none' | 'held' | 'spoiled';
 

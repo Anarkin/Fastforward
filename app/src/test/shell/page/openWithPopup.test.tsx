@@ -5,7 +5,14 @@ import { suite, test } from 'vitest';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import { OpenWithPopup } from '../../../shell/page/openWithPopup';
 import { strings } from '../../../shared/strings';
+import { createShellStore, ShellStore } from '../../../shell/page/store';
 import { renderIn } from '../../componentFixtures';
+
+const noop = () => undefined;
+
+function choosingStore(choice: ToWebviewOf<'chooseTool'>) {
+  return createShellStore(noop, { choosing: choice, popups: ['openWith'] });
+}
 
 function question(
   folders: readonly string[],
@@ -42,15 +49,18 @@ suite('Open With popup', () => {
       assert.ok(main);
       const root = createRoot(main);
       const focused = () => dom.window.document.activeElement?.textContent;
+      const store = choosingStore(question(['/plain'], 'commander'));
       await act(async () => {
         renderIn(
           root,
-          <OpenWithPopup choice={question(['/plain'], 'commander')} />,
+          <ShellStore value={store}>
+            <OpenWithPopup />
+          </ShellStore>,
         );
       });
       assert.strictEqual(focused(), strings.tools.commander);
       await act(async () => {
-        renderIn(root, <OpenWithPopup choice={question(['/repo'], 'git')} />);
+        store.getState().receive(question(['/repo'], 'git'));
       });
       assert.strictEqual(focused(), strings.tools.git);
       await act(async () => {
@@ -94,7 +104,9 @@ suite('Open With popup', () => {
       await act(async () => {
         renderIn(
           root,
-          <OpenWithPopup choice={question(['/plain'], 'commander')} />,
+          <ShellStore value={choosingStore(question(['/plain'], 'commander'))}>
+            <OpenWithPopup />
+          </ShellStore>,
         );
       });
       assert.strictEqual(focused(), strings.tools.commander);

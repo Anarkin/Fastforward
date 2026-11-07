@@ -31,6 +31,7 @@ import type {
   TerminalToWebview,
 } from '../../tools/terminal/shared/protocol';
 import { GitTool } from '../../tools/git/page/tool';
+import { activeTabOf, useShell } from './store';
 
 export type ToolListeners = {
   readonly [K in ToolId]: Set<(message: ToWebviewOfTool<K>) => void>;
@@ -64,16 +65,17 @@ export const viewerShortcuts: readonly ShortcutGroup[] = shortcutGroupsOf(
 );
 
 export function ToolViews({
-  active,
   post,
   listeners,
-  comparing,
 }: {
-  active: ToolId | undefined;
-  comparing: string | undefined;
   post: (message: ToHost) => void;
   listeners: ToolListeners;
 }) {
+  const active = useShell((state) => activeTabOf(state)?.tool);
+  const comparing = useShell((state) => {
+    const tab = activeTabOf(state);
+    return tab?.compare === true ? tab.id : undefined;
+  });
   const postGit = useCallback(
     (message: GitToHost) => post({ type: 'tool', tool: 'git', message }),
     [post],
