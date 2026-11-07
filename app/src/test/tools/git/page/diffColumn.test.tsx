@@ -1,8 +1,19 @@
 import * as assert from 'node:assert';
-import { isValidElement } from 'react';
+import { JSDOM } from 'jsdom';
+import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { DiffOptions } from '../../../../tools/git/page/diffColumn';
+import {
+  DiffLanguage,
+  DiffOptions,
+} from '../../../../tools/git/page/diffColumn';
+import {
+  createGitStore,
+  languageKeyOf,
+  pickedFor,
+} from '../../../../tools/git/page/store';
+import { emptyTabView } from '../../../../tools/git/page/tabView';
+import { createShellStore } from '../../../../shell/page/store';
 import { defaultTextView } from '../../../../ui/textView';
 import {
   inStores,
@@ -59,6 +70,47 @@ function optionButtons(shown: ShownOptions = {}) {
 }
 
 suite('Diff options', () => {
+  test('forgets the language picked for a file once another file is shown, as it did before the pick was kept in the store, so the file shows in the language its name tells on coming back', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const tab = { ...emptyTabView, root: '/repo', hash: 'h', path: 'a.txt' };
+      const git = createGitStore(() => undefined, { tab });
+      const shell = createShellStore(() => undefined);
+      const show = (path: string) =>
+        act(async () => {
+          git.setState({ tab: { ...tab, path } });
+          root.render(
+            inStores({ git, shell }, <DiffLanguage comparing={undefined} />),
+          );
+        });
+      await show('a.txt');
+      const key = languageKeyOf(undefined, tab);
+      git.getState().pickLanguage(key, 'python');
+      await show('a.txt');
+      assert.strictEqual(pickedFor(key)(git.getState()), 'python');
+      await show('b.txt');
+      await show('a.txt');
+      assert.strictEqual(pickedFor(key)(git.getState()), undefined);
+      await act(async () => root.unmount());
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
   test('shows the file entire on one toggle, kept for every file, and offers it whatever is selected, as it applies whenever one file is shown', () => {
     assert.deepStrictEqual(optionButtons(), [
       'off enabled',

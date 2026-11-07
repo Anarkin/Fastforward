@@ -146,7 +146,8 @@ export function DiffLanguage({ comparing }: { comparing: string | undefined }) {
   const picked = useGit(pickedFor(key));
   const textView = useShell((state) => state.textView);
   const { changeTextView } = useShellActions();
-  const { pickLanguage } = useGitActions();
+  const { pickLanguage, seeLanguageKey } = useGitActions();
+  useEffect(() => seeLanguageKey(key), [key, seeLanguageKey]);
   const { choice, choose } = useLanguageChoice(
     key,
     {

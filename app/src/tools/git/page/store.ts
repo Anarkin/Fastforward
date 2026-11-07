@@ -176,6 +176,7 @@ interface GitActions {
     key: string | undefined,
     language: string | undefined,
   ) => void;
+  readonly seeLanguageKey: (key: string | undefined) => void;
 }
 
 const gitDefaults: GitSource = {
@@ -688,6 +689,12 @@ export function createGitStore(
       toggleBookmark: (bookmark) =>
         get().changeBookmarks(toggleBookmark(get().bookmarks, bookmark)),
       menuItems: (target) => menuItemsOf(get(), target),
+      seeLanguageKey: (key) =>
+        set((state) =>
+          state.pickedLanguage === undefined || state.pickedLanguage.key === key
+            ? state
+            : { pickedLanguage: undefined },
+        ),
       pickLanguage: (key, language) =>
         set({
           pickedLanguage:

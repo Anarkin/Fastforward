@@ -495,6 +495,16 @@ suite('Git store', () => {
     assert.strictEqual(store.getState().pickedLanguage, undefined);
   });
 
+  test('forgets the language picked for a file once another is shown, so it is chosen anew on coming back, but keeps it while the same file is shown again', () => {
+    const store = createGitStore(noop);
+    store.getState().pickLanguage('one', 'python');
+    store.getState().seeLanguageKey('one');
+    assert.strictEqual(pickedFor('one')(store.getState()), 'python');
+    store.getState().seeLanguageKey('two');
+    store.getState().seeLanguageKey('one');
+    assert.strictEqual(pickedFor('one')(store.getState()), undefined);
+  });
+
   test('selects a commit at once and asks the main process for it, holding the ask while a key repeats, unselecting the one selected again, and comparing another with it', () => {
     vi.useFakeTimers();
     try {
