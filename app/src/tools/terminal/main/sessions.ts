@@ -45,6 +45,14 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function attempt(act: () => void): void {
+  try {
+    act();
+  } catch {
+    return;
+  }
+}
+
 class Session {
   private pty: Pty | undefined;
   private listeners: Disposable[] = [];
@@ -70,7 +78,7 @@ class Session {
     private readonly limits: FlowLimits,
     private readonly timer: Timer,
     scrollback: number,
-    windowsPty: WindowsPty | undefined,
+    private readonly windowsPty: WindowsPty | undefined,
     place: FolderPlace,
   ) {
     this.mirror = createMirror({ columns, rows, scrollback, windowsPty });
@@ -126,6 +134,9 @@ class Session {
           this.stopListening();
           this.take(line(strings.terminal.exited(exitCode)));
           this.end();
+          if (this.windowsPty !== undefined) {
+            attempt(() => pty.kill());
+          }
         }, this.limits.exitMilliseconds);
       }),
     ];
@@ -141,7 +152,7 @@ class Session {
     }
     this.columns = columns;
     this.rows = rows;
-    this.pty?.resize(columns, rows);
+    attempt(() => this.pty?.resize(columns, rows));
     this.mirror.terminal.resize(columns, rows);
   }
 

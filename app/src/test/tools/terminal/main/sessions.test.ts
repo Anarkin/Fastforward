@@ -10,6 +10,7 @@ import type {
 } from '../../../../tools/terminal/main/hostProtocol';
 import { PtyHost } from '../../../../tools/terminal/main/sessions';
 import { strings } from '../../../../shared/strings';
+import type { WindowsPty } from '../../../../tools/terminal/shared/protocol';
 import { fakePtys, until } from '../../../fakePty';
 import { fakeTimer } from '../../../fakeTimer';
 
@@ -20,7 +21,7 @@ const launch: ShellLaunch = {
   env: { TERM: 'xterm-256color' },
 };
 
-function host(limits: Partial<FlowLimits> = {}) {
+function host(limits: Partial<FlowLimits> = {}, windowsPty?: WindowsPty) {
   const ptys = fakePtys();
   const clock = fakeTimer();
   const events: HostEvent[] = [];
@@ -29,8 +30,10 @@ function host(limits: Partial<FlowLimits> = {}) {
     (event) => events.push(event),
     { ...flowLimits, ...limits },
     clock.timer,
-    undefined,
-    { platform: 'linux', hostname: 'box' },
+    windowsPty,
+    windowsPty === undefined
+      ? { platform: 'linux', hostname: 'box' }
+      : { platform: 'win32', hostname: 'box' },
   );
   const start = (columns = 80, rows = 24) =>
     ptyHost.receive({
@@ -204,6 +207,33 @@ suite('Terminal sessions', () => {
     await attach(120, 40);
     assert.deepStrictEqual(ptys.last().written, ['ls\r']);
     assert.deepStrictEqual(ptys.last().sizes, [[120, 40]]);
+  });
+
+  test('frees a shell that exited on its own once its last output is told, as ConPTY keeps its console and the reader of its output until it is killed, but signals none on other systems, where its process id may belong to another process by then', async () => {
+    for (const windowsPty of [
+      { backend: 'conpty', buildNumber: 26100 } as const,
+      undefined,
+    ]) {
+      const { ptys, clock, start, attach } = host({}, windowsPty);
+      start();
+      await attach();
+      ptys.last().exit(0);
+      assert.strictEqual(ptys.last().killed, false);
+      await clock.fire();
+      assert.strictEqual(ptys.last().killed, windowsPty !== undefined);
+    }
+  });
+
+  test('goes on when a shell that is exiting refuses to be resized, as one process carries every shell', async () => {
+    const { ptyHost, ptys, start, attach } = host();
+    start();
+    await attach();
+    ptys.last().resize = () => {
+      throw new Error('Cannot resize a pty that has already exited');
+    };
+    assert.doesNotThrow(() =>
+      ptyHost.receive({ type: 'resize', id: '1', columns: 100, rows: 30 }),
+    );
   });
 
   test('tells of an exit a while after it, so the last output comes first, with a line giving the exit code', async () => {
