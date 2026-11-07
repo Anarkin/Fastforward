@@ -17,6 +17,7 @@ import {
   type CommandPlace,
   type SyncCommandFiles,
 } from '../../main/terminalCommand';
+import { strings } from '../../shared/strings';
 import { removeFolder, tempFolder } from '../repositories';
 
 const script = [
@@ -278,6 +279,13 @@ suite('Terminal command', () => {
     await assert.rejects(
       installCommand(linked, files, () => true, searched),
       /disk full/,
+    );
+  });
+
+  test('says the ff the AppImage comes with is missing when it is, rather than naming only where it should be', async () => {
+    await assert.rejects(
+      installCommand(copied, new MemoryFiles(), () => true, searched),
+      { message: strings.errors.commandScriptMissing(copied.script) },
     );
   });
 

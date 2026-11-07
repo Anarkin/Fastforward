@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { strings } from '../shared/strings';
 import { isMissing } from '../tools/git/main/cli/files';
 
 const command = 'ff';
@@ -202,7 +203,7 @@ async function appImageScript(
 ): Promise<string> {
   const script = await files.read(place.script);
   if (script.kind !== 'file') {
-    throw new Error(place.script);
+    throw new Error(strings.errors.commandScriptMissing(place.script));
   }
   return scriptForAppImage(script.text, place.appImage);
 }
