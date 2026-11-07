@@ -1,0 +1,182 @@
+import { keymap, letterTyped } from '../../../shell/shared/keymap';
+import {
+  listMoveOf,
+  moveInList,
+  type VisibleRows,
+} from '../../../ui/listMoves';
+import { keyPressed } from '../../../ui/shortcuts';
+import { commanderKeymap } from '../shared/keymap';
+import { parentFolder, type Side } from '../shared/protocol';
+import { deleteKeys, menuKeys, opens, passedKeys, type Row } from './listing';
+import { moveInGrid } from './tiles';
+
+export type PaneAct =
+  | {
+      readonly kind: 'delete';
+      readonly names: readonly string[];
+      readonly permanently: boolean;
+    }
+  | {
+      readonly kind: 'menu';
+      readonly names: readonly string[];
+      readonly extended: boolean;
+    }
+  | { readonly kind: 'filterLetter'; readonly letter: string }
+  | { readonly kind: 'openFilter' }
+  | { readonly kind: 'stopFiltering' }
+  | { readonly kind: 'switchSide' }
+  | { readonly kind: 'compare' }
+  | { readonly kind: 'view'; readonly name: string }
+  | { readonly kind: 'openOnSide'; readonly side: Side; readonly name: string }
+  | { readonly kind: 'open'; readonly name: string }
+  | { readonly kind: 'openRepository'; readonly name: string }
+  | {
+      readonly kind: 'mark';
+      readonly keys: readonly string[];
+      readonly marked: boolean;
+      readonly select: string;
+    }
+  | { readonly kind: 'select'; readonly key: string };
+
+export interface PaneKeys {
+  readonly rows: readonly Row[];
+  readonly selected: string | undefined;
+  readonly selectedIndex: number;
+  readonly marked: ReadonlySet<string> | undefined;
+  readonly filtering: boolean;
+  readonly parent: boolean;
+  readonly tiled: boolean;
+  readonly across: number;
+  readonly visible: VisibleRows;
+}
+
+const done = {};
+
+export function paneKey(
+  event: Parameters<typeof keyPressed>[1],
+  {
+    rows,
+    selected,
+    selectedIndex,
+    marked,
+    filtering,
+    parent,
+    tiled,
+    across,
+    visible,
+  }: PaneKeys,
+): { readonly act?: PaneAct } | undefined {
+  const row = selectedIndex === -1 ? undefined : rows[selectedIndex];
+  const permanently = keyPressed(commanderKeymap.deleteItems, event);
+  if (permanently !== undefined) {
+    const names = deleteKeys(rows, selected, marked);
+    return names.length > 0
+      ? { act: { kind: 'delete', names, permanently } }
+      : done;
+  }
+  const extended = keyPressed(commanderKeymap.systemMenu, event);
+  if (extended !== undefined) {
+    const names =
+      selected === undefined ? [] : menuKeys(rows, selected, marked);
+    return names.length > 0 ? { act: { kind: 'menu', names, extended } } : done;
+  }
+  const letter =
+    keyPressed(keymap.mainMenu, event) === undefined &&
+    keyPressed(commanderKeymap.filterLetter, event) !== undefined
+      ? letterTyped(event)
+      : undefined;
+  if (letter !== undefined) {
+    return { act: { kind: 'filterLetter', letter } };
+  }
+  if (keyPressed(commanderKeymap.filter, event) !== undefined) {
+    return { act: { kind: 'openFilter' } };
+  }
+  if (
+    filtering &&
+    keyPressed(commanderKeymap.stopFiltering, event) !== undefined
+  ) {
+    return { act: { kind: 'stopFiltering' } };
+  }
+  if (keyPressed(commanderKeymap.side, event) !== undefined) {
+    return { act: { kind: 'switchSide' } };
+  }
+  if (keyPressed(commanderKeymap.compare, event) !== undefined) {
+    return { act: { kind: 'compare' } };
+  }
+  if (keyPressed(commanderKeymap.view, event) !== undefined) {
+    return row?.entry !== undefined && !row.entry.folder
+      ? { act: { kind: 'view', name: row.key } }
+      : done;
+  }
+  const side = keyPressed(commanderKeymap.openOnSide, event);
+  if (side !== undefined) {
+    return row === undefined
+      ? done
+      : { act: { kind: 'openOnSide', side, name: row.key } };
+  }
+  if (keyPressed(commanderKeymap.parentFolder, event) !== undefined) {
+    return parent ? { act: { kind: 'open', name: parentFolder } } : done;
+  }
+  if (keyPressed(commanderKeymap.openRepository, event) !== undefined) {
+    return row?.repository === true
+      ? { act: { kind: 'openRepository', name: row.key } }
+      : undefined;
+  }
+  if (keyPressed(commanderKeymap.openFolder, event) !== undefined) {
+    return row !== undefined && opens(row)
+      ? { act: { kind: 'open', name: row.key } }
+      : undefined;
+  }
+  const marking = keyPressed(commanderKeymap.markMoving, event);
+  if (marking !== undefined) {
+    if (row === undefined) {
+      return done;
+    }
+    const moved = tiled
+      ? moveInGrid(marking, selectedIndex, rows.length, across, visible)
+      : marking === 'left' || marking === 'right'
+        ? undefined
+        : moveInList(marking, selectedIndex, rows.length, visible);
+    const next = moved ?? selectedIndex;
+    return {
+      act: {
+        kind: 'mark',
+        keys: passedKeys(rows, selectedIndex, next),
+        marked: !marked?.has(row.key),
+        select: rows[next].key,
+      },
+    };
+  }
+  if (keyPressed(commanderKeymap.toggleMark, event) !== undefined) {
+    if (row === undefined) {
+      return done;
+    }
+    return {
+      act: {
+        kind: 'mark',
+        keys: [row.key],
+        marked: !marked?.has(row.key),
+        select: rows[Math.min(selectedIndex + 1, rows.length - 1)].key,
+      },
+    };
+  }
+  const sideways = tiled
+    ? keyPressed(commanderKeymap.moveAcross, event)
+    : undefined;
+  const move = listMoveOf(event);
+  if (sideways === undefined && move === undefined) {
+    return undefined;
+  }
+  const from = selectedIndex === -1 ? undefined : selectedIndex;
+  const next =
+    sideways !== undefined
+      ? moveInGrid(sideways, from, rows.length, across, visible)
+      : move === undefined
+        ? undefined
+        : tiled
+          ? moveInGrid(move, from, rows.length, across, visible)
+          : moveInList(move, from, rows.length, visible);
+  return next === undefined
+    ? done
+    : { act: { kind: 'select', key: rows[next].key } };
+}

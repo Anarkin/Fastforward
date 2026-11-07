@@ -7,7 +7,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
-import { moveInGrid, tileColumns, tileWidthOf } from './tiles';
+import { tileColumns, tileWidthOf } from './tiles';
 import { iconUrl, thumbnailUrl, type IconSource } from '../shared/icons';
 import { imageType, maxImageSize, vectorType } from '../../../shared/images';
 import {
@@ -16,16 +16,14 @@ import {
   type FillItem,
 } from '../../../ui/thumbnails';
 import { commanderKeymap } from '../shared/keymap';
-import { clicked, keymap, letterTyped } from '../../../shell/shared/keymap';
-import { parentFolder, type Entry, type Side } from '../shared/protocol';
+import { clicked } from '../../../shell/shared/keymap';
+import type { Entry, Side } from '../shared/protocol';
 import { formatSize } from './format';
 import {
   filteredRows,
   filteredSelection,
-  deleteKeys,
   goesInto,
   opens,
-  passedKeys,
   menuKeys,
   rangeKeys,
   type Row,
@@ -53,14 +51,13 @@ import {
   ShieldIcon,
   ToolIcon,
 } from '../../../ui/icons';
-import { listMoveOf, moveInList } from '../../../ui/listMoves';
 import { MenuButton } from '../../../ui/menu';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { keyPressed } from '../../../ui/shortcuts';
 import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
 import { fileColorOf } from './fileColors';
 import { PathTitle } from './pathTitle';
+import { paneKey, type PaneAct } from './paneKeys';
 
 declare module 'react' {
   interface CSSProperties {
@@ -575,6 +572,61 @@ export function Pane({
     </div>
   );
 
+  const act = (action: PaneAct) => {
+    switch (action.kind) {
+      case 'delete':
+        onDelete(action.names, action.permanently);
+        return;
+      case 'menu': {
+        const box = body.current
+          ?.querySelector('.commander-row.selected')
+          ?.getBoundingClientRect();
+        if (box !== undefined) {
+          onShellMenu(
+            action.names,
+            { x: box.left, y: box.bottom },
+            action.extended,
+          );
+        }
+        return;
+      }
+      case 'filterLetter':
+        filterTo(query + action.letter);
+        setFocusAsks(({ count }) => ({ count: count + 1, select: false }));
+        return;
+      case 'openFilter':
+        openFilter();
+        return;
+      case 'stopFiltering':
+        setFilter(undefined);
+        return;
+      case 'switchSide':
+        onSwitchSide();
+        return;
+      case 'compare':
+        onCompare();
+        return;
+      case 'view':
+        onView(action.name);
+        return;
+      case 'openOnSide':
+        onOpenOnSide(action.side, action.name);
+        return;
+      case 'open':
+        onOpen(action.name);
+        return;
+      case 'openRepository':
+        onOpenRepository(action.name);
+        return;
+      case 'mark':
+        onMark(action.keys, action.marked);
+        onSelect(action.select);
+        return;
+      case 'select':
+        onSelect(action.key);
+    }
+  };
+
   return (
     <section
       className={`column commander-pane${active ? '' : ' inactive'}`}
@@ -714,174 +766,23 @@ export function Pane({
             notchRows={tiled ? 1 : undefined}
             scrolling={scrolling}
             onKeyDown={(event, visible) => {
-              const permanently = keyPressed(
-                commanderKeymap.deleteItems,
-                event,
-              );
-              if (permanently !== undefined) {
-                event.preventDefault();
-                const names = deleteKeys(rows, pane?.selected, marked);
-                if (names.length > 0) {
-                  onDelete(names, permanently);
-                }
-                return;
-              }
-              const menu = keyPressed(commanderKeymap.systemMenu, event);
-              if (menu !== undefined) {
-                event.preventDefault();
-                const names =
-                  pane?.selected === undefined
-                    ? []
-                    : menuKeys(rows, pane.selected, marked);
-                const box = body.current
-                  ?.querySelector('.commander-row.selected')
-                  ?.getBoundingClientRect();
-                if (names.length > 0 && box !== undefined) {
-                  onShellMenu(names, { x: box.left, y: box.bottom }, menu);
-                }
-                return;
-              }
-              const letter =
-                keyPressed(keymap.mainMenu, event) === undefined &&
-                keyPressed(commanderKeymap.filterLetter, event) !== undefined
-                  ? letterTyped(event)
-                  : undefined;
-              if (letter !== undefined) {
-                event.preventDefault();
-                filterTo(query + letter);
-                setFocusAsks(({ count }) => ({
-                  count: count + 1,
-                  select: false,
-                }));
-                return;
-              }
-              if (keyPressed(commanderKeymap.filter, event) !== undefined) {
-                event.preventDefault();
-                openFilter();
-                return;
-              }
-              if (
-                filtering &&
-                keyPressed(commanderKeymap.stopFiltering, event) !== undefined
-              ) {
-                event.preventDefault();
-                setFilter(undefined);
-                return;
-              }
-              if (keyPressed(commanderKeymap.side, event) !== undefined) {
-                event.preventDefault();
-                onSwitchSide();
-                return;
-              }
-              if (keyPressed(commanderKeymap.compare, event) !== undefined) {
-                event.preventDefault();
-                onCompare();
-                return;
-              }
-              if (keyPressed(commanderKeymap.view, event) !== undefined) {
-                event.preventDefault();
-                const row =
-                  selectedIndex === -1 ? undefined : rows[selectedIndex];
-                if (row?.entry !== undefined && !row.entry.folder) {
-                  onView(row.key);
-                }
-                return;
-              }
-              const onSide = keyPressed(commanderKeymap.openOnSide, event);
-              if (onSide !== undefined) {
-                event.preventDefault();
-                const row =
-                  selectedIndex === -1 ? undefined : rows[selectedIndex];
-                if (row !== undefined) {
-                  onOpenOnSide(onSide, row.key);
-                }
-                return;
-              }
-              if (
-                keyPressed(commanderKeymap.parentFolder, event) !== undefined
-              ) {
-                event.preventDefault();
-                if (pane?.parent) {
-                  onOpen(parentFolder);
-                }
-                return;
-              }
-              if (
-                keyPressed(commanderKeymap.openRepository, event) !== undefined
-              ) {
-                const row =
-                  selectedIndex === -1 ? undefined : rows[selectedIndex];
-                if (row?.repository === true) {
-                  event.preventDefault();
-                  onOpenRepository(row.key);
-                }
-                return;
-              }
-              if (keyPressed(commanderKeymap.openFolder, event) !== undefined) {
-                const row =
-                  selectedIndex === -1 ? undefined : rows[selectedIndex];
-                if (row !== undefined && opens(row)) {
-                  event.preventDefault();
-                  onOpen(row.key);
-                }
-                return;
-              }
-              const marking = keyPressed(commanderKeymap.markMoving, event);
-              if (marking !== undefined) {
-                event.preventDefault();
-                if (selectedIndex === -1) {
-                  return;
-                }
-                const moved = tiled
-                  ? moveInGrid(
-                      marking,
-                      selectedIndex,
-                      rows.length,
-                      across,
-                      visible,
-                    )
-                  : marking === 'left' || marking === 'right'
-                    ? undefined
-                    : moveInList(marking, selectedIndex, rows.length, visible);
-                const next = moved ?? selectedIndex;
-                onMark(
-                  passedKeys(rows, selectedIndex, next),
-                  !marked?.has(rows[selectedIndex].key),
-                );
-                onSelect(rows[next].key);
-                return;
-              }
-              if (keyPressed(commanderKeymap.toggleMark, event) !== undefined) {
-                event.preventDefault();
-                if (selectedIndex === -1) {
-                  return;
-                }
-                const { key } = rows[selectedIndex];
-                onMark([key], !marked?.has(key));
-                onSelect(
-                  rows[Math.min(selectedIndex + 1, rows.length - 1)].key,
-                );
-                return;
-              }
-              const sideways = tiled
-                ? keyPressed(commanderKeymap.moveAcross, event)
-                : undefined;
-              const move = listMoveOf(event);
-              if (sideways === undefined && move === undefined) {
+              const pressed = paneKey(event, {
+                rows,
+                selected: pane?.selected,
+                selectedIndex,
+                marked,
+                filtering,
+                parent: pane?.parent === true,
+                tiled,
+                across,
+                visible,
+              });
+              if (pressed === undefined) {
                 return;
               }
               event.preventDefault();
-              const from = selectedIndex === -1 ? undefined : selectedIndex;
-              const next =
-                sideways !== undefined
-                  ? moveInGrid(sideways, from, rows.length, across, visible)
-                  : move === undefined
-                    ? undefined
-                    : tiled
-                      ? moveInGrid(move, from, rows.length, across, visible)
-                      : moveInList(move, from, rows.length, visible);
-              if (next !== undefined) {
-                onSelect(rows[next].key);
+              if (pressed.act !== undefined) {
+                act(pressed.act);
               }
             }}
           />
