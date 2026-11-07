@@ -58,10 +58,17 @@ function body(
     pull: async (controller) => {
       const length = Math.min(chunkBytes, end + 1 - position);
       const bytes = new Uint8Array(Math.max(0, length));
-      const read =
-        handle === undefined || length <= 0
-          ? 0
-          : (await handle.read(bytes, 0, length, position)).bytesRead;
+      let read: number;
+      try {
+        read =
+          handle === undefined || length <= 0
+            ? 0
+            : (await handle.read(bytes, 0, length, position)).bytesRead;
+      } catch (error) {
+        await finish();
+        controller.error(error);
+        return;
+      }
       if (read === 0) {
         await finish();
         controller.close();

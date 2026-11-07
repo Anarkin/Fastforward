@@ -93,4 +93,36 @@ suite('Ranges of a file served', () => {
       removeFolder(folder);
     }
   });
+
+  test('closes the file of a body once a read of it fails, failing the body, as a share gone or a range locked left the file open', async () => {
+    const folder = tempFolder('file-ranges');
+    const opened: fs.promises.FileHandle[] = [];
+    const open = fs.promises.open;
+    Reflect.set(
+      fs.promises,
+      'open',
+      async (...args: Parameters<typeof fs.promises.open>) => {
+        const handle = await open(...args);
+        Reflect.set(handle, 'read', () =>
+          Promise.reject(new Error('EBUSY: resource busy or locked')),
+        );
+        opened.push(handle);
+        return handle;
+      },
+    );
+    try {
+      const file = path.join(folder, 'book.pdf');
+      fs.writeFileSync(file, '0123456789');
+      const response = await fileResponse(file, 'application/pdf', 'bytes=2-4');
+
+      await assert.rejects(response.text(), /EBUSY/);
+      assert.deepStrictEqual(
+        opened.map((handle) => handle.fd),
+        [-1],
+      );
+    } finally {
+      Reflect.set(fs.promises, 'open', open);
+      removeFolder(folder);
+    }
+  });
 });
