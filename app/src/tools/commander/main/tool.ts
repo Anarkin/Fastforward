@@ -1513,12 +1513,26 @@ export class CommanderTool implements Tool<'commander'> {
     }
     current?.stop();
     const watch = elevated?.watch ?? this.access.watch;
+    let listing = false;
+    let changedMeanwhile = false;
+    const refresh = (): void => {
+      if (listing) {
+        changedMeanwhile = true;
+        return;
+      }
+      listing = true;
+      void this.list(page, tab, side, folder, 'refresh').finally(() => {
+        listing = false;
+        if (changedMeanwhile) {
+          changedMeanwhile = false;
+          refresh();
+        }
+      });
+    };
     this.watching.set(side, {
       folder,
       elevated: elevated !== undefined,
-      stop: watch(folder, () => {
-        void this.list(page, tab, side, folder, 'refresh');
-      }),
+      stop: watch(folder, refresh),
     });
   }
 

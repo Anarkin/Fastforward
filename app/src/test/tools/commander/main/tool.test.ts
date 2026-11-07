@@ -1421,6 +1421,30 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(watched(), []);
   });
 
+  test('lists a changed folder again once at a time, once more after a listing that was slow, so an older listing never lands after a newer one', async () => {
+    const slow = Promise.withResolvers<readonly Entry[]>();
+    const listed: Record<string, Listed> = { [root]: [] };
+    const { tool, page, change } = commander(listed);
+    await tool.show(page, tab);
+
+    listed[root] = slow.promise;
+    await change(root);
+    listed[root] = [file('new.txt')];
+    await change(root);
+    slow.resolve([file('old.txt')]);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const last = (side: string) =>
+      page
+        .listings()
+        .filter((listing) => listing.startsWith(`${side} `))
+        .at(-1);
+    assert.deepStrictEqual(
+      [last('left'), last('right')],
+      [`left ${root}: new.txt`, `right ${root}: new.txt`],
+    );
+  });
+
   test('tells the page a tab was closed, so it forgets what it kept of the tab, as a tab opened later can take its id', async () => {
     const { tool, page } = commander({ [root]: [] });
     await tool.show(page, tab);
