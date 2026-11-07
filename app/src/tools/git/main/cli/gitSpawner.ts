@@ -49,7 +49,7 @@ export type FromSpawner =
   | { readonly type: 'stopped'; readonly id: number };
 
 export interface SpawnerPort {
-  postMessage(message: FromSpawner): void;
+  postMessage(message: FromSpawner, transfer?: ArrayBuffer[]): void;
   on(event: 'message', listener: (message: ToSpawner) => void): unknown;
 }
 
@@ -132,14 +132,12 @@ export function serveGitSpawns(port: SpawnerPort): void {
       ...(child.pid === undefined ? {} : { pid: child.pid }),
     });
     for (const stream of ['stdout', 'stderr'] as const) {
-      child[stream]?.on('data', (data: Buffer) =>
-        port.postMessage({
-          type: 'output',
-          id,
-          stream,
-          data: new Uint8Array(data),
-        }),
-      );
+      child[stream]?.on('data', (data: Buffer) => {
+        const bytes = new Uint8Array(data);
+        port.postMessage({ type: 'output', id, stream, data: bytes }, [
+          bytes.buffer,
+        ]);
+      });
     }
     child.stdin?.on('error', () => undefined);
     child.on('error', (error) => failed(id, error));
