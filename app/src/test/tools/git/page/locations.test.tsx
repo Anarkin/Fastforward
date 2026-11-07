@@ -476,6 +476,7 @@ function locationsStore({
   bookmarks = [],
   commitSearch,
   lookup,
+  query = '',
   onJump,
   onClose,
 }: Shown = {}) {
@@ -495,6 +496,7 @@ function locationsStore({
       },
       bookmarks,
       searching: true,
+      searchQueries: new Map([['/repo', query]]),
     },
   );
   store.subscribe((state, before) => {
@@ -507,8 +509,8 @@ function locationsStore({
 
 const popup = (query: string, result?: Shown['lookup'], shown: Shown = {}) =>
   renderToStaticMarkup(
-    <GitStore value={locationsStore({ ...shown, lookup: result })}>
-      <LocationsPopup anchor={{ current: null }} query={query} onQuery={noop} />
+    <GitStore value={locationsStore({ ...shown, query, lookup: result })}>
+      <LocationsPopup anchor={{ current: null }} />
     </GitStore>,
   );
 
@@ -796,7 +798,7 @@ suite('Search', () => {
     let closed = 0;
     const element = renderedBy(
       LocationsPopup,
-      { anchor: { current: null }, query: '', onQuery: noop },
+      { anchor: { current: null } },
       { git: locationsStore({ onClose: () => closed++ }) },
     );
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(element));
@@ -948,11 +950,7 @@ async function browsed(
       renderIn(
         root,
         <GitStore value={locationsStore(props)}>
-          <LocationsPopup
-            anchor={{ current: null }}
-            query={props.query ?? ''}
-            onQuery={noop}
-          />
+          <LocationsPopup anchor={{ current: null }} />
         </GitStore>,
       );
     });

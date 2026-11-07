@@ -25,7 +25,7 @@ import { CommitBubble, HeadBubble, RefBubble, useCheckedOut } from './bubbles';
 import { useDismiss } from '../../../ui/contextMenu';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { CommitRow, noRefs } from './commitList';
-import { detachedHead, useGit, useGitActions } from './store';
+import { detachedHead, searchQueryOf, useGit, useGitActions } from './store';
 import { Highlight } from '../../../ui/highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../../../shell/shared/keymap';
@@ -534,13 +534,10 @@ export function popupKeyAction(
 
 export function LocationsPopup({
   anchor,
-  query,
-  onQuery,
 }: {
   anchor: React.RefObject<HTMLElement | null>;
-  query: string;
-  onQuery: (query: string) => void;
 }) {
+  const query = useGit(searchQueryOf);
   const bookmarks = useGit((state) => state.bookmarks);
   const refs = useGit((state) => state.tab.repository?.refs ?? noRefs);
   const stashes = useGit(
@@ -554,6 +551,7 @@ export function LocationsPopup({
     searchCommits: onSearchCommits,
     jump: onJump,
     search: openSearch,
+    searchFor: onQuery,
   } = useGitActions();
   const onClose = useCallback(() => openSearch(false), [openSearch]);
   const popup = useRef<HTMLDivElement>(null);

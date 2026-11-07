@@ -351,9 +351,10 @@ function locationsPopupElement(
         },
         bookmarks,
         searching: true,
+        searchQueries: new Map([['/repo', query]]),
       })}
     >
-      <LocationsPopup anchor={{ current: null }} query={query} onQuery={noop} />
+      <LocationsPopup anchor={{ current: null }} />
     </GitStore>
   );
 }
