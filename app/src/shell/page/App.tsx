@@ -114,17 +114,21 @@ function Popups() {
             return aboutKnown && <AboutPopup key={popup} />;
           case 'openWith':
             return <OpenWithPopup key={popup} />;
+          case 'confirm':
+            return (
+              confirming && (
+                <ConfirmPopup
+                  key={popup}
+                  {...confirmation(confirming)}
+                  onConfirm={confirm}
+                  onCancel={cancel}
+                />
+              )
+            );
           default:
             return popup satisfies never;
         }
       })}
-      {confirming && (
-        <ConfirmPopup
-          {...confirmation(confirming)}
-          onConfirm={confirm}
-          onCancel={cancel}
-        />
-      )}
     </>
   );
 }

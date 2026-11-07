@@ -26,7 +26,7 @@ import {
 import type { Notice } from './notices';
 import { movedTab } from './tabBar';
 
-export type Popup = 'shortcuts' | 'about' | 'openWith';
+export type Popup = 'shortcuts' | 'about' | 'openWith' | 'confirm';
 
 interface ToolChannel<K extends ToolId> {
   readonly post: (message: ToHostOf<K>) => void;
@@ -212,7 +212,10 @@ function received(
     case 'terminalCommand':
       return { installsCommand: message.installable };
     case 'confirmQuit':
-      return { confirming: { kind: 'quit' } };
+      return {
+        confirming: { kind: 'quit' },
+        popups: withPopup(state.popups, 'confirm', true),
+      };
     case 'chooseTool':
       return {
         choosing: message,
@@ -287,7 +290,10 @@ export function createShellStore(
       closeTab: (id) => {
         const tab = get().tabs?.find((each) => each.id === id);
         if (tab !== undefined && confirmsClose[tab.tool]) {
-          set({ confirming: { kind: 'tab', tab } });
+          set((state) => ({
+            confirming: { kind: 'tab', tab },
+            popups: withPopup(state.popups, 'confirm', true),
+          }));
         } else {
           post({ type: 'closeTab', tab: id });
         }
@@ -297,14 +303,21 @@ export function createShellStore(
         if (confirming === undefined) {
           return;
         }
-        set({ confirming: undefined });
+        set((state) => ({
+          confirming: undefined,
+          popups: withPopup(state.popups, 'confirm', false),
+        }));
         post(
           confirming.kind === 'tab'
             ? { type: 'closeTab', tab: confirming.tab.id }
             : { type: 'quit' },
         );
       },
-      cancel: () => set({ confirming: undefined }),
+      cancel: () =>
+        set((state) => ({
+          confirming: undefined,
+          popups: withPopup(state.popups, 'confirm', false),
+        })),
       openWith: (tool) => {
         set((state) => ({
           choosing: undefined,

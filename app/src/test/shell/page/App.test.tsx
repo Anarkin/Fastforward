@@ -175,6 +175,97 @@ suite('Window', () => {
     }
   });
 
+  test('opens a popup asked for while a confirmation is up over it, and a confirmation over the popups open before it, as the one underneath held the focus and the next Escape', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>', {
+      pretendToBeVisual: true,
+    });
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      Element: dom.window.Element,
+      HTMLElement: dom.window.HTMLElement,
+      getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+      MutationObserver: dom.window.MutationObserver,
+      requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window),
+      cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
+      ResizeObserver: class {
+        observe() {}
+        disconnect() {}
+      },
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const { document } = dom.window;
+      const main = document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const posted: ToHost[] = [];
+      let send: (message: ToWebview) => void = noop;
+      await act(async () => {
+        root.render(
+          <App
+            name="Fastforward"
+            post={(message) => posted.push(message)}
+            listen={(handler) => {
+              send = handler;
+              return noop;
+            }}
+          />,
+        );
+      });
+      const press = (key: string) =>
+        act(async () => {
+          (document.activeElement ?? document.body).dispatchEvent(
+            new dom.window.KeyboardEvent('keydown', {
+              key,
+              bubbles: true,
+              cancelable: true,
+            }),
+          );
+        });
+      const dialogs = () =>
+        Array.from(document.querySelectorAll('[role="dialog"]'), (dialog) => [
+          dialog.getAttribute('aria-label'),
+          dialog.contains(document.activeElement),
+        ]);
+      await act(async () => {
+        send({ type: 'confirmQuit' });
+      });
+      await press('F1');
+      assert.deepStrictEqual(dialogs(), [
+        [strings.confirm.quitTitle, false],
+        [strings.shortcuts.title, true],
+      ]);
+      await press('Escape');
+      assert.deepStrictEqual(dialogs(), [[strings.confirm.quitTitle, true]]);
+      await press('F1');
+      await act(async () => {
+        send({ type: 'confirmQuit' });
+      });
+      assert.deepStrictEqual(dialogs(), [
+        [strings.confirm.quitTitle, false],
+        [strings.shortcuts.title, true],
+      ]);
+      await press('Escape');
+      await press('Escape');
+      assert.deepStrictEqual(dialogs(), []);
+      assert.deepStrictEqual(
+        posted.filter((message) => message.type === 'quit'),
+        [],
+      );
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
   test('closes the newest notice with Escape once nothing else takes the key, as a popup open', async () => {
     const dom = new JSDOM('<!doctype html><main></main>', {
       pretendToBeVisual: true,
