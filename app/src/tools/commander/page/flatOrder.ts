@@ -67,7 +67,7 @@ export class FlatOrder {
         this.added.push(row);
         if (
           this.matching !== undefined &&
-          matchesFilter(this.matching.words, row.key)
+          matchesFilter(this.matching.words, entry.name)
         ) {
           this.matching.rows.add(row);
         }
@@ -123,7 +123,7 @@ export class FlatOrder {
     } else if (this.matching?.query !== query) {
       const rows = new Set<SlotRow>();
       for (const row of this.bySlot.values()) {
-        if (matchesFilter(words, row.key)) {
+        if (matchesFilter(words, row.entry.name)) {
           rows.add(row);
         }
       }

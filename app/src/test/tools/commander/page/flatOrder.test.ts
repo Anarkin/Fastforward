@@ -146,7 +146,7 @@ suite('The order of the files of a flat view', () => {
     assert.deepStrictEqual(result().all, ['a.txt', 'cache/c.txt']);
   });
 
-  test('filters by every word of the query anywhere in the path under the folder, in the order', () => {
+  test('filters by every word of the query anywhere in the name of a file, not in the folder it is in, keeping the order', () => {
     const { order, put, result } = ordered();
     put({
       '': [file('test.ts'), file('main.ts')],
@@ -154,12 +154,14 @@ suite('The order of the files of a flat view', () => {
     });
 
     assert.deepStrictEqual(result().shown, undefined);
-    order.choose({ ...choices, query: 'SRC test' });
+    order.choose({ ...choices, query: 'MAIN test' });
     assert.deepStrictEqual(result(), {
       all: ['main.ts', 'src/main.ts', 'src/main.test.ts', 'test.ts'],
       shown: ['src/main.test.ts'],
-      query: 'SRC test',
+      query: 'MAIN test',
     });
+    order.choose({ ...choices, query: 'src' });
+    assert.deepStrictEqual(result().shown, []);
   });
 
   test('filters the files that come later, and drops those taken out', () => {
