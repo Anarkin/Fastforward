@@ -2843,6 +2843,67 @@ suite('App commander', () => {
     );
   });
 
+  test('drags the marked files out of the app as files of the system when one marked is dragged, and the one dragged alone when it is not marked, selecting it', async () => {
+    const dragging = path.join(opened, 'dragging');
+    fs.mkdirSync(dragging);
+    for (const name of ['one', 'three', 'two']) {
+      fs.writeFileSync(path.join(dragging, `${name}.txt`), name);
+    }
+    await app.evaluate(({ BrowserWindow }) => {
+      const dragged: string[][] = [];
+      Reflect.set(globalThis, 'dragged', dragged);
+      const [window] = BrowserWindow.getAllWindows();
+      window.webContents.startDrag = (item) => {
+        dragged.push(item.files ?? [item.file]);
+      };
+    });
+    const dragged = () =>
+      app.evaluate((): string[][] => Reflect.get(globalThis, 'dragged'));
+    await select('dragging');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,one.txt,three.txt,two.txt',
+      'the folder to be listed',
+    );
+    await select('one');
+    await page.keyboard.press('Space');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Space');
+
+    await right()
+      .locator('.commander-row', { hasText: 'two' })
+      .dispatchEvent('dragstart');
+    await waitFor(
+      async () => (await dragged()).length === 1,
+      'the marked files to be dragged',
+    );
+    await right()
+      .locator('.commander-row', { hasText: 'three' })
+      .dispatchEvent('dragstart');
+    await waitFor(
+      async () => (await dragged()).length === 2,
+      'the file dragged to be dragged alone',
+    );
+
+    assert.deepStrictEqual(await dragged(), [
+      [path.join(dragging, 'one.txt'), path.join(dragging, 'two.txt')],
+      [path.join(dragging, 'three.txt')],
+    ]);
+    assert.match(
+      (await right().locator('.commander-row.selected').textContent()) ?? '',
+      /^three/,
+    );
+    await app.evaluate(({ BrowserWindow }) => {
+      const [window] = BrowserWindow.getAllWindows();
+      Reflect.deleteProperty(window.webContents, 'startDrag');
+    });
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('dragging'),
+      'the folder above to be listed again',
+    );
+  });
+
   test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another folder', async () => {
     const markingFolder = path.join(opened, 'marking');
     fs.mkdirSync(markingFolder);

@@ -19,7 +19,7 @@ import { commanderKeymap } from '../shared/keymap';
 import { clicked } from '../../../shell/shared/keymap';
 import type { Entry, Side } from '../shared/protocol';
 import { formatSize } from './format';
-import { goesInto, opens, menuKeys, rangeKeys, type Row } from './listing';
+import { goesInto, opens, pointedKeys, rangeKeys, type Row } from './listing';
 import { filterStep, PaneFilter } from './paneFilter';
 import { filterWords } from '../../../shared/fileFilter';
 import { HighlightWords } from '../../../ui/highlight';
@@ -578,6 +578,15 @@ export function Pane({
       ? ''
       : formatDate(row.entry.modified, dateFormat);
   const itemEvents = (row: Row, index: number) => ({
+    draggable: row.entry !== undefined,
+    onDragStart: (event: React.DragEvent) => {
+      event.preventDefault();
+      const names = pointedKeys(rows, row.key, marked);
+      if (names.length > 0) {
+        onSelect(row.key);
+        actions.drag(side, names);
+      }
+    },
     onClick: (event: React.MouseEvent) => {
       const marking = clicked(commanderKeymap.markClick, event);
       if (marking === 'toggle') {
@@ -591,7 +600,7 @@ export function Pane({
       event.preventDefault();
       event.stopPropagation();
       const extended = clicked(commanderKeymap.systemMenu, event);
-      const names = menuKeys(rows, row.key, marked);
+      const names = pointedKeys(rows, row.key, marked);
       if (extended === undefined || names.length === 0) {
         return;
       }

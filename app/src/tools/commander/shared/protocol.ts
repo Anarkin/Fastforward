@@ -225,6 +225,13 @@ export type CommanderToHost =
       readonly names: readonly string[];
     }
   | {
+      readonly type: 'drag';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly names: readonly string[];
+    }
+  | {
       readonly type: 'paste';
       readonly tab: string;
       readonly side: Side;

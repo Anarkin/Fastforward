@@ -135,6 +135,7 @@ export interface CommanderAccess {
   readonly trash?: (file: string) => Promise<void>;
   readonly remove?: (file: string) => Promise<void>;
   readonly makeFolder?: (folder: string) => Promise<void>;
+  readonly startDrag?: (files: readonly string[]) => Promise<void>;
   readonly clipboardFiles?: {
     readonly write: (files: readonly string[]) => Promise<void>;
     readonly read: () => Promise<readonly string[]>;
@@ -463,6 +464,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.newFolder(page, message);
       case 'copyToClipboard':
         return this.copyToClipboard(page, message);
+      case 'drag':
+        return this.drag(page, message);
       case 'paste':
         return this.paste(page, message);
       case 'answerClash':
@@ -1083,6 +1086,25 @@ export class CommanderTool implements Tool<'commander'> {
     this.transfers.start(ask);
   }
 
+  private listedFiles(
+    page: Page,
+    tab: unknown,
+    side: unknown,
+    folder: unknown,
+    names: unknown,
+  ): string[] | undefined {
+    const shown = this.namingPane(page, tab, side, folder);
+    if (
+      shown === undefined ||
+      !Array.isArray(names) ||
+      names.length === 0 ||
+      !names.every((name: unknown) => listedIn(shown.pane, name) !== undefined)
+    ) {
+      return undefined;
+    }
+    return names.map((name: string) => path.join(shown.pane.folder, name));
+  }
+
   private async copyToClipboard(
     page: Page,
     {
@@ -1092,18 +1114,20 @@ export class CommanderTool implements Tool<'commander'> {
       names,
     }: Extract<CommanderToHost, { type: 'copyToClipboard' }>,
   ): Promise<void> {
-    const shown = this.namingPane(page, tab, side, folder);
-    if (
-      shown === undefined ||
-      !Array.isArray(names) ||
-      names.length === 0 ||
-      !names.every((name: unknown) => listedIn(shown.pane, name) !== undefined)
-    ) {
-      return;
+    const files = this.listedFiles(page, tab, side, folder, names);
+    if (files !== undefined) {
+      await this.access.clipboardFiles?.write(files);
     }
-    await this.access.clipboardFiles?.write(
-      names.map((name) => path.join(shown.pane.folder, name)),
-    );
+  }
+
+  private async drag(
+    page: Page,
+    { tab, side, folder, names }: Extract<CommanderToHost, { type: 'drag' }>,
+  ): Promise<void> {
+    const files = this.listedFiles(page, tab, side, folder, names);
+    if (files !== undefined) {
+      await this.access.startDrag?.(files);
+    }
   }
 
   private async paste(

@@ -7,7 +7,13 @@ import {
 import { keyPressed } from '../../../ui/shortcuts';
 import { commanderKeymap } from '../shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
-import { chosenKeys, menuKeys, opens, passedKeys, type Row } from './listing';
+import {
+  chosenKeys,
+  pointedKeys,
+  opens,
+  passedKeys,
+  type Row,
+} from './listing';
 import { moveInGrid } from './tiles';
 
 export type PaneAct =
@@ -107,7 +113,7 @@ export function paneKey(
   const extended = keyPressed(commanderKeymap.systemMenu, event);
   if (extended !== undefined) {
     const names =
-      selected === undefined ? [] : menuKeys(rows, selected, marked);
+      selected === undefined ? [] : pointedKeys(rows, selected, marked);
     return names.length > 0 ? { act: { kind: 'menu', names, extended } } : done;
   }
   const letter =

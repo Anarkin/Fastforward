@@ -73,7 +73,7 @@
 | New file | Make an empty file | Shift+F4 | Common | ❌ No |  |
 | Delete | Move files to the Recycle Bin or Trash, or delete them | F8, Delete | Core | ✅ Yes | F8 and Delete to the Recycle Bin or Trash, Shift+F8 and Shift+Delete permanently, asking first; not yet in a folder read as administrator |
 | Clipboard | Cut, copy and paste files | Ctrl+X, Ctrl+C, Ctrl+V | Core | 🟡 Partial | Mod+C puts the marked items, or the selected one, on the clipboard as files, which file managers, chat apps and browsers paste; Mod+V copies the files on the clipboard into the folder of the side, those cut in another app too, leaving them where they are; no cut |
-| Drag and drop | Drag files between the sides and other apps | — | Core | ❌ No |  |
+| Drag and drop | Drag files between the sides and other apps | — | Core | 🟡 Partial | Out to other apps as files of the system, the marked ones when a marked one is dragged, the one dragged alone otherwise; the other app copies them, as Electron offers it no move; nothing dropped on a side yet |
 | Context menu | Show the system's menu for files | Shift+F10 | Common | ✅ Yes | The menu of Windows for the marked files, or the one clicked or selected, the extended one with Shift; a right click, Shift+F10 or the Menu key; on Windows only |
 | Properties | Show the properties of a file | Alt+Enter | Common | 🟡 Partial | From the menu of Windows |
 | Copy names and paths | Put the names or paths of files on the clipboard | — | Common | ❌ No |  |

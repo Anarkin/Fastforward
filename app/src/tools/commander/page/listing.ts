@@ -409,7 +409,7 @@ export function chosenKeys(
   return row?.entry === undefined ? [] : [row.key];
 }
 
-export function menuKeys(
+export function pointedKeys(
   rows: readonly Row[],
   key: string,
   marked: ReadonlySet<string> | undefined,

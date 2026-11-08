@@ -609,11 +609,12 @@ suite('Commander store', () => {
     ]);
   });
 
-  test('puts items of a side on the clipboard and pastes into the folder of a side, for the tab shown', () => {
+  test('puts items of a side on the clipboard, drags them and pastes into the folder of a side, for the tab shown', () => {
     const { posted, store } = shown();
     store.getState().copyToClipboard('left', ['a', 'b']);
     store.getState().paste('left');
     store.getState().paste('right');
+    store.getState().drag('left', ['c']);
     assert.deepStrictEqual(posted, [
       {
         type: 'copyToClipboard',
@@ -623,6 +624,13 @@ suite('Commander store', () => {
         names: ['a', 'b'],
       },
       { type: 'paste', tab: '1', side: 'left', folder: left.folder },
+      {
+        type: 'drag',
+        tab: '1',
+        side: 'left',
+        folder: left.folder,
+        names: ['c'],
+      },
     ]);
   });
 

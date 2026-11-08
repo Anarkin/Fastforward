@@ -112,6 +112,7 @@ type Naming =
   | 'newFolder'
   | 'copyToClipboard'
   | 'paste'
+  | 'drag'
   | 'openRepository'
   | 'openOnSide';
 
@@ -139,6 +140,7 @@ function commander(
   const removed: string[] = [];
   const madeFolders: string[] = [];
   const clipboard: { files: readonly string[] } = { files: [] };
+  const dragged: (readonly string[])[] = [];
   const menus: {
     readonly files: readonly string[];
     readonly at: { readonly x: number; readonly y: number };
@@ -288,6 +290,10 @@ function commander(
       },
       read: () => Promise.resolve(clipboard.files),
     },
+    startDrag: (files) => {
+      dragged.push(files);
+      return Promise.resolve();
+    },
     makeFolder: (making) => {
       madeFolders.push(making);
       return path.basename(making) === 'taken'
@@ -366,6 +372,7 @@ function commander(
       case 'newFolder':
       case 'copyToClipboard':
       case 'paste':
+      case 'drag':
       case 'openRepository':
         return {
           ...message,
@@ -430,6 +437,7 @@ function commander(
     transfers,
     madeFolders,
     clipboard,
+    dragged,
   };
 }
 
@@ -1772,6 +1780,22 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(clipboard.files, [at('a.txt'), at('dir')]);
   });
 
+  test('starts dragging the files asked for out of the app, only when every one is listed in the folder named, never its parent', async () => {
+    const { tool, page, send, dragged } = commander({
+      [root]: [file('a.txt'), folder('dir')],
+    });
+    await tool.show(page, tab);
+    const drag = (names: string[]) =>
+      send({ type: 'drag', tab: '1', side: 'right', names });
+
+    await drag(['a.txt', 'gone.txt']);
+    await drag(['..']);
+    await drag([]);
+    await drag(['dir', 'a.txt']);
+
+    assert.deepStrictEqual(dragged, [[at('dir'), at('a.txt')]]);
+  });
+
   test('pastes the files on the clipboard into the folder named as a copy of them, refusing them in the folder they are in or a folder into itself, and saying when the clipboard holds no files', async () => {
     const { tool, page, send, clipboard, transfers, notices } = commander({
       [root]: [file('a.txt'), folder('dir')],
@@ -1910,6 +1934,7 @@ suite('Commander tool', () => {
       transfers,
       madeFolders,
       clipboard,
+      dragged,
     } = commander({
       [root]: [folder('sub'), folder('same'), file('same.txt')],
       [at('sub')]: [folder('same'), file('same.txt')],
@@ -1976,6 +2001,7 @@ suite('Commander tool', () => {
     await send({ type: 'copyToClipboard', ...named, names: ['same.txt'] });
     clipboard.files = [at('same.txt')];
     await send({ type: 'paste', ...named });
+    await send({ type: 'drag', ...named, names: ['same.txt'] });
 
     assert.deepStrictEqual(
       {
@@ -2004,6 +2030,7 @@ suite('Commander tool', () => {
     assert.strictEqual(page.listings().length, listings);
     assert.strictEqual(tool.folderOf(tab), root);
     assert.deepStrictEqual(clipboard.files, [at('same.txt')]);
+    assert.deepStrictEqual(dragged, []);
   });
 
   test('holds the widths of the columns and the size of the tiles the settings give in the range they may take, as a width too wide failed every drag after it and a size below the least drew no tiles', async () => {

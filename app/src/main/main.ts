@@ -9,6 +9,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  nativeImage,
   nativeTheme,
   net,
   powerMonitor,
@@ -541,6 +542,17 @@ async function start(asked: readonly string[]): Promise<void> {
     remove: (file) => fs.promises.rm(file, { recursive: true }),
     makeFolder: (folder) => fs.promises.mkdir(folder),
     clipboardFiles: { write: writeClipboardFiles, read: readClipboardFiles },
+    startDrag: async ([file, ...more]) => {
+      if (file === undefined) {
+        return;
+      }
+      const icon = await app
+        .getFileIcon(file, { size: 'normal' })
+        .catch(() => nativeImage.createEmpty());
+      if (!window.isDestroyed()) {
+        window.webContents.startDrag({ file, files: [file, ...more], icon });
+      }
+    },
     connectTransfer: transferProcess(path.join(dist, 'transferHost.js'), log),
     root: rootFolder(process.platform, process.env),
   });

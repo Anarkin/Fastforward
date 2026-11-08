@@ -168,6 +168,7 @@ interface CommanderActions {
   readonly answerClash: (answer: ClashAnswer, all: boolean) => void;
   readonly copyToClipboard: (side: Side, names: readonly string[]) => void;
   readonly paste: (side: Side) => void;
+  readonly drag: (side: Side, names: readonly string[]) => void;
   readonly askNewFolder: (side: Side) => void;
   readonly makeFolder: (name: string) => void;
   readonly cancelNewFolder: () => void;
@@ -817,6 +818,10 @@ export function createCommanderStore(
       copyToClipboard: (side, names) =>
         onPane(side, (tab, folder) =>
           post({ type: 'copyToClipboard', tab, side, folder, names }),
+        ),
+      drag: (side, names) =>
+        onPane(side, (tab, folder) =>
+          post({ type: 'drag', tab, side, folder, names }),
         ),
       paste: (side) =>
         onPane(side, (tab, folder) =>

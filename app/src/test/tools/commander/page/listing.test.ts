@@ -11,7 +11,7 @@ import {
   passedKeys,
   rangeKeys,
   chosenKeys,
-  menuKeys,
+  pointedKeys,
   filteredRows,
   filteredSelection,
 } from '../../../../tools/commander/page/listing';
@@ -416,7 +416,7 @@ suite('Commander listing', () => {
     assert.deepStrictEqual(rangeKeys(rows, 2, 0), ['a', 'b', 'c']);
   });
 
-  test('shows the menu of the system for every file marked when one marked is clicked, in the order listed, for the one clicked alone otherwise, and none for ..', () => {
+  test('points at every file marked when one marked is clicked or dragged, in the order listed, for its menu of the system or to drag them, at the one alone otherwise, and at none for ..', () => {
     const rows = [
       {
         key: '..',
@@ -435,11 +435,11 @@ suite('Commander listing', () => {
     ];
     const marked = new Set(['d', 'b']);
 
-    assert.deepStrictEqual(menuKeys(rows, 'd', marked), ['b', 'd']);
-    assert.deepStrictEqual(menuKeys(rows, 'c', marked), ['c']);
-    assert.deepStrictEqual(menuKeys(rows, 'a', undefined), ['a']);
-    assert.deepStrictEqual(menuKeys(rows, '..', marked), []);
-    assert.deepStrictEqual(menuKeys(rows, 'gone', marked), []);
+    assert.deepStrictEqual(pointedKeys(rows, 'd', marked), ['b', 'd']);
+    assert.deepStrictEqual(pointedKeys(rows, 'c', marked), ['c']);
+    assert.deepStrictEqual(pointedKeys(rows, 'a', undefined), ['a']);
+    assert.deepStrictEqual(pointedKeys(rows, '..', marked), []);
+    assert.deepStrictEqual(pointedKeys(rows, 'gone', marked), []);
   });
 
   test('deletes every file marked, in the order listed, wherever the selection is, and the selected one alone when none is marked, never ..', () => {
