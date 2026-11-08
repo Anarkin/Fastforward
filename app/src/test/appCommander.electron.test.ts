@@ -2637,6 +2637,89 @@ suite('App commander', () => {
     );
   });
 
+  test('copies the selected file into the folder of the other side on F5 once confirmed, and moves the marked folder and file there on F6, through the process that copies, the other side listing them', async () => {
+    const from = path.join(opened, 'copyfrom');
+    const into = path.join(opened, 'copyinto');
+    fs.mkdirSync(path.join(from, 'docs'), { recursive: true });
+    fs.mkdirSync(into);
+    fs.writeFileSync(path.join(from, 'first.txt'), 'first');
+    fs.writeFileSync(path.join(from, 'second.txt'), 'second');
+    fs.writeFileSync(path.join(from, 'docs', 'inner.txt'), 'inner');
+    const left = page.locator('.commander-pane').nth(0);
+    const popup = page.locator('.confirm-popup');
+    const asked = async () => (await popup.textContent()) ?? '';
+    await select('copyinto');
+    await page.keyboard.press('ControlOrMeta+ArrowLeft');
+    await waitFor(
+      async () => (await left.locator('.column-name').textContent()) === into,
+      'the left side to open the target',
+    );
+    await select('copyfrom');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,docs,first.txt,second.txt',
+      'the source to be listed',
+    );
+
+    await select('first');
+    await page.keyboard.press('F5');
+    await popup.waitFor();
+    assert.ok(
+      (await asked()).includes(`Copy "first.txt" to "${into}"?`),
+      await asked(),
+    );
+    await page.keyboard.press('Enter');
+    await waitFor(
+      () => fs.existsSync(path.join(into, 'first.txt')),
+      'the file to be copied',
+    );
+    await page.locator('.transfer-popup').waitFor({ state: 'detached' });
+    assert.strictEqual(
+      fs.readFileSync(path.join(into, 'first.txt'), 'utf8'),
+      'first',
+    );
+    assert.ok(fs.existsSync(path.join(from, 'first.txt')));
+    await waitFor(
+      async () => (await rowNames(left)).includes('first.txt'),
+      'the left side to list the copy',
+    );
+
+    await select('docs');
+    await page.keyboard.press('Space');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Space');
+    await page.keyboard.press('F6');
+    await popup.waitFor();
+    assert.ok(
+      (await asked()).includes(`Move 2 items to "${into}"?`),
+      await asked(),
+    );
+    await page.keyboard.press('Enter');
+    await waitFor(
+      () =>
+        fs.existsSync(path.join(into, 'docs', 'inner.txt')) &&
+        fs.existsSync(path.join(into, 'second.txt')) &&
+        !fs.existsSync(path.join(from, 'docs')) &&
+        !fs.existsSync(path.join(from, 'second.txt')),
+      'the marked items to be moved',
+    );
+    await page.locator('.transfer-popup').waitFor({ state: 'detached' });
+    await waitFor(
+      async () => (await rowNames()).join() === '..,first.txt',
+      'the moved items to be gone from the source',
+    );
+    await waitFor(
+      async () =>
+        (await rowNames(left)).join() === '..,docs,first.txt,second.txt',
+      'the left side to list the moved items',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('copyfrom'),
+      'the folder above to be listed again',
+    );
+  });
+
   test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another folder', async () => {
     const markingFolder = path.join(opened, 'marking');
     fs.mkdirSync(markingFolder);

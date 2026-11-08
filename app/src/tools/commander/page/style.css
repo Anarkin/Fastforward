@@ -539,3 +539,63 @@
 .commander-thumbnail .thumbnail-image {
   flex: none;
 }
+
+.transfer-popup {
+  width: min(520px, 100%);
+}
+
+.transfer-body {
+  gap: 12px;
+}
+
+.transfer-running {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transfer-running > span,
+.transfer-clash {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transfer-current {
+  min-height: 1lh;
+  color: var(--muted-foreground);
+}
+
+.transfer-bar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.transfer-bar-done {
+  height: 100%;
+  background: var(--color-focus);
+}
+
+.transfer-counts {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-sides {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

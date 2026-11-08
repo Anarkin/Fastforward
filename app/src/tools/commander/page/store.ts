@@ -4,6 +4,7 @@ import { strings } from '../../../shared/strings';
 import { maxDroppedIcons, type IconSource } from '../shared/icons';
 import type { PdfPlace } from '../../../shared/pdf';
 import {
+  otherSide,
   sides,
   type ByteRange,
   type CommanderToHost,
@@ -11,6 +12,7 @@ import {
   type Side,
   type TextEncoding,
 } from '../shared/protocol';
+import type { ClashAnswer, TransferView } from '../shared/transfers';
 import type {
   ColumnWidths,
   Layout,
@@ -53,6 +55,15 @@ interface Deleting {
   readonly permanently: boolean;
 }
 
+interface Transferring {
+  readonly tab: string;
+  readonly side: Side;
+  readonly folder: string;
+  readonly names: readonly string[];
+  readonly target: string;
+  readonly move: boolean;
+}
+
 interface NoAccess {
   readonly side: Side;
   readonly folder: string;
@@ -64,6 +75,8 @@ interface CommanderSource {
   readonly drives: readonly string[];
   readonly viewed: Viewing | undefined;
   readonly deleting: Deleting | undefined;
+  readonly transferring: Transferring | undefined;
+  readonly transfer: TransferView | undefined;
   readonly noAccess: NoAccess | undefined;
   readonly resized:
     { readonly from: ColumnWidths; readonly widths: ColumnWidths } | undefined;
@@ -138,6 +151,16 @@ interface CommanderActions {
   ) => void;
   readonly confirmDelete: () => void;
   readonly cancelDelete: () => void;
+  readonly askTransfer: (
+    side: Side,
+    names: readonly string[],
+    move: boolean,
+  ) => void;
+  readonly confirmTransfer: () => void;
+  readonly cancelTransfer: () => void;
+  readonly answerClash: (answer: ClashAnswer, all: boolean) => void;
+  readonly stopTransfer: () => void;
+  readonly hideTransfer: () => void;
   readonly elevate: () => void;
   readonly closeNoAccess: () => void;
   readonly resizeColumn: (column: SizedColumn, width: number) => void;
@@ -166,6 +189,8 @@ const commanderDefaults: CommanderSource = {
   drives: [],
   viewed: undefined,
   deleting: undefined,
+  transferring: undefined,
+  transfer: undefined,
   noAccess: undefined,
   resized: undefined,
   filters: new Map(),
@@ -221,6 +246,8 @@ function received(
   switch (message.type) {
     case 'drives':
       return { drives: message.drives };
+    case 'transfer':
+      return { transfer: message.view };
     case 'flatFiles': {
       const view = reduceView(state.view, {
         type: 'flatProgress',
@@ -250,8 +277,18 @@ function received(
   }
 }
 
-function stillShown(view: CommanderView, { tab, side, folder }: Deleting) {
+function stillShown(
+  view: CommanderView,
+  { tab, side, folder }: Pick<Deleting, 'tab' | 'side' | 'folder'>,
+) {
   return view.tab === tab && view.panes[side]?.folder === folder;
+}
+
+function stillTargeted(view: CommanderView, transferring: Transferring) {
+  return (
+    stillShown(view, transferring) &&
+    view.panes[otherSide(transferring.side)]?.folder === transferring.target
+  );
 }
 
 function filterKey(tab: string, side: Side): string {
@@ -505,9 +542,15 @@ export function createCommanderStore(
       if (filters !== get().filters) {
         set({ filters });
       }
-      const { deleting } = get();
+      const { deleting, transferring } = get();
       if (deleting !== undefined && !stillShown(get().view, deleting)) {
         set({ deleting: undefined });
+      }
+      if (
+        transferring !== undefined &&
+        !stillTargeted(get().view, transferring)
+      ) {
+        set({ transferring: undefined });
       }
       for (const side of sides) {
         const pane = get().view.panes[side];
@@ -738,6 +781,47 @@ export function createCommanderStore(
         }
       },
       cancelDelete: () => set({ deleting: undefined }),
+      askTransfer: (side, names, move) =>
+        onPane(side, (tab, folder) => {
+          const target = get().view.panes[otherSide(side)]?.folder;
+          if (target !== undefined) {
+            set({
+              transferring: { tab, side, folder, names, target, move },
+            });
+          }
+        }),
+      confirmTransfer: () => {
+        const { transferring } = get();
+        if (transferring !== undefined) {
+          set({ transferring: undefined });
+          post({ type: 'transfer', ...transferring });
+        }
+      },
+      cancelTransfer: () => set({ transferring: undefined }),
+      answerClash: (answer, all) => {
+        const { transfer } = get();
+        if (transfer?.clash !== undefined) {
+          post({
+            type: 'answerClash',
+            transfer: transfer.id,
+            asked: transfer.clash.asked,
+            answer,
+            all,
+          });
+        }
+      },
+      stopTransfer: () => {
+        const { transfer } = get();
+        if (transfer !== undefined) {
+          post({ type: 'stopTransfer', transfer: transfer.id });
+        }
+      },
+      hideTransfer: () => {
+        const { transfer } = get();
+        if (transfer !== undefined) {
+          post({ type: 'hideTransfer', transfer: transfer.id });
+        }
+      },
       elevate: () => {
         const { noAccess } = get();
         set({ noAccess: undefined });

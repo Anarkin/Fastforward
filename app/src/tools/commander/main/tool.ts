@@ -11,6 +11,7 @@ import {
 } from '../../../shell/main/shell';
 import {
   isSide,
+  otherSide,
   isTextEncoding,
   maxBytesAsked,
   maxColoredBytes,
@@ -83,6 +84,9 @@ import {
 } from '../../../shared/pdf';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
+import { codeOf, reasonOf } from './reasons';
+import { Transfers, type ConnectTransfer, type TransferAsk } from './transfers';
+import { folderKey } from '../shared/paths';
 import { onSameVolume, repositoriesIn } from './repositories';
 import {
   iconSourceOf,
@@ -134,6 +138,7 @@ export interface CommanderAccess {
     at: { readonly x: number; readonly y: number },
     extended: boolean,
   ) => Promise<void>;
+  readonly connectTransfer: ConnectTransfer;
   readonly root: string;
 }
 
@@ -250,10 +255,6 @@ function parentOf(folder: string): string | undefined {
   return parent === folder ? undefined : parent;
 }
 
-function codeOf(error: unknown): unknown {
-  return error instanceof Error && 'code' in error ? error.code : undefined;
-}
-
 function isGone(error: unknown): boolean {
   const code = codeOf(error);
   return code === 'ENOENT' || code === 'ENOTDIR';
@@ -271,13 +272,6 @@ class RefusedAsAdministrator extends Error {
     super(refused instanceof Error ? refused.message : String(refused));
     this.code = codeOf(refused);
   }
-}
-
-function reasonOf(error: unknown): string {
-  if (codeOf(error) === 'ENOENT') {
-    return strings.commander.gone;
-  }
-  return error instanceof Error ? error.message : String(error);
 }
 
 async function isFolder(folder: string): Promise<boolean> {
@@ -352,9 +346,20 @@ export class CommanderTool implements Tool<'commander'> {
   private findingRequest: number | undefined;
   private readonly pdfTabs = new Map<string, string>();
   private walks = 0;
+  private readonly transfers: Transfers;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
+    this.transfers = new Transfers(access.connectTransfer, {
+      show: (view) => {
+        const page = this.shell.page();
+        if (page !== undefined) {
+          this.post(page, { type: 'transfer', view });
+        }
+      },
+      notice: (notice) => this.shell.notice(undefined, notice),
+      finished: (ask) => this.transferred(ask),
+    });
   }
 
   attach(shell: ShellAccess): void {
@@ -369,6 +374,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
     }
     this.postSettings(page);
+    this.transfers.resend();
   }
 
   async show(page: Page, tab: Tab): Promise<void> {
@@ -445,6 +451,22 @@ export class CommanderTool implements Tool<'commander'> {
         return this.shellMenu(page, message);
       case 'delete':
         return this.delete(page, message);
+      case 'transfer':
+        return this.transfer(page, message);
+      case 'answerClash':
+        this.transfers.answer(
+          message.transfer,
+          message.asked,
+          message.answer,
+          message.all,
+        );
+        return undefined;
+      case 'stopTransfer':
+        this.transfers.stop(message.transfer);
+        return undefined;
+      case 'hideTransfer':
+        this.transfers.hide(message.transfer);
+        return undefined;
       case 'compare':
         return this.compare(page, message.tab, message.files);
       case 'readRows':
@@ -630,6 +652,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   quit(): void {
+    this.transfers.quit();
     for (const pane of this.allPanes()) {
       this.endFlat(pane);
     }
@@ -974,6 +997,100 @@ export class CommanderTool implements Tool<'commander'> {
       }
     } else if (shown.pane.folder === folder) {
       await this.list(page, shown.tab, shown.side, folder, 'show');
+    }
+  }
+
+  private transfer(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      names,
+      target,
+      move,
+    }: Extract<CommanderToHost, { type: 'transfer' }>,
+  ): void {
+    const shown = this.namingPane(page, tab, side, folder);
+    const other = shown && this.panes.get(shown.tab)?.[otherSide(shown.side)];
+    if (
+      shown === undefined ||
+      other === undefined ||
+      other.folder !== target ||
+      !Array.isArray(names) ||
+      names.length === 0 ||
+      !names.every(
+        (name: unknown) => listedIn(shown.pane, name) !== undefined,
+      ) ||
+      typeof move !== 'boolean'
+    ) {
+      return;
+    }
+    const refused = (message: string) =>
+      this.shell.notice(page, { level: 'error', message });
+    if (shown.pane.elevated === true || other.elevated === true) {
+      refused(strings.commander.transferAsAdministrator);
+      return;
+    }
+    const sources = names.map((name) => path.join(shown.pane.folder, name));
+    const key = (each: string) =>
+      folderKey(path.resolve(each), this.access.platform);
+    if (sources.some((source) => key(path.dirname(source)) === key(target))) {
+      refused(strings.commander.alreadyIn(target));
+      return;
+    }
+    const intoItself = sources.find((source, index) => {
+      const relative = path.relative(key(source), key(target));
+      return (
+        listedIn(shown.pane, names[index])?.folder === true &&
+        relative !== '..' &&
+        !relative.startsWith(`..${path.sep}`) &&
+        !path.isAbsolute(relative)
+      );
+    });
+    if (intoItself !== undefined) {
+      refused(strings.commander.intoItself(path.basename(intoItself)));
+      return;
+    }
+    this.transfers.start({
+      plan: { sources, target, move },
+      folder: shown.pane.folder,
+      names,
+    });
+  }
+
+  private transferred({ plan, folder, names }: TransferAsk): void {
+    const { shown } = this;
+    const panes = shown && this.panes.get(shown.tab);
+    if (shown === undefined || panes === undefined) {
+      return;
+    }
+    const key = (each: string) => folderKey(each, this.access.platform);
+    const changes = (each: string) =>
+      (plan.move && key(each) === key(folder)) ||
+      key(each) === key(plan.target);
+    for (const side of sides) {
+      const pane = panes[side];
+      const { flat } = pane;
+      if (!changes(pane.folder)) {
+        continue;
+      }
+      if (flat === undefined) {
+        void this.shell.track(
+          this.list(shown.page, shown.tab, side, pane.folder, 'show'),
+        );
+        continue;
+      }
+      if (plan.move && key(pane.folder) === key(folder)) {
+        for (const name of names) {
+          flat.tree.changed(name);
+        }
+      }
+      if (key(pane.folder) === key(plan.target)) {
+        for (const source of plan.sources) {
+          flat.tree.changed(path.basename(source));
+        }
+      }
     }
   }
 

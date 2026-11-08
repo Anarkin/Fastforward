@@ -15,6 +15,7 @@ export function mainOptions(production: boolean): BuildOptions {
       main: 'src/main/main.ts',
       preload: 'src/main/preload.ts',
       ptyHost: 'src/tools/terminal/main/ptyHost.ts',
+      transferHost: 'src/tools/commander/main/transferHost.ts',
       gitSpawner: 'src/tools/git/main/cli/gitSpawnerWorker.ts',
       commitReader: 'src/tools/git/main/history/commitReaderWorker.ts',
     },

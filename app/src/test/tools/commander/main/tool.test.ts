@@ -49,6 +49,9 @@ import { pathParts } from '../../../../tools/commander/shared/paths';
 import type { PdfPlace } from '../../../../shared/pdf';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
+import type { TransferCommand } from '../../../../tools/commander/main/transferProtocol';
+import type { TransferListener } from '../../../../tools/commander/main/transfers';
+import type { TransferPlan } from '../../../../tools/commander/main/transfer';
 
 class CommanderPage implements Page {
   readonly messages: CommanderToWebview[] = [];
@@ -101,7 +104,13 @@ const file = (name: string): Entry => ({
 type Listed = readonly Entry[] | Error | Promise<readonly Entry[]>;
 
 type Naming =
-  'open' | 'view' | 'shellMenu' | 'delete' | 'openRepository' | 'openOnSide';
+  | 'open'
+  | 'view'
+  | 'shellMenu'
+  | 'delete'
+  | 'transfer'
+  | 'openRepository'
+  | 'openOnSide';
 
 type Unnamed<Message> = Message extends { readonly type: Naming }
   ? Omit<Message, 'folder'> & { readonly folder?: string }
@@ -153,6 +162,11 @@ function commander(
   };
   const tracking: Promise<unknown>[] = [];
   const openedIn: { readonly tool: string; readonly folders: string[] }[] = [];
+  const transfers: {
+    readonly commands: TransferCommand[];
+    readonly listener: TransferListener;
+    disposed: boolean;
+  }[] = [];
   const fileSystem: LocalFileSystem = {
     list: (each) => {
       const found = listed[each];
@@ -262,6 +276,20 @@ function commander(
       await repositoriesHeld.until;
       return repositories.has(checked);
     },
+    connectTransfer: (listener) => {
+      const started = {
+        commands: [] as TransferCommand[],
+        listener,
+        disposed: false,
+      };
+      transfers.push(started);
+      return {
+        send: (command) => started.commands.push(command),
+        dispose: () => {
+          started.disposed = true;
+        },
+      };
+    },
     root,
   });
   const page = new CommanderPage();
@@ -312,6 +340,7 @@ function commander(
       case 'view':
       case 'shellMenu':
       case 'delete':
+      case 'transfer':
       case 'openRepository':
         return {
           ...message,
@@ -373,8 +402,18 @@ function commander(
     deletesHeld,
     settled,
     openedIn,
+    transfers,
   };
 }
+
+const plansOf = (
+  transfers: readonly { readonly commands: readonly TransferCommand[] }[],
+): TransferPlan[] =>
+  transfers.flatMap(({ commands }) =>
+    commands.flatMap((command) =>
+      command.type === 'start' ? [command.plan] : [],
+    ),
+  );
 
 const tab: Tab = { id: '1', tool: 'commander' };
 
@@ -1534,6 +1573,186 @@ suite('Commander tool', () => {
     assert.strictEqual(tool.folderOf(tab), at('next'));
   });
 
+  test('copies or moves the items asked for into the folder of the other side, only when every one is listed in the folder named, never its parent, and the other side still shows the folder named as the target', async () => {
+    const { tool, page, send, transfers } = commander({
+      [root]: [file('a.txt'), folder('dir'), folder('target')],
+      [at('target')]: [],
+    });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'target' });
+    const transfer = (names: string[], move: boolean, target = at('target')) =>
+      send({ type: 'transfer', tab: '1', side: 'right', names, target, move });
+
+    await transfer(['a.txt', 'dir'], false);
+    await transfer(['a.txt'], true);
+    await transfer(['a.txt', '..'], false);
+    await transfer(['gone.txt'], false);
+    await transfer([], false);
+    await transfer(['a.txt'], false, root);
+    await send(
+      forged(
+        JSON.stringify({
+          type: 'transfer',
+          tab: '1',
+          side: 'right',
+          folder: root,
+          names: ['a.txt'],
+          target: at('target'),
+          move: 'yes',
+        }),
+      ),
+    );
+
+    assert.deepStrictEqual(plansOf(transfers), [
+      { sources: [at('a.txt'), at('dir')], target: at('target'), move: false },
+      { sources: [at('a.txt')], target: at('target'), move: true },
+    ]);
+  });
+
+  test('says the items are in the folder already rather than copying them onto themselves, that a folder cannot go into itself or a folder in it, and that nothing is copied or moved yet in a folder read as administrator', async () => {
+    const helper: ElevatedFileSystem = {
+      list: () => Promise.resolve([file('secret.txt')]),
+      drives: () => Promise.resolve([]),
+      watch: () => () => {},
+      closed: new Promise(() => {}),
+      close: () => {},
+    };
+    const { tool, page, send, notices, transfers } = commander(
+      {
+        [root]: [file('a.txt'), folder('dir'), folder('Config.Msi')],
+        [at('dir')]: [folder('inner')],
+        [at('dir', 'inner')]: [],
+        [at('Config.Msi')]: Object.assign(new Error('denied'), {
+          code: 'EPERM',
+        }),
+      },
+      [],
+      () => Promise.resolve(helper),
+    );
+    await tool.show(page, tab);
+    const transfer = (names: string[], target: string) =>
+      send({
+        type: 'transfer',
+        tab: '1',
+        side: 'right',
+        names,
+        target,
+        move: true,
+      });
+
+    await transfer(['a.txt'], root);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'dir' });
+    await send({ type: 'open', tab: '1', side: 'left', name: 'inner' });
+    await transfer(['a.txt', 'dir'], at('dir', 'inner'));
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    await transfer(['dir'], at('dir'));
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+    await transfer(['a.txt'], at('Config.Msi'));
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'left',
+      names: ['secret.txt'],
+      target: root,
+      move: false,
+    });
+
+    assert.deepStrictEqual(plansOf(transfers), []);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.alreadyIn(root) },
+      { level: 'error', message: strings.commander.intoItself('dir') },
+      { level: 'error', message: strings.commander.intoItself('dir') },
+      { level: 'error', message: strings.commander.transferAsAdministrator },
+      { level: 'error', message: strings.commander.transferAsAdministrator },
+    ]);
+  });
+
+  test('shows the page the transfer to show and what it asks, sends on what the page answers to it, and lists the side showing its target again once it is done', async () => {
+    const { tool, page, send, transfers } = commander({
+      [root]: [file('a.txt'), folder('target')],
+      [at('target')]: [],
+    });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'target' });
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'right',
+      names: ['a.txt'],
+      target: at('target'),
+      move: false,
+    });
+    const shown = () => page.of('transfer').at(-1)?.view;
+    assert.deepStrictEqual(shown(), {
+      id: 1,
+      move: false,
+      items: 1,
+      name: 'a.txt',
+      target: at('target'),
+      stopping: false,
+    });
+
+    const clash = {
+      name: 'a.txt',
+      source: { size: 1, modified: 2 },
+      target: { size: 3, modified: 4 },
+    };
+    transfers[0].listener.event({ type: 'clash', clash });
+    assert.deepStrictEqual(shown()?.clash, { ...clash, asked: 1 });
+    await send({
+      type: 'answerClash',
+      transfer: 1,
+      asked: 1,
+      answer: 'overwrite',
+      all: false,
+    });
+    await send({ type: 'hideTransfer', transfer: 1 });
+    assert.strictEqual(shown(), undefined);
+    tool.ready(page);
+    assert.strictEqual(page.of('transfer').at(-1)?.view, undefined);
+    await send({ type: 'stopTransfer', transfer: 1 });
+    assert.deepStrictEqual(transfers[0].commands.slice(1), [
+      { type: 'answer', reply: { answer: 'overwrite', all: false } },
+      { type: 'stop' },
+    ]);
+
+    const listings = page.listings().length;
+    transfers[0].listener.event({ type: 'done', stopped: true });
+    await waitFor(
+      () => page.listings().length > listings,
+      'the target to be listed again',
+    );
+    assert.deepStrictEqual(page.listings().slice(listings), [
+      `left ${at('target')} ↑: `,
+    ]);
+  });
+
+  test('ends every copy and move on quitting', async () => {
+    const { tool, page, send, transfers } = commander({
+      [root]: [file('a.txt'), folder('target')],
+      [at('target')]: [],
+    });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'target' });
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'right',
+      names: ['a.txt'],
+      target: at('target'),
+      move: false,
+    });
+
+    tool.quit();
+
+    assert.deepStrictEqual(
+      transfers.map((each) => each.disposed),
+      [true],
+    );
+  });
+
   test('acts on the files a page names only in the folder it names, which the side must still show, as Delete right after Backspace trashed a file of the same name in the folder the side went to', async () => {
     const {
       tool,
@@ -1548,6 +1767,7 @@ suite('Commander tool', () => {
       openedIn,
       repositories,
       settled,
+      transfers,
     } = commander({
       [root]: [folder('sub'), folder('same'), file('same.txt')],
       [at('sub')]: [folder('same'), file('same.txt')],
@@ -1603,9 +1823,25 @@ suite('Commander tool', () => {
       ],
     });
     await send({ type: 'openRepository', ...named, name: 'same' });
+    await send({
+      type: 'transfer',
+      ...named,
+      names: ['same.txt'],
+      target: root,
+      move: false,
+    });
 
     assert.deepStrictEqual(
-      { trashed, removed, opened, viewed, menus, compared, openedIn },
+      {
+        trashed,
+        removed,
+        opened,
+        viewed,
+        menus,
+        compared,
+        openedIn,
+        transfers,
+      },
       {
         trashed: [],
         removed: [],
@@ -1614,6 +1850,7 @@ suite('Commander tool', () => {
         menus: [],
         compared: [],
         openedIn: [],
+        transfers: [],
       },
     );
     assert.strictEqual(page.listings().length, listings);
@@ -3050,6 +3287,28 @@ suite('Commander tool in flat view', () => {
       folders: 3,
       failed: 0,
     });
+  });
+
+  test('copies a file by its path under the folder of the side into the folder of the other side', async () => {
+    const { send, transfers } = await flatDownloads();
+    const name = `${under('photos', '2024')}dog.jpg`;
+
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'right',
+      names: [name, 'setup.exe'],
+      target: root,
+      move: false,
+    });
+
+    assert.deepStrictEqual(plansOf(transfers), [
+      {
+        sources: [inDownloads(name), inDownloads('setup.exe')],
+        target: root,
+        move: false,
+      },
+    ]);
   });
 
   test('opens, views, compares and draws the icon of a file by its path under the folder of the side', async () => {

@@ -224,6 +224,21 @@ suite('Release build', { timeout: 30_000 }, () => {
     }
   });
 
+  test('copies and moves files only in a process of its own, bundled next to the main bundle and importing only modules of Node, the main bundle holding none of it, so a copy stuck on a share or a crash in it holds up neither the window nor its folders', async () => {
+    const { outputs } = (await releaseBuild('mainOptions')).metafile;
+    const engine = 'src/tools/commander/main/transfer.ts';
+    const host = outputs['dist/transferHost.js'];
+    assert.ok(host);
+    assert.deepStrictEqual(
+      host.imports.filter(
+        (imported) => !imported.external || !imported.path.startsWith('node:'),
+      ),
+      [],
+    );
+    assert.ok(Object.keys(host.inputs).includes(engine));
+    assert.ok(!Object.keys(outputs['dist/main.js'].inputs).includes(engine));
+  });
+
   test('leaves koffi out of the bundle and unpacked from the asar with the native module of each platform, which it looks for next to itself', async () => {
     const { outputs } = (await releaseBuild('mainOptions')).metafile;
     assert.deepStrictEqual(

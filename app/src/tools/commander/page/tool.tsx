@@ -15,6 +15,8 @@ import { followDrag } from '../../../ui/followDrag';
 import { useBinding } from '../../../ui/shortcuts';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { deleteQuestion } from './deleting';
+import { transferQuestion } from './transferring';
+import { TransferPopup } from './transferPopup';
 import { strings } from '../../../shared/strings';
 import { useShellActions } from '../../../shell/page/store';
 import {
@@ -46,11 +48,30 @@ function CommanderPopups() {
   const tab = useCommander((state) => state.view.tab);
   const canElevate = useCommander((state) => state.view.canElevate);
   const deleting = useCommander((state) => state.deleting);
+  const transferring = useCommander((state) => state.transferring);
   const noAccess = useCommander((state) => state.noAccess);
-  const { confirmDelete, cancelDelete, closeNoAccess, elevate } =
-    useCommanderActions();
+  const {
+    confirmDelete,
+    cancelDelete,
+    confirmTransfer,
+    cancelTransfer,
+    closeNoAccess,
+    elevate,
+  } = useCommanderActions();
   return (
     <>
+      <TransferPopup />
+      {transferring !== undefined && (
+        <ConfirmPopup
+          {...transferQuestion(
+            transferring.names,
+            transferring.move,
+            transferring.target,
+          )}
+          onConfirm={confirmTransfer}
+          onCancel={cancelTransfer}
+        />
+      )}
       {deleting !== undefined && (
         <ConfirmPopup
           {...deleteQuestion(

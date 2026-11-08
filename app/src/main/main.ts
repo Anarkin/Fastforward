@@ -66,6 +66,7 @@ import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
 import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
+import { transferProcess } from '../tools/commander/main/transferProcess';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
 import { shellLaunch } from '../tools/terminal/main/shellLaunch';
 import { windowsPtyOf } from '../tools/terminal/main/windowsPty';
@@ -534,6 +535,7 @@ async function start(asked: readonly string[]): Promise<void> {
     openFile: (file) => shell.openPath(file),
     trash: (file) => shell.trashItem(file),
     remove: (file) => fs.promises.rm(file, { recursive: true }),
+    connectTransfer: transferProcess(path.join(dist, 'transferHost.js'), log),
     root: rootFolder(process.platform, process.env),
   });
   const view = new Shell(

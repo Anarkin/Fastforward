@@ -7,10 +7,15 @@ import {
 import { keyPressed } from '../../../ui/shortcuts';
 import { commanderKeymap } from '../shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
-import { deleteKeys, menuKeys, opens, passedKeys, type Row } from './listing';
+import { chosenKeys, menuKeys, opens, passedKeys, type Row } from './listing';
 import { moveInGrid } from './tiles';
 
 export type PaneAct =
+  | {
+      readonly kind: 'transfer';
+      readonly names: readonly string[];
+      readonly move: boolean;
+    }
   | {
       readonly kind: 'delete';
       readonly names: readonly string[];
@@ -70,9 +75,16 @@ export function paneKey(
   }: PaneKeys,
 ): { readonly act?: PaneAct } | undefined {
   const row = selectedIndex === -1 ? undefined : rows[selectedIndex];
+  const moving = keyPressed(commanderKeymap.transferItems, event);
+  if (moving !== undefined) {
+    const names = chosenKeys(rows, selected, marked);
+    return names.length > 0
+      ? { act: { kind: 'transfer', names, move: moving } }
+      : done;
+  }
   const permanently = keyPressed(commanderKeymap.deleteItems, event);
   if (permanently !== undefined) {
-    const names = deleteKeys(rows, selected, marked);
+    const names = chosenKeys(rows, selected, marked);
     return names.length > 0
       ? { act: { kind: 'delete', names, permanently } }
       : done;

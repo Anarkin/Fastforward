@@ -391,7 +391,7 @@ export function rangeKeys(
     .map((row) => row.key);
 }
 
-export function deleteKeys(
+export function chosenKeys(
   rows: readonly Row[],
   selected: string | undefined,
   marked: ReadonlySet<string> | undefined,

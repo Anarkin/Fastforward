@@ -351,6 +351,7 @@ export function newView(
         realPath: (link) => Promise.resolve(link),
         fileIcon: () => Promise.resolve(new Uint8Array()),
         platform: process.platform,
+        connectTransfer: () => ({ send: () => {}, dispose: () => {} }),
         root: commanderRoot(),
       }),
       git: view,

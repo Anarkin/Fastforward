@@ -72,9 +72,13 @@ function fileSize(bytes: number): string {
     return `${bytes} B`;
   }
   const kilobytes = bytes / 1024;
-  return kilobytes < 1024
-    ? `${kilobytes.toFixed(1)} KB`
-    : `${(kilobytes / 1024).toFixed(1)} MB`;
+  if (kilobytes < 1024) {
+    return `${kilobytes.toFixed(1)} KB`;
+  }
+  const megabytes = kilobytes / 1024;
+  return megabytes < 1024
+    ? `${megabytes.toFixed(1)} MB`
+    : `${(megabytes / 1024).toFixed(1)} GB`;
 }
 
 export const strings = {
@@ -263,6 +267,8 @@ export const strings = {
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
     dialogButton: 'Move between the buttons of a dialog',
+    transferItems:
+      'Copy the marked items, or the selected one, into the folder of the other side, or move them there with F6',
     deleteItems:
       'Move the marked items, or the selected one, to the Recycle Bin, or with Shift delete them permanently',
     systemMenu:
@@ -547,6 +553,50 @@ export const strings = {
       `Delete ${what} permanently? This cannot be undone.`,
     oneItem: (name: string) => `"${name}"`,
     items: (count: number) => `${count} items`,
+    copyTitle: 'Copy',
+    moveTitle: 'Move',
+    copyQuestion: (what: string, target: string) =>
+      `Copy ${what} to "${target}"?`,
+    moveQuestion: (what: string, target: string) =>
+      `Move ${what} to "${target}"?`,
+    copying: (what: string, target: string) => `Copying ${what} to "${target}"`,
+    moving: (what: string, target: string) => `Moving ${what} to "${target}"`,
+    counting: 'Counting the files…',
+    transferredFiles: (files: number, total: number) =>
+      `${files.toLocaleString()} of ${total.toLocaleString()} files`,
+    transferredBytes: (done: number, total: number) =>
+      `${fileSize(done)} of ${fileSize(total)}`,
+    stopTransfer: 'Stop',
+    stoppingTransfer: 'Stopping…',
+    clashQuestion: (what: string) => `${what} is there already.`,
+    clashCopying: 'Copying',
+    clashMoving: 'Moving',
+    clashThere: 'There now',
+    clashDetails: (bytes: number, date: string) =>
+      `${fileSize(bytes)}, modified ${date}`,
+    overwrite: 'Overwrite',
+    skip: 'Skip',
+    keepBoth: 'Keep Both',
+    forTheRest: 'Do the same for the rest',
+    copied: (what: string, target: string) => `Copied ${what} to "${target}"`,
+    moved: (what: string, target: string) => `Moved ${what} to "${target}"`,
+    copyFailed: (name: string, reason: string) =>
+      `${name} could not be copied: ${reason}`,
+    moveFailed: (name: string, reason: string) =>
+      `${name} could not be moved: ${reason}`,
+    copyFailedMany: (count: number, name: string, reason: string) =>
+      `${count} items could not be copied, among them ${name}: ${reason}`,
+    moveFailedMany: (count: number, name: string, reason: string) =>
+      `${count} items could not be moved, among them ${name}: ${reason}`,
+    alreadyIn: (target: string) => `The items are in "${target}" already.`,
+    intoItself: (name: string) =>
+      `${name} can't go into itself or a folder in it.`,
+    transferAsAdministrator:
+      "Items can't be copied or moved yet in a folder read as administrator.",
+    copyingStopped: (target: string) =>
+      `Copying to "${target}" stopped unexpectedly.`,
+    movingStopped: (target: string) =>
+      `Moving to "${target}" stopped unexpectedly.`,
     name: 'Name',
     extension: 'Ext',
     size: 'Size',
@@ -577,6 +627,8 @@ export const strings = {
     helperNotConnected:
       "The helper that reads folders as administrator didn't connect.",
     gone: "It doesn't exist anymore.",
+    folderThere: 'A folder of that name is there.',
+    fileThere: 'A file of that name is there.',
     couldNotRead: (file: string, reason: string) =>
       `Couldn't read ${file}. ${reason}`,
     layout: 'Layout',
@@ -988,6 +1040,7 @@ export const strings = {
     terminalHostStopped: (code: number) =>
       `The terminal process stopped with exit code ${code}`,
     terminalHost: (line: string) => `Terminal process: ${line}`,
+    transferHost: (line: string) => `Copying process: ${line}`,
     listingRemoteTagsFailed: (reason: string) =>
       `Listing the remotes to read their tags failed: ${reason}`,
     listingTagsOfRemoteFailed: (remote: string, reason: string) =>

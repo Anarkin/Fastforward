@@ -1,5 +1,6 @@
 import type { PdfPlace } from '../../../shared/pdf';
 import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';
+import type { ClashAnswer, TransferView } from './transfers';
 
 export interface ComparedFile {
   readonly side: Side;
@@ -96,6 +97,10 @@ export function isSide(value: unknown): value is Side {
   return sides.some((side) => side === value);
 }
 
+export function otherSide(side: Side): Side {
+  return side === 'left' ? 'right' : 'left';
+}
+
 export type CommanderToHost =
   | {
       readonly type: 'open';
@@ -189,6 +194,24 @@ export type CommanderToHost =
       readonly names: readonly string[];
       readonly permanently: boolean;
     }
+  | {
+      readonly type: 'transfer';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly names: readonly string[];
+      readonly target: string;
+      readonly move: boolean;
+    }
+  | {
+      readonly type: 'answerClash';
+      readonly transfer: number;
+      readonly asked: number;
+      readonly answer: ClashAnswer;
+      readonly all: boolean;
+    }
+  | { readonly type: 'stopTransfer'; readonly transfer: number }
+  | { readonly type: 'hideTransfer'; readonly transfer: number }
   | { readonly type: 'reread'; readonly tab: string; readonly side: Side }
   | {
       readonly type: 'flat';
@@ -267,6 +290,7 @@ export type CommanderToWebview =
       readonly bookmarks: readonly string[];
     }
   | { readonly type: 'drives'; readonly drives: readonly string[] }
+  | { readonly type: 'transfer'; readonly view: TransferView | undefined }
   | { readonly type: 'show'; readonly tab: string; readonly file?: string }
   | { readonly type: 'hide' }
   | { readonly type: 'closed'; readonly tab: string }

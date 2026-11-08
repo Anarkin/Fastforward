@@ -10,7 +10,7 @@ import {
   selectionAfter,
   passedKeys,
   rangeKeys,
-  deleteKeys,
+  chosenKeys,
   menuKeys,
   filteredRows,
   filteredSelection,
@@ -461,12 +461,12 @@ suite('Commander listing', () => {
     ];
     const marked = new Set(['d', 'b']);
 
-    assert.deepStrictEqual(deleteKeys(rows, 'c', marked), ['b', 'd']);
-    assert.deepStrictEqual(deleteKeys(rows, '..', marked), ['b', 'd']);
-    assert.deepStrictEqual(deleteKeys(rows, 'a', new Set()), ['a']);
-    assert.deepStrictEqual(deleteKeys(rows, 'a', undefined), ['a']);
-    assert.deepStrictEqual(deleteKeys(rows, '..', undefined), []);
-    assert.deepStrictEqual(deleteKeys(rows, undefined, undefined), []);
+    assert.deepStrictEqual(chosenKeys(rows, 'c', marked), ['b', 'd']);
+    assert.deepStrictEqual(chosenKeys(rows, '..', marked), ['b', 'd']);
+    assert.deepStrictEqual(chosenKeys(rows, 'a', new Set()), ['a']);
+    assert.deepStrictEqual(chosenKeys(rows, 'a', undefined), ['a']);
+    assert.deepStrictEqual(chosenKeys(rows, '..', undefined), []);
+    assert.deepStrictEqual(chosenKeys(rows, undefined, undefined), []);
   });
 
   test('orders the rows of a folder listed again as it would order them afresh, starting from the rows it had, whatever came, went or changed, by every column either way and grouped by color', () => {
@@ -556,8 +556,8 @@ suite('Commander listing', () => {
       repository: false,
     }));
 
-    assert.deepStrictEqual(deleteKeys(rows, 'a', new Set(['hidden'])), ['a']);
-    assert.deepStrictEqual(deleteKeys(rows, 'a', new Set(['b', 'hidden'])), [
+    assert.deepStrictEqual(chosenKeys(rows, 'a', new Set(['hidden'])), ['a']);
+    assert.deepStrictEqual(chosenKeys(rows, 'a', new Set(['b', 'hidden'])), [
       'b',
     ]);
   });

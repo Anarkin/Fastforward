@@ -519,6 +519,96 @@ suite('Commander store', () => {
     );
   });
 
+  test('asks before copying or moving into the folder of the other side, sending it once confirmed and nothing once cancelled, nor while the other side shows no folder', () => {
+    const { posted, store } = shown();
+    store.getState().askTransfer('left', ['a'], false);
+    assert.strictEqual(store.getState().transferring, undefined);
+
+    store.getState().receive({ ...listing('D:\\photos'), side: 'right' });
+    store.getState().askTransfer('left', ['a'], true);
+    assert.deepStrictEqual(store.getState().transferring, {
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+      names: ['a'],
+      target: 'D:\\photos',
+      move: true,
+    });
+    store.getState().cancelTransfer();
+    assert.strictEqual(store.getState().transferring, undefined);
+    store.getState().askTransfer('left', ['b', 'c'], false);
+    store.getState().confirmTransfer();
+    assert.strictEqual(store.getState().transferring, undefined);
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'transfer'),
+      [
+        {
+          type: 'transfer',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          names: ['b', 'c'],
+          target: 'D:\\photos',
+          move: false,
+        },
+      ],
+    );
+  });
+
+  test('drops the question to copy once either side shows another folder, as it names the items seen and the folder they would go to', () => {
+    const { posted, store } = shown();
+    store.getState().receive({ ...listing('D:\\photos'), side: 'right' });
+    store.getState().askTransfer('left', ['a'], false);
+    store.getState().receive({ ...listing('D:\\other'), side: 'right' });
+    assert.strictEqual(store.getState().transferring, undefined);
+    store.getState().askTransfer('left', ['a'], false);
+    store.getState().receive(listing(`${left.folder}/sub`));
+    assert.strictEqual(store.getState().transferring, undefined);
+    store.getState().confirmTransfer();
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'transfer'),
+      [],
+    );
+  });
+
+  test('shows the copy or move the main process shows, sending on an answer to what it asks, a stop and the closing of its dialog for it', () => {
+    const { posted, store } = shown();
+    const view = {
+      id: 3,
+      move: false,
+      items: 2,
+      target: 'D:\\photos',
+      clash: {
+        name: 'a.jpg',
+        source: { size: 1, modified: 2 },
+        target: { size: 3, modified: 4 },
+        asked: 5,
+      },
+      stopping: false,
+    };
+    store.getState().receive({ type: 'transfer', view });
+    assert.deepStrictEqual(store.getState().transfer, view);
+
+    store.getState().answerClash('keepBoth', true);
+    store.getState().stopTransfer();
+    store.getState().hideTransfer();
+    store.getState().receive({ type: 'transfer', view: undefined });
+    store.getState().stopTransfer();
+
+    assert.strictEqual(store.getState().transfer, undefined);
+    assert.deepStrictEqual(posted, [
+      {
+        type: 'answerClash',
+        transfer: 3,
+        asked: 5,
+        answer: 'keepBoth',
+        all: true,
+      },
+      { type: 'stopTransfer', transfer: 3 },
+      { type: 'hideTransfer', transfer: 3 },
+    ]);
+  });
+
   test('reads a folder it may not as administrator once asked, forgetting the question either way', () => {
     const { posted, store } = shown();
     const noAccess = {

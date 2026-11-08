@@ -63,6 +63,20 @@ suite('Commander keys', () => {
     assert.deepStrictEqual(paneKey(pressed('Delete'), at('..')), {});
   });
 
+  test('copies the file selected, or the ones marked, to the other side on F5, moves them on F6, and does nothing on the parent folder', () => {
+    assert.deepStrictEqual(paneKey(pressed('F5'), at('a.txt')), {
+      act: { kind: 'transfer', names: ['a.txt'], move: false },
+    });
+    assert.deepStrictEqual(
+      paneKey(
+        pressed('F6'),
+        at('a.txt', { marked: new Set(['docs', 'b.txt']) }),
+      ),
+      { act: { kind: 'transfer', names: ['docs', 'b.txt'], move: true } },
+    );
+    assert.deepStrictEqual(paneKey(pressed('F5'), at('..')), {});
+  });
+
   test('opens the menu of the system for the selection, extended with Shift', () => {
     assert.deepStrictEqual(
       paneKey(pressed('F10', { shiftKey: true }), at('a.txt')),
