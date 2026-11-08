@@ -535,6 +535,7 @@ async function start(asked: readonly string[]): Promise<void> {
     openFile: (file) => shell.openPath(file),
     trash: (file) => shell.trashItem(file),
     remove: (file) => fs.promises.rm(file, { recursive: true }),
+    makeFolder: (folder) => fs.promises.mkdir(folder),
     connectTransfer: transferProcess(path.join(dist, 'transferHost.js'), log),
     root: rootFolder(process.platform, process.env),
   });

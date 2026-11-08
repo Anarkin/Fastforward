@@ -64,6 +64,12 @@ interface Transferring {
   readonly move: boolean;
 }
 
+interface MakingFolder {
+  readonly tab: string;
+  readonly side: Side;
+  readonly folder: string;
+}
+
 interface NoAccess {
   readonly side: Side;
   readonly folder: string;
@@ -77,6 +83,7 @@ interface CommanderSource {
   readonly deleting: Deleting | undefined;
   readonly transferring: Transferring | undefined;
   readonly transfer: TransferView | undefined;
+  readonly makingFolder: MakingFolder | undefined;
   readonly noAccess: NoAccess | undefined;
   readonly resized:
     { readonly from: ColumnWidths; readonly widths: ColumnWidths } | undefined;
@@ -159,6 +166,9 @@ interface CommanderActions {
   readonly confirmTransfer: () => void;
   readonly cancelTransfer: () => void;
   readonly answerClash: (answer: ClashAnswer, all: boolean) => void;
+  readonly askNewFolder: (side: Side) => void;
+  readonly makeFolder: (name: string) => void;
+  readonly cancelNewFolder: () => void;
   readonly stopTransfer: () => void;
   readonly hideTransfer: () => void;
   readonly elevate: () => void;
@@ -191,6 +201,7 @@ const commanderDefaults: CommanderSource = {
   deleting: undefined,
   transferring: undefined,
   transfer: undefined,
+  makingFolder: undefined,
   noAccess: undefined,
   resized: undefined,
   filters: new Map(),
@@ -542,7 +553,10 @@ export function createCommanderStore(
       if (filters !== get().filters) {
         set({ filters });
       }
-      const { deleting, transferring } = get();
+      const { deleting, transferring, makingFolder } = get();
+      if (makingFolder !== undefined && !stillShown(get().view, makingFolder)) {
+        set({ makingFolder: undefined });
+      }
       if (deleting !== undefined && !stillShown(get().view, deleting)) {
         set({ deleting: undefined });
       }
@@ -798,6 +812,18 @@ export function createCommanderStore(
         }
       },
       cancelTransfer: () => set({ transferring: undefined }),
+      askNewFolder: (side) =>
+        onPane(side, (tab, folder) =>
+          set({ makingFolder: { tab, side, folder } }),
+        ),
+      makeFolder: (name) => {
+        const { makingFolder } = get();
+        if (makingFolder !== undefined) {
+          set({ makingFolder: undefined });
+          post({ type: 'newFolder', ...makingFolder, name });
+        }
+      },
+      cancelNewFolder: () => set({ makingFolder: undefined }),
       answerClash: (answer, all) => {
         const { transfer } = get();
         if (transfer?.clash !== undefined) {

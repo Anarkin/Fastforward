@@ -680,6 +680,9 @@ export function Pane({
 
   const act = (action: PaneAct) => {
     switch (action.kind) {
+      case 'newFolder':
+        actions.askNewFolder(side);
+        return;
       case 'transfer':
         actions.askTransfer(side, action.names, action.move);
         return;

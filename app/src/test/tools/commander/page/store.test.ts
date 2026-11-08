@@ -609,6 +609,38 @@ suite('Commander store', () => {
     ]);
   });
 
+  test('asks for the name of a new folder for the folder of a side, making it once named and nothing once cancelled, and drops the question once the side shows another folder', () => {
+    const { posted, store } = shown();
+    store.getState().askNewFolder('left');
+    assert.deepStrictEqual(store.getState().makingFolder, {
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+    });
+    store.getState().cancelNewFolder();
+    assert.strictEqual(store.getState().makingFolder, undefined);
+    store.getState().askNewFolder('left');
+    store.getState().makeFolder('photos');
+    assert.strictEqual(store.getState().makingFolder, undefined);
+    store.getState().askNewFolder('left');
+    store.getState().receive(listing(`${left.folder}/sub`));
+    assert.strictEqual(store.getState().makingFolder, undefined);
+    store.getState().makeFolder('late');
+
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'newFolder'),
+      [
+        {
+          type: 'newFolder',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          name: 'photos',
+        },
+      ],
+    );
+  });
+
   test('reads a folder it may not as administrator once asked, forgetting the question either way', () => {
     const { posted, store } = shown();
     const noAccess = {

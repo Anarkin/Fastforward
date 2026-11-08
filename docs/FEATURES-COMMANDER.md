@@ -69,7 +69,7 @@
 | Copy | Copy files to the other side | F5 | Core | ✅ Yes | The marked items, or the selected one, into the folder of the other side, asking first; for each file there already, overwrite it, skip it or keep both under a free name, for the rest too, folders of one name merged; dates kept, links copied as links, files cloned where the drive can; in a process of its own, its progress in a dialog with Stop, going on in the background once the dialog is closed and saying when done; in flat view the files all into the one folder; not yet in a folder read as administrator |
 | Move | Move files to the other side | F6 | Core | ✅ Yes | As Copy; renamed on the same drive, whole folders at once, and across drives copied and deleted file by file, each original only once its copy is made |
 | Rename | Rename a file in place | Shift+F6 | Core | ❌ No |  |
-| New folder | Make a folder | F7 | Core | ❌ No |  |
+| New folder | Make a folder | F7 | Core | ✅ Yes | In the folder of the side, named in a dialog that says what is wrong with a name as it is typed, one the side lists already or one Windows refuses, and selected once made; one folder, not a path of them; not yet in a folder read as administrator |
 | New file | Make an empty file | Shift+F4 | Common | ❌ No |  |
 | Delete | Move files to the Recycle Bin or Trash, or delete them | F8, Delete | Core | ✅ Yes | F8 and Delete to the Recycle Bin or Trash, Shift+F8 and Shift+Delete permanently, asking first; not yet in a folder read as administrator |
 | Clipboard | Cut, copy and paste files | Ctrl+X, Ctrl+C, Ctrl+V | Core | ❌ No |  |

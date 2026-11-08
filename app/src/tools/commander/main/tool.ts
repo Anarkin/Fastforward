@@ -87,6 +87,7 @@ import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
 import { Transfers, type ConnectTransfer, type TransferAsk } from './transfers';
 import { folderKey } from '../shared/paths';
+import { nameProblem } from '../shared/names';
 import { onSameVolume, repositoriesIn } from './repositories';
 import {
   iconSourceOf,
@@ -133,6 +134,7 @@ export interface CommanderAccess {
   readonly openFile?: (file: string) => Promise<string>;
   readonly trash?: (file: string) => Promise<void>;
   readonly remove?: (file: string) => Promise<void>;
+  readonly makeFolder?: (folder: string) => Promise<void>;
   readonly shellMenu?: (
     files: readonly string[],
     at: { readonly x: number; readonly y: number },
@@ -453,6 +455,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.delete(page, message);
       case 'transfer':
         return this.transfer(page, message);
+      case 'newFolder':
+        return this.newFolder(page, message);
       case 'answerClash':
         this.transfers.answer(
           message.transfer,
@@ -1057,6 +1061,59 @@ export class CommanderTool implements Tool<'commander'> {
       folder: shown.pane.folder,
       names,
     });
+  }
+
+  private async newFolder(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      name,
+    }: Extract<CommanderToHost, { type: 'newFolder' }>,
+  ): Promise<void> {
+    const shown = this.namingPane(page, tab, side, folder);
+    const { makeFolder } = this.access;
+    if (
+      shown === undefined ||
+      makeFolder === undefined ||
+      typeof name !== 'string' ||
+      name !== path.basename(name) ||
+      nameProblem(name, this.access.platform) !== undefined
+    ) {
+      return;
+    }
+    if (shown.pane.elevated === true) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.makeFolderAsAdministrator,
+      });
+      return;
+    }
+    const made = shown.pane.folder;
+    try {
+      await makeFolder(path.join(made, name));
+    } catch (error) {
+      this.shell.notice(page, {
+        level: 'error',
+        message:
+          codeOf(error) === 'EEXIST'
+            ? strings.commander.nameTaken(name)
+            : strings.commander.makeFolderFailed(name, reasonOf(error)),
+      });
+      return;
+    }
+    if (shown.pane.folder === made) {
+      await this.list(
+        page,
+        shown.tab,
+        shown.side,
+        made,
+        'show',
+        undefined,
+        name,
+      );
+    }
   }
 
   private transferred({ plan, folder, names }: TransferAsk): void {

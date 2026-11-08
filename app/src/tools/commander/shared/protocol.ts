@@ -210,6 +210,13 @@ export type CommanderToHost =
       readonly answer: ClashAnswer;
       readonly all: boolean;
     }
+  | {
+      readonly type: 'newFolder';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name: string;
+    }
   | { readonly type: 'stopTransfer'; readonly transfer: number }
   | { readonly type: 'hideTransfer'; readonly transfer: number }
   | { readonly type: 'reread'; readonly tab: string; readonly side: Side }

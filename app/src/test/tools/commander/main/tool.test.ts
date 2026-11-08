@@ -109,6 +109,7 @@ type Naming =
   | 'shellMenu'
   | 'delete'
   | 'transfer'
+  | 'newFolder'
   | 'openRepository'
   | 'openOnSide';
 
@@ -134,6 +135,7 @@ function commander(
   const opened: string[] = [];
   const trashed: string[] = [];
   const removed: string[] = [];
+  const madeFolders: string[] = [];
   const menus: {
     readonly files: readonly string[];
     readonly at: { readonly x: number; readonly y: number };
@@ -276,6 +278,16 @@ function commander(
       await repositoriesHeld.until;
       return repositories.has(checked);
     },
+    makeFolder: (making) => {
+      madeFolders.push(making);
+      return path.basename(making) === 'taken'
+        ? Promise.reject(
+            Object.assign(new Error('EEXIST: file already exists'), {
+              code: 'EEXIST',
+            }),
+          )
+        : Promise.resolve();
+    },
     connectTransfer: (listener) => {
       const started = {
         commands: [] as TransferCommand[],
@@ -341,6 +353,7 @@ function commander(
       case 'shellMenu':
       case 'delete':
       case 'transfer':
+      case 'newFolder':
       case 'openRepository':
         return {
           ...message,
@@ -403,6 +416,7 @@ function commander(
     settled,
     openedIn,
     transfers,
+    madeFolders,
   };
 }
 
@@ -1729,6 +1743,72 @@ suite('Commander tool', () => {
     ]);
   });
 
+  test('makes a folder of the name asked for in the folder named, selecting it once listed, and none of a name reaching another folder or one Windows would refuse there, saying when the name is taken', async () => {
+    const { tool, page, send, madeFolders, notices } = commander({
+      [root]: [file('a.txt')],
+    });
+    await tool.show(page, tab);
+    const make = (name: string) =>
+      send({ type: 'newFolder', tab: '1', side: 'right', name });
+
+    await make('photos');
+    assert.strictEqual(page.of('listing').at(-1)?.selected, 'photos');
+    await make('..');
+    await make(`sub${path.sep}x`);
+    await make('a/b');
+    await make('');
+    await send(
+      forged(
+        JSON.stringify({
+          type: 'newFolder',
+          tab: '1',
+          side: 'right',
+          folder: root,
+          name: 7,
+        }),
+      ),
+    );
+    await make('taken');
+
+    assert.deepStrictEqual(madeFolders, [at('photos'), at('taken')]);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.nameTaken('taken') },
+    ]);
+  });
+
+  test('says no folder is made yet in a folder read as administrator', async () => {
+    const helper: ElevatedFileSystem = {
+      list: () => Promise.resolve([file('secret.txt')]),
+      drives: () => Promise.resolve([]),
+      watch: () => () => {},
+      closed: new Promise(() => {}),
+      close: () => {},
+    };
+    const { tool, page, send, madeFolders, notices } = commander(
+      {
+        [root]: [folder('Config.Msi')],
+        [at('Config.Msi')]: Object.assign(new Error('denied'), {
+          code: 'EPERM',
+        }),
+      },
+      [],
+      () => Promise.resolve(helper),
+    );
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+
+    await send({ type: 'newFolder', tab: '1', side: 'left', name: 'new' });
+
+    assert.deepStrictEqual(madeFolders, []);
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.makeFolderAsAdministrator,
+      },
+    ]);
+  });
+
   test('ends every copy and move on quitting', async () => {
     const { tool, page, send, transfers } = commander({
       [root]: [file('a.txt'), folder('target')],
@@ -1768,6 +1848,7 @@ suite('Commander tool', () => {
       repositories,
       settled,
       transfers,
+      madeFolders,
     } = commander({
       [root]: [folder('sub'), folder('same'), file('same.txt')],
       [at('sub')]: [folder('same'), file('same.txt')],
@@ -1830,9 +1911,11 @@ suite('Commander tool', () => {
       target: root,
       move: false,
     });
+    await send({ type: 'newFolder', ...named, name: 'new' });
 
     assert.deepStrictEqual(
       {
+        madeFolders,
         trashed,
         removed,
         opened,
@@ -1843,6 +1926,7 @@ suite('Commander tool', () => {
         transfers,
       },
       {
+        madeFolders: [],
         trashed: [],
         removed: [],
         opened: [],

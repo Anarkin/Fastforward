@@ -121,6 +121,7 @@ export const commanderKeymap = {
     'Shift+Click': 'range',
   } as const),
   view: bind('Viewing', strings.actions.viewFile, { F3: true }),
+  newFolder: bind('Folders', strings.actions.newFolder, { F7: true }),
   transferItems: bind('Marking', strings.actions.transferItems, {
     F5: false,
     F6: true,

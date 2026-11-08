@@ -11,6 +11,7 @@ import { chosenKeys, menuKeys, opens, passedKeys, type Row } from './listing';
 import { moveInGrid } from './tiles';
 
 export type PaneAct =
+  | { readonly kind: 'newFolder' }
   | {
       readonly kind: 'transfer';
       readonly names: readonly string[];
@@ -75,6 +76,9 @@ export function paneKey(
   }: PaneKeys,
 ): { readonly act?: PaneAct } | undefined {
   const row = selectedIndex === -1 ? undefined : rows[selectedIndex];
+  if (keyPressed(commanderKeymap.newFolder, event) !== undefined) {
+    return { act: { kind: 'newFolder' } };
+  }
   const moving = keyPressed(commanderKeymap.transferItems, event);
   if (moving !== undefined) {
     const names = chosenKeys(rows, selected, marked);

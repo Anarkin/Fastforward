@@ -2720,6 +2720,43 @@ suite('App commander', () => {
     );
   });
 
+  test('makes a folder of the name typed on F7 in the folder of the side, selecting it, and says what is wrong with a name taken', async () => {
+    const making = path.join(opened, 'making');
+    fs.mkdirSync(making);
+    fs.writeFileSync(path.join(making, 'notes.txt'), '');
+    await select('making');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,notes.txt',
+      'the folder to be listed',
+    );
+    const field = page.locator('.prompt-input');
+
+    await page.keyboard.press('F7');
+    await field.waitFor();
+    await page.keyboard.type('notes.txt');
+    await page.locator('.prompt-problem').waitFor();
+    await field.fill('new folder');
+    await page.keyboard.press('Enter');
+    await field.waitFor({ state: 'detached' });
+    await waitFor(
+      () => fs.statSync(path.join(making, 'new folder')).isDirectory(),
+      'the folder to be made',
+    );
+    await waitFor(
+      async () =>
+        (
+          await right().locator('.commander-row.selected').textContent()
+        )?.includes('new folder') === true,
+      'the new folder to be selected',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('making'),
+      'the folder above to be listed again',
+    );
+  });
+
   test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another folder', async () => {
     const markingFolder = path.join(opened, 'marking');
     fs.mkdirSync(markingFolder);

@@ -14,6 +14,8 @@ import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { followDrag } from '../../../ui/followDrag';
 import { useBinding } from '../../../ui/shortcuts';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
+import { PromptPopup } from '../../../shell/page/promptPopup';
+import { newFolderProblem } from './naming';
 import { deleteQuestion } from './deleting';
 import { transferQuestion } from './transferring';
 import { TransferPopup } from './transferPopup';
@@ -49,18 +51,38 @@ function CommanderPopups() {
   const canElevate = useCommander((state) => state.view.canElevate);
   const deleting = useCommander((state) => state.deleting);
   const transferring = useCommander((state) => state.transferring);
+  const makingFolder = useCommander((state) => state.makingFolder);
+  const platform = useCommander((state) => state.view.platform);
+  const listed = useCommander((state) =>
+    state.makingFolder === undefined
+      ? undefined
+      : state.view.panes[state.makingFolder.side]?.entries,
+  );
   const noAccess = useCommander((state) => state.noAccess);
   const {
     confirmDelete,
     cancelDelete,
     confirmTransfer,
     cancelTransfer,
+    makeFolder,
+    cancelNewFolder,
     closeNoAccess,
     elevate,
   } = useCommanderActions();
   return (
     <>
       <TransferPopup />
+      {makingFolder !== undefined && (
+        <PromptPopup
+          title={strings.commander.newFolderTitle}
+          message={strings.commander.newFolderIn(makingFolder.folder)}
+          label={strings.commander.newFolderName}
+          confirm={strings.commander.makeFolder}
+          problemOf={(name) => newFolderProblem(name, listed, platform)}
+          onConfirm={makeFolder}
+          onCancel={cancelNewFolder}
+        />
+      )}
       {transferring !== undefined && (
         <ConfirmPopup
           {...transferQuestion(

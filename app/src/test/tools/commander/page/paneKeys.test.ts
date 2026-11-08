@@ -77,6 +77,15 @@ suite('Commander keys', () => {
     assert.deepStrictEqual(paneKey(pressed('F5'), at('..')), {});
   });
 
+  test('asks for a new folder on F7, whatever is selected', () => {
+    assert.deepStrictEqual(paneKey(pressed('F7'), at('a.txt')), {
+      act: { kind: 'newFolder' },
+    });
+    assert.deepStrictEqual(paneKey(pressed('F7'), at('..')), {
+      act: { kind: 'newFolder' },
+    });
+  });
+
   test('opens the menu of the system for the selection, extended with Shift', () => {
     assert.deepStrictEqual(
       paneKey(pressed('F10', { shiftKey: true }), at('a.txt')),

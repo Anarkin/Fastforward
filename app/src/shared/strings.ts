@@ -267,6 +267,7 @@ export const strings = {
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
     dialogButton: 'Move between the buttons of a dialog',
+    newFolder: 'Make a folder in the folder of the side',
     transferItems:
       'Copy the marked items, or the selected one, into the folder of the other side, or move them there with F6',
     deleteItems:
@@ -589,6 +590,21 @@ export const strings = {
     moveFailedMany: (count: number, name: string, reason: string) =>
       `${count} items could not be moved, among them ${name}: ${reason}`,
     alreadyIn: (target: string) => `The items are in "${target}" already.`,
+    newFolderTitle: 'New Folder',
+    newFolderIn: (folder: string) => `Make a folder in "${folder}"`,
+    newFolderName: 'Name',
+    makeFolder: 'Make',
+    noName: 'Type the name of the folder.',
+    dotName: "A name can't be . or ..",
+    nameCantHold: (characters: string) => `A name can't hold ${characters}`,
+    reservedName: (name: string) =>
+      `Windows keeps the name ${name} for itself.`,
+    nameEnd: "A name can't end in a dot or a space on Windows.",
+    nameTaken: (name: string) => `"${name}" is there already.`,
+    makeFolderFailed: (name: string, reason: string) =>
+      `"${name}" could not be made: ${reason}`,
+    makeFolderAsAdministrator:
+      "Folders can't be made yet in a folder read as administrator.",
     intoItself: (name: string) =>
       `${name} can't go into itself or a folder in it.`,
     transferAsAdministrator:
