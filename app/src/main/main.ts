@@ -475,6 +475,7 @@ async function start(asked: readonly string[]): Promise<void> {
     saveSorts: (sorts) => userSettings.setIn('commander', 'sort', sorts),
     saveBookmarks: (bookmarks) =>
       userSettings.setIn('commander', 'bookmarks', bookmarks),
+    store: toolState(state, 'commander'),
     thumbnails: new ThumbnailStore(
       thumbnailFolder(
         process.platform,

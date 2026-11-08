@@ -9,6 +9,8 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/shell';
+import type { Store } from '../../../shell/main/storage';
+import { SavedSides } from './savedSides';
 import {
   isSide,
   otherSide,
@@ -116,6 +118,7 @@ export interface CommanderAccess {
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
   readonly saveSorts: (sorts: Sorts) => Promise<void>;
   readonly saveBookmarks: (bookmarks: readonly string[]) => Promise<void>;
+  readonly store: Store;
   readonly thumbnails: {
     readonly read: (key: string) => Promise<Uint8Array | undefined>;
     readonly has: (key: string) => Promise<boolean>;
@@ -354,9 +357,11 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly pdfTabs = new Map<string, string>();
   private walks = 0;
   private readonly transfers: Transfers;
+  private readonly savedSides: SavedSides;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
+    this.savedSides = new SavedSides(access.store);
     this.transfers = new Transfers(access.connectTransfer, {
       show: (view) => {
         const page = this.shell.page();
@@ -382,6 +387,13 @@ export class CommanderTool implements Tool<'commander'> {
     }
     this.postSettings(page);
     this.transfers.resend();
+    const open = new Set(
+      this.shell
+        .tabs()
+        .filter((tab) => tab.tool === 'commander')
+        .map((tab) => tab.id),
+    );
+    this.saveQuietly(this.savedSides.keep((tab) => open.has(tab)));
   }
 
   async show(page: Page, tab: Tab): Promise<void> {
@@ -428,6 +440,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
     }
     this.panes.delete(tab.id);
+    this.saveQuietly(this.savedSides.keep((kept) => kept !== tab.id));
     if (this.shown?.tab === tab.id) {
       this.shown = undefined;
       this.unwatch();
@@ -863,15 +876,21 @@ export class CommanderTool implements Tool<'commander'> {
 
   private async start(tab: Tab): Promise<Panes> {
     const { root } = this.access;
+    const saved = this.savedSides.of(tab.id);
     const right =
-      tab.root !== undefined && (await isFolder(tab.root))
+      saved.right ??
+      (tab.root !== undefined && (await isFolder(tab.root))
         ? path.resolve(tab.root)
-        : root;
+        : root);
     return {
-      left: newPane(root),
+      left: newPane(saved.left ?? root),
       right: newPane(right),
       active: 'right',
     };
+  }
+
+  private saveQuietly(saving: Promise<void>): void {
+    void this.shell.track(saving.catch(() => undefined));
   }
 
   private shownPane(
@@ -2007,6 +2026,9 @@ export class CommanderTool implements Tool<'commander'> {
     }
     if (how === 'visit' || typeof how === 'object' || pane.denied === folder) {
       pane.denied = undefined;
+    }
+    if (pane.folder !== folder && !listing.elevated) {
+      this.saveQuietly(this.savedSides.save(tab, side, folder));
     }
     pane.folder = folder;
     pane.hidden = hidden;

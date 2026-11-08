@@ -30,7 +30,7 @@
 | Recent folders | Go back to a folder visited before | — | Common | ❌ No | Back and forward keep only the folders of each side while the app runs |
 | Outside changes | Refresh a folder when something changes it | — | Core | ✅ Yes | Watches the folders shown; a folder deleted meanwhile gives way to the nearest folder still there |
 | Reread | Read the folder again | Ctrl+R | Core | ✅ Yes | F2 and Ctrl+R |
-| Restore after a restart | Open each side where it was once the app starts again | — | Common | 🟡 Partial | The tabs come back, the right side at the folder the tab was opened with and the left at the root |
+| Restore after a restart | Open each side where it was once the app starts again | — | Common | ✅ Yes | The tabs come back, each side at the folder it last listed without reading as administrator, or the nearest folder still there; a side that never moved at the folder the tab was opened with, the right, or the root; not their back and forward, filter or the side active |
 | Folders of an administrator | Read folders only an administrator may open | — | Advanced | ✅ Yes | After asking, through a helper running elevated, a shield marking the side; on Windows only |
 
 ## Listing

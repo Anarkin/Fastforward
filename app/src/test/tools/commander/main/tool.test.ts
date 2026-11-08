@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Notice, Page, Tab } from '../../../../shell/main/shell';
-import type { Compared } from '../../../../shell/main/storage';
+import type { Compared, Store } from '../../../../shell/main/storage';
 import type { ToWebview } from '../../../../shell/shared/protocol';
 import type { LocalFileSystem } from '../../../../tools/commander/main/fileSystem';
 import {
@@ -49,6 +49,7 @@ import { pathParts } from '../../../../tools/commander/shared/paths';
 import type { PdfPlace } from '../../../../shared/pdf';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
+import { FakeStore } from '../../../fakeStore';
 import type { TransferCommand } from '../../../../tools/commander/main/transferProtocol';
 import type { TransferListener } from '../../../../tools/commander/main/transfers';
 import type { TransferPlan } from '../../../../tools/commander/main/transfer';
@@ -126,6 +127,7 @@ function commander(
   listed: Record<string, Listed>,
   drives: readonly string[] = [],
   elevate?: () => Promise<ElevatedFileSystem | undefined>,
+  state: Store = new FakeStore(),
 ) {
   const notices: Notice[] = [];
   const saved: unknown[] = [];
@@ -265,6 +267,7 @@ function commander(
       settings.bookmarks = bookmarks;
       return Promise.resolve();
     },
+    store: state,
     thumbnails: {
       read: (key) => Promise.resolve(thumbnails.get(key)),
       has: (key) => Promise.resolve(thumbnails.has(key)),
@@ -411,6 +414,7 @@ function commander(
     send,
     notices,
     saved,
+    state,
     watched,
     change,
     watchedTrees,
@@ -451,6 +455,11 @@ const plansOf = (
   );
 
 const tab: Tab = { id: '1', tool: 'commander' };
+
+const lastFolder = (page: CommanderPage, id: string, side: Side) =>
+  page
+    .of('listing')
+    .findLast((listing) => listing.tab === id && listing.side === side)?.folder;
 
 const hiddenIn = (listed: string, ...hidden: string[]) =>
   pathParts(listed).map((part) => hidden.includes(part.path));
@@ -2191,6 +2200,180 @@ suite('Commander tool', () => {
       `left ${root}: `,
       `right ${root}: `,
     ]);
+  });
+
+  suite('started again', () => {
+    test('opens each side of a tab at the folder it last listed', async () => {
+      const listed: Record<string, Listed> = {
+        [root]: [folder('Users'), folder('Windows')],
+        [at('Users')]: [folder('me')],
+        [at('Users', 'me')]: [],
+        [at('Windows')]: [],
+      };
+      const before = commander(listed);
+      await before.tool.show(before.page, tab);
+      await before.send({
+        type: 'open',
+        tab: '1',
+        side: 'left',
+        name: 'Users',
+      });
+      await before.send({ type: 'open', tab: '1', side: 'left', name: 'me' });
+      await before.send({
+        type: 'open',
+        tab: '1',
+        side: 'right',
+        name: 'Windows',
+      });
+      await before.settled();
+
+      const { tool, page } = commander(listed, [], undefined, before.state);
+      await tool.show(page, tab);
+
+      assert.deepStrictEqual(page.listings(), [
+        `left ${at('Users', 'me')} ↑: `,
+        `right ${at('Windows')} ↑: `,
+      ]);
+    });
+
+    test('opens the right side of a tab at the folder it was opened with while that side has not moved', async () => {
+      const opened = tempFolder('commander');
+      try {
+        const listed: Record<string, Listed> = {
+          [root]: [folder('Users')],
+          [at('Users')]: [],
+          [opened]: [],
+        };
+        const shown = { ...tab, root: opened };
+        const before = commander(listed);
+        await before.tool.show(before.page, shown);
+        await before.send({
+          type: 'open',
+          tab: '1',
+          side: 'left',
+          name: 'Users',
+        });
+        await before.settled();
+
+        const { tool, page } = commander(listed, [], undefined, before.state);
+        await tool.show(page, shown);
+
+        assert.deepStrictEqual(page.listings(), [
+          `left ${at('Users')} ↑: `,
+          `right ${opened} ↑: `,
+        ]);
+      } finally {
+        removeFolder(opened);
+      }
+    });
+
+    test('opens a side at the nearest folder still there when the one it last listed is gone', async () => {
+      const listed: Record<string, Listed> = {
+        [root]: [folder('fastforward-made-up')],
+        [at('fastforward-made-up')]: [],
+      };
+      const before = commander(listed);
+      await before.tool.show(before.page, tab);
+      await before.send({
+        type: 'open',
+        tab: '1',
+        side: 'left',
+        name: 'fastforward-made-up',
+      });
+      await before.settled();
+      delete listed[at('fastforward-made-up')];
+
+      const { tool, page, notices } = commander(
+        listed,
+        [],
+        undefined,
+        before.state,
+      );
+      await tool.show(page, tab);
+
+      assert.strictEqual(lastFolder(page, '1', 'left'), root);
+      assert.deepStrictEqual(notices, []);
+    });
+
+    test('opens a side at the folder it last listed without administrator, rather than asking to read one as administrator again', async () => {
+      const helper: ElevatedFileSystem = {
+        list: () => Promise.resolve([file('secret.txt')]),
+        drives: () => Promise.resolve([]),
+        watch: () => () => {},
+        closed: new Promise(() => {}),
+        close: () => {},
+      };
+      const listed: Record<string, Listed> = {
+        [root]: [folder('Users')],
+        [at('Users')]: [folder('Locked')],
+        [at('Users', 'Locked')]: Object.assign(new Error('denied'), {
+          code: 'EPERM',
+        }),
+      };
+      const before = commander(listed, [], () => Promise.resolve(helper));
+      await before.tool.show(before.page, tab);
+      await before.send({
+        type: 'open',
+        tab: '1',
+        side: 'left',
+        name: 'Users',
+      });
+      await before.send({
+        type: 'open',
+        tab: '1',
+        side: 'left',
+        name: 'Locked',
+      });
+      await before.send({ type: 'elevate', tab: '1', side: 'left' });
+      await before.settled();
+      assert.strictEqual(
+        lastFolder(before.page, '1', 'left'),
+        at('Users', 'Locked'),
+      );
+
+      const { tool, page } = commander(listed, [], undefined, before.state);
+      await tool.show(page, tab);
+
+      assert.strictEqual(lastFolder(page, '1', 'left'), at('Users'));
+      assert.deepStrictEqual(page.of('noAccess'), []);
+    });
+
+    test('forgets the folders of a tab once it is closed, and of tabs gone once the page is ready, as a new tab may take the number of one', async () => {
+      const listed: Record<string, Listed> = {
+        [root]: [folder('Users')],
+        [at('Users')]: [],
+      };
+      const tabs: Tab[] = ['1', '2', '3'].map((id) => ({
+        id,
+        tool: 'commander',
+      }));
+      const before = commander(listed);
+      for (const each of tabs) {
+        await before.tool.show(before.page, each);
+        await before.send({
+          type: 'open',
+          tab: each.id,
+          side: 'left',
+          name: 'Users',
+        });
+      }
+      await before.settled();
+      before.tool.closed(before.page, tabs[0]);
+
+      const after = commander(listed, [], undefined, before.state);
+      after.tabs.push(tabs[0], tabs[1]);
+      after.tool.ready(after.page);
+      await after.settled();
+      after.tabs.push(tabs[2]);
+      for (const each of tabs) {
+        await after.tool.show(after.page, each);
+      }
+
+      assert.deepStrictEqual(
+        tabs.map((each) => lastFolder(after.page, each.id, 'left')),
+        [root, at('Users'), root],
+      );
+    });
   });
 
   test('opens a folder of a side, and goes up from it selecting the folder it came from', async () => {

@@ -341,6 +341,7 @@ export function newView(
         saveColumns: () => Promise.resolve(),
         saveSorts: () => Promise.resolve(),
         saveBookmarks: () => Promise.resolve(),
+        store: toolState(store, 'commander'),
         thumbnails: {
           read: () => Promise.resolve(undefined),
           has: () => Promise.resolve(false),
