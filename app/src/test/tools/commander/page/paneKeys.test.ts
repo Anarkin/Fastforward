@@ -30,6 +30,7 @@ const at = (key: string, shown: Partial<PaneKeys> = {}): PaneKeys => ({
   selectedIndex: rows.findIndex((row) => row.key === key),
   marked: undefined,
   filtering: false,
+  reading: false,
   parent: true,
   tiled: false,
   across: 1,
@@ -89,6 +90,20 @@ suite('Commander keys', () => {
     assert.strictEqual(paneKey(pressed('Escape'), at('a.txt')), undefined);
     assert.deepStrictEqual(
       paneKey(pressed('Escape'), at('a.txt', { filtering: true })),
+      { act: { kind: 'stopFiltering' } },
+    );
+  });
+
+  test('stops the reading of a flat side on Escape while it reads, once the filter is closed', () => {
+    assert.deepStrictEqual(
+      paneKey(pressed('Escape'), at('a.txt', { reading: true })),
+      { act: { kind: 'stopReading' } },
+    );
+    assert.deepStrictEqual(
+      paneKey(
+        pressed('Escape'),
+        at('a.txt', { reading: true, filtering: true }),
+      ),
       { act: { kind: 'stopFiltering' } },
     );
   });

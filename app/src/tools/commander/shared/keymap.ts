@@ -74,6 +74,8 @@ export const commanderKeymap = {
   showHidden: bind('Folders', strings.actions.showHidden, {
     'Ctrl+H': true,
   }),
+  flatView: bind('Folders', strings.actions.flatView, { 'Ctrl+B': true }),
+  stopReading: bind('Folders', strings.actions.stopReading, { Escape: true }),
   layout: bind('Folders', strings.actions.layout, {
     'Mod+1': 'details',
     'Mod+2': 'thumbnails',

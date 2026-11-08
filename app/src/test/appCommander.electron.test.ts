@@ -802,6 +802,61 @@ suite('App commander', () => {
     await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
   });
 
+  test('lists the files of every folder in the folder of a side on Ctrl+B, saying how many it read in how many folders and the folder of the file selected, following changes in them, and the folder alone again on Ctrl+B', async () => {
+    const later = path.join(opened, 'src', 'later.ts');
+    try {
+      await select('notes');
+      await page.keyboard.press('Control+B');
+      await waitFor(
+        async () =>
+          JSON.stringify((await rowNames()).toSorted()) ===
+          JSON.stringify(['..', 'big.bin', 'main.ts', 'notes.txt']),
+        'the files of every folder',
+      );
+      await waitFor(
+        async () =>
+          (await right().locator('.column-status-text').textContent()) ===
+          strings.commander.flatRead(3, 2),
+        'the count of what was read',
+      );
+      assert.strictEqual(
+        await right().locator('.path-title').textContent(),
+        `${opened}${path.sep}**`,
+      );
+      assert.ok((await selected()).includes('notes'));
+      assert.strictEqual(
+        await right().locator('.column-status-end').count(),
+        0,
+      );
+      await select('main');
+      assert.strictEqual(
+        await right().locator('.column-status-end').textContent(),
+        'src',
+      );
+
+      if (process.platform !== 'linux') {
+        fs.writeFileSync(later, '');
+        await waitFor(
+          async () =>
+            (await rowNames()).includes('later.ts') &&
+            (await right().locator('.column-status-text').textContent()) ===
+              strings.commander.flatRead(4, 2),
+          'the file made in a folder under the side',
+        );
+      }
+
+      await page.keyboard.press('Control+B');
+      await waitFor(
+        async () => (await rowNames()).join() === '..,src,notes.txt,big.bin',
+        'the folder alone again',
+      );
+      assert.strictEqual(await right().locator('.column-status').count(), 0);
+      assert.strictEqual(await right().locator('.path-flat').count(), 0);
+    } finally {
+      fs.rmSync(later, { force: true });
+    }
+  });
+
   test('filters the files of a side on Ctrl+F or Alt and a letter by every word anywhere in their names, moving among them with the arrows as one types, and clears the filter on Esc or once a folder opens', async () => {
     const names = ['alpha-report.txt', 'beta.txt', 'Report-gamma.md'];
     for (const name of names) {

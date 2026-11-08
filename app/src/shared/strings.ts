@@ -64,6 +64,9 @@ const lastFetchedAgo = (elapsed: number) =>
       count === 1 ? 'Last fetched 1 day ago' : `Last fetched ${count} days ago`,
   });
 
+const filesIn = (files: number, folders: number) =>
+  `${files === 1 ? '1 file' : `${files.toLocaleString()} files`} in ${folders === 1 ? '1 folder' : `${folders.toLocaleString()} folders`}`;
+
 function fileSize(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;
@@ -288,6 +291,9 @@ export const strings = {
     openOnSide:
       'Open the selected folder, or the one you are in, on the left or right side',
     openRepository: 'Open the selected repository in a git tab',
+    flatView:
+      'List the files of every folder in the folder of the side, or the folder alone again',
+    stopReading: 'Stop reading the folders of the side listed flat',
   },
   shortcuts: {
     title: 'Shortcuts',
@@ -529,6 +535,8 @@ export const strings = {
       `${name} could not be deleted: ${reason}`,
     deleteAsAdministrator:
       "Items can't be deleted yet in a folder read as administrator.",
+    menuOfOneFolder:
+      'The menu of Windows can show the files of only one folder at once.',
     deleteTitle: 'Delete',
     deletePermanentlyTitle: 'Delete Permanently',
     bin: (platform: string | undefined) =>
@@ -583,6 +591,17 @@ export const strings = {
     filterFolder: 'Filter the folder',
     filterPlaceholder: 'Filter…',
     filterCount: (shown: number, total: number) => `${shown} of ${total}`,
+    flatView: 'List the files of every folder in it',
+    flatReading: (files: number, folders: number) =>
+      `Reading ${filesIn(files, folders)}…`,
+    flatRead: (files: number, folders: number) => filesIn(files, folders),
+    flatStopped: (files: number, folders: number) =>
+      `Stopped after ${filesIn(files, folders)}`,
+    flatFailed: (count: number) =>
+      count === 1
+        ? "1 folder couldn't be read"
+        : `${count.toLocaleString()} folders couldn't be read`,
+    escapeStops: 'Esc stops',
     findInFile: 'Search the file',
     encodings: {
       auto: 'Auto',

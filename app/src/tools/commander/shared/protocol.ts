@@ -74,6 +74,18 @@ export interface Entry {
   readonly online?: true;
 }
 
+export interface FlatFolder {
+  readonly under: string;
+  readonly entries: readonly Entry[];
+}
+
+export interface FlatProgress {
+  readonly reading: boolean;
+  readonly stopped: boolean;
+  readonly folders: number;
+  readonly failed: number;
+}
+
 export const sides = ['left', 'right'] as const;
 
 export type Side = (typeof sides)[number];
@@ -178,6 +190,13 @@ export type CommanderToHost =
       readonly permanently: boolean;
     }
   | { readonly type: 'reread'; readonly tab: string; readonly side: Side }
+  | {
+      readonly type: 'flat';
+      readonly tab: string;
+      readonly side: Side;
+      readonly flat: boolean;
+    }
+  | { readonly type: 'stopReading'; readonly tab: string; readonly side: Side }
   | { readonly type: 'elevate'; readonly tab: string; readonly side: Side }
   | {
       readonly type: 'openRepository';
@@ -314,6 +333,16 @@ export type CommanderToWebview =
       readonly forward: boolean;
       readonly elevated: boolean;
       readonly selected: string | undefined;
+      readonly flat?: number;
+    }
+  | {
+      readonly type: 'flatFiles';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly walk: number;
+      readonly folders: readonly FlatFolder[];
+      readonly progress: FlatProgress;
     }
   | {
       readonly type: 'repositories';

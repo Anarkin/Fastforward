@@ -17,7 +17,10 @@
   padding: 0
     calc(
       4px +
-        max(var(--widest-layout-button) + 2px + 26px, var(--start-buttons)) +
+        max(
+          var(--widest-layout-button) + 2 * 2px + 2 * 26px,
+          var(--start-buttons)
+        ) +
         8px
     );
 }
@@ -229,6 +232,10 @@
 
 .path-name {
   flex: 0 1 auto;
+}
+
+.path-flat {
+  flex: none;
 }
 
 .path-name.colored {

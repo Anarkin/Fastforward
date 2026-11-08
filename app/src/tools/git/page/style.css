@@ -1112,24 +1112,12 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   margin: 0.2em 0;
 }
 
-.nav-button.toggle.active {
-  background: var(--toggle-on-background);
-}
-
 .pin-pair.pinned > .nav-button {
   background: none;
 }
 
 .pin-pair.pinned > .nav-button:disabled {
   opacity: 1;
-}
-
-.spin-icon {
-  display: flex;
-}
-
-.nav-button.running .spin-icon {
-  animation: spin 1s linear infinite;
 }
 
 .fetch-mark.stale {

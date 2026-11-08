@@ -6,10 +6,16 @@ import {
   driveOf,
   ExtensionCell,
   layoutMenu,
+  NameCell,
   Pane,
   RowIcon,
 } from '../../../../tools/commander/page/pane';
-import { rowsOf } from '../../../../tools/commander/page/listing';
+import {
+  flatRowOf,
+  parentRow,
+  rowsOf,
+} from '../../../../tools/commander/page/listing';
+import type { FlatProgress } from '../../../../tools/commander/shared/protocol';
 import {
   emptyView,
   type PaneView,
@@ -485,5 +491,163 @@ suite('Commander pane', () => {
       cell(file),
       /^<span class="commander-extension">.*txt.*<\/span>$/,
     );
+  });
+});
+
+const file = (name: string) => ({
+  name,
+  folder: false,
+  link: false,
+  hidden: false,
+  size: 1,
+  modified: 0,
+});
+
+const progress = (extra: Partial<FlatProgress> = {}): FlatProgress => ({
+  reading: false,
+  stopped: false,
+  folders: 2,
+  failed: 0,
+  ...extra,
+});
+
+const side = (
+  folder: string,
+  flat: FlatProgress | undefined,
+  selected?: string,
+) => {
+  const view: PaneView = {
+    ...pane(false, []),
+    folder,
+    selected,
+    rows: [
+      parentRow,
+      flatRowOf(file('a.txt'), ''),
+      flatRowOf(file('b.txt'), 'sub\\'),
+    ],
+    ...(flat !== undefined && {
+      flat: { walk: 1, progress: flat, shown: undefined },
+    }),
+  };
+  return new JSDOM(
+    renderToStaticMarkup(
+      <CommanderStore
+        value={createCommanderStore(noop, {
+          view: {
+            ...emptyView,
+            tab: '1',
+            active: 'left',
+            panes: { left: view, right: undefined },
+          },
+        })}
+      >
+        <Pane
+          side="left"
+          driveTrigger={null}
+          bookmarkTrigger={null}
+          resizer={null}
+        />
+      </CommanderStore>,
+    ),
+  ).window.document;
+};
+
+const button = (document: Document) =>
+  document.querySelector(`button[title="${strings.commander.flatView}"]`);
+
+const status = (document: Document) => ({
+  text: document.querySelector('.column-status-text')?.textContent,
+  end: document.querySelector('.column-status-end')?.textContent,
+  tone: document.querySelector('.column-status')?.className,
+  role: document.querySelector('.column-status-text')?.getAttribute('role'),
+});
+
+const cell = (row: ReturnType<typeof flatRowOf>, words: string[]) =>
+  new JSDOM(renderToStaticMarkup(<NameCell row={row} words={words} />)).window
+    .document;
+
+const end = (selected: string) =>
+  side('C:\\a', progress(), selected).querySelector('.column-status-end')
+    ?.textContent;
+
+suite('Commander pane in flat view', () => {
+  test('ends the path of a flat side in ** past a separator, and presses the button of flat view, turning it while reading', () => {
+    const reading = side('C:\\Downloads', progress({ reading: true }));
+    const read = side('C:\\', progress());
+    const plain = side('C:\\Downloads', undefined);
+
+    assert.strictEqual(
+      reading.querySelector('.path-title')?.textContent,
+      'C:\\Downloads\\**',
+    );
+    assert.strictEqual(
+      reading.querySelector('.path-flat')?.textContent,
+      '\\**',
+    );
+    assert.strictEqual(read.querySelector('.path-flat')?.textContent, '**');
+    assert.strictEqual(plain.querySelector('.path-flat'), null);
+    assert.strictEqual(button(reading)?.getAttribute('aria-pressed'), 'true');
+    assert.strictEqual(
+      button(reading)?.className,
+      'nav-button toggle active running',
+    );
+    assert.strictEqual(button(read)?.className, 'nav-button toggle active');
+    assert.strictEqual(button(plain)?.getAttribute('aria-pressed'), 'false');
+    assert.strictEqual(button(plain)?.className, 'nav-button toggle');
+  });
+
+  test('puts the button of flat view between the layout and the filter', () => {
+    const document = side('C:\\Downloads', undefined);
+    assert.deepStrictEqual(
+      Array.from(
+        document.querySelector('.column-actions')?.children ?? [],
+        (child) => child.className,
+      ),
+      ['commander-layout', 'nav-button toggle', 'nav-button search-button'],
+    );
+  });
+
+  test('says under a flat side how many files it read in how many folders, that Esc stops it while reading, and what could not be read', () => {
+    assert.deepStrictEqual(
+      status(side('C:\\a', progress({ reading: true, folders: 1 }))),
+      {
+        text: `${strings.commander.flatReading(2, 1)} · ${strings.commander.escapeStops}`,
+        end: undefined,
+        tone: 'column-status',
+        role: 'status',
+      },
+    );
+    assert.deepStrictEqual(status(side('C:\\a', progress({ failed: 3 }))), {
+      text: `${strings.commander.flatRead(2, 2)} · ${strings.commander.flatFailed(3)}`,
+      end: undefined,
+      tone: 'column-status',
+      role: 'status',
+    });
+    assert.deepStrictEqual(status(side('C:\\a', progress({ stopped: true }))), {
+      text: strings.commander.flatStopped(2, 2),
+      end: undefined,
+      tone: 'column-status warning',
+      role: 'status',
+    });
+    assert.strictEqual(
+      side('C:\\a', undefined).querySelector('.column-status'),
+      null,
+    );
+  });
+
+  test('ends the line under a flat side with the folder the selected file is in, and nothing for a file in the folder of the side', () => {
+    assert.strictEqual(end('sub\\b.txt'), 'sub');
+    assert.strictEqual(end('a.txt'), undefined);
+    assert.strictEqual(end('..'), undefined);
+  });
+
+  test('shows the name of a file under the side without the folder it is in, so the names line up', () => {
+    const nested = cell(flatRowOf(file('notes.txt'), 'docs\\old\\'), ['o']);
+
+    assert.strictEqual(
+      nested.querySelector('.commander-name')?.textContent,
+      'notes',
+    );
+    assert.strictEqual(nested.querySelectorAll('mark').length, 1);
   });
 });

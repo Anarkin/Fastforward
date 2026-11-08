@@ -1043,6 +1043,7 @@ body {
   --title-height: 36px;
   --search-height: 26px;
   --search-gap: 6px;
+  --status-height: 26px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1121,6 +1122,47 @@ body.resizing {
   flex: 1;
   overflow: auto;
   border-radius: 0 0 var(--card-radius) var(--card-radius);
+}
+
+.column-body:has(+ .column-status) {
+  border-radius: 0;
+}
+
+.column-status {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: var(--status-height);
+  padding: 0 8px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+}
+
+.column-status-text,
+.column-status-end {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.column-status-text {
+  flex: 1 1 auto;
+}
+
+.column-status-end {
+  flex: 0 1000 auto;
+}
+
+.column-status.warning {
+  color: var(--color-warning-foreground);
+}
+
+.column-status.error {
+  color: var(--color-error-foreground);
 }
 
 .row {
@@ -1857,6 +1899,18 @@ body.resizing {
   to {
     transform: rotate(360deg);
   }
+}
+
+.nav-button.toggle.active {
+  background: var(--toggle-on-background);
+}
+
+.spin-icon {
+  display: flex;
+}
+
+.nav-button.running .spin-icon {
+  animation: spin 1s linear infinite;
 }
 
 .fetch-mark,

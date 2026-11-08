@@ -105,8 +105,15 @@ export function CommanderTool({
     (state) => state.view.fileColors.colors.length > 0,
   );
   const hasDrives = useStore(store, (state) => state.drives.length > 0);
-  const { activate, chooseLayout, groupByColor, step, reread, toggleHidden } =
-    store.getState();
+  const {
+    activate,
+    chooseLayout,
+    groupByColor,
+    step,
+    reread,
+    toggleHidden,
+    flat,
+  } = store.getState();
   const { closeTab: onClose } = useShellActions();
   const [share, setShare] = useState(0.5);
   const columns = useRef<HTMLDivElement>(null);
@@ -171,6 +178,11 @@ export function CommanderTool({
   }, [shown, activeSide, step]);
 
   useBinding(commanderKeymap.showHidden, toggleHidden, shown && !viewing);
+  useBinding(
+    commanderKeymap.flatView,
+    () => flat(activeSide),
+    shown && !viewing,
+  );
   useBinding(
     commanderKeymap.groupByColor,
     () => groupByColor(activeSide),

@@ -5,15 +5,24 @@ export function nameOf(path: string): string {
   return pathParts(path).at(-1)?.name ?? '';
 }
 
+function flatSuffixOf(path: string): string {
+  if (/[\\/]$/.test(path)) {
+    return '**';
+  }
+  return path.includes('\\') || !path.includes('/') ? '\\**' : '/**';
+}
+
 export function PathTitle({
   path,
   hidden,
   color,
+  flat = false,
   children,
 }: {
   readonly path: string;
   readonly hidden: readonly boolean[];
   readonly color?: string;
+  readonly flat?: boolean;
   readonly children?: ReactNode;
 }) {
   const parts = pathParts(path);
@@ -43,6 +52,7 @@ export function PathTitle({
           {parts[last].separator}
         </span>
       )}
+      {flat && <span className="path-flat">{flatSuffixOf(path)}</span>}
     </span>
   );
 }

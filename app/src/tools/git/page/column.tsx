@@ -26,6 +26,7 @@ export function Column({
   search,
   searching,
   overlay,
+  status,
   children,
 }: {
   title?: React.ReactNode;
@@ -35,6 +36,7 @@ export function Column({
   search?: React.ReactNode;
   searching?: React.ReactNode;
   overlay?: React.ReactNode;
+  status?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -58,6 +60,7 @@ export function Column({
         </header>
       )}
       <div className="column-body">{children}</div>
+      {status}
       {overlay}
       {index !== undefined && <Resizer index={index} />}
     </section>

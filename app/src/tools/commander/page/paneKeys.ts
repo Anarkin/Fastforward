@@ -24,6 +24,7 @@ export type PaneAct =
   | { readonly kind: 'filterLetter'; readonly letter: string }
   | { readonly kind: 'openFilter' }
   | { readonly kind: 'stopFiltering' }
+  | { readonly kind: 'stopReading' }
   | { readonly kind: 'switchSide' }
   | { readonly kind: 'compare' }
   | { readonly kind: 'view'; readonly name: string }
@@ -44,6 +45,7 @@ export interface PaneKeys {
   readonly selectedIndex: number;
   readonly marked: ReadonlySet<string> | undefined;
   readonly filtering: boolean;
+  readonly reading: boolean;
   readonly parent: boolean;
   readonly tiled: boolean;
   readonly across: number;
@@ -60,6 +62,7 @@ export function paneKey(
     selectedIndex,
     marked,
     filtering,
+    reading,
     parent,
     tiled,
     across,
@@ -96,6 +99,9 @@ export function paneKey(
     keyPressed(commanderKeymap.stopFiltering, event) !== undefined
   ) {
     return { act: { kind: 'stopFiltering' } };
+  }
+  if (reading && keyPressed(commanderKeymap.stopReading, event) !== undefined) {
+    return { act: { kind: 'stopReading' } };
   }
   if (keyPressed(commanderKeymap.side, event) !== undefined) {
     return { act: { kind: 'switchSide' } };

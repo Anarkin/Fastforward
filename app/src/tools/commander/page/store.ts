@@ -30,11 +30,13 @@ import {
   emptyView,
   reduceView,
   type CommanderView,
+  type PaneView,
   type ViewAction,
   type ViewerChoices,
 } from './view';
 import type { ToViewer, Viewing } from './viewer';
 import { ScrollPlaces } from './scrollPlaces';
+import { FlatLists, type FlatTiming, type FlatWorker } from './flatLists';
 
 type ViewerRequest = Extract<
   CommanderToHost,
@@ -146,6 +148,8 @@ interface CommanderActions {
   readonly placeOf: (tab: string) => number;
   readonly keepPlace: (tab: string, byte: number) => void;
   readonly filterSide: (side: Side, query: string | undefined) => void;
+  readonly flat: (side: Side) => void;
+  readonly stopReading: (side: Side) => void;
   readonly keepScroll: (key: string, offset: number) => void;
   readonly saveThumbnail: (
     source: IconSource,
@@ -217,6 +221,16 @@ function received(
   switch (message.type) {
     case 'drives':
       return { drives: message.drives };
+    case 'flatFiles': {
+      const view = reduceView(state.view, {
+        type: 'flatProgress',
+        tab: message.tab,
+        side: message.side,
+        walk: message.walk,
+        progress: message.progress,
+      });
+      return view === state.view ? state : { view };
+    }
     case 'viewing': {
       const viewed = viewedOf(message);
       return sameViewed(state.viewed, viewed) ? state : { viewed };
@@ -329,11 +343,67 @@ function shownRowsIn(all: readonly Row[], query: string): ShownRows {
   return shown;
 }
 
+const flatShownByRows = new WeakMap<
+  readonly Row[],
+  { readonly all: readonly Row[]; readonly shown: ShownRows }
+>();
+
+function flatShownRows(
+  all: readonly Row[],
+  filtered: readonly Row[] | undefined,
+): ShownRows {
+  const rows = filtered ?? all;
+  const kept = flatShownByRows.get(rows);
+  if (kept?.all === all) {
+    return kept.shown;
+  }
+  const total = filesIn(all);
+  const shown = {
+    rows,
+    files: rows === all ? total : filesIn(rows),
+    total,
+  };
+  flatShownByRows.set(rows, { all, shown });
+  return shown;
+}
+
 export function shownRowsOf(state: CommanderSource, side: Side): ShownRows {
-  return shownRowsIn(
-    state.view.panes[side]?.rows ?? noRows,
-    filterOf(state, side) ?? '',
-  );
+  const pane = state.view.panes[side];
+  const query = filterOf(state, side) ?? '';
+  if (pane?.flat !== undefined) {
+    return flatShownRows(
+      pane.rows,
+      filterWords(query).length === 0 ? undefined : pane.flat.shown?.rows,
+    );
+  }
+  return shownRowsIn(pane?.rows ?? noRows, query);
+}
+
+function startFlatWorker(): FlatWorker {
+  return new Worker(new URL('flatWorker.js', location.href), {
+    type: 'module',
+  });
+}
+
+function flatPanesOf({ tab, panes, kept }: CommanderView): Set<string> {
+  const flat = new Set<string>();
+  const add = (
+    each: string | undefined,
+    sidesOf: Readonly<Record<Side, PaneView | undefined>>,
+  ) => {
+    for (const side of sides) {
+      if (each !== undefined && sidesOf[side]?.flat !== undefined) {
+        flat.add(filterKey(each, side));
+      }
+    }
+  };
+  add(tab, panes);
+  for (const [each, away] of kept) {
+    if (each !== tab) {
+      add(each, away.panes);
+    }
+  }
+  return flat;
 }
 
 const pdfPlaceWait = 2000;
@@ -343,6 +413,10 @@ const pdfPlaceEvery = 1000;
 export function createCommanderStore(
   post: (message: CommanderToHost) => void,
   initial: Partial<CommanderSource> = {},
+  flatOptions: {
+    readonly worker: () => FlatWorker;
+    readonly timing?: FlatTiming;
+  } = { worker: startFlatWorker },
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
   const scrolls = new ScrollPlaces();
@@ -375,6 +449,55 @@ export function createCommanderStore(
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
   return createStore<CommanderState>()((set, get) => {
+    const flats = new FlatLists(
+      flatOptions.worker,
+      () => reconcileFlats(),
+      flatOptions.timing,
+    );
+    const reconcileFlats = () => {
+      const state = get();
+      const { view } = state;
+      const live = flatPanesOf(view);
+      for (const pane of flats.panes()) {
+        if (!live.has(pane)) {
+          flats.drop(pane);
+        }
+      }
+      const { tab, panes } = view;
+      if (tab === undefined) {
+        return;
+      }
+      for (const side of sides) {
+        const pane = panes[side];
+        const flat = pane?.flat;
+        if (pane === undefined || flat === undefined) {
+          continue;
+        }
+        const key = filterKey(tab, side);
+        flats.ensure(key, flat.walk, pane.parent, {
+          sort: pane.sort,
+          showHidden: view.showHidden,
+          fileColors: view.fileColors,
+          query: filterOf(state, side) ?? '',
+        });
+        const built = flats.built(key, flat.walk);
+        if (
+          built !== undefined &&
+          (built.rows !== pane.rows || built.shown !== flat.shown)
+        ) {
+          set((now) => ({
+            view: reduceView(now.view, {
+              type: 'flatRows',
+              tab,
+              side,
+              walk: flat.walk,
+              rows: built.rows,
+              shown: built.shown,
+            }),
+          }));
+        }
+      }
+    };
     const announced = (change: () => void) => {
       const before = get().view;
       change();
@@ -413,6 +536,7 @@ export function createCommanderStore(
       ) {
         post({ type: 'activate', tab, side: active });
       }
+      reconcileFlats();
     };
     const dispatch = (action: ViewAction) =>
       announced(() =>
@@ -454,6 +578,21 @@ export function createCommanderStore(
             handler(message);
           }
           return;
+        }
+        if (message.type === 'flatFiles') {
+          const { tab, panes } = get().view;
+          const pane = panes[message.side];
+          if (
+            tab === message.tab &&
+            pane?.flat?.walk === message.walk &&
+            pane.folder === message.folder
+          ) {
+            flats.files(
+              filterKey(message.tab, message.side),
+              message.walk,
+              message.folders,
+            );
+          }
         }
         announced(() => set((state) => received(state, message)));
         if (message.type === 'closed') {
@@ -652,7 +791,19 @@ export function createCommanderStore(
         if (selection !== undefined && selection !== selected) {
           dispatch({ type: 'select', side, key: selection });
         }
+        reconcileFlats();
       },
+      flat: (side) =>
+        onTab((tab) =>
+          post({
+            type: 'flat',
+            tab,
+            side,
+            flat: get().view.panes[side]?.flat === undefined,
+          }),
+        ),
+      stopReading: (side) =>
+        onTab((tab) => post({ type: 'stopReading', tab, side })),
       keepScroll: (key, offset) => scrolls.keep(key, offset),
       dropIcon: (ticket) => {
         if (dropped.push(ticket) > 1) {

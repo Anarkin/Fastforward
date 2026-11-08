@@ -32,6 +32,7 @@ export function webviewOptions(production: boolean): BuildOptions {
       webview: 'src/shell/page/main.tsx',
       syntaxWorker: 'src/ui/syntaxWorker.ts',
       thumbnailWorker: 'src/ui/thumbnailWorker.ts',
+      flatWorker: 'src/tools/commander/page/flatWorker.ts',
       pdfWorker: 'node_modules/pdfjs-dist/build/pdf.worker.mjs',
     },
     format: 'esm',

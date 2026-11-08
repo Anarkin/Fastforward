@@ -40,11 +40,13 @@ import {
   BackIcon,
   BookmarkIcon,
   FileIcon,
+  FlatViewIcon,
   FolderIcon,
   ForwardIcon,
   ShieldIcon,
   ToolIcon,
 } from '../../../ui/icons';
+import { StatusLine } from '../../../ui/statusLine';
 import { MenuButton } from '../../../ui/menu';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
@@ -170,6 +172,80 @@ export function ExtensionCell({
         <HighlightWords text={row.extension} words={words} />
       )}
     </span>
+  );
+}
+
+export function NameCell({
+  row,
+  words,
+}: {
+  row: Row;
+  words: readonly string[];
+}) {
+  return (
+    <span className="commander-name">
+      <HighlightWords text={row.base} words={words} />
+    </span>
+  );
+}
+
+function FlatButton({ side }: { side: Side }) {
+  const flat = useCommander(
+    (state) => state.view.panes[side]?.flat !== undefined,
+  );
+  const reading = useCommander(
+    (state) => state.view.panes[side]?.flat?.progress.reading === true,
+  );
+  const { flat: onFlat } = useCommanderActions();
+  return (
+    <button
+      className={`nav-button toggle${flat ? ' active' : ''}${reading ? ' running' : ''}`}
+      title={strings.commander.flatView}
+      aria-pressed={flat}
+      onClick={() => onFlat(side)}
+    >
+      <span className="spin-icon">
+        <FlatViewIcon />
+      </span>
+    </button>
+  );
+}
+
+function FlatStatus({
+  side,
+  files,
+  under,
+}: {
+  side: Side;
+  files: number;
+  under: string | undefined;
+}) {
+  const progress = useCommander(
+    (state) => state.view.panes[side]?.flat?.progress,
+  );
+  if (progress === undefined) {
+    return null;
+  }
+  const { reading, stopped, folders, failed } = progress;
+  const read = reading
+    ? strings.commander.flatReading(files, folders)
+    : stopped
+      ? strings.commander.flatStopped(files, folders)
+      : strings.commander.flatRead(files, folders);
+  return (
+    <StatusLine
+      announced
+      tone={stopped ? 'warning' : undefined}
+      end={under === undefined || under === '' ? undefined : under.slice(0, -1)}
+    >
+      {[
+        read,
+        failed > 0 ? strings.commander.flatFailed(failed) : undefined,
+        reading ? strings.commander.escapeStops : undefined,
+      ]
+        .filter((part) => part !== undefined)
+        .join(' · ')}
+    </StatusLine>
   );
 }
 
@@ -415,7 +491,7 @@ export function Pane({
   const shownFolder = pane?.folder;
   const fillItems = useMemo(
     () =>
-      rows.flatMap(
+      (tiled ? rows : []).flatMap(
         (
           row,
           index,
@@ -446,7 +522,7 @@ export function Pane({
           ];
         },
       ),
-    [rows, tab, side, shownFolder],
+    [tiled, rows, tab, side, shownFolder],
   );
   useThumbnailFill(
     fillItems,
@@ -541,9 +617,7 @@ export function Pane({
         <span className="commander-icon">
           <RowIcon row={row} source={iconSource(row)} onDropIcon={onDropIcon} />
         </span>
-        <span className="commander-name">
-          <HighlightWords text={row.base} words={words} />
-        </span>
+        <NameCell row={row} words={words} />
         <ExtensionCell
           row={row}
           words={words}
@@ -631,6 +705,9 @@ export function Pane({
         return;
       case 'stopFiltering':
         setFilter(undefined);
+        return;
+      case 'stopReading':
+        actions.stopReading(side);
         return;
       case 'switchSide':
         onSwitchSide();
@@ -748,7 +825,11 @@ export function Pane({
             )}
             <BookmarkButton side={side} trigger={bookmarkTrigger} />
           </div>
-          <PathTitle path={pane?.folder ?? ''} hidden={pane?.hidden ?? []}>
+          <PathTitle
+            path={pane?.folder ?? ''}
+            hidden={pane?.hidden ?? []}
+            flat={pane?.flat !== undefined}
+          >
             {pane?.elevated && (
               <span
                 className="elevated-mark"
@@ -772,6 +853,7 @@ export function Pane({
                 })}
               />
             </div>
+            <FlatButton side={side} />
             <SearchButton
               title={strings.commander.filterFolder}
               onClick={openFilter}
@@ -806,6 +888,7 @@ export function Pane({
                 selectedIndex,
                 marked,
                 filtering,
+                reading: pane?.flat?.progress.reading === true,
                 parent: pane?.parent === true,
                 tiled,
                 across,
@@ -822,6 +905,11 @@ export function Pane({
           />
         )}
       </div>
+      <FlatStatus
+        side={side}
+        files={total}
+        under={selectedIndex === -1 ? undefined : rows[selectedIndex].under}
+      />
       {resizer}
     </section>
   );

@@ -2,6 +2,7 @@ import {
   sides,
   type CommanderToWebviewOf,
   type Entry,
+  type FlatProgress,
   type Side,
 } from '../shared/protocol';
 import {
@@ -14,7 +15,14 @@ import {
 } from '../shared/settings';
 import type { ViewMode } from '../shared/keymap';
 import type { EncodingChoice } from './encodings';
-import { rowsOf, selectionAfter, type Row, type Selection } from './listing';
+import {
+  filteredSelection,
+  parentRow,
+  rowsOf,
+  selectionAfter,
+  type Row,
+  type Selection,
+} from './listing';
 import {
   fileColorsOf,
   noFileColors,
@@ -32,13 +40,32 @@ interface Listed {
   readonly elevated: boolean;
 }
 
+interface FlatShown {
+  readonly query: string;
+  readonly rows: readonly Row[];
+}
+
+interface FlatView {
+  readonly walk: number;
+  readonly progress: FlatProgress;
+  readonly shown: FlatShown | undefined;
+}
+
 export interface PaneView extends Listed {
   readonly sort: Sort;
   readonly rows: readonly Row[];
   readonly selected: string | undefined;
   readonly marked: ReadonlySet<string>;
   readonly repositories: ReadonlySet<string>;
+  readonly flat?: FlatView;
 }
+
+const startedReading: FlatProgress = {
+  reading: true,
+  stopped: false,
+  folders: 0,
+  failed: 0,
+};
 
 const noMarks: ReadonlySet<string> = new Set();
 
@@ -61,8 +88,13 @@ function marksKept(
   if (pane === undefined || pane.folder !== folder || pane.marked.size === 0) {
     return noMarks;
   }
-  const keys = new Set(rows.map((row) => row.key));
-  return new Set([...pane.marked].filter((key) => keys.has(key)));
+  const present = new Set<string>();
+  for (const row of rows) {
+    if (pane.marked.has(row.key)) {
+      present.add(row.key);
+    }
+  }
+  return new Set([...pane.marked].filter((key) => present.has(key)));
 }
 
 export interface CommanderView {
@@ -173,6 +205,21 @@ export type ViewAction =
   | (Omit<CommanderToWebviewOf<'repositories'>, 'type'> & {
       readonly type: 'repositories';
     })
+  | {
+      readonly type: 'flatRows';
+      readonly tab: string;
+      readonly side: Side;
+      readonly walk: number;
+      readonly rows: readonly Row[];
+      readonly shown: FlatShown | undefined;
+    }
+  | {
+      readonly type: 'flatProgress';
+      readonly tab: string;
+      readonly side: Side;
+      readonly walk: number;
+      readonly progress: FlatProgress;
+    }
   | { readonly type: 'select'; readonly side: Side; readonly key: string }
   | {
       readonly type: 'mark';
@@ -248,6 +295,100 @@ function relisted(
   };
 }
 
+function flatListed(
+  pane: PaneView | undefined,
+  sort: Sort,
+  {
+    folder,
+    hidden,
+    parent,
+    back,
+    forward,
+    elevated,
+    selected,
+    flat,
+  }: Listed & { readonly selected: string | undefined; readonly flat: number },
+): PaneView {
+  const listed = {
+    folder,
+    hidden,
+    entries: [],
+    parent,
+    back,
+    forward,
+    elevated,
+  };
+  if (pane?.flat?.walk === flat && pane.folder === folder) {
+    return {
+      ...pane,
+      ...listed,
+      selected:
+        selected !== undefined && pane.rows.some((row) => row.key === selected)
+          ? selected
+          : pane.selected,
+    };
+  }
+  const rows = parent ? [parentRow] : [];
+  const selectedFile =
+    pane?.folder === folder
+      ? pane.rows.find(
+          (row) =>
+            row.key === pane.selected &&
+            row.entry !== undefined &&
+            !row.entry.folder,
+        )?.key
+      : undefined;
+  return {
+    ...listed,
+    sort,
+    rows,
+    selected:
+      selectedFile ?? selectionAfter(selectionIn(pane), folder, rows, selected),
+    marked: noMarks,
+    repositories: noRepositories,
+    flat: { walk: flat, progress: startedReading, shown: undefined },
+  };
+}
+
+function flatSelection(
+  pane: PaneView,
+  rows: readonly Row[],
+  shown: FlatShown | undefined,
+): string | undefined {
+  const { selected } = pane;
+  if (shown !== undefined) {
+    return filteredSelection(shown.rows, selected);
+  }
+  if (selected !== undefined && rows.some((row) => row.key === selected)) {
+    return selected;
+  }
+  const before = selectionIn(pane);
+  if (before === undefined || before.index !== -1) {
+    return selectionAfter(before, pane.folder, rows, undefined);
+  }
+  return pane.flat?.progress.reading === true ? selected : rows.at(0)?.key;
+}
+
+function folderOfSelected(pane: PaneView): string | undefined {
+  const row = pane.rows.find((each) => each.key === pane.selected);
+  const under = row?.under ?? '';
+  return under === '' ? row?.key : under.slice(0, under.search(/[\\/]/));
+}
+
+function withFlatRows(
+  pane: PaneView,
+  rows: readonly Row[],
+  shown: FlatShown | undefined,
+): PaneView {
+  return {
+    ...pane,
+    rows,
+    selected: flatSelection(pane, rows, shown),
+    marked: marksKept(pane, pane.folder, rows),
+    flat: pane.flat && { ...pane.flat, shown },
+  };
+}
+
 function withPane(
   view: CommanderView,
   side: Side,
@@ -262,6 +403,9 @@ function settledPanes(
 ): Readonly<Record<Side, PaneView | undefined>> {
   const settled = (side: Side) => {
     const pane = panes[side];
+    if (pane?.flat !== undefined) {
+      return { ...pane, sort: view.sorts[side] };
+    }
     return (
       pane &&
       relisted(
@@ -352,34 +496,70 @@ export function reduceView(
           ? withPane(
               next,
               side,
-              relisted(
-                pane,
-                sort,
-                pane,
-                action.showHidden,
-                settled.fileColors,
-                undefined,
-              ),
+              pane.flat === undefined
+                ? relisted(
+                    pane,
+                    sort,
+                    pane,
+                    action.showHidden,
+                    settled.fileColors,
+                    undefined,
+                  )
+                : { ...pane, sort },
             )
           : next;
       }, settled);
     }
     case 'listing': {
       const pane = view.panes[action.side];
-      return action.tab === view.tab
-        ? withPane(
-            view,
-            action.side,
-            relisted(
+      if (action.tab !== view.tab) {
+        return view;
+      }
+      const sort = pane?.sort ?? view.sorts[action.side];
+      const { flat } = action;
+      const leftFlat =
+        pane?.flat !== undefined && pane.folder === action.folder
+          ? folderOfSelected(pane)
+          : undefined;
+      return withPane(
+        view,
+        action.side,
+        flat === undefined
+          ? relisted(
               pane,
-              pane?.sort ?? view.sorts[action.side],
+              sort,
               action,
               view.showHidden,
               view.fileColors,
-              action.selected,
-              pane?.folder === action.folder ? pane : undefined,
-            ),
+              action.selected ?? leftFlat,
+              pane?.folder === action.folder && pane.flat === undefined
+                ? pane
+                : undefined,
+            )
+          : flatListed(pane, sort, { ...action, flat }),
+      );
+    }
+    case 'flatRows': {
+      const pane = view.panes[action.side];
+      return action.tab === view.tab &&
+        pane?.flat !== undefined &&
+        pane.flat.walk === action.walk
+        ? withPane(
+            view,
+            action.side,
+            withFlatRows(pane, action.rows, action.shown),
           )
+        : view;
+    }
+    case 'flatProgress': {
+      const pane = view.panes[action.side];
+      return action.tab === view.tab &&
+        pane?.flat !== undefined &&
+        pane.flat.walk === action.walk
+        ? withPane(view, action.side, {
+            ...pane,
+            flat: { ...pane.flat, progress: action.progress },
+          })
         : view;
     }
     case 'repositories': {
@@ -387,7 +567,8 @@ export function reduceView(
       if (
         action.tab !== view.tab ||
         pane === undefined ||
-        pane.folder !== action.folder
+        pane.folder !== action.folder ||
+        pane.flat !== undefined
       ) {
         return view;
       }
@@ -419,11 +600,13 @@ export function reduceView(
       if (pane === undefined) {
         return view;
       }
-      const markable = new Set(
-        pane.rows
-          .filter((row) => row.entry !== undefined)
-          .map((row) => row.key),
-      );
+      const asked = new Set(action.keys);
+      const markable = new Set<string>();
+      for (const row of pane.rows) {
+        if (row.entry !== undefined && asked.has(row.key)) {
+          markable.add(row.key);
+        }
+      }
       const marked = new Set(pane.marked);
       for (const key of action.keys) {
         if (!markable.has(key)) {
@@ -441,6 +624,9 @@ export function reduceView(
       const pane = view.panes[action.side];
       if (pane === undefined) {
         return view;
+      }
+      if (pane.flat !== undefined) {
+        return withPane(view, action.side, { ...pane, sort: action.sort });
       }
       return withPane(view, action.side, {
         ...pane,

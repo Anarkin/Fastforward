@@ -21,6 +21,8 @@ import {
   type CommanderToHost,
   type CommanderToWebview,
   type Entry,
+  type FlatFolder,
+  type FlatProgress,
   type Side,
 } from '../shared/protocol';
 import {
@@ -39,7 +41,8 @@ import {
   withoutBookmark,
   type BookmarkSystem,
 } from './bookmarks';
-import type { WatchFolder } from './watch';
+import type { WatchFolder, WatchTree } from './watch';
+import { FlatTree } from './flatTree';
 import {
   fillsThumbnail,
   heldBox,
@@ -117,6 +120,7 @@ export interface CommanderAccess {
   readonly streamed?: (file: string) => boolean | Promise<boolean>;
   readonly isRepository: (folder: string) => Promise<boolean>;
   readonly watch: WatchFolder;
+  readonly watchTree?: WatchTree;
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly platform: NodeJS.Platform;
   readonly codePage: () => Promise<TextEncoding>;
@@ -133,8 +137,18 @@ export interface CommanderAccess {
   readonly root: string;
 }
 
+interface Flat {
+  readonly walk: number;
+  readonly tree: FlatTree;
+  stopWatching: () => void;
+  told: FlatProgress | undefined;
+  flushing: NodeJS.Timeout | undefined;
+  flushed: number;
+}
+
 interface Pane {
   folder: string;
+  flat?: Flat;
   hidden?: readonly boolean[];
   entries: readonly Entry[] | undefined;
   asked: number;
@@ -159,6 +173,40 @@ const fullStatus = 507;
 const maxFindLength = 1000;
 const findProgressEvery = 150;
 const maxHistory = 100;
+const flushEvery = 100;
+const maxEntriesTold = 5000;
+
+function sameProgress(
+  one: FlatProgress | undefined,
+  other: FlatProgress,
+): boolean {
+  return (
+    one !== undefined &&
+    one.reading === other.reading &&
+    one.stopped === other.stopped &&
+    one.folders === other.folders &&
+    one.failed === other.failed
+  );
+}
+
+function inParts(folders: readonly FlatFolder[]): FlatFolder[][] {
+  const parts: FlatFolder[][] = [];
+  let part: FlatFolder[] = [];
+  let entries = 0;
+  for (const folder of folders) {
+    if (part.length > 0 && entries + folder.entries.length > maxEntriesTold) {
+      parts.push(part);
+      part = [];
+      entries = 0;
+    }
+    part.push(folder);
+    entries += folder.entries.length;
+  }
+  if (part.length > 0 || parts.length === 0) {
+    parts.push(part);
+  }
+  return parts;
+}
 
 function newPane(folder: string): Pane {
   return {
@@ -245,6 +293,13 @@ const entriesByName = new WeakMap<
   ReadonlyMap<string, Entry>
 >();
 
+function listedIn(pane: Pane | undefined, name: unknown): Entry | undefined {
+  if (pane?.flat === undefined) {
+    return entryNamed(pane?.entries, name);
+  }
+  return typeof name === 'string' ? pane.flat.tree.file(name) : undefined;
+}
+
 function entryNamed(
   entries: readonly Entry[] | undefined,
   name: unknown,
@@ -296,6 +351,7 @@ export class CommanderTool implements Tool<'commander'> {
   private finding: AbortController | undefined;
   private findingRequest: number | undefined;
   private readonly pdfTabs = new Map<string, string>();
+  private walks = 0;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
@@ -306,6 +362,12 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   ready(page: Page): void {
+    for (const pane of this.allPanes()) {
+      if (pane.flat !== undefined) {
+        pane.flat.tree.resend();
+        pane.flat.told = undefined;
+      }
+    }
     this.postSettings(page);
   }
 
@@ -346,6 +408,12 @@ export class CommanderTool implements Tool<'commander'> {
 
   closed(page: Page, tab: Tab): void {
     this.post(page, { type: 'closed', tab: tab.id });
+    const panes = this.panes.get(tab.id);
+    if (panes !== undefined) {
+      for (const side of sides) {
+        this.endFlat(panes[side]);
+      }
+    }
     this.panes.delete(tab.id);
     if (this.shown?.tab === tab.id) {
       this.shown = undefined;
@@ -404,10 +472,19 @@ export class CommanderTool implements Tool<'commander'> {
         return this.readBytes(page, message);
       case 'reread': {
         const shown = this.shownPane(page, message.tab, message.side);
+        if (shown?.pane.flat !== undefined) {
+          this.startFlat(page, shown);
+          return undefined;
+        }
         return shown === undefined
           ? undefined
           : this.list(page, shown.tab, shown.side, shown.pane.folder, 'show');
       }
+      case 'flat':
+        return this.turnFlat(page, message);
+      case 'stopReading':
+        this.shownPane(page, message.tab, message.side)?.pane.flat?.tree.stop();
+        return undefined;
       case 'openOnSide':
         return this.openOnSide(page, message);
       case 'openRepository':
@@ -553,6 +630,9 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   quit(): void {
+    for (const pane of this.allPanes()) {
+      this.endFlat(pane);
+    }
     this.unwatch();
     this.elevated?.close();
   }
@@ -623,7 +703,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
     const source = iconSourceOf(url);
     const pane = source && this.panes.get(source.tab)?.[source.side];
-    const entry = entryNamed(pane?.entries, source?.name);
+    const entry = listedIn(pane, source?.name);
     if (
       source === undefined ||
       pane === undefined ||
@@ -634,7 +714,7 @@ export class CommanderTool implements Tool<'commander'> {
       return new Response(null, { status: 404 });
     }
     return this.iconResponse(
-      path.join(pane.folder, entry.name),
+      path.join(pane.folder, source.name),
       iconTicketOf(url),
     );
   }
@@ -653,15 +733,16 @@ export class CommanderTool implements Tool<'commander'> {
         : undefined;
     const entry =
       pane !== undefined && pane.folder === folder
-        ? entryNamed(pane.entries, name)
+        ? listedIn(pane, name)
         : undefined;
     const type = entry && imageType(entry.name);
     return pane === undefined ||
       entry === undefined ||
+      typeof name !== 'string' ||
       entry.folder ||
       type === undefined
       ? undefined
-      : { file: path.join(pane.folder, entry.name), entry, type };
+      : { file: path.join(pane.folder, name), entry, type };
   }
 
   private thumbnailKeyOf(
@@ -785,7 +866,7 @@ export class CommanderTool implements Tool<'commander'> {
     if (shown === undefined || typeof name !== 'string') {
       return;
     }
-    const { folder, entries } = shown.pane;
+    const { folder } = shown.pane;
     if (name === parentFolder) {
       const parent = parentOf(folder);
       if (parent !== undefined) {
@@ -793,17 +874,17 @@ export class CommanderTool implements Tool<'commander'> {
       }
       return;
     }
-    const entry = entryNamed(entries, name);
+    const entry = listedIn(shown.pane, name);
     if (entry === undefined) {
       return;
     }
-    const opened = path.join(folder, entry.name);
+    const opened = path.join(folder, name);
     if (!entry.folder) {
       const failure = await this.access.openFile?.(opened);
       if (failure) {
         this.shell.notice(page, {
           level: 'error',
-          message: strings.commander.openFailed(entry.name, failure),
+          message: strings.commander.openFailed(name, failure),
         });
       }
       return;
@@ -826,16 +907,16 @@ export class CommanderTool implements Tool<'commander'> {
     shown: ShownPane | undefined,
     name: unknown,
   ): Promise<void> {
-    const entry =
-      typeof name === 'string'
-        ? entryNamed(shown?.pane.entries, name)
-        : undefined;
-    return shown === undefined || entry === undefined || entry.folder
+    const entry = listedIn(shown?.pane, name);
+    return shown === undefined ||
+      typeof name !== 'string' ||
+      entry === undefined ||
+      entry.folder
       ? Promise.resolve()
       : this.shell.openView(
           page,
           'commander',
-          path.join(shown.pane.folder, entry.name),
+          path.join(shown.pane.folder, name),
         );
   }
 
@@ -850,13 +931,12 @@ export class CommanderTool implements Tool<'commander'> {
     }: Extract<CommanderToHost, { type: 'delete' }>,
   ): Promise<void> {
     const shown = this.namingPane(page, tab, side, named);
-    const listed = new Set(shown?.pane.entries?.map((entry) => entry.name));
     if (
       shown === undefined ||
       !Array.isArray(names) ||
       names.length === 0 ||
       !names.every(
-        (name: unknown) => typeof name === 'string' && listed.has(name),
+        (name: unknown) => listedIn(shown.pane, name) !== undefined,
       ) ||
       typeof permanently !== 'boolean'
     ) {
@@ -887,7 +967,12 @@ export class CommanderTool implements Tool<'commander'> {
         });
       }
     }
-    if (shown.pane.folder === folder) {
+    const { flat } = shown.pane;
+    if (flat !== undefined) {
+      for (const name of names) {
+        flat.tree.changed(name);
+      }
+    } else if (shown.pane.folder === folder) {
       await this.list(page, shown.tab, shown.side, folder, 'show');
     }
   }
@@ -905,18 +990,24 @@ export class CommanderTool implements Tool<'commander'> {
     }: Extract<CommanderToHost, { type: 'shellMenu' }>,
   ): Promise<void> {
     const shown = this.namingPane(page, tab, side, folder);
-    const listed = new Set(shown?.pane.entries?.map((entry) => entry.name));
     if (
       shown === undefined ||
       !Array.isArray(names) ||
       names.length === 0 ||
       !names.every(
-        (name: unknown) => typeof name === 'string' && listed.has(name),
+        (name: unknown) => listedIn(shown.pane, name) !== undefined,
       ) ||
       !Number.isFinite(x) ||
       !Number.isFinite(y) ||
       typeof extended !== 'boolean'
     ) {
+      return;
+    }
+    if (new Set(names.map((name: string) => path.dirname(name))).size > 1) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.menuOfOneFolder,
+      });
       return;
     }
     await this.access.shellMenu?.(
@@ -938,13 +1029,13 @@ export class CommanderTool implements Tool<'commander'> {
       const folder = 'folder' in file ? file.folder : undefined;
       const name = 'name' in file ? file.name : undefined;
       const shown = this.namingPane(page, tab, side, folder);
-      const entry =
-        typeof name === 'string'
-          ? entryNamed(shown?.pane.entries, name)
-          : undefined;
-      return shown === undefined || entry === undefined || entry.folder
+      const entry = listedIn(shown?.pane, name);
+      return shown === undefined ||
+        typeof name !== 'string' ||
+        entry === undefined ||
+        entry.folder
         ? undefined
-        : path.join(shown.pane.folder, entry.name);
+        : path.join(shown.pane.folder, name);
     });
     const [old, changed] = paths;
     return old === undefined || changed === undefined
@@ -1403,15 +1494,26 @@ export class CommanderTool implements Tool<'commander'> {
     if (source === undefined || !isSide(side) || typeof name !== 'string') {
       return Promise.resolve();
     }
-    const { folder, entries } = source.pane;
-    const entry = entryNamed(entries, name);
+    const { folder, flat } = source.pane;
+    const entry = listedIn(source.pane, name);
+    if (flat !== undefined && entry !== undefined) {
+      return this.list(
+        page,
+        source.tab,
+        side,
+        path.dirname(path.join(folder, name)),
+        'visit',
+        undefined,
+        entry.name,
+      );
+    }
     const target =
       name === parentFolder
         ? parentOf(folder)
         : entry === undefined
           ? undefined
           : entry.folder
-            ? path.join(folder, entry.name)
+            ? path.join(folder, name)
             : folder;
     return target === undefined
       ? Promise.resolve()
@@ -1555,9 +1657,19 @@ export class CommanderTool implements Tool<'commander'> {
     folder: string,
     how: Listing,
     fallback?: string,
+    selecting?: string,
   ): Promise<void> {
     const pane = this.panes.get(tab)?.[side];
     if (pane === undefined) {
+      return;
+    }
+    if (
+      pane.flat !== undefined &&
+      pane.folder === folder &&
+      (how === 'show' || how === 'refresh')
+    ) {
+      this.postListing(page, tab, side, pane, undefined);
+      this.flushFlat(tab, side, pane.flat);
       return;
     }
     const asked = how === 'refresh' ? pane.asked : ++pane.asked;
@@ -1609,7 +1721,7 @@ export class CommanderTool implements Tool<'commander'> {
     if (pane.asked !== asked || (how === 'refresh' && pane.folder !== folder)) {
       return;
     }
-    const selected = childToward(folder, pane.folder);
+    const selected = selecting ?? childToward(folder, pane.folder);
     if (typeof how === 'object') {
       pane.at = how.at;
     } else if (how === 'visit' && pane.history[pane.at] !== folder) {
@@ -1621,6 +1733,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
     if (pane.folder !== folder) {
       pane.repositories = new Set();
+      this.endFlat(pane);
     }
     if (how === 'visit' || typeof how === 'object' || pane.denied === folder) {
       pane.denied = undefined;
@@ -1699,6 +1812,108 @@ export class CommanderTool implements Tool<'commander'> {
     this.finding = undefined;
   }
 
+  private allPanes(): Pane[] {
+    return [...this.panes.values()].flatMap((panes) =>
+      sides.map((side) => panes[side]),
+    );
+  }
+
+  private async turnFlat(
+    page: Page,
+    { tab, side, flat }: Extract<CommanderToHost, { type: 'flat' }>,
+  ): Promise<void> {
+    const shown = this.shownPane(page, tab, side);
+    if (shown === undefined || typeof flat !== 'boolean') {
+      return;
+    }
+    if (flat && shown.pane.flat === undefined) {
+      this.startFlat(page, shown);
+    } else if (!flat && shown.pane.flat !== undefined) {
+      this.endFlat(shown.pane);
+      await this.list(page, shown.tab, shown.side, shown.pane.folder, 'show');
+    }
+  }
+
+  private startFlat(page: Page, { tab, side, pane }: ShownPane): void {
+    this.endFlat(pane);
+    this.watching.get(side)?.stop();
+    this.watching.delete(side);
+    pane.asked++;
+    pane.repositoriesAsked++;
+    pane.repositories = new Set();
+    const { folder } = pane;
+    const tree = new FlatTree(
+      folder,
+      async (each) => (await this.listed(each)).entries,
+      () => this.flatChanged(tab, side, flat),
+    );
+    const flat: Flat = {
+      walk: ++this.walks,
+      tree,
+      stopWatching: () => {},
+      told: undefined,
+      flushing: undefined,
+      flushed: 0,
+    };
+    pane.flat = flat;
+    flat.stopWatching =
+      this.access.watchTree?.(folder, (changed) => {
+        if (changed === undefined) {
+          tree.changedAll();
+        } else {
+          tree.changed(changed);
+        }
+      }) ?? (() => {});
+    this.postListing(page, tab, side, pane, undefined);
+    tree.start();
+  }
+
+  private endFlat(pane: Pane): void {
+    const { flat } = pane;
+    if (flat !== undefined) {
+      pane.flat = undefined;
+      flat.tree.close();
+      flat.stopWatching();
+      clearTimeout(flat.flushing);
+    }
+  }
+
+  private flatChanged(tab: string, side: Side, flat: Flat): void {
+    flat.flushing ??= setTimeout(
+      () => {
+        flat.flushing = undefined;
+        this.flushFlat(tab, side, flat);
+      },
+      Math.max(0, flat.flushed + flushEvery - Date.now()),
+    );
+  }
+
+  private flushFlat(tab: string, side: Side, flat: Flat): void {
+    const pane = this.panes.get(tab)?.[side];
+    const shown = this.shown;
+    if (pane?.flat !== flat || shown?.tab !== tab) {
+      return;
+    }
+    const progress = flat.tree.progress;
+    const folders = flat.tree.take();
+    if (folders.length === 0 && sameProgress(flat.told, progress)) {
+      return;
+    }
+    flat.told = progress;
+    flat.flushed = Date.now();
+    for (const part of inParts(folders)) {
+      this.post(shown.page, {
+        type: 'flatFiles',
+        tab,
+        side,
+        folder: pane.folder,
+        walk: flat.walk,
+        folders: part,
+        progress,
+      });
+    }
+  }
+
   private postListing(
     page: Page,
     tab: string,
@@ -1713,12 +1928,13 @@ export class CommanderTool implements Tool<'commander'> {
         side,
         folder: pane.folder,
         hidden: pane.hidden ?? [],
-        entries: pane.entries ?? [],
+        entries: pane.flat === undefined ? (pane.entries ?? []) : [],
         parent: parentOf(pane.folder) !== undefined,
         elevated: pane.elevated === true,
         back: pane.at > 0,
         forward: pane.at < pane.history.length - 1,
         selected,
+        ...(pane.flat !== undefined && { flat: pane.flat.walk }),
       });
     }
   }

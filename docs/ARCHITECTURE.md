@@ -22,6 +22,7 @@
 - Folders are listed on Windows with `NtQueryDirectoryFile` through `koffi`, a page of entries at a time off the main thread, as Node can't read the hidden attribute or the size of files the system holds open, such as `pagefile.sys`
 - Native calls go through `koffi`, COM interfaces too, called through their tables of functions, rather than an addon of our own, which would need a compiler and binaries built for each platform; the menu of Windows runs its own message loop on the main thread, as Explorer's does, so the app waits while it is open
 - Folders that need an administrator are read by a helper, the app itself started elevated in a mode of its own, as Total Commander does, rather than by restarting the app elevated, which would elevate the shells and git too and cut off drag and drop with other windows
+- Flat view reads the tree in the main process a few folders at a time and sends the page the files of each folder, and the page sorts and filters them in a worker of its own, which hands back their order as indexes, as sorting millions of files on the page's main thread would stall every tool for seconds
 
 ### Terminal, `terminal`
 

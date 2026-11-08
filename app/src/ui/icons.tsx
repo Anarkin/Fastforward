@@ -225,6 +225,16 @@ export function AllFilesIcon() {
   );
 }
 
+export function FlatViewIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 3.5v9h2.5" opacity="0.55" />
+      <path d="M2.5 8h2.5" opacity="0.55" />
+      <path d="M7 3.5h6.5M7 8h6.5M7 12.5h6.5" />
+    </Icon>
+  );
+}
+
 export function CollapseAllIcon() {
   return (
     <Icon>

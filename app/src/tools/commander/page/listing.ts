@@ -9,6 +9,7 @@ export interface Row {
   readonly base: string;
   readonly extension: string;
   readonly repository: boolean;
+  readonly under?: string;
 }
 
 const noRepositories: ReadonlySet<string> = new Set();
@@ -94,16 +95,17 @@ function comparerOf(
       direction *
         (byColumn ||
           collator.compare(a.entry?.name ?? '', b.entry?.name ?? '') ||
+          collator.compare(a.under ?? '', b.under ?? '') ||
           (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
     );
   };
 }
 
-function sortedRows(
-  rows: readonly Row[],
+export function sortedRows<T extends Row>(
+  rows: readonly T[],
   sort: Sort,
   groupOf: (row: Row) => number,
-): Row[] {
+): T[] {
   return rows.toSorted(
     comparerOf(
       sort,
@@ -113,12 +115,12 @@ function sortedRows(
   );
 }
 
-function mergedRows(
-  kept: readonly Row[],
-  added: readonly Row[],
+export function mergedRows<T extends Row>(
+  kept: readonly T[],
+  added: readonly T[],
   sort: Sort,
   groupOf: (row: Row) => number,
-): readonly Row[] {
+): readonly T[] {
   if (added.length === 0) {
     return kept;
   }
@@ -126,7 +128,7 @@ function mergedRows(
     return sortedRows([...kept, ...added], sort, groupOf);
   }
   const compare = comparerOf(sort, groupOf, byExtension);
-  const merged: Row[] = [];
+  const merged: T[] = [];
   let from = 0;
   for (const row of added.toSorted(compare)) {
     let low = from;
@@ -156,7 +158,27 @@ function colorGroupOf(fileColors: FileColors): (row: Row) => number {
     fileColors.colors.length;
 }
 
-const parentRow: Row = {
+export function fileGroupOf(
+  sort: Sort,
+  fileColors: FileColors,
+): (row: Row) => number {
+  return sort.groupByColor ? colorGroupOf(fileColors) : () => 0;
+}
+
+export function flatRowOf(
+  entry: Entry,
+  under: string,
+): Row & { readonly entry: Entry } {
+  return {
+    key: `${under}${entry.name}`,
+    entry,
+    ...nameParts(entry),
+    repository: false,
+    under,
+  };
+}
+
+export const parentRow: Row = {
   key: parentFolder,
   entry: undefined,
   base: parentFolder,
@@ -251,7 +273,7 @@ export function rowsOf(
   },
 ): readonly Row[] {
   const shown = entries.filter((entry) => showHidden || !entry.hidden);
-  const fileGroup = sort.groupByColor ? colorGroupOf(fileColors) : () => 0;
+  const fileGroup = fileGroupOf(sort, fileColors);
   const parent = hasParent ? [parentRow] : [];
   const before = sortedBefore?.rows;
   if (before === undefined) {
