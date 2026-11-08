@@ -183,6 +183,14 @@
   margin-left: calc(var(--commander-advance) - var(--commander-gap));
 }
 
+.commander-line.commander-folder > .commander-name::before {
+  content: '[';
+}
+
+.commander-line.commander-folder > .commander-name::after {
+  content: ']';
+}
+
 .row.commander-line {
   height: var(--commander-row-height);
   padding: 0 calc(8px + var(--scrollbar-size)) 0 8px;

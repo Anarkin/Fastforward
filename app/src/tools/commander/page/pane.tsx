@@ -561,7 +561,7 @@ export function Pane({
   const fileColor = (row: Row) =>
     row.entry === undefined ? undefined : fileColorOf(row.entry, fileColors);
   const rowClass = (row: Row) =>
-    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${fileColor(row) === undefined ? '' : ' colored'}`;
+    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${fileColor(row) === undefined ? '' : ' colored'}`;
   const colorStyle = (row: Row): CSSProperties => {
     const color = fileColor(row);
     return color === undefined ? {} : { '--file-color': color };

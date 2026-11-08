@@ -371,6 +371,22 @@ suite('App commander', () => {
     );
   });
 
+  test('draws the name of a folder in brackets, the parent folder too, as Total Commander does, and the name of a file without', async () => {
+    const drawn = await right()
+      .locator('.commander-row.commander-line')
+      .evaluateAll((rows) =>
+        rows.map((row) => {
+          const name = row.querySelector('.commander-name');
+          const around = (part: string) => {
+            const content = name ? getComputedStyle(name, part).content : '';
+            return content === 'none' ? '' : content.replaceAll('"', '');
+          };
+          return `${around('::before')}${name?.textContent ?? ''}${around('::after')}`;
+        }),
+      );
+    assert.deepStrictEqual(drawn, ['[..]', '[src]', 'notes', 'big']);
+  });
+
   test('dims a hidden file in its own color, or the color of the text without one, its icon with it, by the share the theme gives hidden files, and a hidden folder of the path alike', async () => {
     const share =
       Number.parseFloat(

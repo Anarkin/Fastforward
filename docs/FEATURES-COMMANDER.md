@@ -37,7 +37,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Details | List the name, extension, size and date of each file | Ctrl+F2 | Core | ✅ Yes | Mod+1; the widths of Ext, Size and Date dragged and saved, a double click resetting one; dates in the `dateFormat` of the settings |
+| Details | List the name, extension, size and date of each file | Ctrl+F2 | Core | ✅ Yes | Mod+1; the names of folders in brackets, as Total Commander shows them; the widths of Ext, Size and Date dragged and saved, a double click resetting one; dates in the `dateFormat` of the settings |
 | Thumbnails | Show the files as tiles of their thumbnails | Ctrl+Shift+F1 | Common | ✅ Yes | Mod+2, per side; images drawn as thumbnails, kept on disk in the cache folder of the system, up to `tools.commander.thumbnailCacheMegabytes`; none made of files kept online only, as OneDrive's or Google Drive's |
 | Icons | Show the icon of each file | — | Core | ✅ Yes | The system's icon of each file, the generic one until it comes, folders as a muted outline |
 | Sort | Sort by name, extension, size or date, and reverse | Ctrl+F3 to Ctrl+F6 | Core | ✅ Yes | By clicking a column's header, per side, folders first, saved; by extension by default; no keys |
