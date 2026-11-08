@@ -293,6 +293,11 @@ suite('App commander', () => {
         const actions = box('.column-actions');
         const title = box('.path-title');
         const edges = header.getBoundingClientRect();
+        const { paddingLeft, paddingRight } = getComputedStyle(header);
+        const room =
+          header.clientWidth -
+          parseFloat(paddingLeft) -
+          parseFloat(paddingRight);
         return {
           width: edges.width,
           clearOfStart: Math.round(title.left - start.right),
@@ -302,7 +307,7 @@ suite('App commander', () => {
               (title.left + title.right) / 2 - (edges.left + edges.right) / 2,
             ),
           ),
-          wide: title.width > edges.width / 2,
+          shortOfRoom: Math.round(room - title.width),
         };
       });
   const savedBookmarks = () => {
@@ -635,7 +640,7 @@ suite('App commander', () => {
       const places = await headerPlaces();
       assert.deepStrictEqual(
         [
-          places.wide,
+          places.shortOfRoom <= 1,
           places.clearOfStart >= 0,
           places.clearOfActions >= 0,
           places.offCenter <= 1,
@@ -644,13 +649,13 @@ suite('App commander', () => {
         JSON.stringify(places),
       );
       await page.keyboard.press('Backspace');
+    } finally {
+      fs.rmSync(path.join(opened, long), { recursive: true, force: true });
       await waitFor(
         async () =>
           (await right().locator('.column-name').textContent()) === opened,
         'the folder opened',
       );
-    } finally {
-      fs.rmSync(path.join(opened, long), { recursive: true, force: true });
     }
   });
 
