@@ -2904,6 +2904,104 @@ suite('App commander', () => {
     );
   });
 
+  test('copies or moves files dropped on a side as the menu it shows at the pointer says, into the folder dropped on or that of the side, taking only files of the system, never one the page makes', async () => {
+    const from = path.join(opened, 'dropfrom');
+    const into = path.join(opened, 'dropinto');
+    fs.mkdirSync(from);
+    fs.mkdirSync(path.join(into, 'inner'), { recursive: true });
+    for (const name of ['x', 'y']) {
+      fs.writeFileSync(path.join(from, `${name}.txt`), name);
+    }
+    await select('dropinto');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,inner',
+      'the target to be listed',
+    );
+    await page.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.id = 'dropped-files';
+      input.hidden = true;
+      document.body.append(input);
+    });
+    await page.setInputFiles('#dropped-files', [
+      path.join(from, 'x.txt'),
+      path.join(from, 'y.txt'),
+    ]);
+    const drop = (onto: string | undefined, made: boolean) =>
+      page.evaluate(
+        ({ onto: dropOnto, made: making }) => {
+          const data = new DataTransfer();
+          if (making) {
+            data.items.add(new File(['made'], 'made.txt'));
+          } else {
+            const input =
+              document.querySelector<HTMLInputElement>('#dropped-files');
+            for (const file of input?.files ?? []) {
+              data.items.add(file);
+            }
+          }
+          const side = document.querySelectorAll('.commander-pane')[1];
+          const element =
+            dropOnto === undefined
+              ? side.querySelector('.column-body')
+              : side.querySelector(`[data-drop="${dropOnto}"]`);
+          const box = element?.getBoundingClientRect();
+          const init = {
+            dataTransfer: data,
+            bubbles: true,
+            cancelable: true,
+            clientX: (box?.left ?? 0) + 20,
+            clientY: (box?.top ?? 0) + 5,
+          };
+          element?.dispatchEvent(new DragEvent('dragover', init));
+          element?.dispatchEvent(new DragEvent('drop', init));
+        },
+        { onto, made },
+      );
+    const choose = async (label: string) => {
+      const item = page.locator('.context-menu .menu-item', { hasText: label });
+      await item.waitFor();
+      await item.click();
+    };
+
+    await drop(undefined, true);
+    await choose(`Copy "made.txt" to "${into}"`);
+    await drop('inner', false);
+    await choose(`Copy 2 items to "${path.join(into, 'inner')}"`);
+    await waitFor(
+      () =>
+        fs.existsSync(path.join(into, 'inner', 'x.txt')) &&
+        fs.existsSync(path.join(into, 'inner', 'y.txt')),
+      'the files dropped on the folder to be copied into it',
+    );
+    await page.locator('.transfer-popup').waitFor({ state: 'detached' });
+    assert.deepStrictEqual(fs.readdirSync(from).toSorted(), ['x.txt', 'y.txt']);
+    await drop(undefined, false);
+    await choose(`Move 2 items to "${into}"`);
+    await waitFor(
+      () =>
+        fs.existsSync(path.join(into, 'x.txt')) &&
+        fs.existsSync(path.join(into, 'y.txt')) &&
+        fs.readdirSync(from).length === 0,
+      'the files dropped on the side to be moved into its folder',
+    );
+    await page.locator('.transfer-popup').waitFor({ state: 'detached' });
+
+    assert.ok(!fs.existsSync(path.join(into, 'made.txt')));
+    assert.ok(!fs.existsSync(path.join(into, 'inner', 'made.txt')));
+    await page.evaluate(() =>
+      document.querySelector('#dropped-files')?.remove(),
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('dropinto'),
+      'the folder above to be listed again',
+    );
+  });
+
   test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another folder', async () => {
     const markingFolder = path.join(opened, 'marking');
     fs.mkdirSync(markingFolder);

@@ -88,6 +88,7 @@ interface Props {
   name: string;
   post: (message: ToHost) => void;
   listen: (handler: (message: ToWebview) => void) => () => void;
+  dropFiles?: (files: readonly File[], tool: ToolId, message: unknown) => void;
 }
 
 function WindowTitle({ name }: { name: string }) {
@@ -153,8 +154,8 @@ function NoticeKey() {
   return null;
 }
 
-export function App({ name, post, listen }: Props) {
-  const [store] = useState(() => createShellStore(post));
+export function App({ name, post, listen, dropFiles }: Props) {
+  const [store] = useState(() => createShellStore(post, {}, dropFiles));
   const { togglePopup, closeTab, ready, openIn } = store.getState();
 
   useEffect(() => {

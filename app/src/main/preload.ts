@@ -1,4 +1,9 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import {
+  contextBridge,
+  ipcRenderer,
+  webUtils,
+  type IpcRendererEvent,
+} from 'electron';
 import type { Bridge } from '../shell/shared/bridge';
 import type { ToWebview } from '../shell/shared/protocol';
 import { brand } from '../shared/strings';
@@ -11,6 +16,15 @@ contextBridge.exposeInMainWorld('fastforward', {
       .find((arg) => arg.startsWith(appNameSwitch))
       ?.slice(appNameSwitch.length) ?? brand,
   post: (message) => ipcRenderer.send('message', message),
+  dropFiles: (files, tool, message) =>
+    ipcRenderer.send(
+      'dropFiles',
+      files
+        .map((file) => webUtils.getPathForFile(file))
+        .filter((file) => file !== ''),
+      tool,
+      message,
+    ),
   listen: (handler) => {
     const listener = (_event: IpcRendererEvent, message: ToWebview) =>
       handler(message);

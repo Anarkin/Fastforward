@@ -21,6 +21,7 @@ import {
   type TextEncoding,
   parentFolder,
   sides,
+  isDrop,
   type CommanderToHost,
   type CommanderToWebview,
   type Entry,
@@ -630,6 +631,47 @@ export class CommanderTool implements Tool<'commander'> {
       default:
         return message satisfies never;
     }
+  }
+
+  dropped(page: Page, files: unknown, message: unknown): Promise<void> {
+    const shown = isDrop(message)
+      ? this.namingPane(page, message.tab, message.side, message.folder)
+      : undefined;
+    if (
+      shown === undefined ||
+      !isDrop(message) ||
+      !Array.isArray(files) ||
+      files.length === 0 ||
+      !files.every(
+        (file: unknown) => typeof file === 'string' && path.isAbsolute(file),
+      )
+    ) {
+      return Promise.resolve();
+    }
+    const { folder } = shown.pane;
+    const { into, move } = message;
+    const target =
+      into === undefined
+        ? folder
+        : into === parentFolder
+          ? parentOf(folder)
+          : listedIn(shown.pane, into)?.folder === true
+            ? path.join(folder, into)
+            : undefined;
+    if (target === undefined) {
+      return Promise.resolve();
+    }
+    if (shown.pane.elevated === true) {
+      this.refuse(page, strings.commander.transferAsAdministrator);
+      return Promise.resolve();
+    }
+    const sources: readonly string[] = files;
+    this.startTransfer(page, {
+      plan: { sources, target, move },
+      folder: path.dirname(sources[0]),
+      names: sources.map((source) => path.basename(source)),
+    });
+    return Promise.resolve();
   }
 
   refreshShown(): Promise<void> {

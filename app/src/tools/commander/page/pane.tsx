@@ -35,7 +35,9 @@ import {
   useCommanderActions,
 } from './store';
 import { formatDate } from '../../../ui/dates';
-import { useShell } from '../../../shell/page/store';
+import { useShell, useShellActions } from '../../../shell/page/store';
+import { dropTargetOf } from './dropping';
+import { whatOf } from './transferring';
 import {
   BackIcon,
   BookmarkIcon,
@@ -173,6 +175,11 @@ export function ExtensionCell({
       )}
     </span>
   );
+}
+
+function dropIntoOf(target: EventTarget | null): string | null {
+  const row = target instanceof Element ? target.closest('[data-drop]') : null;
+  return row?.getAttribute('data-drop') ?? null;
 }
 
 export function NameCell({
@@ -409,6 +416,9 @@ export function Pane({
   const filterInput = useRef<HTMLInputElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
+  const [dropInto, setDropInto] = useState<string | null>();
+  const { showMenu } = useShellActions();
+  const platform = useCommander((state) => state.view.platform);
   useEffect(() => {
     if (focusAsks.count > 0) {
       filterInput.current?.focus();
@@ -561,7 +571,7 @@ export function Pane({
   const fileColor = (row: Row) =>
     row.entry === undefined ? undefined : fileColorOf(row.entry, fileColors);
   const rowClass = (row: Row) =>
-    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${fileColor(row) === undefined ? '' : ' colored'}`;
+    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${row.key === dropInto ? ' drop-target' : ''}${fileColor(row) === undefined ? '' : ' colored'}`;
   const colorStyle = (row: Row): CSSProperties => {
     const color = fileColor(row);
     return color === undefined ? {} : { '--file-color': color };
@@ -578,6 +588,8 @@ export function Pane({
       ? ''
       : formatDate(row.entry.modified, dateFormat);
   const itemEvents = (row: Row, index: number) => ({
+    'data-drop':
+      row.entry === undefined || row.entry.folder ? row.key : undefined,
     draggable: row.entry !== undefined,
     onDragStart: (event: React.DragEvent) => {
       event.preventDefault();
@@ -884,9 +896,57 @@ export function Pane({
       )}
       {!tiled && <ColumnHeader side={side} />}
       <div
-        className="column-body"
+        className={`column-body${dropInto === null ? ' drop-target' : ''}`}
         ref={body}
         onContextMenu={(event) => event.preventDefault()}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) {
+            return;
+          }
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'copy';
+          const into = dropIntoOf(event.target);
+          if (into !== dropInto) {
+            setDropInto(into);
+          }
+        }}
+        onDragLeave={(event) => {
+          if (
+            !(event.relatedTarget instanceof Node) ||
+            !event.currentTarget.contains(event.relatedTarget)
+          ) {
+            setDropInto(undefined);
+          }
+        }}
+        onDrop={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) {
+            return;
+          }
+          event.preventDefault();
+          setDropInto(undefined);
+          const dropped = [...event.dataTransfer.files];
+          const [first] = dropped;
+          if (first === undefined || pane === undefined) {
+            return;
+          }
+          const into = dropIntoOf(event.target) ?? undefined;
+          const what = whatOf(dropped.length, first.name);
+          const target = dropTargetOf(pane.folder, into, platform);
+          showMenu({
+            x: event.clientX,
+            y: event.clientY,
+            items: [
+              {
+                label: strings.commander.dropCopy(what, target),
+                onClick: () => actions.dropOn(side, dropped, into, false),
+              },
+              {
+                label: strings.commander.dropMove(what, target),
+                onClick: () => actions.dropOn(side, dropped, into, true),
+              },
+            ],
+          });
+        }}
       >
         {shownList !== undefined && (
           <VirtualRows

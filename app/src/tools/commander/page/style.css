@@ -607,3 +607,9 @@
   align-items: center;
   gap: 8px;
 }
+
+.row.commander-row.drop-target,
+.column-body.drop-target {
+  outline: 1px solid var(--color-focus);
+  outline-offset: -1px;
+}

@@ -298,6 +298,31 @@ export type CommanderToHost =
     }
   | { readonly type: 'dropIcons'; readonly tickets: readonly string[] };
 
+export interface CommanderDrop {
+  readonly type: 'drop';
+  readonly tab: string;
+  readonly side: Side;
+  readonly folder: string;
+  readonly into?: string;
+  readonly move: boolean;
+}
+
+export function isDrop(message: unknown): message is CommanderDrop {
+  if (typeof message !== 'object' || message === null) {
+    return false;
+  }
+  const field = (name: string): unknown => Reflect.get(message, name);
+  const into = field('into');
+  return (
+    field('type') === 'drop' &&
+    typeof field('tab') === 'string' &&
+    isSide(field('side')) &&
+    typeof field('folder') === 'string' &&
+    (into === undefined || typeof into === 'string') &&
+    typeof field('move') === 'boolean'
+  );
+}
+
 export interface ByteRange {
   readonly start: number;
   readonly end: number;

@@ -30,6 +30,7 @@ export type Popup = 'shortcuts' | 'about' | 'openWith' | 'confirm';
 
 interface ToolChannel<K extends ToolId> {
   readonly post: (message: ToHostOf<K>) => void;
+  readonly dropFiles: (files: readonly File[], message: unknown) => void;
   readonly listen: (
     handler: (message: ToWebviewOfTool<K>) => void,
   ) => () => void;
@@ -241,6 +242,11 @@ export function comparingOf(state: ShellSource): string | undefined {
 export function createShellStore(
   post: (message: ToHost) => void,
   initial: Partial<ShellSource> = {},
+  dropFiles: (
+    files: readonly File[],
+    tool: ToolId,
+    message: unknown,
+  ) => void = () => {},
 ): StoreApi<ShellState> {
   let noticesShown = 0;
   const listeners: ToolListeners = {
@@ -251,14 +257,17 @@ export function createShellStore(
   const channels: ToolChannels = {
     terminal: {
       post: (message) => post({ type: 'tool', tool: 'terminal', message }),
+      dropFiles: (files, message) => dropFiles(files, 'terminal', message),
       listen: (handler) => listening(listeners.terminal, handler),
     },
     commander: {
       post: (message) => post({ type: 'tool', tool: 'commander', message }),
+      dropFiles: (files, message) => dropFiles(files, 'commander', message),
       listen: (handler) => listening(listeners.commander, handler),
     },
     git: {
       post: (message) => post({ type: 'tool', tool: 'git', message }),
+      dropFiles: (files, message) => dropFiles(files, 'git', message),
       listen: (handler) => listening(listeners.git, handler),
     },
   };

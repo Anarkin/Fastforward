@@ -7,6 +7,7 @@ import {
   otherSide,
   sides,
   type ByteRange,
+  type CommanderDrop,
   type CommanderToHost,
   type CommanderToWebview,
   type Side,
@@ -169,6 +170,12 @@ interface CommanderActions {
   readonly copyToClipboard: (side: Side, names: readonly string[]) => void;
   readonly paste: (side: Side) => void;
   readonly drag: (side: Side, names: readonly string[]) => void;
+  readonly dropOn: (
+    side: Side,
+    files: readonly File[],
+    into: string | undefined,
+    move: boolean,
+  ) => void;
   readonly askNewFolder: (side: Side) => void;
   readonly makeFolder: (name: string) => void;
   readonly cancelNewFolder: () => void;
@@ -468,6 +475,10 @@ export function createCommanderStore(
     readonly worker: () => FlatWorker;
     readonly timing?: FlatTiming;
   } = { worker: startFlatWorker },
+  dropFiles: (
+    files: readonly File[],
+    message: CommanderDrop,
+  ) => void = () => {},
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
   const scrolls = new ScrollPlaces();
@@ -818,6 +829,17 @@ export function createCommanderStore(
       copyToClipboard: (side, names) =>
         onPane(side, (tab, folder) =>
           post({ type: 'copyToClipboard', tab, side, folder, names }),
+        ),
+      dropOn: (side, files, into, move) =>
+        onPane(side, (tab, folder) =>
+          dropFiles(files, {
+            type: 'drop',
+            tab,
+            side,
+            folder,
+            ...(into !== undefined && { into }),
+            move,
+          }),
         ),
       drag: (side, names) =>
         onPane(side, (tab, folder) =>

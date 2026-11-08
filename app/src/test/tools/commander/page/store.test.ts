@@ -634,6 +634,43 @@ suite('Commander store', () => {
     ]);
   });
 
+  test('hands files dropped on a side over with the folder they go into and whether to move them, for the tab shown', () => {
+    const dropped: { files: readonly File[]; message: unknown }[] = [];
+    const store = createCommanderStore(
+      noop,
+      { view: { ...emptyView, tab: '1', panes: { left, right: undefined } } },
+      undefined,
+      (files, message) => dropped.push({ files, message }),
+    );
+    const files = [new File(['a'], 'a.txt')];
+    store.getState().dropOn('left', files, 'docs', true);
+    store.getState().dropOn('left', files, undefined, false);
+    store.getState().dropOn('right', files, undefined, false);
+    assert.deepStrictEqual(dropped, [
+      {
+        files,
+        message: {
+          type: 'drop',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          into: 'docs',
+          move: true,
+        },
+      },
+      {
+        files,
+        message: {
+          type: 'drop',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          move: false,
+        },
+      },
+    ]);
+  });
+
   test('asks for the name of a new folder for the folder of a side, making it once named and nothing once cancelled, and drops the question once the side shows another folder', () => {
     const { posted, store } = shown();
     store.getState().askNewFolder('left');

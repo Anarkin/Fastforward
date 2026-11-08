@@ -79,6 +79,7 @@ export interface Tool<K extends ToolId> {
   preload(page: Page, tab: Tab): Promise<void>;
   closed(page: Page, tab: Tab): void;
   receive(page: Page, message: ToHostOf<K>): Promise<void>;
+  dropped?(page: Page, files: unknown, message: unknown): Promise<void>;
   refreshShown(page: Page): Promise<void>;
   names(tabs: readonly Tab[]): ReadonlyMap<string, TabName>;
   fits(folder: string): Promise<boolean>;
@@ -110,6 +111,7 @@ export interface ShellHost {
 
 export interface Connection {
   receive(message: ToHost): Promise<void>;
+  dropped(files: unknown, tool: unknown, message: unknown): Promise<void>;
   refresh(): Promise<void>;
   dispose(): void;
 }
@@ -256,6 +258,18 @@ export class Shell {
               }),
             )
           : Promise.resolve(),
+      dropped: (files, tool, message) => {
+        const receiving = isTool(tool) ? this.tools[tool] : undefined;
+        if (receiving?.dropped === undefined) {
+          return Promise.resolve();
+        }
+        return this.inFlight.track(
+          receiving.dropped(page, files, message).catch((error: unknown) => {
+            this.log.error(error);
+            this.notice(page, { level: 'error', message: reasonOf(error) });
+          }),
+        );
+      },
       refresh: () => {
         const tab = this.activeTab();
         return tab === undefined

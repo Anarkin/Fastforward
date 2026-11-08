@@ -276,15 +276,25 @@ async function start(asked: readonly string[]): Promise<void> {
   const disconnect = () =>
     void connection.then((current) => current?.dispose());
   reloadWhenGone(window, log, disconnect);
+  const fromApp = (event: Electron.IpcMainEvent) =>
+    event.sender === window.webContents &&
+    event.senderFrame !== null &&
+    isAppUrl(event.senderFrame.url);
   ipcMain.on('message', (event, message: ToHost) => {
-    if (
-      event.sender === window.webContents &&
-      event.senderFrame &&
-      isAppUrl(event.senderFrame.url)
-    ) {
+    if (fromApp(event)) {
       void connection.then((current) => current?.receive(message));
     }
   });
+  ipcMain.on(
+    'dropFiles',
+    (event, files: unknown, tool: unknown, message: unknown) => {
+      if (fromApp(event)) {
+        void connection.then((current) =>
+          current?.dropped(files, tool, message),
+        );
+      }
+    },
+  );
   tellMaximized(window, (maximized) => {
     if (!window.isDestroyed()) {
       window.webContents.send('maximized', maximized);

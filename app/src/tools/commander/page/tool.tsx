@@ -5,6 +5,7 @@ import './style.css';
 import { commanderKeymap, viewerKeymap } from '../shared/keymap';
 import {
   sides,
+  type CommanderDrop,
   type CommanderToHost,
   type CommanderToWebview,
 } from '../shared/protocol';
@@ -131,12 +132,16 @@ export function CommanderTool({
   active,
   post,
   listen,
+  dropFiles,
 }: {
   active: boolean;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: CommanderToWebview) => void) => () => void;
+  dropFiles?: (files: readonly File[], message: CommanderDrop) => void;
 }) {
-  const [store] = useState(() => createCommanderStore(post));
+  const [store] = useState(() =>
+    createCommanderStore(post, {}, undefined, dropFiles),
+  );
   const tab = useStore(store, (state) => state.view.tab);
   const viewsFile = useStore(
     store,

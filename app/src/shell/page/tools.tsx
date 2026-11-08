@@ -63,6 +63,7 @@ export function ToolViews() {
         active={active === 'commander'}
         post={channels.commander.post}
         listen={channels.commander.listen}
+        dropFiles={channels.commander.dropFiles}
       />
       <GitTool
         active={active === 'git'}

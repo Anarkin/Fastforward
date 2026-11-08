@@ -594,6 +594,8 @@ export const strings = {
       `${count} items could not be moved, among them ${name}: ${reason}`,
     alreadyIn: (target: string) => `The items are in "${target}" already.`,
     nothingToPaste: 'The clipboard holds no files to paste.',
+    dropCopy: (what: string, target: string) => `Copy ${what} to "${target}"`,
+    dropMove: (what: string, target: string) => `Move ${what} to "${target}"`,
     newFolderTitle: 'New Folder',
     newFolderIn: (folder: string) => `Make a folder in "${folder}"`,
     newFolderName: 'Name',

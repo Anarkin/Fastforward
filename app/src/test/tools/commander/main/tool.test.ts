@@ -1805,6 +1805,50 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(dragged, [[at('dir'), at('a.txt')]]);
   });
 
+  test('copies or moves the files dropped on a side into its folder, the folder they were dropped on or its parent, only while the side shows the folder named and every file is a whole path, refusing them in the folder they are in', async () => {
+    const { tool, page, send, transfers, notices } = commander({
+      [root]: [file('a.txt'), folder('target')],
+      [at('target')]: [folder('inner'), file('b.txt')],
+      [at('target', 'inner')]: [],
+    });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'right', name: 'target' });
+    const elsewhere = path.join(root, 'elsewhere');
+    const files = [path.join(elsewhere, 'x.txt'), path.join(elsewhere, 'y')];
+    const drop = (message: object, dropped: unknown = files) =>
+      tool.dropped(page, dropped, {
+        type: 'drop',
+        tab: '1',
+        side: 'right',
+        folder: at('target'),
+        move: false,
+        ...message,
+      });
+
+    await drop({});
+    await drop({ into: 'inner', move: true });
+    await drop({ into: '..' });
+    await drop({ into: 'b.txt' });
+    await drop({ into: 'gone' });
+    await drop({ folder: root });
+    await drop({}, ['relative.txt']);
+    await drop({}, []);
+    await drop({}, [7]);
+    await drop({}, 'x.txt');
+    await drop({ move: 'yes' });
+    await tool.dropped(page, files, { type: 'other' });
+    await drop({}, [at('target', 'b.txt')]);
+
+    assert.deepStrictEqual(plansOf(transfers), [
+      { sources: files, target: at('target'), move: false },
+      { sources: files, target: at('target', 'inner'), move: true },
+      { sources: files, target: root, move: false },
+    ]);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.alreadyIn(at('target')) },
+    ]);
+  });
+
   test('pastes the files on the clipboard into the folder named as a copy of them, refusing them in the folder they are in or a folder into itself, and saying when the clipboard holds no files', async () => {
     const { tool, page, send, clipboard, transfers, notices } = commander({
       [root]: [file('a.txt'), folder('dir')],

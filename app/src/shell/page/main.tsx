@@ -63,7 +63,14 @@ if (root) {
       listen={listen}
       onQuit={() => post({ type: 'quit' })}
     >
-      <App name={fastforward.name} post={post} listen={listen} />
+      <App
+        name={fastforward.name}
+        post={post}
+        listen={listen}
+        dropFiles={(files, tool, message) =>
+          fastforward.dropFiles(files, tool, message)
+        }
+      />
     </ErrorBoundary>,
   );
 }
