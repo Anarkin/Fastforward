@@ -1106,6 +1106,7 @@ export class GitTool implements Tool<'git'> {
         context.tab.selection = message.selection;
         if (message.hash === undefined) {
           unselect(context.tab);
+          this.rememberSelection(context);
           break;
         }
         if (!pickable(context.tab, message.hash)) {
@@ -1114,12 +1115,14 @@ export class GitTool implements Tool<'git'> {
         }
         this.visit(context, message.hash, message.replace);
         select(context.tab, message.hash);
+        this.rememberSelection(context);
         await this.sendCommit(context);
         break;
       case 'selectFile':
         if (this.isSelected(context, message.hash)) {
           context.tab.path = message.path;
           context.tab.area = message.area;
+          this.rememberSelection(context);
           await this.sendDiff(context, message.hash);
         }
         break;
@@ -1482,6 +1485,17 @@ export class GitTool implements Tool<'git'> {
     await this.loadTab(context);
   }
 
+  private rememberSelection({ root, tab }: Context): void {
+    this.save(
+      this.storage.setSelection(
+        root,
+        tab.hash === undefined
+          ? undefined
+          : { hash: tab.hash, path: tab.path, area: tab.area },
+      ),
+    );
+  }
+
   private save(saving: Promise<void>): void {
     void saving.catch((error: unknown) => {
       this.log.error(strings.log.savingFailed);
@@ -1637,8 +1651,12 @@ export class GitTool implements Tool<'git'> {
   private tabState(root: string): TabWork {
     let tab = this.tabStates.get(root);
     if (!tab) {
+      const saved = this.storage.selectionOf(root);
       tab = {
         ...newTabState(),
+        hash: saved?.hash,
+        path: saved?.path,
+        area: saved?.area,
         preloading: undefined,
         loadingHistory: undefined,
         readingHistory: undefined,
@@ -2748,6 +2766,7 @@ export class GitTool implements Tool<'git'> {
       this.visit(context, hash);
     }
     select(tab, hash);
+    this.rememberSelection(context);
     if (tab.index !== undefined) {
       context.post({
         type: 'reveal',
@@ -3035,6 +3054,7 @@ export class GitTool implements Tool<'git'> {
       }
       if (tab.hash !== undefined && !stillThere(tab)(tab.hash)) {
         unselect(tab);
+        this.rememberSelection(context);
         context.post({ type: 'unselect', selection: tab.selection });
       }
       await this.sendShownHistory(context, { keepPlace: keepPlace || early });

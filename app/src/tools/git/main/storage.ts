@@ -1,10 +1,13 @@
-import type {
-  Bookmark,
-  DiffLayout,
-  GitToWebviewOf,
-  LastFetch,
-  RefKind,
+import {
+  workingTreeHash,
+  type Bookmark,
+  type ChangeArea,
+  type DiffLayout,
+  type GitToWebviewOf,
+  type LastFetch,
+  type RefKind,
 } from '../shared/protocol';
+import { sidesOf } from '../shared/comparisons';
 import { isFullHash } from '../shared/hashes';
 import type { GitSettings } from '../shared/settings';
 import { isObject, type UserSettings } from '../../../shell/main/settings';
@@ -21,12 +24,19 @@ export const worktreesKey = 'activeWorktrees';
 export const lastFetchesKey = 'lastFetches';
 export const remoteTagsKey = 'remoteTags';
 export const cloneFolderKey = 'cloneFolder';
+export const selectionsKey = 'selections';
 const maxAutoFetchMinutes = Math.floor((2 ** 31 - 1) / 60_000);
 const fetchesSavedEvery = 10 * 60_000;
 const noRemoteTags: ReadonlyMap<
   string,
   ReadonlyMap<string, string>
 > = new Map();
+
+export interface SavedSelection {
+  readonly hash: string;
+  readonly path?: string;
+  readonly area?: ChangeArea;
+}
 
 export class GitStorage {
   private readonly unsavedFetches = new Map<string, LastFetch>();
@@ -64,6 +74,38 @@ export class GitStorage {
 
   private get activeWorktrees(): Record<string, unknown> {
     return recordOf(this.state.get(worktreesKey));
+  }
+
+  selectionOf(worktree: string): SavedSelection | undefined {
+    const all = this.selections;
+    return selectionFrom(all[keyOf(all, worktree)]);
+  }
+
+  async setSelection(
+    worktree: string,
+    selection: SavedSelection | undefined,
+  ): Promise<void> {
+    const all = this.selections;
+    const key = keyOf(all, worktree);
+    const saved = selectionFrom(all[key]);
+    const kept = selectionFrom(selection);
+    if (
+      saved?.hash === kept?.hash &&
+      saved?.path === kept?.path &&
+      saved?.area === kept?.area
+    ) {
+      return;
+    }
+    if (kept === undefined) {
+      delete all[key];
+    } else {
+      all[key] = kept;
+    }
+    await this.state.update(selectionsKey, all);
+  }
+
+  private get selections(): Record<string, unknown> {
+    return recordOf(this.state.get(selectionsKey));
   }
 
   get recent(): string[] {
@@ -244,6 +286,7 @@ export class GitStorage {
         (key) => this.withoutRoots(key, [repository]),
       ),
       this.withoutRoots(soloKey, worktreesToo),
+      this.withoutRoots(selectionsKey, worktreesToo),
     ]);
   }
 
@@ -370,6 +413,34 @@ function stringsIn(value: unknown): string[] {
 
 function recordOf(value: unknown): Record<string, unknown> {
   return isObject(value) ? { ...value } : {};
+}
+
+function selectionFrom(value: unknown): SavedSelection | undefined {
+  if (!isObject(value)) {
+    return undefined;
+  }
+  const { hash, path, area } = value;
+  if (
+    typeof hash !== 'string' ||
+    !sidesOf(hash).every(
+      (side) => side === workingTreeHash || isFullHash(side),
+    ) ||
+    !(path === undefined || isSavedPath(path)) ||
+    !(area === undefined || area === 'staged' || area === 'unstaged')
+  ) {
+    return undefined;
+  }
+  return {
+    hash,
+    ...(path !== undefined && { path }),
+    ...(area !== undefined && { area }),
+  };
+}
+
+function isSavedPath(value: unknown): value is string {
+  return (
+    typeof value === 'string' && !value.includes('\0') && !value.includes('\n')
+  );
 }
 
 const bookmarkKinds: readonly (RefKind | 'commit')[] = [

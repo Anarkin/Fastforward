@@ -9,9 +9,12 @@ import {
   lastFetchesKey,
   recentKey,
   remoteTagsKey,
+  selectionsKey,
   soloKey,
   worktreesKey,
 } from '../../../../tools/git/main/storage';
+import { comparisonOf } from '../../../../tools/git/shared/comparisons';
+import { workingTreeHash } from '../../../../tools/git/shared/protocol';
 import { FakeStore } from '../../../fakeStore';
 import { defaultSettings } from '../../../fixtures';
 
@@ -78,6 +81,94 @@ suite('Git storage', () => {
     assert.deepStrictEqual(state.get('solo'), { [root]: true });
     await storage.setSolo(root, false);
     assert.deepStrictEqual(state.get('solo'), {});
+  });
+
+  test('keeps the commit, the file and the changes selected in each worktree for the next start, whatever the spelling of its folder', async () => {
+    const state = new FakeStore();
+    const storage = storageOf(state);
+    const [r1, r2] = [path.resolve('r1'), path.resolve('r2')];
+    const commit = 'a'.repeat(40);
+    assert.strictEqual(storage.selectionOf(r1), undefined);
+    await storage.setSelection(r1, { hash: commit, path: 'src/a.ts' });
+    await storage.setSelection(r2, {
+      hash: workingTreeHash,
+      path: 'b.txt',
+      area: 'staged',
+    });
+    await storage.setSelection(r1 + path.sep, { hash: commit, path: 'c.ts' });
+    assert.deepStrictEqual(storageOf(state).selectionOf(r1), {
+      hash: commit,
+      path: 'c.ts',
+    });
+    assert.deepStrictEqual(storageOf(state).selectionOf(r2 + path.sep), {
+      hash: workingTreeHash,
+      path: 'b.txt',
+      area: 'staged',
+    });
+    await storage.setSelection(r1, undefined);
+    assert.strictEqual(storageOf(state).selectionOf(r1), undefined);
+    assert.deepStrictEqual(Object.keys(state.get(selectionsKey) ?? {}), [r2]);
+  });
+
+  test('saves the selection of a worktree again only once it changes, as each commit and file selected saves it', async () => {
+    const store = new FakeStore();
+    const saved: string[] = [];
+    const storage = storageOf({
+      get: (key) => store.get(key),
+      update: (key, value) => {
+        saved.push(key);
+        return store.update(key, value);
+      },
+    });
+    const root = path.resolve('r');
+    const commit = 'a'.repeat(40);
+    await storage.setSelection(root, { hash: commit });
+    await storage.setSelection(root, { hash: commit });
+    await storage.setSelection(root, { hash: commit, path: 'a.txt' });
+    await storage.setSelection(root, { hash: commit, path: 'a.txt' });
+    await storage.setSelection(root, undefined);
+    await storage.setSelection(root, undefined);
+    assert.deepStrictEqual(saved, [
+      selectionsKey,
+      selectionsKey,
+      selectionsKey,
+    ]);
+  });
+
+  test('reads a selection of the wrong shape, as a hand edit can leave it, as none, handing git nothing but hashes', async () => {
+    const store = new FakeStore();
+    const commit = 'a'.repeat(40);
+    const wrong = {
+      short: { hash: 'abc' },
+      option: { hash: '--output=x' },
+      comparedWithOption: { hash: comparisonOf(commit, '--output=x') },
+      noHash: { path: 'a.txt' },
+      badPath: { hash: commit, path: 'a\0b' },
+      badArea: { hash: workingTreeHash, area: 'index' },
+      notAnObject: 'x',
+    };
+    const compared = { hash: comparisonOf(commit, workingTreeHash) };
+    await store.update(selectionsKey, {
+      ...Object.fromEntries(
+        Object.entries(wrong).map(([name, value]) => [
+          path.resolve(name),
+          value,
+        ]),
+      ),
+      [path.resolve('compared')]: compared,
+    });
+    const storage = storageOf(store);
+    for (const name of Object.keys(wrong)) {
+      assert.strictEqual(
+        storage.selectionOf(path.resolve(name)),
+        undefined,
+        name,
+      );
+    }
+    assert.deepStrictEqual(
+      storage.selectionOf(path.resolve('compared')),
+      compared,
+    );
   });
 
   test('keeps when each repository last fetched and last failed to, for the next start', async () => {
@@ -166,13 +257,16 @@ suite('Git storage', () => {
     );
     const tags = new Map([['v1', 'a'.repeat(40)]]);
     const bookmarks = [{ kind: 'branch', name: 'main' }] as const;
+    const selection = { hash: 'b'.repeat(40), path: 'a.txt' };
     for (const root of [gone, kept]) {
       await storage.setBookmarks(root, bookmarks);
       await storage.setRemoteTags(root, 'origin', tags);
       await storage.recordFetch(root, false, 1);
       await storage.setSolo(root, true);
+      await storage.setSelection(root, selection);
     }
     await storage.setSolo(linked, true);
+    await storage.setSelection(linked, selection);
     await storage.setWorktree(gone, linked);
     await storage.setWorktree(kept, `${kept}-linked`);
     await storage.recordFetch(gone, true, 2);
@@ -186,6 +280,9 @@ suite('Git storage', () => {
       assert.deepStrictEqual(reading.lastFetchOf(gone), {});
       assert.strictEqual(reading.soloOf(gone), false);
       assert.strictEqual(reading.soloOf(linked), false);
+      assert.strictEqual(reading.selectionOf(gone), undefined);
+      assert.strictEqual(reading.selectionOf(linked), undefined);
+      assert.deepStrictEqual(reading.selectionOf(kept), selection);
       assert.strictEqual(reading.worktreeOf(gone), gone);
       assert.deepStrictEqual(reading.bookmarksOf(kept), bookmarks);
       assert.deepStrictEqual(
