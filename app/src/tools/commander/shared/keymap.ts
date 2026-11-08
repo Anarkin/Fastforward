@@ -31,6 +31,7 @@ export const commanderKeymap = {
     },
     { repeats: true },
   ),
+  bookmarks: bind('Folders', strings.actions.bookmarks, { 'Ctrl+D': true }),
   reread: bind('Folders', strings.actions.reread, {
     F2: true,
     'Ctrl+R': true,

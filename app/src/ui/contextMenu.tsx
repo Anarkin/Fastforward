@@ -17,6 +17,7 @@ export type ContextMenuItem =
       readonly onRemove?: () => void;
       readonly removeTitle?: string;
       readonly accessKey?: string;
+      readonly showAccessKey?: boolean;
       readonly keywords?: string;
     }
   | { readonly separator: true };
@@ -288,6 +289,13 @@ export function openedSubmenu(
   return item.submenu ? { focusFirst: detail === 0 } : undefined;
 }
 
+function shownKey(item: {
+  readonly accessKey?: string;
+  readonly showAccessKey?: boolean;
+}): string | undefined {
+  return item.showAccessKey === true ? item.accessKey : undefined;
+}
+
 export function MenuItems({
   items,
   onClose,
@@ -338,6 +346,7 @@ export function MenuItems({
               }
               aria-checked={item.checked}
               data-access-key={item.accessKey}
+              aria-keyshortcuts={shownKey(item)}
               title={item.title}
               aria-haspopup={item.submenu ? 'menu' : undefined}
               aria-expanded={item.submenu ? openSubmenu === index : undefined}
@@ -363,6 +372,11 @@ export function MenuItems({
               <span className="menu-check">
                 {item.icon ?? (item.checked ? strings.symbols.checked : '')}
               </span>
+              {shownKey(item) !== undefined && (
+                <span className="menu-access-key" aria-hidden="true">
+                  {item.accessKey}
+                </span>
+              )}
               {item.label}
               {item.submenu && (
                 <span className="submenu-arrow">

@@ -279,6 +279,17 @@ export function WordWrapIcon() {
   );
 }
 
+export function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <Icon className={filled ? 'bookmark-icon filled' : 'bookmark-icon'}>
+      <path
+        d="M8 2.2 9.53 6.3l4.37.18-3.43 2.72 1.17 4.22L8 11l-3.64 2.42 1.17-4.22L2.1 6.48l4.37-.18Z"
+        fill={filled ? 'currentColor' : undefined}
+      />
+    </Icon>
+  );
+}
+
 export function PinIcon() {
   return (
     <Icon>

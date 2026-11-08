@@ -38,6 +38,7 @@ import { formatDate } from '../../../ui/dates';
 import { useShell } from '../../../shell/page/store';
 import {
   BackIcon,
+  BookmarkIcon,
   FileIcon,
   FolderIcon,
   ForwardIcon,
@@ -50,6 +51,7 @@ import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
 import { fileColorOf } from './fileColors';
 import { PathTitle } from './pathTitle';
+import { bookmarkMenu, bookmarkOf } from './bookmarks';
 import { paneKey, type PaneAct } from './paneKeys';
 
 declare module 'react' {
@@ -239,13 +241,48 @@ export function layoutMenu({
   ];
 }
 
+function BookmarkButton({
+  side,
+  trigger,
+}: {
+  side: Side;
+  trigger: React.Ref<HTMLButtonElement>;
+}) {
+  const bookmarks = useCommander((state) => state.view.bookmarks);
+  const bookmark = useCommander((state) =>
+    bookmarkOf(
+      state.view.bookmarks,
+      state.view.panes[side]?.folder,
+      state.view.platform,
+    ),
+  );
+  const { addBookmark, removeBookmark, goToBookmark } = useCommanderActions();
+  return (
+    <MenuButton
+      title={strings.commander.bookmarks}
+      icon={<BookmarkIcon filled={bookmark !== undefined} />}
+      arrow
+      trigger={trigger}
+      items={bookmarkMenu({
+        bookmarks,
+        bookmark,
+        onAdd: () => addBookmark(side),
+        onRemove: removeBookmark,
+        onGo: (folder) => goToBookmark(side, folder),
+      })}
+    />
+  );
+}
+
 export function Pane({
   side,
   driveTrigger,
+  bookmarkTrigger,
   resizer,
 }: {
   side: Side;
   driveTrigger: React.Ref<HTMLButtonElement>;
+  bookmarkTrigger: React.Ref<HTMLButtonElement>;
   resizer: React.ReactNode;
 }) {
   const tab = useCommander((state) => state.view.tab);
@@ -695,7 +732,7 @@ export function Pane({
               <ForwardIcon />
             </button>
             {drives.length > 0 && (
-              <div onClickCapture={onDrivesOpening}>
+              <div className="drive-menu" onClickCapture={onDrivesOpening}>
                 <MenuButton
                   title={strings.commander.chooseDrive}
                   label={(current ?? '').replace(/\\$/, '')}
@@ -709,6 +746,7 @@ export function Pane({
                 />
               </div>
             )}
+            <BookmarkButton side={side} trigger={bookmarkTrigger} />
           </div>
           <PathTitle path={pane?.folder ?? ''} hidden={pane?.hidden ?? []}>
             {pane?.elevated && (

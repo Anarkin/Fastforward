@@ -114,6 +114,10 @@ export function CommanderTool({
     left: useRef<HTMLButtonElement>(null),
     right: useRef<HTMLButtonElement>(null),
   };
+  const bookmarkTriggers = {
+    left: useRef<HTMLButtonElement>(null),
+    right: useRef<HTMLButtonElement>(null),
+  };
 
   useEffect(() => listen(store.getState().receive), [listen, store]);
 
@@ -145,6 +149,11 @@ export function CommanderTool({
     viewing,
   );
   useBinding(commanderKeymap.reread, reread, shown && !viewing);
+  useBinding(
+    commanderKeymap.bookmarks,
+    () => bookmarkTriggers[activeSide].current?.click(),
+    shown && !viewing,
+  );
   useEffect(() => {
     if (!shown) {
       return undefined;
@@ -218,6 +227,7 @@ export function CommanderTool({
               key={side}
               side={side}
               driveTrigger={triggers[side]}
+              bookmarkTrigger={bookmarkTriggers[side]}
               resizer={side === 'left' && resizer}
             />
           ))}

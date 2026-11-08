@@ -53,10 +53,44 @@ const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
           },
         })}
       >
-        <Pane side="left" driveTrigger={null} resizer={null} />
+        <Pane
+          side="left"
+          driveTrigger={null}
+          bookmarkTrigger={null}
+          resizer={null}
+        />
       </CommanderStore>,
     ),
   )?.[1];
+const bookmarkStar = (bookmarks: readonly string[], platform: string) =>
+  new JSDOM(
+    renderToStaticMarkup(
+      <CommanderStore
+        value={createCommanderStore(noop, {
+          view: {
+            ...emptyView,
+            tab: '1',
+            active: 'left',
+            platform,
+            bookmarks,
+            panes: { left: pane(false, []), right: undefined },
+          },
+        })}
+      >
+        <Pane
+          side="left"
+          driveTrigger={null}
+          bookmarkTrigger={null}
+          resizer={null}
+        />
+      </CommanderStore>,
+    ),
+  ).window.document
+    .querySelector(
+      `button[title="${strings.commander.bookmarks}"] .bookmark-icon`,
+    )
+    ?.getAttribute('class');
+
 suite('Commander pane', () => {
   test('hands back the ticket of an icon whose row goes before the icon comes, and none of one that came or failed', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
@@ -347,6 +381,18 @@ suite('Commander pane', () => {
       undefined,
     );
     assert.strictEqual(sideToFocus(undefined, null), undefined);
+  });
+
+  test('fills the star of the bookmarks of a side once its folder is bookmarked, whatever the case of its letters on Windows, and outlines it otherwise', () => {
+    assert.strictEqual(
+      bookmarkStar(['C:\\config.msi'], 'win32'),
+      'icon bookmark-icon filled',
+    );
+    assert.strictEqual(
+      bookmarkStar(['C:\\config.msi'], 'linux'),
+      'icon bookmark-icon',
+    );
+    assert.strictEqual(bookmarkStar([], 'win32'), 'icon bookmark-icon');
   });
 
   test('marks a folder read as administrator before its path, and no other', () => {

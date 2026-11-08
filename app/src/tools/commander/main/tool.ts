@@ -33,6 +33,12 @@ import {
 } from '../shared/settings';
 import type { LocalFileSystem } from './fileSystem';
 import { pathParts } from '../shared/paths';
+import {
+  shownBookmarks,
+  withBookmark,
+  withoutBookmark,
+  type BookmarkSystem,
+} from './bookmarks';
 import type { WatchFolder } from './watch';
 import {
   fillsThumbnail,
@@ -101,6 +107,7 @@ export interface CommanderAccess {
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
   readonly saveSorts: (sorts: Sorts) => Promise<void>;
+  readonly saveBookmarks: (bookmarks: readonly string[]) => Promise<void>;
   readonly thumbnails: {
     readonly read: (key: string) => Promise<Uint8Array | undefined>;
     readonly has: (key: string) => Promise<boolean>;
@@ -470,6 +477,29 @@ export class CommanderTool implements Tool<'commander'> {
           this.postSettings(page);
         }
         return undefined;
+      case 'addBookmark': {
+        const shown = this.namingPane(
+          page,
+          message.tab,
+          message.side,
+          message.folder,
+        );
+        return shown === undefined
+          ? undefined
+          : this.saveBookmarks(page, (stored, system) =>
+              withBookmark(stored, shown.pane.folder, system),
+            );
+      }
+      case 'removeBookmark': {
+        const { folder } = message;
+        return typeof folder === 'string'
+          ? this.saveBookmarks(page, (stored, system) =>
+              withoutBookmark(stored, folder, system),
+            )
+          : undefined;
+      }
+      case 'goToBookmark':
+        return this.goToBookmark(page, message);
       default:
         return message satisfies never;
     }
@@ -1468,6 +1498,39 @@ export class CommanderTool implements Tool<'commander'> {
       : this.list(page, shown.tab, shown.side, folder, { at });
   }
 
+  private get bookmarkSystem(): BookmarkSystem {
+    return { paths: path, platform: this.access.platform };
+  }
+
+  private async saveBookmarks(
+    page: Page,
+    change: (
+      stored: readonly string[],
+      system: BookmarkSystem,
+    ) => readonly string[],
+  ): Promise<void> {
+    const stored = this.access.settings().bookmarks;
+    const changed = change(stored, this.bookmarkSystem);
+    if (changed !== stored) {
+      await this.access.saveBookmarks(changed);
+      this.postSettings(page);
+    }
+  }
+
+  private async goToBookmark(
+    page: Page,
+    { tab, side, folder }: Extract<CommanderToHost, { type: 'goToBookmark' }>,
+  ): Promise<void> {
+    const shown = this.shownPane(page, tab, side);
+    const bookmarked = shownBookmarks(
+      this.access.settings().bookmarks,
+      this.bookmarkSystem,
+    ).find((bookmark) => bookmark === folder);
+    if (shown !== undefined && bookmarked !== undefined) {
+      await this.list(page, shown.tab, shown.side, bookmarked, 'visit');
+    }
+  }
+
   private async drive(
     page: Page,
     tab: unknown,
@@ -1678,7 +1741,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private postSettings(page: Page): void {
-    const { showHidden, sort, columns, thumbnailSize, fileColors } =
+    const { showHidden, sort, columns, thumbnailSize, fileColors, bookmarks } =
       this.access.settings();
     this.post(page, {
       type: 'settings',
@@ -1687,8 +1750,10 @@ export class CommanderTool implements Tool<'commander'> {
       columns: heldColumns(columns),
       defaultColumns: this.access.defaultColumns(),
       canElevate: this.access.elevate !== undefined,
+      platform: this.access.platform,
       thumbnailSize: heldBox(thumbnailSize),
       fileColors,
+      bookmarks: shownBookmarks(bookmarks, this.bookmarkSystem),
     });
   }
 

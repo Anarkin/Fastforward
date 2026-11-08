@@ -133,6 +133,7 @@ function commander(
     thumbnailSize: 144,
     thumbnailCacheMegabytes: 8192,
     fileColors: [],
+    bookmarks: [] as readonly string[],
   };
   const thumbnails = new Map<string, Uint8Array>();
   const streamed = new Set<string>();
@@ -227,6 +228,11 @@ function commander(
     saveColumns: (columns) => {
       saved.push(columns);
       settings.columns = columns;
+      return Promise.resolve();
+    },
+    saveBookmarks: (bookmarks) => {
+      saved.push(bookmarks);
+      settings.bookmarks = bookmarks;
       return Promise.resolve();
     },
     thumbnails: {
@@ -2799,6 +2805,86 @@ suite('Commander tool', () => {
     ]);
   });
 
+  test('bookmarks the folder a side shows, saving it after the bookmarks written before, and tells the page the bookmarks it can open, sorted, but none for a folder the side doesn’t show or one bookmarked already', async () => {
+    const work = at('work');
+    const { tool, page, send, saved, settings } = commander({
+      [root]: [folder('work')],
+      [work]: [],
+    });
+    settings.bookmarks = [at('zeta'), 'Downloads'];
+    tool.ready(page);
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'right', name: 'work' });
+
+    await send({ type: 'addBookmark', tab: '1', side: 'right', folder: work });
+    await send({ type: 'addBookmark', tab: '1', side: 'right', folder: work });
+    await send({ type: 'addBookmark', tab: '1', side: 'left', folder: work });
+    await send({ type: 'addBookmark', tab: '2', side: 'right', folder: work });
+    await send(
+      forged(
+        `{ "type": "addBookmark", "tab": "1", "side": "middle", "folder": ${JSON.stringify(work)} }`,
+      ),
+    );
+
+    assert.deepStrictEqual(saved, [[at('zeta'), 'Downloads', work]]);
+    assert.deepStrictEqual(
+      page.of('settings').map((each) => each.bookmarks),
+      [[at('zeta')], [work, at('zeta')]],
+    );
+  });
+
+  test('removes a bookmark however it was written, keeping the others as written, and tells the page, saving nothing for a folder not bookmarked', async () => {
+    const { tool, page, send, saved, settings } = commander({});
+    settings.bookmarks = [at('work'), at('zeta'), 'Downloads'];
+    tool.ready(page);
+
+    await send({ type: 'removeBookmark', folder: at('work') });
+    await send({ type: 'removeBookmark', folder: at('gone') });
+    await send(forged('{ "type": "removeBookmark", "folder": 2 }'));
+
+    assert.deepStrictEqual(saved, [[at('zeta'), 'Downloads']]);
+    assert.deepStrictEqual(
+      page.of('settings').map((each) => each.bookmarks),
+      [[at('work'), at('zeta')], [at('zeta')]],
+    );
+  });
+
+  test('goes to a bookmark on the side asked as to any other folder, back again through its history, only to a folder bookmarked, saying why one can’t be opened', async () => {
+    const work = at('work');
+    const { tool, page, send, settings, notices } = commander({
+      [root]: [folder('work')],
+      [work]: [file('a.txt')],
+    });
+    settings.bookmarks = [work, at('gone')];
+    await tool.show(page, tab);
+
+    await send({ type: 'goToBookmark', tab: '1', side: 'left', folder: root });
+    await send({ type: 'goToBookmark', tab: '2', side: 'left', folder: work });
+    await send({ type: 'goToBookmark', tab: '1', side: 'left', folder: work });
+    await send({ type: 'step', tab: '1', side: 'left', step: -1 });
+    await send({
+      type: 'goToBookmark',
+      tab: '1',
+      side: 'right',
+      folder: at('gone'),
+    });
+
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `left ${work} ↑: a.txt`,
+      `left ${root}: work [work]`,
+      `right ${root}: work`,
+    ]);
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.couldNotOpen(
+          at('gone'),
+          strings.commander.gone,
+        ),
+      },
+    ]);
+  });
+
   test('saves whether the hidden files are shown, and tells the page', async () => {
     const { tool, page, send, saved } = commander({});
     tool.ready(page);
@@ -2853,8 +2939,10 @@ suite('Commander tool', () => {
       columns: { extension: 6, size: 12, date: 16 },
       defaultColumns,
       canElevate: false,
+      platform: 'linux',
       thumbnailSize: 144,
       fileColors: [],
+      bookmarks: [],
     });
   });
 

@@ -255,6 +255,8 @@ export const strings = {
     drive: 'Choose the drive of the left or right side',
     sort: 'Sort by a column, or reverse the order',
     folderHistory: 'Back or forward through the folders of the side',
+    bookmarks:
+      'Open the bookmarks of the side, to go to one or to bookmark the folder of the side',
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
     dialogButton: 'Move between the buttons of a dialog',
@@ -544,6 +546,10 @@ export const strings = {
     chooseDrive: 'Choose a drive',
     back: 'Back to the folder before',
     forward: 'Forward to the folder after',
+    bookmarks: 'Bookmarks',
+    addBookmark: 'Add Bookmark',
+    removeBookmark: 'Remove Bookmark',
+    removeBookmarkOf: (folder: string) => `Remove ${folder} from the bookmarks`,
     sides: {
       left: 'Left side',
       right: 'Right side',

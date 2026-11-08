@@ -101,7 +101,12 @@ suite('Commander focus', () => {
         renderIn(
           root,
           <CommanderStore value={store}>
-            <Pane side="left" driveTrigger={null} resizer={null} />
+            <Pane
+              side="left"
+              driveTrigger={null}
+              bookmarkTrigger={null}
+              resizer={null}
+            />
           </CommanderStore>,
         );
       });

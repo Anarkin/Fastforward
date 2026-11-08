@@ -340,6 +340,7 @@ export function newView(
         saveShowHidden: () => Promise.resolve(),
         saveColumns: () => Promise.resolve(),
         saveSorts: () => Promise.resolve(),
+        saveBookmarks: () => Promise.resolve(),
         thumbnails: {
           read: () => Promise.resolve(undefined),
           has: () => Promise.resolve(false),

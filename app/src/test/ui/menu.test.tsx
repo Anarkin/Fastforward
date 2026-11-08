@@ -72,6 +72,22 @@ suite('Menu button', () => {
     assert.ok(!iconOnly.classList.contains('labelled'));
   });
 
+  test('marks a button showing an icon with an arrow when asked, as one whose click opens a list rather than turning the icon on', () => {
+    const arrowed = triggerOf(
+      <MenuButton
+        title="Bookmarks"
+        icon={<svg className="icon star" />}
+        arrow
+        items={[]}
+      />,
+    );
+    assert.ok(arrowed);
+    assert.ok(arrowed.querySelector('.star'));
+    assert.ok(arrowed.querySelector('.dropdown-icon'));
+    assert.ok(arrowed.classList.contains('arrowed'));
+    assert.strictEqual(arrowed.querySelector('.menu-button-label'), null);
+  });
+
   test('closes its menu once the focus moves out of it, as to the menu of another button, but not while it moves within', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {

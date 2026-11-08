@@ -15,6 +15,7 @@ export function MenuButton({
   items,
   marked = false,
   icon = <MoreIcon />,
+  arrow = false,
   label,
   trigger,
   filter,
@@ -23,6 +24,7 @@ export function MenuButton({
   items: readonly ContextMenuItem[];
   marked?: boolean;
   icon?: React.ReactNode;
+  arrow?: boolean;
   label?: string;
   trigger?: React.Ref<HTMLButtonElement>;
   filter?: string;
@@ -46,7 +48,7 @@ export function MenuButton({
     >
       <button
         ref={trigger}
-        className={`nav-button menu-button-trigger${label === undefined ? '' : ' labelled'}${open ? ' open' : ''}`}
+        className={`nav-button menu-button-trigger${label === undefined ? '' : ' labelled'}${arrow ? ' arrowed' : ''}${open ? ' open' : ''}`}
         title={title}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -55,11 +57,9 @@ export function MenuButton({
         {label === undefined ? (
           icon
         ) : (
-          <>
-            <span className="menu-button-label">{label}</span>
-            <DropdownIcon />
-          </>
+          <span className="menu-button-label">{label}</span>
         )}
+        {(label !== undefined || arrow) && <DropdownIcon />}
         {marked && <span className="menu-mark" />}
       </button>
       {open &&

@@ -58,9 +58,11 @@ const sortedBy = (
   {
     groupByColor = false,
     fileColors = [],
+    bookmarks = [],
   }: {
     readonly groupByColor?: boolean;
     readonly fileColors?: readonly FileColor[];
+    readonly bookmarks?: readonly string[];
   } = {},
 ): ViewAction => ({
   type: 'settings',
@@ -72,8 +74,10 @@ const sortedBy = (
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
   canElevate: false,
+  platform: 'win32',
   thumbnailSize: 144,
   fileColors,
+  bookmarks,
 });
 
 const folderEntry = (name: string) => entry(name, { folder: true });
@@ -207,8 +211,10 @@ suite('Commander view', () => {
         columns: { extension: 4, size: 15, date: 10 },
         defaultColumns: { extension: 10, size: 15, date: 16 },
         canElevate: false,
+        platform: 'win32',
         thumbnailSize: 144,
         fileColors: [],
+        bookmarks: [],
       },
     );
 
@@ -247,6 +253,22 @@ suite('Commander view', () => {
       descending: true,
       groupByColor: false,
     });
+  });
+
+  test('keeps the bookmarks the settings give, the same list while they give the same folders again, so the menus built from it are not built again for every change of the settings', () => {
+    const bookmarks = ['C:\\Code', 'D:\\Work'];
+    const view = run(sortedBy('name', true, { bookmarks }));
+    assert.strictEqual(view.bookmarks, bookmarks);
+    assert.strictEqual(
+      reduceView(view, sortedBy('size', true, { bookmarks: [...bookmarks] }))
+        .bookmarks,
+      bookmarks,
+    );
+    assert.deepStrictEqual(
+      reduceView(view, sortedBy('name', true, { bookmarks: ['C:\\Code'] }))
+        .bookmarks,
+      ['C:\\Code'],
+    );
   });
 
   test('lists a side in the order the settings give it, and sorts it again when they change it', () => {

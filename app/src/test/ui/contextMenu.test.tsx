@@ -464,6 +464,33 @@ suite('Menu items', () => {
     );
   });
 
+  test('shows the access key of an item before its label when asked, telling assistive technology it as the key of the item rather than reading it with the label, and hides it otherwise, as a drive letter is in its label already', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          {
+            label: 'C:\\Code',
+            accessKey: '1',
+            showAccessKey: true,
+            checked: true,
+            onClick: noop,
+          },
+          { label: 'D:\\', accessKey: 'D', onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /aria-keyshortcuts="1"[^>]*><span class="menu-check">✓<\/span><span class="menu-access-key" aria-hidden="true">1<\/span>C:\\Code<\/button>/,
+    );
+    assert.match(
+      html,
+      /data-access-key="D"><span class="menu-check"><\/span>D:\\<\/button>/,
+    );
+    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 1);
+  });
+
   test('leaves room for a check before every item, whether it can be checked or not, so the labels of every menu line up alike', () => {
     const html = renderToStaticMarkup(
       <MenuItems

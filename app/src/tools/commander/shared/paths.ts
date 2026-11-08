@@ -18,3 +18,12 @@ export function pathParts(path: string): PathPart[] {
   }
   return parts;
 }
+
+export function folderKey(
+  folder: string,
+  platform: string | undefined,
+): string {
+  return platform === 'win32' || platform === 'darwin'
+    ? folder.toLowerCase()
+    : folder;
+}

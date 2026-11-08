@@ -278,6 +278,42 @@ suite('App commander', () => {
       `${name} to be selected`,
     );
   };
+  const headerPlaces = () =>
+    right()
+      .locator('.column-title')
+      .evaluate((header) => {
+        const box = (selector: string) => {
+          const found = header.querySelector(selector);
+          if (found === null) {
+            throw new Error(selector);
+          }
+          return found.getBoundingClientRect();
+        };
+        const start = box('.column-start');
+        const actions = box('.column-actions');
+        const title = box('.path-title');
+        const edges = header.getBoundingClientRect();
+        return {
+          width: edges.width,
+          clearOfStart: Math.round(title.left - start.right),
+          clearOfActions: Math.round(actions.left - title.right),
+          offCenter: Math.round(
+            Math.abs(
+              (title.left + title.right) / 2 - (edges.left + edges.right) / 2,
+            ),
+          ),
+          wide: title.width > edges.width / 2,
+        };
+      });
+  const savedBookmarks = () => {
+    const file = path.join(profile, 'settings.user.json');
+    return fs.existsSync(file)
+      ? JSON.stringify(
+          JSON.parse(fs.readFileSync(file, 'utf8'))?.tools?.commander
+            ?.bookmarks,
+        )
+      : undefined;
+  };
   beforeAll(async () => {
     folder = tempFolder('app-commander');
     profile = path.join(folder, 'profile');
@@ -582,6 +618,78 @@ suite('App commander', () => {
         (await right().locator('.column-name').textContent()) === opened,
       'the folder after, the one opened',
     );
+  });
+
+  test('keeps the path of a side clear of the buttons at either end of its header, however long the path, its middle where the middle of the header is', async () => {
+    const long = `a folder named at such length that its path is cut ${'x'.repeat(160)}`;
+    fs.mkdirSync(path.join(opened, long));
+    try {
+      await select(long);
+      await page.keyboard.press('Enter');
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) ===
+          path.join(opened, long),
+        'the long folder to open',
+      );
+      const places = await headerPlaces();
+      assert.deepStrictEqual(
+        [
+          places.wide,
+          places.clearOfStart >= 0,
+          places.clearOfActions >= 0,
+          places.offCenter <= 1,
+        ],
+        [true, true, true, true],
+        JSON.stringify(places),
+      );
+      await page.keyboard.press('Backspace');
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    } finally {
+      fs.rmSync(path.join(opened, long), { recursive: true, force: true });
+    }
+  });
+
+  test('bookmarks the folder of the active side from the menu Ctrl+D opens, filling the star of the side and saving it to the user settings, and goes back to it by its key from another folder', async () => {
+    const filledStar = right().locator(
+      `button[title="${strings.commander.bookmarks}"] .bookmark-icon.filled`,
+    );
+    const folderShown = async () =>
+      (await right().locator('.column-name').textContent()) ?? '';
+    const bookmarked = await folderShown();
+    await right().locator('.virtual-rows').focus();
+    assert.strictEqual(await filledStar.count(), 0);
+
+    await page.keyboard.press('Control+d');
+    await right()
+      .locator('.menu-item', { hasText: strings.commander.addBookmark })
+      .waitFor();
+    await page.keyboard.press('Enter');
+    await filledStar.waitFor();
+    await waitFor(
+      () => savedBookmarks() === JSON.stringify([bookmarked]),
+      'the folder of the side to be saved as a bookmark',
+    );
+
+    await select('src');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await folderShown()) === path.join(bookmarked, 'src'),
+      'src to open',
+    );
+    await filledStar.waitFor({ state: 'detached' });
+    await page.keyboard.press('Control+d');
+    await right().locator('.menu-item', { hasText: bookmarked }).waitFor();
+    await page.keyboard.press('1');
+    await waitFor(
+      async () => (await folderShown()) === bookmarked,
+      'the bookmark to open',
+    );
+    await filledStar.waitFor();
   });
 
   test('opens the selected folder on the left side with Mod+Left, or the folder it is in when a file is selected', async () => {

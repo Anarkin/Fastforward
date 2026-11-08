@@ -398,6 +398,25 @@ suite('Commander store', () => {
     ]);
   });
 
+  test('bookmarks the folder of a side, removes a bookmark and goes to one on the side asked, for the tab shown, and goes nowhere before a tab is shown', () => {
+    const empty: CommanderToHost[] = [];
+    const unshown = createCommanderStore((message) => empty.push(message));
+    unshown.getState().addBookmark('left');
+    unshown.getState().goToBookmark('left', 'D:\\Work');
+    assert.deepStrictEqual(empty, []);
+    const { posted, store } = shown();
+    const actions = store.getState();
+    actions.addBookmark('left');
+    actions.addBookmark('right');
+    actions.removeBookmark('D:\\Work');
+    actions.goToBookmark('left', 'D:\\Work');
+    assert.deepStrictEqual(posted, [
+      { type: 'addBookmark', tab: '1', side: 'left', folder: left.folder },
+      { type: 'removeBookmark', folder: 'D:\\Work' },
+      { type: 'goToBookmark', tab: '1', side: 'left', folder: 'D:\\Work' },
+    ]);
+  });
+
   test('tells the main process which side of which tab is active whenever either changes', () => {
     const posted: CommanderToHost[] = [];
     const store = createCommanderStore((message) => posted.push(message));

@@ -73,9 +73,11 @@ export interface CommanderView {
   readonly columns: ColumnWidths;
   readonly defaultColumns: ColumnWidths;
   readonly canElevate: boolean;
+  readonly platform: string | undefined;
   readonly layouts: Layouts;
   readonly thumbnailSize: number;
   readonly fileColors: FileColors;
+  readonly bookmarks: readonly string[];
   readonly active: Side;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
   readonly kept: ReadonlyMap<string, KeptTab>;
@@ -141,9 +143,11 @@ export const emptyView: CommanderView = {
   columns: { extension: 10, size: 15, date: 16 },
   defaultColumns: { extension: 10, size: 15, date: 16 },
   canElevate: false,
+  platform: undefined,
   layouts: defaultLayouts,
   thumbnailSize: 144,
   fileColors: noFileColors,
+  bookmarks: [],
   active: 'right',
   panes: { left: undefined, right: undefined },
   kept: new Map(),
@@ -188,6 +192,16 @@ function selectionIn(pane: PaneView | undefined): Selection | undefined {
       key: pane.selected,
       index: pane.rows.findIndex((row) => row.key === pane.selected),
     }
+  );
+}
+
+function sameFolders(
+  one: readonly string[],
+  other: readonly string[],
+): boolean {
+  return (
+    one.length === other.length &&
+    one.every((folder, index) => folder === other[index])
   );
 }
 
@@ -313,15 +327,19 @@ export function reduceView(
             }),
           };
     case 'settings': {
-      const settled = {
+      const settled: CommanderView = {
         ...view,
         showHidden: action.showHidden,
         sorts: action.sort,
         columns: action.columns,
         defaultColumns: action.defaultColumns,
         canElevate: action.canElevate,
+        platform: action.platform,
         thumbnailSize: action.thumbnailSize,
         fileColors: fileColorsOf(action.fileColors),
+        bookmarks: sameFolders(view.bookmarks, action.bookmarks)
+          ? view.bookmarks
+          : action.bookmarks,
       };
       const regrouped = !sameGrouping(view.fileColors, settled.fileColors);
       return sides.reduce((next, side) => {

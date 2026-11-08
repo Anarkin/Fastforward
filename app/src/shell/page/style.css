@@ -21,6 +21,7 @@ a:focus-visible {
 }
 
 body {
+  --arrowed-button-width: 44px;
   --muted-opacity: var(--color-foreground-muted);
   --selection-background: color-mix(
     in srgb,
@@ -575,7 +576,13 @@ body {
   text-overflow: ellipsis;
 }
 
-.menu-button-trigger.labelled .dropdown-icon {
+.menu-button-trigger.arrowed {
+  width: var(--arrowed-button-width);
+  gap: 2px;
+}
+
+.menu-button-trigger.labelled .dropdown-icon,
+.menu-button-trigger.arrowed .dropdown-icon {
   flex: none;
   width: 12px;
   height: 12px;
@@ -1097,6 +1104,12 @@ body.resizing {
 .menu-check {
   display: inline-block;
   width: 1.2em;
+}
+
+.menu-access-key {
+  display: inline-block;
+  width: 1.6em;
+  color: var(--muted-foreground);
 }
 
 .menu-check:has(> .icon) {

@@ -1,7 +1,13 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { AddIcon, ChangeIcon, CloseIcon, ExpandAllIcon } from '../../ui/icons';
+import {
+  AddIcon,
+  BookmarkIcon,
+  ChangeIcon,
+  CloseIcon,
+  ExpandAllIcon,
+} from '../../ui/icons';
 
 function strokesOfPaths(html: string): number[] {
   return [...html.matchAll(/<path d="([^"]*)"/g)].map(
@@ -14,6 +20,19 @@ suite('Icons', () => {
     assert.deepStrictEqual(
       strokesOfPaths(renderToStaticMarkup(<CloseIcon />)),
       [1, 1],
+    );
+  });
+
+  test('draws the bookmark star filled for a folder bookmarked and as an outline otherwise, the same star either way', () => {
+    const filled = renderToStaticMarkup(<BookmarkIcon filled />);
+    const outline = renderToStaticMarkup(<BookmarkIcon filled={false} />);
+    assert.match(filled, /class="icon bookmark-icon filled"/);
+    assert.match(filled, /<path d="[^"]+" fill="currentColor"/);
+    assert.match(outline, /class="icon bookmark-icon"/);
+    assert.doesNotMatch(outline, /fill="currentColor"/);
+    assert.strictEqual(
+      /<path d="([^"]+)"/.exec(filled)?.[1],
+      /<path d="([^"]+)"/.exec(outline)?.[1],
     );
   });
 

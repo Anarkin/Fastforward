@@ -117,6 +117,9 @@ interface CommanderActions {
   readonly openOnSide: (from: Side, side: Side, name: string) => void;
   readonly drive: (side: Side, drive: string) => void;
   readonly listDrives: () => void;
+  readonly addBookmark: (side: Side) => void;
+  readonly removeBookmark: (folder: string) => void;
+  readonly goToBookmark: (side: Side, folder: string) => void;
   readonly reread: () => void;
   readonly toggleHidden: () => void;
   readonly compare: () => void;
@@ -548,6 +551,13 @@ export function createCommanderStore(
       drive: (side, drive) =>
         onTab((tab) => post({ type: 'drive', tab, side, drive })),
       listDrives: () => post({ type: 'listDrives' }),
+      addBookmark: (side) =>
+        onPane(side, (tab, folder) =>
+          post({ type: 'addBookmark', tab, side, folder }),
+        ),
+      removeBookmark: (folder) => post({ type: 'removeBookmark', folder }),
+      goToBookmark: (side, folder) =>
+        onTab((tab) => post({ type: 'goToBookmark', tab, side, folder })),
       reread: () =>
         onTab((tab) => post({ type: 'reread', tab, side: get().view.active })),
       toggleHidden: () =>

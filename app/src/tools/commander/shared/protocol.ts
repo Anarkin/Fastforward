@@ -214,6 +214,19 @@ export type CommanderToHost =
       readonly bytes: Uint8Array;
     }
   | { readonly type: 'showHidden'; readonly shown: boolean }
+  | {
+      readonly type: 'addBookmark';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+    }
+  | { readonly type: 'removeBookmark'; readonly folder: string }
+  | {
+      readonly type: 'goToBookmark';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+    }
   | { readonly type: 'dropIcons'; readonly tickets: readonly string[] };
 
 export interface ByteRange {
@@ -229,8 +242,10 @@ export type CommanderToWebview =
       readonly columns: ColumnWidths;
       readonly defaultColumns: ColumnWidths;
       readonly canElevate: boolean;
+      readonly platform: string;
       readonly thumbnailSize: number;
       readonly fileColors: readonly FileColor[];
+      readonly bookmarks: readonly string[];
     }
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'show'; readonly tab: string; readonly file?: string }

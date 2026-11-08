@@ -1,5 +1,6 @@
 .commander {
   --widest-layout-button: 104px;
+  --widest-drive-button: 48px;
   --widest-encoding-button: 88px;
   --widest-language-button: 120px;
   --commander-row-height: round(
@@ -12,7 +13,20 @@
 }
 
 .commander .column-title:not(.searching) {
-  padding: 0 calc(4px + var(--widest-layout-button) + 2px + 26px + 8px);
+  --start-buttons: calc(2 * 26px + 2 * 2px + var(--arrowed-button-width));
+  padding: 0
+    calc(
+      4px +
+        max(var(--widest-layout-button) + 2px + 26px, var(--start-buttons)) +
+        8px
+    );
+}
+
+.commander .column-title:not(.searching):has(.drive-menu) {
+  --start-buttons: calc(
+    2 * 26px + 3 * 2px + var(--widest-drive-button) +
+      var(--arrowed-button-width)
+  );
 }
 
 .elevated-mark {

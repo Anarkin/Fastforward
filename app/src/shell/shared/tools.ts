@@ -97,6 +97,7 @@ export const toolSettingChoices: ReadonlyMap<string, readonly string[]> =
 
 export const toolSettingListKinds: ReadonlyMap<string, 'string'> = new Map([
   ['tools.terminal.shellArgs', 'string'],
+  ['tools.commander.bookmarks', 'string'],
 ]);
 
 export const toolSettingStandIns: ReadonlyMap<string, readonly string[]> =

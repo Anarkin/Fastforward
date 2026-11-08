@@ -127,6 +127,22 @@ suite('Settings', () => {
     );
   });
 
+  test('takes for the bookmarks of the commander, whose default list is empty, only a list of strings, and says why', () => {
+    const { settings, problems } = mergeSettings(defaults, {
+      tools: { commander: { bookmarks: ['C:\\Code', 2] } },
+    });
+    assert.deepStrictEqual(settings, defaults);
+    assert.deepStrictEqual(problems, [
+      '"tools.commander.bookmarks" should be a list of strings',
+    ]);
+    assert.deepStrictEqual(
+      mergeSettings(defaults, {
+        tools: { commander: { bookmarks: ['C:\\Code', '/home/adam'] } },
+      }).settings.tools.commander.bookmarks,
+      ['C:\\Code', '/home/adam'],
+    );
+  });
+
   test('takes a list of objects whose every item has the keys of the first default item, each of its kind', () => {
     const fileColors = [
       { extensions: ['png', 'jpg'], colors: { light: '#a0a', dark: '#f0f' } },

@@ -34,6 +34,7 @@ export interface CommanderSettings {
   readonly thumbnailSize: number;
   readonly thumbnailCacheMegabytes: number;
   readonly fileColors: readonly FileColor[];
+  readonly bookmarks: readonly string[];
 }
 
 export function extensionKey(extension: string): string {
