@@ -166,6 +166,8 @@ interface CommanderActions {
   readonly confirmTransfer: () => void;
   readonly cancelTransfer: () => void;
   readonly answerClash: (answer: ClashAnswer, all: boolean) => void;
+  readonly copyToClipboard: (side: Side, names: readonly string[]) => void;
+  readonly paste: (side: Side) => void;
   readonly askNewFolder: (side: Side) => void;
   readonly makeFolder: (name: string) => void;
   readonly cancelNewFolder: () => void;
@@ -812,6 +814,14 @@ export function createCommanderStore(
         }
       },
       cancelTransfer: () => set({ transferring: undefined }),
+      copyToClipboard: (side, names) =>
+        onPane(side, (tab, folder) =>
+          post({ type: 'copyToClipboard', tab, side, folder, names }),
+        ),
+      paste: (side) =>
+        onPane(side, (tab, folder) =>
+          post({ type: 'paste', tab, side, folder }),
+        ),
       askNewFolder: (side) =>
         onPane(side, (tab, folder) =>
           set({ makingFolder: { tab, side, folder } }),

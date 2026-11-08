@@ -3,6 +3,7 @@ import { maxColoredBytes } from '../tools/commander/shared/protocol';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { crc32, deflateSync } from 'node:zlib';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
@@ -217,6 +218,23 @@ suite('App commander', () => {
         };
       })
       .catch(() => undefined);
+
+  const onClipboard = () =>
+    app
+      .evaluate(async ({ clipboard }) => {
+        for (const item of await clipboard.read()) {
+          if (item.types.includes('text/uri-list')) {
+            return (await item.getType('text/uri-list')).text();
+          }
+        }
+        return '';
+      })
+      .then((list) =>
+        list
+          .split(/\r?\n/)
+          .filter(Boolean)
+          .map((uri) => fileURLToPath(uri)),
+      );
 
   const markedNames = () =>
     right().locator('.commander-row.marked .commander-name').allTextContents();
@@ -2769,6 +2787,58 @@ suite('App commander', () => {
     await page.keyboard.press('Backspace');
     await waitFor(
       async () => (await rowNames()).includes('making'),
+      'the folder above to be listed again',
+    );
+  });
+
+  test('puts the marked folder and file on the clipboard of the system on Mod+C as files, which other apps paste, and copies the files there into the folder of the side on Mod+V', async () => {
+    const from = path.join(opened, 'clipfrom');
+    const into = path.join(opened, 'clipinto');
+    fs.mkdirSync(path.join(from, 'docs'), { recursive: true });
+    fs.mkdirSync(into);
+    fs.writeFileSync(path.join(from, 'note.txt'), 'note');
+    fs.writeFileSync(path.join(from, 'docs', 'inner.txt'), 'inner');
+    await select('clipfrom');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,docs,note.txt',
+      'the folder to be listed',
+    );
+    await select('docs');
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Space');
+
+    await page.keyboard.press('ControlOrMeta+c');
+    await waitFor(
+      async () =>
+        (await onClipboard()).join() ===
+        [path.join(from, 'docs'), path.join(from, 'note.txt')].join(),
+      'the marked items to be on the clipboard',
+    );
+
+    await page.keyboard.press('Backspace');
+    await select('clipinto');
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () => (await rowNames()).join() === '..',
+      'the empty folder to be listed',
+    );
+    await page.keyboard.press('ControlOrMeta+v');
+    await waitFor(
+      () =>
+        fs.existsSync(path.join(into, 'note.txt')) &&
+        fs.existsSync(path.join(into, 'docs', 'inner.txt')),
+      'the files on the clipboard to be copied',
+    );
+    await page.locator('.transfer-popup').waitFor({ state: 'detached' });
+    await waitFor(
+      async () => (await rowNames()).join() === '..,docs,note.txt',
+      'the copies to be listed',
+    );
+    assert.ok(fs.existsSync(path.join(from, 'note.txt')));
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await rowNames()).includes('clipinto'),
       'the folder above to be listed again',
     );
   });

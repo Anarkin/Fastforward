@@ -135,6 +135,10 @@ export interface CommanderAccess {
   readonly trash?: (file: string) => Promise<void>;
   readonly remove?: (file: string) => Promise<void>;
   readonly makeFolder?: (folder: string) => Promise<void>;
+  readonly clipboardFiles?: {
+    readonly write: (files: readonly string[]) => Promise<void>;
+    readonly read: () => Promise<readonly string[]>;
+  };
   readonly shellMenu?: (
     files: readonly string[],
     at: { readonly x: number; readonly y: number },
@@ -457,6 +461,10 @@ export class CommanderTool implements Tool<'commander'> {
         return this.transfer(page, message);
       case 'newFolder':
         return this.newFolder(page, message);
+      case 'copyToClipboard':
+        return this.copyToClipboard(page, message);
+      case 'paste':
+        return this.paste(page, message);
       case 'answerClash':
         this.transfers.answer(
           message.transfer,
@@ -1030,36 +1038,100 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
-    const refused = (message: string) =>
-      this.shell.notice(page, { level: 'error', message });
     if (shown.pane.elevated === true || other.elevated === true) {
-      refused(strings.commander.transferAsAdministrator);
+      this.refuse(page, strings.commander.transferAsAdministrator);
       return;
     }
-    const sources = names.map((name) => path.join(shown.pane.folder, name));
+    this.startTransfer(page, {
+      plan: {
+        sources: names.map((name) => path.join(shown.pane.folder, name)),
+        target,
+        move,
+      },
+      folder: shown.pane.folder,
+      names,
+    });
+  }
+
+  private refuse(page: Page, message: string): void {
+    this.shell.notice(page, { level: 'error', message });
+  }
+
+  private startTransfer(page: Page, ask: TransferAsk): void {
+    const { sources, target } = ask.plan;
     const key = (each: string) =>
       folderKey(path.resolve(each), this.access.platform);
     if (sources.some((source) => key(path.dirname(source)) === key(target))) {
-      refused(strings.commander.alreadyIn(target));
+      this.refuse(page, strings.commander.alreadyIn(target));
       return;
     }
-    const intoItself = sources.find((source, index) => {
+    const intoItself = sources.find((source) => {
       const relative = path.relative(key(source), key(target));
       return (
-        listedIn(shown.pane, names[index])?.folder === true &&
         relative !== '..' &&
         !relative.startsWith(`..${path.sep}`) &&
         !path.isAbsolute(relative)
       );
     });
     if (intoItself !== undefined) {
-      refused(strings.commander.intoItself(path.basename(intoItself)));
+      this.refuse(
+        page,
+        strings.commander.intoItself(path.basename(intoItself)),
+      );
       return;
     }
-    this.transfers.start({
-      plan: { sources, target, move },
-      folder: shown.pane.folder,
+    this.transfers.start(ask);
+  }
+
+  private async copyToClipboard(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
       names,
+    }: Extract<CommanderToHost, { type: 'copyToClipboard' }>,
+  ): Promise<void> {
+    const shown = this.namingPane(page, tab, side, folder);
+    if (
+      shown === undefined ||
+      !Array.isArray(names) ||
+      names.length === 0 ||
+      !names.every((name: unknown) => listedIn(shown.pane, name) !== undefined)
+    ) {
+      return;
+    }
+    await this.access.clipboardFiles?.write(
+      names.map((name) => path.join(shown.pane.folder, name)),
+    );
+  }
+
+  private async paste(
+    page: Page,
+    { tab, side, folder }: Extract<CommanderToHost, { type: 'paste' }>,
+  ): Promise<void> {
+    const shown = this.namingPane(page, tab, side, folder);
+    const { clipboardFiles } = this.access;
+    if (shown === undefined || clipboardFiles === undefined) {
+      return;
+    }
+    if (shown.pane.elevated === true) {
+      this.refuse(page, strings.commander.transferAsAdministrator);
+      return;
+    }
+    const sources = await clipboardFiles.read();
+    const [first] = sources;
+    if (first === undefined) {
+      this.shell.notice(page, {
+        level: 'info',
+        message: strings.commander.nothingToPaste,
+      });
+      return;
+    }
+    this.startTransfer(page, {
+      plan: { sources, target: shown.pane.folder, move: false },
+      folder: path.dirname(first),
+      names: sources.map((source) => path.basename(source)),
     });
   }
 

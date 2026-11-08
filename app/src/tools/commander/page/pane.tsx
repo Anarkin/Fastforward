@@ -683,6 +683,12 @@ export function Pane({
       case 'newFolder':
         actions.askNewFolder(side);
         return;
+      case 'copyToClipboard':
+        actions.copyToClipboard(side, action.names);
+        return;
+      case 'paste':
+        actions.paste(side);
+        return;
       case 'transfer':
         actions.askTransfer(side, action.names, action.move);
         return;

@@ -67,6 +67,10 @@ import { helperOf, runHelper } from '../tools/commander/main/helper';
 import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { transferProcess } from '../tools/commander/main/transferProcess';
+import {
+  readClipboardFiles,
+  writeClipboardFiles,
+} from '../tools/commander/main/clipboardFiles';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
 import { shellLaunch } from '../tools/terminal/main/shellLaunch';
 import { windowsPtyOf } from '../tools/terminal/main/windowsPty';
@@ -536,6 +540,7 @@ async function start(asked: readonly string[]): Promise<void> {
     trash: (file) => shell.trashItem(file),
     remove: (file) => fs.promises.rm(file, { recursive: true }),
     makeFolder: (folder) => fs.promises.mkdir(folder),
+    clipboardFiles: { write: writeClipboardFiles, read: readClipboardFiles },
     connectTransfer: transferProcess(path.join(dist, 'transferHost.js'), log),
     root: rootFolder(process.platform, process.env),
   });

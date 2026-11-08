@@ -77,6 +77,27 @@ suite('Commander keys', () => {
     assert.deepStrictEqual(paneKey(pressed('F5'), at('..')), {});
   });
 
+  test('puts the file selected, or the ones marked, on the clipboard on Mod+C, nothing on the parent folder, and pastes on Mod+V whatever is selected', () => {
+    assert.deepStrictEqual(
+      paneKey(pressed('c', { ctrlKey: true }), at('a.txt')),
+      { act: { kind: 'copyToClipboard', names: ['a.txt'] } },
+    );
+    assert.deepStrictEqual(
+      paneKey(
+        pressed('c', { ctrlKey: true }),
+        at('a.txt', { marked: new Set(['docs', 'b.txt']) }),
+      ),
+      { act: { kind: 'copyToClipboard', names: ['docs', 'b.txt'] } },
+    );
+    assert.deepStrictEqual(
+      paneKey(pressed('c', { ctrlKey: true }), at('..')),
+      {},
+    );
+    assert.deepStrictEqual(paneKey(pressed('v', { ctrlKey: true }), at('..')), {
+      act: { kind: 'paste' },
+    });
+  });
+
   test('asks for a new folder on F7, whatever is selected', () => {
     assert.deepStrictEqual(paneKey(pressed('F7'), at('a.txt')), {
       act: { kind: 'newFolder' },

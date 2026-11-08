@@ -268,6 +268,9 @@ export const strings = {
     viewFile: 'View the selected file in a tab of its own',
     dialogButton: 'Move between the buttons of a dialog',
     newFolder: 'Make a folder in the folder of the side',
+    copyToClipboard:
+      'Put the marked items, or the selected one, on the clipboard, to paste them here or into another app',
+    pasteFiles: 'Copy the files on the clipboard into the folder of the side',
     transferItems:
       'Copy the marked items, or the selected one, into the folder of the other side, or move them there with F6',
     deleteItems:
@@ -590,6 +593,7 @@ export const strings = {
     moveFailedMany: (count: number, name: string, reason: string) =>
       `${count} items could not be moved, among them ${name}: ${reason}`,
     alreadyIn: (target: string) => `The items are in "${target}" already.`,
+    nothingToPaste: 'The clipboard holds no files to paste.',
     newFolderTitle: 'New Folder',
     newFolderIn: (folder: string) => `Make a folder in "${folder}"`,
     newFolderName: 'Name',

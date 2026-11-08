@@ -609,6 +609,23 @@ suite('Commander store', () => {
     ]);
   });
 
+  test('puts items of a side on the clipboard and pastes into the folder of a side, for the tab shown', () => {
+    const { posted, store } = shown();
+    store.getState().copyToClipboard('left', ['a', 'b']);
+    store.getState().paste('left');
+    store.getState().paste('right');
+    assert.deepStrictEqual(posted, [
+      {
+        type: 'copyToClipboard',
+        tab: '1',
+        side: 'left',
+        folder: left.folder,
+        names: ['a', 'b'],
+      },
+      { type: 'paste', tab: '1', side: 'left', folder: left.folder },
+    ]);
+  });
+
   test('asks for the name of a new folder for the folder of a side, making it once named and nothing once cancelled, and drops the question once the side shows another folder', () => {
     const { posted, store } = shown();
     store.getState().askNewFolder('left');

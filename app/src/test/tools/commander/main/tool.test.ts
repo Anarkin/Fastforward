@@ -110,6 +110,8 @@ type Naming =
   | 'delete'
   | 'transfer'
   | 'newFolder'
+  | 'copyToClipboard'
+  | 'paste'
   | 'openRepository'
   | 'openOnSide';
 
@@ -136,6 +138,7 @@ function commander(
   const trashed: string[] = [];
   const removed: string[] = [];
   const madeFolders: string[] = [];
+  const clipboard: { files: readonly string[] } = { files: [] };
   const menus: {
     readonly files: readonly string[];
     readonly at: { readonly x: number; readonly y: number };
@@ -278,6 +281,13 @@ function commander(
       await repositoriesHeld.until;
       return repositories.has(checked);
     },
+    clipboardFiles: {
+      write: (files) => {
+        clipboard.files = files;
+        return Promise.resolve();
+      },
+      read: () => Promise.resolve(clipboard.files),
+    },
     makeFolder: (making) => {
       madeFolders.push(making);
       return path.basename(making) === 'taken'
@@ -354,6 +364,8 @@ function commander(
       case 'delete':
       case 'transfer':
       case 'newFolder':
+      case 'copyToClipboard':
+      case 'paste':
       case 'openRepository':
         return {
           ...message,
@@ -417,6 +429,7 @@ function commander(
     openedIn,
     transfers,
     madeFolders,
+    clipboard,
   };
 }
 
@@ -1743,6 +1756,53 @@ suite('Commander tool', () => {
     ]);
   });
 
+  test('puts the files asked for on the clipboard, only when every one is listed in the folder named, never its parent', async () => {
+    const { tool, page, send, clipboard } = commander({
+      [root]: [file('a.txt'), folder('dir')],
+    });
+    await tool.show(page, tab);
+    const copy = (names: string[]) =>
+      send({ type: 'copyToClipboard', tab: '1', side: 'right', names });
+
+    await copy(['a.txt', 'gone.txt']);
+    await copy(['a.txt', '..']);
+    await copy([]);
+    assert.deepStrictEqual(clipboard.files, []);
+    await copy(['a.txt', 'dir']);
+    assert.deepStrictEqual(clipboard.files, [at('a.txt'), at('dir')]);
+  });
+
+  test('pastes the files on the clipboard into the folder named as a copy of them, refusing them in the folder they are in or a folder into itself, and saying when the clipboard holds no files', async () => {
+    const { tool, page, send, clipboard, transfers, notices } = commander({
+      [root]: [file('a.txt'), folder('dir')],
+      [at('dir')]: [],
+    });
+    await tool.show(page, tab);
+    const paste = () => send({ type: 'paste', tab: '1', side: 'right' });
+
+    await paste();
+    clipboard.files = [at('a.txt')];
+    await paste();
+    clipboard.files = [at('dir')];
+    await send({ type: 'open', tab: '1', side: 'right', name: 'dir' });
+    await paste();
+    clipboard.files = [at('a.txt'), path.join(root, 'elsewhere', 'b.txt')];
+    await paste();
+
+    assert.deepStrictEqual(plansOf(transfers), [
+      {
+        sources: [at('a.txt'), path.join(root, 'elsewhere', 'b.txt')],
+        target: at('dir'),
+        move: false,
+      },
+    ]);
+    assert.deepStrictEqual(notices, [
+      { level: 'info', message: strings.commander.nothingToPaste },
+      { level: 'error', message: strings.commander.alreadyIn(root) },
+      { level: 'error', message: strings.commander.intoItself('dir') },
+    ]);
+  });
+
   test('makes a folder of the name asked for in the folder named, selecting it once listed, and none of a name reaching another folder or one Windows would refuse there, saying when the name is taken', async () => {
     const { tool, page, send, madeFolders, notices } = commander({
       [root]: [file('a.txt')],
@@ -1849,6 +1909,7 @@ suite('Commander tool', () => {
       settled,
       transfers,
       madeFolders,
+      clipboard,
     } = commander({
       [root]: [folder('sub'), folder('same'), file('same.txt')],
       [at('sub')]: [folder('same'), file('same.txt')],
@@ -1912,6 +1973,9 @@ suite('Commander tool', () => {
       move: false,
     });
     await send({ type: 'newFolder', ...named, name: 'new' });
+    await send({ type: 'copyToClipboard', ...named, names: ['same.txt'] });
+    clipboard.files = [at('same.txt')];
+    await send({ type: 'paste', ...named });
 
     assert.deepStrictEqual(
       {
@@ -1939,6 +2003,7 @@ suite('Commander tool', () => {
     );
     assert.strictEqual(page.listings().length, listings);
     assert.strictEqual(tool.folderOf(tab), root);
+    assert.deepStrictEqual(clipboard.files, [at('same.txt')]);
   });
 
   test('holds the widths of the columns and the size of the tiles the settings give in the range they may take, as a width too wide failed every drag after it and a size below the least drew no tiles', async () => {

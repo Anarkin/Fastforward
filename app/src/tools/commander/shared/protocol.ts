@@ -217,6 +217,19 @@ export type CommanderToHost =
       readonly folder: string;
       readonly name: string;
     }
+  | {
+      readonly type: 'copyToClipboard';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly names: readonly string[];
+    }
+  | {
+      readonly type: 'paste';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+    }
   | { readonly type: 'stopTransfer'; readonly transfer: number }
   | { readonly type: 'hideTransfer'; readonly transfer: number }
   | { readonly type: 'reread'; readonly tab: string; readonly side: Side }

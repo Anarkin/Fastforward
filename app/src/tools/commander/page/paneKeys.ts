@@ -12,6 +12,8 @@ import { moveInGrid } from './tiles';
 
 export type PaneAct =
   | { readonly kind: 'newFolder' }
+  | { readonly kind: 'copyToClipboard'; readonly names: readonly string[] }
+  | { readonly kind: 'paste' }
   | {
       readonly kind: 'transfer';
       readonly names: readonly string[];
@@ -78,6 +80,15 @@ export function paneKey(
   const row = selectedIndex === -1 ? undefined : rows[selectedIndex];
   if (keyPressed(commanderKeymap.newFolder, event) !== undefined) {
     return { act: { kind: 'newFolder' } };
+  }
+  if (keyPressed(commanderKeymap.copyToClipboard, event) !== undefined) {
+    const names = chosenKeys(rows, selected, marked);
+    return names.length > 0
+      ? { act: { kind: 'copyToClipboard', names } }
+      : done;
+  }
+  if (keyPressed(commanderKeymap.paste, event) !== undefined) {
+    return { act: { kind: 'paste' } };
   }
   const moving = keyPressed(commanderKeymap.transferItems, event);
   if (moving !== undefined) {

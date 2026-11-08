@@ -122,6 +122,10 @@ export const commanderKeymap = {
   } as const),
   view: bind('Viewing', strings.actions.viewFile, { F3: true }),
   newFolder: bind('Folders', strings.actions.newFolder, { F7: true }),
+  copyToClipboard: bind('Marking', strings.actions.copyToClipboard, {
+    'Mod+C': true,
+  }),
+  paste: bind('Folders', strings.actions.pasteFiles, { 'Mod+V': true }),
   transferItems: bind('Marking', strings.actions.transferItems, {
     F5: false,
     F6: true,
