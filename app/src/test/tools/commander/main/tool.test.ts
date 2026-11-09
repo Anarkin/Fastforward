@@ -5131,6 +5131,7 @@ suite('Commander tool in archives', () => {
       await saved('Changed once put back.');
       await waitFor(() => asked().length === 2, 'the update to be asked again');
       await send({ type: 'updateArchive', ask: 2, update: false });
+      await made.settled();
       tool.hide(page);
       await saved('Changed while the commander is hidden.');
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -5825,6 +5826,48 @@ suite('Commander tool in archives', () => {
         ),
       },
     ]);
+  });
+
+  test('stays inside an archive read again once changed while its watch tells of the change, the refresh waiting for that reading rather than stopping it', async () => {
+    const {
+      tool,
+      page,
+      send,
+      archived,
+      opensHeld,
+      change,
+      removedFromArchives,
+      settled,
+    } = commander({ [root]: [file('a.zip')] });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    const { promise: held, resolve: release } = Promise.withResolvers();
+    opensHeld.until = held;
+
+    await send({
+      type: 'delete',
+      tab: '1',
+      side: 'right',
+      folder: at('a.zip'),
+      names: ['top.txt'],
+      permanently: true,
+    });
+    await waitFor(
+      () => page.of('readingArchive').length === 1,
+      'the archive to be read again once changed',
+    );
+    await change(at('a.zip'));
+    release(undefined);
+    await settled();
+
+    assert.deepStrictEqual(removedFromArchives, [[at('a.zip'), ['top.txt']]]);
+    assert.strictEqual(lastFolder(page, '1', 'right'), at('a.zip'));
   });
 
   test('tells the page a side is reading an archive once it takes a while, stopping on Esc and staying where it was', async () => {

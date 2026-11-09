@@ -205,6 +205,7 @@ interface Pane {
   elevated?: boolean;
   archive?: string;
   opening?: AbortController;
+  reading?: Promise<void>;
   binOff?: boolean;
   repositories: ReadonlySet<string>;
   repositoriesAsked: number;
@@ -1525,18 +1526,31 @@ export class CommanderTool implements Tool<'commander'> {
       );
     const name = [...inner, path.basename(copy)].join(path.sep);
     let stamp = await stampNow();
-    let asking = false;
+    let busy = false;
+    let again = false;
     const changed = async () => {
-      const now = await stampNow();
-      if (asking || now === undefined || now === stamp) {
+      if (busy) {
+        again = true;
         return;
       }
-      asking = true;
-      const update = await this.updateWanted(name, path.basename(archive.file));
-      stamp = (await stampNow()) ?? now;
-      asking = false;
-      if (update) {
-        this.putBack(archives, archive, inner, copy, name);
+      busy = true;
+      try {
+        do {
+          again = false;
+          const now = await stampNow();
+          if (now !== undefined && now !== stamp) {
+            const update = await this.updateWanted(
+              name,
+              path.basename(archive.file),
+            );
+            stamp = (await stampNow()) ?? now;
+            if (update) {
+              this.putBack(archives, archive, inner, copy, name);
+            }
+          }
+        } while (again);
+      } finally {
+        busy = false;
       }
     };
     this.copiesWatched.add(
@@ -3091,6 +3105,8 @@ export class CommanderTool implements Tool<'commander'> {
     pane.opening?.abort();
     const aborting = new AbortController();
     pane.opening = aborting;
+    const { promise: read, resolve: landed } = Promise.withResolvers<void>();
+    pane.reading = read;
     let told = false;
     let telling: ReturnType<typeof setTimeout> | undefined;
     const tellLater = () => {
@@ -3140,6 +3156,10 @@ export class CommanderTool implements Tool<'commander'> {
       if (pane.opening === aborting) {
         pane.opening = undefined;
       }
+      if (pane.reading === read) {
+        pane.reading = undefined;
+      }
+      landed();
       stopTelling();
     }
   }
@@ -3445,6 +3465,12 @@ export class CommanderTool implements Tool<'commander'> {
       this.postListing(page, tab, side, pane, undefined);
       this.flushFlat(tab, side, pane.flat);
       return;
+    }
+    if (how === 'refresh' && pane.reading !== undefined) {
+      await pane.reading;
+      if (pane.folder !== folder) {
+        return;
+      }
     }
     const asked = how === 'refresh' ? pane.asked : ++pane.asked;
     const stamp = await this.access.stamp?.(folder);
