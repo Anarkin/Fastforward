@@ -24,6 +24,7 @@ export interface TransferProgress {
   readonly bytes: number;
   readonly totalBytes: number;
   readonly current?: string;
+  readonly testing?: true;
 }
 
 export type ArchiveJob =

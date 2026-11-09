@@ -168,6 +168,7 @@ function readerOf(listings: Record<string, ArchiveListing>) {
   const asked: string[] = [];
   const reader: ArchiveReader = {
     pack: notPacked,
+    test: notPacked,
     rename: notPacked,
     add: notPacked,
     remove: notPacked,
@@ -334,6 +335,7 @@ suite('Archives', () => {
     const seen: (string | undefined)[] = [];
     const reader: ArchiveReader = {
       pack: notPacked,
+      test: notPacked,
       rename: notPacked,
       add: notPacked,
       remove: notPacked,
@@ -392,6 +394,7 @@ suite('Archives', () => {
     fs.writeFileSync(zip, 'zip');
     const reader: ArchiveReader = {
       pack: notPacked,
+      test: notPacked,
       rename: notPacked,
       add: notPacked,
       remove: notPacked,
@@ -422,6 +425,7 @@ suite('Archives', () => {
     fs.writeFileSync(tgz, 'tgz');
     const reader: ArchiveReader = {
       pack: notPacked,
+      test: notPacked,
       rename: notPacked,
       add: notPacked,
       remove: notPacked,
@@ -468,6 +472,7 @@ suite('Archives', () => {
     let stopped = false;
     const reader: ArchiveReader = {
       pack: notPacked,
+      test: notPacked,
       rename: notPacked,
       add: notPacked,
       list: (file) =>
@@ -538,6 +543,7 @@ suite('Archives', () => {
     const asked: unknown[] = [];
     const reader: ArchiveReader = {
       pack: notPacked,
+      test: notPacked,
       remove: notPacked,
       list: () =>
         Promise.resolve({ kind: 'listed', items: [item('docs/a.txt')] }),
@@ -589,6 +595,7 @@ suite('Archives', () => {
     const asked: unknown[] = [];
     const reader: ArchiveReader = {
       pack: notPacked,
+      test: notPacked,
       remove: notPacked,
       rename: notPacked,
       list: () => Promise.resolve({ kind: 'listed', items: [item('docs/x')] }),

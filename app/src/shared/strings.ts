@@ -598,6 +598,11 @@ export const strings = {
     filesRead: (files: number, total: number) =>
       `${files.toLocaleString()} of ${total.toLocaleString()} files read`,
     packingRest: 'Packing the rest of the files…',
+    testingArchive: 'Testing the archive…',
+    testOncePacked:
+      'Test the archive once packed, before it takes the place of one there',
+    filesTested: (files: number, total: number) =>
+      `${files.toLocaleString()} of ${total.toLocaleString()} files tested`,
     transferredBytes: (done: number, total: number) =>
       `${fileSize(done)} of ${fileSize(total)}`,
     stopTransfer: 'Stop',
@@ -744,6 +749,8 @@ export const strings = {
     skipThem: 'Skip Them',
     deleteFromArchiveQuestion: (what: string, archive: string) =>
       `Delete ${what} from "${archive}" permanently? This cannot be undone.`,
+    archiveTestFailed: (reason: string) =>
+      `The archive packed failed its test, so nothing was put in place: ${reason}`,
     archiveInVolumes: (name: string) =>
       `"${name}" is cut into volumes, which 7-Zip cannot change.`,
     archiveUnchangeable: (name: string) =>

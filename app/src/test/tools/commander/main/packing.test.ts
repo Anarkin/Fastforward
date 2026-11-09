@@ -10,6 +10,7 @@ import type {
 import { archiveJob, packInto } from '../../../../tools/commander/main/packing';
 import type { PackOptions } from '../../../../tools/commander/main/archives';
 import type { TransferEvent } from '../../../../tools/commander/main/transferProtocol';
+import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 suite('packInto', () => {
@@ -48,6 +49,7 @@ suite('packInto', () => {
     remove: () => Promise.reject(new Error('Nothing is deleted here.')),
     rename: () => Promise.reject(new Error('Nothing is renamed here.')),
     add: () => Promise.reject(new Error('Nothing is added here.')),
+    test: () => Promise.reject(new Error('Nothing is tested here.')),
     pack: async (_plan, into) => {
       for (const part of parts) {
         fs.writeFileSync(`${into}${part}`, `new${part}`);
@@ -104,6 +106,55 @@ suite('packInto', () => {
       'other.zip.0a1b2c3d.packing left',
       'photos.zip new',
       'photos.zip.mine.packing left',
+    ]);
+  });
+
+  test('tests the archive once packed, before it is put in place, from its first volume and with its password, and keeps the archive there and nothing of the pack when the test fails', async () => {
+    fs.writeFileSync(at('photos.zip'), 'old');
+    const tested: unknown[] = [];
+    const testing = (passes: boolean): ArchiveReader => ({
+      ...writing(['.001', '.002'], () => Promise.resolve({ kind: 'packed' })),
+      test: (file, options) => {
+        tested.push([
+          path.basename(file).replace(/\.[0-9a-f]{8}\./, '.*.'),
+          options.password,
+        ]);
+        return Promise.resolve(
+          passes
+            ? { kind: 'packed' }
+            : { kind: 'refused', reason: 'CRC Failed' },
+        );
+      },
+    });
+    const told: string[] = [];
+    const encrypted = {
+      ...plan(1000),
+      test: true,
+      password: 'secret',
+    };
+
+    assert.deepStrictEqual(
+      await packInto(testing(false), encrypted, {
+        onTesting: () => told.push('testing'),
+      }),
+      {
+        kind: 'refused',
+        reason: strings.commander.archiveTestFailed('CRC Failed'),
+      },
+    );
+    assert.deepStrictEqual(listed(), ['photos.zip old']);
+    await packInto(testing(true), encrypted);
+    await packInto(testing(true), { ...plan(1000), test: false });
+
+    assert.deepStrictEqual(told, ['testing']);
+    assert.deepStrictEqual(tested, [
+      ['photos.zip.*.packing.001', 'secret'],
+      ['photos.zip.*.packing.001', 'secret'],
+    ]);
+    assert.deepStrictEqual(listed(), [
+      'photos.zip old',
+      'photos.zip.001 new.001',
+      'photos.zip.002 new.002',
     ]);
   });
 
@@ -174,6 +225,45 @@ suite('packing', () => {
     await ended;
     return events;
   };
+
+  test('tells how far 7-Zip got testing the archive once it tests it', async () => {
+    assert.deepStrictEqual(
+      await run(({ onTotals, onProgress, onTesting }) => {
+        onTotals?.({ files: 2, bytes: 8 });
+        onTesting?.();
+        onProgress?.({ percent: 50, files: 1, current: 'a.txt' });
+        return Promise.resolve({ kind: 'packed' });
+      }),
+      [
+        {
+          type: 'progress',
+          progress: { files: 0, totalFiles: 2, bytes: 0, totalBytes: 8 },
+        },
+        {
+          type: 'progress',
+          progress: {
+            files: 0,
+            totalFiles: 2,
+            bytes: 0,
+            totalBytes: 8,
+            testing: true,
+          },
+        },
+        {
+          type: 'progress',
+          progress: {
+            files: 1,
+            totalFiles: 2,
+            bytes: 4,
+            totalBytes: 8,
+            current: 'a.txt',
+            testing: true,
+          },
+        },
+        { type: 'done', stopped: false },
+      ],
+    );
+  });
 
   test('tells the files and bytes 7-Zip is to pack once it has scanned them, then how far it got in them, and is done once packed', async () => {
     assert.deepStrictEqual(

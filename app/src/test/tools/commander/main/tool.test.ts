@@ -2301,6 +2301,7 @@ suite('Commander tool', () => {
       password: 'pässwörd',
       encryptNames: true,
       volumeBytes: 1_048_576,
+      test: true,
     });
     await waitFor(() => packed.length === 1, 'the pack to start');
     assert.deepStrictEqual(
@@ -2327,6 +2328,7 @@ suite('Commander tool', () => {
       { password: '' },
       { volumeBytes: 1000 },
       { zipCipher: 'rot13' },
+      { test: 'yes' },
     ]) {
       await pack(wrong);
     }
@@ -2341,6 +2343,7 @@ suite('Commander tool', () => {
         password: 'pässwörd',
         encryptNames: true,
         volumeBytes: 1_048_576,
+        test: true,
       },
     ]);
     assert.deepStrictEqual(notices, [

@@ -137,6 +137,7 @@ function PackForm({
   const [encryptNames, setEncryptNames] = useState(false);
   const [zipCipher, setZipCipher] = useState<ZipCipher>(choices.zipCipher);
   const [splitting, setSplitting] = useState(choices.volume !== undefined);
+  const [testing, setTesting] = useState(choices.test);
   const [volume, setVolume] = useState(
     choices.volume ?? volumeSizes[0]?.size ?? '',
   );
@@ -179,6 +180,7 @@ function PackForm({
           ...(encrypted && format === '7z' && { encryptNames }),
           ...(encrypted && format === 'zip' && { zipCipher }),
           ...(volumeBytes !== undefined && { volume, volumeBytes }),
+          test: testing,
         });
       }}
     >
@@ -300,6 +302,14 @@ function PackForm({
             </div>
           </>
         )}
+        <label className="pack-check pack-wide">
+          <input
+            type="checkbox"
+            checked={testing}
+            onChange={(event) => setTesting(event.target.checked)}
+          />
+          {commander.testOncePacked}
+        </label>
       </div>
       {problem === undefined ? (
         there && <div className="pack-note">{commander.archiveThere(name)}</div>

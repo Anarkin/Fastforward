@@ -40,6 +40,16 @@ suite('The progress of a pack', () => {
     );
   });
 
+  test('says it tests the archive once packed, counting the files tested', () => {
+    assert.deepStrictEqual(
+      progressLines({ ...view, progress: { ...progress, testing: true } }),
+      {
+        current: strings.commander.testingArchive,
+        files: '10 of 40 files tested',
+      },
+    );
+  });
+
   test('counts and names the files a copy on disk copied, as it copies them one at a time', () => {
     assert.deepStrictEqual(progressLines({ ...view, archiveJob: undefined }), {
       current: 'docs/a.txt',

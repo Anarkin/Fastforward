@@ -170,7 +170,7 @@ function sizeOf(text: string | undefined): number | undefined {
 const tarShorthand = /\.t(?:az|bz2?|gz|pz|xz|zst)$/i;
 
 function nameExtractedOf(file: string): string {
-  const name = path.basename(file);
+  const name = path.basename(file).replace(/\.\d{3,}$/, '');
   if (tarShorthand.test(name)) {
     return name.replace(/\.[^.]+$/, '.tar');
   }
@@ -646,6 +646,33 @@ async function addedTo(
   return outcomeOf(run, file);
 }
 
+async function tested(
+  sevenZip: SevenZip,
+  file: string,
+  { password, signal, onProgress }: UpdateOptions,
+): Promise<Packing> {
+  const { switches, input } = passwordGiven(password);
+  const run = await sevenZip(
+    [
+      't',
+      '-y',
+      ...switches,
+      '-sccUTF-8',
+      ...(onProgress === undefined ? [] : ['-bsp1']),
+      '--',
+      file,
+    ],
+    {
+      ...(signal !== undefined && { signal }),
+      ...(input !== undefined && { input }),
+      ...(onProgress !== undefined && { onOutput: progressed(onProgress) }),
+    },
+  );
+  return run.code === 0
+    ? { kind: 'packed' }
+    : { kind: 'refused', ...refusalOf(run, file) };
+}
+
 export function sevenZipReaderAt(program: string): ArchiveReader | undefined {
   return fs.existsSync(program)
     ? sevenZipReader(sevenZipAt(program))
@@ -663,5 +690,6 @@ export function sevenZipReader(sevenZip: SevenZip): ArchiveReader {
       renamedIn(sevenZip, file, from, to, options),
     add: (file, folder, items, options) =>
       addedTo(sevenZip, file, folder, items, options),
+    test: (file, options) => tested(sevenZip, file, options),
   };
 }

@@ -309,6 +309,68 @@ suite('Archives packed, changed and taken out again', () => {
       );
     });
 
+    test('tests every format once packed, with its password and from its first volume, putting it in place once it passes', async () => {
+      const original = treeOf(source);
+      for (const [name, format, more] of [
+        ['tested.zip', 'zip', { password: 'secret' }],
+        ['tested.7z', '7z', { password: 'secret', encryptNames: true }],
+        ['tested.tar', 'tar', {}],
+        ['tested.tar.xz', 'tar.xz', { volumeBytes: 256 * 1024 }],
+      ] as const) {
+        const told: string[] = [];
+        assert.deepStrictEqual(
+          await archives.pack(plan(name, format, { ...more, test: true }), {
+            onTesting: () => told.push('testing'),
+          }),
+          { kind: 'packed' },
+          name,
+        );
+        assert.deepStrictEqual(told, ['testing'], name);
+        archives.usePassword(at(name), 'secret');
+        const first = 'volumeBytes' in more ? `${name}.001` : name;
+        assert.deepStrictEqual(await takenOut(at(first)), original, name);
+      }
+    });
+
+    test('finds a byte gone wrong in the archive once packed, keeping the archive there and nothing of the pack', async () => {
+      const spoiling = new Archives(
+        {
+          ...reader,
+          pack: async (packing, into, options) => {
+            const packed = await reader.pack(packing, into, options);
+            const written = fs.readFileSync(into);
+            written[Math.floor(written.length / 2)] ^= 0xff;
+            fs.writeFileSync(into, written);
+            return packed;
+          },
+        },
+        process.platform,
+        () => {
+          const work = at(`work-${++works}`);
+          fs.mkdirSync(work);
+          return Promise.resolve(work);
+        },
+      );
+      fs.writeFileSync(at('spoiled.zip'), 'there before');
+      const spoiled = await spoiling.pack(
+        plan('spoiled.zip', 'zip', {
+          items: ['random.bin'],
+          level: 'store',
+          test: true,
+        }),
+      );
+      assert.ok(spoiled.kind === 'refused');
+      assert.match(spoiled.reason, /CRC|Data Error/);
+      assert.deepStrictEqual(
+        fs.readdirSync(folder).filter((name) => name.startsWith('spoiled.zip')),
+        ['spoiled.zip'],
+      );
+      assert.strictEqual(
+        fs.readFileSync(at('spoiled.zip'), 'utf8'),
+        'there before',
+      );
+    });
+
     test('leaves the archive there as it was and nothing of the pack once stopped', async () => {
       made(source, 'big.bin', randomBytes(24 * 1024 * 1024));
       await packedFine(plan('kept.7z', '7z', { items: ['old.txt'] }));

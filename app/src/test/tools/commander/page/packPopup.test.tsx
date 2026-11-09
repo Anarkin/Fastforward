@@ -159,6 +159,7 @@ suite('Pack popup', () => {
             password: 'pässwörd',
             encryptNames: true,
             volumeBytes: 734_003_200,
+            test: true,
           },
         ],
       );

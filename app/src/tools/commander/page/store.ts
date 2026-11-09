@@ -85,6 +85,7 @@ interface PackChoices {
   readonly level: PackLevel;
   readonly zipCipher: ZipCipher;
   readonly volume: string | undefined;
+  readonly test: boolean;
 }
 
 interface PackAnswer {
@@ -96,6 +97,7 @@ interface PackAnswer {
   readonly zipCipher?: ZipCipher;
   readonly volume?: string;
   readonly volumeBytes?: number;
+  readonly test: boolean;
 }
 
 interface Renaming {
@@ -281,6 +283,7 @@ const commanderDefaults: CommanderSource = {
     level: 'normal',
     zipCipher: 'aes256',
     volume: undefined,
+    test: true,
   },
   noAccess: undefined,
   resized: undefined,
@@ -1070,6 +1073,7 @@ export function createCommanderStore(
         zipCipher,
         volume,
         volumeBytes,
+        test,
       }) => {
         const { packing, packChoices } = get();
         if (packing === undefined) {
@@ -1082,6 +1086,7 @@ export function createCommanderStore(
             level,
             zipCipher: zipCipher ?? packChoices.zipCipher,
             volume,
+            test,
           },
         });
         const { tab, side, folder, names } = packing;
@@ -1098,6 +1103,7 @@ export function createCommanderStore(
           ...(encryptNames !== undefined && { encryptNames }),
           ...(zipCipher !== undefined && { zipCipher }),
           ...(volumeBytes !== undefined && { volumeBytes }),
+          test,
         });
       },
       cancelPack: () => set({ packing: undefined }),

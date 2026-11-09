@@ -54,6 +54,7 @@ export interface PackPlan {
   readonly encryptNames?: boolean;
   readonly zipCipher?: ZipCipher;
   readonly volumeBytes?: number;
+  readonly test?: boolean;
 }
 
 export interface PackOptions {
@@ -63,6 +64,7 @@ export interface PackOptions {
     readonly files: number;
     readonly bytes: number;
   }) => void;
+  readonly onTesting?: () => void;
 }
 
 export interface UpdateOptions extends PackOptions {
@@ -107,6 +109,7 @@ export interface ArchiveReader {
     items: readonly string[],
     options: UpdateOptions,
   ): Promise<Packing>;
+  test(file: string, options: UpdateOptions): Promise<Packing>;
 }
 
 interface ArchiveNode {

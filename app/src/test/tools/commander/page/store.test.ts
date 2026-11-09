@@ -798,6 +798,7 @@ suite('Commander store', () => {
       encryptNames: true,
       volume: '700 MB',
       volumeBytes: 734_003_200,
+      test: false,
     });
     assert.strictEqual(store.getState().packing, undefined);
     assert.deepStrictEqual(store.getState().packChoices, {
@@ -805,6 +806,7 @@ suite('Commander store', () => {
       level: 'ultra',
       zipCipher: 'aes256',
       volume: '700 MB',
+      test: false,
     });
     actions.askPack('left', ['a.txt']);
     actions.cancelPack();
@@ -835,6 +837,7 @@ suite('Commander store', () => {
           password: 'secret',
           encryptNames: true,
           volumeBytes: 734_003_200,
+          test: false,
         },
       ],
     );

@@ -1976,6 +1976,7 @@ export class CommanderTool implements Tool<'commander'> {
       encryptNames,
       zipCipher,
       volumeBytes,
+      test,
     }: Extract<CommanderToHost, { type: 'pack' }>,
   ): void {
     const shown = this.diskPane(page, tab, side, folder);
@@ -1999,7 +2000,8 @@ export class CommanderTool implements Tool<'commander'> {
       (encryptNames !== undefined && typeof encryptNames !== 'boolean') ||
       (zipCipher !== undefined && !isZipCipher(zipCipher)) ||
       (volumeBytes !== undefined &&
-        (!Number.isSafeInteger(volumeBytes) || volumeBytes < smallestVolume))
+        (!Number.isSafeInteger(volumeBytes) || volumeBytes < smallestVolume)) ||
+      (test !== undefined && typeof test !== 'boolean')
     ) {
       return;
     }
@@ -2034,6 +2036,7 @@ export class CommanderTool implements Tool<'commander'> {
       ...(encryptNames !== undefined && { encryptNames }),
       ...(zipCipher !== undefined && { zipCipher }),
       ...(volumeBytes !== undefined && { volumeBytes }),
+      ...(test !== undefined && { test }),
     };
     this.transfers.start(
       {

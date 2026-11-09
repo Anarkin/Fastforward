@@ -578,6 +578,40 @@ suite('changing an archive with 7-Zip', () => {
   });
 });
 
+suite('testing an archive with 7-Zip', () => {
+  test('tests every file of an archive against its checksum, the password on its input or none asked for, passing it only when 7-Zip finds nothing wrong', async () => {
+    const asked: Asked[] = [];
+    const tested = (code: number, password?: string) =>
+      sevenZipReader((args, options) => {
+        asked.push({ args, ...options, onOutput: undefined });
+        return Promise.resolve({
+          code,
+          output: '',
+          errors: code === 0 ? '' : 'ERROR: CRC Failed : a.txt\n',
+        });
+      }).test('a.zip', {
+        ...(password !== undefined && { password }),
+        onProgress: () => undefined,
+      });
+    assert.deepStrictEqual(await tested(0, 'secret'), { kind: 'packed' });
+    assert.deepStrictEqual(await tested(1), {
+      kind: 'refused',
+      reason: 'CRC Failed : a.txt',
+    });
+    assert.deepStrictEqual(asked, [
+      {
+        args: ['t', '-y', '-sccUTF-8', '-bsp1', '--', 'a.zip'],
+        input: 'secret\n',
+        onOutput: undefined,
+      },
+      {
+        args: ['t', '-y', '-p-', '-sccUTF-8', '-bsp1', '--', 'a.zip'],
+        onOutput: undefined,
+      },
+    ]);
+  });
+});
+
 suite('the password of an archive', () => {
   test('gives 7-Zip a password on its input rather than among its arguments, where other programs could read it, and a refusal for a wrong one says a password is needed', async () => {
     const asked: { args: readonly string[]; input: string | undefined }[] = [];
@@ -631,6 +665,9 @@ suite('the one item of a compressed file', () => {
     ]);
     assert.deepStrictEqual(await namedInZstd('notes'), [
       ['notes', false, undefined],
+    ]);
+    assert.deepStrictEqual(await namedInZstd('backup.tar.xz.001'), [
+      ['backup.tar', false, undefined],
     ]);
   });
 });

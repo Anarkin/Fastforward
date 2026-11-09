@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ArchiveReader, PackOptions, PackPlan, Packing } from './archives';
+import { strings } from '../../../shared/strings';
+import { encrypts } from '../shared/packing';
 import { reasonOf } from './reasons';
 import type { TransferEvent } from './transferProtocol';
 import type { ConnectTransfer } from './transfers';
@@ -82,6 +84,25 @@ export async function packInto(
       await leftovers();
       return packed;
     }
+    if (plan.test === true) {
+      options.onTesting?.();
+      const [first = temporary] =
+        plan.volumeBytes === undefined ? [] : await partsOf(temporary);
+      const { signal, onProgress } = options;
+      const tested = await reader.test(first, {
+        ...(signal !== undefined && { signal }),
+        ...(onProgress !== undefined && { onProgress }),
+        ...(plan.password !== undefined &&
+          encrypts(plan.format) && { password: plan.password }),
+      });
+      if (tested.kind === 'refused') {
+        await leftovers();
+        return {
+          kind: 'refused',
+          reason: strings.commander.archiveTestFailed(tested.reason),
+        };
+      }
+    }
     await placed(temporary, plan);
     return packed;
   } catch (error) {
@@ -113,6 +134,7 @@ export function archiveJob(
     const begin = async () => {
       let totals:
         { readonly files: number; readonly bytes: number } | undefined;
+      let testing = false;
       const packed = await run({
         signal: aborting.signal,
         onTotals: (counted) => {
@@ -127,6 +149,21 @@ export function archiveJob(
             },
           });
         },
+        onTesting: () => {
+          testing = true;
+          if (totals !== undefined) {
+            told({
+              type: 'progress',
+              progress: {
+                files: 0,
+                totalFiles: totals.files,
+                bytes: 0,
+                totalBytes: totals.bytes,
+                testing: true,
+              },
+            });
+          }
+        },
         onProgress: ({ percent, files: done, current }) => {
           if (totals !== undefined) {
             told({
@@ -137,6 +174,7 @@ export function archiveJob(
                 bytes: Math.round((totals.bytes * percent) / 100),
                 totalBytes: totals.bytes,
                 ...(current !== undefined && { current }),
+                ...(testing && { testing: true }),
               },
             });
           }
