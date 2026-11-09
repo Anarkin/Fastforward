@@ -163,6 +163,18 @@ suite('Commander file colors', () => {
       'package.nupkg',
       'extension.vsix',
       'addon.xpi',
+      'server.log.gzip',
+      'dump.bzip2',
+      'old.taz',
+      'backup.7z.001',
+      'Xcode.xip',
+      'vm.qcow',
+      'checkpoint.avhdx',
+      'app.asar',
+      'app.apks',
+      'package.snupkg',
+      'serde.crate',
+      'numpy.conda',
     ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), archive, name);
     }
