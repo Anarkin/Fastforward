@@ -101,7 +101,17 @@ const archiveJobs = {
     title: strings.commander.newFolderTitle,
     running: strings.commander.makingFolderIn,
   },
+  copyIn: {
+    title: strings.commander.copyTitle,
+    running: strings.commander.copying,
+  },
+  moveIn: {
+    title: strings.commander.moveTitle,
+    running: strings.commander.moving,
+  },
 };
+
+const countedJobs: ReadonlySet<string> = new Set(['pack', 'copyIn', 'moveIn']);
 
 function runningSentence(
   transfer: TransferView,
@@ -153,7 +163,7 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
       </div>
       {progress !== undefined &&
         (transfer.archiveJob === undefined ||
-          transfer.archiveJob === 'pack') && (
+          countedJobs.has(transfer.archiveJob)) && (
           <div className="transfer-counts">
             <span>
               {commander.transferredFiles(progress.files, progress.totalFiles)}

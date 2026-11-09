@@ -217,6 +217,7 @@ export type CommanderToHost =
       readonly names: readonly string[];
       readonly target: string;
       readonly move: boolean;
+      readonly existing?: 'replace' | 'skip';
     }
   | {
       readonly type: 'answerClash';

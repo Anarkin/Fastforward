@@ -146,9 +146,17 @@ function CommanderPopups() {
             transferring.names,
             transferring.move,
             transferring.target,
+            transferring.existing?.length,
           )}
-          onConfirm={confirmTransfer}
+          onConfirm={() => confirmTransfer()}
           onCancel={cancelTransfer}
+          {...(transferring.existing !== undefined &&
+            transferring.existing.length < transferring.names.length && {
+              extra: {
+                label: strings.commander.skipThem,
+                onClick: () => confirmTransfer('skip'),
+              },
+            })}
         />
       )}
       {deleting !== undefined && (

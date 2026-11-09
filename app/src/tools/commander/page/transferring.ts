@@ -12,20 +12,22 @@ export function transferQuestion(
   names: readonly string[],
   move: boolean,
   target: string,
+  existing = 0,
 ): { title: string; message: string; confirm: string } {
   const { commander } = strings;
   const what = whatOf(names.length, names[0]);
-  return move
+  const title = move ? commander.moveTitle : commander.copyTitle;
+  const question = (move ? commander.moveQuestion : commander.copyQuestion)(
+    what,
+    target,
+  );
+  return existing > 0
     ? {
-        title: commander.moveTitle,
-        message: commander.moveQuestion(what, target),
-        confirm: commander.moveTitle,
+        title,
+        message: `${question} ${commander.thereAlready(existing, names.length)}`,
+        confirm: commander.replace,
       }
-    : {
-        title: commander.copyTitle,
-        message: commander.copyQuestion(what, target),
-        confirm: commander.copyTitle,
-      };
+    : { title, message: question, confirm: title };
 }
 
 export function shareDone(progress: TransferProgress | undefined): number {

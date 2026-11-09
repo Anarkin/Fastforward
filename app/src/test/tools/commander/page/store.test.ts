@@ -1149,6 +1149,15 @@ suite('The commander store in flat view', () => {
   });
 });
 
+const fileEntry = (name: string) => ({
+  name,
+  folder: false,
+  link: false,
+  hidden: false,
+  size: 1,
+  modified: 0,
+});
+
 suite('The commander store in archives', () => {
   test('asks for a new name and for the name of a new folder inside an archive too, sending them for the folder in it', () => {
     const { posted, store } = shown();
@@ -1167,6 +1176,67 @@ suite('The commander store in archives', () => {
       [
         ['rename', 'C:\\a.zip'],
         ['newFolder', 'C:\\a.zip'],
+      ],
+    );
+  });
+
+  test('asks before copying or moving items of a side on disk into the folder of an archive on the other, telling which are there already, sends the answer to replace or skip them, and asks nothing from one archive into another', () => {
+    const { posted, store } = shown();
+    store.getState().receive({
+      ...listing('C:\\a.zip'),
+      archive: 'C:\\a.zip',
+      entries: [fileEntry('top.txt')],
+    });
+    store.getState().receive({
+      ...listing('D:\\x'),
+      side: 'right',
+      entries: [fileEntry('top.txt'), fileEntry('new.txt')],
+    });
+    const actions = store.getState();
+    actions.askTransfer('right', ['top.txt', 'new.txt'], true);
+    assert.deepStrictEqual(store.getState().transferring, {
+      tab: '1',
+      side: 'right',
+      folder: 'D:\\x',
+      names: ['top.txt', 'new.txt'],
+      target: 'C:\\a.zip',
+      move: true,
+      existing: ['top.txt'],
+    });
+    actions.confirmTransfer('skip');
+    actions.askTransfer('right', ['new.txt'], false);
+    assert.strictEqual(store.getState().transferring?.existing, undefined);
+    actions.confirmTransfer();
+    store.getState().receive({
+      ...listing('D:\\b.zip'),
+      side: 'right',
+      archive: 'D:\\b.zip',
+    });
+    actions.askTransfer('right', ['new.txt'], false);
+    assert.strictEqual(store.getState().transferring, undefined);
+
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'transfer'),
+      [
+        {
+          type: 'transfer',
+          tab: '1',
+          side: 'right',
+          folder: 'D:\\x',
+          names: ['top.txt', 'new.txt'],
+          target: 'C:\\a.zip',
+          move: true,
+          existing: 'skip',
+        },
+        {
+          type: 'transfer',
+          tab: '1',
+          side: 'right',
+          folder: 'D:\\x',
+          names: ['new.txt'],
+          target: 'C:\\a.zip',
+          move: false,
+        },
       ],
     );
   });
@@ -1207,8 +1277,6 @@ suite('The commander store in archives', () => {
     const actions = store.getState();
 
     actions.askTransfer('left', ['a.txt'], true);
-    actions.askTransfer('right', ['b.txt'], false);
-    actions.askTransfer('right', ['b.txt'], true);
     actions.askPack('left', ['a.txt']);
     actions.paste('left');
     actions.drag('left', ['a.txt']);

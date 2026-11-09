@@ -252,6 +252,10 @@ function commander(
       changedInArchives.push(['folder', archive.file, inner, name]);
       return Promise.resolve({ kind: 'packed' });
     },
+    addItems: (archive, inner, from, items) => {
+      changedInArchives.push(['add', archive.file, inner, from, items]);
+      return Promise.resolve({ kind: 'packed' });
+    },
     extract: async (archive, paths, options) => {
       extracted.push(paths);
       const into = options?.into;
@@ -5513,6 +5517,80 @@ suite('Commander tool in archives', () => {
     assert.deepStrictEqual(notices, [
       { level: 'error', message: strings.commander.nameTaken('docs') },
       { level: 'error', message: strings.commander.nameTaken('top.txt') },
+    ]);
+  });
+
+  test('copies and moves items into the folder of an archive on the other side, only with an answer about items there already, skipping or replacing them as answered, deleting the originals of a move once packed, and not the archive into itself', async () => {
+    const { tool, page, send, archived, changedInArchives, removed, notices } =
+      commander({
+        [root]: [
+          file('a.zip'),
+          file('top.txt'),
+          file('new.txt'),
+          file('locked.txt'),
+        ],
+      });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({ type: 'enterArchive', tab: '1', side: 'left', name: 'a.zip' });
+    const transfer = (
+      names: string[],
+      move: boolean,
+      existing?: 'replace' | 'skip',
+    ) =>
+      send({
+        type: 'transfer',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        names,
+        target: at('a.zip'),
+        move,
+        ...(existing !== undefined && { existing }),
+      });
+    const added = (count: number) =>
+      waitFor(
+        () => changedInArchives.length === count,
+        `${count} additions to the archive`,
+      );
+
+    await transfer(['top.txt', 'new.txt'], false);
+    await transfer(['a.zip'], false);
+    await transfer(['top.txt', 'new.txt'], false, 'skip');
+    await added(1);
+    await transfer(['top.txt', 'new.txt'], false, 'replace');
+    await added(2);
+    await transfer(['new.txt', 'locked.txt'], true);
+    await waitFor(() => notices.length === 2, 'the move to end');
+
+    assert.deepStrictEqual(changedInArchives, [
+      ['add', at('a.zip'), [], root, ['new.txt']],
+      ['add', at('a.zip'), [], root, ['top.txt', 'new.txt']],
+      ['add', at('a.zip'), [], root, ['new.txt', 'locked.txt']],
+    ]);
+    assert.deepStrictEqual(removed, [at('new.txt'), at('locked.txt')]);
+    assert.deepStrictEqual(
+      page
+        .of('transfer')
+        .find((message) => message.view?.archiveJob === 'moveIn')?.view,
+      {
+        id: 3,
+        move: true,
+        archiveJob: 'moveIn',
+        items: 2,
+        target: at('a.zip'),
+        stopping: false,
+      },
+    );
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.intoItself('a.zip') },
+      {
+        level: 'error',
+        message: strings.commander.movedWithout(
+          'a.zip',
+          'locked.txt: It is in use',
+        ),
+      },
     ]);
   });
 

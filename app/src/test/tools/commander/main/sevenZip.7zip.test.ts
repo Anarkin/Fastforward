@@ -294,6 +294,28 @@ suite('7-Zip', () => {
     );
   });
 
+  test('adds a file into a folder of a zip and a folder with all in it into its root', async () => {
+    const zip = await packed('add.zip');
+    made('more/extra.txt', 'extra');
+    const archives = new Archives(reader, process.platform, workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+    assert.deepStrictEqual(
+      await archives.addItems(opened.archive, ['docs'], content, ['top.txt']),
+      { kind: 'packed' },
+    );
+    assert.deepStrictEqual(
+      await archives.addItems(opened.archive, [], content, ['more']),
+      { kind: 'packed' },
+    );
+    const listing = await reader.list(zip);
+    const paths =
+      listing.kind === 'listed' ? listing.items.map((item) => item.path) : [];
+    for (const added of ['docs/top.txt', 'more', 'more/extra.txt', 'top.txt']) {
+      assert.ok(paths.includes(added), added);
+    }
+  });
+
   test('cuts an archive into volumes of the size asked, listed together from the first', async () => {
     made('big.txt', 'x'.repeat(250_000));
     await packedAs('v.zip', {

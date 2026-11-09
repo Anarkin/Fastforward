@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { baseNameOf } from './naming';
+import { folderKey } from '../shared/paths';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
 import { strings } from '../../../shared/strings';
 import { maxDroppedIcons, type IconSource } from '../shared/icons';
@@ -68,6 +69,7 @@ interface Transferring {
   readonly names: readonly string[];
   readonly target: string;
   readonly move: boolean;
+  readonly existing?: readonly string[];
 }
 
 interface Packing {
@@ -216,7 +218,7 @@ interface CommanderActions {
     names: readonly string[],
     move: boolean,
   ) => void;
-  readonly confirmTransfer: () => void;
+  readonly confirmTransfer: (answer?: 'replace' | 'skip') => void;
   readonly cancelTransfer: () => void;
   readonly answerClash: (answer: ClashAnswer, all: boolean) => void;
   readonly copyToClipboard: (side: Side, names: readonly string[]) => void;
@@ -955,19 +957,48 @@ export function createCommanderStore(
       cancelDelete: () => set({ deleting: undefined }),
       askTransfer: (side, names, move) =>
         (move ? onDisk : onPane)(side, (tab, folder) => {
-          const other = get().view.panes[otherSide(side)];
-          const target = other?.folder;
-          if (target !== undefined && other?.archive === undefined) {
+          const { view } = get();
+          const other = view.panes[otherSide(side)];
+          if (other === undefined) {
+            return;
+          }
+          const target = other.folder;
+          if (other.archive === undefined) {
             set({
               transferring: { tab, side, folder, names, target, move },
             });
+            return;
           }
+          if (view.panes[side]?.archive !== undefined) {
+            return;
+          }
+          const key = (name: string) => folderKey(name, view.platform);
+          const there = new Set(other.entries.map((entry) => key(entry.name)));
+          const existing = names.filter((name) =>
+            there.has(key(baseNameOf(name, view.platform))),
+          );
+          set({
+            transferring: {
+              tab,
+              side,
+              folder,
+              names,
+              target,
+              move,
+              ...(existing.length > 0 && { existing }),
+            },
+          });
         }),
-      confirmTransfer: () => {
+      confirmTransfer: (answer = 'replace') => {
         const { transferring } = get();
         if (transferring !== undefined) {
           set({ transferring: undefined });
-          post({ type: 'transfer', ...transferring });
+          const { existing, ...asked } = transferring;
+          post({
+            type: 'transfer',
+            ...asked,
+            ...(existing !== undefined && { existing: answer }),
+          });
         }
       },
       cancelTransfer: () => set({ transferring: undefined }),

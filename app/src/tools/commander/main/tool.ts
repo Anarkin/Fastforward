@@ -1591,6 +1591,7 @@ export class CommanderTool implements Tool<'commander'> {
       names,
       target,
       move,
+      existing,
     }: Extract<CommanderToHost, { type: 'transfer' }>,
   ): void {
     const shown = this.namingPane(page, tab, side, folder);
@@ -1598,7 +1599,6 @@ export class CommanderTool implements Tool<'commander'> {
     if (
       shown === undefined ||
       other === undefined ||
-      other.archive !== undefined ||
       other.folder !== target ||
       !Array.isArray(names) ||
       names.length === 0 ||
@@ -1607,6 +1607,12 @@ export class CommanderTool implements Tool<'commander'> {
       ) ||
       typeof move !== 'boolean'
     ) {
+      return;
+    }
+    if (other.archive !== undefined) {
+      if (shown.pane.archive === undefined) {
+        this.transferIn(page, shown, other, names, move, existing);
+      }
       return;
     }
     if (shown.pane.archive !== undefined) {
@@ -1630,6 +1636,104 @@ export class CommanderTool implements Tool<'commander'> {
       folder: shown.pane.folder,
       names,
     });
+  }
+
+  private transferIn(
+    page: Page,
+    shown: ShownPane,
+    other: Pane,
+    names: readonly string[],
+    move: boolean,
+    existing: unknown,
+  ): void {
+    const { archives, platform, remove } = this.access;
+    const inside = archives?.within(other.folder);
+    if (
+      archives === undefined ||
+      inside === undefined ||
+      (move && remove === undefined)
+    ) {
+      return;
+    }
+    if (shown.pane.elevated === true) {
+      this.refuse(page, strings.commander.transferAsAdministrator);
+      return;
+    }
+    const { archive, inner } = inside;
+    const key = (each: string) => folderKey(each, platform);
+    const there = new Set(
+      (archive.tree.entries(inner) ?? []).map((entry) => key(entry.name)),
+    );
+    const clashing = names.filter((name) =>
+      there.has(key(path.basename(name))),
+    );
+    if (clashing.length > 0 && existing !== 'replace' && existing !== 'skip') {
+      return;
+    }
+    const kept =
+      existing === 'skip'
+        ? names.filter((name) => !clashing.includes(name))
+        : names;
+    const { folder } = shown.pane;
+    const into = kept.find((name) => {
+      const item = key(path.join(folder, name));
+      return (
+        key(archive.file) === item ||
+        key(archive.file).startsWith(`${item}${path.sep}`)
+      );
+    });
+    if (into !== undefined) {
+      this.refuse(page, strings.commander.intoItself(into));
+      return;
+    }
+    if (kept.length === 0 || !this.changeable(page, archive)) {
+      return;
+    }
+    this.transfers.start(
+      {
+        plan: {
+          sources: kept.map((name) => path.join(folder, name)),
+          target: other.folder,
+          move,
+        },
+        folder,
+        names: kept,
+        archive: {
+          job: move ? 'moveIn' : 'copyIn',
+          file: archive.file,
+          at: other.folder,
+        },
+      },
+      archiveJob(path.basename(archive.file), async (options) => {
+        const added = await archives.addItems(
+          archive,
+          inner,
+          folder,
+          kept,
+          options,
+        );
+        if (!move || added.kind === 'refused') {
+          return added;
+        }
+        if (added.warning !== undefined) {
+          return {
+            kind: 'packed',
+            warning: `${added.warning} ${strings.commander.originalsKept}`,
+          };
+        }
+        const failures: string[] = [];
+        for (const name of kept) {
+          try {
+            await remove?.(path.join(folder, name));
+          } catch (error) {
+            failures.push(`${name}: ${reasonOf(error)}`);
+          }
+        }
+        return failures.length === 0
+          ? added
+          : { kind: 'packed', warning: failures.join(' ') };
+      }),
+    );
   }
 
   private async transferOut(

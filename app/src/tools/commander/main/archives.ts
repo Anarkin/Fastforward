@@ -284,12 +284,37 @@ export interface ArchiveAccess {
     name: string,
     options?: PackOptions,
   ): Promise<Packing>;
+  addItems(
+    archive: OpenedArchive,
+    inner: readonly string[],
+    folder: string,
+    items: readonly string[],
+    options?: PackOptions,
+  ): Promise<Packing>;
 }
 
 async function removed(folder: string): Promise<void> {
   await fs.promises
     .rm(folder, { recursive: true, force: true, maxRetries: 3 })
     .catch(() => undefined);
+}
+
+async function linkedTree(from: string, to: string): Promise<void> {
+  const stats = await fs.promises.stat(from);
+  if (stats.isDirectory()) {
+    await fs.promises.mkdir(to);
+    for (const name of await fs.promises.readdir(from)) {
+      await linkedTree(path.join(from, name), path.join(to, name));
+    }
+    await fs.promises.utimes(to, stats.atime, stats.mtime);
+    return;
+  }
+  try {
+    await fs.promises.link(from, to);
+  } catch {
+    await fs.promises.copyFile(from, to);
+    await fs.promises.utimes(to, stats.atime, stats.mtime);
+  }
 }
 
 async function temporariesOf(file: string): Promise<string[]> {
@@ -637,6 +662,43 @@ export class Archives implements ArchiveAccess {
           ...options,
           ...password,
         });
+      } finally {
+        await removed(staged);
+      }
+    });
+  }
+
+  addItems(
+    archive: OpenedArchive,
+    inner: readonly string[],
+    folder: string,
+    items: readonly string[],
+    options: PackOptions = {},
+  ): Promise<Packing> {
+    return this.updating(archive, async (reader, password) => {
+      const given = { ...options, ...password };
+      if (
+        inner.length === 0 &&
+        items.every((item) => path.basename(item) === item)
+      ) {
+        return reader.add(archive.file, folder, items, given);
+      }
+      const staged = await this.workFolder();
+      try {
+        const into = path.join(staged, ...inner);
+        await fs.promises.mkdir(into, { recursive: true });
+        for (const item of items) {
+          await linkedTree(
+            path.join(folder, item),
+            path.join(into, path.basename(item)),
+          );
+        }
+        return await reader.add(
+          archive.file,
+          staged,
+          items.map((item) => [...inner, path.basename(item)].join('/')),
+          given,
+        );
       } finally {
         await removed(staged);
       }

@@ -724,6 +724,21 @@ export const strings = {
       `No folder could be made in "${name}": ${reason}`,
     makingFolderStopped: (archive: string) =>
       `Making a folder in "${archive}" stopped unexpectedly.`,
+    copyInFailed: (name: string, reason: string) =>
+      `Nothing could be copied into "${name}": ${reason}`,
+    moveInFailed: (name: string, reason: string) =>
+      `Nothing could be moved into "${name}": ${reason}`,
+    movedWithout: (name: string, reason: string) =>
+      `Not every file could be moved into "${name}": ${reason}`,
+    originalsKept: 'Every file moved is kept where it was.',
+    thereAlready: (count: number, total: number) =>
+      count < total
+        ? `${count.toLocaleString()} of them are there already.`
+        : total === 1
+          ? 'It is there already.'
+          : 'They are there already.',
+    replace: 'Replace',
+    skipThem: 'Skip Them',
     deleteFromArchiveQuestion: (what: string, archive: string) =>
       `Delete ${what} from "${archive}" permanently? This cannot be undone.`,
     archiveUnchangeable: (name: string) =>

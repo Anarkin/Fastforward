@@ -26,7 +26,8 @@ export interface TransferProgress {
   readonly current?: string;
 }
 
-export type ArchiveJob = 'pack' | 'delete' | 'rename' | 'folder';
+export type ArchiveJob =
+  'pack' | 'delete' | 'rename' | 'folder' | 'copyIn' | 'moveIn';
 
 export interface TransferView {
   readonly id: number;

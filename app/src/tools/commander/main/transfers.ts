@@ -32,6 +32,7 @@ export interface TransferAsk {
   readonly archive?: {
     readonly job: ArchiveJob;
     readonly file: string;
+    readonly at?: string;
     readonly select?: string;
   };
 }
@@ -67,6 +68,7 @@ const archiveSentences: Readonly<
       readonly failed: (name: string, reason: string) => string;
       readonly done: (what: string, archive: string) => string;
       readonly stopped: (archive: string) => string;
+      readonly warned?: (name: string, reason: string) => string;
     }
   >
 > = {
@@ -89,6 +91,17 @@ const archiveSentences: Readonly<
     failed: strings.commander.folderInFailed,
     done: strings.commander.madeFolderIn,
     stopped: strings.commander.makingFolderStopped,
+  },
+  copyIn: {
+    failed: strings.commander.copyInFailed,
+    done: strings.commander.copied,
+    stopped: strings.commander.copyingStopped,
+  },
+  moveIn: {
+    failed: strings.commander.moveInFailed,
+    done: strings.commander.moved,
+    stopped: strings.commander.movingStopped,
+    warned: strings.commander.movedWithout,
   },
 };
 
@@ -280,13 +293,21 @@ export class Transfers {
   private archiveEnded(
     running: Running,
     how: 'done' | 'stopped' | 'broke',
-    { job, file }: { readonly job: ArchiveJob; readonly file: string },
+    {
+      job,
+      file,
+      at = file,
+    }: {
+      readonly job: ArchiveJob;
+      readonly file: string;
+      readonly at?: string;
+    },
   ): void {
     const sentences = archiveSentences[job];
     if (running.warnings.length > 0) {
       this.host.notice({
         level: 'error',
-        message: strings.commander.packedWithout(
+        message: (sentences.warned ?? strings.commander.packedWithout)(
           path.basename(file),
           running.warnings.join(' '),
         ),
@@ -295,7 +316,7 @@ export class Transfers {
     if (how === 'broke') {
       this.host.notice({
         level: 'error',
-        message: sentences.stopped(file),
+        message: sentences.stopped(at),
       });
     } else if (
       how === 'done' &&
@@ -304,7 +325,7 @@ export class Transfers {
     ) {
       this.host.notice({
         level: 'info',
-        message: sentences.done(whatOf(running.ask), file),
+        message: sentences.done(whatOf(running.ask), at),
       });
     }
     this.host.finished(running.ask);
@@ -332,7 +353,7 @@ export class Transfers {
       ...(ask.archive !== undefined && { archiveJob: ask.archive.job }),
       items: ask.names.length,
       ...(ask.names.length === 1 && { name: path.basename(ask.names[0]) }),
-      target: ask.archive?.file ?? ask.plan.target,
+      target: ask.archive?.at ?? ask.archive?.file ?? ask.plan.target,
       ...(progress !== undefined && { progress }),
       ...(clash !== undefined && { clash }),
       stopping: running.stopping,
