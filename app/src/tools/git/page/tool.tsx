@@ -31,6 +31,7 @@ import {
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { clicked } from '../../../shell/shared/keymap';
 import { useBinding } from '../../../ui/shortcuts';
+import { startColorer } from '../../../ui/syntax';
 import { listsNothing } from './filesColumn';
 import { strings } from '../../../shared/strings';
 import { WorktreeBar } from './worktreeBar';
@@ -256,6 +257,11 @@ export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
   const { navigate, jump, showUpstream, showParent, toggleCommits } =
     store.getState();
   useEffect(() => listen(store.getState().receive), [listen, store]);
+  useEffect(() => {
+    if (active) {
+      startColorer();
+    }
+  }, [active]);
   const repositoryShown = active && comparing === undefined;
   useBinding(
     compareKeymap.closeCompare,

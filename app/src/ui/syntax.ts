@@ -161,6 +161,10 @@ export function colorer(): Colorer {
   return shared;
 }
 
+export function startColorer(): void {
+  colorer();
+}
+
 export function colorCode(
   language: string,
   code: string,

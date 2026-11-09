@@ -375,6 +375,11 @@ suite('Window', () => {
       innerWidth: dom.window.innerWidth,
       innerHeight: dom.window.innerHeight,
       matchMedia: dom.window.matchMedia,
+      location: new URL('file:///page/index.html'),
+      Worker: class {
+        postMessage() {}
+        addEventListener() {}
+      },
       IS_REACT_ACT_ENVIRONMENT: true,
     };
     const saved = Object.fromEntries(

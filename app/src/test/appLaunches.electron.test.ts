@@ -176,6 +176,65 @@ suite('App with a theme', () => {
   });
 });
 
+const syntaxWorkers = (page: Page) =>
+  page.workers().filter((worker) => worker.url().endsWith('/syntaxWorker.js'))
+    .length;
+
+suite('App with a git tab behind a commander tab', () => {
+  test('starts the worker coloring code once a git tab or a file viewed is shown, before there is code to color, so its highlighter is made while the diff or file is read, but not for the commander alone', async () => {
+    const folder = tempFolder('syntax-worker');
+    const repository = await tempRepository(path.join(folder, 'repo'));
+    await repository.commit('first', { 'notes.unknown': 'plain\n' });
+    const launched = async (name: string) => {
+      const profile = path.join(folder, name);
+      fs.mkdirSync(profile, { recursive: true });
+      fs.writeFileSync(
+        path.join(profile, 'state.json'),
+        JSON.stringify({
+          tabs: [
+            { id: '1', tool: 'commander', root: repository.root },
+            { id: '2', tool: 'git', root: repository.root },
+          ],
+          activeTab: '1',
+        }),
+      );
+      const app = await launchApp(profile);
+      const page = await app.firstWindow();
+      const notes = page
+        .locator('.commander-pane')
+        .nth(1)
+        .locator('.commander-row', { hasText: 'notes' });
+      await notes.waitFor();
+      assert.strictEqual(syntaxWorkers(page), 0);
+      return { app, page, notes };
+    };
+    try {
+      const git = await launched('git');
+      try {
+        await git.page.locator('.tabs .tab').nth(1).click();
+        await git.page.locator('.commit', { hasText: 'first' }).waitFor();
+        await waitFor(() => syntaxWorkers(git.page) === 1, 'the syntax worker');
+      } finally {
+        await closeOrKill(git.app);
+      }
+      const viewer = await launched('viewer');
+      try {
+        await viewer.notes.click();
+        await viewer.page.keyboard.press('F3');
+        await viewer.page.locator('.viewer').waitFor();
+        await waitFor(
+          () => syntaxWorkers(viewer.page) === 1,
+          'the syntax worker',
+        );
+      } finally {
+        await closeOrKill(viewer.app);
+      }
+    } finally {
+      removeFolder(folder);
+    }
+  });
+});
+
 suite('App with several tabs', () => {
   test('moves a tab dragged past the middle of the next one while it is still dragged, keeping it under the pointer, opening it, and keeps that order once dropped', async () => {
     const folder = tempFolder('dragging-tabs');

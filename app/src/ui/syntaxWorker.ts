@@ -1,5 +1,6 @@
 import { errorText } from './errors';
 import {
+  makeHighlighter,
   sendUncaught,
   serveColoring,
   type FromSyntax,
@@ -39,3 +40,4 @@ scope.addEventListener('error', sendUncaught(post));
 scope.addEventListener('unhandledrejection', (event) =>
   post({ type: 'failed', message: errorText(event.reason) }),
 );
+void makeHighlighter();

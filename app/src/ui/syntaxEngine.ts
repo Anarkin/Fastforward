@@ -268,6 +268,10 @@ export async function loadLanguages(
   return highlighter;
 }
 
+export function makeHighlighter(): Promise<HighlighterCore> {
+  return loadLanguages([]);
+}
+
 const sliceTime = 10;
 const publishTime = 50;
 

@@ -32,6 +32,7 @@ import {
   languageChoiceOf,
 } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
+import { startColorer } from '../../../ui/syntax';
 import { colorOfFileNamed } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 import { useCommander, useCommanderActions } from './store';
@@ -67,6 +68,7 @@ const modes: readonly {
 ];
 
 export function Viewer() {
+  useEffect(startColorer, []);
   const file = useCommander((state) => state.view.viewing) ?? '';
   const fileColor = useCommander((state) =>
     colorOfFileNamed(nameOf(state.view.viewing ?? ''), state.view.fileColors),
