@@ -34,6 +34,8 @@ interface Kept {
   readonly parent: boolean;
   readonly bySlot: (Row | undefined)[];
   readonly slotsOf: Map<string, readonly number[]>;
+  readonly freeing: { readonly batch: number; readonly slots: number[] }[];
+  sent: number;
   choices: FlatChoices;
   built: FlatBuilt | undefined;
   waiting: FromFlatWorker | undefined;
@@ -87,6 +89,8 @@ export class FlatLists {
       parent,
       bySlot: [],
       slotsOf: new Map(),
+      freeing: [],
+      sent: 0,
       choices,
       built: undefined,
       waiting: undefined,
@@ -102,10 +106,10 @@ export class FlatLists {
     if (kept?.walk !== walk) {
       return;
     }
+    const batch = ++kept.sent;
     const freed: number[] = [];
     const slotted: SlottedFolder[] = folders.map(({ under, entries }) => {
       for (const slot of kept.slotsOf.get(under) ?? []) {
-        kept.bySlot[slot] = undefined;
         freed.push(slot);
       }
       const slots = entries.map((entry) => {
@@ -119,7 +123,10 @@ export class FlatLists {
       }
       return { under, entries, slots };
     });
-    this.tell({ type: 'files', pane, walk, folders: slotted, freed });
+    if (freed.length > 0) {
+      kept.freeing.push({ batch, slots: freed });
+    }
+    this.tell({ type: 'files', pane, walk, batch, folders: slotted, freed });
   }
 
   built(pane: string, walk: number): FlatBuilt | undefined {
@@ -194,6 +201,15 @@ export class FlatLists {
           ? undefined
           : { query: answer.query, rows: rowsOf(answer.shown) },
     };
+    while (
+      kept.freeing[0] !== undefined &&
+      kept.freeing[0].batch <= answer.batch
+    ) {
+      for (const slot of kept.freeing[0].slots) {
+        kept.bySlot[slot] = undefined;
+      }
+      kept.freeing.shift();
+    }
     kept.builtAt = this.timing.now();
     kept.took = kept.builtAt - started;
     this.onBuilt(pane);

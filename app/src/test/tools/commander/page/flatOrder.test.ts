@@ -200,7 +200,7 @@ function sorter() {
 }
 
 suite('The sorter of flat views', () => {
-  test('answers a burst of messages once, with the slots in order', () => {
+  test('answers a burst of messages once, with the slots in order and the last batch of files they include', () => {
     const { sorting, answers, run, scheduled } = sorter();
 
     sorting.receive(start);
@@ -208,6 +208,7 @@ suite('The sorter of flat views', () => {
       type: 'files',
       pane: 'tab left',
       walk: 1,
+      batch: 1,
       folders: [{ under: '', entries: [file('b'), file('a')], slots: [0, 1] }],
       freed: [],
     });
@@ -215,6 +216,7 @@ suite('The sorter of flat views', () => {
       type: 'files',
       pane: 'tab left',
       walk: 1,
+      batch: 2,
       folders: [{ under: 'sub/', entries: [file('c')], slots: [2] }],
       freed: [],
     });
@@ -228,6 +230,7 @@ suite('The sorter of flat views', () => {
           type: 'order',
           pane: 'tab left',
           walk: 1,
+          batch: 2,
           query: '',
           order: [1, 0, 2],
           shown: undefined,
@@ -246,6 +249,7 @@ suite('The sorter of flat views', () => {
       type: 'files',
       pane: 'tab left',
       walk: 1,
+      batch: 1,
       folders: [{ under: '', entries: [file('old')], slots: [0] }],
       freed: [],
     });

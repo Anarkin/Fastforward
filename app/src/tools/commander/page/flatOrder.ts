@@ -136,7 +136,7 @@ export class FlatOrder {
 export class FlatSorter {
   private readonly panes = new Map<
     string,
-    { readonly walk: number; readonly order: FlatOrder }
+    { readonly walk: number; readonly order: FlatOrder; batch: number }
   >();
   private readonly due = new Set<string>();
   private scheduled = false;
@@ -159,6 +159,7 @@ export class FlatSorter {
       this.panes.set(message.pane, {
         walk: message.walk,
         order: new FlatOrder(message.choices),
+        batch: 0,
       });
     } else {
       const kept = this.panes.get(message.pane);
@@ -167,6 +168,7 @@ export class FlatSorter {
       }
       if (message.type === 'files') {
         kept.order.put(message.folders, message.freed);
+        kept.batch = message.batch;
       } else {
         kept.order.choose(message.choices);
       }
@@ -189,7 +191,15 @@ export class FlatSorter {
       }
       const { order, shown, query } = kept.order.result();
       this.post(
-        { type: 'order', pane, walk: kept.walk, query, order, shown },
+        {
+          type: 'order',
+          pane,
+          walk: kept.walk,
+          batch: kept.batch,
+          query,
+          order,
+          shown,
+        },
         shown === undefined ? [order.buffer] : [order.buffer, shown.buffer],
       );
     }

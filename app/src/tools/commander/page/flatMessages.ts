@@ -26,6 +26,7 @@ export type ToFlatWorker =
       readonly type: 'files';
       readonly pane: string;
       readonly walk: number;
+      readonly batch: number;
       readonly folders: readonly SlottedFolder[];
       readonly freed: readonly number[];
     }
@@ -41,6 +42,7 @@ export interface FromFlatWorker {
   readonly type: 'order';
   readonly pane: string;
   readonly walk: number;
+  readonly batch: number;
   readonly query: string;
   readonly order: Uint32Array;
   readonly shown: Uint32Array | undefined;

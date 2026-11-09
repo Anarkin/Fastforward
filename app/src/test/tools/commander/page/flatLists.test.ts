@@ -143,6 +143,23 @@ suite('The rows of flat views', () => {
     assert.deepStrictEqual(keys('a', 1), ['sub/c.txt', 'top.txt']);
   });
 
+  test('keeps the files of a folder told again in the rows built from an order the worker sorted before it was told, rather than leaving them out until its next order', () => {
+    const { flat, sort, keys, pass } = lists();
+    flat.ensure('a', 1, false, choices);
+    flat.files('a', 1, [{ under: '', entries: [file('notes.txt')] }]);
+    sort();
+    flat.files('a', 1, [{ under: 'src/', entries: [file('main.ts')] }]);
+    sort();
+
+    flat.files('a', 1, [{ under: '', entries: [file('notes.txt')] }]);
+    pass(100);
+    assert.deepStrictEqual(keys('a', 1), ['src/main.ts', 'notes.txt']);
+
+    sort();
+    pass(100);
+    assert.deepStrictEqual(keys('a', 1), ['src/main.ts', 'notes.txt']);
+  });
+
   test('builds the rows again no sooner than a tenth of a second after it last did, from the latest order', () => {
     const { flat, sort, keys, pass } = lists();
     flat.ensure('a', 1, false, choices);
