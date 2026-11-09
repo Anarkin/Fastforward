@@ -2179,8 +2179,13 @@ export class CommanderTool implements Tool<'commander'> {
       source.pane.archive === undefined
     ) {
       const file = path.join(folder, name);
-      if ((await this.access.archives?.open(file))?.kind === 'opened') {
+      const opening = await this.access.archives?.open(file);
+      if (opening?.kind === 'opened') {
         return this.list(page, source.tab, side, file, 'visit');
+      }
+      if (opening?.kind === 'refused' && opening.noArchive !== true) {
+        this.refuse(page, strings.commander.notArchive(name, opening.reason));
+        return undefined;
       }
     }
     if (flat !== undefined && entry !== undefined) {

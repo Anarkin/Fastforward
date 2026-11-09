@@ -67,6 +67,7 @@ export function sevenZipAt(program: string): SevenZip {
 }
 
 const noPrompt = '-p-';
+const noArchiveSeen = 'Cannot open the file as archive';
 const itemsStart = '----------';
 const timePattern =
   /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)(?:\.(\d{1,3}))?/;
@@ -191,7 +192,12 @@ async function listed(
   const lines = run.output.split(/\r?\n/);
   const start = lines.indexOf(itemsStart);
   if ((run.code !== 0 && run.code !== 1) || start < 0) {
-    return { kind: 'refused', reason: reasonOf(run, file) };
+    const reason = reasonOf(run, file);
+    return {
+      kind: 'refused',
+      reason,
+      ...(reason === noArchiveSeen && { noArchive: true }),
+    };
   }
   const items: ArchiveItem[] = [];
   let block: string[] = [];

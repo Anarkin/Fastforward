@@ -234,6 +234,7 @@ suite('Archives', () => {
     assert.deepStrictEqual(await archives.open(folder), {
       kind: 'refused',
       reason: 'It is not a file.',
+      noArchive: true,
     });
     assert.strictEqual(
       (await archives.open(path.join(folder, 'gone.zip'))).kind,
@@ -244,6 +245,7 @@ suite('Archives', () => {
       {
         kind: 'refused',
         reason: 'The app has no 7-Zip to open archives with.',
+        noArchive: true,
       },
     );
   });

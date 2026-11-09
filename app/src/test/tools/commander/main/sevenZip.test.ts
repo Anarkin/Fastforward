@@ -105,7 +105,7 @@ suite('sevenZipReader', () => {
     );
   });
 
-  test('takes a warning of 7-Zip with a listing as listed, and an error or no listing as refused, with the reason 7-Zip gives', async () => {
+  test('takes a warning of 7-Zip with a listing as listed, and an error or no listing as refused, with the reason 7-Zip gives, noting when 7-Zip sees no archive in the file at all, rather than one of a format it names that it could not open', async () => {
     assert.strictEqual(
       (await sevenZipReader(ran({ code: 1, output: listed })).list('plain.zip'))
         .kind,
@@ -118,7 +118,21 @@ suite('sevenZipReader', () => {
           errors: '\nERROR: C:/big.mp4 : Cannot open the file as archive\n',
         }),
       ).list('C:\\big.mp4'),
-      { kind: 'refused', reason: 'Cannot open the file as archive' },
+      {
+        kind: 'refused',
+        reason: 'Cannot open the file as archive',
+        noArchive: true,
+      },
+    );
+    assert.deepStrictEqual(
+      await sevenZipReader(
+        ran({
+          code: 2,
+          errors:
+            'ERROR: a.zip : a.zip\nOpen ERROR: Cannot open the file as [zip] archive\n\nERRORS:\nIs not archive\n',
+        }),
+      ).list('a.zip'),
+      { kind: 'refused', reason: 'Cannot open the file as [zip] archive' },
     );
     assert.deepStrictEqual(
       await sevenZipReader(ran({ code: 0, output: 'no listing' })).list(

@@ -238,11 +238,15 @@ function commander(
     },
     open: (opening) => {
       const items = archived.get(opening);
-      if (items === undefined || typeof items === 'string') {
+      if (items === undefined) {
         return Promise.resolve({
           kind: 'refused',
-          reason: items ?? 'Cannot open the file as archive',
+          reason: 'Cannot open the file as archive',
+          noArchive: true,
         });
+      }
+      if (typeof items === 'string') {
+        return Promise.resolve({ kind: 'refused', reason: items });
       }
       const archive = archivesOf.get(items) ?? {
         file: opening,
@@ -4353,14 +4357,15 @@ suite('Commander tool in archives', () => {
     ]);
   });
 
-  test('enters on a side an archive the other side has selected, and shows there the folder of a file that is no archive, as before', async () => {
-    const { tool, page, send, archived } = commander({
-      [root]: [file('a.zip'), file('notes.txt')],
+  test('enters on a side an archive the other side has selected, shows there the folder of a file 7-Zip sees no archive in, as before, and says why an archive it could not open was not entered, staying where it was', async () => {
+    const { tool, page, send, archived, notices } = commander({
+      [root]: [file('a.zip'), file('broken.zip'), file('notes.txt')],
     });
     archived.set(at('a.zip'), zipped);
+    archived.set(at('broken.zip'), 'Unexpected end of archive');
     await tool.show(page, tab);
 
-    for (const name of ['a.zip', 'notes.txt']) {
+    for (const name of ['a.zip', 'notes.txt', 'broken.zip']) {
       await send({
         type: 'openOnSide',
         tab: '1',
@@ -4379,8 +4384,17 @@ suite('Commander tool in archives', () => {
 
     assert.deepStrictEqual(page.listings().slice(2), [
       `right ${at('a.zip')} ↑: docs top.txt`,
-      `right ${root}: a.zip notes.txt [a.zip]`,
+      `right ${root}: a.zip broken.zip notes.txt [a.zip]`,
       `left ${at('a.zip')} ↑: docs top.txt`,
+    ]);
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.notArchive(
+          'broken.zip',
+          'Unexpected end of archive',
+        ),
+      },
     ]);
   });
 

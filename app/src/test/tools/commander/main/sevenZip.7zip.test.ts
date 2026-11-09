@@ -99,6 +99,7 @@ suite('7-Zip', () => {
     assert.deepStrictEqual(await reader.list(text), {
       kind: 'refused',
       reason: 'Cannot open the file as archive',
+      noArchive: true,
     });
     const secret = await packed('secret.7z', '-psecret', '-mhe=on');
     assert.deepStrictEqual(await reader.list(secret), {

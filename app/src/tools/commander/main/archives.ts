@@ -15,9 +15,14 @@ export interface ArchiveItem {
   readonly encrypted: boolean;
 }
 
+interface Refused {
+  readonly kind: 'refused';
+  readonly reason: string;
+  readonly noArchive?: true;
+}
+
 export type ArchiveListing =
-  | { readonly kind: 'listed'; readonly items: readonly ArchiveItem[] }
-  | { readonly kind: 'refused'; readonly reason: string };
+  { readonly kind: 'listed'; readonly items: readonly ArchiveItem[] } | Refused;
 
 export interface ExtractProgress {
   readonly percent: number;
@@ -160,8 +165,7 @@ export interface OpenedArchive {
 }
 
 export type Opening =
-  | { readonly kind: 'opened'; readonly archive: OpenedArchive }
-  | { readonly kind: 'refused'; readonly reason: string };
+  { readonly kind: 'opened'; readonly archive: OpenedArchive } | Refused;
 
 export type Extracting =
   | { readonly kind: 'extracted'; readonly folder: string }
@@ -245,16 +249,24 @@ export class Archives implements ArchiveAccess {
   async open(file: string, signal?: AbortSignal): Promise<Opening> {
     const { reader } = this;
     if (reader === undefined) {
-      return { kind: 'refused', reason: strings.commander.noSevenZip };
+      return {
+        kind: 'refused',
+        reason: strings.commander.noSevenZip,
+        noArchive: true,
+      };
     }
     let stats: fs.Stats;
     try {
       stats = await fs.promises.stat(file);
     } catch (error) {
-      return { kind: 'refused', reason: reasonOfError(error) };
+      return { kind: 'refused', reason: reasonOfError(error), noArchive: true };
     }
     if (!stats.isFile()) {
-      return { kind: 'refused', reason: strings.commander.notAFile };
+      return {
+        kind: 'refused',
+        reason: strings.commander.notAFile,
+        noArchive: true,
+      };
     }
     const version = fileVersion(stats);
     const key = this.keyOf(file);
