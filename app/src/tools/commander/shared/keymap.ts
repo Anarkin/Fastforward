@@ -113,6 +113,7 @@ export const commanderKeymap = {
     Space: true,
     Insert: true,
   }),
+  markAll: bind('Marking', strings.actions.markAll, { 'Mod+A': true }),
   markClick: bind('Marking', strings.actions.markClick, {
     'Mod+Click': 'toggle',
     'Shift+Click': 'range',

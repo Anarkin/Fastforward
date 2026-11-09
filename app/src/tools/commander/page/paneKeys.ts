@@ -168,6 +168,22 @@ export function paneKey(
       },
     };
   }
+  if (keyPressed(commanderKeymap.markAll, event) !== undefined) {
+    const keys = rows.flatMap((each) =>
+      each.entry === undefined ? [] : [each.key],
+    );
+    const [first] = keys;
+    return first === undefined
+      ? done
+      : {
+          act: {
+            kind: 'mark',
+            keys,
+            marked: !keys.every((key) => marked?.has(key) === true),
+            select: selected ?? first,
+          },
+        };
+  }
   if (keyPressed(commanderKeymap.toggleMark, event) !== undefined) {
     if (row === undefined) {
       return done;

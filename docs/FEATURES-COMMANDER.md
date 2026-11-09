@@ -57,7 +57,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Mark files | Mark files to act on them together | Space, Insert | Core | ✅ Yes | Space and Insert mark and move down, Shift and the arrow keys mark what they pass, Mod+click marks one, Shift+click those up to it |
-| Mark all | Mark every file | Ctrl+A | Core | ❌ No |  |
+| Mark all | Mark every file | Ctrl+A | Core | ✅ Yes | Mod+A: the files and folders the side shows, only those the filter leaves, the files read so far in flat view, inside an archive too; once all are marked, it unmarks them all |
 | Mark by pattern | Mark or unmark the files that match a pattern | Num+, Num− | Common | ❌ No |  |
 | Invert marks | Mark the files not marked | Num* | Common | ❌ No |  |
 

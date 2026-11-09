@@ -300,6 +300,7 @@ export const strings = {
     filterMove: 'Move in the files filtered',
     markMoving: 'Mark the files passed while moving, or unmark them',
     toggleMark: 'Mark or unmark the selected file and move down',
+    markAll: 'Mark every file, or unmark them all once all are marked',
     markClick: 'Mark or unmark a file, or mark the files up to it',
     openOnSide:
       'Open the selected folder, or the one you are in, on the left or right side',

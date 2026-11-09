@@ -234,6 +234,26 @@ suite('Commander keys', () => {
     }
   });
 
+  test('marks every row but the parent folder on Mod+A, whatever is selected, and unmarks them all once every one is marked', () => {
+    const all = ['docs', 'repo', 'a.txt', 'b.txt'];
+    const markAll = pressed('a', { ctrlKey: true });
+    assert.deepStrictEqual(paneKey(markAll, at('..')), {
+      act: { kind: 'mark', keys: all, marked: true, select: '..' },
+    });
+    assert.deepStrictEqual(
+      paneKey(markAll, at('a.txt', { marked: new Set(['docs', 'a.txt']) })),
+      { act: { kind: 'mark', keys: all, marked: true, select: 'a.txt' } },
+    );
+    assert.deepStrictEqual(
+      paneKey(markAll, at('a.txt', { marked: new Set(all) })),
+      { act: { kind: 'mark', keys: all, marked: false, select: 'a.txt' } },
+    );
+    assert.deepStrictEqual(
+      paneKey(markAll, at('..', { rows: rows.slice(0, 1) })),
+      {},
+    );
+  });
+
   test('moves the selection with the arrows, across the tiles only while they are shown, and leaves other keys alone', () => {
     assert.deepStrictEqual(paneKey(pressed('ArrowDown'), at('a.txt')), {
       act: { kind: 'select', key: 'b.txt' },
