@@ -545,7 +545,7 @@ suite('changing an archive with 7-Zip', () => {
     assert.ok(unlocked?.args.includes('-p-'));
   });
 
-  test('adds items from the folder they are in, so they keep their folders under it, setting no password unless one is given, as -p- would set the password -', async () => {
+  test('adds items from the folder they are in, so they keep their folders under it, setting no password unless one is given, as -p- would set the password -, and giving it twice, as 7-Zip asks once to open a 7z with its names encrypted and again for what it adds', async () => {
     assert.deepStrictEqual(
       await askedBy((reader) =>
         reader.add('a.zip', 'stage', ['docs/fresh'], {}),
@@ -573,7 +573,7 @@ suite('changing an archive with 7-Zip', () => {
     );
     assert.deepStrictEqual(
       [locked?.args.includes('-p'), locked?.input],
-      [true, 'secret\n'],
+      [true, 'secret\nsecret\n'],
     );
   });
 });

@@ -60,8 +60,20 @@ function decoded(chunks: readonly Buffer[]): string {
 
 function ended(child: ChildProcessWithoutNullStreams): Promise<number | null> {
   return new Promise((resolve, reject) => {
-    child.once('error', reject);
-    child.once('close', resolve);
+    let failure: unknown;
+    child.once('error', (error) => {
+      failure = error;
+      if (child.pid === undefined) {
+        reject(error);
+      }
+    });
+    child.once('close', (code) => {
+      if (failure === undefined) {
+        resolve(code);
+      } else {
+        reject(failure);
+      }
+    });
   });
 }
 
@@ -627,7 +639,7 @@ async function addedTo(
     {
       cwd: folder,
       ...(signal !== undefined && { signal }),
-      ...(password !== undefined && { input: `${password}\n` }),
+      ...(password !== undefined && { input: `${password}\n${password}\n` }),
       ...(onOutput !== undefined && { onOutput }),
     },
   );
