@@ -12,6 +12,8 @@ export function PromptPopup({
   confirm,
   problemOf,
   secret = false,
+  initial = '',
+  selectedUpTo,
   onConfirm,
   onCancel,
 }: {
@@ -21,16 +23,23 @@ export function PromptPopup({
   confirm: string;
   problemOf: (value: string) => string | undefined;
   secret?: boolean;
+  initial?: string;
+  selectedUpTo?: number;
   onConfirm: (value: string) => void;
   onCancel: () => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(initial);
   useDismiss(popup, onCancel, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
-  useLayoutEffect(() => field.current?.focus(), []);
+  useLayoutEffect(() => {
+    field.current?.focus();
+    if (selectedUpTo !== undefined) {
+      field.current?.setSelectionRange(0, selectedUpTo);
+    }
+  }, [selectedUpTo]);
   const typed = secret ? value : value.trim();
   const problem = problemOf(typed);
   return (

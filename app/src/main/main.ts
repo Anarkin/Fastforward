@@ -61,6 +61,7 @@ import { themeCss } from '../shell/main/theme';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
 import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
+import { renameUnlessTaken } from '../tools/commander/main/renaming';
 import {
   inRepository,
   isRepository,
@@ -604,6 +605,7 @@ async function start(asked: readonly string[]): Promise<void> {
     trash: (file) => shell.trashItem(file),
     remove: (file) => fs.promises.rm(file, { recursive: true }),
     makeFolder: (folder) => fs.promises.mkdir(folder),
+    renameItem: renameUnlessTaken,
     clipboardFiles: { write: writeClipboardFiles, read: readClipboardFiles },
     startDrag: async ([file, ...more]) => {
       if (file === undefined) {

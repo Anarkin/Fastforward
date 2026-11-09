@@ -16,7 +16,12 @@ import { followDrag } from '../../../ui/followDrag';
 import { useBinding } from '../../../ui/shortcuts';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../shell/page/promptPopup';
-import { newFolderProblem } from './naming';
+import {
+  baseNameOf,
+  newFolderProblem,
+  renamedPart,
+  renameProblem,
+} from './naming';
 import { deleteQuestion } from './deleting';
 import { transferQuestion } from './transferring';
 import { TransferPopup } from './transferPopup';
@@ -60,6 +65,12 @@ function CommanderPopups() {
       : state.view.panes[state.makingFolder.side]?.entries,
   );
   const noAccess = useCommander((state) => state.noAccess);
+  const renaming = useCommander((state) => state.renaming);
+  const renamedIn = useCommander((state) =>
+    state.renaming === undefined
+      ? undefined
+      : state.view.panes[state.renaming.side]?.entries,
+  );
   const askingPassword = useCommander((state) => state.askingPassword);
   const {
     confirmDelete,
@@ -71,7 +82,11 @@ function CommanderPopups() {
     closeNoAccess,
     elevate,
     answerPassword,
+    rename,
+    cancelRename,
   } = useCommanderActions();
+  const renamed =
+    renaming === undefined ? undefined : baseNameOf(renaming.name, platform);
   return (
     <>
       <TransferPopup />
@@ -103,6 +118,24 @@ function CommanderPopups() {
           problemOf={(name) => newFolderProblem(name, listed, platform)}
           onConfirm={makeFolder}
           onCancel={cancelNewFolder}
+        />
+      )}
+      {renaming !== undefined && renamed !== undefined && (
+        <PromptPopup
+          title={strings.commander.renameTitle}
+          message={strings.commander.renameIn(renamed)}
+          label={strings.commander.newName}
+          confirm={strings.commander.renameConfirm}
+          initial={renamed}
+          selectedUpTo={renamedPart(
+            renamed,
+            renamedIn?.some(
+              (entry) => entry.name === renaming.name && entry.folder,
+            ) === true,
+          )}
+          problemOf={(to) => renameProblem(to, renamed, renamedIn, platform)}
+          onConfirm={rename}
+          onCancel={cancelRename}
         />
       )}
       {transferring !== undefined && (

@@ -154,6 +154,7 @@ export interface CommanderAccess {
   readonly binOff?: (folder: string) => Promise<boolean>;
   readonly remove?: (file: string) => Promise<void>;
   readonly makeFolder?: (folder: string) => Promise<void>;
+  readonly renameItem?: (from: string, to: string) => Promise<void>;
   readonly startDrag?: (files: readonly string[]) => Promise<void>;
   readonly clipboardFiles?: {
     readonly write: (files: readonly string[]) => Promise<void>;
@@ -555,6 +556,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.transfer(page, message);
       case 'newFolder':
         return this.newFolder(page, message);
+      case 'rename':
+        return this.rename(page, message);
       case 'copyToClipboard':
         return this.copyToClipboard(page, message);
       case 'drag':
@@ -1668,6 +1671,69 @@ export class CommanderTool implements Tool<'commander'> {
         'show',
         undefined,
         name,
+      );
+    }
+  }
+
+  private async rename(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      name,
+      to,
+    }: Extract<CommanderToHost, { type: 'rename' }>,
+  ): Promise<void> {
+    const shown = this.diskPane(page, tab, side, folder);
+    const { renameItem } = this.access;
+    if (
+      shown === undefined ||
+      renameItem === undefined ||
+      typeof name !== 'string' ||
+      listedIn(shown.pane, name) === undefined ||
+      typeof to !== 'string' ||
+      to !== path.basename(to) ||
+      nameProblem(to, this.access.platform) !== undefined
+    ) {
+      return;
+    }
+    if (shown.pane.elevated === true) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.renameAsAdministrator,
+      });
+      return;
+    }
+    const { pane } = shown;
+    const renamed = pane.folder;
+    const from = path.join(renamed, name);
+    try {
+      await renameItem(from, path.join(path.dirname(from), to));
+    } catch (error) {
+      this.shell.notice(page, {
+        level: 'error',
+        message:
+          codeOf(error) === 'EEXIST'
+            ? strings.commander.nameTaken(to)
+            : strings.commander.renameFailed(
+                path.basename(from),
+                reasonOf(error),
+              ),
+      });
+      return;
+    }
+    if (pane.flat !== undefined) {
+      pane.flat.tree.changed(name);
+    } else if (pane.folder === renamed) {
+      await this.list(
+        page,
+        shown.tab,
+        shown.side,
+        renamed,
+        'show',
+        undefined,
+        to,
       );
     }
   }

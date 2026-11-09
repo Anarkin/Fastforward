@@ -774,6 +774,9 @@ export function Pane({
       case 'newFolder':
         actions.askNewFolder(side);
         return;
+      case 'rename':
+        actions.askRename(side, action.name);
+        return;
       case 'copyToClipboard':
         actions.copyToClipboard(side, action.names);
         return;

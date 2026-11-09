@@ -120,6 +120,9 @@ export const commanderKeymap = {
   } as const),
   view: bind('Viewing', strings.actions.viewFile, { F3: true }),
   newFolder: bind('Folders', strings.actions.newFolder, { F7: true }),
+  renameItem: bind('Marking', strings.actions.renameItem, {
+    'Shift+F6': true,
+  }),
   copyToClipboard: bind('Marking', strings.actions.copyToClipboard, {
     'Mod+C': true,
   }),

@@ -232,6 +232,14 @@ export type CommanderToHost =
       readonly name: string;
     }
   | {
+      readonly type: 'rename';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name: string;
+      readonly to: string;
+    }
+  | {
       readonly type: 'copyToClipboard';
       readonly tab: string;
       readonly side: Side;

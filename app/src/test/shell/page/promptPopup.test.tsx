@@ -1,7 +1,10 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
+import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { PromptPopup } from '../../../shell/page/promptPopup';
+import { renderIn } from '../../componentFixtures';
 import { noop } from '../../fixtures';
 
 const prompted = (secret?: boolean) =>
@@ -22,5 +25,57 @@ suite('Prompt popup', () => {
   test('hides what is typed when it asks for a secret, as a password, and shows it otherwise', () => {
     assert.match(prompted(true), /<input class="prompt-input" type="password"/);
     assert.match(prompted(), /<input class="prompt-input" type="text"/);
+  });
+
+  test('starts from the value it is given, with the part of it asked for selected, as a name to rename before its extension', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      await act(async () => {
+        renderIn(
+          root,
+          <PromptPopup
+            title="Rename"
+            message="Rename report.pdf"
+            label="Name"
+            confirm="Rename"
+            problemOf={() => undefined}
+            initial="report.pdf"
+            selectedUpTo={6}
+            onConfirm={noop}
+            onCancel={noop}
+          />,
+        );
+      });
+      const field = dom.window.document.querySelector('input');
+      assert.ok(field !== null);
+      assert.deepStrictEqual(
+        [
+          field.value,
+          field.selectionStart,
+          field.selectionEnd,
+          dom.window.document.activeElement === field,
+        ],
+        ['report.pdf', 0, 6, true],
+      );
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
   });
 });

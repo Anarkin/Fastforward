@@ -154,6 +154,7 @@ function commander(
   const trashed: string[] = [];
   const removed: string[] = [];
   const madeFolders: string[] = [];
+  const renamed: (readonly [string, string])[] = [];
   const clipboard: { files: readonly string[] } = { files: [] };
   const dragged: (readonly string[])[] = [];
   const menus: {
@@ -466,6 +467,20 @@ function commander(
       dragged.push(files);
       return Promise.resolve();
     },
+    renameItem: (from, to) => {
+      renamed.push([from, to]);
+      const refusal =
+        path.basename(to) === 'taken.txt'
+          ? 'EEXIST'
+          : path.basename(from) === 'locked.txt'
+            ? 'EBUSY'
+            : undefined;
+      return refusal === undefined
+        ? Promise.resolve()
+        : Promise.reject(
+            Object.assign(new Error(`${refusal}: refused`), { code: refusal }),
+          );
+    },
     makeFolder: (making) => {
       madeFolders.push(making);
       return path.basename(making) === 'taken'
@@ -624,6 +639,7 @@ function commander(
     openedIn,
     transfers,
     madeFolders,
+    renamed,
     clipboard,
     dragged,
     archived,
@@ -2129,7 +2145,93 @@ suite('Commander tool', () => {
     ]);
   });
 
-  test('says no folder is made yet in a folder read as administrator', async () => {
+  test('renames a file or folder the side lists to the name asked for, selecting it once listed, and nothing the side does not list nor to a name reaching another folder or one Windows would refuse there, saying when the name is taken or the system refuses', async () => {
+    const { tool, page, send, renamed, notices } = commander({
+      [root]: [
+        file('a.txt'),
+        folder('docs'),
+        file('locked.txt'),
+        file('taken.txt'),
+      ],
+    });
+    await tool.show(page, tab);
+    const rename = (name: string, to: string) =>
+      send({ type: 'rename', tab: '1', side: 'right', folder: root, name, to });
+
+    await rename('a.txt', 'b.txt');
+    assert.strictEqual(page.of('listing').at(-1)?.selected, 'b.txt');
+    await rename('docs', 'notes');
+    await rename('missing.txt', 'x.txt');
+    await rename('a.txt', '..');
+    await rename('a.txt', `sub${path.sep}x`);
+    await rename('a.txt', 'a/b');
+    await rename('a.txt', '');
+    await send(
+      forged(
+        JSON.stringify({
+          type: 'rename',
+          tab: '1',
+          side: 'right',
+          folder: root,
+          name: 'a.txt',
+          to: 7,
+        }),
+      ),
+    );
+    await rename('locked.txt', 'free.txt');
+    await rename('a.txt', 'taken.txt');
+
+    assert.deepStrictEqual(renamed, [
+      [at('a.txt'), at('b.txt')],
+      [at('docs'), at('notes')],
+      [at('locked.txt'), at('free.txt')],
+      [at('a.txt'), at('taken.txt')],
+    ]);
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.renameFailed('locked.txt', 'EBUSY: refused'),
+      },
+      { level: 'error', message: strings.commander.nameTaken('taken.txt') },
+    ]);
+  });
+
+  test('renames a file listed flat in its own folder, reading that folder again', async () => {
+    const { tool, page, send, renamed } = commander({
+      [root]: [folder('docs')],
+      [at('docs')]: [file('a.txt')],
+    });
+    await tool.show(page, tab);
+    await send({ type: 'flat', tab: '1', side: 'right', flat: true });
+    const inDocs = path.join('docs', 'a.txt');
+    await waitFor(
+      () =>
+        page
+          .of('flatFiles')
+          .some((message) =>
+            message.folders.some((listed) =>
+              listed.entries.some((entry) => entry.name === 'a.txt'),
+            ),
+          ),
+      'the file in docs to be listed flat',
+    );
+    const told = page.of('flatFiles').length;
+    await send({
+      type: 'rename',
+      tab: '1',
+      side: 'right',
+      folder: root,
+      name: inDocs,
+      to: 'b.txt',
+    });
+    assert.deepStrictEqual(renamed, [[at(inDocs), at('docs', 'b.txt')]]);
+    await waitFor(
+      () => page.of('flatFiles').length > told,
+      'docs to be read again',
+    );
+  });
+
+  test('says no folder is made and nothing renamed yet in a folder read as administrator', async () => {
     const helper: ElevatedFileSystem = {
       list: () => Promise.resolve([file('secret.txt')]),
       drives: () => Promise.resolve([]),
@@ -2137,7 +2239,7 @@ suite('Commander tool', () => {
       closed: new Promise(() => {}),
       close: () => {},
     };
-    const { tool, page, send, madeFolders, notices } = commander(
+    const { tool, page, send, madeFolders, renamed, notices } = commander(
       {
         [root]: [folder('Config.Msi')],
         [at('Config.Msi')]: Object.assign(new Error('denied'), {
@@ -2152,13 +2254,22 @@ suite('Commander tool', () => {
     await send({ type: 'elevate', tab: '1', side: 'left' });
 
     await send({ type: 'newFolder', tab: '1', side: 'left', name: 'new' });
+    await send({
+      type: 'rename',
+      tab: '1',
+      side: 'left',
+      folder: at('Config.Msi'),
+      name: 'secret.txt',
+      to: 'public.txt',
+    });
 
-    assert.deepStrictEqual(madeFolders, []);
+    assert.deepStrictEqual([madeFolders, renamed], [[], []]);
     assert.deepStrictEqual(notices, [
       {
         level: 'error',
         message: strings.commander.makeFolderAsAdministrator,
       },
+      { level: 'error', message: strings.commander.renameAsAdministrator },
     ]);
   });
 

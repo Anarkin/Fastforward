@@ -1,6 +1,11 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { newFolderProblem } from '../../../../tools/commander/page/naming';
+import {
+  baseNameOf,
+  newFolderProblem,
+  renameProblem,
+  renamedPart,
+} from '../../../../tools/commander/page/naming';
 import { strings } from '../../../../shared/strings';
 
 const entry = (name: string) => ({
@@ -36,5 +41,42 @@ suite('Commander naming', () => {
       newFolderProblem('', [], 'linux'),
       strings.commander.noName,
     );
+  });
+
+  test('lets a name be renamed to itself in another case, saying when another file of the folder has the new name, by case on Windows and macOS', () => {
+    const listed = [entry('Photos'), entry('notes.txt')];
+    assert.strictEqual(
+      renameProblem('photos', 'Photos', listed, 'win32'),
+      undefined,
+    );
+    assert.strictEqual(
+      renameProblem('NOTES.txt', 'Photos', listed, 'darwin'),
+      strings.commander.nameTaken('NOTES.txt'),
+    );
+    assert.strictEqual(
+      renameProblem('NOTES.txt', 'Photos', listed, 'linux'),
+      undefined,
+    );
+    assert.strictEqual(
+      renameProblem('a/b', 'Photos', undefined, 'linux'),
+      strings.commander.nameCantHold('/'),
+    );
+  });
+
+  test('renames a file listed flat by its own name, after the last folder of its path, the backslash being a folder only on Windows', () => {
+    assert.strictEqual(baseNameOf('docs\\deep\\a.txt', 'win32'), 'a.txt');
+    assert.strictEqual(baseNameOf('docs/a.txt', 'win32'), 'a.txt');
+    assert.strictEqual(
+      baseNameOf('docs/back\\slash.txt', 'linux'),
+      'back\\slash.txt',
+    );
+    assert.strictEqual(baseNameOf('a.txt', 'darwin'), 'a.txt');
+  });
+
+  test('selects the name of a file before its extension to rename it, and the whole name of a folder or of a file named by a dot', () => {
+    assert.strictEqual(renamedPart('report.final.pdf', false), 16 - 4);
+    assert.strictEqual(renamedPart('archive.tar.gz', true), 14);
+    assert.strictEqual(renamedPart('.gitignore', false), 10);
+    assert.strictEqual(renamedPart('README', false), 6);
   });
 });

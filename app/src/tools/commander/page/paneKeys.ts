@@ -12,6 +12,7 @@ import { moveInGrid } from './tiles';
 
 export type PaneAct =
   | { readonly kind: 'newFolder' }
+  | { readonly kind: 'rename'; readonly name: string }
   | { readonly kind: 'copyToClipboard'; readonly names: readonly string[] }
   | { readonly kind: 'paste' }
   | {
@@ -84,6 +85,11 @@ export function paneKey(
   }
   if (keyPressed(commanderKeymap.paste, event) !== undefined) {
     return { act: { kind: 'paste' } };
+  }
+  if (keyPressed(commanderKeymap.renameItem, event) !== undefined) {
+    return row?.entry === undefined
+      ? done
+      : { act: { kind: 'rename', name: row.key } };
   }
   const moving = keyPressed(commanderKeymap.transferItems, event);
   if (moving !== undefined) {

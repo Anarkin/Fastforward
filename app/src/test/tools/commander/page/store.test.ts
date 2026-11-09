@@ -739,6 +739,43 @@ suite('Commander store', () => {
     );
   });
 
+  test('asks for the new name of a file or folder of a side, renaming it once named, and nothing once cancelled, given its own name or once the side shows another folder', () => {
+    const { posted, store } = shown();
+    const actions = store.getState();
+    actions.askRename('left', 'a.txt');
+    assert.deepStrictEqual(store.getState().renaming, {
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+      name: 'a.txt',
+    });
+    actions.cancelRename();
+    assert.strictEqual(store.getState().renaming, undefined);
+    actions.askRename('left', 'a.txt');
+    actions.rename('a.txt');
+    assert.strictEqual(store.getState().renaming, undefined);
+    actions.askRename('left', 'a.txt');
+    actions.rename('b.txt');
+    actions.askRename('left', 'a.txt');
+    store.getState().receive(listing(`${left.folder}/sub`));
+    assert.strictEqual(store.getState().renaming, undefined);
+    actions.rename('late');
+
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'rename'),
+      [
+        {
+          type: 'rename',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          name: 'a.txt',
+          to: 'b.txt',
+        },
+      ],
+    );
+  });
+
   test('reads a folder it may not as administrator once asked, forgetting the question either way', () => {
     const { posted, store } = shown();
     const noAccess = {
@@ -1061,6 +1098,7 @@ suite('The commander store in archives', () => {
     actions.askTransfer('right', ['b.txt'], false);
     actions.askTransfer('right', ['b.txt'], true);
     actions.askNewFolder('left');
+    actions.askRename('left', 'a.txt');
     actions.paste('left');
     actions.drag('left', ['a.txt']);
     actions.openRepository('left', 'docs');
@@ -1074,10 +1112,10 @@ suite('The commander store in archives', () => {
     actions.flat('left');
     actions.enterArchive('right', 'b.zip');
 
-    const { deleting, transferring, makingFolder } = store.getState();
+    const { deleting, transferring, makingFolder, renaming } = store.getState();
     assert.deepStrictEqual(
-      [deleting, transferring, makingFolder],
-      [undefined, undefined, undefined],
+      [deleting, transferring, makingFolder, renaming],
+      [undefined, undefined, undefined, undefined],
     );
     actions.askTransfer('left', ['a.txt'], false);
     assert.deepStrictEqual(store.getState().transferring, {

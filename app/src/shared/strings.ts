@@ -269,6 +269,7 @@ export const strings = {
     viewFile: 'View the selected file in a tab of its own',
     dialogButton: 'Move between the buttons of a dialog',
     newFolder: 'Make a folder in the folder of the side',
+    renameItem: 'Rename the selected file or folder',
     copyToClipboard:
       'Put the marked items, or the selected one, on the clipboard, to paste them here or into another app',
     pasteFiles: 'Copy the files on the clipboard into the folder of the side',
@@ -634,6 +635,14 @@ export const strings = {
       `"${name}" could not be made: ${reason}`,
     makeFolderAsAdministrator:
       "Folders can't be made yet in a folder read as administrator.",
+    renameTitle: 'Rename',
+    renameIn: (name: string) => `A new name for "${name}"`,
+    newName: 'New name',
+    renameConfirm: 'Rename',
+    renameFailed: (name: string, reason: string) =>
+      `"${name}" could not be renamed: ${reason}`,
+    renameAsAdministrator:
+      "Items can't be renamed yet in a folder read as administrator.",
     intoItself: (name: string) =>
       `${name} can't go into itself or a folder in it.`,
     transferAsAdministrator:

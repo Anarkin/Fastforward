@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
+import { baseNameOf } from './naming';
 import { strings } from '../../../shared/strings';
 import { maxDroppedIcons, type IconSource } from '../shared/icons';
 import type { PdfPlace } from '../../../shared/pdf';
@@ -67,6 +68,13 @@ interface Transferring {
   readonly move: boolean;
 }
 
+interface Renaming {
+  readonly tab: string;
+  readonly side: Side;
+  readonly folder: string;
+  readonly name: string;
+}
+
 interface MakingFolder {
   readonly tab: string;
   readonly side: Side;
@@ -91,6 +99,7 @@ interface CommanderSource {
     | { readonly ask: number; readonly name: string; readonly wrong: boolean }
     | undefined;
   readonly makingFolder: MakingFolder | undefined;
+  readonly renaming: Renaming | undefined;
   readonly noAccess: NoAccess | undefined;
   readonly resized:
     { readonly from: ColumnWidths; readonly widths: ColumnWidths } | undefined;
@@ -192,6 +201,9 @@ interface CommanderActions {
   readonly askNewFolder: (side: Side) => void;
   readonly makeFolder: (name: string) => void;
   readonly cancelNewFolder: () => void;
+  readonly askRename: (side: Side, name: string) => void;
+  readonly rename: (to: string) => void;
+  readonly cancelRename: () => void;
   readonly stopTransfer: () => void;
   readonly hideTransfer: () => void;
   readonly elevate: () => void;
@@ -227,6 +239,7 @@ const commanderDefaults: CommanderSource = {
   readingArchives: new Map(),
   askingPassword: undefined,
   makingFolder: undefined,
+  renaming: undefined,
   noAccess: undefined,
   resized: undefined,
   filters: new Map(),
@@ -604,9 +617,12 @@ export function createCommanderStore(
       if (filters !== get().filters) {
         set({ filters });
       }
-      const { deleting, transferring, makingFolder } = get();
+      const { deleting, transferring, makingFolder, renaming } = get();
       if (makingFolder !== undefined && !stillShown(get().view, makingFolder)) {
         set({ makingFolder: undefined });
+      }
+      if (renaming !== undefined && !stillShown(get().view, renaming)) {
+        set({ renaming: undefined });
       }
       if (deleting !== undefined && !stillShown(get().view, deleting)) {
         set({ deleting: undefined });
@@ -943,6 +959,21 @@ export function createCommanderStore(
         }
       },
       cancelNewFolder: () => set({ makingFolder: undefined }),
+      askRename: (side, name) =>
+        onDisk(side, (tab, folder) =>
+          set({ renaming: { tab, side, folder, name } }),
+        ),
+      rename: (to) => {
+        const { renaming, view } = get();
+        if (renaming === undefined) {
+          return;
+        }
+        set({ renaming: undefined });
+        if (to !== baseNameOf(renaming.name, view.platform)) {
+          post({ type: 'rename', ...renaming, to });
+        }
+      },
+      cancelRename: () => set({ renaming: undefined }),
       answerClash: (answer, all) => {
         const { transfer } = get();
         if (transfer?.clash !== undefined) {

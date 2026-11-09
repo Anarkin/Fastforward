@@ -98,6 +98,18 @@ suite('Commander keys', () => {
     });
   });
 
+  test('asks for the new name of the file or folder selected on Shift+F6, of no other marked, and of nothing on the parent folder', () => {
+    const rename = pressed('F6', { shiftKey: true });
+    assert.deepStrictEqual(
+      paneKey(rename, at('a.txt', { marked: new Set(['b.txt']) })),
+      { act: { kind: 'rename', name: 'a.txt' } },
+    );
+    assert.deepStrictEqual(paneKey(rename, at('docs')), {
+      act: { kind: 'rename', name: 'docs' },
+    });
+    assert.deepStrictEqual(paneKey(rename, at('..')), {});
+  });
+
   test('asks for a new folder on F7, whatever is selected', () => {
     assert.deepStrictEqual(paneKey(pressed('F7'), at('a.txt')), {
       act: { kind: 'newFolder' },
