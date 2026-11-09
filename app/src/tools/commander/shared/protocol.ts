@@ -278,6 +278,13 @@ export type CommanderToHost =
       readonly command: FolderCommand;
     }
   | {
+      readonly type: 'enterArchive';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name: string;
+    }
+  | {
       readonly type: 'openOnSide';
       readonly tab: string;
       readonly from: Side;
@@ -431,6 +438,7 @@ export type CommanderToWebview =
       readonly forward: boolean;
       readonly elevated: boolean;
       readonly binOff?: true;
+      readonly archive?: string;
       readonly selected: string | undefined;
       readonly flat?: number;
     }

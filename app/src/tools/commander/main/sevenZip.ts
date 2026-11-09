@@ -199,6 +199,12 @@ async function extracted(
   }
 }
 
+export function sevenZipReaderAt(program: string): ArchiveReader | undefined {
+  return fs.existsSync(program)
+    ? sevenZipReader(sevenZipAt(program))
+    : undefined;
+}
+
 export function sevenZipReader(sevenZip: SevenZip): ArchiveReader {
   return {
     list: (file, signal) => listed(sevenZip, file, signal),

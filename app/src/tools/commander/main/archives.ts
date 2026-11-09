@@ -129,6 +129,30 @@ export type Opening =
   | { readonly kind: 'opened'; readonly archive: OpenedArchive }
   | { readonly kind: 'refused'; readonly reason: string };
 
+export interface ArchiveAccess {
+  open(file: string, signal?: AbortSignal): Promise<Opening>;
+  within(
+    folder: string,
+  ): { readonly archive: OpenedArchive; readonly inner: string[] } | undefined;
+  fileHolding(folder: string): Promise<string | undefined>;
+}
+
+export function workFolders(root: string): {
+  readonly next: () => Promise<string>;
+  readonly clear: () => Promise<void>;
+} {
+  return {
+    next: async () => {
+      await fs.promises.mkdir(root, { recursive: true });
+      return fs.promises.mkdtemp(path.join(root, 'work-'));
+    },
+    clear: () =>
+      fs.promises
+        .rm(root, { recursive: true, force: true, maxRetries: 3 })
+        .catch(() => undefined),
+  };
+}
+
 const tarName = /\.tar$/i;
 
 export async function filesUnder(folder: string): Promise<string[]> {
@@ -144,7 +168,7 @@ function reasonOfError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export class Archives {
+export class Archives implements ArchiveAccess {
   private readonly opened = new Map<string, OpenedArchive>();
 
   constructor(

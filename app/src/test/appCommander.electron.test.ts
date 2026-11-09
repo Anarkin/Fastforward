@@ -20,6 +20,7 @@ import {
   waitForFocus,
 } from './appFixtures';
 import { removeFolder, tempFolder } from './repositories';
+import { storedZip } from './zips';
 
 const colorOf = (locator: Locator) =>
   locator.evaluate((element) => getComputedStyle(element).color);
@@ -579,6 +580,41 @@ suite('App commander', () => {
     await waitForFocus(
       right().locator('.virtual-rows'),
       'the list of the right side',
+    );
+  });
+
+  test('enters a zip from the menu of the file through 7-Zip, listing what it holds as the folders of the side, and leaves it going back selecting the zip', async () => {
+    const zip = path.join(opened, 'packed.zip');
+    fs.writeFileSync(
+      zip,
+      storedZip([
+        ['docs/readme.md', '# readme'],
+        ['top.txt', 'top'],
+      ]),
+    );
+    const zipRow = right().locator('.commander-row', { hasText: 'packed' });
+    await zipRow.waitFor();
+    await zipRow.locator('.commander-name').click({ button: 'right' });
+    await page
+      .locator('.context-menu .menu-item', {
+        hasText: strings.commander.tryEnterArchive,
+      })
+      .click();
+    await waitFor(
+      async () => (await rowNames()).join() === '..,docs,top.txt',
+      'the zip to be listed as a folder',
+    );
+
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('Alt+ArrowLeft');
+    await waitFor(
+      async () => (await selected()).includes('packed'),
+      'the folder of the zip with the zip selected',
+    );
+    fs.rmSync(zip);
+    await waitFor(
+      async () => !(await rowNames()).includes('packed.zip'),
+      'the zip to be gone',
     );
   });
 
@@ -4209,6 +4245,7 @@ suite('App commander', () => {
         await appMenu.waitFor();
         assert.match(await selected(), /menu/);
         assert.deepStrictEqual(await appMenuItems(), [
+          strings.commander.tryEnterArchive,
           strings.commander.showMoreOptions,
         ]);
         const choosing = appMenu
@@ -4250,6 +4287,7 @@ suite('App commander', () => {
         await page.keyboard.press('Shift+F10');
         await appMenu.waitFor();
         assert.deepStrictEqual(await appMenuItems(), [
+          strings.commander.tryEnterArchive,
           strings.commander.showMoreOptions,
         ]);
         await page.keyboard.press('Escape');

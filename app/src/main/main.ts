@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -70,11 +71,16 @@ import {
   watchTree,
 } from '../tools/commander/main/watch';
 import { isFolder } from '../tools/git/main/cli/repository';
+import { Archives, workFolders } from '../tools/commander/main/archives';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
 import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { transferProcess } from '../tools/commander/main/transferProcess';
+import {
+  sevenZipProgram,
+  sevenZipReaderAt,
+} from '../tools/commander/main/sevenZip';
 import {
   readClipboardFiles,
   writeClipboardFiles,
@@ -197,6 +203,13 @@ async function start(asked: readonly string[]): Promise<void> {
   process.on('unhandledRejection', (reason) => log.error(reason));
 
   const profile = app.getPath('userData');
+  const archiveWork = workFolders(
+    path.join(
+      app.getPath('temp'),
+      'fastforward-archives',
+      createHash('sha256').update(profile).digest('hex').slice(0, 16),
+    ),
+  );
   const defaults = readDefaults(path.join(dist, 'settings.json'));
   const userSettingsFile = path.join(profile, 'settings.user.json');
   const defaultSettingsCopy = path.join(profile, 'settings.defaults.json');
@@ -340,7 +353,7 @@ async function start(asked: readonly string[]): Promise<void> {
     app,
     () => asking?.quit(),
     () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
-    stopRunningGit,
+    () => Promise.all([stopRunningGit(), archiveWork.clear()]),
   );
   const loading = window.loadURL(`${appOrigin}/index.html`);
   void loading.catch((error: unknown) => {
@@ -402,6 +415,7 @@ async function start(asked: readonly string[]): Promise<void> {
       tab.view === true && tab.root !== undefined ? [tab.root] : [],
     ),
   );
+  await archiveWork.clear();
   keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
   const gitTool = new GitTool(
     log,
@@ -562,6 +576,19 @@ async function start(asked: readonly string[]): Promise<void> {
         );
       },
     }),
+    archives: new Archives(
+      sevenZipReaderAt(
+        sevenZipProgram({
+          packaged: app.isPackaged,
+          resourcesPath: process.resourcesPath,
+          appPath: app.getAppPath(),
+          platform: process.platform,
+          arch: process.arch,
+        }),
+      ),
+      process.platform,
+      archiveWork.next,
+    ),
     realPath: (link) => fs.promises.realpath(link),
     openFile: (file) => shell.openPath(file),
     trash: (file) => shell.trashItem(file),

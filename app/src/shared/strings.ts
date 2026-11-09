@@ -545,6 +545,9 @@ export const strings = {
       `${name} could not be opened: ${reason}`,
     deleteFailed: (name: string, reason: string) =>
       `${name} could not be deleted: ${reason}`,
+    notArchive: (name: string, reason: string) =>
+      `${name} could not be opened as an archive: ${reason}`,
+    tryEnterArchive: 'Try Enter Archive',
     sevenZipEnded: (code: number | null) =>
       code === null ? '7-Zip was stopped.' : `7-Zip ended with code ${code}.`,
     noSevenZip: 'The app has no 7-Zip to open archives with.',

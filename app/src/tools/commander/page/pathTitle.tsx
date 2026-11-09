@@ -16,20 +16,26 @@ export function PathTitle({
   path,
   hidden,
   color,
+  coloredPart,
   flat = false,
   children,
 }: {
   readonly path: string;
   readonly hidden: readonly boolean[];
   readonly color?: string;
+  readonly coloredPart?: number;
   readonly flat?: boolean;
   readonly children?: ReactNode;
 }) {
   const parts = pathParts(path);
   const last = parts.length - 1;
   const hiddenAt = (index: number) => (hidden[index] ? ' hidden' : '');
-  const style: CSSProperties | undefined =
-    color === undefined ? undefined : { '--file-color': color };
+  const colored = color === undefined ? undefined : (coloredPart ?? last);
+  const coloredAt = (index: number) => (index === colored ? ' colored' : '');
+  const styleAt = (index: number): CSSProperties | undefined =>
+    index === colored && color !== undefined
+      ? { '--file-color': color }
+      : undefined;
   return (
     <span className="column-name path-title">
       {children}
@@ -38,7 +44,11 @@ export function PathTitle({
           <span className="path-folder">
             <span dir="ltr">
               {parts.slice(0, last).map((part, index) => [
-                <span key={part.path} className={`path-part${hiddenAt(index)}`}>
+                <span
+                  key={part.path}
+                  className={`path-part${coloredAt(index)}${hiddenAt(index)}`}
+                  style={styleAt(index)}
+                >
                   {part.name}
                 </span>,
                 part.separator,
@@ -49,8 +59,8 @@ export function PathTitle({
         <span className="path-end">
           {last >= 0 && (
             <span
-              className={`path-name${color === undefined ? '' : ' colored'}${hiddenAt(last)}`}
-              style={style}
+              className={`path-name${coloredAt(last)}${hiddenAt(last)}`}
+              style={styleAt(last)}
             >
               {parts[last].name}
               {parts[last].separator}

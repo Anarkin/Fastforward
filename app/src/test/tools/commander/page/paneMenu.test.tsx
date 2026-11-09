@@ -231,7 +231,10 @@ suite('Commander menu on a side', () => {
 
         rightClick(rowNamed(main, 'notes'));
         assert.strictEqual(selected(), 'notes.txt');
-        assert.deepStrictEqual(menu(), [strings.commander.showMoreOptions]);
+        assert.deepStrictEqual(menu(), [
+          strings.commander.tryEnterArchive,
+          strings.commander.showMoreOptions,
+        ]);
 
         assert.deepStrictEqual(posted, [
           {

@@ -38,12 +38,14 @@ const rows = rowsOf(
 
 type Chosen =
   | { readonly folder: FolderCommand; readonly name: string | undefined }
+  | { readonly archive: string }
   | { readonly system: readonly string[] };
 
 function menuOf(target: MenuTarget, windows = true) {
   const chosen: Chosen[] = [];
   const items = fileMenuItems(target, {
     onFolder: (command, name) => chosen.push({ folder: command, name }),
+    onEnterArchive: (name) => chosen.push({ archive: name }),
     onSystemMenu: windows
       ? (names) => chosen.push({ system: names })
       : undefined,
@@ -97,12 +99,14 @@ suite('Commander file menu', () => {
       inRepository: false,
     });
     assert.deepStrictEqual(menuTargetOf(rows, 'photo.png', undefined, false), {
-      kind: 'image',
+      kind: 'file',
       name: 'photo.png',
+      image: true,
     });
     assert.deepStrictEqual(menuTargetOf(rows, 'notes.txt', undefined, false), {
-      kind: 'items',
-      names: ['notes.txt'],
+      kind: 'file',
+      name: 'notes.txt',
+      image: false,
     });
     assert.deepStrictEqual(
       menuTargetOf(rows, 'docs', new Set(['docs', 'notes.txt']), false),
@@ -169,10 +173,11 @@ suite('Commander file menu', () => {
   });
 
   test('offers one image to edit, doing nothing yet, as the image editor is still to come, and no SVG', () => {
-    const { items } = menuOf({ kind: 'image', name: 'photo.png' });
+    const { items } = menuOf({ kind: 'file', name: 'photo.png', image: true });
     const [edit] = items;
     assert.deepStrictEqual(labels(items), [
       strings.commander.editImage,
+      strings.commander.tryEnterArchive,
       '-',
       strings.commander.showMoreOptions,
     ]);
@@ -180,16 +185,33 @@ suite('Commander file menu', () => {
     assert.notStrictEqual(edit.disabled, true);
     assert.strictEqual(edit.onClick, undefined);
     assert.deepStrictEqual(menuTargetOf(rows, 'logo.svg', undefined, false), {
-      kind: 'items',
-      names: ['logo.svg'],
+      kind: 'file',
+      name: 'logo.svg',
+      image: false,
     });
+  });
+
+  test('offers one file to try entering as an archive, whatever its name, asking for it by its name, and no items marked together', () => {
+    const menu = menuOf(
+      { kind: 'file', name: 'notes.txt', image: false },
+      false,
+    );
+    assert.deepStrictEqual(labels(menu.items), [
+      strings.commander.tryEnterArchive,
+    ]);
+    menu.choose(strings.commander.tryEnterArchive);
+    assert.deepStrictEqual(menu.chosen, [{ archive: 'notes.txt' }]);
+    assert.deepStrictEqual(
+      labels(menuOf({ kind: 'items', names: ['a.zip', 'b.zip'] }, false).items),
+      [],
+    );
   });
 
   test('shows the menu of Windows for what the menu is on, the folder shown by no name, and only it for other items', () => {
     const chosen = [
       folderShown(false),
       docs(false),
-      { kind: 'image', name: 'photo.png' } as const,
+      { kind: 'file', name: 'photo.png', image: true } as const,
       { kind: 'items', names: ['docs', 'notes.txt'] } as const,
     ].flatMap((target) => {
       const menu = menuOf(target);

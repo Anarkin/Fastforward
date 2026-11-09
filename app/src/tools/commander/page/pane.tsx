@@ -54,8 +54,9 @@ import { MenuButton } from '../../../ui/menu';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
 import { strings } from '../../../shared/strings';
-import { fileColorOf } from './fileColors';
-import { PathTitle } from './pathTitle';
+import { fileColorOf, type FileColors } from './fileColors';
+import { nameOf, PathTitle } from './pathTitle';
+import { pathParts } from '../shared/paths';
 import { bookmarkMenu, bookmarkOf } from './bookmarks';
 import { paneKey, type PaneAct } from './paneKeys';
 
@@ -358,6 +359,27 @@ function BookmarkButton({
   );
 }
 
+function archivePart(
+  archive: string,
+  fileColors: FileColors,
+): { readonly color?: string; readonly coloredPart: number } {
+  const color = fileColorOf(
+    {
+      name: nameOf(archive),
+      folder: false,
+      link: false,
+      hidden: false,
+      size: undefined,
+      modified: undefined,
+    },
+    fileColors,
+  );
+  return {
+    ...(color !== undefined && { color }),
+    coloredPart: pathParts(archive).length - 1,
+  };
+}
+
 export function Pane({
   side,
   driveTrigger,
@@ -458,11 +480,12 @@ export function Pane({
     at: { readonly x: number; readonly y: number },
   ) => {
     const target = menuTargetOf(rows, key, marked, pane?.inRepository === true);
-    if (target === undefined) {
+    if (target === undefined || pane?.archive !== undefined) {
       return;
     }
     const items = fileMenuItems(target, {
       onFolder: (command, name) => actions.folderCommand(side, name, command),
+      onEnterArchive: (name) => actions.enterArchive(side, name),
       onSystemMenu:
         platform === 'win32'
           ? (names) => onShellMenu(names, at, false)
@@ -884,6 +907,8 @@ export function Pane({
           <PathTitle
             path={pane?.folder ?? ''}
             hidden={pane?.hidden ?? []}
+            {...(pane?.archive !== undefined &&
+              archivePart(pane.archive, fileColors))}
             flat={pane?.flat !== undefined}
           >
             {pane?.elevated && (
@@ -933,7 +958,10 @@ export function Pane({
           }
         }}
         onDragOver={(event) => {
-          if (!event.dataTransfer.types.includes('Files')) {
+          if (
+            !event.dataTransfer.types.includes('Files') ||
+            pane?.archive !== undefined
+          ) {
             return;
           }
           event.preventDefault();
@@ -952,7 +980,10 @@ export function Pane({
           }
         }}
         onDrop={(event) => {
-          if (!event.dataTransfer.types.includes('Files')) {
+          if (
+            !event.dataTransfer.types.includes('Files') ||
+            pane?.archive !== undefined
+          ) {
             return;
           }
           event.preventDefault();

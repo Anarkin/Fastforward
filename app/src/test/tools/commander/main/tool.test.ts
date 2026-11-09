@@ -28,6 +28,12 @@ import {
 } from '../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
 import {
+  ArchiveTree,
+  type ArchiveAccess,
+  type ArchiveItem,
+  type OpenedArchive,
+} from '../../../../tools/commander/main/archives';
+import {
   maxBytesAsked,
   maxColoredBytes,
 } from '../../../../tools/commander/shared/protocol';
@@ -116,6 +122,7 @@ type Naming =
   | 'drag'
   | 'openRepository'
   | 'folderCommand'
+  | 'enterArchive'
   | 'openOnSide';
 
 type Unnamed<Message> = Message extends { readonly type: Naming }
@@ -201,6 +208,54 @@ function commander(
     },
     drives: () => Promise.resolve(drives),
     hidden: (each) => Promise.resolve(path.basename(each).startsWith('.')),
+  };
+  const archived = new Map<string, readonly ArchiveItem[] | string>();
+  const openedArchives = new Map<string, OpenedArchive>();
+  const archivesOf = new WeakMap<readonly ArchiveItem[], OpenedArchive>();
+  const archives: ArchiveAccess = {
+    open: (opening) => {
+      const items = archived.get(opening);
+      if (items === undefined || typeof items === 'string') {
+        return Promise.resolve({
+          kind: 'refused',
+          reason: items ?? 'Cannot open the file as archive',
+        });
+      }
+      const archive = archivesOf.get(items) ?? {
+        file: opening,
+        version: String(openedArchives.size),
+        source: opening,
+        tree: new ArchiveTree(items, 'linux'),
+      };
+      archivesOf.set(items, archive);
+      openedArchives.set(opening, archive);
+      return Promise.resolve({ kind: 'opened', archive });
+    },
+    within: (inside) => {
+      for (const [archiveFile, archive] of openedArchives) {
+        if (
+          inside === archiveFile ||
+          inside.startsWith(`${archiveFile}${path.sep}`)
+        ) {
+          return {
+            archive,
+            inner: path
+              .relative(archiveFile, inside)
+              .split(path.sep)
+              .filter((part) => part !== ''),
+          };
+        }
+      }
+      return undefined;
+    },
+    fileHolding: (inside) =>
+      Promise.resolve(
+        [...archived.keys()].find(
+          (archiveFile) =>
+            inside === archiveFile ||
+            inside.startsWith(`${archiveFile}${path.sep}`),
+        ),
+      ),
   };
   const places = new Map<string, { place: PdfPlace; file: string }>();
   const tool = new CommanderTool({
@@ -344,6 +399,7 @@ function commander(
         },
       };
     },
+    archives,
     root,
   });
   const page = new CommanderPage();
@@ -401,6 +457,7 @@ function commander(
       case 'drag':
       case 'openRepository':
       case 'folderCommand':
+      case 'enterArchive':
         return {
           ...message,
           folder: message.folder ?? folderShown(message.tab, message.side),
@@ -473,6 +530,7 @@ function commander(
     madeFolders,
     clipboard,
     dragged,
+    archived,
   };
 }
 
@@ -4169,5 +4227,306 @@ suite('The root', () => {
     assert.strictEqual(rootFolder('win32', {}), 'C:\\');
     assert.strictEqual(rootFolder('darwin', { SystemDrive: 'D:' }), '/');
     assert.strictEqual(rootFolder('linux', {}), '/');
+  });
+});
+
+const archiveItem = (itemPath: string): ArchiveItem => ({
+  path: itemPath,
+  folder: false,
+  size: 1,
+  modified: 0,
+  hiddenAttribute: false,
+  link: false,
+  encrypted: false,
+});
+
+const zipped = [
+  archiveItem('docs/readme.md'),
+  archiveItem('docs/deep/notes.md'),
+  archiveItem('top.txt'),
+];
+
+suite('Commander tool in archives', () => {
+  test('enters an archive the page asks to, listing it as a folder by a path through the archive, going into its folders and out again with .., selecting where it came from', async () => {
+    const { tool, page, send, archived } = commander({
+      [root]: [file('a.zip'), file('notes.txt')],
+    });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
+    await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+    await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `right ${at('a.zip')} ↑: docs top.txt`,
+      `right ${at('a.zip', 'docs')} ↑: readme.md deep`,
+      `right ${at('a.zip')} ↑: docs top.txt [docs]`,
+      `right ${root}: a.zip notes.txt [a.zip]`,
+    ]);
+    assert.deepStrictEqual(
+      page
+        .of('listing')
+        .slice(2)
+        .map((listing) => listing.archive),
+      [at('a.zip'), at('a.zip'), at('a.zip'), undefined],
+    );
+  });
+
+  test('says why a file could not be entered as an archive, staying where it was, and enters nothing a side does not list, a folder, or anything from inside an archive', async () => {
+    const { tool, page, send, notices, archived } = commander({
+      [root]: [file('a.zip'), file('notes.txt'), folder('Users')],
+    });
+    archived.set(at('a.zip'), [archiveItem('inner.zip')]);
+    archived.set(at('a.zip', 'inner.zip'), zipped);
+    await tool.show(page, tab);
+
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'notes.txt',
+    });
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.notArchive(
+          'notes.txt',
+          'Cannot open the file as archive',
+        ),
+      },
+    ]);
+    for (const name of ['gone.zip', 'Users', '..']) {
+      await send({ type: 'enterArchive', tab: '1', side: 'right', name });
+    }
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'inner.zip',
+    });
+
+    assert.strictEqual(notices.length, 1);
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `right ${at('a.zip')} ↑: inner.zip`,
+    ]);
+  });
+
+  test('enters on a side an archive the other side has selected, and shows there the folder of a file that is no archive, as before', async () => {
+    const { tool, page, send, archived } = commander({
+      [root]: [file('a.zip'), file('notes.txt')],
+    });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+
+    for (const name of ['a.zip', 'notes.txt']) {
+      await send({
+        type: 'openOnSide',
+        tab: '1',
+        from: 'left',
+        side: 'right',
+        name,
+      });
+    }
+    await send({
+      type: 'openOnSide',
+      tab: '1',
+      from: 'left',
+      side: 'left',
+      name: 'a.zip',
+    });
+
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `right ${at('a.zip')} ↑: docs top.txt`,
+      `right ${root}: a.zip notes.txt [a.zip]`,
+      `left ${at('a.zip')} ↑: docs top.txt`,
+    ]);
+  });
+
+  test('lists a folder inside an archive it has not opened, going through the archive the path runs through, as a side comes back there after a restart', async () => {
+    const state = new FakeStore();
+    await state.update('sides', { 1: { right: at('a.zip', 'docs') } });
+    const { tool, page, archived } = commander(
+      { [root]: [file('a.zip')] },
+      [],
+      undefined,
+      state,
+    );
+    archived.set(at('a.zip'), zipped);
+
+    await tool.show(page, tab);
+
+    assert.deepStrictEqual(
+      page.listings().filter((listing) => listing.startsWith('right')),
+      [`right ${at('a.zip', 'docs')} ↑: readme.md deep`],
+    );
+  });
+
+  test('watches the archive a side is inside, listing it again once it changes, and goes to the nearest folder still there once the folder shown is gone from it', async () => {
+    const { tool, page, send, watched, change, archived } = commander({
+      [root]: [file('a.zip')],
+    });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
+    await send({ type: 'open', tab: '1', side: 'right', name: 'deep' });
+    assert.deepStrictEqual(watched(), [root, at('a.zip')].toSorted());
+
+    archived.set(at('a.zip'), [...zipped, archiveItem('docs/deep/more.md')]);
+    await change(at('a.zip'));
+    assert.strictEqual(
+      page.listings().at(-1),
+      `right ${at('a.zip', 'docs', 'deep')} ↑: notes.md more.md`,
+    );
+
+    archived.set(at('a.zip'), [archiveItem('docs/readme.md')]);
+    await change(at('a.zip'));
+    await waitFor(
+      () =>
+        page.listings().at(-1) ===
+        `right ${at('a.zip', 'docs')} ↑: readme.md [deep]`,
+      'the folder inside the archive still there',
+    );
+  });
+
+  test('does nothing inside an archive that would change it or reach a file in it, as nothing is extracted yet, nor copies or moves into it', async () => {
+    const { tool, page, send, notices, archived, ...done } = commander({
+      [root]: [file('a.zip'), file('notes.txt')],
+    });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    const inside = { tab: '1', side: 'right' } as const;
+
+    await send({
+      ...inside,
+      type: 'delete',
+      names: ['top.txt'],
+      permanently: false,
+    });
+    await send({
+      ...inside,
+      type: 'transfer',
+      names: ['top.txt'],
+      target: root,
+      move: false,
+    });
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'left',
+      names: ['notes.txt'],
+      target: at('a.zip'),
+      move: true,
+    });
+    await send({ ...inside, type: 'newFolder', name: 'made' });
+    await send({ ...inside, type: 'paste' });
+    await send({ ...inside, type: 'copyToClipboard', names: ['top.txt'] });
+    await send({ ...inside, type: 'drag', names: ['top.txt'] });
+    await send({
+      ...inside,
+      type: 'shellMenu',
+      names: ['top.txt'],
+      x: 1,
+      y: 1,
+      extended: false,
+    });
+    await send({
+      ...inside,
+      type: 'folderCommand',
+      name: 'docs',
+      command: 'newTerminal',
+    });
+    await send({ ...inside, type: 'addBookmark', folder: at('a.zip') });
+    await send({ ...inside, type: 'view', name: 'top.txt' });
+    await send({ ...inside, type: 'open', name: 'top.txt' });
+    await send({ ...inside, type: 'flat', flat: true });
+    await send({
+      type: 'compare',
+      tab: '1',
+      files: [
+        { side: 'right', folder: at('a.zip'), name: 'top.txt' },
+        { side: 'left', folder: root, name: 'notes.txt' },
+      ],
+    });
+    await tool.dropped(page, [at('notes.txt')], {
+      type: 'drop',
+      tab: '1',
+      side: 'right',
+      folder: at('a.zip'),
+      move: false,
+    });
+
+    assert.deepStrictEqual(notices, []);
+    assert.deepStrictEqual(
+      {
+        trashed: done.trashed,
+        transfers: done.transfers.length,
+        madeFolders: done.madeFolders,
+        clipboard: done.clipboard.files,
+        dragged: done.dragged,
+        menus: done.menus,
+        openedIn: done.openedIn,
+        bookmarks: done.settings.bookmarks,
+        viewed: done.viewed,
+        opened: done.opened,
+        compared: done.compared,
+        watchedTrees: done.watchedTrees(),
+      },
+      {
+        trashed: [],
+        transfers: 0,
+        madeFolders: [],
+        clipboard: [],
+        dragged: [],
+        menus: [],
+        openedIn: [],
+        bookmarks: [],
+        viewed: [],
+        opened: [],
+        compared: [],
+        watchedTrees: [],
+      },
+    );
+  });
+
+  test('gives the folder holding the archive as the folder of the tab while its active side is inside the archive', async () => {
+    const { tool, page, send, archived } = commander({
+      [root]: [file('a.zip')],
+    });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
+
+    assert.strictEqual(tool.folderOf(tab), root);
   });
 });

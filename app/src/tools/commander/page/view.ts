@@ -39,6 +39,7 @@ interface Listed {
   readonly forward: boolean;
   readonly elevated: boolean;
   readonly binOff?: true;
+  readonly archive?: string;
 }
 
 interface FlatShown {
@@ -265,7 +266,17 @@ function sameSort(one: Sort, other: Sort): boolean {
 function relisted(
   pane: PaneView | undefined,
   sort: Sort,
-  { folder, hidden, entries, parent, back, forward, elevated, binOff }: Listed,
+  {
+    folder,
+    hidden,
+    entries,
+    parent,
+    back,
+    forward,
+    elevated,
+    binOff,
+    archive,
+  }: Listed,
   showHidden: boolean,
   fileColors: FileColors,
   selected: string | undefined,
@@ -290,6 +301,7 @@ function relisted(
     forward,
     elevated,
     ...(binOff && { binOff }),
+    ...(archive !== undefined && { archive }),
     sort,
     rows,
     selected: selectionAfter(selectionIn(pane), folder, rows, selected),

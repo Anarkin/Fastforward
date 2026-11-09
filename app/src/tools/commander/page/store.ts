@@ -145,6 +145,7 @@ interface CommanderActions {
     command: FolderCommand,
   ) => void;
   readonly openOnSide: (from: Side, side: Side, name: string) => void;
+  readonly enterArchive: (side: Side, name: string) => void;
   readonly drive: (side: Side, drive: string) => void;
   readonly listDrives: () => void;
   readonly addBookmark: (side: Side) => void;
@@ -639,6 +640,14 @@ export function createCommanderStore(
         send(tab, folder);
       }
     };
+    const onDisk = (
+      side: Side,
+      send: (tab: string, folder: string) => void,
+    ) => {
+      if (get().view.panes[side]?.archive === undefined) {
+        onPane(side, send);
+      }
+    };
     const sortOf = (side: Side) => {
       const { panes, sorts } = get().view;
       return panes[side]?.sort ?? sorts[side];
@@ -754,15 +763,15 @@ export function createCommanderStore(
       step: (side, step) =>
         onTab((tab) => post({ type: 'step', tab, side, step })),
       viewFile: (side, name) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           post({ type: 'view', tab, side, folder, name }),
         ),
       openRepository: (side, name) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),
         ),
       folderCommand: (side, name, command) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           post({
             type: 'folderCommand',
             tab,
@@ -776,11 +785,15 @@ export function createCommanderStore(
         onPane(from, (tab, folder) =>
           post({ type: 'openOnSide', tab, from, side, folder, name }),
         ),
+      enterArchive: (side, name) =>
+        onDisk(side, (tab, folder) =>
+          post({ type: 'enterArchive', tab, side, folder, name }),
+        ),
       drive: (side, drive) =>
         onTab((tab) => post({ type: 'drive', tab, side, drive })),
       listDrives: () => post({ type: 'listDrives' }),
       addBookmark: (side) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           post({ type: 'addBookmark', tab, side, folder }),
         ),
       removeBookmark: (folder) => post({ type: 'removeBookmark', folder }),
@@ -794,6 +807,12 @@ export function createCommanderStore(
         onTab((tab) => {
           const state = get();
           const { active, panes } = state.view;
+          if (
+            panes.left?.archive !== undefined ||
+            panes.right?.archive !== undefined
+          ) {
+            return;
+          }
           const files = filesToCompare(active, panes, {
             left: shownRowsOf(state, 'left').rows,
             right: shownRowsOf(state, 'right').rows,
@@ -801,7 +820,7 @@ export function createCommanderStore(
           post({ type: 'compare', tab, files: files ?? [] });
         }),
       shellMenu: (side, names, at, extended) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           post({
             type: 'shellMenu',
             tab,
@@ -814,7 +833,7 @@ export function createCommanderStore(
           }),
         ),
       askDelete: (side, names, permanently) =>
-        onPane(side, (tab, folder) => {
+        onDisk(side, (tab, folder) => {
           const binOff =
             !permanently && get().view.panes[side]?.binOff === true;
           set({
@@ -838,9 +857,10 @@ export function createCommanderStore(
       },
       cancelDelete: () => set({ deleting: undefined }),
       askTransfer: (side, names, move) =>
-        onPane(side, (tab, folder) => {
-          const target = get().view.panes[otherSide(side)]?.folder;
-          if (target !== undefined) {
+        onDisk(side, (tab, folder) => {
+          const other = get().view.panes[otherSide(side)];
+          const target = other?.folder;
+          if (target !== undefined && other?.archive === undefined) {
             set({
               transferring: { tab, side, folder, names, target, move },
             });
@@ -855,11 +875,11 @@ export function createCommanderStore(
       },
       cancelTransfer: () => set({ transferring: undefined }),
       copyToClipboard: (side, names) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           post({ type: 'copyToClipboard', tab, side, folder, names }),
         ),
       dropOn: (side, files, into, move) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           dropFiles(files, {
             type: 'drop',
             tab,
@@ -870,15 +890,15 @@ export function createCommanderStore(
           }),
         ),
       drag: (side, names) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           post({ type: 'drag', tab, side, folder, names }),
         ),
       paste: (side) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           post({ type: 'paste', tab, side, folder }),
         ),
       askNewFolder: (side) =>
-        onPane(side, (tab, folder) =>
+        onDisk(side, (tab, folder) =>
           set({ makingFolder: { tab, side, folder } }),
         ),
       makeFolder: (name) => {
@@ -968,15 +988,18 @@ export function createCommanderStore(
         }
         reconcileFlats();
       },
-      flat: (side) =>
-        onTab((tab) =>
-          post({
-            type: 'flat',
-            tab,
-            side,
-            flat: get().view.panes[side]?.flat === undefined,
-          }),
-        ),
+      flat: (side) => {
+        if (get().view.panes[side]?.archive === undefined) {
+          onTab((tab) =>
+            post({
+              type: 'flat',
+              tab,
+              side,
+              flat: get().view.panes[side]?.flat === undefined,
+            }),
+          );
+        }
+      },
       stopReading: (side) =>
         onTab((tab) => post({ type: 'stopReading', tab, side })),
       keepScroll: (key, offset) => scrolls.keep(key, offset),

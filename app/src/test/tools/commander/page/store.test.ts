@@ -1047,3 +1047,53 @@ suite('The commander store in flat view', () => {
     assert.deepStrictEqual(drops().length, 2);
   });
 });
+
+suite('The commander store in archives', () => {
+  test('asks and sends nothing that would change an archive or reach a file in it, for a side inside one or a copy into one, sending what moves through it and the archive to enter from a folder', () => {
+    const { posted, store } = shown();
+    store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
+    store.getState().receive({ ...listing('D:\\photos'), side: 'right' });
+    const before = posted.length;
+    const actions = store.getState();
+
+    actions.askDelete('left', ['a.txt'], false);
+    actions.askTransfer('left', ['a.txt'], false);
+    actions.askTransfer('right', ['b.txt'], true);
+    actions.askNewFolder('left');
+    actions.paste('left');
+    actions.copyToClipboard('left', ['a.txt']);
+    actions.drag('left', ['a.txt']);
+    actions.viewFile('left', 'a.txt');
+    actions.openRepository('left', 'docs');
+    actions.folderCommand('left', 'docs', 'newTerminal');
+    actions.addBookmark('left');
+    actions.shellMenu('left', ['a.txt'], { x: 1, y: 1 }, false);
+    actions.flat('left');
+    actions.compare();
+    actions.enterArchive('left', 'inner.zip');
+    actions.open('left', 'docs');
+    actions.enterArchive('right', 'b.zip');
+
+    const { deleting, transferring, makingFolder } = store.getState();
+    assert.deepStrictEqual(
+      [deleting, transferring, makingFolder],
+      [undefined, undefined, undefined],
+    );
+    assert.deepStrictEqual(posted.slice(before), [
+      {
+        type: 'open',
+        tab: '1',
+        side: 'left',
+        folder: 'C:\\a.zip',
+        name: 'docs',
+      },
+      {
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        folder: 'D:\\photos',
+        name: 'b.zip',
+      },
+    ]);
+  });
+});

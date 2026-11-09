@@ -1,7 +1,7 @@
 import { imageType, vectorType } from '../../../shared/images';
 import { strings } from '../../../shared/strings';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { ImageIcon, ToolIcon } from '../../../ui/icons';
+import { FolderIcon, ImageIcon, ToolIcon } from '../../../ui/icons';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
 import { pointedKeys, type Row } from './listing';
 
@@ -11,11 +11,12 @@ export type MenuTarget =
       readonly name?: string;
       readonly inRepository: boolean;
     }
-  | { readonly kind: 'image'; readonly name: string }
+  | { readonly kind: 'file'; readonly name: string; readonly image: boolean }
   | { readonly kind: 'items'; readonly names: readonly string[] };
 
 export interface FileMenuActions {
   readonly onFolder: (command: FolderCommand, name: string | undefined) => void;
+  readonly onEnterArchive: (name: string) => void;
   readonly onSystemMenu: ((names: readonly string[]) => void) | undefined;
 }
 
@@ -47,8 +48,8 @@ export function menuTargetOf(
       inRepository: row.repository || inRepository,
     };
   }
-  if (row !== undefined && editsImage(only)) {
-    return { kind: 'image', name: only };
+  if (row !== undefined) {
+    return { kind: 'file', name: only, image: editsImage(only) };
   }
   return { kind: 'items', names };
 }
@@ -57,7 +58,7 @@ function namesOf(target: MenuTarget): readonly string[] {
   switch (target.kind) {
     case 'folder':
       return target.name === undefined ? [] : [target.name];
-    case 'image':
+    case 'file':
       return [target.name];
     case 'items':
       return target.names;
@@ -68,7 +69,7 @@ function namesOf(target: MenuTarget): readonly string[] {
 
 function ownItems(
   target: MenuTarget,
-  onFolder: FileMenuActions['onFolder'],
+  { onFolder, onEnterArchive }: FileMenuActions,
 ): ContextMenuItem[] {
   switch (target.kind) {
     case 'folder': {
@@ -103,8 +104,17 @@ function ownItems(
             ]),
       ];
     }
-    case 'image':
-      return [{ label: strings.commander.editImage, icon: <ImageIcon /> }];
+    case 'file':
+      return [
+        ...(target.image
+          ? [{ label: strings.commander.editImage, icon: <ImageIcon /> }]
+          : []),
+        {
+          label: strings.commander.tryEnterArchive,
+          icon: <FolderIcon />,
+          onClick: () => onEnterArchive(target.name),
+        },
+      ];
     case 'items':
       return [];
     default:
@@ -114,9 +124,10 @@ function ownItems(
 
 export function fileMenuItems(
   target: MenuTarget,
-  { onFolder, onSystemMenu }: FileMenuActions,
+  actions: FileMenuActions,
 ): ContextMenuItem[] {
-  const own = ownItems(target, onFolder);
+  const { onSystemMenu } = actions;
+  const own = ownItems(target, actions);
   if (onSystemMenu === undefined) {
     return own;
   }

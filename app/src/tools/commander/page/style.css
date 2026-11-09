@@ -266,6 +266,7 @@
   flex: none;
 }
 
+.path-part.colored,
 .path-name.colored {
   color: var(--file-color);
 }

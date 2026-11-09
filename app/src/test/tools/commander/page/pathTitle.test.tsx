@@ -10,6 +10,11 @@ const titled = (
 ) =>
   renderToStaticMarkup(<PathTitle path={path} hidden={hidden} color={color} />);
 
+const archived = (path: string) =>
+  renderToStaticMarkup(
+    <PathTitle path={path} hidden={[]} color="teal" coloredPart={2} />,
+  );
+
 suite('The path of a commander title', () => {
   test('shows the folders, the separator after them included, apart from the name, as the folders give way first when the path is too long, left to right within folders cut from their start', () => {
     assert.strictEqual(
@@ -36,6 +41,17 @@ suite('The path of a commander title', () => {
     assert.strictEqual(
       titled('C:\\Downloads\\order.eml', [false, false, false], 'orange'),
       '<span class="column-name path-title"><span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span><span class="path-part">Downloads</span>\\</span></span><span class="path-end"><span class="path-name colored" style="--file-color:orange">order.eml</span></span></span></span>',
+    );
+  });
+
+  test('colors the part asked for, as an archive the folder shown is inside is colored as its file, whether the path ends with it or goes on inside it', () => {
+    assert.strictEqual(
+      archived('C:\\Downloads\\a.zip\\docs'),
+      '<span class="column-name path-title"><span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span><span class="path-part">Downloads</span>\\<span class="path-part colored" style="--file-color:teal">a.zip</span>\\</span></span><span class="path-end"><span class="path-name">docs</span></span></span></span>',
+    );
+    assert.strictEqual(
+      archived('C:\\Downloads\\a.zip'),
+      '<span class="column-name path-title"><span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span><span class="path-part">Downloads</span>\\</span></span><span class="path-end"><span class="path-name colored" style="--file-color:teal">a.zip</span></span></span></span>',
     );
   });
 });
