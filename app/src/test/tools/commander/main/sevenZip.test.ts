@@ -237,6 +237,18 @@ suite('reasonOf', () => {
       'Unexpected end of archive There are data after the end of archive',
     );
     assert.strictEqual(
+      reasonOf(
+        {
+          code: 2,
+          output:
+            '--\nPath = cut-short.zip\nType = zip\nERRORS:\nUnexpected end of archive\nPhysical Size = 490\nCharacteristics = Local\n\n----------\n',
+          errors: '\nERRORS:\nUnexpected end of archive\n\nErrors: 1\n',
+        },
+        'cut-short.zip',
+      ),
+      'Unexpected end of archive',
+    );
+    assert.strictEqual(
       reasonOf({ code: 255, output: '', errors: '' }, 'a.zip'),
       '7-Zip ended with code 255.',
     );

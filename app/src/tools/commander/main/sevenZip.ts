@@ -152,9 +152,9 @@ function listedUnder(lines: readonly string[]): string[] {
   for (const line of lines.map((each) => each.trim())) {
     if (line === 'ERRORS:' || line === 'WARNINGS:') {
       under = true;
-    } else if (line === '') {
+    } else if (line === '' || line.includes(' = ')) {
       under = false;
-    } else if (under && !counted.test(line)) {
+    } else if (under && !counted.test(line) && !reasons.includes(line)) {
       reasons.push(line);
     }
   }
