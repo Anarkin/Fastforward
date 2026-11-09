@@ -6,6 +6,7 @@ import { lineKey, wholeLines } from './find';
 import { languageOf } from '../../../ui/languages';
 import type { SyntaxRange, SyntaxSource } from '../../../ui/syntaxEngine';
 import { colorer } from '../../../ui/syntax';
+import { partLine, type CodePart } from '../../../ui/syntaxParts';
 
 export type { SyntaxRange } from '../../../ui/syntaxEngine';
 export { languageOf } from '../../../ui/languages';
@@ -112,7 +113,12 @@ function sideSource(plan: SidePlan, text: string | undefined): NumberedSource {
   }
   return {
     plan,
-    source: { language, lines: lines.slice(0, keys.length), keys },
+    source: {
+      language,
+      lines: lines.slice(0, keys.length),
+      keys,
+      entire: true,
+    },
     numbers: Array.from({ length: keys.length }, (_, index) => index + 1),
   };
 }
@@ -170,6 +176,48 @@ function twinned(numbered: readonly NumberedSource[]): SyntaxSource[] {
   });
 }
 
+interface PlannedSource {
+  readonly source: SyntaxSource;
+  readonly blob?: string;
+}
+
+function plannedSources(
+  files: readonly DiffFile[],
+  whole: WholeFile | undefined,
+  texts: ReadonlyMap<string, LoadedText>,
+  open: ReadonlySet<number> | undefined,
+  chosen: string | undefined,
+): PlannedSource[] {
+  if (whole) {
+    const language = chosen ?? languageOf(whole.path);
+    const lines = wholeLines(whole).slice(0, maxSourceLines);
+    return language
+      ? [
+          {
+            source: {
+              language,
+              lines,
+              keys: lines.map((_, index) => lineKey(0, index)),
+            },
+          },
+        ]
+      : [];
+  }
+  const numbered = sidePlans(files, open, chosen).flatMap((plan) => {
+    const loaded = texts.get(textKey(plan.file.path, plan.side));
+    const awaited =
+      plan.wholeText &&
+      loaded !== undefined &&
+      loaded.blob !== plan.file.blobs?.[plan.side];
+    return awaited ? [] : [sideSource(plan, loaded?.text)];
+  });
+  return twinned(numbered).map((source, index) => {
+    const { plan } = numbered[index];
+    const blob = plan.file.blobs?.[plan.side];
+    return source.entire && blob !== undefined ? { source, blob } : { source };
+  });
+}
+
 export function syntaxSources(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,
@@ -177,23 +225,106 @@ export function syntaxSources(
   open?: ReadonlySet<number>,
   chosen?: string,
 ): SyntaxSource[] {
-  if (whole) {
-    const language = chosen ?? languageOf(whole.path);
-    const lines = wholeLines(whole).slice(0, maxSourceLines);
-    return language
-      ? [{ language, lines, keys: lines.map((_, index) => lineKey(0, index)) }]
-      : [];
-  }
-  return twinned(
-    sidePlans(files, open, chosen).flatMap((plan) => {
-      const loaded = texts.get(textKey(plan.file.path, plan.side));
-      const awaited =
-        plan.wholeText &&
-        loaded !== undefined &&
-        loaded.blob !== plan.file.blobs?.[plan.side];
-      return awaited ? [] : [sideSource(plan, loaded?.text)];
-    }),
+  return plannedSources(files, whole, texts, open, chosen).map(
+    ({ source }) => source,
   );
+}
+
+interface Kept {
+  readonly part: CodePart;
+  readonly generation: number;
+}
+
+const maxKeptLines = 200_000;
+const kept = new Map<string, Kept>();
+let keptLines = 0;
+const newestGenerations = new Map<string, number>();
+
+const newestGeneration = (language: string) =>
+  newestGenerations.get(language) ?? 0;
+
+function noteGeneration(language: string, generation: number) {
+  newestGenerations.set(
+    language,
+    Math.max(newestGeneration(language), generation),
+  );
+}
+
+const keptKey = (language: string, blob: string) => `${language}\n${blob}`;
+
+function forget(key: string, { part }: Kept) {
+  kept.delete(key);
+  keptLines -= part.ends.length;
+}
+
+function keptPart(language: string, blob: string): CodePart | undefined {
+  const key = keptKey(language, blob);
+  const found = kept.get(key);
+  if (found === undefined) {
+    return undefined;
+  }
+  forget(key, found);
+  if (found.generation < newestGeneration(language)) {
+    return undefined;
+  }
+  kept.set(key, found);
+  keptLines += found.part.ends.length;
+  return found.part;
+}
+
+export function keepColors(
+  language: string,
+  blob: string,
+  part: CodePart,
+  generation: number,
+): void {
+  noteGeneration(language, generation);
+  const key = keptKey(language, blob);
+  const before = keptPart(language, blob);
+  if (
+    generation < newestGeneration(language) ||
+    (before && before.ends.length >= part.ends.length)
+  ) {
+    return;
+  }
+  const replaced = kept.get(key);
+  if (replaced) {
+    forget(key, replaced);
+  }
+  kept.set(key, { part, generation });
+  keptLines += part.ends.length;
+  for (const [oldest, each] of kept) {
+    if (keptLines <= maxKeptLines) {
+      break;
+    }
+    forget(oldest, each);
+  }
+}
+
+export function keptColorsOf(
+  files: readonly DiffFile[],
+  open?: ReadonlySet<number>,
+  chosen?: string,
+): Map<string, readonly SyntaxRange[]> {
+  const found = new Map<string, readonly SyntaxRange[]>();
+  for (const { file, fileIndex, language, side, shown } of sidePlans(
+    files,
+    open,
+    chosen,
+  )) {
+    const blob = file.blobs?.[side];
+    const part = blob === undefined ? undefined : keptPart(language, blob);
+    if (part === undefined) {
+      continue;
+    }
+    for (const { owned, index, number } of shown) {
+      const ranges = owned ? partLine(part, number - 1) : undefined;
+      if (ranges !== undefined) {
+        found.set(lineKey(fileIndex, index), ranges);
+      }
+    }
+  }
+  return found;
 }
 
 export function textsToLoad(
@@ -321,28 +452,71 @@ export function useSyntax(
   highlight = true,
   chosen?: string,
 ): ReadonlyMap<string, readonly SyntaxRange[]> {
-  const sources = useMemo(
-    () => (highlight ? syntaxSources(files, whole, texts, open, chosen) : []),
+  const planned = useMemo(
+    () => (highlight ? plannedSources(files, whole, texts, open, chosen) : []),
     [highlight, files, whole, texts, open, chosen],
   );
   const [colored, setColored] = useState<Colored>();
   const shown = useRef<Colored>(undefined);
   useLayoutEffect(() => {
     const ranges = startingRanges(shown.current, files, whole, chosen, open);
+    const keptRanges =
+      highlight && whole === undefined
+        ? keptColorsOf(files, open, chosen)
+        : new Map<string, readonly SyntaxRange[]>();
+    for (const [key, line] of keptRanges) {
+      ranges.set(key, line);
+    }
+    const keptGenerations = new Map(
+      planned.map(({ source: { language } }) => [
+        language,
+        newestGeneration(language),
+      ]),
+    );
+    const languagesOfKeys = new Map(
+      planned.flatMap(({ source: { keys, language } }) =>
+        keys.flatMap((key) => (key === undefined ? [] : [[key, language]])),
+      ),
+    );
+    const ofWholeTexts = new Set(
+      planned.flatMap(({ source }) => (source.entire ? source.keys : [])),
+    );
     const publish = () => {
       shown.current = { files, whole, ranges: new Map(ranges), chosen };
       setColored(shown.current);
     };
     publish();
-    return sources.length === 0
+    return planned.length === 0
       ? undefined
-      : colorer().color(sources, (found) => {
-          for (const [key, line] of found) {
-            ranges.set(key, line);
-          }
-          publish();
-        });
-  }, [sources, files, whole, chosen, open]);
+      : colorer().color(
+          planned.map(({ source }) => source),
+          (found, generations) => {
+            for (const [language, generation] of Object.entries(generations)) {
+              noteGeneration(language, generation);
+            }
+            const newer = (language: string | undefined) =>
+              language !== undefined &&
+              (generations[language] ?? 0) >
+                (keptGenerations.get(language) ?? 0);
+            for (const [key, line] of found) {
+              if (
+                ofWholeTexts.has(key) ||
+                !keptRanges.has(key) ||
+                newer(languagesOfKeys.get(key))
+              ) {
+                ranges.set(key, line);
+              }
+            }
+            publish();
+          },
+          (index, part, generation) => {
+            const { source, blob } = planned[index] ?? {};
+            if (source !== undefined && blob !== undefined) {
+              keepColors(source.language, blob, part, generation);
+            }
+          },
+        );
+  }, [planned, highlight, files, whole, chosen, open]);
   return highlight && colored?.files === files && colored.whole === whole
     ? colored.ranges
     : noRanges;

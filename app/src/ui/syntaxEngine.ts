@@ -1,6 +1,7 @@
 import {
   createHighlighterCore,
   type HighlighterCore,
+  type LanguageRegistration,
   type ThemeRegistrationRaw,
 } from 'shiki/core';
 import { createOnigurumaEngine } from 'shiki/engine/oniguruma';
@@ -94,7 +95,10 @@ export interface SyntaxSource {
   readonly lines: readonly string[];
   readonly keys: readonly (string | undefined)[];
   readonly twin?: Twin;
+  readonly entire?: true;
 }
+
+type EntireColors = (source: number, lines: LineRanges) => void;
 
 const maxLineLength = 20_000;
 
@@ -108,6 +112,7 @@ interface Colors {
 const maxCachedLines = 100_000;
 const maxCachedChars = 8_000_000;
 const cache = new Map<string, Colors>();
+const cachedByFirstLine = new Map<string, Set<string>>();
 let cachedLines = 0;
 let cachedChars = 0;
 
@@ -120,8 +125,17 @@ function cached(key: string): Colors | undefined {
   return colors;
 }
 
+function textStart(key: string): number {
+  return key.indexOf('\n') + 1;
+}
+
 function textLength(key: string): number {
-  return key.length - key.indexOf('\n') - 1;
+  return key.length - textStart(key);
+}
+
+function firstLineOf(key: string): string {
+  const end = key.indexOf('\n', textStart(key));
+  return end === -1 ? key : key.slice(0, end);
 }
 
 function store(key: string, colors: Colors) {
@@ -129,16 +143,118 @@ function store(key: string, colors: Colors) {
     return;
   }
   cache.set(key, colors);
+  const firstLine = firstLineOf(key);
+  const alike = cachedByFirstLine.get(firstLine) ?? new Set();
+  cachedByFirstLine.set(firstLine, alike.add(key));
   cachedLines += colors.ranges.length;
   cachedChars += textLength(key);
-  for (const [oldest, { ranges }] of cache) {
+  for (const [oldest, colored] of cache) {
     if (cachedLines <= maxCachedLines && cachedChars <= maxCachedChars) {
       break;
     }
-    cache.delete(oldest);
-    cachedLines -= ranges.length;
-    cachedChars -= textLength(oldest);
+    uncache(oldest, colored);
   }
+}
+
+function uncache(key: string, { ranges }: Colors) {
+  cache.delete(key);
+  const firstLine = firstLineOf(key);
+  const alike = cachedByFirstLine.get(firstLine);
+  alike?.delete(key);
+  if (alike?.size === 0) {
+    cachedByFirstLine.delete(firstLine);
+  }
+  cachedLines -= ranges.length;
+  cachedChars -= textLength(key);
+}
+
+function languageOfKey(key: string): string {
+  return key.slice(0, textStart(key) - 1);
+}
+
+function forgetCached(languages: ReadonlySet<string>) {
+  for (const [key, colors] of cache) {
+    if (languages.has(languageOfKey(key))) {
+      uncache(key, colors);
+    }
+  }
+}
+
+const registered = new Map<string, LanguageRegistration>();
+const generations = new Map<string, number>();
+
+const generationOf = (language: string) => generations.get(language) ?? 0;
+
+function embeddersOf(loaded: ReadonlySet<string>): Set<string> {
+  const stale = new Set<string>();
+  const embeds = (language: string) =>
+    loaded.has(language) || stale.has(language);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const {
+      name,
+      embeddedLangs = [],
+      embeddedLangsLazy = [],
+    } of registered.values()) {
+      if (
+        !stale.has(name) &&
+        !loaded.has(name) &&
+        [...embeddedLangs, ...embeddedLangsLazy].some(embeds)
+      ) {
+        stale.add(name);
+        grew = true;
+      }
+    }
+  }
+  return stale;
+}
+
+function linesInCommon(key: string, other: string): number {
+  const from = textStart(key);
+  let low = from;
+  let high = Math.min(key.length, other.length);
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (key.slice(from, middle) === other.slice(from, middle)) {
+      low = middle;
+    } else {
+      high = middle - 1;
+    }
+  }
+  let lines = 0;
+  for (
+    let end = key.indexOf('\n', from);
+    end !== -1 && end < low;
+    end = key.indexOf('\n', end + 1)
+  ) {
+    lines += 1;
+  }
+  const endsLine = (text: string) => low === text.length || text[low] === '\n';
+  return endsLine(key) && endsLine(other) ? lines + 1 : lines;
+}
+
+interface CachedPrefix {
+  readonly ranges: LineRanges;
+  readonly states: readonly StateStack[];
+  readonly lines: number;
+  readonly generation: number;
+}
+
+function cachedPrefix(key: string): CachedPrefix | undefined {
+  let best: CachedPrefix | undefined;
+  for (const other of cachedByFirstLine.get(firstLineOf(key)) ?? []) {
+    const colors = cache.get(other);
+    const lines = linesInCommon(key, other);
+    if (colors?.states && lines > (best?.lines ?? 0)) {
+      best = {
+        ranges: colors.ranges,
+        states: colors.states,
+        lines,
+        generation: generationOf(languageOfKey(key)),
+      };
+    }
+  }
+  return best;
 }
 
 const tokenizeTimeLimit = 500;
@@ -210,8 +326,10 @@ interface PendingTwin {
 
 interface Pending {
   readonly source: SyntaxSource;
+  readonly index: number;
   readonly key: string;
   readonly twin?: PendingTwin;
+  readonly prefix?: CachedPrefix;
 }
 
 const keyOf = (source: SyntaxSource) =>
@@ -220,35 +338,51 @@ const keyOf = (source: SyntaxSource) =>
 export function uncachedSources(
   sources: readonly SyntaxSource[],
   ranges: Map<string, readonly SyntaxRange[]>,
+  entire?: EntireColors,
 ): Pending[] {
   const keys = sources.map(keyOf);
-  return sources.flatMap((source, index) => {
+  const colored = (source: SyntaxSource, index: number, lines: LineRanges) => {
+    apply(source, lines, ranges);
+    if (source.entire && lines.length === source.lines.length) {
+      entire?.(index, lines);
+    }
+  };
+  return sources.flatMap((source, index): Pending[] => {
     if (source.lines.length === 0) {
       return [];
     }
     const key = keys[index];
     const found = cached(key);
     if (found) {
-      apply(source, found.ranges, ranges);
+      colored(source, index, found.ranges);
       return [];
+    }
+    const prefix = cachedPrefix(key);
+    if (prefix) {
+      colored(source, index, prefix.ranges.slice(0, prefix.lines));
+      if (prefix.lines === source.lines.length) {
+        return [];
+      }
     }
     const twin = source.twin;
     const twinSource = twin && sources[twin.source];
-    return twin &&
-      twin.source < index &&
-      twinSource?.language === source.language
-      ? [
-          {
-            source,
-            key,
+    return [
+      {
+        source,
+        index,
+        key,
+        ...(prefix && { prefix }),
+        ...(twin &&
+          twin.source < index &&
+          twinSource?.language === source.language && {
             twin: {
               key: keys[twin.source],
               text: twinSource.lines,
               lines: twin.lines,
             },
-          },
-        ]
-      : [{ source, key }];
+          }),
+      },
+    ];
   });
 }
 
@@ -294,6 +428,7 @@ function coloredByTwin(
 export function tokenizing(
   highlighter: HighlighterCore,
   pending: readonly Pending[],
+  entire?: EntireColors,
 ): (deadline: number, ranges: Map<string, readonly SyntaxRange[]>) => boolean {
   let generation = grammars;
   const colorings: Coloring[] = pending.map((each) => ({
@@ -308,8 +443,13 @@ export function tokenizing(
   const restart = () => {
     for (const coloring of colorings) {
       const twinKey = coloring.pending.twin?.key;
-      coloring.ranges = [];
-      coloring.states = [];
+      const { prefix } = coloring.pending;
+      const kept =
+        prefix?.generation === generationOf(coloring.pending.source.language)
+          ? prefix
+          : undefined;
+      coloring.ranges = kept?.ranges.slice(0, kept.lines) ?? [];
+      coloring.states = kept?.states.slice(0, kept.lines) ?? [];
       coloring.color = undefined;
       coloring.pulls = twinKey === undefined ? undefined : byKey.get(twinKey);
       coloring.twin =
@@ -333,12 +473,15 @@ export function tokenizing(
     line: ColoredLine,
     ranges: Map<string, readonly SyntaxRange[]>,
   ) => {
-    const { source, key } = coloring.pending;
+    const { source, index, key } = coloring.pending;
     apply(source, [line.ranges], ranges, coloring.ranges.length);
     coloring.ranges.push(line.ranges);
     coloring.states.push(line.after);
     if (complete(coloring)) {
       store(key, { ranges: coloring.ranges, states: coloring.states });
+      if (source.entire) {
+        entire?.(index, coloring.ranges);
+      }
     }
   };
   const advance = (
@@ -413,10 +556,16 @@ export async function loadLanguages(
   );
   if (added.length > 0) {
     await highlighter.loadLanguage(...added);
+    const registrations = added.flatMap((module) => module.default);
+    for (const registration of registrations) {
+      registered.set(registration.name, registration);
+    }
+    const stale = embeddersOf(new Set(registrations.map(({ name }) => name)));
+    for (const language of stale) {
+      generations.set(language, generationOf(language) + 1);
+    }
+    forgetCached(stale);
     grammars += 1;
-    cache.clear();
-    cachedLines = 0;
-    cachedChars = 0;
   }
   ready = highlighter;
   return highlighter;
@@ -427,7 +576,7 @@ export function makeHighlighter(): Promise<HighlighterCore> {
 }
 
 const sliceTime = 10;
-const publishTime = 50;
+const publishTime = 16;
 
 export function colorCode(
   language: string,
@@ -520,13 +669,14 @@ export function startColoring(
   ranges: Map<string, readonly SyntaxRange[]>,
   publish: () => void,
   later: (run: () => void) => void = (run) => setTimeout(run),
+  entire?: EntireColors,
 ): () => void {
   let current = true;
   let job = 0;
-  const pending = uncachedSources(sources, ranges);
+  const pending = uncachedSources(sources, ranges, entire);
   publish();
   const work = (highlighter: HighlighterCore, todo: readonly Pending[]) => {
-    const step = tokenizing(highlighter, todo);
+    const step = tokenizing(highlighter, todo, entire);
     const mine = job;
     let published = -Infinity;
     const slice = () => {
@@ -561,7 +711,7 @@ export function startColoring(
           work(highlighter, missing);
         } else {
           job += 1;
-          work(highlighter, uncachedSources(sources, ranges));
+          work(highlighter, uncachedSources(sources, ranges, entire));
         }
       },
     );
@@ -589,7 +739,15 @@ export type FromSyntax =
   | {
       readonly type: 'colors';
       readonly job: number;
+      readonly generations: Readonly<Record<string, number>>;
       readonly ranges: readonly (readonly [string, readonly SyntaxRange[]])[];
+    }
+  | {
+      readonly type: 'entire';
+      readonly job: number;
+      readonly generation: number;
+      readonly source: number;
+      readonly part: CodePart;
     }
   | {
       readonly type: 'code';
@@ -618,14 +776,34 @@ export function serveColoring(
       jobs.get(job)?.();
       jobs.delete(job);
     } else if (message.type === 'color') {
+      const { sources } = message;
+      const languages = [...new Set(sources.map(({ language }) => language))];
       const ranges = new ChangedRanges();
       const publish = () => {
         if (ranges.changed.size > 0) {
-          post({ type: 'colors', job, ranges: [...ranges.changed] });
+          post({
+            type: 'colors',
+            job,
+            generations: Object.fromEntries(
+              languages.map((language) => [language, generationOf(language)]),
+            ),
+            ranges: [...ranges.changed],
+          });
           ranges.changed.clear();
         }
       };
-      jobs.set(job, startColoring(message.sources, ranges, publish, later));
+      jobs.set(
+        job,
+        startColoring(sources, ranges, publish, later, (source, lines) =>
+          post({
+            type: 'entire',
+            job,
+            generation: generationOf(sources[source].language),
+            source,
+            part: packedPart(lines, 0, true),
+          }),
+        ),
+      );
     } else {
       let finished = false;
       const stop = colorCode(

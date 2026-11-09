@@ -43,7 +43,9 @@ export interface Colorer {
     sources: readonly SyntaxSource[],
     colored: (
       ranges: readonly (readonly [string, readonly SyntaxRange[]])[],
+      generations: Readonly<Record<string, number>>,
     ) => void,
+    entire?: (source: number, part: CodePart, generation: number) => void,
   ): () => void;
   code(
     language: string,
@@ -89,11 +91,13 @@ export function colorerOf(port: SyntaxPort): Colorer {
     (error) => reportError(error),
   );
   return {
-    color(sources, colored) {
+    color(sources, colored, entire) {
       const job = (jobs += 1);
       waiting.set(job, (message) => {
         if (message.type === 'colors') {
-          colored(message.ranges);
+          colored(message.ranges, message.generations);
+        } else if (message.type === 'entire') {
+          entire?.(message.source, message.part, message.generation);
         }
       });
       port.post({ type: 'color', job, sources });

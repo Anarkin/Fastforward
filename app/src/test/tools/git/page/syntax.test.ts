@@ -1,12 +1,17 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
+import { act, createElement } from 'react';
 import { beforeAll, suite, test } from 'vitest';
 import { parsePatch, type LoadedText } from '../../../../tools/git/page/diff';
 import {
   carriedRanges,
+  keepColors,
+  keptColorsOf,
   startingRanges,
   languageOf,
   syntaxSources,
   textsToLoad,
+  useSyntax,
 } from '../../../../tools/git/page/syntax';
 import {
   codeSegments,
@@ -27,7 +32,11 @@ import {
   type ToSyntax,
 } from '../../../../ui/syntaxEngine';
 import { onceMade } from '../../../../ui/onceMade';
-import { partLines, type CodePart } from '../../../../ui/syntaxParts';
+import {
+  packedPart,
+  partLines,
+  type CodePart,
+} from '../../../../ui/syntaxParts';
 import { policyOfPage, waitFor } from '../../../fixtures';
 
 type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
@@ -59,6 +68,8 @@ function countingLines(highlighter: Highlighter) {
   };
   return { counting, tokenized: () => lines.length, lines };
 }
+
+const comment = (end: number) => [{ start: 0, end, kind: 'comment' as const }];
 
 const sideKeys = (side: number, lines: readonly string[]) =>
   lines.map((_, index) => `${side}:${index}`);
@@ -395,6 +406,145 @@ suite('Syntax', () => {
         '0:2': ['comment end */'],
       },
     );
+  });
+
+  const keptPatch = (oldBlob: string, newBlob: string) =>
+    parsePatch(
+      gappedPatch.replace(
+        `${blobs.old}..${blobs.new}`,
+        `${oldBlob.repeat(40)}..${newBlob.repeat(40)}`,
+      ),
+    );
+
+  test('colors the shown lines of a side by the colors kept of the whole text of its blob, found by their numbers, keeping the longer of two in the language colored, and forgetting the least recently used beyond 200000 lines', () => {
+    const files = keptPatch('3', '4');
+    const lines = [comment(8), comment(6), comment(8), comment(6)];
+    keepColors('typescript', '4'.repeat(40), packedPart(lines, 0, true), 10);
+    keepColors(
+      'typescript',
+      '4'.repeat(40),
+      packedPart(lines.slice(0, 2), 0, true),
+      10,
+    );
+    assert.deepStrictEqual(Object.fromEntries(keptColorsOf(files)), {
+      '0:1': lines[2],
+      '0:2': lines[3],
+    });
+    assert.deepStrictEqual(keptColorsOf(files, undefined, 'json').size, 0);
+    keepColors(
+      'typescript',
+      '5'.repeat(40),
+      packedPart(
+        Array.from({ length: 199_996 }, () => []),
+        0,
+        true,
+      ),
+      10,
+    );
+    assert.deepStrictEqual(keptColorsOf(keptPatch('9', '5')).size, 2);
+    assert.deepStrictEqual(keptColorsOf(files).size, 2);
+    keepColors('typescript', '6'.repeat(40), packedPart([[]], 0, true), 10);
+    assert.deepStrictEqual(keptColorsOf(keptPatch('9', '5')).size, 0);
+    assert.deepStrictEqual(keptColorsOf(files).size, 2);
+  });
+
+  test('forgets the colors kept of a language from before a language it embeds loaded once colors of it come from after, keeping those of the other languages', () => {
+    const part = packedPart([[], [], comment(8), comment(6)], 0, true);
+    keepColors('typescript', 'a'.repeat(40), part, 20);
+    keepColors('json', 'c'.repeat(40), part, 99);
+    assert.deepStrictEqual(keptColorsOf(keptPatch('9', 'a')).size, 2);
+    keepColors('typescript', 'b'.repeat(40), part, 21);
+    assert.deepStrictEqual(keptColorsOf(keptPatch('9', 'a')).size, 0);
+    assert.deepStrictEqual(keptColorsOf(keptPatch('9', 'b')).size, 2);
+  });
+
+  test('colors a diff by the colors kept of its blobs in the render before its first paint, rather than once the worker answers, the colors the worker gives from the hunks alone not taking their place unless they come from after a language loaded', async () => {
+    const files = keptPatch('7', '8');
+    const lines = [comment(8), comment(6), comment(8), comment(6)];
+    keepColors('typescript', '8'.repeat(40), packedPart(lines, 0, true), 30);
+    const posted: ToSyntax[] = [];
+    let answer: ((message: FromSyntax) => void) | undefined;
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      location: new URL('file:///page/index.html'),
+      IS_REACT_ACT_ENVIRONMENT: true,
+      Worker: class {
+        postMessage(message: ToSyntax) {
+          posted.push(message);
+        }
+        addEventListener(
+          type: string,
+          listener: (event: { data: FromSyntax }) => void,
+        ) {
+          if (type === 'message') {
+            answer = (data) => listener({ data });
+          }
+        }
+      },
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const shown: ReadonlyMap<string, readonly SyntaxRange[]>[] = [];
+      const texts = new Map<string, LoadedText>();
+      const open = new Set([0]);
+      function Diff() {
+        shown.push(useSyntax(files, undefined, texts, open));
+        return null;
+      }
+      await act(async () => {
+        root.render(createElement(Diff));
+      });
+      assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
+        '0:1': lines[2],
+        '0:2': lines[3],
+      });
+      const job = posted.find((message) => message.type === 'color')?.job;
+      assert.ok(job !== undefined);
+      const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
+      await act(async () => {
+        answer?.({
+          type: 'colors',
+          job,
+          generations: { typescript: 30 },
+          ranges: [
+            ['0:0', keyword],
+            ['0:1', keyword],
+          ],
+        });
+      });
+      assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
+        '0:0': keyword,
+        '0:1': lines[2],
+        '0:2': lines[3],
+      });
+      await act(async () => {
+        answer?.({
+          type: 'colors',
+          job,
+          generations: { typescript: 31, json: 100 },
+          ranges: [['0:2', keyword]],
+        });
+      });
+      assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
+        '0:0': keyword,
+        '0:1': lines[2],
+        '0:2': keyword,
+      });
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
   });
 
   test('gives the new side of a file its old side as a twin, pairing each line with the line of the old side it is unchanged from, in the hunks and between them, so the engine colors it from the old side', () => {
@@ -984,6 +1134,59 @@ suite('Syntax', () => {
     assert.deepStrictEqual(ranges.get('1:3'), ranges.get('0:2'));
   });
 
+  test('colors a text beginning as one colored before from where they part, taking the colors of the lines before at once, as a file is cut at its last line shown and the next diff shows it again', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const before = ['/* parted', 'still */', 'let same = 1;', 'let gone = 2;'];
+    syntaxRanges(highlighter, [
+      { language: 'typescript', lines: before, keys: sideKeys(0, before) },
+    ]);
+    const { counting, lines: tokenized } = countingLines(highlighter);
+    const after = ['/* parted', 'still */', 'let same = 1;', 'let came = 3;'];
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const pending = uncachedSources(
+      [{ language: 'typescript', lines: after, keys: sideKeys(1, after) }],
+      ranges,
+    );
+    assert.deepStrictEqual([...ranges.keys()], ['1:0', '1:1', '1:2']);
+    tokenizing(counting, pending)(Infinity, ranges);
+    assert.deepStrictEqual(tokenized, ['let came = 3;']);
+    const alone = syntaxRanges(highlighter, [
+      {
+        language: 'typescript',
+        lines: [...after, ''],
+        keys: [...sideKeys(1, after), undefined],
+      },
+    ]);
+    assert.deepStrictEqual(
+      sideKeys(1, after).map((key) => ranges.get(key)),
+      sideKeys(1, after).map((key) => alone.get(key)),
+    );
+  });
+
+  test('colors a text that a text colored before begins with at once, tokenizing none of it', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const longer = ['/* cut', 'here */', 'let kept = 1;', 'let cut = 2;'];
+    const before = syntaxRanges(highlighter, [
+      { language: 'typescript', lines: longer, keys: sideKeys(0, longer) },
+    ]);
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const pending = uncachedSources(
+      [
+        {
+          language: 'typescript',
+          lines: longer.slice(0, 3),
+          keys: sideKeys(1, longer.slice(0, 3)),
+        },
+      ],
+      ranges,
+    );
+    assert.deepStrictEqual(pending, []);
+    assert.deepStrictEqual(
+      [...ranges.values()],
+      sideKeys(0, longer.slice(0, 3)).map((key) => before.get(key)),
+    );
+  });
+
   test('colors at once only the texts colored before, tokenizing the rest a slice at a time after', async () => {
     const highlighter = await loadLanguages(['typescript']);
     const [seen, first, second] = ['seen', 'first', 'second'].map(
@@ -1018,7 +1221,7 @@ suite('Syntax', () => {
     assert.strictEqual(published, 2);
   });
 
-  test('shows the colors of its first slice at once rather than 50 ms in, and those after at most every 50 ms', async () => {
+  test('shows the colors of its first slice at once, and those after at most once a frame', async () => {
     await loadLanguages(['typescript']);
     const lines = Array<string>(6000).fill('let shownAtOnce = 1;');
     const ranges = new Map<string, readonly SyntaxRange[]>();
@@ -1122,7 +1325,7 @@ suite('Syntax', () => {
     const { counting, tokenized } = countingLines(
       await loadLanguages(['typescript']),
     );
-    const lines = ['/* start', ...Array<string>(3000).fill('x'), '*/ x;'];
+    const lines = ['/* deadline', ...Array<string>(3000).fill('x'), '*/ x;'];
     const long = {
       language: 'typescript',
       lines,
@@ -1163,6 +1366,26 @@ suite('Syntax', () => {
       end: 3,
       kind: 'keyword',
     });
+  });
+
+  test('forgets on loading a language the colors kept of the languages embedding it alone, keeping those of the others, as only they color anew', async () => {
+    await assertNotLoaded('lua');
+    const highlighter = await loadLanguages(['typescript', 'markdown']);
+    const code = {
+      language: 'typescript',
+      lines: ['let embedsNothing = 1;'],
+      keys: ['0:0'],
+    };
+    const document = {
+      language: 'markdown',
+      lines: ['# Embeds', '```lua', 'local x = 1', '```'],
+      keys: ['1:0', '1:1', '1:2', '1:3'],
+    };
+    syntaxRanges(highlighter, [code, document]);
+    await loadLanguages(['lua']);
+    const { counting, lines: tokenized } = countingLines(highlighter);
+    syntaxRanges(counting, [code, document]);
+    assert.deepStrictEqual(tokenized, document.lines);
   });
 
   test('tokenizes a text anew from its start when a language another embeds loads while it is half done', async () => {
@@ -1236,14 +1459,14 @@ suite('Syntax', () => {
           keys: ['0:0'],
         },
       ]);
-    for (const name of ['a', 'b', 'a']) {
+    for (const name of ['lines1', 'lines2', 'lines1']) {
       color(name);
     }
-    color('c', 1);
-    for (const name of ['a', 'b', 'a']) {
+    color('lines3', 1);
+    for (const name of ['lines1', 'lines2', 'lines1']) {
       color(name);
     }
-    assert.deepStrictEqual(tokenized, ['a', 'b', 'c', 'b']);
+    assert.deepStrictEqual(tokenized, ['lines1', 'lines2', 'lines3', 'lines2']);
   });
 
   test('colors no file that is collapsed', () => {
@@ -1418,7 +1641,7 @@ suite('Code in documents', () => {
     );
   });
 
-  test('sends the lines of its first slice of code at once rather than 50 ms in, and those after at most every 50 ms', async () => {
+  test('sends the lines of its first slice of code at once, and those after at most once a frame', async () => {
     await loadLanguages(['typescript']);
     const parts: CodePart[] = [];
     const slices: (() => void)[] = [];
@@ -1494,6 +1717,13 @@ suite('Code in documents', () => {
   });
 });
 
+const entireOf = (messages: readonly FromSyntax[]) =>
+  messages.flatMap((message) =>
+    message.type === 'entire'
+      ? [[message.job, message.source, partLines(message.part)]]
+      : [],
+  );
+
 function served() {
   const posted: FromSyntax[] = [];
   const slices: (() => void)[] = [];
@@ -1528,13 +1758,45 @@ suite('Coloring away from the page', () => {
     });
     serve({ type: 'stop', job: 2 });
     run();
-    assert.deepStrictEqual(posted, [
+    assert.deepStrictEqual(
+      posted.map((message) =>
+        message.type === 'colors' ? [message.job, message.ranges] : message,
+      ),
+      [[1, [...syntaxRanges(highlighter, [sent])]]],
+    );
+  });
+
+  test('sends the colors of every line of a text asked for entire once it is colored, those without a key too, and at once for one colored before, so the page keeps them', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const lines = ['/* entire', 'unkeyed */', 'let entire = 1;'];
+    const source = {
+      language: 'typescript',
+      lines,
+      keys: [undefined, undefined, '0:2'],
+      entire: true as const,
+    };
+    const alone = syntaxRanges(highlighter, [
       {
-        type: 'colors',
-        job: 1,
-        ranges: [...syntaxRanges(highlighter, [sent])],
+        language: 'typescript',
+        lines: [...lines, ''],
+        keys: [...sideKeys(0, lines), undefined],
       },
     ]);
+    const everyLine = sideKeys(0, lines).map((key) => alone.get(key));
+    const { posted, serve, run } = served();
+    serve({
+      type: 'color',
+      job: 5,
+      sources: [
+        { language: 'typescript', lines: ['let partly = 1;'], keys: ['1:0'] },
+        source,
+      ],
+    });
+    run();
+    assert.deepStrictEqual(entireOf(posted), [[5, 1, everyLine]]);
+    posted.length = 0;
+    serve({ type: 'color', job: 6, sources: [source] });
+    assert.deepStrictEqual(entireOf(posted), [[6, 0, everyLine]]);
   });
 
   test('colors a code block by its language, and nothing in one it does not know', async () => {
