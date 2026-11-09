@@ -17,11 +17,15 @@ export interface SevenZipRun {
   readonly errors: string;
 }
 
+interface SevenZipOptions {
+  readonly signal?: AbortSignal;
+  readonly onOutput?: (text: string) => void;
+  readonly input?: string;
+}
+
 export type SevenZip = (
   args: readonly string[],
-  signal?: AbortSignal,
-  onOutput?: (text: string) => void,
-  input?: string,
+  options?: SevenZipOptions,
 ) => Promise<SevenZipRun>;
 
 export function sevenZipProgram(options: {
@@ -47,7 +51,7 @@ function decoded(chunks: readonly Buffer[]): string {
 }
 
 export function sevenZipAt(program: string): SevenZip {
-  return (args, signal, onOutput, input) =>
+  return (args, { signal, onOutput, input } = {}) =>
     new Promise((resolve, reject) => {
       const child = spawn(program, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -219,9 +223,7 @@ async function listed(
   const { switches, input } = passwordGiven(password);
   const run = await sevenZip(
     ['l', '-slt', '-sccUTF-8', '-slsl', '-slmu', ...switches, '--', file],
-    signal,
-    undefined,
-    input,
+    { signal, input },
   );
   const lines = run.output.split(/\r?\n/);
   const start = lines.indexOf(itemsStart);
@@ -302,9 +304,11 @@ async function extracted(
         '--',
         file,
       ],
-      signal,
-      onProgress === undefined ? undefined : progressed(onProgress),
-      input,
+      {
+        signal,
+        input,
+        ...(onProgress !== undefined && { onOutput: progressed(onProgress) }),
+      },
     );
     return run.code === 0 || run.code === 1 ? undefined : refusalOf(run, file);
   } finally {

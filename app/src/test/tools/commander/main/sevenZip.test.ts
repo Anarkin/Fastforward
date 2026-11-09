@@ -195,7 +195,7 @@ const namedInZstd = async (file: string) => {
 suite('the password of an archive', () => {
   test('gives 7-Zip a password on its input rather than among its arguments, where other programs could read it, and a refusal for a wrong one says a password is needed', async () => {
     const asked: { args: readonly string[]; input: string | undefined }[] = [];
-    const reader = sevenZipReader((args, _signal, _onOutput, input) => {
+    const reader = sevenZipReader((args, { input } = {}) => {
       asked.push({ args, input });
       return Promise.resolve({
         code: 2,
@@ -351,7 +351,7 @@ suite('the progress of an extraction', () => {
   test('asks 7-Zip for its progress alone when the extraction is followed, telling the last of each piece of what it prints, a piece cut between two reads too', async () => {
     const asked: (readonly string[])[] = [];
     const told: unknown[] = [];
-    const reader = sevenZipReader((args, _signal, onOutput) => {
+    const reader = sevenZipReader((args, { onOutput } = {}) => {
       asked.push(args);
       for (const text of ['  0%\r    \r 12% 3 - a', '.txt\r', '\r 50% 7']) {
         onOutput?.(text);
