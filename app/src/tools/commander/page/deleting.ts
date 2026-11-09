@@ -4,6 +4,7 @@ export function deleteQuestion(
   names: readonly string[],
   permanently: boolean,
   platform: string | undefined,
+  binOff = false,
 ): { title: string; message: string; confirm: string } {
   const { commander } = strings;
   const what =
@@ -13,7 +14,9 @@ export function deleteQuestion(
   if (permanently) {
     return {
       title: commander.deletePermanentlyTitle,
-      message: commander.deleteQuestion(what),
+      message: binOff
+        ? commander.binOffQuestion(what)
+        : commander.deleteQuestion(what),
       confirm: commander.deletePermanentlyTitle,
     };
   }

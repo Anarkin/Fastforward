@@ -502,6 +502,36 @@ suite('Commander store', () => {
     ]);
   });
 
+  test('asks to delete permanently what is to go to the Recycle Bin of a drive whose Recycle Bin is turned off, deleting it permanently once confirmed, as moving it there failed', () => {
+    const { posted, store } = shown();
+    store.getState().receive({ ...listing('D:\\photos'), binOff: true });
+    store.getState().askDelete('left', ['a'], false);
+    assert.deepStrictEqual(store.getState().deleting, {
+      tab: '1',
+      side: 'left',
+      folder: 'D:\\photos',
+      names: ['a'],
+      permanently: true,
+      binOff: true,
+    });
+    store.getState().confirmDelete();
+    store.getState().askDelete('left', ['b'], true);
+    assert.strictEqual(store.getState().deleting?.binOff, undefined);
+    store.getState().receive(listing('C:\\photos'));
+    store.getState().askDelete('left', ['c'], false);
+    assert.strictEqual(store.getState().deleting?.permanently, false);
+    assert.deepStrictEqual(posted, [
+      {
+        type: 'delete',
+        tab: '1',
+        side: 'left',
+        folder: 'D:\\photos',
+        names: ['a'],
+        permanently: true,
+      },
+    ]);
+  });
+
   test('drops the question to delete once the side shows another folder or another tab is shown, as the files it names belong to the folder they were seen in', () => {
     const { posted, store } = shown();
     store.getState().askDelete('left', ['a'], true);

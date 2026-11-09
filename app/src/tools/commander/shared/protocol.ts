@@ -408,6 +408,7 @@ export type CommanderToWebview =
       readonly back: boolean;
       readonly forward: boolean;
       readonly elevated: boolean;
+      readonly binOff?: true;
       readonly selected: string | undefined;
       readonly flat?: number;
     }

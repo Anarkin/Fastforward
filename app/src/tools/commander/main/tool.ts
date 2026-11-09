@@ -137,6 +137,7 @@ export interface CommanderAccess {
   readonly realPath: (link: string) => Promise<string>;
   readonly openFile?: (file: string) => Promise<string>;
   readonly trash?: (file: string) => Promise<void>;
+  readonly binOff?: (folder: string) => Promise<boolean>;
   readonly remove?: (file: string) => Promise<void>;
   readonly makeFolder?: (folder: string) => Promise<void>;
   readonly startDrag?: (files: readonly string[]) => Promise<void>;
@@ -173,6 +174,7 @@ interface Pane {
   at: number;
   denied?: string;
   elevated?: boolean;
+  binOff?: boolean;
   repositories: ReadonlySet<string>;
   repositoriesAsked: number;
   looked?: {
@@ -2048,7 +2050,10 @@ export class CommanderTool implements Tool<'commander'> {
       }
       return;
     }
-    const hidden = await this.hiddenParts(folder);
+    const [hidden, binOff] = await Promise.all([
+      this.hiddenParts(folder),
+      this.binOff(folder),
+    ]);
     if (pane.asked !== asked || (how === 'refresh' && pane.folder !== folder)) {
       return;
     }
@@ -2076,6 +2081,7 @@ export class CommanderTool implements Tool<'commander'> {
     pane.hidden = hidden;
     pane.entries = listing.entries;
     pane.elevated = listing.elevated;
+    pane.binOff = binOff;
     pane.landed = asked;
     this.postListing(page, tab, side, pane, selected);
     this.watch(page, tab, side, folder);
@@ -2265,6 +2271,7 @@ export class CommanderTool implements Tool<'commander'> {
         entries: pane.flat === undefined ? (pane.entries ?? []) : [],
         parent: parentOf(pane.folder) !== undefined,
         elevated: pane.elevated === true,
+        ...(pane.binOff === true && { binOff: true }),
         back: pane.at > 0,
         forward: pane.at < pane.history.length - 1,
         selected,
@@ -2276,6 +2283,14 @@ export class CommanderTool implements Tool<'commander'> {
   private async hiddenParts(file: string): Promise<readonly boolean[]> {
     const files = await this.files();
     return Promise.all(pathParts(file).map((part) => files.hidden(part.path)));
+  }
+
+  private async binOff(folder: string): Promise<boolean> {
+    try {
+      return (await this.access.binOff?.(folder)) === true;
+    } catch {
+      return false;
+    }
   }
 
   private files(): Promise<LocalFileSystem> {

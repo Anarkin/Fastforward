@@ -622,6 +622,9 @@ const rowNamed = (key: string) => {
 const flat = (...actions: ViewAction[]) =>
   run({ type: 'show', tab: '1' }, listing('/a', [], { flat: 1 }), ...actions);
 
+const binOffAfter = (...actions: ViewAction[]) =>
+  run({ type: 'show', tab: '1' }, ...actions).panes.left?.binOff;
+
 suite('The view of a flat side', () => {
   test('starts with the row of the parent alone, reading, until the rows of its files come', () => {
     const view = flat();
@@ -632,6 +635,17 @@ suite('The view of a flat side', () => {
       progress: reading,
       shown: undefined,
     });
+  });
+
+  test('keeps whether the Recycle Bin of its folder is turned off, as a side not flat does, so Delete in it says it deletes permanently', () => {
+    const off = listing('D:\\', [], { binOff: true });
+    const flatOff = listing('D:\\', [], { binOff: true, flat: 1 });
+
+    assert.strictEqual(binOffAfter(off), true);
+    assert.strictEqual(binOffAfter(off, listing('C:\\', [])), undefined);
+    assert.strictEqual(binOffAfter(flatOff), true);
+    assert.strictEqual(binOffAfter(flatOff, flatOff), true);
+    assert.strictEqual(flat().panes.left?.binOff, undefined);
   });
 
   test('takes the rows of its files, keeping the row selected', () => {

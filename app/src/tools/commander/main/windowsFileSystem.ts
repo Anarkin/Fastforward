@@ -118,7 +118,7 @@ async function entryOf(folder: string, found: Found): Promise<Entry> {
 
 type Native = ReturnType<LibraryHandle['func']>;
 
-function called(native: Native, ...args: unknown[]): Promise<unknown> {
+export function called(native: Native, ...args: unknown[]): Promise<unknown> {
   return new Promise((resolve, reject) => {
     native.async(...args, (error: unknown, result: unknown) => {
       if (error) {

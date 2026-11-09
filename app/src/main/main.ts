@@ -507,6 +507,10 @@ async function start(asked: readonly string[]): Promise<void> {
         (
           await import('../tools/commander/main/windowsCloudFiles.js')
         ).streamsFromGoogleDrive(file),
+      binOff: async (folder: string) =>
+        (
+          await import('../tools/commander/main/windowsRecycleBin.js')
+        ).windowsRecycleBinOff(folder),
     }),
     isRepository,
     watch: watchFolder,

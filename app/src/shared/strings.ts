@@ -555,6 +555,8 @@ export const strings = {
     trashQuestion: (what: string, bin: string) => `Move ${what} to ${bin}?`,
     deleteQuestion: (what: string) =>
       `Delete ${what} permanently? This cannot be undone.`,
+    binOffQuestion: (what: string) =>
+      `The Recycle Bin of this drive is turned off. Delete ${what} permanently? This cannot be undone.`,
     oneItem: (name: string) => `"${name}"`,
     items: (count: number) => `${count} items`,
     copyTitle: 'Copy',

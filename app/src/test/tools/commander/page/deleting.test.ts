@@ -31,4 +31,13 @@ suite('Commander deleting', () => {
       confirm: 'Delete Permanently',
     });
   });
+
+  test('says the items will be deleted permanently, and why, on a drive whose Recycle Bin is turned off, as Delete failed there saying only that the delete operation failed', () => {
+    assert.deepStrictEqual(deleteQuestion(['a.txt'], true, 'win32', true), {
+      title: 'Delete Permanently',
+      message:
+        'The Recycle Bin of this drive is turned off. Delete "a.txt" permanently? This cannot be undone.',
+      confirm: 'Delete Permanently',
+    });
+  });
 });

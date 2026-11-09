@@ -159,6 +159,7 @@ function commander(
   };
   const thumbnails = new Map<string, Uint8Array>();
   const streamed = new Set<string>();
+  const binsOff = new Set<string>();
   const thumbnailsFull = { now: false };
   const thumbnailWritesFail = { now: false };
   const repositories = new Set<string>();
@@ -226,6 +227,7 @@ function commander(
         throw new Error('It is in use');
       }
     },
+    binOff: (listing) => Promise.resolve(binsOff.has(listing)),
     remove: (removing) => {
       removed.push(removing);
       return removing.endsWith('locked.txt')
@@ -429,6 +431,7 @@ function commander(
     removed,
     thumbnails,
     streamed,
+    binsOff,
     thumbnailsFull,
     thumbnailWritesFail,
     settings,
@@ -1593,6 +1596,32 @@ suite('Commander tool', () => {
         message: strings.commander.deleteFailed('locked.txt', 'It is in use'),
       },
     ]);
+  });
+
+  test('tells the page which folders are on a drive whose Recycle Bin is turned off, asking again as each is listed, so Delete can say it deletes permanently there', async () => {
+    const { tool, page, send, binsOff } = commander({
+      [root]: [folder('dir')],
+      [at('dir')]: [],
+    });
+    binsOff.add(at('dir'));
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'right', name: 'dir' });
+    binsOff.delete(at('dir'));
+    await send({ type: 'reread', tab: '1', side: 'right' });
+    binsOff.add(root);
+    await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+    assert.deepStrictEqual(
+      page
+        .of('listing')
+        .filter((listing) => listing.side === 'right')
+        .map((listing) => [listing.folder, listing.binOff]),
+      [
+        [root, undefined],
+        [at('dir'), true],
+        [at('dir'), undefined],
+        [root, true],
+      ],
+    );
   });
 
   test('deletes the items asked for from the folder they were listed in, also once the side has gone to another folder while they were being deleted, leaving the side where it went', async () => {

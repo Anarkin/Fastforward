@@ -54,6 +54,7 @@ interface Deleting {
   readonly folder: string;
   readonly names: readonly string[];
   readonly permanently: boolean;
+  readonly binOff?: true;
 }
 
 interface Transferring {
@@ -798,14 +799,26 @@ export function createCommanderStore(
           }),
         ),
       askDelete: (side, names, permanently) =>
-        onPane(side, (tab, folder) =>
-          set({ deleting: { tab, side, folder, names, permanently } }),
-        ),
+        onPane(side, (tab, folder) => {
+          const binOff =
+            !permanently && get().view.panes[side]?.binOff === true;
+          set({
+            deleting: {
+              tab,
+              side,
+              folder,
+              names,
+              permanently: permanently || binOff,
+              ...(binOff && { binOff }),
+            },
+          });
+        }),
       confirmDelete: () => {
         const { deleting } = get();
         if (deleting !== undefined) {
+          const { tab, side, folder, names, permanently } = deleting;
           set({ deleting: undefined });
-          post({ type: 'delete', ...deleting });
+          post({ type: 'delete', tab, side, folder, names, permanently });
         }
       },
       cancelDelete: () => set({ deleting: undefined }),

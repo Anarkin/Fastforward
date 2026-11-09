@@ -101,6 +101,7 @@ function CommanderPopups() {
             deleting.names,
             deleting.permanently,
             document.documentElement.dataset.platform,
+            deleting.binOff,
           )}
           onConfirm={confirmDelete}
           onCancel={cancelDelete}
