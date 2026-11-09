@@ -499,17 +499,22 @@ export function Pane({
     at: { readonly x: number; readonly y: number },
   ) => {
     const target = menuTargetOf(rows, key, marked, pane?.inRepository === true);
-    if (target === undefined || pane?.archive !== undefined) {
+    if (target === undefined) {
       return;
     }
-    const items = fileMenuItems(target, {
-      onFolder: (command, name) => actions.folderCommand(side, name, command),
-      onEnterArchive: (name) => actions.enterArchive(side, name),
-      onSystemMenu:
-        platform === 'win32'
-          ? (names) => onShellMenu(names, at, false)
-          : undefined,
-    });
+    const inArchive = pane?.archive !== undefined;
+    const items = fileMenuItems(
+      target,
+      {
+        onFolder: (command, name) => actions.folderCommand(side, name, command),
+        onEnterArchive: (name) => actions.enterArchive(side, name),
+        onSystemMenu:
+          platform === 'win32' && !inArchive
+            ? (names) => onShellMenu(names, at, false)
+            : undefined,
+      },
+      inArchive,
+    );
     if (items.length > 0) {
       showMenu({ x: at.x, y: at.y, items });
     }

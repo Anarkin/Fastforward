@@ -2176,13 +2176,44 @@ export class CommanderTool implements Tool<'commander'> {
         (await isFile(file)) ? {} : { code: 'ENOENT' },
       );
     }
-    const entries = opening.archive.tree.entries(
-      archives?.within(folder)?.inner ?? [],
-    );
-    if (entries === undefined) {
+    const inner = path
+      .relative(path.resolve(opening.archive.file), path.resolve(folder))
+      .split(path.sep)
+      .filter((part) => part !== '');
+    const entries = opening.archive.tree.entries(inner);
+    if (entries !== undefined) {
+      return { entries, elevated: false, archive: opening.archive.file };
+    }
+    const nested = await this.nestedIn(opening.archive, inner);
+    if (nested === undefined) {
       throw Object.assign(new Error(folder), { code: 'ENOENT' });
     }
-    return { entries, elevated: false, archive: opening.archive.file };
+    return this.archiveListed(nested, folder, unopened, opener);
+  }
+
+  private async nestedIn(
+    archive: OpenedArchive,
+    inner: readonly string[],
+  ): Promise<string | undefined> {
+    const { archives } = this.access;
+    if (archives === undefined) {
+      return undefined;
+    }
+    for (let length = inner.length; length > 0; length--) {
+      const parts = inner.slice(0, length);
+      const folderParts = parts.slice(0, -1);
+      const last = parts.at(-1) ?? '';
+      const entry = archive.tree
+        .entries(folderParts)
+        ?.find((each) => each.name === last);
+      const item = archive.tree.item(folderParts, last);
+      if (entry?.folder === false && item !== undefined) {
+        const file = path.join(archive.file, ...parts);
+        const opening = await archives.openInside(file, archive, item.path);
+        return opening.kind === 'opened' ? file : undefined;
+      }
+    }
+    return undefined;
   }
 
   private async isArchiveFolder(folder: string): Promise<boolean> {
@@ -2201,6 +2232,8 @@ export class CommanderTool implements Tool<'commander'> {
     tab: string,
     side: Side,
     file: string,
+    opening: (signal: AbortSignal) => Promise<Opening> | undefined = (signal) =>
+      this.access.archives?.open(file, signal),
   ): Promise<Opening | undefined> {
     const { archives } = this.access;
     const pane = this.panes.get(tab)?.[side];
@@ -2225,7 +2258,7 @@ export class CommanderTool implements Tool<'commander'> {
       });
     }, readingToldAfter);
     try {
-      return await archives.open(file, aborting.signal);
+      return await (opening(aborting.signal) ?? archives.open(file));
     } catch (error) {
       if (aborting.signal.aborted) {
         return undefined;
@@ -2242,6 +2275,40 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
+  private openingInside(
+    pane: Pane,
+    name: string,
+    signal?: AbortSignal,
+  ): Promise<Opening> {
+    const { archives } = this.access;
+    const inside = archives?.within(pane.folder);
+    const parts = name.split(path.sep);
+    const last = parts.at(-1) ?? name;
+    const folderParts = [...(inside?.inner ?? []), ...parts.slice(0, -1)];
+    const entry = inside?.archive.tree
+      .entries(folderParts)
+      ?.find((each) => each.name === last);
+    const item = inside?.archive.tree.item(folderParts, last);
+    if (
+      archives === undefined ||
+      inside === undefined ||
+      item === undefined ||
+      entry?.folder !== false
+    ) {
+      return Promise.resolve({
+        kind: 'refused',
+        reason: strings.commander.notAFile,
+        noArchive: true,
+      });
+    }
+    return archives.openInside(
+      path.join(pane.folder, name),
+      inside.archive,
+      item.path,
+      signal,
+    );
+  }
+
   private async enterArchive(
     page: Page,
     {
@@ -2251,7 +2318,7 @@ export class CommanderTool implements Tool<'commander'> {
       name,
     }: Extract<CommanderToHost, { type: 'enterArchive' }>,
   ): Promise<void> {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.namingPane(page, tab, side, folder);
     const entry = listedIn(shown?.pane, name);
     if (
       shown === undefined ||
@@ -2262,7 +2329,16 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     const file = path.join(shown.pane.folder, name);
-    const opening = await this.openFor(page, shown.tab, shown.side, file);
+    const { pane } = shown;
+    const opening = await this.openFor(
+      page,
+      shown.tab,
+      shown.side,
+      file,
+      pane.archive === undefined
+        ? undefined
+        : (signal) => this.openingInside(pane, name, signal),
+    );
     if (opening === undefined) {
       return;
     }
@@ -2292,13 +2368,18 @@ export class CommanderTool implements Tool<'commander'> {
     }
     const { folder, flat } = source.pane;
     const entry = listedIn(source.pane, name);
-    if (
-      flat === undefined &&
-      entry?.folder === false &&
-      source.pane.archive === undefined
-    ) {
+    if (flat === undefined && entry?.folder === false) {
       const file = path.join(folder, name);
-      const opening = await this.openFor(page, source.tab, side, file);
+      const { pane } = source;
+      const opening = await this.openFor(
+        page,
+        source.tab,
+        side,
+        file,
+        pane.archive === undefined
+          ? undefined
+          : (signal) => this.openingInside(pane, name, signal),
+      );
       if (opening === undefined) {
         return undefined;
       }

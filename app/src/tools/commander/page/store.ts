@@ -802,7 +802,7 @@ export function createCommanderStore(
           post({ type: 'openOnSide', tab, from, side, folder, name }),
         ),
       enterArchive: (side, name) =>
-        onDisk(side, (tab, folder) =>
+        onPane(side, (tab, folder) =>
           post({ type: 'enterArchive', tab, side, folder, name }),
         ),
       drive: (side, drive) =>

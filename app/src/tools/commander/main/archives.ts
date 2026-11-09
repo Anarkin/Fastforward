@@ -169,6 +169,7 @@ export interface OpenedArchive {
   readonly version: string;
   readonly source: string;
   readonly tree: ArchiveTree;
+  readonly outer?: { readonly file: string; readonly version: string };
 }
 
 export type Opening =
@@ -180,6 +181,12 @@ export type Extracting =
 
 export interface ArchiveAccess {
   open(file: string, signal?: AbortSignal): Promise<Opening>;
+  openInside(
+    file: string,
+    outer: OpenedArchive,
+    path: string,
+    signal?: AbortSignal,
+  ): Promise<Opening>;
   extract(
     archive: OpenedArchive,
     paths: readonly string[],
@@ -260,6 +267,23 @@ export class Archives implements ArchiveAccess {
         noArchive: true,
       };
     }
+    const key = this.keyOf(file);
+    const known = this.opened.get(key);
+    if (known?.outer !== undefined) {
+      const outer = await this.open(known.outer.file, signal);
+      if (
+        outer.kind === 'opened' &&
+        outer.archive.version === known.outer.version
+      ) {
+        return { kind: 'opened', archive: known };
+      }
+      this.opened.delete(key);
+      return {
+        kind: 'refused',
+        reason: strings.commander.notAFile,
+        noArchive: true,
+      };
+    }
     let stats: fs.Stats;
     try {
       stats = await fs.promises.stat(file);
@@ -274,47 +298,105 @@ export class Archives implements ArchiveAccess {
       };
     }
     const version = fileVersion(stats);
-    const key = this.keyOf(file);
-    const known = this.opened.get(key);
     if (known?.version === version) {
       return { kind: 'opened', archive: known };
     }
-    const listing = await reader.list(file, signal);
-    if (listing.kind === 'refused') {
+    const opening = await this.openedFrom(reader, file, file, version, signal);
+    if (opening.kind === 'opened') {
+      this.opened.set(key, opening.archive);
+    } else {
       this.opened.delete(key);
+    }
+    return opening;
+  }
+
+  async openInside(
+    file: string,
+    outer: OpenedArchive,
+    inside: string,
+    signal?: AbortSignal,
+  ): Promise<Opening> {
+    const { reader } = this;
+    const key = this.keyOf(file);
+    const known = this.opened.get(key);
+    if (known?.outer?.version === outer.version) {
+      return { kind: 'opened', archive: known };
+    }
+    if (reader === undefined) {
+      return {
+        kind: 'refused',
+        reason: strings.commander.noSevenZip,
+        noArchive: true,
+      };
+    }
+    const into = await this.workFolder();
+    const refused = await reader.extract(outer.source, [inside], into, {
+      signal,
+      withoutFolders: true,
+    });
+    const [copy] = await filesUnder(into);
+    if (refused !== undefined || copy === undefined) {
+      return {
+        kind: 'refused',
+        reason: refused ?? strings.commander.sevenZipEnded(null),
+      };
+    }
+    const opening = await this.openedFrom(
+      reader,
+      file,
+      copy,
+      outer.version,
+      signal,
+    );
+    if (opening.kind !== 'opened') {
+      return opening;
+    }
+    const archive = {
+      ...opening.archive,
+      outer: { file: outer.file, version: outer.version },
+    };
+    this.opened.set(key, archive);
+    return { kind: 'opened', archive };
+  }
+
+  private async openedFrom(
+    reader: ArchiveReader,
+    file: string,
+    source: string,
+    version: string,
+    signal: AbortSignal | undefined,
+  ): Promise<Opening> {
+    const listing = await reader.list(source, signal);
+    if (listing.kind === 'refused') {
       return listing;
     }
     const [only, ...more] = listing.items;
-    const opening =
-      only !== undefined &&
+    return only !== undefined &&
       more.length === 0 &&
       !only.folder &&
       tarName.test(only.path)
-        ? await this.openedTar(reader, file, version, only.path, signal)
-        : ({
-            kind: 'opened',
-            archive: {
-              file,
-              version,
-              source: file,
-              tree: new ArchiveTree(listing.items, this.platform),
-            },
-          } as const);
-    if (opening.kind === 'opened') {
-      this.opened.set(key, opening.archive);
-    }
-    return opening;
+      ? this.openedTar(reader, file, source, version, only.path, signal)
+      : {
+          kind: 'opened',
+          archive: {
+            file,
+            version,
+            source,
+            tree: new ArchiveTree(listing.items, this.platform),
+          },
+        };
   }
 
   private async openedTar(
     reader: ArchiveReader,
     file: string,
+    source: string,
     version: string,
     tar: string,
     signal: AbortSignal | undefined,
   ): Promise<Opening> {
     const into = await this.workFolder();
-    const refused = await reader.extract(file, [tar], into, { signal });
+    const refused = await reader.extract(source, [tar], into, { signal });
     const [unpacked] = await filesUnder(into);
     if (refused !== undefined || unpacked === undefined) {
       return {
@@ -360,16 +442,18 @@ export class Archives implements ArchiveAccess {
     folder: string,
   ): { readonly archive: OpenedArchive; readonly inner: string[] } | undefined {
     const key = this.keyOf(folder);
-    for (const [file, archive] of this.opened) {
-      if (key === file || key.startsWith(`${file}${path.sep}`)) {
-        const inner = path
-          .relative(path.resolve(archive.file), path.resolve(folder))
-          .split(path.sep)
-          .filter((part) => part !== '');
-        return { archive, inner };
-      }
+    const [innermost] = [...this.opened]
+      .filter(([file]) => key === file || key.startsWith(`${file}${path.sep}`))
+      .toSorted(([one], [other]) => other.length - one.length);
+    if (innermost === undefined) {
+      return undefined;
     }
-    return undefined;
+    const [, archive] = innermost;
+    const inner = path
+      .relative(path.resolve(archive.file), path.resolve(folder))
+      .split(path.sep)
+      .filter((part) => part !== '');
+    return { archive, inner };
   }
 
   async fileHolding(folder: string): Promise<string | undefined> {

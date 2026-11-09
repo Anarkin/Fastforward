@@ -275,8 +275,13 @@ function commander(
       openedArchives.set(opening, archive);
       return Promise.resolve({ kind: 'opened', archive });
     },
+    openInside: (inside, _outer, _path, signal) =>
+      archives.open(inside, signal),
     within: (inside) => {
-      for (const [archiveFile, archive] of openedArchives) {
+      for (const [archiveFile, archive] of openedArchives
+        .entries()
+        .toArray()
+        .toSorted(([one], [other]) => other.length - one.length)) {
         if (
           inside === archiveFile ||
           inside.startsWith(`${archiveFile}${path.sep}`)
@@ -4330,7 +4335,7 @@ suite('Commander tool in archives', () => {
     );
   });
 
-  test('says why a file could not be entered as an archive, staying where it was, and enters nothing a side does not list, a folder, or anything from inside an archive', async () => {
+  test('says why a file could not be entered as an archive, staying where it was, and enters nothing a side does not list or a folder', async () => {
     const { tool, page, send, notices, archived } = commander({
       [root]: [file('a.zip'), file('notes.txt'), folder('Users')],
     });
@@ -4362,17 +4367,68 @@ suite('Commander tool in archives', () => {
       side: 'right',
       name: 'a.zip',
     });
-    await send({
-      type: 'enterArchive',
-      tab: '1',
-      side: 'right',
-      name: 'inner.zip',
-    });
 
     assert.strictEqual(notices.length, 1);
     assert.deepStrictEqual(page.listings().slice(2), [
       `right ${at('a.zip')} ↑: inner.zip`,
     ]);
+  });
+
+  test('enters an archive inside an archive from the menu or on a side, by a path through both, leaving it with .. for the archive around it', async () => {
+    const { tool, page, send, archived } = commander({
+      [root]: [file('a.zip')],
+    });
+    archived.set(at('a.zip'), [
+      archiveItem('inner.zip'),
+      archiveItem('top.txt'),
+    ]);
+    archived.set(at('a.zip', 'inner.zip'), zipped);
+    await tool.show(page, tab);
+
+    for (const name of ['a.zip', 'inner.zip']) {
+      await send({ type: 'enterArchive', tab: '1', side: 'right', name });
+    }
+    await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
+    await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+    await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+    await send({
+      type: 'openOnSide',
+      tab: '1',
+      from: 'right',
+      side: 'left',
+      name: 'inner.zip',
+    });
+
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `right ${at('a.zip')} ↑: inner.zip top.txt`,
+      `right ${at('a.zip', 'inner.zip')} ↑: docs top.txt`,
+      `right ${at('a.zip', 'inner.zip', 'docs')} ↑: readme.md deep`,
+      `right ${at('a.zip', 'inner.zip')} ↑: docs top.txt [docs]`,
+      `right ${at('a.zip')} ↑: inner.zip top.txt [inner.zip]`,
+      `left ${at('a.zip', 'inner.zip')} ↑: docs top.txt`,
+    ]);
+  });
+
+  test('lists a folder inside an archive inside another it has not opened, opening both on the way, as a side comes back there after a restart', async () => {
+    const state = new FakeStore();
+    await state.update('sides', {
+      1: { right: at('a.zip', 'inner.zip', 'docs') },
+    });
+    const { tool, page, archived } = commander(
+      { [root]: [file('a.zip')] },
+      [],
+      undefined,
+      state,
+    );
+    archived.set(at('a.zip'), [archiveItem('inner.zip')]);
+    archived.set(at('a.zip', 'inner.zip'), zipped);
+
+    await tool.show(page, tab);
+
+    assert.deepStrictEqual(
+      page.listings().filter((listing) => listing.startsWith('right')),
+      [`right ${at('a.zip', 'inner.zip', 'docs')} ↑: readme.md deep`],
+    );
   });
 
   test('enters on a side an archive the other side has selected, shows there the folder of a file 7-Zip sees no archive in, as before, and says why an archive it could not open was not entered, staying where it was', async () => {

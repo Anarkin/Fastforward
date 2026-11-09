@@ -70,7 +70,16 @@ function namesOf(target: MenuTarget): readonly string[] {
 function ownItems(
   target: MenuTarget,
   { onFolder, onEnterArchive }: FileMenuActions,
+  inArchive: boolean,
 ): ContextMenuItem[] {
+  const enterArchive = (name: string): ContextMenuItem => ({
+    label: strings.commander.tryEnterArchive,
+    icon: <FolderIcon />,
+    onClick: () => onEnterArchive(name),
+  });
+  if (inArchive) {
+    return target.kind === 'file' ? [enterArchive(target.name)] : [];
+  }
   switch (target.kind) {
     case 'folder': {
       const git = <ToolIcon tool="git" />;
@@ -109,11 +118,7 @@ function ownItems(
         ...(target.image
           ? [{ label: strings.commander.editImage, icon: <ImageIcon /> }]
           : []),
-        {
-          label: strings.commander.tryEnterArchive,
-          icon: <FolderIcon />,
-          onClick: () => onEnterArchive(target.name),
-        },
+        enterArchive(target.name),
       ];
     case 'items':
       return [];
@@ -125,9 +130,10 @@ function ownItems(
 export function fileMenuItems(
   target: MenuTarget,
   actions: FileMenuActions,
+  inArchive = false,
 ): ContextMenuItem[] {
   const { onSystemMenu } = actions;
-  const own = ownItems(target, actions);
+  const own = ownItems(target, actions, inArchive);
   if (onSystemMenu === undefined) {
     return own;
   }

@@ -121,6 +121,21 @@ suite('Archives of the playground of files', () => {
     assert.strictEqual((await rootOf('windows-cp852.zip'))?.length, 2);
   });
 
+  test('opens the zip inside the nested zip as the archive it is, by a path through both', async () => {
+    const outer = await archives.open(at('nested.zip'));
+    assert.ok(outer.kind === 'opened');
+    const inner = path.join(at('nested.zip'), 'inner.zip');
+    const opened = await archives.openInside(inner, outer.archive, 'inner.zip');
+    assert.ok(opened.kind === 'opened');
+    assert.deepStrictEqual(
+      opened.archive.tree
+        .entries([])
+        ?.map((entry) => entry.name)
+        .toSorted((one, other) => one.localeCompare(other)),
+      ['docs', 'empty-folder', 'README.md', 'src', 'ünïcödé – 名前.txt'],
+    );
+  });
+
   test('keeps the names that would reach outside the folder they are extracted into within the archive', async () => {
     const root = (await rootOf('hostile-names.zip')) ?? [];
     for (const name of ['outside.txt', 'further-outside.txt', 'rooted.txt']) {

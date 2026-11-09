@@ -1049,7 +1049,7 @@ suite('The commander store in flat view', () => {
 });
 
 suite('The commander store in archives', () => {
-  test('asks and sends nothing that would change an archive or move or drag out of it, for a side inside one or a copy into one, sending what moves through it, reads from it or lists it flat and the archive to enter from a folder, and asking before a copy out of it', () => {
+  test('asks and sends nothing that would change an archive or move or drag out of it, for a side inside one or a copy into one, sending what moves through it, reads from it, lists it flat or enters an archive in it, and the archive to enter from a folder, and asking before a copy out of it', () => {
     const { posted, store } = shown();
     store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
     store.getState().receive({ ...listing('D:\\photos'), side: 'right' });
@@ -1067,8 +1067,8 @@ suite('The commander store in archives', () => {
     actions.folderCommand('left', 'docs', 'newTerminal');
     actions.addBookmark('left');
     actions.shellMenu('left', ['a.txt'], { x: 1, y: 1 }, false);
-    actions.enterArchive('left', 'inner.zip');
     actions.open('left', 'docs');
+    actions.enterArchive('left', 'inner.zip');
     actions.viewFile('left', 'a.txt');
     actions.copyToClipboard('left', ['a.txt']);
     actions.flat('left');
@@ -1095,6 +1095,13 @@ suite('The commander store in archives', () => {
         side: 'left',
         folder: 'C:\\a.zip',
         name: 'docs',
+      },
+      {
+        type: 'enterArchive',
+        tab: '1',
+        side: 'left',
+        folder: 'C:\\a.zip',
+        name: 'inner.zip',
       },
       {
         type: 'view',

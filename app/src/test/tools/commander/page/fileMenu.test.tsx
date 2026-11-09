@@ -41,15 +41,19 @@ type Chosen =
   | { readonly archive: string }
   | { readonly system: readonly string[] };
 
-function menuOf(target: MenuTarget, windows = true) {
+function menuOf(target: MenuTarget, windows = true, inArchive = false) {
   const chosen: Chosen[] = [];
-  const items = fileMenuItems(target, {
-    onFolder: (command, name) => chosen.push({ folder: command, name }),
-    onEnterArchive: (name) => chosen.push({ archive: name }),
-    onSystemMenu: windows
-      ? (names) => chosen.push({ system: names })
-      : undefined,
-  });
+  const items = fileMenuItems(
+    target,
+    {
+      onFolder: (command, name) => chosen.push({ folder: command, name }),
+      onEnterArchive: (name) => chosen.push({ archive: name }),
+      onSystemMenu: windows
+        ? (names) => chosen.push({ system: names })
+        : undefined,
+    },
+    inArchive,
+  );
   const choose = (label: string) => {
     const item = items.find(
       (each) => !('separator' in each) && each.label === label,
@@ -59,6 +63,8 @@ function menuOf(target: MenuTarget, windows = true) {
   };
   return { items, chosen, choose };
 }
+
+const menuInArchive = (target: MenuTarget) => menuOf(target, false, true);
 
 const labels = (items: readonly ContextMenuItem[]) =>
   items.map((item) => ('separator' in item ? '-' : item.label));
@@ -243,6 +249,26 @@ suite('Commander file menu', () => {
       menuOf({ kind: 'items', names: ['notes.txt'] }, false).items,
       [],
     );
+  });
+
+  test('offers inside an archive only to try entering one file of it as an archive, nothing on its folders, the folder shown or marked items, and no image to edit', () => {
+    const menu = menuInArchive({
+      kind: 'file',
+      name: 'photo.png',
+      image: true,
+    });
+    assert.deepStrictEqual(labels(menu.items), [
+      strings.commander.tryEnterArchive,
+    ]);
+    menu.choose(strings.commander.tryEnterArchive);
+    assert.deepStrictEqual(menu.chosen, [{ archive: 'photo.png' }]);
+    for (const target of [
+      folderShown(false),
+      docs(true),
+      { kind: 'items', names: ['a.zip', 'b.zip'] } as const,
+    ]) {
+      assert.deepStrictEqual(menuInArchive(target).items, []);
+    }
   });
 
   test('offers on a folder every tool of the + menu but the commander it is in, made local to the folder, so a tool added there is offered here too, or left out on purpose', () => {

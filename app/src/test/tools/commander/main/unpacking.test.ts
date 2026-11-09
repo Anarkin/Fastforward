@@ -39,6 +39,7 @@ const archivesExtracting = (
   ) => Promise<Extracting>,
 ): ArchiveAccess => ({
   open: () => Promise.reject(new Error('not opened here')),
+  openInside: () => Promise.reject(new Error('not opened here')),
   within: () => undefined,
   fileHolding: () => Promise.resolve(undefined),
   extract: (_archive, _paths, options) =>

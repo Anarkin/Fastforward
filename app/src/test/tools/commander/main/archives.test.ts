@@ -275,6 +275,50 @@ suite('Archives', () => {
     );
   });
 
+  test('opens an archive inside another from a copy taken out of it, by a path through both, the innermost archive having a folder inside it, as long as the outer archive is unchanged', async () => {
+    const zip = path.join(folder, 'outer.zip');
+    fs.writeFileSync(zip, 'outer');
+    const { reader } = readerOf({
+      'outer.zip': {
+        kind: 'listed',
+        items: [item('inner.zip'), item('docs/readme.md')],
+      },
+      'inner.zip': { kind: 'listed', items: [item('src/main.ts')] },
+    });
+    const archives = new Archives(reader, 'linux', workFolder);
+    const outer = await archives.open(zip);
+    assert.ok(outer.kind === 'opened');
+    const nested = path.join(zip, 'inner.zip');
+
+    const inner = await archives.openInside(nested, outer.archive, 'inner.zip');
+    assert.ok(inner.kind === 'opened');
+    assert.strictEqual(inner.archive.file, nested);
+    assert.strictEqual(path.basename(inner.archive.source), 'inner.zip');
+    assert.deepStrictEqual(
+      inner.archive.tree.entries([])?.map((entry) => entry.name),
+      ['src'],
+    );
+    assert.strictEqual(
+      archives.within(path.join(nested, 'src'))?.archive,
+      inner.archive,
+    );
+    assert.deepStrictEqual(archives.within(path.join(nested, 'src'))?.inner, [
+      'src',
+    ]);
+    assert.deepStrictEqual(archives.within(path.join(zip, 'docs'))?.inner, [
+      'docs',
+    ]);
+    const again = await archives.open(nested);
+    assert.ok(again.kind === 'opened' && again.archive === inner.archive);
+
+    fs.writeFileSync(zip, 'outer, changed since');
+    assert.strictEqual((await archives.open(nested)).kind, 'refused');
+    assert.strictEqual(
+      archives.within(path.join(nested, 'src'))?.archive.file,
+      zip,
+    );
+  });
+
   test('finds the opened archive a folder is inside of, and the file a path inside an archive runs through', async () => {
     const zip = path.join(folder, 'a.zip');
     fs.writeFileSync(zip, 'zip');
