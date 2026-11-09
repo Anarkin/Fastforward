@@ -327,12 +327,12 @@ suite('Window', () => {
         send({ type: 'notice', level: 'error', message: 'first' });
         send({ type: 'notice', level: 'error', message: 'second' });
       });
-      assert.deepStrictEqual(shown(), ['second', 'first']);
+      assert.deepStrictEqual(shown(), ['first', 'second']);
 
       await press('F1');
       await press('Escape');
       assert.strictEqual(document.querySelector('[role="dialog"]'), null);
-      assert.deepStrictEqual(shown(), ['second', 'first']);
+      assert.deepStrictEqual(shown(), ['first', 'second']);
 
       await press('Escape');
       assert.deepStrictEqual(shown(), ['first']);

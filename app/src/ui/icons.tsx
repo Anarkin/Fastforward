@@ -109,6 +109,16 @@ export function ShieldIcon() {
   );
 }
 
+export function ErrorIcon() {
+  return (
+    <Icon className="error-icon">
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 4.75v3.5" />
+      <circle cx="8" cy="10.75" r="0.6" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}
+
 export function FolderIcon() {
   return (
     <Icon className="folder-icon">

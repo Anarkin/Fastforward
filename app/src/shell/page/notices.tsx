@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { CloseIcon } from '../../ui/icons';
+import { CloseIcon, ErrorIcon } from '../../ui/icons';
 import { strings } from '../../shared/strings';
 import { useShell, useShellActions } from './store';
 
@@ -36,8 +36,9 @@ export function Notices() {
 
   return (
     <div className="notices" role="status">
-      {notices.toReversed().map((notice) => (
+      {notices.map((notice) => (
         <div key={notice.id} className={`notice ${notice.level}`}>
+          {notice.level === 'error' && <ErrorIcon />}
           <span className="notice-message">{notice.message}</span>
           <button
             className="notice-close"

@@ -3334,14 +3334,15 @@ suite('Style', () => {
     looks(close, { height: '20px' });
   });
 
-  test('centers the notices under the column titles, or under the text saying no repository is open, so they show near the controls rather than in a far corner', () => {
+  test('puts the notices in the bottom right corner, below the column titles or the text saying no repository is open, so they hide nothing being worked on in the middle', () => {
     looks(withClass(notices(), 'notices'), {
       position: 'fixed',
       top: 'anchor(--notices bottom, 0px)',
       left: '0',
       right: '0',
       'flex-direction': 'column',
-      'align-items': 'center',
+      'justify-content': 'safe flex-end',
+      'align-items': 'flex-end',
     });
     looks(withClass(notices(), 'notice'), { 'box-sizing': 'border-box' });
     assert.ok(cascaded(withClass(notices(), 'notice'), 'max-width'));
@@ -3375,20 +3376,21 @@ suite('Style', () => {
     assert.strictEqual(padding.bottom, '16px');
   });
 
-  test('draws an error notice like any other notice but for the color of its message', () => {
+  test('draws an error notice like any other notice but for an icon of an error in the error color before its message, the message in the color of any text, as red text on the background of a notice was hard to read', () => {
     assert.deepStrictEqual(
       matchingRules(withClass(notices(), 'notice')).map(
         (rule) => rule.selector,
       ),
       ['.notice'],
     );
-    const rules = matchingRules(withClass(notices(), 'notice-message'));
-    assert.strictEqual(rules.at(-1)?.selector, '.notice.error .notice-message');
-    assert.deepStrictEqual(
-      [...(rules.at(-1)?.declarations.entries() ?? [])],
-      [['color', 'var(--color-error-foreground)']],
-    );
-    looks(withClass(notices('info'), 'notice-message'), { color: undefined });
+    for (const level of ['info', 'error']) {
+      looks(withClass(notices(level), 'notice-message'), { color: undefined });
+    }
+    looks(withClass(notices(), 'error-icon'), {
+      flex: 'none',
+      color: 'var(--color-error-foreground)',
+    });
+    assert.deepStrictEqual(allWithClass(notices('info'), 'error-icon'), []);
   });
 
   test('strikes a deleted file through, in the text color like the other changes', () => {

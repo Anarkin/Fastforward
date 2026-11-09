@@ -47,16 +47,19 @@ suite('Notices', () => {
     );
   });
 
-  test('shows the newest notice on top, nearest the controls above', () => {
+  test('shows the newest notice last, nearest the corner it stacks in', () => {
     const html = renderToStaticMarkup(withNotices([notice(1), notice(2)]));
-    assert.ok(html.indexOf('notice 2') < html.indexOf('notice 1'));
+    assert.ok(html.indexOf('notice 1') < html.indexOf('notice 2'));
   });
 
-  test('marks errors apart from information', () => {
+  test('marks errors apart from information by an icon of an error', () => {
     const html = renderToStaticMarkup(
       withNotices([notice(1), { ...notice(2, 'fyi'), level: 'info' }]),
     );
-    assert.match(html, /class="notice error"[^>]*><span[^>]*>notice 1</);
+    assert.match(
+      html,
+      /class="notice error"[^>]*><svg class="icon error-icon"[^]*?<\/svg><span[^>]*>notice 1</,
+    );
     assert.match(html, /class="notice info"[^>]*><span[^>]*>fyi</);
   });
 
@@ -66,9 +69,9 @@ suite('Notices', () => {
     });
     const drawn = renderedBy(Notices, {}, { shell });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(drawn));
-    const older = drawn.props.children[1];
+    const older = drawn.props.children[0];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(older));
-    const close = older.props.children[1];
+    const close = older.props.children[2];
     assert.ok(
       isValidElement<{
         onClick: () => void;
