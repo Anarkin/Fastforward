@@ -109,7 +109,7 @@ import {
 } from './files';
 import { tellMaximized } from './maximized';
 import { reloadWhenGone } from './pageGone';
-import { profileFolder, thumbnailFolder } from './profile';
+import { profileFolder, thumbnailFolder, viewedFilesFolder } from './profile';
 import { ThumbnailStore } from '../tools/commander/main/thumbnailStore';
 import { QuitGuard } from './quitGuard';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
@@ -408,13 +408,22 @@ async function start(asked: readonly string[]): Promise<void> {
     systemVersion: process.getSystemVersion(),
     distribution: process.platform === 'linux' ? distributionName() : undefined,
   });
-  const viewedFiles = path.join(profile, 'viewed-files');
-  await removeUnviewedCopies(
-    viewedFiles,
-    storage.savedTabs.flatMap((tab) =>
-      tab.view === true && tab.root !== undefined ? [tab.root] : [],
-    ),
+  const viewedFiles = viewedFilesFolder(
+    process.platform,
+    development,
+    app.commandLine.getSwitchValue('user-data-dir'),
+    os.homedir(),
+    process.env,
   );
+  const viewedRoots = storage.savedTabs.flatMap((tab) =>
+    tab.view === true && tab.root !== undefined ? [tab.root] : [],
+  );
+  for (const copies of new Set([
+    viewedFiles,
+    path.join(profile, 'viewed-files'),
+  ])) {
+    await removeUnviewedCopies(copies, viewedRoots);
+  }
   await archiveWork.clear();
   keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
   const gitTool = new GitTool(

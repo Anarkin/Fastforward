@@ -483,6 +483,40 @@ export class CommanderTool implements Tool<'commander'> {
       this.shown = undefined;
       this.unwatch();
     }
+    if (tab.view === true && tab.root !== undefined) {
+      this.removeCopy(tab.root);
+    }
+  }
+
+  private removeCopy(viewed: string): void {
+    const { viewedCopies } = this.access;
+    if (viewedCopies === undefined) {
+      return;
+    }
+    const inside = path.relative(viewedCopies, viewed);
+    const [entry] = inside.split(path.sep);
+    if (
+      entry === undefined ||
+      inside === '' ||
+      entry === '..' ||
+      path.isAbsolute(inside)
+    ) {
+      return;
+    }
+    const copy = path.join(viewedCopies, entry);
+    const stillViewed = this.shell
+      .tabs()
+      .some(
+        (open) =>
+          open.view === true &&
+          open.root !== undefined &&
+          (open.root === copy || open.root.startsWith(`${copy}${path.sep}`)),
+      );
+    if (!stillViewed) {
+      this.saveQuietly(
+        fs.promises.rm(copy, { recursive: true, force: true, maxRetries: 3 }),
+      );
+    }
   }
 
   async receive(page: Page, message: CommanderToHost): Promise<void> {

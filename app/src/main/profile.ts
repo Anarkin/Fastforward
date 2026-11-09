@@ -10,15 +10,16 @@ export function profileFolder(
   );
 }
 
-export function thumbnailFolder(
+function localFolder(
   platform: NodeJS.Platform,
   development: boolean,
   given: string,
   home: string,
   env: NodeJS.ProcessEnv,
+  named: string,
 ): string {
   if (given) {
-    return path.join(given, 'Thumbnails');
+    return path.join(given, named);
   }
   const name = development ? 'Fastforward Dev' : 'Fastforward';
   switch (platform) {
@@ -26,15 +27,37 @@ export function thumbnailFolder(
       return path.join(
         env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'),
         name,
-        'Thumbnails',
+        named,
       );
     case 'darwin':
-      return path.join(home, 'Library', 'Caches', name, 'Thumbnails');
+      return path.join(home, 'Library', 'Caches', name, named);
     default:
       return path.join(
         env.XDG_CACHE_HOME || path.join(home, '.cache'),
         name.toLowerCase().replace(' ', '-'),
-        'thumbnails',
+        named.toLowerCase().replace(' ', '-'),
       );
   }
+}
+
+export function thumbnailFolder(
+  platform: NodeJS.Platform,
+  development: boolean,
+  given: string,
+  home: string,
+  env: NodeJS.ProcessEnv,
+): string {
+  return localFolder(platform, development, given, home, env, 'Thumbnails');
+}
+
+export function viewedFilesFolder(
+  platform: NodeJS.Platform,
+  development: boolean,
+  given: string,
+  home: string,
+  env: NodeJS.ProcessEnv,
+): string {
+  return given
+    ? path.join(given, 'viewed-files')
+    : localFolder(platform, development, given, home, env, 'Viewed Files');
 }

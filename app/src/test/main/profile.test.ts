@@ -1,7 +1,11 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { profileFolder, thumbnailFolder } from '../../main/profile';
+import {
+  profileFolder,
+  thumbnailFolder,
+  viewedFilesFolder,
+} from '../../main/profile';
 
 suite('Profile', () => {
   const appData = path.join('C:', 'Users', 'me', 'AppData', 'Roaming');
@@ -48,6 +52,27 @@ suite('Profile', () => {
     assert.strictEqual(
       thumbnailFolder('linux', false, given, home, {}),
       path.join(given, 'Thumbnails'),
+    );
+  });
+
+  test('keeps the copies of the files viewed in the local folder of the system beside the thumbnails, rather than the profile, which may roam, and in the folder given when there is one, as it was', () => {
+    const home = path.join('C:', 'Users', 'me');
+    const local = path.join(home, 'AppData', 'Local');
+    assert.strictEqual(
+      viewedFilesFolder('win32', false, '', home, { LOCALAPPDATA: local }),
+      path.join(local, 'Fastforward', 'Viewed Files'),
+    );
+    assert.strictEqual(
+      viewedFilesFolder('darwin', true, '', home, {}),
+      path.join(home, 'Library', 'Caches', 'Fastforward Dev', 'Viewed Files'),
+    );
+    assert.strictEqual(
+      viewedFilesFolder('linux', false, '', home, {}),
+      path.join(home, '.cache', 'fastforward', 'viewed-files'),
+    );
+    assert.strictEqual(
+      viewedFilesFolder('linux', false, given, home, {}),
+      path.join(given, 'viewed-files'),
     );
   });
 });

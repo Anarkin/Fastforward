@@ -4593,6 +4593,39 @@ suite('Commander tool in archives', () => {
       return made;
     };
 
+    test('removes the copy a viewer tab showed once the tab is closed, unless another open tab still shows it, and nothing outside the copies of viewed files', async () => {
+      const { tool, page, tabs, settled } = await inArchive();
+      const copyIn = (named: string) => {
+        const copy = path.join(copiesFolder, 'viewed', named, 'a.txt');
+        fs.mkdirSync(path.dirname(copy), { recursive: true });
+        fs.writeFileSync(copy, 'a');
+        return copy;
+      };
+      const closedAlone = copyIn('alone');
+      const shared = copyIn('shared');
+      const outside = path.join(copiesFolder, 'outside.txt');
+      fs.writeFileSync(outside, 'o');
+      tabs.push({ id: '9', tool: 'commander', view: true, root: shared });
+
+      for (const [id, viewedFile] of [
+        ['6', closedAlone],
+        ['7', shared],
+        ['8', outside],
+      ] as const) {
+        tool.closed(page, {
+          id,
+          tool: 'commander',
+          view: true,
+          root: viewedFile,
+        });
+      }
+      await settled();
+
+      assert.ok(!fs.existsSync(path.dirname(closedAlone)));
+      assert.ok(fs.existsSync(shared));
+      assert.ok(fs.existsSync(outside));
+    });
+
     test('views a file of an archive from a copy kept with the copies of viewed files, named as the file is', async () => {
       const { send, viewed } = await inArchive();
       await send({ type: 'view', tab: '1', side: 'right', name: 'top.txt' });
