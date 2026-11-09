@@ -73,6 +73,7 @@ export interface Entry {
   readonly size: number | undefined;
   readonly modified: number | undefined;
   readonly online?: true;
+  readonly executable?: true;
 }
 
 export interface FlatFolder {

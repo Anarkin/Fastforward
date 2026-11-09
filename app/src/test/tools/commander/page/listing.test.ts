@@ -202,6 +202,48 @@ suite('Commander listing', () => {
     );
   });
 
+  test('puts the files with an exec bit that no earlier group claims where the group of the executables is', () => {
+    assert.deepStrictEqual(
+      keys(
+        [
+          entry('b.txt', { executable: true }),
+          entry('git', { executable: true }),
+          entry('a.png'),
+          entry('LICENSE'),
+          entry('configure', { executable: true }),
+        ],
+        { column: 'name', descending: false, groupByColor: true },
+        {
+          groups: fileColorsOf([
+            { extensions: ['txt'], colors },
+            { extensions: 'executables', colors },
+            { extensions: ['png'], colors },
+          ]),
+        },
+      ),
+      ['b.txt', 'configure', 'git', 'a.png', 'LICENSE'],
+    );
+  });
+
+  test('sorts again the files whose exec bit changed, as it may move them to another group of colors', () => {
+    const sort: Sort = {
+      column: 'name',
+      descending: false,
+      groupByColor: true,
+    };
+    const executables = fileColorsOf([{ extensions: 'executables', colors }]);
+    const before = [entry('a'), entry('b')];
+    const rows = rowsOf(before, false, true, sort, undefined, executables);
+    const after = [entry('a'), entry('b', { executable: true })];
+    assert.deepStrictEqual(
+      rowsOf(after, false, true, sort, undefined, executables, {
+        entries: before,
+        rows,
+      }).map((row) => row.key),
+      ['b', 'a'],
+    );
+  });
+
   test('reverses the column within each group of colors, keeping the groups in their order', () => {
     assert.deepStrictEqual(
       keys(

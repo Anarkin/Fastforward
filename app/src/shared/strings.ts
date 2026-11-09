@@ -931,6 +931,8 @@ export const strings = {
       `"tools.commander.fileColors[${again}]" lists "${extension}", which "tools.commander.fileColors[${first}]" lists already, so the earlier one colors it`,
     fileColorLanguagesTwice: (first: number, again: number) =>
       `"tools.commander.fileColors[${again}]" colors the languages, which "tools.commander.fileColors[${first}]" colors already, so the earlier one colors them`,
+    fileColorExecutablesTwice: (first: number, again: number) =>
+      `"tools.commander.fileColors[${again}]" colors the executables, which "tools.commander.fileColors[${first}]" colors already, so the earlier one colors them`,
     shouldBeListOrOneOf: (name: string, choices: readonly string[]) =>
       `"${name}" should be a list of strings or ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
     fileColorEmpty: (group: number) =>

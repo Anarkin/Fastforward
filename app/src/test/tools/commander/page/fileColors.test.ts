@@ -5,6 +5,7 @@ import {
   fileColorOf,
   fileColorsOf,
 } from '../../../../tools/commander/page/fileColors';
+import { languageOf } from '../../../../ui/languages';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
 import { defaultSettings } from '../../../fixtures';
 
@@ -28,20 +29,42 @@ const language = 'light-dark(#7a6e00, #e0d070)';
 const colorsOf = (light: string) => ({ light, dark: light });
 
 suite('Commander file colors', () => {
-  test('colors green by default the programs, installers and scripts that run when opened, whatever the case of their extension', () => {
+  test('colors green by default the programs, installers and scripts that run when opened, of Windows, macOS and Linux, whatever the case of their extension', () => {
     for (const name of [
       'setup.exe',
       'TOOL.COM',
       'node-v24.msi',
+      'KB5034441.msu',
+      'patch.msp',
       'app.msix',
       'app.appx',
-      'tool.AppImage',
+      'app.appinstaller',
+      'bubbles.scr',
+      'display.cpl',
+      'wizard.hta',
       'build.bat',
       'ff.cmd',
       'cleanup.ps1',
-      'deploy.sh',
       'legacy.vbs',
+      'old.vbe',
+      'old.jse',
       'job.wsf',
+      'Install.pkg',
+      'Bundle.mpkg',
+      'start.command',
+      'helper.tool',
+      'tool.AppImage',
+      'driver.run',
+      'firefox.desktop',
+      'tool.deb',
+      'tool.rpm',
+      'tool.snap',
+      'tool.flatpak',
+      'flathub.flatpakref',
+      'deploy.sh',
+      'setup.bash',
+      'prompt.zsh',
+      'config.fish',
     ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), executable, name);
     }
@@ -61,7 +84,16 @@ suite('Commander file colors', () => {
       'budget.xlsx',
       'slides.pptx',
       'draft.odt',
+      'drawing.odg',
+      'letter.dotm',
+      'budget.xltx',
+      'deck.potm',
+      'diagram.vsdx',
+      'schedule.mpp',
       'book.epub',
+      'book.fb2',
+      'comic.cbz',
+      'help.chm',
       'plan.gdoc',
       'sheet.gsheet',
       'trip.gmap',
@@ -71,6 +103,7 @@ suite('Commander file colors', () => {
       'notes.one',
       'reply.eml',
       'outlook.msg',
+      'inbox.mbox',
     ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), document, name);
     }
@@ -81,20 +114,30 @@ suite('Commander file colors', () => {
       'logo.png',
       'IMG_2041.JPG',
       'photo.heic',
+      'photo.jfif',
       'icon.svg',
+      'AppIcon.icns',
       'shot.dng',
+      'shot.pef',
       'cover.psd',
+      'logo.ai',
+      'poster.eps',
+      'screen.fig',
       'song.mp3',
       'album.flac',
+      'album.ape',
+      'book.m4b',
       'clip.mp4',
       'movie.mkv',
       'call.webm',
+      'old.rmvb',
+      'camera.mxf',
     ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), media, name);
     }
   });
 
-  test('colors teal by default the archives and compressed files, the tar ones by their last extension, the disk images and the packages, leaving green the installers', () => {
+  test('colors teal by default the archives and compressed files, the tar ones by their last extension, the disk images, the virtual disks and the packages, leaving green the installers', () => {
     for (const name of [
       'backup.zip',
       'tools.7z',
@@ -108,23 +151,43 @@ suite('Commander file colors', () => {
       'windows.iso',
       'disk.vhdx',
       'macos.dmg',
-      'tool.deb',
+      'old.sit',
+      'vm.qcow2',
+      'vm.vmdk',
+      'appliance.ova',
       'app.jar',
+      'app.war',
+      'app.apk',
+      'App.ipa',
+      'package.whl',
+      'package.nupkg',
+      'extension.vsix',
+      'addon.xpi',
     ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), archive, name);
     }
-    assert.strictEqual(fileColorOf(file('setup.msi'), defaults), executable);
+    for (const name of ['setup.msi', 'tool.deb', 'Install.pkg']) {
+      assert.strictEqual(fileColorOf(file(name), defaults), executable, name);
+    }
   });
 
-  test('colors yellow by default the video extensions TypeScript uses and data in CSV, as the viewer reads them as TypeScript and CSV', () => {
-    for (const name of ['recording.ts', 'clip.mts', 'export.csv']) {
+  test('colors yellow by default the video extensions TypeScript uses, the PowerPoint templates gettext uses and data in CSV, as the viewer reads them as TypeScript, gettext and CSV', () => {
+    for (const name of [
+      'recording.ts',
+      'clip.mts',
+      'messages.pot',
+      'messages.potx',
+      'export.csv',
+    ]) {
       assert.strictEqual(fileColorOf(file(name), defaults), language, name);
     }
   });
 
-  test('leaves plain by default the subtitles, playlists, fonts and 3D models, the Keynote extension private keys use and the contacts and calendars', () => {
+  test('leaves plain by default the subtitles, playlists, fonts and 3D models, the Keynote extension private keys use, the Publisher one public keys use, the tracker music Go modules use and the contacts and calendars', () => {
     for (const name of [
       'server.key',
+      'id_ed25519.pub',
+      'song.mod',
       'contacts.vcf',
       'meeting.ics',
       'movie.srt',
@@ -158,10 +221,121 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('leaves folders plain, whatever their name', () => {
+  test('leaves folders plain, whatever their name, but the apps of macOS, which are folders named .app, colored as the group listing app colors them', () => {
     assert.strictEqual(
       fileColorOf(file('tools.exe', { folder: true }), defaults),
       undefined,
+    );
+    assert.strictEqual(
+      fileColorOf(file('Safari.app', { folder: true }), defaults),
+      executable,
+    );
+    assert.strictEqual(
+      fileColorOf(
+        file('Preview.APP', { folder: true }),
+        fileColorsOf([
+          { extensions: ['app'], colors: colorsOf('#001') },
+          { extensions: 'executables', colors: colorsOf('#002') },
+        ]),
+      ),
+      'light-dark(#001, #001)',
+    );
+    assert.strictEqual(
+      fileColorOf(
+        file('Safari.app', { folder: true }),
+        fileColorsOf([{ extensions: ['exe'], colors: colorsOf('#001') }]),
+      ),
+      undefined,
+    );
+  });
+
+  test('colors green by default the files macOS and Linux may run, by their exec bit, that no group of extensions and no language claims, so that the files of a drive marking every file so keep their colors', () => {
+    for (const name of ['git', 'python3.12', 'node-v24', 'configure']) {
+      assert.strictEqual(
+        fileColorOf(file(name, { executable: true }), defaults),
+        executable,
+        name,
+      );
+      assert.strictEqual(fileColorOf(file(name), defaults), undefined, name);
+    }
+    for (const [name, color] of [
+      ['build.py', language],
+      ['Makefile', language],
+      ['notes.txt', document],
+      ['photo.jpg', media],
+      ['backup.zip', archive],
+    ]) {
+      assert.strictEqual(
+        fileColorOf(file(name, { executable: true }), defaults),
+        color,
+        name,
+      );
+    }
+  });
+
+  test('colors the files with an exec bit where the group of the executables is, an earlier group keeping its extensions, a later one and the languages after it giving way, and the first group of the executables counting alone', () => {
+    const groups = fileColorsOf([
+      { extensions: ['txt'], colors: colorsOf('#001') },
+      { extensions: 'executables', colors: colorsOf('#002') },
+      { extensions: 'languages', colors: colorsOf('#003') },
+      { extensions: ['jpg'], colors: colorsOf('#004') },
+      { extensions: 'executables', colors: colorsOf('#005') },
+    ]);
+    for (const [name, color] of [
+      ['notes.txt', '#001'],
+      ['git', '#002'],
+      ['build.py', '#002'],
+      ['photo.jpg', '#002'],
+    ]) {
+      assert.strictEqual(
+        fileColorOf(file(name, { executable: true }), groups),
+        `light-dark(${color}, ${color})`,
+        name,
+      );
+    }
+    assert.strictEqual(
+      fileColorOf(file('build.py'), groups),
+      'light-dark(#003, #003)',
+    );
+    assert.strictEqual(
+      fileColorOf(
+        file('git', { executable: true }),
+        fileColorsOf([{ extensions: ['exe'], colors: colorsOf('#001') }]),
+      ),
+      undefined,
+    );
+  });
+
+  test('gives by default no extension of a language to a group before the languages but those named here, the scripts that run when opened, the prose of Markdown and the like and SVG, so that no code turns into a video or a document', () => {
+    const groups = defaultSettings().tools.commander.fileColors;
+    const claimed = groups
+      .slice(
+        0,
+        groups.findIndex(({ extensions }) => extensions === 'languages'),
+      )
+      .flatMap(({ extensions }) =>
+        Array.isArray(extensions) ? extensions : [],
+      )
+      .filter((extension) => languageOf(`file.${extension}`) !== undefined);
+    assert.deepStrictEqual(
+      claimed.toSorted((a, b) => a.localeCompare(b)),
+      [
+        'adoc',
+        'asciidoc',
+        'bash',
+        'bat',
+        'cmd',
+        'desktop',
+        'fish',
+        'markdown',
+        'md',
+        'org',
+        'ps1',
+        'rst',
+        'sh',
+        'svg',
+        'zsh',
+      ],
     );
   });
 

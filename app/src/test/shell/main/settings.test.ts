@@ -162,10 +162,11 @@ suite('Settings', () => {
     );
   });
 
-  test('takes "languages" in place of the extensions of a color group of the commander', () => {
+  test('takes "languages" and "executables" in place of the extensions of a color group of the commander', () => {
     const fileColors = [
       { extensions: ['png'], colors: { light: '#a0a', dark: '#f0f' } },
       { extensions: 'languages', colors: { light: '#a0a', dark: '#f0f' } },
+      { extensions: 'executables', colors: { light: '#a0a', dark: '#f0f' } },
     ];
     const { settings, problems } = mergeSettings(defaults, {
       tools: { commander: { fileColors } },
@@ -194,7 +195,7 @@ suite('Settings', () => {
     assert.deepStrictEqual(settings, defaults);
     assert.deepStrictEqual(problems, [
       'Missing setting "tools.commander.fileColors[0].colors.dark"',
-      '"tools.commander.fileColors[1].extensions" should be a list of strings or "languages"',
+      '"tools.commander.fileColors[1].extensions" should be a list of strings or "languages" or "executables"',
       'Unknown setting "tools.commander.fileColors[2].bold"',
       '"tools.commander.fileColors[3]" should be an object',
     ]);

@@ -33,6 +33,17 @@ suite('Commander settings', () => {
     );
   });
 
+  test('names a color group of the executables after an earlier one', () => {
+    assert.deepStrictEqual(
+      fileColorProblems([
+        { extensions: 'executables', colors },
+        { extensions: 'languages', colors },
+        { extensions: 'executables', colors },
+      ]),
+      [strings.settings.fileColorExecutablesTwice(0, 2)],
+    );
+  });
+
   test('finds nothing to say about color groups that each list their own extensions', () => {
     assert.deepStrictEqual(
       fileColorProblems([

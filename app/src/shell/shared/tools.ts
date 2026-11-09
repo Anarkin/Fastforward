@@ -10,7 +10,7 @@ import type {
 } from '../../tools/commander/shared/protocol';
 import {
   fileColorProblems,
-  languagesGroup,
+  groupStandIns,
   sortColumns,
   type CommanderSettings,
 } from '../../tools/commander/shared/settings';
@@ -102,7 +102,7 @@ export const toolSettingListKinds: ReadonlyMap<string, 'string'> = new Map([
 
 export const toolSettingStandIns: ReadonlyMap<string, readonly string[]> =
   new Map<string, readonly string[]>([
-    ['tools.commander.fileColors[].extensions', [languagesGroup]],
+    ['tools.commander.fileColors[].extensions', groupStandIns],
   ]);
 
 export function toolSettingProblems(settings: ToolSettings): string[] {

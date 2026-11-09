@@ -1,7 +1,7 @@
 import { matchesFilter } from '../../../shared/fileFilter';
 import { parentFolder, type Entry } from '../shared/protocol';
 import type { Sort, SortColumn } from '../shared/settings';
-import { groupOfFileNamed, noFileColors, type FileColors } from './fileColors';
+import { groupOfEntry, noFileColors, type FileColors } from './fileColors';
 
 export interface Row {
   readonly key: string;
@@ -154,8 +154,9 @@ export function mergedRows<T extends Row>(
 
 function colorGroupOf(fileColors: FileColors): (row: Row) => number {
   return (row) =>
-    groupOfFileNamed(row.entry?.name ?? '', fileColors) ??
-    fileColors.colors.length;
+    (row.entry === undefined
+      ? undefined
+      : groupOfEntry(row.entry, fileColors)) ?? fileColors.colors.length;
 }
 
 export function fileGroupOf(
@@ -202,7 +203,8 @@ function ordersAlike(one: Entry, other: Entry): boolean {
   return (
     one.folder === other.folder &&
     one.size === other.size &&
-    one.modified === other.modified
+    one.modified === other.modified &&
+    one.executable === other.executable
   );
 }
 

@@ -14,10 +14,14 @@ async function statsOf(
   }
 }
 
+const anyoneRuns = 0o111;
+
 async function entryOf(folder: string, found: fs.Dirent): Promise<Entry> {
   const link = found.isSymbolicLink();
   const stats = await statsOf(path.join(folder, found.name), link);
   const isFolder = stats?.isDirectory() ?? found.isDirectory();
+  const unixFile =
+    process.platform !== 'win32' && stats !== undefined && !isFolder;
   return {
     name: found.name,
     folder: isFolder,
@@ -25,11 +29,8 @@ async function entryOf(folder: string, found: fs.Dirent): Promise<Entry> {
     hidden: found.name.startsWith('.'),
     size: stats === undefined || isFolder ? undefined : stats.size,
     modified: stats?.mtimeMs,
-    ...(process.platform !== 'win32' &&
-      stats !== undefined &&
-      !isFolder &&
-      stats.size > 0 &&
-      stats.blocks === 0 && { online: true }),
+    ...(unixFile && stats.size > 0 && stats.blocks === 0 && { online: true }),
+    ...(unixFile && (stats.mode & anyoneRuns) !== 0 && { executable: true }),
   };
 }
 

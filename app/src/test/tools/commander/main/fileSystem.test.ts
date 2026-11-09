@@ -137,6 +137,35 @@ suite.each(implementations)('The file system of %s', (name, make) => {
     },
   );
 
+  test('marks the files macOS and Linux may run by their exec bit, of the owner, the group or anyone, but no folder and nothing on Windows, which runs files by their extension', async () => {
+    for (const [file, mode] of [
+      ['git', 0o755],
+      ['owner', 0o744],
+      ['anyone', 0o641],
+      ['notes', 0o644],
+      ['setup.exe', 0o644],
+    ] as const) {
+      fs.writeFileSync(path.join(folder, file), 'x');
+      fs.chmodSync(path.join(folder, file), mode);
+    }
+    fs.mkdirSync(path.join(folder, 'bin'), { mode: 0o755 });
+
+    assert.deepStrictEqual(
+      byName(await fileSystem.list(folder)).map((entry) => [
+        entry.name,
+        entry.executable === true,
+      ]),
+      [
+        ['anyone', !windows],
+        ['bin', false],
+        ['git', !windows],
+        ['notes', false],
+        ['owner', !windows],
+        ['setup.exe', false],
+      ],
+    );
+  });
+
   test('lists a link to a folder as a folder that is a link', async () => {
     fs.mkdirSync(path.join(folder, 'target'));
     fs.symlinkSync(
