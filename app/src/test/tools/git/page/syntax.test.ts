@@ -1,6 +1,12 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
-import { act, createElement, Fragment, useLayoutEffect } from 'react';
+import {
+  act,
+  createElement,
+  Fragment,
+  useLayoutEffect,
+  type ReactElement,
+} from 'react';
 import { beforeAll, suite, test } from 'vitest';
 import { parsePatch, type LoadedText } from '../../../../tools/git/page/diff';
 import type { TextRequest } from '../../../../tools/git/shared/protocol';
@@ -12,6 +18,7 @@ import {
   languageOf,
   syntaxSources,
   textsToLoad,
+  usePrefetchedColors,
   useSyntax,
   useTextsToLoad,
 } from '../../../../tools/git/page/syntax';
@@ -39,7 +46,7 @@ import {
   partLines,
   type CodePart,
 } from '../../../../ui/syntaxParts';
-import { policyOfPage, waitFor } from '../../../fixtures';
+import { noop, policyOfPage, waitFor } from '../../../fixtures';
 
 type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
 
@@ -70,6 +77,64 @@ function countingLines(highlighter: Highlighter) {
   };
   return { counting, tokenized: () => lines.length, lines };
 }
+
+const workerSeen: {
+  readonly posted: ToSyntax[];
+  answer: (message: FromSyntax) => void;
+} = { posted: [], answer: noop };
+
+class FakeWorker {
+  postMessage(message: ToSyntax) {
+    workerSeen.posted.push(message);
+  }
+
+  addEventListener(
+    type: string,
+    listener: (event: { data: FromSyntax }) => void,
+  ) {
+    if (type === 'message') {
+      workerSeen.answer = (data) => listener({ data });
+    }
+  }
+}
+
+async function inPage(
+  run: (render: (element: ReactElement) => Promise<void>) => Promise<void>,
+): Promise<void> {
+  const dom = new JSDOM('<!doctype html><main></main>');
+  const globals = {
+    window: dom.window,
+    document: dom.window.document,
+    location: new URL('file:///page/index.html'),
+    IS_REACT_ACT_ENVIRONMENT: true,
+    Worker: FakeWorker,
+  };
+  const saved = Object.fromEntries(
+    Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+  );
+  Object.assign(globalThis, globals);
+  try {
+    const { createRoot } = await import('react-dom/client');
+    const main = dom.window.document.querySelector('main');
+    assert.ok(main);
+    const root = createRoot(main);
+    await run(async (element) => {
+      await act(async () => {
+        root.render(element);
+      });
+    });
+    await act(async () => {
+      root.unmount();
+    });
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+}
+
+const answered = (message: FromSyntax) =>
+  act(async () => {
+    workerSeen.answer(message);
+  });
 
 const comment = (end: number) => [{ start: 0, end, kind: 'comment' as const }];
 
@@ -462,96 +527,46 @@ suite('Syntax', () => {
 
   test('asks for the whole texts of a diff in the commit that shows it, before the window paints, rather than after, so they come a frame sooner', async () => {
     const files = parsePatch(gappedPatch);
-    const dom = new JSDOM('<!doctype html><main></main>');
-    const globals = {
-      window: dom.window,
-      document: dom.window.document,
-      IS_REACT_ACT_ENVIRONMENT: true,
-    };
-    const saved = Object.fromEntries(
-      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
-    );
-    Object.assign(globalThis, globals);
-    try {
-      const { createRoot } = await import('react-dom/client');
-      const main = dom.window.document.querySelector('main');
-      assert.ok(main);
-      const root = createRoot(main);
-      const asked: TextRequest[][] = [];
-      let askedBeforePaint: boolean | undefined;
-      const texts = new Map<string, LoadedText>();
-      const open = new Set([0]);
-      const ask = (load: TextRequest[]) => asked.push(load);
-      function Asking() {
-        useTextsToLoad(files, undefined, 1, open, texts, undefined, ask);
-        return null;
-      }
-      function Painted() {
-        useLayoutEffect(() => {
-          askedBeforePaint = asked.length > 0;
-        }, []);
-        return null;
-      }
-      await act(async () => {
-        root.render(
-          createElement(
-            Fragment,
-            null,
-            createElement(Asking),
-            createElement(Painted),
-          ),
-        );
-      });
-      assert.strictEqual(askedBeforePaint, true);
-      assert.deepStrictEqual(asked, [
-        [
-          { path: 'a.ts', side: 'old', blob: blobs.old },
-          { path: 'a.ts', side: 'new', blob: blobs.new },
-        ],
-      ]);
-      await act(async () => {
-        root.unmount();
-      });
-    } finally {
-      Object.assign(globalThis, saved);
+    const asked: TextRequest[][] = [];
+    let askedBeforePaint: boolean | undefined;
+    const texts = new Map<string, LoadedText>();
+    const open = new Set([0]);
+    const ask = (load: TextRequest[]) => asked.push(load);
+    function Asking() {
+      useTextsToLoad(files, undefined, 1, open, texts, undefined, ask);
+      return null;
     }
+    function Painted() {
+      useLayoutEffect(() => {
+        askedBeforePaint = asked.length > 0;
+      }, []);
+      return null;
+    }
+    await inPage(async (render) => {
+      await render(
+        createElement(
+          Fragment,
+          null,
+          createElement(Asking),
+          createElement(Painted),
+        ),
+      );
+    });
+    assert.strictEqual(askedBeforePaint, true);
+    assert.deepStrictEqual(asked, [
+      [
+        { path: 'a.ts', side: 'old', blob: blobs.old },
+        { path: 'a.ts', side: 'new', blob: blobs.new },
+      ],
+    ]);
   });
 
   test('colors a diff by the colors kept of its blobs in the render before its first paint, rather than once the worker answers, the colors the worker gives from the hunks alone not taking their place unless they come from after a language loaded', async () => {
     const files = keptPatch('7', '8');
     const lines = [comment(8), comment(6), comment(8), comment(6)];
     keepColors('typescript', '8'.repeat(40), packedPart(lines, 0, true), 30);
-    const posted: ToSyntax[] = [];
-    let answer: ((message: FromSyntax) => void) | undefined;
-    const dom = new JSDOM('<!doctype html><main></main>');
-    const globals = {
-      window: dom.window,
-      document: dom.window.document,
-      location: new URL('file:///page/index.html'),
-      IS_REACT_ACT_ENVIRONMENT: true,
-      Worker: class {
-        postMessage(message: ToSyntax) {
-          posted.push(message);
-        }
-        addEventListener(
-          type: string,
-          listener: (event: { data: FromSyntax }) => void,
-        ) {
-          if (type === 'message') {
-            answer = (data) => listener({ data });
-          }
-        }
-      },
-    };
-    const saved = Object.fromEntries(
-      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
-    );
-    Object.assign(globalThis, globals);
-    try {
-      const { createRoot } = await import('react-dom/client');
-      const main = dom.window.document.querySelector('main');
-      assert.ok(main);
-      const root = createRoot(main);
+    workerSeen.posted.length = 0;
+    await inPage(async (render) => {
       const shown: ReadonlyMap<string, readonly SyntaxRange[]>[] = [];
       const texts = new Map<string, LoadedText>();
       const open = new Set([0]);
@@ -559,51 +574,90 @@ suite('Syntax', () => {
         shown.push(useSyntax(files, undefined, texts, open));
         return null;
       }
-      await act(async () => {
-        root.render(createElement(Diff));
-      });
+      await render(createElement(Diff));
       assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
         '0:1': lines[2],
         '0:2': lines[3],
       });
-      const job = posted.find((message) => message.type === 'color')?.job;
+      const job = workerSeen.posted.find(
+        (message) => message.type === 'color',
+      )?.job;
       assert.ok(job !== undefined);
       const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
-      await act(async () => {
-        answer?.({
-          type: 'colors',
-          job,
-          generations: { typescript: 30 },
-          ranges: [
-            ['0:0', keyword],
-            ['0:1', keyword],
-          ],
-        });
+      await answered({
+        type: 'colors',
+        job,
+        generations: { typescript: 30 },
+        ranges: [
+          ['0:0', keyword],
+          ['0:1', keyword],
+        ],
       });
       assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
         '0:0': keyword,
         '0:1': lines[2],
         '0:2': lines[3],
       });
-      await act(async () => {
-        answer?.({
-          type: 'colors',
-          job,
-          generations: { typescript: 31, json: 100 },
-          ranges: [['0:2', keyword]],
-        });
+      await answered({
+        type: 'colors',
+        job,
+        generations: { typescript: 31, json: 100 },
+        ranges: [['0:2', keyword]],
       });
       assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
         '0:0': keyword,
         '0:1': lines[2],
         '0:2': keyword,
       });
-      await act(async () => {
-        root.unmount();
-      });
-    } finally {
-      Object.assign(globalThis, saved);
+    });
+  });
+
+  test('colors a diff read ahead in the background, keeping the colors of each whole text by its blob, so the diff is colored in its first frame once it is shown', async () => {
+    const patch = gappedPatch.replace(
+      `${blobs.old}..${blobs.new}`,
+      `${'c'.repeat(40)}..${'d'.repeat(40)}`,
+    );
+    const texts = new Map<string, LoadedText>([
+      [
+        'old:a.ts',
+        { blob: 'c'.repeat(40), text: '/* start\nmiddle\nold = 1;\nend */\n' },
+      ],
+      [
+        'new:a.ts',
+        { blob: 'd'.repeat(40), text: '/* start\nmiddle\nnew = 2;\nend */\n' },
+      ],
+    ]);
+    const colors = [[], [], comment(8), comment(6)];
+    workerSeen.posted.length = 0;
+    function Ahead() {
+      usePrefetchedColors(patch, texts, true);
+      return null;
     }
+    await inPage(async (render) => {
+      await render(createElement(Ahead));
+      const asked = workerSeen.posted.find(
+        (message) => message.type === 'color',
+      );
+      assert.ok(asked?.type === 'color');
+      assert.strictEqual(asked.background, true);
+      const newSide = asked.sources.findIndex(
+        ({ lines }) => lines[2] === 'new = 2;',
+      );
+      await answered({
+        type: 'entire',
+        job: asked.job,
+        generation: 40,
+        source: newSide,
+        part: packedPart(colors, 0, true),
+      });
+    });
+    assert.deepStrictEqual(
+      Object.fromEntries(keptColorsOf(parsePatch(patch))),
+      {
+        '0:1': colors[2],
+        '0:2': colors[3],
+      },
+    );
   });
 
   test('gives the new side of a file its old side as a twin, pairing each line with the line of the old side it is unchanged from, in the hunks and between them, so the engine colors it from the old side', () => {
@@ -988,6 +1042,32 @@ suite('Syntax', () => {
     '+new = 2;',
     '',
   ].join('\n');
+
+  test('asks for the colors of every line of a side shown whole from its first line, as of an added file, so the page keeps them by its blob without its text, but not of one shown from hunks apart', () => {
+    const added = parsePatch(
+      [
+        'diff --git a/b.ts b/b.ts',
+        'new file mode 100644',
+        `index ${'0'.repeat(40)}..${'3'.repeat(40)}`,
+        '--- /dev/null',
+        '+++ b/b.ts',
+        '@@ -0,0 +1,2 @@',
+        '+let a = 1;',
+        '+let b = 2;',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(added, undefined).map(({ entire }) => entire),
+      [true],
+    );
+    assert.deepStrictEqual(
+      syntaxSources(parsePatch(gappedPatch), undefined).map(
+        ({ entire }) => entire,
+      ),
+      [undefined, undefined],
+    );
+  });
 
   test('asks for no text of a side that owns none of the lines shown, or with lines shown too far into it', () => {
     assert.deepStrictEqual(textsToLoad(parsePatch(addedPatch), 1, new Set()), [
@@ -1885,6 +1965,33 @@ suite('Coloring away from the page', () => {
     posted.length = 0;
     serve({ type: 'color', job: 6, sources: [source] });
     assert.deepStrictEqual(entireOf(posted), [[6, 0, everyLine]]);
+  });
+
+  test('colors a job asked for in the background only while no job in the foreground has a slice left, so a diff read ahead never slows the one shown', async () => {
+    await loadLanguages(['typescript']);
+    const { posted, serve, run } = served();
+    serve({
+      type: 'color',
+      job: 7,
+      background: true,
+      sources: [
+        { language: 'typescript', lines: ['let behind = 1;'], keys: ['0:0'] },
+      ],
+    });
+    serve({
+      type: 'color',
+      job: 8,
+      sources: [
+        { language: 'typescript', lines: ['let ahead = 2;'], keys: ['1:0'] },
+      ],
+    });
+    run();
+    assert.deepStrictEqual(
+      posted.flatMap((message) =>
+        message.type === 'colors' ? [message.job] : [],
+      ),
+      [8, 7],
+    );
   });
 
   test('colors a code block by its language, and nothing in one it does not know', async () => {

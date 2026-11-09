@@ -1253,6 +1253,54 @@ suite('Git tool of one repository', () => {
       }
     });
 
+    test('reads ahead the diff of a commit the page asks for without selecting it, and the texts of its blobs, so the page can color it before it is shown', async () => {
+      const file = path.join(repository.root, 'ahead.ts');
+      fs.writeFileSync(file, 'ahead\n');
+      try {
+        const blob = (await repository.git('hash-object', '-w', file)).trim();
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+        page.clear();
+        await connection.receive({
+          type: 'prefetchTexts',
+          root: repository.root,
+          hash: fixture.b,
+          texts: [{ path: 'ahead.ts', side: 'new', blob }],
+        });
+        await connection.receive({
+          type: 'prefetchDiff',
+          root: repository.root,
+          hash: fixture.b,
+        });
+        await connection.receive({
+          type: 'prefetchTexts',
+          root: repository.root,
+          hash: fixture.b,
+          texts: [{ path: 'ahead.ts', side: 'new', blob }],
+        });
+        assert.deepStrictEqual(
+          page.messages
+            .map(({ type }) => type)
+            .filter((type) =>
+              ['files', 'diff', 'prefetchedDiff', 'prefetchedTexts'].includes(
+                type,
+              ),
+            ),
+          ['prefetchedDiff', 'prefetchedTexts'],
+        );
+        assert.strictEqual(page.last('prefetchedDiff')?.hash, fixture.b);
+        assert.deepStrictEqual(
+          page.last('prefetchedTexts')?.texts.map(({ text }) => text),
+          ['ahead\n'],
+        );
+      } finally {
+        fs.rmSync(file, { force: true });
+      }
+    });
+
     test('sends the texts of blobs asked for again without reading them from git again', async () => {
       const file = path.join(repository.root, 'kept.ts');
       fs.writeFileSync(file, 'kept\n');

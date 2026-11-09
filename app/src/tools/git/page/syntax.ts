@@ -1,6 +1,6 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { TextRequest } from '../shared/protocol';
-import { textKey, type DiffFile, type LoadedText } from './diff';
+import { parsePatch, textKey, type DiffFile, type LoadedText } from './diff';
 import type { WholeFile } from './diffView';
 import { lineKey, wholeLines } from './find';
 import { languageOf } from '../../../ui/languages';
@@ -97,12 +97,16 @@ function sideSource(plan: SidePlan, text: string | undefined): NumberedSource {
     )
   ) {
     const kept = shown.slice(0, maxSourceLines);
+    const fromFirstLine = kept.every(
+      ({ number }, index) => number === index + 1,
+    );
     return {
       plan,
       source: {
         language,
         lines: kept.map(({ line }) => line.text),
         keys: kept.map(keyOf),
+        ...(fromFirstLine && { entire: true }),
       },
       numbers: kept.map(({ number }) => number),
     };
@@ -369,6 +373,43 @@ export function useTextsToLoad(
       onLoadTexts(load);
     }
   }, [files, whole, diff, open, texts, onLoadTexts, chosen]);
+}
+
+export function usePrefetchedColors(
+  patch: string | undefined,
+  texts: ReadonlyMap<string, LoadedText> | undefined,
+  highlight: boolean,
+): void {
+  const files = useMemo(
+    () => (patch === undefined ? [] : parsePatch(patch)),
+    [patch],
+  );
+  useEffect(() => {
+    if (!highlight || texts === undefined) {
+      return undefined;
+    }
+    const planned = plannedSources(
+      files,
+      undefined,
+      texts,
+      undefined,
+      undefined,
+    );
+    if (!planned.some(({ blob }) => blob !== undefined)) {
+      return undefined;
+    }
+    return colorer().color(
+      planned.map(({ source }) => source),
+      () => undefined,
+      (index, part, generation) => {
+        const { source, blob } = planned[index] ?? {};
+        if (source !== undefined && blob !== undefined) {
+          keepColors(source.language, blob, part, generation);
+        }
+      },
+      true,
+    );
+  }, [files, texts, highlight]);
 }
 
 const noRanges: ReadonlyMap<string, readonly SyntaxRange[]> = new Map();

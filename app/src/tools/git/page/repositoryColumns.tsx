@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from 'react';
+import { useShell } from '../../../shell/page/store';
 import { useBinding } from '../../../ui/shortcuts';
 import { gitKeymap } from '../shared/keymap';
 import { Diff, DiffLanguage, DiffOptions, diffSelection } from './diffColumn';
@@ -11,6 +12,7 @@ import {
   useGit,
   useGitActions,
 } from './store';
+import { usePrefetchedColors } from './syntax';
 import { changesShown } from './tabView';
 
 export const CommitColumn = memo(Commits);
@@ -37,6 +39,10 @@ export const RepositoryDiff = memo(function RepositoryDiff() {
   const languageKey = useGit((state) => languageKeyOf(undefined, state.tab));
   const entire = useGit((state) => state.showEntireFile);
   const findsHere = useGit((state) => state.activeColumn === 'diff');
+  const prefetchedPatch = useGit((state) => state.tab.prefetched?.patch);
+  const prefetchedTexts = useGit((state) => state.tab.prefetched?.texts);
+  const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
+  usePrefetchedColors(prefetchedPatch, prefetchedTexts, highlightSyntax);
   const { loadFileDiff, loadTexts, viewFile } = useGitActions();
   const [findAsked, setFindAsked] = useState(0);
   const [viewAsked, setViewAsked] = useState(0);

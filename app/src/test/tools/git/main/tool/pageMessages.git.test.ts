@@ -320,6 +320,9 @@ suite('Git tool checking what the page sends', () => {
         { type: 'pushBranch', root, name: 5 },
         { type: 'setBookmarks', root, bookmarks: 'x' },
         { type: 'viewFile', root, path: 'x', blob: 5 },
+        { type: 'prefetchDiff', root, hash: 5 },
+        { type: 'prefetchTexts', root, hash: fixture.a, texts: 'x' },
+        { type: 'prefetchTexts', root, hash: 5, texts: [] },
       ]) {
         await untrusted(message);
       }

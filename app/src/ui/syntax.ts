@@ -46,6 +46,7 @@ export interface Colorer {
       generations: Readonly<Record<string, number>>,
     ) => void,
     entire?: (source: number, part: CodePart, generation: number) => void,
+    background?: boolean,
   ): () => void;
   code(
     language: string,
@@ -91,7 +92,7 @@ export function colorerOf(port: SyntaxPort): Colorer {
     (error) => reportError(error),
   );
   return {
-    color(sources, colored, entire) {
+    color(sources, colored, entire, background) {
       const job = (jobs += 1);
       waiting.set(job, (message) => {
         if (message.type === 'colors') {
@@ -100,7 +101,12 @@ export function colorerOf(port: SyntaxPort): Colorer {
           entire?.(message.source, message.part, message.generation);
         }
       });
-      port.post({ type: 'color', job, sources });
+      port.post({
+        type: 'color',
+        job,
+        sources,
+        ...(background === true && { background }),
+      });
       return () => {
         waiting.delete(job);
         port.post({ type: 'stop', job });

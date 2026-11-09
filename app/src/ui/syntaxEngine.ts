@@ -741,6 +741,7 @@ export type ToSyntax =
       readonly type: 'color';
       readonly job: number;
       readonly sources: readonly SyntaxSource[];
+      readonly background?: true;
     }
   | { readonly type: 'stop'; readonly job: number }
   | {
@@ -782,9 +783,19 @@ class ChangedRanges extends Map<string, readonly SyntaxRange[]> {
 
 export function serveColoring(
   post: (message: FromSyntax) => void,
-  later?: (run: () => void) => void,
+  later: (run: () => void) => void = (run) => setTimeout(run),
 ): (message: ToSyntax) => void {
   const jobs = new Map<number, () => void>();
+  let foregroundSlices = 0;
+  const inForeground = (run: () => void) => {
+    foregroundSlices += 1;
+    later(() => {
+      foregroundSlices -= 1;
+      run();
+    });
+  };
+  const inBackground = (run: () => void) =>
+    later(() => (foregroundSlices > 0 ? inBackground(run) : run()));
   return (message) => {
     const { job } = message;
     if (message.type === 'stop') {
@@ -809,14 +820,19 @@ export function serveColoring(
       };
       jobs.set(
         job,
-        startColoring(sources, ranges, publish, later, (source, lines) =>
-          post({
-            type: 'entire',
-            job,
-            generation: generationOf(sources[source].language),
-            source,
-            part: packedPart(lines, 0, true),
-          }),
+        startColoring(
+          sources,
+          ranges,
+          publish,
+          message.background ? inBackground : inForeground,
+          (source, lines) =>
+            post({
+              type: 'entire',
+              job,
+              generation: generationOf(sources[source].language),
+              source,
+              part: packedPart(lines, 0, true),
+            }),
         ),
       );
     } else {
@@ -831,7 +847,7 @@ export function serveColoring(
           }
           post({ type: 'code', job, part });
         },
-        later,
+        inForeground,
       );
       if (!finished) {
         jobs.set(job, stop);

@@ -56,7 +56,22 @@ export interface TabView {
   readonly hashLookup: GitToWebviewOf<'hashLookup'> | undefined;
   readonly commitSearch: GitToWebviewOf<'commitSearch'> | undefined;
   readonly error: string | undefined;
+  readonly prefetched: Prefetched | undefined;
 }
+
+interface Prefetched {
+  readonly hash: string;
+  readonly patch: string;
+  readonly texts: ReadonlyMap<string, LoadedText>;
+}
+
+const loadedTexts = (
+  texts: GitToWebviewOf<'texts' | 'prefetchedTexts'>['texts'],
+) =>
+  texts.map(
+    ({ path, side, blob, text }) =>
+      [textKey(path, side), { blob, text }] as const,
+  );
 
 export const emptyTabView: TabView = {
   root: undefined,
@@ -96,6 +111,7 @@ export const emptyTabView: TabView = {
   hashLookup: undefined,
   commitSearch: undefined,
   error: undefined,
+  prefetched: undefined,
 };
 
 export type TabAction =
@@ -295,13 +311,29 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return action.hash === state.hash && action.diff === state.diffs
         ? {
             ...state,
-            texts: new Map([
-              ...state.texts,
-              ...action.texts.map(
-                ({ path, side, blob, text }) =>
-                  [textKey(path, side), { blob, text }] as const,
-              ),
-            ]),
+            texts: new Map([...state.texts, ...loadedTexts(action.texts)]),
+          }
+        : state;
+    case 'prefetchedDiff':
+      return {
+        ...state,
+        prefetched: {
+          hash: action.hash,
+          patch: action.patch,
+          texts: new Map(),
+        },
+      };
+    case 'prefetchedTexts':
+      return state.prefetched?.hash === action.hash
+        ? {
+            ...state,
+            prefetched: {
+              ...state.prefetched,
+              texts: new Map([
+                ...state.prefetched.texts,
+                ...loadedTexts(action.texts),
+              ]),
+            },
           }
         : state;
     case 'fileContent':

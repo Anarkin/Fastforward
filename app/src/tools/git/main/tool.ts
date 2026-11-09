@@ -210,11 +210,17 @@ interface TabWork extends TabState {
   diffOwed: boolean;
   loadingFiles: AbortController;
   loadingDiff: AbortController;
+  prefetching: Prefetching | undefined;
   readonly closed: AbortController;
   untrackedPatches: UntrackedPatches;
   indexPaths: readonly string[] | undefined;
   refsRead: number;
   repositoryShown: number;
+}
+
+interface Prefetching {
+  readonly hash: string;
+  readonly controller: AbortController;
 }
 
 interface ReadRefs extends Refs {
@@ -1112,6 +1118,7 @@ export class GitTool implements Tool<'git'> {
         await this.lookupHash(context, message.query);
         break;
       case 'selectCommit':
+        context.tab.prefetching?.controller.abort();
         context.tab.selection = message.selection;
         if (message.hash === undefined) {
           unselect(context.tab);
@@ -1138,6 +1145,14 @@ export class GitTool implements Tool<'git'> {
       case 'loadTexts':
         if (this.isSelected(context, message.hash)) {
           await this.sendTexts(context, message);
+        }
+        break;
+      case 'prefetchDiff':
+        await this.prefetchDiff(context, message.hash);
+        break;
+      case 'prefetchTexts':
+        if (context.tab.prefetching?.hash === message.hash) {
+          await this.prefetchTexts(context, message.hash, message.texts);
         }
         break;
       case 'viewFile':
@@ -1700,6 +1715,7 @@ export class GitTool implements Tool<'git'> {
         diffOwed: false,
         loadingFiles: new AbortController(),
         loadingDiff: new AbortController(),
+        prefetching: undefined,
         closed: new AbortController(),
         untrackedPatches: new UntrackedPatches(maxKeptUntrackedChars),
         indexPaths: undefined,
@@ -3546,6 +3562,61 @@ export class GitTool implements Tool<'git'> {
     }
   }
 
+  private async prefetchDiff(context: Context, hash: string): Promise<void> {
+    const { tab } = context;
+    if (
+      tab.path !== undefined ||
+      !isFullHash(hash) ||
+      workingTreeSide(hash) ||
+      comparedOf(hash) !== undefined ||
+      tab.stashes.has(hash) ||
+      !pickable(tab, hash)
+    ) {
+      return;
+    }
+    tab.prefetching?.controller.abort();
+    const prefetching = { hash, controller: new AbortController() };
+    tab.prefetching = prefetching;
+    const { signal } = prefetching.controller;
+    let read: ReadPatch;
+    try {
+      read = await this.budgetedPatch(context, hash, signal);
+    } catch (error) {
+      if (signal.aborted) {
+        return;
+      }
+      throw error;
+    }
+    void this.shell.track(read.exited);
+    if (!signal.aborted) {
+      context.post({ type: 'prefetchedDiff', hash, patch: read.patch });
+    }
+  }
+
+  private async prefetchTexts(
+    context: Context,
+    hash: string,
+    asked: readonly TextRequest[],
+  ): Promise<void> {
+    const { gitPath, root } = context;
+    const texts = uniqueTexts(asked).filter(({ blob }) => isFullHash(blob));
+    const blobs = await this.blobTexts.read(
+      texts.map(({ blob }) => blob),
+      (ids) => readBlobs(gitPath, root, ids),
+    );
+    const { prefetching } = context.tab;
+    if (prefetching?.hash === hash && !prefetching.controller.signal.aborted) {
+      context.post({
+        type: 'prefetchedTexts',
+        hash,
+        texts: texts.map((request) => ({
+          ...request,
+          text: blobs.get(request.blob),
+        })),
+      });
+    }
+  }
+
   private async patchOf(
     context: Context,
     hash: string,
@@ -3825,6 +3896,8 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
     case 'pushTag':
     case 'pullBranch':
     case 'pushBranch':
+    case 'prefetchDiff':
+    case 'prefetchTexts':
       return true;
     case 'checkout':
       return (
@@ -3999,6 +4072,10 @@ function wellFormedInTab(message: TabMessage): boolean {
         Number.isFinite(message.diff) &&
         areTextRequests(message.texts)
       );
+    case 'prefetchDiff':
+      return isString(message.hash);
+    case 'prefetchTexts':
+      return isString(message.hash) && areTextRequests(message.texts);
     case 'navigate':
       return (
         (message.direction === 'back' || message.direction === 'forward') &&

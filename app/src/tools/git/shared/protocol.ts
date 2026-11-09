@@ -281,6 +281,12 @@ export type TabMessage =
       readonly diff: number;
       readonly texts: readonly TextRequest[];
     }
+  | { readonly type: 'prefetchDiff'; readonly hash: string }
+  | {
+      readonly type: 'prefetchTexts';
+      readonly hash: string;
+      readonly texts: readonly TextRequest[];
+    }
   | { readonly type: 'jump'; readonly hash: string }
   | {
       readonly type: 'viewFile';
@@ -467,6 +473,18 @@ export type GitToWebview =
       readonly type: 'texts';
       readonly hash: string;
       readonly diff: number;
+      readonly texts: readonly (TextRequest & {
+        readonly text: string | undefined;
+      })[];
+    }
+  | {
+      readonly type: 'prefetchedDiff';
+      readonly hash: string;
+      readonly patch: string;
+    }
+  | {
+      readonly type: 'prefetchedTexts';
+      readonly hash: string;
       readonly texts: readonly (TextRequest & {
         readonly text: string | undefined;
       })[];

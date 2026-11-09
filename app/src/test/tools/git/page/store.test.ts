@@ -20,7 +20,7 @@ import { bookmarkOptions } from '../../../../tools/git/page/bookmarks';
 import type { ContextMenuItem } from '../../../../ui/contextMenu';
 import { strings } from '../../../../shared/strings';
 import { compareWith } from '../../../../tools/git/shared/comparisons';
-import { noop } from '../../../fixtures';
+import { commitInfo, noop } from '../../../fixtures';
 
 const at = 'a'.repeat(40);
 
@@ -633,6 +633,66 @@ suite('Git store', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  test('reads ahead the diff of the next commit the way the last step went once the diff of the one selected comes, then the whole texts of its sides, so the page colors it before it is shown, but not for a file selected', () => {
+    const { posted, store } = posting();
+    store.getState().receive(shown());
+    const [first, second, third] = ['1', '2', '3'].map((digit) =>
+      digit.repeat(40),
+    );
+    store.getState().receive({
+      type: 'commits',
+      generation: 1,
+      total: 3,
+      decorations: [],
+      start: 0,
+      commits: [first, second, third].map((hash) => commitInfo(hash)),
+      graph: [],
+      workingTreeGraph: { lane: 0, color: 0, lines: [] },
+      selectedIndex: undefined,
+      scrollTarget: undefined,
+    });
+    const show = (hash: string, path?: string) => {
+      store.getState().selectCommit(hash);
+      store.getState().receive({ type: 'diff', hash, path, patch: '' });
+    };
+    show(first);
+    show(third);
+    show(second);
+    show(third, 'a.ts');
+    const old = 'a'.repeat(40);
+    const changed = 'b'.repeat(40);
+    store.getState().receive({
+      type: 'prefetchedDiff',
+      hash: first,
+      patch: [
+        'diff --git a/a.ts b/a.ts',
+        `index ${old}..${changed} 100644`,
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -3,1 +3,1 @@',
+        '-old = 1;',
+        '+new = 2;',
+        '',
+      ].join('\n'),
+    });
+    assert.deepStrictEqual(
+      posted.filter(({ type }) => type.startsWith('prefetch')),
+      [
+        { type: 'prefetchDiff', hash: second, root: '/repo' },
+        { type: 'prefetchDiff', hash: first, root: '/repo' },
+        {
+          type: 'prefetchTexts',
+          hash: first,
+          texts: [
+            { path: 'a.ts', side: 'old', blob: old },
+            { path: 'a.ts', side: 'new', blob: changed },
+          ],
+          root: '/repo',
+        },
+      ],
+    );
   });
 
   test('loads the diff, the texts and a file of the commit selected, asking nothing while none is, nor anything before a worktree is shown', () => {

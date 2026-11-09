@@ -28,13 +28,14 @@ import { areaKey } from './changesTree';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import type { ChosenFolder, CloneTarget } from './clonePopup';
 import { resetWidth, shownSelection, widthsToLoad } from './columns';
-import { textKey, type LoadedText } from './diff';
+import { parsePatch, textKey, type LoadedText } from './diff';
 import { foldersOf } from './fileTree';
 import type { ViewedSource } from './images';
 import type { MenuTarget } from './menus';
 import { settling } from './outbox';
 import { indexRefs, type RefGroup } from './refIndex';
 import { startAfter } from './startAfter';
+import { textsToLoad } from './syntax';
 import { tagsOnRemote } from './tagPushes';
 import {
   noFolders,
@@ -541,13 +542,42 @@ export function createGitStore(
         send(hash, diffs);
       }
     };
+    let step = 1;
+    const readAhead = (message: GitToWebview) => {
+      const { hash, history, prefetched } = get().tab;
+      if (
+        message.type === 'diff' &&
+        message.path === undefined &&
+        message.hash === hash
+      ) {
+        const position = history?.positionOf(hash);
+        const next =
+          position === undefined ? undefined : history?.at(position + step);
+        if (next !== undefined && prefetched?.hash !== next.hash) {
+          postTab({ type: 'prefetchDiff', hash: next.hash });
+        }
+      } else if (
+        message.type === 'prefetchedDiff' &&
+        prefetched?.hash === message.hash
+      ) {
+        const texts = textsToLoad(parsePatch(message.patch), 0, new Set());
+        if (texts.length > 0) {
+          postTab({ type: 'prefetchTexts', hash: message.hash, texts });
+        }
+      }
+    };
     const selectCommit = (
       next: string | undefined,
       replace = false,
       repeat = false,
     ) => {
-      const { hash, root } = get().tab;
+      const { hash, root, history } = get().tab;
       const target = next === hash ? undefined : next;
+      const from = hash === undefined ? undefined : history?.positionOf(hash);
+      const to = next === undefined ? undefined : history?.positionOf(next);
+      if (from !== undefined && to !== undefined && to !== from) {
+        step = Math.sign(to - from);
+      }
       const selection = ++selections;
       apply((state) =>
         withTab(state, { type: 'showCommit', hash: target, selection }),
@@ -561,7 +591,10 @@ export function createGitStore(
     };
     return {
       ...collected({ ...gitDefaults, ...initial }),
-      receive: (message) => apply((state) => received(state, message)),
+      receive: (message) => {
+        apply((state) => received(state, message));
+        readAhead(message);
+      },
       dispatch: (action) => apply((state) => withTab(state, action)),
       changeBookmarks: (bookmarks) => {
         apply((state) => ({ ...state, bookmarks }));
