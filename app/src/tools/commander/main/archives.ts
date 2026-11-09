@@ -764,6 +764,16 @@ export class Archives implements ArchiveAccess {
     if (refusal !== undefined) {
       return { kind: 'refused', reason: refusal };
     }
+    const there = await fs.promises.stat(archive.file).then(
+      (stats) => stats.isFile(),
+      () => false,
+    );
+    if (!there) {
+      return {
+        kind: 'refused',
+        reason: strings.commander.archiveGone(path.basename(archive.file)),
+      };
+    }
     const before = new Set(await temporariesOf(archive.file));
     try {
       return await run(reader, this.passwordOf(archive.file));

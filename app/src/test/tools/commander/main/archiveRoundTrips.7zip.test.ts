@@ -783,6 +783,27 @@ suite('Archives packed, changed and taken out again', () => {
       }
     });
 
+    test('makes no archive anew once the one changed is gone, saying so', async () => {
+      await packedFine(plan('gone.zip', 'zip'));
+      const archive = await opened(at('gone.zip'));
+      fs.rmSync(at('gone.zip'));
+      const added = at('added');
+      made(added, 'new.txt', 'New.\n');
+
+      for (const changed of [
+        await archives.addItems(archive, ['docs'], added, ['new.txt']),
+        await archives.addFolder(archive, [], 'fresh'),
+        await archives.remove(archive, ['old.txt']),
+        await archives.rename(archive, 'old.txt', 'older.txt'),
+      ]) {
+        assert.deepStrictEqual(changed, {
+          kind: 'refused',
+          reason: strings.commander.archiveGone('gone.zip'),
+        });
+      }
+      assert.ok(!fs.existsSync(at('gone.zip')));
+    });
+
     test('keeps a valid archive once every item of it is deleted', async () => {
       await packedFine(plan('emptied.7z', '7z', { items: ['old.txt'] }));
       assert.deepStrictEqual(

@@ -751,6 +751,8 @@ export const strings = {
       `What was moved out of "${name}" is kept in it too, as it could not be deleted from it: ${reason}`,
     movedOutWarned: (name: string, warning: string) =>
       `7-Zip warned while deleting from "${name}" what was moved out of it: ${warning}`,
+    archiveGone: (name: string) =>
+      `"${name}" is no longer there, so it was not changed.`,
     updateTitle: 'Update the Archive',
     updateAsked: (name: string, archive: string) =>
       `"${name}" was changed since it was taken out of "${archive}". Put it back into the archive?`,

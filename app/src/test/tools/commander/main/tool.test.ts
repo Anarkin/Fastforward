@@ -5095,7 +5095,7 @@ suite('Commander tool in archives', () => {
       const asked = () => page.of('askUpdate');
       const saved = async (content: string) => {
         fs.writeFileSync(copy, `${content} ${'.'.repeat(asked().length)}`);
-        await change(holding);
+        await Promise.all([change(holding), change(holding)]);
       };
       const name = path.join('docs', 'readme.md');
 
