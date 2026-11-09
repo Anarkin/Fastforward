@@ -1,12 +1,11 @@
 import {
   createHighlighterCore,
-  type GrammarState,
   type HighlighterCore,
-  type ThemedToken,
   type ThemeRegistrationRaw,
 } from 'shiki/core';
 import { createOnigurumaEngine } from 'shiki/engine/oniguruma';
 import { bundledLanguagesInfo } from 'shiki/langs';
+import { EncodedTokenMetadata, INITIAL, type StateStack } from 'shiki/textmate';
 import { errorText } from './errors';
 import { languageIds } from './languages';
 import { onceMade } from './onceMade';
@@ -71,8 +70,10 @@ const kindsByColor = new Map(
   kinds.map(({ kind }, index) => [colorOf(index), kind]),
 );
 
+const themeName = 'fastforward';
+
 const theme: ThemeRegistrationRaw = {
-  name: 'fastforward',
+  name: themeName,
   settings: [
     { settings: { foreground: plainColor, background: '#ffffff' } },
     ...kinds.map(({ scopes }, index) => ({
@@ -129,21 +130,51 @@ function store(key: string, ranges: LineRanges) {
   }
 }
 
-function rangesOf(line: readonly ThemedToken[]): SyntaxRange[] {
-  const found: SyntaxRange[] = [];
-  let start = 0;
-  for (const token of line) {
-    const end = start + token.content.length;
-    const kind = kindsByColor.get(token.color ?? '');
-    const last = found.at(-1);
-    if (kind && last?.kind === kind && last.end === start) {
-      found[found.length - 1] = { ...last, end };
-    } else if (kind) {
-      found.push({ start, end, kind });
+const tokenizeTimeLimit = 500;
+
+interface ColoredLine {
+  readonly ranges: readonly SyntaxRange[];
+  readonly after: StateStack;
+}
+
+type LineColorer = (line: string, before: StateStack) => ColoredLine;
+
+function lineColorer(
+  highlighter: HighlighterCore,
+  language: string,
+): LineColorer {
+  const grammar = highlighter.getLanguage(language);
+  const kindsByIndex = highlighter
+    .setTheme(themeName)
+    .colorMap.map((color) => kindsByColor.get(color));
+  return (text, before) => {
+    const line = text.replace(/\r$/, '');
+    if (line === '' || line.length > maxLineLength) {
+      return { ranges: [], after: before };
     }
-    start = end;
-  }
-  return found;
+    const { tokens, ruleStack } = grammar.tokenizeLine2(
+      line,
+      before,
+      tokenizeTimeLimit,
+    );
+    const ranges: SyntaxRange[] = [];
+    for (let index = 0; index < tokens.length; index += 2) {
+      const start = tokens[index];
+      const end = index + 2 < tokens.length ? tokens[index + 2] : line.length;
+      const kind =
+        kindsByIndex[EncodedTokenMetadata.getForeground(tokens[index + 1])];
+      const last = ranges.at(-1);
+      if (kind === undefined || start === end) {
+        continue;
+      }
+      if (last?.kind === kind && last.end === start) {
+        ranges[ranges.length - 1] = { ...last, end };
+      } else {
+        ranges.push({ start, end, kind });
+      }
+    }
+    return { ranges, after: ruleStack };
+  };
 }
 
 function apply(
@@ -183,16 +214,6 @@ export function uncachedSources(
   });
 }
 
-const chunkChars = 4000;
-
-function chunkEnd(lines: readonly string[], start: number): number {
-  let end = start;
-  for (let chars = 0; end < lines.length && chars < chunkChars; end += 1) {
-    chars += Math.min(lines[end].length, maxLineLength) + 1;
-  }
-  return end;
-}
-
 export function tokenizing(
   highlighter: HighlighterCore,
   pending: readonly Pending[],
@@ -200,33 +221,28 @@ export function tokenizing(
   let generation = grammars;
   let index = 0;
   let done: (readonly SyntaxRange[])[] = [];
-  let state: GrammarState | undefined;
+  let state = INITIAL;
+  let color: LineColorer | undefined;
   return (deadline, ranges) => {
     while (index < pending.length) {
       if (generation !== grammars) {
         generation = grammars;
         done = [];
-        state = undefined;
+        state = INITIAL;
+        color = undefined;
       }
       const { source, key } = pending[index];
-      const start = done.length;
-      const chunk = source.lines.slice(start, chunkEnd(source.lines, start));
-      const text = chunk.map((line) => line.replace(/\r$/, '')).join('\n');
-      const tokens = highlighter.codeToTokensBase(text, {
-        lang: source.language,
-        theme: theme.name,
-        tokenizeMaxLineLength: maxLineLength + 1,
-        grammarState: state,
-      });
-      state = highlighter.getLastGrammarState(tokens);
-      const lines = chunk.map((_, line) => rangesOf(tokens[line] ?? []));
-      apply(source, lines, ranges, start);
-      done.push(...lines);
+      color ??= lineColorer(highlighter, source.language);
+      const line = color(source.lines[done.length], state);
+      apply(source, [line.ranges], ranges, done.length);
+      done.push(line.ranges);
+      state = line.after;
       if (done.length === source.lines.length) {
         store(key, done);
         index += 1;
         done = [];
-        state = undefined;
+        state = INITIAL;
+        color = undefined;
       }
       if (performance.now() >= deadline) {
         break;
@@ -300,11 +316,12 @@ export function colorCode(
       return;
     }
     let generation = grammars;
+    let color = lineColorer(highlighter, id);
     let next = 0;
     let sent = 0;
-    let state: GrammarState | undefined;
-    let waiting: SyntaxRange[][] = [];
-    let all: SyntaxRange[][] = [];
+    let state = INITIAL;
+    let waiting: (readonly SyntaxRange[])[] = [];
+    let all: (readonly SyntaxRange[])[] = [];
     let published = -Infinity;
     const slice = () => {
       if (stopped) {
@@ -312,36 +329,22 @@ export function colorCode(
       }
       if (generation !== grammars) {
         generation = grammars;
+        color = lineColorer(highlighter, id);
         next = 0;
         sent = 0;
-        state = undefined;
+        state = INITIAL;
         waiting = [];
         all = [];
       }
       const deadline = performance.now() + sliceTime;
       while (next < lines.length && performance.now() < deadline) {
-        const until = chunkEnd(lines, next);
-        const tokens = highlighter.codeToTokensBase(
-          lines
-            .slice(next, until)
-            .map((line) => line.replace(/\r$/, ''))
-            .join('\n'),
-          {
-            lang: id,
-            theme: theme.name,
-            tokenizeMaxLineLength: maxLineLength + 1,
-            grammarState: state,
-          },
-        );
-        state = highlighter.getLastGrammarState(tokens);
-        for (let line = next; line < until; line++) {
-          const ranges = rangesOf(tokens[line - next] ?? []);
-          waiting.push(ranges);
-          if (kept) {
-            all.push(ranges);
-          }
+        const line = color(lines[next], state);
+        state = line.after;
+        waiting.push(line.ranges);
+        if (kept) {
+          all.push(line.ranges);
         }
-        next = until;
+        next += 1;
       }
       const done = next >= lines.length;
       if (done || performance.now() - published >= publishTime) {

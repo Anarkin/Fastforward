@@ -41,6 +41,25 @@ function syntaxRanges(
   return ranges;
 }
 
+function countingLines(highlighter: Highlighter) {
+  const lines: string[] = [];
+  const counting: Highlighter = {
+    ...highlighter,
+    getLanguage: (...args) => {
+      const grammar = highlighter.getLanguage(...args);
+      const tokenizeLine2: typeof grammar.tokenizeLine2 = (...line) => {
+        lines.push(line[0]);
+        return grammar.tokenizeLine2(...line);
+      };
+      return new Proxy(grammar, {
+        get: (target, name) =>
+          name === 'tokenizeLine2' ? tokenizeLine2 : Reflect.get(target, name),
+      });
+    },
+  };
+  return { counting, tokenized: () => lines.length, lines };
+}
+
 function onTickingClock(from: number, run: () => void) {
   const now = performance.now.bind(performance);
   let clock = from;
@@ -817,17 +836,9 @@ suite('Syntax', () => {
   });
 
   test('tokenizes a text it has colored before only once, keying its lines anew', async () => {
-    const highlighter = await loadLanguages(['typescript']);
-    let tokenized = 0;
-    const counting = {
-      ...highlighter,
-      codeToTokensBase: (
-        ...args: Parameters<typeof highlighter.codeToTokensBase>
-      ) => {
-        tokenized += 1;
-        return highlighter.codeToTokensBase(...args);
-      },
-    };
+    const { counting, tokenized } = countingLines(
+      await loadLanguages(['typescript']),
+    );
     const lines = ['let once = 1;', 'once;'];
     syntaxRanges(counting, [
       { language: 'typescript', lines, keys: ['0:0', '0:1'] },
@@ -835,7 +846,7 @@ suite('Syntax', () => {
     const ranges = syntaxRanges(counting, [
       { language: 'typescript', lines, keys: [undefined, '3:7'] },
     ]);
-    assert.strictEqual(tokenized, 1);
+    assert.strictEqual(tokenized(), lines.length);
     assert.deepStrictEqual(Object.fromEntries(ranges), {
       '3:7': [{ start: 4, end: 5, kind: 'keyword' }],
     });
@@ -975,18 +986,10 @@ suite('Syntax', () => {
     assert.deepStrictEqual([...ranges.keys()].toSorted(), ['0:0', '1:0']);
   });
 
-  test('tokenizes past its deadline only a few thousand characters of a text, going on from where they leave off', async () => {
-    const highlighter = await loadLanguages(['typescript']);
-    let tokenized = 0;
-    const counting = {
-      ...highlighter,
-      codeToTokensBase: (
-        ...args: Parameters<typeof highlighter.codeToTokensBase>
-      ) => {
-        tokenized += 1;
-        return highlighter.codeToTokensBase(...args);
-      },
-    };
+  test('tokenizes past its deadline only one line of a text, going on from where it leaves off', async () => {
+    const { counting, tokenized } = countingLines(
+      await loadLanguages(['typescript']),
+    );
     const lines = ['/* start', ...Array<string>(3000).fill('x'), '*/ x;'];
     const long = {
       language: 'typescript',
@@ -1001,8 +1004,8 @@ suite('Syntax', () => {
       assert.ok(!ranges.has('1:0'));
       slices += 1;
     }
-    assert.strictEqual(tokenized, slices);
-    assert.ok(slices > 2);
+    assert.strictEqual(tokenized(), slices);
+    assert.strictEqual(slices, lines.length + 1);
     assert.deepStrictEqual(ranges.get('0:3000'), [
       { start: 0, end: 1, kind: 'comment' },
     ]);
@@ -1059,7 +1062,9 @@ suite('Syntax', () => {
       ranges
         .get('0:6')
         ?.some(({ start, kind }) => start === 4 && kind === 'keyword');
-    assert.ok(step(-Infinity, ranges));
+    while (!ranges.has('0:6')) {
+      assert.ok(step(-Infinity, ranges));
+    }
     assert.strictEqual(letColored(), false);
     const highlighter = await loadLanguages(['javascript']);
     step(Infinity, ranges);
@@ -1068,22 +1073,14 @@ suite('Syntax', () => {
   });
 
   test('keeps the colors of texts of at most 8 million characters in all, forgetting the least recently used, and of none longer than 2 million, bounding the memory of the page', async () => {
-    const highlighter = await loadLanguages(['typescript']);
-    const tokenized: string[] = [];
-    const counting = {
-      ...highlighter,
-      codeToTokensBase: (
-        ...args: Parameters<typeof highlighter.codeToTokensBase>
-      ) => {
-        tokenized.push(args[0][0]);
-        return highlighter.codeToTokensBase(...args);
-      },
-    };
+    const { counting, lines: tokenized } = countingLines(
+      await loadLanguages(['typescript']),
+    );
     const color = (name: string, length = 2_000_000) =>
       syntaxRanges(counting, [
         {
           language: 'typescript',
-          lines: [name.padEnd(length, ' ')],
+          lines: [name, ' '.repeat(length - name.length - 1)],
           keys: ['0:0'],
         },
       ]);
@@ -1096,17 +1093,9 @@ suite('Syntax', () => {
   });
 
   test('keeps the colors of at most 100000 lines in all', async () => {
-    const highlighter = await loadLanguages(['typescript']);
-    const tokenized: string[] = [];
-    const counting = {
-      ...highlighter,
-      codeToTokensBase: (
-        ...args: Parameters<typeof highlighter.codeToTokensBase>
-      ) => {
-        tokenized.push(args[0]);
-        return highlighter.codeToTokensBase(...args);
-      },
-    };
+    const { counting, lines: tokenized } = countingLines(
+      await loadLanguages(['typescript']),
+    );
     const color = (name: string, length = 50_000) =>
       syntaxRanges(counting, [
         {
@@ -1122,10 +1111,7 @@ suite('Syntax', () => {
     for (const name of ['a', 'b', 'a']) {
       color(name);
     }
-    assert.deepStrictEqual(
-      tokenized.flatMap((text) => (/^\w/.test(text) ? [text[0]] : [])),
-      ['a', 'b', 'c', 'b'],
-    );
+    assert.deepStrictEqual(tokenized, ['a', 'b', 'c', 'b']);
   });
 
   test('colors no file that is collapsed', () => {
