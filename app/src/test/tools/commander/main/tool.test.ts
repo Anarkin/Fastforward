@@ -217,16 +217,45 @@ function commander(
   const opensHeld: { until: Promise<unknown> | undefined } = {
     until: undefined,
   };
+  const passwords = new Map<string, string>();
+  const secrets = new Map<string, string>();
+  const passwordRight = (archive: string) =>
+    !secrets.has(archive) || passwords.get(archive) === secrets.get(archive);
   const archives: ArchiveAccess = {
+    usePassword: (archive, password) => {
+      if (password === undefined) {
+        passwords.delete(archive);
+      } else {
+        passwords.set(archive, password);
+      }
+    },
+    hasPassword: (archive) => passwords.has(archive),
     extract: async (archive, paths, options) => {
       const into = options?.into;
       if (copies.refused !== undefined) {
         return { kind: 'refused', reason: copies.refused };
       }
+      const items = archived.get(archive.file);
+      if (
+        typeof items !== 'string' &&
+        items?.some(
+          (item) =>
+            item.encrypted &&
+            paths.some(
+              (each) => item.path === each || item.path.startsWith(`${each}/`),
+            ),
+        ) === true &&
+        !passwordRight(archive.file)
+      ) {
+        return {
+          kind: 'refused',
+          reason: 'Wrong password',
+          needsPassword: true,
+        };
+      }
       assert.notStrictEqual(copies.folder, '', 'a folder for the copies');
       const extractedInto =
         into ?? path.join(copies.folder, `work-${++extractions}`);
-      const items = archived.get(archive.file);
       for (const item of typeof items === 'string' ? [] : (items ?? [])) {
         if (
           paths.some(
@@ -255,6 +284,17 @@ function commander(
         ]);
       }
       const items = archived.get(opening);
+      if (
+        typeof items !== 'string' &&
+        items?.some((item) => item.encrypted) !== true &&
+        !passwordRight(opening)
+      ) {
+        return {
+          kind: 'refused',
+          reason: 'Cannot open encrypted archive. Wrong password?',
+          needsPassword: true,
+        };
+      }
       if (items === undefined) {
         return Promise.resolve({
           kind: 'refused',
@@ -587,6 +627,8 @@ function commander(
     archived,
     copies,
     opensHeld,
+    secrets,
+    passwords,
   };
 }
 
@@ -4849,30 +4891,181 @@ suite('Commander tool in archives', () => {
       );
     });
 
-    test('says a file of an archive is encrypted rather than reading it, and why nothing could be taken out of an archive', async () => {
-      const { send, notices, archived, copies, viewed, opened } =
+    test('asks for the password of an encrypted file before reading it, again when it was wrong, and reads nothing when none is given', async () => {
+      const { page, send, notices, archived, secrets, viewed } =
         await inArchive();
       archived.set(at('a.zip'), [
         ...zipped,
         { ...archiveItem('secret.txt'), encrypted: true },
       ]);
+      secrets.set(at('a.zip'), 'right');
       await send({ type: 'reread', tab: '1', side: 'right' });
+      const asked = () => page.of('askPassword');
+      const answer = (password?: string) =>
+        send({
+          type: 'password',
+          ask: asked().at(-1)?.ask ?? 0,
+          ...(password !== undefined && { password }),
+        });
+
+      const viewing = send({
+        type: 'view',
+        tab: '1',
+        side: 'right',
+        name: 'secret.txt',
+      });
+      await waitFor(() => asked().length === 1, 'the password to be asked');
+      await answer('wrong');
+      await waitFor(() => asked().length === 2, 'the password asked again');
+      await answer('right');
+      await viewing;
+      assert.deepStrictEqual(
+        asked().map(({ name, wrong }) => [name, wrong]),
+        [
+          ['a.zip', false],
+          ['a.zip', true],
+        ],
+      );
+      assert.strictEqual(path.basename(viewed[0] ?? ''), 'secret.txt');
+
       await send({ type: 'view', tab: '1', side: 'right', name: 'secret.txt' });
+      assert.strictEqual(asked().length, 2);
+      assert.strictEqual(viewed.length, 2);
+      assert.deepStrictEqual(notices, []);
+    });
+
+    test('gives up an earlier question for a password once another is asked, as the page shows one at a time, ignoring a late answer to it', async () => {
+      const { page, send, archived, secrets, viewed } = await inArchive();
+      archived.set(at('a.zip'), [
+        ...zipped,
+        { ...archiveItem('secret.txt'), encrypted: true },
+      ]);
+      secrets.set(at('a.zip'), 'right');
+      await send({ type: 'reread', tab: '1', side: 'right' });
+      const asked = () => page.of('askPassword');
+      const view = () =>
+        send({ type: 'view', tab: '1', side: 'right', name: 'secret.txt' });
+
+      const first = view();
+      await waitFor(() => asked().length === 1, 'the first question');
+      const second = view();
+      await waitFor(() => asked().length === 2, 'the second question');
+      await first;
+      await send({
+        type: 'password',
+        ask: asked()[0]?.ask ?? 0,
+        password: 'right',
+      });
+      assert.deepStrictEqual(viewed, []);
+      await send({
+        type: 'password',
+        ask: asked()[1]?.ask ?? 0,
+        password: 'right',
+      });
+      await second;
+      assert.strictEqual(viewed.length, 1);
+    });
+
+    test('copies nothing out of an archive when the password of its encrypted files is not given, and says why nothing could be taken out of an archive', async () => {
+      const {
+        page,
+        send,
+        notices,
+        archived,
+        secrets,
+        copies,
+        opened,
+        transfers,
+      } = await inArchive();
+      archived.set(at('a.zip'), [
+        ...zipped,
+        { ...archiveItem('docs/secret.txt'), encrypted: true },
+      ]);
+      secrets.set(at('a.zip'), 'right');
+      await send({ type: 'reread', tab: '1', side: 'right' });
+
+      const copying = send({
+        type: 'transfer',
+        tab: '1',
+        side: 'right',
+        names: ['docs'],
+        target: root,
+        move: false,
+      });
+      await waitFor(
+        () => page.of('askPassword').length === 1,
+        'the password to be asked for a folder holding an encrypted file',
+      );
+      await send({
+        type: 'password',
+        ask: page.of('askPassword')[0]?.ask ?? 0,
+      });
+      await copying;
+      assert.strictEqual(transfers.length, 0);
+
       copies.refused = 'Data Error';
       await send({ type: 'open', tab: '1', side: 'right', name: 'top.txt' });
-
       assert.deepStrictEqual(notices, [
-        {
-          level: 'error',
-          message: strings.commander.encryptedInArchive('secret.txt'),
-        },
         {
           level: 'error',
           message: strings.commander.couldNotExtract('Data Error'),
         },
       ]);
-      assert.deepStrictEqual([viewed, opened], [[], []]);
+      assert.deepStrictEqual(opened, []);
     });
+  });
+
+  test('asks for the password of an archive whose names are encrypted, entering it once given, asking again when it was wrong, and stays where it was when none is given', async () => {
+    const { tool, page, send, archived, secrets, notices } = commander({
+      [root]: [file('a.zip')],
+    });
+    archived.set(at('a.zip'), zipped);
+    secrets.set(at('a.zip'), 'right');
+    await tool.show(page, tab);
+    const asked = () => page.of('askPassword');
+    const answer = (password?: string) =>
+      send({
+        type: 'password',
+        ask: asked().at(-1)?.ask ?? 0,
+        ...(password !== undefined && { password }),
+      });
+
+    const cancelled = send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    await waitFor(() => asked().length === 1, 'the password to be asked');
+    await answer();
+    await cancelled;
+    assert.strictEqual(page.listings().length, 2);
+
+    const entering = send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    await waitFor(() => asked().length === 2, 'the password asked again');
+    await answer('wrong');
+    await waitFor(() => asked().length === 3, 'the password asked once more');
+    await answer('right');
+    await entering;
+
+    assert.deepStrictEqual(
+      asked().map(({ name, wrong }) => [name, wrong]),
+      [
+        ['a.zip', false],
+        ['a.zip', false],
+        ['a.zip', true],
+      ],
+    );
+    assert.strictEqual(
+      page.listings().at(-1),
+      `right ${at('a.zip')} ↑: docs top.txt`,
+    );
+    assert.deepStrictEqual(notices, []);
   });
 
   test('tells the page a side is reading an archive once it takes a while, stopping on Esc and staying where it was', async () => {

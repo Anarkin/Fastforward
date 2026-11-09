@@ -37,6 +37,11 @@ const sevenZip = sevenZipAt(
 
 const project = ['README.md', 'docs', 'src', 'ünïcödé – 名前.txt'];
 
+const passwordAsked = (opening: Opening) =>
+  opening.kind === 'refused'
+    ? [opening.needsPassword, opening.passwordOf]
+    : opening.kind;
+
 suite('Archives of the playground of files', () => {
   let folder: string;
   let archives: Archives;
@@ -154,6 +159,61 @@ suite('Archives of the playground of files', () => {
     assert.notStrictEqual(
       (await sevenZip(['t', '-pwrong', '--', at('encrypted.zip')])).code,
       0,
+    );
+  });
+
+  test('needs the password playground for the 7z whose names are encrypted, refusing a wrong one, and opens it once given', async () => {
+    const names = at('encrypted-names.7z');
+    assert.deepStrictEqual(passwordAsked(await archives.open(names)), [
+      true,
+      names,
+    ]);
+    archives.usePassword(names, 'wrong');
+    assert.deepStrictEqual(passwordAsked(await archives.open(names)), [
+      true,
+      names,
+    ]);
+    archives.usePassword(names, 'playground');
+    assert.deepStrictEqual(
+      await rootOf('encrypted-names.7z'),
+      project.toSorted((one, other) => one.localeCompare(other)),
+    );
+  });
+
+  test('takes the plain files out of the zip only partly encrypted without a password, and the encrypted ones with playground', async () => {
+    const partly = at('partly-encrypted.zip');
+    const opened = await archives.open(partly);
+    assert.ok(opened.kind === 'opened');
+    const plain = await archives.extract(opened.archive, ['README.md']);
+    assert.strictEqual(plain.kind, 'extracted');
+    const locked = await archives.extract(opened.archive, ['docs/guide.md']);
+    assert.ok(locked.kind === 'refused');
+    assert.strictEqual(locked.needsPassword, true);
+    archives.usePassword(partly, 'playground');
+    const unlocked = await archives.extract(opened.archive, ['docs/guide.md']);
+    assert.ok(unlocked.kind === 'extracted');
+    assert.ok(fs.existsSync(path.join(unlocked.folder, 'docs', 'guide.md')));
+  });
+
+  test('needs the password playground of the encrypted zip to take out the 7z inside it, and then inner for the names of the 7z', async () => {
+    const outer = at('encrypted-nested.zip');
+    const opened = await archives.open(outer);
+    assert.ok(opened.kind === 'opened');
+    const inner = path.join(outer, 'inner-encrypted.7z');
+    const enter = () =>
+      archives.openInside(inner, opened.archive, 'inner-encrypted.7z');
+    assert.deepStrictEqual(passwordAsked(await enter()), [true, outer]);
+    archives.usePassword(outer, 'playground');
+    assert.deepStrictEqual(passwordAsked(await enter()), [true, inner]);
+    archives.usePassword(inner, 'inner');
+    const entered = await enter();
+    assert.ok(entered.kind === 'opened');
+    assert.deepStrictEqual(
+      entered.archive.tree
+        .entries([])
+        ?.map((entry) => entry.name)
+        .toSorted((one, other) => one.localeCompare(other)),
+      project.toSorted((one, other) => one.localeCompare(other)),
     );
   });
 

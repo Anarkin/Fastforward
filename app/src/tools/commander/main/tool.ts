@@ -379,6 +379,11 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
   private viewingsAsked = 0;
+  private passwordAsks = 0;
+  private readonly passwordsAsked = new Map<
+    number,
+    (password: string | undefined) => void
+  >();
   private viewing:
     | {
         readonly tab: string;
@@ -417,6 +422,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   ready(page: Page): void {
+    this.cancelPasswords();
     for (const pane of this.allPanes()) {
       if (pane.flat !== undefined) {
         pane.flat.tree.resend();
@@ -614,6 +620,9 @@ export class CommanderTool implements Tool<'commander'> {
         return this.openOnSide(page, message);
       case 'enterArchive':
         return this.enterArchive(page, message);
+      case 'password':
+        this.answerPassword(message.ask, message.password);
+        return undefined;
       case 'openRepository':
         return this.openRepository(page, message);
       case 'folderCommand':
@@ -1110,7 +1119,6 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private archiveItems(
-    page: Page,
     pane: Pane,
     names: readonly string[],
   ):
@@ -1122,6 +1130,7 @@ export class CommanderTool implements Tool<'commander'> {
         readonly withoutFolders: boolean;
         readonly files: number;
         readonly bytes: number;
+        readonly encrypted: boolean;
       }
     | undefined {
     const { archives } = this.access;
@@ -1137,11 +1146,6 @@ export class CommanderTool implements Tool<'commander'> {
       return item === undefined ? [] : [{ name, inner, last, ...item }];
     });
     if (items.length !== names.length) {
-      return undefined;
-    }
-    const encrypted = items.find((item) => item.encrypted);
-    if (encrypted !== undefined) {
-      this.refuse(page, strings.commander.encryptedInArchive(encrypted.name));
       return undefined;
     }
     return {
@@ -1162,20 +1166,91 @@ export class CommanderTool implements Tool<'commander'> {
     names: readonly string[],
     into?: string,
   ): Promise<string[] | undefined> {
-    const found = this.archiveItems(page, pane, names);
+    const found = this.archiveItems(pane, names);
     if (found === undefined) {
       return undefined;
     }
-    const { archives, archive, inner, paths, withoutFolders } = found;
-    const extracted = await archives.extract(archive, paths, {
-      ...(into !== undefined && { into }),
-      withoutFolders,
-    });
-    if (extracted.kind === 'refused') {
-      this.refuse(page, strings.commander.couldNotExtract(extracted.reason));
+    const { archives, archive, inner, paths, withoutFolders, encrypted } =
+      found;
+    if (
+      encrypted &&
+      !archives.hasPassword(archive.file) &&
+      !(await this.passwordGiven(page, archive.file, false))
+    ) {
       return undefined;
     }
-    return itemsAt(extracted.folder, withoutFolders ? 0 : inner.length);
+    for (;;) {
+      const extracted = await archives.extract(archive, paths, {
+        ...(into !== undefined && { into }),
+        withoutFolders,
+      });
+      if (extracted.kind === 'extracted') {
+        return itemsAt(extracted.folder, withoutFolders ? 0 : inner.length);
+      }
+      if (extracted.needsPassword !== true) {
+        this.refuse(page, strings.commander.couldNotExtract(extracted.reason));
+        return undefined;
+      }
+      if (
+        !(await this.passwordGiven(
+          page,
+          archive.file,
+          archives.hasPassword(archive.file),
+        ))
+      ) {
+        return undefined;
+      }
+    }
+  }
+
+  private async passwordGiven(
+    page: Page,
+    file: string,
+    wrong: boolean,
+  ): Promise<boolean> {
+    const { archives } = this.access;
+    if (archives === undefined) {
+      return false;
+    }
+    archives.usePassword(file, undefined);
+    this.cancelPasswords();
+    const ask = ++this.passwordAsks;
+    const password = await new Promise<string | undefined>((resolve) => {
+      this.passwordsAsked.set(ask, resolve);
+      this.post(page, {
+        type: 'askPassword',
+        ask,
+        name: path.basename(file),
+        wrong,
+      });
+    });
+    if (password === undefined) {
+      return false;
+    }
+    archives.usePassword(file, password);
+    return true;
+  }
+
+  private cancelPasswords(): void {
+    const asked = [...this.passwordsAsked.values()];
+    this.passwordsAsked.clear();
+    for (const answer of asked) {
+      answer(undefined);
+    }
+  }
+
+  private answerPassword(ask: unknown, password: unknown): void {
+    if (
+      typeof ask !== 'number' ||
+      (password !== undefined && typeof password !== 'string')
+    ) {
+      return;
+    }
+    const answer = this.passwordsAsked.get(ask);
+    if (answer !== undefined) {
+      this.passwordsAsked.delete(ask);
+      answer(password);
+    }
   }
 
   private async view(
@@ -1301,7 +1376,9 @@ export class CommanderTool implements Tool<'commander'> {
     }
     if (shown.pane.archive !== undefined) {
       if (!move) {
-        this.transferOut(page, shown.pane, target, names);
+        void this.shell.track(
+          this.transferOut(page, shown.pane, target, names),
+        );
       }
       return;
     }
@@ -1320,18 +1397,33 @@ export class CommanderTool implements Tool<'commander'> {
     });
   }
 
-  private transferOut(
+  private async transferOut(
     page: Page,
     pane: Pane,
     target: string,
     names: readonly string[],
-  ): void {
-    const found = this.archiveItems(page, pane, names);
+  ): Promise<void> {
+    const found = this.archiveItems(pane, names);
     if (found === undefined) {
       return;
     }
-    const { archives, archive, inner, paths, withoutFolders, files, bytes } =
-      found;
+    const {
+      archives,
+      archive,
+      inner,
+      paths,
+      withoutFolders,
+      files,
+      bytes,
+      encrypted,
+    } = found;
+    if (
+      encrypted &&
+      !archives.hasPassword(archive.file) &&
+      !(await this.passwordGiven(page, archive.file, false))
+    ) {
+      return;
+    }
     this.transfers.start(
       {
         plan: {
@@ -2248,30 +2340,55 @@ export class CommanderTool implements Tool<'commander'> {
     const aborting = new AbortController();
     pane.opening = aborting;
     let told = false;
-    const telling = setTimeout(() => {
-      told = true;
-      this.post(page, {
-        type: 'readingArchive',
-        tab,
-        side,
-        name: path.basename(file),
-      });
-    }, readingToldAfter);
+    let telling: ReturnType<typeof setTimeout> | undefined;
+    const tellLater = () => {
+      telling = setTimeout(() => {
+        told = true;
+        this.post(page, {
+          type: 'readingArchive',
+          tab,
+          side,
+          name: path.basename(file),
+        });
+      }, readingToldAfter);
+    };
+    const stopTelling = () => {
+      clearTimeout(telling);
+      if (told) {
+        told = false;
+        this.post(page, { type: 'readingArchive', tab, side });
+      }
+    };
+    const attempt = () => opening(aborting.signal) ?? archives.open(file);
+    tellLater();
     try {
-      return await (opening(aborting.signal) ?? archives.open(file));
+      let opened = await attempt();
+      while (opened.kind === 'refused' && opened.needsPassword === true) {
+        stopTelling();
+        const passwordOf = opened.passwordOf ?? file;
+        if (
+          !(await this.passwordGiven(
+            page,
+            passwordOf,
+            archives.hasPassword(passwordOf),
+          ))
+        ) {
+          return undefined;
+        }
+        tellLater();
+        opened = await attempt();
+      }
+      return opened;
     } catch (error) {
       if (aborting.signal.aborted) {
         return undefined;
       }
       throw error;
     } finally {
-      clearTimeout(telling);
       if (pane.opening === aborting) {
         pane.opening = undefined;
       }
-      if (told) {
-        this.post(page, { type: 'readingArchive', tab, side });
-      }
+      stopTelling();
     }
   }
 

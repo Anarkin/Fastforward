@@ -11,6 +11,7 @@ export function PromptPopup({
   label,
   confirm,
   problemOf,
+  secret = false,
   onConfirm,
   onCancel,
 }: {
@@ -19,6 +20,7 @@ export function PromptPopup({
   label: string;
   confirm: string;
   problemOf: (value: string) => string | undefined;
+  secret?: boolean;
   onConfirm: (value: string) => void;
   onCancel: () => void;
 }) {
@@ -29,7 +31,7 @@ export function PromptPopup({
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
   useLayoutEffect(() => field.current?.focus(), []);
-  const typed = value.trim();
+  const typed = secret ? value : value.trim();
   const problem = problemOf(typed);
   return (
     <div
@@ -70,6 +72,7 @@ export function PromptPopup({
           <input
             ref={field}
             className="prompt-input"
+            type={secret ? 'password' : 'text'}
             aria-label={label}
             value={value}
             spellCheck={false}

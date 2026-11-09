@@ -87,6 +87,9 @@ interface CommanderSource {
   readonly transferring: Transferring | undefined;
   readonly transfer: TransferView | undefined;
   readonly readingArchives: ReadonlyMap<string, string>;
+  readonly askingPassword:
+    | { readonly ask: number; readonly name: string; readonly wrong: boolean }
+    | undefined;
   readonly makingFolder: MakingFolder | undefined;
   readonly noAccess: NoAccess | undefined;
   readonly resized:
@@ -147,6 +150,7 @@ interface CommanderActions {
   ) => void;
   readonly openOnSide: (from: Side, side: Side, name: string) => void;
   readonly enterArchive: (side: Side, name: string) => void;
+  readonly answerPassword: (password: string | undefined) => void;
   readonly drive: (side: Side, drive: string) => void;
   readonly listDrives: () => void;
   readonly addBookmark: (side: Side) => void;
@@ -221,6 +225,7 @@ const commanderDefaults: CommanderSource = {
   transferring: undefined,
   transfer: undefined,
   readingArchives: new Map(),
+  askingPassword: undefined,
   makingFolder: undefined,
   noAccess: undefined,
   resized: undefined,
@@ -283,6 +288,14 @@ function received(
       return { drives: message.drives };
     case 'transfer':
       return { transfer: message.view };
+    case 'askPassword':
+      return {
+        askingPassword: {
+          ask: message.ask,
+          name: message.name,
+          wrong: message.wrong,
+        },
+      };
     case 'readingArchive': {
       const readingArchives = new Map(state.readingArchives);
       const key = readingKey(message.tab, message.side);
@@ -805,6 +818,17 @@ export function createCommanderStore(
         onPane(side, (tab, folder) =>
           post({ type: 'enterArchive', tab, side, folder, name }),
         ),
+      answerPassword: (password) => {
+        const { askingPassword } = get();
+        if (askingPassword !== undefined) {
+          set({ askingPassword: undefined });
+          post({
+            type: 'password',
+            ask: askingPassword.ask,
+            ...(password !== undefined && { password }),
+          });
+        }
+      },
       drive: (side, drive) =>
         onTab((tab) => post({ type: 'drive', tab, side, drive })),
       listDrives: () => post({ type: 'listDrives' }),

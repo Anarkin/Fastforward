@@ -1143,4 +1143,36 @@ suite('The commander store in archives', () => {
       .receive({ type: 'readingArchive', tab: '1', side: 'right' });
     assert.deepStrictEqual(archivesRead(), []);
   });
+
+  test('shows the password the main process asks for, sending what is typed, or nothing once cancelled, for that question alone', () => {
+    const { posted, store } = shown();
+    store.getState().receive({
+      type: 'askPassword',
+      ask: 4,
+      name: 'a.zip',
+      wrong: true,
+    });
+    assert.deepStrictEqual(store.getState().askingPassword, {
+      ask: 4,
+      name: 'a.zip',
+      wrong: true,
+    });
+    store.getState().answerPassword(' with spaces ');
+    assert.strictEqual(store.getState().askingPassword, undefined);
+    store.getState().answerPassword('again');
+    store.getState().receive({
+      type: 'askPassword',
+      ask: 5,
+      name: 'a.zip',
+      wrong: false,
+    });
+    store.getState().answerPassword(undefined);
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'password'),
+      [
+        { type: 'password', ask: 4, password: ' with spaces ' },
+        { type: 'password', ask: 5 },
+      ],
+    );
+  });
 });

@@ -15,11 +15,16 @@ export interface ArchiveItem {
   readonly encrypted: boolean;
 }
 
-interface Refused {
-  readonly kind: 'refused';
+export interface ArchiveRefusal {
   readonly reason: string;
   readonly noArchive?: true;
+  readonly needsPassword?: true;
 }
+
+type Refused = {
+  readonly kind: 'refused';
+  readonly passwordOf?: string;
+} & ArchiveRefusal;
 
 export type ArchiveListing =
   { readonly kind: 'listed'; readonly items: readonly ArchiveItem[] } | Refused;
@@ -34,16 +39,21 @@ export interface ExtractOptions {
   readonly signal?: AbortSignal;
   readonly onProgress?: (progress: ExtractProgress) => void;
   readonly withoutFolders?: boolean;
+  readonly password?: string;
 }
 
 export interface ArchiveReader {
-  list(file: string, signal?: AbortSignal): Promise<ArchiveListing>;
+  list(
+    file: string,
+    signal?: AbortSignal,
+    password?: string,
+  ): Promise<ArchiveListing>;
   extract(
     file: string,
     paths: readonly string[],
     into: string,
     options?: ExtractOptions,
-  ): Promise<string | undefined>;
+  ): Promise<ArchiveRefusal | undefined>;
 }
 
 interface ArchiveNode {
@@ -131,9 +141,14 @@ export class ArchiveTree {
       readonly inner: readonly string[];
       readonly name: string;
     }[],
-  ): { readonly files: number; readonly bytes: number } {
+  ): {
+    readonly files: number;
+    readonly bytes: number;
+    readonly encrypted: boolean;
+  } {
     let files = 0;
     let bytes = 0;
+    let encrypted = false;
     const add = (folder: string, name: string) => {
       const node = this.folders.get(folder)?.get(name);
       if (node === undefined) {
@@ -142,6 +157,7 @@ export class ArchiveTree {
       if (!node.entry.folder) {
         files++;
         bytes += node.entry.size ?? 0;
+        encrypted ||= node.encrypted;
         return;
       }
       const key = folder === '' ? name : `${folder}/${name}`;
@@ -152,7 +168,7 @@ export class ArchiveTree {
     for (const { inner, name } of items) {
       add(inner.join('/'), name);
     }
-    return { files, bytes };
+    return { files, bytes, encrypted };
   }
 
   item(
@@ -176,8 +192,7 @@ export type Opening =
   { readonly kind: 'opened'; readonly archive: OpenedArchive } | Refused;
 
 export type Extracting =
-  | { readonly kind: 'extracted'; readonly folder: string }
-  | { readonly kind: 'refused'; readonly reason: string };
+  { readonly kind: 'extracted'; readonly folder: string } | Refused;
 
 export interface ArchiveAccess {
   open(file: string, signal?: AbortSignal): Promise<Opening>;
@@ -196,6 +211,8 @@ export interface ArchiveAccess {
     folder: string,
   ): { readonly archive: OpenedArchive; readonly inner: string[] } | undefined;
   fileHolding(folder: string): Promise<string | undefined>;
+  usePassword(file: string, password: string | undefined): void;
+  hasPassword(file: string): boolean;
 }
 
 export function workFolders(root: string): {
@@ -247,6 +264,7 @@ function reasonOfError(error: unknown): string {
 
 export class Archives implements ArchiveAccess {
   private readonly opened = new Map<string, OpenedArchive>();
+  private readonly passwords = new Map<string, string>();
 
   constructor(
     private readonly reader: ArchiveReader | undefined,
@@ -301,13 +319,22 @@ export class Archives implements ArchiveAccess {
     if (known?.version === version) {
       return { kind: 'opened', archive: known };
     }
-    const opening = await this.openedFrom(reader, file, file, version, signal);
+    const opening = await this.openedFrom(
+      reader,
+      file,
+      file,
+      version,
+      signal,
+      this.passwords.get(key),
+    );
     if (opening.kind === 'opened') {
       this.opened.set(key, opening.archive);
-    } else {
-      this.opened.delete(key);
+      return opening;
     }
-    return opening;
+    this.opened.delete(key);
+    return opening.needsPassword === true
+      ? { ...opening, passwordOf: file }
+      : opening;
   }
 
   async openInside(
@@ -333,12 +360,14 @@ export class Archives implements ArchiveAccess {
     const refused = await reader.extract(outer.source, [inside], into, {
       signal,
       withoutFolders: true,
+      ...this.passwordOf(outer.file),
     });
     const [copy] = await filesUnder(into);
     if (refused !== undefined || copy === undefined) {
       return {
         kind: 'refused',
-        reason: refused ?? strings.commander.sevenZipEnded(null),
+        ...(refused ?? { reason: strings.commander.sevenZipEnded(null) }),
+        ...(refused?.needsPassword === true && { passwordOf: outer.file }),
       };
     }
     const opening = await this.openedFrom(
@@ -347,9 +376,12 @@ export class Archives implements ArchiveAccess {
       copy,
       outer.version,
       signal,
+      this.passwords.get(key),
     );
     if (opening.kind !== 'opened') {
-      return opening;
+      return opening.needsPassword === true
+        ? { ...opening, passwordOf: file }
+        : opening;
     }
     const archive = {
       ...opening.archive,
@@ -365,8 +397,9 @@ export class Archives implements ArchiveAccess {
     source: string,
     version: string,
     signal: AbortSignal | undefined,
+    password: string | undefined,
   ): Promise<Opening> {
-    const listing = await reader.list(source, signal);
+    const listing = await reader.list(source, signal, password);
     if (listing.kind === 'refused') {
       return listing;
     }
@@ -401,7 +434,7 @@ export class Archives implements ArchiveAccess {
     if (refused !== undefined || unpacked === undefined) {
       return {
         kind: 'refused',
-        reason: refused ?? strings.commander.sevenZipEnded(null),
+        ...(refused ?? { reason: strings.commander.sevenZipEnded(null) }),
       };
     }
     const listing = await reader.list(unpacked, signal);
@@ -427,15 +460,31 @@ export class Archives implements ArchiveAccess {
       return { kind: 'refused', reason: strings.commander.noSevenZip };
     }
     const folder = into ?? (await this.workFolder());
-    const refused = await this.reader.extract(
-      archive.source,
-      paths,
-      folder,
-      options,
-    );
+    const refused = await this.reader.extract(archive.source, paths, folder, {
+      ...this.passwordOf(archive.file),
+      ...options,
+    });
     return refused === undefined
       ? { kind: 'extracted', folder }
-      : { kind: 'refused', reason: refused };
+      : { kind: 'refused', ...refused };
+  }
+
+  usePassword(file: string, password: string | undefined): void {
+    const key = this.keyOf(file);
+    if (password === undefined) {
+      this.passwords.delete(key);
+    } else {
+      this.passwords.set(key, password);
+    }
+  }
+
+  hasPassword(file: string): boolean {
+    return this.passwords.has(this.keyOf(file));
+  }
+
+  private passwordOf(file: string): { readonly password?: string } {
+    const password = this.passwords.get(this.keyOf(file));
+    return password === undefined ? {} : { password };
   }
 
   within(

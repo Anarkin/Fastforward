@@ -192,6 +192,45 @@ const namedInZstd = async (file: string) => {
     : listing.reason;
 };
 
+suite('the password of an archive', () => {
+  test('gives 7-Zip a password on its input rather than among its arguments, where other programs could read it, and a refusal for a wrong one says a password is needed', async () => {
+    const asked: { args: readonly string[]; input: string | undefined }[] = [];
+    const reader = sevenZipReader((args, _signal, _onOutput, input) => {
+      asked.push({ args, input });
+      return Promise.resolve({
+        code: 2,
+        output: '',
+        errors:
+          'ERROR: a.7z : Cannot open encrypted archive. Wrong password?\n',
+      });
+    });
+    assert.deepStrictEqual(await reader.list('a.7z', undefined, 'secret'), {
+      kind: 'refused',
+      reason: 'Cannot open encrypted archive. Wrong password?',
+      needsPassword: true,
+    });
+    const into = path.join(tempFolder('password'), 'out');
+    try {
+      await reader.extract('a.7z', ['a.txt'], into, { password: 'secret' });
+    } finally {
+      removeFolder(path.dirname(into));
+    }
+    await reader.list('a.7z');
+    assert.deepStrictEqual(
+      asked.map(({ args, input }) => [
+        args.includes('-p-'),
+        args.some((arg) => arg.includes('secret')),
+        input,
+      ]),
+      [
+        [false, false, 'secret\n'],
+        [false, false, 'secret\n'],
+        [true, false, undefined],
+      ],
+    );
+  });
+});
+
 suite('the one item of a compressed file', () => {
   test('takes the name 7-Zip extracts it by when the listing names none, the name of the file without its extension, or with .tar for the extensions of a compressed tar', async () => {
     assert.deepStrictEqual(
@@ -211,7 +250,7 @@ suite('the one item of a compressed file', () => {
 });
 
 suite('reasonOf', () => {
-  test('joins the errors 7-Zip names, without the file they are about, or says how 7-Zip ended when it names none', () => {
+  test('joins the errors 7-Zip names, without the file they are about, taking the line after an error naming only the file, or says how 7-Zip ended when it names none', () => {
     assert.strictEqual(
       reasonOf(
         {
@@ -247,6 +286,18 @@ suite('reasonOf', () => {
         'cut-short.zip',
       ),
       'Unexpected end of archive',
+    );
+    assert.strictEqual(
+      reasonOf(
+        {
+          code: 2,
+          output: '',
+          errors:
+            'ERROR: C:\\archives\\a.7z\r\nCannot open encrypted archive. Wrong password?\r\n\r\nERRORS:\r\nHeaders Error\r\n',
+        },
+        'C:\\archives\\a.7z',
+      ),
+      'Cannot open encrypted archive. Wrong password?',
     );
     assert.strictEqual(
       reasonOf({ code: 255, output: '', errors: '' }, 'a.zip'),

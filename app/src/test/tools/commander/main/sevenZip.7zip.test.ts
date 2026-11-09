@@ -93,7 +93,7 @@ suite('7-Zip', () => {
     }
   });
 
-  test('refuses a file that is no archive, and an archive whose names are encrypted, saying why, without waiting for a password', async () => {
+  test('refuses a file that is no archive, and an archive whose names are encrypted, saying why and that a password is needed, without waiting for one', async () => {
     const text = path.join(folder, 'plain.txt');
     fs.writeFileSync(text, 'not an archive\n');
     assert.deepStrictEqual(await reader.list(text), {
@@ -102,10 +102,37 @@ suite('7-Zip', () => {
       noArchive: true,
     });
     const secret = await packed('secret.7z', '-psecret', '-mhe=on');
-    assert.deepStrictEqual(await reader.list(secret), {
+    const needed = {
       kind: 'refused',
       reason: 'Cannot open encrypted archive. Wrong password?',
-    });
+      needsPassword: true,
+    };
+    assert.deepStrictEqual(await reader.list(secret), needed);
+    assert.deepStrictEqual(
+      await reader.list(secret, undefined, 'wrong'),
+      needed,
+    );
+  });
+
+  test('lists an archive whose names are encrypted and takes its files out with the password given, refusing a wrong one as needing a password', async () => {
+    const secret = await packed('secret.7z', '-psecret', '-mhe=on');
+    const listing = await reader.list(secret, undefined, 'secret');
+    assert.ok(listing.kind === 'listed');
+    assert.ok(listing.items.some((item) => item.path === 'top.txt'));
+    const into = path.join(folder, 'out');
+    assert.strictEqual(
+      (await reader.extract(secret, ['top.txt'], into, { password: 'wrong' }))
+        ?.needsPassword,
+      true,
+    );
+    assert.strictEqual(
+      await reader.extract(secret, ['top.txt'], into, { password: 'secret' }),
+      undefined,
+    );
+    assert.strictEqual(
+      fs.readFileSync(path.join(into, 'top.txt'), 'utf8'),
+      'top.txt',
+    );
   });
 
   test('marks the items of an archive whose contents alone are encrypted', async () => {

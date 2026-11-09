@@ -60,6 +60,7 @@ function CommanderPopups() {
       : state.view.panes[state.makingFolder.side]?.entries,
   );
   const noAccess = useCommander((state) => state.noAccess);
+  const askingPassword = useCommander((state) => state.askingPassword);
   const {
     confirmDelete,
     cancelDelete,
@@ -69,10 +70,30 @@ function CommanderPopups() {
     cancelNewFolder,
     closeNoAccess,
     elevate,
+    answerPassword,
   } = useCommanderActions();
   return (
     <>
       <TransferPopup />
+      {askingPassword !== undefined && (
+        <PromptPopup
+          key={askingPassword.ask}
+          title={strings.commander.passwordTitle}
+          message={
+            askingPassword.wrong
+              ? strings.commander.passwordWrong(askingPassword.name)
+              : strings.commander.passwordAsked(askingPassword.name)
+          }
+          label={strings.commander.passwordLabel}
+          confirm={strings.commander.passwordOpen}
+          problemOf={(password) =>
+            password === '' ? strings.commander.noPassword : undefined
+          }
+          secret
+          onConfirm={answerPassword}
+          onCancel={() => answerPassword(undefined)}
+        />
+      )}
       {makingFolder !== undefined && (
         <PromptPopup
           title={strings.commander.newFolderTitle}

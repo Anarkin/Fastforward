@@ -1,10 +1,11 @@
-import { createHash } from 'node:crypto';
+import { createCipheriv, createHash } from 'node:crypto';
 import { deflateRawSync, gzipSync } from 'node:zlib';
 import { crc32, crcOfByte } from './samples.mts';
 
 export interface Packed {
   readonly name: string | Buffer;
   readonly content: string | Buffer;
+  readonly password?: string;
 }
 
 const dosDate = ((2026 - 1980) << 9) | (2 << 5) | 1;
@@ -36,16 +37,14 @@ export const zip = (files: readonly Packed[], password?: string) => {
   const parts: Buffer[] = [];
   const directory: Buffer[] = [];
   let offset = 0;
-  for (const { name, content } of files) {
+  for (const { name, content, password: own = password } of files) {
     const data = Buffer.from(content);
     const crc = crc32(data);
     const deflated = deflateRawSync(data);
-    const packed =
-      password === undefined ? deflated : zipCrypto(password, crc, deflated);
+    const packed = own === undefined ? deflated : zipCrypto(own, crc, deflated);
     const nameBytes = Buffer.from(name);
     const flags =
-      (typeof name === 'string' ? 0x0800 : 0) |
-      (password === undefined ? 0 : 1);
+      (typeof name === 'string' ? 0x0800 : 0) | (own === undefined ? 0 : 1);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
     local.writeUInt16LE(20, 4);
@@ -80,6 +79,154 @@ export const zip = (files: readonly Packed[], password?: string) => {
   end.writeUInt32LE(listed.length, 12);
   end.writeUInt32LE(offset, 16);
   return Buffer.concat([...parts, listed, end]);
+};
+
+const octets = (...values: number[]) => Buffer.from(values);
+
+const sevenZipNumber = (value: number) => {
+  let extra = 0;
+  while (value >= 2 ** (8 * extra + 7 - extra)) {
+    extra++;
+  }
+  const low = Buffer.alloc(extra);
+  let rest = value;
+  for (let at = 0; at < extra; at++) {
+    low[at] = rest % 256;
+    rest = Math.floor(rest / 256);
+  }
+  return Buffer.concat([octets(((0xff00 >> extra) & 0xff) | rest), low]);
+};
+
+const littleEndian32 = (value: number) => {
+  const written = Buffer.alloc(4);
+  written.writeUInt32LE(value >>> 0);
+  return written;
+};
+
+const sevenZipCycles = 19;
+const sevenZipIv = Buffer.from('fastforward-play');
+
+const sevenZipKey = (password: string) => {
+  const round = Buffer.concat([
+    Buffer.from(password, 'utf16le'),
+    Buffer.alloc(8),
+  ]);
+  const rounds = 2 ** sevenZipCycles;
+  const hashed = Buffer.alloc(round.length * rounds);
+  for (let at = 0; at < rounds; at++) {
+    round.copy(hashed, at * round.length);
+    hashed.writeUInt32LE(at, (at + 1) * round.length - 8);
+  }
+  return createHash('sha256').update(hashed).digest();
+};
+
+const sevenZipAes = (key: Buffer, plain: Buffer) => {
+  const cipher = createCipheriv('aes-256-cbc', key, sevenZipIv);
+  cipher.setAutoPadding(false);
+  const padded = Buffer.concat([
+    plain,
+    Buffer.alloc((16 - (plain.length % 16)) % 16),
+  ]);
+  return Buffer.concat([cipher.update(padded), cipher.final()]);
+};
+
+const sevenZipStreams = (
+  at: number,
+  packed: number,
+  unpacked: number,
+  after: Buffer,
+) =>
+  Buffer.concat([
+    octets(0x06),
+    sevenZipNumber(at),
+    sevenZipNumber(1),
+    octets(0x09),
+    sevenZipNumber(packed),
+    octets(0x00, 0x07, 0x0b),
+    sevenZipNumber(1),
+    octets(0x00),
+    sevenZipNumber(1),
+    octets(0x24, 0x06, 0xf1, 0x07, 0x01),
+    sevenZipNumber(2 + sevenZipIv.length),
+    octets(sevenZipCycles | 0x40, sevenZipIv.length - 1),
+    sevenZipIv,
+    octets(0x0c),
+    sevenZipNumber(unpacked),
+    after,
+  ]);
+
+export const sevenZipEncrypted = (
+  files: readonly {
+    readonly name: string;
+    readonly content: string | Buffer;
+  }[],
+  password: string,
+) => {
+  const key = sevenZipKey(password);
+  const contents = files.map(({ content }) => Buffer.from(content));
+  const data = Buffer.concat(contents);
+  const packedData = sevenZipAes(key, data);
+  const names = Buffer.concat(
+    files.map(({ name }) => Buffer.from(`${name}\0`, 'utf16le')),
+  );
+  const time = Buffer.alloc(8);
+  time.writeBigUInt64LE(
+    (BigInt(Date.UTC(2026, 1, 1)) + 11_644_473_600_000n) * 10_000n,
+  );
+  const header = Buffer.concat([
+    octets(0x01, 0x04),
+    sevenZipStreams(
+      0,
+      packedData.length,
+      data.length,
+      Buffer.concat([
+        octets(0x00, 0x08, 0x0d),
+        sevenZipNumber(files.length),
+        octets(0x09),
+        ...contents.slice(0, -1).map((each) => sevenZipNumber(each.length)),
+        octets(0x0a, 0x01),
+        ...contents.map((each) => littleEndian32(crc32(each))),
+        octets(0x00, 0x00),
+      ]),
+    ),
+    octets(0x05),
+    sevenZipNumber(files.length),
+    octets(0x11),
+    sevenZipNumber(names.length + 1),
+    octets(0x00),
+    names,
+    octets(0x14),
+    sevenZipNumber(2 + 8 * files.length),
+    octets(0x01, 0x00),
+    ...files.map(() => time),
+    octets(0x00, 0x00),
+  ]);
+  const packedHeader = sevenZipAes(key, header);
+  const encoded = Buffer.concat([
+    octets(0x17),
+    sevenZipStreams(
+      packedData.length,
+      packedHeader.length,
+      header.length,
+      Buffer.concat([
+        octets(0x0a, 0x01),
+        littleEndian32(crc32(header)),
+        octets(0x00, 0x00),
+      ]),
+    ),
+  ]);
+  const start = Buffer.alloc(20);
+  start.writeBigUInt64LE(BigInt(packedData.length + packedHeader.length), 0);
+  start.writeBigUInt64LE(BigInt(encoded.length), 8);
+  start.writeUInt32LE(crc32(encoded), 16);
+  return Buffer.concat([
+    octets(0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c, 0x00, 0x04),
+    littleEndian32(crc32(start)),
+    start,
+    packedData,
+    packedHeader,
+    encoded,
+  ]);
 };
 
 const octal = (value: number, width: number) =>

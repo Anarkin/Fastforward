@@ -114,11 +114,11 @@ suite('ArchiveTree', () => {
     );
   });
 
-  test('counts the files and bytes of the items asked for, a folder by all the files under it', () => {
+  test('counts the files and bytes of the items asked for, a folder by all the files under it, and says whether one of those files is encrypted', () => {
     const tree = new ArchiveTree(
       [
         item('docs/a.md', { size: 3 }),
-        item('docs/deep/b.md', { size: 4 }),
+        item('docs/deep/b.md', { size: 4, encrypted: true }),
         item('top.txt', { size: 5 }),
       ],
       'linux',
@@ -128,15 +128,17 @@ suite('ArchiveTree', () => {
         { inner: [], name: 'docs' },
         { inner: [], name: 'top.txt' },
       ]),
-      { files: 3, bytes: 12 },
+      { files: 3, bytes: 12, encrypted: true },
     );
     assert.deepStrictEqual(
       tree.totals([{ inner: ['docs', 'deep'], name: 'b.md' }]),
-      {
-        files: 1,
-        bytes: 4,
-      },
+      { files: 1, bytes: 4, encrypted: true },
     );
+    assert.deepStrictEqual(tree.totals([{ inner: [], name: 'top.txt' }]), {
+      files: 1,
+      bytes: 5,
+      encrypted: false,
+    });
   });
 
   test('hides by the hidden attribute on Windows, and by a leading dot elsewhere, as the folders of the system are', () => {
@@ -317,6 +319,61 @@ suite('Archives', () => {
       archives.within(path.join(nested, 'src'))?.archive.file,
       zip,
     );
+  });
+
+  test('lists and extracts an archive with the password it was given until told to forget it, saying whose password is missing, the outer archive for the extraction of one inside it', async () => {
+    const zip = path.join(folder, 'secret.zip');
+    fs.writeFileSync(zip, 'zip');
+    const seen: (string | undefined)[] = [];
+    const reader: ArchiveReader = {
+      list: (_file, _signal, password) => {
+        seen.push(password);
+        return Promise.resolve(
+          password === 'right'
+            ? { kind: 'listed', items: [item('inner.zip')] }
+            : {
+                kind: 'refused',
+                reason: 'Wrong password',
+                needsPassword: true,
+              },
+        );
+      },
+      extract: (_file, _paths, _into, options) => {
+        seen.push(options?.password);
+        return Promise.resolve({
+          reason: 'Wrong password',
+          needsPassword: true,
+        });
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+
+    assert.deepStrictEqual(await archives.open(zip), {
+      kind: 'refused',
+      reason: 'Wrong password',
+      needsPassword: true,
+      passwordOf: zip,
+    });
+    archives.usePassword(zip, 'right');
+    assert.ok(archives.hasPassword(zip));
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+    assert.deepStrictEqual(
+      await archives.openInside(
+        path.join(zip, 'inner.zip'),
+        opened.archive,
+        'inner.zip',
+      ),
+      {
+        kind: 'refused',
+        reason: 'Wrong password',
+        needsPassword: true,
+        passwordOf: zip,
+      },
+    );
+    archives.usePassword(zip, undefined);
+    assert.ok(!archives.hasPassword(zip));
+    assert.deepStrictEqual(seen, [undefined, 'right', 'right']);
   });
 
   test('finds the opened archive a folder is inside of, and the file a path inside an archive runs through', async () => {

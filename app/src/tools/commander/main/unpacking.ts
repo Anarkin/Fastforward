@@ -72,6 +72,9 @@ export function unpackingFirst(
         return;
       }
       if (extracted.kind === 'refused') {
+        if (extracted.needsPassword === true) {
+          archives.usePassword(archive.file, undefined);
+        }
         fail(extracted.reason);
         return;
       }

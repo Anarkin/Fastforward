@@ -549,8 +549,13 @@ export const strings = {
       `${name} could not be opened as an archive: ${reason}`,
     tryEnterArchive: 'Try Enter Archive',
     readingArchive: (name: string) => `Reading ${name}…`,
-    encryptedInArchive: (name: string) =>
-      `${name} is encrypted, and no encrypted file is read from an archive yet.`,
+    passwordTitle: 'Password',
+    passwordAsked: (name: string) => `${name} is encrypted. Type its password.`,
+    passwordWrong: (name: string) =>
+      `The password of ${name} is wrong. Type it again.`,
+    passwordLabel: 'Password',
+    passwordOpen: 'Open',
+    noPassword: 'No password is typed.',
     couldNotExtract: (reason: string) =>
       `Nothing could be taken out of the archive: ${reason}`,
     sevenZipEnded: (code: number | null) =>

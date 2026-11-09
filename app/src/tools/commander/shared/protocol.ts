@@ -278,6 +278,11 @@ export type CommanderToHost =
       readonly command: FolderCommand;
     }
   | {
+      readonly type: 'password';
+      readonly ask: number;
+      readonly password?: string;
+    }
+  | {
       readonly type: 'enterArchive';
       readonly tab: string;
       readonly side: Side;
@@ -450,6 +455,12 @@ export type CommanderToWebview =
       readonly walk: number;
       readonly folders: readonly FlatFolder[];
       readonly progress: FlatProgress;
+    }
+  | {
+      readonly type: 'askPassword';
+      readonly ask: number;
+      readonly name: string;
+      readonly wrong: boolean;
     }
   | {
       readonly type: 'readingArchive';

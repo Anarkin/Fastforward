@@ -6,6 +6,7 @@ import type {
   ArchiveItem,
   ArchiveListing,
   ArchiveReader,
+  ArchiveRefusal,
   ExtractOptions,
   ExtractProgress,
 } from './archives';
@@ -20,6 +21,7 @@ export type SevenZip = (
   args: readonly string[],
   signal?: AbortSignal,
   onOutput?: (text: string) => void,
+  input?: string,
 ) => Promise<SevenZipRun>;
 
 export function sevenZipProgram(options: {
@@ -45,13 +47,15 @@ function decoded(chunks: readonly Buffer[]): string {
 }
 
 export function sevenZipAt(program: string): SevenZip {
-  return (args, signal, onOutput) =>
+  return (args, signal, onOutput, input) =>
     new Promise((resolve, reject) => {
       const child = spawn(program, args, {
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
         ...(signal !== undefined && { signal }),
       });
+      child.stdin.on('error', () => undefined);
+      child.stdin.end(input);
       const output: Buffer[] = [];
       const errors: Buffer[] = [];
       const streamed = new TextDecoder();
@@ -69,6 +73,7 @@ export function sevenZipAt(program: string): SevenZip {
 
 const noPrompt = '-p-';
 const noArchiveSeen = 'Cannot open the file as archive';
+const wrongPassword = /Wrong password/i;
 const itemsStart = '----------';
 const timePattern =
   /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)(?:\.(\d{1,3}))?/;
@@ -163,7 +168,7 @@ function listedUnder(lines: readonly string[]): string[] {
 
 export function reasonOf(run: SevenZipRun, file: string): string {
   const lines = `${run.errors}\n${run.output}`.split(/\r?\n/);
-  const reasons = lines.flatMap((line) => {
+  const reasons = lines.flatMap((line, at) => {
     const [, message] = errorPattern.exec(line.trim()) ?? [];
     if (message === undefined) {
       return [];
@@ -173,7 +178,13 @@ export function reasonOf(run: SevenZipRun, file: string): string {
       named >= 0 && slashed(message.slice(0, named)) === slashed(file)
         ? message.slice(named + 3)
         : message;
-    return slashed(reason) === slashed(file) ? [] : [reason];
+    if (slashed(reason) !== slashed(file)) {
+      return [reason];
+    }
+    const next = lines[at + 1]?.trim() ?? '';
+    return next === '' || next.endsWith(':') || errorPattern.test(next)
+      ? []
+      : [next];
   });
   const told = reasons.length > 0 ? reasons : listedUnder(lines);
   return told.length > 0
@@ -181,24 +192,41 @@ export function reasonOf(run: SevenZipRun, file: string): string {
     : strings.commander.sevenZipEnded(run.code);
 }
 
+function passwordGiven(password: string | undefined): {
+  readonly switches: readonly string[];
+  readonly input: string | undefined;
+} {
+  return password === undefined
+    ? { switches: [noPrompt], input: undefined }
+    : { switches: [], input: `${password}\n` };
+}
+
+function refusalOf(run: SevenZipRun, file: string): ArchiveRefusal {
+  const reason = reasonOf(run, file);
+  return {
+    reason,
+    ...(reason === noArchiveSeen && { noArchive: true }),
+    ...(wrongPassword.test(reason) && { needsPassword: true }),
+  };
+}
+
 async function listed(
   sevenZip: SevenZip,
   file: string,
   signal?: AbortSignal,
+  password?: string,
 ): Promise<ArchiveListing> {
+  const { switches, input } = passwordGiven(password);
   const run = await sevenZip(
-    ['l', '-slt', '-sccUTF-8', '-slsl', '-slmu', noPrompt, '--', file],
+    ['l', '-slt', '-sccUTF-8', '-slsl', '-slmu', ...switches, '--', file],
     signal,
+    undefined,
+    input,
   );
   const lines = run.output.split(/\r?\n/);
   const start = lines.indexOf(itemsStart);
   if ((run.code !== 0 && run.code !== 1) || start < 0) {
-    const reason = reasonOf(run, file);
-    return {
-      kind: 'refused',
-      reason,
-      ...(reason === noArchiveSeen && { noArchive: true }),
-    };
+    return { kind: 'refused', ...refusalOf(run, file) };
   }
   const items: ArchiveItem[] = [];
   let block: string[] = [];
@@ -252,17 +280,18 @@ async function extracted(
   file: string,
   paths: readonly string[],
   into: string,
-  { signal, onProgress, withoutFolders = false }: ExtractOptions = {},
-): Promise<string | undefined> {
+  { signal, onProgress, withoutFolders = false, password }: ExtractOptions = {},
+): Promise<ArchiveRefusal | undefined> {
   await fs.promises.mkdir(into, { recursive: true });
   const list = `${into}.paths`;
   await fs.promises.writeFile(list, paths.join('\n'));
+  const { switches, input } = passwordGiven(password);
   try {
     const run = await sevenZip(
       [
         withoutFolders ? 'e' : 'x',
         '-y',
-        noPrompt,
+        ...switches,
         '-snz',
         '-spd',
         '-sccUTF-8',
@@ -275,8 +304,9 @@ async function extracted(
       ],
       signal,
       onProgress === undefined ? undefined : progressed(onProgress),
+      input,
     );
-    return run.code === 0 || run.code === 1 ? undefined : reasonOf(run, file);
+    return run.code === 0 || run.code === 1 ? undefined : refusalOf(run, file);
   } finally {
     await fs.promises.rm(list, { force: true });
   }
@@ -290,7 +320,7 @@ export function sevenZipReaderAt(program: string): ArchiveReader | undefined {
 
 export function sevenZipReader(sevenZip: SevenZip): ArchiveReader {
   return {
-    list: (file, signal) => listed(sevenZip, file, signal),
+    list: (file, signal, password) => listed(sevenZip, file, signal, password),
     extract: (file, paths, into, options) =>
       extracted(sevenZip, file, paths, into, options),
   };
