@@ -84,48 +84,59 @@ const theme: ThemeRegistrationRaw = {
   ],
 };
 
+interface Twin {
+  readonly source: number;
+  readonly lines: readonly (number | undefined)[];
+}
+
 export interface SyntaxSource {
   readonly language: string;
   readonly lines: readonly string[];
   readonly keys: readonly (string | undefined)[];
+  readonly twin?: Twin;
 }
 
 const maxLineLength = 20_000;
 
 export type LineRanges = readonly (readonly SyntaxRange[])[];
 
+interface Colors {
+  readonly ranges: LineRanges;
+  readonly states?: readonly StateStack[];
+}
+
 const maxCachedLines = 100_000;
 const maxCachedChars = 8_000_000;
-const cache = new Map<string, LineRanges>();
+const cache = new Map<string, Colors>();
 let cachedLines = 0;
 let cachedChars = 0;
 
-function cached(key: string): LineRanges | undefined {
-  const ranges = cache.get(key);
-  if (ranges) {
+function cached(key: string): Colors | undefined {
+  const colors = cache.get(key);
+  if (colors) {
     cache.delete(key);
-    cache.set(key, ranges);
+    cache.set(key, colors);
   }
-  return ranges;
+  return colors;
 }
 
 function textLength(key: string): number {
   return key.length - key.indexOf('\n') - 1;
 }
 
-function store(key: string, ranges: LineRanges) {
+function store(key: string, colors: Colors) {
   if (textLength(key) > maxCachedChars / 4 || cache.has(key)) {
     return;
   }
-  cache.set(key, ranges);
-  cachedLines += ranges.length;
+  cache.set(key, colors);
+  cachedLines += colors.ranges.length;
   cachedChars += textLength(key);
-  for (const [oldest, { length }] of cache) {
+  for (const [oldest, { ranges }] of cache) {
     if (cachedLines <= maxCachedLines && cachedChars <= maxCachedChars) {
       break;
     }
     cache.delete(oldest);
-    cachedLines -= length;
+    cachedLines -= ranges.length;
     cachedChars -= textLength(oldest);
   }
 }
@@ -191,27 +202,93 @@ function apply(
   });
 }
 
+interface PendingTwin {
+  readonly key: string;
+  readonly text: readonly string[];
+  readonly lines: readonly (number | undefined)[];
+}
+
 interface Pending {
   readonly source: SyntaxSource;
   readonly key: string;
+  readonly twin?: PendingTwin;
 }
+
+const keyOf = (source: SyntaxSource) =>
+  `${source.language}\n${source.lines.join('\n')}`;
 
 export function uncachedSources(
   sources: readonly SyntaxSource[],
   ranges: Map<string, readonly SyntaxRange[]>,
 ): Pending[] {
-  return sources.flatMap((source) => {
+  const keys = sources.map(keyOf);
+  return sources.flatMap((source, index) => {
     if (source.lines.length === 0) {
       return [];
     }
-    const key = `${source.language}\n${source.lines.join('\n')}`;
+    const key = keys[index];
     const found = cached(key);
     if (found) {
-      apply(source, found, ranges);
+      apply(source, found.ranges, ranges);
       return [];
     }
-    return [{ source, key }];
+    const twin = source.twin;
+    const twinSource = twin && sources[twin.source];
+    return twin &&
+      twin.source < index &&
+      twinSource?.language === source.language
+      ? [
+          {
+            source,
+            key,
+            twin: {
+              key: keys[twin.source],
+              text: twinSource.lines,
+              lines: twin.lines,
+            },
+          },
+        ]
+      : [{ source, key }];
   });
+}
+
+interface Coloring extends Colors {
+  readonly pending: Pending;
+  ranges: (readonly SyntaxRange[])[];
+  states: StateStack[];
+  color?: LineColorer;
+  pulls?: Coloring;
+  twin?: Colors;
+}
+
+const stateBefore = (colors: Colors, line: number) =>
+  line === 0 ? INITIAL : colors.states?.[line - 1];
+
+const complete = (coloring: Coloring) =>
+  coloring.ranges.length === coloring.pending.source.lines.length;
+
+function coloredByTwin(
+  coloring: Coloring,
+  line: number,
+  before: StateStack,
+): ColoredLine | undefined {
+  const { source, twin } = coloring.pending;
+  const twinLine = twin?.lines[line];
+  const colors = coloring.twin;
+  if (
+    twinLine === undefined ||
+    colors === undefined ||
+    twin?.text[twinLine] !== source.lines[line]
+  ) {
+    return undefined;
+  }
+  const twinBefore = stateBefore(colors, twinLine);
+  const after = colors.states?.[twinLine];
+  return twinBefore !== undefined &&
+    after !== undefined &&
+    before.equals(twinBefore)
+    ? { ranges: colors.ranges[twinLine], after }
+    : undefined;
 }
 
 export function tokenizing(
@@ -219,36 +296,97 @@ export function tokenizing(
   pending: readonly Pending[],
 ): (deadline: number, ranges: Map<string, readonly SyntaxRange[]>) => boolean {
   let generation = grammars;
+  const colorings: Coloring[] = pending.map((each) => ({
+    pending: each,
+    ranges: [],
+    states: [],
+  }));
+  const byKey = new Map<string, Coloring>();
+  for (const coloring of colorings.toReversed()) {
+    byKey.set(coloring.pending.key, coloring);
+  }
+  const restart = () => {
+    for (const coloring of colorings) {
+      const twinKey = coloring.pending.twin?.key;
+      coloring.ranges = [];
+      coloring.states = [];
+      coloring.color = undefined;
+      coloring.pulls = twinKey === undefined ? undefined : byKey.get(twinKey);
+      coloring.twin =
+        twinKey === undefined ? undefined : (coloring.pulls ?? cached(twinKey));
+    }
+  };
+  restart();
+  const pulled = new Set(colorings.map(({ pulls }) => pulls));
+  const groups = colorings
+    .filter((coloring) => !pulled.has(coloring))
+    .map((driver) => {
+      const group = [driver];
+      for (let next = driver.pulls; next && !group.includes(next);) {
+        group.push(next);
+        next = next.pulls;
+      }
+      return group;
+    });
+  const record = (
+    coloring: Coloring,
+    line: ColoredLine,
+    ranges: Map<string, readonly SyntaxRange[]>,
+  ) => {
+    const { source, key } = coloring.pending;
+    apply(source, [line.ranges], ranges, coloring.ranges.length);
+    coloring.ranges.push(line.ranges);
+    coloring.states.push(line.after);
+    if (complete(coloring)) {
+      store(key, { ranges: coloring.ranges, states: coloring.states });
+    }
+  };
+  const advance = (
+    coloring: Coloring,
+    ranges: Map<string, readonly SyntaxRange[]>,
+  ): void => {
+    const { source, twin } = coloring.pending;
+    const line = coloring.ranges.length;
+    const twinLine = twin?.lines[line];
+    const { pulls } = coloring;
+    if (
+      twinLine !== undefined &&
+      pulls &&
+      !complete(pulls) &&
+      pulls.ranges.length <= twinLine
+    ) {
+      advance(pulls, ranges);
+      return;
+    }
+    const before = stateBefore(coloring, line) ?? INITIAL;
+    const byTwin = coloredByTwin(coloring, line, before);
+    if (byTwin) {
+      record(coloring, byTwin, ranges);
+      return;
+    }
+    coloring.color ??= lineColorer(highlighter, source.language);
+    record(coloring, coloring.color(source.lines[line], before), ranges);
+  };
   let index = 0;
-  let done: (readonly SyntaxRange[])[] = [];
-  let state = INITIAL;
-  let color: LineColorer | undefined;
   return (deadline, ranges) => {
-    while (index < pending.length) {
+    while (index < groups.length) {
       if (generation !== grammars) {
         generation = grammars;
-        done = [];
-        state = INITIAL;
-        color = undefined;
+        restart();
+        index = 0;
       }
-      const { source, key } = pending[index];
-      color ??= lineColorer(highlighter, source.language);
-      const line = color(source.lines[done.length], state);
-      apply(source, [line.ranges], ranges, done.length);
-      done.push(line.ranges);
-      state = line.after;
-      if (done.length === source.lines.length) {
-        store(key, done);
+      const unfinished = groups[index].find((each) => !complete(each));
+      if (unfinished !== undefined) {
+        advance(unfinished, ranges);
+      }
+      if (groups[index].every(complete)) {
         index += 1;
-        done = [];
-        state = INITIAL;
-        color = undefined;
       }
-      if (performance.now() >= deadline) {
+      if (unfinished !== undefined && performance.now() >= deadline) {
         break;
       }
     }
-    return index < pending.length;
+    return index < groups.length;
   };
 }
 
@@ -312,7 +450,7 @@ export function colorCode(
   const work = (highlighter: HighlighterCore) => {
     const found = cached(key);
     if (found !== undefined) {
-      publish(packedPart(found, 0, true));
+      publish(packedPart(found.ranges, 0, true));
       return;
     }
     let generation = grammars;
@@ -356,7 +494,7 @@ export function colorCode(
       if (!done) {
         later(slice);
       } else if (kept) {
-        store(key, all);
+        store(key, { ranges: all });
       }
     };
     later(slice);

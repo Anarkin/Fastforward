@@ -78,10 +78,14 @@ function sidePlans(
   });
 }
 
-function sideSource(
-  { fileIndex, language, shown, wholeText }: SidePlan,
-  text: string | undefined,
-): SyntaxSource {
+interface NumberedSource {
+  readonly plan: SidePlan;
+  readonly source: SyntaxSource;
+  readonly numbers: readonly number[];
+}
+
+function sideSource(plan: SidePlan, text: string | undefined): NumberedSource {
+  const { fileIndex, language, shown, wholeText } = plan;
   const keyOf = ({ owned, index }: (typeof shown)[number]) =>
     owned ? lineKey(fileIndex, index) : undefined;
   const lines = wholeText ? text?.split(/\r?\n/) : undefined;
@@ -93,16 +97,77 @@ function sideSource(
   ) {
     const kept = shown.slice(0, maxSourceLines);
     return {
-      language,
-      lines: kept.map(({ line }) => line.text),
-      keys: kept.map(keyOf),
+      plan,
+      source: {
+        language,
+        lines: kept.map(({ line }) => line.text),
+        keys: kept.map(keyOf),
+      },
+      numbers: kept.map(({ number }) => number),
     };
   }
   const keys: (string | undefined)[] = [];
   for (const line of shown) {
     keys[line.number - 1] = keyOf(line);
   }
-  return { language, lines: lines.slice(0, keys.length), keys };
+  return {
+    plan,
+    source: { language, lines: lines.slice(0, keys.length), keys },
+    numbers: Array.from({ length: keys.length }, (_, index) => index + 1),
+  };
+}
+
+function oldNumbersOfUnchanged(file: DiffFile): Map<number, number> {
+  const found = new Map<number, number>();
+  let oldNumber = 1;
+  let newNumber = 1;
+  for (const line of file.hunks.flatMap((hunk) => hunk.lines)) {
+    const gap =
+      line.oldNumber === undefined
+        ? (line.newNumber ?? newNumber) - newNumber
+        : line.oldNumber - oldNumber;
+    for (let offset = 0; offset < gap; offset += 1) {
+      found.set(newNumber + offset, oldNumber + offset);
+    }
+    oldNumber += gap;
+    newNumber += gap;
+    if (line.oldNumber !== undefined && line.newNumber !== undefined) {
+      found.set(line.newNumber, line.oldNumber);
+    }
+    oldNumber = (line.oldNumber ?? oldNumber - 1) + 1;
+    newNumber = (line.newNumber ?? newNumber - 1) + 1;
+  }
+  return found;
+}
+
+function twinned(numbered: readonly NumberedSource[]): SyntaxSource[] {
+  return numbered.map(({ plan, source, numbers }, index) => {
+    const old = index === 0 ? undefined : numbered[index - 1];
+    if (
+      old === undefined ||
+      plan.side !== 'new' ||
+      old.plan.side !== 'old' ||
+      old.plan.file !== plan.file
+    ) {
+      return source;
+    }
+    const oldNumbers = oldNumbersOfUnchanged(plan.file);
+    const oldIndexes = new Map(
+      old.numbers.map((number, line) => [number, line]),
+    );
+    return {
+      ...source,
+      twin: {
+        source: index - 1,
+        lines: numbers.map((number) => {
+          const oldNumber = oldNumbers.get(number);
+          return oldNumber === undefined
+            ? undefined
+            : oldIndexes.get(oldNumber);
+        }),
+      },
+    };
+  });
 }
 
 export function syntaxSources(
@@ -119,14 +184,16 @@ export function syntaxSources(
       ? [{ language, lines, keys: lines.map((_, index) => lineKey(0, index)) }]
       : [];
   }
-  return sidePlans(files, open, chosen).flatMap((plan) => {
-    const loaded = texts.get(textKey(plan.file.path, plan.side));
-    const awaited =
-      plan.wholeText &&
-      loaded !== undefined &&
-      loaded.blob !== plan.file.blobs?.[plan.side];
-    return awaited ? [] : [sideSource(plan, loaded?.text)];
-  });
+  return twinned(
+    sidePlans(files, open, chosen).flatMap((plan) => {
+      const loaded = texts.get(textKey(plan.file.path, plan.side));
+      const awaited =
+        plan.wholeText &&
+        loaded !== undefined &&
+        loaded.blob !== plan.file.blobs?.[plan.side];
+      return awaited ? [] : [sideSource(plan, loaded?.text)];
+    }),
+  );
 }
 
 export function textsToLoad(

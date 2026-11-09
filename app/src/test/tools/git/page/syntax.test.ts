@@ -60,6 +60,9 @@ function countingLines(highlighter: Highlighter) {
   return { counting, tokenized: () => lines.length, lines };
 }
 
+const sideKeys = (side: number, lines: readonly string[]) =>
+  lines.map((_, index) => `${side}:${index}`);
+
 function onTickingClock(from: number, run: () => void) {
   const now = performance.now.bind(performance);
   let clock = from;
@@ -391,6 +394,45 @@ suite('Syntax', () => {
         '0:1': ['comment new = 2;'],
         '0:2': ['comment end */'],
       },
+    );
+  });
+
+  test('gives the new side of a file its old side as a twin, pairing each line with the line of the old side it is unchanged from, in the hunks and between them, so the engine colors it from the old side', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -2,3 +2,4 @@',
+        ' b;',
+        '-c;',
+        '+c2;',
+        '+c3;',
+        ' d;',
+        '@@ -8,2 +9,1 @@',
+        '-h;',
+        ' i;',
+        '',
+      ].join('\n'),
+    );
+    const twins = (texts: ReadonlyMap<string, LoadedText>) =>
+      syntaxSources(files, undefined, texts).map(({ twin }) => twin);
+    assert.deepStrictEqual(twins(new Map()), [
+      undefined,
+      { source: 0, lines: [0, undefined, undefined, 2, 4] },
+    ]);
+    assert.deepStrictEqual(
+      twins(
+        loadedTexts([
+          ['old:a.ts', 'a;\nb;\nc;\nd;\ne;\nf;\ng;\nh;\ni;\n'],
+          ['new:a.ts', 'a;\nb;\nc2;\nc3;\nd;\ne;\nf;\ng;\ni;\n'],
+        ]),
+      ),
+      [
+        undefined,
+        { source: 0, lines: [0, 1, undefined, undefined, 3, 4, 5, 6, 8] },
+      ],
     );
   });
 
@@ -850,6 +892,96 @@ suite('Syntax', () => {
     assert.deepStrictEqual(Object.fromEntries(ranges), {
       '3:7': [{ start: 4, end: 5, kind: 'keyword' }],
     });
+  });
+
+  test('colors a line as the line of its twin it is unchanged from once the states before them are the same, tokenizing only the lines that differ, as a line colors alike from a like state', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const { counting, lines: tokenized } = countingLines(highlighter);
+    const old = ['/* twin', 'end */', 'let kept = 1;', 'kept;'];
+    const changed = ['/* twin', 'added', 'end */', 'let kept = 1;', 'kept;'];
+    const ranges = syntaxRanges(counting, [
+      { language: 'typescript', lines: old, keys: sideKeys(0, old) },
+      {
+        language: 'typescript',
+        lines: changed,
+        keys: sideKeys(1, changed),
+        twin: { source: 0, lines: [0, undefined, 1, 2, 3] },
+      },
+    ]);
+    assert.deepStrictEqual(tokenized.toSorted(), [...old, 'added'].toSorted());
+    const alone = syntaxRanges(highlighter, [
+      {
+        language: 'typescript',
+        lines: [...changed, ''],
+        keys: [...sideKeys(1, changed), undefined],
+      },
+    ]);
+    assert.deepStrictEqual(
+      sideKeys(1, changed).map((key) => ranges.get(key)),
+      sideKeys(1, changed).map((key) => alone.get(key)),
+    );
+  });
+
+  test('tokenizes a line unchanged from its twin anew when the states before them differ, as a comment opened before it colors it', async () => {
+    const { counting, lines: tokenized } = countingLines(
+      await loadLanguages(['typescript']),
+    );
+    const ranges = syntaxRanges(counting, [
+      { language: 'typescript', lines: ['let opened = 1;'], keys: ['0:0'] },
+      {
+        language: 'typescript',
+        lines: ['/*', 'let opened = 1;'],
+        keys: ['1:0', '1:1'],
+        twin: { source: 0, lines: [undefined, 0] },
+      },
+    ]);
+    assert.deepStrictEqual(tokenized.toSorted(), [
+      '/*',
+      'let opened = 1;',
+      'let opened = 1;',
+    ]);
+    assert.deepStrictEqual(ranges.get('1:1'), [
+      { start: 0, end: 15, kind: 'comment' },
+    ]);
+  });
+
+  test('colors a text and its twin in step, each line of the twin before the line unchanged from it, so both sides of a diff fill in together', async () => {
+    const lines = ['stepped;', 'together;', 'down;'];
+    const ranges = syntaxRanges(await loadLanguages(['typescript']), [
+      { language: 'typescript', lines, keys: ['0:0', '0:1', '0:2'] },
+      {
+        language: 'typescript',
+        lines: [...lines, 'more;'],
+        keys: ['1:0', '1:1', '1:2', '1:3'],
+        twin: { source: 0, lines: [0, 1, 2, undefined] },
+      },
+    ]);
+    assert.deepStrictEqual(
+      [...ranges.keys()],
+      ['0:0', '1:0', '0:1', '1:1', '0:2', '1:2', '1:3'],
+    );
+  });
+
+  test('colors a line as the line of its twin colored before, keeping the state after each line of the twin', async () => {
+    const highlighter = await loadLanguages(['typescript']);
+    const old = {
+      language: 'typescript',
+      lines: ['/* before', 'end */', 'let before = 1;'],
+      keys: ['0:0', '0:1', '0:2'],
+    };
+    syntaxRanges(highlighter, [old]);
+    const { counting, lines: tokenized } = countingLines(highlighter);
+    const ranges = syntaxRanges(counting, [
+      old,
+      {
+        language: 'typescript',
+        lines: ['/* before', 'end */', 'let after = 2;', 'let before = 1;'],
+        keys: ['1:0', '1:1', '1:2', '1:3'],
+        twin: { source: 0, lines: [0, 1, undefined, 2] },
+      },
+    ]);
+    assert.deepStrictEqual(tokenized, ['let after = 2;']);
+    assert.deepStrictEqual(ranges.get('1:3'), ranges.get('0:2'));
   });
 
   test('colors at once only the texts colored before, tokenizing the rest a slice at a time after', async () => {
