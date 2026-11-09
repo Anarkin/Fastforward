@@ -10,6 +10,7 @@ import {
   type CommanderDrop,
   type CommanderToHost,
   type CommanderToWebview,
+  type FolderCommand,
   type Side,
   type TextEncoding,
 } from '../shared/protocol';
@@ -138,6 +139,11 @@ interface CommanderActions {
   readonly step: (side: Side, step: -1 | 1) => void;
   readonly viewFile: (side: Side, name: string) => void;
   readonly openRepository: (side: Side, name: string) => void;
+  readonly folderCommand: (
+    side: Side,
+    name: string | undefined,
+    command: FolderCommand,
+  ) => void;
   readonly openOnSide: (from: Side, side: Side, name: string) => void;
   readonly drive: (side: Side, drive: string) => void;
   readonly listDrives: () => void;
@@ -754,6 +760,17 @@ export function createCommanderStore(
       openRepository: (side, name) =>
         onPane(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),
+        ),
+      folderCommand: (side, name, command) =>
+        onPane(side, (tab, folder) =>
+          post({
+            type: 'folderCommand',
+            tab,
+            side,
+            folder,
+            ...(name !== undefined && { name }),
+            command,
+          }),
         ),
       openOnSide: (from, side, name) =>
         onPane(from, (tab, folder) =>

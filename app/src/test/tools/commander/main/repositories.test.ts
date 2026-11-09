@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import {
+  inRepository,
   isRepository,
   repositoriesIn,
 } from '../../../../tools/commander/main/repositories';
@@ -125,6 +126,37 @@ suite('Commander repositories', () => {
       );
     },
   );
+
+  test('is in a repository when it is one or a folder above it is, asking from the folder up and stopping at the first one', async () => {
+    made({ ...gitFolder('repo/.git'), 'repo/src/lib': undefined });
+    assert.strictEqual(
+      await inRepository(path.join(folder, 'repo', 'src', 'lib')),
+      true,
+    );
+    assert.strictEqual(await inRepository(path.join(folder, 'repo')), true);
+
+    const asked: string[] = [];
+    const code = path.resolve('/code');
+    const lib = path.join(code, 'app', 'src', 'lib');
+    const inside = await inRepository(lib, (each) => {
+      asked.push(each);
+      return Promise.resolve(each === path.join(code, 'app'));
+    });
+    assert.strictEqual(inside, true);
+    assert.deepStrictEqual(asked, [
+      lib,
+      path.join(code, 'app', 'src'),
+      path.join(code, 'app'),
+    ]);
+
+    asked.length = 0;
+    const outside = await inRepository(code, (each) => {
+      asked.push(each);
+      return Promise.resolve(false);
+    });
+    assert.strictEqual(outside, false);
+    assert.deepStrictEqual(asked, [code, path.dirname(code)]);
+  });
 
   test('names the folders that are repositories, in the order given, never the .git folder of the repository listed', async () => {
     const asked: string[] = [];

@@ -86,6 +86,9 @@ const folderEntry = (name: string) => entry(name, { folder: true });
 const repositoriesShown = (view: CommanderView) =>
   view.panes.left?.rows.filter((row) => row.repository).map((row) => row.key);
 
+const inRepository = (view: CommanderView) =>
+  view.panes.left?.inRepository ?? false;
+
 const named = (
   names: readonly string[],
   extra: Partial<Extract<ViewAction, { type: 'repositories' }>> = {},
@@ -596,6 +599,36 @@ suite('Commander view', () => {
       listing('/other', [folderEntry('app')]),
     );
     assert.deepStrictEqual(repositoriesShown(elsewhere), []);
+  });
+
+  test('knows the folder of a side is in a repository once told, while it is read again, until told otherwise or it shows another folder', () => {
+    const listed = run(
+      { type: 'show', tab: '1' },
+      listing('/code', [folderEntry('src')]),
+    );
+    assert.strictEqual(inRepository(listed), false);
+
+    const inside = reduceView(listed, named([], { inRepository: true }));
+    assert.strictEqual(inRepository(inside), true);
+    assert.strictEqual(
+      reduceView(inside, named([], { inRepository: true })),
+      inside,
+    );
+    assert.strictEqual(
+      reduceView(listed, named([], { inRepository: true, folder: '/other' })),
+      listed,
+    );
+
+    const again = reduceView(
+      inside,
+      listing('/code', [folderEntry('src'), folderEntry('lib')]),
+    );
+    assert.strictEqual(inRepository(again), true);
+    assert.strictEqual(inRepository(reduceView(again, named([]))), false);
+    assert.strictEqual(
+      inRepository(reduceView(inside, listing('/other', []))),
+      false,
+    );
   });
 });
 

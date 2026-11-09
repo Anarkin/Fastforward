@@ -30,7 +30,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Tabs | Run shells side by side in tabs | — | Core | ✅ Yes | The app's tabs, among the git and commander tabs, dragged into any order; New in the Terminal submenu of the + menu starts in the home folder |
 | Recent folders | Open a shell in a folder worked in before | — | Advanced | ✅ Yes | Browse... and the folders worked in most, weighted by how recently, in the Terminal submenu of the + menu, as many as `tabs.recentFolders` says, 15 by default; removed with their X or Delete |
-| Open from other tools | Open a shell in the folder of a file manager, editor or git client | — | Common | ✅ Yes | Mod+Shift+O in a git or commander tab, `ff <folder>` in a terminal, and Open in Fastforward in the Windows Explorer menu, through the Open With popup |
+| Open from other tools | Open a shell in the folder of a file manager, editor or git client | — | Common | ✅ Yes | Mod+Shift+O in a git or commander tab, `ff <folder>` in a terminal, and Open in Fastforward in the Windows Explorer menu, through the Open With popup; New Terminal Here in the commander's menu of a folder |
 | New tab in the same folder | Open another shell where this one is | — | Common | ❌ No | Mod+Shift+O offers the other tools only |
 | Folder of the shell | Know the folder the shell is in | OSC 7, OSC 9;9 | Common | ✅ Yes | PowerShell, bash, zsh, fish and the Command Prompt are set up to tell it at each prompt; it names the tab and is where Mod+Shift+O opens; a folder on a share is taken only on the server the shell started on, as what a program prints could name any host |
 | Background shells | Keep shells running in the tabs not shown | — | Core | ✅ Yes | A headless `xterm.js` keeps each screen, so a tab shown again gets it back whole |

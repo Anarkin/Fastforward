@@ -14,12 +14,12 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Open a repository | Open a folder and find the repository it is in | `git rev-parse --show-toplevel` | Core | ✅ Yes | Browse..., `ff` or `ff <folder>` in a terminal, Open in Fastforward in the Windows Explorer menu; from the commander, by the git icon in the Ext column of a folder that is a repository, or Shift+Enter on it |
+| Open a repository | Open a folder and find the repository it is in | `git rev-parse --show-toplevel` | Core | ✅ Yes | Browse..., `ff` or `ff <folder>` in a terminal, Open in Fastforward in the Windows Explorer menu; from the commander, by the git icon in the Ext column of a folder that is a repository, Shift+Enter on it, or Open in Git in the menu of a folder in one |
 | Recent repositories | Reopen a repository opened before | — | Core | ✅ Yes | Removed from the list with its X or Delete |
 | Several repositories at once | Keep repositories open side by side | — | Common | ✅ Yes | Tabs, dragged into any order, preloaded when the pointer rests on one |
 | Restore after a restart | Reopen the repositories where they were once the app starts again | — | Common | ✅ Yes | The tabs come back, each worktree with the commit or comparison, the file and the changes of it selected last, scrolled to; nothing selected once the commit is gone; not the place scrolled to, the merges expanded or back and forward |
-| Create a repository | Start a repository in a folder | `git init` | Core | ✅ Yes | Init... in the Git menu; opens a folder that is a repository already, and asks first in a folder inside another |
-| Clone | Copy a remote repository | `git clone` | Core | ✅ Yes | Clone... in the Git menu: the URL on the clipboard filled in, the last folder cloned into remembered, the name taken from the URL; goes on in the background once the dialog is closed, saying in a notice when it is done |
+| Create a repository | Start a repository in a folder | `git init` | Core | ✅ Yes | Init... in the Git menu, or Git Init Here in the commander's menu of a folder in no repository; opens a folder that is a repository already, and asks first in a folder inside another |
+| Clone | Copy a remote repository | `git clone` | Core | ✅ Yes | Clone... in the Git menu: the URL on the clipboard filled in, the last folder cloned into remembered, the name taken from the URL; Git Clone Here... in the commander's menu of a folder fills in that folder; goes on in the background once the dialog is closed, saying in a notice when it is done |
 | Clone options | Clone shallow, partial, one branch, or with submodules | `git clone --depth`, `--filter`, `--single-branch`, `--recurse-submodules` | Advanced | ❌ No |  |
 | Shallow repositories | Show a history cut off at a depth | — | Advanced | ✅ Yes | Reloads the history when the shallow boundary moves |
 | Outside changes | Refresh when git or an editor changes the repository | — | Core | ✅ Yes | Watches the working tree and the git folder of the worktree shown; refs, changes and worktrees refresh on their own, other tabs when shown again |

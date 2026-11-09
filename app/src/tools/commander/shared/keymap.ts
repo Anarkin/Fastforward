@@ -136,11 +136,13 @@ export const commanderKeymap = {
     'Shift+Delete': true,
     'Shift+F8': true,
   }),
+  contextMenu: bind('Marking', strings.actions.contextMenu, {
+    RightClick: true,
+    'Shift+F10': true,
+    ContextMenu: true,
+  }),
   systemMenu: bind('Marking', strings.actions.systemMenu, {
-    RightClick: false,
     'Shift+RightClick': true,
-    'Shift+F10': false,
-    ContextMenu: false,
   }),
   compare: bind('Viewing', strings.actions.compareFiles, {
     'Shift+F3': true,

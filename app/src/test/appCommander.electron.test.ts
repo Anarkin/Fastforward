@@ -4175,7 +4175,7 @@ suite('App commander', () => {
   });
 
   test.skipIf(process.platform !== 'win32')(
-    'shows the menu of Windows for a file right-clicked, selecting it, or selected on Shift+F10, with the commands Explorer shows, and goes on once the menu is closed',
+    'shows the menu of the app for a file right-clicked, selecting it, for the folder shown on .., and for the file selected on Shift+F10, the menu of Windows from its last item or straight away on Shift and a right click, with the commands Explorer shows, and goes on once that menu is closed',
     async () => {
       const file = path.join(opened, 'menu.txt');
       fs.writeFileSync(file, 'menu\n');
@@ -4208,23 +4208,61 @@ suite('App commander', () => {
         }
         return null;
       };
+      const appMenu = page.locator('.context-menu');
+      const appMenuItems = () =>
+        appMenu.locator('.menu-item').allTextContents();
+      const closeWindowsMenu = async (closing: string) => {
+        postMessage(shown(), 0x100, 0x1b, 0);
+        await waitFor(() => shown() === null, closing);
+      };
+      const menuRow = right().locator('.commander-row', { hasText: 'menutxt' });
       try {
-        const clicking = right()
-          .locator('.commander-row', { hasText: 'menutxt' })
-          .click({ button: 'right' });
-        await waitFor(() => shown() !== null, 'the menu of Windows');
-
-        assert.ok(Number(itemCount(sendMessage(shown(), 0x1e1, 0, 0))) > 3);
-        postMessage(shown(), 0x100, 0x1b, 0);
-        await waitFor(() => shown() === null, 'the menu to close');
-        await clicking;
+        await menuRow.click({ button: 'right' });
+        await appMenu.waitFor();
         assert.match(await selected(), /menu/);
+        assert.deepStrictEqual(await appMenuItems(), [
+          strings.commander.showMoreOptions,
+        ]);
+        const choosing = appMenu
+          .locator('.menu-item', { hasText: strings.commander.showMoreOptions })
+          .click();
+        await waitFor(() => shown() !== null, 'the menu of Windows');
+        assert.ok(Number(itemCount(sendMessage(shown(), 0x1e1, 0, 0))) > 3);
+        await closeWindowsMenu('the menu to close');
+        await choosing;
+        await appMenu.waitFor({ state: 'detached' });
 
-        const pressing = page.keyboard.press('Shift+F10');
-        await waitFor(() => shown() !== null, 'the menu again on Shift+F10');
-        postMessage(shown(), 0x100, 0x1b, 0);
-        await waitFor(() => shown() === null, 'the menu to close again');
-        await pressing;
+        await right()
+          .locator('.commander-row')
+          .first()
+          .click({ button: 'right' });
+        await appMenu.waitFor();
+        assert.strictEqual(
+          (await appMenuItems()).at(0),
+          strings.commander.newTerminalHere,
+        );
+        await page.keyboard.press('Escape');
+        await appMenu.waitFor({ state: 'detached' });
+
+        const clicking = menuRow.click({
+          button: 'right',
+          modifiers: ['Shift'],
+        });
+        await waitFor(
+          () => shown() !== null,
+          'the menu of Windows on Shift and a right click',
+        );
+        await closeWindowsMenu('the menu to close again');
+        await clicking;
+        assert.strictEqual(await appMenu.count(), 0);
+
+        await page.keyboard.press('Shift+F10');
+        await appMenu.waitFor();
+        assert.deepStrictEqual(await appMenuItems(), [
+          strings.commander.showMoreOptions,
+        ]);
+        await page.keyboard.press('Escape');
+        await appMenu.waitFor({ state: 'detached' });
         assert.strictEqual(await app.evaluate(() => 'answering'), 'answering');
       } finally {
         const open = shown();

@@ -126,6 +126,16 @@ export function FileIcon() {
   );
 }
 
+export function ImageIcon() {
+  return (
+    <Icon>
+      <rect x="2" y="3" width="12" height="10" rx="1.5" />
+      <circle cx="5.75" cy="6.25" r="1.1" />
+      <path d="M2.5 11.5 6 8.5l2.5 2 2-1.5 3 2.5" />
+    </Icon>
+  );
+}
+
 export function ToolIcon({ tool }: { tool: ToolId }) {
   return <Icon className={`tool-icon tool-${tool}`}>{toolSigns[tool]}</Icon>;
 }

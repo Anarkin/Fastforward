@@ -58,6 +58,7 @@ export interface PaneView extends Listed {
   readonly selected: string | undefined;
   readonly marked: ReadonlySet<string>;
   readonly repositories: ReadonlySet<string>;
+  readonly inRepository?: boolean;
   readonly flat?: FlatView;
 }
 
@@ -294,7 +295,12 @@ function relisted(
     selected: selectionAfter(selectionIn(pane), folder, rows, selected),
     marked: marksKept(pane, folder, rows),
     repositories,
+    inRepository: inRepositoryKept(pane, folder),
   };
+}
+
+function inRepositoryKept(pane: PaneView | undefined, folder: string): boolean {
+  return pane?.folder === folder && pane.inRepository === true;
 }
 
 function flatListed(
@@ -350,6 +356,7 @@ function flatListed(
       selectedFile ?? selectionAfter(selectionIn(pane), folder, rows, selected),
     marked: noMarks,
     repositories: noRepositories,
+    inRepository: inRepositoryKept(pane, folder),
     flat: { walk: flat, progress: startedReading, shown: undefined },
   };
 }
@@ -577,15 +584,18 @@ export function reduceView(
         return view;
       }
       const repositories = new Set(action.names);
+      const inRepository = action.inRepository === true;
       if (
         repositories.size === pane.repositories.size &&
-        [...repositories].every((name) => pane.repositories.has(name))
+        [...repositories].every((name) => pane.repositories.has(name)) &&
+        inRepository === (pane.inRepository === true)
       ) {
         return view;
       }
       return withPane(view, action.side, {
         ...pane,
         repositories,
+        inRepository,
         rows: pane.rows.map((row) => {
           const repository =
             row.entry?.folder === true && repositories.has(row.key);

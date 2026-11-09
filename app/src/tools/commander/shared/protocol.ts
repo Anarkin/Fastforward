@@ -101,6 +101,19 @@ export function otherSide(side: Side): Side {
   return side === 'left' ? 'right' : 'left';
 }
 
+const folderCommands = [
+  'newTerminal',
+  'openInGit',
+  'cloneHere',
+  'initHere',
+] as const;
+
+export type FolderCommand = (typeof folderCommands)[number];
+
+export function isFolderCommand(value: unknown): value is FolderCommand {
+  return folderCommands.some((command) => command === value);
+}
+
 export type CommanderToHost =
   | {
       readonly type: 'open';
@@ -254,6 +267,14 @@ export type CommanderToHost =
       readonly side: Side;
       readonly folder: string;
       readonly name: string;
+    }
+  | {
+      readonly type: 'folderCommand';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name?: string;
+      readonly command: FolderCommand;
     }
   | {
       readonly type: 'openOnSide';
@@ -427,6 +448,7 @@ export type CommanderToWebview =
       readonly side: Side;
       readonly folder: string;
       readonly names: readonly string[];
+      readonly inRepository?: true;
     };
 
 export type CommanderToWebviewOf<T extends CommanderToWebview['type']> =

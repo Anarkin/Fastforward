@@ -7,13 +7,7 @@ import {
 import { keyPressed } from '../../../ui/shortcuts';
 import { commanderKeymap } from '../shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
-import {
-  chosenKeys,
-  pointedKeys,
-  opens,
-  passedKeys,
-  type Row,
-} from './listing';
+import { chosenKeys, opens, passedKeys, type Row } from './listing';
 import { moveInGrid } from './tiles';
 
 export type PaneAct =
@@ -30,11 +24,7 @@ export type PaneAct =
       readonly names: readonly string[];
       readonly permanently: boolean;
     }
-  | {
-      readonly kind: 'menu';
-      readonly names: readonly string[];
-      readonly extended: boolean;
-    }
+  | { readonly kind: 'menu'; readonly key: string | undefined }
   | { readonly kind: 'filterLetter'; readonly letter: string }
   | { readonly kind: 'openFilter' }
   | { readonly kind: 'stopFiltering' }
@@ -110,11 +100,8 @@ export function paneKey(
       ? { act: { kind: 'delete', names, permanently } }
       : done;
   }
-  const extended = keyPressed(commanderKeymap.systemMenu, event);
-  if (extended !== undefined) {
-    const names =
-      selected === undefined ? [] : pointedKeys(rows, selected, marked);
-    return names.length > 0 ? { act: { kind: 'menu', names, extended } } : done;
+  if (keyPressed(commanderKeymap.contextMenu, event) !== undefined) {
+    return { act: { kind: 'menu', key: row?.key } };
   }
   const letter =
     keyPressed(keymap.mainMenu, event) === undefined &&

@@ -275,8 +275,10 @@ export const strings = {
       'Copy the marked items, or the selected one, into the folder of the other side, or move them there with F6',
     deleteItems:
       'Move the marked items, or the selected one, to the Recycle Bin, or with Shift delete them permanently',
+    contextMenu:
+      'Show the menu of the marked items, the one clicked or selected, or the folder of the side',
     systemMenu:
-      'Show the menu of Windows for the marked files, or the one clicked or selected, the extended one with Shift',
+      'Show the extended menu of Windows for the marked items, the one clicked, or the folder of the side',
     compareFiles:
       'Compare the marked files, or the selected file of each side, in a git tab',
     closeViewer: 'Close the file being viewed',
@@ -643,6 +645,12 @@ export const strings = {
     asAdministrator: 'As Administrator',
     readAsAdministrator: 'Read as administrator',
     openRepository: 'Open the repository in a git tab',
+    newTerminalHere: 'New Terminal Here',
+    openInGit: 'Open in Git',
+    cloneHere: 'Git Clone Here...',
+    initHere: 'Git Init Here',
+    editImage: 'Edit Image',
+    showMoreOptions: 'Show More Options',
     helperFailed:
       "Couldn't start the helper that reads folders as administrator.",
     helperStopped:

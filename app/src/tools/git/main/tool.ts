@@ -1177,6 +1177,17 @@ export class GitTool implements Tool<'git'> {
     await this.shell.open(page().page, 'git', repositories, true);
   }
 
+  initRepositoryIn(folder: string): Promise<void> {
+    const session = this.page;
+    return session === undefined
+      ? Promise.resolve()
+      : this.initIn(session, folder);
+  }
+
+  cloneInto(folder: string): Promise<void> {
+    return this.clones.openIn(folder);
+  }
+
   private async initIn(session: Session, folder: string): Promise<void> {
     let location: Location | undefined;
     try {

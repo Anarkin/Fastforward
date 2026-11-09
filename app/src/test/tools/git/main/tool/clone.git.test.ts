@@ -107,6 +107,29 @@ suite('Git tool cloning repositories', () => {
     );
   });
 
+  test('offers the folder the commander clones into, with the URL on the clipboard, in place of a form shown already', async () => {
+    const host = new FakeHost();
+    host.clipboard = 'git@github.com:Anarkin/Fastforward.git\n';
+    const here = into('here');
+    await withView(
+      log,
+      [],
+      async (view) => {
+        await gitState(view.store).update(cloneFolderKey, folder);
+        await view.connection.receive({ type: 'openClone' });
+        await view.view.cloneInto(here);
+        assert.deepStrictEqual(lastView(view), {
+          kind: 'form',
+          url: 'git@github.com:Anarkin/Fastforward.git',
+          folder: here,
+          name: '',
+        });
+      },
+      true,
+      host,
+    );
+  });
+
   test('clones into the folder and name asked for, showing its progress, then closes the dialog and opens the repository in a tab, remembering the folder', async () => {
     const parent = into('cloned');
     const target = path.join(parent, 'app');

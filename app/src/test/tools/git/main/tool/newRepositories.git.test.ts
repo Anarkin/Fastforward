@@ -71,6 +71,24 @@ suite('Git tool making new repositories', () => {
     );
   });
 
+  test('inits a repository in the folder the commander names and opens it, asking for no folder', async () => {
+    const named = emptyFolder('named');
+    const host = hostPicking(undefined);
+    await withView(
+      log,
+      [],
+      async (view) => {
+        await view.view.initRepositoryIn(named);
+        assert.deepStrictEqual(host.foldersAsked, []);
+        assert.ok(fs.statSync(path.join(named, '.git')).isDirectory());
+        const shown = shownTabs(view.page);
+        assert.ok(shown?.active && sameRoot(shown.active, named));
+      },
+      true,
+      host,
+    );
+  });
+
   test('opens the folder picked as it is when it is a repository already, saying so', async () => {
     const before = await repository.resolve('HEAD');
     const host = hostPicking(repository.root);

@@ -80,6 +80,20 @@ export async function isRepository(folder: string): Promise<boolean> {
   }
 }
 
+export async function inRepository(
+  folder: string,
+  isRepositoryAt: (folder: string) => Promise<boolean> = isRepository,
+): Promise<boolean> {
+  for (let at = folder; ; at = path.dirname(at)) {
+    if (await isRepositoryAt(at)) {
+      return true;
+    }
+    if (path.dirname(at) === at) {
+      return false;
+    }
+  }
+}
+
 export async function repositoriesIn(
   folder: string,
   names: readonly string[],

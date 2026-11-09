@@ -74,12 +74,9 @@ export class Clones {
     switch (message.type) {
       case 'openClone':
         this.shown = true;
-        this.form ??= {
-          kind: 'form',
-          url: clonableUrl(await this.host.clipboardText()) ?? '',
-          folder: this.host.savedFolder() ?? os.homedir(),
-          name: '',
-        };
+        this.form ??= await this.newForm(
+          this.host.savedFolder() ?? os.homedir(),
+        );
         this.show();
         return;
       case 'closeClone':
@@ -119,6 +116,23 @@ export class Clones {
         this.running?.stop.abort();
         return;
     }
+  }
+
+  async openIn(folder: string): Promise<void> {
+    this.shown = true;
+    if (this.running === undefined) {
+      this.form = await this.newForm(folder);
+    }
+    this.show();
+  }
+
+  private async newForm(folder: string): Promise<Form> {
+    return {
+      kind: 'form',
+      url: clonableUrl(await this.host.clipboardText()) ?? '',
+      folder,
+      name: '',
+    };
   }
 
   private async start(ask: CloneAsk): Promise<void> {

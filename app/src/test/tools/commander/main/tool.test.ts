@@ -115,6 +115,7 @@ type Naming =
   | 'paste'
   | 'drag'
   | 'openRepository'
+  | 'folderCommand'
   | 'openOnSide';
 
 type Unnamed<Message> = Message extends { readonly type: Naming }
@@ -172,6 +173,9 @@ function commander(
   const repositoriesHeld: { until: Promise<unknown> | undefined } = {
     until: undefined,
   };
+  const insideRepositories = new Set<string>();
+  const clonedInto: string[] = [];
+  const initedIn: string[] = [];
   const deletesHeld: { until: Promise<unknown> | undefined } = {
     until: undefined,
   };
@@ -296,6 +300,15 @@ function commander(
       await repositoriesHeld.until;
       return repositories.has(checked);
     },
+    inRepository: (checked) => Promise.resolve(insideRepositories.has(checked)),
+    initRepository: (folderAsked) => {
+      initedIn.push(folderAsked);
+      return Promise.resolve();
+    },
+    cloneInto: (folderAsked) => {
+      clonedInto.push(folderAsked);
+      return Promise.resolve();
+    },
     clipboardFiles: {
       write: (files) => {
         clipboard.files = files;
@@ -387,6 +400,7 @@ function commander(
       case 'paste':
       case 'drag':
       case 'openRepository':
+      case 'folderCommand':
         return {
           ...message,
           folder: message.folder ?? folderShown(message.tab, message.side),
@@ -449,6 +463,9 @@ function commander(
     repositories,
     repositoriesAsked,
     repositoriesHeld,
+    insideRepositories,
+    clonedInto,
+    initedIn,
     deletesHeld,
     settled,
     openedIn,
@@ -2680,7 +2697,7 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(viewed, [at('notes.txt')]);
   });
 
-  test('shows the menu of the system for the files and folders a side lists, where the page says, the extended one with Shift, and none for ..  or a name it doesn’t list', async () => {
+  test('shows the menu of the system for the files and folders a side lists, or for the folder it shows when the page names none, where the page says, the extended one with Shift, and none for ..  or a name it doesn’t list', async () => {
     const { tool, page, send, menus } = commander({
       [root]: [folder('Users'), file('notes.txt'), file('other.txt')],
     });
@@ -2702,8 +2719,8 @@ suite('Commander tool', () => {
 
     await menu(['notes.txt', 'Users']);
     await menu(['other.txt'], true);
+    await menu([]);
     for (const names of [
-      [],
       ['..'],
       ['secret.txt'],
       ['notes.txt', 'secret.txt'],
@@ -2739,7 +2756,74 @@ suite('Commander tool', () => {
         extended: false,
       },
       { files: [at('other.txt')], at: { x: 10, y: 20 }, extended: true },
+      { files: [root], at: { x: 10, y: 20 }, extended: false },
     ]);
+  });
+
+  test('opens a new terminal or a git tab in the folder a side shows or a folder it lists, and asks git to clone into it or init one in it, and does nothing for a file, .. , a name it doesn’t list, another tab or a command it doesn’t know', async () => {
+    const { tool, page, send, openedIn, clonedInto, initedIn } = commander({
+      [root]: [folder('app'), file('notes.txt')],
+    });
+    await tool.show(page, tab);
+    const command = (asked: unknown, name?: unknown, on = '1') =>
+      send(
+        forged(
+          JSON.stringify({
+            type: 'folderCommand',
+            tab: on,
+            side: 'left',
+            ...(name !== undefined && { name }),
+            command: asked,
+          }),
+        ),
+      );
+
+    await command('newTerminal');
+    await command('openInGit', 'app');
+    await command('cloneHere', 'app');
+    await command('initHere');
+    await command('newTerminal', 'notes.txt');
+    await command('newTerminal', '..');
+    await command('newTerminal', 'elsewhere');
+    await command('newTerminal', 5);
+    await command('newTerminal', undefined, '2');
+    await command('format');
+
+    assert.deepStrictEqual(openedIn, [
+      { tool: 'terminal', folders: [root] },
+      { tool: 'git', folders: [at('app')] },
+    ]);
+    assert.deepStrictEqual(clonedInto, [at('app')]);
+    assert.deepStrictEqual(initedIn, [root]);
+  });
+
+  test('tells the page the folder a side shows is in a repository once it is listed, and again when it is read again', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('app')],
+      [at('app')]: [folder('src')],
+    };
+    const { tool, page, send, change, insideRepositories, settled } =
+      commander(listed);
+    insideRepositories.add(at('app'));
+    await tool.show(page, tab);
+    await settled();
+    await send({ type: 'open', tab: '1', side: 'left', name: 'app' });
+    await settled();
+    insideRepositories.delete(at('app'));
+    await change(at('app'));
+    await settled();
+
+    assert.deepStrictEqual(
+      page
+        .of('repositories')
+        .filter((found) => found.side === 'left')
+        .map((found) => [found.folder, found.inRepository]),
+      [
+        [root, undefined],
+        [at('app'), true],
+        [at('app'), undefined],
+      ],
+    );
   });
 
   test('opens a git tab comparing two files the sides list, the first the old side, and nothing for a folder, ..  or a name it doesn’t list', async () => {

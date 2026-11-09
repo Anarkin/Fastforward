@@ -60,7 +60,10 @@ import { themeCss } from '../shell/main/theme';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
 import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
-import { isRepository } from '../tools/commander/main/repositories';
+import {
+  inRepository,
+  isRepository,
+} from '../tools/commander/main/repositories';
 import {
   folderStamp,
   watchFolder,
@@ -517,6 +520,9 @@ async function start(asked: readonly string[]): Promise<void> {
         ).windowsRecycleBinOff(folder),
     }),
     isRepository,
+    inRepository: (folder) => inRepository(folder),
+    initRepository: (folder) => gitTool.initRepositoryIn(folder),
+    cloneInto: (folder) => gitTool.cloneInto(folder),
     stamp: folderStamp,
     watch: watchFolder,
     ...(process.platform !== 'linux' && { watchTree }),

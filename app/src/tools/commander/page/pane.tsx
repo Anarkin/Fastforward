@@ -17,7 +17,8 @@ import {
 } from '../../../ui/thumbnails';
 import { commanderKeymap } from '../shared/keymap';
 import { clicked } from '../../../shell/shared/keymap';
-import type { Entry, Side } from '../shared/protocol';
+import { parentFolder, type Entry, type Side } from '../shared/protocol';
+import { fileMenuItems, menuTargetOf } from './fileMenu';
 import { formatSize } from './format';
 import { goesInto, opens, pointedKeys, rangeKeys, type Row } from './listing';
 import { filterStep, PaneFilter } from './paneFilter';
@@ -452,6 +453,25 @@ export function Pane({
   const selectedIndex = listed.indexOf(pane?.selected ?? '');
   const marked = pane?.marked;
   const current = pane && driveOf(pane.folder, drives);
+  const openMenu = (
+    key: string | undefined,
+    at: { readonly x: number; readonly y: number },
+  ) => {
+    const target = menuTargetOf(rows, key, marked, pane?.inRepository === true);
+    if (target === undefined) {
+      return;
+    }
+    const items = fileMenuItems(target, {
+      onFolder: (command, name) => actions.folderCommand(side, name, command),
+      onSystemMenu:
+        platform === 'win32'
+          ? (names) => onShellMenu(names, at, false)
+          : undefined,
+    });
+    if (items.length > 0) {
+      showMenu({ x: at.x, y: at.y, items });
+    }
+  };
 
   const tileWidth = tileWidthOf(thumbnailSize);
   const [fitting, setFitting] = useState<number>();
@@ -611,13 +631,18 @@ export function Pane({
     onContextMenu: (event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      const extended = clicked(commanderKeymap.systemMenu, event);
-      const names = pointedKeys(rows, row.key, marked);
-      if (extended === undefined || names.length === 0) {
-        return;
+      const at = { x: event.clientX, y: event.clientY };
+      if (clicked(commanderKeymap.systemMenu, event) !== undefined) {
+        onSelect(row.key);
+        onShellMenu(
+          row.key === parentFolder ? [] : pointedKeys(rows, row.key, marked),
+          at,
+          true,
+        );
+      } else if (clicked(commanderKeymap.contextMenu, event) !== undefined) {
+        onSelect(row.key);
+        openMenu(row.key, at);
       }
-      onSelect(row.key);
-      onShellMenu(names, { x: event.clientX, y: event.clientY }, extended);
     },
     onDoubleClick: () => {
       if (opens(row)) {
@@ -717,15 +742,16 @@ export function Pane({
         onDelete(action.names, action.permanently);
         return;
       case 'menu': {
-        const box = body.current
-          ?.querySelector('.commander-row.selected')
-          ?.getBoundingClientRect();
+        const row =
+          action.key === undefined
+            ? null
+            : body.current?.querySelector('.commander-row.selected');
+        const box = (row ?? body.current)?.getBoundingClientRect();
         if (box !== undefined) {
-          onShellMenu(
-            action.names,
-            { x: box.left, y: box.bottom },
-            action.extended,
-          );
+          openMenu(action.key, {
+            x: box.left,
+            y: row ? box.bottom : box.top,
+          });
         }
         return;
       }
@@ -898,7 +924,17 @@ export function Pane({
       <div
         className={`column-body${dropInto === null ? ' drop-target' : ''}`}
         ref={body}
-        onContextMenu={(event) => event.preventDefault()}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          const at = { x: event.clientX, y: event.clientY };
+          if (clicked(commanderKeymap.systemMenu, event) !== undefined) {
+            onShellMenu([], at, true);
+          } else if (
+            clicked(commanderKeymap.contextMenu, event) !== undefined
+          ) {
+            openMenu(undefined, at);
+          }
+        }}
         onDragOver={(event) => {
           if (!event.dataTransfer.types.includes('Files')) {
             return;

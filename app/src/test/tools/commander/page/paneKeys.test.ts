@@ -107,17 +107,21 @@ suite('Commander keys', () => {
     });
   });
 
-  test('opens the menu of the system for the selection, extended with Shift', () => {
+  test('opens the menu of the selection on Shift+F10 or the Menu key, of the folder shown on .., or of the folder shown with nothing selected', () => {
     assert.deepStrictEqual(
       paneKey(pressed('F10', { shiftKey: true }), at('a.txt')),
-      {
-        act: { kind: 'menu', names: ['a.txt'], extended: false },
-      },
+      { act: { kind: 'menu', key: 'a.txt' } },
     );
+    assert.deepStrictEqual(paneKey(pressed('ContextMenu'), at('docs')), {
+      act: { kind: 'menu', key: 'docs' },
+    });
     assert.deepStrictEqual(
       paneKey(pressed('F10', { shiftKey: true }), at('..')),
-      {},
+      { act: { kind: 'menu', key: '..' } },
     );
+    assert.deepStrictEqual(paneKey(pressed('ContextMenu'), at('gone')), {
+      act: { kind: 'menu', key: undefined },
+    });
   });
 
   test('starts the filter on Alt and a letter, opens it on Mod+F, and closes it on Escape only while it is open', () => {

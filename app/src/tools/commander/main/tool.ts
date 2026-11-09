@@ -14,6 +14,7 @@ import { SavedSides } from './savedSides';
 import {
   isSide,
   otherSide,
+  isFolderCommand,
   isTextEncoding,
   maxBytesAsked,
   maxColoredBytes,
@@ -128,6 +129,9 @@ export interface CommanderAccess {
   };
   readonly streamed?: (file: string) => boolean | Promise<boolean>;
   readonly isRepository: (folder: string) => Promise<boolean>;
+  readonly inRepository?: (folder: string) => Promise<boolean>;
+  readonly initRepository?: (folder: string) => Promise<void>;
+  readonly cloneInto?: (folder: string) => Promise<void>;
   readonly stamp?: (folder: string) => Promise<string | undefined>;
   readonly watch: WatchFolder;
   readonly watchTree?: WatchTree;
@@ -543,6 +547,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.openOnSide(page, message);
       case 'openRepository':
         return this.openRepository(page, message);
+      case 'folderCommand':
+        return this.folderCommand(page, message);
       case 'elevate':
         return this.elevate(page, message.tab, message.side);
       case 'activate': {
@@ -1327,7 +1333,6 @@ export class CommanderTool implements Tool<'commander'> {
     if (
       shown === undefined ||
       !Array.isArray(names) ||
-      names.length === 0 ||
       !names.every(
         (name: unknown) => listedIn(shown.pane, name) !== undefined,
       ) ||
@@ -1345,10 +1350,49 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     await this.access.shellMenu?.(
-      names.map((name: string) => path.join(shown.pane.folder, name)),
+      names.length === 0
+        ? [shown.pane.folder]
+        : names.map((name: string) => path.join(shown.pane.folder, name)),
       { x, y },
       extended,
     );
+  }
+
+  private async folderCommand(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      name,
+      command,
+    }: Extract<CommanderToHost, { type: 'folderCommand' }>,
+  ): Promise<void> {
+    const shown = this.namingPane(page, tab, side, folder);
+    if (shown === undefined || !isFolderCommand(command)) {
+      return;
+    }
+    const target =
+      name === undefined
+        ? shown.pane.folder
+        : listedIn(shown.pane, name)?.folder === true
+          ? path.join(shown.pane.folder, name)
+          : undefined;
+    if (target === undefined) {
+      return;
+    }
+    switch (command) {
+      case 'newTerminal':
+        return this.shell.openFolders(page, 'terminal', [target]);
+      case 'openInGit':
+        return this.shell.openFolders(page, 'git', [target]);
+      case 'cloneHere':
+        return this.access.cloneInto?.(target);
+      case 'initHere':
+        return this.access.initRepository?.(target);
+      default:
+        return command satisfies never;
+    }
   }
 
   private compare(page: Page, tab: unknown, files: unknown): Promise<void> {
@@ -1894,12 +1938,15 @@ export class CommanderTool implements Tool<'commander'> {
     const kept = [...pane.repositories].filter(
       (name) => folders.has(name) && unchanged(name),
     );
-    const names = await repositoriesIn(
-      folder,
-      [...folders.keys()].filter((name) => !unchanged(name)),
-      this.access.isRepository,
-      () => pane.repositoriesAsked === asked,
-    );
+    const [names, inside] = await Promise.all([
+      repositoriesIn(
+        folder,
+        [...folders.keys()].filter((name) => !unchanged(name)),
+        this.access.isRepository,
+        () => pane.repositoriesAsked === asked,
+      ),
+      this.inRepository(folder),
+    ]);
     if (pane.repositoriesAsked !== asked) {
       return;
     }
@@ -1913,8 +1960,15 @@ export class CommanderTool implements Tool<'commander'> {
         side,
         folder,
         names: [...folders.keys()].filter((name) => found.has(name)),
+        ...(inside && { inRepository: true }),
       });
     }
+  }
+
+  private async inRepository(folder: string): Promise<boolean> {
+    return (
+      (await this.access.inRepository?.(folder).catch(() => false)) ?? false
+    );
   }
 
   private step(
