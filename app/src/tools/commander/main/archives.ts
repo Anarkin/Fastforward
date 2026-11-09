@@ -317,6 +317,8 @@ async function linkedTree(from: string, to: string): Promise<void> {
   }
 }
 
+const firstVolume = /\.0{2,}1$/;
+
 async function temporariesOf(file: string): Promise<string[]> {
   const folder = path.dirname(file);
   const name = `${path.basename(file)}.tmp`;
@@ -722,6 +724,12 @@ export class Archives implements ArchiveAccess {
         reason: strings.commander.archiveUnchangeable(
           path.basename(archive.file),
         ),
+      };
+    }
+    if (firstVolume.test(archive.file)) {
+      return {
+        kind: 'refused',
+        reason: strings.commander.archiveInVolumes(path.basename(archive.file)),
       };
     }
     const before = new Set(await temporariesOf(archive.file));

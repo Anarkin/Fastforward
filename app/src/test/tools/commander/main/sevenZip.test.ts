@@ -697,6 +697,17 @@ suite('reasonOf', () => {
       'The parameter is incorrect.',
     );
     assert.strictEqual(
+      reasonOf(
+        {
+          code: 2,
+          output: '',
+          errors: '\r\nError:\r\nThe file is read-only\r\n\r\nErrors: 1\r\n',
+        },
+        'ro.zip',
+      ),
+      'The file is read-only',
+    );
+    assert.strictEqual(
       reasonOf({ code: 255, output: '', errors: '' }, 'a.zip'),
       '7-Zip ended with code 255.',
     );

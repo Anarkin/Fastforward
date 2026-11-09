@@ -132,7 +132,7 @@ const wrongPassword = /Wrong password/i;
 const itemsStart = '----------';
 const timePattern =
   /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)(?:\.(\d{1,3}))?/;
-const errorPattern = /^(?:Open |System )?ERROR:(?: (.+))?$/;
+const errorPattern = /^(?:Open |System )?(?:ERROR|Error):(?: (.+))?$/;
 
 function fieldsOf(block: readonly string[]): ReadonlyMap<string, string> {
   const fields = new Map<string, string>();

@@ -744,6 +744,8 @@ export const strings = {
     skipThem: 'Skip Them',
     deleteFromArchiveQuestion: (what: string, archive: string) =>
       `Delete ${what} from "${archive}" permanently? This cannot be undone.`,
+    archiveInVolumes: (name: string) =>
+      `"${name}" is cut into volumes, which 7-Zip cannot change.`,
     archiveUnchangeable: (name: string) =>
       `"${name}" cannot be changed yet, as it is inside another archive or a compressed file.`,
     packingStopped: (archive: string) =>

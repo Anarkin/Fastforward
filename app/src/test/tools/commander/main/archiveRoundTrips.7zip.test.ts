@@ -14,6 +14,7 @@ import {
   sevenZipReader,
 } from '../../../../tools/commander/main/sevenZip';
 import type { PackFormat } from '../../../../tools/commander/shared/packing';
+import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..');
@@ -517,6 +518,78 @@ suite('Archives packed, changed and taken out again', () => {
           name,
         );
       }
+    });
+
+    test('changes nothing of an archive cut into volumes, which 7-Zip cannot change, saying so', async () => {
+      await packedFine(plan('parts.zip', 'zip', { volumeBytes: 256 * 1024 }));
+      const parts = () =>
+        fs
+          .readdirSync(folder)
+          .filter((name) => name.startsWith('parts.zip'))
+          .map((name) => fs.readFileSync(at(name)).toString('base64'));
+      const before = parts();
+      const archive = await opened(at('parts.zip.001'));
+      for (const changed of [
+        await archives.remove(archive, ['old.txt']),
+        await archives.rename(archive, 'old.txt', 'older.txt'),
+        await archives.addFolder(archive, [], 'fresh'),
+      ]) {
+        assert.deepStrictEqual(changed, {
+          kind: 'refused',
+          reason: strings.commander.archiveInVolumes('parts.zip.001'),
+        });
+      }
+      assert.deepStrictEqual(parts(), before);
+    });
+
+    test('says why a read-only archive cannot be changed, leaving it as it was', async () => {
+      await packedFine(plan('read-only.zip', 'zip'));
+      fs.chmodSync(at('read-only.zip'), 0o444);
+      const before = fs.readFileSync(at('read-only.zip'));
+      const removed = await archives.remove(await opened(at('read-only.zip')), [
+        'old.txt',
+      ]);
+      assert.ok(removed.kind === 'refused');
+      assert.doesNotMatch(removed.reason, /ended with code/);
+      assert.deepStrictEqual(fs.readFileSync(at('read-only.zip')), before);
+      assert.deepStrictEqual(
+        fs
+          .readdirSync(folder)
+          .filter((name) => name.startsWith('read-only.zip')),
+        ['read-only.zip'],
+      );
+    });
+
+    test('renames to another case alone, and an item added in another case replaces the one of the name where names ignore case, as on Windows', async () => {
+      await packedFine(plan('case.zip', 'zip'));
+      assert.deepStrictEqual(
+        await archives.rename(
+          await opened(at('case.zip')),
+          'old.txt',
+          'OLD.txt',
+        ),
+        { kind: 'packed' },
+      );
+      const added = at('added');
+      made(added, 'EMPTY.TXT', 'Not empty any more.\n');
+      await archives.addItems(await opened(at('case.zip')), [], added, [
+        'EMPTY.TXT',
+      ]);
+      const names = [...(await takenOut(at('case.zip'))).keys()];
+      assert.ok(names.includes('OLD.txt') && !names.includes('old.txt'));
+      if (process.platform === 'win32') {
+        assert.ok(names.includes('EMPTY.TXT') && !names.includes('empty.txt'));
+      }
+    });
+
+    test('keeps a valid archive once every item of it is deleted', async () => {
+      await packedFine(plan('emptied.7z', '7z', { items: ['old.txt'] }));
+      assert.deepStrictEqual(
+        await archives.remove(await opened(at('emptied.7z')), ['old.txt']),
+        { kind: 'packed' },
+      );
+      const listing = await reader.list(at('emptied.7z'));
+      assert.deepStrictEqual(listing.kind === 'listed' && listing.items, []);
     });
 
     test('changes nothing of the tar inside a compressed tar, saying it cannot be changed yet', async () => {
