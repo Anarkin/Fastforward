@@ -1,8 +1,9 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
-import { act, createElement } from 'react';
+import { act, createElement, Fragment, useLayoutEffect } from 'react';
 import { beforeAll, suite, test } from 'vitest';
 import { parsePatch, type LoadedText } from '../../../../tools/git/page/diff';
+import type { TextRequest } from '../../../../tools/git/shared/protocol';
 import {
   carriedRanges,
   keepColors,
@@ -12,6 +13,7 @@ import {
   syntaxSources,
   textsToLoad,
   useSyntax,
+  useTextsToLoad,
 } from '../../../../tools/git/page/syntax';
 import {
   codeSegments,
@@ -456,6 +458,63 @@ suite('Syntax', () => {
     keepColors('typescript', 'b'.repeat(40), part, 21);
     assert.deepStrictEqual(keptColorsOf(keptPatch('9', 'a')).size, 0);
     assert.deepStrictEqual(keptColorsOf(keptPatch('9', 'b')).size, 2);
+  });
+
+  test('asks for the whole texts of a diff in the commit that shows it, before the window paints, rather than after, so they come a frame sooner', async () => {
+    const files = parsePatch(gappedPatch);
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const asked: TextRequest[][] = [];
+      let askedBeforePaint: boolean | undefined;
+      const texts = new Map<string, LoadedText>();
+      const open = new Set([0]);
+      const ask = (load: TextRequest[]) => asked.push(load);
+      function Asking() {
+        useTextsToLoad(files, undefined, 1, open, texts, undefined, ask);
+        return null;
+      }
+      function Painted() {
+        useLayoutEffect(() => {
+          askedBeforePaint = asked.length > 0;
+        }, []);
+        return null;
+      }
+      await act(async () => {
+        root.render(
+          createElement(
+            Fragment,
+            null,
+            createElement(Asking),
+            createElement(Painted),
+          ),
+        );
+      });
+      assert.strictEqual(askedBeforePaint, true);
+      assert.deepStrictEqual(asked, [
+        [
+          { path: 'a.ts', side: 'old', blob: blobs.old },
+          { path: 'a.ts', side: 'new', blob: blobs.new },
+        ],
+      ]);
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
   });
 
   test('colors a diff by the colors kept of its blobs in the render before its first paint, rather than once the worker answers, the colors the worker gives from the hunks alone not taking their place unless they come from after a language loaded', async () => {

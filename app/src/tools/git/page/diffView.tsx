@@ -40,7 +40,7 @@ import {
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { rowPlace } from '../../../ui/rowPlace';
 import { changePairs, pairingBudget, type PairingBudget } from './pairing';
-import { textsToLoad, useSyntax, type SyntaxRange } from './syntax';
+import { useSyntax, useTextsToLoad, type SyntaxRange } from './syntax';
 import {
   wordRanges,
   type LineWords,
@@ -2524,22 +2524,7 @@ export function DiffView({
     highlightSyntax || chosenLanguage !== undefined,
     chosenLanguage,
   );
-  const requestedTexts = useRef(new Set<string>());
-  useEffect(() => {
-    const load = whole
-      ? []
-      : textsToLoad(
-          files,
-          diff,
-          requestedTexts.current,
-          open,
-          texts,
-          chosenLanguage,
-        );
-    if (load.length > 0) {
-      onLoadTexts(load);
-    }
-  }, [files, whole, diff, open, texts, onLoadTexts, chosenLanguage]);
+  useTextsToLoad(files, whole, diff, open, texts, chosenLanguage, onLoadTexts);
   const rangesByLine = useMemo(() => findRangesByLine(matches), [matches]);
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);

@@ -351,6 +351,26 @@ export function textsToLoad(
   });
 }
 
+export function useTextsToLoad(
+  files: readonly DiffFile[],
+  whole: WholeFile | undefined,
+  diff: number,
+  open: ReadonlySet<number>,
+  texts: ReadonlyMap<string, LoadedText>,
+  chosen: string | undefined,
+  onLoadTexts: (texts: TextRequest[]) => void,
+): void {
+  const requested = useRef(new Set<string>());
+  useLayoutEffect(() => {
+    const load = whole
+      ? []
+      : textsToLoad(files, diff, requested.current, open, texts, chosen);
+    if (load.length > 0) {
+      onLoadTexts(load);
+    }
+  }, [files, whole, diff, open, texts, onLoadTexts, chosen]);
+}
+
 const noRanges: ReadonlyMap<string, readonly SyntaxRange[]> = new Map();
 
 interface Colored {
