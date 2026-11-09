@@ -376,6 +376,30 @@ suite('Archives', () => {
     assert.deepStrictEqual(seen, [undefined, 'right', 'right']);
   });
 
+  test('removes the work folder it made for an extraction the reader refused, with what was taken out into it, but not a folder it was given', async () => {
+    const zip = path.join(folder, 'a.zip');
+    fs.writeFileSync(zip, 'zip');
+    const reader: ArchiveReader = {
+      list: () => Promise.resolve({ kind: 'listed', items: [item('a.txt')] }),
+      extract: async (_file, _paths, into) => {
+        await fs.promises.writeFile(path.join(into, 'half.txt'), 'half');
+        return { reason: 'Data Error' };
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+    assert.deepStrictEqual(await archives.extract(opened.archive, ['a.txt']), {
+      kind: 'refused',
+      reason: 'Data Error',
+    });
+    assert.ok(!fs.existsSync(path.join(folder, 'work-1')));
+    const given = path.join(folder, 'given');
+    fs.mkdirSync(given);
+    await archives.extract(opened.archive, ['a.txt'], { into: given });
+    assert.ok(fs.existsSync(path.join(given, 'half.txt')));
+  });
+
   test('finds the opened archive a folder is inside of, and the file a path inside an archive runs through', async () => {
     const zip = path.join(folder, 'a.zip');
     fs.writeFileSync(zip, 'zip');

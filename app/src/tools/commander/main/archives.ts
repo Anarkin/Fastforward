@@ -464,9 +464,15 @@ export class Archives implements ArchiveAccess {
       ...this.passwordOf(archive.file),
       ...options,
     });
-    return refused === undefined
-      ? { kind: 'extracted', folder }
-      : { kind: 'refused', ...refused };
+    if (refused === undefined) {
+      return { kind: 'extracted', folder };
+    }
+    if (into === undefined) {
+      await fs.promises
+        .rm(folder, { recursive: true, force: true })
+        .catch(() => undefined);
+    }
+    return { kind: 'refused', ...refused };
   }
 
   usePassword(file: string, password: string | undefined): void {
