@@ -250,7 +250,9 @@ suite('ff', () => {
     ]);
     for (const platform of ['mac', 'linux']) {
       assert.deepStrictEqual(
-        build[platform].extraResources,
+        build[platform].extraResources.filter(
+          (resource: { readonly to: string }) => resource.to === 'bin/ff',
+        ),
         [{ from: 'build/bin/ff', to: 'bin/ff' }],
         platform,
       );

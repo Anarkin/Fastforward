@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
 import { quitApp } from './devApp.mts';
+import { ensureSevenZip } from './sevenZip.mts';
 import { mainOptions, webviewOptions } from '../esbuild.config.mts';
 
 const production = process.argv.includes('--production');
@@ -47,6 +48,19 @@ const restartApp: esbuild.Plugin = {
     });
   },
 };
+
+const target = `${process.platform}-${process.arch}`;
+const sevenZip = await ensureSevenZip({
+  folder: `build/7zip/${target}`,
+  target,
+});
+if (sevenZip === 'fetched') {
+  console.log(`Fetched 7-Zip for ${target}.`);
+} else if (sevenZip === 'unsupported') {
+  console.log(
+    `No 7-Zip is pinned for ${target}, so the commander opens no archives.`,
+  );
+}
 
 fs.mkdirSync('dist', { recursive: true });
 for (const entry of fs.readdirSync('dist')) {

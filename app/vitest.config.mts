@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
 const git = 'src/test/**/*.git.test.ts';
 const electron = 'src/test/**/*.electron.test.ts';
 const shells = 'src/test/**/*.shells.test.ts';
+const sevenZip = 'src/test/**/*.7zip.test.ts';
 const playgrounds = [
   'src/test/gitPlayground.git.test.ts',
   'src/test/filesPlayground.git.test.ts',
@@ -30,7 +31,7 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['src/test/**/*.test.{ts,tsx}'],
-          exclude: [git, electron, shells, ...packaging],
+          exclude: [git, electron, shells, sevenZip, ...packaging],
         },
       },
       {
@@ -39,6 +40,14 @@ export default defineConfig({
           name: 'shells',
           include: [shells],
           testTimeout: 60_000,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: '7zip',
+          include: [sevenZip],
+          testTimeout: 30_000,
         },
       },
       {

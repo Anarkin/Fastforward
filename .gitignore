@@ -1,5 +1,6 @@
 node_modules/
 dist/
+app/build/7zip/
 coverage/
 release/
 .claude/settings.local.json

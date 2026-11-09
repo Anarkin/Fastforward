@@ -124,6 +124,14 @@
         {
           "from": "build/bin/ff",
           "to": "bin/ff"
+        },
+        {
+          "from": "build/7zip/darwin-arm64",
+          "to": "7zip",
+          "filter": [
+            "**/*",
+            "!.sha256"
+          ]
         }
       ],
       "target": [
@@ -150,6 +158,16 @@
         "nsis"
       ],
       "icon": "build/icon.ico",
+      "extraResources": [
+        {
+          "from": "build/7zip/win32-x64",
+          "to": "7zip",
+          "filter": [
+            "**/*",
+            "!.sha256"
+          ]
+        }
+      ],
       "extraFiles": [
         {
           "from": "build/bin",
@@ -178,6 +196,14 @@
         {
           "from": "build/bin/ff",
           "to": "bin/ff"
+        },
+        {
+          "from": "build/7zip/linux-x64",
+          "to": "7zip",
+          "filter": [
+            "**/*",
+            "!.sha256"
+          ]
         }
       ]
     },
