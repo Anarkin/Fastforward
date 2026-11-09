@@ -175,6 +175,25 @@ suite('7-Zip', () => {
     );
   });
 
+  test('tells the files and bytes it is to pack, straight into a zip and through the tar piped into a gzip', async () => {
+    for (const format of ['zip', 'tar.gz'] as const) {
+      const totals: unknown[] = [];
+      const archive = path.join(folder, `totals.${format}`);
+      await reader.pack(
+        {
+          folder: content,
+          items: ['docs', 'top.txt'],
+          archive,
+          format,
+          level: 'normal',
+        },
+        archive,
+        { onTotals: (told) => totals.push(told), onProgress: () => undefined },
+      );
+      assert.deepStrictEqual(totals, [{ files: 2, bytes: 16 }], format);
+    }
+  });
+
   test('packs a 7z whose names need the password, and a compressed tar holding the tar of the items', async () => {
     await packedAs('a.7z', {
       format: '7z',

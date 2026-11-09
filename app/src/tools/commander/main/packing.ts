@@ -46,12 +46,34 @@ async function placed(temporary: string, plan: PackPlan): Promise<void> {
   await removed((await partsOf(plan.archive)).slice(made.length));
 }
 
+const temporaryEnding = /^\.[0-9a-f]{8}\.packing(?:\.\d+)?$/;
+
+const writing = new Set<string>();
+
+async function leftBefore(archive: string): Promise<void> {
+  const folder = path.dirname(archive);
+  const name = path.basename(archive);
+  const names = await fs.promises.readdir(folder).catch(() => []);
+  await removed(
+    names.flatMap((each) => {
+      const file = path.join(folder, each);
+      return each.startsWith(`${name}.`) &&
+        temporaryEnding.test(each.slice(name.length)) &&
+        !writing.has(file.replace(/\.\d+$/, ''))
+        ? [file]
+        : [];
+    }),
+  );
+}
+
 export async function packInto(
   reader: ArchiveReader,
   plan: PackPlan,
   options: PackOptions = {},
 ): Promise<Packing> {
+  await leftBefore(plan.archive);
   const temporary = `${plan.archive}.${randomUUID().slice(0, 8)}.packing`;
+  writing.add(temporary);
   const leftovers = async () =>
     removed([temporary, ...(await partsOf(temporary))]);
   try {
@@ -65,25 +87,8 @@ export async function packInto(
   } catch (error) {
     await leftovers();
     throw error;
-  }
-}
-
-async function counted(
-  file: string,
-  totals: { files: number; bytes: number },
-): Promise<void> {
-  const stats = await fs.promises.lstat(file).catch(() => undefined);
-  if (stats === undefined) {
-    return;
-  }
-  if (!stats.isDirectory()) {
-    totals.files++;
-    totals.bytes += stats.size;
-    return;
-  }
-  const names = await fs.promises.readdir(file).catch(() => []);
-  for (const name of names) {
-    await counted(path.join(file, name), totals);
+  } finally {
+    writing.delete(temporary);
   }
 }
 
@@ -107,32 +112,36 @@ export function packing(
     };
     const name = path.basename(plan.archive);
     const begin = async () => {
-      const totals = { files: 0, bytes: 0 };
-      for (const item of plan.items) {
-        await counted(path.join(plan.folder, item), totals);
-      }
-      if (aborting.signal.aborted) {
-        end(true);
-        return;
-      }
-      const { files, bytes } = totals;
-      told({
-        type: 'progress',
-        progress: { files: 0, totalFiles: files, bytes: 0, totalBytes: bytes },
-      });
+      let totals:
+        { readonly files: number; readonly bytes: number } | undefined;
       const packed = await pack(plan, {
         signal: aborting.signal,
-        onProgress: ({ percent, files: done, current }) =>
+        onTotals: (counted) => {
+          totals = counted;
           told({
             type: 'progress',
             progress: {
-              files: done,
-              totalFiles: files,
-              bytes: Math.round((bytes * percent) / 100),
-              totalBytes: bytes,
-              ...(current !== undefined && { current }),
+              files: 0,
+              totalFiles: counted.files,
+              bytes: 0,
+              totalBytes: counted.bytes,
             },
-          }),
+          });
+        },
+        onProgress: ({ percent, files: done, current }) => {
+          if (totals !== undefined) {
+            told({
+              type: 'progress',
+              progress: {
+                files: done,
+                totalFiles: totals.files,
+                bytes: Math.round((totals.bytes * percent) / 100),
+                totalBytes: totals.bytes,
+                ...(current !== undefined && { current }),
+              },
+            });
+          }
+        },
       });
       if (packed.kind === 'refused') {
         told({ type: 'failed', name, reason: packed.reason });

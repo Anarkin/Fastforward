@@ -59,6 +59,10 @@ export interface PackPlan {
 export interface PackOptions {
   readonly signal?: AbortSignal;
   readonly onProgress?: (progress: ExtractProgress) => void;
+  readonly onTotals?: (totals: {
+    readonly files: number;
+    readonly bytes: number;
+  }) => void;
 }
 
 export type Packing =

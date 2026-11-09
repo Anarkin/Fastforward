@@ -83,6 +83,27 @@ suite('packInto', () => {
     ]);
   });
 
+  test('removes what an earlier pack into the archive left under a name of its own, as one the app quit during, and nothing else', async () => {
+    for (const name of [
+      'photos.zip.0a1b2c3d.packing',
+      'photos.zip.0a1b2c3d.packing.001',
+      'photos.zip.mine.packing',
+      'other.zip.0a1b2c3d.packing',
+    ]) {
+      fs.writeFileSync(at(name), 'left');
+    }
+    await packInto(
+      writing([''], () => Promise.resolve({ kind: 'packed' })),
+      plan(),
+    );
+
+    assert.deepStrictEqual(listed(), [
+      'other.zip.0a1b2c3d.packing left',
+      'photos.zip new',
+      'photos.zip.mine.packing left',
+    ]);
+  });
+
   test('removes what it packed once 7-Zip refuses or is stopped, keeping the archive there', async () => {
     fs.writeFileSync(at('photos.zip'), 'old');
     assert.deepStrictEqual(
@@ -160,9 +181,11 @@ suite('packing', () => {
     return events;
   };
 
-  test('counts the files and bytes to pack, then tells how far 7-Zip got in them, and is done once packed', async () => {
+  test('tells the files and bytes 7-Zip is to pack once it has scanned them, then how far it got in them, and is done once packed', async () => {
     assert.deepStrictEqual(
-      await run(({ onProgress }) => {
+      await run(({ onTotals, onProgress }) => {
+        onProgress?.({ percent: 1, files: 0 });
+        onTotals?.({ files: 2, bytes: 8 });
         onProgress?.({ percent: 50, files: 1, current: 'docs/b.txt' });
         return Promise.resolve({ kind: 'packed' });
       }),

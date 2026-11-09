@@ -384,7 +384,7 @@ function packRun(
         '-so',
         '-an',
         ...packNames,
-        '-bso0',
+        '-bso2',
         progress ? '-bsp2' : '-bsp0',
         '--',
         ...plan.items,
@@ -416,7 +416,7 @@ function packRun(
       ...(passwordUsed(plan) ? ['-p', ...cipher] : []),
       ...volumes,
       ...packNames,
-      ...(progress ? ['-bso0', '-bsp1'] : []),
+      ...(progress ? ['-bsp1'] : []),
       '--',
       into,
       ...plan.items,
@@ -463,19 +463,49 @@ function warningOf(run: SevenZipRun, file: string): string {
   ].join(' ');
 }
 
+const totalsPattern =
+  /^Add new data to archive: (?:\d+ folders?, )?(\d+) files?, (\d+) bytes/;
+
+function packOutput({
+  onProgress,
+  onTotals,
+}: PackOptions): ((text: string) => void) | undefined {
+  if (onProgress === undefined && onTotals === undefined) {
+    return undefined;
+  }
+  let left = '';
+  return (text) => {
+    const pieces = `${left}${text}`.split(/[\r\n]/);
+    left = pieces.pop() ?? '';
+    let last: ExtractProgress | undefined;
+    for (const piece of pieces) {
+      const [, files, bytes] = totalsPattern.exec(piece.trim()) ?? [];
+      if (files !== undefined && bytes !== undefined) {
+        onTotals?.({ files: Number(files), bytes: Number(bytes) });
+      }
+      last = progressOf(piece) ?? last;
+    }
+    if (last !== undefined) {
+      onProgress?.(last);
+    }
+  };
+}
+
 async function packed(
   sevenZip: SevenZip,
   plan: PackPlan,
   into: string,
-  { signal, onProgress }: PackOptions = {},
+  options: PackOptions = {},
 ): Promise<Packing> {
-  const { args, pipeInto } = packRun(plan, into, onProgress !== undefined);
+  const { signal } = options;
+  const onOutput = packOutput(options);
+  const { args, pipeInto } = packRun(plan, into, onOutput !== undefined);
   const run = await sevenZip(args, {
     cwd: plan.folder,
     ...(signal !== undefined && { signal }),
     ...(pipeInto !== undefined && { pipeInto }),
     ...(passwordUsed(plan) && { input: `${plan.password}\n` }),
-    ...(onProgress !== undefined && { onOutput: progressed(onProgress) }),
+    ...(onOutput !== undefined && { onOutput }),
   });
   if (run.code === 0) {
     return { kind: 'packed' };

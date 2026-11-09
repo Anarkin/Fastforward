@@ -331,7 +331,7 @@ suite('packing with 7-Zip', () => {
           '-so',
           '-an',
           ...common,
-          '-bso0',
+          '-bso2',
           '-bsp2',
           '--',
           'a.txt',
@@ -351,6 +351,32 @@ suite('packing with 7-Zip', () => {
         ],
         onOutput: undefined,
       },
+    ]);
+  });
+
+  test('tells the files and bytes 7-Zip is to pack once it has scanned them, and how far it got in them', async () => {
+    const totals: unknown[] = [];
+    const progress: unknown[] = [];
+    await sevenZipReader((_args, { onOutput } = {}) => {
+      for (const text of [
+        'Scanning the drive:\r\n  0M Scan \r601 folders, 301 files, 150000600 bytes (144 MiB)\r\n',
+        'Creating archive: a.zip\r\nAdd new data to archive: 601 folders, 301 files, 150000600 bytes (144 MiB)\r\n',
+        '  6% 4 + docs/a.txt\r',
+        '\r\nAdd new data to archive: 1 file, 6 bytes (1 KiB)\r\n',
+      ]) {
+        onOutput?.(text);
+      }
+      return Promise.resolve({ code: 0, output: '', errors: '' });
+    }).pack(plan, into, {
+      onTotals: (told) => totals.push(told),
+      onProgress: (told) => progress.push(told),
+    });
+    assert.deepStrictEqual(totals, [
+      { files: 301, bytes: 150_000_600 },
+      { files: 1, bytes: 6 },
+    ]);
+    assert.deepStrictEqual(progress, [
+      { percent: 6, files: 4, current: 'docs/a.txt' },
     ]);
   });
 
