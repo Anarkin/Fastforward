@@ -748,7 +748,7 @@ suite('App commander', () => {
 
   test('cuts the folders of a path too long for its header from their start, keeping those nearest the name in view, the separator before the name and the name whole, and an ellipsis of them once the name alone is too long, cut at its end', async () => {
     const long = `a folder named at such length that its path is cut ${'x'.repeat(160)}`;
-    const folders = [long, 'near', 'the folder at the end'];
+    const folders = [long, 'in', 'end'];
     const longer = `a name too long for the header alone ${'y'.repeat(160)}`;
     fs.mkdirSync(path.join(opened, ...folders, longer), { recursive: true });
     try {
