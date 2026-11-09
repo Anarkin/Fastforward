@@ -53,6 +53,7 @@ function workPane(): PaneView {
     selected: '..',
     marked: new Set(),
     repositories: new Set(),
+    counting: 0,
   };
 }
 

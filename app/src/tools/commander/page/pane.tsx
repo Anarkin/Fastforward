@@ -235,6 +235,40 @@ function ReadingStatus({ side }: { side: Side }) {
   );
 }
 
+function CountingStatus({ side }: { side: Side }) {
+  const counting = useCommander(
+    (state) => state.view.panes[side]?.counting ?? 0,
+  );
+  return counting === 0 ? null : (
+    <StatusLine announced>
+      {[
+        strings.commander.countingSizes(counting),
+        strings.commander.escapeStops,
+      ].join(' · ')}
+    </StatusLine>
+  );
+}
+
+export function SizeCell({
+  entry,
+  tile = false,
+}: {
+  entry: Entry | undefined;
+  tile?: boolean;
+}) {
+  const className = `${tile ? 'commander-tile-size' : 'commander-size'}${entry?.counting === true ? ' counting' : ''}`;
+  const title =
+    entry?.unreadFolders === undefined
+      ? undefined
+      : strings.commander.unreadUnder(entry.unreadFolders);
+  const Cell = tile ? 'div' : 'span';
+  return (
+    <Cell className={className} title={title}>
+      {formatSize(entry?.size)}
+    </Cell>
+  );
+}
+
 function FlatStatus({
   side,
   files,
@@ -714,7 +748,7 @@ export function Pane({
           words={words}
           onOpenRepository={onOpenRepository}
         />
-        <span className="commander-size">{formatSize(entry?.size)}</span>
+        <SizeCell entry={entry} />
         <span className="commander-date">{dateOf(row)}</span>
       </div>
     );
@@ -756,7 +790,7 @@ export function Pane({
           </span>
         )}
       </div>
-      <div className="commander-tile-size">{formatSize(row.entry?.size)}</div>
+      <SizeCell entry={row.entry} tile />
       <div className="commander-tile-date">{dateOf(row)}</div>
     </div>
   );
@@ -843,6 +877,12 @@ export function Pane({
       case 'mark':
         onMark(action.keys, action.marked);
         onSelect(action.select);
+        if (action.count !== undefined) {
+          actions.countSizes(side, action.count);
+        }
+        return;
+      case 'countSizes':
+        actions.countSizes(side, action.names);
         return;
       case 'select':
         onSelect(action.key);
@@ -1069,7 +1109,8 @@ export function Pane({
                 filtering,
                 reading:
                   pane?.flat?.progress.reading === true ||
-                  readingArchive !== undefined,
+                  readingArchive !== undefined ||
+                  (pane?.counting ?? 0) > 0,
                 parent: pane?.parent === true,
                 tiled,
                 across,
@@ -1092,6 +1133,7 @@ export function Pane({
         files={total}
         under={selectedIndex === -1 ? undefined : rows[selectedIndex].under}
       />
+      <CountingStatus side={side} />
       {resizer}
     </section>
   );

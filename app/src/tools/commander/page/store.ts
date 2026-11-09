@@ -260,6 +260,7 @@ interface CommanderActions {
   readonly filterSide: (side: Side, query: string | undefined) => void;
   readonly flat: (side: Side) => void;
   readonly stopReading: (side: Side) => void;
+  readonly countSizes: (side: Side, names: readonly string[]) => void;
   readonly keepScroll: (key: string, offset: number) => void;
   readonly saveThumbnail: (
     source: IconSource,
@@ -1219,6 +1220,10 @@ export function createCommanderStore(
         ),
       stopReading: (side) =>
         onTab((tab) => post({ type: 'stopReading', tab, side })),
+      countSizes: (side, names) =>
+        onDisk(side, (tab, folder) =>
+          post({ type: 'countSizes', tab, side, folder, names }),
+        ),
       keepScroll: (key, offset) => scrolls.keep(key, offset),
       dropIcon: (ticket) => {
         if (dropped.push(ticket) > 1) {

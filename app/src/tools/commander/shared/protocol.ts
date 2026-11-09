@@ -75,6 +75,8 @@ export interface Entry {
   readonly modified: number | undefined;
   readonly online?: true;
   readonly executable?: true;
+  readonly counting?: true;
+  readonly unreadFolders?: number;
 }
 
 export interface FlatFolder {
@@ -293,6 +295,13 @@ export type CommanderToHost =
       readonly flat: boolean;
     }
   | { readonly type: 'stopReading'; readonly tab: string; readonly side: Side }
+  | {
+      readonly type: 'countSizes';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly names: readonly string[];
+    }
   | { readonly type: 'elevate'; readonly tab: string; readonly side: Side }
   | {
       readonly type: 'openRepository';
@@ -483,6 +492,13 @@ export type CommanderToWebview =
       readonly archive?: string;
       readonly selected: string | undefined;
       readonly flat?: number;
+    }
+  | {
+      readonly type: 'folderSizes';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly entries: readonly Entry[];
     }
   | {
       readonly type: 'flatFiles';

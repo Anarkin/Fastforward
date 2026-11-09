@@ -68,7 +68,7 @@ suite('ArchiveTree', () => {
       folder: true,
       link: false,
       hidden: false,
-      size: undefined,
+      size: 1,
       modified: 9,
     });
     assert.deepStrictEqual(
@@ -109,7 +109,7 @@ suite('ArchiveTree', () => {
     assert.deepStrictEqual(
       tree.entries([])?.map((entry) => [entry.name, entry.folder, entry.size]),
       [
-        ['a', true, undefined],
+        ['a', true, 1],
         ['dup.txt', false, 2],
       ],
     );
@@ -140,6 +140,34 @@ suite('ArchiveTree', () => {
       bytes: 5,
       encrypted: false,
     });
+  });
+
+  test('gives each folder the size of every file under it, as the listing of the archive tells them all', () => {
+    const tree = new ArchiveTree(
+      [
+        item('docs/a.md', { size: 3 }),
+        item('docs/deep/b.md', { size: 4 }),
+        item('docs/deep/unsized.bin', { size: undefined }),
+        item('empty', { folder: true, size: undefined }),
+        item('top.txt', { size: 5 }),
+      ],
+      'linux',
+    );
+    assert.deepStrictEqual(
+      tree.entries([])?.map((entry) => [entry.name, entry.size]),
+      [
+        ['docs', 7],
+        ['empty', 0],
+        ['top.txt', 5],
+      ],
+    );
+    assert.deepStrictEqual(
+      tree.entries(['docs'])?.map((entry) => [entry.name, entry.size]),
+      [
+        ['a.md', 3],
+        ['deep', 4],
+      ],
+    );
   });
 
   test('hides by the hidden attribute on Windows, and by a leading dot elsewhere, as the folders of the system are', () => {

@@ -52,6 +52,7 @@ function imagesPane(): PaneView {
     selected: 'a.png',
     marked: new Set(),
     repositories: new Set(),
+    counting: 0,
   };
 }
 

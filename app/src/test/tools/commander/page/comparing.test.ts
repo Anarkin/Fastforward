@@ -48,6 +48,7 @@ const pane = (
     selected,
     marked: new Set(marked),
     repositories: new Set(),
+    counting: 0,
   };
 };
 

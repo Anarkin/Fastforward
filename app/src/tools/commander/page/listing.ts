@@ -75,7 +75,7 @@ function comparerOf(
   extensionOrder: (a: Row, b: Row) => number,
 ): (a: Row, b: Row) => number {
   const direction = descending ? -1 : 1;
-  const sortsFolders = column !== 'extension' && column !== 'size';
+  const sortsFolders = column !== 'extension';
   const groups = new Map<Row, number>();
   const group = (row: Row) => {
     const known = groups.get(row);
@@ -213,7 +213,9 @@ function sameEntry(one: Entry, other: Entry): boolean {
     ordersAlike(one, other) &&
     one.link === other.link &&
     one.hidden === other.hidden &&
-    one.online === other.online
+    one.online === other.online &&
+    one.counting === other.counting &&
+    one.unreadFolders === other.unreadFolders
   );
 }
 

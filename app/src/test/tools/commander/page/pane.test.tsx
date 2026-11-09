@@ -9,13 +9,17 @@ import {
   NameCell,
   Pane,
   RowIcon,
+  SizeCell,
 } from '../../../../tools/commander/page/pane';
 import {
   flatRowOf,
   parentRow,
   rowsOf,
 } from '../../../../tools/commander/page/listing';
-import type { FlatProgress } from '../../../../tools/commander/shared/protocol';
+import type {
+  Entry,
+  FlatProgress,
+} from '../../../../tools/commander/shared/protocol';
 import {
   emptyView,
   type PaneView,
@@ -45,6 +49,7 @@ const pane = (elevated: boolean, hidden: readonly boolean[]): PaneView => ({
   selected: undefined,
   marked: new Set(),
   repositories: new Set(),
+  counting: 0,
 });
 const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
   /<span class="column-name path-title">(.*?)<\/span><div class="column-actions">/.exec(
@@ -649,5 +654,81 @@ suite('Commander pane in flat view', () => {
       'notes',
     );
     assert.strictEqual(nested.querySelectorAll('mark').length, 1);
+  });
+});
+
+const sized = (extra: Partial<Entry>): Entry => ({
+  name: 'photos',
+  folder: true,
+  link: false,
+  hidden: false,
+  size: 1234,
+  modified: 0,
+  ...extra,
+});
+
+const sizeCell = (entry: Entry | undefined, tile = false) =>
+  renderToStaticMarkup(<SizeCell entry={entry} tile={tile} />);
+
+const counting = (folders: number) =>
+  new JSDOM(
+    renderToStaticMarkup(
+      <CommanderStore
+        value={createCommanderStore(noop, {
+          view: {
+            ...emptyView,
+            tab: '1',
+            active: 'left',
+            panes: {
+              left: { ...pane(false, []), counting: folders },
+              right: undefined,
+            },
+          },
+        })}
+      >
+        <Pane
+          side="left"
+          driveTrigger={null}
+          bookmarkTrigger={null}
+          resizer={null}
+        />
+      </CommanderStore>,
+    ),
+  ).window.document;
+
+suite('Commander pane counting the sizes of folders', () => {
+  test('shows the size of a folder dimmed while it is counted, saying how many folders under it could not be read, and none of a folder not counted or the parent', () => {
+    assert.strictEqual(
+      sizeCell(sized({ counting: true })),
+      '<span class="commander-size counting">1,234</span>',
+    );
+    const unread = new JSDOM(sizeCell(sized({ unreadFolders: 2 }))).window
+      .document.body.firstElementChild;
+    assert.deepStrictEqual(
+      [unread?.className, unread?.getAttribute('title'), unread?.textContent],
+      ['commander-size', strings.commander.unreadUnder(2), '1,234'],
+    );
+    assert.strictEqual(
+      sizeCell(sized({ counting: true }), true),
+      '<div class="commander-tile-size counting">1,234</div>',
+    );
+    assert.strictEqual(
+      sizeCell(sized({ size: undefined })),
+      '<span class="commander-size"></span>',
+    );
+    assert.strictEqual(
+      sizeCell(undefined),
+      '<span class="commander-size"></span>',
+    );
+  });
+
+  test('says under a side how many folders it counts the sizes of, and that Esc stops it, and nothing once it counts none', () => {
+    assert.deepStrictEqual(status(counting(2)), {
+      text: `${strings.commander.countingSizes(2)} · ${strings.commander.escapeStops}`,
+      end: undefined,
+      tone: 'column-status',
+      role: 'status',
+    });
+    assert.strictEqual(counting(0).querySelector('.column-status'), null);
   });
 });

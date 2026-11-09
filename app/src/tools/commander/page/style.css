@@ -98,6 +98,11 @@
   text-align: right;
 }
 
+.commander-size.counting,
+.commander-tile-size.counting {
+  color: var(--color-foreground-muted);
+}
+
 .commander-heading {
   position: relative;
   display: flex;

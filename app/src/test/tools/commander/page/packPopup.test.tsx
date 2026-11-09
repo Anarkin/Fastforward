@@ -28,6 +28,7 @@ const pane = (folder: string): PaneView => ({
   selected: undefined,
   marked: new Set(),
   repositories: new Set(),
+  counting: 0,
 });
 
 async function packing(

@@ -39,6 +39,7 @@ const left: PaneView = {
   selected: undefined,
   marked: new Set(),
   repositories: new Set(),
+  counting: 0,
 };
 
 function shown() {
@@ -412,6 +413,28 @@ suite('Commander store', () => {
       { type: 'listDrives' },
       { type: 'reread', tab: '1', side: 'right' },
       { type: 'showHidden', shown: false },
+    ]);
+  });
+
+  test('asks to count the sizes of folders of a side on disk, and of none inside an archive, where they are known', () => {
+    const { posted, store } = shown();
+    store.getState().countSizes('left', ['docs', 'src']);
+    store.setState({
+      view: {
+        ...emptyView,
+        tab: '1',
+        panes: { left: { ...left, archive: 'C:\\a.zip' }, right: undefined },
+      },
+    });
+    store.getState().countSizes('left', ['docs']);
+    assert.deepStrictEqual(posted, [
+      {
+        type: 'countSizes',
+        tab: '1',
+        side: 'left',
+        folder: left.folder,
+        names: ['docs', 'src'],
+      },
     ]);
   });
 

@@ -75,6 +75,9 @@ export const commanderKeymap = {
     'Ctrl+H': true,
   }),
   flatView: bind('Folders', strings.actions.flatView, { 'Ctrl+B': true }),
+  countSizes: bind('Folders', strings.actions.countSizes, {
+    'Alt+Shift+Enter': true,
+  }),
   stopReading: bind('Folders', strings.actions.stopReading, { Escape: true }),
   layout: bind('Folders', strings.actions.layout, {
     'Mod+1': 'details',
@@ -119,7 +122,7 @@ export const commanderKeymap = {
   ),
   toggleMark: bind('Marking', strings.actions.toggleMark, {
     Space: true,
-    Insert: true,
+    Insert: false,
   }),
   markAll: bind('Marking', strings.actions.markAll, { 'Mod+A': true }),
   markClick: bind('Marking', strings.actions.markClick, {

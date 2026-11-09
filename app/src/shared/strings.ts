@@ -306,14 +306,17 @@ export const strings = {
     leaveFilter: 'Open the selected folder, or go to the files',
     filterMove: 'Move in the files filtered',
     markMoving: 'Mark the files passed while moving, or unmark them',
-    toggleMark: 'Mark or unmark the selected file and move down',
+    toggleMark:
+      'Mark or unmark the selected file and move down, counting with Space the size of a folder it marks',
     markAll: 'Mark every file, or unmark them all once all are marked',
     markClick: 'Mark or unmark a file, or mark the files up to it',
     openOnSide:
       'Open the selected folder, or the one you are in, on the left or right side',
     flatView:
       'List the files of every folder in the folder of the side, or the folder alone again',
-    stopReading: 'Stop reading the folders of the side listed flat',
+    stopReading:
+      'Stop reading the folders of the side listed flat, or counting the sizes of its folders',
+    countSizes: 'Count the sizes of the folders of the side',
   },
   shortcuts: {
     title: 'Shortcuts',
@@ -869,6 +872,14 @@ export const strings = {
         ? "1 folder couldn't be read"
         : `${count.toLocaleString()} folders couldn't be read`,
     escapeStops: 'Esc stops',
+    countingSizes: (folders: number) =>
+      folders === 1
+        ? 'Counting the size of a folder…'
+        : `Counting the sizes of ${folders.toLocaleString()} folders…`,
+    unreadUnder: (count: number) =>
+      count === 1
+        ? "1 folder in it couldn't be read, so it may be larger"
+        : `${count.toLocaleString()} folders in it couldn't be read, so it may be larger`,
     findInFile: 'Search the file',
     encodings: {
       auto: 'Auto',

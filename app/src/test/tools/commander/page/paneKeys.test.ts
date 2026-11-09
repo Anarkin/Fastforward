@@ -269,6 +269,78 @@ suite('Commander keys', () => {
     }
   });
 
+  test('counts the size of a folder it marks on Space, not of one it unmarks, a file or a folder whose size is known, and never on Insert', () => {
+    const sized = rowsOf(
+      [
+        { ...entry('docs', true), size: undefined },
+        { ...entry('known', true), size: 9 },
+        entry('a.txt'),
+      ],
+      true,
+      true,
+      { column: 'name', descending: false, groupByColor: false },
+    );
+    const on = (key: string, shown: Partial<PaneKeys> = {}) =>
+      at(key, {
+        rows: sized,
+        selectedIndex: sized.findIndex((row) => row.key === key),
+        visible: { first: 0, last: sized.length - 1 },
+        ...shown,
+      });
+    const space = pressed(' ', { code: 'Space' });
+
+    assert.deepStrictEqual(paneKey(space, on('docs')), {
+      act: {
+        kind: 'mark',
+        keys: ['docs'],
+        marked: true,
+        select: 'known',
+        count: ['docs'],
+      },
+    });
+    assert.deepStrictEqual(paneKey(pressed('Insert'), on('docs')), {
+      act: { kind: 'mark', keys: ['docs'], marked: true, select: 'known' },
+    });
+    assert.deepStrictEqual(
+      paneKey(space, on('docs', { marked: new Set(['docs']) })),
+      { act: { kind: 'mark', keys: ['docs'], marked: false, select: 'known' } },
+    );
+    assert.deepStrictEqual(paneKey(space, on('known')), {
+      act: { kind: 'mark', keys: ['known'], marked: true, select: 'a.txt' },
+    });
+    assert.deepStrictEqual(paneKey(space, on('..')), {
+      act: { kind: 'mark', keys: ['..'], marked: true, select: 'docs' },
+    });
+  });
+
+  test('counts the sizes of the folders shown whose sizes are not known on Alt+Shift+Enter, whatever is selected or marked, and nothing when none is left', () => {
+    const sized = rowsOf(
+      [
+        { ...entry('docs', true), size: undefined },
+        { ...entry('known', true), size: 9 },
+        { ...entry('src', true), size: undefined },
+        entry('a.txt'),
+      ],
+      true,
+      true,
+      { column: 'name', descending: false, groupByColor: false },
+    );
+    const countAll = pressed('Enter', { altKey: true, shiftKey: true });
+
+    assert.deepStrictEqual(
+      paneKey(
+        countAll,
+        at('a.txt', {
+          rows: sized,
+          selectedIndex: 4,
+          marked: new Set(['known']),
+        }),
+      ),
+      { act: { kind: 'countSizes', names: ['docs', 'src'] } },
+    );
+    assert.deepStrictEqual(paneKey(countAll, at('a.txt')), {});
+  });
+
   test('goes on marking the rows it passes while Shift and an arrow are held down', () => {
     assert.deepStrictEqual(
       paneKey(

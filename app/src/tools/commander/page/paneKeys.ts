@@ -43,7 +43,9 @@ export type PaneAct =
       readonly keys: readonly string[];
       readonly marked: boolean;
       readonly select: string;
+      readonly count?: readonly string[];
     }
+  | { readonly kind: 'countSizes'; readonly names: readonly string[] }
   | { readonly kind: 'select'; readonly key: string };
 
 export interface PaneKeys {
@@ -60,6 +62,10 @@ export interface PaneKeys {
 }
 
 const done = {};
+
+function uncounted(row: Row): boolean {
+  return row.entry?.folder === true && row.entry.size === undefined;
+}
 
 export function paneKey(
   event: Parameters<typeof keyPressed>[1],
@@ -97,6 +103,10 @@ export function paneKey(
   if (keyPressed(commanderKeymap.testArchives, event) !== undefined) {
     const names = chosenKeys(rows, selected, marked);
     return names.length > 0 ? { act: { kind: 'test', names } } : done;
+  }
+  if (keyPressed(commanderKeymap.countSizes, event) !== undefined) {
+    const names = rows.filter(uncounted).map((each) => each.key);
+    return names.length > 0 ? { act: { kind: 'countSizes', names } } : done;
   }
   if (keyPressed(commanderKeymap.packItems, event) !== undefined) {
     const names = chosenKeys(rows, selected, marked);
@@ -206,16 +216,19 @@ export function paneKey(
           },
         };
   }
-  if (keyPressed(commanderKeymap.toggleMark, event) !== undefined) {
+  const counts = keyPressed(commanderKeymap.toggleMark, event);
+  if (counts !== undefined) {
     if (row === undefined) {
       return done;
     }
+    const marks = !marked?.has(row.key);
     return {
       act: {
         kind: 'mark',
         keys: [row.key],
-        marked: !marked?.has(row.key),
+        marked: marks,
         select: rows[Math.min(selectedIndex + 1, rows.length - 1)].key,
+        ...(counts && marks && uncounted(row) && { count: [row.key] }),
       },
     };
   }

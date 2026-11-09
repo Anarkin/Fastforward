@@ -141,6 +141,44 @@ suite('Commander listing', () => {
     );
   });
 
+  test('sorts the folders by size too once their sizes are known, those not counted as if empty, and by name when alike', () => {
+    const entries = [
+      folder('small', { size: 10 }),
+      folder('uncounted'),
+      folder('big', { size: 500 }),
+      folder('also small', { size: 10 }),
+      entry('file.bin', { size: 1 }),
+    ];
+    assert.deepStrictEqual(
+      keys(entries, { column: 'size', descending: false, groupByColor: false }),
+      ['uncounted', 'also small', 'small', 'big', 'file.bin'],
+    );
+    assert.deepStrictEqual(
+      keys(entries, { column: 'size', descending: true, groupByColor: false }),
+      ['big', 'small', 'also small', 'uncounted', 'file.bin'],
+    );
+  });
+
+  test('takes the entry of a folder told again once it is no longer being counted, or the folders under it that could not be read change, its size alike', () => {
+    const sort: Sort = {
+      column: 'size',
+      descending: false,
+      groupByColor: false,
+    };
+    const counting = [folder('photos', { size: 7, counting: true })];
+    const before = rowsOf(counting, false, true, sort);
+    for (const told of [
+      folder('photos', { size: 7 }),
+      folder('photos', { size: 7, counting: true, unreadFolders: 1 }),
+    ]) {
+      const rows = rowsOf([told], false, true, sort, undefined, undefined, {
+        entries: counting,
+        rows: before,
+      });
+      assert.deepStrictEqual(rows[0]?.entry, told);
+    }
+  });
+
   test('leaves out the hidden files and folders when they are not shown', () => {
     assert.deepStrictEqual(
       keys(

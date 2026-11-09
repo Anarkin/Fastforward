@@ -101,6 +101,18 @@ const named = (
   ...extra,
 });
 
+const sized = (
+  entries: readonly Entry[],
+  extra: Partial<Extract<ViewAction, { type: 'folderSizes' }>> = {},
+): ViewAction => ({
+  type: 'folderSizes',
+  tab: '1',
+  side: 'left',
+  folder: '/code',
+  entries,
+  ...extra,
+});
+
 suite('Commander view', () => {
   test('marks the folders that are repositories without sorting the rows again, and leaves a side alone when they are the ones it marks already', () => {
     const listed = run(
@@ -629,6 +641,70 @@ suite('Commander view', () => {
       inRepository(reduceView(inside, listing('/other', []))),
       false,
     );
+  });
+
+  test('takes the sizes of the folders of a side as they are counted, sorting them again by size, keeping the selection and the marks, and none told for another folder, tab or a file', () => {
+    const uncounted = (name: string) =>
+      entry(name, { folder: true, size: undefined });
+    const listed = run(
+      { type: 'show', tab: '1' },
+      sortedBy('size'),
+      listing(
+        '/code',
+        [uncounted('app'), uncounted('docs'), entry('a.txt', { size: 5 })],
+        { selected: 'docs' },
+      ),
+      { type: 'mark', side: 'left', keys: ['app'], marked: true },
+    );
+    const counting = entry('app', { folder: true, size: 900, counting: true });
+
+    const counted = reduceView(listed, sized([counting]));
+    assert.deepStrictEqual(shown(counted), {
+      rows: ['..', 'docs', 'app', 'a.txt'],
+      selected: 'docs',
+    });
+    assert.deepStrictEqual([...(counted.panes.left?.marked ?? [])], ['app']);
+    assert.deepStrictEqual(
+      counted.panes.left?.rows.find((row) => row.key === 'app')?.entry,
+      counting,
+    );
+
+    for (const elsewhere of [
+      sized([counting], { folder: '/other' }),
+      sized([counting], { tab: '2' }),
+      sized([entry('a.txt', { size: 1 })]),
+      sized([entry('gone', { folder: true, size: 1 })]),
+    ]) {
+      assert.strictEqual(reduceView(listed, elsewhere), listed);
+    }
+  });
+
+  test('counts the folders of a side being counted, as told or listed, and none of a side listed flat', () => {
+    const counting = (name: string) =>
+      entry(name, { folder: true, size: 1, counting: true });
+    const listed = run(
+      { type: 'show', tab: '1' },
+      listing('/code', [counting('app'), counting('docs'), entry('a.txt')]),
+    );
+    assert.strictEqual(listed.panes.left?.counting, 2);
+
+    const told = reduceView(listed, {
+      type: 'folderSizes',
+      tab: '1',
+      side: 'left',
+      folder: '/code',
+      entries: [entry('app', { folder: true, size: 4 })],
+    });
+    assert.strictEqual(told.panes.left?.counting, 1);
+
+    const again = reduceView(
+      told,
+      listing('/code', [entry('app', { folder: true, size: 4 })]),
+    );
+    assert.strictEqual(again.panes.left?.counting, 0);
+
+    const flatAfter = reduceView(listed, listing('/code', [], { flat: 1 }));
+    assert.strictEqual(flatAfter.panes.left?.counting, 0);
   });
 });
 

@@ -61,6 +61,7 @@ export interface PaneView extends Listed {
   readonly repositories: ReadonlySet<string>;
   readonly inRepository?: boolean;
   readonly flat?: FlatView;
+  readonly counting: number;
 }
 
 const startedReading: FlatProgress = {
@@ -73,6 +74,13 @@ const startedReading: FlatProgress = {
 const noMarks: ReadonlySet<string> = new Set();
 
 const noRepositories: ReadonlySet<string> = new Set();
+
+function countingIn(entries: readonly Entry[]): number {
+  return entries.reduce(
+    (count, entry) => (entry.counting === true ? count + 1 : count),
+    0,
+  );
+}
 
 function repositoriesKept(
   pane: PaneView | undefined,
@@ -208,6 +216,7 @@ export type ViewAction =
   | (Omit<CommanderToWebviewOf<'repositories'>, 'type'> & {
       readonly type: 'repositories';
     })
+  | CommanderToWebviewOf<'folderSizes'>
   | {
       readonly type: 'flatRows';
       readonly tab: string;
@@ -309,6 +318,7 @@ function relisted(
     marked: marksKept(pane, folder, rows),
     repositories,
     inRepository: inRepositoryKept(pane, folder),
+    counting: countingIn(entries),
   };
 }
 
@@ -371,6 +381,7 @@ function flatListed(
     repositories: noRepositories,
     inRepository: inRepositoryKept(pane, folder),
     flat: { walk: flat, progress: startedReading, shown: undefined },
+    counting: 0,
   };
 }
 
@@ -619,6 +630,46 @@ export function reduceView(
           return row.repository === repository ? row : { ...row, repository };
         }),
       });
+    }
+    case 'folderSizes': {
+      const pane = view.panes[action.side];
+      if (
+        action.tab !== view.tab ||
+        pane === undefined ||
+        pane.folder !== action.folder ||
+        pane.flat !== undefined
+      ) {
+        return view;
+      }
+      const told = new Map(
+        action.entries
+          .filter((entry) => entry.folder)
+          .map((entry) => [entry.name, entry]),
+      );
+      let changed = false;
+      const entries = pane.entries.map((entry) => {
+        const sized = entry.folder ? told.get(entry.name) : undefined;
+        if (sized === undefined) {
+          return entry;
+        }
+        changed = true;
+        return sized;
+      });
+      return changed
+        ? withPane(
+            view,
+            action.side,
+            relisted(
+              pane,
+              pane.sort,
+              { ...pane, entries },
+              view.showHidden,
+              view.fileColors,
+              undefined,
+              pane,
+            ),
+          )
+        : view;
     }
     case 'select': {
       const pane = view.panes[action.side];

@@ -125,6 +125,10 @@ export interface ArchiveBranch {
   readonly children: readonly ArchiveBranch[];
 }
 
+function childKey(folder: string, name: string): string {
+  return folder === '' ? name : `${folder}/${name}`;
+}
+
 export class ArchiveTree {
   private readonly folders = new Map<string, Map<string, ArchiveNode>>([
     ['', new Map()],
@@ -158,6 +162,35 @@ export class ArchiveTree {
         path: item.path,
         encrypted: item.encrypted,
       });
+    }
+    this.sizeFolders();
+  }
+
+  private sizeFolders(): void {
+    const sizes = new Map<string, number>();
+    const sizeOf = (key: string): number => {
+      const known = sizes.get(key);
+      if (known !== undefined) {
+        return known;
+      }
+      let bytes = 0;
+      for (const [name, node] of this.folders.get(key) ?? []) {
+        bytes += node.entry.folder
+          ? sizeOf(childKey(key, name))
+          : (node.entry.size ?? 0);
+      }
+      sizes.set(key, bytes);
+      return bytes;
+    };
+    for (const [key, folder] of this.folders) {
+      for (const [name, node] of folder) {
+        if (node.entry.folder) {
+          folder.set(name, {
+            ...node,
+            entry: { ...node.entry, size: sizeOf(childKey(key, name)) },
+          });
+        }
+      }
     }
   }
 
@@ -223,7 +256,7 @@ export class ArchiveTree {
         encrypted ||= node.encrypted;
         return;
       }
-      const key = folder === '' ? name : `${folder}/${name}`;
+      const key = childKey(folder, name);
       for (const inside of this.folders.get(key)?.keys() ?? []) {
         add(key, inside);
       }

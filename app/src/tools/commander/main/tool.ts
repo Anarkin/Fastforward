@@ -115,6 +115,7 @@ import { Transfers, type ConnectTransfer, type TransferAsk } from './transfers';
 import { folderKey } from '../shared/paths';
 import { nameProblem } from '../shared/names';
 import { onSameVolume, repositoriesIn } from './repositories';
+import { FolderSizes, type FolderSize } from './folderSizes';
 import {
   iconSourceOf,
   iconTicketOf,
@@ -193,9 +194,16 @@ interface Flat {
   flushed: number;
 }
 
+interface Sizing {
+  readonly sizes: FolderSizes;
+  flushing: NodeJS.Timeout | undefined;
+  flushed: number;
+}
+
 interface Pane {
   folder: string;
   flat?: Flat;
+  sizing?: Sizing;
   hidden?: readonly boolean[];
   entries: readonly Entry[] | undefined;
   asked: number;
@@ -350,6 +358,25 @@ const entriesByName = new WeakMap<
   readonly Entry[],
   ReadonlyMap<string, Entry>
 >();
+
+function sizedEntry(entry: Entry, size: FolderSize | undefined): Entry {
+  return size === undefined
+    ? entry
+    : {
+        ...entry,
+        size: size.bytes,
+        ...(size.counting && { counting: true }),
+        ...(size.unread > 0 && { unreadFolders: size.unread }),
+      };
+}
+
+function entriesShown({ entries = [], sizing }: Pane): readonly Entry[] {
+  return sizing === undefined
+    ? entries
+    : entries.map((entry) =>
+        entry.folder ? sizedEntry(entry, sizing.sizes.of(entry.name)) : entry,
+      );
+}
 
 function listedIn(pane: Pane | undefined, name: unknown): Entry | undefined {
   if (pane?.flat === undefined) {
@@ -509,6 +536,7 @@ export class CommanderTool implements Tool<'commander'> {
     if (panes !== undefined) {
       for (const side of sides) {
         this.endFlat(panes[side]);
+        this.endSizing(panes[side]);
       }
     }
     this.panes.delete(tab.id);
@@ -636,6 +664,9 @@ export class CommanderTool implements Tool<'commander'> {
         return this.readBytes(page, message);
       case 'reread': {
         const shown = this.shownPane(page, message.tab, message.side);
+        if (shown !== undefined) {
+          this.endSizing(shown.pane);
+        }
         if (shown?.pane.flat !== undefined) {
           this.startFlat(page, shown);
           return undefined;
@@ -650,8 +681,12 @@ export class CommanderTool implements Tool<'commander'> {
         const shown = this.shownPane(page, message.tab, message.side);
         shown?.pane.opening?.abort();
         shown?.pane.flat?.tree.stop();
+        shown?.pane.sizing?.sizes.stop();
         return undefined;
       }
+      case 'countSizes':
+        this.countSizes(page, message);
+        return undefined;
       case 'openOnSide':
         return this.openOnSide(page, message);
       case 'enterArchive':
@@ -3679,6 +3714,7 @@ export class CommanderTool implements Tool<'commander'> {
     if (pane.folder !== folder) {
       pane.repositories = new Set();
       this.endFlat(pane);
+      this.endSizing(pane);
     }
     if (how === 'visit' || typeof how === 'object' || pane.denied === folder) {
       pane.denied = undefined;
@@ -3798,6 +3834,7 @@ export class CommanderTool implements Tool<'commander'> {
 
   private startFlat(page: Page, { tab, side, pane }: ShownPane): void {
     this.endFlat(pane);
+    this.endSizing(pane);
     this.watching.get(side)?.stop();
     this.watching.delete(side);
     pane.asked++;
@@ -3878,6 +3915,88 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
+  private countSizes(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      names,
+    }: Extract<CommanderToHost, { type: 'countSizes' }>,
+  ): void {
+    const shown = this.diskPane(page, tab, side, folder);
+    if (
+      shown === undefined ||
+      shown.pane.flat !== undefined ||
+      !Array.isArray(names) ||
+      names.length === 0 ||
+      !names.every(
+        (name: unknown) =>
+          entryNamed(shown.pane.entries, name)?.folder === true,
+      )
+    ) {
+      return;
+    }
+    shown.pane.sizing ??= this.newSizing(shown);
+    shown.pane.sizing.sizes.count(names);
+  }
+
+  private newSizing({ tab, side, pane }: ShownPane): Sizing {
+    const sizing: Sizing = {
+      sizes: new FolderSizes(
+        pane.folder,
+        async (each) => (await this.listed(each)).entries,
+        () => this.sizesChanged(tab, side, sizing),
+      ),
+      flushing: undefined,
+      flushed: 0,
+    };
+    return sizing;
+  }
+
+  private endSizing(pane: Pane): void {
+    const { sizing } = pane;
+    if (sizing !== undefined) {
+      pane.sizing = undefined;
+      sizing.sizes.close();
+      clearTimeout(sizing.flushing);
+    }
+  }
+
+  private sizesChanged(tab: string, side: Side, sizing: Sizing): void {
+    sizing.flushing ??= setTimeout(
+      () => {
+        sizing.flushing = undefined;
+        this.flushSizes(tab, side, sizing);
+      },
+      Math.max(0, sizing.flushed + flushEvery - Date.now()),
+    );
+  }
+
+  private flushSizes(tab: string, side: Side, sizing: Sizing): void {
+    const pane = this.panes.get(tab)?.[side];
+    const shown = this.shown;
+    if (pane?.sizing !== sizing || shown?.tab !== tab) {
+      return;
+    }
+    sizing.flushed = Date.now();
+    const entries = sizing.sizes.take().flatMap((name) => {
+      const entry = entryNamed(pane.entries, name);
+      return entry?.folder === true
+        ? [sizedEntry(entry, sizing.sizes.of(name))]
+        : [];
+    });
+    if (entries.length > 0) {
+      this.post(shown.page, {
+        type: 'folderSizes',
+        tab,
+        side,
+        folder: pane.folder,
+        entries,
+      });
+    }
+  }
+
   private postListing(
     page: Page,
     tab: string,
@@ -3892,7 +4011,7 @@ export class CommanderTool implements Tool<'commander'> {
         side,
         folder: pane.folder,
         hidden: pane.hidden ?? [],
-        entries: pane.flat === undefined ? (pane.entries ?? []) : [],
+        entries: pane.flat === undefined ? entriesShown(pane) : [],
         parent: parentOf(pane.folder) !== undefined,
         elevated: pane.elevated === true,
         ...(pane.binOff === true && { binOff: true }),

@@ -68,6 +68,7 @@ function workPane(): PaneView {
     selected: 'notes.txt',
     marked: new Set(),
     repositories,
+    counting: 0,
   };
 }
 
