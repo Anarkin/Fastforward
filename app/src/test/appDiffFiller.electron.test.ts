@@ -14,6 +14,16 @@ interface Area {
   readonly bottom: number;
 }
 
+interface Areas {
+  readonly filler: Area;
+  readonly numbers: Area;
+}
+
+interface Capture {
+  readonly filler: Buffer;
+  readonly numbers: Buffer;
+}
+
 const ratios = [1, 1.25, 1.5, 1.75, 2];
 
 const percent = (ratio: number) => `${ratio * 100}%`;
@@ -32,14 +42,24 @@ function changed(before: Buffer, after: Buffer): number {
   return count / (before.length / 4);
 }
 
-function striped(pixels: Buffer): boolean {
+function commonestOf(pixels: Buffer): { color: string; share: number } {
   const colors = new Map<number, number>();
   for (let at = 0; at < pixels.length; at += 4) {
     const color = pixels.readUInt32LE(at) & 0xffffff;
     colors.set(color, (colors.get(color) ?? 0) + 1);
   }
-  const commonest = Math.max(...colors.values());
-  return commonest < 0.9 * (pixels.length / 4);
+  const [color, count] = [...colors].reduce(
+    (most, entry) => (entry[1] > most[1] ? entry : most),
+    [0, 0],
+  );
+  return {
+    color: color.toString(16).padStart(6, '0'),
+    share: count / Math.max(1, pixels.length / 4),
+  };
+}
+
+function striped(pixels: Buffer): boolean {
+  return pixels.length > 0 && commonestOf(pixels).share < 0.9;
 }
 
 suite('App diff filler', () => {
@@ -121,25 +141,39 @@ suite('App diff filler', () => {
     assert.ok(Math.abs(scrolled - line) < 0.01, `${scrolled} lines scrolled`);
   }
 
-  function fillerArea(): Promise<Area> {
+  function areasOf(): Promise<Areas> {
     return page.evaluate(() => {
       const view = document
         .querySelector('.diff-view .virtual-rows')
         ?.getBoundingClientRect();
-      const side = document
-        .querySelector('.split-side.filler')
+      const filler = document.querySelector('.split-side.filler');
+      const side = filler?.getBoundingClientRect();
+      const numbers = filler?.nextElementSibling
+        ?.querySelector('.number')
         ?.getBoundingClientRect();
       const line = side?.height ?? 0;
+      const top = Math.ceil(((view?.top ?? 0) + 4 * line) * devicePixelRatio);
+      const bottom = Math.floor(
+        ((view?.bottom ?? 0) - line) * devicePixelRatio,
+      );
       return {
-        left: Math.ceil((side?.left ?? 0) * devicePixelRatio) + 2,
-        right: Math.floor((side?.right ?? 0) * devicePixelRatio) - 2,
-        top: Math.ceil(((view?.top ?? 0) + 4 * line) * devicePixelRatio),
-        bottom: Math.floor(((view?.bottom ?? 0) - line) * devicePixelRatio),
+        filler: {
+          left: Math.ceil((side?.left ?? 0) * devicePixelRatio) + 2,
+          right: Math.floor((side?.right ?? 0) * devicePixelRatio) - 2,
+          top,
+          bottom,
+        },
+        numbers: {
+          left: Math.floor((numbers?.left ?? 0) * devicePixelRatio),
+          right: Math.ceil((numbers?.right ?? 0) * devicePixelRatio),
+          top,
+          bottom,
+        },
       };
     });
   }
 
-  async function pixelsOf(area: Area): Promise<Buffer> {
+  async function captured(areas: Areas): Promise<Capture> {
     const shot = await app.evaluate(async ({ BrowserWindow, screen }) => {
       const window = BrowserWindow.getAllWindows()[0];
       if (window === undefined) {
@@ -153,26 +187,73 @@ suite('App diff filler', () => {
       };
     });
     const all = Buffer.from(shot.pixels, 'base64');
-    const width = (area.right - area.left) * 4;
-    const pixels = Buffer.alloc(width * (area.bottom - area.top));
-    for (let y = area.top; y < area.bottom; y++) {
-      const from = (y * shot.width + area.left) * 4;
-      all.copy(pixels, (y - area.top) * width, from, from + width);
+    const cropped = (area: Area) => {
+      const width = (area.right - area.left) * 4;
+      const pixels = Buffer.alloc(width * (area.bottom - area.top));
+      for (let y = area.top; y < area.bottom; y++) {
+        const from = (y * shot.width + area.left) * 4;
+        all.copy(pixels, (y - area.top) * width, from, from + width);
+      }
+      return pixels;
+    };
+    return { filler: cropped(areas.filler), numbers: cropped(areas.numbers) };
+  }
+
+  async function capturedOnce(
+    areas: Areas,
+    drawn: (capture: Capture) => boolean,
+    what: string,
+  ): Promise<Capture> {
+    let last: Capture | undefined;
+    try {
+      await waitFor(
+        async () => {
+          last = await captured(areas);
+          return drawn(last);
+        },
+        what,
+        5000,
+      );
+    } catch (error) {
+      const { left, top, right, bottom } = areas.filler;
+      const found = await page.evaluate(
+        ([x, y]) => ({
+          visibility: document.visibilityState,
+          at: document.elementFromPoint(
+            x / devicePixelRatio,
+            y / devicePixelRatio,
+          )?.className,
+        }),
+        [(left + right) / 2, (top + bottom) / 2] as const,
+      );
+      throw new Error(
+        `${String(error)}: ${JSON.stringify({ areas, ...found, ...commonestOf(last?.filler ?? Buffer.alloc(0)) })}`,
+        { cause: error },
+      );
     }
-    return pixels;
+    assert.ok(last);
+    return last;
   }
 
   test('leaves the stripes of the empty side of a change where they were once the diff scrolls a line, at 100%, 125%, 150%, 175% and 200%, as stripes moved by a line and part of their spacing seemed to step back and forth', async () => {
     const moved: Record<string, number> = {};
     for (const ratio of ratios) {
       await zoomTo(ratio);
-      const area = await fillerArea();
       await scrollToLine(12);
-      const before = await pixelsOf(area);
+      const areas = await areasOf();
+      const before = await capturedOnce(
+        areas,
+        ({ filler }) => striped(filler),
+        `stripes at ${percent(ratio)}`,
+      );
       await scrollToLine(13);
-      const after = await pixelsOf(area);
-      assert.ok(striped(before), `stripes at ${percent(ratio)}`);
-      moved[percent(ratio)] = changed(before, after);
+      const after = await capturedOnce(
+        areas,
+        ({ filler, numbers }) =>
+          striped(filler) && !numbers.equals(before.numbers),
+        `the line numbers to move at ${percent(ratio)}`,
+      );
+      moved[percent(ratio)] = changed(before.filler, after.filler);
     }
     assert.deepStrictEqual(
       moved,
