@@ -1,27 +1,55 @@
 import { createHash } from 'node:crypto';
 import { deflateRawSync, gzipSync } from 'node:zlib';
-import { crc32 } from './samples.mts';
+import { crc32, crcOfByte } from './samples.mts';
 
 export interface Packed {
-  readonly name: string;
+  readonly name: string | Buffer;
   readonly content: string | Buffer;
 }
 
 const dosDate = ((2026 - 1980) << 9) | (2 << 5) | 1;
 
-export const zip = (files: readonly Packed[]) => {
+const zipCrypto = (password: string, crc: number, data: Buffer) => {
+  const keys = [0x12345678, 0x23456789, 0x34567890];
+  const update = (byte: number) => {
+    keys[0] = crcOfByte(keys[0], byte);
+    keys[1] =
+      (Math.imul((keys[1] + (keys[0] & 0xff)) | 0, 134_775_813) + 1) >>> 0;
+    keys[2] = crcOfByte(keys[2], keys[1] >>> 24);
+  };
+  for (const byte of Buffer.from(password)) {
+    update(byte);
+  }
+  const header = Buffer.alloc(12, 0x5a);
+  header[11] = crc >>> 24;
+  const plain = Buffer.concat([header, data]);
+  const encrypted = Buffer.alloc(plain.length);
+  for (const [at, byte] of plain.entries()) {
+    const temp = (keys[2] | 2) & 0xffff;
+    encrypted[at] = byte ^ ((Math.imul(temp, temp ^ 1) >>> 8) & 0xff);
+    update(byte);
+  }
+  return encrypted;
+};
+
+export const zip = (files: readonly Packed[], password?: string) => {
   const parts: Buffer[] = [];
   const directory: Buffer[] = [];
   let offset = 0;
   for (const { name, content } of files) {
     const data = Buffer.from(content);
-    const packed = deflateRawSync(data);
-    const nameBytes = Buffer.from(name);
     const crc = crc32(data);
+    const deflated = deflateRawSync(data);
+    const packed =
+      password === undefined ? deflated : zipCrypto(password, crc, deflated);
+    const nameBytes = Buffer.from(name);
+    const flags =
+      (typeof name === 'string' ? 0x0800 : 0) |
+      (password === undefined ? 0 : 1);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
     local.writeUInt16LE(20, 4);
-    local.writeUInt16LE(0x0800, 6);
+    local.writeUInt16LE(flags, 6);
     local.writeUInt16LE(8, 8);
     local.writeUInt16LE(dosDate, 12);
     local.writeUInt32LE(crc, 14);
@@ -33,7 +61,7 @@ export const zip = (files: readonly Packed[]) => {
     central.writeUInt32LE(0x02014b50, 0);
     central.writeUInt16LE(20, 4);
     central.writeUInt16LE(20, 6);
-    central.writeUInt16LE(0x0800, 8);
+    central.writeUInt16LE(flags, 8);
     central.writeUInt16LE(8, 10);
     central.writeUInt16LE(dosDate, 14);
     central.writeUInt32LE(crc, 16);
@@ -62,7 +90,7 @@ export const tar = (files: readonly Packed[]) => {
   for (const { name, content } of files) {
     const data = Buffer.from(content);
     const header = Buffer.alloc(512);
-    header.write(name, 0, 100);
+    Buffer.from(name).copy(header, 0, 0, 100);
     header.write(octal(0o644, 8), 100);
     header.write(octal(0, 8), 108);
     header.write(octal(0, 8), 116);

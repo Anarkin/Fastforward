@@ -8,6 +8,9 @@ const crcTable = Array.from({ length: 256 }, (_, n) => {
   }
   return c >>> 0;
 });
+export const crcOfByte = (crc: number, byte: number) =>
+  (crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8)) >>> 0;
+
 export const crc32 = (bytes: Buffer) => {
   let c = 0xffffffff;
   for (const byte of bytes) {
