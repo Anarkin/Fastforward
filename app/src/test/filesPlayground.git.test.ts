@@ -163,7 +163,11 @@ suite('Playground of files on disk', () => {
       for (const item of ofKind('link')) {
         const full = at(item.path);
         assert.ok(fs.lstatSync(full).isSymbolicLink(), item.path);
-        assert.strictEqual(fs.readlinkSync(full), item.target, item.path);
+        assert.strictEqual(
+          fs.readlinkSync(full),
+          path.normalize(item.target ?? ''),
+          item.path,
+        );
       }
     } else {
       assert.ok(windows);
