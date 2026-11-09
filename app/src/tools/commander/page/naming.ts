@@ -1,4 +1,4 @@
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 import { nameProblem } from '../shared/names';
 import { folderKey } from '../shared/paths';
 import type { Entry } from '../shared/protocol';
@@ -7,7 +7,7 @@ export function newFolderProblem(
   name: string,
   listed: readonly Entry[] | undefined,
   platform: string | undefined,
-): string | undefined {
+): Sentence | undefined {
   const problem = nameProblem(name, platform);
   if (problem !== undefined) {
     return problem;
@@ -23,7 +23,7 @@ export function renameProblem(
   name: string,
   listed: readonly Entry[] | undefined,
   platform: string | undefined,
-): string | undefined {
+): Sentence | undefined {
   const problem = nameProblem(to, platform);
   if (problem !== undefined) {
     return problem;

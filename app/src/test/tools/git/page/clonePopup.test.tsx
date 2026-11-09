@@ -308,9 +308,9 @@ suite('Clone form problem', () => {
       formProblem('-x', '/code', '..', target),
       "The URL can't start with -",
     );
-    assert.strictEqual(
+    assert.deepStrictEqual(
       formProblem('git@host:app', '/code', '..', target),
-      ".. can't be the name of a folder",
+      strings.clone.badName('..'),
     );
     assert.strictEqual(
       formProblem('git@host:app', '/code', 'app', target),

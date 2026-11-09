@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { strings, type Line } from '../../shared/strings';
+import { strings, type Line, type Sentence } from '../../shared/strings';
 import { useDismiss } from '../../ui/contextMenu';
 import { CloseIcon } from '../../ui/icons';
 import { moveBetweenButtons } from '../../ui/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
-import { NameLines } from '../../ui/name';
+import { NameLines, Words } from '../../ui/name';
 
 export function PromptPopup({
   title,
@@ -24,7 +24,7 @@ export function PromptPopup({
   lines?: readonly Line[];
   label: string;
   confirm: string;
-  problemOf: (value: string) => string | undefined;
+  problemOf: (value: string) => Sentence | undefined;
   secret?: boolean;
   initial?: string;
   selectedUpTo?: number;
@@ -96,7 +96,7 @@ export function PromptPopup({
           />
           {typed !== '' && problem !== undefined && (
             <div className="prompt-problem" role="alert">
-              {problem}
+              <Words>{problem}</Words>
             </div>
           )}
           <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>

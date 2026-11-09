@@ -42,7 +42,7 @@ import {
   maxBytesAsked,
   maxColoredBytes,
 } from '../../../../tools/commander/shared/protocol';
-import { strings } from '../../../../shared/strings';
+import { plainOf, strings } from '../../../../shared/strings';
 import {
   boxedThumbnailUrl,
   filledThumbnailUrl,
@@ -1288,7 +1288,7 @@ suite('Commander tool', () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
       const told = page.of('viewing').at(-1);
       assert.strictEqual(told?.size, undefined);
-      assert.match(told?.error ?? '', /vanishing\.txt/);
+      assert.match(plainOf(told?.error ?? ''), /vanishing\.txt/);
     });
 
     test('says the file viewed could not be read when a find cannot read it, rather than that nothing was found', async () => {
@@ -1312,7 +1312,7 @@ suite('Commander tool', () => {
       assert.deepStrictEqual(page.of('found'), []);
       const told = page.of('viewing').at(-1);
       assert.strictEqual(told?.size, undefined);
-      assert.match(told?.error ?? '', /gone\.txt/);
+      assert.match(plainOf(told?.error ?? ''), /gone\.txt/);
     });
 
     test('reads the rows and the whole text of a file viewed in the encoding asked for, the whole text with its byte order mark, from which the rows count their bytes, and tells of the encoding the mark names', async () => {

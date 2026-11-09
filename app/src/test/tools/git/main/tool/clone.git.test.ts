@@ -5,6 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { plainOf, strings } from '../../../../../shared/strings';
 import { sameRoot } from '../../../../../shell/main/storage';
 import { cloneFolderKey } from '../../../../../tools/git/main/storage';
 import type { CloneView } from '../../../../../tools/git/shared/clone';
@@ -172,7 +173,7 @@ suite('Git tool cloning repositories', () => {
       for (const [asked, message] of [
         [
           { url, folder: parent, name: 'taken' },
-          `${path.join(parent, 'taken')} already exists and isn't an empty folder`,
+          strings.clone.taken(path.join(parent, 'taken')),
         ],
         [
           { url: '--upload-pack=x', folder: parent, name: 'app' },
@@ -182,17 +183,14 @@ suite('Git tool cloning repositories', () => {
           { url: 'ext::sh -c x', folder: parent, name: 'app' },
           "ext:: URLs run commands, so they aren't cloned",
         ],
-        [
-          { url, folder: parent, name: '..' },
-          ".. can't be the name of a folder",
-        ],
+        [{ url, folder: parent, name: '..' }, strings.clone.badName('..')],
         [
           { url, folder: 'relative', name: 'app' },
-          'relative is not a full path',
+          strings.clone.notFullPath('relative'),
         ],
         [
           { url, folder: path.join(parent, 'missing'), name: 'app' },
-          `${path.join(parent, 'missing')} is not a folder`,
+          strings.clone.noFolder(path.join(parent, 'missing')),
         ],
       ] as const) {
         await view.connection.receive({ type: 'clone', ...asked });
@@ -233,8 +231,10 @@ suite('Git tool cloning repositories', () => {
         },
       );
       assert.ok(
-        shown.message?.includes('does not appear to be a git repository'),
-        shown.message,
+        plainOf(shown.message ?? '').includes(
+          'does not appear to be a git repository',
+        ),
+        plainOf(shown.message ?? ''),
       );
       assert.deepStrictEqual(fs.readdirSync(parent), []);
       assert.strictEqual(shownTabs(view.page)?.tabs.length ?? 0, 0);
@@ -423,11 +423,8 @@ suite('Git tool cloning repositories', () => {
     await withView(log, [], async (view) => {
       for (const [name, problem] of [
         ['free', undefined],
-        [
-          'file',
-          `${path.join(parent, 'file')} already exists and isn't an empty folder`,
-        ],
-        ['a/b', "a/b can't be the name of a folder"],
+        ['file', strings.clone.taken(path.join(parent, 'file'))],
+        ['a/b', strings.clone.badName('a/b')],
       ] as const) {
         await view.connection.receive({
           type: 'checkCloneTarget',

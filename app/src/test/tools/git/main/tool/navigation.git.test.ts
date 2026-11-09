@@ -300,7 +300,7 @@ suite('Git tool navigating the history', () => {
         root: repository.root,
         hash: 'abcdef0',
       });
-      assert.deepStrictEqual(messages, ['No commit starts with abcdef0']);
+      assert.deepStrictEqual(messages, ['No commit starts with "abcdef0"']);
     });
     await connection.receive({
       type: 'jump',
@@ -397,7 +397,7 @@ suite('Git tool navigating the history', () => {
           root: repository.root,
           hash: 'fade',
         });
-        assert.deepStrictEqual(messages, ['No commit starts with fade']);
+        assert.deepStrictEqual(messages, ['No commit starts with "fade"']);
       });
     } finally {
       await repository.git('branch', '-D', 'fade');
@@ -443,7 +443,7 @@ suite('Git tool navigating the history', () => {
         root: repository.root,
         hash: prefix,
       });
-      assert.deepStrictEqual(messages, [`2 commits start with ${prefix}`]);
+      assert.deepStrictEqual(messages, [`2 commits start with "${prefix}"`]);
     });
   });
 

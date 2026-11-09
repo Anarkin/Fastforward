@@ -29,6 +29,7 @@ import { Highlight } from '../../../ui/highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
+import { Words } from '../../../ui/name';
 import { keyPressed } from '../../../ui/shortcuts';
 import { folded } from '../../../shared/textMatches';
 import type { RefGroup, TreeNode } from './refIndex';
@@ -399,7 +400,9 @@ function CommitResultsSection({
           ? strings.search.searching
           : hash && strings.search.noCommitStartsWith(hash);
     return status ? (
-      <div className="row hash-suggestion empty">{status}</div>
+      <div className="row hash-suggestion empty">
+        <Words>{status}</Words>
+      </div>
     ) : null;
   }
   return (

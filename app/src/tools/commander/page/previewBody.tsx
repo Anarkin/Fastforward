@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { maxPreviewBytes } from '../shared/protocol';
 import { viewedFileUrl } from '../shared/files';
 import { strings } from '../../../shared/strings';
+import { Words } from '../../../ui/name';
 import { documentImagePath, ImagePane } from '../../../ui/images';
 import { imageType, vectorType } from '../../../shared/images';
 import { MarkdownPane } from '../../../ui/markdownView';
@@ -112,7 +113,9 @@ export function PreviewBody({
       }}
     >
       {viewing.error !== undefined ? (
-        <div className="viewer-error">{viewing.error}</div>
+        <div className="viewer-error">
+          <Words>{viewing.error}</Words>
+        </div>
       ) : preview === 'image' ? (
         <div className={`viewer-image${realSize ? ' real-size' : ''}`}>
           <ImagePane key={imageUrl} url={imageUrl} realSize={imageRealSize} />

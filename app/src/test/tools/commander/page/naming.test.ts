@@ -33,7 +33,7 @@ suite('Commander naming', () => {
   });
 
   test('says what is wrong with a name before whether it is there', () => {
-    assert.strictEqual(
+    assert.deepStrictEqual(
       newFolderProblem('con', [entry('con')], 'win32'),
       strings.commander.reservedName('con'),
     );
@@ -57,7 +57,7 @@ suite('Commander naming', () => {
       renameProblem('NOTES.txt', 'Photos', listed, 'linux'),
       undefined,
     );
-    assert.strictEqual(
+    assert.deepStrictEqual(
       renameProblem('a/b', 'Photos', undefined, 'linux'),
       strings.commander.nameCantHold('/'),
     );

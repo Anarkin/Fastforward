@@ -1,4 +1,4 @@
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 
 export interface CloneAsk {
   readonly url: string;
@@ -13,7 +13,7 @@ export interface CloneProgress {
 }
 
 export type CloneView =
-  | ({ readonly kind: 'form'; readonly message?: string } & CloneAsk)
+  | ({ readonly kind: 'form'; readonly message?: Sentence } & CloneAsk)
   | {
       readonly kind: 'running';
       readonly url: string;
@@ -59,7 +59,7 @@ export function urlProblem(url: string): string | undefined {
   return undefined;
 }
 
-export function nameProblem(name: string): string | undefined {
+export function nameProblem(name: string): Sentence | undefined {
   if (name === '') {
     return strings.clone.noName;
   }
@@ -72,7 +72,7 @@ export function nameProblem(name: string): string | undefined {
     : undefined;
 }
 
-export function cloneProblem(ask: CloneAsk): string | undefined {
+export function cloneProblem(ask: CloneAsk): Sentence | undefined {
   if (ask.url.trim() === '') {
     return strings.clone.noUrl;
   }

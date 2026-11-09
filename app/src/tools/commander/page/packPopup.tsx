@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 import { useDismiss } from '../../../ui/contextMenu';
 import { CloseIcon } from '../../../ui/icons';
 import { moveBetweenButtons } from '../../../ui/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../../ui/modalDialog';
-import { NameLines } from '../../../ui/name';
+import { NameLines, Words } from '../../../ui/name';
 import { nameProblem } from '../shared/names';
 import {
   compresses,
@@ -78,7 +78,7 @@ function packProblem({
   readonly splitting: boolean;
   readonly volume: string;
   readonly platform: string | undefined;
-}): string | undefined {
+}): Sentence | undefined {
   if (archive.trim() === '') {
     return strings.commander.noArchive;
   }
@@ -311,10 +311,10 @@ function PackForm({
         </label>
       </div>
       {problem === undefined ? (
-        there && <div className="pack-note">{commander.archiveThere(name)}</div>
+        there && <div className="pack-note">{commander.archiveThere}</div>
       ) : (
         <div className="prompt-problem" role="alert">
-          {problem}
+          <Words>{problem}</Words>
         </div>
       )}
       <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>

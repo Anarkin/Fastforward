@@ -10,7 +10,7 @@ import {
 } from '../../../ui/search';
 import { useViewerFind } from './viewerFind';
 import { usePdfPreview } from './pdfPreview';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 import {
   HexIcon,
   PreviewIcon,
@@ -46,7 +46,7 @@ export interface Viewing {
   readonly binary?: boolean;
   readonly hidden?: readonly boolean[];
   readonly detected?: TextEncoding;
-  readonly error?: string;
+  readonly error?: Sentence;
 }
 
 export type ToViewer = CommanderToWebviewOf<

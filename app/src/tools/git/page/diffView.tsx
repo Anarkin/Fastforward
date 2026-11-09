@@ -50,7 +50,8 @@ import {
 import { wheeled, type Modifiers } from '../../../shell/shared/keymap';
 import { gitKeymap } from '../shared/keymap';
 import { glideAt, glideBy, glideEnded, type Glide } from '../../../ui/glide';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
+import { Words } from '../../../ui/name';
 import { drawnText } from '../../../ui/blanks';
 import { listMoveOf, type ListMove } from '../../../ui/listMoves';
 import { keyPressed } from '../../../ui/shortcuts';
@@ -838,19 +839,23 @@ export function FileNote({
   change,
   split,
 }: {
-  text: string;
+  text: Sentence;
   change: Change | undefined;
   split: boolean;
 }) {
   if (!split) {
-    return <div className={`file-note ${change ?? ''}`}>{text}</div>;
+    return (
+      <div className={`file-note ${change ?? ''}`}>
+        <Words>{text}</Words>
+      </div>
+    );
   }
   return (
     <div className="split-line note-line">
       {(['removed', 'added'] as const).map((side) =>
         change === undefined || change === side ? (
           <div key={side} className={`file-note split-side ${change ?? ''}`}>
-            {text}
+            <Words>{text}</Words>
           </div>
         ) : (
           <div key={side} className="file-note split-side filler" />
@@ -2717,7 +2722,9 @@ export function DiffView({
           (whole ? whole.content : files[row.file].link?.[row.side]) ?? '',
         );
         return whole ? (
-          <div className="file-note">{text}</div>
+          <div className="file-note">
+            <Words>{text}</Words>
+          </div>
         ) : (
           <FileNote
             text={text}

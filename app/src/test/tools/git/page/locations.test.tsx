@@ -643,14 +643,20 @@ suite('Commit results', () => {
   test('says when no commit starts with it, or that it is still looking', () => {
     assert.match(
       popup('abcd', found([]), searched('abcd')),
-      /No commit starts with abcd/,
+      /No commit starts with <code class="name"><span>abcd<\/span><\/code>/,
     );
-    assert.match(popup('abcd'), /Looking for commit abcd/);
+    assert.match(
+      popup('abcd'),
+      /Looking for commit <code class="name"><span>abcd<\/span><\/code>…/,
+    );
   });
 
   test('waits for the lookup of what is typed now, not an earlier prefix', () => {
     const html = popup('abcde', found([first]));
-    assert.match(html, /Looking for commit abcde/);
+    assert.match(
+      html,
+      /Looking for commit <code class="name"><span>abcde<\/span><\/code>/,
+    );
     assert.strictEqual(tagsWith(html, 'commit').length, 0);
   });
 
@@ -763,7 +769,7 @@ suite('Commit results', () => {
     assert.deepStrictEqual(headings(html), ['Local branches']);
     assert.match(
       html,
-      /fix\/<mark class="match">abcd<\/mark>.*Looking for commit abcd/,
+      /fix\/<mark class="match">abcd<\/mark>.*Looking for commit <code class="name"><span>abcd<\/span>/,
     );
   });
 

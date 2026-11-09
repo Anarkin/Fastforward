@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import type { CloneProgress } from '../../shared/clone';
-import { strings } from '../../../../shared/strings';
+import { strings, type Sentence } from '../../../../shared/strings';
 import { isFolder, quietFor, remoteTimeout } from './repository';
 import { runGit } from './run';
 
@@ -42,7 +42,7 @@ export function progressReader(
 export async function cloneTargetProblem(
   folder: string,
   name: string,
-): Promise<string | undefined> {
+): Promise<Sentence | undefined> {
   if (!path.isAbsolute(folder)) {
     return strings.clone.notFullPath(folder);
   }

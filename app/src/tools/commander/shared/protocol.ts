@@ -1,3 +1,4 @@
+import type { Sentence } from '../../../shared/strings';
 import type { PdfPlace } from '../../../shared/pdf';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';
@@ -434,7 +435,7 @@ export type CommanderToWebview =
       readonly binary?: boolean;
       readonly hidden?: readonly boolean[];
       readonly detected?: TextEncoding;
-      readonly error?: string;
+      readonly error?: Sentence;
     }
   | {
       readonly type: 'bytes';

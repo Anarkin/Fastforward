@@ -313,7 +313,10 @@ suite('Commander file keys', () => {
         assert.strictEqual(problem(), strings.commander.nameThere);
         assert.strictEqual(make()?.disabled, true);
         await type('con');
-        assert.strictEqual(problem(), strings.commander.reservedName('con'));
+        assert.strictEqual(
+          document.querySelector('.prompt-problem')?.innerHTML,
+          'Windows keeps the name <code class="name"><span>con</span></code> for itself.',
+        );
         await type('  photos  ');
         assert.strictEqual(problem(), undefined);
         await click(make());

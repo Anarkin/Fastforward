@@ -409,7 +409,7 @@ export type GitToWebview =
       readonly type: 'cloneTarget';
       readonly folder: string;
       readonly name: string;
-      readonly problem?: string;
+      readonly problem?: Sentence;
     }
   | {
       readonly type: 'confirmInit';

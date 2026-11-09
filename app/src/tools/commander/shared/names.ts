@@ -1,4 +1,4 @@
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 
 const keptByWindows = /[<>:"/\\|?*\p{Cc}]/u;
 const devicesOfWindows = /^(?:con|prn|aux|nul|com\d|lpt\d)(?:\..*)?$/i;
@@ -6,7 +6,7 @@ const devicesOfWindows = /^(?:con|prn|aux|nul|com\d|lpt\d)(?:\..*)?$/i;
 export function nameProblem(
   name: string,
   platform: string | undefined,
-): string | undefined {
+): Sentence | undefined {
   const { commander } = strings;
   if (name === '') {
     return commander.noName;

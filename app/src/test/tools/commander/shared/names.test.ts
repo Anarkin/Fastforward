@@ -31,7 +31,7 @@ suite('Commander names', () => {
       'a|b',
       'a\tb',
     ]) {
-      assert.strictEqual(
+      assert.deepStrictEqual(
         nameProblem(name, 'win32'),
         strings.commander.nameCantHold('\\ / : * ? " < > |'),
         name,
@@ -39,7 +39,7 @@ suite('Commander names', () => {
       assert.strictEqual(nameProblem(name, 'linux'), undefined, name);
     }
     for (const name of ['CON', 'nul', 'Com1', 'lpt9.txt', 'aux.tar.gz']) {
-      assert.strictEqual(
+      assert.deepStrictEqual(
         nameProblem(name, 'win32'),
         strings.commander.reservedName(name),
         name,

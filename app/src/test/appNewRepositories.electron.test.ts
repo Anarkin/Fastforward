@@ -6,6 +6,7 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../shared/strings';
 import { baseSettings, closeOrKill, launchApp } from './appFixtures';
+import { shownText } from './fixtures';
 import {
   removeFolder,
   tempFolder,
@@ -89,11 +90,11 @@ suite('App making new repositories', () => {
     assert.strictEqual(await name.getAttribute('placeholder'), 'repo');
     await into.fill(folder);
     await popup
-      .getByText(strings.clone.taken(path.join(folder, 'repo')))
+      .getByText(shownText(strings.clone.taken(path.join(folder, 'repo'))))
       .waitFor();
     await name.fill('copy');
     await popup
-      .getByText(strings.clone.into(path.join(folder, 'copy')))
+      .getByText(shownText(strings.clone.into(path.join(folder, 'copy'))))
       .waitFor();
     await name.press('Enter');
     await page.locator('.tabs .tab.active', { hasText: 'copy' }).waitFor();

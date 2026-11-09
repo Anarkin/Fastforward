@@ -55,7 +55,8 @@ import { StatusLine } from '../../../ui/statusLine';
 import { MenuButton } from '../../../ui/menu';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
-import { strings } from '../../../shared/strings';
+import { sentencesOf, strings } from '../../../shared/strings';
+import { Words } from '../../../ui/name';
 import { fileColorOf, type FileColors } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 import { pathParts } from '../shared/paths';
@@ -227,10 +228,15 @@ function ReadingStatus({ side }: { side: Side }) {
   );
   return reading === undefined ? null : (
     <StatusLine announced>
-      {[
-        strings.commander.readingArchive(reading),
-        strings.commander.escapeStops,
-      ].join(' · ')}
+      <Words>
+        {sentencesOf(
+          [
+            strings.commander.readingArchive(reading),
+            strings.commander.escapeStops,
+          ],
+          ' · ',
+        )}
+      </Words>
     </StatusLine>
   );
 }

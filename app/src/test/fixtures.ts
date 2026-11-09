@@ -11,6 +11,7 @@ import {
   type Modifiers,
 } from '../shell/shared/keymap';
 import type { CommitInfo, FileChange } from '../tools/git/shared/protocol';
+import type { Sentence } from '../shared/strings';
 
 export const noModifiers: Modifiers = {
   ctrlKey: false,
@@ -175,6 +176,13 @@ export function defaultSettings(): Settings {
 }
 
 export const noop = () => {};
+
+export const shownText = (sentence: Sentence) =>
+  typeof sentence === 'string'
+    ? sentence
+    : sentence
+        .map((part) => (typeof part === 'string' ? part : part.name))
+        .join('');
 
 export function tagWith(
   html: string,

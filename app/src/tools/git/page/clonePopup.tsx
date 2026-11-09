@@ -6,7 +6,8 @@ import {
   urlProblem,
   type CloneView,
 } from '../shared/clone';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
+import { Words } from '../../../ui/name';
 import { useDismiss } from '../../../ui/contextMenu';
 import { CloseIcon } from '../../../ui/icons';
 import { moveBetweenButtons } from '../../../ui/dialogButtons';
@@ -20,7 +21,7 @@ export interface ChosenFolder {
 export interface CloneTarget {
   readonly folder: string;
   readonly name: string;
-  readonly problem?: string;
+  readonly problem?: Sentence;
 }
 
 type Form = Extract<CloneView, { readonly kind: 'form' }>;
@@ -31,7 +32,7 @@ export function formProblem(
   folder: string,
   name: string,
   checked: CloneTarget | undefined,
-): string | undefined {
+): Sentence | undefined {
   if (url.trim() === '') {
     return undefined;
   }
@@ -139,12 +140,12 @@ function CloneForm({ form }: { form: Form }) {
       </div>
       {folder !== '' && nameProblem(named) === undefined && (
         <div className="clone-target" title={targetPath(folder, named)}>
-          {strings.clone.into(targetPath(folder, named))}
+          <Words>{strings.clone.into(targetPath(folder, named))}</Words>
         </div>
       )}
       {message !== undefined && (
         <div className="clone-problem" role="alert">
-          {message}
+          <Words>{message}</Words>
         </div>
       )}
       <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
@@ -169,9 +170,11 @@ function CloneRunning({ running }: { running: Running }) {
   return (
     <div className="clone-body">
       <div className="clone-running">
-        <span title={running.url}>{strings.clone.cloning(running.url)}</span>
+        <span title={running.url}>
+          <Words>{strings.clone.cloning(running.url)}</Words>
+        </span>
         <span title={running.target}>
-          {strings.clone.intoTarget(running.target)}
+          <Words>{strings.clone.intoTarget(running.target)}</Words>
         </span>
       </div>
       <div className="clone-progress">

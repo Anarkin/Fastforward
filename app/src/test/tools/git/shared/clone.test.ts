@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainOf, strings } from '../../../../shared/strings';
 import {
   cloneName,
   cloneProblem,
@@ -74,8 +75,8 @@ suite('Clone', () => {
       'LPT9',
     ]) {
       assert.strictEqual(
-        nameProblem(name),
-        `${name} can't be the name of a folder`,
+        plainOf(nameProblem(name) ?? ''),
+        `"${name}" can't be the name of a folder`,
         JSON.stringify(name),
       );
     }
@@ -90,9 +91,9 @@ suite('Clone', () => {
       cloneProblem({ url: '-x', folder: '/code', name: '..' }),
       "The URL can't start with -",
     );
-    assert.strictEqual(
+    assert.deepStrictEqual(
       cloneProblem({ url: 'git@host:app.git', folder: '/code', name: '..' }),
-      ".. can't be the name of a folder",
+      strings.clone.badName('..'),
     );
     assert.strictEqual(
       cloneProblem({ url: 'git@host:app.git', folder: '/code', name: 'app' }),

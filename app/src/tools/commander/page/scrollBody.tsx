@@ -1,3 +1,5 @@
+import type { Sentence } from '../../../shared/strings';
+import { Words } from '../../../ui/name';
 import { fontOf, spacingOf } from '../../../ui/textWidths';
 import {
   memo,
@@ -176,7 +178,7 @@ export function ScrollBody({
   onFont?: (char: number, font: string, spacing: number) => void;
   move: (by: number) => void;
   jump: (share: number) => void;
-  error: string | undefined;
+  error: Sentence | undefined;
   width?: number;
   wrapped?: boolean;
   onSideways?: (column: number) => void;
@@ -384,7 +386,9 @@ export function ScrollBody({
           </div>
         </div>
       ) : (
-        <div className="viewer-error">{error}</div>
+        <div className="viewer-error">
+          <Words>{error}</Words>
+        </div>
       )}
       {box !== undefined && (
         <div

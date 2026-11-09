@@ -22,9 +22,13 @@ const quoted = (name: string) => `"${name}"`;
 const plain = (value: Value) =>
   'name' in value ? quoted(value.name) : value.text;
 
-export const sentencesOf = (all: readonly Sentence[]): Sentence =>
+export const sentencesOf = (
+  all: readonly Sentence[],
+  between = ' ',
+): Sentence =>
   all.reduce<Sentence>(
-    (joined, one) => (joined === '' ? one : sentence`${joined} ${one}`),
+    (joined, one) =>
+      joined === '' ? one : sentence`${joined}${between}${one}`,
     '',
   );
 
@@ -469,11 +473,12 @@ export const strings = {
     commits: 'Commits',
     checkedOut: 'Checked out',
     bookmarks: 'Bookmarks',
-    lookingUp: (hash: string) => `Looking for commit ${hash}…`,
+    lookingUp: (hash: string) => sentence`Looking for commit ${named(hash)}…`,
     searching: 'Searching commits…',
-    noCommitStartsWith: (hash: string) => `No commit starts with ${hash}`,
+    noCommitStartsWith: (hash: string) =>
+      sentence`No commit starts with ${named(hash)}`,
     commitsStartWith: (count: number, hash: string) =>
-      `${count} commits start with ${hash}`,
+      sentence`${String(count)} commits start with ${named(hash)}`,
     more: (count: number) => `${count} more; type more to narrow it down`,
     moreCommits: 'More commits match; type more to narrow it down',
     moreInFolder: (count: number) => `${count} more; type to narrow them down`,
@@ -577,7 +582,8 @@ export const strings = {
     copiedWithoutChanges: 'Copied without changes',
     modeChanged: (from: string, to: string) =>
       `Mode changed from ${from} to ${to}`,
-    symbolicLink: (target: string) => `Symbolic link to ${target}`,
+    symbolicLink: (target: string) =>
+      sentence`Symbolic link to ${named(target)}`,
     imageDetails: (width: number, height: number, bytes: number) =>
       `${width} × ${height} · ${fileSize(bytes)}`,
     imageTooLarge: (megabytes: number) =>
@@ -599,11 +605,11 @@ export const strings = {
     folder: 'Folder',
     name: 'Name',
     chooseFolder: 'Choose the folder to clone into',
-    into: (target: string) => `Clones into ${target}`,
+    into: (target: string) => sentence`Clones into ${named(target)}`,
     clone: 'Clone',
     stop: 'Stop',
-    cloning: (url: string) => `Cloning ${url}`,
-    intoTarget: (target: string) => `into ${target}`,
+    cloning: (url: string) => sentence`Cloning ${named(url)}`,
+    intoTarget: (target: string) => sentence`into ${named(target)}`,
     connecting: 'Connecting',
     percent: (percent: number) => `${percent}%`,
     noUrl: 'Paste the URL of the repository to clone',
@@ -611,11 +617,13 @@ export const strings = {
     urlDash: "The URL can't start with -",
     urlExt: "ext:: URLs run commands, so they aren't cloned",
     noName: 'Name the folder to clone into',
-    badName: (name: string) => `${name} can't be the name of a folder`,
-    notFullPath: (folder: string) => `${folder} is not a full path`,
-    noFolder: (folder: string) => `${folder} is not a folder`,
+    badName: (name: string) =>
+      sentence`${named(name)} can't be the name of a folder`,
+    notFullPath: (folder: string) =>
+      sentence`${named(folder)} is not a full path`,
+    noFolder: (folder: string) => sentence`${named(folder)} is not a folder`,
     taken: (target: string) =>
-      `${target} already exists and isn't an empty folder`,
+      sentence`${named(target)} already exists and isn't an empty folder`,
   },
   terminal: {
     newTab: 'New',
@@ -634,7 +642,7 @@ export const strings = {
     notArchive: (name: string, reason: Sentence) =>
       sentence`${named(name)} could not be opened as an archive: ${reason}`,
     openWithSevenZip: 'Open with 7-Zip...',
-    readingArchive: (name: string) => `Reading ${name}…`,
+    readingArchive: (name: string) => sentence`Reading ${named(name)}…`,
     passwordTitle: 'Password',
     passwordAsked: 'The archive is encrypted. Type its password.',
     passwordWrong: 'The password is wrong. Type it again.',
@@ -741,9 +749,10 @@ export const strings = {
     makeFolder: 'Make',
     noName: 'Type the name of the folder.',
     dotName: "A name can't be . or ..",
-    nameCantHold: (characters: string) => `A name can't hold ${characters}`,
+    nameCantHold: (characters: string) =>
+      sentence`A name can't hold ${named(characters)}`,
     reservedName: (name: string) =>
-      `Windows keeps the name ${name} for itself.`,
+      sentence`Windows keeps the name ${named(name)} for itself.`,
     nameEnd: "A name can't end in a dot or a space on Windows.",
     nameTaken: (name: string) => sentence`${named(name)} is there already.`,
     nameThere: 'An item of that name is there already.',
@@ -795,8 +804,8 @@ export const strings = {
     volumeUnread: 'Type the size of a volume, as 100 MB.',
     volumeSmall: 'A volume holds at least 64 KB.',
     noArchive: 'Type the path of the archive.',
-    archiveThere: (name: string) =>
-      `"${name}" is there already; packing replaces it.`,
+    archiveThere:
+      'An archive of that name is there already; packing replaces it.',
     packConfirm: 'Pack',
     archiveName: 'archive',
     volumeCd: '700 MB, a CD',
@@ -955,8 +964,8 @@ export const strings = {
     gone: "It doesn't exist anymore.",
     folderThere: 'A folder of that name is there.',
     fileThere: 'A file of that name is there.',
-    couldNotRead: (file: string, reason: string) =>
-      `Couldn't read ${file}. ${reason}`,
+    couldNotRead: (file: string, reason: Sentence) =>
+      sentence`Couldn't read ${named(file)}. ${reason}`,
     layout: 'Layout',
     layouts: { details: 'Details', thumbnails: 'Thumbnails' },
     groupByColor: 'Group by Color',

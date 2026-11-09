@@ -4,7 +4,7 @@ import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { sidewaysColumns } from '../../../../ui/rowScroll';
 import { suite, test } from 'vitest';
-import { strings } from '../../../../shared/strings';
+import { plainOf, strings } from '../../../../shared/strings';
 import {
   parseFilePatch,
   parsePatch,
@@ -2885,8 +2885,8 @@ suite('Symbolic links', () => {
       ]);
     }
     assert.strictEqual(
-      strings.diff.symbolicLink('docs/README'),
-      'Symbolic link to docs/README',
+      plainOf(strings.diff.symbolicLink('docs/README')),
+      'Symbolic link to "docs/README"',
     );
     assert.strictEqual(rowHeight({ kind: 'link', file: 0, side: 'new' }), 22);
   });
