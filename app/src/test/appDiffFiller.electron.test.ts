@@ -89,6 +89,8 @@ suite('App diff filler', () => {
     page = await app.firstWindow();
     await page.locator('.commit', { hasText: 'second' }).click();
     await page.locator('.split-side.filler').first().waitFor();
+    await page.keyboard.press('c');
+    await page.locator('.columns.commits-hidden').waitFor();
   });
 
   afterAll(async () => {
@@ -126,19 +128,21 @@ suite('App diff filler', () => {
   }
 
   async function scrollToLine(line: number): Promise<void> {
-    const scrolled = await page.evaluate(async (wanted) => {
-      const list = document.querySelector('.diff-view .virtual-rows');
-      const filler = document.querySelector('.split-side.filler');
-      const height = filler?.getBoundingClientRect().height ?? 0;
-      if (list) {
-        list.scrollTop = wanted * height;
-      }
-      await new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(resolve)),
-      );
-      return (list?.scrollTop ?? 0) / height;
-    }, line);
-    assert.ok(Math.abs(scrolled - line) < 0.01, `${scrolled} lines scrolled`);
+    await waitFor(async () => {
+      const scrolled = await page.evaluate(async (wanted) => {
+        const list = document.querySelector('.diff-view .virtual-rows');
+        const filler = document.querySelector('.split-side.filler');
+        const height = filler?.getBoundingClientRect().height ?? 0;
+        if (list) {
+          list.scrollTop = wanted * height;
+        }
+        await new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        );
+        return (list?.scrollTop ?? 0) / height;
+      }, line);
+      return Math.abs(scrolled - line) < 0.01;
+    }, `the diff to stay scrolled to line ${line}`);
   }
 
   function areasOf(): Promise<Areas> {
@@ -171,6 +175,22 @@ suite('App diff filler', () => {
         },
       };
     });
+  }
+
+  async function assertInWindow(areas: Areas): Promise<void> {
+    const window = await page.evaluate(() => ({
+      width: Math.ceil(innerWidth * devicePixelRatio),
+      height: Math.ceil(innerHeight * devicePixelRatio),
+    }));
+    for (const [name, area] of Object.entries(areas)) {
+      assert.ok(
+        area.left >= 0 &&
+          area.top >= 0 &&
+          area.right <= window.width &&
+          area.bottom <= window.height,
+        `The ${name} area ${JSON.stringify(area)} lies outside the window of ${JSON.stringify(window)}`,
+      );
+    }
   }
 
   async function captured(areas: Areas): Promise<Capture> {
@@ -241,6 +261,7 @@ suite('App diff filler', () => {
       await zoomTo(ratio);
       await scrollToLine(12);
       const areas = await areasOf();
+      await assertInWindow(areas);
       const before = await capturedOnce(
         areas,
         ({ filler }) => striped(filler),
