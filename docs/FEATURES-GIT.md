@@ -292,7 +292,7 @@
 | Command palette | Find any command by typing | — | Common | ❌ No |  |
 | Themes | Light and dark, colors and fonts | — | Common | ✅ Yes | Dark by default, or light or following the system by the theme setting; every color and font in the settings |
 | Settings | Change the settings | — | Common | 🟡 Partial | JSON files, applied as saved and checked, no settings page |
-| Notices | Say what happened, and why something wasn't done | — | Core | ✅ Yes |  |
+| Notices | Say what happened, and why something wasn't done | — | Core | ✅ Yes | In the bottom right corner, errors marked by an icon; each fades in the time its length takes to read, 6 to 15 seconds, an error three times as long, held while the pointer is over it and while the window has no focus; Esc closes the newest |
 | Updates | Update the app | — | Common | ✅ Yes | Checks on start, every 4 hours and from the menu |
 | Platforms | Run on Windows, macOS and Linux | — | Common | ✅ Yes | Windows x64, macOS on Apple silicon, Linux x64 as AppImage and deb |
 | Screen readers | Name every control to assistive technology | — | Common | 🟡 Partial | Tabs, lists and trees are named; menus only by their role, icon buttons by their tooltip |

@@ -106,6 +106,26 @@ suite('Shell store', () => {
     );
   });
 
+  test('gives the notices asked for, or all, their whole time again from now, as once the window has the focus again', () => {
+    const notices = [1, 2, 3].map((id) => ({
+      id,
+      level: 'info' as const,
+      message: `${id}`,
+      shownAt: 0,
+    }));
+    const store = createShellStore(noop, { notices });
+    const before = performance.now();
+    store.getState().restartNotices([2]);
+    assert.deepStrictEqual(
+      store.getState().notices.map((notice) => notice.shownAt >= before),
+      [false, true, false],
+    );
+    store.getState().restartNotices();
+    assert.ok(
+      store.getState().notices.every((notice) => notice.shownAt >= before),
+    );
+  });
+
   test('asks before closing a terminal tab and closes any other at once, closing or quitting once confirmed', () => {
     const { posted, store } = posting();
     store

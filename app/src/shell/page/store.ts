@@ -120,6 +120,7 @@ interface ShellActions {
   readonly receive: (message: ToWebview) => void;
   readonly channels: ToolChannels;
   readonly dismissNotice: (id: number) => void;
+  readonly restartNotices: (ids?: readonly number[]) => void;
   readonly showPopup: (popup: Popup, open: boolean) => void;
   readonly togglePopup: (popup: Popup) => void;
   readonly showMenu: (menu: OpenMenu) => void;
@@ -287,6 +288,17 @@ export function createShellStore(
         set((state) => ({
           notices: state.notices.filter((notice) => notice.id !== id),
         })),
+      restartNotices: (ids) =>
+        set((state) => {
+          const now = performance.now();
+          return {
+            notices: state.notices.map((notice) =>
+              ids === undefined || ids.includes(notice.id)
+                ? { ...notice, shownAt: now }
+                : notice,
+            ),
+          };
+        }),
       showPopup: (popup, open) =>
         set((state) => ({ popups: withPopup(state.popups, popup, open) })),
       togglePopup: (popup) =>

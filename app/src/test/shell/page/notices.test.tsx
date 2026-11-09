@@ -3,7 +3,12 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { addNotice } from '../../../shell/shared/notices';
-import { fading, Notices, type Notice } from '../../../shell/page/notices';
+import {
+  fading,
+  Notices,
+  shownFor,
+  type Notice,
+} from '../../../shell/page/notices';
 import { noop, renderedBy } from '../../fixtures';
 import { createShellStore } from '../../../shell/page/store';
 import { withStores } from '../../componentFixtures';
@@ -23,6 +28,9 @@ const info = (id: number, shownAt: number): Notice => ({
   level: 'info',
   shownAt,
 });
+
+const shownOfLength = (level: Notice['level'], length: number) =>
+  shownFor({ ...notice(1, 'x'.repeat(length)), level });
 
 suite('Notices', () => {
   test('keeps the 4 newest, newest last, dropping the oldest, also while the page loads again', () => {
@@ -88,21 +96,42 @@ suite('Notices', () => {
     );
   });
 
-  test('lets information fade by itself, but keeps errors until dismissed', () => {
+  test('shows information for 6 seconds and 40 milliseconds more for each character, up to 15 seconds, and an error three times as long, 20 to 45 seconds, as long as a message takes to read', () => {
     assert.deepStrictEqual(
-      fading([notice(1), { ...notice(2), level: 'info' }], 0).map(
-        ({ id }) => id,
-      ),
-      [2],
+      [0, 50, 225, 1000].map((length) => shownOfLength('info', length)),
+      [6000, 8000, 15000, 15000],
+    );
+    assert.deepStrictEqual(
+      [0, 50, 150, 1000].map((length) => shownOfLength('error', length)),
+      [20000, 24000, 36000, 45000],
     );
   });
 
-  test('fades information eight seconds after it came, whatever came since', () => {
-    assert.deepStrictEqual(fading([info(1, 1000), info(2, 6000)], 7000), [
-      { id: 1, after: 2000 },
-      { id: 2, after: 7000 },
+  test('fades every notice, errors too, its own time after it came, whatever came since', () => {
+    const short = info(2, 6000);
+    assert.deepStrictEqual(fading([info(1, 1000), short, notice(3)], 7000), [
+      { id: 1, after: shownFor(info(1, 0)) - 6000 },
+      { id: 2, after: shownFor(short) - 1000 },
+      { id: 3, after: shownFor(notice(3)) - 7000 },
     ]);
-    assert.deepStrictEqual(fading([info(1, 0)], 9000), [{ id: 1, after: 0 }]);
+    assert.deepStrictEqual(fading([info(1, 0)], 60_000), [{ id: 1, after: 0 }]);
+  });
+
+  test('holds a notice the pointer is over, giving it its whole time again once the pointer leaves it', () => {
+    const shell = createShellStore(noop, { notices: [info(1, 0)] });
+    const drawn = renderedBy(Notices, {}, { shell });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(drawn));
+    const [shown] = drawn.props.children;
+    assert.ok(
+      isValidElement<{ onMouseEnter: () => void; onMouseLeave: () => void }>(
+        shown,
+      ),
+    );
+    const before = performance.now();
+    shown.props.onMouseEnter();
+    shown.props.onMouseLeave();
+    const [restarted] = shell.getState().notices;
+    assert.ok(restarted !== undefined && restarted.shownAt >= before);
   });
 
   test('keeps its live region, empty, while it shows no notice, as a screen reader announces nothing a region comes with', () => {
