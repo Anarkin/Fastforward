@@ -266,24 +266,39 @@ interface ColoredLine {
 
 type LineColorer = (line: string, before: StateStack) => ColoredLine;
 
+const statesAfterEmptyLines = new WeakMap<
+  object,
+  WeakMap<StateStack, StateStack>
+>();
+
 function lineColorer(
   highlighter: HighlighterCore,
   language: string,
 ): LineColorer {
   const grammar = highlighter.getLanguage(language);
+  const afterEmptyLine =
+    statesAfterEmptyLines.get(grammar) ?? new WeakMap<StateStack, StateStack>();
+  statesAfterEmptyLines.set(grammar, afterEmptyLine);
   const kindsByIndex = highlighter
     .setTheme(themeName)
     .colorMap.map((color) => kindsByColor.get(color));
   return (text, before) => {
     const line = text.replace(/\r$/, '');
-    if (line === '' || line.length > maxLineLength) {
+    if (line.length > maxLineLength) {
       return { ranges: [], after: before };
+    }
+    const afterEmpty = line === '' ? afterEmptyLine.get(before) : undefined;
+    if (afterEmpty !== undefined) {
+      return { ranges: [], after: afterEmpty };
     }
     const { tokens, ruleStack } = grammar.tokenizeLine2(
       line,
       before,
       tokenizeTimeLimit,
     );
+    if (line === '') {
+      afterEmptyLine.set(before, ruleStack);
+    }
     const ranges: SyntaxRange[] = [];
     for (let index = 0; index < tokens.length; index += 2) {
       const start = tokens[index];

@@ -1351,6 +1351,32 @@ suite('Syntax', () => {
     assert.deepStrictEqual(ranges.get('1:0')?.length, 2);
   });
 
+  test('tokenizes an empty line as VS Code does rather than skipping it as shiki does, so a blank line ends a Markdown paragraph and the indented code after it is colored as code', async () => {
+    const lines = ['A paragraph', '', '    indented code'];
+    const ranges = syntaxRanges(await loadLanguages(['markdown']), [
+      { language: 'markdown', lines, keys: sideKeys(0, lines) },
+    ]);
+    assert.deepStrictEqual(ranges.get('0:2'), [
+      { start: 0, end: 17, kind: 'string' },
+    ]);
+  });
+
+  test('tokenizes an empty line only the first time it follows a state, as the state after it follows from that alone, so the empty lines of a file cost nothing more', async () => {
+    const { counting, lines: tokenized } = countingLines(
+      await loadLanguages(['typescript']),
+    );
+    const lines = ['let spaced = 1;', '', '', '', 'spaced;', '', 'end;'];
+    syntaxRanges(counting, [
+      { language: 'typescript', lines, keys: sideKeys(0, lines) },
+    ]);
+    assert.deepStrictEqual(tokenized, [
+      'let spaced = 1;',
+      '',
+      'spaced;',
+      'end;',
+    ]);
+  });
+
   test('colors code in a Markdown fence anew once its language loads', async () => {
     await assertNotLoaded('python');
     const fence = {
@@ -1466,7 +1492,10 @@ suite('Syntax', () => {
     for (const name of ['lines1', 'lines2', 'lines1']) {
       color(name);
     }
-    assert.deepStrictEqual(tokenized, ['lines1', 'lines2', 'lines3', 'lines2']);
+    assert.deepStrictEqual(
+      tokenized.filter((line) => line !== ''),
+      ['lines1', 'lines2', 'lines3', 'lines2'],
+    );
   });
 
   test('colors no file that is collapsed', () => {
