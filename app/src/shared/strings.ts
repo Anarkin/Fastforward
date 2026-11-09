@@ -551,7 +551,7 @@ export const strings = {
       `${name} could not be deleted: ${reason}`,
     notArchive: (name: string, reason: string) =>
       `${name} could not be opened as an archive: ${reason}`,
-    tryEnterArchive: 'Try Enter Archive',
+    openWithSevenZip: 'Open with 7-Zip...',
     readingArchive: (name: string) => `Reading ${name}…`,
     passwordTitle: 'Password',
     passwordAsked: (name: string) => `${name} is encrypted. Type its password.`,

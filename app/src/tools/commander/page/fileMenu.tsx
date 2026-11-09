@@ -1,7 +1,7 @@
 import { imageType, vectorType } from '../../../shared/images';
 import { strings } from '../../../shared/strings';
 import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { FolderIcon, ImageIcon, ToolIcon } from '../../../ui/icons';
+import { ImageIcon, SevenZipIcon, ToolIcon } from '../../../ui/icons';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
 import { pointedKeys, type Row } from './listing';
 
@@ -73,8 +73,8 @@ function ownItems(
   inArchive: boolean,
 ): ContextMenuItem[] {
   const enterArchive = (name: string): ContextMenuItem => ({
-    label: strings.commander.tryEnterArchive,
-    icon: <FolderIcon />,
+    label: strings.commander.openWithSevenZip,
+    icon: <SevenZipIcon />,
     onClick: () => onEnterArchive(name),
   });
   if (inArchive) {

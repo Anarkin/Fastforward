@@ -247,7 +247,7 @@ suite('Commander menu on a side', () => {
         rightClick(rowNamed(main, 'notes'));
         assert.strictEqual(selected(), 'notes.txt');
         assert.deepStrictEqual(menu(), [
-          strings.commander.tryEnterArchive,
+          strings.commander.openWithSevenZip,
           strings.commander.showMoreOptions,
         ]);
 

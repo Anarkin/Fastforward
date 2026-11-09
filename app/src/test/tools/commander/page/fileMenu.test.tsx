@@ -183,7 +183,7 @@ suite('Commander file menu', () => {
     const [edit] = items;
     assert.deepStrictEqual(labels(items), [
       strings.commander.editImage,
-      strings.commander.tryEnterArchive,
+      strings.commander.openWithSevenZip,
       '-',
       strings.commander.showMoreOptions,
     ]);
@@ -203,9 +203,9 @@ suite('Commander file menu', () => {
       false,
     );
     assert.deepStrictEqual(labels(menu.items), [
-      strings.commander.tryEnterArchive,
+      strings.commander.openWithSevenZip,
     ]);
-    menu.choose(strings.commander.tryEnterArchive);
+    menu.choose(strings.commander.openWithSevenZip);
     assert.deepStrictEqual(menu.chosen, [{ archive: 'notes.txt' }]);
     assert.deepStrictEqual(
       labels(menuOf({ kind: 'items', names: ['a.zip', 'b.zip'] }, false).items),
@@ -258,9 +258,9 @@ suite('Commander file menu', () => {
       image: true,
     });
     assert.deepStrictEqual(labels(menu.items), [
-      strings.commander.tryEnterArchive,
+      strings.commander.openWithSevenZip,
     ]);
-    menu.choose(strings.commander.tryEnterArchive);
+    menu.choose(strings.commander.openWithSevenZip);
     assert.deepStrictEqual(menu.chosen, [{ archive: 'photo.png' }]);
     for (const target of [
       folderShown(false),

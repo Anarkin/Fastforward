@@ -981,7 +981,7 @@ export function plan({
 
   section(
     'archives',
-    `Archives to enter with Try Enter Archive in the menu of a file, or Mod+Left and Mod+Right on it: a zip of folders, tars plain and compressed, shown as the files of their tar, a document made of a zip, which Enter opens in its app, one compressed file, a zip inside a zip, an empty one, names Windows wrote in code page 852, names reaching outside the folder they would be extracted into, deep folders, ${(large ? 100_000 : 5000).toLocaleString('en-US')} files, a zip encrypted with the password playground, one with only some of its files encrypted with it, a 7z whose names are encrypted with it too, a zip encrypted with it holding a 7z whose names are encrypted with the password inner, a zip of images to see in thumbnails with Mod+2, flat with Ctrl+B too, a damaged one, one that is no archive${windows ? ', and one marked as downloaded' : ''}.`,
+    `Archives to enter with Open with 7-Zip... in the menu of a file, or Mod+Left and Mod+Right on it: a zip of folders, tars plain and compressed, shown as the files of their tar, a document made of a zip, which Enter opens in its app, one compressed file, a zip inside a zip, an empty one, names Windows wrote in code page 852, names reaching outside the folder they would be extracted into, deep folders, ${(large ? 100_000 : 5000).toLocaleString('en-US')} files, a zip encrypted with the password playground, one with only some of its files encrypted with it, a 7z whose names are encrypted with it too, a zip encrypted with it holding a 7z whose names are encrypted with the password inner, a zip of images to see in thumbnails with Mod+2, flat with Ctrl+B too, a damaged one, one that is no archive${windows ? ', and one marked as downloaded' : ''}.`,
   );
   const project = [
     { name: 'README.md', content: '# A project packed by the playground\n' },
@@ -1000,7 +1000,7 @@ export function plan({
   file('archives/report.docx', () =>
     docx([
       'A document made of a zip.',
-      'Enter opens it in its app, and Try Enter Archive shows the files it is made of.',
+      'Enter opens it in its app, and Open with 7-Zip... shows the files it is made of.',
     ]),
   );
   file('archives/notes.txt.gz', () => gzip(lines(200, (i) => sentence(i, 8))));

@@ -601,7 +601,7 @@ suite('App commander', () => {
     await zipRow.locator('.commander-name').click({ button: 'right' });
     await page
       .locator('.context-menu .menu-item', {
-        hasText: strings.commander.tryEnterArchive,
+        hasText: strings.commander.openWithSevenZip,
       })
       .click();
     await waitFor(
@@ -4315,7 +4315,7 @@ suite('App commander', () => {
         await appMenu.waitFor();
         assert.match(await selected(), /menu/);
         assert.deepStrictEqual(await appMenuItems(), [
-          strings.commander.tryEnterArchive,
+          strings.commander.openWithSevenZip,
           strings.commander.showMoreOptions,
         ]);
         const choosing = appMenu
@@ -4357,7 +4357,7 @@ suite('App commander', () => {
         await page.keyboard.press('Shift+F10');
         await appMenu.waitFor();
         assert.deepStrictEqual(await appMenuItems(), [
-          strings.commander.tryEnterArchive,
+          strings.commander.openWithSevenZip,
           strings.commander.showMoreOptions,
         ]);
         await page.keyboard.press('Escape');

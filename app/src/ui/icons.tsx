@@ -119,6 +119,16 @@ export function ErrorIcon() {
   );
 }
 
+export function SevenZipIcon() {
+  return (
+    <Icon className="seven-zip-icon">
+      <rect x="1.75" y="1.75" width="12.5" height="12.5" rx="1.5" />
+      <path d="M4 4.5h4.25L5.75 11.5" strokeWidth="1.7" />
+      <path d="M8.75 7.75h2.75l-2.75 3.75h2.75" />
+    </Icon>
+  );
+}
+
 export function FolderIcon() {
   return (
     <Icon className="folder-icon">
