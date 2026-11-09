@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
+import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import {
   progressOf,
@@ -353,15 +354,44 @@ suite('packing with 7-Zip', () => {
     ]);
   });
 
-  test('takes a warning of 7-Zip as packed with the reason it gives, as a file it could not read, and an error as refused', async () => {
+  test('takes a warning of 7-Zip as packed, naming the files it could not read and why, three of them and how many more, and an error as refused', async () => {
+    const locked =
+      'The process cannot access the file because it is being used by another process.';
+    const warned = (names: readonly string[]) =>
+      [
+        '',
+        `WARNING: ${locked}`,
+        names[0],
+        '',
+        '',
+        'WARNINGS for files:',
+        '',
+        ...names.map((name) => `${name} : ${locked}`),
+        '----------------',
+        `WARNING: Cannot open ${names.length} file`,
+        '',
+      ].join('\r\n');
+    assert.deepStrictEqual(
+      (await packedBy(plan, { code: 1, errors: warned(['docs/s1.txt']) }))
+        .result,
+      { kind: 'packed', warning: `docs/s1.txt: ${locked}` },
+    );
     assert.deepStrictEqual(
       (
         await packedBy(plan, {
           code: 1,
-          errors: '\nWARNINGS:\nThe process cannot access the file\n',
+          errors: warned(['a', 'b', 'c', 'd', 'e']),
         })
       ).result,
-      { kind: 'packed', warning: 'The process cannot access the file' },
+      {
+        kind: 'packed',
+        warning: [
+          `a: ${locked}`,
+          `b: ${locked}`,
+          `c: ${locked}`,
+          strings.commander.warnedMore(2),
+        ].join(' '),
+      },
     );
     assert.deepStrictEqual((await packedBy(plan)).result, { kind: 'packed' });
     assert.deepStrictEqual(
@@ -526,11 +556,21 @@ suite('sevenZipProgram', () => {
 });
 
 suite('the progress of an extraction', () => {
-  test('reads how far 7-Zip got, how many files it took out and the one it is taking, leaving out how far it got opening and scanning', () => {
+  test('reads how far 7-Zip got, how many files it took out and the one it is taking, adding or copying as it packs too, leaving out how far it got opening and scanning', () => {
     assert.deepStrictEqual(progressOf(' 18% 1029 - folder-0010/file.txt'), {
       percent: 18,
       files: 1029,
       current: 'folder-0010/file.txt',
+    });
+    assert.deepStrictEqual(progressOf('  6% 4 + s3.txt'), {
+      percent: 6,
+      files: 4,
+      current: 's3.txt',
+    });
+    assert.deepStrictEqual(progressOf(' 76% = big.bin'), {
+      percent: 76,
+      files: 0,
+      current: 'big.bin',
     });
     assert.deepStrictEqual(progressOf('  8% 496'), { percent: 8, files: 496 });
     assert.deepStrictEqual(progressOf('  0%'), { percent: 0, files: 0 });

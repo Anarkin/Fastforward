@@ -284,7 +284,7 @@ async function listed(
   return { kind: 'listed', items };
 }
 
-const progressPattern = /^(\d+)%(?:\s+(\d+))?(?:\s+-\s+(.+))?$/;
+const progressPattern = /^(\d+)%(?:\s+(\d+))?(?:\s+\S\s+(.+))?$/;
 
 export function progressOf(piece: string): ExtractProgress | undefined {
   const found = progressPattern.exec(piece.trim());
@@ -431,6 +431,38 @@ function passwordUsed(plan: PackPlan): boolean {
   );
 }
 
+const warnedFiles = 'WARNINGS for files:';
+const warningsShown = 3;
+
+function warningOf(run: SevenZipRun, file: string): string {
+  const lines = `${run.errors}\n${run.output}`
+    .split(/\r?\n/)
+    .map((line) => line.trim());
+  const start = lines.indexOf(warnedFiles);
+  const end = lines.findIndex((line, at) => at > start && /^-+$/.test(line));
+  const warned = (
+    start < 0 ? [] : lines.slice(start + 1, end < 0 ? undefined : end)
+  ).flatMap((line) => {
+    const named = line.indexOf(' : ');
+    return line === ''
+      ? []
+      : [
+          named < 0
+            ? line
+            : `${line.slice(0, named)}: ${line.slice(named + 3)}`,
+        ];
+  });
+  if (warned.length === 0) {
+    return reasonOf(run, file);
+  }
+  return [
+    ...warned.slice(0, warningsShown),
+    ...(warned.length > warningsShown
+      ? [strings.commander.warnedMore(warned.length - warningsShown)]
+      : []),
+  ].join(' ');
+}
+
 async function packed(
   sevenZip: SevenZip,
   plan: PackPlan,
@@ -449,7 +481,7 @@ async function packed(
     return { kind: 'packed' };
   }
   return run.code === 1
-    ? { kind: 'packed', warning: reasonOf(run, into) }
+    ? { kind: 'packed', warning: warningOf(run, into) }
     : { kind: 'refused', ...refusalOf(run, into) };
 }
 

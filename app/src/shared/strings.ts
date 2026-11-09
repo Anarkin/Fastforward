@@ -697,6 +697,7 @@ export const strings = {
       `Packed ${what} into "${archive}"`,
     packFailed: (name: string, reason: string) =>
       `"${name}" could not be packed: ${reason}`,
+    warnedMore: (count: number) => `And ${count.toLocaleString()} more.`,
     packedWithout: (name: string, reason: string) =>
       `"${name}" was packed without some of the files: ${reason}`,
     packingStopped: (archive: string) =>
