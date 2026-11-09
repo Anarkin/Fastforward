@@ -212,7 +212,30 @@ function commander(
   const archived = new Map<string, readonly ArchiveItem[] | string>();
   const openedArchives = new Map<string, OpenedArchive>();
   const archivesOf = new WeakMap<readonly ArchiveItem[], OpenedArchive>();
+  const copies = { folder: '', refused: undefined as string | undefined };
+  let extractions = 0;
   const archives: ArchiveAccess = {
+    extract: async (archive, paths, into) => {
+      if (copies.refused !== undefined) {
+        return { kind: 'refused', reason: copies.refused };
+      }
+      assert.notStrictEqual(copies.folder, '', 'a folder for the copies');
+      const extractedInto =
+        into ?? path.join(copies.folder, `work-${++extractions}`);
+      const items = archived.get(archive.file);
+      for (const item of typeof items === 'string' ? [] : (items ?? [])) {
+        if (
+          paths.some(
+            (asked) => item.path === asked || item.path.startsWith(`${asked}/`),
+          )
+        ) {
+          const copy = path.join(extractedInto, ...item.path.split('/'));
+          await fs.promises.mkdir(path.dirname(copy), { recursive: true });
+          await fs.promises.writeFile(copy, `the ${item.path} of the archive`);
+        }
+      }
+      return { kind: 'extracted', folder: extractedInto };
+    },
     open: (opening) => {
       const items = archived.get(opening);
       if (items === undefined || typeof items === 'string') {
@@ -400,6 +423,11 @@ function commander(
       };
     },
     archives,
+    get viewedCopies() {
+      return copies.folder === ''
+        ? undefined
+        : path.join(copies.folder, 'viewed');
+    },
     root,
   });
   const page = new CommanderPage();
@@ -531,6 +559,7 @@ function commander(
     clipboard,
     dragged,
     archived,
+    copies,
   };
 }
 
@@ -4407,7 +4436,7 @@ suite('Commander tool in archives', () => {
     );
   });
 
-  test('does nothing inside an archive that would change it or reach a file in it, as nothing is extracted yet, nor copies or moves into it', async () => {
+  test('does nothing inside an archive that would change it, drag out of it or go flat, as nothing is written to an archive yet, nor copies or moves into it', async () => {
     const { tool, page, send, notices, archived, ...done } = commander({
       [root]: [file('a.zip'), file('notes.txt')],
     });
@@ -4444,7 +4473,6 @@ suite('Commander tool in archives', () => {
     });
     await send({ ...inside, type: 'newFolder', name: 'made' });
     await send({ ...inside, type: 'paste' });
-    await send({ ...inside, type: 'copyToClipboard', names: ['top.txt'] });
     await send({ ...inside, type: 'drag', names: ['top.txt'] });
     await send({
       ...inside,
@@ -4461,17 +4489,7 @@ suite('Commander tool in archives', () => {
       command: 'newTerminal',
     });
     await send({ ...inside, type: 'addBookmark', folder: at('a.zip') });
-    await send({ ...inside, type: 'view', name: 'top.txt' });
-    await send({ ...inside, type: 'open', name: 'top.txt' });
     await send({ ...inside, type: 'flat', flat: true });
-    await send({
-      type: 'compare',
-      tab: '1',
-      files: [
-        { side: 'right', folder: at('a.zip'), name: 'top.txt' },
-        { side: 'left', folder: root, name: 'notes.txt' },
-      ],
-    });
     await tool.dropped(page, [at('notes.txt')], {
       type: 'drop',
       tab: '1',
@@ -4511,6 +4529,136 @@ suite('Commander tool in archives', () => {
         watchedTrees: [],
       },
     );
+  });
+
+  suite('reading its files', () => {
+    let copiesFolder: string;
+
+    beforeEach(() => {
+      copiesFolder = tempFolder('archive-copies');
+    });
+
+    afterEach(() => {
+      for (const copy of fs.readdirSync(copiesFolder, {
+        recursive: true,
+        encoding: 'utf8',
+      })) {
+        fs.chmodSync(path.join(copiesFolder, copy), 0o777);
+      }
+      removeFolder(copiesFolder);
+    });
+
+    const inArchive = async () => {
+      const made = commander({ [root]: [file('a.zip'), file('notes.txt')] });
+      made.archived.set(at('a.zip'), zipped);
+      made.copies.folder = copiesFolder;
+      await made.tool.show(made.page, tab);
+      await made.send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      return made;
+    };
+
+    test('views a file of an archive from a copy kept with the copies of viewed files, named as the file is', async () => {
+      const { send, viewed } = await inArchive();
+      await send({ type: 'view', tab: '1', side: 'right', name: 'top.txt' });
+
+      const [copy] = viewed;
+      assert.ok(copy !== undefined);
+      assert.strictEqual(path.basename(copy), 'top.txt');
+      assert.strictEqual(
+        path.relative(path.join(copiesFolder, 'viewed'), copy).split(path.sep)
+          .length,
+        2,
+      );
+      assert.strictEqual(
+        fs.readFileSync(copy, 'utf8'),
+        'the top.txt of the archive',
+      );
+    });
+
+    test('opens a file of an archive in the app the system opens it with from a read-only copy, so a change saved to it is not lost unnoticed', async () => {
+      const { send, opened } = await inArchive();
+      await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
+      await send({ type: 'open', tab: '1', side: 'right', name: 'readme.md' });
+
+      const [copy] = opened;
+      assert.ok(copy !== undefined);
+      assert.strictEqual(path.basename(copy), 'readme.md');
+      assert.strictEqual(
+        fs.readFileSync(copy, 'utf8'),
+        'the docs/readme.md of the archive',
+      );
+      assert.strictEqual(fs.statSync(copy).mode & 0o222, 0);
+    });
+
+    test('compares a file of an archive with one on disk from a copy of it, the first named the old side', async () => {
+      const { send, compared } = await inArchive();
+      await send({
+        type: 'compare',
+        tab: '1',
+        files: [
+          { side: 'right', folder: at('a.zip'), name: 'top.txt' },
+          { side: 'left', folder: root, name: 'notes.txt' },
+        ],
+      });
+
+      const [comparing] = compared;
+      assert.ok(comparing !== undefined);
+      assert.strictEqual(
+        fs.readFileSync(comparing.old, 'utf8'),
+        'the top.txt of the archive',
+      );
+      assert.strictEqual(comparing.new, at('notes.txt'));
+    });
+
+    test('puts copies of the files and folders of an archive asked for on the clipboard, the folders whole', async () => {
+      const { send, clipboard } = await inArchive();
+      await send({
+        type: 'copyToClipboard',
+        tab: '1',
+        side: 'right',
+        names: ['docs', 'top.txt'],
+      });
+
+      assert.deepStrictEqual(
+        clipboard.files.map((copy) => path.basename(copy)).toSorted(),
+        ['docs', 'top.txt'],
+      );
+      const docs = clipboard.files.find(
+        (copy) => path.basename(copy) === 'docs',
+      );
+      assert.ok(docs !== undefined);
+      assert.ok(fs.existsSync(path.join(docs, 'deep', 'notes.md')));
+    });
+
+    test('says a file of an archive is encrypted rather than reading it, and why nothing could be taken out of an archive', async () => {
+      const { send, notices, archived, copies, viewed, opened } =
+        await inArchive();
+      archived.set(at('a.zip'), [
+        ...zipped,
+        { ...archiveItem('secret.txt'), encrypted: true },
+      ]);
+      await send({ type: 'reread', tab: '1', side: 'right' });
+      await send({ type: 'view', tab: '1', side: 'right', name: 'secret.txt' });
+      copies.refused = 'Data Error';
+      await send({ type: 'open', tab: '1', side: 'right', name: 'top.txt' });
+
+      assert.deepStrictEqual(notices, [
+        {
+          level: 'error',
+          message: strings.commander.encryptedInArchive('secret.txt'),
+        },
+        {
+          level: 'error',
+          message: strings.commander.couldNotExtract('Data Error'),
+        },
+      ]);
+      assert.deepStrictEqual([viewed, opened], [[], []]);
+    });
   });
 
   test('gives the folder holding the archive as the folder of the tab while its active side is inside the archive', async () => {

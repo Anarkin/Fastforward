@@ -129,8 +129,18 @@ export type Opening =
   | { readonly kind: 'opened'; readonly archive: OpenedArchive }
   | { readonly kind: 'refused'; readonly reason: string };
 
+export type Extracting =
+  | { readonly kind: 'extracted'; readonly folder: string }
+  | { readonly kind: 'refused'; readonly reason: string };
+
 export interface ArchiveAccess {
   open(file: string, signal?: AbortSignal): Promise<Opening>;
+  extract(
+    archive: OpenedArchive,
+    paths: readonly string[],
+    into?: string,
+    signal?: AbortSignal,
+  ): Promise<Extracting>;
   within(
     folder: string,
   ): { readonly archive: OpenedArchive; readonly inner: string[] } | undefined;
@@ -162,6 +172,22 @@ export async function filesUnder(folder: string): Promise<string[]> {
   return found
     .filter((entry) => entry.isFile())
     .map((entry) => path.join(entry.parentPath, entry.name));
+}
+
+export async function itemsAt(
+  folder: string,
+  depth: number,
+): Promise<string[]> {
+  let at = folder;
+  for (let level = 0; level < depth; level++) {
+    const [only] = await fs.promises.readdir(at).catch(() => []);
+    if (only === undefined) {
+      return [];
+    }
+    at = path.join(at, only);
+  }
+  const found = await fs.promises.readdir(at).catch(() => []);
+  return found.map((name) => path.join(at, name));
 }
 
 function reasonOfError(error: unknown): string {
@@ -256,6 +282,27 @@ export class Archives implements ArchiveAccess {
             tree: new ArchiveTree(listing.items, this.platform),
           },
         };
+  }
+
+  async extract(
+    archive: OpenedArchive,
+    paths: readonly string[],
+    into?: string,
+    signal?: AbortSignal,
+  ): Promise<Extracting> {
+    if (this.reader === undefined) {
+      return { kind: 'refused', reason: strings.commander.noSevenZip };
+    }
+    const folder = into ?? (await this.workFolder());
+    const refused = await this.reader.extract(
+      archive.source,
+      paths,
+      folder,
+      signal,
+    );
+    return refused === undefined
+      ? { kind: 'extracted', folder }
+      : { kind: 'refused', reason: refused };
   }
 
   within(

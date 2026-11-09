@@ -1049,7 +1049,7 @@ suite('The commander store in flat view', () => {
 });
 
 suite('The commander store in archives', () => {
-  test('asks and sends nothing that would change an archive or reach a file in it, for a side inside one or a copy into one, sending what moves through it and the archive to enter from a folder', () => {
+  test('asks and sends nothing that would change an archive, drag out of it or go flat, for a side inside one or a copy into one, sending what moves through it or reads from it and the archive to enter from a folder', () => {
     const { posted, store } = shown();
     store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
     store.getState().receive({ ...listing('D:\\photos'), side: 'right' });
@@ -1061,17 +1061,16 @@ suite('The commander store in archives', () => {
     actions.askTransfer('right', ['b.txt'], true);
     actions.askNewFolder('left');
     actions.paste('left');
-    actions.copyToClipboard('left', ['a.txt']);
     actions.drag('left', ['a.txt']);
-    actions.viewFile('left', 'a.txt');
     actions.openRepository('left', 'docs');
     actions.folderCommand('left', 'docs', 'newTerminal');
     actions.addBookmark('left');
     actions.shellMenu('left', ['a.txt'], { x: 1, y: 1 }, false);
     actions.flat('left');
-    actions.compare();
     actions.enterArchive('left', 'inner.zip');
     actions.open('left', 'docs');
+    actions.viewFile('left', 'a.txt');
+    actions.copyToClipboard('left', ['a.txt']);
     actions.enterArchive('right', 'b.zip');
 
     const { deleting, transferring, makingFolder } = store.getState();
@@ -1086,6 +1085,20 @@ suite('The commander store in archives', () => {
         side: 'left',
         folder: 'C:\\a.zip',
         name: 'docs',
+      },
+      {
+        type: 'view',
+        tab: '1',
+        side: 'left',
+        folder: 'C:\\a.zip',
+        name: 'a.txt',
+      },
+      {
+        type: 'copyToClipboard',
+        tab: '1',
+        side: 'left',
+        folder: 'C:\\a.zip',
+        names: ['a.txt'],
       },
       {
         type: 'enterArchive',

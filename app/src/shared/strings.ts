@@ -548,6 +548,10 @@ export const strings = {
     notArchive: (name: string, reason: string) =>
       `${name} could not be opened as an archive: ${reason}`,
     tryEnterArchive: 'Try Enter Archive',
+    encryptedInArchive: (name: string) =>
+      `${name} is encrypted, and no encrypted file is read from an archive yet.`,
+    couldNotExtract: (reason: string) =>
+      `Nothing could be taken out of the archive: ${reason}`,
     sevenZipEnded: (code: number | null) =>
       code === null ? '7-Zip was stopped.' : `7-Zip ended with code ${code}.`,
     noSevenZip: 'The app has no 7-Zip to open archives with.',

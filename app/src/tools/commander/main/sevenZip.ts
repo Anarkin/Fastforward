@@ -193,7 +193,7 @@ async function extracted(
       ],
       signal,
     );
-    return run.code === 0 ? undefined : reasonOf(run, file);
+    return run.code === 0 || run.code === 1 ? undefined : reasonOf(run, file);
   } finally {
     await fs.promises.rm(list, { force: true });
   }

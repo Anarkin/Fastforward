@@ -583,13 +583,13 @@ suite('App commander', () => {
     );
   });
 
-  test('enters a zip from the menu of the file through 7-Zip, listing what it holds as the folders of the side, and leaves it going back selecting the zip', async () => {
+  test('enters a zip from the menu of the file through 7-Zip, listing what it holds as the folders of the side, views a file of it on F3 from a copy, and leaves it going back selecting the zip', async () => {
     const zip = path.join(opened, 'packed.zip');
     fs.writeFileSync(
       zip,
       storedZip([
         ['docs/readme.md', '# readme'],
-        ['top.txt', 'top'],
+        ['top.txt', 'the top of the zip'],
       ]),
     );
     const zipRow = right().locator('.commander-row', { hasText: 'packed' });
@@ -604,6 +604,12 @@ suite('App commander', () => {
       async () => (await rowNames()).join() === '..,docs,top.txt',
       'the zip to be listed as a folder',
     );
+    await select('top');
+    await page.keyboard.press('F3');
+    await page.locator('.tabs .tab.active', { hasText: 'top.txt' }).waitFor();
+    await page.locator('.viewer', { hasText: 'the top of the zip' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
 
     await right().locator('.virtual-rows').focus();
     await page.keyboard.press('Alt+ArrowLeft');

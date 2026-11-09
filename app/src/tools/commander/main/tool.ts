@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../shared/strings';
@@ -86,7 +87,7 @@ import {
   pdfType,
   type PdfPlace,
 } from '../../../shared/pdf';
-import type { ArchiveAccess, Opening } from './archives';
+import { itemsAt, type ArchiveAccess, type Opening } from './archives';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
@@ -158,6 +159,7 @@ export interface CommanderAccess {
   ) => Promise<void>;
   readonly connectTransfer: ConnectTransfer;
   readonly archives?: ArchiveAccess;
+  readonly viewedCopies?: string;
   readonly root: string;
 }
 
@@ -483,7 +485,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'view':
         return this.view(
           page,
-          this.diskPane(page, message.tab, message.side, message.folder),
+          this.namingPane(page, message.tab, message.side, message.folder),
           message.name,
         );
       case 'shellMenu':
@@ -1013,18 +1015,17 @@ export class CommanderTool implements Tool<'commander'> {
     if (entry === undefined) {
       return;
     }
-    const opened = path.join(folder, name);
     if (!entry.folder && shown.pane.archive !== undefined) {
+      const [copy] = (await this.copiesIn(page, shown.pane, [name])) ?? [];
+      if (copy !== undefined) {
+        await fs.promises.chmod(copy, 0o444);
+        await this.openFileNamed(page, copy, name);
+      }
       return;
     }
+    const opened = path.join(folder, name);
     if (!entry.folder) {
-      const failure = await this.access.openFile?.(opened);
-      if (failure) {
-        this.shell.notice(page, {
-          level: 'error',
-          message: strings.commander.openFailed(name, failure),
-        });
-      }
+      await this.openFileNamed(page, opened, name);
       return;
     }
     const target = entry.link
@@ -1040,22 +1041,90 @@ export class CommanderTool implements Tool<'commander'> {
     );
   }
 
-  private view(
+  private async openFileNamed(
+    page: Page,
+    file: string,
+    name: string,
+  ): Promise<void> {
+    const failure = await this.access.openFile?.(file);
+    if (failure) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.openFailed(name, failure),
+      });
+    }
+  }
+
+  private async copiesIn(
+    page: Page,
+    pane: Pane,
+    names: readonly string[],
+    into?: string,
+  ): Promise<string[] | undefined> {
+    const { archives } = this.access;
+    const inside = archives?.within(pane.folder);
+    if (archives === undefined || inside === undefined) {
+      return undefined;
+    }
+    const items = names.flatMap((name) => {
+      const item = inside.archive.tree.item(inside.inner, name);
+      return item === undefined ? [] : [{ name, ...item }];
+    });
+    if (items.length !== names.length) {
+      return undefined;
+    }
+    const encrypted = items.find((item) => item.encrypted);
+    if (encrypted !== undefined) {
+      this.refuse(page, strings.commander.encryptedInArchive(encrypted.name));
+      return undefined;
+    }
+    const extracted = await archives.extract(
+      inside.archive,
+      items.map((item) => item.path),
+      into,
+    );
+    if (extracted.kind === 'refused') {
+      this.refuse(page, strings.commander.couldNotExtract(extracted.reason));
+      return undefined;
+    }
+    return itemsAt(extracted.folder, inside.inner.length);
+  }
+
+  private async view(
     page: Page,
     shown: ShownPane | undefined,
     name: unknown,
   ): Promise<void> {
     const entry = listedIn(shown?.pane, name);
-    return shown === undefined ||
+    if (
+      shown === undefined ||
       typeof name !== 'string' ||
       entry === undefined ||
       entry.folder
-      ? Promise.resolve()
-      : this.shell.openView(
-          page,
-          'commander',
-          path.join(shown.pane.folder, name),
-        );
+    ) {
+      return;
+    }
+    if (shown.pane.archive === undefined) {
+      await this.shell.openView(
+        page,
+        'commander',
+        path.join(shown.pane.folder, name),
+      );
+      return;
+    }
+    const { viewedCopies } = this.access;
+    const [copy] =
+      (await this.copiesIn(
+        page,
+        shown.pane,
+        [name],
+        viewedCopies === undefined
+          ? undefined
+          : path.join(viewedCopies, randomUUID()),
+      )) ?? [];
+    if (copy !== undefined) {
+      await this.shell.openView(page, 'commander', copy);
+    }
   }
 
   private async delete(
@@ -1215,6 +1284,19 @@ export class CommanderTool implements Tool<'commander'> {
       names,
     }: Extract<CommanderToHost, { type: 'copyToClipboard' }>,
   ): Promise<void> {
+    const shown = this.namingPane(page, tab, side, folder);
+    if (
+      shown?.pane.archive !== undefined &&
+      Array.isArray(names) &&
+      names.length > 0 &&
+      names.every((name: unknown) => listedIn(shown.pane, name) !== undefined)
+    ) {
+      const copies = await this.copiesIn(page, shown.pane, names);
+      if (copies !== undefined) {
+        await this.access.clipboardFiles?.write(copies);
+      }
+      return;
+    }
     const files = this.listedFiles(page, tab, side, folder, names);
     if (files !== undefined) {
       await this.access.clipboardFiles?.write(files);
@@ -1437,26 +1519,50 @@ export class CommanderTool implements Tool<'commander'> {
     if (!Array.isArray(files) || files.length !== 2) {
       return Promise.resolve();
     }
-    const paths = files.map((file: unknown) => {
+    const named = files.map((file: unknown) => {
       if (typeof file !== 'object' || file === null) {
         return undefined;
       }
       const side = 'side' in file ? file.side : undefined;
       const folder = 'folder' in file ? file.folder : undefined;
       const name = 'name' in file ? file.name : undefined;
-      const shown = this.diskPane(page, tab, side, folder);
+      const shown = this.namingPane(page, tab, side, folder);
       const entry = listedIn(shown?.pane, name);
       return shown === undefined ||
         typeof name !== 'string' ||
         entry === undefined ||
         entry.folder
         ? undefined
-        : path.join(shown.pane.folder, name);
+        : { pane: shown.pane, name };
     });
+    if (named.some((each) => each === undefined)) {
+      return Promise.resolve();
+    }
+    return this.compareFiles(
+      page,
+      named.flatMap((each) => (each === undefined ? [] : [each])),
+    );
+  }
+
+  private async compareFiles(
+    page: Page,
+    named: readonly { readonly pane: Pane; readonly name: string }[],
+  ): Promise<void> {
+    const paths: string[] = [];
+    for (const { pane, name } of named) {
+      const [file] =
+        pane.archive === undefined
+          ? [path.join(pane.folder, name)]
+          : ((await this.copiesIn(page, pane, [name])) ?? []);
+      if (file === undefined) {
+        return;
+      }
+      paths.push(file);
+    }
     const [old, changed] = paths;
-    return old === undefined || changed === undefined
-      ? Promise.resolve()
-      : this.shell.openCompare(page, 'git', { old, new: changed });
+    if (old !== undefined && changed !== undefined) {
+      await this.shell.openCompare(page, 'git', { old, new: changed });
+    }
   }
 
   private async startViewing(

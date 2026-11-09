@@ -763,7 +763,7 @@ export function createCommanderStore(
       step: (side, step) =>
         onTab((tab) => post({ type: 'step', tab, side, step })),
       viewFile: (side, name) =>
-        onDisk(side, (tab, folder) =>
+        onPane(side, (tab, folder) =>
           post({ type: 'view', tab, side, folder, name }),
         ),
       openRepository: (side, name) =>
@@ -807,12 +807,6 @@ export function createCommanderStore(
         onTab((tab) => {
           const state = get();
           const { active, panes } = state.view;
-          if (
-            panes.left?.archive !== undefined ||
-            panes.right?.archive !== undefined
-          ) {
-            return;
-          }
           const files = filesToCompare(active, panes, {
             left: shownRowsOf(state, 'left').rows,
             right: shownRowsOf(state, 'right').rows,
@@ -875,7 +869,7 @@ export function createCommanderStore(
       },
       cancelTransfer: () => set({ transferring: undefined }),
       copyToClipboard: (side, names) =>
-        onDisk(side, (tab, folder) =>
+        onPane(side, (tab, folder) =>
           post({ type: 'copyToClipboard', tab, side, folder, names }),
         ),
       dropOn: (side, files, into, move) =>

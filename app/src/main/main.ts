@@ -589,6 +589,7 @@ async function start(asked: readonly string[]): Promise<void> {
       process.platform,
       archiveWork.next,
     ),
+    viewedCopies: viewedFiles,
     realPath: (link) => fs.promises.realpath(link),
     openFile: (file) => shell.openPath(file),
     trash: (file) => shell.trashItem(file),
