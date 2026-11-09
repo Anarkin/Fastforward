@@ -215,6 +215,7 @@ export type ViewAction =
       readonly walk: number;
       readonly rows: readonly Row[];
       readonly shown: FlatShown | undefined;
+      readonly complete: boolean;
     }
   | {
       readonly type: 'flatProgress';
@@ -377,6 +378,7 @@ function flatSelection(
   pane: PaneView,
   rows: readonly Row[],
   shown: FlatShown | undefined,
+  complete: boolean,
 ): string | undefined {
   const { selected } = pane;
   if (shown !== undefined) {
@@ -389,7 +391,9 @@ function flatSelection(
   if (before === undefined || before.index !== -1) {
     return selectionAfter(before, pane.folder, rows, undefined);
   }
-  return pane.flat?.progress.reading === true ? selected : rows.at(0)?.key;
+  return pane.flat?.progress.reading === true || !complete
+    ? selected
+    : rows.at(0)?.key;
 }
 
 function folderOfSelected(pane: PaneView): string | undefined {
@@ -402,11 +406,12 @@ function withFlatRows(
   pane: PaneView,
   rows: readonly Row[],
   shown: FlatShown | undefined,
+  complete: boolean,
 ): PaneView {
   return {
     ...pane,
     rows,
-    selected: flatSelection(pane, rows, shown),
+    selected: flatSelection(pane, rows, shown, complete),
     marked: marksKept(pane, pane.folder, rows),
     flat: pane.flat && { ...pane.flat, shown },
   };
@@ -570,7 +575,7 @@ export function reduceView(
         ? withPane(
             view,
             action.side,
-            withFlatRows(pane, action.rows, action.shown),
+            withFlatRows(pane, action.rows, action.shown, action.complete),
           )
         : view;
     }

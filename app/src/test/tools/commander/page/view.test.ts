@@ -644,6 +644,7 @@ const flatRows = (
   walk: 1,
   rows: [parentRow, ...keys.map(rowNamed)],
   shown: undefined,
+  complete: true,
   ...extra,
 });
 
@@ -768,6 +769,27 @@ suite('The view of a flat side', () => {
       flatRows(['b.txt', 'sub/a.txt']),
     );
     assert.strictEqual(fromFolder.panes.left?.selected, '..');
+  });
+
+  test('keeps the file selected before it selected while the rows that came lack it but not yet every file told, even once the reading ended, and the first row once they hold every file told and it is gone', () => {
+    const done = { reading: false, stopped: false, folders: 2, failed: 0 };
+    const behind = run(
+      { type: 'show', tab: '1' },
+      listing('/a', [entry('sub', { folder: true }), entry('b.txt')]),
+      { type: 'select', side: 'left', key: 'b.txt' },
+      listing('/a', [], { flat: 1 }),
+      { type: 'flatProgress', tab: '1', side: 'left', walk: 1, progress: done },
+      flatRows(['sub/a.txt'], { complete: false }),
+    );
+    assert.strictEqual(behind.panes.left?.selected, 'b.txt');
+    assert.strictEqual(
+      reduceView(behind, flatRows(['b.txt', 'sub/a.txt'])).panes.left?.selected,
+      'b.txt',
+    );
+    assert.strictEqual(
+      reduceView(behind, flatRows(['sub/a.txt'])).panes.left?.selected,
+      '..',
+    );
   });
 
   test('selects the folder under its own that the file selected is in once it is listed alone again', () => {

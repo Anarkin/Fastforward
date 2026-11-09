@@ -107,6 +107,43 @@ suite('The rows of flat views', () => {
     assert.strictEqual(flat.built('a', 2), undefined);
   });
 
+  test('says whether the rows it built hold every file told, as rows the worker sorted before the last files came lack them', () => {
+    const listeners: ((event: { readonly data: FromFlatWorker }) => void)[] =
+      [];
+    const worker: FlatWorker = {
+      postMessage: () => undefined,
+      addEventListener: (_type, listener) => listeners.push(listener),
+    };
+    const flat = new FlatLists(
+      () => worker,
+      () => undefined,
+      { now: () => 0, later: (run) => run() },
+    );
+    const answer = (batch: number, order: readonly number[]) => {
+      for (const listener of listeners) {
+        listener({
+          data: {
+            type: 'order',
+            pane: 'a',
+            walk: 1,
+            batch,
+            query: '',
+            order: Uint32Array.from(order),
+            shown: undefined,
+          },
+        });
+      }
+      const built = flat.built('a', 1);
+      return [built?.rows.map((row) => row.key), built?.complete];
+    };
+    flat.ensure('a', 1, false, choices);
+    flat.files('a', 1, [{ under: '', entries: [file('a.txt')] }]);
+    flat.files('a', 1, [{ under: 'sub/', entries: [file('b.txt')] }]);
+
+    assert.deepStrictEqual(answer(1, [0]), [['a.txt'], false]);
+    assert.deepStrictEqual(answer(2, [0, 1]), [['a.txt', 'sub/b.txt'], true]);
+  });
+
   test('gives the rows the folder they are in and the parts of their name', () => {
     const { flat, sort } = lists();
     flat.ensure('a', 1, false, choices);

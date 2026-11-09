@@ -605,6 +605,7 @@ export function createCommanderStore(
               walk: flat.walk,
               rows: built.rows,
               shown: built.shown,
+              complete: built.complete,
             }),
           }));
         }
