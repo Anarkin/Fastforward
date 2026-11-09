@@ -624,6 +624,62 @@ suite('App commander', () => {
     );
   });
 
+  test('enters a zip on its own side with Mod+Right, and copies a folder of it into the folder of the other side on F5 once confirmed, taken out with 7-Zip through the process that copies', async () => {
+    const zip = path.join(opened, 'packed-copy.zip');
+    const into = path.join(opened, 'unpackinto');
+    fs.mkdirSync(into);
+    fs.writeFileSync(
+      zip,
+      storedZip([
+        ['docs/readme.md', '# readme'],
+        ['top.txt', 'the top of the zip'],
+      ]),
+    );
+    const left = page.locator('.commander-pane').nth(0);
+    const popup = page.locator('.confirm-popup');
+    await select('unpackinto');
+    await page.keyboard.press('ControlOrMeta+ArrowLeft');
+    await waitFor(
+      async () => (await left.locator('.column-name').textContent()) === into,
+      'the left side to open the target',
+    );
+    await select('packed-copy');
+    await page.keyboard.press('ControlOrMeta+ArrowRight');
+    await waitFor(
+      async () => (await rowNames()).join() === '..,docs,top.txt',
+      'the zip to be entered on its own side',
+    );
+
+    await select('docs');
+    await page.keyboard.press('F5');
+    await popup.waitFor();
+    await page.keyboard.press('Enter');
+    await waitFor(
+      () => fs.existsSync(path.join(into, 'docs', 'readme.md')),
+      'the folder to be copied out of the zip',
+    );
+    await page.locator('.transfer-popup').waitFor({ state: 'detached' });
+    assert.strictEqual(
+      fs.readFileSync(path.join(into, 'docs', 'readme.md'), 'utf8'),
+      '# readme',
+    );
+
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('Alt+ArrowLeft');
+    await waitFor(
+      async () => (await selected()).includes('packed-copy'),
+      'the folder of the zip with the zip selected',
+    );
+    fs.rmSync(zip);
+    fs.rmSync(into, { recursive: true });
+    await waitFor(async () => {
+      const names = await rowNames();
+      return (
+        !names.includes('packed-copy.zip') && !names.includes('unpackinto')
+      );
+    }, 'the zip and the folder copied into to be gone');
+  });
+
   test('marks a folder that is a repository with the git icon in its Ext column, and no other, opening it in a git tab on a click of the icon', async () => {
     const made = path.join(folder, 'made-repository');
     execFileSync('git', ['init', '--quiet', made]);

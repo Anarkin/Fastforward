@@ -87,7 +87,13 @@ import {
   pdfType,
   type PdfPlace,
 } from '../../../shared/pdf';
-import { itemsAt, type ArchiveAccess, type Opening } from './archives';
+import {
+  itemsAt,
+  type ArchiveAccess,
+  type OpenedArchive,
+  type Opening,
+} from './archives';
+import { unpackingFirst } from './unpacking';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
@@ -1055,12 +1061,18 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private async copiesIn(
+  private archiveItems(
     page: Page,
     pane: Pane,
     names: readonly string[],
-    into?: string,
-  ): Promise<string[] | undefined> {
+  ):
+    | {
+        readonly archives: ArchiveAccess;
+        readonly archive: OpenedArchive;
+        readonly inner: readonly string[];
+        readonly paths: readonly string[];
+      }
+    | undefined {
     const { archives } = this.access;
     const inside = archives?.within(pane.folder);
     if (archives === undefined || inside === undefined) {
@@ -1078,16 +1090,31 @@ export class CommanderTool implements Tool<'commander'> {
       this.refuse(page, strings.commander.encryptedInArchive(encrypted.name));
       return undefined;
     }
-    const extracted = await archives.extract(
-      inside.archive,
-      items.map((item) => item.path),
-      into,
-    );
+    return {
+      archives,
+      archive: inside.archive,
+      inner: inside.inner,
+      paths: items.map((item) => item.path),
+    };
+  }
+
+  private async copiesIn(
+    page: Page,
+    pane: Pane,
+    names: readonly string[],
+    into?: string,
+  ): Promise<string[] | undefined> {
+    const found = this.archiveItems(page, pane, names);
+    if (found === undefined) {
+      return undefined;
+    }
+    const { archives, archive, inner, paths } = found;
+    const extracted = await archives.extract(archive, paths, into);
     if (extracted.kind === 'refused') {
       this.refuse(page, strings.commander.couldNotExtract(extracted.reason));
       return undefined;
     }
-    return itemsAt(extracted.folder, inside.inner.length);
+    return itemsAt(extracted.folder, inner.length);
   }
 
   private async view(
@@ -1195,7 +1222,7 @@ export class CommanderTool implements Tool<'commander'> {
       move,
     }: Extract<CommanderToHost, { type: 'transfer' }>,
   ): void {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.namingPane(page, tab, side, folder);
     const other = shown && this.panes.get(shown.tab)?.[otherSide(shown.side)];
     if (
       shown === undefined ||
@@ -1211,6 +1238,12 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
+    if (shown.pane.archive !== undefined) {
+      if (!move) {
+        this.transferOut(page, shown.pane, target, names);
+      }
+      return;
+    }
     if (shown.pane.elevated === true || other.elevated === true) {
       this.refuse(page, strings.commander.transferAsAdministrator);
       return;
@@ -1224,6 +1257,40 @@ export class CommanderTool implements Tool<'commander'> {
       folder: shown.pane.folder,
       names,
     });
+  }
+
+  private transferOut(
+    page: Page,
+    pane: Pane,
+    target: string,
+    names: readonly string[],
+  ): void {
+    const found = this.archiveItems(page, pane, names);
+    if (found === undefined) {
+      return;
+    }
+    const { archives, archive, inner, paths } = found;
+    this.transfers.start(
+      {
+        plan: {
+          sources: names.map((name) => path.join(pane.folder, name)),
+          target,
+          move: false,
+        },
+        folder: pane.folder,
+        names,
+      },
+      unpackingFirst(
+        {
+          archives,
+          archive,
+          paths,
+          depth: inner.length,
+          ...archive.tree.totals(inner, names),
+        },
+        this.access.connectTransfer,
+      ),
+    );
   }
 
   private refuse(page: Page, message: string): void {

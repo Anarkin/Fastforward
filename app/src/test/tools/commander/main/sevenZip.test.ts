@@ -1,7 +1,9 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
+import { removeFolder, tempFolder } from '../../../repositories';
 import {
+  progressOf,
   reasonOf,
   sevenZipProgram,
   sevenZipReader,
@@ -253,5 +255,44 @@ suite('sevenZipProgram', () => {
       }),
       path.join('repo', 'build', '7zip', 'darwin-arm64', '7zz'),
     );
+  });
+});
+
+suite('the progress of an extraction', () => {
+  test('reads how far 7-Zip got, how many files it took out and the one it is taking, leaving out how far it got opening and scanning', () => {
+    assert.deepStrictEqual(progressOf(' 18% 1029 - folder-0010/file.txt'), {
+      percent: 18,
+      files: 1029,
+      current: 'folder-0010/file.txt',
+    });
+    assert.deepStrictEqual(progressOf('  8% 496'), { percent: 8, files: 496 });
+    assert.deepStrictEqual(progressOf('  0%'), { percent: 0, files: 0 });
+    assert.strictEqual(progressOf(' 81% 4096 Open'), undefined);
+    assert.strictEqual(progressOf('  0M Scan C:/archives/'), undefined);
+  });
+
+  test('asks 7-Zip for its progress alone when the extraction is followed, telling the last of each piece of what it prints, a piece cut between two reads too', async () => {
+    const asked: (readonly string[])[] = [];
+    const told: unknown[] = [];
+    const reader = sevenZipReader((args, _signal, onOutput) => {
+      asked.push(args);
+      for (const text of ['  0%\r    \r 12% 3 - a', '.txt\r', '\r 50% 7']) {
+        onOutput?.(text);
+      }
+      return Promise.resolve({ code: 0, output: '', errors: '' });
+    });
+    const into = path.join(tempFolder('progress'), 'out');
+    try {
+      await reader.extract('a.zip', ['a.txt'], into, undefined, (progress) =>
+        told.push(progress),
+      );
+    } finally {
+      removeFolder(path.dirname(into));
+    }
+    assert.ok(asked[0]?.includes('-bsp1') && asked[0].includes('-bso0'));
+    assert.deepStrictEqual(told, [
+      { percent: 0, files: 0 },
+      { percent: 12, files: 3, current: 'a.txt' },
+    ]);
   });
 });

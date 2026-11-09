@@ -4436,7 +4436,7 @@ suite('Commander tool in archives', () => {
     );
   });
 
-  test('does nothing inside an archive that would change it, drag out of it or go flat, as nothing is written to an archive yet, nor copies or moves into it', async () => {
+  test('does nothing inside an archive that would change it, move out of it, drag out of it or go flat, as nothing is written to an archive yet, nor copies or moves into it', async () => {
     const { tool, page, send, notices, archived, ...done } = commander({
       [root]: [file('a.zip'), file('notes.txt')],
     });
@@ -4461,7 +4461,7 @@ suite('Commander tool in archives', () => {
       type: 'transfer',
       names: ['top.txt'],
       target: root,
-      move: false,
+      move: true,
     });
     await send({
       type: 'transfer',
@@ -4633,6 +4633,48 @@ suite('Commander tool in archives', () => {
       );
       assert.ok(docs !== undefined);
       assert.ok(fs.existsSync(path.join(docs, 'deep', 'notes.md')));
+    });
+
+    test('copies the items asked for out of an archive into the folder of the other side, taking them out first and then moving them from there through a transfer, its popup naming the items of the archive', async () => {
+      const { send, page, transfers } = await inArchive();
+      await send({
+        type: 'transfer',
+        tab: '1',
+        side: 'right',
+        names: ['docs', 'top.txt'],
+        target: root,
+        move: false,
+      });
+      await waitFor(
+        () => plansOf(transfers).length === 1,
+        'the copy to start once the items are taken out',
+      );
+
+      const [moving] = plansOf(transfers);
+      assert.ok(moving !== undefined);
+      assert.deepStrictEqual(
+        [
+          moving.sources.map((source) => path.basename(source)).toSorted(),
+          moving.target,
+          moving.move,
+        ],
+        [['docs', 'top.txt'], root, true],
+      );
+      assert.ok(
+        moving.sources.every((source) => source.startsWith(copiesFolder)),
+      );
+      assert.ok(
+        fs.existsSync(
+          path.join(path.dirname(moving.sources[0] ?? ''), 'docs', 'deep'),
+        ),
+      );
+      const shown = page
+        .of('transfer')
+        .findLast((message) => message.view !== undefined)?.view;
+      assert.deepStrictEqual(
+        [shown?.move, shown?.items, shown?.target],
+        [false, 2, root],
+      );
     });
 
     test('says a file of an archive is encrypted rather than reading it, and why nothing could be taken out of an archive', async () => {

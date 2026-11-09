@@ -851,7 +851,7 @@ export function createCommanderStore(
       },
       cancelDelete: () => set({ deleting: undefined }),
       askTransfer: (side, names, move) =>
-        onDisk(side, (tab, folder) => {
+        (move ? onDisk : onPane)(side, (tab, folder) => {
           const other = get().view.panes[otherSide(side)];
           const target = other?.folder;
           if (target !== undefined && other?.archive === undefined) {

@@ -2,7 +2,12 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../shared/strings';
-import type { ArchiveItem, ArchiveListing, ArchiveReader } from './archives';
+import type {
+  ArchiveItem,
+  ArchiveListing,
+  ArchiveReader,
+  ExtractProgress,
+} from './archives';
 
 export interface SevenZipRun {
   readonly code: number | null;
@@ -13,6 +18,7 @@ export interface SevenZipRun {
 export type SevenZip = (
   args: readonly string[],
   signal?: AbortSignal,
+  onOutput?: (text: string) => void,
 ) => Promise<SevenZipRun>;
 
 export function sevenZipProgram(options: {
@@ -38,7 +44,7 @@ function decoded(chunks: readonly Buffer[]): string {
 }
 
 export function sevenZipAt(program: string): SevenZip {
-  return (args, signal) =>
+  return (args, signal, onOutput) =>
     new Promise((resolve, reject) => {
       const child = spawn(program, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -47,7 +53,11 @@ export function sevenZipAt(program: string): SevenZip {
       });
       const output: Buffer[] = [];
       const errors: Buffer[] = [];
-      child.stdout.on('data', (chunk: Buffer) => output.push(chunk));
+      const streamed = new TextDecoder();
+      child.stdout.on('data', (chunk: Buffer) => {
+        output.push(chunk);
+        onOutput?.(streamed.decode(chunk, { stream: true }));
+      });
       child.stderr.on('data', (chunk: Buffer) => errors.push(chunk));
       child.once('error', reject);
       child.once('close', (code) =>
@@ -199,12 +209,44 @@ async function listed(
   return { kind: 'listed', items };
 }
 
+const progressPattern = /^(\d+)%(?:\s+(\d+))?(?:\s+-\s+(.+))?$/;
+
+export function progressOf(piece: string): ExtractProgress | undefined {
+  const found = progressPattern.exec(piece.trim());
+  if (found === null) {
+    return undefined;
+  }
+  const [, percent = '0', files = '0', current] = found;
+  return {
+    percent: Number(percent),
+    files: Number(files),
+    ...(current !== undefined && { current: current.replaceAll('\\', '/') }),
+  };
+}
+
+function progressed(
+  onProgress: (progress: ExtractProgress) => void,
+): (text: string) => void {
+  let left = '';
+  return (text) => {
+    const pieces = `${left}${text}`.split(/[\r\n]/);
+    left = pieces.pop() ?? '';
+    const last = pieces
+      .map(progressOf)
+      .findLast((progress) => progress !== undefined);
+    if (last !== undefined) {
+      onProgress(last);
+    }
+  };
+}
+
 async function extracted(
   sevenZip: SevenZip,
   file: string,
   paths: readonly string[],
   into: string,
   signal?: AbortSignal,
+  onProgress?: (progress: ExtractProgress) => void,
 ): Promise<string | undefined> {
   await fs.promises.mkdir(into, { recursive: true });
   const list = `${into}.paths`;
@@ -219,12 +261,14 @@ async function extracted(
         '-spd',
         '-sccUTF-8',
         '-scsUTF-8',
+        ...(onProgress === undefined ? [] : ['-bso0', '-bsp1']),
         `-o${into}`,
         `-i@${list}`,
         '--',
         file,
       ],
       signal,
+      onProgress === undefined ? undefined : progressed(onProgress),
     );
     return run.code === 0 || run.code === 1 ? undefined : reasonOf(run, file);
   } finally {
@@ -241,7 +285,7 @@ export function sevenZipReaderAt(program: string): ArchiveReader | undefined {
 export function sevenZipReader(sevenZip: SevenZip): ArchiveReader {
   return {
     list: (file, signal) => listed(sevenZip, file, signal),
-    extract: (file, paths, into, signal) =>
-      extracted(sevenZip, file, paths, into, signal),
+    extract: (file, paths, into, signal, onProgress) =>
+      extracted(sevenZip, file, paths, into, signal, onProgress),
   };
 }

@@ -87,7 +87,7 @@ export class Transfers {
     private readonly host: TransfersHost,
   ) {}
 
-  start(ask: TransferAsk): void {
+  start(ask: TransferAsk, connect: ConnectTransfer = this.connect): void {
     const running: Running = {
       id: ++this.ids,
       ask,
@@ -99,7 +99,7 @@ export class Transfers {
       clash: undefined,
     };
     this.running.push(running);
-    running.connection = this.connect({
+    running.connection = connect({
       event: (event) => this.event(running, event),
       stopped: () => this.end(running, 'broke'),
     });

@@ -19,6 +19,12 @@ export type ArchiveListing =
   | { readonly kind: 'listed'; readonly items: readonly ArchiveItem[] }
   | { readonly kind: 'refused'; readonly reason: string };
 
+export interface ExtractProgress {
+  readonly percent: number;
+  readonly files: number;
+  readonly current?: string;
+}
+
 export interface ArchiveReader {
   list(file: string, signal?: AbortSignal): Promise<ArchiveListing>;
   extract(
@@ -26,6 +32,7 @@ export interface ArchiveReader {
     paths: readonly string[],
     into: string,
     signal?: AbortSignal,
+    onProgress?: (progress: ExtractProgress) => void,
   ): Promise<string | undefined>;
 }
 
@@ -109,6 +116,33 @@ export class ArchiveTree {
     return folder && [...folder.values()].map((node) => node.entry);
   }
 
+  totals(
+    inner: readonly string[],
+    names: readonly string[],
+  ): { readonly files: number; readonly bytes: number } {
+    let files = 0;
+    let bytes = 0;
+    const add = (folder: string, name: string) => {
+      const node = this.folders.get(folder)?.get(name);
+      if (node === undefined) {
+        return;
+      }
+      if (!node.entry.folder) {
+        files++;
+        bytes += node.entry.size ?? 0;
+        return;
+      }
+      const key = folder === '' ? name : `${folder}/${name}`;
+      for (const inside of this.folders.get(key)?.keys() ?? []) {
+        add(key, inside);
+      }
+    };
+    for (const name of names) {
+      add(inner.join('/'), name);
+    }
+    return { files, bytes };
+  }
+
   item(
     inner: readonly string[],
     name: string,
@@ -140,6 +174,7 @@ export interface ArchiveAccess {
     paths: readonly string[],
     into?: string,
     signal?: AbortSignal,
+    onProgress?: (progress: ExtractProgress) => void,
   ): Promise<Extracting>;
   within(
     folder: string,
@@ -289,6 +324,7 @@ export class Archives implements ArchiveAccess {
     paths: readonly string[],
     into?: string,
     signal?: AbortSignal,
+    onProgress?: (progress: ExtractProgress) => void,
   ): Promise<Extracting> {
     if (this.reader === undefined) {
       return { kind: 'refused', reason: strings.commander.noSevenZip };
@@ -299,6 +335,7 @@ export class Archives implements ArchiveAccess {
       paths,
       folder,
       signal,
+      onProgress,
     );
     return refused === undefined
       ? { kind: 'extracted', folder }
