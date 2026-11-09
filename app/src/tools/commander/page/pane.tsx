@@ -26,6 +26,7 @@ import { filterWords } from '../../../shared/fileFilter';
 import { HighlightWords } from '../../../ui/highlight';
 import { SearchButton, SearchRow } from '../../../ui/search';
 import { columnFocusOf } from '../../../ui/columnFocus';
+import { clickPairs } from '../../../ui/clickPairs';
 import { ColumnHeader } from './columnHeader';
 import { layouts, type Layout } from '../shared/settings';
 import {
@@ -168,7 +169,6 @@ export function ExtensionCell({
             event.stopPropagation();
             onOpenRepository(row.key);
           }}
-          onDoubleClick={(event) => event.stopPropagation()}
         >
           <ToolIcon tool="git" />
         </button>
@@ -439,6 +439,7 @@ export function Pane({
   const filterInput = useRef<HTMLInputElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
+  const [pairsClick] = useState(clickPairs);
   const [dropInto, setDropInto] = useState<string | null>();
   const { showMenu } = useShellActions();
   const platform = useCommander((state) => state.view.platform);
@@ -650,6 +651,9 @@ export function Pane({
         onMark(rangeKeys(rows, selectedIndex, index), true);
       }
       onSelect(row.key);
+      if (pairsClick(row.key, event.detail) && opens(row)) {
+        onOpen(row.key);
+      }
     },
     onContextMenu: (event: React.MouseEvent) => {
       event.preventDefault();
@@ -665,11 +669,6 @@ export function Pane({
       } else if (clicked(commanderKeymap.contextMenu, event) !== undefined) {
         onSelect(row.key);
         openMenu(row.key, at);
-      }
-    },
-    onDoubleClick: () => {
-      if (opens(row)) {
-        onOpen(row.key);
       }
     },
   });

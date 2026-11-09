@@ -75,6 +75,7 @@ async function inPane(
   run: (shown: {
     readonly main: HTMLElement;
     readonly rightClick: (target: Element | null, shift?: boolean) => void;
+    readonly click: (target: Element | null, count: number) => void;
     readonly menu: () => readonly string[];
     readonly choose: (label: string) => void;
     readonly posted: CommanderToHost[];
@@ -155,6 +156,20 @@ async function inPane(
               shiftKey: shift,
             }),
           );
+        });
+      },
+      click: (target, count) => {
+        assert.ok(target);
+        act(() => {
+          for (const type of count === 2 ? ['click', 'dblclick'] : ['click']) {
+            target.dispatchEvent(
+              new dom.window.MouseEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                detail: count,
+              }),
+            );
+          }
         });
       },
       menu: () => items().map((item) => item.label),
@@ -263,6 +278,24 @@ suite('Commander menu on a side', () => {
             : message.type,
         ),
         ['notes.txt true', ' true'],
+      );
+    });
+  });
+});
+
+suite('Commander clicks on a side', () => {
+  test('opens what is double clicked, a double click right after another at the same spot too, as Chromium counts those clicks on from 3 and sends no dblclick', async () => {
+    await inPane(async ({ main, click, posted }) => {
+      click(rowNamed(main, 'docs'), 1);
+      click(rowNamed(main, 'docs'), 2);
+      click(rowNamed(main, 'notes'), 3);
+      click(rowNamed(main, 'notes'), 3);
+
+      assert.deepStrictEqual(
+        posted.flatMap((message) =>
+          message.type === 'open' ? [message.name] : [],
+        ),
+        ['docs', 'notes.txt'],
       );
     });
   });

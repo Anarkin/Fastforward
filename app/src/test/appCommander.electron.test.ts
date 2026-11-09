@@ -508,13 +508,17 @@ suite('App commander', () => {
     );
   });
 
-  test('opens a folder with a double click', async () => {
+  test('opens a folder with a double click, and one with a double click right after, which Chromium counts on from 3', async () => {
     await right().locator('.commander-row', { hasText: 'src' }).dblclick();
     await waitFor(
       async () => (await rowNames()).join() === '..,main.ts',
       'the listing of src',
     );
-    await page.keyboard.press('Backspace');
+    await right().locator('.commander-row', { hasText: '..' }).hover();
+    await page.mouse.down({ clickCount: 3 });
+    await page.mouse.up({ clickCount: 3 });
+    await page.mouse.down({ clickCount: 3 });
+    await page.mouse.up({ clickCount: 3 });
     await waitFor(
       async () => (await rowNames()).length === 4,
       'the listing of the folder opened',
