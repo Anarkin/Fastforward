@@ -95,6 +95,12 @@ const selectedOf = (store: ReturnType<typeof byName>) =>
   store.getState().view.panes.left?.selected;
 
 suite('Commander store', () => {
+  test('asks to compare no files when no two files are marked or selected, so the app says how to pick them rather than doing nothing', () => {
+    const { posted, store } = shown();
+    store.getState().compare();
+    assert.deepStrictEqual(posted, [{ type: 'compare', tab: '1', files: [] }]);
+  });
+
   test('finds a text in a viewed file, handing on only what is found for that search, until it is stopped', () => {
     const { posted, store } = shown();
     const found: (readonly unknown[])[] = [];

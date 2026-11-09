@@ -133,7 +133,7 @@ export type CommanderToHost =
   | {
       readonly type: 'compare';
       readonly tab: string;
-      readonly files: readonly [ComparedFile, ComparedFile];
+      readonly files: readonly [ComparedFile, ComparedFile] | readonly [];
     }
   | {
       readonly type: 'readBytes';

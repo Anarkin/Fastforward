@@ -581,6 +581,7 @@ export const strings = {
     clashCopying: 'Copying',
     clashMoving: 'Moving',
     clashThere: 'There now',
+    clashReadOnly: 'The file there is read-only; Overwrite replaces it anyway.',
     clashDetails: (bytes: number, date: string) =>
       `${fileSize(bytes)}, modified ${date}`,
     overwrite: 'Overwrite',
@@ -760,6 +761,8 @@ export const strings = {
     },
     previewTooLarge: (megabytes: number) =>
       `Documents over ${megabytes} MB are not previewed.`,
+    nothingToCompare:
+      'Mark two files on a side, or select a file on each side, to compare them.',
   },
   pdf: {
     page: (page: number) => `Page ${page}`,

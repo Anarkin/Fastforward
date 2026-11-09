@@ -280,6 +280,48 @@ suite('Transfer', () => {
     });
   });
 
+  test('says a file there already is read-only when it asks, and overwrites it when told to, by copying and by moving, as asking to overwrite it is enough', async () => {
+    for (const name of ['copied.txt', 'moved.txt', 'writable.txt']) {
+      write(path.join(source, name), `new ${name}`);
+      write(path.join(target, name), `old ${name}`);
+    }
+    for (const name of ['copied.txt', 'moved.txt']) {
+      fs.chmodSync(path.join(target, name), 0o444);
+    }
+
+    const copied = await run(
+      {
+        sources: ['copied.txt', 'writable.txt'].map((name) =>
+          path.join(source, name),
+        ),
+        target,
+        move: false,
+      },
+      { answers: [{ answer: 'overwrite', all: true }] },
+    );
+    const moved = await run(
+      { sources: [path.join(source, 'moved.txt')], target, move: true },
+      { answers: [{ answer: 'overwrite', all: false }] },
+    );
+
+    assert.deepStrictEqual(
+      [...copied.clashes, ...moved.clashes].map((clash) => [
+        clash.name,
+        clash.target.readOnly === true,
+      ]),
+      [
+        ['copied.txt', true],
+        ['moved.txt', true],
+      ],
+    );
+    assert.deepStrictEqual([...copied.failures, ...moved.failures], []);
+    assert.deepStrictEqual(tree(target), {
+      'copied.txt': 'new copied.txt',
+      'moved.txt': 'new moved.txt',
+      'writable.txt': 'new writable.txt',
+    });
+  });
+
   test('stops when told to at a question, leaving what it did not reach in place', async () => {
     write(path.join(source, 'a.txt'), 'new a');
     write(path.join(target, 'a.txt'), 'old a');

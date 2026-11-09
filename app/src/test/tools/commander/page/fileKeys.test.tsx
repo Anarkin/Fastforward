@@ -239,6 +239,20 @@ suite('Commander file keys', () => {
           },
         });
         assert.match(dialogText(), /"a\.txt" is there already\./);
+        assert.ok(!dialogText().includes(strings.commander.clashReadOnly));
+        await send({
+          type: 'transfer',
+          view: {
+            ...shownTransfer,
+            clash: {
+              name: 'a.txt',
+              source: { size: 2048, modified: 0 },
+              target: { size: 1024, modified: 0, readOnly: true },
+              asked: 3,
+            },
+          },
+        });
+        assert.ok(dialogText().includes(strings.commander.clashReadOnly));
         assert.strictEqual(document.activeElement?.textContent, 'Skip');
         await click(document.querySelector('.transfer-all input'));
         await click(button('Keep Both'));

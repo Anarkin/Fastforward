@@ -46,6 +46,7 @@ function ClashBody({ clash, move }: { clash: Clash; move: boolean }) {
         />
         <ClashSideRow label={commander.clashThere} side={clash.target} />
       </div>
+      {clash.target.readOnly === true && <span>{commander.clashReadOnly}</span>}
       <label className="transfer-all" htmlFor={id}>
         <input
           id={id}

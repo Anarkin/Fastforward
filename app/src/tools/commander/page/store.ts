@@ -798,9 +798,7 @@ export function createCommanderStore(
             left: shownRowsOf(state, 'left').rows,
             right: shownRowsOf(state, 'right').rows,
           });
-          if (files !== undefined) {
-            post({ type: 'compare', tab, files });
-          }
+          post({ type: 'compare', tab, files: files ?? [] });
         }),
       shellMenu: (side, names, at, extended) =>
         onPane(side, (tab, folder) =>

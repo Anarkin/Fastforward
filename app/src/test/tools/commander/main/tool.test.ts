@@ -2861,6 +2861,21 @@ suite('Commander tool', () => {
     ]);
   });
 
+  test('says how to pick the files to compare when the page has none to compare, opening nothing, and says nothing for a list the page forged', async () => {
+    const { tool, page, send, compared, notices } = commander({
+      [root]: [file('notes.txt')],
+    });
+    await tool.show(page, tab);
+
+    await send({ type: 'compare', tab: '1', files: [] });
+    await send(forged('{ "type": "compare", "tab": "1", "files": [1] }'));
+
+    assert.deepStrictEqual(compared, []);
+    assert.deepStrictEqual(notices, [
+      { level: 'info', message: strings.commander.nothingToCompare },
+    ]);
+  });
+
   test('names the folders a side lists that are repositories once it is listed, never asking about files, and again when the folder is read again', async () => {
     const listed: Record<string, Listed> = {
       [root]: [folder('app'), folder('docs'), file('notes.txt')],

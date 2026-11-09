@@ -59,10 +59,13 @@ async function statsOf(file: string): Promise<fs.Stats | undefined> {
   }
 }
 
+const ownerWrites = 0o200;
+
 function sideOf(stats: fs.Stats): ClashSide {
   return {
     size: stats.isDirectory() ? undefined : stats.size,
     modified: stats.mtimeMs,
+    ...((stats.mode & ownerWrites) === 0 && { readOnly: true }),
   };
 }
 
@@ -289,6 +292,11 @@ class Transfer {
         into = await freeName(target);
       } else {
         overwrite = true;
+        if ((there.mode & ownerWrites) === 0) {
+          await fs.promises
+            .chmod(target, there.mode | ownerWrites)
+            .catch(ignored);
+        }
       }
     }
     if (this.plan.move && renaming) {

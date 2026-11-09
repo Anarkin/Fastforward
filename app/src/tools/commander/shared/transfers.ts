@@ -9,6 +9,7 @@ export function isClashAnswer(value: unknown): value is ClashAnswer {
 export interface ClashSide {
   readonly size: number | undefined;
   readonly modified: number;
+  readonly readOnly?: true;
 }
 
 export interface Clash {

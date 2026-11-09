@@ -1396,6 +1396,13 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private compare(page: Page, tab: unknown, files: unknown): Promise<void> {
+    if (Array.isArray(files) && files.length === 0) {
+      this.shell.notice(page, {
+        level: 'info',
+        message: strings.commander.nothingToCompare,
+      });
+      return Promise.resolve();
+    }
     if (!Array.isArray(files) || files.length !== 2) {
       return Promise.resolve();
     }
