@@ -258,6 +258,27 @@ suite('Commander keys', () => {
     }
   });
 
+  test('goes on marking the rows it passes while Shift and an arrow are held down', () => {
+    assert.deepStrictEqual(
+      paneKey(
+        pressed('ArrowDown', { shiftKey: true, repeat: true }),
+        at('repo', { marked: new Set(['docs']) }),
+      ),
+      {
+        act: { kind: 'mark', keys: ['repo'], marked: true, select: 'a.txt' },
+      },
+    );
+    assert.deepStrictEqual(
+      paneKey(
+        pressed('ArrowUp', { shiftKey: true, repeat: true }),
+        at('b.txt'),
+      ),
+      {
+        act: { kind: 'mark', keys: ['b.txt'], marked: true, select: 'a.txt' },
+      },
+    );
+  });
+
   test('marks every row but the parent folder on Mod+A, whatever is selected, and unmarks them all once every one is marked', () => {
     const all = ['docs', 'repo', 'a.txt', 'b.txt'];
     const markAll = pressed('a', { ctrlKey: true });
