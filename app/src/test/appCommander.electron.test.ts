@@ -530,6 +530,30 @@ suite('App commander', () => {
     );
   });
 
+  test('counts the size of a folder it marks on Space in the threads that count sizes, showing it in its Size column', async () => {
+    const counted = path.join(opened, 'src', 'counted.bin');
+    fs.writeFileSync(counted, Buffer.alloc(1000));
+    try {
+      const source = right().locator('.commander-row', { hasText: 'src' });
+      await source.click();
+      await page.keyboard.press(' ');
+      await waitFor(
+        async () =>
+          (await source.locator('.commander-size').textContent()) === '1,000',
+        'the size of src',
+      );
+      await source.click();
+      await page.keyboard.press(' ');
+      await waitFor(
+        async () =>
+          !((await source.getAttribute('class')) ?? '').includes('marked'),
+        'src to be unmarked',
+      );
+    } finally {
+      fs.rmSync(counted);
+    }
+  });
+
   test('opens a folder with a double click, and one with a double click right after, which Chromium counts on from 3', async () => {
     await right().locator('.commander-row', { hasText: 'src' }).dblclick();
     await waitFor(

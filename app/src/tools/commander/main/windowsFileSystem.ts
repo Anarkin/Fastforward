@@ -3,39 +3,32 @@ import * as path from 'node:path';
 import koffi, { type LibraryHandle } from 'koffi';
 import type { Entry } from '../shared/protocol';
 import type { LocalFileSystem } from './fileSystem';
+import {
+  backupSemantics,
+  closeHandleSignature,
+  createFileSignature,
+  directoryAttribute,
+  eachOnPage,
+  fullDirectoryInformation,
+  hiddenAttribute,
+  invalidHandle,
+  isLink,
+  listDirectory,
+  nameAt,
+  noMoreFiles,
+  noSuchFile,
+  openExisting,
+  pageSize,
+  queryDirectorySignature,
+  record,
+  shareAll,
+} from './windowsDirectory';
 
-const listDirectory = 0x1;
-const shareAll = 0x7;
-const openExisting = 3;
-const backupSemantics = 0x02000000;
-const invalidHandle = 0xffff_ffff_ffff_ffffn;
 const invalidAttributes = 0xffff_ffff;
-
-const fullDirectoryInformation = 2;
-const noMoreFiles = 0x8000_0006 | 0;
-const noSuchFile = 0xc000_000f | 0;
-const pageSize = 64 * 1024;
-
-const hiddenAttribute = 0x2;
-const directoryAttribute = 0x10;
-const reparsePointAttribute = 0x400;
 const cloudAttributes = 0x1000 | 0x4_0000 | 0x40_0000;
-const linkTags: ReadonlySet<number> = new Set([
-  0xa000_000c, 0xa000_0003, 0xa000_001d,
-]);
 
 const unixEpochInFileTime = 116_444_736_000_000_000n;
 const fileTimeTicksPerMilli = 10_000n;
-
-const record = {
-  next: 0,
-  modified: 24,
-  size: 40,
-  attributes: 56,
-  nameLength: 60,
-  reparseTag: 64,
-  name: 68,
-};
 
 interface Found {
   readonly name: string;
@@ -46,13 +39,8 @@ interface Found {
 }
 
 function foundAt(page: Buffer, start: number): Found {
-  const nameStart = start + record.name;
   return {
-    name: page.toString(
-      'utf16le',
-      nameStart,
-      nameStart + page.readUInt32LE(start + record.nameLength),
-    ),
+    name: nameAt(page, start),
     attributes: page.readUInt32LE(start + record.attributes),
     reparseTag: page.readUInt32LE(start + record.reparseTag),
     size: Number(page.readBigUInt64LE(start + record.size)),
@@ -65,17 +53,8 @@ function foundAt(page: Buffer, start: number): Found {
 
 function foundOnPage(page: Buffer): Found[] {
   const found: Found[] = [];
-  for (let start = 0; ;) {
-    const each = foundAt(page, start);
-    if (each.name !== '.' && each.name !== '..') {
-      found.push(each);
-    }
-    const next = page.readUInt32LE(start + record.next);
-    if (next === 0) {
-      return found;
-    }
-    start += next;
-  }
+  eachOnPage(page, (start) => found.push(foundAt(page, start)));
+  return found;
 }
 
 async function targetOf(file: string): Promise<fs.Stats | undefined> {
@@ -88,9 +67,7 @@ async function targetOf(file: string): Promise<fs.Stats | undefined> {
 
 async function entryOf(folder: string, found: Found): Promise<Entry> {
   const isFolder = (found.attributes & directoryAttribute) !== 0;
-  const link =
-    (found.attributes & reparsePointAttribute) !== 0 &&
-    linkTags.has(found.reparseTag);
+  const link = isLink(found.attributes, found.reparseTag);
   const hidden = (found.attributes & hiddenAttribute) !== 0;
   const online = (found.attributes & cloudAttributes) !== 0;
   if (!link) {
@@ -140,13 +117,9 @@ async function failure(folder: string): Promise<Error> {
 export function windowsFileSystem(): LocalFileSystem {
   const kernel32 = koffi.load('kernel32.dll');
   const ntdll = koffi.load('ntdll.dll');
-  const createFile = kernel32.func(
-    'void *CreateFileW(const char16_t *name, uint32_t access, uint32_t share, void *security, uint32_t disposition, uint32_t flags, void *template)',
-  );
-  const closeHandle = kernel32.func('bool CloseHandle(void *handle)');
-  const queryDirectory = ntdll.func(
-    'int32_t NtQueryDirectoryFile(void *handle, void *event, void *apc, void *context, void *status, void *page, uint32_t length, int kind, bool single, void *name, bool restart)',
-  );
+  const createFile = kernel32.func(createFileSignature);
+  const closeHandle = kernel32.func(closeHandleSignature);
+  const queryDirectory = ntdll.func(queryDirectorySignature);
   const logicalDrives = kernel32.func('uint32_t GetLogicalDrives()');
   const fileAttributes = kernel32.func(
     'uint32_t GetFileAttributesW(const char16_t *name)',

@@ -1,12 +1,98 @@
 import * as path from 'node:path';
 import type { Entry } from '../shared/protocol';
 
-const readAtOnce = 8;
+const walksAtOnce = 4;
+const foldersPerWalk = 64;
 
 export interface FolderSize {
   readonly bytes: number;
   readonly counting: boolean;
   readonly unread: number;
+}
+
+export interface SizeWalk {
+  readonly folders: readonly string[];
+  readonly asked: boolean;
+}
+
+export interface SizeWalked {
+  readonly bytes: number;
+  readonly unread: number;
+  readonly unreadable: boolean;
+  readonly rest: readonly string[];
+}
+
+export interface SizeWalker {
+  walk(walk: SizeWalk, signal: AbortSignal): Promise<SizeWalked>;
+}
+
+export interface SizeRead {
+  readonly bytes: number;
+  readonly folders: readonly string[];
+}
+
+export type SizeReader = (
+  folder: string,
+) => SizeRead | undefined | Promise<SizeRead | undefined>;
+
+export async function walkFolders(
+  { folders, asked }: SizeWalk,
+  read: SizeReader,
+  budgetMillis: number,
+  signal?: AbortSignal,
+  now: () => number = () => performance.now(),
+): Promise<SizeWalked> {
+  const until = now() + budgetMillis;
+  const stopped = () => signal?.aborted === true;
+  const stack = folders.toReversed();
+  let bytes = 0;
+  let unread = 0;
+  let unreadable = false;
+  let first = true;
+  do {
+    const folder = stack.pop();
+    if (folder === undefined) {
+      break;
+    }
+    const found = await read(folder);
+    if (found === undefined && first && asked) {
+      unreadable = true;
+    } else if (found === undefined) {
+      unread++;
+    } else {
+      bytes += found.bytes;
+      stack.push(...found.folders.toReversed());
+    }
+    first = false;
+  } while (stack.length > 0 && now() < until && !stopped());
+  return { bytes, unread, unreadable, rest: stack.toReversed() };
+}
+
+export function listingWalker(
+  list: (folder: string) => Promise<readonly Entry[]>,
+): SizeWalker {
+  const read = async (folder: string): Promise<SizeRead | undefined> => {
+    let entries: readonly Entry[];
+    try {
+      entries = await list(folder);
+    } catch {
+      return undefined;
+    }
+    let bytes = 0;
+    const folders: string[] = [];
+    for (const entry of entries) {
+      if (entry.link) {
+        continue;
+      }
+      if (entry.folder) {
+        folders.push(path.join(folder, entry.name));
+      } else {
+        bytes += entry.size ?? 0;
+      }
+    }
+    return { bytes, folders };
+  };
+  return { walk: (walk, signal) => walkFolders(walk, read, 0, signal) };
 }
 
 interface Counting {
@@ -17,8 +103,7 @@ interface Counting {
 
 interface Waiting {
   readonly name: string;
-  readonly folder: string;
-  readonly asked: boolean;
+  readonly walk: SizeWalk;
 }
 
 export class FolderSizes {
@@ -27,13 +112,13 @@ export class FolderSizes {
   private readonly changed = new Set<string>();
   private readonly waiting: Waiting[] = [];
   private readonly idling: (() => void)[] = [];
-  private reading = 0;
-  private round = 0;
+  private walking = 0;
+  private round = new AbortController();
   private closed = false;
 
   constructor(
     private readonly root: string,
-    private readonly list: (folder: string) => Promise<readonly Entry[]>,
+    private readonly walker: SizeWalker,
     private readonly onChange: () => void,
   ) {}
 
@@ -54,8 +139,7 @@ export class FolderSizes {
       this.unfinished.set(name, { bytes: 0, unread: 0, waiting: 1 });
       this.waiting.push({
         name,
-        folder: path.join(this.root, name),
-        asked: true,
+        walk: { folders: [path.join(this.root, name)], asked: true },
       });
     }
     for (const name of asked) {
@@ -68,7 +152,8 @@ export class FolderSizes {
   }
 
   stop(): void {
-    this.round++;
+    this.round.abort();
+    this.round = new AbortController();
     this.waiting.length = 0;
     const stopped = [...this.unfinished.keys()];
     this.unfinished.clear();
@@ -93,7 +178,7 @@ export class FolderSizes {
   }
 
   idle(): Promise<void> {
-    if (this.reading === 0 && this.waiting.length === 0) {
+    if (this.walking === 0 && this.waiting.length === 0) {
       return Promise.resolve();
     }
     return new Promise((resolve) => this.idling.push(resolve));
@@ -109,63 +194,61 @@ export class FolderSizes {
   }
 
   private pump(): void {
-    while (this.reading < readAtOnce) {
+    while (this.walking < walksAtOnce) {
       const next = this.waiting.pop();
       if (next === undefined) {
         return;
       }
-      void this.read(next, this.round);
+      void this.run(next, this.round.signal);
     }
   }
 
-  private async read(waiting: Waiting, round: number): Promise<void> {
-    this.reading++;
-    let entries: readonly Entry[] | undefined;
+  private async run(waiting: Waiting, round: AbortSignal): Promise<void> {
+    this.walking++;
+    let walked: SizeWalked;
     try {
-      entries = await this.list(waiting.folder);
+      walked = await this.walker.walk(waiting.walk, round);
     } catch {
-      entries = undefined;
+      walked = {
+        bytes: 0,
+        unread: waiting.walk.asked ? 0 : waiting.walk.folders.length,
+        unreadable: waiting.walk.asked,
+        rest: [],
+      };
     }
-    this.reading--;
-    if (round === this.round) {
-      this.took(waiting, entries);
+    this.walking--;
+    if (!round.aborted) {
+      this.took(waiting.name, walked);
     }
     this.pump();
     this.settle();
   }
 
-  private took(
-    { name, folder, asked }: Waiting,
-    entries: readonly Entry[] | undefined,
-  ): void {
+  private took(name: string, walked: SizeWalked): void {
     const counting = this.unfinished.get(name);
     if (counting === undefined) {
       return;
     }
     counting.waiting--;
-    if (entries === undefined && asked) {
+    if (walked.unreadable) {
       this.unfinished.delete(name);
       this.tell(name, undefined);
       this.onChange();
       return;
     }
-    if (entries === undefined) {
-      counting.unread++;
-    }
-    for (const entry of entries ?? []) {
-      if (entry.link) {
-        continue;
-      }
-      if (entry.folder) {
-        counting.waiting++;
-        this.waiting.push({
-          name,
-          folder: path.join(folder, entry.name),
-          asked: false,
-        });
-      } else {
-        counting.bytes += entry.size ?? 0;
-      }
+    counting.bytes += walked.bytes;
+    counting.unread += walked.unread;
+    const { rest } = walked;
+    const each = Math.min(
+      foldersPerWalk,
+      Math.max(1, Math.ceil(rest.length / walksAtOnce)),
+    );
+    for (let from = 0; from < rest.length; from += each) {
+      counting.waiting++;
+      this.waiting.push({
+        name,
+        walk: { folders: rest.slice(from, from + each), asked: false },
+      });
     }
     const done = counting.waiting === 0;
     if (done) {
@@ -180,7 +263,7 @@ export class FolderSizes {
   }
 
   private settle(): void {
-    if (this.reading > 0 || this.waiting.length > 0) {
+    if (this.walking > 0 || this.waiting.length > 0) {
       return;
     }
     for (const resolve of this.idling.splice(0)) {

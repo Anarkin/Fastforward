@@ -18,6 +18,7 @@ export function mainOptions(production: boolean): BuildOptions {
       transferHost: 'src/tools/commander/main/transferHost.ts',
       gitSpawner: 'src/tools/git/main/cli/gitSpawnerWorker.ts',
       commitReader: 'src/tools/git/main/history/commitReaderWorker.ts',
+      sizeWorker: 'src/tools/commander/main/sizeWorker.ts',
     },
     format: 'cjs',
     platform: 'node',

@@ -1,7 +1,14 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { FolderSizes } from '../../../../tools/commander/main/folderSizes';
+import {
+  FolderSizes,
+  listingWalker,
+  walkFolders,
+  type SizeRead,
+  type SizeWalk,
+  type SizeWalked,
+} from '../../../../tools/commander/main/folderSizes';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
 
 const root = path.resolve('/', 'Downloads');
@@ -60,7 +67,7 @@ function sizesOf(listed: Record<string, Listed>) {
       reading--;
     }
   };
-  const sizes = new FolderSizes(root, list, () => changes++);
+  const sizes = new FolderSizes(root, listingWalker(list), () => changes++);
   const hold = (each: string) => {
     const holding = Promise.withResolvers<void>();
     held.set(each, holding);
@@ -181,7 +188,7 @@ suite('folderSizes', () => {
     assert.deepStrictEqual(asked.slice(0, 3), [at('a'), at('b'), at('c')]);
   });
 
-  test('reads at most eight folders at once', async () => {
+  test('reads at most four folders at once', async () => {
     const names = Array.from({ length: 20 }, (_, index) => `folder${index}`);
     const { sizes, asked, mostAtOnce } = sizesOf({
       [at('photos')]: names.map((name) => folder(name)),
@@ -192,7 +199,7 @@ suite('folderSizes', () => {
     sizes.count(['photos']);
     await sizes.idle();
     assert.strictEqual(asked.length, 21);
-    assert.strictEqual(mostAtOnce(), 8);
+    assert.strictEqual(mostAtOnce(), 4);
     assert.strictEqual(sizes.of('photos')?.bytes, 20);
   });
 
@@ -271,5 +278,216 @@ suite('folderSizes', () => {
     await sizes.idle();
     assert.deepStrictEqual(asked, [at('slow')]);
     assert.strictEqual(changes(), before);
+  });
+});
+
+function walked(
+  rest: readonly string[] = [],
+  more: Partial<SizeWalked> = {},
+): SizeWalked {
+  return { bytes: 0, unread: 0, unreadable: false, rest, ...more };
+}
+
+function walksOf(answer: (walk: SizeWalk) => Promise<SizeWalked>) {
+  const walks: SizeWalk[] = [];
+  const sizes = new FolderSizes(
+    root,
+    {
+      walk: (walk) => {
+        walks.push(walk);
+        return answer(walk);
+      },
+    },
+    () => {},
+  );
+  return { sizes, walks };
+}
+
+const many = (count: number) =>
+  Array.from({ length: count }, (_, index) => at('big', `${index}`));
+
+suite('folderSizes walking', () => {
+  test('spreads the folders a walk did not reach over the walks it runs at once, at most 64 a walk, so one big folder holds up no other', async () => {
+    const { sizes, walks } = walksOf((walk) =>
+      Promise.resolve(
+        walk.folders[0] === at('big')
+          ? walked(many(20))
+          : walk.folders[0] === at('huge')
+            ? walked(many(300))
+            : walked(),
+      ),
+    );
+
+    sizes.count(['big']);
+    await sizes.idle();
+    assert.deepStrictEqual(
+      walks.slice(1).map((walk) => walk.folders.length),
+      [5, 5, 5, 5],
+    );
+    assert.ok(walks.slice(1).every((walk) => !walk.asked));
+
+    walks.length = 0;
+    sizes.count(['huge']);
+    await sizes.idle();
+    assert.deepStrictEqual(
+      walks
+        .slice(1)
+        .map((walk) => walk.folders.length)
+        .toSorted((a, b) => a - b),
+      [44, 64, 64, 64, 64],
+    );
+  });
+
+  test('adds up the bytes and the unread folders of every walk of a folder, and leaves a folder asked for its walk could not read without a size', async () => {
+    const { sizes } = walksOf((walk) =>
+      Promise.resolve(
+        walk.folders[0] === at('photos')
+          ? walked([at('photos', 'a'), at('photos', 'b')], { bytes: 1 })
+          : walk.folders[0] === at('secret')
+            ? walked([], { unreadable: true })
+            : walked([], { bytes: 10, unread: 1 }),
+      ),
+    );
+
+    sizes.count(['photos', 'secret']);
+    await sizes.idle();
+
+    assert.deepStrictEqual(sizes.of('photos'), {
+      bytes: 21,
+      counting: false,
+      unread: 2,
+    });
+    assert.strictEqual(sizes.of('secret'), undefined);
+  });
+
+  test('counts the folders of a walk that failed as unread, and leaves a folder asked for whose walk failed without a size', async () => {
+    const { sizes } = walksOf((walk) =>
+      walk.folders[0] === at('photos')
+        ? Promise.resolve(walked([at('photos', 'a'), at('photos', 'b')]))
+        : Promise.reject(new Error('the worker stopped')),
+    );
+
+    sizes.count(['photos', 'broken']);
+    await sizes.idle();
+
+    assert.deepStrictEqual(sizes.of('photos'), {
+      bytes: 0,
+      counting: false,
+      unread: 2,
+    });
+    assert.strictEqual(sizes.of('broken'), undefined);
+  });
+});
+
+function clocked(
+  found: Record<string, SizeRead | undefined>,
+  millisEach: number,
+) {
+  let clock = 0;
+  const read: string[] = [];
+  return {
+    read,
+    reader: (each: string) => {
+      read.push(each);
+      clock += millisEach;
+      return found[each];
+    },
+    now: () => clock,
+  };
+}
+
+suite('A walk of folders', () => {
+  test('reads folders, those under each first, until its time is up, telling the bytes and the folders it did not reach', async () => {
+    const { read, reader, now } = clocked(
+      {
+        [at('a')]: { bytes: 1, folders: [at('a', 'x'), at('a', 'y')] },
+        [at('a', 'x')]: { bytes: 2, folders: [] },
+        [at('a', 'y')]: { bytes: 4, folders: [] },
+        [at('b')]: { bytes: 8, folders: [] },
+      },
+      10,
+    );
+
+    const result = await walkFolders(
+      { folders: [at('a'), at('b')], asked: false },
+      reader,
+      25,
+      undefined,
+      now,
+    );
+
+    assert.deepStrictEqual(read, [at('a'), at('a', 'x'), at('a', 'y')]);
+    assert.deepStrictEqual(result, {
+      bytes: 7,
+      unread: 0,
+      unreadable: false,
+      rest: [at('b')],
+    });
+  });
+
+  test('reads one folder at least, however little time it has', async () => {
+    const { read, reader, now } = clocked(
+      { [at('a')]: { bytes: 1, folders: [at('a', 'x')] } },
+      10,
+    );
+
+    const result = await walkFolders(
+      { folders: [at('a')], asked: true },
+      reader,
+      0,
+      undefined,
+      now,
+    );
+
+    assert.deepStrictEqual(read, [at('a')]);
+    assert.deepStrictEqual(result.rest, [at('a', 'x')]);
+  });
+
+  test('tells a folder asked for that it could not read apart from the folders under one it could not read', async () => {
+    const { reader, now } = clocked(
+      { [at('a')]: { bytes: 1, folders: [at('a', 'locked')] } },
+      1,
+    );
+
+    assert.deepStrictEqual(
+      await walkFolders(
+        { folders: [at('secret')], asked: true },
+        reader,
+        100,
+        undefined,
+        now,
+      ),
+      walked([], { unreadable: true }),
+    );
+    assert.deepStrictEqual(
+      await walkFolders(
+        { folders: [at('a')], asked: true },
+        reader,
+        100,
+        undefined,
+        now,
+      ),
+      walked([], { bytes: 1, unread: 1 }),
+    );
+  });
+
+  test('reads no further folder once it is stopped', async () => {
+    const stopping = new AbortController();
+    const { read, now } = clocked({}, 1);
+
+    const result = await walkFolders(
+      { folders: [at('a'), at('b')], asked: false },
+      (each) => {
+        read.push(each);
+        stopping.abort();
+        return { bytes: 1, folders: [] };
+      },
+      100,
+      stopping.signal,
+      now,
+    );
+
+    assert.deepStrictEqual(read, [at('a')]);
+    assert.deepStrictEqual(result.rest, [at('b')]);
   });
 });

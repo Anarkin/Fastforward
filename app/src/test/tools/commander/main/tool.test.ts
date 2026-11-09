@@ -27,6 +27,10 @@ import {
   viewerIconUrl,
 } from '../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
+import type {
+  SizeWalk,
+  SizeWalker,
+} from '../../../../tools/commander/main/folderSizes';
 import {
   ArchiveTree,
   type ArchiveAccess,
@@ -228,6 +232,7 @@ function commander(
   const changedInArchives: unknown[] = [];
   const tested: string[] = [];
   const archiveTests = new Map<string, string>();
+  const counting: { walker: SizeWalker | undefined } = { walker: undefined };
   const passwordRight = (archive: string) =>
     !secrets.has(archive) || passwords.get(archive) === secrets.get(archive);
   const archives: ArchiveAccess = {
@@ -576,6 +581,9 @@ function commander(
         ? undefined
         : path.join(copies.folder, 'viewed');
     },
+    get sizeWalker() {
+      return counting.walker;
+    },
     root,
   });
   const page = new CommanderPage();
@@ -719,6 +727,7 @@ function commander(
     changedInArchives,
     tested,
     archiveTests,
+    counting,
   };
 }
 
@@ -4835,6 +4844,63 @@ suite('Commander tool counting the sizes of folders', () => {
       sizesTold(page).at(-1),
       `right ${downloads} photos: no size`,
     );
+  });
+
+  test('counts through the walker the app gives it, and through the helper on a side read as administrator', async () => {
+    const listed: Record<string, Listed> = {
+      ...sizedTree(),
+      [root]: [folder('Downloads'), folder('Config.Msi')],
+      [at('Config.Msi')]: Object.assign(new Error('denied'), {
+        code: 'EPERM',
+      }),
+      [at('Config.Msi', 'sub')]: Object.assign(new Error('denied'), {
+        code: 'EPERM',
+      }),
+    };
+    const helper: ElevatedFileSystem = {
+      list: (each) =>
+        Promise.resolve(
+          each === at('Config.Msi') ? [folder('sub')] : [file('x.txt')],
+        ),
+      drives: () => Promise.resolve([]),
+      watch: () => () => {},
+      closed: new Promise(() => {}),
+      close: () => {},
+    };
+    const { tool, page, send, counting } = commander(listed, [], () =>
+      Promise.resolve(helper),
+    );
+    const walks: SizeWalk[] = [];
+    counting.walker = {
+      walk: (walk) => {
+        walks.push(walk);
+        return Promise.resolve({
+          bytes: 5,
+          unread: 0,
+          unreadable: false,
+          rest: [],
+        });
+      },
+    };
+    await tool.show(page, tab);
+    tool.ready(page);
+    await send({ type: 'open', tab: '1', side: 'right', name: 'Downloads' });
+    await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+    await send({ type: 'elevate', tab: '1', side: 'left' });
+
+    await send({
+      type: 'countSizes',
+      tab: '1',
+      side: 'right',
+      names: ['photos'],
+    });
+    await counted(page, `right ${downloads} photos: 5`);
+    await send({ type: 'countSizes', tab: '1', side: 'left', names: ['sub'] });
+    await counted(page, `left ${at('Config.Msi')} sub: 1`);
+
+    assert.deepStrictEqual(walks, [
+      { folders: [inDownloads('photos')], asked: true },
+    ]);
   });
 
   test('reads nothing more once its tab is closed', async () => {

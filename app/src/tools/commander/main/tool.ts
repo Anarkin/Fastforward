@@ -115,7 +115,12 @@ import { Transfers, type ConnectTransfer, type TransferAsk } from './transfers';
 import { folderKey } from '../shared/paths';
 import { nameProblem } from '../shared/names';
 import { onSameVolume, repositoriesIn } from './repositories';
-import { FolderSizes, type FolderSize } from './folderSizes';
+import {
+  FolderSizes,
+  listingWalker,
+  type FolderSize,
+  type SizeWalker,
+} from './folderSizes';
 import {
   iconSourceOf,
   iconTicketOf,
@@ -182,6 +187,7 @@ export interface CommanderAccess {
   readonly connectTransfer: ConnectTransfer;
   readonly archives?: ArchiveAccess;
   readonly viewedCopies?: string;
+  readonly sizeWalker?: SizeWalker;
   readonly root: string;
 }
 
@@ -3945,7 +3951,8 @@ export class CommanderTool implements Tool<'commander'> {
     const sizing: Sizing = {
       sizes: new FolderSizes(
         pane.folder,
-        async (each) => (await this.listed(each)).entries,
+        (pane.elevated !== true && this.access.sizeWalker) ||
+          listingWalker(async (each) => (await this.listed(each)).entries),
         () => this.sizesChanged(tab, side, sizing),
       ),
       flushing: undefined,

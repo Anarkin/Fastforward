@@ -79,6 +79,10 @@ import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { transferProcess } from '../tools/commander/main/transferProcess';
 import {
+  sizeWorkers,
+  unpackedKoffi,
+} from '../tools/commander/main/sizeWorkers';
+import {
   sevenZipProgram,
   sevenZipReaderAt,
 } from '../tools/commander/main/sevenZip';
@@ -619,6 +623,10 @@ async function start(asked: readonly string[]): Promise<void> {
       }
     },
     connectTransfer: transferProcess(path.join(dist, 'transferHost.js'), log),
+    sizeWalker: sizeWorkers(
+      dist,
+      process.platform === 'win32' ? unpackedKoffi() : undefined,
+    ),
     root: rootFolder(process.platform, process.env),
   });
   const view = new Shell(
