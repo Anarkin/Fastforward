@@ -2302,6 +2302,10 @@ suite('App commander', () => {
     const reopen = async () => {
       await page.keyboard.press('Escape');
       await page.locator('.viewer').waitFor({ state: 'detached' });
+      await waitForFocus(
+        right().locator('.virtual-rows'),
+        'the list of the right side',
+      );
       await page.keyboard.press('F3');
       await page.locator('.viewer-rows .viewer-row').first().waitFor();
     };
