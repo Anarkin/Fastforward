@@ -2029,6 +2029,8 @@ body.resizing {
 .prompt-input {
   box-sizing: border-box;
   height: 28px;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
   margin: 0;
   padding: 0 8px;
   color: var(--color-foreground);

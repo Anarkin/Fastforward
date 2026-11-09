@@ -43,6 +43,8 @@ import { tabSize } from '../../../ui/wordWrap';
 import { TerminalTool } from '../../../tools/terminal/page/tool';
 import { PathTitle } from '../../../tools/commander/page/pathTitle';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
+import { PromptPopup } from '../../../shell/page/promptPopup';
+import { ClonePopup } from '../../../tools/git/page/clonePopup';
 import {
   allWithClass,
   cascaded,
@@ -2543,6 +2545,42 @@ suite('Style', () => {
       assert.ok(
         parseFloat(cascaded(tag, 'padding-right') ?? '') >= tagHoleReach(tag),
       );
+    }
+  });
+
+  test('writes the names, paths and addresses typed into a dialog in the monospace font of the settings, so every character tells apart, a space at the end, l from I and 0 from O', () => {
+    const store = createGitStore(noop, {
+      clone: {
+        view: { kind: 'form', url: '', folder: '/code', name: '' },
+        form: 1,
+        folder: undefined,
+        target: undefined,
+      },
+    });
+    const clone = rendered(
+      createElement(GitStore, { value: store }, createElement(ClonePopup)),
+    );
+    const prompt = rendered(
+      createElement(PromptPopup, {
+        title: 'New Folder',
+        message: 'Make a folder',
+        label: 'Name',
+        confirm: 'Make',
+        problemOf: () => undefined,
+        onConfirm: noop,
+        onCancel: noop,
+      }),
+    );
+    const fields = [
+      withClass(prompt, 'prompt-input'),
+      ...allWithClass(clone, 'clone-input'),
+    ];
+    assert.strictEqual(fields.length, 4);
+    for (const field of fields) {
+      looks(field, {
+        'font-family': 'var(--monospace-font-family)',
+        'font-size': 'var(--monospace-font-size)',
+      });
     }
   });
 
