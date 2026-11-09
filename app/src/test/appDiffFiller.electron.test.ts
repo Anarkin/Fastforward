@@ -59,7 +59,7 @@ function commonestOf(pixels: Buffer): { color: string; share: number } {
 }
 
 function striped(pixels: Buffer): boolean {
-  return pixels.length > 0 && commonestOf(pixels).share < 0.9;
+  return pixels.length > 0 && commonestOf(pixels).share < 0.95;
 }
 
 suite('App diff filler', () => {
