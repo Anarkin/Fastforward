@@ -9,6 +9,7 @@ import {
   type ArchiveListing,
   type ArchiveReader,
 } from '../../../../tools/commander/main/archives';
+import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 function item(itemPath: string, more: Partial<ArchiveItem> = {}): ArchiveItem {
@@ -167,6 +168,7 @@ function readerOf(listings: Record<string, ArchiveListing>) {
   const asked: string[] = [];
   const reader: ArchiveReader = {
     pack: notPacked,
+    remove: notPacked,
     list: (file) => {
       asked.push(`list ${path.basename(file)}`);
       return Promise.resolve(
@@ -330,6 +332,7 @@ suite('Archives', () => {
     const seen: (string | undefined)[] = [];
     const reader: ArchiveReader = {
       pack: notPacked,
+      remove: notPacked,
       list: (_file, _signal, password) => {
         seen.push(password);
         return Promise.resolve(
@@ -385,6 +388,7 @@ suite('Archives', () => {
     fs.writeFileSync(zip, 'zip');
     const reader: ArchiveReader = {
       pack: notPacked,
+      remove: notPacked,
       list: () => Promise.resolve({ kind: 'listed', items: [item('a.txt')] }),
       extract: async (_file, _paths, into) => {
         await fs.promises.writeFile(path.join(into, 'half.txt'), 'half');
@@ -412,6 +416,7 @@ suite('Archives', () => {
     fs.writeFileSync(tgz, 'tgz');
     const reader: ArchiveReader = {
       pack: notPacked,
+      remove: notPacked,
       list: (file) =>
         Promise.resolve({
           kind: 'listed',
@@ -443,6 +448,78 @@ suite('Archives', () => {
     );
     assert.strictEqual(works, 3);
     assert.deepStrictEqual(worksLeft(), []);
+  });
+
+  test('deletes items from an archive that is a file of its own, with its password, removing the temporary archive 7-Zip left once stopped but nothing there before, and refuses one inside an archive or the tar of a compressed file', async () => {
+    const zip = path.join(folder, 'a.zip');
+    const tgz = path.join(folder, 'b.tgz');
+    fs.writeFileSync(zip, 'zip');
+    fs.writeFileSync(tgz, 'tgz');
+    fs.writeFileSync(`${zip}.tmp.kept`, 'there before');
+    const asked: unknown[] = [];
+    let stopped = false;
+    const reader: ArchiveReader = {
+      pack: notPacked,
+      list: (file) =>
+        Promise.resolve({
+          kind: 'listed',
+          items: [item(file.endsWith('.tgz') ? 'b.tar' : 'inner.zip')],
+        }),
+      extract: async (_file, paths, into) => {
+        for (const each of paths) {
+          await fs.promises.writeFile(path.join(into, each), each);
+        }
+        return undefined;
+      },
+      remove: async (file, paths, options) => {
+        asked.push([
+          path.basename(file),
+          paths,
+          options.password,
+          fs.readdirSync(options.listIn),
+        ]);
+        if (stopped) {
+          fs.writeFileSync(`${file}.tmp`, 'half');
+          throw new Error('The operation was aborted');
+        }
+        return { kind: 'packed' };
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+    archives.usePassword(zip, 'secret');
+
+    assert.deepStrictEqual(await archives.remove(opened.archive, ['docs']), {
+      kind: 'packed',
+    });
+    stopped = true;
+    await assert.rejects(archives.remove(opened.archive, ['docs']), /aborted/);
+    assert.deepStrictEqual(
+      fs.readdirSync(folder).filter((name) => name.startsWith('a.zip')),
+      ['a.zip', 'a.zip.tmp.kept'],
+    );
+
+    const inner = await archives.openInside(
+      path.join(zip, 'inner.zip'),
+      opened.archive,
+      'inner.zip',
+    );
+    const tar = await archives.open(tgz);
+    assert.ok(inner.kind === 'opened' && tar.kind === 'opened');
+    for (const [unchangeable, name] of [
+      [inner.archive, 'inner.zip'],
+      [tar.archive, 'b.tgz'],
+    ] as const) {
+      assert.deepStrictEqual(await archives.remove(unchangeable, ['x']), {
+        kind: 'refused',
+        reason: strings.commander.archiveUnchangeable(name),
+      });
+    }
+    assert.deepStrictEqual(asked, [
+      ['a.zip', ['docs'], 'secret', []],
+      ['a.zip', ['docs'], 'secret', []],
+    ]);
   });
 
   test('finds the opened archive a folder is inside of, and the file a path inside an archive runs through', async () => {

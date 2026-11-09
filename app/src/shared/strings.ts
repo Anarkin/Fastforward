@@ -700,6 +700,18 @@ export const strings = {
     warnedMore: (count: number) => `And ${count.toLocaleString()} more.`,
     packedWithout: (name: string, reason: string) =>
       `"${name}" was packed without some of the files: ${reason}`,
+    deletingFrom: (what: string, archive: string) =>
+      `Deleting ${what} from "${archive}"`,
+    deletedFrom: (what: string, archive: string) =>
+      `Deleted ${what} from "${archive}"`,
+    deleteFromFailed: (name: string, reason: string) =>
+      `Nothing could be deleted from "${name}": ${reason}`,
+    deletingStopped: (archive: string) =>
+      `Deleting from "${archive}" stopped unexpectedly.`,
+    deleteFromArchiveQuestion: (what: string, archive: string) =>
+      `Delete ${what} from "${archive}" permanently? This cannot be undone.`,
+    archiveUnchangeable: (name: string) =>
+      `"${name}" cannot be changed yet, as it is inside another archive or a compressed file.`,
     packingStopped: (archive: string) =>
       `Packing into "${archive}" stopped unexpectedly.`,
     copyingStopped: (target: string) =>

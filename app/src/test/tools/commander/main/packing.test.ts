@@ -7,7 +7,7 @@ import type {
   Packing,
   PackPlan,
 } from '../../../../tools/commander/main/archives';
-import { packing, packInto } from '../../../../tools/commander/main/packing';
+import { archiveJob, packInto } from '../../../../tools/commander/main/packing';
 import type { PackOptions } from '../../../../tools/commander/main/archives';
 import type { TransferEvent } from '../../../../tools/commander/main/transferProtocol';
 import { removeFolder, tempFolder } from '../../../repositories';
@@ -45,6 +45,7 @@ suite('packInto', () => {
   ): ArchiveReader => ({
     list: () => Promise.reject(new Error('Nothing is listed here.')),
     extract: () => Promise.reject(new Error('Nothing is taken out here.')),
+    remove: () => Promise.reject(new Error('Nothing is deleted here.')),
     pack: async (_plan, into) => {
       for (const part of parts) {
         fs.writeFileSync(`${into}${part}`, `new${part}`);
@@ -152,16 +153,7 @@ suite('packing', () => {
   ) => {
     const events: TransferEvent[] = [];
     const { promise: ended, resolve } = Promise.withResolvers<void>();
-    const connection = packing(
-      {
-        folder,
-        items: ['a.txt', 'docs'],
-        archive: path.join(folder, 'photos.zip'),
-        format: 'zip',
-        level: 'normal',
-      },
-      (_plan, options) => pack(options ?? {}),
-    )({
+    const connection = archiveJob('photos.zip', (options) => pack(options))({
       event: (event) => {
         events.push(event);
         if (event.type === 'done') {

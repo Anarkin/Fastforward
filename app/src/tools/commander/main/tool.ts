@@ -62,7 +62,7 @@ import {
   thumbnailBoxOf,
 } from '../../../shared/images';
 import { thumbnailKey } from './thumbnailStore';
-import { packing } from './packing';
+import { archiveJob } from './packing';
 import {
   isPackFormat,
   isPackLevel,
@@ -1369,6 +1369,11 @@ export class CommanderTool implements Tool<'commander'> {
       permanently,
     }: Extract<CommanderToHost, { type: 'delete' }>,
   ): Promise<void> {
+    const inArchive = this.namingPane(page, tab, side, named);
+    if (inArchive?.pane.archive !== undefined) {
+      this.deleteInArchive(page, inArchive, names);
+      return;
+    }
     const shown = this.diskPane(page, tab, side, named);
     if (
       shown === undefined ||
@@ -1414,6 +1419,46 @@ export class CommanderTool implements Tool<'commander'> {
     } else if (shown.pane.folder === folder) {
       await this.list(page, shown.tab, shown.side, folder, 'show');
     }
+  }
+
+  private deleteInArchive(
+    page: Page,
+    { pane }: ShownPane,
+    names: unknown,
+  ): void {
+    if (
+      !Array.isArray(names) ||
+      names.length === 0 ||
+      !names.every((name: unknown) => listedIn(pane, name) !== undefined)
+    ) {
+      return;
+    }
+    const found = this.archiveItems(pane, names);
+    if (found === undefined) {
+      return;
+    }
+    const { archives, archive, paths } = found;
+    const name = path.basename(archive.file);
+    if (archive.outer !== undefined || archive.source !== archive.file) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.archiveUnchangeable(name),
+      });
+      return;
+    }
+    this.transfers.start(
+      {
+        plan: {
+          sources: [archive.file],
+          target: path.dirname(archive.file),
+          move: false,
+        },
+        folder: pane.folder,
+        names,
+        archive: { job: 'delete', file: archive.file },
+      },
+      archiveJob(name, (options) => archives.remove(archive, paths, options)),
+    );
   }
 
   private transfer(
@@ -1769,9 +1814,11 @@ export class CommanderTool implements Tool<'commander'> {
         },
         folder: shown.pane.folder,
         names,
-        pack: { archive },
+        archive: { job: 'pack', file: archive },
       },
-      packing(plan, (planned, options) => archives.pack(planned, options)),
+      archiveJob(path.basename(archive), (options) =>
+        archives.pack(plan, options),
+      ),
     );
   }
 
@@ -1838,13 +1885,31 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private transferred({ plan, folder, names }: TransferAsk): void {
+  private transferred({ plan, folder, names, archive }: TransferAsk): void {
     const { shown } = this;
     const panes = shown && this.panes.get(shown.tab);
     if (shown === undefined || panes === undefined) {
       return;
     }
     const key = (each: string) => folderKey(each, this.access.platform);
+    for (const side of archive === undefined ? [] : sides) {
+      const pane = panes[side];
+      const inside = this.access.archives?.within(pane.folder);
+      if (
+        archive === undefined ||
+        inside === undefined ||
+        key(inside.archive.file) !== key(archive.file)
+      ) {
+        continue;
+      }
+      if (pane.flat === undefined) {
+        void this.shell.track(
+          this.list(shown.page, shown.tab, side, pane.folder, 'show'),
+        );
+      } else {
+        pane.flat.tree.changedAll();
+      }
+    }
     const changes = (each: string) =>
       (plan.move && key(each) === key(folder)) ||
       key(each) === key(plan.target);

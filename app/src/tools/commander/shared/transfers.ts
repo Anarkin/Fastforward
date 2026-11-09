@@ -26,10 +26,12 @@ export interface TransferProgress {
   readonly current?: string;
 }
 
+export type ArchiveJob = 'pack' | 'delete';
+
 export interface TransferView {
   readonly id: number;
   readonly move: boolean;
-  readonly packing?: true;
+  readonly archiveJob?: ArchiveJob;
   readonly items: number;
   readonly name?: string;
   readonly target: string;

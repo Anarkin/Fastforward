@@ -249,6 +249,22 @@ suite('7-Zip', () => {
     );
   });
 
+  test('deletes a folder with all that is in it and a file from a zip, keeping the rest', async () => {
+    const zip = await packed('d.zip');
+    const listIn = path.join(folder, 'lists');
+    fs.mkdirSync(listIn);
+    assert.deepStrictEqual(
+      await reader.remove(zip, ['docs', 'top.txt'], { listIn }),
+      { kind: 'packed' },
+    );
+    const listing = await reader.list(zip);
+    assert.deepStrictEqual(
+      listing.kind === 'listed' &&
+        listing.items.map((item) => item.path).toSorted(byText),
+      ['src', 'src/app', 'src/app/main.ts'],
+    );
+  });
+
   test('cuts an archive into volumes of the size asked, listed together from the first', async () => {
     made('big.txt', 'x'.repeat(250_000));
     await packedAs('v.zip', {

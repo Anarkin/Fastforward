@@ -3,6 +3,7 @@ import type { Notice } from '../../../shell/main/shell';
 import { strings } from '../../../shared/strings';
 import {
   isClashAnswer,
+  type ArchiveJob,
   type Clash,
   type TransferProgress,
   type TransferView,
@@ -28,7 +29,7 @@ export interface TransferAsk {
   readonly plan: TransferPlan;
   readonly folder: string;
   readonly names: readonly string[];
-  readonly pack?: { readonly archive: string };
+  readonly archive?: { readonly job: ArchiveJob; readonly file: string };
 }
 
 export interface TransfersHost {
@@ -55,13 +56,35 @@ function whatOf({ names }: TransferAsk): string {
     : strings.commander.items(names.length);
 }
 
+const archiveSentences: Readonly<
+  Record<
+    ArchiveJob,
+    {
+      readonly failed: (name: string, reason: string) => string;
+      readonly done: (what: string, archive: string) => string;
+      readonly stopped: (archive: string) => string;
+    }
+  >
+> = {
+  pack: {
+    failed: strings.commander.packFailed,
+    done: strings.commander.packed,
+    stopped: strings.commander.packingStopped,
+  },
+  delete: {
+    failed: strings.commander.deleteFromFailed,
+    done: strings.commander.deletedFrom,
+    stopped: strings.commander.deletingStopped,
+  },
+};
+
 function failureNotice({ ask, failures }: Running): string | undefined {
   const [first] = failures;
   if (first === undefined) {
     return undefined;
   }
-  if (ask.pack !== undefined) {
-    return strings.commander.packFailed(first.name, first.reason);
+  if (ask.archive !== undefined) {
+    return archiveSentences[ask.archive.job].failed(first.name, first.reason);
   }
   const { move } = ask.plan;
   if (failures.length === 1) {
@@ -215,9 +238,9 @@ export class Transfers {
     if (failed !== undefined) {
       this.host.notice({ level: 'error', message: failed });
     }
-    const { pack } = running.ask;
-    if (pack !== undefined) {
-      this.packEnded(running, how, pack.archive);
+    const { archive } = running.ask;
+    if (archive !== undefined) {
+      this.archiveEnded(running, how, archive);
       return;
     }
     if (how === 'broke') {
@@ -240,16 +263,17 @@ export class Transfers {
     this.show();
   }
 
-  private packEnded(
+  private archiveEnded(
     running: Running,
     how: 'done' | 'stopped' | 'broke',
-    archive: string,
+    { job, file }: { readonly job: ArchiveJob; readonly file: string },
   ): void {
+    const sentences = archiveSentences[job];
     if (running.warnings.length > 0) {
       this.host.notice({
         level: 'error',
         message: strings.commander.packedWithout(
-          path.basename(archive),
+          path.basename(file),
           running.warnings.join(' '),
         ),
       });
@@ -257,7 +281,7 @@ export class Transfers {
     if (how === 'broke') {
       this.host.notice({
         level: 'error',
-        message: strings.commander.packingStopped(archive),
+        message: sentences.stopped(file),
       });
     } else if (
       how === 'done' &&
@@ -266,7 +290,7 @@ export class Transfers {
     ) {
       this.host.notice({
         level: 'info',
-        message: strings.commander.packed(whatOf(running.ask), archive),
+        message: sentences.done(whatOf(running.ask), file),
       });
     }
     this.host.finished(running.ask);
@@ -291,10 +315,10 @@ export class Transfers {
     return {
       id: running.id,
       move: ask.plan.move,
-      ...(ask.pack !== undefined && { packing: true }),
+      ...(ask.archive !== undefined && { archiveJob: ask.archive.job }),
       items: ask.names.length,
       ...(ask.names.length === 1 && { name: path.basename(ask.names[0]) }),
-      target: ask.pack?.archive ?? ask.plan.target,
+      target: ask.archive?.file ?? ask.plan.target,
       ...(progress !== undefined && { progress }),
       ...(clash !== undefined && { clash }),
       stopping: running.stopping,

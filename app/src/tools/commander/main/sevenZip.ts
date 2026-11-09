@@ -13,6 +13,7 @@ import type {
   PackOptions,
   PackPlan,
   Packing,
+  RemoveOptions,
 } from './archives';
 
 export interface SevenZipRun {
@@ -463,13 +464,15 @@ function warningOf(run: SevenZipRun, file: string): string {
   ].join(' ');
 }
 
-const totalsPattern =
+const addedPattern =
   /^Add new data to archive: (?:\d+ folders?, )?(\d+) files?, (\d+) bytes/;
+const keptPattern =
+  /^Keep old data in archive: (?:\d+ folders?, )?(\d+) files?, (\d+) bytes/;
 
-function packOutput({
-  onProgress,
-  onTotals,
-}: PackOptions): ((text: string) => void) | undefined {
+function packOutput(
+  { onProgress, onTotals }: PackOptions,
+  totalsPattern: RegExp = addedPattern,
+): ((text: string) => void) | undefined {
   if (onProgress === undefined && onTotals === undefined) {
     return undefined;
   }
@@ -515,6 +518,47 @@ async function packed(
     : { kind: 'refused', ...refusalOf(run, into) };
 }
 
+async function removed(
+  sevenZip: SevenZip,
+  file: string,
+  paths: readonly string[],
+  { listIn, password, signal, ...told }: RemoveOptions,
+): Promise<Packing> {
+  const list = path.join(listIn, 'removed.paths');
+  await fs.promises.writeFile(list, paths.join('\n'));
+  const onOutput = packOutput(told, keptPattern);
+  const { switches, input } = passwordGiven(password);
+  try {
+    const run = await sevenZip(
+      [
+        'd',
+        '-y',
+        ...switches,
+        '-spd',
+        '-sccUTF-8',
+        '-scsUTF-8',
+        ...(onOutput === undefined ? [] : ['-bsp1']),
+        `-i@${list}`,
+        '--',
+        file,
+      ],
+      {
+        ...(signal !== undefined && { signal }),
+        ...(input !== undefined && { input }),
+        ...(onOutput !== undefined && { onOutput }),
+      },
+    );
+    if (run.code === 0) {
+      return { kind: 'packed' };
+    }
+    return run.code === 1
+      ? { kind: 'packed', warning: warningOf(run, file) }
+      : { kind: 'refused', ...refusalOf(run, file) };
+  } finally {
+    await fs.promises.rm(list, { force: true });
+  }
+}
+
 export function sevenZipReaderAt(program: string): ArchiveReader | undefined {
   return fs.existsSync(program)
     ? sevenZipReader(sevenZipAt(program))
@@ -527,5 +571,6 @@ export function sevenZipReader(sevenZip: SevenZip): ArchiveReader {
     extract: (file, paths, into, options) =>
       extracted(sevenZip, file, paths, into, options),
     pack: (plan, into, options) => packed(sevenZip, plan, into, options),
+    remove: (file, paths, options) => removed(sevenZip, file, paths, options),
   };
 }

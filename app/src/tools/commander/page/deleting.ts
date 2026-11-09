@@ -5,6 +5,7 @@ export function deleteQuestion(
   permanently: boolean,
   platform: string | undefined,
   binOff = false,
+  archive?: string,
 ): { title: string; message: string; confirm: string } {
   const { commander } = strings;
   const what =
@@ -14,9 +15,15 @@ export function deleteQuestion(
   if (permanently) {
     return {
       title: commander.deletePermanentlyTitle,
-      message: binOff
-        ? commander.binOffQuestion(what)
-        : commander.deleteQuestion(what),
+      message:
+        archive !== undefined
+          ? commander.deleteFromArchiveQuestion(
+              what,
+              archive.split(/[\\/]/).at(-1) ?? archive,
+            )
+          : binOff
+            ? commander.binOffQuestion(what)
+            : commander.deleteQuestion(what),
       confirm: commander.deletePermanentlyTitle,
     };
   }

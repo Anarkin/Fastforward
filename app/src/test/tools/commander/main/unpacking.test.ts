@@ -43,6 +43,7 @@ const archivesExtracting = (
   usePassword: () => {},
   hasPassword: () => false,
   pack: () => Promise.reject(new Error('Nothing is packed here.')),
+  remove: () => Promise.reject(new Error('Nothing is deleted here.')),
   within: () => undefined,
   fileHolding: () => Promise.resolve(undefined),
   extract: (_archive, _paths, options) =>

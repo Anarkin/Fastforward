@@ -40,4 +40,16 @@ suite('Commander deleting', () => {
       confirm: 'Delete Permanently',
     });
   });
+
+  test('asks before deleting from an archive permanently, naming the archive, as an archive has no Recycle Bin', () => {
+    assert.deepStrictEqual(
+      deleteQuestion(['a.txt', 'docs'], true, 'linux', false, '/x/photos.zip'),
+      {
+        title: 'Delete Permanently',
+        message:
+          'Delete 2 items from "photos.zip" permanently? This cannot be undone.',
+        confirm: 'Delete Permanently',
+      },
+    );
+  });
 });

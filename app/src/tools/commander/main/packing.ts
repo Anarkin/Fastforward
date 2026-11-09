@@ -92,9 +92,9 @@ export async function packInto(
   }
 }
 
-export function packing(
-  plan: PackPlan,
-  pack: (plan: PackPlan, options?: PackOptions) => Promise<Packing>,
+export function archiveJob(
+  name: string,
+  run: (options: PackOptions) => Promise<Packing>,
 ): ConnectTransfer {
   return (listener) => {
     const aborting = new AbortController();
@@ -110,11 +110,10 @@ export function packing(
         listener.event(event);
       }
     };
-    const name = path.basename(plan.archive);
     const begin = async () => {
       let totals:
         { readonly files: number; readonly bytes: number } | undefined;
-      const packed = await pack(plan, {
+      const packed = await run({
         signal: aborting.signal,
         onTotals: (counted) => {
           totals = counted;

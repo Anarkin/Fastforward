@@ -65,6 +65,11 @@ export interface PackOptions {
   }) => void;
 }
 
+export interface RemoveOptions extends PackOptions {
+  readonly listIn: string;
+  readonly password?: string;
+}
+
 export type Packing =
   | { readonly kind: 'packed'; readonly warning?: string }
   | ({ readonly kind: 'refused' } & ArchiveRefusal);
@@ -82,6 +87,11 @@ export interface ArchiveReader {
     options?: ExtractOptions,
   ): Promise<ArchiveRefusal | undefined>;
   pack(plan: PackPlan, into: string, options?: PackOptions): Promise<Packing>;
+  remove(
+    file: string,
+    paths: readonly string[],
+    options: RemoveOptions,
+  ): Promise<Packing>;
 }
 
 interface ArchiveNode {
@@ -242,12 +252,26 @@ export interface ArchiveAccess {
   usePassword(file: string, password: string | undefined): void;
   hasPassword(file: string): boolean;
   pack(plan: PackPlan, options?: PackOptions): Promise<Packing>;
+  remove(
+    archive: OpenedArchive,
+    paths: readonly string[],
+    options?: PackOptions,
+  ): Promise<Packing>;
 }
 
 async function removed(folder: string): Promise<void> {
   await fs.promises
     .rm(folder, { recursive: true, force: true, maxRetries: 3 })
     .catch(() => undefined);
+}
+
+async function temporariesOf(file: string): Promise<string[]> {
+  const folder = path.dirname(file);
+  const name = `${path.basename(file)}.tmp`;
+  const names = await fs.promises.readdir(folder).catch(() => []);
+  return names
+    .filter((each) => each.startsWith(name))
+    .map((each) => path.join(folder, each));
 }
 
 export function workFolders(root: string): {
@@ -537,6 +561,43 @@ export class Archives implements ArchiveAccess {
     return this.reader === undefined
       ? { kind: 'refused', reason: strings.commander.noSevenZip }
       : packInto(this.reader, plan, options);
+  }
+
+  async remove(
+    archive: OpenedArchive,
+    paths: readonly string[],
+    options: PackOptions = {},
+  ): Promise<Packing> {
+    const { reader } = this;
+    if (reader === undefined) {
+      return { kind: 'refused', reason: strings.commander.noSevenZip };
+    }
+    if (archive.outer !== undefined || archive.source !== archive.file) {
+      return {
+        kind: 'refused',
+        reason: strings.commander.archiveUnchangeable(
+          path.basename(archive.file),
+        ),
+      };
+    }
+    const listIn = await this.workFolder();
+    const before = new Set(await temporariesOf(archive.file));
+    try {
+      return await reader.remove(archive.file, paths, {
+        ...options,
+        ...this.passwordOf(archive.file),
+        listIn,
+      });
+    } catch (error) {
+      for (const left of await temporariesOf(archive.file)) {
+        if (!before.has(left)) {
+          await removed(left);
+        }
+      }
+      throw error;
+    } finally {
+      await removed(listIn);
+    }
   }
 
   usePassword(file: string, password: string | undefined): void {

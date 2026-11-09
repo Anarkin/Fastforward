@@ -141,7 +141,7 @@ suite('Transfers', () => {
     const packing = (): TransferAsk => ({
       ...ask(['a.txt', 'docs']),
       plan: { sources: [archive], target, move: false },
-      pack: { archive },
+      archive: { job: 'pack', file: archive },
     });
     const locked = 'The process cannot access the file : locked.txt';
 
@@ -149,7 +149,7 @@ suite('Transfers', () => {
     assert.deepStrictEqual(last(), {
       id: 1,
       move: false,
-      packing: true,
+      archiveJob: 'pack',
       items: 2,
       target: archive,
       stopping: false,
@@ -173,6 +173,38 @@ suite('Transfers', () => {
       {
         level: 'error',
         message: strings.commander.packFailed('photos.zip', 'disk full'),
+      },
+    ]);
+  });
+
+  test('shows a delete from an archive as deleting from it, saying once done that it deleted when its dialog was closed, and why it deleted nothing', () => {
+    const { coordinator, tell, last, notices } = transfers();
+    const archive = path.join(target, 'photos.zip');
+    const deleting = (): TransferAsk => ({
+      ...ask(['docs']),
+      plan: { sources: [archive], target, move: false },
+      archive: { job: 'delete', file: archive },
+    });
+
+    coordinator.start(deleting());
+    assert.strictEqual(last()?.archiveJob, 'delete');
+    coordinator.hide(1);
+    tell(0, { type: 'done', stopped: false });
+    coordinator.start(deleting());
+    tell(1, { type: 'failed', name: 'photos.zip', reason: 'read-only' });
+    tell(1, { type: 'done', stopped: false });
+
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'info',
+        message: strings.commander.deletedFrom(
+          strings.commander.oneItem('docs'),
+          archive,
+        ),
+      },
+      {
+        level: 'error',
+        message: strings.commander.deleteFromFailed('photos.zip', 'read-only'),
       },
     ]);
   });

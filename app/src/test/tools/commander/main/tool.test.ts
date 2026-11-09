@@ -223,6 +223,7 @@ function commander(
   const secrets = new Map<string, string>();
   const extracted: (readonly string[])[] = [];
   const packed: PackPlan[] = [];
+  const removedFromArchives: (readonly [string, readonly string[]])[] = [];
   const passwordRight = (archive: string) =>
     !secrets.has(archive) || passwords.get(archive) === secrets.get(archive);
   const archives: ArchiveAccess = {
@@ -236,6 +237,10 @@ function commander(
     hasPassword: (archive) => passwords.has(archive),
     pack: (plan) => {
       packed.push(plan);
+      return Promise.resolve({ kind: 'packed' });
+    },
+    remove: (archive, paths) => {
+      removedFromArchives.push([archive.file, paths]);
       return Promise.resolve({ kind: 'packed' });
     },
     extract: async (archive, paths, options) => {
@@ -292,6 +297,10 @@ function commander(
           ),
         ]);
       }
+      const known = openedArchives.get(opening);
+      if (known?.outer !== undefined) {
+        return { kind: 'opened', archive: known };
+      }
       const items = archived.get(opening);
       if (
         typeof items !== 'string' &&
@@ -324,8 +333,18 @@ function commander(
       openedArchives.set(opening, archive);
       return Promise.resolve({ kind: 'opened', archive });
     },
-    openInside: (inside, _outer, _path, signal) =>
-      archives.open(inside, signal),
+    openInside: async (inside, outer, _path, signal) => {
+      const inner = await archives.open(inside, signal);
+      if (inner.kind !== 'opened') {
+        return inner;
+      }
+      const nested = {
+        ...inner.archive,
+        outer: { file: outer.file, version: outer.version },
+      };
+      openedArchives.set(inside, nested);
+      return { kind: 'opened', archive: nested };
+    },
     within: (inside) => {
       for (const [archiveFile, archive] of openedArchives
         .entries()
@@ -655,6 +674,7 @@ function commander(
     passwords,
     extracted,
     packed,
+    removedFromArchives,
   };
 }
 
@@ -2270,12 +2290,12 @@ suite('Commander tool', () => {
     });
     await waitFor(() => packed.length === 1, 'the pack to start');
     assert.deepStrictEqual(
-      page.of('transfer').find((message) => message.view?.packing === true)
+      page.of('transfer').find((message) => message.view?.archiveJob === 'pack')
         ?.view,
       {
         id: 1,
         move: false,
-        packing: true,
+        archiveJob: 'pack',
         items: 2,
         target: archive,
         stopping: false,
@@ -5362,6 +5382,67 @@ suite('Commander tool in archives', () => {
       `right ${at('a.zip')} ↑: docs top.txt`,
     );
     assert.deepStrictEqual(notices, []);
+  });
+
+  test('deletes the items of an archive asked for from it in the dialog of copies, reading it again once done, and says an archive inside another cannot be changed yet', async () => {
+    const { tool, page, send, archived, removedFromArchives, notices } =
+      commander({ [root]: [file('a.zip')] });
+    archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);
+    archived.set(path.join(at('a.zip'), 'inner.zip'), zipped);
+    await tool.show(page, tab);
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    const listed = page.of('listing').length;
+    const deleting = (inFolder: string, names: readonly string[]) =>
+      send({
+        type: 'delete',
+        tab: '1',
+        side: 'right',
+        folder: inFolder,
+        names,
+        permanently: true,
+      });
+
+    await deleting(at('a.zip'), ['docs', 'top.txt', 'missing.txt']);
+    await deleting(at('a.zip'), ['docs', 'top.txt']);
+    await waitFor(
+      () => page.of('listing').length > listed,
+      'the archive to be read again',
+    );
+    assert.deepStrictEqual(
+      page
+        .of('transfer')
+        .find((message) => message.view?.archiveJob === 'delete')?.view,
+      {
+        id: 1,
+        move: false,
+        archiveJob: 'delete',
+        items: 2,
+        target: at('a.zip'),
+        stopping: false,
+      },
+    );
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'inner.zip',
+    });
+    await deleting(path.join(at('a.zip'), 'inner.zip'), ['top.txt']);
+
+    assert.deepStrictEqual(removedFromArchives, [
+      [at('a.zip'), ['docs', 'top.txt']],
+    ]);
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.archiveUnchangeable('inner.zip'),
+      },
+    ]);
   });
 
   test('tells the page a side is reading an archive once it takes a while, stopping on Esc and staying where it was', async () => {

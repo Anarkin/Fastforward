@@ -427,6 +427,57 @@ suite('packing with 7-Zip', () => {
   });
 });
 
+suite('deleting with 7-Zip', () => {
+  test('deletes the items named from a list file without wildcards, telling what it keeps and how far it got, the password on its input', async () => {
+    const listIn = tempFolder('removing');
+    const asked: { args: readonly string[]; input?: string; list?: string }[] =
+      [];
+    const totals: unknown[] = [];
+    try {
+      const removed = await sevenZipReader((args, { input, onOutput } = {}) => {
+        const list = args.find((arg) => arg.startsWith('-i@'))?.slice(3);
+        asked.push({
+          args,
+          ...(input !== undefined && { input }),
+          ...(list !== undefined && { list: fs.readFileSync(list, 'utf8') }),
+        });
+        onOutput?.(
+          'Delete data from archive: 2 folders, 3 files, 6 bytes (1 KiB)\nKeep old data in archive: 1 file, 2 bytes (1 KiB)\nAdd new data to archive: 0 files, 0 bytes\n',
+        );
+        return Promise.resolve({ code: 0, output: '', errors: '' });
+      }).remove('a.7z', ['docs', 'a.txt'], {
+        listIn,
+        password: 'secret',
+        onTotals: (told) => totals.push(told),
+        onProgress: () => undefined,
+      });
+      const list = asked[0]?.args.find((arg) => arg.startsWith('-i@'));
+      assert.deepStrictEqual(removed, { kind: 'packed' });
+      assert.deepStrictEqual(asked, [
+        {
+          args: [
+            'd',
+            '-y',
+            '-spd',
+            '-sccUTF-8',
+            '-scsUTF-8',
+            '-bsp1',
+            list,
+            '--',
+            'a.7z',
+          ],
+          input: 'secret\n',
+          list: 'docs\na.txt',
+        },
+      ]);
+      assert.deepStrictEqual(totals, [{ files: 1, bytes: 2 }]);
+      assert.deepStrictEqual(fs.readdirSync(listIn), []);
+    } finally {
+      removeFolder(listIn);
+    }
+  });
+});
+
 suite('the password of an archive', () => {
   test('gives 7-Zip a password on its input rather than among its arguments, where other programs could read it, and a refusal for a wrong one says a password is needed', async () => {
     const asked: { args: readonly string[]; input: string | undefined }[] = [];

@@ -95,11 +95,13 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
     <div className="confirm-body transfer-body">
       <div className="transfer-running">
         <span title={transfer.target}>
-          {(transfer.packing === true
+          {(transfer.archiveJob === 'pack'
             ? commander.packingInto
-            : transfer.move
-              ? commander.moving
-              : commander.copying)(
+            : transfer.archiveJob === 'delete'
+              ? commander.deletingFrom
+              : transfer.move
+                ? commander.moving
+                : commander.copying)(
             whatOf(transfer.items, transfer.name),
             transfer.target,
           )}
@@ -117,7 +119,7 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
       >
         <div className="transfer-bar-done" style={{ width: `${done}%` }} />
       </div>
-      {progress !== undefined && (
+      {progress !== undefined && transfer.archiveJob !== 'delete' && (
         <div className="transfer-counts">
           <span>
             {commander.transferredFiles(progress.files, progress.totalFiles)}
@@ -155,11 +157,13 @@ function TransferDialog({ transfer }: { transfer: TransferView }) {
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
   const title =
-    transfer.packing === true
+    transfer.archiveJob === 'pack'
       ? strings.commander.packTitle
-      : transfer.move
-        ? strings.commander.moveTitle
-        : strings.commander.copyTitle;
+      : transfer.archiveJob === 'delete'
+        ? strings.commander.deletePermanentlyTitle
+        : transfer.move
+          ? strings.commander.moveTitle
+          : strings.commander.copyTitle;
   return (
     <div
       className="backdrop"

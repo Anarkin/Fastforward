@@ -58,6 +58,7 @@ interface Deleting {
   readonly names: readonly string[];
   readonly permanently: boolean;
   readonly binOff?: true;
+  readonly archive?: string;
 }
 
 interface Transferring {
@@ -927,17 +928,19 @@ export function createCommanderStore(
           }),
         ),
       askDelete: (side, names, permanently) =>
-        onDisk(side, (tab, folder) => {
-          const binOff =
-            !permanently && get().view.panes[side]?.binOff === true;
+        onPane(side, (tab, folder) => {
+          const pane = get().view.panes[side];
+          const archive = pane?.archive;
+          const binOff = !permanently && pane?.binOff === true;
           set({
             deleting: {
               tab,
               side,
               folder,
               names,
-              permanently: permanently || binOff,
+              permanently: permanently || binOff || archive !== undefined,
               ...(binOff && { binOff }),
+              ...(archive !== undefined && { archive }),
             },
           });
         }),

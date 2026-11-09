@@ -1150,6 +1150,34 @@ suite('The commander store in flat view', () => {
 });
 
 suite('The commander store in archives', () => {
+  test('asks before deleting items of a side inside an archive from it, always permanently, naming the archive, and deletes them once confirmed', () => {
+    const { posted, store } = shown();
+    store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
+    store.getState().askDelete('left', ['docs'], false);
+    assert.deepStrictEqual(store.getState().deleting, {
+      tab: '1',
+      side: 'left',
+      folder: 'C:\\a.zip',
+      names: ['docs'],
+      permanently: true,
+      archive: 'C:\\a.zip',
+    });
+    store.getState().confirmDelete();
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'delete'),
+      [
+        {
+          type: 'delete',
+          tab: '1',
+          side: 'left',
+          folder: 'C:\\a.zip',
+          names: ['docs'],
+          permanently: true,
+        },
+      ],
+    );
+  });
+
   test('asks and sends nothing that would change an archive or move or drag out of it, for a side inside one or a copy into one, sending what moves through it, reads from it, lists it flat or enters an archive in it, and the archive to enter from a folder, and asking before a copy out of it', () => {
     const { posted, store } = shown();
     store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
@@ -1157,7 +1185,6 @@ suite('The commander store in archives', () => {
     const before = posted.length;
     const actions = store.getState();
 
-    actions.askDelete('left', ['a.txt'], false);
     actions.askTransfer('left', ['a.txt'], true);
     actions.askTransfer('right', ['b.txt'], false);
     actions.askTransfer('right', ['b.txt'], true);
