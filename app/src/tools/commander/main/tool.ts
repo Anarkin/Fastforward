@@ -62,6 +62,7 @@ import {
   thumbnailBoxOf,
 } from '../../../shared/images';
 import { thumbnailKey } from './thumbnailStore';
+import { ArchiveImages } from './archiveImages';
 import { fileVersion, viewedFileOf } from '../shared/files';
 import {
   blockCache,
@@ -380,6 +381,7 @@ export class CommanderTool implements Tool<'commander'> {
   private elevated: ElevatedFileSystem | undefined;
   private viewingsAsked = 0;
   private passwordAsks = 0;
+  private archiveImages: ArchiveImages | undefined;
   private readonly passwordsAsked = new Map<
     number,
     (password: string | undefined) => void
@@ -909,7 +911,13 @@ export class CommanderTool implements Tool<'commander'> {
     folder: unknown,
     name: unknown,
   ):
-    | { readonly file: string; readonly entry: Entry; readonly type: string }
+    | {
+        readonly file: string;
+        readonly entry: Entry;
+        readonly type: string;
+        readonly pane: Pane;
+        readonly name: string;
+      }
     | undefined {
     const pane =
       typeof tab === 'string' && isSide(side)
@@ -926,7 +934,7 @@ export class CommanderTool implements Tool<'commander'> {
       entry.folder ||
       type === undefined
       ? undefined
-      : { file: path.join(pane.folder, name), entry, type };
+      : { file: path.join(pane.folder, name), entry, type, pane, name };
   }
 
   private thumbnailKeyOf(
@@ -948,12 +956,25 @@ export class CommanderTool implements Tool<'commander'> {
     const listed =
       source &&
       this.listedImage(source.tab, source.side, source.folder, source.name);
-    if (listed === undefined) {
+    const archived =
+      listed?.pane.archive === undefined
+        ? undefined
+        : this.archiveItems(listed.pane, [listed.name]);
+    if (
+      listed === undefined ||
+      (listed.pane.archive !== undefined && archived === undefined)
+    ) {
       return new Response(null, { status: 404 });
     }
     const boxed = thumbnailBoxOf(url);
     if (fillsThumbnail(url)) {
-      const skipped = boxed && (await this.notFilled(listed, boxed));
+      const skipped =
+        boxed &&
+        (await this.notFilled(
+          listed,
+          boxed,
+          archived?.archive.source ?? listed.file,
+        ));
       if (boxed === undefined || skipped !== undefined) {
         return new Response(null, { status: skipped ?? 404 });
       }
@@ -971,14 +992,47 @@ export class CommanderTool implements Tool<'commander'> {
     if ((listed.entry.size ?? 0) > maxImageSize) {
       return new Response(null, { status: 413 });
     }
+    if (archived !== undefined) {
+      return this.archivedImage(archived, listed.type);
+    }
     return fileResponse(listed.file, listed.type, null).catch(
       () => new Response(null, { status: 404 }),
     );
   }
 
+  private async archivedImage(
+    {
+      archives,
+      archive,
+      paths: [item],
+      encrypted,
+    }: {
+      readonly archives: ArchiveAccess;
+      readonly archive: OpenedArchive;
+      readonly paths: readonly string[];
+      readonly encrypted: boolean;
+    },
+    type: string,
+  ): Promise<Response> {
+    if (
+      item === undefined ||
+      (encrypted && !archives.hasPassword(archive.file))
+    ) {
+      return new Response(null, { status: 404 });
+    }
+    this.archiveImages ??= new ArchiveImages(archives);
+    const bytes = await this.archiveImages.read(archive, item);
+    return bytes === undefined
+      ? new Response(null, { status: 404 })
+      : new Response(new Uint8Array(bytes), {
+          headers: { 'content-type': type },
+        });
+  }
+
   private async notFilled(
     listed: { readonly file: string; readonly entry: Entry },
     { box, pixelRatio }: ThumbnailBox,
+    read: string,
   ): Promise<number | undefined> {
     if (
       await this.access.thumbnails.has(
@@ -989,7 +1043,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
     if (
       listed.entry.online === true ||
-      (await this.access.streamed?.(listed.file)) === true
+      (await this.access.streamed?.(read)) === true
     ) {
       return onlineStatus;
     }

@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { ArchiveImages } from '../tools/commander/main/archiveImages';
 import { Archives, type Opening } from '../tools/commander/main/archives';
 import {
   sevenZipAt,
@@ -214,6 +215,21 @@ suite('Archives of the playground of files', () => {
         ?.map((entry) => entry.name)
         .toSorted((one, other) => one.localeCompare(other)),
       project.toSorted((one, other) => one.localeCompare(other)),
+    );
+  });
+
+  test('reads the images of the zip of images for their thumbnails, one in a folder too, taken out together', async () => {
+    const opened = await archives.open(at('images.zip'));
+    assert.ok(opened.kind === 'opened');
+    const images = new ArchiveImages(archives);
+    const read = await Promise.all(
+      ['image-01.png', 'more/image-61.png', 'missing.png'].map((item) =>
+        images.read(opened.archive, item),
+      ),
+    );
+    assert.deepStrictEqual(
+      read.map((bytes) => bytes?.subarray(1, 4).toString('latin1')),
+      ['PNG', 'PNG', undefined],
     );
   });
 

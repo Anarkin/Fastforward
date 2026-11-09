@@ -219,6 +219,7 @@ function commander(
   };
   const passwords = new Map<string, string>();
   const secrets = new Map<string, string>();
+  const extracted: (readonly string[])[] = [];
   const passwordRight = (archive: string) =>
     !secrets.has(archive) || passwords.get(archive) === secrets.get(archive);
   const archives: ArchiveAccess = {
@@ -231,6 +232,7 @@ function commander(
     },
     hasPassword: (archive) => passwords.has(archive),
     extract: async (archive, paths, options) => {
+      extracted.push(paths);
       const into = options?.into;
       if (copies.refused !== undefined) {
         return { kind: 'refused', reason: copies.refused };
@@ -629,6 +631,7 @@ function commander(
     opensHeld,
     secrets,
     passwords,
+    extracted,
   };
 }
 
@@ -5012,6 +5015,105 @@ suite('Commander tool in archives', () => {
         },
       ]);
       assert.deepStrictEqual(opened, []);
+    });
+
+    test('serves the images of an archive for their thumbnails from copies taken out of it together, each once, removing them once read, an encrypted one only once its password is known', async () => {
+      const {
+        tool,
+        page,
+        send,
+        archived,
+        copies,
+        extracted,
+        passwords,
+        secrets,
+      } = commander({ [root]: [file('a.zip')] });
+      copies.folder = copiesFolder;
+      archived.set(at('a.zip'), [
+        ...zipped,
+        archiveItem('a.png'),
+        archiveItem('pics/b.png'),
+        { ...archiveItem('secret.png'), encrypted: true },
+      ]);
+      secrets.set(at('a.zip'), 'right');
+      await tool.show(page, tab);
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      await send({ type: 'flat', tab: '1', side: 'right', flat: true });
+      await waitFor(
+        () =>
+          page
+            .of('flatFiles')
+            .some((message) =>
+              message.folders.some((listed) =>
+                listed.entries.some((entry) => entry.name === 'b.png'),
+              ),
+            ),
+        'the image in a folder of the archive to be listed flat',
+      );
+      const before = fs.readdirSync(copiesFolder);
+      const thumbnail = async (name: string) => {
+        const response = await tool.thumbnail(
+          new URL(
+            `fastforward://app${thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name }, '1:0')}`,
+          ),
+        );
+        return response.ok
+          ? [response.headers.get('content-type'), await response.text()]
+          : response.status;
+      };
+
+      assert.deepStrictEqual(
+        await Promise.all(
+          ['a.png', path.join('pics', 'b.png'), 'a.png'].map(thumbnail),
+        ),
+        [
+          ['image/png', 'the a.png of the archive'],
+          ['image/png', 'the pics/b.png of the archive'],
+          ['image/png', 'the a.png of the archive'],
+        ],
+      );
+      assert.strictEqual(await thumbnail('secret.png'), 404);
+      assert.strictEqual(await thumbnail('top.txt'), 404);
+      assert.deepStrictEqual(extracted, [['a.png', 'pics/b.png']]);
+      passwords.set(at('a.zip'), 'right');
+      assert.deepStrictEqual(await thumbnail('secret.png'), [
+        'image/png',
+        'the secret.png of the archive',
+      ]);
+      assert.deepStrictEqual(fs.readdirSync(copiesFolder), before);
+    });
+
+    test('makes no thumbnail in the background of an image in an archive kept online only, as reading it would download the archive, asking about the archive rather than a path inside it', async () => {
+      const { tool, page, send, archived, streamed } = commander({
+        [root]: [file('a.zip'), file('nested.zip')],
+      });
+      archived.set(at('a.zip'), [archiveItem('a.png')]);
+      await tool.show(page, tab);
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      streamed.add(at('a.zip'));
+      const filled = async () => {
+        const response = await tool.thumbnail(
+          new URL(
+            `fastforward://app${filledThumbnailUrl(boxedThumbnailUrl(thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name: 'a.png' }, '1:0'), 144, 1.5))}`,
+          ),
+        );
+        await response.body?.cancel();
+        return response.status;
+      };
+      assert.strictEqual(await filled(), 409);
+      streamed.clear();
+      streamed.add(path.join(at('a.zip'), 'a.png'));
+      assert.notStrictEqual(await filled(), 409);
     });
   });
 

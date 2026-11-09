@@ -981,7 +981,7 @@ export function plan({
 
   section(
     'archives',
-    `Archives to enter with Try Enter Archive in the menu of a file, or Mod+Left and Mod+Right on it: a zip of folders, tars plain and compressed, shown as the files of their tar, a document made of a zip, which Enter opens in its app, one compressed file, a zip inside a zip, an empty one, names Windows wrote in code page 852, names reaching outside the folder they would be extracted into, deep folders, ${(large ? 100_000 : 5000).toLocaleString('en-US')} files, a zip encrypted with the password playground, one with only some of its files encrypted with it, a 7z whose names are encrypted with it too, a zip encrypted with it holding a 7z whose names are encrypted with the password inner, a damaged one, one that is no archive${windows ? ', and one marked as downloaded' : ''}.`,
+    `Archives to enter with Try Enter Archive in the menu of a file, or Mod+Left and Mod+Right on it: a zip of folders, tars plain and compressed, shown as the files of their tar, a document made of a zip, which Enter opens in its app, one compressed file, a zip inside a zip, an empty one, names Windows wrote in code page 852, names reaching outside the folder they would be extracted into, deep folders, ${(large ? 100_000 : 5000).toLocaleString('en-US')} files, a zip encrypted with the password playground, one with only some of its files encrypted with it, a 7z whose names are encrypted with it too, a zip encrypted with it holding a 7z whose names are encrypted with the password inner, a zip of images to see in thumbnails with Mod+2, flat with Ctrl+B too, a damaged one, one that is no archive${windows ? ', and one marked as downloaded' : ''}.`,
   );
   const project = [
     { name: 'README.md', content: '# A project packed by the playground\n' },
@@ -1080,6 +1080,18 @@ export function plan({
         { name: 'beside-it.txt', content: 'Beside the 7z inside.\n' },
       ],
       'playground',
+    ),
+  );
+  file('archives/images.zip', () =>
+    zip(
+      Array.from({ length: 80 }, (_, i) => ({
+        name: `${i < 60 ? '' : 'more/'}image-${String(i + 1).padStart(2, '0')}.png`,
+        content: plainPng(
+          48 + ((i * 37) % 400),
+          48 + ((i * 53) % 300),
+          (i * 47) % 360,
+        ),
+      })),
     ),
   );
   file('archives/cut-short.zip', () => {
