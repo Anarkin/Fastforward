@@ -49,6 +49,24 @@ suite('Markdown', () => {
     assert.match(html, /<li>plain<\/li>/);
   });
 
+  test('aligns the columns of a table as its separator row says, as GitHub does, by the align it keeps rather than a style', () => {
+    const html = render(
+      ['| a | b | c | d |', '|:--|:-:|--:|---|', '| 1 | 2 | 3 | 4 |'].join(
+        '\n',
+      ),
+      noImages,
+    );
+    assert.match(
+      html,
+      /<th align="left">a<\/th>\s*<th align="center">b<\/th>\s*<th align="right">c<\/th>\s*<th>d<\/th>/,
+    );
+    assert.match(
+      html,
+      /<td align="left">1<\/td>\s*<td align="center">2<\/td>\s*<td align="right">3<\/td>\s*<td>4<\/td>/,
+    );
+    assert.doesNotMatch(html, /style=/);
+  });
+
   test('keeps the HTML GitHub keeps, and no form, nothing that loads another document, and nothing that runs or restyles the page', () => {
     const html = render(
       [

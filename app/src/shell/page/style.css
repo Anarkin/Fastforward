@@ -1472,7 +1472,7 @@ body.resizing {
   box-sizing: border-box;
   min-width: 0;
   padding: 16px 24px;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .image-note {

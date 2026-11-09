@@ -63,6 +63,39 @@ suite('App', () => {
     'diagram.md':
       '# Diagram\n\n```mermaid\ngraph LR\n  Fetch["Fetch<br/>every remote"] --> Merge\n```\n',
     'grid.md': ['# Grid', '', '```text', ...gridLines, '```', ''].join('\n'),
+    'table.md': [
+      '| Folder | What it is for | Size |',
+      '|:--|:-:|--:|',
+      `| \`colors\` | ${'words long enough to squeeze the other columns '.repeat(8)} | 12 |`,
+      `| \`encodings\` | ${'more words that fill the line of the table '.repeat(8)} | 3 |`,
+      '',
+    ].join('\n'),
+  });
+
+  test('keeps the words of a table of a Markdown document viewed whole, a column of code as wide as its longest word rather than broken between its letters, and aligns its columns as its separator row says', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'table.md' }).click();
+    await page
+      .locator('.diff-view .file-header', { hasText: 'table.md' })
+      .getByRole('button', { name: strings.diff.viewFile })
+      .click();
+    try {
+      const table = page.locator('.viewer .markdown table');
+      await table.waitFor();
+      assert.deepStrictEqual(
+        await table.evaluate((element) => ({
+          codeLines: [...element.querySelectorAll('td code')].map(
+            (code) => code.getClientRects().length,
+          ),
+          aligns: [...element.querySelectorAll('th')].map((cell) =>
+            getComputedStyle(cell).textAlign.replace('-webkit-', ''),
+          ),
+        })),
+        { codeLines: [1, 1], aligns: ['left', 'center', 'right'] },
+      );
+    } finally {
+      await closeViewer();
+    }
   });
 
   test('draws the code blocks of a Markdown document viewed on the grid of our terminal, as the viewer and the diff draw text, so code padded for a terminal lines up in the preview too, its tabs stopping on that grid rather than every eight spaces of the font of the pre around it', async () => {

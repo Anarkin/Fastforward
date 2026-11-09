@@ -145,6 +145,23 @@ function taskLists(state: StateCore): void {
   }
 }
 
+const cellAlignment = /^text-align:(left|center|right)$/;
+
+function tableAlignments(state: StateCore): void {
+  for (const token of state.tokens) {
+    const style =
+      token.type === 'th_open' || token.type === 'td_open'
+        ? token.attrGet('style')
+        : null;
+    const align =
+      typeof style === 'string' ? cellAlignment.exec(style)?.[1] : undefined;
+    if (align !== undefined) {
+      token.attrs = (token.attrs ?? []).filter(([name]) => name !== 'style');
+      token.attrSet('align', align);
+    }
+  }
+}
+
 export const imagePath = 'data-path';
 
 type ImageResolver = (src: string) => string | undefined;
@@ -159,6 +176,7 @@ export function markdownRenderer(
 ): Render {
   const markdown = markdownIt({ html: true, linkify: true });
   markdown.core.ruler.after('inline', 'task_lists', taskLists);
+  markdown.core.ruler.push('table_alignments', tableAlignments);
   let resolve = noImages;
   purify.addHook('uponSanitizeAttribute', (node, event) => {
     if (
