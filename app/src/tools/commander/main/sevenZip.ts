@@ -95,8 +95,24 @@ function sizeOf(text: string | undefined): number | undefined {
   return Number.isSafeInteger(size) ? size : undefined;
 }
 
-function itemOf(fields: ReadonlyMap<string, string>): ArchiveItem | undefined {
-  const itemPath = fields.get('Path');
+const tarShorthand = /\.t(?:az|bz2?|gz|pz|xz|zst)$/i;
+
+function nameExtractedOf(file: string): string {
+  const name = path.basename(file);
+  if (tarShorthand.test(name)) {
+    return name.replace(/\.[^.]+$/, '.tar');
+  }
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(0, dot) : name;
+}
+
+function itemOf(
+  fields: ReadonlyMap<string, string>,
+  file: string,
+): ArchiveItem | undefined {
+  const itemPath =
+    fields.get('Path') ??
+    (fields.has('Size') ? nameExtractedOf(file) : undefined);
   if (itemPath === undefined) {
     return undefined;
   }
@@ -116,23 +132,40 @@ function itemOf(fields: ReadonlyMap<string, string>): ArchiveItem | undefined {
 
 const slashed = (file: string) => file.replaceAll('\\', '/');
 
+const counted = /^(?:Errors|Warnings): \d+$/;
+
+function listedUnder(lines: readonly string[]): string[] {
+  const reasons: string[] = [];
+  let under = false;
+  for (const line of lines.map((each) => each.trim())) {
+    if (line === 'ERRORS:' || line === 'WARNINGS:') {
+      under = true;
+    } else if (line === '') {
+      under = false;
+    } else if (under && !counted.test(line)) {
+      reasons.push(line);
+    }
+  }
+  return reasons;
+}
+
 export function reasonOf(run: SevenZipRun, file: string): string {
-  const reasons = `${run.errors}\n${run.output}`
-    .split(/\r?\n/)
-    .flatMap((line) => {
-      const [, message] = errorPattern.exec(line.trim()) ?? [];
-      if (message === undefined) {
-        return [];
-      }
-      const named = message.indexOf(' : ');
-      const reason =
-        named >= 0 && slashed(message.slice(0, named)) === slashed(file)
-          ? message.slice(named + 3)
-          : message;
-      return slashed(reason) === slashed(file) ? [] : [reason];
-    });
-  return reasons.length > 0
-    ? reasons.join(' ')
+  const lines = `${run.errors}\n${run.output}`.split(/\r?\n/);
+  const reasons = lines.flatMap((line) => {
+    const [, message] = errorPattern.exec(line.trim()) ?? [];
+    if (message === undefined) {
+      return [];
+    }
+    const named = message.indexOf(' : ');
+    const reason =
+      named >= 0 && slashed(message.slice(0, named)) === slashed(file)
+        ? message.slice(named + 3)
+        : message;
+    return slashed(reason) === slashed(file) ? [] : [reason];
+  });
+  const told = reasons.length > 0 ? reasons : listedUnder(lines);
+  return told.length > 0
+    ? told.join(' ')
     : strings.commander.sevenZipEnded(run.code);
 }
 
@@ -157,7 +190,7 @@ async function listed(
       block.push(line);
       continue;
     }
-    const item = itemOf(fieldsOf(block));
+    const item = itemOf(fieldsOf(block), file);
     if (item !== undefined) {
       items.push(item);
     }

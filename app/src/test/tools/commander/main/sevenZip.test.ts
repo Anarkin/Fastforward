@@ -158,6 +158,42 @@ suite('sevenZipReader', () => {
   });
 });
 
+const zstd = [
+  '--',
+  'Path = project.tar.zst',
+  'Type = zstd',
+  '',
+  '----------',
+  'Size = ',
+  'Packed Size = ',
+  '',
+].join('\n');
+
+const namedInZstd = async (file: string) => {
+  const listing = await sevenZipReader(ran({ output: zstd })).list(file);
+  return listing.kind === 'listed'
+    ? listing.items.map((each) => [each.path, each.folder, each.size])
+    : listing.reason;
+};
+
+suite('the one item of a compressed file', () => {
+  test('takes the name 7-Zip extracts it by when the listing names none, the name of the file without its extension, or with .tar for the extensions of a compressed tar', async () => {
+    assert.deepStrictEqual(
+      await namedInZstd(path.join('C:', 'project.tar.zst')),
+      [['project.tar', false, undefined]],
+    );
+    assert.deepStrictEqual(await namedInZstd('p.tzst'), [
+      ['p.tar', false, undefined],
+    ]);
+    assert.deepStrictEqual(await namedInZstd('backup.TGZ'), [
+      ['backup.tar', false, undefined],
+    ]);
+    assert.deepStrictEqual(await namedInZstd('notes'), [
+      ['notes', false, undefined],
+    ]);
+  });
+});
+
 suite('reasonOf', () => {
   test('joins the errors 7-Zip names, without the file they are about, or says how 7-Zip ended when it names none', () => {
     assert.strictEqual(
@@ -171,6 +207,18 @@ suite('reasonOf', () => {
         'a.tar.gz',
       ),
       'Cannot open the file as [tar] archive',
+    );
+    assert.strictEqual(
+      reasonOf(
+        {
+          code: 2,
+          output: '',
+          errors:
+            '\nERRORS:\nUnexpected end of archive\nThere are data after the end of archive\n\nErrors: 1\n',
+        },
+        'cut-short.zip',
+      ),
+      'Unexpected end of archive There are data after the end of archive',
     );
     assert.strictEqual(
       reasonOf({ code: 255, output: '', errors: '' }, 'a.zip'),
