@@ -131,7 +131,12 @@ function commander(
 ) {
   const notices: Notice[] = [];
   const saved: unknown[] = [];
-  const watching: { folder: string; changed: () => void }[] = [];
+  const watching: {
+    folder: string;
+    changed: () => void;
+    listed: string | undefined;
+  }[] = [];
+  const listings = new Map<string, number>();
   const watchingTrees: {
     folder: string;
     changed: (changed: string | undefined) => void;
@@ -179,6 +184,7 @@ function commander(
   }[] = [];
   const fileSystem: LocalFileSystem = {
     list: (each) => {
+      listings.set(each, (listings.get(each) ?? 0) + 1);
       const found = listed[each];
       if (found === undefined) {
         return Promise.reject(
@@ -244,8 +250,10 @@ function commander(
       link === at('Documents and Settings')
         ? Promise.resolve(at('Users'))
         : Promise.resolve(link),
-    watch: (watched, changed) => {
-      const watch = { folder: watched, changed };
+    stamp: (stamped) =>
+      Promise.resolve(`listed ${listings.get(stamped) ?? 0} times`),
+    watch: (watched, changed, stamp) => {
+      const watch = { folder: watched, changed, listed: stamp };
       watching.push(watch);
       return () => watching.splice(watching.indexOf(watch), 1);
     },
@@ -395,6 +403,8 @@ function commander(
   const send = (message: FromPage, from: Page = page) =>
     tool.receive(from, named(message));
   const watched = () => watching.map((watch) => watch.folder).toSorted();
+  const watchedAsListed = (watchedFolder: string) =>
+    watching.find((watch) => watch.folder === watchedFolder)?.listed;
   const change = async (changed: string) => {
     for (const watch of watching.filter((each) => each.folder === changed)) {
       watch.changed();
@@ -418,6 +428,7 @@ function commander(
     saved,
     state,
     watched,
+    watchedAsListed,
     change,
     watchedTrees,
     changeTree,
@@ -2177,6 +2188,19 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(watched(), [root, at('Users')].toSorted());
     tool.closed(page, tab);
     assert.deepStrictEqual(watched(), []);
+  });
+
+  test('watches the folder of a side from how it was before it was listed, not once the listing is done, so a file made while it was listed is listed too', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Users')],
+      [at('Users')]: [],
+    };
+    const { tool, page, send, watchedAsListed } = commander(listed);
+    await tool.show(page, tab);
+
+    await send({ type: 'open', tab: '1', side: 'right', name: 'Users' });
+
+    assert.strictEqual(watchedAsListed(at('Users')), 'listed 0 times');
   });
 
   test('lists a changed folder again once at a time, once more after a listing that was slow, so an older listing never lands after a newer one', async () => {

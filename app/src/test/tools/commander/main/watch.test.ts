@@ -2,7 +2,11 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import { watchFolder, watchTree } from '../../../../tools/commander/main/watch';
+import {
+  folderStamp,
+  watchFolder,
+  watchTree,
+} from '../../../../tools/commander/main/watch';
 import { waitFor } from '../../../fixtures';
 import { removeFolder, tempFolder } from '../../../repositories';
 
@@ -37,7 +41,7 @@ suite('Watching a folder of the commander', () => {
 
   test('tells of files made in the folder, a burst of changes in far fewer calls than changes', async () => {
     let changes = 0;
-    stops.push(watchFolder(folder, () => changes++, 200));
+    stops.push(watchFolder(folder, () => changes++, undefined, { delay: 200 }));
     await waitFor(() => {
       fs.writeFileSync(path.join(folder, 'ready.txt'), String(Date.now()));
       return changes > 0;
@@ -58,7 +62,7 @@ suite('Watching a folder of the commander', () => {
     const watched = path.join(folder, 'watched');
     fs.mkdirSync(watched);
     let changes = 0;
-    stops.push(watchFolder(watched, () => changes++, 10));
+    stops.push(watchFolder(watched, () => changes++, undefined, { delay: 10 }));
     await waitFor(() => {
       fs.writeFileSync(path.join(watched, 'ready.txt'), String(Date.now()));
       return changes > 0;
@@ -82,7 +86,8 @@ suite('Watching a folder of the commander', () => {
         let looked = false;
         let changes = 0;
         stops.push(
-          watchFolder(watched, () => changes++, 10, {
+          watchFolder(watched, () => changes++, undefined, {
+            delay: 10,
             settle: 20,
             start: deaf(elsewhere),
             stat: (asked) => {
@@ -105,7 +110,8 @@ suite('Watching a folder of the commander', () => {
         fs.mkdirSync(elsewhere);
         let changes = 0;
         stops.push(
-          watchFolder(folder, () => changes++, 10, {
+          watchFolder(folder, () => changes++, undefined, {
+            delay: 10,
             settle: 20,
             start: deaf(elsewhere),
           }),
@@ -117,6 +123,22 @@ suite('Watching a folder of the commander', () => {
         await waitFor(() => changes > 0, 'the file added');
       });
 
+      test('tells of a file added once the folder was listed, before it was asked to be watched, as a side shown again missed a file made while it was listed', async () => {
+        const minuteAgo = new Date(Date.now() - 60_000);
+        fs.utimesSync(folder, minuteAgo, minuteAgo);
+        const listed = await folderStamp(folder);
+        fs.writeFileSync(path.join(folder, 'added.txt'), 'x');
+        let changes = 0;
+        stops.push(
+          watchFolder(folder, () => changes++, listed, {
+            delay: 10,
+            settle: 20,
+          }),
+        );
+
+        await waitFor(() => changes > 0, 'the file added');
+      });
+
       test('tells nothing when nothing changed, nor once stopped', async () => {
         const elsewhere = path.join(folder, 'elsewhere');
         const stopped = path.join(folder, 'stopped');
@@ -124,12 +146,16 @@ suite('Watching a folder of the commander', () => {
         fs.mkdirSync(stopped);
         let changes = 0;
         stops.push(
-          watchFolder(folder, () => changes++, 10, {
+          watchFolder(folder, () => changes++, undefined, {
+            delay: 10,
             settle: 20,
             start: deaf(elsewhere),
           }),
         );
-        watchFolder(stopped, () => changes++, 10, { settle: 20 })();
+        watchFolder(stopped, () => changes++, undefined, {
+          delay: 10,
+          settle: 20,
+        })();
         fs.writeFileSync(path.join(stopped, 'late.txt'), 'x');
 
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -147,7 +173,8 @@ suite('Watching a folder of the commander', () => {
         const answers: ((stats: fs.Stats) => void)[] = [];
         let changes = 0;
         stops.push(
-          watchFolder(folder, () => changes++, 10, {
+          watchFolder(folder, () => changes++, undefined, {
+            delay: 10,
             stat: () => new Promise((resolve) => answers.push(resolve)),
             start: watching(counted),
           }),
@@ -164,12 +191,14 @@ suite('Watching a folder of the commander', () => {
       test('is not watched once stopped before it answers, nor when it fails to', async () => {
         const counted = { started: 0 };
         const answers: ((stats: fs.Stats) => void)[] = [];
-        watchFolder(folder, () => {}, 10, {
+        watchFolder(folder, () => {}, undefined, {
+          delay: 10,
           stat: () => new Promise((resolve) => answers.push(resolve)),
           start: watching(counted),
         })();
         stops.push(
-          watchFolder(folder, () => {}, 10, {
+          watchFolder(folder, () => {}, undefined, {
+            delay: 10,
             stat: () => Promise.reject(new Error('ETIMEDOUT')),
             start: watching(counted),
           }),
@@ -196,7 +225,13 @@ suite('Watching a folder of the commander', () => {
       return watcher;
     };
     let changes = 0;
-    stops.push(watchFolder(folder, () => changes++, 10, { settle: 10, start }));
+    stops.push(
+      watchFolder(folder, () => changes++, undefined, {
+        delay: 10,
+        settle: 10,
+        start,
+      }),
+    );
     await waitFor(() => own.length === 1, 'the watching to start');
     const [failed] = own;
     failed?.close();
@@ -232,7 +267,12 @@ suite('Watching a folder of the commander', () => {
     };
     let changes = 0;
     stops.push(
-      watchFolder(folder, () => changes++, 10, { settle: 10, start, stat }),
+      watchFolder(folder, () => changes++, undefined, {
+        delay: 10,
+        settle: 10,
+        start,
+        stat,
+      }),
     );
     await waitFor(() => own.length === 1, 'the watching to start');
     answering = false;
@@ -264,7 +304,13 @@ suite('Watching a folder of the commander', () => {
       return watching(counted)(watched, listener);
     };
     let changes = 0;
-    stops.push(watchFolder(folder, () => changes++, 10, { settle: 10, start }));
+    stops.push(
+      watchFolder(folder, () => changes++, undefined, {
+        delay: 10,
+        settle: 10,
+        start,
+      }),
+    );
 
     await waitFor(() => refusals === 2 && counted.started > 0, 'a watch');
     await waitFor(() => {
@@ -275,8 +321,12 @@ suite('Watching a folder of the commander', () => {
 
   test('tells nothing once stopped, nor for a folder it could not watch', async () => {
     let changes = 0;
-    watchFolder(folder, () => changes++, 10)();
-    stops.push(watchFolder(path.join(folder, 'missing'), () => changes++, 10));
+    watchFolder(folder, () => changes++, undefined, { delay: 10 })();
+    stops.push(
+      watchFolder(path.join(folder, 'missing'), () => changes++, undefined, {
+        delay: 10,
+      }),
+    );
 
     fs.writeFileSync(path.join(folder, 'late.txt'), 'x');
     await new Promise((resolve) => setTimeout(resolve, 100));

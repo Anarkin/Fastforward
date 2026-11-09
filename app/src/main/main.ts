@@ -61,7 +61,11 @@ import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
 import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
 import { isRepository } from '../tools/commander/main/repositories';
-import { watchFolder, watchTree } from '../tools/commander/main/watch';
+import {
+  folderStamp,
+  watchFolder,
+  watchTree,
+} from '../tools/commander/main/watch';
 import { isFolder } from '../tools/git/main/cli/repository';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
@@ -513,6 +517,7 @@ async function start(asked: readonly string[]): Promise<void> {
         ).windowsRecycleBinOff(folder),
     }),
     isRepository,
+    stamp: folderStamp,
     watch: watchFolder,
     ...(process.platform !== 'linux' && { watchTree }),
     fileIcon: async (file) =>

@@ -81,7 +81,8 @@ suite('The elevated helper of the commander', () => {
           address,
           () => Promise.resolve(files),
           () => {},
-          (watched, changed) => watchFolder(watched, changed, 10),
+          (watched, changed) =>
+            watchFolder(watched, changed, undefined, { delay: 10 }),
         );
         return Promise.resolve(true);
       }, process.platform);

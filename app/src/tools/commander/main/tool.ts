@@ -128,6 +128,7 @@ export interface CommanderAccess {
   };
   readonly streamed?: (file: string) => boolean | Promise<boolean>;
   readonly isRepository: (folder: string) => Promise<boolean>;
+  readonly stamp?: (folder: string) => Promise<string | undefined>;
   readonly watch: WatchFolder;
   readonly watchTree?: WatchTree;
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
@@ -2006,6 +2007,7 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     const asked = how === 'refresh' ? pane.asked : ++pane.asked;
+    const stamp = await this.access.stamp?.(folder);
     let listing: Awaited<ReturnType<CommanderTool['listed']>>;
     try {
       listing = await this.listed(folder);
@@ -2084,7 +2086,7 @@ export class CommanderTool implements Tool<'commander'> {
     pane.binOff = binOff;
     pane.landed = asked;
     this.postListing(page, tab, side, pane, selected);
-    this.watch(page, tab, side, folder);
+    this.watch(page, tab, side, folder, stamp);
     void this.shell.track(
       this.findRepositories(page, tab, side, pane, how === 'refresh'),
     );
@@ -2103,7 +2105,13 @@ export class CommanderTool implements Tool<'commander'> {
     return this.access.root;
   }
 
-  private watch(page: Page, tab: string, side: Side, folder: string): void {
+  private watch(
+    page: Page,
+    tab: string,
+    side: Side,
+    folder: string,
+    listed: string | undefined,
+  ): void {
     if (this.shown?.page !== page || this.shown.tab !== tab) {
       return;
     }
@@ -2137,7 +2145,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.watching.set(side, {
       folder,
       elevated: elevated !== undefined,
-      stop: watch(folder, refresh),
+      stop: watch(folder, refresh, listed),
     });
   }
 

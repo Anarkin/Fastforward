@@ -1,7 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-export type WatchFolder = (folder: string, onChange: () => void) => () => void;
+export type WatchFolder = (
+  folder: string,
+  onChange: () => void,
+  listed?: string,
+) => () => void;
 
 const changeDelay = 50;
 const settleDelay = 250;
@@ -33,15 +37,21 @@ function stampOf(stats: fs.Stats): string {
   return `${stats.ino}:${stats.mtimeMs}`;
 }
 
+export function folderStamp(folder: string): Promise<string | undefined> {
+  return fs.promises.stat(folder).then(stampOf, () => undefined);
+}
+
 export function watchFolder(
   folder: string,
   onChange: () => void,
-  delay = changeDelay,
+  listed?: string,
   {
+    delay = changeDelay,
     settle = settleDelay,
     start = startWatching,
     stat = fs.promises.stat,
   }: {
+    readonly delay?: number;
     readonly settle?: number;
     readonly start?: StartWatching;
     readonly stat?: Stat;
@@ -99,7 +109,7 @@ export function watchFolder(
         if (stopped) {
           return;
         }
-        stopWatching = watchAnswered(stampOf(stats));
+        stopWatching = watchAnswered(listed ?? stampOf(stats));
         if (stopWatching === undefined) {
           watchAgain();
         } else if (failures > 0) {
