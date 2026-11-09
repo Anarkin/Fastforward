@@ -34,7 +34,6 @@ export type PaneAct =
   | { readonly kind: 'view'; readonly name: string }
   | { readonly kind: 'openOnSide'; readonly side: Side; readonly name: string }
   | { readonly kind: 'open'; readonly name: string }
-  | { readonly kind: 'openRepository'; readonly name: string }
   | {
       readonly kind: 'mark';
       readonly keys: readonly string[];
@@ -142,11 +141,6 @@ export function paneKey(
   }
   if (keyPressed(commanderKeymap.parentFolder, event) !== undefined) {
     return parent ? { act: { kind: 'open', name: parentFolder } } : done;
-  }
-  if (keyPressed(commanderKeymap.openRepository, event) !== undefined) {
-    return row?.repository === true
-      ? { act: { kind: 'openRepository', name: row.key } }
-      : undefined;
   }
   if (keyPressed(commanderKeymap.openFolder, event) !== undefined) {
     return row !== undefined && opens(row)

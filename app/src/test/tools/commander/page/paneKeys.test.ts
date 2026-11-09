@@ -179,7 +179,7 @@ suite('Commander keys', () => {
     );
   });
 
-  test('goes up on Backspace while there is a parent, opens a folder on Enter, and a repository in git on Shift+Enter, leaving the keys alone where they do nothing', () => {
+  test('goes up on Backspace while there is a parent and opens a folder on Enter, leaving the keys alone where they do nothing, Shift+Enter on a repository too', () => {
     assert.deepStrictEqual(paneKey(pressed('Backspace'), at('a.txt')), {
       act: { kind: 'open', name: '..' },
     });
@@ -190,9 +190,9 @@ suite('Commander keys', () => {
     assert.deepStrictEqual(paneKey(pressed('Enter'), at('docs')), {
       act: { kind: 'open', name: 'docs' },
     });
-    assert.deepStrictEqual(
+    assert.strictEqual(
       paneKey(pressed('Enter', { shiftKey: true }), at('repo')),
-      { act: { kind: 'openRepository', name: 'repo' } },
+      undefined,
     );
     assert.strictEqual(
       paneKey(pressed('Enter', { shiftKey: true }), at('docs')),

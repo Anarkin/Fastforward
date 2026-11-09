@@ -582,7 +582,7 @@ suite('App commander', () => {
     );
   });
 
-  test('marks a folder that is a repository with the git icon in its Ext column, and no other, opening it in a git tab on a click of the icon or Shift+Enter', async () => {
+  test('marks a folder that is a repository with the git icon in its Ext column, and no other, opening it in a git tab on a click of the icon', async () => {
     const made = path.join(folder, 'made-repository');
     execFileSync('git', ['init', '--quiet', made]);
     fs.renameSync(made, path.join(opened, 'repo'));
@@ -615,18 +615,6 @@ suite('App commander', () => {
         .waitFor();
     };
     await markOf('repo').click();
-    await gitTab.locator('.tool-git').waitFor();
-    await backToCommander();
-
-    await right()
-      .locator('.commander-row', { hasText: 'repo' })
-      .locator('.commander-name')
-      .click();
-    await waitFor(
-      async () => (await selected()).includes('repo'),
-      'repo to be selected',
-    );
-    await page.keyboard.press('Shift+Enter');
     await gitTab.locator('.tool-git').waitFor();
     await backToCommander();
 

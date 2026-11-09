@@ -303,7 +303,6 @@ export const strings = {
     markClick: 'Mark or unmark a file, or mark the files up to it',
     openOnSide:
       'Open the selected folder, or the one you are in, on the left or right side',
-    openRepository: 'Open the selected repository in a git tab',
     flatView:
       'List the files of every folder in the folder of the side, or the folder alone again',
     stopReading: 'Stop reading the folders of the side listed flat',

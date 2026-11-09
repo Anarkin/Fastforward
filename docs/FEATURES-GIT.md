@@ -14,7 +14,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Open a repository | Open a folder and find the repository it is in | `git rev-parse --show-toplevel` | Core | ✅ Yes | Open... in the Git menu, `ff` or `ff <folder>` in a terminal, Open in Fastforward in the Windows Explorer menu; from the commander, by the git icon in the Ext column of a folder that is a repository, Shift+Enter on it, or Open by the git icon in the menu of a folder in one |
+| Open a repository | Open a folder and find the repository it is in | `git rev-parse --show-toplevel` | Core | ✅ Yes | Open... in the Git menu, `ff` or `ff <folder>` in a terminal, Open in Fastforward in the Windows Explorer menu; from the commander, by the git icon in the Ext column of a folder that is a repository, or Open by the git icon in the menu of a folder in one |
 | Recent repositories | Reopen a repository opened before | — | Core | ✅ Yes | Removed from the list with its X or Delete |
 | Several repositories at once | Keep repositories open side by side | — | Common | ✅ Yes | Tabs, dragged into any order, preloaded when the pointer rests on one |
 | Restore after a restart | Reopen the repositories where they were once the app starts again | — | Common | ✅ Yes | The tabs come back, each worktree with the commit or comparison, the file and the changes of it selected last, scrolled to; nothing selected once the commit is gone; not the place scrolled to, the merges expanded or back and forward |

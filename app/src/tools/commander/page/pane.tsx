@@ -783,9 +783,6 @@ export function Pane({
       case 'open':
         onOpen(action.name);
         return;
-      case 'openRepository':
-        onOpenRepository(action.name);
-        return;
       case 'mark':
         onMark(action.keys, action.marked);
         onSelect(action.select);

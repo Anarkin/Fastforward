@@ -50,7 +50,7 @@
 | Flat view | List the files of every subfolder together | Ctrl+B | Advanced | ✅ Yes | Ctrl+B or the button of the side, the path ending in `**`: the files of every folder under the side, without the folders, shown as they are read, with no limit; the line under the side counts the files and folders read and those that couldn't be, and names the folder of the file selected; Esc stops the reading, keeping what was read; sorted by the column of the side, files of one name together, and filtered by their names alone; follows changes on Windows and macOS, and is read again with F2 or Ctrl+R; ends once the side shows another folder; the menu of Windows for the files of one folder at a time |
 | Large folders | List folders of many thousands of files quickly | — | Core | ✅ Yes | On Windows read a page of entries at a time off the main thread with `NtQueryDirectoryFile`, which also reads the size of files the system holds open; only the rows in view drawn |
 | Links | Show links and where they lead | — | Common | 🟡 Partial | Listed with the size and date of what they point to, and followed when opened; not marked as links |
-| Repositories | Mark the folders that are git repositories | — | Niche | ✅ Yes | The git icon in the Ext column, opening it in a git tab on a click or Shift+Enter |
+| Repositories | Mark the folders that are git repositories | — | Niche | ✅ Yes | The git icon in the Ext column, opening it in a git tab on a click |
 
 ## Marking
 
