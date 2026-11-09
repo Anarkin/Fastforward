@@ -128,7 +128,7 @@ suite('Commander file menu', () => {
     });
   });
 
-  test('offers a folder a new terminal in it, and git to open it when it is in a repository, or to clone into it or init one in it when it is not, the menu of Windows last', () => {
+  test('offers a folder a new terminal in it, and git to open it when it is in a repository, or to clone into it or init one in it when it is not, never making a repository inside another, the menu of Windows last', () => {
     assert.deepStrictEqual(labels(menuOf(docs(false)).items), [
       strings.commander.newTerminalHere,
       strings.commander.cloneHere,
@@ -139,7 +139,6 @@ suite('Commander file menu', () => {
     assert.deepStrictEqual(labels(menuOf(docs(true)).items), [
       strings.commander.newTerminalHere,
       strings.commander.openInGit,
-      strings.commander.cloneHere,
       '-',
       strings.commander.showMoreOptions,
     ]);
@@ -154,8 +153,8 @@ suite('Commander file menu', () => {
     const named = menuOf(docs(true));
     named.choose(strings.commander.newTerminalHere);
     named.choose(strings.commander.openInGit);
-    named.choose(strings.commander.cloneHere);
     const shown = menuOf(folderShown(false));
+    shown.choose(strings.commander.cloneHere);
     shown.choose(strings.commander.initHere);
 
     assert.deepStrictEqual(
@@ -163,7 +162,7 @@ suite('Commander file menu', () => {
       [
         { folder: 'newTerminal', name: 'docs' },
         { folder: 'openInGit', name: 'docs' },
-        { folder: 'cloneHere', name: 'docs' },
+        { folder: 'cloneHere', name: undefined },
         { folder: 'initHere', name: undefined },
       ],
     );

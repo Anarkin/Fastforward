@@ -89,15 +89,12 @@ function ownItems(
                 onClick: run('openInGit'),
               },
             ]
-          : []),
-        {
-          label: strings.commander.cloneHere,
-          icon: git,
-          onClick: run('cloneHere'),
-        },
-        ...(target.inRepository
-          ? []
           : [
+              {
+                label: strings.commander.cloneHere,
+                icon: git,
+                onClick: run('cloneHere'),
+              },
               {
                 label: strings.commander.initHere,
                 icon: git,

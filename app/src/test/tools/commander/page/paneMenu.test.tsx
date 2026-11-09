@@ -225,7 +225,6 @@ suite('Commander menu on a side', () => {
         assert.deepStrictEqual(menu(), [
           strings.commander.newTerminalHere,
           strings.commander.openInGit,
-          strings.commander.cloneHere,
           strings.commander.showMoreOptions,
         ]);
         choose(strings.commander.openInGit);
