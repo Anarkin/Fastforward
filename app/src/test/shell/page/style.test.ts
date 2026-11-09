@@ -2584,6 +2584,42 @@ suite('Style', () => {
     }
   });
 
+  test('sets a name apart in a dialog in the monospace font of the settings on a faint tint of the text, the same on a line of its own as in a sentence, each piece of a path kept whole on a line unless it alone is wider, and the labels of the lines muted', () => {
+    const popup = rendered(
+      createElement(ConfirmPopup, {
+        title: 'Copy',
+        lines: [
+          { label: 'Copy', text: '3 items' },
+          { label: 'To', name: 'D:\\photos' },
+        ],
+        confirm: 'Copy',
+        onConfirm: noop,
+        onCancel: noop,
+      }),
+    );
+    const name = withClass(popup, 'name');
+    looks(name, {
+      'font-family': 'var(--monospace-font-family)',
+      'font-size': 'var(--monospace-font-size)',
+      background: 'var(--name-background)',
+      'box-decoration-break': 'clone',
+    });
+    for (const piece of name.children) {
+      looks(piece, {
+        display: 'inline-block',
+        'max-width': '100%',
+        'overflow-wrap': 'anywhere',
+      });
+    }
+    looks(withClass(popup, 'name-lines'), {
+      display: 'grid',
+      'grid-template-columns': 'auto minmax(0, 1fr)',
+    });
+    looks(withClass(popup, 'name-label'), {
+      color: 'var(--muted-foreground)',
+    });
+  });
+
   test("keeps a tag's hole and point clear of the push button on it, which squares off, as the tag goes on past it", () => {
     const tag = withClass(
       rendered(

@@ -1,11 +1,10 @@
-import { strings } from '../../../shared/strings';
+import { strings, type Line, type Value } from '../../../shared/strings';
 import type { TransferProgress, TransferView } from '../shared/transfers';
 
-export function whatOf(items: number, name: string | undefined): string {
-  const { commander } = strings;
+export function whatOf(items: number, name: string | undefined): Value {
   return items === 1 && name !== undefined
-    ? commander.oneItem(name)
-    : commander.items(items);
+    ? { name }
+    : { text: strings.commander.items(items) };
 }
 
 export function transferQuestion(
@@ -13,21 +12,45 @@ export function transferQuestion(
   move: boolean,
   target: string,
   existing = 0,
-): { title: string; message: string; confirm: string } {
+): { title: string; lines: Line[]; note?: string; confirm: string } {
   const { commander } = strings;
-  const what = whatOf(names.length, names[0]);
   const title = move ? commander.moveTitle : commander.copyTitle;
-  const question = (move ? commander.moveQuestion : commander.copyQuestion)(
-    what,
+  const lines = commander.transferLines(
+    move,
+    whatOf(names.length, names[0]),
     target,
   );
   return existing > 0
     ? {
         title,
-        message: `${question} ${commander.thereAlready(existing, names.length)}`,
+        lines,
+        note: commander.thereAlready(existing, names.length),
         confirm: commander.replace,
       }
-    : { title, message: question, confirm: title };
+    : { title, lines, confirm: title };
+}
+
+const archiveJobLines = {
+  pack: strings.commander.packingInto,
+  delete: strings.commander.deletingFrom,
+  rename: strings.commander.renamingIn,
+  folder: strings.commander.makingFolderIn,
+  copyIn: strings.commander.copying,
+  moveIn: strings.commander.moving,
+  test: strings.commander.testingArchives,
+  update: strings.commander.puttingBack,
+};
+
+export function runningLines(transfer: TransferView): Line[] {
+  const { commander } = strings;
+  const what = whatOf(transfer.items, transfer.name);
+  if (transfer.archiveJob !== undefined) {
+    return archiveJobLines[transfer.archiveJob](what, transfer.target);
+  }
+  return (transfer.move ? commander.moving : commander.copying)(
+    what,
+    transfer.target,
+  );
 }
 
 export function shareDone(progress: TransferProgress | undefined): number {

@@ -4,6 +4,7 @@ import { useDismiss } from '../../../ui/contextMenu';
 import { CloseIcon } from '../../../ui/icons';
 import { moveBetweenButtons } from '../../../ui/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../../ui/modalDialog';
+import { NameLines } from '../../../ui/name';
 import { nameProblem } from '../shared/names';
 import {
   compresses,
@@ -184,9 +185,7 @@ function PackForm({
         });
       }}
     >
-      <span className="prompt-message">
-        {commander.packWhat(whatOf(names.length, names[0]))}
-      </span>
+      <NameLines lines={commander.packLines(whatOf(names.length, names[0]))} />
       <div className="pack-fields">
         <label htmlFor={`${ids}archive`}>{commander.packArchive}</label>
         <input

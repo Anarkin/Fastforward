@@ -1,13 +1,15 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { strings } from '../../shared/strings';
+import { strings, type Line } from '../../shared/strings';
 import { useDismiss } from '../../ui/contextMenu';
 import { CloseIcon } from '../../ui/icons';
 import { moveBetweenButtons } from '../../ui/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
+import { NameLines } from '../../ui/name';
 
 export function PromptPopup({
   title,
   message,
+  lines = [],
   label,
   confirm,
   problemOf,
@@ -18,7 +20,8 @@ export function PromptPopup({
   onCancel,
 }: {
   title: string;
-  message: string;
+  message?: string;
+  lines?: readonly Line[];
   label: string;
   confirm: string;
   problemOf: (value: string) => string | undefined;
@@ -75,9 +78,12 @@ export function PromptPopup({
             }
           }}
         >
-          <span className="prompt-message" title={message}>
-            {message}
-          </span>
+          {message !== undefined && (
+            <span className="prompt-message" title={message}>
+              {message}
+            </span>
+          )}
+          {lines.length > 0 && <NameLines lines={lines} />}
           <input
             ref={field}
             className="prompt-input"

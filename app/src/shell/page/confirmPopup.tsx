@@ -1,13 +1,16 @@
 import { useLayoutEffect, useRef } from 'react';
-import { strings } from '../../shared/strings';
+import { strings, type Line } from '../../shared/strings';
 import { useDismiss } from '../../ui/contextMenu';
 import { CloseIcon } from '../../ui/icons';
 import { moveBetweenButtons } from '../../ui/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
+import { NameLines } from '../../ui/name';
 
 export function ConfirmPopup({
   title,
   message,
+  lines = [],
+  note,
   confirm,
   onConfirm,
   onCancel,
@@ -15,7 +18,9 @@ export function ConfirmPopup({
   extra,
 }: {
   title: string;
-  message: string;
+  message?: string;
+  lines?: readonly Line[];
+  note?: string;
   confirm: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -53,7 +58,11 @@ export function ConfirmPopup({
           </button>
         </div>
         <div className="confirm-body">
-          <span>{message}</span>
+          <div className="confirm-question">
+            {message !== undefined && <span>{message}</span>}
+            {lines.length > 0 && <NameLines lines={lines} />}
+            {note !== undefined && <span>{note}</span>}
+          </div>
           <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
             {cancel !== null && (
               <button className="confirm-button" onClick={onCancel}>

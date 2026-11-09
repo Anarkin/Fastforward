@@ -75,6 +75,11 @@ body {
   --card-radius: 6px;
   --tab-radius: 10px;
   --tab-divider: color-mix(in srgb, var(--color-foreground) 12%, transparent);
+  --name-background: color-mix(
+    in srgb,
+    var(--color-foreground) 8%,
+    transparent
+  );
   --popup-background: var(--color-background);
   --popup-shadow:
     inset 0 0 0 1px var(--color-border), 0 12px 32px rgba(0, 0, 0, 0.22),
@@ -422,6 +427,37 @@ body {
   flex-direction: column;
   gap: 16px;
   padding: 12px 16px 16px;
+}
+
+.confirm-question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.name {
+  padding: 0 3px;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  background: var(--name-background);
+  border-radius: 3px;
+  box-decoration-break: clone;
+}
+
+.name > span {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.name-lines {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+}
+
+.name-label {
+  color: var(--muted-foreground);
 }
 
 .confirm-buttons {

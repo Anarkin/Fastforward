@@ -35,6 +35,50 @@ suite('Confirm popup', () => {
     );
   });
 
+  test('names what it asks about on lines of their own after its question, rather than in quotes inside it, and says what more there is to know after them', () => {
+    const html = renderToStaticMarkup(
+      <ConfirmPopup
+        title="Delete Permanently"
+        message="Delete from the archive permanently? This cannot be undone."
+        lines={[
+          { label: 'Item', name: 'a.txt' },
+          { label: 'Archive', name: 'photos.zip' },
+        ]}
+        note="It is there already."
+        confirm="Delete Permanently"
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /<div class="confirm-question"><span>Delete from the archive permanently\? This cannot be undone\.<\/span><div class="name-lines"><span class="name-label">Item<\/span><span class="name-value"><code class="name"><span>a\.txt<\/span><\/code><\/span><span class="name-label">Archive<\/span><span class="name-value"><code class="name"><span>photos\.zip<\/span><\/code><\/span><\/div><span>It is there already\.<\/span><\/div>/,
+    );
+  });
+
+  test('asks on its lines alone when they say it all, and draws no lines when it has none', () => {
+    const lines = renderToStaticMarkup(
+      <ConfirmPopup
+        title="Copy"
+        lines={[
+          { label: 'Copy', name: 'a.txt' },
+          { label: 'To', name: 'D:\\photos' },
+        ]}
+        confirm="Copy"
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    assert.match(
+      lines,
+      /<div class="confirm-question"><div class="name-lines">/,
+    );
+    const none = renderToStaticMarkup(
+      <ConfirmPopup {...asked} lines={[]} onConfirm={noop} onCancel={noop} />,
+    );
+    assert.doesNotMatch(none, /name-lines/);
+  });
+
   test('tells without asking when there is nothing to cancel, offering its one button', () => {
     const html = renderToStaticMarkup(
       <ConfirmPopup

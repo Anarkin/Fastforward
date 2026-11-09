@@ -1075,11 +1075,13 @@ export function Pane({
             y: event.clientY,
             items: [
               {
-                label: strings.commander.dropCopy(what, target),
+                label: strings.commander.dropCopy,
+                title: strings.commander.dropCopyTitle(what, target),
                 onClick: () => actions.dropOn(side, dropped, into, false),
               },
               {
-                label: strings.commander.dropMove(what, target),
+                label: strings.commander.dropMove,
+                title: strings.commander.dropMoveTitle(what, target),
                 onClick: () => actions.dropOn(side, dropped, into, true),
               },
             ],

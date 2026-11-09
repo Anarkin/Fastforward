@@ -27,6 +27,25 @@ suite('Prompt popup', () => {
     assert.match(prompted(), /<input class="prompt-input" type="text"/);
   });
 
+  test('names what it asks about on lines of their own above its field, wrapping, rather than in a sentence cut short with an ellipsis', () => {
+    const html = renderToStaticMarkup(
+      <PromptPopup
+        title="New Folder"
+        lines={[{ label: 'In', name: 'C:\\work' }]}
+        label="Name"
+        confirm="Make"
+        problemOf={() => undefined}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /<form class="confirm-body"><div class="name-lines"><span class="name-label">In<\/span><span class="name-value"><code class="name"><span>C:\\<\/span><span>work<\/span><\/code><\/span><\/div><input class="prompt-input"/,
+    );
+    assert.doesNotMatch(html, /prompt-message/);
+  });
+
   test('starts from the value it is given, with the part of it asked for selected, as a name to rename before its extension', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {

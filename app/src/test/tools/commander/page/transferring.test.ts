@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import { strings } from '../../../../shared/strings';
 import {
   progressLines,
+  runningLines,
   shareDone,
   transferQuestion,
 } from '../../../../tools/commander/page/transferring';
@@ -73,35 +74,106 @@ suite('The progress of a pack', () => {
 });
 
 suite('Commander transferring into an archive', () => {
-  test('says how many of the items are there already, offering to replace them', () => {
+  test('says after its lines how many of the items are there already, offering to replace them', () => {
     assert.deepStrictEqual(
       transferQuestion(['a.txt', 'b', 'c'], false, '/x/a.zip/docs', 2),
       {
         title: 'Copy',
-        message:
-          'Copy 3 items to "/x/a.zip/docs"? 2 of them are there already.',
+        lines: [
+          { label: 'Copy', text: '3 items' },
+          { label: 'To', name: '/x/a.zip/docs' },
+        ],
+        note: '2 of them are there already.',
         confirm: 'Replace',
       },
     );
     assert.deepStrictEqual(
-      transferQuestion(['a.txt'], true, '/x/a.zip', 1).message,
-      'Move "a.txt" to "/x/a.zip"? It is there already.',
+      transferQuestion(['a.txt'], true, '/x/a.zip', 1).note,
+      'It is there already.',
     );
   });
 });
 
 suite('Commander transferring', () => {
-  test('asks before copying or moving into the folder of the other side, naming a single item and counting more', () => {
+  test('asks before copying or moving into the folder of the other side on lines that read as the question, naming a single item and counting more', () => {
     assert.deepStrictEqual(transferQuestion(['a.txt'], false, 'D:\\photos'), {
       title: 'Copy',
-      message: 'Copy "a.txt" to "D:\\photos"?',
+      lines: [
+        { label: 'Copy', name: 'a.txt' },
+        { label: 'To', name: 'D:\\photos' },
+      ],
       confirm: 'Copy',
     });
     assert.deepStrictEqual(transferQuestion(['a', 'b', 'c'], true, '/tmp'), {
       title: 'Move',
-      message: 'Move 3 items to "/tmp"?',
+      lines: [
+        { label: 'Move', text: '3 items' },
+        { label: 'To', name: '/tmp' },
+      ],
       confirm: 'Move',
     });
+  });
+
+  test('says on lines what a copy, a move or a job on an archive is doing and where, so the end of a long path is never cut off', () => {
+    const copy: TransferView = {
+      id: 1,
+      move: false,
+      items: 1,
+      name: 'a.txt',
+      target: 'D:\\photos',
+      stopping: false,
+    };
+    assert.deepStrictEqual(runningLines(copy), [
+      { label: 'Copying', name: 'a.txt' },
+      { label: 'To', name: 'D:\\photos' },
+    ]);
+    assert.deepStrictEqual(runningLines({ ...copy, move: true, items: 2 }), [
+      { label: 'Moving', text: '2 items' },
+      { label: 'To', name: 'D:\\photos' },
+    ]);
+    const archive = { ...copy, items: 3, target: '/x/a.zip' };
+    assert.deepStrictEqual(
+      (
+        [
+          'pack',
+          'delete',
+          'rename',
+          'folder',
+          'copyIn',
+          'moveIn',
+          'test',
+          'update',
+        ] as const
+      ).map((archiveJob) => runningLines({ ...archive, archiveJob })),
+      [
+        [
+          { label: 'Packing', text: '3 items' },
+          { label: 'Into', name: '/x/a.zip' },
+        ],
+        [
+          { label: 'Deleting', text: '3 items' },
+          { label: 'From', name: '/x/a.zip' },
+        ],
+        [
+          { label: 'Renaming', text: '3 items' },
+          { label: 'In', name: '/x/a.zip' },
+        ],
+        [
+          { label: 'Making', text: '3 items' },
+          { label: 'In', name: '/x/a.zip' },
+        ],
+        [
+          { label: 'Copying', text: '3 items' },
+          { label: 'To', name: '/x/a.zip' },
+        ],
+        [
+          { label: 'Moving', text: '3 items' },
+          { label: 'To', name: '/x/a.zip' },
+        ],
+        [{ label: 'Testing', text: '3 items' }],
+        [{ label: 'Putting back', text: '3 items' }],
+      ],
+    );
   });
 
   test('measures how far a copy got by its bytes, by its files when they hold none, and as done when there was nothing to copy', () => {

@@ -74,6 +74,7 @@ async function inCommander(
     readonly click: (element: Element | null | undefined) => Promise<void>;
     readonly type: (text: string) => Promise<void>;
     readonly dialogText: () => string;
+    readonly dialogLines: () => string[];
     readonly button: (text: string) => HTMLButtonElement | undefined;
   }) => Promise<void>,
 ): Promise<void> {
@@ -173,6 +174,11 @@ async function inCommander(
         }),
       dialogText: () =>
         document.querySelector('[role="dialog"]')?.textContent ?? '',
+      dialogLines: () =>
+        [...document.querySelectorAll('[role="dialog"] .name-label')].map(
+          (label) =>
+            `${label.textContent} ${label.nextElementSibling?.textContent}`,
+        ),
       button: (text) =>
         [...document.querySelectorAll('.confirm-button')].find(
           (each): each is HTMLButtonElement =>
@@ -189,7 +195,16 @@ async function inCommander(
 suite('Commander file keys', () => {
   test('asks on F5 before copying the selected file into the folder of the other side, shows how far the copy got, asks what to do with a file there already, and closes the dialog on Escape', () =>
     inCommander(
-      async ({ document, posted, send, press, click, dialogText, button }) => {
+      async ({
+        document,
+        posted,
+        send,
+        press,
+        click,
+        dialogText,
+        dialogLines,
+        button,
+      }) => {
         const fromPage = () =>
           posted.filter((message) =>
             [
@@ -201,7 +216,7 @@ suite('Commander file keys', () => {
           );
 
         await press('F5');
-        assert.match(dialogText(), /Copy "a\.txt" to "D:\\photos"\?/);
+        assert.deepStrictEqual(dialogLines(), ['Copy a.txt', 'To D:\\photos']);
         await click(button('Copy'));
         assert.deepStrictEqual(fromPage(), [
           {
@@ -216,7 +231,10 @@ suite('Commander file keys', () => {
         ]);
 
         await send({ type: 'transfer', view: shownTransfer });
-        assert.match(dialogText(), /Copying "a\.txt" to "D:\\photos"/);
+        assert.deepStrictEqual(dialogLines(), [
+          'Copying a.txt',
+          'To D:\\photos',
+        ]);
         assert.match(dialogText(), /1 of 2 files/);
         assert.match(dialogText(), /2\.0 KB of 4\.0 KB/);
         assert.strictEqual(
@@ -275,7 +293,7 @@ suite('Commander file keys', () => {
 
   test('asks on F7 for the name of a folder to make in the folder of the side, saying what is wrong with a name as it is typed and making none of it, and makes the one named without the spaces around it', () =>
     inCommander(
-      async ({ document, posted, press, click, type, dialogText, button }) => {
+      async ({ document, posted, press, click, type, dialogLines, button }) => {
         const made = () =>
           posted.filter((message) => message.type === 'newFolder');
         const problem = () =>
@@ -283,7 +301,7 @@ suite('Commander file keys', () => {
         const make = () => button(strings.commander.makeFolder);
 
         await press('F7');
-        assert.match(dialogText(), /Make a folder in "C:\\work"/);
+        assert.deepStrictEqual(dialogLines(), ['In C:\\work']);
         assert.strictEqual(document.activeElement?.className, 'prompt-input');
         assert.strictEqual(problem(), undefined);
         assert.strictEqual(make()?.disabled, true);

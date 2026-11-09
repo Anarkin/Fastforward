@@ -56,15 +56,17 @@ suite('App making new repositories', () => {
     await page.locator('.context-menu .menu-item', { hasText: label }).click();
   }
 
-  test('asks before initing a repository inside another even with no tab open, then inits it and opens it in a tab', async () => {
+  test('asks before initing a repository inside another even with no tab open, naming the folder and the repository on lines of their own, then inits it and opens it in a tab', async () => {
     const inside = path.join(repository.root, 'nested');
     fs.mkdirSync(inside, { recursive: true });
     await pickFolder(inside);
     await chooseFromGitMenu(strings.tabs.init);
     const popup = page.locator('.confirm-popup');
-    await popup
-      .getByText(strings.confirm.initInside(inside, repository.root))
-      .waitFor();
+    await popup.getByText(strings.confirm.initInside).waitFor();
+    assert.deepStrictEqual(
+      await popup.locator('.name-value').allTextContents(),
+      [inside, repository.root],
+    );
     assert.ok(!fs.existsSync(path.join(inside, '.git')));
     await popup
       .locator('.confirm-button', { hasText: strings.confirm.init })

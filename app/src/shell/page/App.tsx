@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { keymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
-import { strings } from '../../shared/strings';
+import { strings, type Line } from '../../shared/strings';
 import { tools, type ToolId } from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
 import { ConfirmPopup } from './confirmPopup';
@@ -45,13 +45,14 @@ export function newTabItems(
 export function confirmation(confirming: Confirming): {
   title: string;
   message: string;
+  lines?: readonly Line[];
   confirm: string;
 } {
   return confirming.kind === 'tab'
     ? {
         title: strings.confirm.closeTitle,
-        message: strings.confirm.closeTab(
-          strings.tools[confirming.tab.tool],
+        message: strings.confirm.closeTab(strings.tools[confirming.tab.tool]),
+        lines: strings.confirm.closeTabLines(
           strings.tabs.label(confirming.tab.name, confirming.tab.folder),
         ),
         confirm: strings.confirm.close,

@@ -8,7 +8,8 @@ import { formatDate } from '../../../ui/dates';
 import { useShell } from '../../../shell/page/store';
 import type { ClashSide, TransferView } from '../shared/transfers';
 import { useCommander, useCommanderActions } from './store';
-import { progressLines, shareDone, whatOf } from './transferring';
+import { NameLines } from '../../../ui/name';
+import { progressLines, runningLines, shareDone } from './transferring';
 
 type Clash = NonNullable<TransferView['clash']>;
 
@@ -84,39 +85,15 @@ function ClashBody({ clash, move }: { clash: Clash; move: boolean }) {
   );
 }
 
-const archiveJobs = {
-  pack: {
-    title: strings.commander.packTitle,
-    running: strings.commander.packingInto,
-  },
-  delete: {
-    title: strings.commander.deletePermanentlyTitle,
-    running: strings.commander.deletingFrom,
-  },
-  rename: {
-    title: strings.commander.renameTitle,
-    running: strings.commander.renamingIn,
-  },
-  folder: {
-    title: strings.commander.newFolderTitle,
-    running: strings.commander.makingFolderIn,
-  },
-  copyIn: {
-    title: strings.commander.copyTitle,
-    running: strings.commander.copying,
-  },
-  moveIn: {
-    title: strings.commander.moveTitle,
-    running: strings.commander.moving,
-  },
-  test: {
-    title: strings.commander.testTitle,
-    running: strings.commander.testingArchives,
-  },
-  update: {
-    title: strings.commander.updateTitle,
-    running: strings.commander.puttingBack,
-  },
+const archiveJobTitles = {
+  pack: strings.commander.packTitle,
+  delete: strings.commander.deletePermanentlyTitle,
+  rename: strings.commander.renameTitle,
+  folder: strings.commander.newFolderTitle,
+  copyIn: strings.commander.copyTitle,
+  moveIn: strings.commander.moveTitle,
+  test: strings.commander.testTitle,
+  update: strings.commander.updateTitle,
 };
 
 const countedJobs: ReadonlySet<string> = new Set([
@@ -126,19 +103,9 @@ const countedJobs: ReadonlySet<string> = new Set([
   'update',
 ]);
 
-function runningSentence(
-  transfer: TransferView,
-): (what: string, target: string) => string {
-  const { commander } = strings;
-  if (transfer.archiveJob !== undefined) {
-    return archiveJobs[transfer.archiveJob].running;
-  }
-  return transfer.move ? commander.moving : commander.copying;
-}
-
 function titleOf(transfer: TransferView): string {
   if (transfer.archiveJob !== undefined) {
-    return archiveJobs[transfer.archiveJob].title;
+    return archiveJobTitles[transfer.archiveJob];
   }
   return transfer.move
     ? strings.commander.moveTitle
@@ -156,12 +123,7 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
   return (
     <div className="confirm-body transfer-body">
       <div className="transfer-running">
-        <span title={transfer.target}>
-          {runningSentence(transfer)(
-            whatOf(transfer.items, transfer.name),
-            transfer.target,
-          )}
-        </span>
+        <NameLines lines={runningLines(transfer)} />
         <span className="transfer-current" title={lines.current}>
           {lines.current}
         </span>

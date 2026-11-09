@@ -1,5 +1,16 @@
 export const brand = 'Fastforward';
 
+export type Value = { readonly name: string } | { readonly text: string };
+
+export type Line = Value & { readonly label: string };
+
+const labeled = (label: string, value: Value): Line => ({ label, ...value });
+
+const named = (name: string): Value => ({ name });
+
+const plain = (value: Value) =>
+  'name' in value ? `"${value.name}"` : value.text;
+
 interface ElapsedSentences {
   readonly now: string;
   readonly minutes: (count: number) => string;
@@ -166,15 +177,20 @@ export const strings = {
   },
   confirm: {
     closeTitle: 'Close Tab',
-    closeTab: (tool: string, tab: string) =>
-      `Are you sure you want to close the ${tool} tab "${tab}"?`,
+    closeTab: (tool: string) =>
+      `Are you sure you want to close this ${tool} tab?`,
+    closeTabLines: (tab: string) => [labeled('Tab', named(tab))],
     close: 'Close',
     quitTitle: 'Quit',
     quitApp: `Are you sure you want to quit ${brand}?`,
     quit: 'Quit',
     initTitle: 'Init',
-    initInside: (folder: string, repository: string) =>
-      `${folder} is inside the repository ${repository}. Are you sure you want to init a repository in it?`,
+    initInside:
+      'This folder is inside another repository. Are you sure you want to init a repository in it?',
+    initInsideLines: (folder: string, repository: string) => [
+      labeled('Folder', named(folder)),
+      labeled('Repository', named(repository)),
+    ],
     init: 'Init',
     cancel: 'Cancel',
     ok: 'OK',
@@ -561,9 +577,9 @@ export const strings = {
     openWithSevenZip: 'Open with 7-Zip...',
     readingArchive: (name: string) => `Reading ${name}…`,
     passwordTitle: 'Password',
-    passwordAsked: (name: string) => `${name} is encrypted. Type its password.`,
-    passwordWrong: (name: string) =>
-      `The password of ${name} is wrong. Type it again.`,
+    passwordAsked: 'The archive is encrypted. Type its password.',
+    passwordWrong: 'The password is wrong. Type it again.',
+    archiveLines: (archive: string) => [labeled('Archive', named(archive))],
     passwordLabel: 'Password',
     passwordOpen: 'Open',
     noPassword: 'No password is typed.',
@@ -587,21 +603,32 @@ export const strings = {
     bin: (platform: string | undefined) =>
       platform === 'win32' ? 'the Recycle Bin' : 'the Trash',
     moveToBin: (bin: string) => `Move to ${bin}`,
-    trashQuestion: (what: string, bin: string) => `Move ${what} to ${bin}?`,
-    deleteQuestion: (what: string) =>
+    trashItem: (bin: string) => `Move to ${bin}?`,
+    trashItems: (what: string, bin: string) => `Move ${what} to ${bin}?`,
+    deleteItem: 'Delete permanently? This cannot be undone.',
+    deleteItems: (what: string) =>
       `Delete ${what} permanently? This cannot be undone.`,
-    binOffQuestion: (what: string) =>
+    binOffItem:
+      'The Recycle Bin of this drive is turned off. Delete permanently? This cannot be undone.',
+    binOffItems: (what: string) =>
       `The Recycle Bin of this drive is turned off. Delete ${what} permanently? This cannot be undone.`,
+    itemLines: (name: string) => [labeled('Item', named(name))],
     oneItem: (name: string) => `"${name}"`,
     items: (count: number) => `${count} items`,
     copyTitle: 'Copy',
     moveTitle: 'Move',
-    copyQuestion: (what: string, target: string) =>
-      `Copy ${what} to "${target}"?`,
-    moveQuestion: (what: string, target: string) =>
-      `Move ${what} to "${target}"?`,
-    copying: (what: string, target: string) => `Copying ${what} to "${target}"`,
-    moving: (what: string, target: string) => `Moving ${what} to "${target}"`,
+    transferLines: (move: boolean, what: Value, target: string) => [
+      labeled(move ? 'Move' : 'Copy', what),
+      labeled('To', named(target)),
+    ],
+    copying: (what: Value, target: string) => [
+      labeled('Copying', what),
+      labeled('To', named(target)),
+    ],
+    moving: (what: Value, target: string) => [
+      labeled('Moving', what),
+      labeled('To', named(target)),
+    ],
     counting: 'Counting the files…',
     transferredFiles: (files: number, total: number) =>
       `${files.toLocaleString()} of ${total.toLocaleString()} files`,
@@ -640,10 +667,14 @@ export const strings = {
       `${count} items could not be moved, among them ${name}: ${reason}`,
     alreadyIn: (target: string) => `The items are in "${target}" already.`,
     nothingToPaste: 'The clipboard holds no files to paste.',
-    dropCopy: (what: string, target: string) => `Copy ${what} to "${target}"`,
-    dropMove: (what: string, target: string) => `Move ${what} to "${target}"`,
+    dropCopy: 'Copy Here',
+    dropMove: 'Move Here',
+    dropCopyTitle: (what: Value, target: string) =>
+      `Copy ${plain(what)} to "${target}"`,
+    dropMoveTitle: (what: Value, target: string) =>
+      `Move ${plain(what)} to "${target}"`,
     newFolderTitle: 'New Folder',
-    newFolderIn: (folder: string) => `Make a folder in "${folder}"`,
+    newFolderLines: (folder: string) => [labeled('In', named(folder))],
     newFolderName: 'Name',
     makeFolder: 'Make',
     noName: 'Type the name of the folder.',
@@ -658,7 +689,6 @@ export const strings = {
     makeFolderAsAdministrator:
       "Folders can't be made yet in a folder read as administrator.",
     renameTitle: 'Rename',
-    renameIn: (name: string) => `A new name for "${name}"`,
     newName: 'New name',
     renameConfirm: 'Rename',
     renameFailed: (name: string, reason: string) =>
@@ -672,7 +702,7 @@ export const strings = {
     transferAsAdministrator:
       "Items can't be copied or moved yet in a folder read as administrator.",
     packTitle: 'Pack',
-    packWhat: (what: string) => `Pack ${what} into`,
+    packLines: (what: Value) => [labeled('Pack', what)],
     packArchive: 'Archive',
     packFormat: 'Format',
     packFormats: {
@@ -709,8 +739,10 @@ export const strings = {
     volumeCd: '700 MB, a CD',
     volumeFat32: '4092 MB, the largest file FAT32 holds',
     volumeDvd: '4480 MB, a DVD',
-    packingInto: (what: string, archive: string) =>
-      `Packing ${what} into "${archive}"`,
+    packingInto: (what: Value, archive: string) => [
+      labeled('Packing', what),
+      labeled('Into', named(archive)),
+    ],
     packed: (what: string, archive: string) =>
       `Packed ${what} into "${archive}"`,
     packFailed: (name: string, reason: string) =>
@@ -718,24 +750,30 @@ export const strings = {
     warnedMore: (count: number) => `And ${count.toLocaleString()} more.`,
     packedWithout: (name: string, reason: string) =>
       `"${name}" was packed without some of the files: ${reason}`,
-    deletingFrom: (what: string, archive: string) =>
-      `Deleting ${what} from "${archive}"`,
+    deletingFrom: (what: Value, archive: string) => [
+      labeled('Deleting', what),
+      labeled('From', named(archive)),
+    ],
     deletedFrom: (what: string, archive: string) =>
       `Deleted ${what} from "${archive}"`,
     deleteFromFailed: (name: string, reason: string) =>
       `Nothing could be deleted from "${name}": ${reason}`,
     deletingStopped: (archive: string) =>
       `Deleting from "${archive}" stopped unexpectedly.`,
-    renamingIn: (what: string, archive: string) =>
-      `Renaming ${what} in "${archive}"`,
+    renamingIn: (what: Value, archive: string) => [
+      labeled('Renaming', what),
+      labeled('In', named(archive)),
+    ],
     renamedIn: (what: string, archive: string) =>
       `Renamed ${what} in "${archive}"`,
     renameInFailed: (name: string, reason: string) =>
       `Nothing could be renamed in "${name}": ${reason}`,
     renamingStopped: (archive: string) =>
       `Renaming in "${archive}" stopped unexpectedly.`,
-    makingFolderIn: (what: string, archive: string) =>
-      `Making the folder ${what} in "${archive}"`,
+    makingFolderIn: (what: Value, archive: string) => [
+      labeled('Making', what),
+      labeled('In', named(archive)),
+    ],
     madeFolderIn: (what: string, archive: string) =>
       `Made the folder ${what} in "${archive}"`,
     folderInFailed: (name: string, reason: string) =>
@@ -760,11 +798,15 @@ export const strings = {
     archiveGone: (name: string) =>
       `"${name}" is no longer there, so it was not changed.`,
     updateTitle: 'Update the Archive',
-    updateAsked: (name: string, archive: string) =>
-      `"${name}" was changed since it was taken out of "${archive}". Put it back into the archive?`,
+    updateAsked:
+      'A file was changed since it was taken out of its archive. Put it back into the archive?',
+    updateLines: (name: string, archive: string) => [
+      labeled('File', named(name)),
+      labeled('Archive', named(archive)),
+    ],
     updateConfirm: 'Update',
     updateLater: 'Not Now',
-    puttingBack: (what: string) => `Putting ${what} back`,
+    puttingBack: (what: Value) => [labeled('Putting back', what)],
     putBack: (what: string, archive: string) =>
       `Put ${what} back into "${archive}"`,
     putBackFailed: (name: string, reason: string) =>
@@ -783,10 +825,12 @@ export const strings = {
           : 'They are there already.',
     replace: 'Replace',
     skipThem: 'Skip Them',
-    deleteFromArchiveQuestion: (what: string, archive: string) =>
-      `Delete ${what} from "${archive}" permanently? This cannot be undone.`,
+    deleteFromArchiveItem:
+      'Delete from the archive permanently? This cannot be undone.',
+    deleteFromArchiveItems: (what: string) =>
+      `Delete ${what} from the archive permanently? This cannot be undone.`,
     testTitle: 'Test',
-    testingArchives: (what: string) => `Testing ${what}`,
+    testingArchives: (what: Value) => [labeled('Testing', what)],
     testPassed: (what: string) => `${what} passed the test.`,
     testFailed: (name: string, reason: string) =>
       `"${name}" failed the test: ${reason}`,
@@ -826,7 +870,8 @@ export const strings = {
     couldNotOpen: (folder: string, reason: string) =>
       `Couldn't open ${folder}. ${reason}`,
     noAccessTitle: 'No Access',
-    noAccess: (folder: string) => `You don't have access to ${folder}.`,
+    noAccess: "You don't have access to this folder.",
+    folderLines: (folder: string) => [labeled('Folder', named(folder))],
     asAdministrator: 'As Administrator',
     readAsAdministrator: 'Read as administrator',
     openRepository: 'Open the repository in a git tab',

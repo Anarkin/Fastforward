@@ -74,7 +74,8 @@ function GitPopups() {
       {initAsked && (
         <ConfirmPopup
           title={strings.confirm.initTitle}
-          message={strings.confirm.initInside(
+          message={strings.confirm.initInside}
+          lines={strings.confirm.initInsideLines(
             initAsked.folder,
             initAsked.repository,
           )}

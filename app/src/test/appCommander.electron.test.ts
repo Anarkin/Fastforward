@@ -799,9 +799,12 @@ suite('App commander', () => {
       await page.keyboard.press('Enter');
       const popup = page.locator('.confirm-popup');
       await popup.waitFor();
-      assert.strictEqual(
-        await popup.locator('.confirm-body > span').textContent(),
-        strings.commander.noAccess(locked),
+      assert.deepStrictEqual(
+        [
+          await popup.locator('.confirm-question > span').textContent(),
+          await popup.locator('.name-value').allTextContents(),
+        ],
+        [strings.commander.noAccess, [locked]],
       );
       assert.strictEqual(await page.locator('.notice').count(), 0);
       assert.deepStrictEqual(
@@ -2869,9 +2872,12 @@ suite('App commander', () => {
     const popup = page.locator('.confirm-popup');
     await page.keyboard.press('Shift+Delete');
     await popup.waitFor();
-    assert.match(
-      (await popup.textContent()) ?? '',
-      /Delete "b\.txt" permanently\? This cannot be undone\./,
+    assert.deepStrictEqual(
+      [
+        await popup.locator('.confirm-question > span').textContent(),
+        await popup.locator('.name-value').allTextContents(),
+      ],
+      [strings.commander.deleteItem, ['b.txt']],
     );
     await page.keyboard.press('ArrowLeft');
     await waitFor(
@@ -2888,9 +2894,9 @@ suite('App commander', () => {
     await page.keyboard.press('Space');
     await page.keyboard.press('Shift+F8');
     await popup.waitFor();
-    assert.match(
-      (await popup.textContent()) ?? '',
-      /Delete 2 items permanently\?/,
+    assert.strictEqual(
+      await popup.locator('.confirm-question').textContent(),
+      strings.commander.deleteItems(strings.commander.items(2)),
     );
     await page.keyboard.press('Enter');
     await waitFor(
@@ -2915,9 +2921,12 @@ suite('App commander', () => {
     );
   });
 
-  test('copies the selected file into the folder of the other side on F5 once confirmed, and moves the marked folder and file there on F6, through the process that copies, the other side listing them', async () => {
+  test('copies the selected file into the folder of the other side on F5 once confirmed, and moves the marked folder and file there on F6, through the process that copies, the other side listing them, naming them and the folder on lines, its path wrapping only between its folders', async () => {
     const from = path.join(opened, 'copyfrom');
-    const into = path.join(opened, 'copyinto');
+    const into = path.join(
+      opened,
+      'copy-into-a-folder-whose-name-is-this-long',
+    );
     fs.mkdirSync(path.join(from, 'docs'), { recursive: true });
     fs.mkdirSync(into);
     fs.writeFileSync(path.join(from, 'first.txt'), 'first');
@@ -2925,8 +2934,23 @@ suite('App commander', () => {
     fs.writeFileSync(path.join(from, 'docs', 'inner.txt'), 'inner');
     const left = page.locator('.commander-pane').nth(0);
     const popup = page.locator('.confirm-popup');
-    const asked = async () => (await popup.textContent()) ?? '';
-    await select('copyinto');
+    const asked = () =>
+      popup.evaluate((element) =>
+        [...element.querySelectorAll('.name-label')].map((label) => [
+          label.textContent,
+          label.nextElementSibling?.textContent,
+        ]),
+      );
+    const wrapping = () =>
+      popup.evaluate((element) => ({
+        lines: [...element.querySelectorAll('.name')].map(
+          (name) => name.getClientRects().length,
+        ),
+        brokenPieces: [...element.querySelectorAll('.name > span')].filter(
+          (piece) => piece.getClientRects().length !== 1,
+        ).length,
+      }));
+    await select('copy-into');
     await page.keyboard.press('ControlOrMeta+ArrowLeft');
     await waitFor(
       async () => (await left.locator('.column-name').textContent()) === into,
@@ -2942,10 +2966,14 @@ suite('App commander', () => {
     await select('first');
     await page.keyboard.press('F5');
     await popup.waitFor();
-    assert.ok(
-      (await asked()).includes(`Copy "first.txt" to "${into}"?`),
-      await asked(),
-    );
+    assert.deepStrictEqual(await asked(), [
+      ['Copy', 'first.txt'],
+      ['To', into],
+    ]);
+    const wrapped = await wrapping();
+    assert.strictEqual(wrapped.lines[0], 1);
+    assert.ok(wrapped.lines[1] > 1, JSON.stringify(wrapped));
+    assert.strictEqual(wrapped.brokenPieces, 0);
     await page.keyboard.press('Enter');
     await waitFor(
       () => fs.existsSync(path.join(into, 'first.txt')),
@@ -2968,10 +2996,10 @@ suite('App commander', () => {
     await page.keyboard.press('Space');
     await page.keyboard.press('F6');
     await popup.waitFor();
-    assert.ok(
-      (await asked()).includes(`Move 2 items to "${into}"?`),
-      await asked(),
-    );
+    assert.deepStrictEqual(await asked(), [
+      ['Move', '2 items'],
+      ['To', into],
+    ]);
     await page.keyboard.press('Enter');
     await waitFor(
       () =>
@@ -3205,16 +3233,20 @@ suite('App commander', () => {
         },
         { onto, made },
       );
-    const choose = async (label: string) => {
+    const choose = async (label: string, title: string) => {
       const item = page.locator('.context-menu .menu-item', { hasText: label });
       await item.waitFor();
+      assert.strictEqual(await item.getAttribute('title'), title);
       await item.click();
     };
 
     await drop(undefined, true);
-    await choose(`Copy "made.txt" to "${into}"`);
+    await choose(strings.commander.dropCopy, `Copy "made.txt" to "${into}"`);
     await drop('inner', false);
-    await choose(`Copy 2 items to "${path.join(into, 'inner')}"`);
+    await choose(
+      strings.commander.dropCopy,
+      `Copy 2 items to "${path.join(into, 'inner')}"`,
+    );
     await waitFor(
       () =>
         fs.existsSync(path.join(into, 'inner', 'x.txt')) &&
@@ -3224,7 +3256,7 @@ suite('App commander', () => {
     await page.locator('.transfer-popup').waitFor({ state: 'detached' });
     assert.deepStrictEqual(fs.readdirSync(from).toSorted(), ['x.txt', 'y.txt']);
     await drop(undefined, false);
-    await choose(`Move 2 items to "${into}"`);
+    await choose(strings.commander.dropMove, `Move 2 items to "${into}"`);
     await waitFor(
       () =>
         fs.existsSync(path.join(into, 'x.txt')) &&

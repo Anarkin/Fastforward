@@ -442,7 +442,7 @@ suite('Window', () => {
     }
   });
 
-  test('asks whether you are sure, naming the tool and, in quotes, the tab to close, as a tab named after a folder could pass for anything, or the app to quit', () => {
+  test('asks whether you are sure, naming the tool and, on a line of its own, the tab to close, as a tab named after a folder could pass for anything, or the app to quit', () => {
     assert.deepStrictEqual(
       confirmation({
         kind: 'tab',
@@ -450,8 +450,8 @@ suite('Window', () => {
       }),
       {
         title: 'Close Tab',
-        message:
-          'Are you sure you want to close the Terminal tab "repo (main)"?',
+        message: 'Are you sure you want to close this Terminal tab?',
+        lines: [{ label: 'Tab', name: 'repo (main)' }],
         confirm: 'Close',
       },
     );

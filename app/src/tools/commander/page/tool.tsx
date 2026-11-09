@@ -98,7 +98,8 @@ function CommanderPopups() {
         <ConfirmPopup
           key={askingUpdate.ask}
           title={strings.commander.updateTitle}
-          message={strings.commander.updateAsked(
+          message={strings.commander.updateAsked}
+          lines={strings.commander.updateLines(
             askingUpdate.name,
             askingUpdate.archive,
           )}
@@ -114,9 +115,10 @@ function CommanderPopups() {
           title={strings.commander.passwordTitle}
           message={
             askingPassword.wrong
-              ? strings.commander.passwordWrong(askingPassword.name)
-              : strings.commander.passwordAsked(askingPassword.name)
+              ? strings.commander.passwordWrong
+              : strings.commander.passwordAsked
           }
+          lines={strings.commander.archiveLines(askingPassword.name)}
           label={strings.commander.passwordLabel}
           confirm={strings.commander.passwordOpen}
           problemOf={(password) =>
@@ -130,7 +132,7 @@ function CommanderPopups() {
       {makingFolder !== undefined && (
         <PromptPopup
           title={strings.commander.newFolderTitle}
-          message={strings.commander.newFolderIn(makingFolder.folder)}
+          lines={strings.commander.newFolderLines(makingFolder.folder)}
           label={strings.commander.newFolderName}
           confirm={strings.commander.makeFolder}
           problemOf={(name) => newFolderProblem(name, listed, platform)}
@@ -141,7 +143,7 @@ function CommanderPopups() {
       {renaming !== undefined && renamed !== undefined && (
         <PromptPopup
           title={strings.commander.renameTitle}
-          message={strings.commander.renameIn(renamed)}
+          lines={strings.commander.itemLines(renamed)}
           label={strings.commander.newName}
           confirm={strings.commander.renameConfirm}
           initial={renamed}
@@ -191,7 +193,8 @@ function CommanderPopups() {
       {noAccess !== undefined && (
         <ConfirmPopup
           title={strings.commander.noAccessTitle}
-          message={strings.commander.noAccess(noAccess.folder)}
+          message={strings.commander.noAccess}
+          lines={strings.commander.folderLines(noAccess.folder)}
           confirm={strings.confirm.ok}
           cancel={null}
           onConfirm={closeNoAccess}
