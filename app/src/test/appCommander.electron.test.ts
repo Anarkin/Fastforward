@@ -296,6 +296,59 @@ suite('App commander', () => {
       `${name} to be selected`,
     );
   };
+  const openFolder = async (name: string, folderPath: string) => {
+    await select(name);
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () =>
+        (await right().locator('.column-name').textContent()) === folderPath,
+      `${name} to open`,
+    );
+  };
+  const pathCut = () =>
+    right()
+      .locator('.path-title')
+      .evaluate((title) => {
+        const box = (selector: string) => {
+          const found = title.querySelector(selector);
+          if (found === null) {
+            throw new Error(selector);
+          }
+          return found.getBoundingClientRect();
+        };
+        const textBox = (node: Node) => {
+          const range = title.ownerDocument.createRange();
+          range.selectNodeContents(node);
+          return range.getBoundingClientRect();
+        };
+        const shownFolders = box('.path-folder');
+        const name = box('.path-name');
+        const parts = [...title.querySelectorAll('.path-part')];
+        const first = textBox(parts[0]);
+        const nearestPart = parts[parts.length - 1];
+        const nearest = textBox(nearestPart);
+        const after = nearestPart.nextSibling;
+        const separator =
+          after?.nodeType === Node.TEXT_NODE ? textBox(after) : undefined;
+        const named = title.querySelector('.path-name') ?? title;
+        const nameText = textBox(named);
+        const advance = nameText.width / (named.textContent?.length ?? 1);
+        return {
+          startCut: first.left < shownFolders.left - 1,
+          startMarked: shownFolders.width >= 2 * advance - 0.5,
+          nearestInView:
+            nearest.left >= shownFolders.left - 0.02 &&
+            nearest.right <= shownFolders.right + 0.02,
+          separatorInView:
+            separator !== undefined &&
+            separator.width > 0 &&
+            separator.left >= shownFolders.left - 0.02 &&
+            separator.right <= shownFolders.right + 0.02 &&
+            separator.right <= name.left + 0.02,
+          nameWhole: nameText.width <= name.width + 0.02,
+          nameInView: name.right <= title.getBoundingClientRect().right + 0.02,
+        };
+      });
   const headerPlaces = () =>
     right()
       .locator('.column-title')
@@ -683,6 +736,45 @@ suite('App commander', () => {
         JSON.stringify(places),
       );
       await page.keyboard.press('Backspace');
+    } finally {
+      fs.rmSync(path.join(opened, long), { recursive: true, force: true });
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    }
+  });
+
+  test('cuts the folders of a path too long for its header from their start, keeping those nearest the name in view, the separator before the name and the name whole, and an ellipsis of them once the name alone is too long, cut at its end', async () => {
+    const long = `a folder named at such length that its path is cut ${'x'.repeat(160)}`;
+    const folders = [long, 'near', 'the folder at the end'];
+    const longer = `a name too long for the header alone ${'y'.repeat(160)}`;
+    fs.mkdirSync(path.join(opened, ...folders, longer), { recursive: true });
+    try {
+      for (let depth = 1; depth <= folders.length; depth++) {
+        await openFolder(
+          folders[depth - 1],
+          path.join(opened, ...folders.slice(0, depth)),
+        );
+      }
+      assert.deepStrictEqual(await pathCut(), {
+        startCut: true,
+        startMarked: true,
+        nearestInView: true,
+        separatorInView: true,
+        nameWhole: true,
+        nameInView: true,
+      });
+      await openFolder(longer, path.join(opened, ...folders, longer));
+      assert.deepStrictEqual(await pathCut(), {
+        startCut: true,
+        startMarked: true,
+        nearestInView: false,
+        separatorInView: true,
+        nameWhole: false,
+        nameInView: true,
+      });
     } finally {
       fs.rmSync(path.join(opened, long), { recursive: true, force: true });
       await waitFor(

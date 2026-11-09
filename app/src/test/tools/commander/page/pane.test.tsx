@@ -405,20 +405,20 @@ suite('Commander pane', () => {
     assert.match(
       header(true) ?? '',
       new RegExp(
-        `^<span class="elevated-mark" title="${strings.commander.readAsAdministrator}">.*<span class="path-folder">`,
+        `^<span class="elevated-mark" title="${strings.commander.readAsAdministrator}">.*<span class="path-text">`,
       ),
     );
-    assert.match(header(false) ?? '', /^<span class="path-folder">/);
+    assert.match(header(false) ?? '', /^<span class="path-text">/);
   });
 
   test('dims each hidden folder of its path, as its row is, and no other', () => {
     assert.strictEqual(
       header(false, [false, true]),
-      '<span class="path-folder"><span class="path-part">C:\\</span></span><span class="path-name hidden">Config.Msi</span>',
+      '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name hidden">Config.Msi</span></span></span>',
     );
     assert.strictEqual(
       header(false),
-      '<span class="path-folder"><span class="path-part">C:\\</span></span><span class="path-name">Config.Msi</span>',
+      '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name">Config.Msi</span></span></span>',
     );
   });
 

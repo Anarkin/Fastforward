@@ -33,26 +33,32 @@ export function PathTitle({
   return (
     <span className="column-name path-title">
       {children}
-      {last > 0 && (
-        <span className="path-folder">
-          {parts.slice(0, last).map((part, index) => [
-            <span key={part.path} className={`path-part${hiddenAt(index)}`}>
-              {part.name}
-            </span>,
-            part.separator,
-          ])}
+      <span className="path-text">
+        {last > 0 && (
+          <span className="path-folder">
+            <span dir="ltr">
+              {parts.slice(0, last).map((part, index) => [
+                <span key={part.path} className={`path-part${hiddenAt(index)}`}>
+                  {part.name}
+                </span>,
+                part.separator,
+              ])}
+            </span>
+          </span>
+        )}
+        <span className="path-end">
+          {last >= 0 && (
+            <span
+              className={`path-name${color === undefined ? '' : ' colored'}${hiddenAt(last)}`}
+              style={style}
+            >
+              {parts[last].name}
+              {parts[last].separator}
+            </span>
+          )}
+          {flat && <span className="path-flat">{flatSuffixOf(path)}</span>}
         </span>
-      )}
-      {last >= 0 && (
-        <span
-          className={`path-name${color === undefined ? '' : ' colored'}${hiddenAt(last)}`}
-          style={style}
-        >
-          {parts[last].name}
-          {parts[last].separator}
-        </span>
-      )}
-      {flat && <span className="path-flat">{flatSuffixOf(path)}</span>}
+      </span>
     </span>
   );
 }

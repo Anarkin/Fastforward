@@ -711,7 +711,7 @@ suite('Style', () => {
     );
   });
 
-  test('draws the path of a commander title in the font of its rows, each part in the color its own row has, the folders giving way to an ellipsis first', () => {
+  test('draws the path of a commander title in the font of its rows, each part in the color its own row has, the folders giving way to an ellipsis at their start first, and the name only once it alone is too long, leaving the folders room for their ellipsis', () => {
     const title = rendered(
       createElement(PathTitle, { path: 'C:/notes.txt', hidden: [] }),
     );
@@ -720,12 +720,30 @@ suite('Style', () => {
       'font-family': 'var(--monospace-font-family)',
       'font-size': 'var(--monospace-font-size)',
     });
+    looks(withClass(title, 'path-text'), {
+      display: 'flex',
+      flex: '0 1 auto',
+      'min-width': '0',
+    });
     looks(withClass(title, 'path-folder'), {
-      flex: '0 1000 auto',
+      flex: '0 1 auto',
       'min-width': '0',
       overflow: 'hidden',
       'text-overflow': 'ellipsis',
+      direction: 'rtl',
     });
+    looks(withClass(title, 'path-end'), {
+      display: 'flex',
+      flex: 'none',
+      'max-width': 'calc(100% - 2 * max(1ch, var(--commander-advance)))',
+    });
+    looks(
+      withClass(
+        rendered(createElement(PathTitle, { path: 'C:/', hidden: [] })),
+        'path-end',
+      ),
+      { 'max-width': '100%' },
+    );
     looks(withClass(title, 'path-name'), {
       flex: '0 1 auto',
       'min-width': '0',

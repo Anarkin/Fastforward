@@ -226,6 +226,12 @@
   flex: none;
 }
 
+.path-text {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .path-folder,
 .path-name {
   min-width: 0;
@@ -235,7 +241,18 @@
 }
 
 .path-folder {
-  flex: 0 1000 auto;
+  flex: 0 1 auto;
+  direction: rtl;
+}
+
+.path-end {
+  display: flex;
+  flex: none;
+  max-width: 100%;
+}
+
+.path-folder + .path-end {
+  max-width: calc(100% - 2 * max(1ch, var(--commander-advance)));
 }
 
 .path-name {
