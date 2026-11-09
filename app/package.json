@@ -38,7 +38,8 @@
     "dist": "npm run package && electron-builder --publish never",
     "release": "node scripts/release.mts",
     "push": "node scripts/push.mts",
-    "playground:git": "node scripts/playground/git.mts"
+    "playground:git": "node scripts/playground/git.mts",
+    "playground:files": "node scripts/playground/files.mts"
   },
   "devDependencies": {
     "@tanstack/react-virtual": "^3.14.15",

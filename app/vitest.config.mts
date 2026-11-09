@@ -4,7 +4,10 @@ import { defineConfig } from 'vitest/config';
 const git = 'src/test/**/*.git.test.ts';
 const electron = 'src/test/**/*.electron.test.ts';
 const shells = 'src/test/**/*.shells.test.ts';
-const playground = 'src/test/gitPlayground.git.test.ts';
+const playgrounds = [
+  'src/test/gitPlayground.git.test.ts',
+  'src/test/filesPlayground.git.test.ts',
+];
 const packaging = [
   'src/test/build.test.ts',
   'src/test/ffScripts.test.ts',
@@ -50,7 +53,7 @@ export default defineConfig({
         test: {
           name: 'git',
           include: [git],
-          exclude: [playground],
+          exclude: playgrounds,
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },
@@ -59,7 +62,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'playground',
-          include: [playground],
+          include: playgrounds,
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },
