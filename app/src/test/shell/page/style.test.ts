@@ -279,7 +279,17 @@ function paddingOf(element: MarkupElement) {
 }
 
 function halved(length: string | undefined): string {
-  return `${parseFloat(length ?? '') / 2}px`;
+  return length?.startsWith('var(') === true
+    ? `calc(${length} / 2)`
+    : `${parseFloat(length ?? '') / 2}px`;
+}
+
+function deviceRounded(name: string): number {
+  const match = /^round\((\d+)px, var\(--device-pixel, 1px\)\)$/.exec(
+    bodyVariable(name) ?? '',
+  );
+  assert.ok(match, name);
+  return Number(match[1]);
 }
 
 function layer(element: MarkupElement, states?: States): number {
@@ -1304,6 +1314,52 @@ suite('Style', () => {
     for (const tab of [active, ...others]) {
       looks(tab, { height, 'margin-bottom': undefined });
     }
+  });
+
+  test('sizes every round button and spaces every group of them by one size and one gap, each a whole number of screen pixels, so no gap is drawn wider than another at 125%', () => {
+    assert.strictEqual(deviceRounded('button-size'), 26);
+    assert.strictEqual(deviceRounded('button-gap'), 2);
+    assert.strictEqual(deviceRounded('arrowed-button-width'), 44);
+    const nav = rendered(navButtons({ autoFetch: true, autoFetchMinutes: 5 }));
+    const options = rendered(diffOptions());
+    for (const group of [
+      withClass(nav, 'nav-buttons'),
+      withClass(nav, 'pin-pair'),
+      withClass(options, 'nav-buttons'),
+      withClass(options, 'segmented'),
+      withClass(
+        rendered(
+          renderedBy(Column, {
+            actions: createElement('span'),
+            children: null,
+          }),
+        ),
+        'column-actions',
+      ),
+    ]) {
+      looks(group, { gap: 'var(--button-gap)' });
+    }
+    const buttons = [
+      ...allWithClass(nav, 'nav-button'),
+      ...allWithClass(options, 'nav-button'),
+    ];
+    assert.ok(buttons.length > 8);
+    for (const button of buttons) {
+      looks(button, {
+        width: 'var(--button-size)',
+        height: 'var(--button-size)',
+      });
+    }
+    looks(withClass(searchButton(), 'search-button'), {
+      width: 'var(--search-height)',
+    });
+    assert.strictEqual(
+      cascaded(
+        rendered(renderedBy(Column, { children: null })),
+        '--search-height',
+      ),
+      'var(--button-size)',
+    );
   });
 
   test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
@@ -3653,7 +3709,12 @@ suite('Style', () => {
     const line = parseFloat(
       cascaded(withClass(column, 'column-title'), 'border-bottom') ?? '',
     );
-    const above = (px('title-height') - line - px('search-height')) / 2;
+    assert.strictEqual(
+      cascaded(column, '--search-height'),
+      'var(--button-size)',
+    );
+    const above =
+      (px('title-height') - line - deviceRounded('button-size')) / 2;
     assert.ok(above - edge >= 2, String(above));
     for (const field of [
       diffFind(),

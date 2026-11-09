@@ -21,7 +21,9 @@ a:focus-visible {
 }
 
 body {
-  --arrowed-button-width: 44px;
+  --button-size: round(26px, var(--device-pixel, 1px));
+  --button-gap: round(2px, var(--device-pixel, 1px));
+  --arrowed-button-width: round(44px, var(--device-pixel, 1px));
   --muted-opacity: var(--color-foreground-muted);
   --selection-background: color-mix(
     in srgb,
@@ -1041,7 +1043,7 @@ body {
 
 .column {
   --title-height: 36px;
-  --search-height: 26px;
+  --search-height: var(--button-size);
   --search-gap: 6px;
   --status-height: 26px;
   position: relative;
@@ -1081,8 +1083,10 @@ body.resizing {
 }
 
 .column-title:has(.column-start) {
-  padding-left: calc(4px + 4 * 26px + 3 * 2px + 8px);
-  padding-right: calc(4px + 2 * 26px + 2px + 8px);
+  padding-left: calc(
+    4px + 4 * var(--button-size) + 3 * var(--button-gap) + 8px
+  );
+  padding-right: calc(4px + 2 * var(--button-size) + var(--button-gap) + 8px);
 }
 
 .column-name {
@@ -1841,17 +1845,17 @@ body.resizing {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: var(--button-size);
+  height: var(--button-size);
   padding: 0;
   color: var(--color-foreground);
   background: var(--button-background);
   border: none;
-  border-radius: 13px;
+  border-radius: calc(var(--button-size) / 2);
 }
 
 .nav-button:hover:not(:disabled) {
-  box-shadow: inset 0 0 0 13px var(--hover-background);
+  box-shadow: inset 0 0 0 calc(var(--button-size) / 2) var(--hover-background);
 }
 
 .nav-button:disabled {
@@ -1860,8 +1864,8 @@ body.resizing {
 
 .segmented {
   display: flex;
-  gap: 2px;
-  border-radius: 13px;
+  gap: var(--button-gap);
+  border-radius: calc(var(--button-size) / 2);
   background: var(--button-background);
 }
 
@@ -1872,7 +1876,7 @@ body.resizing {
   bottom: 0;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--button-gap);
   text-align: left;
 }
 

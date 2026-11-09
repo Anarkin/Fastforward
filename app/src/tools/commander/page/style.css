@@ -13,12 +13,15 @@
 }
 
 .commander .column-title:not(.searching) {
-  --start-buttons: calc(2 * 26px + 2 * 2px + var(--arrowed-button-width));
+  --start-buttons: calc(
+    2 * var(--button-size) + 2 * var(--button-gap) + var(--arrowed-button-width)
+  );
   padding: 0
     calc(
       4px +
         max(
-          var(--widest-layout-button) + 2 * 2px + 2 * 26px,
+          var(--widest-layout-button) + 2 * var(--button-gap) + 2 *
+            var(--button-size),
           var(--start-buttons)
         ) +
         8px
@@ -27,8 +30,8 @@
 
 .commander .column-title:not(.searching):has(.drive-menu) {
   --start-buttons: calc(
-    2 * 26px + 3 * 2px + var(--widest-drive-button) +
-      var(--arrowed-button-width)
+    2 * var(--button-size) + 3 * var(--button-gap) +
+      var(--widest-drive-button) + var(--arrowed-button-width)
   );
 }
 
@@ -475,7 +478,7 @@
 
 .viewer-toggles {
   display: flex;
-  gap: 2px;
+  gap: var(--button-gap);
 }
 
 .viewer-actions {
