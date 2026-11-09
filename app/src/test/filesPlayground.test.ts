@@ -277,7 +277,7 @@ suite('Playground of files', () => {
     );
   });
 
-  test('holds code in more than 30 languages the viewer colors, every sample in one but Elixir and Perl, whose extensions shiki names no language by', () => {
+  test('holds code in more than 30 languages the viewer colors, every sample in one', () => {
     const samples = childrenOf(planFor('linux'), 'syntax').filter(
       (item) => item.kind === 'file',
     );
@@ -285,7 +285,7 @@ suite('Playground of files', () => {
       samples
         .filter((item) => languageOf(item.path) === undefined)
         .map((item) => path.posix.basename(item.path)),
-      ['sample.ex', 'sample.pl'],
+      [],
     );
     assert.ok(new Set(samples.map((item) => languageOf(item.path))).size > 30);
   });

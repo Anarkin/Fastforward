@@ -7,9 +7,35 @@ const extensionLanguages: Record<string, string> = {
   cxx: 'cpp',
   htm: 'html',
   csproj: 'xml',
+  fsproj: 'xml',
+  vbproj: 'xml',
+  slnx: 'xml',
   props: 'xml',
   targets: 'xml',
+  nuspec: 'xml',
+  xaml: 'xml',
+  axaml: 'xml',
+  resx: 'xml',
   svg: 'xml',
+  csx: 'csharp',
+  cshtml: 'razor',
+  fsx: 'fsharp',
+  fsi: 'fsharp',
+  editorconfig: 'ini',
+  ex: 'elixir',
+  exs: 'elixir',
+  pl: 'perl',
+  pm: 'perl',
+  ml: 'ocaml',
+  mli: 'ocaml',
+};
+
+const nameLanguages: Record<string, string> = {
+  'app.config': 'xml',
+  'nuget.config': 'xml',
+  'packages.config': 'xml',
+  'web.config': 'xml',
+  'cargo.lock': 'toml',
 };
 
 export const languageIds = new Map(
@@ -24,8 +50,9 @@ export function languageOf(path: string): string | undefined {
     .toLowerCase();
   const extension = name.slice(name.lastIndexOf('.') + 1);
   return (
-    languageIds.get(extensionLanguages[extension] ?? extension) ??
-    languageIds.get(name)
+    languageIds.get(
+      nameLanguages[name] ?? extensionLanguages[extension] ?? extension,
+    ) ?? languageIds.get(name)
   );
 }
 

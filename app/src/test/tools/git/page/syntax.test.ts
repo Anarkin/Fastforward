@@ -137,6 +137,39 @@ suite('Syntax', () => {
     assert.strictEqual(languageOf('LICENSE'), undefined);
   });
 
+  test('knows the files of .NET, Rust, Elixir, Perl and OCaml by the extensions and names their tools give them, though shiki names no language by them', () => {
+    for (const [file, language] of [
+      ['build.csx', 'csharp'],
+      ['Views/Home/Index.cshtml', 'razor'],
+      ['script.fsx', 'fsharp'],
+      ['Library.fsi', 'fsharp'],
+      ['App.fsproj', 'xml'],
+      ['Legacy.vbproj', 'xml'],
+      ['Playground.slnx', 'xml'],
+      ['Package.nuspec', 'xml'],
+      ['MainWindow.xaml', 'xml'],
+      ['App.axaml', 'xml'],
+      ['Resources.resx', 'xml'],
+      ['NuGet.Config', 'xml'],
+      ['C:\\site\\web.config', 'xml'],
+      ['app.config', 'xml'],
+      ['packages.config', 'xml'],
+      ['Cargo.lock', 'toml'],
+      ['.editorconfig', 'ini'],
+      ['lib/app.ex', 'elixir'],
+      ['test/app_test.exs', 'elixir'],
+      ['script.pl', 'perl'],
+      ['Module.pm', 'perl'],
+      ['main.ml', 'ocaml'],
+      ['main.mli', 'ocaml'],
+    ] as const) {
+      assert.strictEqual(languageOf(file), language, file);
+    }
+    for (const file of ['settings.config', 'yarn.lock', 'go.mod']) {
+      assert.strictEqual(languageOf(file), undefined, file);
+    }
+  });
+
   test('colors the keywords, punctuation, strings, numbers and comments of a file shown entire, leaving code in a string plain', async () => {
     assert.deepStrictEqual(
       await colored([], {
