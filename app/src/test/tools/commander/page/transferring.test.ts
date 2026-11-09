@@ -1,9 +1,52 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { strings } from '../../../../shared/strings';
 import {
+  progressLines,
   shareDone,
   transferQuestion,
 } from '../../../../tools/commander/page/transferring';
+import type { TransferView } from '../../../../tools/commander/shared/transfers';
+
+suite('The progress of a pack', () => {
+  const progress = {
+    files: 10,
+    totalFiles: 40,
+    bytes: 100,
+    totalBytes: 800,
+    current: 'docs/a.txt',
+  };
+  const view: TransferView = {
+    id: 1,
+    move: false,
+    archiveJob: 'pack',
+    items: 3,
+    target: '/x/a.zip',
+    stopping: false,
+    progress,
+  };
+
+  test('counts the files 7-Zip read, which it reads ahead of what it packed, and names the one it read last until it read them all, then says it packs the rest', () => {
+    assert.deepStrictEqual(progressLines(view), {
+      current: 'docs/a.txt',
+      files: '10 of 40 files read',
+    });
+    assert.deepStrictEqual(
+      progressLines({
+        ...view,
+        progress: { ...progress, files: 40, totalFiles: 40 },
+      }),
+      { current: strings.commander.packingRest, files: '40 of 40 files read' },
+    );
+  });
+
+  test('counts and names the files a copy on disk copied, as it copies them one at a time', () => {
+    assert.deepStrictEqual(progressLines({ ...view, archiveJob: undefined }), {
+      current: 'docs/a.txt',
+      files: '10 of 40 files',
+    });
+  });
+});
 
 suite('Commander transferring into an archive', () => {
   test('says how many of the items are there already, offering to replace them', () => {

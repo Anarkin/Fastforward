@@ -595,6 +595,9 @@ export const strings = {
     counting: 'Counting the files…',
     transferredFiles: (files: number, total: number) =>
       `${files.toLocaleString()} of ${total.toLocaleString()} files`,
+    filesRead: (files: number, total: number) =>
+      `${files.toLocaleString()} of ${total.toLocaleString()} files read`,
+    packingRest: 'Packing the rest of the files…',
     transferredBytes: (done: number, total: number) =>
       `${fileSize(done)} of ${fileSize(total)}`,
     stopTransfer: 'Stop',

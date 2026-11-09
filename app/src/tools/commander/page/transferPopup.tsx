@@ -8,7 +8,7 @@ import { formatDate } from '../../../ui/dates';
 import { useShell } from '../../../shell/page/store';
 import type { ClashSide, TransferView } from '../shared/transfers';
 import { useCommander, useCommanderActions } from './store';
-import { shareDone, whatOf } from './transferring';
+import { progressLines, shareDone, whatOf } from './transferring';
 
 type Clash = NonNullable<TransferView['clash']>;
 
@@ -139,6 +139,7 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
   const done = shareDone(progress);
   const stop = useRef<HTMLButtonElement>(null);
   useEffect(() => stop.current?.focus(), []);
+  const lines = progressLines(transfer);
   return (
     <div className="confirm-body transfer-body">
       <div className="transfer-running">
@@ -148,8 +149,8 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
             transfer.target,
           )}
         </span>
-        <span className="transfer-current" title={progress?.current}>
-          {progress === undefined ? commander.counting : progress.current}
+        <span className="transfer-current" title={lines.current}>
+          {lines.current}
         </span>
       </div>
       <div
@@ -165,9 +166,7 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
         (transfer.archiveJob === undefined ||
           countedJobs.has(transfer.archiveJob)) && (
           <div className="transfer-counts">
-            <span>
-              {commander.transferredFiles(progress.files, progress.totalFiles)}
-            </span>
+            <span>{lines.files}</span>
             <span>
               {commander.transferredBytes(progress.bytes, progress.totalBytes)}
             </span>

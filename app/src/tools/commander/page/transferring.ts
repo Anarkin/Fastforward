@@ -1,5 +1,5 @@
 import { strings } from '../../../shared/strings';
-import type { TransferProgress } from '../shared/transfers';
+import type { TransferProgress, TransferView } from '../shared/transfers';
 
 export function whatOf(items: number, name: string | undefined): string {
   const { commander } = strings;
@@ -42,4 +42,30 @@ export function shareDone(progress: TransferProgress | undefined): number {
         ? files / totalFiles
         : 1;
   return Math.round(Math.min(1, share) * 100);
+}
+
+export function progressLines({
+  archiveJob,
+  progress,
+}: Pick<TransferView, 'archiveJob' | 'progress'>): {
+  readonly current: string | undefined;
+  readonly files: string | undefined;
+} {
+  const { commander } = strings;
+  if (progress === undefined) {
+    return { current: commander.counting, files: undefined };
+  }
+  if (archiveJob === undefined) {
+    return {
+      current: progress.current,
+      files: commander.transferredFiles(progress.files, progress.totalFiles),
+    };
+  }
+  return {
+    current:
+      progress.files < progress.totalFiles
+        ? progress.current
+        : commander.packingRest,
+    files: commander.filesRead(progress.files, progress.totalFiles),
+  };
 }
