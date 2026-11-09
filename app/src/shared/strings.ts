@@ -566,6 +566,9 @@ export const strings = {
     noPassword: 'No password is typed.',
     zipPasswordAscii:
       "A zip's password can hold only the letters, digits and signs of English, as 7-Zip writes no other into a zip.",
+    nothingTakenOut: '7-Zip took nothing out.',
+    namesAlike: (name: string) =>
+      `More than one of the files is named "${name}", and only one of them can go into a folder.`,
     couldNotExtract: (reason: string) =>
       `Nothing could be taken out of the archive: ${reason}`,
     sevenZipEnded: (code: number | null) =>

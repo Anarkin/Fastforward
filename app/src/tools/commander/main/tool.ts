@@ -63,6 +63,7 @@ import {
 } from '../../../shared/images';
 import { thumbnailKey } from './thumbnailStore';
 import { archiveJob, archiveTests } from './packing';
+import { copiedBetween } from './betweenArchives';
 import {
   isPackFormat,
   isPackLevel,
@@ -1775,6 +1776,10 @@ export class CommanderTool implements Tool<'commander'> {
     if (other.archive !== undefined) {
       if (shown.pane.archive === undefined) {
         this.transferIn(page, shown, other, names, move, existing);
+      } else {
+        void this.shell.track(
+          this.transferBetween(page, shown, other, names, move, existing),
+        );
       }
       return;
     }
@@ -1894,6 +1899,126 @@ export class CommanderTool implements Tool<'commander'> {
           ? added
           : { kind: 'packed', warning: failures.join(' ') };
       }),
+    );
+  }
+
+  private async transferBetween(
+    page: Page,
+    shown: ShownPane,
+    other: Pane,
+    names: readonly string[],
+    move: boolean,
+    existing: unknown,
+  ): Promise<void> {
+    const { archives, platform } = this.access;
+    const into = archives?.within(other.folder);
+    if (archives === undefined || into === undefined) {
+      return;
+    }
+    const key = (each: string) => folderKey(each, platform);
+    const { folder } = shown.pane;
+    const sources = names.map((name) => path.join(folder, name));
+    const target = other.folder;
+    const resolved = (each: string) => key(path.resolve(each));
+    if (
+      sources.some((each) => resolved(path.dirname(each)) === resolved(target))
+    ) {
+      this.refuse(page, strings.commander.alreadyIn(target));
+      return;
+    }
+    const intoItself = sources.find((each) => {
+      const relative = path.relative(resolved(each), resolved(target));
+      return (
+        relative !== '..' &&
+        !relative.startsWith(`..${path.sep}`) &&
+        !path.isAbsolute(relative)
+      );
+    });
+    if (intoItself !== undefined) {
+      this.refuse(
+        page,
+        strings.commander.intoItself(path.basename(intoItself)),
+      );
+      return;
+    }
+    const there = new Set(
+      (into.archive.tree.entries(into.inner) ?? []).map((entry) =>
+        key(entry.name),
+      ),
+    );
+    const clashing = names.filter((name) =>
+      there.has(key(path.basename(name))),
+    );
+    if (clashing.length > 0 && existing !== 'replace' && existing !== 'skip') {
+      return;
+    }
+    const kept =
+      existing === 'skip'
+        ? names.filter((name) => !clashing.includes(name))
+        : names;
+    const found = this.archiveItems(shown.pane, kept);
+    if (kept.length === 0 || found === undefined) {
+      return;
+    }
+    const { archive, inner, paths, withoutFolders, files, bytes, encrypted } =
+      found;
+    const alike = withoutFolders
+      ? kept.find((name, at) =>
+          kept
+            .slice(at + 1)
+            .some(
+              (later) => key(path.basename(later)) === key(path.basename(name)),
+            ),
+        )
+      : undefined;
+    if (alike !== undefined) {
+      this.refuse(page, strings.commander.namesAlike(path.basename(alike)));
+      return;
+    }
+    if (
+      !this.changeable(page, into.archive) ||
+      (move && !this.changeable(page, archive))
+    ) {
+      return;
+    }
+    if (
+      encrypted &&
+      !archives.hasPassword(archive.file) &&
+      !(await this.passwordGiven(page, archive.file, false))
+    ) {
+      return;
+    }
+    this.transfers.start(
+      {
+        plan: {
+          sources: kept.map((name) => path.join(folder, name)),
+          target,
+          move,
+        },
+        folder,
+        names: kept,
+        archive: {
+          job: move ? 'moveIn' : 'copyIn',
+          file: into.archive.file,
+          at: target,
+        },
+      },
+      archiveJob(path.basename(into.archive.file), (options) =>
+        copiedBetween(
+          archives,
+          {
+            archive,
+            paths,
+            depth: inner.length,
+            withoutFolders,
+            files,
+            bytes,
+          },
+          into,
+          move,
+          options,
+        ),
+      ),
     );
   }
 

@@ -1225,7 +1225,7 @@ suite('The commander store in archives', () => {
     );
   });
 
-  test('asks before copying or moving items of a side on disk into the folder of an archive on the other, telling which are there already, sends the answer to replace or skip them, and asks nothing from one archive into another', () => {
+  test('asks before copying or moving items of a side on disk into the folder of an archive on the other, telling which are there already, sends the answer to replace or skip them, and from one archive into another too', () => {
     const { posted, store } = shown();
     store.getState().receive({
       ...listing('C:\\a.zip'),
@@ -1256,9 +1256,18 @@ suite('The commander store in archives', () => {
       ...listing('D:\\b.zip'),
       side: 'right',
       archive: 'D:\\b.zip',
+      entries: [fileEntry('top.txt'), fileEntry('new.txt')],
     });
-    actions.askTransfer('right', ['new.txt'], false);
-    assert.strictEqual(store.getState().transferring, undefined);
+    actions.askTransfer('right', ['top.txt', 'new.txt'], false);
+    assert.deepStrictEqual(store.getState().transferring, {
+      tab: '1',
+      side: 'right',
+      folder: 'D:\\b.zip',
+      names: ['top.txt', 'new.txt'],
+      target: 'C:\\a.zip',
+      move: false,
+      existing: ['top.txt'],
+    });
 
     assert.deepStrictEqual(
       posted.filter((message) => message.type === 'transfer'),

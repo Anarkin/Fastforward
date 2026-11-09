@@ -114,7 +114,7 @@
 | Copy out | Copy items out of an archive | F5 | Common | ✅ Yes | Into the folder of the other side, folders whole, 7-Zip taking them out first in the progress of the copy, which Stop ends, asking about the files there already as any copy does |
 | Unpack | Unpack whole archives into a folder | Alt+F9 | Common | 🟡 Partial | No command of its own; marking every item inside and F5 does it, an archive at a time |
 | Move out | Move items out of an archive, deleting them from it | F6 | Advanced | ✅ Yes | As Copy out, then deleted from the archive, in the dialog of the move; kept in it: what was skipped or failed to move, what 7-Zip took out under another name or not at all, as files of one name from two folders listed flat, saying so, and everything once stopped |
-| Copy and move in | Add items to an archive | F5, F6 | Common | ✅ Yes | From a side on disk into the folder of the archive shown, asking once about the items there already to replace or skip them all, folders merged; each original of a move deleted only once 7-Zip packed every file |
+| Copy and move in | Add items to an archive | F5, F6 | Common | ✅ Yes | From a side on disk, or another archive as Archive to archive says, into the folder of the archive shown, asking once about the items there already to replace or skip them all, folders merged; each original of a move deleted only once 7-Zip packed every file |
 | Delete inside | Delete items from an archive | F8, Delete | Common | ✅ Yes | Permanently, after asking |
 | Rename inside | Rename an item of an archive | Shift+F6 | Advanced | ✅ Yes | In the dialog of Rename, a name the folder of the archive has refused |
 | New folder inside | Make a folder in an archive | F7 | Advanced | ✅ Yes | In the dialog of New folder |
@@ -125,7 +125,7 @@
 | Volumes | Cut an archive into parts of a size | — | Advanced | ✅ Yes | A size typed or chosen as it is packed; a set read from its first part |
 | Test | Check archives against the checksum of every file | Alt+Shift+F9 | Advanced | ✅ Yes | The marked archives one after another, the password of an encrypted one asked for, in the dialog of copies with Stop, saying once done which failed and why or that they passed; each archive packed tested too, unless that is unchecked |
 | Drag out | Drag items out of an archive to other apps | — | Common | ❌ No |  |
-| Archive to archive | Copy items from one archive into another | — | Advanced | ❌ No | Through a folder on disk |
+| Archive to archive | Copy or move items from one archive into another | F5, F6 | Advanced | ✅ Yes | Into the folder of the archive shown on the other side, of another archive or of the same one, 7-Zip taking them out of the one and adding them to the other in the dialog of copies, asking once about the items there already to replace or skip them all; those of a move deleted from the first only once all were added; files of one name listed flat refused, as only one of them could go; out of an archive inside another copied but not moved |
 | Names in code pages | Read the names a zip keeps in a code page, not UTF-8 | — | Advanced | 🟡 Partial | On Windows, as 7-Zip reads them; not on macOS and Linux |
 | Self-extracting archives | Pack an archive that unpacks itself | — | Niche | ❌ No |  |
 

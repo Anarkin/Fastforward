@@ -993,9 +993,6 @@ export function createCommanderStore(
             });
             return;
           }
-          if (view.panes[side]?.archive !== undefined) {
-            return;
-          }
           const key = (name: string) => folderKey(name, view.platform);
           const there = new Set(other.entries.map((entry) => key(entry.name)));
           const existing = names.filter((name) =>

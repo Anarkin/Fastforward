@@ -5304,6 +5304,135 @@ suite('Commander tool in archives', () => {
       assert.strictEqual(plansOf(transfers).length, 1);
     });
 
+    const betweenArchives = async () => {
+      const made = commander({ [root]: [file('a.zip'), file('b.7z')] });
+      made.archived.set(at('a.zip'), [
+        ...zipped,
+        archiveItem('docs/top.txt'),
+        archiveItem('inner.zip'),
+      ]);
+      made.archived.set(path.join(at('a.zip'), 'inner.zip'), zipped);
+      made.archived.set(at('b.7z'), [archiveItem('into/top.txt')]);
+      made.copies.folder = copiesFolder;
+      await made.tool.show(made.page, tab);
+      const entering = (side: Side, name: string) =>
+        made.send({ type: 'enterArchive', tab: '1', side, name });
+      await entering('left', 'a.zip');
+      await entering('right', 'b.7z');
+      await made.send({ type: 'open', tab: '1', side: 'right', name: 'into' });
+      const transfer = (
+        names: readonly string[],
+        move: boolean,
+        {
+          existing,
+          from = at('a.zip'),
+          target = path.join(at('b.7z'), 'into'),
+        }: {
+          readonly existing?: 'replace' | 'skip';
+          readonly from?: string;
+          readonly target?: string;
+        } = {},
+      ) =>
+        made.send({
+          type: 'transfer',
+          tab: '1',
+          side: 'left',
+          folder: from,
+          names,
+          target,
+          move,
+          ...(existing !== undefined && { existing }),
+        });
+      const added = () =>
+        made.changedInArchives.map((change) =>
+          Array.isArray(change)
+            ? [change[0], change[1], change[2], change[4]]
+            : change,
+        );
+      return { ...made, entering, transfer, added };
+    };
+
+    test('copies and moves items from an archive on one side into the folder of an archive on the other, only with an answer about items there already, skipping or replacing them as answered, and deletes those of a move from the first once added', async () => {
+      const { transfer, added, removedFromArchives, notices, page } =
+        await betweenArchives();
+
+      await transfer(['docs', 'top.txt'], false);
+      await transfer(['docs', 'top.txt'], false, { existing: 'skip' });
+      await waitFor(() => added().length === 1, 'the copy to be added');
+      await transfer(['top.txt'], true, { existing: 'replace' });
+      await waitFor(
+        () => removedFromArchives.length === 1,
+        'the moved item to be deleted from the first archive',
+      );
+
+      assert.deepStrictEqual(added(), [
+        ['add', at('b.7z'), ['into'], ['docs']],
+        ['add', at('b.7z'), ['into'], ['top.txt']],
+      ]);
+      assert.deepStrictEqual(removedFromArchives, [[at('a.zip'), ['top.txt']]]);
+      const moving = page
+        .of('transfer')
+        .find((message) => message.view?.archiveJob === 'moveIn')?.view;
+      assert.deepStrictEqual(
+        [moving?.move, moving?.items, moving?.target],
+        [true, 1, path.join(at('b.7z'), 'into')],
+      );
+      assert.deepStrictEqual(notices, []);
+    });
+
+    test('copies out of an archive inside another into an archive but moves nothing out of it, and refuses an item into itself or the folder it is in within one archive, and files of one name listed flat', async () => {
+      const {
+        send,
+        entering,
+        transfer,
+        added,
+        removedFromArchives,
+        notices,
+        page,
+      } = await betweenArchives();
+      const inner = path.join(at('a.zip'), 'inner.zip');
+      await entering('left', 'inner.zip');
+
+      await transfer(['top.txt'], true, { existing: 'replace', from: inner });
+      await transfer(['docs'], false, { from: inner });
+      await waitFor(() => added().length === 1, 'the copy to be added');
+      await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+      await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+      await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+      await entering('right', 'a.zip');
+      await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
+      await transfer(['docs'], false, {
+        target: path.join(at('a.zip'), 'docs'),
+      });
+      await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+      await transfer(['top.txt'], false, { target: at('a.zip') });
+      await send({ type: 'flat', tab: '1', side: 'left', flat: true });
+      await waitFor(
+        () => page.of('flatFiles').length > 0,
+        'the archive to be listed flat',
+      );
+      await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+      await entering('right', 'b.7z');
+      await transfer(['top.txt', path.join('docs', 'top.txt')], false, {
+        existing: 'replace',
+        target: at('b.7z'),
+      });
+
+      assert.deepStrictEqual(added(), [
+        ['add', at('b.7z'), ['into'], ['docs']],
+      ]);
+      assert.deepStrictEqual(removedFromArchives, []);
+      assert.deepStrictEqual(notices, [
+        {
+          level: 'error',
+          message: strings.commander.archiveUnchangeable('inner.zip'),
+        },
+        { level: 'error', message: strings.commander.intoItself('docs') },
+        { level: 'error', message: strings.commander.alreadyIn(at('a.zip')) },
+        { level: 'error', message: strings.commander.namesAlike('top.txt') },
+      ]);
+    });
+
     test('lists the files of every folder of an archive flat, watching the archive, and reads them and copies them out from copies taken out without their folders', async () => {
       const { send, page, viewed, transfers, watched } = await inArchive();
       await send({ type: 'flat', tab: '1', side: 'right', flat: true });
