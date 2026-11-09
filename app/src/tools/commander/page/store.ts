@@ -982,18 +982,15 @@ export function createCommanderStore(
         }
         reconcileFlats();
       },
-      flat: (side) => {
-        if (get().view.panes[side]?.archive === undefined) {
-          onTab((tab) =>
-            post({
-              type: 'flat',
-              tab,
-              side,
-              flat: get().view.panes[side]?.flat === undefined,
-            }),
-          );
-        }
-      },
+      flat: (side) =>
+        onTab((tab) =>
+          post({
+            type: 'flat',
+            tab,
+            side,
+            flat: get().view.panes[side]?.flat === undefined,
+          }),
+        ),
       stopReading: (side) =>
         onTab((tab) => post({ type: 'stopReading', tab, side })),
       keepScroll: (key, offset) => scrolls.keep(key, offset),

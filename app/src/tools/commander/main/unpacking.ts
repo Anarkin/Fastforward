@@ -9,6 +9,7 @@ export interface Unpacking {
   readonly archive: OpenedArchive;
   readonly paths: readonly string[];
   readonly depth: number;
+  readonly withoutFolders: boolean;
   readonly files: number;
   readonly bytes: number;
 }
@@ -18,7 +19,7 @@ function reasonOf(error: unknown): string {
 }
 
 export function unpackingFirst(
-  { archives, archive, paths, depth, files, bytes }: Unpacking,
+  { archives, archive, paths, depth, withoutFolders, files, bytes }: Unpacking,
   connect: ConnectTransfer,
 ): ConnectTransfer {
   return (listener) => {
@@ -49,12 +50,10 @@ export function unpackingFirst(
       end({ type: 'done', stopped: false });
     };
     const begin = async (target: string) => {
-      const extracted = await archives.extract(
-        archive,
-        paths,
-        undefined,
-        aborting.signal,
-        (progress) =>
+      const extracted = await archives.extract(archive, paths, {
+        signal: aborting.signal,
+        withoutFolders,
+        onProgress: (progress) =>
           listener.event({
             type: 'progress',
             progress: {
@@ -67,7 +66,7 @@ export function unpackingFirst(
               }),
             },
           }),
-      );
+      });
       if (aborting.signal.aborted) {
         end({ type: 'done', stopped: true });
         return;
@@ -77,7 +76,7 @@ export function unpackingFirst(
         return;
       }
       staging = extracted.folder;
-      const sources = await itemsAt(staging, depth);
+      const sources = await itemsAt(staging, withoutFolders ? 0 : depth);
       inner = connect({
         event: (event) =>
           event.type === 'done' ? end(event) : listener.event(event),

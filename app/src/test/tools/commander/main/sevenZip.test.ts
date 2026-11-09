@@ -297,9 +297,9 @@ suite('the progress of an extraction', () => {
     });
     const into = path.join(tempFolder('progress'), 'out');
     try {
-      await reader.extract('a.zip', ['a.txt'], into, undefined, (progress) =>
-        told.push(progress),
-      );
+      await reader.extract('a.zip', ['a.txt'], into, {
+        onProgress: (progress) => told.push(progress),
+      });
     } finally {
       removeFolder(path.dirname(into));
     }

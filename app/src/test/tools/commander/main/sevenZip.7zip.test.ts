@@ -203,6 +203,21 @@ suite('7-Zip', () => {
     ]);
   });
 
+  test('extracts the files asked for without their folders when told, all into the one folder', async () => {
+    const zip = await packed('a.zip');
+    const into = path.join(folder, 'out');
+    assert.strictEqual(
+      await reader.extract(zip, ['docs/readme.md', 'src/app/main.ts'], into, {
+        withoutFolders: true,
+      }),
+      undefined,
+    );
+    assert.deepStrictEqual(fs.readdirSync(into).toSorted(byText), [
+      'main.ts',
+      'readme.md',
+    ]);
+  });
+
   test('extracts nothing outside the folder it is told, whatever the names in the archive say', async () => {
     const zip = path.join(folder, 'escaping.zip');
     fs.writeFileSync(

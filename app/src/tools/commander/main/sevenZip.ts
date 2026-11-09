@@ -6,6 +6,7 @@ import type {
   ArchiveItem,
   ArchiveListing,
   ArchiveReader,
+  ExtractOptions,
   ExtractProgress,
 } from './archives';
 
@@ -251,8 +252,7 @@ async function extracted(
   file: string,
   paths: readonly string[],
   into: string,
-  signal?: AbortSignal,
-  onProgress?: (progress: ExtractProgress) => void,
+  { signal, onProgress, withoutFolders = false }: ExtractOptions = {},
 ): Promise<string | undefined> {
   await fs.promises.mkdir(into, { recursive: true });
   const list = `${into}.paths`;
@@ -260,7 +260,7 @@ async function extracted(
   try {
     const run = await sevenZip(
       [
-        'x',
+        withoutFolders ? 'e' : 'x',
         '-y',
         noPrompt,
         '-snz',
@@ -291,7 +291,7 @@ export function sevenZipReaderAt(program: string): ArchiveReader | undefined {
 export function sevenZipReader(sevenZip: SevenZip): ArchiveReader {
   return {
     list: (file, signal) => listed(sevenZip, file, signal),
-    extract: (file, paths, into, signal, onProgress) =>
-      extracted(sevenZip, file, paths, into, signal, onProgress),
+    extract: (file, paths, into, options) =>
+      extracted(sevenZip, file, paths, into, options),
   };
 }

@@ -30,14 +30,19 @@ export interface ExtractProgress {
   readonly current?: string;
 }
 
+export interface ExtractOptions {
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (progress: ExtractProgress) => void;
+  readonly withoutFolders?: boolean;
+}
+
 export interface ArchiveReader {
   list(file: string, signal?: AbortSignal): Promise<ArchiveListing>;
   extract(
     file: string,
     paths: readonly string[],
     into: string,
-    signal?: AbortSignal,
-    onProgress?: (progress: ExtractProgress) => void,
+    options?: ExtractOptions,
   ): Promise<string | undefined>;
 }
 
@@ -122,8 +127,10 @@ export class ArchiveTree {
   }
 
   totals(
-    inner: readonly string[],
-    names: readonly string[],
+    items: readonly {
+      readonly inner: readonly string[];
+      readonly name: string;
+    }[],
   ): { readonly files: number; readonly bytes: number } {
     let files = 0;
     let bytes = 0;
@@ -142,7 +149,7 @@ export class ArchiveTree {
         add(key, inside);
       }
     };
-    for (const name of names) {
+    for (const { inner, name } of items) {
       add(inner.join('/'), name);
     }
     return { files, bytes };
@@ -176,9 +183,7 @@ export interface ArchiveAccess {
   extract(
     archive: OpenedArchive,
     paths: readonly string[],
-    into?: string,
-    signal?: AbortSignal,
-    onProgress?: (progress: ExtractProgress) => void,
+    options?: ExtractOptions & { readonly into?: string },
   ): Promise<Extracting>;
   within(
     folder: string,
@@ -309,7 +314,7 @@ export class Archives implements ArchiveAccess {
     signal: AbortSignal | undefined,
   ): Promise<Opening> {
     const into = await this.workFolder();
-    const refused = await reader.extract(file, [tar], into, signal);
+    const refused = await reader.extract(file, [tar], into, { signal });
     const [unpacked] = await filesUnder(into);
     if (refused !== undefined || unpacked === undefined) {
       return {
@@ -334,9 +339,7 @@ export class Archives implements ArchiveAccess {
   async extract(
     archive: OpenedArchive,
     paths: readonly string[],
-    into?: string,
-    signal?: AbortSignal,
-    onProgress?: (progress: ExtractProgress) => void,
+    { into, ...options }: ExtractOptions & { readonly into?: string } = {},
   ): Promise<Extracting> {
     if (this.reader === undefined) {
       return { kind: 'refused', reason: strings.commander.noSevenZip };
@@ -346,8 +349,7 @@ export class Archives implements ArchiveAccess {
       archive.source,
       paths,
       folder,
-      signal,
-      onProgress,
+      options,
     );
     return refused === undefined
       ? { kind: 'extracted', folder }

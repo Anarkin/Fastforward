@@ -114,6 +114,31 @@ suite('ArchiveTree', () => {
     );
   });
 
+  test('counts the files and bytes of the items asked for, a folder by all the files under it', () => {
+    const tree = new ArchiveTree(
+      [
+        item('docs/a.md', { size: 3 }),
+        item('docs/deep/b.md', { size: 4 }),
+        item('top.txt', { size: 5 }),
+      ],
+      'linux',
+    );
+    assert.deepStrictEqual(
+      tree.totals([
+        { inner: [], name: 'docs' },
+        { inner: [], name: 'top.txt' },
+      ]),
+      { files: 3, bytes: 12 },
+    );
+    assert.deepStrictEqual(
+      tree.totals([{ inner: ['docs', 'deep'], name: 'b.md' }]),
+      {
+        files: 1,
+        bytes: 4,
+      },
+    );
+  });
+
   test('hides by the hidden attribute on Windows, and by a leading dot elsewhere, as the folders of the system are', () => {
     const items = [
       item('.git/config'),

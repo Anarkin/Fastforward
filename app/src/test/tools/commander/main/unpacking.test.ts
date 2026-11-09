@@ -41,8 +41,8 @@ const archivesExtracting = (
   open: () => Promise.reject(new Error('not opened here')),
   within: () => undefined,
   fileHolding: () => Promise.resolve(undefined),
-  extract: (_archive, _paths, _into, signal, onProgress) =>
-    extract(signal, onProgress),
+  extract: (_archive, _paths, options) =>
+    extract(options?.signal, options?.onProgress),
 });
 
 suite('Unpacking before a transfer', () => {
@@ -106,6 +106,7 @@ suite('Unpacking before a transfer', () => {
         archive,
         paths: ['docs/a.txt', 'docs/sub'],
         depth: 1,
+        withoutFolders: false,
         files: 2,
         bytes: 100,
       },
@@ -176,6 +177,7 @@ suite('Unpacking before a transfer', () => {
         archive,
         paths: ['docs/a.txt'],
         depth: 1,
+        withoutFolders: false,
         files: 1,
         bytes: 1,
       },
@@ -200,6 +202,7 @@ suite('Unpacking before a transfer', () => {
         archive,
         paths: ['docs/a.txt'],
         depth: 1,
+        withoutFolders: false,
         files: 1,
         bytes: 1,
       },
@@ -226,6 +229,7 @@ suite('Unpacking before a transfer', () => {
         archive,
         paths: ['docs/a.txt'],
         depth: 1,
+        withoutFolders: false,
         files: 1,
         bytes: 1,
       },

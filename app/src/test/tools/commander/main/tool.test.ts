@@ -215,7 +215,8 @@ function commander(
   const copies = { folder: '', refused: undefined as string | undefined };
   let extractions = 0;
   const archives: ArchiveAccess = {
-    extract: async (archive, paths, into) => {
+    extract: async (archive, paths, options) => {
+      const into = options?.into;
       if (copies.refused !== undefined) {
         return { kind: 'refused', reason: copies.refused };
       }
@@ -229,7 +230,10 @@ function commander(
             (asked) => item.path === asked || item.path.startsWith(`${asked}/`),
           )
         ) {
-          const copy = path.join(extractedInto, ...item.path.split('/'));
+          const copy =
+            options?.withoutFolders === true
+              ? path.join(extractedInto, path.posix.basename(item.path))
+              : path.join(extractedInto, ...item.path.split('/'));
           await fs.promises.mkdir(path.dirname(copy), { recursive: true });
           await fs.promises.writeFile(copy, `the ${item.path} of the archive`);
         }
@@ -4450,7 +4454,7 @@ suite('Commander tool in archives', () => {
     );
   });
 
-  test('does nothing inside an archive that would change it, move out of it, drag out of it or go flat, as nothing is written to an archive yet, nor copies or moves into it', async () => {
+  test('does nothing inside an archive that would change it, move out of it or drag out of it, as nothing is written to an archive yet, nor copies or moves into it', async () => {
     const { tool, page, send, notices, archived, ...done } = commander({
       [root]: [file('a.zip'), file('notes.txt')],
     });
@@ -4503,7 +4507,6 @@ suite('Commander tool in archives', () => {
       command: 'newTerminal',
     });
     await send({ ...inside, type: 'addBookmark', folder: at('a.zip') });
-    await send({ ...inside, type: 'flat', flat: true });
     await tool.dropped(page, [at('notes.txt')], {
       type: 'drop',
       tab: '1',
@@ -4688,6 +4691,58 @@ suite('Commander tool in archives', () => {
       assert.deepStrictEqual(
         [shown?.move, shown?.items, shown?.target],
         [false, 2, root],
+      );
+    });
+
+    test('lists the files of every folder of an archive flat, watching the archive, and reads them and copies them out from copies taken out without their folders', async () => {
+      const { send, page, viewed, transfers, watched } = await inArchive();
+      await send({ type: 'flat', tab: '1', side: 'right', flat: true });
+      const flatNames = () =>
+        page
+          .of('flatFiles')
+          .flatMap((message) =>
+            message.folders.flatMap((listed) =>
+              listed.entries.map((entry) => `${listed.under}${entry.name}`),
+            ),
+          )
+          .toSorted();
+      const deep = ['docs', 'deep', 'notes.md'].join(path.sep);
+      const readme = ['docs', 'readme.md'].join(path.sep);
+      await waitFor(
+        () => flatNames().length === 3,
+        'the files of the archive listed flat',
+      );
+      assert.deepStrictEqual(flatNames(), [deep, readme, 'top.txt'].toSorted());
+      assert.ok(watched().includes(at('a.zip')));
+
+      await send({ type: 'view', tab: '1', side: 'right', name: deep });
+      const [copy] = viewed;
+      assert.ok(copy !== undefined);
+      assert.strictEqual(
+        fs.readFileSync(copy, 'utf8'),
+        'the docs/deep/notes.md of the archive',
+      );
+
+      await send({
+        type: 'transfer',
+        tab: '1',
+        side: 'right',
+        names: [readme, 'top.txt'],
+        target: root,
+        move: false,
+      });
+      await waitFor(
+        () => plansOf(transfers).length === 1,
+        'the copy to start once the files are taken out',
+      );
+      const [moving] = plansOf(transfers);
+      assert.deepStrictEqual(
+        new Set(moving?.sources.map((source) => path.dirname(source))).size,
+        1,
+      );
+      assert.deepStrictEqual(
+        moving?.sources.map((source) => path.basename(source)).toSorted(),
+        ['readme.md', 'top.txt'],
       );
     });
 

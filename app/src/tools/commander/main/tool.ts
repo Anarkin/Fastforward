@@ -1071,6 +1071,9 @@ export class CommanderTool implements Tool<'commander'> {
         readonly archive: OpenedArchive;
         readonly inner: readonly string[];
         readonly paths: readonly string[];
+        readonly withoutFolders: boolean;
+        readonly files: number;
+        readonly bytes: number;
       }
     | undefined {
     const { archives } = this.access;
@@ -1079,8 +1082,11 @@ export class CommanderTool implements Tool<'commander'> {
       return undefined;
     }
     const items = names.flatMap((name) => {
-      const item = inside.archive.tree.item(inside.inner, name);
-      return item === undefined ? [] : [{ name, ...item }];
+      const parts = name.split(path.sep);
+      const last = parts.at(-1) ?? name;
+      const inner = [...inside.inner, ...parts.slice(0, -1)];
+      const item = inside.archive.tree.item(inner, last);
+      return item === undefined ? [] : [{ name, inner, last, ...item }];
     });
     if (items.length !== names.length) {
       return undefined;
@@ -1095,6 +1101,10 @@ export class CommanderTool implements Tool<'commander'> {
       archive: inside.archive,
       inner: inside.inner,
       paths: items.map((item) => item.path),
+      withoutFolders: pane.flat !== undefined,
+      ...inside.archive.tree.totals(
+        items.map((item) => ({ inner: item.inner, name: item.last })),
+      ),
     };
   }
 
@@ -1108,13 +1118,16 @@ export class CommanderTool implements Tool<'commander'> {
     if (found === undefined) {
       return undefined;
     }
-    const { archives, archive, inner, paths } = found;
-    const extracted = await archives.extract(archive, paths, into);
+    const { archives, archive, inner, paths, withoutFolders } = found;
+    const extracted = await archives.extract(archive, paths, {
+      ...(into !== undefined && { into }),
+      withoutFolders,
+    });
     if (extracted.kind === 'refused') {
       this.refuse(page, strings.commander.couldNotExtract(extracted.reason));
       return undefined;
     }
-    return itemsAt(extracted.folder, inner.length);
+    return itemsAt(extracted.folder, withoutFolders ? 0 : inner.length);
   }
 
   private async view(
@@ -1269,7 +1282,8 @@ export class CommanderTool implements Tool<'commander'> {
     if (found === undefined) {
       return;
     }
-    const { archives, archive, inner, paths } = found;
+    const { archives, archive, inner, paths, withoutFolders, files, bytes } =
+      found;
     this.transfers.start(
       {
         plan: {
@@ -1286,7 +1300,9 @@ export class CommanderTool implements Tool<'commander'> {
           archive,
           paths,
           depth: inner.length,
-          ...archive.tree.totals(inner, names),
+          withoutFolders,
+          files,
+          bytes,
         },
         this.access.connectTransfer,
       ),
@@ -2549,9 +2565,6 @@ export class CommanderTool implements Tool<'commander'> {
     if (shown === undefined || typeof flat !== 'boolean') {
       return;
     }
-    if (flat && shown.pane.archive !== undefined) {
-      return;
-    }
     if (flat && shown.pane.flat === undefined) {
       this.startFlat(page, shown);
     } else if (!flat && shown.pane.flat !== undefined) {
@@ -2583,13 +2596,15 @@ export class CommanderTool implements Tool<'commander'> {
     };
     pane.flat = flat;
     flat.stopWatching =
-      this.access.watchTree?.(folder, (changed) => {
-        if (changed === undefined) {
-          tree.changedAll();
-        } else {
-          tree.changed(changed);
-        }
-      }) ?? (() => {});
+      pane.archive === undefined
+        ? (this.access.watchTree?.(folder, (changed) => {
+            if (changed === undefined) {
+              tree.changedAll();
+            } else {
+              tree.changed(changed);
+            }
+          }) ?? (() => {}))
+        : this.access.watch(pane.archive, () => tree.changedAll());
     this.postListing(page, tab, side, pane, undefined);
     tree.start();
   }
