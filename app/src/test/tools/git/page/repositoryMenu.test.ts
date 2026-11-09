@@ -13,7 +13,7 @@ const ignored: RepositoryMenuActions = {
 };
 
 suite('Repository menu', () => {
-  test('offers Browse..., Clone... and Init... first, then lists the recent repositories by name', () => {
+  test('offers Open..., Clone... and Init... first, then lists the recent repositories by name', () => {
     const asked: string[] = [];
     const items = repositoryMenuItems([{ root: '/code/app', name: 'app' }], {
       onOpen: (root) => asked.push(`open ${root}`),
@@ -25,7 +25,7 @@ suite('Repository menu', () => {
       items.map((item) =>
         'separator' in item ? '-' : `${item.label} ${item.title ?? ''}`,
       ),
-      ['Browse... ', 'Clone... ', 'Init... ', '-', 'app /code/app'],
+      ['Open... ', 'Clone... ', 'Init... ', '-', 'app /code/app'],
     );
     for (const item of items) {
       if (!('separator' in item)) {
@@ -40,7 +40,7 @@ suite('Repository menu', () => {
     ]);
   });
 
-  test('offers to remove each recent repository from the list, naming it, but not Browse..., Clone... or Init...', () => {
+  test('offers to remove each recent repository from the list, naming it, but not Open..., Clone... or Init...', () => {
     const removed: string[] = [];
     const items = repositoryMenuItems([{ root: '/code/app', name: 'app' }], {
       ...ignored,
@@ -87,7 +87,7 @@ suite('Repository menu', () => {
       repositoryMenuItems([], ignored).map((item) =>
         'separator' in item ? '-' : item.label,
       ),
-      ['Browse...', 'Clone...', 'Init...'],
+      ['Open...', 'Clone...', 'Init...'],
     );
   });
 });

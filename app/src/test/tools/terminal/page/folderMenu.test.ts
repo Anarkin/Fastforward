@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { folderMenuItems } from '../../../../tools/terminal/page/folderMenu';
 
 suite('Terminal folder menu', () => {
-  test('offers New and Browse..., then the folders by their whole paths, opening each', () => {
+  test('offers New and Open..., then the folders by their whole paths, opening each', () => {
     const done: string[] = [];
     const items = folderMenuItems(['C:\\Code\\app', 'C:\\Code\\site'], {
       onNew: () => done.push('new'),
@@ -17,7 +17,7 @@ suite('Terminal folder menu', () => {
       ),
       [
         'New ',
-        'Browse... ',
+        'Open... ',
         '-',
         'C:\\Code\\app C:\\Code\\app',
         'C:\\Code\\site C:\\Code\\site',
@@ -36,7 +36,7 @@ suite('Terminal folder menu', () => {
     ]);
   });
 
-  test('offers to forget each folder, naming it, but not New or Browse...', () => {
+  test('offers to forget each folder, naming it, but not New or Open...', () => {
     const forgotten: string[] = [];
     const [newTab, browse, , app] = folderMenuItems(['/code/app'], {
       onNew: () => undefined,
@@ -66,7 +66,7 @@ suite('Terminal folder menu', () => {
         onOpen: () => undefined,
         onForget: () => undefined,
       }).map((item) => ('separator' in item ? '-' : item.label)),
-      ['New', 'Browse...'],
+      ['New', 'Open...'],
     );
   });
 });

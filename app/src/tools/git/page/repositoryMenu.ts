@@ -15,7 +15,7 @@ export function repositoryMenuItems(
   { onOpen, onBrowse, onClone, onInit, onRemove }: RepositoryMenuActions,
 ): readonly ContextMenuItem[] {
   return [
-    { label: strings.tabs.browse, onClick: onBrowse },
+    { label: strings.tabs.open, onClick: onBrowse },
     { label: strings.tabs.clone, onClick: onClone },
     { label: strings.tabs.init, onClick: onInit },
     ...(recent.length > 0 ? [{ separator: true } as const] : []),

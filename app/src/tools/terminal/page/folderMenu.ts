@@ -14,7 +14,7 @@ export function folderMenuItems(
 ): readonly ContextMenuItem[] {
   return [
     { label: strings.terminal.newTab, onClick: onNew },
-    { label: strings.tabs.browse, onClick: onBrowse },
+    { label: strings.tabs.open, onClick: onBrowse },
     ...(folders.length > 0 ? [{ separator: true } as const] : []),
     ...folders.map((folder) => ({
       label: folder,
