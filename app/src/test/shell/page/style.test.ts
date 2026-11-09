@@ -3667,7 +3667,7 @@ suite('Style', () => {
     assert.deepStrictEqual(right, left);
   });
 
-  test('stripes the empty side of a change in the border color, in square tiles so the stripes run on from tile to tile, shifting the stripes of each row up by how far down it is, so they make one pattern across rows however tall the lines', () => {
+  test('stripes the empty side of a change in the border color, in square tiles half a line tall, so the stripes run on from tile to tile and a line scrolled moves them by whole stripes, shifting the stripes of each row up by how far down it is, so they make one pattern across rows however tall the lines', () => {
     const filler =
       cascaded(
         withClass(
@@ -3677,13 +3677,14 @@ suite('Style', () => {
         ),
         'background',
       ) ?? '';
+    const tile = 'calc(var(--diff-line-height) / 2)';
     assert.match(filler, /linear-gradient\( -45deg, var\(--color-border\)/);
-    const tile =
-      /\) 0 calc\(-1 \* var\(--diff-row-top, 0px\)\) \/ (\S+) (\S+)$/.exec(
-        filler,
-      );
-    assert.ok(tile);
-    assert.strictEqual(tile[1], tile[2]);
+    assert.ok(
+      filler.endsWith(
+        `) 0 calc(-1 * var(--diff-row-top, 0px)) / ${tile} ${tile}`,
+      ),
+      filler,
+    );
   });
 
   test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {

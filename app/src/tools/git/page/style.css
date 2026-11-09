@@ -809,7 +809,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
       transparent 54% 96%,
       var(--color-border) 96%
     )
-    0 calc(-1 * var(--diff-row-top, 0px)) / 11px 11px;
+    0 calc(-1 * var(--diff-row-top, 0px)) / calc(var(--diff-line-height) / 2)
+    calc(var(--diff-line-height) / 2);
 }
 
 .split-code {
