@@ -99,7 +99,7 @@
 | Media | Play audio and video | — | Common | ❌ No |  |
 | Other documents | Preview office documents and others | — | Advanced | ❌ No |  |
 | Edit | Edit a file | F4 | Core | ❌ No |  |
-| Compare files | Diff two files | — | Common | ✅ Yes | Shift+F3, the two files marked on a side or the file of each side, in a git tab of their own that follows their changes |
+| Compare files | Diff two files | — | Common | ✅ Yes | Shift+F3, the two files marked on a side or the file of each side, in a git tab of their own that follows their changes, two images side by side |
 
 ## More
 

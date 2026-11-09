@@ -24,6 +24,7 @@ import {
   CompareTooLarge,
   compareMaxBytes,
   comparedFilesPatch,
+  comparedImage,
   comparedNames,
   comparedText,
   filesAlike,
@@ -323,6 +324,7 @@ export class GitTool implements Tool<'git'> {
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
   private readonly imageReads = new ImageReads();
+  private readonly comparisons = new Map<string, Compared>();
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
   private readonly clones: Clones;
@@ -664,12 +666,19 @@ export class GitTool implements Tool<'git'> {
     const source = imageSourceOf(url);
     const type = source && imageType(source.path);
     const tab = source && this.tabStates.get(source.root);
-    if (!source || !type || tab?.isRepository !== true) {
+    const compared = source && this.comparisons.get(source.root);
+    if (
+      !source ||
+      !type ||
+      (tab?.isRepository !== true && compared === undefined)
+    ) {
       return new Response(null, { status: 404 });
     }
     try {
       const read = await this.imageReads.read(source, (limit) =>
-        readImage(this.gitPath, source.root, source, limit),
+        compared === undefined
+          ? readImage(this.gitPath, source.root, source, limit)
+          : comparedImage(compared, source.path, source.id, limit),
       );
       if (read.kind !== 'image') {
         return new Response(null, {
@@ -1819,6 +1828,10 @@ export class GitTool implements Tool<'git'> {
       return;
     }
     shown?.stop();
+    if (shown !== undefined) {
+      this.comparisons.delete(shown.tab);
+    }
+    this.comparisons.set(tab, compared);
     const comparing: Comparing = {
       tab,
       compared,
@@ -1885,6 +1898,7 @@ export class GitTool implements Tool<'git'> {
     if (comparing !== undefined) {
       comparing.stop();
       comparing.running?.abort();
+      this.comparisons.delete(comparing.tab);
       session.comparing = undefined;
       session.post({ type: 'compare', compare: undefined });
     }

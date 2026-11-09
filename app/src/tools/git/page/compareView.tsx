@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBinding } from '../../../ui/shortcuts';
 import { gitKeymap } from '../shared/keymap';
 import type {
@@ -39,6 +39,10 @@ export function CompareView({ comparing }: { comparing: string }) {
   const { loadCompareTexts } = useGitActions();
   const view = useRef<HTMLDivElement>(null);
   const tab = compare?.tab;
+  const origin = useMemo(
+    () => (tab === undefined ? undefined : { root: tab, hash: '' }),
+    [tab],
+  );
   useEffect(() => {
     if (tab !== undefined) {
       view.current
@@ -67,7 +71,7 @@ export function CompareView({ comparing }: { comparing: string }) {
           error={compare?.error}
           changeMarks={compare?.entire ?? false}
           entire={compare?.entire ?? false}
-          origin={undefined}
+          origin={origin}
           findAsked={findAsked}
           filter={undefined}
           options={

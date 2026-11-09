@@ -101,7 +101,7 @@
 | Compare two commits | Diff any two commits | `git diff <a> <b>` | Common | ✅ Yes | Mod+click the second; the first selected is the old side |
 | Compare with the working tree | Diff a commit against the uncommitted changes | `git diff <a>` | Common | ✅ Yes | Mod+click the Uncommitted changes row, or a commit from it for the reverse |
 | Compare from the merge base | Show what a branch adds since it forked | `git diff <a>...<b>` | Common | ❌ No | Comparing two tips shows the changes of both |
-| Compare two files | Diff any two files, in a repository or not | `git diff --no-index` | Advanced | ✅ Yes | Shift+F3 in the commander, the two files marked on a side or the file of each side, in a tab of their own that follows their changes; no image or Markdown previews |
+| Compare two files | Diff any two files, in a repository or not | `git diff --no-index` | Advanced | ✅ Yes | Shift+F3 in the commander, the two files marked on a side or the file of each side, in a tab of their own that follows their changes; images side by side, as a commit shows them; no Markdown preview |
 | Inline and side by side | Show the two sides in one column or two | — | Core | ✅ Yes | Side by side by default |
 | Changed words | Mark the words that changed within lines | `git diff --word-diff` | Common | ✅ Yes | Pairs changed lines by how alike they are, keeping their order |
 | Moved lines | Mark lines moved rather than removed and added | `git diff --color-moved` | Advanced | ❌ No |  |

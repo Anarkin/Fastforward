@@ -8,6 +8,7 @@ import {
   checkedPatch,
   compareMaxBytes,
   comparedFilesPatch,
+  comparedImage,
   filesAlike,
 } from '../../../../../tools/git/main/cli/compare';
 import { parsePatch } from '../../../../../tools/git/page/diff';
@@ -235,6 +236,55 @@ suite('Comparing two files outside any repository', () => {
         new: at('right side', 'same.txt'),
       }),
       '',
+    );
+  });
+
+  test('gives the page a compared image it names by its side and the id git gave its content, and nothing for another name, the id of the other side or an image changed since', async () => {
+    const compared = {
+      old: at('left', 'shot.png'),
+      new: at('right side', 'shot-new.png'),
+    };
+    fs.writeFileSync(compared.old, Buffer.from('\0the old image'));
+    fs.writeFileSync(compared.new, Buffer.from('\0the new image'));
+    const [file] = parsePatch(await comparedFilesPatch(gitPath, compared));
+    const oldId = file?.blobs?.old ?? '';
+    const newId = file?.blobs?.new ?? '';
+
+    assert.deepStrictEqual(await comparedImage(compared, 'shot.png', oldId), {
+      kind: 'image',
+      bytes: Buffer.from('\0the old image'),
+    });
+    assert.deepStrictEqual(
+      await comparedImage(compared, 'shot-new.png', newId),
+      { kind: 'image', bytes: Buffer.from('\0the new image') },
+    );
+    for (const [name, id] of [
+      ['shot.png', newId],
+      ['notes.txt', oldId],
+      ['../left/shot.png', oldId],
+    ]) {
+      assert.deepStrictEqual(await comparedImage(compared, name, id), {
+        kind: 'missing',
+      });
+    }
+    fs.writeFileSync(compared.new, Buffer.from('\0changed since'));
+    assert.deepStrictEqual(
+      await comparedImage(compared, 'shot-new.png', newId),
+      { kind: 'missing' },
+    );
+  });
+
+  test('says a compared image is too large past the size asked for, without reading it', async () => {
+    const compared = {
+      old: at('left', 'large.png'),
+      new: at('right side', 'small.png'),
+    };
+    fs.writeFileSync(compared.old, Buffer.alloc(64));
+    fs.writeFileSync(compared.new, Buffer.alloc(8));
+
+    assert.deepStrictEqual(
+      await comparedImage(compared, 'large.png', 'a'.repeat(40), 32),
+      { kind: 'tooLarge' },
     );
   });
 

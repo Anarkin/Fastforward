@@ -1,8 +1,11 @@
+import { createHash } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { basename, dirname } from 'node:path';
 import type { Compared } from '../../../../shell/main/storage';
+import { maxImageSize } from '../../shared/images';
 import { patchByteBudget } from '../../shared/protocol';
 import { diffArgs, diffOptionArgs, type PatchScope } from './diff';
+import type { ImageRead } from './files';
 import { runGit } from './run';
 
 export const compareMaxBytes = patchByteBudget;
@@ -64,6 +67,40 @@ export async function comparedText(
   } catch {
     return undefined;
   }
+}
+
+function objectId(bytes: Buffer, length: number): string {
+  return createHash(length === 64 ? 'sha256' : 'sha1')
+    .update(`blob ${bytes.length}\0`)
+    .update(bytes)
+    .digest('hex');
+}
+
+export async function comparedImage(
+  compared: Compared,
+  path: string,
+  id: string,
+  limit = maxImageSize,
+): Promise<ImageRead> {
+  const names = comparedNames(compared);
+  const sides = [compared.old, compared.new].filter(
+    (_, side) => names[side] === path,
+  );
+  for (const side of sides) {
+    const file = await realpath(side).catch(() => undefined);
+    const stats = file === undefined ? undefined : await stat(file);
+    if (file === undefined || stats?.isFile() !== true) {
+      continue;
+    }
+    if (stats.size > limit) {
+      return { kind: 'tooLarge' };
+    }
+    const bytes = await readFile(file);
+    if (objectId(bytes, id.length) === id) {
+      return { kind: 'image', bytes };
+    }
+  }
+  return { kind: 'missing' };
 }
 
 export async function filesAlike(

@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { imageUrl } from '../../../../../tools/git/shared/images';
 import type { CompareView } from '../../../../../tools/git/shared/protocol';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import { strings } from '../../../../../shared/strings';
@@ -137,6 +138,54 @@ suite('Git tool comparing two files', () => {
       { path: 'right/same.txt', side: 'new', blob: 'b', text: 'same text' },
     ]);
     await opened.connection.receive({ type: 'selectTab', tab: '1' });
+  });
+
+  test('serves the images of the compare tab shown by the ids of their patch, but none by another name, from the disk or once a repository tab shows', async () => {
+    const compare = {
+      old: path.join(files, 'before.png'),
+      new: path.join(files, 'after.png'),
+    };
+    fs.writeFileSync(compare.old, Buffer.from('\0before'));
+    fs.writeFileSync(compare.new, Buffer.from('\0after'));
+    await opened.store.update(tabsKey, [
+      { id: '1', tool: 'git', root: repository.root },
+      { id: '12', tool: 'git', compare },
+    ]);
+    await opened.connection.receive({ type: 'selectTab', tab: '12' });
+    const [file] = parsePatch(lastCompare()?.patch ?? '');
+    const image = (name: string, id: string, disk = false) =>
+      opened.view.image(
+        new URL(
+          imageUrl({ root: '12', path: name, id, disk }),
+          'fastforward://app',
+        ),
+      );
+
+    const shown = await image('before.png', file?.blobs?.old ?? '');
+    assert.strictEqual(shown.status, 200);
+    assert.strictEqual(shown.headers.get('content-type'), 'image/png');
+    assert.deepStrictEqual(
+      Buffer.from(await shown.arrayBuffer()),
+      Buffer.from('\0before'),
+    );
+    assert.deepStrictEqual(
+      Buffer.from(
+        await (await image('after.png', file?.blobs?.new ?? '')).arrayBuffer(),
+      ),
+      Buffer.from('\0after'),
+    );
+    for (const refused of [
+      image('old.txt', file?.blobs?.old ?? ''),
+      image('before.png', 'any', true),
+    ]) {
+      assert.strictEqual((await refused).status, 404);
+    }
+
+    await opened.connection.receive({ type: 'selectTab', tab: '1' });
+    assert.strictEqual(
+      (await image('before.png', file?.blobs?.old ?? '')).status,
+      404,
+    );
   });
 
   test('answers a text of a compare tab asked for twice once, and none from a list that is not all texts', async () => {
