@@ -215,6 +215,12 @@ export interface ArchiveAccess {
   hasPassword(file: string): boolean;
 }
 
+async function removed(folder: string): Promise<void> {
+  await fs.promises
+    .rm(folder, { recursive: true, force: true, maxRetries: 3 })
+    .catch(() => undefined);
+}
+
 export function workFolders(root: string): {
   readonly next: () => Promise<string>;
   readonly clear: () => Promise<void>;
@@ -356,30 +362,31 @@ export class Archives implements ArchiveAccess {
         noArchive: true,
       };
     }
-    const into = await this.workFolder();
-    const refused = await reader.extract(outer.source, [inside], into, {
-      signal,
-      withoutFolders: true,
-      ...this.passwordOf(outer.file),
+    const opening = await this.inWorkFolder(async (into) => {
+      const refused = await reader.extract(outer.source, [inside], into, {
+        signal,
+        withoutFolders: true,
+        ...this.passwordOf(outer.file),
+      });
+      const [copy] = await filesUnder(into);
+      if (refused !== undefined || copy === undefined) {
+        return {
+          kind: 'refused',
+          ...(refused ?? { reason: strings.commander.sevenZipEnded(null) }),
+          ...(refused?.needsPassword === true && { passwordOf: outer.file }),
+        };
+      }
+      return this.openedFrom(
+        reader,
+        file,
+        copy,
+        outer.version,
+        signal,
+        this.passwords.get(key),
+      );
     });
-    const [copy] = await filesUnder(into);
-    if (refused !== undefined || copy === undefined) {
-      return {
-        kind: 'refused',
-        ...(refused ?? { reason: strings.commander.sevenZipEnded(null) }),
-        ...(refused?.needsPassword === true && { passwordOf: outer.file }),
-      };
-    }
-    const opening = await this.openedFrom(
-      reader,
-      file,
-      copy,
-      outer.version,
-      signal,
-      this.passwords.get(key),
-    );
     if (opening.kind !== 'opened') {
-      return opening.needsPassword === true
+      return opening.needsPassword === true && opening.passwordOf === undefined
         ? { ...opening, passwordOf: file }
         : opening;
     }
@@ -428,27 +435,44 @@ export class Archives implements ArchiveAccess {
     tar: string,
     signal: AbortSignal | undefined,
   ): Promise<Opening> {
-    const into = await this.workFolder();
-    const refused = await reader.extract(source, [tar], into, { signal });
-    const [unpacked] = await filesUnder(into);
-    if (refused !== undefined || unpacked === undefined) {
-      return {
-        kind: 'refused',
-        ...(refused ?? { reason: strings.commander.sevenZipEnded(null) }),
-      };
-    }
-    const listing = await reader.list(unpacked, signal);
-    return listing.kind === 'refused'
-      ? listing
-      : {
-          kind: 'opened',
-          archive: {
-            file,
-            version,
-            source: unpacked,
-            tree: new ArchiveTree(listing.items, this.platform),
-          },
+    return this.inWorkFolder(async (into) => {
+      const refused = await reader.extract(source, [tar], into, { signal });
+      const [unpacked] = await filesUnder(into);
+      if (refused !== undefined || unpacked === undefined) {
+        return {
+          kind: 'refused',
+          ...(refused ?? { reason: strings.commander.sevenZipEnded(null) }),
         };
+      }
+      const listing = await reader.list(unpacked, signal);
+      return listing.kind === 'refused'
+        ? listing
+        : {
+            kind: 'opened',
+            archive: {
+              file,
+              version,
+              source: unpacked,
+              tree: new ArchiveTree(listing.items, this.platform),
+            },
+          };
+    });
+  }
+
+  private async inWorkFolder(
+    open: (into: string) => Promise<Opening>,
+  ): Promise<Opening> {
+    const into = await this.workFolder();
+    try {
+      const opening = await open(into);
+      if (opening.kind !== 'opened') {
+        await removed(into);
+      }
+      return opening;
+    } catch (error) {
+      await removed(into);
+      throw error;
+    }
   }
 
   async extract(
@@ -460,17 +484,22 @@ export class Archives implements ArchiveAccess {
       return { kind: 'refused', reason: strings.commander.noSevenZip };
     }
     const folder = into ?? (await this.workFolder());
-    const refused = await this.reader.extract(archive.source, paths, folder, {
+    const extracting = this.reader.extract(archive.source, paths, folder, {
       ...this.passwordOf(archive.file),
       ...options,
     });
+    const refused =
+      into === undefined
+        ? await extracting.catch(async (error: unknown) => {
+            await removed(folder);
+            throw error;
+          })
+        : await extracting;
     if (refused === undefined) {
       return { kind: 'extracted', folder };
     }
     if (into === undefined) {
-      await fs.promises
-        .rm(folder, { recursive: true, force: true })
-        .catch(() => undefined);
+      await removed(folder);
     }
     return { kind: 'refused', ...refused };
   }

@@ -400,6 +400,45 @@ suite('Archives', () => {
     assert.ok(fs.existsSync(path.join(given, 'half.txt')));
   });
 
+  test('removes the work folder of an extraction that was stopped, with what was taken out into it, for a copy out, an archive inside an archive and the tar of a compressed file', async () => {
+    const zip = path.join(folder, 'a.zip');
+    const tgz = path.join(folder, 'a.tgz');
+    fs.writeFileSync(zip, 'zip');
+    fs.writeFileSync(tgz, 'tgz');
+    const reader: ArchiveReader = {
+      list: (file) =>
+        Promise.resolve({
+          kind: 'listed',
+          items: [item(file === tgz ? 'a.tar' : 'inner.zip')],
+        }),
+      extract: async (_file, _paths, into) => {
+        await fs.promises.writeFile(path.join(into, 'half.txt'), 'half');
+        throw new Error('The operation was aborted');
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const worksLeft = () =>
+      fs.readdirSync(folder).filter((name) => name.startsWith('work-'));
+
+    await assert.rejects(archives.open(tgz), /aborted/);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+    await assert.rejects(
+      archives.openInside(
+        path.join(zip, 'inner.zip'),
+        opened.archive,
+        'inner.zip',
+      ),
+      /aborted/,
+    );
+    await assert.rejects(
+      archives.extract(opened.archive, ['inner.zip']),
+      /aborted/,
+    );
+    assert.strictEqual(works, 3);
+    assert.deepStrictEqual(worksLeft(), []);
+  });
+
   test('finds the opened archive a folder is inside of, and the file a path inside an archive runs through', async () => {
     const zip = path.join(folder, 'a.zip');
     fs.writeFileSync(zip, 'zip');
