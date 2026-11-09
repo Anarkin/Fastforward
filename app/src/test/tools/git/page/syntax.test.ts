@@ -41,6 +41,17 @@ function syntaxRanges(
   return ranges;
 }
 
+function onTickingClock(from: number, run: () => void) {
+  const now = performance.now.bind(performance);
+  let clock = from;
+  performance.now = () => (clock += 1);
+  try {
+    run();
+  } finally {
+    performance.now = now;
+  }
+}
+
 async function assertNotLoaded(language: string) {
   assert.ok(
     !(await loadLanguages([])).getLoadedLanguages().includes(language),
@@ -864,6 +875,33 @@ suite('Syntax', () => {
     assert.strictEqual(published, 2);
   });
 
+  test('shows the colors of its first slice at once rather than 50 ms in, and those after at most every 50 ms', async () => {
+    await loadLanguages(['typescript']);
+    const lines = Array<string>(6000).fill('let shownAtOnce = 1;');
+    const ranges = new Map<string, readonly SyntaxRange[]>();
+    const slices: (() => void)[] = [];
+    const shown: number[] = [];
+    onTickingClock(performance.now(), () => {
+      startColoring(
+        [
+          {
+            language: 'typescript',
+            lines,
+            keys: lines.map((_, index) => `0:${index}`),
+          },
+        ],
+        ranges,
+        () => shown.push(ranges.size),
+        (slice) => slices.push(slice),
+      );
+      slices.shift()?.();
+      slices.shift()?.();
+    });
+    assert.strictEqual(shown.length, 2, String(shown));
+    const [, first] = shown;
+    assert.ok(first > 0 && first < lines.length, String(first));
+  });
+
   test('colors the texts of the languages loaded while it loads the others', async () => {
     await assertNotLoaded('rust');
     await loadLanguages(['typescript']);
@@ -1259,6 +1297,32 @@ suite('Code in documents', () => {
     assert.deepStrictEqual(
       parts.map((part) => part.done),
       parts.map((_, index) => index === parts.length - 1),
+    );
+  });
+
+  test('sends the lines of its first slice of code at once rather than 50 ms in, and those after at most every 50 ms', async () => {
+    await loadLanguages(['typescript']);
+    const parts: CodePart[] = [];
+    const slices: (() => void)[] = [];
+    const started = performance.now();
+    colorCode(
+      'ts',
+      Array<string>(6000).fill('let sentAtOnce = 1;').join('\n'),
+      (part) => {
+        if (part !== undefined) {
+          parts.push(part);
+        }
+      },
+      (slice) => slices.push(slice),
+    );
+    await waitFor(() => slices.length > 0, 'the first slice');
+    onTickingClock(started, () => {
+      slices.shift()?.();
+      slices.shift()?.();
+    });
+    assert.deepStrictEqual(
+      parts.map(({ from, done }) => ({ from, done })),
+      [{ from: 0, done: false }],
     );
   });
 

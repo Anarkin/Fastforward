@@ -301,7 +301,7 @@ export function colorCode(
     let state: GrammarState | undefined;
     let waiting: SyntaxRange[][] = [];
     let all: SyntaxRange[][] = [];
-    let published = performance.now();
+    let published = -Infinity;
     const slice = () => {
       if (stopped) {
         return;
@@ -383,7 +383,7 @@ export function startColoring(
   const work = (highlighter: HighlighterCore, todo: readonly Pending[]) => {
     const step = tokenizing(highlighter, todo);
     const mine = job;
-    let published = performance.now();
+    let published = -Infinity;
     const slice = () => {
       if (!current || job !== mine) {
         return;
