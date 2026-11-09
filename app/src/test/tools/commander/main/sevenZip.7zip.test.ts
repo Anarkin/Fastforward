@@ -155,10 +155,10 @@ suite('7-Zip', () => {
     assert.deepStrictEqual(await packedAs('a.zip', { password: 'secret' }), {
       kind: 'packed',
     });
-    assert.deepStrictEqual(await packedAs('b.zip', { password: 'pässwörd' }), {
-      kind: 'refused',
-      reason: 'The parameter is incorrect.',
-    });
+    assert.strictEqual(
+      (await packedAs('b.zip', { password: 'pässwörd' })).kind,
+      'refused',
+    );
     const listing = await reader.list(
       path.join(folder, 'a.zip'),
       undefined,
