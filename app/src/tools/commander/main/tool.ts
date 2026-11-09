@@ -394,6 +394,16 @@ export class CommanderTool implements Tool<'commander'> {
   private elevated: ElevatedFileSystem | undefined;
   private viewingsAsked = 0;
   private passwordAsks = 0;
+  private updateAsks = 0;
+  private readonly updatesAsked = new Map<
+    number,
+    {
+      readonly name: string;
+      readonly archive: string;
+      readonly answer: (update: boolean) => void;
+    }
+  >();
+  private readonly copiesWatched = new Set<() => void>();
   private archiveImages: ArchiveImages | undefined;
   private readonly passwordsAsked = new Map<
     number,
@@ -458,6 +468,7 @@ export class CommanderTool implements Tool<'commander'> {
   async show(page: Page, tab: Tab): Promise<void> {
     this.unwatch();
     this.shown = { page, tab: tab.id };
+    this.askNextUpdate();
     if (tab.view === true && tab.root !== undefined) {
       this.post(page, { type: 'show', tab: tab.id, file: tab.root });
       await this.startViewing(page, tab.id, tab.root);
@@ -645,6 +656,9 @@ export class CommanderTool implements Tool<'commander'> {
         return this.enterArchive(page, message);
       case 'password':
         this.answerPassword(message.ask, message.password);
+        return undefined;
+      case 'updateArchive':
+        this.answerUpdate(message.ask, message.update);
         return undefined;
       case 'openRepository':
         return this.openRepository(page, message);
@@ -837,6 +851,10 @@ export class CommanderTool implements Tool<'commander'> {
 
   quit(): void {
     this.transfers.quit();
+    for (const stop of this.copiesWatched) {
+      stop();
+    }
+    this.copiesWatched.clear();
     for (const pane of this.allPanes()) {
       this.endFlat(pane);
     }
@@ -1155,10 +1173,16 @@ export class CommanderTool implements Tool<'commander'> {
     }
     if (!entry.folder && shown.pane.archive !== undefined) {
       const [copy] = (await this.copiesIn(page, shown.pane, [name])) ?? [];
-      if (copy !== undefined) {
-        await fs.promises.chmod(copy, 0o444);
-        await this.openFileNamed(page, copy, name);
+      if (copy === undefined) {
+        return;
       }
+      const putBack = this.putBackOf(shown.pane, name, copy);
+      if (putBack === undefined) {
+        await fs.promises.chmod(copy, 0o444);
+      } else {
+        await this.watchCopy(putBack, copy);
+      }
+      await this.openFileNamed(page, copy, name);
       return;
     }
     const opened = path.join(folder, name);
@@ -1449,16 +1473,138 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private changeable(page: Page, archive: OpenedArchive): boolean {
-    if (archive.outer === undefined && archive.source === archive.file) {
+    const refusal = this.access.archives?.unchangeable(archive);
+    if (refusal === undefined) {
       return true;
     }
-    this.shell.notice(page, {
-      level: 'error',
-      message: strings.commander.archiveUnchangeable(
-        path.basename(archive.file),
-      ),
-    });
+    this.refuse(page, refusal);
     return false;
+  }
+
+  private putBackOf(
+    pane: Pane,
+    name: string,
+    copy: string,
+  ):
+    | {
+        readonly archives: ArchiveAccess;
+        readonly archive: OpenedArchive;
+        readonly inner: readonly string[];
+      }
+    | undefined {
+    const { archives } = this.access;
+    const inside = archives?.within(pane.folder);
+    const parts = name.split(path.sep);
+    const last = parts.at(-1) ?? name;
+    const inner = [...(inside?.inner ?? []), ...parts.slice(0, -1)];
+    return archives !== undefined &&
+      inside !== undefined &&
+      archives.unchangeable(inside.archive) === undefined &&
+      path.basename(copy) === last &&
+      inside.archive.tree.item(inner, last)?.path === [...inner, last].join('/')
+      ? { archives, archive: inside.archive, inner }
+      : undefined;
+  }
+
+  private async watchCopy(
+    {
+      archives,
+      archive,
+      inner,
+    }: {
+      readonly archives: ArchiveAccess;
+      readonly archive: OpenedArchive;
+      readonly inner: readonly string[];
+    },
+    copy: string,
+  ): Promise<void> {
+    const stampNow = () =>
+      fs.promises.stat(copy).then(
+        (stats) => `${stats.size}:${stats.mtimeMs}`,
+        () => undefined,
+      );
+    const name = [...inner, path.basename(copy)].join(path.sep);
+    let stamp = await stampNow();
+    let asking = false;
+    const changed = async () => {
+      const now = await stampNow();
+      if (asking || now === undefined || now === stamp) {
+        return;
+      }
+      asking = true;
+      const update = await this.updateWanted(name, path.basename(archive.file));
+      stamp = (await stampNow()) ?? now;
+      asking = false;
+      if (update) {
+        this.putBack(archives, archive, inner, copy, name);
+      }
+    };
+    this.copiesWatched.add(
+      this.access.watch(path.dirname(copy), () => {
+        void this.shell.track(changed());
+      }),
+    );
+  }
+
+  private updateWanted(name: string, archive: string): Promise<boolean> {
+    return new Promise((answer) => {
+      this.updatesAsked.set(++this.updateAsks, { name, archive, answer });
+      if (this.updatesAsked.size === 1) {
+        this.askNextUpdate();
+      }
+    });
+  }
+
+  private askNextUpdate(): void {
+    const page = this.shown?.page;
+    const [next] = this.updatesAsked;
+    if (page !== undefined && next !== undefined) {
+      const [ask, { name, archive }] = next;
+      this.post(page, { type: 'askUpdate', ask, name, archive });
+    }
+  }
+
+  private answerUpdate(ask: unknown, update: unknown): void {
+    if (typeof ask !== 'number' || typeof update !== 'boolean') {
+      return;
+    }
+    const asked = this.updatesAsked.get(ask);
+    if (asked === undefined) {
+      return;
+    }
+    this.updatesAsked.delete(ask);
+    asked.answer(update);
+    this.askNextUpdate();
+  }
+
+  private putBack(
+    archives: ArchiveAccess,
+    archive: OpenedArchive,
+    inner: readonly string[],
+    copy: string,
+    name: string,
+  ): void {
+    this.transfers.start(
+      {
+        plan: {
+          sources: [archive.file],
+          target: path.dirname(archive.file),
+          move: false,
+        },
+        folder: path.join(archive.file, ...inner),
+        names: [name],
+        archive: { job: 'update', file: archive.file },
+      },
+      archiveJob(path.basename(archive.file), (options) =>
+        archives.addItems(
+          archive,
+          inner,
+          path.dirname(copy),
+          [path.basename(copy)],
+          options,
+        ),
+      ),
+    );
   }
 
   private takenIn(

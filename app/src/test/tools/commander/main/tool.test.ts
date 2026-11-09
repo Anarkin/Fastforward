@@ -254,6 +254,10 @@ function commander(
       changedInArchives.push(['folder', archive.file, inner, name]);
       return Promise.resolve({ kind: 'packed' });
     },
+    unchangeable: (archive) =>
+      archive.outer !== undefined || archive.source !== archive.file
+        ? strings.commander.archiveUnchangeable(path.basename(archive.file))
+        : undefined,
     test: (tried) => {
       tested.push(tried);
       const refused = archiveTests.get(tried);
@@ -5060,10 +5064,23 @@ suite('Commander tool in archives', () => {
       );
     });
 
-    test('opens a file of an archive in the app the system opens it with from a read-only copy, so a change saved to it is not lost unnoticed', async () => {
-      const { send, opened } = await inArchive();
-      await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
-      await send({ type: 'open', tab: '1', side: 'right', name: 'readme.md' });
+    test('opens a file of an archive in the app the system opens it with from a copy, asking once it is saved whether to put it back, putting it back in the dialog of copies once asked to, asking again once saved again and only while the commander is shown, and from a read-only copy for an archive that cannot be changed', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);
+      made.archived.set(path.join(at('a.zip'), 'inner.zip'), zipped);
+      made.copies.folder = copiesFolder;
+      const { tool, page, send, opened, watched, change, notices } = made;
+      await tool.show(page, tab);
+      const opening = (name: string) =>
+        send({ type: 'open', tab: '1', side: 'right', name });
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      await opening('docs');
+      await opening('readme.md');
 
       const [copy] = opened;
       assert.ok(copy !== undefined);
@@ -5072,7 +5089,68 @@ suite('Commander tool in archives', () => {
         fs.readFileSync(copy, 'utf8'),
         'the docs/readme.md of the archive',
       );
-      assert.strictEqual(fs.statSync(copy).mode & 0o222, 0);
+      assert.notStrictEqual(fs.statSync(copy).mode & 0o200, 0);
+      const holding = path.dirname(copy);
+      assert.ok(watched().includes(holding));
+      const asked = () => page.of('askUpdate');
+      const saved = async (content: string) => {
+        fs.writeFileSync(copy, `${content} ${'.'.repeat(asked().length)}`);
+        await change(holding);
+      };
+      const name = path.join('docs', 'readme.md');
+
+      await change(holding);
+      await saved('Changed once.');
+      await waitFor(() => asked().length === 1, 'the update to be asked');
+      await saved('Changed again before an answer.');
+      await send({ type: 'updateArchive', ask: 1, update: true });
+      await waitFor(() => notices.length === 1, 'the copy to be put back');
+      assert.deepStrictEqual(asked(), [
+        { type: 'askUpdate', ask: 1, name, archive: 'a.zip' },
+      ]);
+      assert.deepStrictEqual(made.changedInArchives, [
+        ['add', at('a.zip'), ['docs'], holding, ['readme.md']],
+      ]);
+      assert.strictEqual(
+        page
+          .of('transfer')
+          .find((message) => message.view?.archiveJob === 'update')?.view
+          ?.target,
+        at('a.zip'),
+      );
+      assert.deepStrictEqual(notices, [
+        {
+          level: 'info',
+          message: strings.commander.putBack(
+            strings.commander.oneItem('readme.md'),
+            at('a.zip'),
+          ),
+        },
+      ]);
+
+      await saved('Changed once put back.');
+      await waitFor(() => asked().length === 2, 'the update to be asked again');
+      await send({ type: 'updateArchive', ask: 2, update: false });
+      tool.hide(page);
+      await saved('Changed while the commander is hidden.');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      assert.strictEqual(asked().length, 2);
+      await tool.show(page, tab);
+      await waitFor(() => asked().length === 3, 'the update to be asked');
+      assert.strictEqual(made.changedInArchives.length, 1);
+
+      await opening('..');
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'inner.zip',
+      });
+      await opening('top.txt');
+      const fromInner = opened.at(-1);
+      assert.ok(fromInner !== undefined && fromInner !== copy);
+      assert.strictEqual(fs.statSync(fromInner).mode & 0o222, 0);
+      assert.ok(!watched().includes(path.dirname(fromInner)));
     });
 
     test('compares a file of an archive with one on disk from a copy of it, the first named the old side', async () => {

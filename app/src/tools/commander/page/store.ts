@@ -130,6 +130,9 @@ interface CommanderSource {
   readonly askingPassword:
     | { readonly ask: number; readonly name: string; readonly wrong: boolean }
     | undefined;
+  readonly askingUpdate:
+    | { readonly ask: number; readonly name: string; readonly archive: string }
+    | undefined;
   readonly makingFolder: MakingFolder | undefined;
   readonly renaming: Renaming | undefined;
   readonly packing: Packing | undefined;
@@ -194,6 +197,7 @@ interface CommanderActions {
   readonly openOnSide: (from: Side, side: Side, name: string) => void;
   readonly enterArchive: (side: Side, name: string) => void;
   readonly answerPassword: (password: string | undefined) => void;
+  readonly answerUpdate: (update: boolean) => void;
   readonly drive: (side: Side, drive: string) => void;
   readonly listDrives: () => void;
   readonly addBookmark: (side: Side) => void;
@@ -276,6 +280,7 @@ const commanderDefaults: CommanderSource = {
   transfer: undefined,
   readingArchives: new Map(),
   askingPassword: undefined,
+  askingUpdate: undefined,
   makingFolder: undefined,
   renaming: undefined,
   packing: undefined,
@@ -353,6 +358,14 @@ function received(
           ask: message.ask,
           name: message.name,
           wrong: message.wrong,
+        },
+      };
+    case 'askUpdate':
+      return {
+        askingUpdate: {
+          ask: message.ask,
+          name: message.name,
+          archive: message.archive,
         },
       };
     case 'readingArchive': {
@@ -885,6 +898,13 @@ export function createCommanderStore(
         onPane(side, (tab, folder) =>
           post({ type: 'enterArchive', tab, side, folder, name }),
         ),
+      answerUpdate: (update) => {
+        const { askingUpdate } = get();
+        if (askingUpdate !== undefined) {
+          set({ askingUpdate: undefined });
+          post({ type: 'updateArchive', ask: askingUpdate.ask, update });
+        }
+      },
       answerPassword: (password) => {
         const { askingPassword } = get();
         if (askingPassword !== undefined) {

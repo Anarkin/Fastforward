@@ -113,9 +113,18 @@ const archiveJobs = {
     title: strings.commander.testTitle,
     running: strings.commander.testingArchives,
   },
+  update: {
+    title: strings.commander.updateTitle,
+    running: strings.commander.puttingBack,
+  },
 };
 
-const countedJobs: ReadonlySet<string> = new Set(['pack', 'copyIn', 'moveIn']);
+const countedJobs: ReadonlySet<string> = new Set([
+  'pack',
+  'copyIn',
+  'moveIn',
+  'update',
+]);
 
 function runningSentence(
   transfer: TransferView,

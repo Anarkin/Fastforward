@@ -315,6 +315,11 @@ export type CommanderToHost =
       readonly password?: string;
     }
   | {
+      readonly type: 'updateArchive';
+      readonly ask: number;
+      readonly update: boolean;
+    }
+  | {
       readonly type: 'enterArchive';
       readonly tab: string;
       readonly side: Side;
@@ -493,6 +498,12 @@ export type CommanderToWebview =
       readonly ask: number;
       readonly name: string;
       readonly wrong: boolean;
+    }
+  | {
+      readonly type: 'askUpdate';
+      readonly ask: number;
+      readonly name: string;
+      readonly archive: string;
     }
   | {
       readonly type: 'readingArchive';

@@ -248,6 +248,37 @@ suite('Transfers', () => {
     ]);
   });
 
+  test('says once a copy changed outside its archive was put back into it, its dialog shown or not, and why it could not be', () => {
+    const { coordinator, tell, last, notices } = transfers();
+    const archive = path.join(target, 'a.zip');
+    const updating = (): TransferAsk => ({
+      ...ask(['readme.md']),
+      plan: { sources: [archive], target, move: false },
+      archive: { job: 'update', file: archive },
+    });
+
+    coordinator.start(updating());
+    assert.strictEqual(last()?.archiveJob, 'update');
+    tell(0, { type: 'done', stopped: false });
+    coordinator.start(updating());
+    tell(1, { type: 'failed', name: 'a.zip', reason: 'It is read-only.' });
+    tell(1, { type: 'done', stopped: false });
+
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'info',
+        message: strings.commander.putBack(
+          strings.commander.oneItem('readme.md'),
+          archive,
+        ),
+      },
+      {
+        level: 'error',
+        message: strings.commander.putBackFailed('a.zip', 'It is read-only.'),
+      },
+    ]);
+  });
+
   test('says once a copy or move is done what it warned of, as a move out of an archive whose items are kept in it too', () => {
     const { coordinator, tell, notices } = transfers();
     coordinator.start(ask(['a.txt'], true));

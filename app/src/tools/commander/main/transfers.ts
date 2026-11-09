@@ -116,6 +116,13 @@ const archiveSentences: Readonly<
     stopped: strings.commander.testingStopped,
     toldDone: true,
   },
+  update: {
+    failed: strings.commander.putBackFailed,
+    done: strings.commander.putBack,
+    stopped: strings.commander.puttingBackStopped,
+    warned: strings.commander.putBackWithout,
+    toldDone: true,
+  },
 };
 
 function failureNotice({ ask, failures }: Running): string | undefined {

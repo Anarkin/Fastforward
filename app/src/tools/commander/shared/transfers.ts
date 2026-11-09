@@ -29,7 +29,14 @@ export interface TransferProgress {
 }
 
 export type ArchiveJob =
-  'pack' | 'delete' | 'rename' | 'folder' | 'copyIn' | 'moveIn' | 'test';
+  | 'pack'
+  | 'delete'
+  | 'rename'
+  | 'folder'
+  | 'copyIn'
+  | 'moveIn'
+  | 'test'
+  | 'update';
 
 export interface TransferView {
   readonly id: number;

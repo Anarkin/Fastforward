@@ -52,6 +52,7 @@ const archivesExtracting = (
   addFolder: () => Promise.reject(new Error('No folder is made here.')),
   addItems: () => Promise.reject(new Error('Nothing is added here.')),
   test: () => Promise.reject(new Error('Nothing is tested here.')),
+  unchangeable: () => undefined,
   within: () => undefined,
   fileHolding: () => Promise.resolve(undefined),
   extract: (_archive, _paths, options) =>

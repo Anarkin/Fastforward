@@ -751,6 +751,20 @@ export const strings = {
       `What was moved out of "${name}" is kept in it too, as it could not be deleted from it: ${reason}`,
     movedOutWarned: (name: string, warning: string) =>
       `7-Zip warned while deleting from "${name}" what was moved out of it: ${warning}`,
+    updateTitle: 'Update the Archive',
+    updateAsked: (name: string, archive: string) =>
+      `"${name}" was changed since it was taken out of "${archive}". Put it back into the archive?`,
+    updateConfirm: 'Update',
+    updateLater: 'Not Now',
+    puttingBack: (what: string) => `Putting ${what} back`,
+    putBack: (what: string, archive: string) =>
+      `Put ${what} back into "${archive}"`,
+    putBackFailed: (name: string, reason: string) =>
+      `Nothing could be put back into "${name}": ${reason}`,
+    puttingBackStopped: (archive: string) =>
+      `Putting back into "${archive}" stopped unexpectedly.`,
+    putBackWithout: (name: string, reason: string) =>
+      `Not everything could be put back into "${name}": ${reason}`,
     deletingMovedFrom: (name: string) =>
       `Deleting from "${name}" what was moved out of it…`,
     thereAlready: (count: number, total: number) =>

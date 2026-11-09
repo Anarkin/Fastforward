@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   Archives,
+  itemsAt,
   type OpenedArchive,
   type PackPlan,
 } from '../../../../tools/commander/main/archives';
@@ -804,6 +805,59 @@ suite('Archives packed, changed and taken out again', () => {
         assert.strictEqual(changed.kind, 'refused');
       }
       assert.deepStrictEqual(fs.readFileSync(at('all.tar.gz')), before);
+    });
+  });
+
+  suite('putting back', () => {
+    test('puts a file changed in its copy back in place of itself, the copy taken out with its folders or without them, in each format whose names are encrypted or not, keeping every other file as it was', async () => {
+      const cases = [
+        { name: 'back.zip', format: 'zip', flat: false },
+        { name: 'flat.zip', format: 'zip', flat: true },
+        { name: 'back.tar', format: 'tar', flat: false },
+        { name: 'back.7z', format: '7z', flat: true, password: 'secret' },
+      ] as const;
+      for (const { name, format, flat, ...more } of cases) {
+        const file = at(name);
+        await packedFine(
+          plan(
+            name,
+            format,
+            'password' in more ? { ...more, encryptNames: true } : {},
+          ),
+        );
+        if ('password' in more) {
+          archives.usePassword(file, more.password);
+        }
+        const archive = await opened(file);
+        const inner = ['docs', 'deep', 'deeper'];
+        const extracted = await archives.extract(
+          archive,
+          [archive.tree.item(inner, 'notes.txt')?.path ?? ''],
+          { withoutFolders: flat },
+        );
+        assert.ok(extracted.kind === 'extracted', name);
+        const [copy] = await itemsAt(extracted.folder, flat ? 0 : inner.length);
+        assert.ok(copy !== undefined, name);
+        fs.writeFileSync(copy, 'Changed in its copy.\n');
+
+        assert.deepStrictEqual(
+          await archives.addItems(archive, inner, path.dirname(copy), [
+            path.basename(copy),
+          ]),
+          { kind: 'packed' },
+          name,
+        );
+        const expected = withoutDates(treeOf(source));
+        expected.set(
+          'docs/deep/deeper/notes.txt',
+          withoutDates(treeOf(path.dirname(copy))).get('notes.txt') ?? '',
+        );
+        assert.deepStrictEqual(
+          withoutDates(await takenOut(file)),
+          expected,
+          name,
+        );
+      }
     });
   });
 

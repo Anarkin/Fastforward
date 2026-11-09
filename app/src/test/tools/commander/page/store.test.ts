@@ -843,6 +843,29 @@ suite('Commander store', () => {
     );
   });
 
+  test('asks whether to put a copy changed since it was taken out of its archive back into it, sending the answer to that question alone', () => {
+    const { posted, store } = shown();
+    store.getState().receive({
+      type: 'askUpdate',
+      ask: 2,
+      name: 'docs\\readme.md',
+      archive: 'a.zip',
+    });
+    assert.deepStrictEqual(store.getState().askingUpdate, {
+      ask: 2,
+      name: 'docs\\readme.md',
+      archive: 'a.zip',
+    });
+    store.getState().answerUpdate(true);
+    store.getState().answerUpdate(false);
+
+    assert.strictEqual(store.getState().askingUpdate, undefined);
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'updateArchive'),
+      [{ type: 'updateArchive', ask: 2, update: true }],
+    );
+  });
+
   test('tests the archives named in the folder of a side on disk, and none inside an archive', () => {
     const { posted, store } = shown();
     store.getState().testArchives('left', ['a.zip', 'b.7z']);

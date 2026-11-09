@@ -273,6 +273,7 @@ export type Extracting =
 
 export interface ArchiveAccess {
   open(file: string, signal?: AbortSignal): Promise<Opening>;
+  unchangeable(archive: OpenedArchive): string | undefined;
   openInside(
     file: string,
     outer: OpenedArchive,
@@ -738,6 +739,16 @@ export class Archives implements ArchiveAccess {
       : this.reader.test(file, { ...options, ...this.passwordOf(file) });
   }
 
+  unchangeable(archive: OpenedArchive): string | undefined {
+    const name = path.basename(archive.file);
+    if (archive.outer !== undefined || archive.source !== archive.file) {
+      return strings.commander.archiveUnchangeable(name);
+    }
+    return firstVolume.test(archive.file)
+      ? strings.commander.archiveInVolumes(name)
+      : undefined;
+  }
+
   private async updating(
     archive: OpenedArchive,
     run: (
@@ -749,19 +760,9 @@ export class Archives implements ArchiveAccess {
     if (reader === undefined) {
       return { kind: 'refused', reason: strings.commander.noSevenZip };
     }
-    if (archive.outer !== undefined || archive.source !== archive.file) {
-      return {
-        kind: 'refused',
-        reason: strings.commander.archiveUnchangeable(
-          path.basename(archive.file),
-        ),
-      };
-    }
-    if (firstVolume.test(archive.file)) {
-      return {
-        kind: 'refused',
-        reason: strings.commander.archiveInVolumes(path.basename(archive.file)),
-      };
+    const refusal = this.unchangeable(archive);
+    if (refusal !== undefined) {
+      return { kind: 'refused', reason: refusal };
     }
     const before = new Set(await temporariesOf(archive.file));
     try {

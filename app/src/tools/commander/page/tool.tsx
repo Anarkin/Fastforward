@@ -73,6 +73,7 @@ function CommanderPopups() {
       : state.view.panes[state.renaming.side]?.entries,
   );
   const askingPassword = useCommander((state) => state.askingPassword);
+  const askingUpdate = useCommander((state) => state.askingUpdate);
   const {
     confirmDelete,
     cancelDelete,
@@ -83,6 +84,7 @@ function CommanderPopups() {
     closeNoAccess,
     elevate,
     answerPassword,
+    answerUpdate,
     rename,
     cancelRename,
   } = useCommanderActions();
@@ -92,6 +94,20 @@ function CommanderPopups() {
     <>
       <TransferPopup />
       <PackPopup />
+      {askingUpdate !== undefined && (
+        <ConfirmPopup
+          key={askingUpdate.ask}
+          title={strings.commander.updateTitle}
+          message={strings.commander.updateAsked(
+            askingUpdate.name,
+            askingUpdate.archive,
+          )}
+          confirm={strings.commander.updateConfirm}
+          cancel={strings.commander.updateLater}
+          onConfirm={() => answerUpdate(true)}
+          onCancel={() => answerUpdate(false)}
+        />
+      )}
       {askingPassword !== undefined && (
         <PromptPopup
           key={askingPassword.ask}
