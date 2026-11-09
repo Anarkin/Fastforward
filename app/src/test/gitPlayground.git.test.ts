@@ -1,85 +1,18 @@
 import * as assert from 'node:assert';
-import {
-  type ChildProcess,
-  execFile,
-  execFileSync,
-  spawn,
-} from 'node:child_process';
+import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { runPlayground, stopPlaygrounds, type Ran } from './playgroundRuns';
 import {
   createsAnewThroughJunctions,
   removeFolder,
   tempFolder,
 } from './repositories';
 
-const script = path.join(
-  __dirname,
-  '..',
-  '..',
-  'scripts',
-  'playground',
-  'git.mts',
-);
-
-interface Ran {
-  readonly code: number;
-  readonly output: string;
-}
-
-const running = new Map<ChildProcess, Promise<Ran>>();
-
-function playground(folder: string, ...flags: string[]): Promise<Ran> {
-  const child = spawn(process.execPath, [script, folder, ...flags], {
-    detached: process.platform !== 'win32',
-    windowsHide: true,
-  });
-  let output = '';
-  child.stdout.setEncoding('utf8').on('data', (text: string) => {
-    output += text;
-  });
-  child.stderr.setEncoding('utf8').on('data', (text: string) => {
-    output += text;
-  });
-  const ran = new Promise<Ran>((resolve) => {
-    child.on('error', (error) => {
-      output += error.message;
-    });
-    child.on('close', (code) => {
-      running.delete(child);
-      resolve({ code: code ?? 1, output });
-    });
-  });
-  running.set(child, ran);
-  return ran;
-}
-
-function killWithItsGits(child: ChildProcess): void {
-  if (child.pid === undefined) {
-    return;
-  }
-  try {
-    if (process.platform === 'win32') {
-      execFileSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
-        stdio: 'ignore',
-      });
-    } else {
-      process.kill(-child.pid, 'SIGKILL');
-    }
-  } catch {
-    child.kill('SIGKILL');
-  }
-}
-
-async function stopPlaygrounds(): Promise<void> {
-  const closing = [...running];
-  for (const [child] of closing) {
-    killWithItsGits(child);
-  }
-  await Promise.all(closing.map(([, closed]) => closed));
-}
+const playground = (folder: string, ...flags: string[]): Promise<Ran> =>
+  runPlayground('git.mts', folder, ...flags);
 
 async function gitOutput(cwd: string, ...args: string[]): Promise<string> {
   const { stdout } = await promisify(execFile)('git', args, {
@@ -634,6 +567,31 @@ suite('Playground', () => {
         )
         .split('\n').length > 5000,
     );
+    assert.ok(
+      fs
+        .readFileSync(
+          path.join(local, 'showcase', 'text', 'padded-table.md'),
+          'utf8',
+        )
+        .split('\n')
+        .some((line) => (line.match(/ /g)?.length ?? 0) > 1000),
+    );
+    for (const file of ['emoji-grid.md', 'padded-table.md']) {
+      assert.strictEqual(
+        (
+          await git(
+            local,
+            'log',
+            '--format=%H',
+            'main',
+            '--',
+            `showcase/text/${file}`,
+          )
+        ).split('\n').length,
+        2,
+        file,
+      );
+    }
     const statuses = async (subject: string) =>
       git(
         local,
@@ -739,7 +697,11 @@ suite('Playground', () => {
       'long line',
       'unicode',
       'emoji',
+      'grid',
+      'skin tone',
       'whitespace',
+      'padded',
+      'prettier',
       'tabs',
       'copy',
       'rename',

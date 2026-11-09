@@ -2,8 +2,22 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { deflateSync } from 'node:zlib';
 import { images } from './gitImages.mts';
+import {
+  binary,
+  decoded,
+  diagrams,
+  emojiGrid,
+  everything,
+  everythingChanged,
+  imageKinds,
+  languages,
+  paddedTable,
+  png,
+  sentence,
+  shade,
+  vector,
+} from './samples.mts';
 
 const flags = new Set(
   process.argv.slice(2).filter((arg) => arg.startsWith('--')),
@@ -176,67 +190,6 @@ const pointer = (ref: string, at: number) =>
   write(`reset ${ref}\nfrom :${at}\n\n`);
 const searchable = (subject: string, words: readonly string[]) =>
   `${subject}\n\nSearch for: ${words.join(', ')}.\n`;
-
-const crcTable = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) {
-    c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  }
-  return c >>> 0;
-});
-const crc32 = (bytes: Buffer) => {
-  let c = 0xffffffff;
-  for (const byte of bytes) {
-    c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
-  }
-  return (c ^ 0xffffffff) >>> 0;
-};
-const pngChunk = (type: string, body: Buffer) => {
-  const length = Buffer.alloc(4);
-  length.writeUInt32BE(body.length);
-  const typed = Buffer.concat([Buffer.from(type), body]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(typed));
-  return Buffer.concat([length, typed, crc]);
-};
-type Color = (x: number, y: number) => readonly [number, number, number];
-
-const png = (width: number, height: number, color: Color) => {
-  const rows = Buffer.alloc((width * 3 + 1) * height);
-  for (let y = 0; y < height; y++) {
-    const row = y * (width * 3 + 1);
-    for (let x = 0; x < width; x++) {
-      rows.set(color(x / width, y / height), row + 1 + x * 3);
-    }
-  }
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width, 0);
-  header.writeUInt32BE(height, 4);
-  header[8] = 8;
-  header[9] = 2;
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    pngChunk('IHDR', header),
-    pngChunk('IDAT', deflateSync(rows)),
-    pngChunk('IEND', Buffer.alloc(0)),
-  ]);
-};
-const shade = (value: number) => Math.round(255 * value);
-const binary = (length: number, seed: number) => {
-  const bytes = Buffer.alloc(length);
-  let state = seed;
-  for (let i = 0; i < length; i++) {
-    state = (state * 1103515245 + 12345) >>> 0;
-    bytes[i] = state >>> 24;
-  }
-  return bytes;
-};
-const words = ['fast', 'forward', 'commit', 'branch', 'merge', 'rebase', 'tag'];
-const sentence = (seed: number, count: number) =>
-  Array.from(
-    { length: count },
-    (_, i) => words[(seed + i * 3) % words.length],
-  ).join(' ');
 
 const samples = {
   'samples/app.ts': [
@@ -564,169 +517,6 @@ commit('refs/heads/many-files', {
   })),
 });
 
-const everything = `# Everything Markdown renders
-
-Text with *emphasis*, **strong**, ~~strike~~, \`inline code\` and a [link](https://example.com).
-A bare address becomes a link too: https://example.com/docs
-
-## Lists
-
-- One
-  - Nested
-    - Deeper
-- Two
-
-1. First
-2. Second
-
-- [x] A task done
-- [ ] A task left
-
-## Table
-
-| Left | Center | Right |
-|:-----|:------:|------:|
-| a | b | c |
-| longer cell | 42 | 3.14 |
-
-## Code
-
-\`\`\`ts
-export const answer: number = 42;
-\`\`\`
-
-\`\`\`python
-print("Hello, world!")
-\`\`\`
-
-\`\`\`diff
-- removed
-+ added
-\`\`\`
-
-\`\`\`
-no language at all
-\`\`\`
-
-## Quotes
-
-> A quote
->> A quote in a quote
-
----
-
-## HTML GitHub keeps
-
-<details><summary>Click to open</summary>
-
-Hidden until opened.
-
-</details>
-
-Press <kbd>Ctrl</kbd>+<kbd>C</kbd>, write H<sub>2</sub>O and E = mc<sup>2</sup>.
-
-## Images
-
-![The playground logo](../../images/logo.png)
-`;
-const everythingChanged = everything
-  .replace('- Two', '- Two\n- Three, new')
-  .replace('| a | b | c |', '| a | b | c |\n| added | row | 7 |')
-  .replace('Hidden until opened.', 'Hidden until opened, and changed.');
-const languages = {
-  'sample.html': '<!doctype html>\n<p class="greeting">Hello, world!</p>\n',
-  'sample.xml': '<greeting to="world">Hello</greeting>\n',
-  'sample.yaml': 'greeting:\n  to: world\n  excited: true\n',
-  'sample.toml': '[greeting]\nto = "world"\nexcited = true\n',
-  'sample.sql': "SELECT 'Hello, world!' AS greeting;\n",
-  'Sample.java':
-    'class Sample {\n  public static void main(String[] args) {\n    System.out.println("Hello, world!");\n  }\n}\n',
-  'sample.kt': 'fun main() {\n    println("Hello, world!")\n}\n',
-  'sample.swift': 'print("Hello, world!")\n',
-  'sample.rb': 'puts "Hello, world!"\n',
-  'sample.php': '<?php\necho "Hello, world!";\n',
-  'sample.c':
-    '#include <stdio.h>\n\nint main(void) {\n  puts("Hello, world!");\n}\n',
-  'sample.cpp':
-    '#include <iostream>\n\nint main() {\n  std::cout << "Hello, world!\\n";\n}\n',
-  'sample.h': '#pragma once\n\nvoid greet(const char *world);\n',
-  'sample.lua': 'print("Hello, world!")\n',
-  'sample.ps1': 'Write-Output "Hello, world!"\n',
-  'sample.bat': '@echo off\necho Hello, world!\n',
-  'sample.ini': '[greeting]\nto=world\n',
-  'sample.diff':
-    '--- a/world\n+++ b/world\n@@ -1 +1 @@\n-Hello\n+Hello, world!\n',
-  'sample.graphql': 'query Greeting {\n  world { hello }\n}\n',
-  'Sample.vue':
-    '<template>\n  <p>Hello, {{ world }}!</p>\n</template>\n\n<script setup>\nconst world = "world";\n</script>\n',
-  'Sample.svelte':
-    '<script>\n  let world = "world";\n</script>\n\n<p>Hello, {world}!</p>\n',
-  'sample.tsx':
-    'export const Greeting = () => <p className="greeting">Hello, world!</p>;\n',
-  'sample.jsx': 'export const Greeting = () => <p>Hello, world!</p>;\n',
-  'sample.scss': '$world: #06c;\n\n.greeting {\n  color: $world;\n}\n',
-  'sample.less': '@world: #06c;\n\n.greeting {\n  color: @world;\n}\n',
-  'sample.r': 'print("Hello, world!")\n',
-  'sample.jl': 'println("Hello, world!")\n',
-  'sample.hs': 'main :: IO ()\nmain = putStrLn "Hello, world!"\n',
-  'sample.ex': 'IO.puts("Hello, world!")\n',
-  'sample.dart': "void main() {\n  print('Hello, world!');\n}\n",
-  'sample.scala': '@main def hello() = println("Hello, world!")\n',
-  'sample.pl': 'print "Hello, world!\\n";\n',
-  'sample.zig':
-    'const std = @import("std");\n\npub fn main() void {\n    std.debug.print("Hello, world!\\n", .{});\n}\n',
-  Dockerfile: 'FROM alpine\nCMD ["echo", "Hello, world!"]\n',
-  Makefile: 'world:\n\techo "Hello, world!"\n',
-};
-const vector = (fill: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">\n  <rect width="96" height="96" rx="16" fill="#eee"/>\n  <circle cx="48" cy="48" r="32" fill="${fill}"/>\n</svg>\n`;
-const decoded = (text: string) => Buffer.from(text, 'base64');
-const imageKinds = [
-  {
-    extension: 'png',
-    terms: ['png', 'portable network graphics'],
-    versions: () => [
-      png(48, 48, (x, y) => [shade(x * 0.3), shade(0.4 + y * 0.4), 200]),
-      png(48, 48, (x, y) => [220, shade(0.4 + y * 0.4), shade(x * 0.3)]),
-    ],
-  },
-  {
-    extension: 'jpg',
-    terms: ['jpg', 'jpeg', 'photo'],
-    versions: () => images.jpg.map(decoded),
-  },
-  {
-    extension: 'jpeg',
-    terms: ['jpeg', 'jpg', 'photo'],
-    versions: () => images.jpeg.map(decoded),
-  },
-  { extension: 'gif', terms: ['gif'], versions: () => images.gif.map(decoded) },
-  {
-    extension: 'webp',
-    terms: ['webp'],
-    versions: () => images.webp.map(decoded),
-  },
-  {
-    extension: 'avif',
-    terms: ['avif'],
-    versions: () => images.avif.map(decoded),
-  },
-  {
-    extension: 'bmp',
-    terms: ['bmp', 'bitmap'],
-    versions: () => images.bmp.map(decoded),
-  },
-  {
-    extension: 'ico',
-    terms: ['ico', 'icon', 'favicon'],
-    versions: () => images.ico.map(decoded),
-  },
-  {
-    extension: 'svg',
-    terms: ['svg', 'vector', 'xml'],
-    versions: () => [vector('#06c'), vector('#c60')],
-  },
-];
 onMain(
   searchable('Add a Markdown file with everything its preview renders', [
     'markdown',
@@ -797,104 +587,6 @@ onMain(
     },
   ],
 );
-const fence = '```';
-const diagrams = `# Diagrams
-
-Mermaid diagrams are drawn; plain text diagrams stay as they are.
-
-## A flowchart
-
-${fence}mermaid
-flowchart LR
-  Page[Page] -- asks --> Main[Main process]
-  Main -- checks --> Repository[(Repository)]
-  Main -- runs --> Git{{git}}
-  Git -- reads --> Repository
-  Main -- sends rows --> Page
-  Page -- tokenizes in --> Worker[Syntax worker]
-${fence}
-
-## A sequence diagram
-
-${fence}mermaid
-sequenceDiagram
-  actor Person
-  participant Page
-  participant Main as Main process
-  participant Remote
-  Person->>Page: Pull
-  Page->>Main: pull main
-  Main->>Remote: git fetch --all
-  Remote-->>Main: new commits
-  Main->>Main: git merge --ff-only
-  Main-->>Page: refs changed
-  Page-->>Person: Pulled 3 commits
-${fence}
-
-## A state diagram
-
-${fence}mermaid
-stateDiagram-v2
-  [*] --> Clean
-  Clean --> Changed: edit a file
-  Changed --> Staged: git add
-  Staged --> Clean: git commit
-  Changed --> Clean: git restore
-  Staged --> Changed: git restore --staged
-${fence}
-
-## A diagram that cannot be drawn
-
-${fence}mermaid
-flowchart LR
-  A -->
-${fence}
-
-## Plain text architecture
-
-${fence}text
-+--------------------------------------------------+
-|                  Electron window                 |
-|  +--------------------+   +-------------------+  |
-|  |        Page        |   |   Syntax worker   |  |
-|  |  React, markdown,  |-->|  shiki, Oniguruma |  |
-|  |  images, diagrams  |<--|  TextMate grammars|  |
-|  +---------^----------+   +-------------------+  |
-+------------|-------------------------------------+
-             | messages, checked on arrival
-+------------v-------------------------------------+
-|                   Main process                   |
-|   history per worktree, refs, fetches, settings  |
-+------------+--------------------------+----------+
-             |                          |
-        +----v----+               +-----v------+
-        |   git   |-------------->| Repository |
-        +---------+               +------------+
-${fence}
-
-${fence}text
- local                       origin
- -----                       ------
- main  o---o---o---o         main  o---o---o
-                   \\                         \\
- topic              o---o    topic            o
-                                              ^
-            fetch  <------------------------- |
-            push   -------------------------> |
-${fence}
-
-${fence}
-Request flow, without a language
-
-  [ Pull ] --> page --> main --> git fetch --all
-                                   |
-                                   v
-                              git merge --ff-only
-                                   |
-                                   v
-                     refs changed --> page redraws
-${fence}
-`;
 onMain(
   searchable(
     'Add Markdown with Mermaid diagrams and plain text architecture diagrams',
@@ -1114,6 +806,37 @@ onMain(
         'English: Hello, world!\nMagyar: Árvíztűrő tükörfúrógép\nΕλληνικά: Γειά σου κόσμε\nРусский: Привет, мир\n日本語: こんにちは世界\n中文: 你好，世界\n한국어: 안녕하세요 세계\nעברית: שלום עולם\nالعربية: مرحبا بالعالم\nEmoji: 👋🌍🎉 👩‍💻 🏳️‍🌈\nCombining: é ä ñ\nZero width: a​b‌c‍d\n',
     },
   ],
+);
+onMain(
+  searchable(
+    'Add emoji and Chinese, Japanese and Korean characters in a monospace grid, whose bars line up where widths are counted right',
+    ['emoji', 'grid', 'width', 'wide', 'cjk', 'zwj', 'skin tone', 'flag'],
+  ),
+  [{ path: 'showcase/text/emoji-grid.md', content: emojiGrid(1) }],
+);
+onMain(
+  searchable('Change a skin tone and a member of a family in the emoji grid', [
+    'emoji',
+    'grid',
+    'skin tone',
+    'zwj',
+    'change',
+  ]),
+  [{ path: 'showcase/text/emoji-grid.md', content: emojiGrid(2) }],
+);
+onMain(
+  searchable(
+    'Add a Markdown table padded as prettier pads it, with lines of more than a thousand spaces',
+    ['whitespace', 'padded', 'table', 'prettier', 'spaces', 'markdown'],
+  ),
+  [{ path: 'showcase/text/padded-table.md', content: paddedTable(1) }],
+);
+onMain(
+  searchable(
+    'Rename a feature of the padded table, reword one without padding it again and drop a row',
+    ['whitespace', 'padded', 'table', 'change'],
+  ),
+  [{ path: 'showcase/text/padded-table.md', content: paddedTable(2) }],
 );
 onMain(
   searchable('Add a file mixing tabs, spaces and trailing whitespace', [
