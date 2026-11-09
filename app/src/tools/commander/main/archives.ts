@@ -118,6 +118,13 @@ interface ArchiveNode {
   readonly encrypted: boolean;
 }
 
+export interface ArchiveBranch {
+  readonly path: string;
+  readonly parts: readonly string[];
+  readonly folder: boolean;
+  readonly children: readonly ArchiveBranch[];
+}
+
 export class ArchiveTree {
   private readonly folders = new Map<string, Map<string, ArchiveNode>>([
     ['', new Map()],
@@ -233,6 +240,20 @@ export class ArchiveTree {
   ): { readonly path: string; readonly encrypted: boolean } | undefined {
     const node = this.folders.get(inner.join('/'))?.get(name);
     return node && { path: node.path, encrypted: node.encrypted };
+  }
+
+  branch(inner: readonly string[], name: string): ArchiveBranch | undefined {
+    const node = this.folders.get(inner.join('/'))?.get(name);
+    if (node === undefined) {
+      return undefined;
+    }
+    const parts = [...inner, name];
+    const children = node.entry.folder
+      ? [...(this.folders.get(parts.join('/'))?.keys() ?? [])].flatMap(
+          (child) => this.branch(parts, child) ?? [],
+        )
+      : [];
+    return { path: node.path, parts, folder: node.entry.folder, children };
   }
 }
 

@@ -286,6 +286,12 @@ export class Transfers {
       this.archiveEnded(running, how, archive);
       return;
     }
+    if (running.warnings.length > 0) {
+      this.host.notice({
+        level: 'error',
+        message: running.warnings.join(' '),
+      });
+    }
     if (how === 'broke') {
       this.host.notice({
         level: 'error',

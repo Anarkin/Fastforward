@@ -56,6 +56,20 @@ suite('The progress of a pack', () => {
       files: '10 of 40 files',
     });
   });
+
+  test('says a move out of an archive deletes from it what it moved, once moved, without counting files', () => {
+    assert.deepStrictEqual(
+      progressLines({
+        ...view,
+        archiveJob: undefined,
+        progress: { ...progress, current: 'a.zip', deleting: true },
+      }),
+      {
+        current: strings.commander.deletingMovedFrom('a.zip'),
+        files: undefined,
+      },
+    );
+  });
 });
 
 suite('Commander transferring into an archive', () => {

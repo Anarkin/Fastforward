@@ -55,6 +55,12 @@ export function progressLines({
   if (progress === undefined) {
     return { current: commander.counting, files: undefined };
   }
+  if (progress.deleting === true) {
+    return {
+      current: commander.deletingMovedFrom(progress.current ?? ''),
+      files: undefined,
+    };
+  }
   if (progress.testing === true) {
     return {
       current: commander.testingArchive,

@@ -4891,7 +4891,7 @@ suite('Commander tool in archives', () => {
     );
   });
 
-  test('does nothing inside an archive that would change it, move out of it or drag out of it, as nothing is written to an archive yet, nor copies or moves into it', async () => {
+  test('does nothing inside an archive it cannot do there, nor drags out of it', async () => {
     const { tool, page, send, notices, archived, ...done } = commander({
       [root]: [file('a.zip'), file('notes.txt')],
     });
@@ -4910,13 +4910,6 @@ suite('Commander tool in archives', () => {
       type: 'delete',
       names: ['top.txt'],
       permanently: false,
-    });
-    await send({
-      ...inside,
-      type: 'transfer',
-      names: ['top.txt'],
-      target: root,
-      move: true,
     });
     await send({
       type: 'transfer',
@@ -5162,6 +5155,74 @@ suite('Commander tool in archives', () => {
         [shown?.move, shown?.items, shown?.target],
         [false, 2, root],
       );
+    });
+
+    test('moves the items asked for out of an archive into the folder of the other side, deleting them from the archive once the transfer moved them and reading it again, and moves nothing out of an archive inside another, saying it cannot be changed', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);
+      made.archived.set(path.join(at('a.zip'), 'inner.zip'), zipped);
+      made.copies.folder = copiesFolder;
+      await made.tool.show(made.page, tab);
+      const { send, page, transfers, removedFromArchives, notices } = made;
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      const listed = page.of('listing').length;
+      const moving = (names: readonly string[]) =>
+        send({
+          type: 'transfer',
+          tab: '1',
+          side: 'right',
+          names,
+          target: root,
+          move: true,
+        });
+
+      await moving(['docs', 'top.txt']);
+      await waitFor(
+        () => plansOf(transfers).length === 1,
+        'the move to start once the items are taken out',
+      );
+      const shown = page
+        .of('transfer')
+        .findLast((message) => message.view !== undefined)?.view;
+      assert.deepStrictEqual(
+        [shown?.move, shown?.items, shown?.target],
+        [true, 2, root],
+      );
+      for (const source of plansOf(transfers)[0]?.sources ?? []) {
+        fs.rmSync(source, { recursive: true, force: true });
+      }
+      transfers[0]?.listener.event({ type: 'done', stopped: false });
+      await waitFor(
+        () => removedFromArchives.length === 1,
+        'what was moved to be deleted from the archive',
+      );
+      await waitFor(
+        () => page.of('listing').length > listed,
+        'the archive to be read again',
+      );
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'inner.zip',
+      });
+      await moving(['top.txt']);
+
+      assert.deepStrictEqual(removedFromArchives, [
+        [at('a.zip'), ['docs', 'top.txt']],
+      ]);
+      assert.deepStrictEqual(notices, [
+        {
+          level: 'error',
+          message: strings.commander.archiveUnchangeable('inner.zip'),
+        },
+      ]);
+      assert.strictEqual(plansOf(transfers).length, 1);
     });
 
     test('lists the files of every folder of an archive flat, watching the archive, and reads them and copies them out from copies taken out without their folders', async () => {

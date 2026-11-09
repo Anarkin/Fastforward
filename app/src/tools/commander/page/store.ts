@@ -960,7 +960,7 @@ export function createCommanderStore(
       },
       cancelDelete: () => set({ deleting: undefined }),
       askTransfer: (side, names, move) =>
-        (move ? onDisk : onPane)(side, (tab, folder) => {
+        onPane(side, (tab, folder) => {
           const { view } = get();
           const other = view.panes[otherSide(side)];
           if (other === undefined) {

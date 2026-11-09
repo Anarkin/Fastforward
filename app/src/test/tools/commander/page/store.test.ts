@@ -1291,14 +1291,13 @@ suite('The commander store in archives', () => {
     );
   });
 
-  test('asks and sends nothing that would change an archive or move or drag out of it, for a side inside one or a copy into one, sending what moves through it, reads from it, lists it flat or enters an archive in it, and the archive to enter from a folder, and asking before a copy out of it', () => {
+  test('asks and sends nothing that would change an archive or drag out of it, for a side inside one or a copy into one, sending what moves through it, reads from it, lists it flat or enters an archive in it, and the archive to enter from a folder, and asking before a copy or a move out of it', () => {
     const { posted, store } = shown();
     store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
     store.getState().receive({ ...listing('D:\\photos'), side: 'right' });
     const before = posted.length;
     const actions = store.getState();
 
-    actions.askTransfer('left', ['a.txt'], true);
     actions.askPack('left', ['a.txt']);
     actions.paste('left');
     actions.drag('left', ['a.txt']);
@@ -1326,6 +1325,16 @@ suite('The commander store in archives', () => {
       names: ['a.txt'],
       target: 'D:\\photos',
       move: false,
+    });
+    actions.cancelTransfer();
+    actions.askTransfer('left', ['a.txt'], true);
+    assert.deepStrictEqual(store.getState().transferring, {
+      tab: '1',
+      side: 'left',
+      folder: 'C:\\a.zip',
+      names: ['a.txt'],
+      target: 'D:\\photos',
+      move: true,
     });
     assert.deepStrictEqual(posted.slice(before), [
       {

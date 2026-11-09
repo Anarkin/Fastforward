@@ -743,6 +743,16 @@ export const strings = {
     movedWithout: (name: string, reason: string) =>
       `Not every file could be moved into "${name}": ${reason}`,
     originalsKept: 'Every file moved is kept where it was.',
+    keptUnmatched: (name: string, count: number) =>
+      count === 1
+        ? `A file is kept in "${name}", as 7-Zip took it out under another name, or not at all.`
+        : `${count.toLocaleString()} files are kept in "${name}", as 7-Zip took them out under other names, or not at all.`,
+    movedOutKept: (name: string, reason: string) =>
+      `What was moved out of "${name}" is kept in it too, as it could not be deleted from it: ${reason}`,
+    movedOutWarned: (name: string, warning: string) =>
+      `7-Zip warned while deleting from "${name}" what was moved out of it: ${warning}`,
+    deletingMovedFrom: (name: string) =>
+      `Deleting from "${name}" what was moved out of it…`,
     thereAlready: (count: number, total: number) =>
       count < total
         ? `${count.toLocaleString()} of them are there already.`

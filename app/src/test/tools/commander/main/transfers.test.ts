@@ -248,6 +248,29 @@ suite('Transfers', () => {
     ]);
   });
 
+  test('says once a copy or move is done what it warned of, as a move out of an archive whose items are kept in it too', () => {
+    const { coordinator, tell, notices } = transfers();
+    coordinator.start(ask(['a.txt'], true));
+    coordinator.hide(1);
+    tell(0, { type: 'warned', reason: 'One is kept in "a.zip".' });
+    tell(0, { type: 'warned', reason: 'Another is kept too.' });
+    tell(0, { type: 'done', stopped: false });
+
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: 'One is kept in "a.zip". Another is kept too.',
+      },
+      {
+        level: 'info',
+        message: strings.commander.moved(
+          strings.commander.oneItem('a.txt'),
+          target,
+        ),
+      },
+    ]);
+  });
+
   test('shows a transfer that asks about an item there already, its dialog closed or not, takes only an answer to the question it asks, and sends it on', () => {
     const { coordinator, processes, tell, last } = transfers();
     coordinator.start(ask(['a.txt']));

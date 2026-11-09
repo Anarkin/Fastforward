@@ -1619,11 +1619,9 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     if (shown.pane.archive !== undefined) {
-      if (!move) {
-        void this.shell.track(
-          this.transferOut(page, shown.pane, target, names),
-        );
-      }
+      void this.shell.track(
+        this.transferOut(page, shown.pane, target, names, move),
+      );
       return;
     }
     if (shown.pane.elevated === true || other.elevated === true) {
@@ -1744,9 +1742,13 @@ export class CommanderTool implements Tool<'commander'> {
     pane: Pane,
     target: string,
     names: readonly string[],
+    move: boolean,
   ): Promise<void> {
     const found = this.archiveItems(pane, names);
-    if (found === undefined) {
+    if (
+      found === undefined ||
+      (move && !this.changeable(page, found.archive))
+    ) {
       return;
     }
     const {
@@ -1771,7 +1773,7 @@ export class CommanderTool implements Tool<'commander'> {
         plan: {
           sources: names.map((name) => path.join(pane.folder, name)),
           target,
-          move: false,
+          move,
         },
         folder: pane.folder,
         names,
@@ -1785,6 +1787,20 @@ export class CommanderTool implements Tool<'commander'> {
           withoutFolders,
           files,
           bytes,
+          ...(move && {
+            moving: {
+              roots: names.flatMap((name) => {
+                const parts = name.split(path.sep);
+                return (
+                  archive.tree.branch(
+                    [...inner, ...parts.slice(0, -1)],
+                    parts.at(-1) ?? name,
+                  ) ?? []
+                );
+              }),
+              platform: this.access.platform,
+            },
+          }),
         },
         this.access.connectTransfer,
       ),
