@@ -135,6 +135,48 @@ suite('Transfers', () => {
     ]);
   });
 
+  test('shows a pack as packing into its archive, saying once done that it packed when its dialog was closed, what it packed without, and why it packed nothing', () => {
+    const { coordinator, tell, last, notices } = transfers();
+    const archive = path.join(target, 'photos.zip');
+    const packing = (): TransferAsk => ({
+      ...ask(['a.txt', 'docs']),
+      plan: { sources: [archive], target, move: false },
+      pack: { archive },
+    });
+    const locked = 'The process cannot access the file : locked.txt';
+
+    coordinator.start(packing());
+    assert.deepStrictEqual(last(), {
+      id: 1,
+      move: false,
+      packing: true,
+      items: 2,
+      target: archive,
+      stopping: false,
+    });
+    coordinator.hide(1);
+    tell(0, { type: 'warned', reason: locked });
+    tell(0, { type: 'done', stopped: false });
+    coordinator.start(packing());
+    tell(1, { type: 'failed', name: 'photos.zip', reason: 'disk full' });
+    tell(1, { type: 'done', stopped: false });
+
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.packedWithout('photos.zip', locked),
+      },
+      {
+        level: 'info',
+        message: strings.commander.packed(strings.commander.items(2), archive),
+      },
+      {
+        level: 'error',
+        message: strings.commander.packFailed('photos.zip', 'disk full'),
+      },
+    ]);
+  });
+
   test('shows a transfer that asks about an item there already, its dialog closed or not, takes only an answer to the question it asks, and sends it on', () => {
     const { coordinator, processes, tell, last } = transfers();
     coordinator.start(ask(['a.txt']));

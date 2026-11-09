@@ -95,7 +95,11 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
     <div className="confirm-body transfer-body">
       <div className="transfer-running">
         <span title={transfer.target}>
-          {(transfer.move ? commander.moving : commander.copying)(
+          {(transfer.packing === true
+            ? commander.packingInto
+            : transfer.move
+              ? commander.moving
+              : commander.copying)(
             whatOf(transfer.items, transfer.name),
             transfer.target,
           )}
@@ -150,9 +154,12 @@ function TransferDialog({ transfer }: { transfer: TransferView }) {
   useDismiss(popup, hideTransfer, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
-  const title = transfer.move
-    ? strings.commander.moveTitle
-    : strings.commander.copyTitle;
+  const title =
+    transfer.packing === true
+      ? strings.commander.packTitle
+      : transfer.move
+        ? strings.commander.moveTitle
+        : strings.commander.copyTitle;
   return (
     <div
       className="backdrop"

@@ -32,6 +32,7 @@ import {
   type ArchiveAccess,
   type ArchiveItem,
   type OpenedArchive,
+  type PackPlan,
 } from '../../../../tools/commander/main/archives';
 import {
   maxBytesAsked,
@@ -221,6 +222,7 @@ function commander(
   const passwords = new Map<string, string>();
   const secrets = new Map<string, string>();
   const extracted: (readonly string[])[] = [];
+  const packed: PackPlan[] = [];
   const passwordRight = (archive: string) =>
     !secrets.has(archive) || passwords.get(archive) === secrets.get(archive);
   const archives: ArchiveAccess = {
@@ -232,6 +234,10 @@ function commander(
       }
     },
     hasPassword: (archive) => passwords.has(archive),
+    pack: (plan) => {
+      packed.push(plan);
+      return Promise.resolve({ kind: 'packed' });
+    },
     extract: async (archive, paths, options) => {
       extracted.push(paths);
       const into = options?.into;
@@ -648,6 +654,7 @@ function commander(
     secrets,
     passwords,
     extracted,
+    packed,
   };
 }
 
@@ -2229,6 +2236,82 @@ suite('Commander tool', () => {
       () => page.of('flatFiles').length > told,
       'docs to be read again',
     );
+  });
+
+  test('packs the items a side lists into the archive asked for, shown in the dialog of copies as packing, and nothing of items it does not list, nor an archive of a name no folder can hold, into one of the items, nor with a password a zip cannot hold', async () => {
+    const { tool, page, send, packed, notices } = commander({
+      [root]: [file('a.txt'), folder('docs')],
+    });
+    await tool.show(page, tab);
+    const archive = path.join(root, 'out', 'photos.zip');
+    const pack = (extra: Record<string, unknown> = {}) =>
+      send(
+        forged(
+          JSON.stringify({
+            type: 'pack',
+            tab: '1',
+            side: 'right',
+            folder: root,
+            names: ['a.txt', 'docs'],
+            archive,
+            format: 'zip',
+            level: 'normal',
+            ...extra,
+          }),
+        ),
+      );
+
+    await pack({
+      format: '7z',
+      level: 'ultra',
+      password: 'pässwörd',
+      encryptNames: true,
+      volumeBytes: 1_048_576,
+    });
+    await waitFor(() => packed.length === 1, 'the pack to start');
+    assert.deepStrictEqual(
+      page.of('transfer').find((message) => message.view?.packing === true)
+        ?.view,
+      {
+        id: 1,
+        move: false,
+        packing: true,
+        items: 2,
+        target: archive,
+        stopping: false,
+      },
+    );
+    for (const wrong of [
+      { names: ['missing.txt'] },
+      { names: [] },
+      { archive: 'photos.zip' },
+      { archive: `${root}${path.sep}..` },
+      { archive: at('docs', 'inside.zip') },
+      { format: 'rar' },
+      { level: 'best' },
+      { password: 'pässwörd' },
+      { password: '' },
+      { volumeBytes: 1000 },
+      { zipCipher: 'rot13' },
+    ]) {
+      await pack(wrong);
+    }
+
+    assert.deepStrictEqual(packed, [
+      {
+        folder: root,
+        items: ['a.txt', 'docs'],
+        archive,
+        format: '7z',
+        level: 'ultra',
+        password: 'pässwörd',
+        encryptNames: true,
+        volumeBytes: 1_048_576,
+      },
+    ]);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.intoItself('docs') },
+    ]);
   });
 
   test('says no folder is made and nothing renamed yet in a folder read as administrator', async () => {

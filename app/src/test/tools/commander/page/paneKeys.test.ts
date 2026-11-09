@@ -110,6 +110,18 @@ suite('Commander keys', () => {
     assert.deepStrictEqual(paneKey(rename, at('..')), {});
   });
 
+  test('asks how to pack the file selected, or the ones marked, on Alt+F5, and nothing on the parent folder', () => {
+    const pack = pressed('F5', { altKey: true });
+    assert.deepStrictEqual(paneKey(pack, at('a.txt')), {
+      act: { kind: 'pack', names: ['a.txt'] },
+    });
+    assert.deepStrictEqual(
+      paneKey(pack, at('a.txt', { marked: new Set(['docs', 'b.txt']) })),
+      { act: { kind: 'pack', names: ['docs', 'b.txt'] } },
+    );
+    assert.deepStrictEqual(paneKey(pack, at('..')), {});
+  });
+
   test('asks for a new folder on F7, whatever is selected', () => {
     assert.deepStrictEqual(paneKey(pressed('F7'), at('a.txt')), {
       act: { kind: 'newFolder' },

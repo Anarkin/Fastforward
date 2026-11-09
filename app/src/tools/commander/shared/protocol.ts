@@ -1,4 +1,5 @@
 import type { PdfPlace } from '../../../shared/pdf';
+import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';
 import type { ClashAnswer, TransferView } from './transfers';
 
@@ -230,6 +231,20 @@ export type CommanderToHost =
       readonly side: Side;
       readonly folder: string;
       readonly name: string;
+    }
+  | {
+      readonly type: 'pack';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly names: readonly string[];
+      readonly archive: string;
+      readonly format: PackFormat;
+      readonly level: PackLevel;
+      readonly password?: string;
+      readonly encryptNames?: boolean;
+      readonly zipCipher?: ZipCipher;
+      readonly volumeBytes?: number;
     }
   | {
       readonly type: 'rename';

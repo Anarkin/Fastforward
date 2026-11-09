@@ -161,9 +161,12 @@ suite('ArchiveTree', () => {
   });
 });
 
+const notPacked = () => Promise.reject(new Error('Nothing is packed here.'));
+
 function readerOf(listings: Record<string, ArchiveListing>) {
   const asked: string[] = [];
   const reader: ArchiveReader = {
+    pack: notPacked,
     list: (file) => {
       asked.push(`list ${path.basename(file)}`);
       return Promise.resolve(
@@ -326,6 +329,7 @@ suite('Archives', () => {
     fs.writeFileSync(zip, 'zip');
     const seen: (string | undefined)[] = [];
     const reader: ArchiveReader = {
+      pack: notPacked,
       list: (_file, _signal, password) => {
         seen.push(password);
         return Promise.resolve(
@@ -380,6 +384,7 @@ suite('Archives', () => {
     const zip = path.join(folder, 'a.zip');
     fs.writeFileSync(zip, 'zip');
     const reader: ArchiveReader = {
+      pack: notPacked,
       list: () => Promise.resolve({ kind: 'listed', items: [item('a.txt')] }),
       extract: async (_file, _paths, into) => {
         await fs.promises.writeFile(path.join(into, 'half.txt'), 'half');
@@ -406,6 +411,7 @@ suite('Archives', () => {
     fs.writeFileSync(zip, 'zip');
     fs.writeFileSync(tgz, 'tgz');
     const reader: ArchiveReader = {
+      pack: notPacked,
       list: (file) =>
         Promise.resolve({
           kind: 'listed',

@@ -123,6 +123,7 @@ export const commanderKeymap = {
   renameItem: bind('Marking', strings.actions.renameItem, {
     'Shift+F6': true,
   }),
+  packItems: bind('Marking', strings.actions.packItems, { 'Alt+F5': true }),
   copyToClipboard: bind('Marking', strings.actions.copyToClipboard, {
     'Mod+C': true,
   }),

@@ -62,6 +62,14 @@ import {
   thumbnailBoxOf,
 } from '../../../shared/images';
 import { thumbnailKey } from './thumbnailStore';
+import { packing } from './packing';
+import {
+  isPackFormat,
+  isPackLevel,
+  isZipCipher,
+  packPasswordProblem,
+  smallestVolume,
+} from '../shared/packing';
 import { ArchiveImages } from './archiveImages';
 import { fileVersion, viewedFileOf } from '../shared/files';
 import {
@@ -92,6 +100,7 @@ import {
   itemsAt,
   type ArchiveAccess,
   type OpenedArchive,
+  type PackPlan,
   type Opening,
 } from './archives';
 import { unpackingFirst } from './unpacking';
@@ -558,6 +567,9 @@ export class CommanderTool implements Tool<'commander'> {
         return this.newFolder(page, message);
       case 'rename':
         return this.rename(page, message);
+      case 'pack':
+        this.pack(page, message);
+        return undefined;
       case 'copyToClipboard':
         return this.copyToClipboard(page, message);
       case 'drag':
@@ -1673,6 +1685,94 @@ export class CommanderTool implements Tool<'commander'> {
         name,
       );
     }
+  }
+
+  private pack(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      names,
+      archive,
+      format,
+      level,
+      password,
+      encryptNames,
+      zipCipher,
+      volumeBytes,
+    }: Extract<CommanderToHost, { type: 'pack' }>,
+  ): void {
+    const shown = this.diskPane(page, tab, side, folder);
+    const { archives, platform } = this.access;
+    if (
+      shown === undefined ||
+      archives === undefined ||
+      !Array.isArray(names) ||
+      names.length === 0 ||
+      !names.every(
+        (name: unknown) => listedIn(shown.pane, name) !== undefined,
+      ) ||
+      typeof archive !== 'string' ||
+      !path.isAbsolute(archive) ||
+      nameProblem(path.basename(archive), platform) !== undefined ||
+      !isPackFormat(format) ||
+      !isPackLevel(level) ||
+      (password !== undefined &&
+        (typeof password !== 'string' ||
+          packPasswordProblem(password, format) !== undefined)) ||
+      (encryptNames !== undefined && typeof encryptNames !== 'boolean') ||
+      (zipCipher !== undefined && !isZipCipher(zipCipher)) ||
+      (volumeBytes !== undefined &&
+        (!Number.isSafeInteger(volumeBytes) || volumeBytes < smallestVolume))
+    ) {
+      return;
+    }
+    if (shown.pane.elevated === true) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.packAsAdministrator,
+      });
+      return;
+    }
+    const key = (each: string) => folderKey(each, platform);
+    const into = names.find((name) => {
+      const item = key(path.join(shown.pane.folder, name));
+      return (
+        key(archive) === item || key(archive).startsWith(`${item}${path.sep}`)
+      );
+    });
+    if (into !== undefined) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.intoItself(into),
+      });
+      return;
+    }
+    const plan: PackPlan = {
+      folder: shown.pane.folder,
+      items: names,
+      archive,
+      format,
+      level,
+      ...(password !== undefined && { password }),
+      ...(encryptNames !== undefined && { encryptNames }),
+      ...(zipCipher !== undefined && { zipCipher }),
+      ...(volumeBytes !== undefined && { volumeBytes }),
+    };
+    this.transfers.start(
+      {
+        plan: {
+          sources: [archive],
+          target: path.dirname(archive),
+          move: false,
+        },
+        folder: shown.pane.folder,
+        names,
+        pack: { archive },
+      },
+      packing(plan, (planned, options) => archives.pack(planned, options)),
+    );
   }
 
   private async rename(

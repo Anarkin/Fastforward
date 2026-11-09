@@ -1,6 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../shared/strings';
+import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
+import { packInto } from './packing';
 import { fileVersion } from '../shared/files';
 import { folderKey } from '../shared/paths';
 import type { Entry } from '../shared/protocol';
@@ -42,6 +44,27 @@ export interface ExtractOptions {
   readonly password?: string;
 }
 
+export interface PackPlan {
+  readonly folder: string;
+  readonly items: readonly string[];
+  readonly archive: string;
+  readonly format: PackFormat;
+  readonly level: PackLevel;
+  readonly password?: string;
+  readonly encryptNames?: boolean;
+  readonly zipCipher?: ZipCipher;
+  readonly volumeBytes?: number;
+}
+
+export interface PackOptions {
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (progress: ExtractProgress) => void;
+}
+
+export type Packing =
+  | { readonly kind: 'packed'; readonly warning?: string }
+  | ({ readonly kind: 'refused' } & ArchiveRefusal);
+
 export interface ArchiveReader {
   list(
     file: string,
@@ -54,6 +77,7 @@ export interface ArchiveReader {
     into: string,
     options?: ExtractOptions,
   ): Promise<ArchiveRefusal | undefined>;
+  pack(plan: PackPlan, into: string, options?: PackOptions): Promise<Packing>;
 }
 
 interface ArchiveNode {
@@ -213,6 +237,7 @@ export interface ArchiveAccess {
   fileHolding(folder: string): Promise<string | undefined>;
   usePassword(file: string, password: string | undefined): void;
   hasPassword(file: string): boolean;
+  pack(plan: PackPlan, options?: PackOptions): Promise<Packing>;
 }
 
 async function removed(folder: string): Promise<void> {
@@ -502,6 +527,12 @@ export class Archives implements ArchiveAccess {
       await removed(folder);
     }
     return { kind: 'refused', ...refused };
+  }
+
+  async pack(plan: PackPlan, options?: PackOptions): Promise<Packing> {
+    return this.reader === undefined
+      ? { kind: 'refused', reason: strings.commander.noSevenZip }
+      : packInto(this.reader, plan, options);
   }
 
   usePassword(file: string, password: string | undefined): void {

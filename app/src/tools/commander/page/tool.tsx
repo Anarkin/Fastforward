@@ -25,6 +25,7 @@ import {
 import { deleteQuestion } from './deleting';
 import { transferQuestion } from './transferring';
 import { TransferPopup } from './transferPopup';
+import { PackPopup } from './packPopup';
 import { strings } from '../../../shared/strings';
 import { useShellActions } from '../../../shell/page/store';
 import {
@@ -90,6 +91,7 @@ function CommanderPopups() {
   return (
     <>
       <TransferPopup />
+      <PackPopup />
       {askingPassword !== undefined && (
         <PromptPopup
           key={askingPassword.ask}

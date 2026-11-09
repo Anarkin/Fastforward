@@ -1,15 +1,18 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { removeFolder, tempFolder } from '../../../repositories';
 import {
   progressOf,
   reasonOf,
+  sevenZipAt,
   sevenZipProgram,
   sevenZipReader,
   type SevenZip,
   type SevenZipRun,
 } from '../../../../tools/commander/main/sevenZip';
+import type { PackPlan } from '../../../../tools/commander/main/archives';
 
 const listed = `
 7-Zip 26.06 (x64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-11-06
@@ -192,6 +195,182 @@ const namedInZstd = async (file: string) => {
     : listing.reason;
 };
 
+suite('sevenZipAt', () => {
+  const node = sevenZipAt(process.execPath);
+
+  test('runs 7-Zip in the folder asked for, so the items it packs keep the folders they are in under it', async () => {
+    const folder = tempFolder('cwd');
+    try {
+      const run = await node(['-e', 'process.stdout.write(process.cwd())'], {
+        cwd: folder,
+      });
+      assert.strictEqual(
+        fs.realpathSync.native(run.output),
+        fs.realpathSync.native(folder),
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('pipes what 7-Zip writes into a second 7-Zip, telling the progress the first writes to its errors and ending as the second does, or as the first when it fails', async () => {
+    const told: string[] = [];
+    const passed = await node(
+      [
+        '-e',
+        "process.stderr.write(' 50% 1 - a.txt'); process.stdout.write('tar')",
+      ],
+      {
+        pipeInto: [
+          '-e',
+          "let read = ''; process.stdin.on('data', (data) => (read += data)); process.stdin.on('end', () => process.stdout.write(`gzip of ${read}`))",
+        ],
+        onOutput: (text) => told.push(text),
+      },
+    );
+    assert.deepStrictEqual(
+      [passed.code, passed.output, told.join('')],
+      [0, 'gzip of tar', ' 50% 1 - a.txt'],
+    );
+
+    const failed = await node(
+      ['-e', "process.stderr.write('ERROR: locked'); process.exit(2)"],
+      { pipeInto: ['-e', 'process.stdin.resume()'] },
+    );
+    assert.deepStrictEqual(
+      [failed.code, failed.errors.includes('ERROR: locked')],
+      [2, true],
+    );
+  });
+});
+
+interface Asked {
+  readonly args: readonly string[];
+  readonly onOutput: undefined;
+  readonly input?: string;
+  readonly cwd?: string;
+  readonly pipeInto?: readonly string[];
+  readonly signal?: AbortSignal;
+}
+
+suite('packing with 7-Zip', () => {
+  const plan: PackPlan = {
+    folder: path.join('D:', 'src'),
+    items: ['a.txt', 'docs'],
+    archive: path.join('D:', 'out', 'photos.tar.gz'),
+    format: 'zip',
+    level: 'normal',
+  };
+  const into = path.join('D:', 'out', 'photos.part');
+  const packedBy = async (
+    planned: PackPlan,
+    run: Partial<SevenZipRun> = {},
+    onProgress?: () => void,
+  ) => {
+    const asked: Asked[] = [];
+    const result = await sevenZipReader((args, options) => {
+      asked.push({ args, ...options, onOutput: undefined });
+      return Promise.resolve({ code: 0, output: '', errors: '', ...run });
+    }).pack(planned, into, onProgress === undefined ? {} : { onProgress });
+    return { asked, result };
+  };
+  const common = ['-ssw', '-sccUTF-8', '-scsUTF-8', '-spd'];
+  const argsOf = async (planned: PackPlan) => {
+    const [asked] = (await packedBy(planned)).asked;
+    return [asked?.args.slice(1, -4).join(' '), asked?.input];
+  };
+
+  test('packs the items named from the folder they are in, so they keep the folders under it, after -- so no name is taken for a switch, without wildcards and with the files other apps are writing', async () => {
+    assert.deepStrictEqual((await packedBy(plan)).asked, [
+      {
+        args: ['a', '-tzip', '-mx5', ...common, '--', into, 'a.txt', 'docs'],
+        cwd: plan.folder,
+        onOutput: undefined,
+      },
+    ]);
+  });
+
+  test('gives 7-Zip the password on its input, encrypting a zip with AES-256 or ZipCrypto as chosen, the names of a 7z too when asked, and no tar', async () => {
+    const password = 'pässwörd';
+    assert.deepStrictEqual(await argsOf({ ...plan, password }), [
+      `-tzip -mx5 -p -mem=AES256 ${common.join(' ')}`,
+      `${password}\n`,
+    ]);
+    assert.deepStrictEqual(
+      await argsOf({ ...plan, password, zipCipher: 'zipCrypto' }),
+      [`-tzip -mx5 -p -mem=ZipCrypto ${common.join(' ')}`, `${password}\n`],
+    );
+    assert.deepStrictEqual(
+      await argsOf({
+        ...plan,
+        format: '7z',
+        level: 'ultra',
+        password,
+        encryptNames: true,
+      }),
+      [`-t7z -mx9 -p -mhe=on ${common.join(' ')}`, `${password}\n`],
+    );
+    assert.deepStrictEqual(
+      await argsOf({ ...plan, format: 'tar', level: 'store', password }),
+      [`-ttar ${common.join(' ')}`, undefined],
+    );
+  });
+
+  test('packs a compressed tar by piping the tar 7-Zip writes into a second 7-Zip naming the tar after the archive, cut into volumes of the size asked, telling the progress of the first', async () => {
+    const { asked } = await packedBy(
+      { ...plan, format: 'tar.gz', level: 'maximum', volumeBytes: 1_048_576 },
+      {},
+      () => undefined,
+    );
+    assert.deepStrictEqual(asked, [
+      {
+        args: [
+          'a',
+          '-ttar',
+          '-so',
+          '-an',
+          ...common,
+          '-bso0',
+          '-bsp2',
+          '--',
+          'a.txt',
+          'docs',
+        ],
+        cwd: plan.folder,
+        pipeInto: [
+          'a',
+          '-tgzip',
+          '-mx7',
+          '-siphotos.tar',
+          '-v1048576b',
+          '-bso0',
+          '-bsp0',
+          '--',
+          into,
+        ],
+        onOutput: undefined,
+      },
+    ]);
+  });
+
+  test('takes a warning of 7-Zip as packed with the reason it gives, as a file it could not read, and an error as refused', async () => {
+    assert.deepStrictEqual(
+      (
+        await packedBy(plan, {
+          code: 1,
+          errors: '\nWARNINGS:\nThe process cannot access the file\n',
+        })
+      ).result,
+      { kind: 'packed', warning: 'The process cannot access the file' },
+    );
+    assert.deepStrictEqual((await packedBy(plan)).result, { kind: 'packed' });
+    assert.deepStrictEqual(
+      (await packedBy(plan, { code: 2, errors: 'ERROR: disk full\n' })).result,
+      { kind: 'refused', reason: 'disk full' },
+    );
+  });
+});
+
 suite('the password of an archive', () => {
   test('gives 7-Zip a password on its input rather than among its arguments, where other programs could read it, and a refusal for a wrong one says a password is needed', async () => {
     const asked: { args: readonly string[]; input: string | undefined }[] = [];
@@ -298,6 +477,17 @@ suite('reasonOf', () => {
         'C:\\archives\\a.7z',
       ),
       'Cannot open encrypted archive. Wrong password?',
+    );
+    assert.strictEqual(
+      reasonOf(
+        {
+          code: 2,
+          output: '',
+          errors: '\r\n\r\nSystem ERROR:\r\nThe parameter is incorrect.\r\n',
+        },
+        'a.zip',
+      ),
+      'The parameter is incorrect.',
     );
     assert.strictEqual(
       reasonOf({ code: 255, output: '', errors: '' }, 'a.zip'),

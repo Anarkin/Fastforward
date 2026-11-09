@@ -5,6 +5,7 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   Archives,
   filesUnder,
+  type PackPlan,
 } from '../../../../tools/commander/main/archives';
 import {
   sevenZipAt,
@@ -132,6 +133,121 @@ suite('7-Zip', () => {
     assert.strictEqual(
       fs.readFileSync(path.join(into, 'top.txt'), 'utf8'),
       'top.txt',
+    );
+  });
+
+  const packedAs = (name: string, planned: Partial<PackPlan> = {}) => {
+    const archive = path.join(folder, name);
+    return reader.pack(
+      {
+        folder: content,
+        items: ['docs', 'top.txt'],
+        archive,
+        format: 'zip',
+        level: 'normal',
+        ...planned,
+      },
+      archive,
+    );
+  };
+
+  test('packs the items of a folder into a zip keeping their folders, encrypting its files with AES-256 by the password given, which 7-Zip takes in ASCII alone for a zip', async () => {
+    assert.deepStrictEqual(await packedAs('a.zip', { password: 'secret' }), {
+      kind: 'packed',
+    });
+    assert.deepStrictEqual(await packedAs('b.zip', { password: 'pässwörd' }), {
+      kind: 'refused',
+      reason: 'The parameter is incorrect.',
+    });
+    const listing = await reader.list(
+      path.join(folder, 'a.zip'),
+      undefined,
+      'secret',
+    );
+    assert.ok(listing.kind === 'listed');
+    assert.deepStrictEqual(
+      listing.items.map((item) => [item.path, item.encrypted]).toSorted(byText),
+      [
+        ['docs', false],
+        ['docs/readme.md', true],
+        ['top.txt', true],
+      ],
+    );
+  });
+
+  test('packs a 7z whose names need the password, and a compressed tar holding the tar of the items', async () => {
+    await packedAs('a.7z', {
+      format: '7z',
+      level: 'ultra',
+      password: 'secret',
+      encryptNames: true,
+    });
+    const locked = await reader.list(path.join(folder, 'a.7z'));
+    assert.ok(locked.kind === 'refused' && locked.needsPassword === true);
+
+    for (const format of ['tar.gz', 'tar.xz'] as const) {
+      const name = `a.${format}`;
+      assert.deepStrictEqual(await packedAs(name, { format }), {
+        kind: 'packed',
+      });
+      const listing = await reader.list(path.join(folder, name));
+      assert.deepStrictEqual(
+        listing.kind === 'listed' && listing.items.map((item) => item.path),
+        ['a.tar'],
+        format,
+      );
+    }
+  });
+
+  test('packs volumes under a name of their own and puts them in place of an older set, removing its parts beyond the new ones, nothing else left beside them', async () => {
+    made('big.txt', 'x'.repeat(250_000));
+    for (const part of ['001', '002', '003', '004']) {
+      fs.writeFileSync(path.join(folder, `v.zip.${part}`), 'old');
+    }
+    const archives = new Archives(reader, process.platform, workFolder);
+    assert.deepStrictEqual(
+      await archives.pack({
+        folder: content,
+        items: ['big.txt'],
+        archive: path.join(folder, 'v.zip'),
+        format: 'zip',
+        level: 'store',
+        volumeBytes: 100_000,
+      }),
+      { kind: 'packed' },
+    );
+    assert.deepStrictEqual(
+      fs
+        .readdirSync(folder)
+        .filter((name) => name !== 'content')
+        .toSorted(byText),
+      ['v.zip.001', 'v.zip.002', 'v.zip.003'],
+    );
+    const listing = await reader.list(path.join(folder, 'v.zip.001'));
+    assert.deepStrictEqual(
+      listing.kind === 'listed' && listing.items.map((item) => item.path),
+      ['big.txt'],
+    );
+  });
+
+  test('cuts an archive into volumes of the size asked, listed together from the first', async () => {
+    made('big.txt', 'x'.repeat(250_000));
+    await packedAs('v.zip', {
+      items: ['big.txt'],
+      level: 'store',
+      volumeBytes: 100_000,
+    });
+    assert.deepStrictEqual(
+      fs
+        .readdirSync(folder)
+        .filter((name) => name.startsWith('v.zip'))
+        .toSorted(byText),
+      ['v.zip.001', 'v.zip.002', 'v.zip.003'],
+    );
+    const listing = await reader.list(path.join(folder, 'v.zip.001'));
+    assert.deepStrictEqual(
+      listing.kind === 'listed' && listing.items.map((item) => item.path),
+      ['big.txt'],
     );
   });
 

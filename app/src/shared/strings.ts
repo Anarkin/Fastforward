@@ -270,6 +270,8 @@ export const strings = {
     dialogButton: 'Move between the buttons of a dialog',
     newFolder: 'Make a folder in the folder of the side',
     renameItem: 'Rename the selected file or folder',
+    packItems:
+      'Pack the marked items, or the selected one, into an archive in the folder of the other side',
     copyToClipboard:
       'Put the marked items, or the selected one, on the clipboard, to paste them here or into another app',
     pasteFiles: 'Copy the files on the clipboard into the folder of the side',
@@ -558,6 +560,8 @@ export const strings = {
     passwordLabel: 'Password',
     passwordOpen: 'Open',
     noPassword: 'No password is typed.',
+    zipPasswordAscii:
+      "A zip's password can hold only the letters, digits and signs of English, as 7-Zip writes no other into a zip.",
     couldNotExtract: (reason: string) =>
       `Nothing could be taken out of the archive: ${reason}`,
     sevenZipEnded: (code: number | null) =>
@@ -643,10 +647,60 @@ export const strings = {
       `"${name}" could not be renamed: ${reason}`,
     renameAsAdministrator:
       "Items can't be renamed yet in a folder read as administrator.",
+    packAsAdministrator:
+      "Items can't be packed yet in a folder read as administrator.",
     intoItself: (name: string) =>
       `${name} can't go into itself or a folder in it.`,
     transferAsAdministrator:
       "Items can't be copied or moved yet in a folder read as administrator.",
+    packTitle: 'Pack',
+    packWhat: (what: string) => `Pack ${what} into`,
+    packArchive: 'Archive',
+    packFormat: 'Format',
+    packFormats: {
+      zip: 'zip',
+      '7z': '7z',
+      tar: 'tar',
+      'tar.gz': 'tar.gz',
+      'tar.xz': 'tar.xz',
+    },
+    packLevel: 'Compression',
+    packLevels: {
+      store: 'Store',
+      fastest: 'Fastest',
+      normal: 'Normal',
+      maximum: 'Maximum',
+      ultra: 'Ultra',
+    },
+    packPassword: 'Password',
+    showPassword: 'Show',
+    encryptNames: 'Encrypt the names too',
+    zipCipher: 'Encryption',
+    zipCiphers: { aes256: 'AES-256', zipCrypto: 'ZipCrypto' },
+    zipCipherNote:
+      'AES-256 is strong, but the zip support of older Windows cannot open it; ZipCrypto opens everywhere, but is weak.',
+    splitVolumes: 'Split into volumes',
+    volumeSize: 'Size of a volume',
+    volumeUnread: 'Type the size of a volume, as 100 MB.',
+    volumeSmall: 'A volume holds at least 64 KB.',
+    noArchive: 'Type the path of the archive.',
+    archiveThere: (name: string) =>
+      `"${name}" is there already; packing replaces it.`,
+    packConfirm: 'Pack',
+    archiveName: 'archive',
+    volumeCd: '700 MB, a CD',
+    volumeFat32: '4092 MB, the largest file FAT32 holds',
+    volumeDvd: '4480 MB, a DVD',
+    packingInto: (what: string, archive: string) =>
+      `Packing ${what} into "${archive}"`,
+    packed: (what: string, archive: string) =>
+      `Packed ${what} into "${archive}"`,
+    packFailed: (name: string, reason: string) =>
+      `"${name}" could not be packed: ${reason}`,
+    packedWithout: (name: string, reason: string) =>
+      `"${name}" was packed without some of the files: ${reason}`,
+    packingStopped: (archive: string) =>
+      `Packing into "${archive}" stopped unexpectedly.`,
     copyingStopped: (target: string) =>
       `Copying to "${target}" stopped unexpectedly.`,
     movingStopped: (target: string) =>

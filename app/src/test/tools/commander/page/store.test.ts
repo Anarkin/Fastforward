@@ -776,6 +776,70 @@ suite('Commander store', () => {
     );
   });
 
+  test('asks how to pack the items of a side into the folder of the other side, its own while the other is in an archive, packing them once told and remembering the choices but no password, and nothing once cancelled or the side shows another folder', () => {
+    const { posted, store } = shown();
+    const actions = store.getState();
+    actions.askPack('left', ['a.txt']);
+    assert.deepStrictEqual(store.getState().packing, {
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+      names: ['a.txt'],
+      target: left.folder,
+    });
+    store.getState().receive({ ...listing('D:\\backup'), side: 'right' });
+    actions.askPack('left', ['a.txt', 'docs']);
+    assert.strictEqual(store.getState().packing?.target, 'D:\\backup');
+    actions.pack({
+      archive: 'D:\\backup\\code.7z',
+      format: '7z',
+      level: 'ultra',
+      password: 'secret',
+      encryptNames: true,
+      volume: '700 MB',
+      volumeBytes: 734_003_200,
+    });
+    assert.strictEqual(store.getState().packing, undefined);
+    assert.deepStrictEqual(store.getState().packChoices, {
+      format: '7z',
+      level: 'ultra',
+      zipCipher: 'aes256',
+      volume: '700 MB',
+    });
+    actions.askPack('left', ['a.txt']);
+    actions.cancelPack();
+    actions.askPack('left', ['a.txt']);
+    store.getState().receive(listing(`${left.folder}\\sub`));
+    assert.strictEqual(store.getState().packing, undefined);
+    store.getState().receive({
+      ...listing('D:\\a.zip'),
+      side: 'right',
+      archive: 'D:\\a.zip',
+    });
+    store.getState().receive(listing(left.folder));
+    actions.askPack('left', ['a.txt']);
+    assert.strictEqual(store.getState().packing?.target, left.folder);
+
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'pack'),
+      [
+        {
+          type: 'pack',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          names: ['a.txt', 'docs'],
+          archive: 'D:\\backup\\code.7z',
+          format: '7z',
+          level: 'ultra',
+          password: 'secret',
+          encryptNames: true,
+          volumeBytes: 734_003_200,
+        },
+      ],
+    );
+  });
+
   test('reads a folder it may not as administrator once asked, forgetting the question either way', () => {
     const { posted, store } = shown();
     const noAccess = {
@@ -1099,6 +1163,7 @@ suite('The commander store in archives', () => {
     actions.askTransfer('right', ['b.txt'], true);
     actions.askNewFolder('left');
     actions.askRename('left', 'a.txt');
+    actions.askPack('left', ['a.txt']);
     actions.paste('left');
     actions.drag('left', ['a.txt']);
     actions.openRepository('left', 'docs');
@@ -1112,10 +1177,11 @@ suite('The commander store in archives', () => {
     actions.flat('left');
     actions.enterArchive('right', 'b.zip');
 
-    const { deleting, transferring, makingFolder, renaming } = store.getState();
+    const { deleting, transferring, makingFolder, renaming, packing } =
+      store.getState();
     assert.deepStrictEqual(
-      [deleting, transferring, makingFolder, renaming],
-      [undefined, undefined, undefined, undefined],
+      [deleting, transferring, makingFolder, renaming, packing],
+      [undefined, undefined, undefined, undefined, undefined],
     );
     actions.askTransfer('left', ['a.txt'], false);
     assert.deepStrictEqual(store.getState().transferring, {

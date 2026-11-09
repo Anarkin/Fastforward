@@ -29,6 +29,7 @@ export interface TransferProgress {
 export interface TransferView {
   readonly id: number;
   readonly move: boolean;
+  readonly packing?: true;
   readonly items: number;
   readonly name?: string;
   readonly target: string;

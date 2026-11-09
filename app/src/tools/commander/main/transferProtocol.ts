@@ -10,6 +10,7 @@ export type TransferEvent =
   | { readonly type: 'progress'; readonly progress: TransferProgress }
   | { readonly type: 'clash'; readonly clash: Clash }
   | { readonly type: 'failed'; readonly name: string; readonly reason: string }
+  | { readonly type: 'warned'; readonly reason: string }
   | {
       readonly type: 'done';
       readonly stopped: boolean;

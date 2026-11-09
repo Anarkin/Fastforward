@@ -634,3 +634,54 @@
   outline: 1px solid var(--color-focus);
   outline-offset: -1px;
 }
+
+.pack-popup {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.pack-fields {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.pack-wide {
+  grid-column: 1 / -1;
+}
+
+.pack-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pack-choice[aria-checked='true'] {
+  color: var(--color-focus-foreground);
+  background: var(--color-focus);
+}
+
+.pack-password,
+.pack-volume {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pack-password .prompt-input,
+.pack-volume .prompt-input {
+  flex: 1;
+  min-width: 8em;
+}
+
+.pack-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pack-note {
+  color: var(--muted-foreground);
+}

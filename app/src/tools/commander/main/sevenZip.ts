@@ -1,7 +1,8 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../shared/strings';
+import type { PackLevel } from '../shared/packing';
 import type {
   ArchiveItem,
   ArchiveListing,
@@ -9,6 +10,9 @@ import type {
   ArchiveRefusal,
   ExtractOptions,
   ExtractProgress,
+  PackOptions,
+  PackPlan,
+  Packing,
 } from './archives';
 
 export interface SevenZipRun {
@@ -21,6 +25,8 @@ interface SevenZipOptions {
   readonly signal?: AbortSignal;
   readonly onOutput?: (text: string) => void;
   readonly input?: string;
+  readonly cwd?: string;
+  readonly pipeInto?: readonly string[];
 }
 
 export type SevenZip = (
@@ -50,29 +56,60 @@ function decoded(chunks: readonly Buffer[]): string {
   return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
+function ended(child: ChildProcessWithoutNullStreams): Promise<number | null> {
+  return new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', resolve);
+  });
+}
+
 export function sevenZipAt(program: string): SevenZip {
-  return (args, { signal, onOutput, input } = {}) =>
-    new Promise((resolve, reject) => {
-      const child = spawn(program, args, {
+  return async (args, { signal, onOutput, input, cwd, pipeInto } = {}) => {
+    const started = (each: readonly string[]) =>
+      spawn(program, each, {
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
         ...(signal !== undefined && { signal }),
+        ...(cwd !== undefined && { cwd }),
       });
-      child.stdin.on('error', () => undefined);
-      child.stdin.end(input);
-      const output: Buffer[] = [];
-      const errors: Buffer[] = [];
-      const streamed = new TextDecoder();
-      child.stdout.on('data', (chunk: Buffer) => {
-        output.push(chunk);
-        onOutput?.(streamed.decode(chunk, { stream: true }));
-      });
-      child.stderr.on('data', (chunk: Buffer) => errors.push(chunk));
-      child.once('error', reject);
-      child.once('close', (code) =>
-        resolve({ code, output: decoded(output), errors: decoded(errors) }),
-      );
+    const first = started(args);
+    const last = pipeInto === undefined ? first : started(pipeInto);
+    first.stdin.on('error', () => undefined);
+    first.stdin.end(input);
+    last.stdin.on('error', () => undefined);
+    if (last !== first) {
+      first.stdout.pipe(last.stdin);
+    }
+    const output: Buffer[] = [];
+    const errors: Buffer[] = [];
+    const streamed = new TextDecoder();
+    const told = (chunk: Buffer) =>
+      onOutput?.(streamed.decode(chunk, { stream: true }));
+    last.stdout.on('data', (chunk: Buffer) => {
+      output.push(chunk);
+      if (last === first) {
+        told(chunk);
+      }
     });
+    first.stderr.on('data', (chunk: Buffer) => {
+      errors.push(chunk);
+      if (last !== first) {
+        told(chunk);
+      }
+    });
+    if (last !== first) {
+      last.stderr.on('data', (chunk: Buffer) => errors.push(chunk));
+    }
+    const [firstCode, lastCode] = await Promise.all([
+      ended(first),
+      last === first ? undefined : ended(last),
+    ]);
+    const code =
+      last === first || (firstCode !== 0 && firstCode !== 1)
+        ? firstCode
+        : (lastCode ?? null);
+    return { code, output: decoded(output), errors: decoded(errors) };
+  };
 }
 
 const noPrompt = '-p-';
@@ -81,7 +118,7 @@ const wrongPassword = /Wrong password/i;
 const itemsStart = '----------';
 const timePattern =
   /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)(?:\.(\d{1,3}))?/;
-const errorPattern = /^(?:Open )?ERROR: (.+)$/;
+const errorPattern = /^(?:Open |System )?ERROR:(?: (.+))?$/;
 
 function fieldsOf(block: readonly string[]): ReadonlyMap<string, string> {
   const fields = new Map<string, string>();
@@ -173,10 +210,11 @@ function listedUnder(lines: readonly string[]): string[] {
 export function reasonOf(run: SevenZipRun, file: string): string {
   const lines = `${run.errors}\n${run.output}`.split(/\r?\n/);
   const reasons = lines.flatMap((line, at) => {
-    const [, message] = errorPattern.exec(line.trim()) ?? [];
-    if (message === undefined) {
+    const found = errorPattern.exec(line.trim());
+    if (found === null) {
       return [];
     }
+    const [, message = file] = found;
     const named = message.indexOf(' : ');
     const reason =
       named >= 0 && slashed(message.slice(0, named)) === slashed(file)
@@ -316,6 +354,105 @@ async function extracted(
   }
 }
 
+const packLevels: Record<PackLevel, number> = {
+  store: 0,
+  fastest: 1,
+  normal: 5,
+  maximum: 7,
+  ultra: 9,
+};
+const packNames = ['-ssw', '-sccUTF-8', '-scsUTF-8', '-spd'];
+
+function tarNameOf(archive: string): string {
+  const bare = path.basename(archive).replace(/\.(?:gz|xz)$/i, '');
+  return /\.tar$/i.test(bare) ? bare : `${bare.replace(/\.t[gx]z$/i, '')}.tar`;
+}
+
+function packRun(
+  plan: PackPlan,
+  into: string,
+  progress: boolean,
+): { readonly args: readonly string[]; readonly pipeInto?: readonly string[] } {
+  const level = `-mx${packLevels[plan.level]}`;
+  const volumes =
+    plan.volumeBytes === undefined ? [] : [`-v${plan.volumeBytes}b`];
+  if (plan.format === 'tar.gz' || plan.format === 'tar.xz') {
+    return {
+      args: [
+        'a',
+        '-ttar',
+        '-so',
+        '-an',
+        ...packNames,
+        '-bso0',
+        progress ? '-bsp2' : '-bsp0',
+        '--',
+        ...plan.items,
+      ],
+      pipeInto: [
+        'a',
+        plan.format === 'tar.gz' ? '-tgzip' : '-txz',
+        level,
+        `-si${tarNameOf(plan.archive)}`,
+        ...volumes,
+        '-bso0',
+        '-bsp0',
+        '--',
+        into,
+      ],
+    };
+  }
+  const cipher =
+    plan.format === 'zip'
+      ? [`-mem=${plan.zipCipher === 'zipCrypto' ? 'ZipCrypto' : 'AES256'}`]
+      : plan.encryptNames === true
+        ? ['-mhe=on']
+        : [];
+  return {
+    args: [
+      'a',
+      `-t${plan.format}`,
+      ...(plan.format === 'tar' ? [] : [level]),
+      ...(passwordUsed(plan) ? ['-p', ...cipher] : []),
+      ...volumes,
+      ...packNames,
+      ...(progress ? ['-bso0', '-bsp1'] : []),
+      '--',
+      into,
+      ...plan.items,
+    ],
+  };
+}
+
+function passwordUsed(plan: PackPlan): boolean {
+  return (
+    plan.password !== undefined &&
+    (plan.format === 'zip' || plan.format === '7z')
+  );
+}
+
+async function packed(
+  sevenZip: SevenZip,
+  plan: PackPlan,
+  into: string,
+  { signal, onProgress }: PackOptions = {},
+): Promise<Packing> {
+  const { args, pipeInto } = packRun(plan, into, onProgress !== undefined);
+  const run = await sevenZip(args, {
+    cwd: plan.folder,
+    ...(signal !== undefined && { signal }),
+    ...(pipeInto !== undefined && { pipeInto }),
+    ...(passwordUsed(plan) && { input: `${plan.password}\n` }),
+    ...(onProgress !== undefined && { onOutput: progressed(onProgress) }),
+  });
+  if (run.code === 0) {
+    return { kind: 'packed' };
+  }
+  return run.code === 1
+    ? { kind: 'packed', warning: reasonOf(run, into) }
+    : { kind: 'refused', ...refusalOf(run, into) };
+}
+
 export function sevenZipReaderAt(program: string): ArchiveReader | undefined {
   return fs.existsSync(program)
     ? sevenZipReader(sevenZipAt(program))
@@ -327,5 +464,6 @@ export function sevenZipReader(sevenZip: SevenZip): ArchiveReader {
     list: (file, signal, password) => listed(sevenZip, file, signal, password),
     extract: (file, paths, into, options) =>
       extracted(sevenZip, file, paths, into, options),
+    pack: (plan, into, options) => packed(sevenZip, plan, into, options),
   };
 }

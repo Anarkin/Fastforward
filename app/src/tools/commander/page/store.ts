@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { baseNameOf } from './naming';
+import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
 import { strings } from '../../../shared/strings';
 import { maxDroppedIcons, type IconSource } from '../shared/icons';
 import type { PdfPlace } from '../../../shared/pdf';
@@ -68,6 +69,32 @@ interface Transferring {
   readonly move: boolean;
 }
 
+interface Packing {
+  readonly tab: string;
+  readonly side: Side;
+  readonly folder: string;
+  readonly names: readonly string[];
+  readonly target: string;
+}
+
+interface PackChoices {
+  readonly format: PackFormat;
+  readonly level: PackLevel;
+  readonly zipCipher: ZipCipher;
+  readonly volume: string | undefined;
+}
+
+interface PackAnswer {
+  readonly archive: string;
+  readonly format: PackFormat;
+  readonly level: PackLevel;
+  readonly password?: string;
+  readonly encryptNames?: boolean;
+  readonly zipCipher?: ZipCipher;
+  readonly volume?: string;
+  readonly volumeBytes?: number;
+}
+
 interface Renaming {
   readonly tab: string;
   readonly side: Side;
@@ -100,6 +127,8 @@ interface CommanderSource {
     | undefined;
   readonly makingFolder: MakingFolder | undefined;
   readonly renaming: Renaming | undefined;
+  readonly packing: Packing | undefined;
+  readonly packChoices: PackChoices;
   readonly noAccess: NoAccess | undefined;
   readonly resized:
     { readonly from: ColumnWidths; readonly widths: ColumnWidths } | undefined;
@@ -204,6 +233,9 @@ interface CommanderActions {
   readonly askRename: (side: Side, name: string) => void;
   readonly rename: (to: string) => void;
   readonly cancelRename: () => void;
+  readonly askPack: (side: Side, names: readonly string[]) => void;
+  readonly pack: (answer: PackAnswer) => void;
+  readonly cancelPack: () => void;
   readonly stopTransfer: () => void;
   readonly hideTransfer: () => void;
   readonly elevate: () => void;
@@ -240,6 +272,13 @@ const commanderDefaults: CommanderSource = {
   askingPassword: undefined,
   makingFolder: undefined,
   renaming: undefined,
+  packing: undefined,
+  packChoices: {
+    format: 'zip',
+    level: 'normal',
+    zipCipher: 'aes256',
+    volume: undefined,
+  },
   noAccess: undefined,
   resized: undefined,
   filters: new Map(),
@@ -625,6 +664,10 @@ export function createCommanderStore(
       if (renaming !== undefined && !stillShown(get().view, renaming)) {
         set({ renaming: undefined });
       }
+      const { packing } = get();
+      if (packing !== undefined && !stillShown(get().view, packing)) {
+        set({ packing: undefined });
+      }
       if (deleting !== undefined && !stillShown(get().view, deleting)) {
         set({ deleting: undefined });
       }
@@ -975,6 +1018,55 @@ export function createCommanderStore(
         }
       },
       cancelRename: () => set({ renaming: undefined }),
+      askPack: (side, names) =>
+        onDisk(side, (tab, folder) => {
+          const other = get().view.panes[otherSide(side)];
+          const target =
+            other !== undefined && other.archive === undefined
+              ? other.folder
+              : folder;
+          set({ packing: { tab, side, folder, names, target } });
+        }),
+      pack: ({
+        archive,
+        format,
+        level,
+        password,
+        encryptNames,
+        zipCipher,
+        volume,
+        volumeBytes,
+      }) => {
+        const { packing, packChoices } = get();
+        if (packing === undefined) {
+          return;
+        }
+        set({
+          packing: undefined,
+          packChoices: {
+            format,
+            level,
+            zipCipher: zipCipher ?? packChoices.zipCipher,
+            volume,
+          },
+        });
+        const { tab, side, folder, names } = packing;
+        post({
+          type: 'pack',
+          tab,
+          side,
+          folder,
+          names,
+          archive,
+          format,
+          level,
+          ...(password !== undefined && { password }),
+          ...(encryptNames !== undefined && { encryptNames }),
+          ...(zipCipher !== undefined && { zipCipher }),
+          ...(volumeBytes !== undefined && { volumeBytes }),
+        });
+      },
+      cancelPack: () => set({ packing: undefined }),
       answerClash: (answer, all) => {
         const { transfer } = get();
         if (transfer?.clash !== undefined) {

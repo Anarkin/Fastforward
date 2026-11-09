@@ -42,6 +42,7 @@ const archivesExtracting = (
   openInside: () => Promise.reject(new Error('not opened here')),
   usePassword: () => {},
   hasPassword: () => false,
+  pack: () => Promise.reject(new Error('Nothing is packed here.')),
   within: () => undefined,
   fileHolding: () => Promise.resolve(undefined),
   extract: (_archive, _paths, options) =>

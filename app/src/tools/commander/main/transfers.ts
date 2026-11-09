@@ -28,6 +28,7 @@ export interface TransferAsk {
   readonly plan: TransferPlan;
   readonly folder: string;
   readonly names: readonly string[];
+  readonly pack?: { readonly archive: string };
 }
 
 export interface TransfersHost {
@@ -40,6 +41,7 @@ interface Running {
   readonly id: number;
   readonly ask: TransferAsk;
   readonly failures: { readonly name: string; readonly reason: string }[];
+  readonly warnings: string[];
   connection: TransferConnection | undefined;
   hidden: boolean;
   stopping: boolean;
@@ -57,6 +59,9 @@ function failureNotice({ ask, failures }: Running): string | undefined {
   const [first] = failures;
   if (first === undefined) {
     return undefined;
+  }
+  if (ask.pack !== undefined) {
+    return strings.commander.packFailed(first.name, first.reason);
   }
   const { move } = ask.plan;
   if (failures.length === 1) {
@@ -92,6 +97,7 @@ export class Transfers {
       id: ++this.ids,
       ask,
       failures: [],
+      warnings: [],
       connection: undefined,
       hidden: false,
       stopping: false,
@@ -180,6 +186,9 @@ export class Transfers {
       case 'failed':
         running.failures.push({ name: event.name, reason: event.reason });
         return;
+      case 'warned':
+        running.warnings.push(event.reason);
+        return;
       case 'done':
         this.end(
           running,
@@ -206,6 +215,11 @@ export class Transfers {
     if (failed !== undefined) {
       this.host.notice({ level: 'error', message: failed });
     }
+    const { pack } = running.ask;
+    if (pack !== undefined) {
+      this.packEnded(running, how, pack.archive);
+      return;
+    }
     if (how === 'broke') {
       this.host.notice({
         level: 'error',
@@ -220,6 +234,39 @@ export class Transfers {
         message: move
           ? strings.commander.moved(what, target)
           : strings.commander.copied(what, target),
+      });
+    }
+    this.host.finished(running.ask);
+    this.show();
+  }
+
+  private packEnded(
+    running: Running,
+    how: 'done' | 'stopped' | 'broke',
+    archive: string,
+  ): void {
+    if (running.warnings.length > 0) {
+      this.host.notice({
+        level: 'error',
+        message: strings.commander.packedWithout(
+          path.basename(archive),
+          running.warnings.join(' '),
+        ),
+      });
+    }
+    if (how === 'broke') {
+      this.host.notice({
+        level: 'error',
+        message: strings.commander.packingStopped(archive),
+      });
+    } else if (
+      how === 'done' &&
+      running.hidden &&
+      running.failures.length === 0
+    ) {
+      this.host.notice({
+        level: 'info',
+        message: strings.commander.packed(whatOf(running.ask), archive),
       });
     }
     this.host.finished(running.ask);
@@ -244,9 +291,10 @@ export class Transfers {
     return {
       id: running.id,
       move: ask.plan.move,
+      ...(ask.pack !== undefined && { packing: true }),
       items: ask.names.length,
       ...(ask.names.length === 1 && { name: path.basename(ask.names[0]) }),
-      target: ask.plan.target,
+      target: ask.pack?.archive ?? ask.plan.target,
       ...(progress !== undefined && { progress }),
       ...(clash !== undefined && { clash }),
       stopping: running.stopping,
