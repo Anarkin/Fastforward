@@ -995,7 +995,7 @@ export function createCommanderStore(
           post({ type: 'paste', tab, side, folder }),
         ),
       askNewFolder: (side) =>
-        onDisk(side, (tab, folder) =>
+        onPane(side, (tab, folder) =>
           set({ makingFolder: { tab, side, folder } }),
         ),
       makeFolder: (name) => {
@@ -1007,7 +1007,7 @@ export function createCommanderStore(
       },
       cancelNewFolder: () => set({ makingFolder: undefined }),
       askRename: (side, name) =>
-        onDisk(side, (tab, folder) =>
+        onPane(side, (tab, folder) =>
           set({ renaming: { tab, side, folder, name } }),
         ),
       rename: (to) => {

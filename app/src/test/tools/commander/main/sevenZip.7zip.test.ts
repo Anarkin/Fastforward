@@ -265,6 +265,35 @@ suite('7-Zip', () => {
     );
   });
 
+  test('renames a folder of a zip with all in it, and makes an empty folder in it', async () => {
+    const zip = await packed('r.zip');
+    const archives = new Archives(reader, process.platform, workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+    assert.deepStrictEqual(
+      await archives.rename(opened.archive, 'docs', 'notes'),
+      { kind: 'packed' },
+    );
+    assert.deepStrictEqual(
+      await archives.addFolder(opened.archive, ['notes'], 'fresh'),
+      { kind: 'packed' },
+    );
+    const listing = await reader.list(zip);
+    assert.deepStrictEqual(
+      listing.kind === 'listed' &&
+        listing.items.map((item) => [item.path, item.folder]).toSorted(byText),
+      [
+        ['notes', true],
+        ['notes/fresh', true],
+        ['notes/readme.md', false],
+        ['src', true],
+        ['src/app', true],
+        ['src/app/main.ts', false],
+        ['top.txt', false],
+      ],
+    );
+  });
+
   test('cuts an archive into volumes of the size asked, listed together from the first', async () => {
     made('big.txt', 'x'.repeat(250_000));
     await packedAs('v.zip', {

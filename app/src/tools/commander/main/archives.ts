@@ -65,9 +65,12 @@ export interface PackOptions {
   }) => void;
 }
 
-export interface RemoveOptions extends PackOptions {
-  readonly listIn: string;
+export interface UpdateOptions extends PackOptions {
   readonly password?: string;
+}
+
+export interface RemoveOptions extends UpdateOptions {
+  readonly listIn: string;
 }
 
 export type Packing =
@@ -91,6 +94,18 @@ export interface ArchiveReader {
     file: string,
     paths: readonly string[],
     options: RemoveOptions,
+  ): Promise<Packing>;
+  rename(
+    file: string,
+    from: string,
+    to: string,
+    options: UpdateOptions,
+  ): Promise<Packing>;
+  add(
+    file: string,
+    folder: string,
+    items: readonly string[],
+    options: UpdateOptions,
   ): Promise<Packing>;
 }
 
@@ -255,6 +270,18 @@ export interface ArchiveAccess {
   remove(
     archive: OpenedArchive,
     paths: readonly string[],
+    options?: PackOptions,
+  ): Promise<Packing>;
+  rename(
+    archive: OpenedArchive,
+    from: string,
+    to: string,
+    options?: PackOptions,
+  ): Promise<Packing>;
+  addFolder(
+    archive: OpenedArchive,
+    inner: readonly string[],
+    name: string,
     options?: PackOptions,
   ): Promise<Packing>;
 }
@@ -563,10 +590,65 @@ export class Archives implements ArchiveAccess {
       : packInto(this.reader, plan, options);
   }
 
-  async remove(
+  remove(
     archive: OpenedArchive,
     paths: readonly string[],
     options: PackOptions = {},
+  ): Promise<Packing> {
+    return this.updating(archive, async (reader, password) => {
+      const listIn = await this.workFolder();
+      try {
+        return await reader.remove(archive.file, paths, {
+          ...options,
+          ...password,
+          listIn,
+        });
+      } finally {
+        await removed(listIn);
+      }
+    });
+  }
+
+  rename(
+    archive: OpenedArchive,
+    from: string,
+    to: string,
+    options: PackOptions = {},
+  ): Promise<Packing> {
+    return this.updating(archive, (reader, password) =>
+      reader.rename(archive.file, from, to, { ...options, ...password }),
+    );
+  }
+
+  addFolder(
+    archive: OpenedArchive,
+    inner: readonly string[],
+    name: string,
+    options: PackOptions = {},
+  ): Promise<Packing> {
+    return this.updating(archive, async (reader, password) => {
+      const staged = await this.workFolder();
+      const made = [...inner, name];
+      try {
+        await fs.promises.mkdir(path.join(staged, ...made), {
+          recursive: true,
+        });
+        return await reader.add(archive.file, staged, [made.join('/')], {
+          ...options,
+          ...password,
+        });
+      } finally {
+        await removed(staged);
+      }
+    });
+  }
+
+  private async updating(
+    archive: OpenedArchive,
+    run: (
+      reader: ArchiveReader,
+      password: { readonly password?: string },
+    ) => Promise<Packing>,
   ): Promise<Packing> {
     const { reader } = this;
     if (reader === undefined) {
@@ -580,14 +662,9 @@ export class Archives implements ArchiveAccess {
         ),
       };
     }
-    const listIn = await this.workFolder();
     const before = new Set(await temporariesOf(archive.file));
     try {
-      return await reader.remove(archive.file, paths, {
-        ...options,
-        ...this.passwordOf(archive.file),
-        listIn,
-      });
+      return await run(reader, this.passwordOf(archive.file));
     } catch (error) {
       for (const left of await temporariesOf(archive.file)) {
         if (!before.has(left)) {
@@ -595,8 +672,6 @@ export class Archives implements ArchiveAccess {
         }
       }
       throw error;
-    } finally {
-      await removed(listIn);
     }
   }
 

@@ -708,6 +708,22 @@ export const strings = {
       `Nothing could be deleted from "${name}": ${reason}`,
     deletingStopped: (archive: string) =>
       `Deleting from "${archive}" stopped unexpectedly.`,
+    renamingIn: (what: string, archive: string) =>
+      `Renaming ${what} in "${archive}"`,
+    renamedIn: (what: string, archive: string) =>
+      `Renamed ${what} in "${archive}"`,
+    renameInFailed: (name: string, reason: string) =>
+      `Nothing could be renamed in "${name}": ${reason}`,
+    renamingStopped: (archive: string) =>
+      `Renaming in "${archive}" stopped unexpectedly.`,
+    makingFolderIn: (what: string, archive: string) =>
+      `Making the folder ${what} in "${archive}"`,
+    madeFolderIn: (what: string, archive: string) =>
+      `Made the folder ${what} in "${archive}"`,
+    folderInFailed: (name: string, reason: string) =>
+      `No folder could be made in "${name}": ${reason}`,
+    makingFolderStopped: (archive: string) =>
+      `Making a folder in "${archive}" stopped unexpectedly.`,
     deleteFromArchiveQuestion: (what: string, archive: string) =>
       `Delete ${what} from "${archive}" permanently? This cannot be undone.`,
     archiveUnchangeable: (name: string) =>

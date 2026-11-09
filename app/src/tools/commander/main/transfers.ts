@@ -29,7 +29,11 @@ export interface TransferAsk {
   readonly plan: TransferPlan;
   readonly folder: string;
   readonly names: readonly string[];
-  readonly archive?: { readonly job: ArchiveJob; readonly file: string };
+  readonly archive?: {
+    readonly job: ArchiveJob;
+    readonly file: string;
+    readonly select?: string;
+  };
 }
 
 export interface TransfersHost {
@@ -75,6 +79,16 @@ const archiveSentences: Readonly<
     failed: strings.commander.deleteFromFailed,
     done: strings.commander.deletedFrom,
     stopped: strings.commander.deletingStopped,
+  },
+  rename: {
+    failed: strings.commander.renameInFailed,
+    done: strings.commander.renamedIn,
+    stopped: strings.commander.renamingStopped,
+  },
+  folder: {
+    failed: strings.commander.folderInFailed,
+    done: strings.commander.madeFolderIn,
+    stopped: strings.commander.makingFolderStopped,
   },
 };
 

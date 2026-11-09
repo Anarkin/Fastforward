@@ -46,6 +46,8 @@ suite('packInto', () => {
     list: () => Promise.reject(new Error('Nothing is listed here.')),
     extract: () => Promise.reject(new Error('Nothing is taken out here.')),
     remove: () => Promise.reject(new Error('Nothing is deleted here.')),
+    rename: () => Promise.reject(new Error('Nothing is renamed here.')),
+    add: () => Promise.reject(new Error('Nothing is added here.')),
     pack: async (_plan, into) => {
       for (const part of parts) {
         fs.writeFileSync(`${into}${part}`, `new${part}`);

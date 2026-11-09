@@ -84,6 +84,44 @@ function ClashBody({ clash, move }: { clash: Clash; move: boolean }) {
   );
 }
 
+const archiveJobs = {
+  pack: {
+    title: strings.commander.packTitle,
+    running: strings.commander.packingInto,
+  },
+  delete: {
+    title: strings.commander.deletePermanentlyTitle,
+    running: strings.commander.deletingFrom,
+  },
+  rename: {
+    title: strings.commander.renameTitle,
+    running: strings.commander.renamingIn,
+  },
+  folder: {
+    title: strings.commander.newFolderTitle,
+    running: strings.commander.makingFolderIn,
+  },
+};
+
+function runningSentence(
+  transfer: TransferView,
+): (what: string, target: string) => string {
+  const { commander } = strings;
+  if (transfer.archiveJob !== undefined) {
+    return archiveJobs[transfer.archiveJob].running;
+  }
+  return transfer.move ? commander.moving : commander.copying;
+}
+
+function titleOf(transfer: TransferView): string {
+  if (transfer.archiveJob !== undefined) {
+    return archiveJobs[transfer.archiveJob].title;
+  }
+  return transfer.move
+    ? strings.commander.moveTitle
+    : strings.commander.copyTitle;
+}
+
 function ProgressBody({ transfer }: { transfer: TransferView }) {
   const { stopTransfer } = useCommanderActions();
   const { commander } = strings;
@@ -95,13 +133,7 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
     <div className="confirm-body transfer-body">
       <div className="transfer-running">
         <span title={transfer.target}>
-          {(transfer.archiveJob === 'pack'
-            ? commander.packingInto
-            : transfer.archiveJob === 'delete'
-              ? commander.deletingFrom
-              : transfer.move
-                ? commander.moving
-                : commander.copying)(
+          {runningSentence(transfer)(
             whatOf(transfer.items, transfer.name),
             transfer.target,
           )}
@@ -119,16 +151,18 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
       >
         <div className="transfer-bar-done" style={{ width: `${done}%` }} />
       </div>
-      {progress !== undefined && transfer.archiveJob !== 'delete' && (
-        <div className="transfer-counts">
-          <span>
-            {commander.transferredFiles(progress.files, progress.totalFiles)}
-          </span>
-          <span>
-            {commander.transferredBytes(progress.bytes, progress.totalBytes)}
-          </span>
-        </div>
-      )}
+      {progress !== undefined &&
+        (transfer.archiveJob === undefined ||
+          transfer.archiveJob === 'pack') && (
+          <div className="transfer-counts">
+            <span>
+              {commander.transferredFiles(progress.files, progress.totalFiles)}
+            </span>
+            <span>
+              {commander.transferredBytes(progress.bytes, progress.totalBytes)}
+            </span>
+          </div>
+        )}
       <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
         <button
           ref={stop}
@@ -156,14 +190,7 @@ function TransferDialog({ transfer }: { transfer: TransferView }) {
   useDismiss(popup, hideTransfer, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
-  const title =
-    transfer.archiveJob === 'pack'
-      ? strings.commander.packTitle
-      : transfer.archiveJob === 'delete'
-        ? strings.commander.deletePermanentlyTitle
-        : transfer.move
-          ? strings.commander.moveTitle
-          : strings.commander.copyTitle;
+  const title = titleOf(transfer);
   return (
     <div
       className="backdrop"

@@ -100,10 +100,13 @@ import {
   itemsAt,
   type ArchiveAccess,
   type OpenedArchive,
+  type PackOptions,
   type PackPlan,
+  type Packing,
   type Opening,
 } from './archives';
 import { unpackingFirst } from './unpacking';
+import type { ArchiveJob } from '../shared/transfers';
 import type { ElevatedFileSystem } from './elevated';
 import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
@@ -1421,11 +1424,8 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private deleteInArchive(
-    page: Page,
-    { pane }: ShownPane,
-    names: unknown,
-  ): void {
+  private deleteInArchive(page: Page, shown: ShownPane, names: unknown): void {
+    const { pane } = shown;
     if (
       !Array.isArray(names) ||
       names.length === 0 ||
@@ -1438,14 +1438,59 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     const { archives, archive, paths } = found;
-    const name = path.basename(archive.file);
-    if (archive.outer !== undefined || archive.source !== archive.file) {
+    if (this.changeable(page, archive)) {
+      this.archiveChange(shown, archive, names, 'delete', (options) =>
+        archives.remove(archive, paths, options),
+      );
+    }
+  }
+
+  private changeable(page: Page, archive: OpenedArchive): boolean {
+    if (archive.outer === undefined && archive.source === archive.file) {
+      return true;
+    }
+    this.shell.notice(page, {
+      level: 'error',
+      message: strings.commander.archiveUnchangeable(
+        path.basename(archive.file),
+      ),
+    });
+    return false;
+  }
+
+  private takenIn(
+    page: Page,
+    archive: OpenedArchive,
+    inner: readonly string[],
+    name: string,
+    except?: string,
+  ): boolean {
+    const key = (each: string) => folderKey(each, this.access.platform);
+    const taken =
+      archive.tree
+        .entries(inner)
+        ?.some(
+          (entry) =>
+            key(entry.name) === key(name) &&
+            (except === undefined || key(entry.name) !== key(except)),
+        ) === true;
+    if (taken) {
       this.shell.notice(page, {
         level: 'error',
-        message: strings.commander.archiveUnchangeable(name),
+        message: strings.commander.nameTaken(name),
       });
-      return;
     }
+    return taken;
+  }
+
+  private archiveChange(
+    shown: ShownPane,
+    archive: OpenedArchive,
+    names: readonly string[],
+    job: ArchiveJob,
+    run: (options: PackOptions) => Promise<Packing>,
+    select?: string,
+  ): void {
     this.transfers.start(
       {
         plan: {
@@ -1453,11 +1498,87 @@ export class CommanderTool implements Tool<'commander'> {
           target: path.dirname(archive.file),
           move: false,
         },
-        folder: pane.folder,
+        folder: shown.pane.folder,
         names,
-        archive: { job: 'delete', file: archive.file },
+        archive: {
+          job,
+          file: archive.file,
+          ...(select !== undefined &&
+            shown.pane.flat === undefined && { select }),
+        },
       },
-      archiveJob(name, (options) => archives.remove(archive, paths, options)),
+      archiveJob(path.basename(archive.file), run),
+    );
+  }
+
+  private renameInArchive(
+    page: Page,
+    shown: ShownPane,
+    name: unknown,
+    to: unknown,
+  ): void {
+    const { pane } = shown;
+    if (
+      typeof name !== 'string' ||
+      listedIn(pane, name) === undefined ||
+      typeof to !== 'string' ||
+      to !== path.basename(to) ||
+      nameProblem(to, this.access.platform) !== undefined
+    ) {
+      return;
+    }
+    const found = this.archiveItems(pane, [name]);
+    const [from] = found?.paths ?? [];
+    if (found === undefined || from === undefined) {
+      return;
+    }
+    const { archives, archive } = found;
+    const parts = name.split(path.sep);
+    const inner = [...found.inner, ...parts.slice(0, -1)];
+    if (
+      !this.changeable(page, archive) ||
+      this.takenIn(page, archive, inner, to, parts.at(-1))
+    ) {
+      return;
+    }
+    const slash = from.lastIndexOf('/');
+    const renamed = slash < 0 ? to : `${from.slice(0, slash)}/${to}`;
+    this.archiveChange(
+      shown,
+      archive,
+      [name],
+      'rename',
+      (options) => archives.rename(archive, from, renamed, options),
+      to,
+    );
+  }
+
+  private folderInArchive(page: Page, shown: ShownPane, name: unknown): void {
+    const { archives } = this.access;
+    const inside = archives?.within(shown.pane.folder);
+    if (
+      archives === undefined ||
+      inside === undefined ||
+      typeof name !== 'string' ||
+      name !== path.basename(name) ||
+      nameProblem(name, this.access.platform) !== undefined
+    ) {
+      return;
+    }
+    const { archive, inner } = inside;
+    if (
+      !this.changeable(page, archive) ||
+      this.takenIn(page, archive, inner, name)
+    ) {
+      return;
+    }
+    this.archiveChange(
+      shown,
+      archive,
+      [name],
+      'folder',
+      (options) => archives.addFolder(archive, inner, name, options),
+      name,
     );
   }
 
@@ -1688,6 +1809,11 @@ export class CommanderTool implements Tool<'commander'> {
       name,
     }: Extract<CommanderToHost, { type: 'newFolder' }>,
   ): Promise<void> {
+    const inArchive = this.namingPane(page, tab, side, folder);
+    if (inArchive?.pane.archive !== undefined) {
+      this.folderInArchive(page, inArchive, name);
+      return;
+    }
     const shown = this.diskPane(page, tab, side, folder);
     const { makeFolder } = this.access;
     if (
@@ -1832,6 +1958,11 @@ export class CommanderTool implements Tool<'commander'> {
       to,
     }: Extract<CommanderToHost, { type: 'rename' }>,
   ): Promise<void> {
+    const inArchive = this.namingPane(page, tab, side, folder);
+    if (inArchive?.pane.archive !== undefined) {
+      this.renameInArchive(page, inArchive, name, to);
+      return;
+    }
     const shown = this.diskPane(page, tab, side, folder);
     const { renameItem } = this.access;
     if (
@@ -1904,7 +2035,15 @@ export class CommanderTool implements Tool<'commander'> {
       }
       if (pane.flat === undefined) {
         void this.shell.track(
-          this.list(shown.page, shown.tab, side, pane.folder, 'show'),
+          this.list(
+            shown.page,
+            shown.tab,
+            side,
+            pane.folder,
+            'show',
+            undefined,
+            key(pane.folder) === key(folder) ? archive.select : undefined,
+          ),
         );
       } else {
         pane.flat.tree.changedAll();

@@ -1150,6 +1150,27 @@ suite('The commander store in flat view', () => {
 });
 
 suite('The commander store in archives', () => {
+  test('asks for a new name and for the name of a new folder inside an archive too, sending them for the folder in it', () => {
+    const { posted, store } = shown();
+    store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
+    store.getState().askRename('left', 'a.txt');
+    store.getState().rename('b.txt');
+    store.getState().askNewFolder('left');
+    store.getState().makeFolder('fresh');
+    assert.deepStrictEqual(
+      posted
+        .filter(
+          (message) =>
+            message.type === 'rename' || message.type === 'newFolder',
+        )
+        .map((message) => [message.type, message.folder]),
+      [
+        ['rename', 'C:\\a.zip'],
+        ['newFolder', 'C:\\a.zip'],
+      ],
+    );
+  });
+
   test('asks before deleting items of a side inside an archive from it, always permanently, naming the archive, and deletes them once confirmed', () => {
     const { posted, store } = shown();
     store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
@@ -1188,8 +1209,6 @@ suite('The commander store in archives', () => {
     actions.askTransfer('left', ['a.txt'], true);
     actions.askTransfer('right', ['b.txt'], false);
     actions.askTransfer('right', ['b.txt'], true);
-    actions.askNewFolder('left');
-    actions.askRename('left', 'a.txt');
     actions.askPack('left', ['a.txt']);
     actions.paste('left');
     actions.drag('left', ['a.txt']);
@@ -1204,11 +1223,10 @@ suite('The commander store in archives', () => {
     actions.flat('left');
     actions.enterArchive('right', 'b.zip');
 
-    const { deleting, transferring, makingFolder, renaming, packing } =
-      store.getState();
+    const { deleting, transferring, packing } = store.getState();
     assert.deepStrictEqual(
-      [deleting, transferring, makingFolder, renaming, packing],
-      [undefined, undefined, undefined, undefined, undefined],
+      [deleting, transferring, packing],
+      [undefined, undefined, undefined],
     );
     actions.askTransfer('left', ['a.txt'], false);
     assert.deepStrictEqual(store.getState().transferring, {

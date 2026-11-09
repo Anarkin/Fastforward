@@ -224,6 +224,7 @@ function commander(
   const extracted: (readonly string[])[] = [];
   const packed: PackPlan[] = [];
   const removedFromArchives: (readonly [string, readonly string[]])[] = [];
+  const changedInArchives: unknown[] = [];
   const passwordRight = (archive: string) =>
     !secrets.has(archive) || passwords.get(archive) === secrets.get(archive);
   const archives: ArchiveAccess = {
@@ -241,6 +242,14 @@ function commander(
     },
     remove: (archive, paths) => {
       removedFromArchives.push([archive.file, paths]);
+      return Promise.resolve({ kind: 'packed' });
+    },
+    rename: (archive, from, to) => {
+      changedInArchives.push(['rename', archive.file, from, to]);
+      return Promise.resolve({ kind: 'packed' });
+    },
+    addFolder: (archive, inner, name) => {
+      changedInArchives.push(['folder', archive.file, inner, name]);
       return Promise.resolve({ kind: 'packed' });
     },
     extract: async (archive, paths, options) => {
@@ -675,6 +684,7 @@ function commander(
     extracted,
     packed,
     removedFromArchives,
+    changedInArchives,
   };
 }
 
@@ -5442,6 +5452,67 @@ suite('Commander tool in archives', () => {
         level: 'error',
         message: strings.commander.archiveUnchangeable('inner.zip'),
       },
+    ]);
+  });
+
+  test('renames an item of an archive and makes a folder in it in the dialog of copies, selecting it once read again, and refuses a name the folder of the archive has', async () => {
+    const { tool, page, send, archived, changedInArchives, notices } =
+      commander({ [root]: [file('a.zip')] });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    const archive = at('a.zip');
+    const selectedOnceListed = (name: string) =>
+      waitFor(
+        () => page.of('listing').at(-1)?.selected === name,
+        `${name} to be selected`,
+      );
+
+    await send({
+      type: 'rename',
+      tab: '1',
+      side: 'right',
+      folder: archive,
+      name: 'top.txt',
+      to: 'docs',
+    });
+    await send({
+      type: 'newFolder',
+      tab: '1',
+      side: 'right',
+      folder: archive,
+      name: 'top.txt',
+    });
+    await send({
+      type: 'rename',
+      tab: '1',
+      side: 'right',
+      folder: archive,
+      name: 'top.txt',
+      to: 'bottom.txt',
+    });
+    await selectedOnceListed('bottom.txt');
+    await send({
+      type: 'newFolder',
+      tab: '1',
+      side: 'right',
+      folder: archive,
+      name: 'fresh',
+    });
+    await selectedOnceListed('fresh');
+
+    assert.deepStrictEqual(changedInArchives, [
+      ['rename', at('a.zip'), 'top.txt', 'bottom.txt'],
+      ['folder', at('a.zip'), [], 'fresh'],
+    ]);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.nameTaken('docs') },
+      { level: 'error', message: strings.commander.nameTaken('top.txt') },
     ]);
   });
 

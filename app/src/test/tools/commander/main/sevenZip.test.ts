@@ -478,6 +478,84 @@ suite('deleting with 7-Zip', () => {
   });
 });
 
+const askedBy = async (
+  change: (reader: ReturnType<typeof sevenZipReader>) => Promise<unknown>,
+) => {
+  const asked: Asked[] = [];
+  await change(
+    sevenZipReader((args, options) => {
+      asked.push({ args, ...options, onOutput: undefined });
+      return Promise.resolve({ code: 0, output: '', errors: '' });
+    }),
+  );
+  return asked;
+};
+
+suite('changing an archive with 7-Zip', () => {
+  test('renames an item of an archive by its path in it, the password on its input or none asked for', async () => {
+    assert.deepStrictEqual(
+      await askedBy((reader) =>
+        reader.rename('a.7z', 'docs/old.txt', 'docs/new.txt', {
+          password: 'secret',
+        }),
+      ),
+      [
+        {
+          args: [
+            'rn',
+            '-y',
+            '-spd',
+            '-sccUTF-8',
+            '-scsUTF-8',
+            '--',
+            'a.7z',
+            'docs/old.txt',
+            'docs/new.txt',
+          ],
+          input: 'secret\n',
+          onOutput: undefined,
+        },
+      ],
+    );
+    const [unlocked] = await askedBy((reader) =>
+      reader.rename('a.zip', 'a', 'b', {}),
+    );
+    assert.ok(unlocked?.args.includes('-p-'));
+  });
+
+  test('adds items from the folder they are in, so they keep their folders under it, setting no password unless one is given, as -p- would set the password -', async () => {
+    assert.deepStrictEqual(
+      await askedBy((reader) =>
+        reader.add('a.zip', 'stage', ['docs/fresh'], {}),
+      ),
+      [
+        {
+          args: [
+            'a',
+            '-y',
+            '-ssw',
+            '-sccUTF-8',
+            '-scsUTF-8',
+            '-spd',
+            '--',
+            'a.zip',
+            'docs/fresh',
+          ],
+          cwd: 'stage',
+          onOutput: undefined,
+        },
+      ],
+    );
+    const [locked] = await askedBy((reader) =>
+      reader.add('a.7z', 'stage', ['x'], { password: 'secret' }),
+    );
+    assert.deepStrictEqual(
+      [locked?.args.includes('-p'), locked?.input],
+      [true, 'secret\n'],
+    );
+  });
+});
+
 suite('the password of an archive', () => {
   test('gives 7-Zip a password on its input rather than among its arguments, where other programs could read it, and a refusal for a wrong one says a password is needed', async () => {
     const asked: { args: readonly string[]; input: string | undefined }[] = [];

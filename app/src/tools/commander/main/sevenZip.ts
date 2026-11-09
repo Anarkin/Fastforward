@@ -14,6 +14,7 @@ import type {
   PackPlan,
   Packing,
   RemoveOptions,
+  UpdateOptions,
 } from './archives';
 
 export interface SevenZipRun {
@@ -559,6 +560,76 @@ async function removed(
   }
 }
 
+function outcomeOf(run: SevenZipRun, file: string): Packing {
+  if (run.code === 0) {
+    return { kind: 'packed' };
+  }
+  return run.code === 1
+    ? { kind: 'packed', warning: warningOf(run, file) }
+    : { kind: 'refused', ...refusalOf(run, file) };
+}
+
+async function renamedIn(
+  sevenZip: SevenZip,
+  file: string,
+  from: string,
+  to: string,
+  { password, signal, ...told }: UpdateOptions,
+): Promise<Packing> {
+  const onOutput = packOutput(told, keptPattern);
+  const { switches, input } = passwordGiven(password);
+  const run = await sevenZip(
+    [
+      'rn',
+      '-y',
+      ...switches,
+      '-spd',
+      '-sccUTF-8',
+      '-scsUTF-8',
+      ...(onOutput === undefined ? [] : ['-bsp1']),
+      '--',
+      file,
+      from,
+      to,
+    ],
+    {
+      ...(signal !== undefined && { signal }),
+      ...(input !== undefined && { input }),
+      ...(onOutput !== undefined && { onOutput }),
+    },
+  );
+  return outcomeOf(run, file);
+}
+
+async function addedTo(
+  sevenZip: SevenZip,
+  file: string,
+  folder: string,
+  items: readonly string[],
+  { password, signal, ...told }: UpdateOptions,
+): Promise<Packing> {
+  const onOutput = packOutput(told);
+  const run = await sevenZip(
+    [
+      'a',
+      '-y',
+      ...(password === undefined ? [] : ['-p']),
+      ...packNames,
+      ...(onOutput === undefined ? [] : ['-bsp1']),
+      '--',
+      file,
+      ...items,
+    ],
+    {
+      cwd: folder,
+      ...(signal !== undefined && { signal }),
+      ...(password !== undefined && { input: `${password}\n` }),
+      ...(onOutput !== undefined && { onOutput }),
+    },
+  );
+  return outcomeOf(run, file);
+}
+
 export function sevenZipReaderAt(program: string): ArchiveReader | undefined {
   return fs.existsSync(program)
     ? sevenZipReader(sevenZipAt(program))
@@ -572,5 +643,9 @@ export function sevenZipReader(sevenZip: SevenZip): ArchiveReader {
       extracted(sevenZip, file, paths, into, options),
     pack: (plan, into, options) => packed(sevenZip, plan, into, options),
     remove: (file, paths, options) => removed(sevenZip, file, paths, options),
+    rename: (file, from, to, options) =>
+      renamedIn(sevenZip, file, from, to, options),
+    add: (file, folder, items, options) =>
+      addedTo(sevenZip, file, folder, items, options),
   };
 }

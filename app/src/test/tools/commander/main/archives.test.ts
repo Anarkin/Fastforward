@@ -168,6 +168,8 @@ function readerOf(listings: Record<string, ArchiveListing>) {
   const asked: string[] = [];
   const reader: ArchiveReader = {
     pack: notPacked,
+    rename: notPacked,
+    add: notPacked,
     remove: notPacked,
     list: (file) => {
       asked.push(`list ${path.basename(file)}`);
@@ -332,6 +334,8 @@ suite('Archives', () => {
     const seen: (string | undefined)[] = [];
     const reader: ArchiveReader = {
       pack: notPacked,
+      rename: notPacked,
+      add: notPacked,
       remove: notPacked,
       list: (_file, _signal, password) => {
         seen.push(password);
@@ -388,6 +392,8 @@ suite('Archives', () => {
     fs.writeFileSync(zip, 'zip');
     const reader: ArchiveReader = {
       pack: notPacked,
+      rename: notPacked,
+      add: notPacked,
       remove: notPacked,
       list: () => Promise.resolve({ kind: 'listed', items: [item('a.txt')] }),
       extract: async (_file, _paths, into) => {
@@ -416,6 +422,8 @@ suite('Archives', () => {
     fs.writeFileSync(tgz, 'tgz');
     const reader: ArchiveReader = {
       pack: notPacked,
+      rename: notPacked,
+      add: notPacked,
       remove: notPacked,
       list: (file) =>
         Promise.resolve({
@@ -460,6 +468,8 @@ suite('Archives', () => {
     let stopped = false;
     const reader: ArchiveReader = {
       pack: notPacked,
+      rename: notPacked,
+      add: notPacked,
       list: (file) =>
         Promise.resolve({
           kind: 'listed',
@@ -520,6 +530,51 @@ suite('Archives', () => {
       ['a.zip', ['docs'], 'secret', []],
       ['a.zip', ['docs'], 'secret', []],
     ]);
+  });
+
+  test('renames an item of an archive by its path, and makes a folder in it from a folder of its own removed after, with its password', async () => {
+    const zip = path.join(folder, 'a.zip');
+    fs.writeFileSync(zip, 'zip');
+    const asked: unknown[] = [];
+    const reader: ArchiveReader = {
+      pack: notPacked,
+      remove: notPacked,
+      list: () =>
+        Promise.resolve({ kind: 'listed', items: [item('docs/a.txt')] }),
+      extract: () => Promise.resolve(undefined),
+      rename: (file, from, to, options) => {
+        asked.push(['rename', path.basename(file), from, to, options.password]);
+        return Promise.resolve({ kind: 'packed' });
+      },
+      add: (file, staged, items, options) => {
+        asked.push([
+          'add',
+          path.basename(file),
+          items,
+          options.password,
+          items.every((each) =>
+            fs.statSync(path.join(staged, ...each.split('/'))).isDirectory(),
+          ),
+        ]);
+        return Promise.resolve({ kind: 'packed' });
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+    archives.usePassword(zip, 'secret');
+
+    await archives.rename(opened.archive, 'docs/a.txt', 'docs/b.txt');
+    await archives.addFolder(opened.archive, ['docs'], 'fresh');
+
+    assert.deepStrictEqual(asked, [
+      ['rename', 'a.zip', 'docs/a.txt', 'docs/b.txt', 'secret'],
+      ['add', 'a.zip', ['docs/fresh'], 'secret', true],
+    ]);
+    assert.deepStrictEqual(
+      fs.readdirSync(folder).filter((name) => name.startsWith('work-')),
+      [],
+    );
   });
 
   test('finds the opened archive a folder is inside of, and the file a path inside an archive runs through', async () => {
