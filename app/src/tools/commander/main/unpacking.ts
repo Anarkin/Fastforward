@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 import { folderKey } from '../shared/paths';
 import {
   itemsAt,
@@ -123,12 +123,12 @@ export function unpackingFirst(
         listener.event(event);
       }
     };
-    const warn = (reason: string) => {
+    const warn = (reason: Sentence) => {
       if (!ended) {
         listener.event({ type: 'warned', reason });
       }
     };
-    const fail = (reason: string) => {
+    const fail = (reason: Sentence) => {
       listener.event({ type: 'failed', name, reason });
       end({ type: 'done', stopped: false });
     };

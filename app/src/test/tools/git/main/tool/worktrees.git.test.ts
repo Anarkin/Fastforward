@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { GitToWebviewOf } from '../../../../../tools/git/shared/protocol';
 import { shortHash } from '../../../../../tools/git/shared/hashes';
-import { strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../shared/strings';
 import { recentKey, worktreesKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../fixtures';
 import {
@@ -589,7 +589,7 @@ suite('Git tool of worktrees', () => {
       });
       await view.connection.receive({ type: 'ready' });
       assert.match(
-        view.page.last('error')?.message ?? '',
+        plainOf(view.page.last('error')?.message ?? ''),
         /is not a git repository/,
       );
       assert.strictEqual(worktreesOf(view).length, 4);
@@ -624,7 +624,7 @@ suite('Git tool of worktrees', () => {
         'the refresh to fail',
       );
       const shown = view.page.last('error')?.message;
-      assert.match(shown ?? '', /is not a git repository/);
+      assert.match(plainOf(shown ?? ''), /is not a git repository/);
       await view.view.idle();
       fs.renameSync(moved, linked);
       await own.git('branch', 'back');
@@ -632,7 +632,7 @@ suite('Git tool of worktrees', () => {
         () => view.page.last('clearError') !== undefined,
         'the refresh to succeed',
       );
-      assert.strictEqual(view.page.last('clearError')?.message, shown);
+      assert.deepStrictEqual(view.page.last('clearError')?.message, shown);
     } finally {
       view.connection.dispose();
     }
@@ -666,7 +666,7 @@ suite('Git tool of worktrees', () => {
           'the refresh to fail',
         );
         assert.match(
-          view.page.last('error')?.message ?? '',
+          plainOf(view.page.last('error')?.message ?? ''),
           /is not a git repository/,
         );
       }
@@ -692,12 +692,12 @@ suite('Git tool of worktrees', () => {
       await gitState(view.store).update(worktreesKey, { [own.root]: linked });
       await view.connection.receive({ type: 'ready' });
       const shown = view.page.last('error')?.message;
-      assert.match(shown ?? '', /is not a git repository/);
+      assert.match(plainOf(shown ?? ''), /is not a git repository/);
       await view.view.idle();
       fs.renameSync(moved, linked);
       await view.connection.receive({ type: 'selectWorktree', root: linked });
       assert.strictEqual(view.page.last('repository')?.head, 'linked');
-      assert.strictEqual(view.page.last('clearError')?.message, shown);
+      assert.deepStrictEqual(view.page.last('clearError')?.message, shown);
     } finally {
       view.connection.dispose();
     }

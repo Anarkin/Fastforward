@@ -1,3 +1,4 @@
+import type { Sentence } from '../../shared/strings';
 import {
   diffLayouts,
   type GitToHost,
@@ -105,6 +106,6 @@ export const toolSettingStandIns: ReadonlyMap<string, readonly string[]> =
     ['tools.commander.fileColors[].extensions', groupStandIns],
   ]);
 
-export function toolSettingProblems(settings: ToolSettings): string[] {
+export function toolSettingProblems(settings: ToolSettings): Sentence[] {
   return fileColorProblems(settings.commander.fileColors);
 }

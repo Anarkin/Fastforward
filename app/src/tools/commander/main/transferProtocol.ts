@@ -1,3 +1,4 @@
+import type { Sentence } from '../../../shared/strings';
 import type { Clash, TransferProgress } from '../shared/transfers';
 import type { ClashReply, TransferPlan } from './transfer';
 
@@ -9,8 +10,12 @@ export type TransferCommand =
 export type TransferEvent =
   | { readonly type: 'progress'; readonly progress: TransferProgress }
   | { readonly type: 'clash'; readonly clash: Clash }
-  | { readonly type: 'failed'; readonly name: string; readonly reason: string }
-  | { readonly type: 'warned'; readonly reason: string }
+  | {
+      readonly type: 'failed';
+      readonly name: string;
+      readonly reason: Sentence;
+    }
+  | { readonly type: 'warned'; readonly reason: Sentence }
   | {
       readonly type: 'done';
       readonly stopped: boolean;

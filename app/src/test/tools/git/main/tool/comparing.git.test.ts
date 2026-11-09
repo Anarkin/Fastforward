@@ -1,3 +1,4 @@
+import { plainOf } from '../../../../../shared/strings';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -244,6 +245,9 @@ suite('Git tool comparing', () => {
     const hash = comparisonOf(main, '1'.repeat(40));
     await select(hash);
     assert.strictEqual(page.last('files'), undefined);
-    assert.match(page.last('error')?.message ?? '', /is not in the history/);
+    assert.match(
+      plainOf(page.last('error')?.message ?? ''),
+      /is not in the history/,
+    );
   });
 });

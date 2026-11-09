@@ -21,11 +21,11 @@ import {
 import type { CheckoutTarget } from '../shared/protocol';
 import { shortHash } from '../shared/hashes';
 import { hasRef, localBranchOf } from '../shared/refNames';
-import { strings } from '../../../shared/strings';
+import { plainOf, strings, type Sentence } from '../../../shared/strings';
 import type { Log } from '../../../shell/main/log';
 import { detachedHead } from './refs';
 
-export type Notify = (level: 'info' | 'error', message: string) => void;
+export type Notify = (level: 'info' | 'error', message: Sentence) => void;
 
 export interface RepositoryAt {
   readonly gitPath: string;
@@ -120,8 +120,8 @@ async function sayLeftBehind(
   );
 }
 
-function say(log: Log, notify: Notify, message: string): void {
-  log.info(message);
+function say(log: Log, notify: Notify, message: Sentence): void {
+  log.info(plainOf(message));
   notify('info', message);
 }
 
@@ -177,7 +177,7 @@ export function foundUpstream(
   return undefined;
 }
 
-function missingUpstream(upstream: Exclude<Upstream, FoundUpstream>): string {
+function missingUpstream(upstream: Exclude<Upstream, FoundUpstream>): Sentence {
   if (upstream.kind === 'detached') {
     return strings.messages.detachedUpstream;
   }
@@ -507,7 +507,7 @@ function reportFailure(
   log: Log,
   notify: Notify,
   failed: string,
-  message: (reason: string) => string,
+  message: (reason: string) => Sentence,
   error: unknown,
 ): void {
   log.error(failed);

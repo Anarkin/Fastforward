@@ -53,6 +53,7 @@ import { gitKeymap } from '../shared/keymap';
 import { keyPressed } from '../../../ui/shortcuts';
 import { withoutRemote } from '../shared/refNames';
 import { strings } from '../../../shared/strings';
+import { Words } from '../../../ui/name';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import {
   fullyVisible,
@@ -983,7 +984,11 @@ export function Commits({
         </>
       }
     >
-      {error && <div className="error-message">{error}</div>}
+      {error !== undefined && (
+        <div className="error-message">
+          <Words>{error}</Words>
+        </div>
+      )}
       <div
         className="virtual-rows list commit-rows"
         ref={list}

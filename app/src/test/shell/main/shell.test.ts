@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
-import { strings } from '../../../shared/strings';
+import { plainOf, strings, type Sentence } from '../../../shared/strings';
 import { recordingLog } from '../../stub';
 import type { CommandInstall } from '../../../main/terminalCommand';
 import {
@@ -19,7 +19,7 @@ import {
 } from '../../harness';
 import { removeFolder, tempFolder } from '../../repositories';
 
-function noticesOf(page: FakePage): (readonly [string, string])[] {
+function noticesOf(page: FakePage): (readonly [string, Sentence])[] {
   return page.messages.flatMap((message) =>
     message.type === 'notice'
       ? [[message.level, message.message] as const]
@@ -276,7 +276,7 @@ suite('Shell with no tab open', () => {
 
   test('installs ff on asking, saying where it went, or why not', async () => {
     const file = '/usr/local/bin/ff';
-    const outcomes: [CommandInstall, ...(readonly [string, string])[]][] = [
+    const outcomes: [CommandInstall, ...(readonly [string, Sentence])[]][] = [
       [
         { kind: 'installed', path: file, onPath: true },
         ['info', strings.messages.commandInstalled(file)],
@@ -455,7 +455,7 @@ suite('Shell with no tab open', () => {
         const posted: string[] = [];
         const reloaded = shell.connect((message) => {
           if (message.type === 'notice') {
-            posted.push(message.message);
+            posted.push(plainOf(message.message));
           }
         });
         try {

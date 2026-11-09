@@ -1,15 +1,71 @@
 export const brand = 'Fastforward';
 
-export type Value = { readonly name: string } | { readonly text: string };
+type Named = { readonly name: string };
+
+export type Value = Named | { readonly text: string };
 
 export type Line = Value & { readonly label: string };
 
+export type Sentence = string | readonly (string | Named)[];
+
 const labeled = (label: string, value: Value): Line => ({ label, ...value });
 
-const named = (name: string): Value => ({ name });
+const named = (name: string): Named => ({ name });
+
+const namesBetween = (names: readonly string[], between: string) =>
+  names.flatMap((name, index) =>
+    index === 0 ? [named(name)] : [between, named(name)],
+  );
+
+const quoted = (name: string) => `"${name}"`;
 
 const plain = (value: Value) =>
-  'name' in value ? `"${value.name}"` : value.text;
+  'name' in value ? quoted(value.name) : value.text;
+
+export const sentencesOf = (all: readonly Sentence[]): Sentence =>
+  all.reduce<Sentence>(
+    (joined, one) => (joined === '' ? one : sentence`${joined} ${one}`),
+    '',
+  );
+
+export const plainOf = (said: Sentence): string =>
+  typeof said === 'string'
+    ? said
+    : said
+        .map((part) => (typeof part === 'string' ? part : quoted(part.name)))
+        .join('');
+
+const partsOf = (piece: Sentence | Value): readonly (string | Named)[] =>
+  typeof piece === 'string'
+    ? [piece]
+    : 'name' in piece
+      ? [named(piece.name)]
+      : 'text' in piece
+        ? [piece.text]
+        : piece;
+
+const sentence = (
+  texts: TemplateStringsArray,
+  ...pieces: readonly (Sentence | Value)[]
+): Sentence => {
+  const parts = texts
+    .flatMap((text, index) => [
+      text,
+      ...(index < pieces.length ? partsOf(pieces[index]) : []),
+    ])
+    .reduce<(string | Named)[]>((joined, part) => {
+      const last = joined.at(-1);
+      if (typeof part === 'string' && typeof last === 'string') {
+        joined[joined.length - 1] = last + part;
+      } else if (part !== '') {
+        joined.push(part);
+      }
+      return joined;
+    }, []);
+  return parts.every((part) => typeof part === 'string')
+    ? parts.join('')
+    : parts;
+};
 
 interface ElapsedSentences {
   readonly now: string;
@@ -456,7 +512,8 @@ export const strings = {
     bookmark: 'Bookmark',
     addBookmark: 'Add bookmark',
     removeBookmark: 'Remove bookmark',
-    notInHistory: (hash: string) => `${hash} is not in the history`,
+    notInHistory: (hash: string) =>
+      sentence`${named(hash)} is not in the history`,
   },
   files: {
     title: 'Files',
@@ -493,10 +550,12 @@ export const strings = {
     change: (status: string, path: string) => `${status}: ${path}`,
   },
   diff: {
-    viewMissing: (file: string) => `${file} isn't there to view.`,
-    viewTooLarge: (file: string) => `${file} is too large to view.`,
-    couldNotView: (file: string, reason: string) =>
-      `Couldn't view ${file}. ${reason}`,
+    viewMissing: (file: string) =>
+      sentence`${named(file)} isn't there to view.`,
+    viewTooLarge: (file: string) =>
+      sentence`${named(file)} is too large to view.`,
+    couldNotView: (file: string, reason: Sentence) =>
+      sentence`Couldn't view ${named(file)}. ${reason}`,
     showEntireFile: 'Show the Entire File',
     showWhitespaceChanges: 'Show Whitespace Changes',
     layout: 'Layout',
@@ -568,12 +627,12 @@ export const strings = {
       'The terminal process stopped, so the shell did too. Press Enter to start a new one.',
   },
   commander: {
-    openFailed: (name: string, reason: string) =>
-      `${name} could not be opened: ${reason}`,
-    deleteFailed: (name: string, reason: string) =>
-      `${name} could not be deleted: ${reason}`,
-    notArchive: (name: string, reason: string) =>
-      `${name} could not be opened as an archive: ${reason}`,
+    openFailed: (name: string, reason: Sentence) =>
+      sentence`${named(name)} could not be opened: ${reason}`,
+    deleteFailed: (name: string, reason: Sentence) =>
+      sentence`${named(name)} could not be deleted: ${reason}`,
+    notArchive: (name: string, reason: Sentence) =>
+      sentence`${named(name)} could not be opened as an archive: ${reason}`,
     openWithSevenZip: 'Open with 7-Zip...',
     readingArchive: (name: string) => `Reading ${name}…`,
     passwordTitle: 'Password',
@@ -587,9 +646,9 @@ export const strings = {
       "A zip's password can hold only the letters, digits and signs of English, as 7-Zip writes no other into a zip.",
     nothingTakenOut: '7-Zip took nothing out.',
     namesAlike: (name: string) =>
-      `More than one of the files is named "${name}", and only one of them can go into a folder.`,
-    couldNotExtract: (reason: string) =>
-      `Nothing could be taken out of the archive: ${reason}`,
+      sentence`More than one of the files is named ${named(name)}, and only one of them can go into a folder.`,
+    couldNotExtract: (reason: Sentence) =>
+      sentence`Nothing could be taken out of the archive: ${reason}`,
     sevenZipEnded: (code: number | null) =>
       code === null ? '7-Zip was stopped.' : `7-Zip ended with code ${code}.`,
     noSevenZip: 'The app has no 7-Zip to open archives with.',
@@ -613,7 +672,7 @@ export const strings = {
     binOffItems: (what: string) =>
       `The Recycle Bin of this drive is turned off. Delete ${what} permanently? This cannot be undone.`,
     itemLines: (name: string) => [labeled('Item', named(name))],
-    oneItem: (name: string) => `"${name}"`,
+    oneItem: (name: string) => named(name),
     items: (count: number) => `${count} items`,
     copyTitle: 'Copy',
     moveTitle: 'Move',
@@ -644,7 +703,7 @@ export const strings = {
       `${fileSize(done)} of ${fileSize(total)}`,
     stopTransfer: 'Stop',
     stoppingTransfer: 'Stopping…',
-    clashQuestion: (what: string) => `${what} is there already.`,
+    clashQuestion: (what: Value) => sentence`${what} is there already.`,
     clashCopying: 'Copying',
     clashMoving: 'Moving',
     clashThere: 'There now',
@@ -655,17 +714,20 @@ export const strings = {
     skip: 'Skip',
     keepBoth: 'Keep Both',
     forTheRest: 'Do the same for the rest',
-    copied: (what: string, target: string) => `Copied ${what} to "${target}"`,
-    moved: (what: string, target: string) => `Moved ${what} to "${target}"`,
-    copyFailed: (name: string, reason: string) =>
-      `${name} could not be copied: ${reason}`,
-    moveFailed: (name: string, reason: string) =>
-      `${name} could not be moved: ${reason}`,
-    copyFailedMany: (count: number, name: string, reason: string) =>
-      `${count} items could not be copied, among them ${name}: ${reason}`,
-    moveFailedMany: (count: number, name: string, reason: string) =>
-      `${count} items could not be moved, among them ${name}: ${reason}`,
-    alreadyIn: (target: string) => `The items are in "${target}" already.`,
+    copied: (what: Value | string, target: string) =>
+      sentence`Copied ${what} to ${named(target)}`,
+    moved: (what: Value | string, target: string) =>
+      sentence`Moved ${what} to ${named(target)}`,
+    copyFailed: (name: string, reason: Sentence) =>
+      sentence`${named(name)} could not be copied: ${reason}`,
+    moveFailed: (name: string, reason: Sentence) =>
+      sentence`${named(name)} could not be moved: ${reason}`,
+    copyFailedMany: (count: number, name: string, reason: Sentence) =>
+      sentence`${String(count)} items could not be copied, among them ${named(name)}: ${reason}`,
+    moveFailedMany: (count: number, name: string, reason: Sentence) =>
+      sentence`${String(count)} items could not be moved, among them ${named(name)}: ${reason}`,
+    alreadyIn: (target: string) =>
+      sentence`The items are in ${named(target)} already.`,
     nothingToPaste: 'The clipboard holds no files to paste.',
     dropCopy: 'Copy Here',
     dropMove: 'Move Here',
@@ -683,22 +745,23 @@ export const strings = {
     reservedName: (name: string) =>
       `Windows keeps the name ${name} for itself.`,
     nameEnd: "A name can't end in a dot or a space on Windows.",
-    nameTaken: (name: string) => `"${name}" is there already.`,
-    makeFolderFailed: (name: string, reason: string) =>
-      `"${name}" could not be made: ${reason}`,
+    nameTaken: (name: string) => sentence`${named(name)} is there already.`,
+    nameThere: 'An item of that name is there already.',
+    makeFolderFailed: (name: string, reason: Sentence) =>
+      sentence`${named(name)} could not be made: ${reason}`,
     makeFolderAsAdministrator:
       "Folders can't be made yet in a folder read as administrator.",
     renameTitle: 'Rename',
     newName: 'New name',
     renameConfirm: 'Rename',
-    renameFailed: (name: string, reason: string) =>
-      `"${name}" could not be renamed: ${reason}`,
+    renameFailed: (name: string, reason: Sentence) =>
+      sentence`${named(name)} could not be renamed: ${reason}`,
     renameAsAdministrator:
       "Items can't be renamed yet in a folder read as administrator.",
     packAsAdministrator:
       "Items can't be packed yet in a folder read as administrator.",
     intoItself: (name: string) =>
-      `${name} can't go into itself or a folder in it.`,
+      sentence`${named(name)} can't go into itself or a folder in it.`,
     transferAsAdministrator:
       "Items can't be copied or moved yet in a folder read as administrator.",
     packTitle: 'Pack',
@@ -743,60 +806,60 @@ export const strings = {
       labeled('Packing', what),
       labeled('Into', named(archive)),
     ],
-    packed: (what: string, archive: string) =>
-      `Packed ${what} into "${archive}"`,
-    packFailed: (name: string, reason: string) =>
-      `"${name}" could not be packed: ${reason}`,
+    packed: (what: Value | string, archive: string) =>
+      sentence`Packed ${what} into ${named(archive)}`,
+    packFailed: (name: string, reason: Sentence) =>
+      sentence`${named(name)} could not be packed: ${reason}`,
     warnedMore: (count: number) => `And ${count.toLocaleString()} more.`,
-    packedWithout: (name: string, reason: string) =>
-      `"${name}" was packed without some of the files: ${reason}`,
+    packedWithout: (name: string, reason: Sentence) =>
+      sentence`${named(name)} was packed without some of the files: ${reason}`,
     deletingFrom: (what: Value, archive: string) => [
       labeled('Deleting', what),
       labeled('From', named(archive)),
     ],
-    deletedFrom: (what: string, archive: string) =>
-      `Deleted ${what} from "${archive}"`,
-    deleteFromFailed: (name: string, reason: string) =>
-      `Nothing could be deleted from "${name}": ${reason}`,
+    deletedFrom: (what: Value | string, archive: string) =>
+      sentence`Deleted ${what} from ${named(archive)}`,
+    deleteFromFailed: (name: string, reason: Sentence) =>
+      sentence`Nothing could be deleted from ${named(name)}: ${reason}`,
     deletingStopped: (archive: string) =>
-      `Deleting from "${archive}" stopped unexpectedly.`,
+      sentence`Deleting from ${named(archive)} stopped unexpectedly.`,
     renamingIn: (what: Value, archive: string) => [
       labeled('Renaming', what),
       labeled('In', named(archive)),
     ],
-    renamedIn: (what: string, archive: string) =>
-      `Renamed ${what} in "${archive}"`,
-    renameInFailed: (name: string, reason: string) =>
-      `Nothing could be renamed in "${name}": ${reason}`,
+    renamedIn: (what: Value | string, archive: string) =>
+      sentence`Renamed ${what} in ${named(archive)}`,
+    renameInFailed: (name: string, reason: Sentence) =>
+      sentence`Nothing could be renamed in ${named(name)}: ${reason}`,
     renamingStopped: (archive: string) =>
-      `Renaming in "${archive}" stopped unexpectedly.`,
+      sentence`Renaming in ${named(archive)} stopped unexpectedly.`,
     makingFolderIn: (what: Value, archive: string) => [
       labeled('Making', what),
       labeled('In', named(archive)),
     ],
-    madeFolderIn: (what: string, archive: string) =>
-      `Made the folder ${what} in "${archive}"`,
-    folderInFailed: (name: string, reason: string) =>
-      `No folder could be made in "${name}": ${reason}`,
+    madeFolderIn: (what: Value | string, archive: string) =>
+      sentence`Made the folder ${what} in ${named(archive)}`,
+    folderInFailed: (name: string, reason: Sentence) =>
+      sentence`No folder could be made in ${named(name)}: ${reason}`,
     makingFolderStopped: (archive: string) =>
-      `Making a folder in "${archive}" stopped unexpectedly.`,
-    copyInFailed: (name: string, reason: string) =>
-      `Nothing could be copied into "${name}": ${reason}`,
-    moveInFailed: (name: string, reason: string) =>
-      `Nothing could be moved into "${name}": ${reason}`,
-    movedWithout: (name: string, reason: string) =>
-      `Not every file could be moved into "${name}": ${reason}`,
+      sentence`Making a folder in ${named(archive)} stopped unexpectedly.`,
+    copyInFailed: (name: string, reason: Sentence) =>
+      sentence`Nothing could be copied into ${named(name)}: ${reason}`,
+    moveInFailed: (name: string, reason: Sentence) =>
+      sentence`Nothing could be moved into ${named(name)}: ${reason}`,
+    movedWithout: (name: string, reason: Sentence) =>
+      sentence`Not every file could be moved into ${named(name)}: ${reason}`,
     originalsKept: 'Every file moved is kept where it was.',
     keptUnmatched: (name: string, count: number) =>
       count === 1
-        ? `A file is kept in "${name}", as 7-Zip took it out under another name, or not at all.`
-        : `${count.toLocaleString()} files are kept in "${name}", as 7-Zip took them out under other names, or not at all.`,
-    movedOutKept: (name: string, reason: string) =>
-      `What was moved out of "${name}" is kept in it too, as it could not be deleted from it: ${reason}`,
-    movedOutWarned: (name: string, warning: string) =>
-      `7-Zip warned while deleting from "${name}" what was moved out of it: ${warning}`,
+        ? sentence`A file is kept in ${named(name)}, as 7-Zip took it out under another name, or not at all.`
+        : sentence`${count.toLocaleString()} files are kept in ${named(name)}, as 7-Zip took them out under other names, or not at all.`,
+    movedOutKept: (name: string, reason: Sentence) =>
+      sentence`What was moved out of ${named(name)} is kept in it too, as it could not be deleted from it: ${reason}`,
+    movedOutWarned: (name: string, warning: Sentence) =>
+      sentence`7-Zip warned while deleting from ${named(name)} what was moved out of it: ${warning}`,
     archiveGone: (name: string) =>
-      `"${name}" is no longer there, so it was not changed.`,
+      sentence`${named(name)} is no longer there, so it was not changed.`,
     updateTitle: 'Update the Archive',
     updateAsked:
       'A file was changed since it was taken out of its archive. Put it back into the archive?',
@@ -807,16 +870,16 @@ export const strings = {
     updateConfirm: 'Update',
     updateLater: 'Not Now',
     puttingBack: (what: Value) => [labeled('Putting back', what)],
-    putBack: (what: string, archive: string) =>
-      `Put ${what} back into "${archive}"`,
-    putBackFailed: (name: string, reason: string) =>
-      `Nothing could be put back into "${name}": ${reason}`,
+    putBack: (what: Value | string, archive: string) =>
+      sentence`Put ${what} back into ${named(archive)}`,
+    putBackFailed: (name: string, reason: Sentence) =>
+      sentence`Nothing could be put back into ${named(name)}: ${reason}`,
     puttingBackStopped: (archive: string) =>
-      `Putting back into "${archive}" stopped unexpectedly.`,
-    putBackWithout: (name: string, reason: string) =>
-      `Not everything could be put back into "${name}": ${reason}`,
+      sentence`Putting back into ${named(archive)} stopped unexpectedly.`,
+    putBackWithout: (name: string, reason: Sentence) =>
+      sentence`Not everything could be put back into ${named(name)}: ${reason}`,
     deletingMovedFrom: (name: string) =>
-      `Deleting from "${name}" what was moved out of it…`,
+      sentence`Deleting from ${named(name)} what was moved out of it…`,
     thereAlready: (count: number, total: number) =>
       count < total
         ? `${count.toLocaleString()} of them are there already.`
@@ -831,27 +894,27 @@ export const strings = {
       `Delete ${what} from the archive permanently? This cannot be undone.`,
     testTitle: 'Test',
     testingArchives: (what: Value) => [labeled('Testing', what)],
-    testPassed: (what: string) => `${what} passed the test.`,
-    testFailed: (name: string, reason: string) =>
-      `"${name}" failed the test: ${reason}`,
-    testFailedMany: (count: number, name: string, reason: string) =>
-      `${count.toLocaleString()} archives failed the test, among them "${name}": ${reason}`,
+    testPassed: (what: Value | string) => sentence`${what} passed the test.`,
+    testFailed: (name: string, reason: Sentence) =>
+      sentence`${named(name)} failed the test: ${reason}`,
+    testFailedMany: (count: number, name: string, reason: Sentence) =>
+      sentence`${count.toLocaleString()} archives failed the test, among them ${named(name)}: ${reason}`,
     testingStopped: () => 'Testing stopped unexpectedly.',
     noPasswordGiven: 'No password was given.',
     testAsAdministrator:
       "Archives can't be tested yet in a folder read as administrator.",
-    archiveTestFailed: (reason: string) =>
-      `The archive packed failed its test, so nothing was put in place: ${reason}`,
+    archiveTestFailed: (reason: Sentence) =>
+      sentence`The archive packed failed its test, so nothing was put in place: ${reason}`,
     archiveInVolumes: (name: string) =>
-      `"${name}" is cut into volumes, which 7-Zip cannot change.`,
+      sentence`${named(name)} is cut into volumes, which 7-Zip cannot change.`,
     archiveUnchangeable: (name: string) =>
-      `"${name}" cannot be changed yet, as it is inside another archive or a compressed file.`,
+      sentence`${named(name)} cannot be changed yet, as it is inside another archive or a compressed file.`,
     packingStopped: (archive: string) =>
-      `Packing into "${archive}" stopped unexpectedly.`,
+      sentence`Packing into ${named(archive)} stopped unexpectedly.`,
     copyingStopped: (target: string) =>
-      `Copying to "${target}" stopped unexpectedly.`,
+      sentence`Copying to ${named(target)} stopped unexpectedly.`,
     movingStopped: (target: string) =>
-      `Moving to "${target}" stopped unexpectedly.`,
+      sentence`Moving to ${named(target)} stopped unexpectedly.`,
     name: 'Name',
     extension: 'Ext',
     size: 'Size',
@@ -867,8 +930,8 @@ export const strings = {
       left: 'Left side',
       right: 'Right side',
     },
-    couldNotOpen: (folder: string, reason: string) =>
-      `Couldn't open ${folder}. ${reason}`,
+    couldNotOpen: (folder: string, reason: Sentence) =>
+      sentence`Couldn't open ${named(folder)}. ${reason}`,
     noAccessTitle: 'No Access',
     noAccess: "You don't have access to this folder.",
     folderLines: (folder: string) => [labeled('Folder', named(folder))],
@@ -1023,83 +1086,86 @@ export const strings = {
   },
   messages: {
     dismiss: 'Dismiss',
-    inTab: (tab: string, message: string) => `${tab}: ${message}`,
-    settingsProblem: (problem: string) => `Settings: ${problem}`,
-    couldNotOpen: (folder: string, reason: string) =>
-      `Couldn't open ${folder}. ${reason}`,
-    notInRepository: (folder: string) => `${folder} is not in a git repository`,
+    inTab: (tab: string, message: Sentence) => sentence`${tab}: ${message}`,
+    settingsProblem: (problem: Sentence) => sentence`Settings: ${problem}`,
+    couldNotOpen: (folder: string, reason: Sentence) =>
+      sentence`Couldn't open ${named(folder)}. ${reason}`,
+    notInRepository: (folder: string) =>
+      sentence`${named(folder)} is not in a git repository`,
     alreadyRepository: (folder: string) =>
-      `${folder} is a git repository already, so it was opened`,
-    couldNotInit: (folder: string, reason: string) =>
-      `Couldn't init a repository in ${folder}. ${reason}`,
-    cloned: (url: string, target: string) => `Cloned ${url} into ${target}`,
-    couldNotClone: (url: string, reason: string) =>
-      `Couldn't clone ${url}. ${reason}`,
-    noToolOpens: (folder: string) => `${folder} can't be opened`,
+      sentence`${named(folder)} is a git repository already, so it was opened`,
+    couldNotInit: (folder: string, reason: Sentence) =>
+      sentence`Couldn't init a repository in ${named(folder)}. ${reason}`,
+    cloned: (url: string, target: string) =>
+      sentence`Cloned ${named(url)} into ${named(target)}`,
+    couldNotClone: (url: string, reason: Sentence) =>
+      sentence`Couldn't clone ${named(url)}. ${reason}`,
+    noToolOpens: (folder: string) => sentence`${named(folder)} can't be opened`,
     noFolder: (tool: string) => `${tool} doesn't know which folder it's in`,
-    notRepository: (root: string) => `${root} is not a git repository`,
+    notRepository: (root: string) =>
+      sentence`${named(root)} is not a git repository`,
     compareTab: (old: string, changed: string) => `${old} → ${changed}`,
     compareTooLarge: (megabytes: number) =>
       `Files over ${megabytes} MB together are not compared.`,
     couldNotWatchCompared: (old: string, changed: string) =>
-      `Couldn't watch ${old} and ${changed}, so their changes won't show until they are compared again`,
-    couldNotCompare: (old: string, changed: string, reason: string) =>
-      `Couldn't compare ${old} with ${changed}. ${reason}`,
+      sentence`Couldn't watch ${named(old)} and ${named(changed)}, so their changes won't show until they are compared again`,
+    couldNotCompare: (old: string, changed: string, reason: Sentence) =>
+      sentence`Couldn't compare ${named(old)} with ${named(changed)}. ${reason}`,
     couldNotWatch: (root: string) =>
-      `Couldn't watch ${root}, so changes made outside ${brand} won't show until it is opened again`,
-    couldNotCheckOut: (name: string, reason: string) =>
-      `Couldn't check out ${name}. ${reason}`,
+      sentence`Couldn't watch ${named(root)}, so changes made outside ${brand} won't show until it is opened again`,
+    couldNotCheckOut: (name: string, reason: Sentence) =>
+      sentence`Couldn't check out ${named(name)}. ${reason}`,
     noRefToCheckOut: (name: string) =>
-      `${name} doesn't exist, so it wasn't checked out`,
+      sentence`${named(name)} doesn't exist, so it wasn't checked out`,
     leftBehind: (count: number, hashes: readonly string[], more: number) =>
-      `Left ${count === 1 ? '1 commit' : `${count} commits`} behind on no branch or tag: ${hashes.join(' ')}${more > 0 ? ` and ${more} more` : ''}`,
+      sentence`Left ${count === 1 ? '1 commit' : `${count} commits`} behind on no branch or tag: ${namesBetween(hashes, ' ')}${more > 0 ? ` and ${more} more` : ''}`,
     diverged: (local: string, remote: string) =>
-      `Switched to ${local}, which has diverged from ${remote}, so it couldn't be fast-forwarded`,
-    couldNotFastForward: (local: string, remote: string, reason: string) =>
-      `Switched to ${local}, but couldn't fast-forward it to ${remote}. ${reason}`,
+      sentence`Switched to ${named(local)}, which has diverged from ${named(remote)}, so it couldn't be fast-forwarded`,
+    couldNotFastForward: (local: string, remote: string, reason: Sentence) =>
+      sentence`Switched to ${named(local)}, but couldn't fast-forward it to ${named(remote)}. ${reason}`,
     couldNotFetch: (reason: string) => `Couldn't fetch. ${reason}`,
     upToDateWith: (local: string, upstream: string) =>
-      `${local} is up to date with ${upstream}`,
+      sentence`${named(local)} is up to date with ${named(upstream)}`,
     aheadOf: (local: string, upstream: string) =>
-      `${local} is ahead of ${upstream}, with nothing to pull`,
+      sentence`${named(local)} is ahead of ${named(upstream)}, with nothing to pull`,
     cannotFastForward: (local: string, upstream: string) =>
-      `${local} has diverged from ${upstream}, so it can't be fast-forwarded`,
+      sentence`${named(local)} has diverged from ${named(upstream)}, so it can't be fast-forwarded`,
     couldNotPull: (reason: string) => `Couldn't pull. ${reason}`,
     checkedOutElsewhere: (branch: string) =>
-      `${branch} is checked out in another worktree, so pull it there`,
+      sentence`${named(branch)} is checked out in another worktree, so pull it there`,
     branchInUse: (branch: string) =>
-      `${branch} is checked out, or being rebased or bisected, in a worktree, so it wasn't pulled`,
+      sentence`${named(branch)} is checked out, or being rebased or bisected, in a worktree, so it wasn't pulled`,
     pushed: (local: string, upstream: string) =>
-      `Pushed ${local} to ${upstream}`,
+      sentence`Pushed ${named(local)} to ${named(upstream)}`,
     published: (local: string, upstream: string) =>
-      `Published ${local} as ${upstream}`,
+      sentence`Published ${named(local)} as ${named(upstream)}`,
     behind: (local: string, upstream: string) =>
-      `${local} is behind ${upstream}, with nothing to push`,
+      sentence`${named(local)} is behind ${named(upstream)}, with nothing to push`,
     cannotPushDiverged: (local: string, upstream: string) =>
-      `${local} has diverged from ${upstream}, so pushing it would drop commits there`,
+      sentence`${named(local)} has diverged from ${named(upstream)}, so pushing it would drop commits there`,
     remoteMovedOn: (local: string, upstream: string) =>
-      `${upstream} has new commits on the remote that ${local} lacks, so it wasn't pushed`,
+      sentence`${named(upstream)} has new commits on the remote that ${named(local)} lacks, so it wasn't pushed`,
     noRemote: (local: string) =>
-      `${local} has no upstream, and there's no remote to push it to`,
+      sentence`${named(local)} has no upstream, and there's no remote to push it to`,
     severalRemotes: (local: string) =>
-      `${local} has no upstream, and with several remotes, it's unclear which to push it to`,
+      sentence`${named(local)} has no upstream, and with several remotes, it's unclear which to push it to`,
     localUpstream: (local: string, upstream: string) =>
-      `${local} tracks the local branch ${upstream}, so it has no remote to push to`,
+      sentence`${named(local)} tracks the local branch ${named(upstream)}, so it has no remote to push to`,
     upstreamOtherName: (local: string, upstream: string) =>
-      `${local} tracks ${upstream}, which has another name, so it wasn't pushed, as git push wouldn't push it either`,
+      sentence`${named(local)} tracks ${named(upstream)}, which has another name, so it wasn't pushed, as ${named('git push')} wouldn't push it either`,
     pushesNothing: (local: string) =>
-      `With your push settings, git push wouldn't push ${local}, so it wasn't pushed either`,
+      sentence`With your push settings, ${named('git push')} wouldn't push ${named(local)}, so it wasn't pushed either`,
     couldNotPush: (reason: string) => `Couldn't push. ${reason}`,
     tagAlreadyOnRemote: (tag: string, remote: string) =>
-      `${tag} is already on ${remote}`,
+      sentence`${named(tag)} is already on ${named(remote)}`,
     pushedTag: (tag: string, remote: string) =>
-      `Pushed tag ${tag} to ${remote}`,
+      sentence`Pushed tag ${named(tag)} to ${named(remote)}`,
     tagElsewhere: (tag: string, remote: string) =>
-      `${remote} already has a tag ${tag} on another commit, so it wasn't pushed`,
+      sentence`${named(remote)} already has a tag ${named(tag)} on another commit, so it wasn't pushed`,
     noTagRemote: (tag: string, branch: string | undefined) =>
       branch === undefined
-        ? `With several remotes, and no branch checked out, it's unclear where to push ${tag}`
-        : `With several remotes, and ${branch} tracking none of them, it's unclear where to push ${tag}`,
+        ? sentence`With several remotes, and no branch checked out, it's unclear where to push ${named(tag)}`
+        : sentence`With several remotes, and ${named(branch)} tracking none of them, it's unclear where to push ${named(tag)}`,
     upToDate: (version: string) => `${brand} ${version} is up to date`,
     downloadingUpdate: (version: string) => `Downloading ${brand} ${version}`,
     updateReady: (version: string) =>
@@ -1112,32 +1178,32 @@ export const strings = {
       `Couldn't download ${brand} ${version}. ${reason}`,
     couldNotInstallUpdate: (version: string, reason: string) =>
       `Couldn't install ${brand} ${version}. ${reason}`,
-    offerCommand: `Type ff in a terminal to open the repository of the folder you are in. Install it from the ${brand} icon at the top left.`,
+    offerCommand: sentence`Type ${named('ff')} in a terminal to open the repository of the folder you are in. Install it from the ${brand} icon at the top left.`,
     commandInstalled: (file: string) =>
-      `Installed ff as ${file}. Type ff in a terminal to open the repository of the folder you are in.`,
+      sentence`Installed ${named('ff')} as ${named(file)}. Type ${named('ff')} in a terminal to open the repository of the folder you are in.`,
     commandOffPath: (file: string, folder: string) =>
-      `Installed ff as ${file}, but ${folder} is not on your PATH, so add it there to type ff in a terminal`,
+      sentence`Installed ${named('ff')} as ${named(file)}, but ${named(folder)} is not on your PATH, so add it there to type ${named('ff')} in a terminal`,
     commandAlreadyInstalled: (file: string) =>
-      `ff is already installed as ${file}`,
+      sentence`${named('ff')} is already installed as ${named(file)}`,
     commandTaken: (file: string) =>
-      `${file} is not from ${brand}, so ff was not installed there`,
-    commandNotMoved: `Move ${brand} into the Applications folder and start it from there to install ff, as macOS runs it from a temporary copy now`,
-    couldNotInstallCommand: (reason: string) =>
-      `Couldn't install ff. ${reason}`,
+      sentence`${named(file)} is not from ${brand}, so ${named('ff')} was not installed there`,
+    commandNotMoved: sentence`Move ${brand} into the Applications folder and start it from there to install ${named('ff')}, as macOS runs it from a temporary copy now`,
+    couldNotInstallCommand: (reason: Sentence) =>
+      sentence`Couldn't install ${named('ff')}. ${reason}`,
     cannotUpdate: `Only a copy of ${brand} set up by its installer can update itself`,
     detachedUpstream:
       'The checked-out commit is on no branch, so it has no upstream',
-    noUpstream: (branch: string) => `${branch} has no upstream`,
+    noUpstream: (branch: string) => sentence`${named(branch)} has no upstream`,
     upstreamGone: (upstream: string, branch: string) =>
-      `${upstream}, the upstream of ${branch}, doesn't exist anymore`,
+      sentence`${named(upstream)}, the upstream of ${named(branch)}, doesn't exist anymore`,
     upstreamHidden: (upstream: string) =>
-      `${upstream} is not in the history while Solo shows only that of the checked-out commit`,
+      sentence`${named(upstream)} is not in the history while Solo shows only that of the checked-out commit`,
   },
   state: {
     unreadable: (reason: string) =>
       `The saved state could not be read, so changes to it are kept until it can be: ${reason}`,
     putAside: (copy: string) =>
-      `The saved state was broken, so it was put aside as ${copy} and starts afresh`,
+      sentence`The saved state was broken, so it was put aside as ${named(copy)} and starts afresh`,
     notPutAside: (reason: string) =>
       `The saved state was broken and could not be put aside, so it starts afresh: ${reason}`,
   },
@@ -1147,35 +1213,39 @@ export const strings = {
       `The user settings could not be read: ${reason}`,
     invalid: (reason: string) =>
       `The user settings are not valid JSON: ${reason}`,
-    unknown: (name: string) => `Unknown setting "${name}"`,
-    missing: (name: string) => `Missing setting "${name}"`,
+    unknown: (name: string) => sentence`Unknown setting ${named(name)}`,
+    missing: (name: string) => sentence`Missing setting ${named(name)}`,
     shouldBe: {
-      boolean: (name: string) => `"${name}" should be a boolean`,
-      number: (name: string) => `"${name}" should be a number`,
-      string: (name: string) => `"${name}" should be a string`,
-      object: (name: string) => `"${name}" should be an object`,
-      list: (name: string) => `"${name}" should be a list`,
+      boolean: (name: string) => sentence`${named(name)} should be a boolean`,
+      number: (name: string) => sentence`${named(name)} should be a number`,
+      string: (name: string) => sentence`${named(name)} should be a string`,
+      object: (name: string) => sentence`${named(name)} should be an object`,
+      list: (name: string) => sentence`${named(name)} should be a list`,
     },
     shouldBeListOf: {
-      boolean: (name: string) => `"${name}" should be a list of booleans`,
-      number: (name: string) => `"${name}" should be a list of numbers`,
-      string: (name: string) => `"${name}" should be a list of strings`,
-      object: (name: string) => `"${name}" should be a list of objects`,
+      boolean: (name: string) =>
+        sentence`${named(name)} should be a list of booleans`,
+      number: (name: string) =>
+        sentence`${named(name)} should be a list of numbers`,
+      string: (name: string) =>
+        sentence`${named(name)} should be a list of strings`,
+      object: (name: string) =>
+        sentence`${named(name)} should be a list of objects`,
     },
     notCssValue: (name: string) =>
-      `${name} should be a value CSS takes, its brackets and quotes closed, with no ; { } \\ /* or control character`,
+      sentence`${named(name)} should be a value CSS takes, its brackets and quotes closed, with no ${namesBetween([';', '{', '}', '\\', '/*'], ' ')} or control character`,
     shouldBeOneOf: (name: string, choices: readonly string[]) =>
-      `"${name}" should be ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
+      sentence`${named(name)} should be ${namesBetween(choices, ' or ')}`,
     fileColorTwice: (extension: string, first: number, again: number) =>
-      `"tools.commander.fileColors[${again}]" lists "${extension}", which "tools.commander.fileColors[${first}]" lists already, so the earlier one colors it`,
+      sentence`${named(`tools.commander.fileColors[${again}]`)} lists ${named(extension)}, which ${named(`tools.commander.fileColors[${first}]`)} lists already, so the earlier one colors it`,
     fileColorLanguagesTwice: (first: number, again: number) =>
-      `"tools.commander.fileColors[${again}]" colors the languages, which "tools.commander.fileColors[${first}]" colors already, so the earlier one colors them`,
+      sentence`${named(`tools.commander.fileColors[${again}]`)} colors the languages, which ${named(`tools.commander.fileColors[${first}]`)} colors already, so the earlier one colors them`,
     fileColorExecutablesTwice: (first: number, again: number) =>
-      `"tools.commander.fileColors[${again}]" colors the executables, which "tools.commander.fileColors[${first}]" colors already, so the earlier one colors them`,
+      sentence`${named(`tools.commander.fileColors[${again}]`)} colors the executables, which ${named(`tools.commander.fileColors[${first}]`)} colors already, so the earlier one colors them`,
     shouldBeListOrOneOf: (name: string, choices: readonly string[]) =>
-      `"${name}" should be a list of strings or ${choices.map((choice) => `"${choice}"`).join(' or ')}`,
+      sentence`${named(name)} should be a list of strings or ${namesBetween(choices, ' or ')}`,
     fileColorEmpty: (group: number) =>
-      `"tools.commander.fileColors[${group}].extensions" lists an empty extension, which colors nothing`,
+      sentence`${named(`tools.commander.fileColors[${group}].extensions`)} lists an empty extension, which colors nothing`,
   },
   errors: {
     storeOutsideProvider: (store: string) =>

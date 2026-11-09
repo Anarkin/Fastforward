@@ -14,7 +14,7 @@ export function newFolderProblem(
   }
   const key = folderKey(name, platform);
   return listed?.some((entry) => folderKey(entry.name, platform) === key)
-    ? strings.commander.nameTaken(name)
+    ? strings.commander.nameThere
     : undefined;
 }
 
@@ -31,7 +31,7 @@ export function renameProblem(
   const key = folderKey(to, platform);
   return key !== folderKey(name, platform) &&
     listed?.some((entry) => folderKey(entry.name, platform) === key) === true
-    ? strings.commander.nameTaken(to)
+    ? strings.commander.nameThere
     : undefined;
 }
 

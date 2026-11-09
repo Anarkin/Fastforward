@@ -8,7 +8,7 @@ import {
   type ThemeColors,
   type ToolSettings,
 } from '../shared/tools';
-import { strings } from '../../shared/strings';
+import { strings, type Sentence } from '../../shared/strings';
 import {
   themes,
   type ImageView,
@@ -73,7 +73,7 @@ function itemKind(
     : toolSettingListKinds.get(name);
 }
 
-function wrongKind(name: string, fallback: unknown): string {
+function wrongKind(name: string, fallback: unknown): Sentence {
   if (Array.isArray(fallback)) {
     const kind = itemKind(name, fallback);
     return kind === undefined
@@ -133,7 +133,7 @@ function isCssValue(text: string): boolean {
   return quote === undefined && open.length === 0;
 }
 
-function itemProblems(template: Json, item: unknown, name: string): string[] {
+function itemProblems(template: Json, item: unknown, name: string): Sentence[] {
   if (!isObject(item)) {
     return [strings.settings.shouldBe.object(name)];
   }
@@ -169,7 +169,7 @@ function listProblems(
   value: unknown,
   name: string,
   fallback: unknown,
-): string[] {
+): Sentence[] {
   return Array.isArray(value)
     ? value.flatMap((item, index) =>
         itemProblems(template, item, `${name}[${index}]`),
@@ -181,7 +181,7 @@ function merge<T extends object>(
   defaults: T,
   overrides: Json,
   prefix: string,
-  problems: string[],
+  problems: Sentence[],
 ): T {
   const fallbacks: Json = Object.fromEntries(Object.entries(defaults));
   const accepted: Json = {};
@@ -223,8 +223,8 @@ function merge<T extends object>(
 export function mergeSettings<T extends object>(
   defaults: T,
   overrides: unknown,
-): { settings: T; problems: string[] } {
-  const problems: string[] = [];
+): { settings: T; problems: Sentence[] } {
+  const problems: Sentence[] = [];
   if (!isObject(overrides)) {
     return {
       settings: defaults,
@@ -392,7 +392,7 @@ export class UserSettings {
   private current: Settings;
   private inMemory: Json = {};
   private broken = false;
-  private issues: readonly string[] = [];
+  private issues: readonly Sentence[] = [];
   private writing: Promise<void> = Promise.resolve();
   private readonly unsaved = new Map<
     string,
@@ -419,7 +419,7 @@ export class UserSettings {
     return this.current;
   }
 
-  get problems(): readonly string[] {
+  get problems(): readonly Sentence[] {
     return this.issues;
   }
 
@@ -517,7 +517,7 @@ export class UserSettings {
 
   private update(keys: readonly string[], value: unknown): Promise<void> {
     const written: unknown = JSON.parse(JSON.stringify({ value })).value;
-    const problems: string[] = [];
+    const problems: Sentence[] = [];
     const settings = merge(
       this.current,
       withValue({}, keys, written),

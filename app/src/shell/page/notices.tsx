@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { CloseIcon, ErrorIcon } from '../../ui/icons';
-import { strings } from '../../shared/strings';
+import { Words } from '../../ui/name';
+import { plainOf, strings, type Sentence } from '../../shared/strings';
 import { useShell, useShellActions } from './store';
 
 export interface Notice {
   readonly id: number;
   readonly level: 'info' | 'error';
-  readonly message: string;
+  readonly message: Sentence;
   readonly shownAt: number;
 }
 
@@ -23,7 +24,7 @@ export function shownFor({
 }: Pick<Notice, 'level' | 'message'>): number {
   const read = Math.min(
     readAtMost,
-    readAtLeast + readPerCharacter * message.length,
+    readAtLeast + readPerCharacter * plainOf(message).length,
   );
   return level === 'info'
     ? read
@@ -83,7 +84,9 @@ export function Notices() {
           }}
         >
           {notice.level === 'error' && <ErrorIcon />}
-          <span className="notice-message">{notice.message}</span>
+          <span className="notice-message">
+            <Words>{notice.message}</Words>
+          </span>
           <button
             className="notice-close"
             title={strings.messages.dismiss}

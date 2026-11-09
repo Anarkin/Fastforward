@@ -35,7 +35,7 @@ import {
 } from '../../../ui/icons';
 import { SkeletonRows, useSkeleton } from '../../../ui/skeleton';
 import { gitKeymap } from '../shared/keymap';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 import { listMoveOf, type VisibleRows } from '../../../ui/listMoves';
 import { keyPressed, useBinding } from '../../../ui/shortcuts';
 import { fileRowKey } from './tree';
@@ -96,7 +96,7 @@ export function filesTitle(selection: string | undefined): string {
 
 export function noChangesText(
   selection: string | undefined,
-  error: string | undefined,
+  error: Sentence | undefined,
 ): string | undefined {
   if (selection === undefined || error !== undefined) {
     return undefined;

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../builtins';
-import { strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../shared/strings';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { sameRoot, type Store } from '../../../../../shell/main/storage';
 import {
@@ -589,7 +589,7 @@ suite('Git tool of other repositories', () => {
         await gitState(view.store).update(recentKey, [gone, other]);
         await view.connection.receive({ type: 'openRepository', root: gone });
         assert.match(
-          view.page.last('notice')?.message ?? '',
+          plainOf(view.page.last('notice')?.message ?? ''),
           /is not in a git repository$/,
         );
         assert.deepStrictEqual(gitState(view.store).get(recentKey), [other]);
@@ -610,8 +610,8 @@ suite('Git tool of other repositories', () => {
         view.connection.receive({ type: 'openRepository', root: other }),
       );
       assert.match(
-        view.page.last('notice')?.message ?? '',
-        /^Couldn't open .*other\. fatal: detected dubious ownership/,
+        plainOf(view.page.last('notice')?.message ?? ''),
+        /^Couldn't open ".*other"\. fatal: detected dubious ownership/,
       );
       assert.deepStrictEqual(gitState(view.store).get(recentKey), [other]);
       assert.deepStrictEqual(
@@ -638,7 +638,7 @@ suite('Git tool of other repositories', () => {
           }),
         );
         assert.match(
-          view.page.last('error')?.message ?? '',
+          plainOf(view.page.last('error')?.message ?? ''),
           /^fatal: detected dubious ownership/,
         );
       },
@@ -756,7 +756,7 @@ suite('Git tool of other repositories', () => {
           assert.deepStrictEqual(notices, []);
         });
         assert.match(
-          view.page.last('error')?.message ?? '',
+          plainOf(view.page.last('error')?.message ?? ''),
           /is not a git repository/,
         );
       },
@@ -800,7 +800,7 @@ suite('Git tool of other repositories', () => {
         tab: tabOf(view.page, plain),
       });
       assert.match(
-        view.page.last('error')?.message ?? '',
+        plainOf(view.page.last('error')?.message ?? ''),
         /is not a git repository/,
       );
     });
@@ -822,7 +822,7 @@ suite('Git tool of other repositories', () => {
       });
       view.page.clear();
       await view.connection.refresh();
-      assert.strictEqual(
+      assert.deepStrictEqual(
         view.page.last('error')?.message,
         strings.messages.notRepository(unmade.root),
       );
@@ -837,7 +837,7 @@ suite('Git tool of other repositories', () => {
       [later],
       async (view) => {
         const shown = view.page.last('error')?.message;
-        assert.match(shown ?? '', /is not a git repository/);
+        assert.match(plainOf(shown ?? ''), /is not a git repository/);
         const made = await tempRepository(later);
         await made.commit('first');
         await view.connection.receive({
@@ -845,7 +845,7 @@ suite('Git tool of other repositories', () => {
           tab: tabOf(view.page, later),
         });
         assert.strictEqual(view.page.last('commits')?.total, 1);
-        assert.strictEqual(view.page.last('clearError')?.message, shown);
+        assert.deepStrictEqual(view.page.last('clearError')?.message, shown);
         await made.commit('second');
         await waitFor(
           () => view.page.last('commits')?.total === 2,
@@ -935,10 +935,10 @@ suite('Git tool upstream', () => {
         });
         await ask();
         assert.deepStrictEqual(messages, [
-          'main has no upstream',
-          "origin/main, the upstream of main, doesn't exist anymore",
+          '"main" has no upstream',
+          '"origin/main", the upstream of "main", doesn\'t exist anymore',
           'The checked-out commit is on no branch, so it has no upstream',
-          'origin/main is not in the history while Solo shows only that of the checked-out commit',
+          '"origin/main" is not in the history while Solo shows only that of the checked-out commit',
         ]);
         assert.strictEqual(view.page.last('reveal'), undefined);
       });

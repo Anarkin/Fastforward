@@ -11,7 +11,7 @@ import {
   writeAtomically,
   writeReadOnly,
 } from '../../../shell/main/settings';
-import { strings } from '../../../shared/strings';
+import { plainOf, strings } from '../../../shared/strings';
 import { defaultSettings, waitFor } from '../../fixtures';
 import { removeFolder, symlinkOrSkip, tempFolder } from '../../repositories';
 
@@ -75,7 +75,7 @@ suite('Settings', () => {
       },
     });
     assert.deepStrictEqual(settings, defaults);
-    assert.deepStrictEqual(problems, [
+    assert.deepStrictEqual(problems.map(plainOf), [
       'Unknown setting "ignoreWhitespace"',
       'Unknown setting "tools.git.ignoreWhitespaces"',
       '"tools.git.solo" should be a boolean',
@@ -90,15 +90,16 @@ suite('Settings', () => {
       tools: { git: { solo: {}, autoFetchMinutes: [1] } },
     });
     assert.deepStrictEqual(settings, defaults);
-    assert.deepStrictEqual(problems, [
+    assert.deepStrictEqual(problems.map(plainOf), [
       '"fonts" should be an object',
       '"sizes" should be an object',
       '"tools.git.solo" should be a boolean',
       '"tools.git.autoFetchMinutes" should be a number',
     ]);
-    assert.deepStrictEqual(mergeSettings({ list: [] }, { list: 1 }).problems, [
-      '"list" should be a list',
-    ]);
+    assert.deepStrictEqual(
+      mergeSettings({ list: [] }, { list: 1 }).problems.map(plainOf),
+      ['"list" should be a list'],
+    );
   });
 
   test('takes any list for a setting whose default list is empty, as no item of it tells the kind', () => {
@@ -116,7 +117,7 @@ suite('Settings', () => {
       tools: { terminal: { shellArgs: ['-l', 2] } },
     });
     assert.deepStrictEqual(settings, defaults);
-    assert.deepStrictEqual(problems, [
+    assert.deepStrictEqual(problems.map(plainOf), [
       '"tools.terminal.shellArgs" should be a list of strings',
     ]);
     assert.deepStrictEqual(
@@ -132,7 +133,7 @@ suite('Settings', () => {
       tools: { commander: { bookmarks: ['C:\\Code', 2] } },
     });
     assert.deepStrictEqual(settings, defaults);
-    assert.deepStrictEqual(problems, [
+    assert.deepStrictEqual(problems.map(plainOf), [
       '"tools.commander.bookmarks" should be a list of strings',
     ]);
     assert.deepStrictEqual(
@@ -193,7 +194,7 @@ suite('Settings', () => {
       },
     });
     assert.deepStrictEqual(settings, defaults);
-    assert.deepStrictEqual(problems, [
+    assert.deepStrictEqual(problems.map(plainOf), [
       'Missing setting "tools.commander.fileColors[0].colors.dark"',
       '"tools.commander.fileColors[1].extensions" should be a list of strings or "languages" or "executables"',
       'Unknown setting "tools.commander.fileColors[2].bold"',
@@ -263,7 +264,7 @@ suite('Settings', () => {
     );
     assert.deepStrictEqual(settings, defaults);
     assert.strictEqual(Object.getPrototypeOf(settings), Object.prototype);
-    assert.deepStrictEqual(problems, [
+    assert.deepStrictEqual(problems.map(plainOf), [
       'Unknown setting "toString"',
       'Unknown setting "__proto__"',
     ]);
@@ -274,7 +275,7 @@ suite('Settings', () => {
       tools: { git: { diffLayout: 'sideways' } },
     });
     assert.deepStrictEqual(settings, defaults);
-    assert.deepStrictEqual(problems, [
+    assert.deepStrictEqual(problems.map(plainOf), [
       '"tools.git.diffLayout" should be "inline" or "sideBySide"',
     ]);
     assert.strictEqual(
@@ -531,7 +532,7 @@ suite('User settings file', () => {
     fs.writeFileSync(file, '{ "solo": tru');
     const user = new UserSettings(defaults, file);
     assert.deepStrictEqual(user.settings, defaults);
-    assert.match(user.problems[0] ?? '', /not valid JSON/);
+    assert.match(plainOf(user.problems[0] ?? ''), /not valid JSON/);
     await user.setImages('realSize', true);
     assert.strictEqual(user.settings.images.realSize, true);
     assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ "solo": tru');
@@ -553,7 +554,7 @@ suite('User settings file', () => {
     fs.mkdirSync(file);
     const user = new UserSettings(defaults, file);
     assert.deepStrictEqual(user.settings, defaults);
-    assert.match(user.problems[0] ?? '', /could not be read/);
+    assert.match(plainOf(user.problems[0] ?? ''), /could not be read/);
     await user.setImages('realSize', true);
     assert.strictEqual(user.settings.images.realSize, true);
     assert.ok(fs.statSync(file).isDirectory());

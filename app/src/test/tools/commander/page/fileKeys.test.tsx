@@ -256,7 +256,10 @@ suite('Commander file keys', () => {
             },
           },
         });
-        assert.match(dialogText(), /"a\.txt" is there already\./);
+        assert.strictEqual(
+          document.querySelector('.transfer-clash')?.innerHTML,
+          '<code class="name"><span>a.txt</span></code> is there already.',
+        );
         assert.ok(!dialogText().includes(strings.commander.clashReadOnly));
         await send({
           type: 'transfer',
@@ -307,7 +310,7 @@ suite('Commander file keys', () => {
         assert.strictEqual(make()?.disabled, true);
 
         await type('A.TXT');
-        assert.strictEqual(problem(), strings.commander.nameTaken('A.TXT'));
+        assert.strictEqual(problem(), strings.commander.nameThere);
         assert.strictEqual(make()?.disabled, true);
         await type('con');
         assert.strictEqual(problem(), strings.commander.reservedName('con'));

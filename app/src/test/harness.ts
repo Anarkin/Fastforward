@@ -1,3 +1,4 @@
+import { plainOf, type Sentence } from '../shared/strings';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
@@ -111,7 +112,7 @@ export class FakeHost implements ShellHost, GitHost {
   readonly foldersAsked: [FolderPurpose, string | undefined][] = [];
   clipboard = '';
   problems: readonly string[] = [];
-  unsavedState: string[] = [];
+  unsavedState: Sentence[] = [];
   update: UpdateStatus = { kind: 'idle' };
   commandPlace = false;
   command: CommandState = 'missing';
@@ -162,11 +163,11 @@ export class FakeHost implements ShellHost, GitHost {
     return Promise.resolve();
   }
 
-  settingsProblems(): readonly string[] {
+  settingsProblems(): readonly Sentence[] {
     return this.problems;
   }
 
-  stateProblems(): readonly string[] {
+  stateProblems(): readonly Sentence[] {
     return this.unsavedState.splice(0);
   }
 
@@ -208,7 +209,7 @@ export async function withNotices(
   const messages: string[] = [];
   const listener = (message: PageMessage) => {
     if (message.type === 'notice' && message.level === level) {
-      messages.push(message.message);
+      messages.push(plainOf(message.message));
     }
   };
   page.listeners.add(listener);

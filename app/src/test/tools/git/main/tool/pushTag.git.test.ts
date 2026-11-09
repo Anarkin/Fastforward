@@ -111,7 +111,7 @@ suite('Git tool pushing tags', () => {
     await connection.refresh();
     page.clear();
     assert.deepStrictEqual(await pushedWith('info', 'v1'), [
-      'Pushed tag v1 to origin',
+      'Pushed tag "v1" to "origin"',
     ]);
     assert.strictEqual(await onRemote('v1'), a);
     assert.deepStrictEqual(
@@ -175,7 +175,7 @@ suite('Git tool pushing tags', () => {
       await waitFor(() => listed, 'the tags of origin to be listed');
       Reflect.set(view, 'tagsOfRemote', restore);
       assert.deepStrictEqual(await pushedWith('info', 'v8'), [
-        'Pushed tag v8 to origin',
+        'Pushed tag "v8" to "origin"',
       ]);
       held.open();
       await view.idle();
@@ -198,7 +198,7 @@ suite('Git tool pushing tags', () => {
     await repository.git('push', 'origin', 'v2');
     await repository.git('tag', '-f', 'v2', a);
     assert.deepStrictEqual(await pushedWith('info', 'v2'), [
-      "origin already has a tag v2 on another commit, so it wasn't pushed",
+      '"origin" already has a tag "v2" on another commit, so it wasn\'t pushed',
     ]);
     assert.strictEqual(await onRemote('v2'), b);
   });
@@ -216,7 +216,7 @@ suite('Git tool pushing tags', () => {
     );
     page.clear();
     assert.deepStrictEqual(await pushedWith('info', 'v5'), [
-      'v5 is already on origin',
+      '"v5" is already on "origin"',
     ]);
     assert.deepStrictEqual(page.messages.flatMap(pushingTag), []);
   });
@@ -235,12 +235,12 @@ suite('Git tool pushing tags', () => {
     await repository.git('tag', 'v3', a);
     try {
       assert.deepStrictEqual(await pushedWith('info', 'v3'), [
-        'Pushed tag v3 to origin',
+        'Pushed tag "v3" to "origin"',
       ]);
       await repository.git('checkout', '-b', 'loner');
       await repository.git('tag', 'v4', a);
       assert.deepStrictEqual(await pushedWith('info', 'v4'), [
-        "With several remotes, and loner tracking none of them, it's unclear where to push v4",
+        'With several remotes, and "loner" tracking none of them, it\'s unclear where to push "v4"',
       ]);
       assert.strictEqual(await onRemote('v4'), undefined);
     } finally {
@@ -286,7 +286,7 @@ suite('Git tool pushing tags', () => {
         await Promise.all([pushed, fetched]);
         said = messages;
       });
-      assert.deepStrictEqual(said, ['Pushed tag v5 to origin']);
+      assert.deepStrictEqual(said, ['Pushed tag "v5" to "origin"']);
       assert.strictEqual(await onRemote('v5'), a);
       assert.strictEqual((await second.git('tag')).trim(), '');
     } finally {

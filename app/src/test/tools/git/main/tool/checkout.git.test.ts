@@ -283,7 +283,7 @@ suite('Git tool checking out', () => {
         assert.strictEqual(messages.length, 1);
         assert.match(
           messages[0],
-          /^Couldn't check out feature\. fatal: 'feature' is already used by worktree at /,
+          /^Couldn't check out "feature"\. fatal: 'feature' is already used by worktree at /,
         );
       });
     } finally {
@@ -316,7 +316,7 @@ suite('Git tool checking out', () => {
           target: { kind: 'branch', name: 'main' },
         });
         assert.deepStrictEqual(messages, [
-          `Left 2 commits behind on no branch or tag: ${two.slice(0, 7)} ${one.slice(0, 7)}`,
+          `Left 2 commits behind on no branch or tag: "${two.slice(0, 7)}" "${one.slice(0, 7)}"`,
         ]);
       });
     } finally {

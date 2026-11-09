@@ -1,4 +1,9 @@
-import { strings, type Line, type Value } from '../../../shared/strings';
+import {
+  strings,
+  type Line,
+  type Sentence,
+  type Value,
+} from '../../../shared/strings';
 import type { TransferProgress, TransferView } from '../shared/transfers';
 
 export function whatOf(items: number, name: string | undefined): Value {
@@ -71,7 +76,7 @@ export function progressLines({
   archiveJob,
   progress,
 }: Pick<TransferView, 'archiveJob' | 'progress'>): {
-  readonly current: string | undefined;
+  readonly current: Sentence | undefined;
   readonly files: string | undefined;
 } {
   const { commander } = strings;

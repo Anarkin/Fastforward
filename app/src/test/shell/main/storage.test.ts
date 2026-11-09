@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { UserSettings } from '../../../shell/main/settings';
-import { strings } from '../../../shared/strings';
+import { plainOf, strings } from '../../../shared/strings';
 import {
   activeTabKey,
   JsonFileStore,
@@ -420,7 +420,7 @@ suite('State file', () => {
     fs.mkdirSync(file);
     const [problem] = new JsonFileStore(file).problems;
     assert.match(
-      problem,
+      plainOf(problem),
       /^The saved state could not be read, so changes to it are kept until it can be: /,
     );
   });
@@ -442,7 +442,7 @@ suite('State file', () => {
     assert.strictEqual(store.get('tabs'), undefined);
     const [problem] = store.problems;
     assert.match(
-      problem,
+      plainOf(problem),
       /^The saved state was broken and could not be put aside, so it starts afresh: /,
     );
     await store.update('solo', true);

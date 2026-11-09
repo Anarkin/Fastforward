@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { suite, test } from 'vitest';
 import type { Notice } from '../../shell/main/shell';
 import type { ToWebview, UpdateStatus } from '../../shell/shared/protocol';
-import { strings } from '../../shared/strings';
+import { plainOf, strings } from '../../shared/strings';
 import {
   updateMode,
   Updates,
@@ -76,7 +76,8 @@ function withUpdates(
     fire,
     logged: error,
     posted,
-    notices: () => told.map((notice) => `${notice.level}: ${notice.message}`),
+    notices: () =>
+      told.map((notice) => `${notice.level}: ${plainOf(notice.message)}`),
     statuses: () =>
       posted.flatMap((message): UpdateStatus[] =>
         message.type === 'update' ? [message.status] : [],

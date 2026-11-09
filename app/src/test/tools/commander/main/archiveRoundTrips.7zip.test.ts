@@ -21,7 +21,7 @@ import { transferServer } from '../../../../tools/commander/main/transferServer'
 import { unpackingFirst } from '../../../../tools/commander/main/unpacking';
 import { copiedBetween } from '../../../../tools/commander/main/betweenArchives';
 import type { PackFormat } from '../../../../tools/commander/shared/packing';
-import { strings } from '../../../../shared/strings';
+import { plainOf, strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..');
@@ -184,7 +184,7 @@ suite('Archives packed, changed and taken out again', () => {
     const opening = await archives.open(file);
     assert.ok(
       opening.kind === 'opened',
-      opening.kind === 'refused' ? opening.reason : opening.kind,
+      opening.kind === 'refused' ? plainOf(opening.reason) : opening.kind,
     );
     return opening.archive;
   };
@@ -199,7 +199,7 @@ suite('Archives packed, changed and taken out again', () => {
     const extracted = await archives.extract(archive, paths, { into });
     assert.ok(
       extracted.kind === 'extracted',
-      extracted.kind === 'refused' ? extracted.reason : '',
+      extracted.kind === 'refused' ? plainOf(extracted.reason) : '',
     );
     return treeOf(into);
   };
@@ -403,7 +403,7 @@ suite('Archives packed, changed and taken out again', () => {
         }),
       );
       assert.ok(spoiled.kind === 'refused');
-      assert.match(spoiled.reason, /CRC|Data Error/);
+      assert.match(plainOf(spoiled.reason), /CRC|Data Error/);
       assert.deepStrictEqual(
         fs.readdirSync(folder).filter((name) => name.startsWith('spoiled.zip')),
         ['spoiled.zip'],
@@ -443,7 +443,7 @@ suite('Archives packed, changed and taken out again', () => {
             plan('partly.zip', 'zip', { items: ['old.txt', 'closed'] }),
           );
           assert.ok(packing.kind === 'packed');
-          assert.match(packing.warning ?? '', /closed/);
+          assert.match(plainOf(packing.warning ?? ''), /closed/);
         } finally {
           fs.chmodSync(path.join(source, 'closed'), 0o755);
         }
@@ -476,7 +476,7 @@ suite('Archives packed, changed and taken out again', () => {
       fs.writeFileSync(at('spoiled.zip'), written);
       const spoiled = await archives.test(at('spoiled.zip'));
       assert.ok(spoiled.kind === 'refused');
-      assert.match(spoiled.reason, /CRC|Data Error/);
+      assert.match(plainOf(spoiled.reason), /CRC|Data Error/);
 
       await packedFine(plan('locked.7z', '7z', { password: 'right' }));
       archives.usePassword(at('locked.7z'), 'wrong');
@@ -486,7 +486,7 @@ suite('Archives packed, changed and taken out again', () => {
       fs.writeFileSync(at('plain.zip'), 'Plain text, named as a zip.\n');
       const plain = await archives.test(at('plain.zip'));
       assert.ok(plain.kind === 'refused');
-      assert.match(plain.reason, /Cannot open the file as/);
+      assert.match(plainOf(plain.reason), /Cannot open the file as/);
     });
   });
 
@@ -795,7 +795,7 @@ suite('Archives packed, changed and taken out again', () => {
         'old.txt',
       ]);
       assert.ok(removed.kind === 'refused');
-      assert.doesNotMatch(removed.reason, /ended with code/);
+      assert.doesNotMatch(plainOf(removed.reason), /ended with code/);
       assert.deepStrictEqual(fs.readFileSync(at('read-only.zip')), before);
       assert.deepStrictEqual(
         fs

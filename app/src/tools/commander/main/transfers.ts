@@ -1,6 +1,11 @@
 import * as path from 'node:path';
 import type { Notice } from '../../../shell/main/shell';
-import { strings } from '../../../shared/strings';
+import {
+  sentencesOf,
+  strings,
+  type Sentence,
+  type Value,
+} from '../../../shared/strings';
 import {
   isClashAnswer,
   type ArchiveJob,
@@ -46,8 +51,8 @@ export interface TransfersHost {
 interface Running {
   readonly id: number;
   readonly ask: TransferAsk;
-  readonly failures: { readonly name: string; readonly reason: string }[];
-  readonly warnings: string[];
+  readonly failures: { readonly name: string; readonly reason: Sentence }[];
+  readonly warnings: Sentence[];
   connection: TransferConnection | undefined;
   hidden: boolean;
   stopping: boolean;
@@ -55,7 +60,7 @@ interface Running {
   clash: (Clash & { readonly asked: number }) | undefined;
 }
 
-function whatOf({ names }: TransferAsk): string {
+function whatOf({ names }: TransferAsk): Value | string {
   return names.length === 1
     ? strings.commander.oneItem(path.basename(names[0]))
     : strings.commander.items(names.length);
@@ -65,15 +70,15 @@ const archiveSentences: Readonly<
   Record<
     ArchiveJob,
     {
-      readonly failed: (name: string, reason: string) => string;
-      readonly done: (what: string, archive: string) => string;
-      readonly stopped: (archive: string) => string;
-      readonly warned?: (name: string, reason: string) => string;
+      readonly failed: (name: string, reason: Sentence) => Sentence;
+      readonly done: (what: Value | string, archive: string) => Sentence;
+      readonly stopped: (archive: string) => Sentence;
+      readonly warned?: (name: string, reason: Sentence) => Sentence;
       readonly failedMany?: (
         count: number,
         name: string,
-        reason: string,
-      ) => string;
+        reason: Sentence,
+      ) => Sentence;
       readonly toldDone?: true;
     }
   >
@@ -125,7 +130,7 @@ const archiveSentences: Readonly<
   },
 };
 
-function failureNotice({ ask, failures }: Running): string | undefined {
+function failureNotice({ ask, failures }: Running): Sentence | undefined {
   const [first] = failures;
   if (first === undefined) {
     return undefined;
@@ -296,7 +301,7 @@ export class Transfers {
     if (running.warnings.length > 0) {
       this.host.notice({
         level: 'error',
-        message: running.warnings.join(' '),
+        message: sentencesOf(running.warnings),
       });
     }
     if (how === 'broke') {
@@ -338,7 +343,7 @@ export class Transfers {
         level: 'error',
         message: (sentences.warned ?? strings.commander.packedWithout)(
           path.basename(file),
-          running.warnings.join(' '),
+          sentencesOf(running.warnings),
         ),
       });
     }

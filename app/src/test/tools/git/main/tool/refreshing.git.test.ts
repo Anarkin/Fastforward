@@ -12,7 +12,7 @@ import {
 import { replaceBuiltin } from '../../../../builtins';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import { strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../shared/strings';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import type { Connection } from '../../../../harness';
@@ -408,7 +408,10 @@ suite('Git tool refreshing one repository', () => {
         held.open();
         await Promise.all([failing, queued]);
         assert.ok(newer.last('workingTree'));
-        assert.match(page.last('error')?.message ?? '', /refresh failed/);
+        assert.match(
+          plainOf(page.last('error')?.message ?? ''),
+          /refresh failed/,
+        );
         takeErrorsLogged(
           logged,
           /^Refreshing the tab failed$/,
@@ -430,7 +433,7 @@ suite('Git tool refreshing one repository', () => {
       });
       await connection.refresh();
       const failed = page.last('error')?.message;
-      assert.match(failed ?? '', /refresh failed/);
+      assert.match(plainOf(failed ?? ''), /refresh failed/);
       assert.strictEqual(page.last('clearError'), undefined);
       await connection.refresh();
       assert.strictEqual(page.last('clearError')?.message, failed);
@@ -473,7 +476,10 @@ suite('Git tool refreshing one repository', () => {
       held.open();
       await Promise.all([failed, queued]);
       assert.strictEqual(most, 1);
-      assert.match(page.last('error')?.message ?? '', /working tree failed/);
+      assert.match(
+        plainOf(page.last('error')?.message ?? ''),
+        /working tree failed/,
+      );
       takeErrorsLogged(
         logged,
         /^Refreshing the tab failed$/,

@@ -190,18 +190,18 @@ suite('Git tool pulling and pushing other branches', () => {
   test('pulls nothing into a branch up to date, ahead, diverged or without an upstream, saying why', async () => {
     await tracked('even');
     assert.deepStrictEqual(await send('pullBranch', 'even'), [
-      'even is up to date with origin/even',
+      '"even" is up to date with "origin/even"',
     ]);
     await tracked('apart');
     await moveOnRemote('apart');
     const mine = await committedOn('apart', 'mine on apart');
     assert.deepStrictEqual(await send('pullBranch', 'apart'), [
-      "apart has diverged from origin/apart, so it can't be fast-forwarded",
+      '"apart" has diverged from "origin/apart", so it can\'t be fast-forwarded',
     ]);
     assert.deepStrictEqual(await repository.resolve('apart'), [mine]);
     await repository.git('branch', 'alone', 'main');
     assert.deepStrictEqual(await send('pullBranch', 'alone'), [
-      'alone has no upstream',
+      '"alone" has no upstream',
     ]);
   });
 
@@ -212,7 +212,7 @@ suite('Git tool pulling and pushing other branches', () => {
     await repository.git('worktree', 'add', tree, 'elsewhere');
     try {
       assert.deepStrictEqual(await send('pullBranch', 'elsewhere'), [
-        'elsewhere is checked out in another worktree, so pull it there',
+        '"elsewhere" is checked out in another worktree, so pull it there',
       ]);
       assert.deepStrictEqual(await repository.resolve('elsewhere'), [start]);
     } finally {
@@ -233,7 +233,7 @@ suite('Git tool pulling and pushing other branches', () => {
     });
     try {
       assert.deepStrictEqual(await send('pullBranch', 'meanwhile'), [
-        "meanwhile is checked out, or being rebased or bisected, in a worktree, so it wasn't pulled",
+        '"meanwhile" is checked out, or being rebased or bisected, in a worktree, so it wasn\'t pulled',
       ]);
       assert.deepStrictEqual(await repository.resolve('meanwhile'), [start]);
     } finally {
@@ -250,7 +250,7 @@ suite('Git tool pulling and pushing other branches', () => {
     await repository.git('rebase', '--root', '--exec', 'false').catch(() => '');
     try {
       assert.deepStrictEqual(await send('pullBranch', 'rebased'), [
-        "rebased is checked out, or being rebased or bisected, in a worktree, so it wasn't pulled",
+        '"rebased" is checked out, or being rebased or bisected, in a worktree, so it wasn\'t pulled',
       ]);
       assert.deepStrictEqual(await repository.resolve('rebased'), [start]);
     } finally {
@@ -348,7 +348,7 @@ suite('Git tool pulling and pushing other branches', () => {
     const ahead = await committedOn('ahead', 'unpushed on ahead');
     page.clear();
     assert.deepStrictEqual(await send('pushBranch', 'ahead'), [
-      'Pushed ahead to origin/ahead',
+      'Pushed "ahead" to "origin/ahead"',
     ]);
     assert.strictEqual(await onRemote('ahead'), ahead);
     assert.deepStrictEqual(page.messages.flatMap(running), [
@@ -357,7 +357,7 @@ suite('Git tool pulling and pushing other branches', () => {
     ]);
     await repository.git('branch', 'fresh', 'main');
     assert.deepStrictEqual(await send('pushBranch', 'fresh'), [
-      'Published fresh as origin/fresh',
+      'Published "fresh" as "origin/fresh"',
     ]);
     assert.ok(await onRemote('fresh'));
     assert.strictEqual(

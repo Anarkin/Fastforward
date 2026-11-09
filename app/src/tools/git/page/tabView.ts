@@ -1,3 +1,4 @@
+import { plainOf, type Sentence } from '../../../shared/strings';
 import { shownSide, workingTreeSide } from '../shared/comparisons';
 import type {
   ChangeArea,
@@ -55,7 +56,7 @@ export interface TabView {
   readonly forward: readonly NavigationEntry[];
   readonly hashLookup: GitToWebviewOf<'hashLookup'> | undefined;
   readonly commitSearch: GitToWebviewOf<'commitSearch'> | undefined;
-  readonly error: string | undefined;
+  readonly error: Sentence | undefined;
   readonly prefetched: Prefetched | undefined;
 }
 
@@ -385,7 +386,8 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         patchLoading: false,
       };
     case 'clearError':
-      return action.message === state.error
+      return state.error !== undefined &&
+        plainOf(action.message) === plainOf(state.error)
         ? { ...state, error: undefined }
         : state;
     default:

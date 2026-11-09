@@ -8,7 +8,7 @@ import {
 } from './settings';
 import type { ImageView, TextView } from '../shared/protocol';
 import * as path from 'node:path';
-import { strings } from '../../shared/strings';
+import { strings, type Sentence } from '../../shared/strings';
 import { isTool, type ToolId } from '../shared/tools';
 
 export const tabsKey = 'tabs';
@@ -67,7 +67,7 @@ function withChange(
 const textViewKeys = ['wordWrap', 'showWhitespace', 'highlightSyntax'] as const;
 
 export class JsonFileStore implements Store {
-  readonly problems: readonly string[];
+  readonly problems: readonly Sentence[];
   private values: Record<string, unknown>;
   private unreadable: boolean;
   private readonly changedUnread = new Map<string, Change>();
@@ -145,7 +145,7 @@ export class JsonFileStore implements Store {
 
 function readJson(file: string): {
   values: Record<string, unknown> | undefined;
-  problem?: string;
+  problem?: Sentence;
 } {
   const text = readText(file);
   if (text === undefined) {

@@ -1,3 +1,4 @@
+import type { Sentence } from '../../../shared/strings';
 import { followDrag } from '../../../ui/followDrag';
 import { workingTreeHash } from '../shared/protocol';
 
@@ -25,16 +26,16 @@ export function columnsClass(
 }
 
 export function showsDiff(
-  error: string | undefined,
+  error: Sentence | undefined,
   listsNothing: boolean,
 ): boolean {
   return error !== undefined || !listsNothing;
 }
 
 export function listError(
-  error: string | undefined,
+  error: Sentence | undefined,
   selected: string | undefined,
-): string | undefined {
+): Sentence | undefined {
   return selected === undefined ? error : undefined;
 }
 

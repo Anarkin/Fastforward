@@ -1,3 +1,4 @@
+import type { Sentence } from '../../../shared/strings';
 import type { CloneAsk, CloneView } from './clone';
 
 export const workingTreeHash = 'working-tree';
@@ -343,7 +344,7 @@ export interface CompareView {
   readonly entire: boolean;
   readonly version: number;
   readonly same?: 'identical' | 'whitespace';
-  readonly error?: string;
+  readonly error?: Sentence;
 }
 
 export type GitToWebview =
@@ -504,8 +505,8 @@ export type GitToWebview =
       readonly id?: string;
       readonly link?: true;
     }
-  | { readonly type: 'error'; readonly message: string }
-  | { readonly type: 'clearError'; readonly message: string };
+  | { readonly type: 'error'; readonly message: Sentence }
+  | { readonly type: 'clearError'; readonly message: Sentence };
 
 export type GitToWebviewOf<T extends GitToWebview['type']> = Extract<
   GitToWebview,

@@ -16,7 +16,7 @@ import {
   type Bookmark,
   type BookmarkRef,
 } from '../../../../../tools/git/shared/protocol';
-import { strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../shared/strings';
 import {
   activeTabKey,
   JsonFileStore,
@@ -179,7 +179,7 @@ suite('Git tool of one repository', () => {
       await withNotices(opened.page, 'error', async (notices) => {
         await opened.connection.receive({ type: 'ready' });
         assert.deepStrictEqual(notices, [
-          strings.messages.couldNotWatch(repository.root),
+          plainOf(strings.messages.couldNotWatch(repository.root)),
         ]);
       });
       assert.strictEqual(opened.page.last('error'), undefined);
@@ -257,7 +257,7 @@ suite('Git tool of one repository', () => {
           }),
         );
         assert.deepStrictEqual(notices, [
-          strings.messages.couldNotWatch(repository.root),
+          plainOf(strings.messages.couldNotWatch(repository.root)),
         ]);
         return Promise.resolve();
       });
@@ -1075,7 +1075,10 @@ suite('Git tool of one repository', () => {
         root: repository.root,
         hash: fixture.f2,
       });
-      assert.match(page.last('error')?.message ?? '', /not in the history/);
+      assert.match(
+        plainOf(page.last('error')?.message ?? ''),
+        /not in the history/,
+      );
     });
 
     test('sends the files and diff again when the shown commit is selected again', async () => {
@@ -1120,7 +1123,10 @@ suite('Git tool of one repository', () => {
       ] as const) {
         page.clear();
         await connection.receive(message);
-        assert.match(page.last('error')?.message ?? '', /not in the history/);
+        assert.match(
+          plainOf(page.last('error')?.message ?? ''),
+          /not in the history/,
+        );
       }
       await connection.receive({ type: 'setIgnoreWhitespace', ignore: true });
       assert.strictEqual(page.last('diff'), undefined);
@@ -1160,10 +1166,10 @@ suite('Git tool of one repository', () => {
             });
           }
           assert.deepStrictEqual(messages, [
-            "main~1 doesn't exist, so it wasn't checked out",
-            "no-such-branch doesn't exist, so it wasn't checked out",
-            "no-such-tag doesn't exist, so it wasn't checked out",
-            "origin/no-such-branch doesn't exist, so it wasn't checked out",
+            '"main~1" doesn\'t exist, so it wasn\'t checked out',
+            '"no-such-branch" doesn\'t exist, so it wasn\'t checked out',
+            '"no-such-tag" doesn\'t exist, so it wasn\'t checked out',
+            '"origin/no-such-branch" doesn\'t exist, so it wasn\'t checked out',
           ]);
         });
       } finally {
@@ -1448,7 +1454,10 @@ suite('Git tool of one repository', () => {
         root: repository.root,
         hash: fixture.merge,
       });
-      assert.match(page.last('error')?.message ?? '', /^fatal: .*no-tree$/);
+      assert.match(
+        plainOf(page.last('error')?.message ?? ''),
+        /^fatal: .*no-tree$/,
+      );
       takeErrorsLogged(
         logged,
         /^Handling loadTree from the page failed$/,

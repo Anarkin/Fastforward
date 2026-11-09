@@ -55,6 +55,36 @@ suite('Notices', () => {
     );
   });
 
+  test('shows a repeated message once, as the newest, whether its names are the same parts or a new copy of them', () => {
+    const pushed = (id: number): Notice => ({
+      ...notice(id),
+      message: ['Pushed ', { name: 'main' }],
+    });
+    const shown = addNotice(
+      addNotice(addNotice([], pushed(1)), notice(2)),
+      pushed(3),
+    );
+    assert.deepStrictEqual(
+      shown.map((shownNotice) => shownNotice.id),
+      [2, 3],
+    );
+  });
+
+  test('sets the names a notice gives apart in monospace, in place of quotes, and counts them as their quoted text in the time it is shown for', () => {
+    const named: Notice = {
+      ...notice(1),
+      message: ['Pushed ', { name: 'main' }, ' to ', { name: 'origin/main' }],
+    };
+    assert.match(
+      renderToStaticMarkup(withNotices([named])),
+      /<span class="notice-message">Pushed <code class="name"><span>main<\/span><\/code> to <code class="name"><span>origin\/<\/span><span>main<\/span><\/code><\/span>/,
+    );
+    assert.strictEqual(
+      shownFor(named),
+      shownFor({ ...named, message: 'Pushed "main" to "origin/main"' }),
+    );
+  });
+
   test('shows the newest notice last, nearest the corner it stacks in', () => {
     const html = renderToStaticMarkup(withNotices([notice(1), notice(2)]));
     assert.ok(html.indexOf('notice 1') < html.indexOf('notice 2'));

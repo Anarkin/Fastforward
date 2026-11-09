@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { strings } from '../../../shared/strings';
+import { sentencesOf, strings } from '../../../shared/strings';
 import {
   itemsAt,
   type ArchiveAccess,
@@ -68,7 +68,7 @@ export async function copiedBetween(
     if (added.warning !== undefined) {
       return {
         kind: 'packed',
-        warning: `${added.warning} ${strings.commander.originalsKept}`,
+        warning: sentencesOf([added.warning, strings.commander.originalsKept]),
       };
     }
     const removed = await archives.remove(

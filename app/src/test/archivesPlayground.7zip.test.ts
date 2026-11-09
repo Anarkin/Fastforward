@@ -1,3 +1,4 @@
+import { plainOf } from '../shared/strings';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -236,10 +237,10 @@ suite('Archives of the playground of files', () => {
   test('refuses the damaged zip and the one that is no archive, saying why', async () => {
     const damaged = await archives.open(at('cut-short.zip'));
     assert.ok(damaged.kind === 'refused');
-    assert.match(damaged.reason, /Unexpected end of archive/);
+    assert.match(plainOf(damaged.reason), /Unexpected end of archive/);
     const text = await archives.open(at('not-an-archive.zip'));
     assert.ok(text.kind === 'refused');
-    assert.match(text.reason, /Cannot open the file as/);
+    assert.match(plainOf(text.reason), /Cannot open the file as/);
   });
 
   test.skipIf(process.platform !== 'win32')(

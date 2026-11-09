@@ -22,11 +22,11 @@ suite('Commander naming', () => {
     const listed = [entry('Photos'), entry('notes.txt')];
     assert.strictEqual(
       newFolderProblem('photos', listed, 'win32'),
-      strings.commander.nameTaken('photos'),
+      strings.commander.nameThere,
     );
     assert.strictEqual(
       newFolderProblem('PHOTOS', listed, 'darwin'),
-      strings.commander.nameTaken('PHOTOS'),
+      strings.commander.nameThere,
     );
     assert.strictEqual(newFolderProblem('photos', listed, 'linux'), undefined);
     assert.strictEqual(newFolderProblem('new', listed, 'win32'), undefined);
@@ -51,7 +51,7 @@ suite('Commander naming', () => {
     );
     assert.strictEqual(
       renameProblem('NOTES.txt', 'Photos', listed, 'darwin'),
-      strings.commander.nameTaken('NOTES.txt'),
+      strings.commander.nameThere,
     );
     assert.strictEqual(
       renameProblem('NOTES.txt', 'Photos', listed, 'linux'),

@@ -145,7 +145,7 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/shell';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 import {
   maxRecentItems,
   sameRoot,
@@ -199,7 +199,7 @@ interface TabWork extends TabState {
   changedAgain: Changed;
   refreshedAgain: PromiseWithResolvers<void> | undefined;
   loadsAgain: Refresh[];
-  refreshError: string | undefined;
+  refreshError: Sentence | undefined;
   isRepository: boolean | undefined;
   refused: boolean;
   selection: number | undefined;
@@ -1933,7 +1933,7 @@ export class GitTool implements Tool<'git'> {
     comparing.running = running;
     let patch = '';
     let same: 'identical' | 'whitespace' | undefined;
-    let error: string | undefined;
+    let error: Sentence | undefined;
     try {
       patch = await comparedFilesPatch(
         this.gitPath,

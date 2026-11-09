@@ -99,7 +99,7 @@ suite('Git tool making new repositories', () => {
         await withNotices(view.page, 'info', async (notices) => {
           await view.connection.receive({ type: 'initRepository' });
           assert.deepStrictEqual(notices, [
-            `${repository.root} is a git repository already, so it was opened`,
+            `"${repository.root}" is a git repository already, so it was opened`,
           ]);
         });
         const shown = shownTabs(view.page);
@@ -191,7 +191,7 @@ suite('Git tool making new repositories', () => {
         await withNotices(view.page, 'error', async (notices) => {
           await view.connection.receive({ type: 'initRepository' });
           assert.deepStrictEqual(notices, [
-            `Couldn't init a repository in ${gone}. ${gone} doesn't exist anymore`,
+            `Couldn't init a repository in "${gone}". ${gone} doesn't exist anymore`,
           ]);
         });
         assert.strictEqual(shownTabs(view.page)?.tabs.length ?? 0, 0);

@@ -1,3 +1,4 @@
+import { plainOf } from '../../../../shared/strings';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -71,7 +72,7 @@ async function checkOut(
   const notices: Notices = [];
   const checkedOut = await checkout(
     recording.log,
-    (level, message) => notices.push([level, message]),
+    (level, message) => notices.push([level, plainOf(message)]),
     { gitPath: repository.gitPath, root: repository.root },
     target,
   );
@@ -102,7 +103,7 @@ async function pushed(
   const notices: Notices = [];
   const result = await pushToUpstream(
     recordingLog().log,
-    (level, message) => notices.push([level, message]),
+    (level, message) => notices.push([level, plainOf(message)]),
     { gitPath: repository.gitPath, root: repository.root },
     new AbortController().signal,
   );
@@ -261,7 +262,10 @@ suite.concurrent('Operations checking out', () => {
     assert.strictEqual(fs.readFileSync(clash, 'utf8'), 'mine');
     assert.strictEqual(notices.length, 1);
     assert.strictEqual(notices[0][0], 'error');
-    assert.match(notices[0][1], /couldn't fast-forward it to origin\/blocked/);
+    assert.match(
+      notices[0][1],
+      /couldn't fast-forward it to "origin\/blocked"/,
+    );
     assert.deepStrictEqual(await repository.resolve('blocked'), [b]);
     assert.strictEqual(errors.length, 2);
     assert.strictEqual(
@@ -301,7 +305,7 @@ suite.concurrent('Operations checking out', () => {
     assert.strictEqual(notices[0][0], 'info');
     assert.strictEqual(
       notices[0][1],
-      "Switched to apart, which has diverged from origin/apart, so it couldn't be fast-forwarded",
+      'Switched to "apart", which has diverged from "origin/apart", so it couldn\'t be fast-forwarded',
     );
     assert.deepStrictEqual(errors, []);
   });
@@ -316,7 +320,7 @@ suite.concurrent('Operations checking out', () => {
     assert.deepStrictEqual(left.notices, [
       [
         'info',
-        `Left 2 commits behind on no branch or tag: ${two.slice(0, 7)} ${one.slice(0, 7)}`,
+        `Left 2 commits behind on no branch or tag: "${two.slice(0, 7)}" "${one.slice(0, 7)}"`,
       ],
     ]);
     await checkedOutQuietly(repository, { kind: 'commit', hash: b });
@@ -340,7 +344,7 @@ suite.concurrent('Operations checking out', () => {
     assert.deepStrictEqual(notices, [
       [
         'info',
-        `Left 6 commits behind on no branch or tag: ${newest.map((hash) => hash.slice(0, 7)).join(' ')} and 1 more`,
+        `Left 6 commits behind on no branch or tag: ${newest.map((hash) => `"${hash.slice(0, 7)}"`).join(' ')} and 1 more`,
       ],
     ]);
   });
@@ -382,7 +386,7 @@ suite.concurrent('Operations checking out', () => {
     assert.strictEqual(notices[0][0], 'error');
     assert.match(
       notices[0][1],
-      /^Switched to behind, but couldn't fast-forward it to origin\/behind\. /,
+      /^Switched to "behind", but couldn't fast-forward it to "origin\/behind"\. /,
     );
     assert.strictEqual(
       errors[0],
@@ -407,7 +411,7 @@ suite.concurrent('Operations checking out', () => {
     assert.strictEqual(notices[0][0], 'error');
     assert.match(
       notices[0][1],
-      /^Switched to unread, but couldn't fast-forward it to origin\/unread\. /,
+      /^Switched to "unread", but couldn't fast-forward it to "origin\/unread"\. /,
     );
     assert.strictEqual(
       errors[0],
@@ -431,7 +435,7 @@ suite.concurrent('Operations checking out', () => {
     assert.strictEqual(checkedOut, false);
     assert.strictEqual(notices.length, 1);
     assert.strictEqual(notices[0][0], 'error');
-    assert.match(notices[0][1], /^Couldn't check out main/);
+    assert.match(notices[0][1], /^Couldn't check out "main"/);
     assert.deepStrictEqual(await repository.resolve('HEAD'), [stopped]);
     assert.strictEqual(errors.length, 2);
     assert.strictEqual(errors[0], 'Checking out branch main failed');
@@ -557,13 +561,13 @@ suite.concurrent('Operations pushing', () => {
     await repository.git('remote', 'add', 'second', '.');
     await pushesNothing(
       repository,
-      "topic has no upstream, and with several remotes, it's unclear which to push it to",
+      '"topic" has no upstream, and with several remotes, it\'s unclear which to push it to',
     );
     await repository.git('remote', 'remove', 'second');
     await repository.git('remote', 'remove', 'origin');
     await pushesNothing(
       repository,
-      "topic has no upstream, and there's no remote to push it to",
+      '"topic" has no upstream, and there\'s no remote to push it to',
     );
   });
 
@@ -575,7 +579,7 @@ suite.concurrent('Operations pushing', () => {
     await repository.commit('more');
     await pushesNothing(
       repository,
-      "origin/brief, the upstream of brief, doesn't exist anymore",
+      '"origin/brief", the upstream of "brief", doesn\'t exist anymore',
     );
   });
 
@@ -586,7 +590,7 @@ suite.concurrent('Operations pushing', () => {
     await repository.commit('feature');
     await pushesNothing(
       repository,
-      "feature tracks origin/main, which has another name, so it wasn't pushed, as git push wouldn't push it either",
+      '"feature" tracks "origin/main", which has another name, so it wasn\'t pushed, as "git push" wouldn\'t push it either',
     );
   });
 
@@ -598,7 +602,7 @@ suite.concurrent('Operations pushing', () => {
     await repository.commit('review');
     await pushesNothing(
       repository,
-      "review tracks origin/refs/pull/1/head, which has another name, so it wasn't pushed, as git push wouldn't push it either",
+      '"review" tracks "origin/refs/pull/1/head", which has another name, so it wasn\'t pushed, as "git push" wouldn\'t push it either',
     );
   });
 
@@ -608,7 +612,7 @@ suite.concurrent('Operations pushing', () => {
     await repository.commit('more');
     await pushesNothing(
       repository,
-      'follower tracks the local branch main, so it has no remote to push to',
+      '"follower" tracks the local branch "main", so it has no remote to push to',
     );
   });
 });

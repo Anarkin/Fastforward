@@ -13,7 +13,7 @@ import { maxFileSize } from '../../../../../tools/git/main/cli/files';
 import { imageUrl, maxImageSize } from '../../../../../tools/git/shared/images';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import { tabsKey } from '../../../../../shell/main/storage';
-import { strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../shared/strings';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import { waitFor } from '../../../../fixtures';
 import {
@@ -157,7 +157,7 @@ suite('Git tool showing diffs', () => {
               )
             : [],
           notices: view.page.messages.flatMap((message) =>
-            message.type === 'notice' ? [message.message] : [],
+            message.type === 'notice' ? [plainOf(message.message)] : [],
           ),
         };
       });
@@ -173,15 +173,17 @@ suite('Git tool showing diffs', () => {
     assert.deepStrictEqual(await viewing('../outside.txt'), {
       viewers: [],
       notices: [
-        strings.diff.couldNotView(
-          '../outside.txt',
-          strings.errors.outsideRepository('../outside.txt'),
+        plainOf(
+          strings.diff.couldNotView(
+            '../outside.txt',
+            strings.errors.outsideRepository('../outside.txt'),
+          ),
         ),
       ],
     });
     assert.deepStrictEqual(await viewing('gone.txt'), {
       viewers: [],
-      notices: [strings.diff.viewMissing('gone.txt')],
+      notices: [plainOf(strings.diff.viewMissing('gone.txt'))],
     });
   });
 

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
 import { packInto } from './packing';
 import { fileVersion } from '../shared/files';
@@ -18,7 +18,7 @@ export interface ArchiveItem {
 }
 
 export interface ArchiveRefusal {
-  readonly reason: string;
+  readonly reason: Sentence;
   readonly noArchive?: true;
   readonly needsPassword?: true;
 }
@@ -76,7 +76,7 @@ export interface RemoveOptions extends UpdateOptions {
 }
 
 export type Packing =
-  | { readonly kind: 'packed'; readonly warning?: string }
+  | { readonly kind: 'packed'; readonly warning?: Sentence }
   | ({ readonly kind: 'refused' } & ArchiveRefusal);
 
 export interface ArchiveReader {
@@ -306,7 +306,7 @@ export type Extracting =
 
 export interface ArchiveAccess {
   open(file: string, signal?: AbortSignal): Promise<Opening>;
-  unchangeable(archive: OpenedArchive): string | undefined;
+  unchangeable(archive: OpenedArchive): Sentence | undefined;
   openInside(
     file: string,
     outer: OpenedArchive,
@@ -772,7 +772,7 @@ export class Archives implements ArchiveAccess {
       : this.reader.test(file, { ...options, ...this.passwordOf(file) });
   }
 
-  unchangeable(archive: OpenedArchive): string | undefined {
+  unchangeable(archive: OpenedArchive): Sentence | undefined {
     const name = path.basename(archive.file);
     if (archive.outer !== undefined || archive.source !== archive.file) {
       return strings.commander.archiveUnchangeable(name);

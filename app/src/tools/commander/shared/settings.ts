@@ -1,4 +1,4 @@
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 
 export const sortColumns = ['name', 'extension', 'size', 'date'] as const;
 
@@ -48,13 +48,13 @@ export function extensionKey(extension: string): string {
 }
 
 const standInTwice: Readonly<
-  Record<GroupStandIn, (first: number, again: number) => string>
+  Record<GroupStandIn, (first: number, again: number) => Sentence>
 > = {
   languages: strings.settings.fileColorLanguagesTwice,
   executables: strings.settings.fileColorExecutablesTwice,
 };
 
-export function fileColorProblems(groups: readonly FileColor[]): string[] {
+export function fileColorProblems(groups: readonly FileColor[]): Sentence[] {
   const firstGroup = new Map<string, number>();
   const firstStandIn = new Map<GroupStandIn, number>();
   return groups.flatMap(({ extensions }, group) => {

@@ -260,7 +260,7 @@ suite('Git tool cloning repositories', () => {
         });
         await view.connection.receive({ type: 'closeClone' });
         await view.view.idle();
-        assert.deepStrictEqual(notices, [`Cloned ${url} into ${target}`]);
+        assert.deepStrictEqual(notices, [`Cloned "${url}" into "${target}"`]);
       });
       assert.strictEqual(lastView(view), undefined);
       const tabs = shownTabs(view.page);
@@ -284,7 +284,7 @@ suite('Git tool cloning repositories', () => {
         await view.view.idle();
         assert.strictEqual(notices.length, 1);
         assert.ok(
-          notices[0].startsWith(`Couldn't clone ${missing}. `),
+          notices[0].startsWith(`Couldn't clone "${missing}". `),
           notices[0],
         );
       });
@@ -325,7 +325,7 @@ suite('Git tool cloning repositories', () => {
           await view.view.idle();
           assert.strictEqual(notices.length, 1);
           assert.ok(
-            notices[0].startsWith(`Couldn't clone ${shown}. `),
+            notices[0].startsWith(`Couldn't clone "${shown}". `),
             notices[0],
           );
         });

@@ -118,7 +118,7 @@ suite('Git tool pulling', () => {
 
   test('says the checked-out branch is up to date when there is nothing to pull', async () => {
     assert.deepStrictEqual(await pulledWith('info'), [
-      'main is up to date with origin/main',
+      '"main" is up to date with "origin/main"',
     ]);
   });
 
@@ -126,7 +126,7 @@ suite('Git tool pulling', () => {
     await repository.commit('local only');
     const [local] = await repository.resolve('main');
     assert.deepStrictEqual(await pulledWith('info'), [
-      'main is ahead of origin/main, with nothing to pull',
+      '"main" is ahead of "origin/main", with nothing to pull',
     ]);
     assert.deepStrictEqual(await repository.resolve('main'), [local]);
   });
@@ -136,7 +136,7 @@ suite('Git tool pulling', () => {
     await repository.commit('mine');
     const [mine] = await repository.resolve('main');
     assert.deepStrictEqual(await pulledWith('info'), [
-      "main has diverged from origin/main, so it can't be fast-forwarded",
+      '"main" has diverged from "origin/main", so it can\'t be fast-forwarded',
     ]);
     assert.deepStrictEqual(await repository.resolve('main'), [mine]);
   });
@@ -157,7 +157,7 @@ suite('Git tool pulling', () => {
     await repository.git('checkout', '-b', 'loner');
     try {
       assert.deepStrictEqual(await pulledWith('info'), [
-        'loner has no upstream',
+        '"loner" has no upstream',
       ]);
       assert.deepStrictEqual(await repository.resolve('origin/main'), [before]);
     } finally {
@@ -172,7 +172,7 @@ suite('Git tool pulling', () => {
     await remote.git('branch', '-D', 'brief');
     try {
       assert.deepStrictEqual(await pulledWith('info'), [
-        "origin/brief, the upstream of brief, doesn't exist anymore",
+        '"origin/brief", the upstream of "brief", doesn\'t exist anymore',
       ]);
     } finally {
       await repository.git('checkout', '-f', 'main');

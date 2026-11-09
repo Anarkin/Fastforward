@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { strings } from '../../../shared/strings';
+import {
+  plainOf,
+  sentencesOf,
+  strings,
+  type Sentence,
+} from '../../../shared/strings';
 import {
   unattachedShell,
   type Page,
@@ -1925,7 +1930,10 @@ export class CommanderTool implements Tool<'commander'> {
         if (added.warning !== undefined) {
           return {
             kind: 'packed',
-            warning: `${added.warning} ${strings.commander.originalsKept}`,
+            warning: sentencesOf([
+              added.warning,
+              strings.commander.originalsKept,
+            ]),
           };
         }
         const failures: string[] = [];
@@ -2133,7 +2141,7 @@ export class CommanderTool implements Tool<'commander'> {
     );
   }
 
-  private refuse(page: Page, message: string): void {
+  private refuse(page: Page, message: Sentence): void {
     this.shell.notice(page, { level: 'error', message });
   }
 
@@ -3196,7 +3204,7 @@ export class CommanderTool implements Tool<'commander'> {
         throw unopened;
       }
       throw Object.assign(
-        new Error(opening.reason),
+        new Error(plainOf(opening.reason)),
         (await isFile(file)) ? {} : { code: 'ENOENT' },
       );
     }

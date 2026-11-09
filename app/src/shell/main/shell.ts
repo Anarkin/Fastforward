@@ -13,7 +13,7 @@ import type {
   ToWebviewOf,
   UpdateStatus,
 } from '../shared/protocol';
-import { strings } from '../../shared/strings';
+import { strings, type Sentence } from '../../shared/strings';
 import {
   confirmsClose,
   isTool,
@@ -96,8 +96,8 @@ export type Tools = { readonly [K in ToolId]: Tool<K> };
 export interface ShellHost {
   openSettings(): Promise<void>;
   openDefaultSettings(): Promise<void>;
-  settingsProblems(): readonly string[];
-  stateProblems(): readonly string[];
+  settingsProblems(): readonly Sentence[];
+  stateProblems(): readonly Sentence[];
   checkForUpdates(): void;
   installUpdate(): void;
   quit(): void;

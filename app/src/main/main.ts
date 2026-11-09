@@ -43,7 +43,7 @@ import {
   setKeyPlatform,
 } from '../shell/shared/keymap';
 import type { Theme, ToHost, ToWebview } from '../shell/shared/protocol';
-import { brand, strings } from '../shared/strings';
+import { brand, plainOf, strings } from '../shared/strings';
 import {
   readDefaults,
   UserSettings,
@@ -220,7 +220,7 @@ async function start(asked: readonly string[]): Promise<void> {
   const defaultSettingsCopy = path.join(profile, 'settings.defaults.json');
   const userSettings = new UserSettings(defaults, userSettingsFile);
   for (const problem of userSettings.problems) {
-    log.warn(problem);
+    log.warn(plainOf(problem));
   }
   applyTheme(userSettings.settings.theme);
   const state = new JsonFileStore(
@@ -228,7 +228,7 @@ async function start(asked: readonly string[]): Promise<void> {
     migratedState,
   );
   for (const problem of state.problems) {
-    log.warn(problem);
+    log.warn(plainOf(problem));
   }
   const untoldStateProblems = [...state.problems];
   const pdfPlaces = new PdfPlaces(path.join(profile, 'pdf-places.json'));
@@ -697,7 +697,7 @@ async function start(asked: readonly string[]): Promise<void> {
   const applySettings = () => {
     log.info(strings.log.settingsChanged);
     for (const problem of userSettings.problems) {
-      log.warn(problem);
+      log.warn(plainOf(problem));
     }
     applyTheme(userSettings.settings.theme);
     view.reloadSettings();

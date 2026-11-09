@@ -100,7 +100,7 @@ suite('Git tool pushing', () => {
     await repository.commit('b');
     const [local] = await repository.resolve('main');
     assert.deepStrictEqual(await pushedWith('info'), [
-      'Pushed main to origin/main',
+      'Pushed "main" to "origin/main"',
     ]);
     assert.strictEqual(await onRemote('main'), local);
     assert.strictEqual(refOnPage('origin/main'), local);
@@ -133,7 +133,7 @@ suite('Git tool pushing', () => {
         await Promise.all([pushed, fetched]);
         said = messages;
       });
-      assert.deepStrictEqual(said, ['Pushed main to origin/main']);
+      assert.deepStrictEqual(said, ['Pushed "main" to "origin/main"']);
       assert.strictEqual(await onRemote('main'), mine);
       assert.strictEqual(await onRemote('private'), undefined);
     } finally {
@@ -158,7 +158,7 @@ suite('Git tool pushing', () => {
 
   test('says the checked-out branch is up to date when there is nothing to push', async () => {
     assert.deepStrictEqual(await pushedWith('info'), [
-      'main is up to date with origin/main',
+      '"main" is up to date with "origin/main"',
     ]);
   });
 
@@ -166,7 +166,7 @@ suite('Git tool pushing', () => {
     const pushed = await pushedElsewhere('theirs');
     await repository.git('fetch', 'origin');
     assert.deepStrictEqual(await pushedWith('info'), [
-      'main is behind origin/main, with nothing to push',
+      '"main" is behind "origin/main", with nothing to push',
     ]);
     assert.strictEqual(await onRemote('main'), pushed);
   });
@@ -176,7 +176,7 @@ suite('Git tool pushing', () => {
     await repository.git('fetch', 'origin');
     await repository.commit('mine');
     assert.deepStrictEqual(await pushedWith('info'), [
-      'main has diverged from origin/main, so pushing it would drop commits there',
+      '"main" has diverged from "origin/main", so pushing it would drop commits there',
     ]);
     assert.strictEqual(await onRemote('main'), pushed);
   });
@@ -187,7 +187,7 @@ suite('Git tool pushing', () => {
     const [topic] = await repository.resolve('topic');
     try {
       assert.deepStrictEqual(await pushedWith('info'), [
-        'Published topic as origin/topic',
+        'Published "topic" as "origin/topic"',
       ]);
       assert.strictEqual(await onRemote('topic'), topic);
       assert.strictEqual(
@@ -210,13 +210,13 @@ suite('Git tool pushing', () => {
     try {
       await repository.git('config', 'push.default', 'current');
       assert.deepStrictEqual(await pushedWith('info'), [
-        'Pushed feature to origin/feature',
+        'Pushed "feature" to "origin/feature"',
       ]);
       const [feature] = await repository.resolve('feature');
       assert.strictEqual(await onRemote('feature'), feature);
       await repository.git('config', 'push.default', 'upstream');
       assert.deepStrictEqual(await pushedWith('info'), [
-        'Pushed feature to origin/main',
+        'Pushed "feature" to "origin/main"',
       ]);
       assert.strictEqual(await onRemote('main'), feature);
     } finally {
@@ -238,7 +238,7 @@ suite('Git tool pushing', () => {
     const upstream = await onRemote('main');
     try {
       assert.deepStrictEqual(await pushedWith('info'), [
-        'Pushed main to fork/main',
+        'Pushed "main" to "fork/main"',
       ]);
       assert.deepStrictEqual(await fork.resolve('main'), [mine]);
       assert.strictEqual(await onRemote('main'), upstream);
@@ -260,7 +260,7 @@ suite('Git tool pushing', () => {
     const [fix] = await repository.resolve('fix');
     try {
       assert.deepStrictEqual(await pushedWith('info'), [
-        `Pushed fix to ${fork.root}/fix`,
+        `Pushed "fix" to "${fork.root}/fix"`,
       ]);
       assert.deepStrictEqual(await fork.resolve('fix'), [fix]);
       assert.strictEqual(await onRemote('fix'), undefined);
@@ -279,7 +279,7 @@ suite('Git tool pushing', () => {
     await repository.commit('mine');
     page.clear();
     assert.deepStrictEqual(await pushedWith('info'), [
-      "origin/main has new commits on the remote that main lacks, so it wasn't pushed",
+      '"origin/main" has new commits on the remote that "main" lacks, so it wasn\'t pushed',
     ]);
     assert.strictEqual(await onRemote('main'), pushed);
     assert.strictEqual(refOnPage('origin/main'), pushed);

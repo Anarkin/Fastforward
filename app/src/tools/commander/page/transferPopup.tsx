@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { strings } from '../../../shared/strings';
+import { plainOf, strings } from '../../../shared/strings';
 import { useDismiss } from '../../../ui/contextMenu';
 import { CloseIcon } from '../../../ui/icons';
 import { moveBetweenButtons } from '../../../ui/dialogButtons';
@@ -8,7 +8,7 @@ import { formatDate } from '../../../ui/dates';
 import { useShell } from '../../../shell/page/store';
 import type { ClashSide, TransferView } from '../shared/transfers';
 import { useCommander, useCommanderActions } from './store';
-import { NameLines } from '../../../ui/name';
+import { NameLines, Words } from '../../../ui/name';
 import { progressLines, runningLines, shareDone } from './transferring';
 
 type Clash = NonNullable<TransferView['clash']>;
@@ -38,7 +38,7 @@ function ClashBody({ clash, move }: { clash: Clash; move: boolean }) {
   return (
     <div className="confirm-body transfer-body">
       <span className="transfer-clash">
-        {commander.clashQuestion(commander.oneItem(clash.name))}
+        <Words>{commander.clashQuestion(commander.oneItem(clash.name))}</Words>
       </span>
       <div className="transfer-sides">
         <ClashSideRow
@@ -124,8 +124,13 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
     <div className="confirm-body transfer-body">
       <div className="transfer-running">
         <NameLines lines={runningLines(transfer)} />
-        <span className="transfer-current" title={lines.current}>
-          {lines.current}
+        <span
+          className="transfer-current"
+          title={
+            lines.current === undefined ? undefined : plainOf(lines.current)
+          }
+        >
+          {lines.current !== undefined && <Words>{lines.current}</Words>}
         </span>
       </div>
       <div

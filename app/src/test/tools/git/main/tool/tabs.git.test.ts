@@ -1,3 +1,4 @@
+import { plainOf } from '../../../../../shared/strings';
 import * as assert from 'node:assert';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
@@ -858,7 +859,10 @@ suite('Git tool with two tabs', () => {
         tab: tabOf(tabs.page, repository.root),
       });
       assert.strictEqual(shownTabs(tabs.page)?.active, other);
-      assert.match(tabs.page.last('error')?.message ?? '', /next tab failed/);
+      assert.match(
+        plainOf(tabs.page.last('error')?.message ?? ''),
+        /next tab failed/,
+      );
       takeErrorsLogged(logged, /^Showing tab .* failed$/, /^next tab failed$/);
     });
 

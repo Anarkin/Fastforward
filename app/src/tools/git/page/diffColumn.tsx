@@ -40,7 +40,8 @@ import {
   WordWrapIcon,
 } from '../../../ui/icons';
 import { gitKeymap } from '../shared/keymap';
-import { strings } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
+import { Words } from '../../../ui/name';
 import {
   FindActions,
   FindField,
@@ -301,7 +302,7 @@ export function Diff({
   texts: ReadonlyMap<string, LoadedText>;
   onLoadTexts: (texts: TextRequest[]) => void;
   fileContent: WholeFile | undefined;
-  error: string | undefined;
+  error: Sentence | undefined;
   options: React.ReactNode;
   changeMarks: boolean;
   entire: boolean;
@@ -329,7 +330,9 @@ export function Diff({
   const errorRow = useMemo(
     () =>
       error ? (
-        <div className="error-message">{error}</div>
+        <div className="error-message">
+          <Words>{error}</Words>
+        </div>
       ) : (
         note && <div className="diff-note">{note}</div>
       ),

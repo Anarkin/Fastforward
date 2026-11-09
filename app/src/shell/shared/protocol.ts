@@ -1,3 +1,4 @@
+import type { Sentence } from '../../shared/strings';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
 export const maxNotices = 4;
@@ -126,7 +127,7 @@ export type ToWebview =
   | {
       readonly type: 'notice';
       readonly level: 'info' | 'error';
-      readonly message: string;
+      readonly message: Sentence;
     }
   | ToolToWebview;
 
