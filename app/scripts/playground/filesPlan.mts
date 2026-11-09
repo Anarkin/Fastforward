@@ -14,6 +14,14 @@ import {
 } from './formats.mts';
 import { images } from './gitImages.mts';
 import {
+  csvFiles,
+  csvRows,
+  dotnetFiles,
+  dotnetPair,
+  rustFiles,
+  rustPair,
+} from './projectSamples.mts';
+import {
   binary,
   decoded,
   diagrams,
@@ -323,12 +331,35 @@ const plainPng = (width: number, height: number, hue: number) =>
     ];
   });
 
-const rotatedJpeg = () => {
+const orientedJpeg = (orientation: number) => {
   const jpeg = decoded(images.jpg[0]);
   const tiff = Buffer.from([
-    0x4d, 0x4d, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x08, 0x00, 0x01, 0x01, 0x12,
-    0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00,
+    0x4d,
+    0x4d,
+    0x00,
+    0x2a,
+    0x00,
+    0x00,
+    0x00,
+    0x08,
+    0x00,
+    0x01,
+    0x01,
+    0x12,
+    0x00,
+    0x03,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    orientation,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
   ]);
   const body = Buffer.concat([Buffer.from('Exif\0\0', 'latin1'), tiff]);
   const marker = Buffer.alloc(4);
@@ -456,7 +487,7 @@ export function plan({
 
   section(
     'images',
-    'Every image type the viewer previews, animated, transparent, wide, tall, tiny and large ones, one turned by its EXIF tag, a broken one, an SVG with a script and one too large to preview. Open with F3, 3 for the preview, F to fit or show the real size.',
+    'Every image type the viewer previews, animated, transparent, wide, tall, tiny and large ones, a photo in each of the eight orientations its EXIF tag may give, its dark corner moving around in thumbnails with Mod+2, a broken one, an SVG with a script and one too large to preview. Open with F3, 3 for the preview, F to fit or show the real size.',
   );
   for (const { extension, versions } of imageKinds) {
     file(`images/sample.${extension}`, () => versions()[0]);
@@ -478,7 +509,11 @@ export function plan({
     ]),
   );
   file('images/UPPERCASE.JPG', () => decoded(images.jpg[0]));
-  file('images/turned-by-exif.jpg', rotatedJpeg);
+  for (let orientation = 1; orientation <= 8; orientation++) {
+    file(`images/exif-orientation-${orientation}.jpg`, () =>
+      orientedJpeg(orientation),
+    );
+  }
   file('images/broken.png', 'This is not a PNG at all.\n');
   file(
     'images/scripted.svg',
@@ -538,9 +573,13 @@ export function plan({
 
   section(
     'syntax',
-    'Code in many languages, real sources of Fastforward, files just under and over the size the viewer colors, and lines just under and over the length it colors. Choose another language with L.',
+    'Code in many languages; a .NET solution of C#, F#, Visual Basic, Razor and XAML with its projects, props, settings and resources; a Rust crate with its Cargo files; real sources of Fastforward; files just under and over the size the viewer colors; and lines just under and over the length it colors. Choose another language with L.',
   );
-  for (const [name, content] of Object.entries(languages)) {
+  for (const [name, content] of Object.entries({
+    ...languages,
+    ...dotnetFiles,
+    ...rustFiles,
+  })) {
     file(`syntax/${name}`, content);
   }
   for (const source of realSources) {
@@ -671,22 +710,22 @@ export function plan({
 
   section(
     'dates',
-    'Files and a folder dated from 1980 to 2100, past the year 2038 when 32-bit times end. Sort by Date.',
+    'Files and a folder dated from 1980 to 2100, in the time of this computer as their names say, past the year 2038 when 32-bit times end. Sort by Date.',
   );
   for (const [name, date] of [
-    ['1980-01-01.txt', '1980-01-01T12:00:00Z'],
-    ['1999-12-31.txt', '1999-12-31T23:59:00Z'],
-    ['2000-01-01.txt', '2000-01-01T00:00:00Z'],
-    ['2026-02-01.txt', '2026-02-01T09:30:00Z'],
-    ['2038-01-19-after-32-bit.txt', '2038-01-19T03:14:08Z'],
-    ['2100-01-01.txt', '2100-01-01T00:00:00Z'],
+    ['1980-01-01.txt', '1980-01-01T12:00:00'],
+    ['1999-12-31.txt', '1999-12-31T23:59:00'],
+    ['2000-01-01.txt', '2000-01-01T00:00:00'],
+    ['2026-02-01.txt', '2026-02-01T09:30:00'],
+    ['2038-01-19-after-32-bit.txt', '2038-01-19T03:14:08'],
+    ['2100-01-01.txt', '2100-01-01T00:00:00'],
   ] as const) {
     file(`dates/${name}`, `Dated ${date}.\n`, { modified: new Date(date) });
   }
   items.push({
     kind: 'folder',
     path: 'dates/folder-of-1999',
-    modified: new Date('1999-06-15T10:00:00Z'),
+    modified: new Date('1999-06-15T10:00:00'),
   });
 
   section(
@@ -873,7 +912,7 @@ export function plan({
 
   section(
     'formats',
-    'Real files of common formats, which open in their apps with Enter: a Word document, a spreadsheet, rich text, an email, CSV, a zip, a tar, a gzipped tar and file, and a WAV of one second.',
+    'Real files of common formats, which open in their apps with Enter: a Word document, a spreadsheet, rich text, an email, CSV with quoted fields, with semicolons and decimal commas as Excel writes in Hungary, separated by tabs, beyond ASCII, 200 columns wide and 100,000 rows long, a zip, a tar, a gzipped tar and file, and a WAV of one second.',
   );
   file('formats/letter.docx', () =>
     docx([
@@ -901,6 +940,11 @@ export function plan({
     'formats/data.csv',
     'name,branches,tags\nplayground,47,true\nfiles,0,false\n',
   );
+
+  for (const [name, content] of Object.entries(csvFiles)) {
+    file(`formats/${name}`, content);
+  }
+  file('formats/csv-of-100000-rows.csv', () => csvRows(100_000));
 
   const packed = [
     { name: 'readme.txt', content: 'Packed by the playground.\n' },
@@ -976,6 +1020,8 @@ export function plan({
     ['v1.png', () => imageKinds[0].versions()[0]],
     ['v2.png', () => imageKinds[0].versions()[1]],
   );
+  pair('csharp', ['v1.cs', dotnetPair[0]], ['v2.cs', dotnetPair[1]]);
+  pair('rust', ['v1.rs', rustPair[0]], ['v2.rs', rustPair[1]]);
   pair('identical', ['one.txt', prose(1)], ['two.txt', prose(1)]);
   pair('empty-and-full', ['empty.txt', ''], ['full.txt', prose(1)]);
   pair(
@@ -1043,22 +1089,37 @@ export function plan({
   const [fanOut, depth, perFolder] = large ? [6, 5, 10] : [5, 4, 5];
   section(
     'deep',
-    `A tree ${depth} folders deep, ${fanOut} folders wide and ${perFolder} files in each, to list flat with Ctrl+B and stop with Esc.`,
+    `A tree ${depth} folders deep, ${fanOut} folders wide and ${perFolder} files in each, each named after the folders above it, of many sizes and dates, to list flat with Ctrl+B, sort and stop with Esc.`,
   );
-  const grow = (under: string, level: number) => {
+  let grown = 0;
+  const grow = (under: string, trail: string, level: number) => {
     for (let k = 0; k < perFolder; k++) {
+      grown++;
       file(
-        `${under}/file-${k + 1}.${['txt', 'ts', 'md', 'png', 'json'][k % 5]}`,
-        '',
+        `${under}/file-${trail}${k + 1}.${['txt', 'ts', 'md', 'png', 'json'][k % 5]}`,
+        'x'.repeat((grown * 7919) % 4096),
+        {
+          modified: new Date(
+            2020 + (grown % 7),
+            grown % 12,
+            1 + (grown % 28),
+            grown % 24,
+            grown % 60,
+          ),
+        },
       );
     }
     if (level < depth) {
       for (let k = 0; k < fanOut; k++) {
-        grow(`${under}/folder-${level}-${k + 1}`, level + 1);
+        grow(
+          `${under}/folder-${trail}${k + 1}`,
+          `${trail}${k + 1}-`,
+          level + 1,
+        );
       }
     }
   };
-  grow('deep', 1);
+  grow('deep', '', 1);
 
   section(
     'repository',
@@ -1071,6 +1132,10 @@ export function plan({
   section(
     'churn',
     'Changed every half second while the script runs with --churn: files added, grown, renamed and deleted, to watch the commander follow.',
+  );
+  file(
+    'churn/README.txt',
+    'This folder stays as it is until the playground script runs with --churn:\n\n    npm run playground:files -- --churn\n\nIt then keeps the playground and changes this folder every half second, adding a file, growing growing.log, renaming a file back and forth and deleting the oldest added, until stopped with Ctrl+C, to watch the commander follow, in a folder and in flat view.\n',
   );
 
   if (large) {

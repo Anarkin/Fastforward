@@ -262,6 +262,9 @@ function make() {
     }
   }
   record({ madeBy: 'npm run playground:files', locked, readOnly, skipped });
+  if (windows) {
+    quietly('attrib', ['+h', marker]);
+  }
   console.log(
     `Made ${root}${large ? ', with the huge files' : ''}.${skipped.length === 0 ? '' : ` Left out: ${skipped.join('; ')}.`}`,
   );

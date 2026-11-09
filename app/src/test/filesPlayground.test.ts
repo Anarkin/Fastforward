@@ -277,7 +277,7 @@ suite('Playground of files', () => {
     );
   });
 
-  test('holds code in more than 30 languages the viewer colors, every sample in one', () => {
+  test('holds code in more than 30 languages the viewer colors, every sample in one but the classic solution of .NET, which no grammar colors', () => {
     const samples = childrenOf(planFor('linux'), 'syntax').filter(
       (item) => item.kind === 'file',
     );
@@ -285,9 +285,50 @@ suite('Playground of files', () => {
       samples
         .filter((item) => languageOf(item.path) === undefined)
         .map((item) => path.posix.basename(item.path)),
-      [],
+      ['Playground.sln'],
     );
     assert.ok(new Set(samples.map((item) => languageOf(item.path))).size > 30);
+  });
+
+  test('holds a .NET solution in C#, F#, Visual Basic, Razor and XAML with its projects and settings, a Rust crate with its Cargo files, pairs of each to compare, and CSV and TSV of many kinds', () => {
+    const made = planFor('linux');
+    const languagesOf = (folder: string, pattern: RegExp) =>
+      new Set(
+        childrenOf(made, folder)
+          .filter((item) => pattern.test(path.posix.basename(item.path)))
+          .map((item) => languageOf(item.path)),
+      );
+    assert.deepStrictEqual(
+      [
+        ...languagesOf(
+          'syntax',
+          /\.(cs|csx|fs|fsx|vb|razor|cshtml|xaml|resx|csproj|fsproj|slnx|props)$|^(global\.json|nuget\.config|\.editorconfig)$/,
+        ),
+      ].toSorted((a, b) => String(a).localeCompare(String(b))),
+      ['csharp', 'fsharp', 'ini', 'json', 'razor', 'vb', 'xml'],
+    );
+    assert.deepStrictEqual(
+      [...languagesOf('syntax', /\.rs$|^Cargo\./)].toSorted((a, b) =>
+        String(a).localeCompare(String(b)),
+      ),
+      ['rust', 'toml'],
+    );
+    for (const pair of ['csharp', 'rust']) {
+      assert.ok(
+        made.pairs.some(([one]) => one.startsWith(`compare/${pair}-`)),
+        pair,
+      );
+    }
+    const tables = childrenOf(made, 'formats').filter((item) =>
+      /\.(csv|tsv)$/.test(item.path),
+    );
+    assert.ok(tables.length >= 7, String(tables.length));
+    assert.deepStrictEqual(
+      [...new Set(tables.map((item) => languageOf(item.path)))].toSorted(
+        (a, b) => String(a).localeCompare(String(b)),
+      ),
+      ['csv', 'tsv'],
+    );
   });
 
   test('pairs files to compare that differ, but for the pair that is identical', () => {
