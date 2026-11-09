@@ -4313,6 +4313,81 @@ suite('App commander', () => {
     }, 'the images to be gone from the list');
   });
 
+  test('shows the spaces of a name as they are, two in a row or one first, so names differing only in their spaces look apart', async () => {
+    const names = ['spaced one', 'spaced  two', ' spaced first'];
+    for (const name of names) {
+      fs.writeFileSync(path.join(opened, `${name}.txt`), '');
+    }
+    try {
+      await waitFor(async () => {
+        const shown = await rowNames();
+        return names.every((name) => shown.includes(`${name}.txt`));
+      }, 'the files to be listed');
+      const drawn = await right()
+        .locator('.commander-row .commander-name')
+        .evaluateAll((cells) =>
+          cells.flatMap((cell) => {
+            const text = cell.textContent ?? '';
+            if (!text.includes('spaced')) {
+              return [];
+            }
+            const range = document.createRange();
+            range.selectNodeContents(cell);
+            return [[text, range.getBoundingClientRect().width] as const];
+          }),
+        );
+      const advance =
+        (drawn.find(([text]) => text === 'spaced one')?.[1] ?? 0) /
+        'spaced one'.length;
+      assert.deepStrictEqual(
+        drawn
+          .map(([text, width]) => [text, Math.round(width / advance)] as const)
+          .toSorted(([a], [b]) => a.localeCompare(b)),
+        names
+          .map((name) => [name, name.length] as const)
+          .toSorted(([a], [b]) => a.localeCompare(b)),
+      );
+    } finally {
+      for (const name of names) {
+        fs.rmSync(path.join(opened, `${name}.txt`));
+      }
+    }
+    await waitFor(
+      async () => !(await rowNames()).some((name) => name.includes('spaced')),
+      'the files to be gone from the list',
+    );
+  });
+
+  test('ends an extension too long for its column with an ellipsis, as it ends a name too long for its column', async () => {
+    const file = path.join(
+      opened,
+      'installer.appinstaller-of-a-long-extension',
+    );
+    fs.writeFileSync(file, '');
+    try {
+      const cell = right()
+        .locator('.commander-row', { hasText: 'installer' })
+        .locator('.commander-extension');
+      await cell.waitFor();
+      assert.deepStrictEqual(
+        await cell.evaluate((element) => ({
+          clipped: element.scrollWidth > element.clientWidth,
+          ellipsis:
+            getComputedStyle(element).textOverflow === 'ellipsis' &&
+            getComputedStyle(element).display === 'block',
+        })),
+        { clipped: true, ellipsis: true },
+      );
+    } finally {
+      fs.rmSync(file);
+    }
+    await waitFor(
+      async () =>
+        !(await rowNames()).some((name) => name.includes('installer')),
+      'the file to be gone from the list',
+    );
+  });
+
   test('says two files compared are the same rather than showing nothing', async () => {
     fs.writeFileSync(path.join(opened, 'twin1.txt'), 'twins');
     fs.writeFileSync(path.join(opened, 'twin2.txt'), 'twins');

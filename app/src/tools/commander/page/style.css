@@ -76,7 +76,7 @@
 .commander-line > * {
   min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
+  white-space: pre;
   text-overflow: ellipsis;
 }
 
@@ -150,7 +150,7 @@
   color: var(--muted-foreground);
 }
 
-.commander-line > .commander-extension {
+.commander-line > .commander-extension:has(> .commander-mark) {
   display: flex;
   align-items: center;
 }
@@ -539,7 +539,7 @@
   height: var(--commander-row-height);
   overflow: hidden;
   line-height: var(--commander-row-height);
-  white-space: nowrap;
+  white-space: pre;
 }
 
 .commander-tile-name {
