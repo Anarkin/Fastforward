@@ -109,6 +109,10 @@ const archiveJobs = {
     title: strings.commander.moveTitle,
     running: strings.commander.moving,
   },
+  test: {
+    title: strings.commander.testTitle,
+    running: strings.commander.testingArchives,
+  },
 };
 
 const countedJobs: ReadonlySet<string> = new Set(['pack', 'copyIn', 'moveIn']);

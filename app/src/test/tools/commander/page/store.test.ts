@@ -843,6 +843,25 @@ suite('Commander store', () => {
     );
   });
 
+  test('tests the archives named in the folder of a side on disk, and none inside an archive', () => {
+    const { posted, store } = shown();
+    store.getState().testArchives('left', ['a.zip', 'b.7z']);
+    store.getState().receive({ ...listing('C:\\x.zip'), archive: 'C:\\x.zip' });
+    store.getState().testArchives('left', ['inner.zip']);
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'testArchives'),
+      [
+        {
+          type: 'testArchives',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          names: ['a.zip', 'b.7z'],
+        },
+      ],
+    );
+  });
+
   test('reads a folder it may not as administrator once asked, forgetting the question either way', () => {
     const { posted, store } = shown();
     const noAccess = {

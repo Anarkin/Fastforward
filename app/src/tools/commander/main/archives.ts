@@ -294,6 +294,7 @@ export interface ArchiveAccess {
     items: readonly string[],
     options?: PackOptions,
   ): Promise<Packing>;
+  test(file: string, options?: PackOptions): Promise<Packing>;
 }
 
 async function removed(folder: string): Promise<void> {
@@ -708,6 +709,12 @@ export class Archives implements ArchiveAccess {
         await removed(staged);
       }
     });
+  }
+
+  async test(file: string, options: PackOptions = {}): Promise<Packing> {
+    return this.reader === undefined
+      ? { kind: 'refused', reason: strings.commander.noSevenZip }
+      : this.reader.test(file, { ...options, ...this.passwordOf(file) });
   }
 
   private async updating(

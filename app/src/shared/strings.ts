@@ -272,6 +272,10 @@ export const strings = {
     renameItem: 'Rename the selected file or folder',
     packItems:
       'Pack the marked items, or the selected one, into an archive in the folder of the other side',
+    testArchives:
+      'Test the marked archives, or the selected one, against the checksum of every file in them',
+    openWithSevenZip:
+      'Open the selected file with 7-Zip, going into it as a folder',
     copyToClipboard:
       'Put the marked items, or the selected one, on the clipboard, to paste them here or into another app',
     pasteFiles: 'Copy the files on the clipboard into the folder of the side',
@@ -749,6 +753,17 @@ export const strings = {
     skipThem: 'Skip Them',
     deleteFromArchiveQuestion: (what: string, archive: string) =>
       `Delete ${what} from "${archive}" permanently? This cannot be undone.`,
+    testTitle: 'Test',
+    testingArchives: (what: string) => `Testing ${what}`,
+    testPassed: (what: string) => `${what} passed the test.`,
+    testFailed: (name: string, reason: string) =>
+      `"${name}" failed the test: ${reason}`,
+    testFailedMany: (count: number, name: string, reason: string) =>
+      `${count.toLocaleString()} archives failed the test, among them "${name}": ${reason}`,
+    testingStopped: () => 'Testing stopped unexpectedly.',
+    noPasswordGiven: 'No password was given.',
+    testAsAdministrator:
+      "Archives can't be tested yet in a folder read as administrator.",
     archiveTestFailed: (reason: string) =>
       `The archive packed failed its test, so nothing was put in place: ${reason}`,
     archiveInVolumes: (name: string) =>

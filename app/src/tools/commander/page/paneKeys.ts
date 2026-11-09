@@ -14,6 +14,8 @@ export type PaneAct =
   | { readonly kind: 'newFolder' }
   | { readonly kind: 'rename'; readonly name: string }
   | { readonly kind: 'pack'; readonly names: readonly string[] }
+  | { readonly kind: 'test'; readonly names: readonly string[] }
+  | { readonly kind: 'enterArchive'; readonly name: string }
   | { readonly kind: 'copyToClipboard'; readonly names: readonly string[] }
   | { readonly kind: 'paste' }
   | {
@@ -92,6 +94,10 @@ export function paneKey(
       ? done
       : { act: { kind: 'rename', name: row.key } };
   }
+  if (keyPressed(commanderKeymap.testArchives, event) !== undefined) {
+    const names = chosenKeys(rows, selected, marked);
+    return names.length > 0 ? { act: { kind: 'test', names } } : done;
+  }
   if (keyPressed(commanderKeymap.packItems, event) !== undefined) {
     const names = chosenKeys(rows, selected, marked);
     return names.length > 0 ? { act: { kind: 'pack', names } } : done;
@@ -152,6 +158,11 @@ export function paneKey(
   }
   if (keyPressed(commanderKeymap.parentFolder, event) !== undefined) {
     return parent ? { act: { kind: 'open', name: parentFolder } } : done;
+  }
+  if (keyPressed(commanderKeymap.openWithSevenZip, event) !== undefined) {
+    return row?.entry !== undefined && !row.entry.folder
+      ? { act: { kind: 'enterArchive', name: row.key } }
+      : done;
   }
   if (keyPressed(commanderKeymap.openFolder, event) !== undefined) {
     return row !== undefined && opens(row)

@@ -409,6 +409,44 @@ suite('Archives packed, changed and taken out again', () => {
     );
   });
 
+  suite('testing', () => {
+    test('passes a sound archive of every format, from the first of its volumes and with its password, and fails one with a byte gone wrong or a wrong password, and a file that is no archive, saying why', async () => {
+      for (const [name, format, more] of [
+        ['sound.zip', 'zip', {}],
+        ['sound.7z', '7z', { password: 'secret', encryptNames: true }],
+        ['sound.tar.gz', 'tar.gz', {}],
+        ['sound.zip', 'zip', { volumeBytes: 256 * 1024 }],
+      ] as const) {
+        await packedFine(plan(name, format, more));
+        archives.usePassword(at(name), 'secret');
+        const first = 'volumeBytes' in more ? `${name}.001` : name;
+        assert.deepStrictEqual(await archives.test(at(first)), {
+          kind: 'packed',
+        });
+      }
+
+      await packedFine(
+        plan('spoiled.zip', 'zip', { items: ['random.bin'], level: 'store' }),
+      );
+      const written = fs.readFileSync(at('spoiled.zip'));
+      written[Math.floor(written.length / 2)] ^= 0xff;
+      fs.writeFileSync(at('spoiled.zip'), written);
+      const spoiled = await archives.test(at('spoiled.zip'));
+      assert.ok(spoiled.kind === 'refused');
+      assert.match(spoiled.reason, /CRC|Data Error/);
+
+      await packedFine(plan('locked.7z', '7z', { password: 'right' }));
+      archives.usePassword(at('locked.7z'), 'wrong');
+      const locked = await archives.test(at('locked.7z'));
+      assert.ok(locked.kind === 'refused' && locked.needsPassword === true);
+
+      fs.writeFileSync(at('plain.zip'), 'Plain text, named as a zip.\n');
+      const plain = await archives.test(at('plain.zip'));
+      assert.ok(plain.kind === 'refused');
+      assert.match(plain.reason, /Cannot open the file as/);
+    });
+  });
+
   suite('changing', () => {
     const changeable = ['zip', '7z', 'tar'] as const;
 

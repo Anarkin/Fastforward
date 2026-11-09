@@ -7,7 +7,11 @@ import type {
   Packing,
   PackPlan,
 } from '../../../../tools/commander/main/archives';
-import { archiveJob, packInto } from '../../../../tools/commander/main/packing';
+import {
+  archiveJob,
+  archiveTests,
+  packInto,
+} from '../../../../tools/commander/main/packing';
 import type { PackOptions } from '../../../../tools/commander/main/archives';
 import type { TransferEvent } from '../../../../tools/commander/main/transferProtocol';
 import { strings } from '../../../../shared/strings';
@@ -333,5 +337,111 @@ suite('packing', () => {
       ),
       [{ type: 'done', stopped: true }],
     );
+  });
+});
+
+const testedSoFar = (files: number, bytes: number, current: string) => ({
+  type: 'progress',
+  progress: { files, totalFiles: 2, bytes, totalBytes: 40, current },
+});
+
+suite('archiveTests', () => {
+  let folder: string;
+
+  beforeEach(() => {
+    folder = tempFolder('testing-archives');
+    fs.writeFileSync(path.join(folder, 'a.zip'), 'a'.repeat(30));
+    fs.writeFileSync(path.join(folder, 'b.zip'), 'b'.repeat(10));
+  });
+
+  afterEach(() => {
+    removeFolder(folder);
+  });
+
+  const testedBy = async (
+    tester: (file: string, options: PackOptions) => Promise<Packing>,
+    stop = false,
+  ) => {
+    const events: TransferEvent[] = [];
+    const { promise: ended, resolve } = Promise.withResolvers<void>();
+    const connection = archiveTests(
+      ['a.zip', 'b.zip'].map((name) => path.join(folder, name)),
+      tester,
+    )({
+      event: (event) => {
+        events.push(event);
+        if (event.type === 'done') {
+          resolve();
+        }
+      },
+      stopped: () => undefined,
+    });
+    connection.send({
+      type: 'start',
+      plan: { sources: [], target: folder, move: false },
+    });
+    if (stop) {
+      connection.send({ type: 'stop' });
+    }
+    await ended;
+    return events;
+  };
+
+  test('tests the archives one after another, telling how far it got by their sizes and naming the one it tests', async () => {
+    assert.deepStrictEqual(
+      await testedBy((_file, { onProgress }) => {
+        onProgress?.({ percent: 50, files: 3 });
+        return Promise.resolve({ kind: 'packed' });
+      }),
+      [
+        testedSoFar(0, 0, 'a.zip'),
+        testedSoFar(0, 15, 'a.zip'),
+        testedSoFar(1, 30, 'b.zip'),
+        testedSoFar(1, 35, 'b.zip'),
+        { type: 'done', stopped: false },
+      ],
+    );
+  });
+
+  test('says which archives failed their test and why, testing the rest', async () => {
+    assert.deepStrictEqual(
+      ending(
+        await testedBy((file) =>
+          Promise.resolve(
+            file.endsWith('a.zip')
+              ? { kind: 'refused', reason: 'CRC Failed' }
+              : { kind: 'refused', reason: 'Data Error' },
+          ),
+        ),
+      ),
+      [
+        { type: 'failed', name: 'a.zip', reason: 'CRC Failed' },
+        { type: 'failed', name: 'b.zip', reason: 'Data Error' },
+        { type: 'done', stopped: false },
+      ],
+    );
+  });
+
+  test('stops within an archive once told to, testing no other', async () => {
+    const asked: string[] = [];
+    assert.deepStrictEqual(
+      ending(
+        await testedBy(
+          (file, { signal }) =>
+            new Promise((_resolve, reject) => {
+              asked.push(path.basename(file));
+              if (signal?.aborted === true) {
+                reject(new Error('The operation was aborted'));
+              }
+              signal?.addEventListener('abort', () =>
+                reject(new Error('The operation was aborted')),
+              );
+            }),
+          true,
+        ),
+      ),
+      [{ type: 'done', stopped: true }],
+    );
+    assert.ok(asked.length <= 1);
   });
 });

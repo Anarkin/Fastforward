@@ -225,6 +225,8 @@ function commander(
   const packed: PackPlan[] = [];
   const removedFromArchives: (readonly [string, readonly string[]])[] = [];
   const changedInArchives: unknown[] = [];
+  const tested: string[] = [];
+  const archiveTests = new Map<string, string>();
   const passwordRight = (archive: string) =>
     !secrets.has(archive) || passwords.get(archive) === secrets.get(archive);
   const archives: ArchiveAccess = {
@@ -251,6 +253,26 @@ function commander(
     addFolder: (archive, inner, name) => {
       changedInArchives.push(['folder', archive.file, inner, name]);
       return Promise.resolve({ kind: 'packed' });
+    },
+    test: (tried) => {
+      tested.push(tried);
+      const refused = archiveTests.get(tried);
+      if (refused === 'locked') {
+        return Promise.resolve(
+          passwordRight(tried)
+            ? { kind: 'packed' }
+            : {
+                kind: 'refused',
+                reason: 'Wrong password',
+                needsPassword: true,
+              },
+        );
+      }
+      return Promise.resolve(
+        refused === undefined
+          ? { kind: 'packed' }
+          : { kind: 'refused', reason: refused },
+      );
     },
     addItems: (archive, inner, from, items) => {
       changedInArchives.push(['add', archive.file, inner, from, items]);
@@ -689,6 +711,8 @@ function commander(
     packed,
     removedFromArchives,
     changedInArchives,
+    tested,
+    archiveTests,
   };
 }
 
@@ -2348,6 +2372,73 @@ suite('Commander tool', () => {
     ]);
     assert.deepStrictEqual(notices, [
       { level: 'error', message: strings.commander.intoItself('docs') },
+    ]);
+  });
+
+  test('tests the archives a side lists one after another in the dialog of copies, asking the password of one encrypted, saying which failed and why or that they passed, and nothing of folders or items not listed', async () => {
+    const { tool, page, send, tested, archiveTests, secrets, notices } =
+      commander({
+        [root]: [file('a.zip'), file('b.7z'), file('c.zip'), folder('dir')],
+      });
+    archiveTests.set(at('c.zip'), 'CRC Failed : x.txt');
+    archiveTests.set(at('b.7z'), 'locked');
+    secrets.set(at('b.7z'), 'right');
+    await tool.show(page, tab);
+    const testing = (names: string[]) =>
+      send({
+        type: 'testArchives',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        names,
+      });
+
+    await testing(['missing.zip']);
+    await testing(['dir']);
+    await testing(['a.zip', 'b.7z', 'c.zip', 'dir']);
+    await waitFor(
+      () => page.of('askPassword').length === 1,
+      'the password of b.7z to be asked',
+    );
+    await send({
+      type: 'password',
+      ask: page.of('askPassword')[0]?.ask ?? 0,
+      password: 'right',
+    });
+    await waitFor(() => notices.length === 1, 'the tests to end');
+    await testing(['a.zip']);
+    await waitFor(() => notices.length === 2, 'the test of a.zip to end');
+
+    assert.deepStrictEqual(tested, [
+      at('a.zip'),
+      at('b.7z'),
+      at('b.7z'),
+      at('c.zip'),
+      at('a.zip'),
+    ]);
+    assert.deepStrictEqual(
+      page.of('transfer').find((message) => message.view?.archiveJob === 'test')
+        ?.view,
+      {
+        id: 1,
+        move: false,
+        archiveJob: 'test',
+        items: 3,
+        target: root,
+        stopping: false,
+      },
+    );
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.testFailed('c.zip', 'CRC Failed : x.txt'),
+      },
+      {
+        level: 'info',
+        message: strings.commander.testPassed(
+          strings.commander.oneItem('a.zip'),
+        ),
+      },
     ]);
   });
 

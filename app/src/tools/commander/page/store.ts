@@ -241,6 +241,7 @@ interface CommanderActions {
   readonly askPack: (side: Side, names: readonly string[]) => void;
   readonly pack: (answer: PackAnswer) => void;
   readonly cancelPack: () => void;
+  readonly testArchives: (side: Side, names: readonly string[]) => void;
   readonly stopTransfer: () => void;
   readonly hideTransfer: () => void;
   readonly elevate: () => void;
@@ -1107,6 +1108,10 @@ export function createCommanderStore(
         });
       },
       cancelPack: () => set({ packing: undefined }),
+      testArchives: (side, names) =>
+        onDisk(side, (tab, folder) =>
+          post({ type: 'testArchives', tab, side, folder, names }),
+        ),
       answerClash: (answer, all) => {
         const { transfer } = get();
         if (transfer?.clash !== undefined) {

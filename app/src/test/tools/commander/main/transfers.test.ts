@@ -80,6 +80,16 @@ const clash = {
   target: { size: 3, modified: 4 },
 };
 
+const testing = (names: string[]): TransferAsk => ({
+  ...ask(names),
+  plan: { sources: [], target: source, move: false },
+  archive: {
+    job: 'test',
+    file: path.join(source, names[0] ?? ''),
+    at: source,
+  },
+});
+
 suite('Transfers', () => {
   test('starts each copy or move in a process of its own, shows it counting and then its progress, and closes its dialog once done without a word, as it was shown', () => {
     const { coordinator, processes, tell, last, notices, finished } =
@@ -205,6 +215,35 @@ suite('Transfers', () => {
       {
         level: 'error',
         message: strings.commander.deleteFromFailed('photos.zip', 'read-only'),
+      },
+    ]);
+  });
+
+  test('says once archives were tested that they passed, its dialog shown or not, which failed and why, and how many failed', () => {
+    const { coordinator, tell, last, notices } = transfers();
+    coordinator.start(testing(['a.zip', 'b.7z']));
+    assert.strictEqual(last()?.archiveJob, 'test');
+    tell(0, { type: 'done', stopped: false });
+    coordinator.start(testing(['a.zip']));
+    tell(1, { type: 'failed', name: 'a.zip', reason: 'CRC Failed' });
+    tell(1, { type: 'done', stopped: false });
+    coordinator.start(testing(['a.zip', 'b.7z']));
+    tell(2, { type: 'failed', name: 'a.zip', reason: 'CRC Failed' });
+    tell(2, { type: 'failed', name: 'b.7z', reason: 'Data Error' });
+    tell(2, { type: 'done', stopped: false });
+
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'info',
+        message: strings.commander.testPassed(strings.commander.items(2)),
+      },
+      {
+        level: 'error',
+        message: strings.commander.testFailed('a.zip', 'CRC Failed'),
+      },
+      {
+        level: 'error',
+        message: strings.commander.testFailedMany(2, 'a.zip', 'CRC Failed'),
       },
     ]);
   });

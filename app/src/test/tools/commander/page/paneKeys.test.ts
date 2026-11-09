@@ -122,6 +122,18 @@ suite('Commander keys', () => {
     assert.deepStrictEqual(paneKey(pack, at('..')), {});
   });
 
+  test('tests the archive selected, or the ones marked, on Alt+Shift+F9, and nothing on the parent folder', () => {
+    const testing = pressed('F9', { altKey: true, shiftKey: true });
+    assert.deepStrictEqual(paneKey(testing, at('a.txt')), {
+      act: { kind: 'test', names: ['a.txt'] },
+    });
+    assert.deepStrictEqual(
+      paneKey(testing, at('a.txt', { marked: new Set(['docs', 'b.txt']) })),
+      { act: { kind: 'test', names: ['docs', 'b.txt'] } },
+    );
+    assert.deepStrictEqual(paneKey(testing, at('..')), {});
+  });
+
   test('asks for a new folder on F7, whatever is selected', () => {
     assert.deepStrictEqual(paneKey(pressed('F7'), at('a.txt')), {
       act: { kind: 'newFolder' },
@@ -203,7 +215,7 @@ suite('Commander keys', () => {
     );
   });
 
-  test('goes up on Backspace while there is a parent and opens a folder on Enter, leaving the keys alone where they do nothing, Shift+Enter on a repository too', () => {
+  test('goes up on Backspace while there is a parent and opens a folder on Enter, leaving the keys alone where they do nothing, and opens a file with 7-Zip on Shift+Enter, as the menu does, but no folder', () => {
     assert.deepStrictEqual(paneKey(pressed('Backspace'), at('a.txt')), {
       act: { kind: 'open', name: '..' },
     });
@@ -214,14 +226,13 @@ suite('Commander keys', () => {
     assert.deepStrictEqual(paneKey(pressed('Enter'), at('docs')), {
       act: { kind: 'open', name: 'docs' },
     });
-    assert.strictEqual(
-      paneKey(pressed('Enter', { shiftKey: true }), at('repo')),
-      undefined,
-    );
-    assert.strictEqual(
-      paneKey(pressed('Enter', { shiftKey: true }), at('docs')),
-      undefined,
-    );
+    const withSevenZip = pressed('Enter', { shiftKey: true });
+    assert.deepStrictEqual(paneKey(withSevenZip, at('a.txt')), {
+      act: { kind: 'enterArchive', name: 'a.txt' },
+    });
+    assert.deepStrictEqual(paneKey(withSevenZip, at('repo')), {});
+    assert.deepStrictEqual(paneKey(withSevenZip, at('docs')), {});
+    assert.deepStrictEqual(paneKey(withSevenZip, at('..')), {});
   });
 
   test('marks the rows it passes with Shift and the arrows, as the first of them is marked or not, and marks one and moves down on Space', () => {

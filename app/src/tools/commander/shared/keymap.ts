@@ -14,6 +14,9 @@ export type ViewMode = 'text' | 'hex' | 'preview';
 
 export const commanderKeymap = {
   openFolder: bind('Folders', strings.actions.openFolder, { Enter: true }),
+  openWithSevenZip: bind('Folders', strings.actions.openWithSevenZip, {
+    'Shift+Enter': true,
+  }),
   parentFolder: bind('Folders', strings.actions.parentFolder, {
     Backspace: true,
   }),
@@ -129,6 +132,9 @@ export const commanderKeymap = {
     'Shift+F6': true,
   }),
   packItems: bind('Marking', strings.actions.packItems, { 'Alt+F5': true }),
+  testArchives: bind('Marking', strings.actions.testArchives, {
+    'Alt+Shift+F9': true,
+  }),
   copyToClipboard: bind('Marking', strings.actions.copyToClipboard, {
     'Mod+C': true,
   }),

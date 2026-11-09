@@ -69,6 +69,12 @@ const archiveSentences: Readonly<
       readonly done: (what: string, archive: string) => string;
       readonly stopped: (archive: string) => string;
       readonly warned?: (name: string, reason: string) => string;
+      readonly failedMany?: (
+        count: number,
+        name: string,
+        reason: string,
+      ) => string;
+      readonly toldDone?: true;
     }
   >
 > = {
@@ -103,6 +109,13 @@ const archiveSentences: Readonly<
     stopped: strings.commander.movingStopped,
     warned: strings.commander.movedWithout,
   },
+  test: {
+    failed: strings.commander.testFailed,
+    failedMany: strings.commander.testFailedMany,
+    done: strings.commander.testPassed,
+    stopped: strings.commander.testingStopped,
+    toldDone: true,
+  },
 };
 
 function failureNotice({ ask, failures }: Running): string | undefined {
@@ -111,7 +124,10 @@ function failureNotice({ ask, failures }: Running): string | undefined {
     return undefined;
   }
   if (ask.archive !== undefined) {
-    return archiveSentences[ask.archive.job].failed(first.name, first.reason);
+    const sentences = archiveSentences[ask.archive.job];
+    return failures.length > 1 && sentences.failedMany !== undefined
+      ? sentences.failedMany(failures.length, first.name, first.reason)
+      : sentences.failed(first.name, first.reason);
   }
   const { move } = ask.plan;
   if (failures.length === 1) {
@@ -320,7 +336,7 @@ export class Transfers {
       });
     } else if (
       how === 'done' &&
-      running.hidden &&
+      (running.hidden || sentences.toldDone === true) &&
       running.failures.length === 0
     ) {
       this.host.notice({

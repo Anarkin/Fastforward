@@ -62,7 +62,7 @@ import {
   thumbnailBoxOf,
 } from '../../../shared/images';
 import { thumbnailKey } from './thumbnailStore';
-import { archiveJob } from './packing';
+import { archiveJob, archiveTests } from './packing';
 import {
   isPackFormat,
   isPackLevel,
@@ -572,6 +572,9 @@ export class CommanderTool implements Tool<'commander'> {
         return this.rename(page, message);
       case 'pack':
         this.pack(page, message);
+        return undefined;
+      case 'testArchives':
+        this.testArchives(page, message);
         return undefined;
       case 'copyToClipboard':
         return this.copyToClipboard(page, message);
@@ -1960,6 +1963,62 @@ export class CommanderTool implements Tool<'commander'> {
         name,
       );
     }
+  }
+
+  private testArchives(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      names,
+    }: Extract<CommanderToHost, { type: 'testArchives' }>,
+  ): void {
+    const shown = this.diskPane(page, tab, side, folder);
+    const { archives } = this.access;
+    if (
+      shown === undefined ||
+      archives === undefined ||
+      !Array.isArray(names) ||
+      !names.every((name: unknown) => listedIn(shown.pane, name) !== undefined)
+    ) {
+      return;
+    }
+    const files = names.filter(
+      (name: string) => listedIn(shown.pane, name)?.folder === false,
+    );
+    if (files.length === 0) {
+      return;
+    }
+    if (shown.pane.elevated === true) {
+      this.refuse(page, strings.commander.testAsAdministrator);
+      return;
+    }
+    const paths = files.map((name) => path.join(shown.pane.folder, name));
+    this.transfers.start(
+      {
+        plan: { sources: paths, target: shown.pane.folder, move: false },
+        folder: shown.pane.folder,
+        names: files,
+        archive: { job: 'test', file: paths[0] ?? '', at: shown.pane.folder },
+      },
+      archiveTests(paths, async (file, options) => {
+        for (;;) {
+          const tested = await archives.test(file, options);
+          if (tested.kind !== 'refused' || tested.needsPassword !== true) {
+            return tested;
+          }
+          if (
+            !(await this.passwordGiven(page, file, archives.hasPassword(file)))
+          ) {
+            return {
+              kind: 'refused',
+              reason: strings.commander.noPasswordGiven,
+            };
+          }
+        }
+      }),
+    );
   }
 
   private pack(

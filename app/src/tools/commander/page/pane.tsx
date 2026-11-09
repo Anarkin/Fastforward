@@ -780,6 +780,12 @@ export function Pane({
       case 'pack':
         actions.askPack(side, action.names);
         return;
+      case 'test':
+        actions.testArchives(side, action.names);
+        return;
+      case 'enterArchive':
+        actions.enterArchive(side, action.name);
+        return;
       case 'copyToClipboard':
         actions.copyToClipboard(side, action.names);
         return;
