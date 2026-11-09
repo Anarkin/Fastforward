@@ -31,6 +31,7 @@ import { ColumnHeader } from './columnHeader';
 import { layouts, type Layout } from '../shared/settings';
 import {
   filterOf,
+  readingKey,
   shownColumns,
   shownRowsOf,
   useCommander,
@@ -220,6 +221,20 @@ function FlatButton({ side }: { side: Side }) {
   );
 }
 
+function ReadingStatus({ side }: { side: Side }) {
+  const reading = useCommander((state) =>
+    state.readingArchives.get(readingKey(state.view.tab, side)),
+  );
+  return reading === undefined ? null : (
+    <StatusLine announced>
+      {[
+        strings.commander.readingArchive(reading),
+        strings.commander.escapeStops,
+      ].join(' · ')}
+    </StatusLine>
+  );
+}
+
 function FlatStatus({
   side,
   files,
@@ -394,6 +409,9 @@ export function Pane({
   const tab = useCommander((state) => state.view.tab);
   const active = useCommander((state) => state.view.active === side);
   const pane = useCommander((state) => state.view.panes[side]);
+  const readingArchive = useCommander((state) =>
+    state.readingArchives.get(readingKey(state.view.tab, side)),
+  );
   const layout = useCommander((state) => state.view.layouts[side]);
   const thumbnailSize = useCommander((state) => state.view.thumbnailSize);
   const fileColors = useCommander((state) => state.view.fileColors);
@@ -1032,7 +1050,9 @@ export function Pane({
                 selectedIndex,
                 marked,
                 filtering,
-                reading: pane?.flat?.progress.reading === true,
+                reading:
+                  pane?.flat?.progress.reading === true ||
+                  readingArchive !== undefined,
                 parent: pane?.parent === true,
                 tiled,
                 across,
@@ -1049,6 +1069,7 @@ export function Pane({
           />
         )}
       </div>
+      <ReadingStatus side={side} />
       <FlatStatus
         side={side}
         files={total}

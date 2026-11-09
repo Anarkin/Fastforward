@@ -214,6 +214,9 @@ function commander(
   const archivesOf = new WeakMap<readonly ArchiveItem[], OpenedArchive>();
   const copies = { folder: '', refused: undefined as string | undefined };
   let extractions = 0;
+  const opensHeld: { until: Promise<unknown> | undefined } = {
+    until: undefined,
+  };
   const archives: ArchiveAccess = {
     extract: async (archive, paths, options) => {
       const into = options?.into;
@@ -240,7 +243,17 @@ function commander(
       }
       return { kind: 'extracted', folder: extractedInto };
     },
-    open: (opening) => {
+    open: async (opening, signal) => {
+      if (opensHeld.until !== undefined) {
+        await Promise.race([
+          opensHeld.until,
+          new Promise((_resolve, reject) =>
+            signal?.addEventListener('abort', () =>
+              reject(new Error('The operation was aborted')),
+            ),
+          ),
+        ]);
+      }
       const items = archived.get(opening);
       if (items === undefined) {
         return Promise.resolve({
@@ -568,6 +581,7 @@ function commander(
     dragged,
     archived,
     copies,
+    opensHeld,
   };
 }
 
@@ -4770,6 +4784,62 @@ suite('Commander tool in archives', () => {
       ]);
       assert.deepStrictEqual([viewed, opened], [[], []]);
     });
+  });
+
+  test('tells the page a side is reading an archive once it takes a while, stopping on Esc and staying where it was', async () => {
+    const { tool, page, send, archived, opensHeld, notices } = commander({
+      [root]: [file('a.zip')],
+    });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    opensHeld.until = new Promise(() => {});
+
+    const entering = send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    await waitFor(
+      () => page.of('readingArchive').length === 1,
+      'the page to be told the archive is being read',
+    );
+    await send({ type: 'stopReading', tab: '1', side: 'right' });
+    await entering;
+
+    assert.deepStrictEqual(page.of('readingArchive'), [
+      { type: 'readingArchive', tab: '1', side: 'right', name: 'a.zip' },
+      { type: 'readingArchive', tab: '1', side: 'right' },
+    ]);
+    assert.strictEqual(page.listings().length, 2);
+    assert.deepStrictEqual(notices, []);
+  });
+
+  test('shows the folder of an archive with it selected when the reading of it is stopped for a side coming back inside it', async () => {
+    const state = new FakeStore();
+    await state.update('sides', { 1: { right: at('a.zip', 'docs') } });
+    const { tool, page, send, archived, opensHeld } = commander(
+      { [root]: [file('a.zip')] },
+      [],
+      undefined,
+      state,
+    );
+    archived.set(at('a.zip'), zipped);
+    opensHeld.until = new Promise(() => {});
+
+    const showing = tool.show(page, tab);
+    await waitFor(
+      () => page.of('readingArchive').length === 1,
+      'the page to be told the archive is being read',
+    );
+    opensHeld.until = undefined;
+    await send({ type: 'stopReading', tab: '1', side: 'right' });
+    await showing;
+
+    assert.deepStrictEqual(
+      page.listings().filter((listing) => listing.startsWith('right')),
+      [`right ${root}: a.zip [a.zip]`],
+    );
   });
 
   test('gives the folder holding the archive as the folder of the tab while its active side is inside the archive', async () => {

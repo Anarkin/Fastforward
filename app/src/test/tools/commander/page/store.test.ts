@@ -1120,4 +1120,20 @@ suite('The commander store in archives', () => {
       },
     ]);
   });
+
+  test('keeps the archive each side of a tab is reading while the page is told so, forgetting it once it is done', () => {
+    const { store } = shown();
+    const archivesRead = () => [...store.getState().readingArchives];
+    store.getState().receive({
+      type: 'readingArchive',
+      tab: '1',
+      side: 'right',
+      name: 'big.tar.gz',
+    });
+    assert.deepStrictEqual(archivesRead(), [['1 right', 'big.tar.gz']]);
+    store
+      .getState()
+      .receive({ type: 'readingArchive', tab: '1', side: 'right' });
+    assert.deepStrictEqual(archivesRead(), []);
+  });
 });

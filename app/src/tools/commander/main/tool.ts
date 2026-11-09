@@ -190,6 +190,7 @@ interface Pane {
   denied?: string;
   elevated?: boolean;
   archive?: string;
+  opening?: AbortController;
   binOff?: boolean;
   repositories: ReadonlySet<string>;
   repositoriesAsked: number;
@@ -293,6 +294,16 @@ function isDenied(error: unknown): boolean {
   const code = codeOf(error);
   return code === 'EACCES' || code === 'EPERM';
 }
+
+const readingToldAfter = 300;
+
+class ReadingStopped extends Error {
+  constructor(readonly file: string) {
+    super(file);
+  }
+}
+
+type Opener = (file: string) => Promise<Opening | undefined>;
 
 class RefusedAsAdministrator extends Error {
   readonly code: unknown;
@@ -559,9 +570,12 @@ export class CommanderTool implements Tool<'commander'> {
       }
       case 'flat':
         return this.turnFlat(page, message);
-      case 'stopReading':
-        this.shownPane(page, message.tab, message.side)?.pane.flat?.tree.stop();
+      case 'stopReading': {
+        const shown = this.shownPane(page, message.tab, message.side);
+        shown?.pane.opening?.abort();
+        shown?.pane.flat?.tree.stop();
         return undefined;
+      }
       case 'openOnSide':
         return this.openOnSide(page, message);
       case 'enterArchive':
@@ -2066,14 +2080,17 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private async listed(folder: string): Promise<{
+  private async listed(
+    folder: string,
+    opener?: Opener,
+  ): Promise<{
     readonly entries: readonly Entry[];
     readonly elevated: boolean;
     readonly archive?: string;
   }> {
     const inside = this.access.archives?.within(folder);
     if (inside !== undefined) {
-      return this.archiveListed(inside.archive.file, folder);
+      return this.archiveListed(inside.archive.file, folder, undefined, opener);
     }
     const files = await this.files();
     try {
@@ -2083,7 +2100,7 @@ export class CommanderTool implements Tool<'commander'> {
         ? await this.access.archives?.fileHolding(folder)
         : undefined;
       if (holding !== undefined) {
-        return this.archiveListed(holding, folder, error);
+        return this.archiveListed(holding, folder, error, opener);
       }
       if (!isDenied(error) || this.elevated === undefined) {
         throw error;
@@ -2100,16 +2117,22 @@ export class CommanderTool implements Tool<'commander'> {
     file: string,
     folder: string,
     unopened?: unknown,
+    opener?: Opener,
   ): Promise<{
     readonly entries: readonly Entry[];
     readonly elevated: boolean;
     readonly archive: string;
   }> {
     const { archives } = this.access;
-    const opening: Opening = (await archives?.open(file)) ?? {
-      kind: 'refused',
-      reason: strings.commander.noSevenZip,
-    };
+    const opened = opener === undefined ? archives?.open(file) : opener(file);
+    const opening: Opening | undefined = await (opened ??
+      Promise.resolve({
+        kind: 'refused',
+        reason: strings.commander.noSevenZip,
+      }));
+    if (opening === undefined) {
+      throw new ReadingStopped(file);
+    }
     if (opening.kind === 'refused') {
       if (unopened !== undefined) {
         throw unopened;
@@ -2139,6 +2162,52 @@ export class CommanderTool implements Tool<'commander'> {
     );
   }
 
+  private async openFor(
+    page: Page,
+    tab: string,
+    side: Side,
+    file: string,
+  ): Promise<Opening | undefined> {
+    const { archives } = this.access;
+    const pane = this.panes.get(tab)?.[side];
+    if (archives === undefined || pane === undefined) {
+      return {
+        kind: 'refused',
+        reason: strings.commander.noSevenZip,
+        noArchive: true,
+      };
+    }
+    pane.opening?.abort();
+    const aborting = new AbortController();
+    pane.opening = aborting;
+    let told = false;
+    const telling = setTimeout(() => {
+      told = true;
+      this.post(page, {
+        type: 'readingArchive',
+        tab,
+        side,
+        name: path.basename(file),
+      });
+    }, readingToldAfter);
+    try {
+      return await archives.open(file, aborting.signal);
+    } catch (error) {
+      if (aborting.signal.aborted) {
+        return undefined;
+      }
+      throw error;
+    } finally {
+      clearTimeout(telling);
+      if (pane.opening === aborting) {
+        pane.opening = undefined;
+      }
+      if (told) {
+        this.post(page, { type: 'readingArchive', tab, side });
+      }
+    }
+  }
+
   private async enterArchive(
     page: Page,
     {
@@ -2159,10 +2228,10 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     const file = path.join(shown.pane.folder, name);
-    const opening = (await this.access.archives?.open(file)) ?? {
-      kind: 'refused',
-      reason: strings.commander.noSevenZip,
-    };
+    const opening = await this.openFor(page, shown.tab, shown.side, file);
+    if (opening === undefined) {
+      return;
+    }
     if (opening.kind === 'refused') {
       this.refuse(
         page,
@@ -2195,11 +2264,14 @@ export class CommanderTool implements Tool<'commander'> {
       source.pane.archive === undefined
     ) {
       const file = path.join(folder, name);
-      const opening = await this.access.archives?.open(file);
-      if (opening?.kind === 'opened') {
+      const opening = await this.openFor(page, source.tab, side, file);
+      if (opening === undefined) {
+        return undefined;
+      }
+      if (opening.kind === 'opened') {
         return this.list(page, source.tab, side, file, 'visit');
       }
-      if (opening?.kind === 'refused' && opening.noArchive !== true) {
+      if (opening.kind === 'refused' && opening.noArchive !== true) {
         this.refuse(page, strings.commander.notArchive(name, opening.reason));
         return undefined;
       }
@@ -2394,8 +2466,24 @@ export class CommanderTool implements Tool<'commander'> {
     const stamp = await this.access.stamp?.(folder);
     let listing: Awaited<ReturnType<CommanderTool['listed']>>;
     try {
-      listing = await this.listed(folder);
+      listing = await this.listed(folder, (file) =>
+        this.openFor(page, tab, side, file),
+      );
     } catch (error) {
+      if (error instanceof ReadingStopped) {
+        if (pane.asked === asked && pane.folder === folder) {
+          await this.list(
+            page,
+            tab,
+            side,
+            path.dirname(error.file),
+            'show',
+            undefined,
+            path.basename(error.file),
+          );
+        }
+        return;
+      }
       if (
         pane.asked !== asked ||
         (how === 'refresh' && pane.landed !== asked)

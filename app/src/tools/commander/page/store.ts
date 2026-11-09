@@ -86,6 +86,7 @@ interface CommanderSource {
   readonly deleting: Deleting | undefined;
   readonly transferring: Transferring | undefined;
   readonly transfer: TransferView | undefined;
+  readonly readingArchives: ReadonlyMap<string, string>;
   readonly makingFolder: MakingFolder | undefined;
   readonly noAccess: NoAccess | undefined;
   readonly resized:
@@ -219,6 +220,7 @@ const commanderDefaults: CommanderSource = {
   deleting: undefined,
   transferring: undefined,
   transfer: undefined,
+  readingArchives: new Map(),
   makingFolder: undefined,
   noAccess: undefined,
   resized: undefined,
@@ -265,6 +267,10 @@ function sameViewed(shown: Viewing | undefined, told: Viewing): boolean {
   );
 }
 
+export function readingKey(tab: string | undefined, side: Side): string {
+  return `${tab ?? ''} ${side}`;
+}
+
 function received(
   state: CommanderSource,
   message: CommanderToWebview,
@@ -277,6 +283,16 @@ function received(
       return { drives: message.drives };
     case 'transfer':
       return { transfer: message.view };
+    case 'readingArchive': {
+      const readingArchives = new Map(state.readingArchives);
+      const key = readingKey(message.tab, message.side);
+      if (message.name === undefined) {
+        readingArchives.delete(key);
+      } else {
+        readingArchives.set(key, message.name);
+      }
+      return { readingArchives };
+    }
     case 'flatFiles': {
       const view = reduceView(state.view, {
         type: 'flatProgress',

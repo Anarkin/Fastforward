@@ -548,6 +548,7 @@ export const strings = {
     notArchive: (name: string, reason: string) =>
       `${name} could not be opened as an archive: ${reason}`,
     tryEnterArchive: 'Try Enter Archive',
+    readingArchive: (name: string) => `Reading ${name}…`,
     encryptedInArchive: (name: string) =>
       `${name} is encrypted, and no encrypted file is read from an archive yet.`,
     couldNotExtract: (reason: string) =>

@@ -452,6 +452,12 @@ export type CommanderToWebview =
       readonly progress: FlatProgress;
     }
   | {
+      readonly type: 'readingArchive';
+      readonly tab: string;
+      readonly side: Side;
+      readonly name?: string;
+    }
+  | {
       readonly type: 'repositories';
       readonly tab: string;
       readonly side: Side;
