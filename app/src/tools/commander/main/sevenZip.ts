@@ -433,27 +433,31 @@ function passwordUsed(plan: PackPlan): boolean {
   );
 }
 
-const warnedFiles = 'WARNINGS for files:';
+const warnedFiles = /^(?:Scan )?WARNINGS for files(?: and folders)?:$/;
 const warningsShown = 3;
 
+function warnedIn(lines: readonly string[]): string[] {
+  const warned: string[] = [];
+  let under = false;
+  for (const line of lines) {
+    if (warnedFiles.test(line)) {
+      under = true;
+    } else if (/^-+$/.test(line)) {
+      under = false;
+    } else if (under && line !== '') {
+      const named = line.indexOf(' : ');
+      warned.push(
+        named < 0 ? line : `${line.slice(0, named)}: ${line.slice(named + 3)}`,
+      );
+    }
+  }
+  return warned;
+}
+
 function warningOf(run: SevenZipRun, file: string): string {
-  const lines = `${run.errors}\n${run.output}`
-    .split(/\r?\n/)
-    .map((line) => line.trim());
-  const start = lines.indexOf(warnedFiles);
-  const end = lines.findIndex((line, at) => at > start && /^-+$/.test(line));
-  const warned = (
-    start < 0 ? [] : lines.slice(start + 1, end < 0 ? undefined : end)
-  ).flatMap((line) => {
-    const named = line.indexOf(' : ');
-    return line === ''
-      ? []
-      : [
-          named < 0
-            ? line
-            : `${line.slice(0, named)}: ${line.slice(named + 3)}`,
-        ];
-  });
+  const warned = warnedIn(
+    `${run.errors}\n${run.output}`.split(/\r?\n/).map((line) => line.trim()),
+  );
   if (warned.length === 0) {
     return reasonOf(run, file);
   }

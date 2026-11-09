@@ -419,6 +419,28 @@ suite('packing with 7-Zip', () => {
         ].join(' '),
       },
     );
+    assert.deepStrictEqual(
+      (
+        await packedBy(plan, {
+          code: 1,
+          output: [
+            'Scanning the drive:',
+            'WARNING: Access is denied.',
+            'files\\attributes\\unreadable\\',
+            '',
+            'Scan WARNINGS for files and folders:',
+            '',
+            'files\\attributes\\unreadable\\ : Access is denied.',
+            '----------------',
+            'Scan WARNINGS: 1',
+          ].join('\r\n'),
+        })
+      ).result,
+      {
+        kind: 'packed',
+        warning: 'files\\attributes\\unreadable\\: Access is denied.',
+      },
+    );
     assert.deepStrictEqual((await packedBy(plan)).result, { kind: 'packed' });
     assert.deepStrictEqual(
       (await packedBy(plan, { code: 2, errors: 'ERROR: disk full\n' })).result,
