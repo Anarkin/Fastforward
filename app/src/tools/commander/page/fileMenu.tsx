@@ -125,6 +125,7 @@ export function fileMenuItems(
     ...(own.length > 0 ? [{ separator: true } as const] : []),
     {
       label: strings.commander.showMoreOptions,
+      title: strings.commander.showMoreOptionsTitle,
       onClick: () => onSystemMenu(namesOf(target)),
     },
   ];

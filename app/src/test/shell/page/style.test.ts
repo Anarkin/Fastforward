@@ -27,6 +27,7 @@ import { ImageDiff } from '../../../tools/git/page/imagePreview';
 import { AboutPopup, CopyButton } from '../../../shell/page/aboutPopup';
 import { TabBar } from '../../../shell/page/tabBar';
 import { ContextMenu } from '../../../ui/contextMenu';
+import { ToolIcon } from '../../../ui/icons';
 import { MenuButton } from '../../../ui/menu';
 import { Crash } from '../../../shell/page/errorBoundary';
 import { overlayScrollbarClass } from '../../../ui/overlayScrollbars';
@@ -2058,6 +2059,37 @@ suite('Style', () => {
     looks(soloButton(true, false), {
       background: 'var(--toggle-on-background)',
     });
+  });
+
+  test('starts the labels of every menu alike, leaving the same room before each for an icon, a check or nothing, as an item without an icon started further left than those with one', () => {
+    const menu = rendered(
+      createElement(ContextMenu, {
+        menu: {
+          x: 0,
+          y: 0,
+          items: [
+            {
+              label: 'New',
+              icon: createElement(ToolIcon, { tool: 'terminal' }),
+              onClick: noop,
+            },
+            { label: 'Group by Color', checked: true, onClick: noop },
+            { label: 'Details', checked: false, onClick: noop },
+            { separator: true },
+            { label: '...', onClick: noop },
+            { label: 'Git', submenu: [{ label: 'Open...', onClick: noop }] },
+          ],
+        },
+        onClose: noop,
+      }),
+    );
+    const widths = [
+      ...allWithClass(menu, 'menu-check'),
+      ...allWithClass(historyMenu(), 'menu-check'),
+    ].map((check) => cascaded(check, 'width'));
+
+    assert.strictEqual(widths.length, 6);
+    assert.deepStrictEqual(new Set(widths), new Set(['24px']));
   });
 
   test('starts the label of an item with a submenu where the others start, keeping its gap only before the arrow', () => {

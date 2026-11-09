@@ -464,7 +464,7 @@ suite('Menu items', () => {
     );
   });
 
-  test('shows the access key of an item before its label when asked, telling assistive technology it as the key of the item rather than reading it with the label, and hides it otherwise, as a drive letter is in its label already', () => {
+  test('shows the access key of an item before its label when asked, telling assistive technology it as the key of the item rather than reading it with the label, and hides it otherwise, as a drive letter is in its label already, leaving its room empty in a menu showing keys so the labels line up', () => {
     const html = renderToStaticMarkup(
       <MenuItems
         items={[
@@ -486,9 +486,9 @@ suite('Menu items', () => {
     );
     assert.match(
       html,
-      /data-access-key="D"><span class="menu-check"><\/span>D:\\<\/button>/,
+      /data-access-key="D"><span class="menu-check"><\/span><span class="menu-access-key" aria-hidden="true"><\/span>D:\\<\/button>/,
     );
-    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 1);
+    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 2);
   });
 
   test('leaves room for a check before every item, whether it can be checked or not, so the labels of every menu line up alike', () => {
@@ -507,6 +507,7 @@ suite('Menu items', () => {
       /role="menuitem"><span class="menu-check"><\/span>Open<\/button>/,
     );
     assert.strictEqual(tagsWith(html, 'menu-check').length, 2);
+    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 0);
   });
 
   test('separates groups and greys out what cannot run', () => {

@@ -651,7 +651,8 @@ export const strings = {
     cloneHere: 'Clone...',
     initHere: 'Init',
     editImage: 'Edit Image',
-    showMoreOptions: 'Show More Options',
+    showMoreOptions: '...',
+    showMoreOptionsTitle: 'Show the menu of Windows',
     helperFailed:
       "Couldn't start the helper that reads folders as administrator.",
     helperStopped:

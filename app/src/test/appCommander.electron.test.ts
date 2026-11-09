@@ -4224,7 +4224,10 @@ suite('App commander', () => {
           strings.commander.showMoreOptions,
         ]);
         const choosing = appMenu
-          .locator('.menu-item', { hasText: strings.commander.showMoreOptions })
+          .getByRole('menuitem', {
+            name: strings.commander.showMoreOptions,
+            exact: true,
+          })
           .click();
         await waitFor(() => shown() !== null, 'the menu of Windows');
         assert.ok(Number(itemCount(sendMessage(shown(), 0x1e1, 0, 0))) > 3);

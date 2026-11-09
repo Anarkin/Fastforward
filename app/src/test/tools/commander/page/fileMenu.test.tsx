@@ -203,9 +203,11 @@ suite('Commander file menu', () => {
       { system: ['photo.png'] },
       { system: ['docs', 'notes.txt'] },
     ]);
+    const [more] = menuOf({ kind: 'items', names: ['notes.txt'] }).items;
+    assert.ok(more !== undefined && !('separator' in more));
     assert.deepStrictEqual(
-      labels(menuOf({ kind: 'items', names: ['notes.txt'] }).items),
-      [strings.commander.showMoreOptions],
+      [more.label, more.title],
+      ['...', strings.commander.showMoreOptionsTitle],
     );
   });
 

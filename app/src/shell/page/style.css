@@ -1104,7 +1104,7 @@ body.resizing {
 
 .menu-check {
   display: inline-block;
-  width: 1.2em;
+  width: 24px;
 }
 
 .menu-access-key {
@@ -1114,7 +1114,6 @@ body.resizing {
 }
 
 .menu-check:has(> .icon) {
-  width: 24px;
   vertical-align: -3px;
 }
 

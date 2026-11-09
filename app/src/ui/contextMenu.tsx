@@ -307,6 +307,9 @@ export function MenuItems({
   const [submenuByKey, setSubmenuByKey] = useState(false);
   const entries = useRef<(HTMLButtonElement | null)[]>([]);
   const removedAt = useRef<number>(undefined);
+  const keyed = items.some(
+    (item) => !('separator' in item) && shownKey(item) !== undefined,
+  );
   useLayoutEffect(() => {
     const removed = removedAt.current;
     removedAt.current = undefined;
@@ -372,9 +375,9 @@ export function MenuItems({
               <span className="menu-check">
                 {item.icon ?? (item.checked ? strings.symbols.checked : '')}
               </span>
-              {shownKey(item) !== undefined && (
+              {keyed && (
                 <span className="menu-access-key" aria-hidden="true">
-                  {item.accessKey}
+                  {shownKey(item)}
                 </span>
               )}
               {item.label}
