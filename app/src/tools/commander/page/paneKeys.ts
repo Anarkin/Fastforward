@@ -201,6 +201,9 @@ export function paneKey(
       : marking === 'left' || marking === 'right'
         ? undefined
         : moveInList(marking, selectedIndex, rows.length, visible);
+    if (moved === undefined && event.repeat) {
+      return done;
+    }
     const next = moved ?? selectedIndex;
     return {
       act: {

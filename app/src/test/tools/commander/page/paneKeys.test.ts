@@ -363,6 +363,25 @@ suite('Commander keys', () => {
     );
   });
 
+  test('leaves the mark of the last row as it is while Shift and an arrow held down go no further, as each repeat there flipped it', () => {
+    assert.deepStrictEqual(
+      paneKey(
+        pressed('ArrowDown', { shiftKey: true, repeat: true }),
+        at('b.txt', { marked: new Set(['b.txt']) }),
+      ),
+      {},
+    );
+    assert.deepStrictEqual(
+      paneKey(
+        pressed('ArrowDown', { shiftKey: true }),
+        at('b.txt', { marked: new Set(['b.txt']) }),
+      ),
+      {
+        act: { kind: 'mark', keys: ['b.txt'], marked: false, select: 'b.txt' },
+      },
+    );
+  });
+
   test('marks every row but the parent folder on Mod+A, whatever is selected, and unmarks them all once every one is marked', () => {
     const all = ['docs', 'repo', 'a.txt', 'b.txt'];
     const markAll = pressed('a', { ctrlKey: true });
