@@ -49,6 +49,10 @@ export class QuitGuard {
     this.allowed = true;
   }
 
+  reset(): void {
+    this.allowed = false;
+  }
+
   systemEnding(): void {
     this.ending = true;
     this.stopEnding?.();

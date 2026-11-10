@@ -37,6 +37,19 @@ suite('Quit guard', () => {
     assert.deepStrictEqual(done, ['asked', 'asked', 'update']);
   });
 
+  test('asks again before quitting once what it let go on left the app running, as a Restart to Update whose install failed let every later close go unasked', () => {
+    const { guard, done } = guarded();
+    guard.holds(() => done.push('update'));
+    guard.confirmed();
+    guard.reset();
+
+    assert.strictEqual(
+      guard.holds(() => done.push('quit')),
+      true,
+    );
+    assert.deepStrictEqual(done, ['asked', 'update', 'asked']);
+  });
+
   test('takes no confirmation from the page while it asked nothing, as the page is not trusted', () => {
     const { guard, done } = guarded();
     guard.confirmed();

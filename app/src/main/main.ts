@@ -390,6 +390,9 @@ async function start(asked: readonly string[]): Promise<void> {
     app.getVersion(),
     autoUpdater,
     (message) => {
+      if (message.type === 'update' && message.status.kind === 'failed') {
+        quitGuard.reset();
+      }
       if (!window.isDestroyed()) {
         window.webContents.send('message', message);
       }
