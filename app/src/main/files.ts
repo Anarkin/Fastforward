@@ -40,6 +40,29 @@ export function opensExternally(url: string): boolean {
   return protocol === 'https:' || protocol === 'mailto:';
 }
 
+interface LockedSession {
+  setPermissionRequestHandler(
+    handler: (
+      contents: unknown,
+      permission: string,
+      answer: (granted: boolean) => void,
+    ) => void,
+  ): void;
+  setPermissionCheckHandler(handler: () => boolean): void;
+  on(
+    event: 'will-download',
+    listener: (event: { preventDefault(): void }) => void,
+  ): unknown;
+}
+
+export function lockDown(session: LockedSession): void {
+  session.setPermissionRequestHandler((_contents, _permission, answer) =>
+    answer(false),
+  );
+  session.setPermissionCheckHandler(() => false);
+  session.on('will-download', (event) => event.preventDefault());
+}
+
 export const minimumWindowSize = { width: 1280, height: 720 };
 
 export interface Bounds {

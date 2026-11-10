@@ -6,6 +6,7 @@ import {
   firstWindowSize,
   isAppUrl,
   keptBounds,
+  lockDown,
   minimumHeight,
   minimumWidth,
   opensExternally,
@@ -74,6 +75,32 @@ suite('App files', () => {
     assert.ok(!start('https://example.com/'));
     assert.ok(!start('fastforward://app/index.html#top', true, true));
     assert.ok(!start('fastforward://app/index.html', false));
+  });
+
+  test('grants the page no permission and downloads nothing, as Alt and a click on a link of a document viewed made the app fetch it', () => {
+    const answers: boolean[] = [];
+    const listeners = new Map<
+      string,
+      (event: { preventDefault(): void }) => void
+    >();
+    let checked: (() => boolean) | undefined;
+    let prevented = 0;
+    lockDown({
+      setPermissionRequestHandler: (handler) =>
+        handler(undefined, 'media', (granted) => answers.push(granted)),
+      setPermissionCheckHandler: (handler) => {
+        checked = handler;
+      },
+      on: (event, listener) => {
+        listeners.set(event, listener);
+      },
+    });
+    listeners.get('will-download')?.({ preventDefault: () => prevented++ });
+
+    assert.deepStrictEqual(
+      [answers, checked?.(), prevented],
+      [[false], false, 1],
+    );
   });
 
   test('opens only https and mail links outside the app', () => {
