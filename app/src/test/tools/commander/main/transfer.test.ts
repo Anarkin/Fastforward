@@ -513,6 +513,32 @@ suite('Transfer', () => {
     assert.strictEqual(fs.statSync(big).size, 10_000);
   });
 
+  test.skipIf(process.platform !== 'win32')(
+    'keeps the Mark of the Web of a large file copied in pieces on Windows, as a downloaded installer moved to another drive lost it, and its original was deleted',
+    async () => {
+      const big = path.join(source, 'setup.exe');
+      fs.writeFileSync(big, Buffer.alloc(10_000, 7));
+      const mark = '[ZoneTransfer]\r\nZoneId=3\r\n';
+      fs.writeFileSync(`${big}:Zone.Identifier`, mark);
+
+      const moved = await run(
+        { sources: [big], target, move: true },
+        {
+          piecesFrom: 4000,
+          pieceBytes: 1000,
+          cloning: false,
+          rename: crossingDrives,
+        },
+      );
+
+      assert.deepStrictEqual(moved.failures, []);
+      assert.strictEqual(
+        fs.readFileSync(path.join(target, 'setup.exe:Zone.Identifier'), 'utf8'),
+        mark,
+      );
+    },
+  );
+
   test('copies a symbolic link as a link, and moves it so to another drive', async (context) => {
     write(path.join(source, 'real.txt'), 'real');
     try {

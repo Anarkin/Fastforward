@@ -77,6 +77,20 @@ async function sameItem(source: string, target: string): Promise<boolean> {
   return from !== undefined && from === to;
 }
 
+const markOfTheWeb = ':Zone.Identifier';
+
+async function keptMark(source: string, target: string): Promise<void> {
+  if (process.platform !== 'win32') {
+    return;
+  }
+  const mark = await fs.promises
+    .readFile(`${source}${markOfTheWeb}`)
+    .catch(() => undefined);
+  if (mark !== undefined) {
+    await fs.promises.writeFile(`${target}${markOfTheWeb}`, mark);
+  }
+}
+
 function partOf(target: string): string {
   return `${target}.${randomBytes(4).toString('hex')}.part`;
 }
@@ -516,6 +530,7 @@ class Transfer {
         this.bytes += bytesRead;
         this.report();
       }
+      await keptMark(source, target);
     } catch (error) {
       await output?.close().catch(ignored);
       output = undefined;
