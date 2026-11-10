@@ -333,6 +333,8 @@ async function listed(
 
 const progressPattern = /^(\d+)%(?:\s+(\d+))?(?:\s+\S\s+(.+))?$/;
 
+const progressBreak = /[\r\n\b]+/;
+
 export function progressOf(piece: string): ExtractProgress | undefined {
   const found = progressPattern.exec(piece.trim());
   if (found === null) {
@@ -351,7 +353,7 @@ function progressed(
 ): (text: string) => void {
   let left = '';
   return (text) => {
-    const pieces = `${left}${text}`.split(/[\r\n]/);
+    const pieces = `${left}${text}`.split(progressBreak);
     left = pieces.pop() ?? '';
     const last = pieces
       .map(progressOf)
@@ -533,7 +535,7 @@ function packOutput(
   }
   let left = '';
   return (text) => {
-    const pieces = `${left}${text}`.split(/[\r\n]/);
+    const pieces = `${left}${text}`.split(progressBreak);
     left = pieces.pop() ?? '';
     let last: ExtractProgress | undefined;
     for (const piece of pieces) {

@@ -817,6 +817,9 @@ suite('sevenZipProgram', () => {
   });
 });
 
+const erase = (shown: string) =>
+  `${'\b'.repeat(shown.length)}${' '.repeat(shown.length)}${'\b'.repeat(shown.length)}`;
+
 suite('the progress of an extraction', () => {
   test('reads how far 7-Zip got, how many files it took out and the one it is taking, adding or copying as it packs too, leaving out how far it got opening and scanning', () => {
     assert.deepStrictEqual(progressOf(' 18% 1029 - folder-0010/file.txt'), {
@@ -859,6 +862,28 @@ suite('the progress of an extraction', () => {
       removeFolder(path.dirname(into));
     }
     assert.ok(asked[0]?.includes('-bsp1') && asked[0].includes('-bso0'));
+    assert.deepStrictEqual(told, [
+      { percent: 0, files: 0 },
+      { percent: 12, files: 3, current: 'a.txt' },
+    ]);
+  });
+
+  test('reads the progress 7-Zip erases with backspaces rather than a carriage return, as it does on macOS and Linux', async () => {
+    const told: unknown[] = [];
+    const reader = sevenZipReader((_args, { onOutput } = {}) => {
+      onOutput?.(`  0%${erase('  0%')} 12% 3 - a`);
+      onOutput?.(`.txt${erase(' 12% 3 - a.txt')} 50% 7`);
+      return Promise.resolve({ code: 0, output: '', errors: '' });
+    });
+    const into = path.join(tempFolder('progress'), 'out');
+    try {
+      await reader.extract('a.zip', ['a.txt'], into, {
+        onProgress: (progress) => told.push(progress),
+      });
+    } finally {
+      removeFolder(path.dirname(into));
+    }
+
     assert.deepStrictEqual(told, [
       { percent: 0, files: 0 },
       { percent: 12, files: 3, current: 'a.txt' },
