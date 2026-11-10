@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -115,7 +114,12 @@ import {
 } from './files';
 import { tellMaximized } from './maximized';
 import { reloadWhenGone } from './pageGone';
-import { profileFolder, thumbnailFolder, viewedFilesFolder } from './profile';
+import {
+  archivesFolder,
+  profileFolder,
+  thumbnailFolder,
+  viewedFilesFolder,
+} from './profile';
 import { ThumbnailStore } from '../tools/commander/main/thumbnailStore';
 import { QuitGuard } from './quitGuard';
 import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
@@ -210,10 +214,12 @@ async function start(asked: readonly string[]): Promise<void> {
 
   const profile = app.getPath('userData');
   const archiveWork = workFolders(
-    path.join(
-      app.getPath('temp'),
-      'fastforward-archives',
-      createHash('sha256').update(profile).digest('hex').slice(0, 16),
+    archivesFolder(
+      process.platform,
+      development,
+      app.commandLine.getSwitchValue('user-data-dir'),
+      os.homedir(),
+      process.env,
     ),
   );
   const defaults = readDefaults(path.join(dist, 'settings.json'));
@@ -433,7 +439,7 @@ async function start(asked: readonly string[]): Promise<void> {
   ])) {
     await removeUnviewedCopies(copies, viewedRoots);
   }
-  await archiveWork.clear();
+  await archiveWork.clearEnded();
   keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
   const gitTool = new GitTool(
     log,

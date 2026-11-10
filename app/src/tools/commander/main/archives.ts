@@ -391,19 +391,52 @@ async function temporariesOf(file: string): Promise<string[]> {
     .map((each) => path.join(folder, each));
 }
 
-export function workFolders(root: string): {
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error instanceof Error && 'code' in error && error.code === 'EPERM';
+  }
+}
+
+const runName = /^\d+$/;
+
+function removedWhole(folder: string): Promise<void> {
+  return fs.promises
+    .rm(folder, { recursive: true, force: true, maxRetries: 3 })
+    .catch(() => undefined);
+}
+
+export function workFolders(
+  base: string,
+  pid: number = process.pid,
+  alive: (pid: number) => boolean = running,
+): {
   readonly next: () => Promise<string>;
   readonly clear: () => Promise<void>;
+  readonly clearEnded: () => Promise<void>;
 } {
+  const root = path.join(base, String(pid));
   return {
     next: async () => {
-      await fs.promises.mkdir(root, { recursive: true });
+      await fs.promises.mkdir(root, { recursive: true, mode: 0o700 });
       return fs.promises.mkdtemp(path.join(root, 'work-'));
     },
-    clear: () =>
-      fs.promises
-        .rm(root, { recursive: true, force: true, maxRetries: 3 })
-        .catch(() => undefined),
+    clear: () => removedWhole(root),
+    clearEnded: async () => {
+      const names = await fs.promises.readdir(base).catch(() => []);
+      await Promise.all(
+        names
+          .filter(
+            (name) =>
+              runName.test(name) &&
+              Number(name) !== pid &&
+              !alive(Number(name)),
+          )
+          .map((name) => removedWhole(path.join(base, name))),
+      );
+    },
   };
 }
 

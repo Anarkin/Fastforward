@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
+  archivesFolder,
   profileFolder,
   thumbnailFolder,
   viewedFilesFolder,
@@ -73,6 +74,27 @@ suite('Profile', () => {
     assert.strictEqual(
       viewedFilesFolder('linux', false, given, home, {}),
       path.join(given, 'viewed-files'),
+    );
+  });
+
+  test('takes archives out into the local folder of the system beside the thumbnails, rather than the temp folder, which every user of Linux shares, and into the folder given when there is one', () => {
+    const home = path.join('C:', 'Users', 'me');
+    const local = path.join(home, 'AppData', 'Local');
+    assert.strictEqual(
+      archivesFolder('win32', false, '', home, { LOCALAPPDATA: local }),
+      path.join(local, 'Fastforward', 'Archives'),
+    );
+    assert.strictEqual(
+      archivesFolder('darwin', false, '', home, {}),
+      path.join(home, 'Library', 'Caches', 'Fastforward', 'Archives'),
+    );
+    assert.strictEqual(
+      archivesFolder('linux', true, '', home, { XDG_CACHE_HOME: '/c' }),
+      path.join('/c', 'fastforward-dev', 'archives'),
+    );
+    assert.strictEqual(
+      archivesFolder('linux', false, given, home, {}),
+      path.join(given, 'Archives'),
     );
   });
 });

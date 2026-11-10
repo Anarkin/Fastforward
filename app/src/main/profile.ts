@@ -50,6 +50,16 @@ export function thumbnailFolder(
   return localFolder(platform, development, given, home, env, 'Thumbnails');
 }
 
+export function archivesFolder(
+  platform: NodeJS.Platform,
+  development: boolean,
+  given: string,
+  home: string,
+  env: NodeJS.ProcessEnv,
+): string {
+  return localFolder(platform, development, given, home, env, 'Archives');
+}
+
 export function viewedFilesFolder(
   platform: NodeJS.Platform,
   development: boolean,
