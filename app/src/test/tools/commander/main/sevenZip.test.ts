@@ -243,6 +243,41 @@ suite('sevenZipAt', () => {
       [2, true],
     );
   });
+
+  test('ends as the second 7-Zip does once it fails while the first still writes to it, stopping the first, which would wait for ever on a pipe nobody reads', async () => {
+    const failed = await node(
+      [
+        '-e',
+        'const piece = Buffer.alloc(65536, 1); const more = () => process.stdout.write(piece, more); more()',
+      ],
+      {
+        pipeInto: [
+          '-e',
+          "process.stderr.write('ERROR: disk full'); process.exit(2)",
+        ],
+      },
+    );
+
+    assert.deepStrictEqual(
+      [failed.code, failed.errors.includes('ERROR: disk full')],
+      [2, true],
+    );
+  });
+
+  test('ends with the warning of the first 7-Zip once the second packed what it was given, as the first could not read some files', async () => {
+    const warned = await node(
+      [
+        '-e',
+        "process.stderr.write('WARNINGS for files:\\nlocked.txt : in use\\n'); process.stdout.write('tar'); process.exitCode = 1",
+      ],
+      { pipeInto: ['-e', 'process.stdin.resume()'] },
+    );
+
+    assert.deepStrictEqual(
+      [warned.code, warned.errors.includes('locked.txt : in use')],
+      [1, true],
+    );
+  });
 });
 
 interface Asked {

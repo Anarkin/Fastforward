@@ -77,6 +77,20 @@ function ended(child: ChildProcessWithoutNullStreams): Promise<number | null> {
   });
 }
 
+function pipedCode(
+  firstCode: number | null,
+  lastCode: number | null,
+  cutShort: boolean,
+): number | null {
+  if (cutShort) {
+    return lastCode;
+  }
+  if (firstCode !== 0 && firstCode !== 1) {
+    return firstCode;
+  }
+  return lastCode === 0 ? firstCode : lastCode;
+}
+
 export function sevenZipAt(program: string): SevenZip {
   return async (args, { signal, onOutput, input, cwd, pipeInto } = {}) => {
     const started = (each: readonly string[]) =>
@@ -111,17 +125,28 @@ export function sevenZipAt(program: string): SevenZip {
         told(chunk);
       }
     });
+    let cutShort = false;
     if (last !== first) {
       last.stderr.on('data', (chunk: Buffer) => errors.push(chunk));
+      last.once('close', (lastEnded) => {
+        if (
+          lastEnded !== 0 &&
+          first.exitCode === null &&
+          first.signalCode === null
+        ) {
+          cutShort = true;
+          first.kill();
+        }
+      });
     }
     const [firstCode, lastCode] = await Promise.all([
       ended(first),
       last === first ? undefined : ended(last),
     ]);
     const code =
-      last === first || (firstCode !== 0 && firstCode !== 1)
+      lastCode === undefined
         ? firstCode
-        : (lastCode ?? null);
+        : pipedCode(firstCode, lastCode, cutShort);
     return { code, output: decoded(output), errors: decoded(errors) };
   };
 }
