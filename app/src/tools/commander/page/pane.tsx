@@ -61,7 +61,7 @@ import { fileColorOf, type FileColors } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 import { pathParts } from '../shared/paths';
 import { bookmarkMenu, bookmarkOf } from './bookmarks';
-import { paneKey, type PaneAct } from './paneKeys';
+import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 
 declare module 'react' {
   interface CSSProperties {
@@ -722,15 +722,14 @@ export function Pane({
       event.preventDefault();
       event.stopPropagation();
       const at = { x: event.clientX, y: event.clientY };
-      if (clicked(commanderKeymap.systemMenu, event) !== undefined) {
-        onSelect(row.key);
+      onSelect(row.key);
+      if (menuOfClick(event) === 'system') {
         onShellMenu(
           row.key === parentFolder ? [] : pointedKeys(rows, row.key, marked),
           at,
           true,
         );
-      } else if (clicked(commanderKeymap.contextMenu, event) !== undefined) {
-        onSelect(row.key);
+      } else {
         openMenu(row.key, at);
       }
     },
@@ -1029,11 +1028,9 @@ export function Pane({
         onContextMenu={(event) => {
           event.preventDefault();
           const at = { x: event.clientX, y: event.clientY };
-          if (clicked(commanderKeymap.systemMenu, event) !== undefined) {
+          if (menuOfClick(event) === 'system') {
             onShellMenu([], at, true);
-          } else if (
-            clicked(commanderKeymap.contextMenu, event) !== undefined
-          ) {
+          } else {
             openMenu(undefined, at);
           }
         }}

@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { rowsOf } from '../../../../tools/commander/page/listing';
 import {
+  menuOfClick,
   paneKey,
   type PaneKeys,
 } from '../../../../tools/commander/page/paneKeys';
@@ -392,5 +393,28 @@ suite('Commander keys', () => {
       { act: { kind: 'select', key: 'repo' } },
     );
     assert.strictEqual(paneKey(pressed('x'), at('a.txt')), undefined);
+  });
+});
+
+const click = (button: number, held: Record<string, boolean> = {}) => ({
+  button,
+  ctrlKey: false,
+  shiftKey: false,
+  altKey: false,
+  metaKey: false,
+  ...held,
+});
+
+suite('The menu a click opens on a side', () => {
+  test('opens the menu of the app on any click the system takes for a context menu but Shift and a right click, as Control and a click on macOS is the secondary click there', () => {
+    assert.deepStrictEqual(
+      [
+        menuOfClick(click(2)),
+        menuOfClick(click(0, { ctrlKey: true })),
+        menuOfClick(click(2, { ctrlKey: true })),
+        menuOfClick(click(2, { shiftKey: true })),
+      ],
+      ['app', 'app', 'app', 'system'],
+    );
   });
 });

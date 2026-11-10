@@ -1,4 +1,9 @@
-import { keymap, letterTyped } from '../../../shell/shared/keymap';
+import {
+  clicked,
+  keymap,
+  letterTyped,
+  type Click,
+} from '../../../shell/shared/keymap';
 import {
   listMoveOf,
   moveInList,
@@ -65,6 +70,12 @@ const done = {};
 
 function uncounted(row: Row): boolean {
   return row.entry?.folder === true && row.entry.size === undefined;
+}
+
+export function menuOfClick(click: Click): 'system' | 'app' {
+  return clicked(commanderKeymap.systemMenu, click) === undefined
+    ? 'app'
+    : 'system';
 }
 
 export function paneKey(
