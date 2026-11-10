@@ -4,10 +4,12 @@ import { sentencesOf, strings } from '../../../shared/strings';
 import {
   itemsAt,
   type ArchiveAccess,
+  type ArchiveBranch,
   type OpenedArchive,
   type Packing,
   type PackOptions,
 } from './archives';
+import { movedOut, presentIn } from './unpacking';
 
 export interface ItemsOfArchive {
   readonly archive: OpenedArchive;
@@ -16,6 +18,8 @@ export interface ItemsOfArchive {
   readonly withoutFolders: boolean;
   readonly files: number;
   readonly bytes: number;
+  readonly roots: readonly ArchiveBranch[];
+  readonly platform: NodeJS.Platform;
 }
 
 export async function copiedBetween(
@@ -71,20 +75,33 @@ export async function copiedBetween(
         warning: sentencesOf([added.warning, strings.commander.originalsKept]),
       };
     }
+    const name = path.basename(from.archive.file);
+    const { paths: moved, unmatched } = movedOut(
+      from.roots,
+      await presentIn(extracted.folder, from.platform),
+      new Set(),
+      from.withoutFolders,
+      from.platform,
+    );
+    const kept =
+      unmatched > 0
+        ? strings.commander.keptUnmatched(name, unmatched)
+        : undefined;
+    if (moved.length === 0) {
+      return kept === undefined ? added : { kind: 'packed', warning: kept };
+    }
     const removed = await archives.remove(
       from.archive,
-      from.paths,
+      moved,
       signal === undefined ? {} : { signal },
     );
-    return removed.kind === 'refused'
-      ? {
-          kind: 'packed',
-          warning: strings.commander.movedOutKept(
-            path.basename(from.archive.file),
-            removed.reason,
-          ),
-        }
-      : added;
+    if (removed.kind === 'refused') {
+      return {
+        kind: 'packed',
+        warning: strings.commander.movedOutKept(name, removed.reason),
+      };
+    }
+    return kept === undefined ? added : { kind: 'packed', warning: kept };
   } finally {
     await fs.promises
       .rm(extracted.folder, { recursive: true, force: true, maxRetries: 3 })

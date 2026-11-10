@@ -585,6 +585,10 @@ suite('Archives packed, changed and taken out again', () => {
         depth: fromInner.length,
         withoutFolders: flat,
         ...from.tree.totals(items),
+        roots: items.flatMap(
+          (item) => from.tree.branch(item.inner, item.name) ?? [],
+        ),
+        platform: process.platform,
       },
       { archive: await opened(intoFile), inner },
       move,

@@ -105,6 +105,7 @@ import {
 import {
   itemsAt,
   type ArchiveAccess,
+  type ArchiveBranch,
   type OpenedArchive,
   type PackOptions,
   type PackPlan,
@@ -387,6 +388,22 @@ function entriesShown({ entries = [], sizing }: Pane): readonly Entry[] {
     : entries.map((entry) =>
         entry.folder ? sizedEntry(entry, sizing.sizes.of(entry.name)) : entry,
       );
+}
+
+function branchesNamed(
+  archive: OpenedArchive,
+  inner: readonly string[],
+  names: readonly string[],
+): ArchiveBranch[] {
+  return names.flatMap((name) => {
+    const parts = name.split(path.sep);
+    return (
+      archive.tree.branch(
+        [...inner, ...parts.slice(0, -1)],
+        parts.at(-1) ?? name,
+      ) ?? []
+    );
+  });
 }
 
 function nameShared(
@@ -2102,6 +2119,8 @@ export class CommanderTool implements Tool<'commander'> {
             withoutFolders,
             files,
             bytes,
+            roots: branchesNamed(archive, inner, kept),
+            platform,
           },
           into,
           move,
@@ -2163,15 +2182,7 @@ export class CommanderTool implements Tool<'commander'> {
           bytes,
           ...(move && {
             moving: {
-              roots: names.flatMap((name) => {
-                const parts = name.split(path.sep);
-                return (
-                  archive.tree.branch(
-                    [...inner, ...parts.slice(0, -1)],
-                    parts.at(-1) ?? name,
-                  ) ?? []
-                );
-              }),
+              roots: branchesNamed(archive, inner, names),
               platform: this.access.platform,
             },
           }),

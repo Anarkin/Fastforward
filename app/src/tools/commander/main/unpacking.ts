@@ -33,7 +33,7 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function presentIn(
+export async function presentIn(
   folder: string,
   platform: NodeJS.Platform,
 ): Promise<ReadonlySet<string>> {
@@ -47,7 +47,7 @@ function branchesOf(roots: readonly ArchiveBranch[]): ArchiveBranch[] {
   return roots.flatMap((root) => [root, ...branchesOf(root.children)]);
 }
 
-function movedOut(
+export function movedOut(
   roots: readonly ArchiveBranch[],
   before: ReadonlySet<string>,
   after: ReadonlySet<string>,

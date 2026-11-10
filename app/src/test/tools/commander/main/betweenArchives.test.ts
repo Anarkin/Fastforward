@@ -5,6 +5,7 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   ArchiveTree,
   type ArchiveAccess,
+  type ArchiveItem,
   type Extracting,
   type OpenedArchive,
   type Packing,
@@ -23,6 +24,28 @@ const openedAt = (file: string): OpenedArchive => ({
 const source = openedAt(path.join('C:', 'from.zip'));
 const target = openedAt(path.join('D:', 'into.7z'));
 
+const item = (itemPath: string): ArchiveItem => ({
+  path: itemPath,
+  folder: false,
+  size: 10,
+  modified: 0,
+  hiddenAttribute: false,
+  link: false,
+  encrypted: false,
+});
+
+const rootsOf = (
+  listed: readonly string[],
+  paths: readonly string[],
+  platform: NodeJS.Platform,
+) => {
+  const tree = new ArchiveTree(listed.map(item), platform);
+  return paths.flatMap((each) => {
+    const parts = each.split('/');
+    return tree.branch(parts.slice(0, -1), parts.at(-1) ?? each) ?? [];
+  });
+};
+
 const copied = (
   archives: ArchiveAccess,
   {
@@ -30,11 +53,15 @@ const copied = (
     depth = 0,
     withoutFolders = false,
     move = false,
+    listed = ['docs/a.txt', 'docs/deep/b.txt', 'top.txt'],
+    platform = 'linux',
   }: {
     readonly paths?: readonly string[];
     readonly depth?: number;
     readonly withoutFolders?: boolean;
     readonly move?: boolean;
+    readonly listed?: readonly string[];
+    readonly platform?: NodeJS.Platform;
   } = {},
 ) => {
   const progress: unknown[] = [];
@@ -42,7 +69,16 @@ const copied = (
     progress,
     done: copiedBetween(
       archives,
-      { archive: source, paths, depth, withoutFolders, files: 3, bytes: 30 },
+      {
+        archive: source,
+        paths,
+        depth,
+        withoutFolders,
+        files: 3,
+        bytes: 30,
+        roots: rootsOf(listed, paths, platform),
+        platform,
+      },
       { archive: target, inner: ['into', 'here'] },
       move,
       {
@@ -217,6 +253,22 @@ suite('Copying from one archive into another', () => {
         warning: strings.commander.movedOutKept('from.zip', 'It is read-only.'),
       },
     );
+  });
+
+  test('keeps in the one archive what 7-Zip took out under another name or not at all, saying so, as Makefile and makefile land as one file where names have no case', async () => {
+    assert.deepStrictEqual(
+      await copied(archivesWith({ staged: ['src/Makefile', 'top.txt'] }), {
+        move: true,
+        paths: ['src', 'top.txt'],
+        listed: ['src/Makefile', 'src/makefile', 'top.txt'],
+        platform: 'win32',
+      }).done,
+      {
+        kind: 'packed',
+        warning: strings.commander.keptUnmatched('from.zip', 2),
+      },
+    );
+    assert.deepStrictEqual(calls.at(-1), ['remove', source.file, ['top.txt']]);
   });
 
   test('says why nothing was taken out of the one archive, forgetting a password found wrong, and adds nothing', async () => {
