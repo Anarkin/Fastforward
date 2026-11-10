@@ -472,12 +472,17 @@ export async function closeViews(): Promise<void> {
   openedViews.clear();
 }
 
-export function attach(view: GitTool): {
+export function attach(
+  view: GitTool,
+  window = '1',
+): {
   page: FakePage;
   connection: Connection;
 } {
   const page = new FakePage();
-  const opened = shellOf(view).connect((message) => page.receive(message));
+  const opened = shellOf(view).connect(window, (message) =>
+    page.receive(message),
+  );
   const connection: Connection = {
     receive: (message) =>
       opened.receive(

@@ -16,7 +16,7 @@ interface History {
   ): string | undefined;
 }
 
-function windowOf(layout: Layout, tab: string): TabWindow | undefined {
+export function windowOf(layout: Layout, tab: string): TabWindow | undefined {
   return layout.find((window) => window.tabs.some((each) => each.id === tab));
 }
 

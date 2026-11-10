@@ -6,10 +6,12 @@ import { plainOf, strings, type Sentence } from '../../../shared/strings';
 import { recordingLog } from '../../stub';
 import type { CommandInstall } from '../../../main/terminalCommand';
 import {
+  attach,
   closeViews,
   failOnErrorsLogged,
   FakeHost,
   gate,
+  openView,
   shellOf,
   stubMethod,
   takeErrorsLogged,
@@ -19,6 +21,7 @@ import {
 } from '../../harness';
 import { removeFolder, tempFolder } from '../../repositories';
 import { quitNoteOf } from '../../../shell/main/shell';
+import { tabsKey, windowsKey } from '../../../shell/main/storage';
 
 const saying = (note?: string) => ({ quitNote: () => note });
 
@@ -438,7 +441,7 @@ suite('Shell with no tab open', () => {
       [],
       async (view) => {
         const posted: unknown[] = [];
-        const connection = shellOf(view.view).connect((message) =>
+        const connection = shellOf(view.view).connect('1', (message) =>
           posted.push(message),
         );
         try {
@@ -471,7 +474,7 @@ suite('Shell with no tab open', () => {
         view.connection.dispose();
         shell.notify({ level: 'info', message: 'update ready' });
         const posted: string[] = [];
-        const reloaded = shell.connect((message) => {
+        const reloaded = shell.connect('1', (message) => {
           if (message.type === 'notice') {
             posted.push(plainOf(message.message));
           }
@@ -690,5 +693,84 @@ suite('Shell with no tab open', () => {
       host,
       noGit,
     );
+  });
+});
+
+const commanderTab = (id: string) => ({ id, tool: 'commander' }) as const;
+
+const shownIn = (page: FakePage) => [
+  page.tabs?.tabs.map((tab) => tab.id),
+  page.tabs?.active,
+];
+
+suite('Shell with several windows', () => {
+  const noGit = path.join(os.tmpdir(), 'fastforward-no-git');
+
+  const { log, error: logged } = recordingLog();
+  failOnErrorsLogged(logged);
+
+  afterAll(closeViews);
+
+  async function twoWindows() {
+    const first = await openView(log, [], false, undefined, undefined, noGit);
+    await first.store.update(
+      tabsKey,
+      ['1', '5', '2', '3', '4'].map(commanderTab),
+    );
+    await first.store.update(windowsKey, [
+      { id: '1', tabs: ['1', '5'], active: '1' },
+      { id: '2', tabs: ['2', '3', '4'], active: '4' },
+    ]);
+    const second = attach(first.view, '2');
+    await first.connection.receive({ type: 'ready' });
+    await second.connection.receive({ type: 'ready' });
+    return { first, second };
+  }
+
+  test('tells each window its own tabs and the one active in it', async () => {
+    const { first, second } = await twoWindows();
+    assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
+    assert.deepStrictEqual(shownIn(second.page), [['2', '3', '4'], '4']);
+  });
+
+  test('opens a new tab in the window whose page asked for it', async () => {
+    const { first, second } = await twoWindows();
+    await second.connection.receive({ type: 'newTab', tool: 'commander' });
+    assert.deepStrictEqual(shownIn(second.page), [['2', '3', '4', '6'], '6']);
+    assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
+  });
+
+  test('selects, moves and closes only the tabs of the window whose page asks, as the page is not trusted', async () => {
+    const { first } = await twoWindows();
+    await first.connection.receive({ type: 'selectTab', tab: '2' });
+    await first.connection.receive({ type: 'moveTab', tab: '3', index: 0 });
+    await first.connection.receive({ type: 'closeTab', tab: '4' });
+    assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
+    assert.deepStrictEqual(first.store.get(windowsKey), [
+      { id: '1', tabs: ['1', '5'], active: '1' },
+      { id: '2', tabs: ['2', '3', '4'], active: '4' },
+    ]);
+  });
+
+  test('shows the tab shown before in the same window once its active tab closes, passing over those shown since in another window', async () => {
+    const { first, second } = await twoWindows();
+    await second.connection.receive({ type: 'selectTab', tab: '2' });
+    await first.connection.receive({ type: 'selectTab', tab: '5' });
+    await first.connection.receive({ type: 'selectTab', tab: '1' });
+    await second.connection.receive({ type: 'selectTab', tab: '4' });
+    await second.connection.receive({ type: 'closeTab', tab: '4' });
+    assert.deepStrictEqual(shownIn(second.page), [['2', '3'], '2']);
+    assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
+  });
+
+  test("tells every window how text is shown once one of them changes it, as that is the app's setting", async () => {
+    const { first, second } = await twoWindows();
+    const view = {
+      wordWrap: false,
+      showWhitespace: true,
+      highlightSyntax: false,
+    };
+    await first.connection.receive({ type: 'setTextView', view });
+    assert.deepStrictEqual(second.page.last('textView')?.view, view);
   });
 });

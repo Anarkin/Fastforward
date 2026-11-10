@@ -292,7 +292,8 @@ async function start(asked: readonly string[]): Promise<void> {
     connection = Promise.all([connection, views.promise]).then(
       ([previous, { shell: view }]) => {
         previous?.dispose();
-        return view.connect((message: ToWebview) => {
+        const [first = '1'] = view.windows();
+        return view.connect(first, (message: ToWebview) => {
           if (!window.isDestroyed()) {
             window.webContents.send('message', message);
           }
