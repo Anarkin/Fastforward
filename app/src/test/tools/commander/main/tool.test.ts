@@ -2418,6 +2418,56 @@ suite('Commander tool', () => {
     ]);
   });
 
+  test('packs over an archive there already, or its first volume, only when the dialog said it replaces it, saying so otherwise', async () => {
+    const { tool, page, send, packed, notices } = commander({
+      [root]: [file('a.txt')],
+    });
+    await tool.show(page, tab);
+    const there = tempFolder('packed-there');
+    try {
+      fs.writeFileSync(path.join(there, 'photos.zip'), 'old');
+      fs.writeFileSync(path.join(there, 'parts.7z.001'), 'old');
+      const pack = (archive: string, extra: Record<string, unknown> = {}) =>
+        send({
+          type: 'pack',
+          tab: '1',
+          side: 'right',
+          folder: root,
+          names: ['a.txt'],
+          archive: path.join(there, archive),
+          format: archive.endsWith('.7z') ? '7z' : 'zip',
+          level: 'normal',
+          ...extra,
+        });
+
+      await pack('photos.zip');
+      await pack('parts.7z', { volumeBytes: 1_048_576 });
+      await pack('photos.zip', { replace: true });
+      await waitFor(() => packed.length === 1, 'the pack to start');
+
+      assert.deepStrictEqual(
+        packed.map((plan) => path.basename(plan.archive)),
+        ['photos.zip'],
+      );
+      assert.deepStrictEqual(notices, [
+        {
+          level: 'error',
+          message: strings.commander.archiveThereKept(
+            path.join(there, 'photos.zip'),
+          ),
+        },
+        {
+          level: 'error',
+          message: strings.commander.archiveThereKept(
+            path.join(there, 'parts.7z'),
+          ),
+        },
+      ]);
+    } finally {
+      removeFolder(there);
+    }
+  });
+
   test('tests the archives a side lists one after another in the dialog of copies, asking the password of one encrypted, saying which failed and why or that they passed, and nothing of folders or items not listed', async () => {
     const { tool, page, send, tested, archiveTests, secrets, notices } =
       commander({

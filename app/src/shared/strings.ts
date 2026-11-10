@@ -810,6 +810,10 @@ export const strings = {
     volumeUnread: 'Type the size of a volume, as 100 MB.',
     volumeSmall: 'A volume holds at least 64 KB.',
     noArchive: 'Type the path of the archive.',
+    archiveNotWhole:
+      'Type the whole path of the archive, from the root of its drive.',
+    archiveThereKept: (archive: string) =>
+      sentence`${named(archive)} is there already, so nothing was packed over it.`,
     archiveThere:
       'An archive of that name is there already; packing replaces it.',
     packConfirm: 'Pack',

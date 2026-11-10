@@ -64,6 +64,21 @@ function Choices<Choice extends string>({
 const lastPart = (file: string) =>
   file.split(/[\\/]/).findLast((part) => part !== '') ?? '';
 
+const trailing = /[\\/]+$/;
+
+const folderPart = (file: string) =>
+  file.slice(0, file.length - lastPart(file).length).replace(trailing, '');
+
+const rootedOnWindows = /^(?:[a-zA-Z]:[\\/]|[\\/]{2}[^\\/])/;
+
+function whole(file: string, platform: string | undefined): boolean {
+  const posix = file.startsWith('/');
+  if (platform === 'win32') {
+    return rootedOnWindows.test(file);
+  }
+  return platform === undefined ? posix || rootedOnWindows.test(file) : posix;
+}
+
 function packProblem({
   archive,
   format,
@@ -81,6 +96,9 @@ function packProblem({
 }): Sentence | undefined {
   if (archive.trim() === '') {
     return strings.commander.noArchive;
+  }
+  if (!whole(archive.trim(), platform)) {
+    return strings.commander.archiveNotWhole;
   }
   const named = nameProblem(lastPart(archive.trim()), platform);
   if (named !== undefined) {
@@ -160,6 +178,8 @@ function PackForm({
   });
   const name = lastPart(archive.trim());
   const there =
+    folderKey(folderPart(archive.trim()), platform) ===
+      folderKey(target.replace(trailing, ''), platform) &&
     targetEntries?.some(
       (entry) => folderKey(entry.name, platform) === folderKey(name, platform),
     ) === true;
@@ -182,6 +202,7 @@ function PackForm({
           ...(encrypted && format === 'zip' && { zipCipher }),
           ...(volumeBytes !== undefined && { volume, volumeBytes }),
           test: testing,
+          ...(there && { replace: true }),
         });
       }}
     >

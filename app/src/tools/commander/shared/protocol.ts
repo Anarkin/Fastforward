@@ -257,6 +257,7 @@ export type CommanderToHost =
       readonly zipCipher?: ZipCipher;
       readonly volumeBytes?: number;
       readonly test?: boolean;
+      readonly replace?: boolean;
     }
   | {
       readonly type: 'rename';

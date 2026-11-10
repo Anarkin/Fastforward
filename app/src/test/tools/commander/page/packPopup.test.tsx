@@ -41,6 +41,7 @@ async function packing(
     readonly problem: () => string | undefined;
     readonly packable: () => boolean;
   }) => Promise<void>,
+  backup: readonly string[] = [],
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>');
   const globals = {
@@ -64,7 +65,20 @@ async function packing(
         ...emptyView,
         tab: '1',
         platform: 'linux',
-        panes: { left: pane('/code'), right: pane('/backup') },
+        panes: {
+          left: pane('/code'),
+          right: {
+            ...pane('/backup'),
+            entries: backup.map((name) => ({
+              name,
+              folder: false,
+              link: false,
+              hidden: false,
+              size: 1,
+              modified: 0,
+            })),
+          },
+        },
       },
     });
     store.getState().askPack('left', ['a.txt', 'docs']);
@@ -167,7 +181,42 @@ suite('Pack popup', () => {
     });
   });
 
-  test('says what is wrong as it is typed and packs nothing until it is right: no path, a zip password beyond ASCII, a volume too small or unread', async () => {
+  test('says it replaces an archive of the name there already, telling the host it may only then, as it packs over nothing else', async () => {
+    const { commander } = strings;
+    const posted: CommanderToHost[] = [];
+    const noted = (dom: JSDOM) =>
+      dom.window.document.body.textContent.includes(commander.archiveThere);
+    await packing(
+      async ({ dom, type, click, posted: sent }) => {
+        assert.ok(noted(dom));
+        await type(commander.packArchive, '/elsewhere/code.zip');
+        assert.ok(!noted(dom));
+        await click(commander.packConfirm);
+        posted.push(...sent);
+      },
+      ['code.zip'],
+    );
+    await packing(
+      async ({ dom, click, posted: sent }) => {
+        assert.ok(noted(dom));
+        await click(commander.packConfirm);
+        posted.push(...sent);
+      },
+      ['code.zip'],
+    );
+
+    assert.deepStrictEqual(
+      posted.flatMap((message) =>
+        message.type === 'pack' ? [[message.archive, message.replace]] : [],
+      ),
+      [
+        ['/elsewhere/code.zip', undefined],
+        ['/backup/code.zip', true],
+      ],
+    );
+  });
+
+  test('says what is wrong as it is typed and packs nothing until it is right: no path, one not from the root, a zip password beyond ASCII, a volume too small or unread', async () => {
     await packing(async ({ type, click, problem, packable }) => {
       const { commander } = strings;
       await type(commander.packArchive, ' ');
@@ -175,6 +224,14 @@ suite('Pack popup', () => {
         [problem(), packable()],
         [commander.noArchive, false],
       );
+      for (const relative of ['code.zip', 'backup/code.zip', '~/code.zip']) {
+        await type(commander.packArchive, relative);
+        assert.deepStrictEqual(
+          [problem(), packable()],
+          [commander.archiveNotWhole, false],
+          relative,
+        );
+      }
       await type(commander.packArchive, '/backup/code.zip');
       await type(commander.packPassword, 'pässwörd');
       assert.deepStrictEqual(

@@ -98,6 +98,7 @@ interface PackAnswer {
   readonly volume?: string;
   readonly volumeBytes?: number;
   readonly test: boolean;
+  readonly replace?: boolean;
 }
 
 interface Renaming {
@@ -1093,6 +1094,7 @@ export function createCommanderStore(
         volume,
         volumeBytes,
         test,
+        replace,
       }) => {
         const { packing, packChoices } = get();
         if (packing === undefined) {
@@ -1123,6 +1125,7 @@ export function createCommanderStore(
           ...(zipCipher !== undefined && { zipCipher }),
           ...(volumeBytes !== undefined && { volumeBytes }),
           test,
+          ...(replace === true && { replace }),
         });
       },
       cancelPack: () => set({ packing: undefined }),

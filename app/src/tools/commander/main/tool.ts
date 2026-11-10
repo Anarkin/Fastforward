@@ -656,8 +656,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'rename':
         return this.rename(page, message);
       case 'pack':
-        this.pack(page, message);
-        return undefined;
+        return this.pack(page, message);
       case 'testArchives':
         this.testArchives(page, message);
         return undefined;
@@ -2422,7 +2421,7 @@ export class CommanderTool implements Tool<'commander'> {
     );
   }
 
-  private pack(
+  private async pack(
     page: Page,
     {
       tab,
@@ -2437,8 +2436,9 @@ export class CommanderTool implements Tool<'commander'> {
       zipCipher,
       volumeBytes,
       test,
+      replace,
     }: Extract<CommanderToHost, { type: 'pack' }>,
-  ): void {
+  ): Promise<void> {
     const shown = this.diskPane(page, tab, side, folder);
     const { archives, platform } = this.access;
     if (
@@ -2461,7 +2461,8 @@ export class CommanderTool implements Tool<'commander'> {
       (zipCipher !== undefined && !isZipCipher(zipCipher)) ||
       (volumeBytes !== undefined &&
         (!Number.isSafeInteger(volumeBytes) || volumeBytes < smallestVolume)) ||
-      (test !== undefined && typeof test !== 'boolean')
+      (test !== undefined && typeof test !== 'boolean') ||
+      (replace !== undefined && typeof replace !== 'boolean')
     ) {
       return;
     }
@@ -2483,6 +2484,20 @@ export class CommanderTool implements Tool<'commander'> {
       this.shell.notice(page, {
         level: 'error',
         message: strings.commander.intoItself(into),
+      });
+      return;
+    }
+    const first = volumeBytes === undefined ? archive : `${archive}.001`;
+    if (
+      replace !== true &&
+      (await fs.promises.lstat(first).then(
+        () => true,
+        () => false,
+      ))
+    ) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.commander.archiveThereKept(archive),
       });
       return;
     }
