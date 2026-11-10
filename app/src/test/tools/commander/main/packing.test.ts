@@ -92,6 +92,24 @@ suite('packInto', () => {
     ]);
   });
 
+  test('leaves the files named after the archive with a number that is no volume of 7-Zip, as a dated copy, when it puts volumes in place', async () => {
+    for (const part of ['.003', '.0', '.7', '.20240101']) {
+      fs.writeFileSync(at(`photos.zip${part}`), 'old');
+    }
+    await packInto(
+      writing(['.001', '.002'], () => Promise.resolve({ kind: 'packed' })),
+      plan(1000),
+    );
+
+    assert.deepStrictEqual(listed(), [
+      'photos.zip.0 old',
+      'photos.zip.001 new.001',
+      'photos.zip.002 new.002',
+      'photos.zip.20240101 old',
+      'photos.zip.7 old',
+    ]);
+  });
+
   test('removes what an earlier pack into the archive left under a name of its own, as one the app quit during, and nothing else', async () => {
     for (const name of [
       'photos.zip.0a1b2c3d.packing',

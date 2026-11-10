@@ -8,7 +8,11 @@ import { reasonOf } from './reasons';
 import type { TransferEvent } from './transferProtocol';
 import type { ConnectTransfer } from './transfers';
 
-const partNumber = /^\.(\d+)$/;
+const partNumber = /^\.(\d{3,})$/;
+
+function partName(archive: string, number: number): string {
+  return `${archive}.${String(number).padStart(3, '0')}`;
+}
 
 async function partsOf(file: string): Promise<string[]> {
   const folder = path.dirname(file);
@@ -45,7 +49,16 @@ async function placed(temporary: string, plan: PackPlan): Promise<void> {
       `${plan.archive}${part.slice(temporary.length)}`,
     );
   }
-  await removed((await partsOf(plan.archive)).slice(made.length));
+  const left = new Set(await partsOf(plan.archive));
+  const beyond: string[] = [];
+  for (
+    let number = made.length + 1;
+    left.has(partName(plan.archive, number));
+    number++
+  ) {
+    beyond.push(partName(plan.archive, number));
+  }
+  await removed(beyond);
 }
 
 const temporaryEnding = /^\.[0-9a-f]{8}\.packing(?:\.\d+)?$/;
