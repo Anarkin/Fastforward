@@ -33,6 +33,10 @@ function watched(
 
 type Stat = (folder: string) => Promise<fs.Stats>;
 
+function identityOf(stats: fs.Stats): string {
+  return `${stats.ino}:${stats.birthtimeMs}`;
+}
+
 function stampOf(stats: fs.Stats): string {
   return `${stats.ino}:${stats.mtimeMs}`;
 }
@@ -62,7 +66,7 @@ export function watchFolder(
   let failures = 0;
   let stopped = false;
   let stopWatching: (() => void) | undefined;
-  let watchedIno: number | undefined;
+  let watchedIdentity: string | undefined;
   let looking = false;
   const lookAgain = () => {
     if (looking || stopWatching === undefined) {
@@ -71,7 +75,7 @@ export function watchFolder(
     looking = true;
     void stat(folder)
       .then(
-        (stats) => stats.ino === watchedIno,
+        (stats) => identityOf(stats) === watchedIdentity,
         () => false,
       )
       .then((same) => {
@@ -135,7 +139,7 @@ export function watchFolder(
         if (stopped) {
           return;
         }
-        watchedIno = stats.ino;
+        watchedIdentity = identityOf(stats);
         stopWatching = watchAnswered(listed ?? stampOf(stats));
         if (stopWatching === undefined) {
           watchAgain();

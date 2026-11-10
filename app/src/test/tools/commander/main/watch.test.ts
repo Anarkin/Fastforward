@@ -455,9 +455,10 @@ suite('Watching a folder and every folder in it', () => {
     const changed: (string | undefined)[] = [];
     stops.push(watchTree(folder, (each) => changed.push(each), start));
 
+    const itself = process.platform === 'win32' ? `\\\\?\\${folder}` : folder;
     events[0]('rename', 'photos');
-    events[0]('rename', `\\\\?\\${folder}`);
-    events[0]('rename', `\\\\?\\${folder}`);
+    events[0]('rename', itself);
+    events[0]('rename', itself);
     events[0]('rename', folder);
 
     assert.deepStrictEqual(changed, ['photos', undefined]);
