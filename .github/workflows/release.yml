@@ -104,3 +104,7 @@ jobs:
         run: node app/scripts/githubRelease.mts upload "$GITHUB_REF_NAME" release/*
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the draft once every job before passed and every installer and update file is uploaded, so installed apps update to it, leaving a release already published as it is
+        run: node app/scripts/githubRelease.mts publish "$GITHUB_REF_NAME"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

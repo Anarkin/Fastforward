@@ -92,6 +92,17 @@ export function uploadRelease(
   gh(['release', 'upload', tag, ...files, '--clobber']);
 }
 
+export function publishRelease(gh: Gh, tag: string, built: string) {
+  refuseMoved(gh, tag, built);
+  const state = stateOf(gh, tag);
+  if (state === 'missing') {
+    throw new Error(`${tag} has no draft release to publish.`);
+  }
+  if (state === 'draft') {
+    gh(['release', 'edit', tag, '--draft=false']);
+  }
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const [step, tag, ...files] = process.argv.slice(2);
   try {
@@ -101,8 +112,14 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     }
     if (step === 'draft') {
       draftRelease(githubCli, tag, built);
-    } else {
+    } else if (step === 'upload') {
       uploadRelease(githubCli, tag, built, files);
+    } else if (step === 'publish') {
+      publishRelease(githubCli, tag, built);
+    } else {
+      throw new Error(
+        `${step} is no step of a release, which are draft, upload and publish.`,
+      );
     }
   } catch (error) {
     console.error(

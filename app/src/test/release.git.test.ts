@@ -81,20 +81,31 @@ suite('Release', () => {
   afterEach(() => removeFolder(folder));
 
   const releasing = () =>
-    new Promise<{ released: boolean; said: string; told: string }>(
-      (resolve) => {
-        execFile(
-          process.execPath,
-          [script, '7.0.0'],
-          {
-            cwd: local.root,
-            env: { ...process.env, ...identity, npm_execpath: npm },
-          },
-          (error, stdout, stderr) =>
-            resolve({ released: error === null, said: stderr, told: stdout }),
-        );
-      },
-    );
+    new Promise<{
+      released: boolean;
+      code: number;
+      said: string;
+      told: string;
+    }>((resolve) => {
+      const env: NodeJS.ProcessEnv = {
+        ...process.env,
+        ...identity,
+        npm_execpath: npm,
+      };
+      delete env.GH_REPO;
+      execFile(
+        process.execPath,
+        [script, '7.0.0'],
+        { cwd: local.root, env },
+        (error, stdout, stderr) =>
+          resolve({
+            released: error === null,
+            code: typeof error?.code === 'number' ? error.code : 0,
+            said: stderr,
+            told: stdout,
+          }),
+      );
+    });
 
   const release = async () => (await releasing()).released;
 
@@ -107,9 +118,9 @@ suite('Release', () => {
     );
   };
 
-  test('pushes the release commit and its tag, saying that installed apps update to the release only once its draft is published', async () => {
-    const { released, told } = await releasing();
-    assert.strictEqual(released, true);
+  test('pushes the release commit and its tag, saying the release run publishes it once everything passes, and says at once that it could not watch that run, keeping the commit and tag pushed, when gh does not work here', async () => {
+    const { code, said, told } = await releasing();
+    assert.strictEqual(code, 2);
     assert.strictEqual(
       await remote.git('log', '-1', '--format=%s', 'main'),
       'chore(release): 7.0.0\n',
@@ -118,7 +129,14 @@ suite('Release', () => {
       await remote.resolve('v7.0.0^{commit}'),
       await local.resolve('HEAD'),
     );
-    assert.match(told, /v7\.0\.0[^]*draft release[^]*publish/);
+    assert.match(
+      told,
+      /Pushed v7\.0\.0\.[^]*publishes[^]*once everything passes/,
+    );
+    assert.match(
+      said,
+      /Pushed v7\.0\.0, but could not watch its release run, as gh does not work here/,
+    );
   });
 
   test('refuses to release from a branch other than main, leaving everything as it was', async () => {
