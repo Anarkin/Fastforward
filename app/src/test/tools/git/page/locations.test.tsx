@@ -995,6 +995,33 @@ const browsedState: RepositoryState = {
 
 const bookmarked: Bookmark[] = [{ kind: 'commit', name: 'e'.repeat(40) }];
 
+suite('Clicking in the locations', () => {
+  test('keeps the keyboard in the field when a row, a heading or the list is pressed, as typing then ran the shortcuts of the tab, but leaves pressing the field to it', async () => {
+    await browsed({ repository: browsedState }, ({ document, field }) => {
+      const view = document.defaultView;
+      assert.ok(view !== null);
+      const pressed = (target: Element | null) => {
+        assert.ok(target !== null);
+        const event = new view.MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+        });
+        target.dispatchEvent(event);
+        return event.defaultPrevented;
+      };
+
+      assert.deepStrictEqual(
+        [
+          pressed(document.querySelector('.locations-heading')),
+          pressed(document.querySelector('.locations-groups')),
+          pressed(field),
+        ],
+        [true, true, false],
+      );
+    });
+  });
+});
+
 suite('Browsing the locations by keyboard', () => {
   test('tells assistive technology the field picks from the rows below it, and which of them is picked', async () => {
     await browsed({ repository: browsedState }, async ({ field, press }) => {

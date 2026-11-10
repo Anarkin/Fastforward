@@ -657,6 +657,11 @@ export function LocationsPopup({
       ref={popup}
       style={{ height }}
       onKeyDown={onKeyDown}
+      onMouseDown={(event) => {
+        if (event.target !== input.current) {
+          event.preventDefault();
+        }
+      }}
       onBlur={(event) => {
         if (focusLeaves(anchor.current, event.relatedTarget)) {
           onClose();
