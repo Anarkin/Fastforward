@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { type TabInfo } from '../shared/protocol';
+import { type TabInfo, type WindowInfo } from '../shared/protocol';
+import type { ContextMenuItem } from '../../ui/contextMenu';
 import type { ToolId } from '../shared/tools';
 import { AddIcon, CloseIcon, ToolIcon } from '../../ui/icons';
 import { titleBarHeight } from '../shared/titleBar';
@@ -507,6 +508,32 @@ function useTabDrag(
   };
 }
 
+export function tabMenuItems(
+  tab: string,
+  alone: boolean,
+  windows: readonly WindowInfo[],
+  move: (tab: string, window?: string) => void,
+): ContextMenuItem[] {
+  return [
+    {
+      label: strings.tabs.moveToNewWindow,
+      disabled: alone,
+      onClick: () => move(tab),
+    },
+    ...(windows.length === 0
+      ? []
+      : [
+          {
+            label: strings.tabs.moveToWindow,
+            submenu: windows.map((window) => ({
+              label: window.name,
+              onClick: () => move(tab, window.id),
+            })),
+          },
+        ]),
+  ];
+}
+
 export const preloadDelay = 200;
 
 export function resting(delay: number): {
@@ -577,6 +604,7 @@ const noTabs: readonly TabInfo[] = [];
 export function TabBar({ menu }: { menu?: React.ReactNode }) {
   const tabs = useShell((state) => state.tabs ?? noTabs);
   const active = useShell((state) => state.active);
+  const windows = useShell((state) => state.windows);
   const adding = useShell(
     (state) => state.menu?.menu.trigger === newTabTrigger,
   );
@@ -585,6 +613,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
     preloadTab: onPreload,
     closeTab: onClose,
     moveTab: onMove,
+    moveTabToWindow,
     log: onLog,
     showMenu,
     closeMenu,
@@ -710,6 +739,19 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
                 onAuxClick={(event) =>
                   clicked(keymap.closeTab, event) && onClose(tab.id)
                 }
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  showMenu({
+                    x: event.clientX,
+                    y: event.clientY,
+                    items: tabMenuItems(
+                      tab.id,
+                      tabs.length < 2,
+                      windows,
+                      moveTabToWindow,
+                    ),
+                  });
+                }}
                 onAnimationEnd={(event) =>
                   event.target === event.currentTarget && settled(tab.id)
                 }

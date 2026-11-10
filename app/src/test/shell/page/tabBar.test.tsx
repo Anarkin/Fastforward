@@ -15,6 +15,7 @@ import {
   sidewaysDelta,
   slotLefts,
   stripOverflows,
+  tabMenuItems,
   tabsWidth,
   TabBar,
 } from '../../../shell/page/tabBar';
@@ -441,6 +442,61 @@ suite('Tab bar', () => {
     close.props.onClick({ stopPropagation: () => stopped++ });
     assert.strictEqual(stopped, 1);
     assert.deepStrictEqual(closed, ['/a']);
+  });
+});
+
+suite('Menu of a tab', () => {
+  test('moves the tab to a new window, unless it is the only tab of its window, or into another window named after the tab it shows', () => {
+    const moved: (readonly [string, string | undefined])[] = [];
+    const move = (tab: string, window?: string) => moved.push([tab, window]);
+    const items = tabMenuItems(
+      '4',
+      false,
+      [
+        { id: '2', name: 'repo' },
+        { id: '3', name: strings.tabs.noTabWindow },
+      ],
+      move,
+    );
+    assert.deepStrictEqual(
+      items.map((item) =>
+        'separator' in item
+          ? '-'
+          : [
+              item.label,
+              item.disabled === true,
+              item.submenu?.map((each) =>
+                'separator' in each ? '-' : each.label,
+              ),
+            ],
+      ),
+      [
+        ['Move to New Window', false, undefined],
+        ['Move to Window', false, ['repo', 'Window with no tab']],
+      ],
+    );
+    for (const item of items) {
+      if (!('separator' in item)) {
+        item.onClick?.();
+        for (const each of item.submenu ?? []) {
+          if (!('separator' in each)) {
+            each.onClick?.();
+          }
+        }
+      }
+    }
+    assert.deepStrictEqual(moved, [
+      ['4', undefined],
+      ['4', '2'],
+      ['4', '3'],
+    ]);
+  });
+
+  test('offers no other window while there is none, and no new window for the only tab of a window', () => {
+    const [only, ...rest] = tabMenuItems('1', true, [], () => 0);
+    assert.ok(only && !('separator' in only));
+    assert.strictEqual(only.disabled, true);
+    assert.deepStrictEqual(rest, []);
   });
 });
 

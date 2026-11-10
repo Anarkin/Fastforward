@@ -175,6 +175,19 @@ suite('Shell store', () => {
     ]);
   });
 
+  test('keeps the other windows the main process names, and moves a tab to a new window or into one of them', () => {
+    const { posted, store } = posting();
+    const windows = [{ id: '2', name: 'repo' }];
+    store.getState().receive({ type: 'windows', windows });
+    assert.deepStrictEqual(store.getState().windows, windows);
+    store.getState().moveTabToWindow('1');
+    store.getState().moveTabToWindow('1', '2');
+    assert.deepStrictEqual(posted, [
+      { type: 'moveTabToWindow', tab: '1' },
+      { type: 'moveTabToWindow', tab: '1', window: '2' },
+    ]);
+  });
+
   test('opens the Open With popup the main process asks for, and answers it with the tool chosen or none', () => {
     const { posted, store } = posting();
     const choosing = {

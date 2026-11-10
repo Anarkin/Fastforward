@@ -233,6 +233,7 @@ export class Shell {
   private readonly pages = new Map<string, Page>();
   private readonly windowsOfPages = new WeakMap<Page, string>();
   private readonly shownTools = new WeakMap<Page, ToolId>();
+  private readonly windowsSent = new WeakMap<Page, string>();
   private focusedWindow: string | undefined;
   private lastPageLog: string | undefined;
   private askedFolders: readonly string[] = [];
@@ -421,6 +422,7 @@ export class Shell {
       this.history.forget(tab.id);
       this.tools[tab.tool].closed(page, tab);
     }
+    this.postWindows();
   }
 
   private focused(): Page | undefined {
@@ -480,10 +482,14 @@ export class Shell {
           storage.setLayout([...storage.layout, { id: window, tabs: [] }]),
         );
         host.openWindow(window, this.windowOf(page).id);
+        this.postWindows();
         return;
       }
       case 'closeWindow':
         host.closeWindow(this.windowOf(page).id);
+        return;
+      case 'moveTabToWindow':
+        await this.moveToWindow(page, message.tab, message.window);
         return;
       case 'copyText':
         if (typeof message.text === 'string') {
@@ -868,6 +874,81 @@ export class Shell {
       tabs: this.infos(this.windowOf(page).tabs),
       active: this.activeTab(page)?.id,
     });
+    this.postWindows();
+  }
+
+  private postWindows(): void {
+    const { layout } = this.storage;
+    const names = new Map(
+      this.infos(this.storage.savedTabs).map((info) => [
+        info.id,
+        strings.tabs.label(info.name, info.folder),
+      ]),
+    );
+    for (const [id, page] of this.pages) {
+      const windows = layout
+        .filter((window) => window.id !== id)
+        .map((window) => {
+          const shown = activeTabOf(window) ?? window.tabs.at(0);
+          return {
+            id: window.id,
+            name:
+              (shown === undefined ? undefined : names.get(shown.id)) ??
+              strings.tabs.noTabWindow,
+          };
+        });
+      const sent = JSON.stringify(windows);
+      if (!page.disposed && this.windowsSent.get(page) !== sent) {
+        this.windowsSent.set(page, sent);
+        page.post({ type: 'windows', windows });
+      }
+    }
+  }
+
+  private async moveToWindow(
+    page: Page,
+    tab: unknown,
+    target: unknown,
+  ): Promise<void> {
+    const { storage } = this;
+    const from = this.windowOf(page);
+    if (
+      typeof tab !== 'string' ||
+      !from.tabs.some((each) => each.id === tab) ||
+      (target === undefined
+        ? from.tabs.length < 2
+        : typeof target !== 'string' ||
+          target === from.id ||
+          !storage.layout.some((window) => window.id === target))
+    ) {
+      this.postTabs(page);
+      return;
+    }
+    const into =
+      typeof target === 'string' ? target : nextWindowId(storage.layout);
+    const before =
+      target === undefined
+        ? [...storage.layout, { id: into, tabs: [] }]
+        : storage.layout;
+    const index = before.find((window) => window.id === into)?.tabs.length ?? 0;
+    const layout = withMoved(before, tab, into, index, this.history);
+    this.save(storage.setLayout(layout));
+    if (target === undefined) {
+      this.host.openWindow(into, from.id);
+    } else {
+      this.host.showWindow(into);
+      const there = this.livePage(into);
+      if (there !== undefined) {
+        await this.show(there, tab);
+      }
+    }
+    const left = layout.find((window) => window.id === from.id);
+    if (left === undefined) {
+      this.host.closeWindow(from.id);
+      this.postWindows();
+      return;
+    }
+    await this.show(page, left.active);
   }
 
   private infos(tabs: readonly Tab[]): TabInfo[] {

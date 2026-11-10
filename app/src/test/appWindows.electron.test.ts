@@ -177,4 +177,27 @@ suite('App with several windows', () => {
     );
     assert.deepStrictEqual(bounds.toSorted(byPlace), placed.toSorted(byPlace));
   });
+
+  test('moves a tab into another window from its menu, closing the window it leaves once it held no other tab', async () => {
+    const pages = await windowsShown(2);
+    const counts = await Promise.all(pages.map(tabsIn));
+    const holding = pages[counts.indexOf(1)];
+    const empty = pages[counts.indexOf(0)];
+    assert.ok(holding && empty);
+    await holding.locator('.tabs [role="tab"]').click({ button: 'right' });
+    const menu = holding.locator('.context-menu');
+    assert.ok(
+      await menu
+        .locator('.menu-item', { hasText: strings.tabs.moveToNewWindow })
+        .isDisabled(),
+    );
+    await menu
+      .locator('.menu-item', { hasText: strings.tabs.moveToWindow })
+      .hover();
+    await menu
+      .locator('.menu-item', { hasText: strings.tabs.noTabWindow })
+      .evaluate((item: HTMLElement) => item.click());
+    await windowsShown(1);
+    assert.strictEqual(await tabsIn(empty), 1);
+  });
 });

@@ -16,6 +16,7 @@ import type {
   ToWebview,
   ToWebviewOf,
   UpdateStatus,
+  WindowInfo,
 } from '../shared/protocol';
 import {
   confirmsClose,
@@ -102,6 +103,7 @@ export function withPopup(
 interface ShellSource {
   readonly tabs: readonly TabInfo[] | undefined;
   readonly active: string | undefined;
+  readonly windows: readonly WindowInfo[];
   readonly notices: readonly Notice[];
   readonly update: UpdateStatus;
   readonly about: AboutInfo | undefined;
@@ -132,6 +134,7 @@ interface ShellActions {
   readonly cancel: () => void;
   readonly openWith: (tool: ToolId | undefined) => void;
   readonly moveTab: (id: string, index: number) => void;
+  readonly moveTabToWindow: (id: string, window?: string) => void;
   readonly setToolItems: (
     tool: ToolId,
     items: readonly ContextMenuItem[],
@@ -160,6 +163,7 @@ type ShellState = ShellSource & ShellActions;
 const shellDefaults: ShellSource = {
   tabs: undefined,
   active: undefined,
+  windows: [],
   notices: [],
   update: { kind: 'idle' },
   about: undefined,
@@ -182,6 +186,8 @@ function received(
   noticeId: () => number,
 ): Partial<ShellSource> {
   switch (message.type) {
+    case 'windows':
+      return { windows: message.windows };
     case 'tabs':
       return {
         tabs: message.tabs,
@@ -365,6 +371,12 @@ export function createShellStore(
         }));
         post({ type: 'moveTab', tab: id, index });
       },
+      moveTabToWindow: (id, window) =>
+        post({
+          type: 'moveTabToWindow',
+          tab: id,
+          ...(window !== undefined && { window }),
+        }),
       setToolItems: (tool, items) =>
         set((state) => ({ toolItems: { ...state.toolItems, [tool]: items } })),
       setToolTitle: (tool, title) =>

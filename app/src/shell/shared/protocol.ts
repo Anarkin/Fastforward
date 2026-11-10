@@ -14,6 +14,11 @@ export interface TabInfo {
   readonly compare?: true;
 }
 
+export interface WindowInfo {
+  readonly id: string;
+  readonly name: string;
+}
+
 export interface ToolChoice {
   readonly tool: ToolId;
   readonly fits: boolean;
@@ -80,6 +85,11 @@ export type ToHost =
   | { readonly type: 'selectTab'; readonly tab: string }
   | { readonly type: 'closeTab'; readonly tab: string }
   | { readonly type: 'moveTab'; readonly tab: string; readonly index: number }
+  | {
+      readonly type: 'moveTabToWindow';
+      readonly tab: string;
+      readonly window?: string;
+    }
   | { readonly type: 'preloadTab'; readonly tab: string }
   | { readonly type: 'setTextView'; readonly view: TextView }
   | { readonly type: 'setImageView'; readonly view: ImageView }
@@ -108,6 +118,7 @@ export type ToWebview =
       readonly tabs: readonly TabInfo[];
       readonly active: string | undefined;
     }
+  | { readonly type: 'windows'; readonly windows: readonly WindowInfo[] }
   | { readonly type: 'dateFormat'; readonly format: string }
   | {
       readonly type: 'scrolling';

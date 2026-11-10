@@ -399,6 +399,7 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   selectTab: true,
   closeTab: true,
   moveTab: true,
+  moveTabToWindow: true,
   preloadTab: true,
   newTab: true,
   newWindow: true,
