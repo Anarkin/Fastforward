@@ -12,6 +12,7 @@ import {
   sevenZipProgram,
   sevenZipReader,
 } from '../../../../tools/commander/main/sevenZip';
+import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { storedZip } from '../../../zips';
 
@@ -262,6 +263,82 @@ suite('7-Zip', () => {
       listing.kind === 'listed' &&
         listing.items.map((item) => item.path).toSorted(byText),
       ['src', 'src/app', 'src/app/main.ts'],
+    );
+  });
+
+  test('deletes, extracts and renames alone each of the items whose names differ only in case, in spaces around them or by a quote, but on Windows renames none with a quote, which its command line cannot hold, and refuses a name with a line break', async () => {
+    const names = ['a.txt', 'A.TXT', ' a.txt', 'a.txt ', 'q"a.txt'];
+    let zips = 0;
+    const zip = () => {
+      const file = path.join(folder, `same-${++zips}.zip`);
+      fs.writeFileSync(
+        file,
+        storedZip(names.map((name) => [name, `text of ${name}`])),
+      );
+      return file;
+    };
+    const listIn = path.join(folder, 'lists');
+    fs.mkdirSync(listIn);
+    const namesIn = async (file: string) => {
+      const listing = await reader.list(file);
+      return listing.kind === 'listed'
+        ? listing.items.map((item) => item.path).toSorted(byText)
+        : listing;
+    };
+
+    for (const [index, name] of names.entries()) {
+      const removedFrom = zip();
+      assert.deepStrictEqual(
+        await reader.remove(removedFrom, [name], { listIn }),
+        { kind: 'packed' },
+        name,
+      );
+      assert.deepStrictEqual(
+        await namesIn(removedFrom),
+        names.filter((each) => each !== name).toSorted(byText),
+        name,
+      );
+      const into = path.join(folder, `out-${index}`);
+      assert.strictEqual(
+        await reader.extract(zip(), [name], into, { withoutFolders: true }),
+        undefined,
+        name,
+      );
+      assert.deepStrictEqual(
+        fs
+          .readdirSync(into)
+          .map((file) => fs.readFileSync(path.join(into, file), 'utf8')),
+        [`text of ${name}`],
+        name,
+      );
+      if (process.platform === 'win32' && name.includes('"')) {
+        continue;
+      }
+      const renamedIn = zip();
+      assert.deepStrictEqual(
+        await reader.rename(renamedIn, name, 'renamed.txt', {}),
+        { kind: 'packed' },
+        name,
+      );
+      assert.deepStrictEqual(
+        await namesIn(renamedIn),
+        [...names.filter((each) => each !== name), 'renamed.txt'].toSorted(
+          byText,
+        ),
+        name,
+      );
+    }
+    const refused = {
+      kind: 'refused',
+      reason: strings.commander.lineBreakInName,
+    };
+    assert.deepStrictEqual(
+      await reader.remove(zip(), ['line\nbreak.txt'], { listIn }),
+      refused,
+    );
+    assert.deepStrictEqual(
+      await reader.extract(zip(), ['line\nbreak.txt'], path.join(folder, 'x')),
+      { reason: strings.commander.lineBreakInName },
     );
   });
 

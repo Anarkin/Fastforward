@@ -248,6 +248,14 @@ export function reasonOf(run: SevenZipRun, file: string): string {
     : strings.commander.sevenZipEnded(run.code);
 }
 
+const lineBreak = /[\r\n]/;
+
+function listOf(paths: readonly string[]): string | undefined {
+  return paths.some((each) => lineBreak.test(each))
+    ? undefined
+    : paths.map((each) => `"${each}"`).join('\n');
+}
+
 function passwordGiven(password: string | undefined): {
   readonly switches: readonly string[];
   readonly input: string | undefined;
@@ -336,9 +344,13 @@ async function extracted(
   into: string,
   { signal, onProgress, withoutFolders = false, password }: ExtractOptions = {},
 ): Promise<ArchiveRefusal | undefined> {
+  const names = listOf(paths);
+  if (names === undefined) {
+    return { reason: strings.commander.lineBreakInName };
+  }
   await fs.promises.mkdir(into, { recursive: true });
   const list = `${into}.paths`;
-  await fs.promises.writeFile(list, paths.join('\n'));
+  await fs.promises.writeFile(list, names);
   const { switches, input } = passwordGiven(password);
   try {
     const run = await sevenZip(
@@ -350,6 +362,7 @@ async function extracted(
         '-spd',
         '-sccUTF-8',
         '-scsUTF-8',
+        '-ssc',
         ...(onProgress === undefined ? [] : ['-bso0', '-bsp1']),
         `-o${into}`,
         `-i@${list}`,
@@ -541,8 +554,12 @@ async function removed(
   paths: readonly string[],
   { listIn, password, signal, ...told }: RemoveOptions,
 ): Promise<Packing> {
+  const names = listOf(paths);
+  if (names === undefined) {
+    return { kind: 'refused', reason: strings.commander.lineBreakInName };
+  }
   const list = path.join(listIn, 'removed.paths');
-  await fs.promises.writeFile(list, paths.join('\n'));
+  await fs.promises.writeFile(list, names);
   const onOutput = packOutput(told, keptPattern);
   const { switches, input } = passwordGiven(password);
   try {
@@ -554,6 +571,7 @@ async function removed(
         '-spd',
         '-sccUTF-8',
         '-scsUTF-8',
+        '-ssc',
         ...(onOutput === undefined ? [] : ['-bsp1']),
         `-i@${list}`,
         '--',
@@ -602,6 +620,7 @@ async function renamedIn(
       '-spd',
       '-sccUTF-8',
       '-scsUTF-8',
+      '-ssc',
       ...(onOutput === undefined ? [] : ['-bsp1']),
       '--',
       file,

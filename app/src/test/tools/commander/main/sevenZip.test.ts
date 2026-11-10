@@ -483,13 +483,14 @@ suite('deleting with 7-Zip', () => {
             '-spd',
             '-sccUTF-8',
             '-scsUTF-8',
+            '-ssc',
             '-bsp1',
             list,
             '--',
             'a.7z',
           ],
           input: 'secret\n',
-          list: 'docs\na.txt',
+          list: '"docs"\n"a.txt"',
         },
       ]);
       assert.deepStrictEqual(totals, [{ files: 1, bytes: 2 }]);
@@ -529,6 +530,7 @@ suite('changing an archive with 7-Zip', () => {
             '-spd',
             '-sccUTF-8',
             '-scsUTF-8',
+            '-ssc',
             '--',
             'a.7z',
             'docs/old.txt',

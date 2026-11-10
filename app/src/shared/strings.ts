@@ -653,6 +653,8 @@ export const strings = {
     zipPasswordAscii:
       "A zip's password can hold only the letters, digits and signs of English, as 7-Zip writes no other into a zip.",
     nothingTakenOut: '7-Zip took nothing out.',
+    lineBreakInName:
+      "7-Zip can't be told the name of an item that holds a line break.",
     namesAlike: (name: string) =>
       sentence`More than one of the files is named ${named(name)}, and only one of them can go into a folder.`,
     couldNotExtract: (reason: Sentence) =>
