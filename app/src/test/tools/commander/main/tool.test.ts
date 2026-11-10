@@ -591,12 +591,14 @@ function commander(
     root,
   });
   const page = new CommanderPage();
+  const pages: CommanderPage[] = [page];
+  let focused: CommanderPage = page;
   const viewed: string[] = [];
   const compared: (Compared & { readonly tool: string })[] = [];
   const tabs: Tab[] = [];
   tool.attach({
-    page: () => page,
-    pages: () => [page],
+    page: () => focused,
+    pages: () => pages,
     tabs: () => tabs,
     active: () => undefined,
     open: () => Promise.resolve(),
@@ -684,6 +686,10 @@ function commander(
   return {
     tool,
     page,
+    pages,
+    focus: (to: CommanderPage) => {
+      focused = to;
+    },
     send,
     notices,
     saved,
@@ -5542,6 +5548,41 @@ suite('Commander tool in archives', () => {
       assert.ok(!watched().includes(path.dirname(fromInner)));
     });
 
+    test('asks whether to put a changed copy back in one window alone, the one in front while it shows a commander, or else another that shows one', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), zipped);
+      made.copies.folder = copiesFolder;
+      const { tool, page, send, opened, change, focus } = made;
+      const other = new CommanderPage();
+      await tool.show(page, tab);
+      await tool.show(other, { id: '2', tool: 'commander' });
+      focus(other);
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
+      await send({ type: 'open', tab: '1', side: 'right', name: 'readme.md' });
+      const [copy] = opened;
+      assert.ok(copy !== undefined);
+      const holding = path.dirname(copy);
+      await change(holding);
+      fs.writeFileSync(copy, 'Changed.');
+      await Promise.all([change(holding), change(holding)]);
+      await waitFor(
+        () => other.of('askUpdate').length === 1,
+        'the update to be asked',
+      );
+      assert.deepStrictEqual(page.of('askUpdate'), []);
+
+      tool.hide(other);
+      await tool.show(page, tab);
+      assert.strictEqual(page.of('askUpdate').length, 1);
+      assert.strictEqual(other.of('askUpdate').length, 1);
+    });
+
     test('puts a copy back where it was opened from, though the side went on to a folder with a file of its name while it was taken out', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), [
@@ -6590,5 +6631,141 @@ suite('Commander tool in archives', () => {
     await send({ type: 'open', tab: '1', side: 'right', name: 'docs' });
 
     assert.strictEqual(tool.folderOf(tab), root);
+  });
+});
+
+const rightOf = (shown: CommanderPage, shownTab: string) =>
+  shown
+    .of('listing')
+    .findLast((listing) => listing.tab === shownTab && listing.side === 'right')
+    ?.entries.map((entry) => entry.name);
+
+suite('Commander tool in several windows', () => {
+  const second: Tab = { id: '2', tool: 'commander' };
+
+  test('lists and watches the tab each window shows at once, listing a side again in its own window once its folder changes', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Users')],
+      [at('Users')]: [],
+    };
+    const { tool, page, send, watched, change } = commander(listed);
+    const other = new CommanderPage();
+    await tool.show(page, tab);
+    await tool.show(other, second);
+    await send(
+      { type: 'open', tab: '2', side: 'right', name: 'Users', folder: root },
+      other,
+    );
+    assert.deepStrictEqual(
+      watched(),
+      [root, root, root, at('Users')].toSorted(),
+    );
+
+    listed[at('Users')] = [file('new.txt')];
+    await change(at('Users'));
+    assert.deepStrictEqual(rightOf(other, '2'), ['new.txt']);
+    assert.ok(page.of('listing').every((listing) => listing.tab === '1'));
+  });
+
+  test('stops watching only the folders of the window that stops showing a commander tab', async () => {
+    const { tool, page, watched } = commander({ [root]: [] });
+    const other = new CommanderPage();
+    await tool.show(page, tab);
+    await tool.show(other, second);
+    tool.hide(other);
+    assert.deepStrictEqual(watched(), [root, root]);
+    assert.strictEqual(other.of('hide').length, 1);
+    assert.strictEqual(page.of('hide').length, 0);
+  });
+
+  test('shows a tab moved to another window there, watching it there alone, and tells the window it left to stop showing it', async () => {
+    const { tool, page, watched } = commander({ [root]: [] });
+    const other = new CommanderPage();
+    await tool.show(page, tab);
+    await tool.show(other, tab);
+    assert.deepStrictEqual(watched(), [root, root]);
+    assert.strictEqual(page.of('hide').length, 1);
+    assert.strictEqual(tool.shows(page, tab), false);
+    assert.strictEqual(tool.shows(other, tab), true);
+  });
+
+  test('shows the progress of a copy in the window that was in front when it started, though another comes to the front meanwhile', async () => {
+    const { tool, page, send, transfers, focus } = commander({
+      [root]: [file('a.txt'), folder('target')],
+      [at('target')]: [],
+    });
+    const other = new CommanderPage();
+    await tool.show(page, tab);
+    await tool.show(other, second);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'target' });
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'right',
+      names: ['a.txt'],
+      target: at('target'),
+      move: false,
+    });
+    focus(other);
+    transfers[0]?.listener.event({
+      type: 'clash',
+      clash: {
+        name: 'a.txt',
+        source: { size: 1, modified: 2 },
+        target: { size: 3, modified: 4 },
+      },
+    });
+    assert.ok(page.of('transfer').at(-1)?.view?.clash !== undefined);
+    assert.deepStrictEqual(other.of('transfer'), []);
+  });
+
+  test('tells every window the settings once they change', () => {
+    const { tool, page, pages } = commander({ [root]: [] });
+    const other = new CommanderPage();
+    pages.push(other);
+    tool.reloadSettings();
+    assert.strictEqual(page.of('settings').length, 1);
+    assert.strictEqual(other.of('settings').length, 1);
+  });
+
+  suite('viewing a file', () => {
+    let opened: string;
+
+    beforeEach(() => {
+      opened = tempFolder('commander');
+    });
+
+    afterEach(() => removeFolder(opened));
+
+    test('reads the rows of a file viewed in one window while another lists a folder, answering only the page that views it, as the page is not trusted', async () => {
+      const notes = path.join(opened, 'notes.txt');
+      fs.writeFileSync(notes, 'one\ntwo\n');
+      const { tool, page, send } = commander({ [root]: [] });
+      const other = new CommanderPage();
+      await tool.show(page, {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      });
+      await tool.show(other, tab);
+      const rows = {
+        type: 'readRows',
+        tab: '3',
+        encoding: 'utf-8',
+        anchor: 0,
+        exact: true,
+        before: 0,
+        after: 2,
+        least: 0,
+      } as const;
+      await send({ ...rows, request: 1 }, other);
+      await send({ ...rows, request: 2 });
+      assert.deepStrictEqual(other.of('rows'), []);
+      assert.deepStrictEqual(
+        page.of('rows').map((answer) => answer.rows.map((row) => row.text)),
+        [['one', 'two']],
+      );
+    });
   });
 });
