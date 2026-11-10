@@ -55,11 +55,18 @@ export interface TabName {
 
 export type Notice = Omit<ToWebviewOf<'notice'>, 'type'>;
 
+export interface ShownTab {
+  readonly page: Page | undefined;
+  readonly tab: Tab;
+}
+
 export interface ShellAccess {
   page(): Page | undefined;
   pages(): readonly Page[];
+  current(page: Page): Page | undefined;
   tabs(): readonly Tab[];
-  active(): Tab | undefined;
+  active(page: Page): Tab | undefined;
+  shown(): readonly ShownTab[];
   open(
     page: Page,
     tool: ToolId,
@@ -144,8 +151,10 @@ interface Asking {
 export const unattachedShell: ShellAccess = {
   page: () => undefined,
   pages: () => [],
+  current: () => undefined,
   tabs: () => [],
   active: () => undefined,
+  shown: () => [],
   open: () => Promise.resolve(),
   openView: () => Promise.resolve(),
   openCompare: () => Promise.resolve(),
@@ -236,8 +245,17 @@ export class Shell {
     const access: ShellAccess = {
       page: () => this.focused(),
       pages: () => [...this.pages.values()].filter((page) => !page.disposed),
+      current: (page) =>
+        page.disposed ? this.livePage(this.windowsOfPages.get(page)) : page,
       tabs: () => this.storage.savedTabs,
-      active: () => activeTabOf(this.focusedWindowOf()),
+      active: (page) => this.activeTab(page),
+      shown: () =>
+        this.storage.layout.flatMap((window) => {
+          const tab = activeTabOf(window);
+          return tab === undefined
+            ? []
+            : [{ page: this.pages.get(window.id), tab }];
+        }),
       open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),
       openView: (page, tool, file) =>
         this.open(page, tool, [file], false, { view: true }),
@@ -369,13 +387,6 @@ export class Shell {
     return this.focusedWindow === undefined
       ? undefined
       : this.pages.get(this.focusedWindow);
-  }
-
-  private focusedWindowOf(): TabWindow | undefined {
-    const { layout } = this.storage;
-    return (
-      layout.find((window) => window.id === this.focusedWindow) ?? layout[0]
-    );
   }
 
   private windowOf(page: Page): TabWindow {
@@ -661,7 +672,18 @@ export class Shell {
       this.postTabs(live);
       return;
     }
-    await this.show(live, last);
+    const holder = windowOf(storage.layout, last);
+    if (holder === undefined || holder.id === window.id) {
+      await this.show(live, last);
+      return;
+    }
+    const there = this.livePage(holder.id);
+    if (there === undefined) {
+      this.save(storage.setLayout(withActive(storage.layout, holder.id, last)));
+      this.postTabs(live);
+      return;
+    }
+    await this.show(there, last);
   }
 
   private setRoot(id: string, root: string): void {

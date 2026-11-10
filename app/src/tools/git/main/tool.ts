@@ -141,6 +141,7 @@ import {
   unattachedShell,
   type Page,
   type ShellAccess,
+  type ShownTab,
   type Tab,
   type TabName,
   type Tool,
@@ -319,6 +320,7 @@ class OpeningFailed {
 export class GitTool implements Tool<'git'> {
   private shell: ShellAccess = unattachedShell;
   private readonly sessions = new WeakMap<Page, Session>();
+  private cloningIn: Session | undefined;
   private readonly tabStates = new Map<string, TabWork>();
   private readonly blobTexts = new BlobTexts();
   private readonly repositories = new Map<string, string>();
@@ -355,7 +357,7 @@ export class GitTool implements Tool<'git'> {
     this.soloDefault = storage.soloDefault;
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
-      () => fetchOrder(this.repositoryTabs, this.activeRepository),
+      () => fetchOrder(this.repositoryTabs, this.shownRepositories()),
       (root) => this.shell.track(this.fetchInBackground(root)),
       timer,
     );
@@ -364,9 +366,9 @@ export class GitTool implements Tool<'git'> {
       log,
       gitPath,
       {
-        post: (message) => this.page?.post(message),
+        post: (message) => this.cloneSession()?.post(message),
         open: async (target) => {
-          const session = this.page;
+          const session = this.cloneSession();
           if (session !== undefined) {
             await this.runNow(strings.log.openingFailed(target), session, () =>
               this.openRepositories(session, [target]),
@@ -406,10 +408,7 @@ export class GitTool implements Tool<'git'> {
         tab.toggledMerges.clear();
       }
     }
-    const session = this.page;
-    if (session !== undefined) {
-      this.sendRecent(session);
-    }
+    this.sendRecentEverywhere();
   }
 
   attach(shell: ShellAccess): void {
@@ -417,7 +416,12 @@ export class GitTool implements Tool<'git'> {
   }
 
   ready(page: Page): void {
-    this.clones.pageLoaded();
+    if (
+      this.cloningIn === undefined ||
+      this.live(this.cloningIn) === undefined
+    ) {
+      this.clones.pageLoaded();
+    }
     const session = this.sessionOf(page);
     session.post(this.storage.layout);
     this.sendRecent(session);
@@ -478,7 +482,7 @@ export class GitTool implements Tool<'git'> {
       }
     }
     this.save(this.forgetUnused([closed]));
-    this.sendRecent(this.sessionOf(page));
+    this.sendRecentEverywhere();
   }
 
   receive(page: Page, message: GitToHost): Promise<void> {
@@ -505,7 +509,7 @@ export class GitTool implements Tool<'git'> {
           await this.refresh(context);
         }
       },
-      this.activeWorktree,
+      this.activeWorktreeIn(session),
     );
   }
 
@@ -615,16 +619,69 @@ export class GitTool implements Tool<'git'> {
       );
   }
 
-  private get activeRepository(): string | undefined {
-    const active = this.shell.active();
+  private activeRepositoryIn(session: Session): string | undefined {
+    const active = this.shell.active(session.page);
     return active?.tool === 'git' ? active.root : undefined;
   }
 
-  private get activeWorktree(): string | undefined {
-    const repository = this.activeRepository;
+  private activeWorktreeIn(session: Session): string | undefined {
+    const repository = this.activeRepositoryIn(session);
     return repository === undefined
       ? undefined
       : this.storage.worktreeOf(repository);
+  }
+
+  private shownRepositories(): string[] {
+    return this.shell
+      .shown()
+      .flatMap(({ tab }) =>
+        tab.tool === 'git' && tab.root !== undefined ? [tab.root] : [],
+      );
+  }
+
+  private sessionShowingRepository(repository: string): Session | undefined {
+    const shown = this.shell
+      .shown()
+      .find(
+        ({ tab }) =>
+          tab.tool === 'git' &&
+          tab.root !== undefined &&
+          sameRoot(tab.root, repository),
+      );
+    return shown?.page === undefined ? undefined : this.sessionOf(shown.page);
+  }
+
+  private showing(root: string): ShownTab | undefined {
+    return this.shell
+      .shown()
+      .find(
+        ({ tab }) =>
+          tab.tool === 'git' &&
+          tab.root !== undefined &&
+          sameRoot(this.storage.worktreeOf(tab.root), root),
+      );
+  }
+
+  private sessionShowing(root: string): Session | undefined {
+    const shown = this.showing(root);
+    return shown?.page === undefined ? undefined : this.sessionOf(shown.page);
+  }
+
+  private live(session: Session): Session | undefined {
+    const page = this.shell.current(session.page);
+    return page === undefined ? undefined : this.sessionOf(page);
+  }
+
+  private cloneSession(): Session | undefined {
+    const kept =
+      this.cloningIn === undefined ? undefined : this.live(this.cloningIn);
+    return kept ?? this.page;
+  }
+
+  private sendRecentEverywhere(): void {
+    for (const page of this.shell.pages()) {
+      this.sendRecent(this.sessionOf(page));
+    }
   }
 
   private hasRepository(root: string): boolean {
@@ -707,23 +764,22 @@ export class GitTool implements Tool<'git'> {
   }
 
   private isActive(root: string): boolean {
-    const active = this.activeWorktree;
+    return this.showing(root) !== undefined;
+  }
+
+  private isActiveIn(session: Session, root: string): boolean {
+    const active = this.activeWorktreeIn(session);
     return active !== undefined && sameRoot(active, root);
   }
 
   private showsActiveTab(session: Session): boolean {
-    const active = this.activeWorktree;
+    const active = this.activeWorktreeIn(session);
     return (
-      this.page === session &&
+      !session.disposed &&
       active !== undefined &&
       this.tabStates.get(active)?.isRepository !== false &&
       this.tabStates.get(active)?.refused !== true
     );
-  }
-
-  private isActiveRepository(repository: string): boolean {
-    const active = this.activeRepository;
-    return active !== undefined && sameRoot(active, repository);
   }
 
   private repositoryOf(root: string): string {
@@ -752,11 +808,12 @@ export class GitTool implements Tool<'git'> {
       if (this.repositoryOf(root) !== repository || !historyLoaded(tab)) {
         continue;
       }
-      if (!this.isActive(root)) {
+      const shownIn = this.sessionShowing(root);
+      if (shownIn === undefined) {
         tab.shownStale = true;
         continue;
       }
-      const context = await this.context(session, root);
+      const context = await this.context(shownIn, root);
       if (context) {
         await tab.loadingHistory;
         await this.sendShownHistory(context, {
@@ -802,7 +859,7 @@ export class GitTool implements Tool<'git'> {
       this.log.error(failed);
       this.log.error(error instanceof Error ? error : text);
       const gone = root !== undefined && (await this.folderGone(root));
-      if (root === undefined || this.isActive(root)) {
+      if (root === undefined || this.isActiveIn(session, root)) {
         session.post({
           type: 'error',
           message: gone ? strings.messages.notRepository(root) : text,
@@ -827,12 +884,12 @@ export class GitTool implements Tool<'git'> {
     const { storage } = this;
     switch (message.type) {
       case 'selectWorktree': {
-        const repository = this.activeRepository;
+        const repository = this.activeRepositoryIn(session);
         const root = this.knownRoot(message.root);
         if (
           repository === undefined ||
           !sameRoot(this.repositoryOf(root), repository) ||
-          (this.isActive(root) && this.showsActiveTab(session))
+          (this.isActiveIn(session, root) && this.showsActiveTab(session))
         ) {
           return;
         }
@@ -873,6 +930,7 @@ export class GitTool implements Tool<'git'> {
       case 'checkCloneTarget':
       case 'clone':
       case 'stopClone':
+        this.cloningIn = session;
         await this.clones.receive(message);
         return;
       case 'forgetRecent':
@@ -881,12 +939,12 @@ export class GitTool implements Tool<'git'> {
         this.sendTabs(session);
         return;
       case 'preloadWorktree': {
-        const repository = this.activeRepository;
+        const repository = this.activeRepositoryIn(session);
         const root = this.knownRoot(message.root);
         if (
           repository !== undefined &&
           sameRoot(this.repositoryOf(root), repository) &&
-          !this.isActive(root)
+          !this.isActiveIn(session, root)
         ) {
           await this.preloadRoot(session, root, repository);
         }
@@ -956,7 +1014,7 @@ export class GitTool implements Tool<'git'> {
         try {
           forgetHistory(context.tab);
           context.tab.readingHistory?.abort();
-          if (this.isActive(root)) {
+          if (this.isActiveIn(session, root)) {
             await this.refresh(context, () =>
               this.sendCommits(context, this.refsOf(context), true),
             );
@@ -1009,7 +1067,7 @@ export class GitTool implements Tool<'git'> {
         this.commitSearches.get(this.knownRoot(message.root))?.abort();
         return;
       default:
-        if (this.isActive(message.root)) {
+        if (this.isActiveIn(session, message.root)) {
           await this.handleTab(message, session);
         }
     }
@@ -1195,9 +1253,9 @@ export class GitTool implements Tool<'git'> {
     folders: readonly string[],
     reopened = false,
   ): Promise<void> {
-    const page = () => (session.disposed ? (this.page ?? session) : session);
+    const page = () => this.live(session) ?? session;
     const repositories = await this.addRepositories(session, folders, reopened);
-    this.sendRecent(page());
+    this.sendRecentEverywhere();
     await this.shell.open(page().page, 'git', repositories, true);
   }
 
@@ -1209,6 +1267,7 @@ export class GitTool implements Tool<'git'> {
   }
 
   cloneInto(folder: string): Promise<void> {
+    this.cloningIn = this.page;
     return this.clones.openIn(folder);
   }
 
@@ -1268,7 +1327,7 @@ export class GitTool implements Tool<'git'> {
     reopened = false,
   ): Promise<string[]> {
     const { storage } = this;
-    const page = () => (session.disposed ? (this.page ?? session) : session);
+    const page = () => this.live(session) ?? session;
     const repositories: string[] = [];
     for (const folder of folders) {
       let location: Location | undefined;
@@ -1361,12 +1420,16 @@ export class GitTool implements Tool<'git'> {
       session.post(message);
     }
     await tab.preloading;
-    if (!this.isActive(root)) {
+    if (!this.isActiveIn(session, root)) {
       return;
     }
     this.stopWatching(session);
     const context = await this.context(session);
-    if (!context || session.disposed || !this.isActive(context.root)) {
+    if (
+      !context ||
+      session.disposed ||
+      !this.isActiveIn(session, context.root)
+    ) {
       return;
     }
     this.log.info(strings.log.tabOpen(context.root));
@@ -1430,11 +1493,12 @@ export class GitTool implements Tool<'git'> {
       repository,
       this.takeWorktrees(repository, worktrees),
     );
+    const shownIn = this.sessionShowingRepository(repository);
     if (
       JSON.stringify(this.worktreeLists.get(repository)) !== shown &&
-      this.isActiveRepository(repository)
+      shownIn !== undefined
     ) {
-      const page = session.disposed ? this.page : session;
+      const page = this.live(shownIn);
       if (page) {
         this.sendTabs(page);
       }
@@ -1445,12 +1509,11 @@ export class GitTool implements Tool<'git'> {
     repository: string,
     listed: readonly Worktree[],
   ): void {
-    const active = this.activeWorktree;
     for (const [root, tab] of this.tabStates) {
       if (
         sameRoot(this.repositoryOf(root), repository) &&
         !listed.some((worktree) => sameRoot(worktree.path, root)) &&
-        (active === undefined || !sameRoot(active, root))
+        !this.isActive(root)
       ) {
         this.forgetTab(root, tab);
       }
@@ -1460,7 +1523,7 @@ export class GitTool implements Tool<'git'> {
         sameRoot(owner, repository) &&
         !sameRoot(root, repository) &&
         !listed.some((worktree) => sameRoot(worktree.path, root)) &&
-        (active === undefined || !sameRoot(active, root))
+        !this.isActive(root)
       ) {
         this.repositories.delete(root);
       }
@@ -1635,8 +1698,8 @@ export class GitTool implements Tool<'git'> {
 
   private postTabs(session: Session): void {
     const { storage } = this;
-    const active = this.activeRepository;
-    const worktree = this.activeWorktree;
+    const active = this.activeRepositoryIn(session);
+    const worktree = this.activeWorktreeIn(session);
     this.sendTabs(session);
     session.post({
       type: 'bookmarks',
@@ -1650,10 +1713,10 @@ export class GitTool implements Tool<'git'> {
   }
 
   private sendTabs(session: Session): void {
-    const active = this.activeRepository;
+    const active = this.activeRepositoryIn(session);
     session.post({
       type: 'worktrees',
-      worktree: this.activeWorktree,
+      worktree: this.activeWorktreeIn(session),
       worktrees: active === undefined ? [] : this.worktreeLists.get(active),
     });
     this.sendRecent(session);
@@ -1756,7 +1819,7 @@ export class GitTool implements Tool<'git'> {
 
   private async context(
     session: Session,
-    root = this.activeWorktree,
+    root = this.activeWorktreeIn(session),
     live = true,
   ): Promise<Context | undefined> {
     if (!root) {
@@ -1766,7 +1829,7 @@ export class GitTool implements Tool<'git'> {
     tab.isRepository ||=
       (await repositoryRoot(this.gitPath, root)) !== undefined;
     if (!tab.isRepository) {
-      if (live && this.isActive(root)) {
+      if (live && this.isActiveIn(session, root)) {
         tab.refreshError = strings.messages.notRepository(root);
         session.post({ type: 'error', message: tab.refreshError });
       }
@@ -1782,8 +1845,14 @@ export class GitTool implements Tool<'git'> {
         if (message.type !== 'notice') {
           keep(tab.shown, message);
         }
-        if (this.isActive(root) && this.tabStates.get(root) === tab) {
-          this.postToPage(session, message);
+        if (this.tabStates.get(root) !== tab) {
+          return;
+        }
+        const shownIn = this.isActiveIn(session, root)
+          ? session
+          : this.sessionShowing(root);
+        if (shownIn !== undefined) {
+          this.postToPage(shownIn, message);
         }
       },
     };
@@ -1811,7 +1880,7 @@ export class GitTool implements Tool<'git'> {
       watching.signal.aborted ||
       session.disposed ||
       session.watcher !== undefined ||
-      !this.isActive(context.root) ||
+      !this.isActiveIn(session, context.root) ||
       this.tabStates.get(context.root) !== context.tab
     ) {
       void this.shell.track(watcher.dispose());
@@ -2421,8 +2490,10 @@ export class GitTool implements Tool<'git'> {
       this.fetchFailures.add(repository);
     }
     this.save(this.storage.recordFetch(repository, !fetched, Date.now()));
-    if (this.page && this.isActiveRepository(repository)) {
-      this.postLastFetch(this.page, repository);
+    const shownIn = this.sessionShowingRepository(repository);
+    const live = shownIn && this.live(shownIn);
+    if (live !== undefined) {
+      this.postLastFetch(live, repository);
     }
     const notFetched = result.failed
       ? remotesNotFetched(gitErrorText(result.error))
@@ -2498,9 +2569,8 @@ export class GitTool implements Tool<'git'> {
 
   private async resendRepositoryShown(repository: string): Promise<void> {
     const root = this.storage.worktreeOf(repository);
-    const page = this.page;
-    const shown =
-      page && this.isActive(root) ? await this.context(page, root) : undefined;
+    const page = this.sessionShowing(root);
+    const shown = page && (await this.context(page, root));
     if (page && shown) {
       await this.run(
         strings.log.refreshingFailed,
@@ -2513,9 +2583,8 @@ export class GitTool implements Tool<'git'> {
 
   private async refreshRefsShown(repository: string): Promise<void> {
     const root = this.storage.worktreeOf(repository);
-    const page = this.page;
-    const shown =
-      page && this.isActive(root) ? await this.context(page, root) : undefined;
+    const page = this.sessionShowing(root);
+    const shown = page && (await this.context(page, root));
     if (page && shown) {
       await this.run(
         strings.log.refreshingFailed,
@@ -2625,7 +2694,7 @@ export class GitTool implements Tool<'git'> {
       });
       return;
     }
-    (session.disposed ? this.page : session)?.post(message);
+    this.live(session)?.post(message);
   }
 
   private visit(context: Context, hash: string, replace = false): void {
@@ -2680,7 +2749,7 @@ export class GitTool implements Tool<'git'> {
     const search = new AbortController();
     this.commitSearches.set(root, search);
     try {
-      const context = this.isActive(root)
+      const context = this.isActiveIn(session, root)
         ? await this.context(session)
         : undefined;
       await context?.tab.loadingHistory;
@@ -2926,7 +2995,8 @@ export class GitTool implements Tool<'git'> {
   private queuedRefresh(tab: TabWork): Refresh | undefined {
     const pages = new Map<Session | undefined, Context>();
     for (const [session, context] of tab.refreshAgain) {
-      const page = session?.disposed ? (this.page ?? session) : session;
+      const page =
+        session === undefined ? undefined : (this.live(session) ?? session);
       pages.set(page, pages.get(page) ?? context);
     }
     const again = toAll([...pages.values()]);

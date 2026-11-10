@@ -9,12 +9,10 @@ export const realTimer: Timer = (run, ms) => {
 
 export function fetchOrder(
   tabs: readonly string[],
-  activeTab: string | undefined,
+  shown: readonly string[],
 ): string[] {
-  const active = tabs.filter(
-    (tab) => activeTab !== undefined && sameRoot(tab, activeTab),
-  );
-  return [...active, ...tabs.filter((tab) => !active.includes(tab))];
+  const first = tabs.filter((tab) => shown.some((each) => sameRoot(tab, each)));
+  return [...first, ...tabs.filter((tab) => !first.includes(tab))];
 }
 
 export class AutoFetch {

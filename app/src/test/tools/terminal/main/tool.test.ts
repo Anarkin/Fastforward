@@ -130,8 +130,10 @@ function terminal(
   tool.attach({
     page: () => page,
     pages: () => pages,
+    current: (shownIn) => shownIn,
     tabs: () => [work, other],
     active: () => undefined,
+    shown: () => [],
     open: (_page, _tool, roots) => {
       opened.push(roots);
       return Promise.resolve();

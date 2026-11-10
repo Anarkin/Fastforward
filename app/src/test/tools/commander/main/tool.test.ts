@@ -599,8 +599,10 @@ function commander(
   tool.attach({
     page: () => focused,
     pages: () => pages,
+    current: (shownIn) => shownIn,
     tabs: () => tabs,
     active: () => undefined,
+    shown: () => [],
     open: () => Promise.resolve(),
     openView: (_page, _tool, viewedFile) => {
       viewed.push(viewedFile);
