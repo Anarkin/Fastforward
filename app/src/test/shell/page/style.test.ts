@@ -42,6 +42,7 @@ import { VirtualRows } from '../../../ui/virtualRows';
 import { tabSize } from '../../../ui/wordWrap';
 import { TerminalTool } from '../../../tools/terminal/page/tool';
 import { PathTitle } from '../../../tools/commander/page/pathTitle';
+import { MarkBox } from '../../../tools/commander/page/pane';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../shell/page/promptPopup';
 import { ClonePopup } from '../../../tools/git/page/clonePopup';
@@ -547,6 +548,23 @@ function commanderRowColor(className: string): string | undefined {
   );
 }
 
+function commanderItem(className: string, paneClassName = ''): MarkupElement {
+  return withClass(
+    rendered(
+      createElement(
+        'div',
+        { className: `commander ${paneClassName}` },
+        createElement(
+          'div',
+          { className: `row commander-row ${className}` },
+          createElement(MarkBox, { onToggle: noop }),
+        ),
+      ),
+    ),
+    'commander-row',
+  );
+}
+
 function pathColors(
   hidden: readonly boolean[],
   color?: string,
@@ -630,7 +648,8 @@ suite('Style', () => {
       'row commander-row selected commander-line',
     ]) {
       looks(rendered(createElement('div', { className })), {
-        padding: '0 calc(8px + var(--scrollbar-size)) 0 8px',
+        padding:
+          '0 calc(8px + var(--scrollbar-size)) 0 var(--commander-row-start)',
         'column-gap': 'var(--commander-gap)',
       });
     }
@@ -708,7 +727,7 @@ suite('Style', () => {
     assert.notStrictEqual(commanderIconDisplay('system-icon'), 'none');
   });
 
-  test('colors the files of the commander with the color of their group, the selected row too, dimming hidden rows in their own color and leaving marked rows red', () => {
+  test('colors the files of the commander with the color of their group, the selected and the marked rows too, at the weight of the others, dimming hidden rows in their own color', () => {
     assert.strictEqual(commanderRowColor('colored'), 'var(--file-color)');
     assert.strictEqual(
       commanderRowColor('selected colored'),
@@ -720,7 +739,128 @@ suite('Style', () => {
     );
     assert.strictEqual(
       commanderRowColor('marked colored'),
-      'var(--color-error-foreground)',
+      'var(--file-color)',
+    );
+    assert.strictEqual(
+      cascaded(commanderItem('commander-line marked colored'), 'font-weight'),
+      undefined,
+    );
+  });
+
+  test('leaves room before the icon of every row of the commander, and of its header, for the box of a mark, so nothing moves as the first file is marked', () => {
+    const commander = rendered(
+      createElement('div', { className: 'commander' }),
+    );
+    looks(commander, {
+      '--commander-check': '12px',
+      '--commander-check-start': '4px',
+    });
+    assert.strictEqual(
+      compact(cascaded(commander, '--commander-row-start')),
+      'calc(var(--commander-check-start) + var(--commander-check) + 6px)',
+    );
+    looks(withClass(commanderItem('commander-line'), 'commander-check'), {
+      position: 'absolute',
+      top: 'calc((var(--commander-row-height) - var(--commander-check)) / 2)',
+      left: 'var(--commander-check-start)',
+      width: 'var(--commander-check)',
+      height: 'var(--commander-check)',
+    });
+    looks(commanderItem('commander-line'), { position: 'relative' });
+  });
+
+  test('shows the box of a mark of the commander empty under the pointer and checked once the file is marked, filled in the color of the text with the check in the color of the panel, and none otherwise', () => {
+    const parts = (className: string, pointed = false) => {
+      const item = commanderItem(className);
+      const states: States = pointed ? { hover: item } : {};
+      return {
+        box: cascaded(withClass(item, 'commander-check'), 'visibility', states),
+        frame: ['fill', 'stroke'].map((property) =>
+          cascaded(withClass(item, 'check-box-frame'), property, states),
+        ),
+        check: cascaded(
+          withClass(item, 'check-box-mark'),
+          'visibility',
+          states,
+        ),
+      };
+    };
+    assert.deepStrictEqual(parts('commander-line'), {
+      box: 'hidden',
+      frame: [undefined, 'var(--muted-foreground)'],
+      check: 'hidden',
+    });
+    assert.deepStrictEqual(parts('commander-line', true), {
+      box: 'visible',
+      frame: [undefined, 'var(--muted-foreground)'],
+      check: 'hidden',
+    });
+    assert.deepStrictEqual(parts('commander-line marked'), {
+      box: 'visible',
+      frame: ['var(--color-foreground)', 'var(--color-foreground)'],
+      check: 'visible',
+    });
+    looks(withClass(commanderItem('commander-line marked'), 'check-box-mark'), {
+      stroke: 'var(--color-panel-background)',
+    });
+  });
+
+  test('washes a marked row of the commander light gray, the text mixed into the panel by the share the theme gives marked files, under the tint of the pointer or of the selection as any row, and keeps the wash where a side without focus drops the tint of its selection', () => {
+    const commander = rendered(
+      createElement('div', { className: 'commander' }),
+    );
+    assert.strictEqual(
+      compact(cascaded(commander, '--marked-background')),
+      'color-mix(in srgb, var(--color-foreground) var(--color-marked-file), var(--color-panel-background))',
+    );
+    assert.strictEqual(
+      compact(cascaded(commander, '--selection-tint')),
+      'color-mix(in srgb, var(--color-focus) var(--color-focus-selected), transparent)',
+    );
+    for (const layout of ['commander-line', 'commander-tile']) {
+      const marked = commanderItem(`${layout} marked`);
+      looks(marked, { background: 'var(--marked-background)' });
+      looks(
+        marked,
+        {
+          background:
+            'linear-gradient(var(--hover-background), var(--hover-background)), var(--marked-background)',
+        },
+        { hover: marked },
+      );
+      looks(commanderItem(`${layout} marked selected`), {
+        background:
+          'linear-gradient(var(--selection-tint), var(--selection-tint)), var(--marked-background)',
+      });
+      looks(
+        commanderItem(`${layout} marked selected`, 'commander-pane inactive'),
+        { background: 'var(--marked-background)' },
+      );
+      looks(commanderItem(`${layout} selected`, 'commander-pane inactive'), {
+        background: 'none',
+      });
+    }
+  });
+
+  test('puts the box of a mark of the commander in the top left corner of a thumbnail, ringed in the color of the panel and empty on it, so it shows over any image', () => {
+    const tile = commanderItem('commander-tile');
+    looks(tile, { position: 'relative' });
+    looks(withClass(tile, 'commander-check'), {
+      top: '4px',
+      left: '4px',
+      width: '16px',
+      height: '16px',
+      'border-radius': '3px',
+      'box-shadow': '0 0 0 1px var(--color-panel-background)',
+    });
+    looks(withClass(tile, 'check-box-frame'), {
+      fill: 'var(--color-panel-background)',
+    });
+    looks(
+      withClass(commanderItem('commander-tile marked'), 'check-box-frame'),
+      {
+        fill: 'var(--color-foreground)',
+      },
     );
   });
 

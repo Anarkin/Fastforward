@@ -42,7 +42,7 @@
 | Icons | Show the icon of each file | — | Core | ✅ Yes | The system's icon of each file, the generic one until it comes, folders as a muted outline |
 | Sort | Sort by name, extension, size or date, and reverse | Ctrl+F3 to Ctrl+F6 | Core | ✅ Yes | By clicking a column's header, per side, folders first, saved; by extension by default; folders by size too once counted, those not counted as if empty; no keys |
 | Hidden files | Show or hide hidden and system files | — | Core | ✅ Yes | Ctrl+H, shown by default and dimmed, saved; on Windows by their attribute, elsewhere by a leading dot |
-| File colors | Color files by their extension | — | Advanced | ✅ Yes | Color groups in the settings, the files whose language the viewer knows yellow by default; on macOS and Linux, the files whose exec bit lets them run and that no other group claims green as the programs, and the apps of macOS, folders named `.app`, too; a notice when an extension is in two groups |
+| File colors | Color files by their extension | — | Advanced | ✅ Yes | Color groups in the settings, by default in the colors of the syntax: the programs as functions, the documents as comments, images, audio and video as strings, archives as types and the files whose language the viewer knows as keywords; on macOS and Linux, the files whose exec bit lets them run and that no other group claims colored as the programs, and the apps of macOS, folders named `.app`, too; a notice when an extension is in two groups |
 | Group by color | Gather the files of each color together | — | Niche | ✅ Yes | Ctrl+G, in the order of the color groups, on by default |
 | Filter | Show only the files whose names match what is typed | — | Common | ✅ Yes | Mod+F, or Alt and a letter, by every word anywhere in the name, counting what is left; kept for each side of a tab, through a file viewed or another tool shown, until the side shows another folder; Escape clears it |
 | Quick search | Jump to a file by typing the start of its name | — | Common | 🟡 Partial | Alt and a letter starts the filter rather than jumping |
@@ -56,7 +56,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Mark files | Mark files to act on them together | Space, Insert | Core | ✅ Yes | Space and Insert mark and move down, Space counting the size of a folder it marks, Shift and the arrow keys mark what they pass, Mod+click marks one, Shift+click those up to it |
+| Mark files | Mark files to act on them together | Space, Insert | Core | ✅ Yes | Space and Insert mark and move down, Space counting the size of a folder it marks, Shift and the arrow keys mark what they pass, Mod+click marks one, Shift+click those up to it, and a click on the box before the icon of a file, or in the corner of its thumbnail, empty under the pointer, marks or unmarks it without moving the selection; a marked file checked in its box and washed light gray by the `marked-file` share of the theme, keeping its color |
 | Mark all | Mark every file | Ctrl+A | Core | ✅ Yes | Mod+A: the files and folders the side shows, only those the filter leaves, the files read so far in flat view, inside an archive too; once all are marked, it unmarks them all |
 | Mark by pattern | Mark or unmark the files that match a pattern | Num+, Num− | Common | ❌ No |  |
 | Invert marks | Mark the files not marked | Num* | Common | ❌ No |  |

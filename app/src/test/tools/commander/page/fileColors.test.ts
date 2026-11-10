@@ -20,16 +20,16 @@ const file = (name: string, extra: Partial<Entry> = {}): Entry => ({
 });
 
 const defaults = fileColorsOf(defaultSettings().tools.commander.fileColors);
-const executable = 'light-dark(#13692c, #5fd068)';
-const document = 'light-dark(#874c00, #f0a838)';
-const media = 'light-dark(#7a2f9e, #cf98ee)';
-const archive = 'light-dark(#00636f, #4fc8d6)';
-const language = 'light-dark(#7a6e00, #e0d070)';
+const executable = 'light-dark(#a0a, #da7)';
+const document = 'light-dark(#080, #5a5)';
+const media = 'light-dark(#d00, #e75)';
+const archive = 'light-dark(#088, #088)';
+const language = 'light-dark(#00d, #59c)';
 
 const colorsOf = (light: string) => ({ light, dark: light });
 
 suite('Commander file colors', () => {
-  test('colors green by default the programs, installers and scripts that run when opened, of Windows, macOS and Linux, whatever the case of their extension', () => {
+  test('colors by default as functions are colored in code the programs, installers and scripts that run when opened, of Windows, macOS and Linux, whatever the case of their extension', () => {
     for (const name of [
       'setup.exe',
       'TOOL.COM',
@@ -70,7 +70,7 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('colors gold by default the documents: the prose read in an editor, PDFs, Office and OpenDocument files, ebooks, the Google Drive shortcuts, OneNote and the emails saved', () => {
+  test('colors by default as comments are colored in code the documents: the prose read in an editor, PDFs, Office and OpenDocument files, ebooks, the Google Drive shortcuts, OneNote and the emails saved', () => {
     for (const name of [
       'README.md',
       'notes.markdown',
@@ -109,7 +109,7 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('colors orchid by default the images, photos in camera raw and editor files, audio and video', () => {
+  test('colors by default as strings are colored in code the images, photos in camera raw and editor files, audio and video', () => {
     for (const name of [
       'logo.png',
       'IMG_2041.JPG',
@@ -137,7 +137,7 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('colors teal by default the archives and compressed files, the tar ones by their last extension, the disk images, the virtual disks and the packages, leaving green the installers', () => {
+  test('colors by default as types are colored in code the archives and compressed files, the tar ones by their last extension, the disk images, the virtual disks and the packages, leaving the installers colored as the programs', () => {
     for (const name of [
       'backup.zip',
       'tools.7z',
@@ -183,7 +183,7 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('colors yellow by default the video extensions TypeScript uses, the PowerPoint templates gettext uses and data in CSV, as the viewer reads them as TypeScript, gettext and CSV', () => {
+  test('colors by default as keywords are colored in code the video extensions TypeScript uses, the PowerPoint templates gettext uses and data in CSV, as the viewer reads them as TypeScript, gettext and CSV', () => {
     for (const name of [
       'recording.ts',
       'clip.mts',
@@ -212,7 +212,7 @@ suite('Commander file colors', () => {
     }
   });
 
-  test('colors yellow by default the source and config the viewer knows the language of, by their extension or their whole name', () => {
+  test('colors by default as keywords are colored in code the source and config the viewer knows the language of, by their extension or their whole name', () => {
     for (const name of [
       'main.ts',
       'esbuild.config.mts',
@@ -261,7 +261,7 @@ suite('Commander file colors', () => {
     );
   });
 
-  test('colors green by default the files macOS and Linux may run, by their exec bit, that no group of extensions and no language claims, so that the files of a drive marking every file so keep their colors', () => {
+  test('colors by default as the programs the files macOS and Linux may run, by their exec bit, that no group of extensions and no language claims, so that the files of a drive marking every file so keep their colors', () => {
     for (const name of ['git', 'python3.12', 'node-v24', 'configure']) {
       assert.strictEqual(
         fileColorOf(file(name, { executable: true }), defaults),

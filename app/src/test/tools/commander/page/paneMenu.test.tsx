@@ -12,6 +12,7 @@ import {
 } from '../../../../tools/commander/page/view';
 import { createCommanderStore } from '../../../../tools/commander/page/store';
 import type { CommanderToHost } from '../../../../tools/commander/shared/protocol';
+import type { Layout } from '../../../../tools/commander/shared/settings';
 import { withStores } from '../../../componentFixtures';
 import { noop } from '../../../fixtures';
 
@@ -81,7 +82,9 @@ async function inPane(
     readonly choose: (label: string) => void;
     readonly posted: CommanderToHost[];
     readonly selected: () => string | undefined;
+    readonly marked: () => readonly string[];
   }) => Promise<void>,
+  layout: Layout = 'details',
 ) {
   const dom = new JSDOM('<!doctype html><main></main>');
   dom.window.matchMedia = () =>
@@ -109,6 +112,9 @@ async function inPane(
     Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
   );
   Object.assign(globalThis, globals);
+  Object.defineProperty(dom.window.HTMLElement.prototype, 'clientWidth', {
+    get: () => 800,
+  });
   try {
     const { createRoot } = await import('react-dom/client');
     const main = dom.window.document.querySelector('main');
@@ -121,6 +127,7 @@ async function inPane(
         tab: '1',
         active: 'left',
         platform: 'win32',
+        layouts: { left: layout, right: 'details' },
         panes: { left: workPane(), right: undefined },
       },
     });
@@ -181,6 +188,7 @@ async function inPane(
       },
       posted,
       selected: () => commander.getState().view.panes.left?.selected,
+      marked: () => [...(commander.getState().view.panes.left?.marked ?? [])],
     });
     await act(async () => root.unmount());
   } finally {
@@ -192,6 +200,14 @@ const rowNamed = (main: HTMLElement, name: string) =>
   [...main.querySelectorAll('.commander-row')].find(
     (row) => row.querySelector('.commander-name')?.textContent === name,
   ) ?? null;
+
+const tileNamed = (main: HTMLElement, name: string) =>
+  [...main.querySelectorAll('.commander-tile')].find(
+    (tile) => tile.querySelector('.commander-tile-base')?.textContent === name,
+  ) ?? null;
+
+const boxOf = (item: Element | null) =>
+  item?.querySelector('.commander-check') ?? null;
 
 const shownFolderMenu = [
   strings.commander.newTerminalHere,
@@ -299,5 +315,38 @@ suite('Commander clicks on a side', () => {
         ['docs', 'notes.txt'],
       );
     });
+  });
+  test('marks a folder or a file on a click on its box and unmarks it on the next, a double click on it only toggling it, leaving the selection where it was and opening nothing, the parent folder having no box', async () => {
+    await inPane(async ({ main, click, posted, selected, marked }) => {
+      assert.ok(rowNamed(main, '..'));
+      assert.strictEqual(boxOf(rowNamed(main, '..')), null);
+
+      click(boxOf(rowNamed(main, 'docs')), 1);
+      click(boxOf(rowNamed(main, 'app')), 1);
+      assert.deepStrictEqual(marked().toSorted(), ['app', 'docs']);
+      assert.strictEqual(selected(), 'notes.txt');
+
+      click(boxOf(rowNamed(main, 'docs')), 2);
+      assert.deepStrictEqual(marked(), ['app']);
+      assert.strictEqual(selected(), 'notes.txt');
+      assert.deepStrictEqual(
+        posted.filter((message) => message.type === 'open'),
+        [],
+      );
+    });
+  });
+
+  test('marks a thumbnail on a click on its box and unmarks it on the next, leaving the selection where it was, the parent folder having no box', async () => {
+    await inPane(async ({ main, click, selected, marked }) => {
+      assert.ok(tileNamed(main, '..'));
+      assert.strictEqual(boxOf(tileNamed(main, '..')), null);
+
+      click(boxOf(tileNamed(main, 'docs')), 1);
+      assert.deepStrictEqual(marked(), ['docs']);
+      assert.strictEqual(selected(), 'notes.txt');
+
+      click(boxOf(tileNamed(main, 'docs')), 1);
+      assert.deepStrictEqual(marked(), []);
+    }, 'thumbnails');
   });
 });

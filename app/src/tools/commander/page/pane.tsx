@@ -44,6 +44,7 @@ import { whatOf } from './transferring';
 import {
   BackIcon,
   BookmarkIcon,
+  CheckBoxIcon,
   FileIcon,
   FlatViewIcon,
   FolderIcon,
@@ -184,6 +185,20 @@ export function ExtensionCell({
 function dropIntoOf(target: EventTarget | null): string | null {
   const row = target instanceof Element ? target.closest('[data-drop]') : null;
   return row?.getAttribute('data-drop') ?? null;
+}
+
+export function MarkBox({ onToggle }: { onToggle: () => void }) {
+  return (
+    <span
+      className="commander-check"
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
+    >
+      <CheckBoxIcon />
+    </span>
+  );
 }
 
 export function NameCell({
@@ -735,6 +750,11 @@ export function Pane({
     },
   });
 
+  const markBox = (row: Row) =>
+    row.entry !== undefined && (
+      <MarkBox onToggle={() => onMark([row.key], !marked?.has(row.key))} />
+    );
+
   const renderRow = (index: number) => {
     const row = rows[index];
     const { entry } = row;
@@ -744,6 +764,7 @@ export function Pane({
         style={colorStyle(row)}
         {...itemEvents(row, index)}
       >
+        {markBox(row)}
         <span className="commander-icon">
           <RowIcon row={row} source={iconSource(row)} onDropIcon={onDropIcon} />
         </span>
@@ -766,6 +787,7 @@ export function Pane({
       style={{ ...colorStyle(row), width: tileWidth }}
       {...itemEvents(row, index)}
     >
+      {markBox(row)}
       <div className="commander-thumbnail" style={{ height: thumbnailSize }}>
         <TileImage
           row={row}

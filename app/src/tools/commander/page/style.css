@@ -9,6 +9,21 @@
   );
   --commander-advance: round(1ch, var(--device-pixel, 1px));
   --commander-gap: calc(2 * var(--commander-advance));
+  --commander-check: 12px;
+  --commander-check-start: 4px;
+  --commander-row-start: calc(
+    var(--commander-check-start) + var(--commander-check) + 6px
+  );
+  --marked-background: color-mix(
+    in srgb,
+    var(--color-foreground) var(--color-marked-file),
+    var(--color-panel-background)
+  );
+  --selection-tint: color-mix(
+    in srgb,
+    var(--color-focus) var(--color-focus-selected),
+    transparent
+  );
   --text-advance: var(--commander-advance);
 }
 
@@ -59,7 +74,7 @@
   align-items: center;
   box-sizing: border-box;
   height: var(--commander-row-height);
-  padding: 0 calc(8px + var(--scrollbar-size)) 0 8px;
+  padding: 0 calc(8px + var(--scrollbar-size)) 0 var(--commander-row-start);
   line-height: var(--commander-row-height);
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
@@ -201,7 +216,7 @@
 
 .row.commander-line {
   height: var(--commander-row-height);
-  padding: 0 calc(8px + var(--scrollbar-size)) 0 8px;
+  padding: 0 calc(8px + var(--scrollbar-size)) 0 var(--commander-row-start);
 }
 
 .row.commander-row.colored {
@@ -287,6 +302,86 @@
 
 .commander-pane.inactive .row.selected:not(:hover) {
   background: none;
+}
+
+.row.commander-row {
+  position: relative;
+}
+
+.commander-check {
+  position: absolute;
+  top: calc((var(--commander-row-height) - var(--commander-check)) / 2);
+  left: var(--commander-check-start);
+  display: flex;
+  width: var(--commander-check);
+  height: var(--commander-check);
+  visibility: hidden;
+}
+
+.commander-check .check-box-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.commander-check .check-box-frame {
+  stroke: var(--muted-foreground);
+}
+
+.commander-check .check-box-mark {
+  stroke: var(--color-panel-background);
+  stroke-width: 2;
+  visibility: hidden;
+}
+
+.commander-check:hover .check-box-frame {
+  stroke: var(--color-foreground);
+}
+
+.row.commander-tile .commander-check {
+  top: 4px;
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--color-panel-background);
+}
+
+.row.commander-tile .check-box-frame {
+  fill: var(--color-panel-background);
+}
+
+.row.commander-row:hover .commander-check,
+.row.commander-row.marked .commander-check {
+  visibility: visible;
+}
+
+.row.commander-row.marked .check-box-frame {
+  fill: var(--color-foreground);
+  stroke: var(--color-foreground);
+}
+
+.row.commander-row.marked .check-box-mark {
+  visibility: visible;
+}
+
+.row.commander-row.marked {
+  background: var(--marked-background);
+}
+
+.row.commander-row.marked:hover {
+  background:
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--marked-background);
+}
+
+.row.commander-row.marked.selected {
+  background:
+    linear-gradient(var(--selection-tint), var(--selection-tint)),
+    var(--marked-background);
+}
+
+.commander-pane.inactive .row.commander-row.marked.selected:not(:hover) {
+  background: var(--marked-background);
 }
 
 .viewer-columns {
@@ -450,11 +545,6 @@
 
 .viewer-image .image-frame img.device-pixels {
   image-rendering: pixelated;
-}
-
-.row.commander-row.marked {
-  color: var(--color-error-foreground);
-  font-weight: 600;
 }
 
 .column-title:has(> .column-start.viewer-actions) {

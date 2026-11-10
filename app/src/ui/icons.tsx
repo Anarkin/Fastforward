@@ -330,6 +330,22 @@ export function BookmarkIcon({ filled }: { filled: boolean }) {
   );
 }
 
+export function CheckBoxIcon() {
+  return (
+    <Icon className="check-box-icon">
+      <rect
+        className="check-box-frame"
+        x="1"
+        y="1"
+        width="14"
+        height="14"
+        rx="3"
+      />
+      <path className="check-box-mark" d="M4.5 8.2 7 10.7l4.5-5" />
+    </Icon>
+  );
+}
+
 export function PinIcon() {
   return (
     <Icon>

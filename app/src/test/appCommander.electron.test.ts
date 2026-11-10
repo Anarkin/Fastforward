@@ -136,6 +136,19 @@ const hiding = (element: Locator) =>
     return { before, after };
   });
 
+const looksOf = (row: Locator) =>
+  row.evaluate((shown) => {
+    const box = shown.querySelector('.commander-check');
+    const check = shown.querySelector('.check-box-mark');
+    return {
+      color: getComputedStyle(shown).color,
+      weight: getComputedStyle(shown).fontWeight,
+      background: getComputedStyle(shown).backgroundColor,
+      box: box === null ? undefined : getComputedStyle(box).visibility,
+      check: check === null ? undefined : getComputedStyle(check).visibility,
+    };
+  });
+
 const savedText = (profile: string, name: string): unknown =>
   savedSetting(profile, 'text', name);
 
@@ -493,7 +506,15 @@ suite('App commander', () => {
     assert.ok(share > 0.3 && share < 0.8, String(share));
     const dimmed = async (element: Locator) => {
       const { before, after } = await hiding(element);
-      assert.deepStrictEqual(after.color.slice(0, 3), before.color.slice(0, 3));
+      assert.ok(
+        after.color
+          .slice(0, 3)
+          .every(
+            (channel, index) =>
+              Math.abs(channel - (before.color[index] ?? 0)) <= 1,
+          ),
+        `${after.color.join()} is not of the color ${before.color.join()}, a canvas reading a color half transparent back to a unit of it`,
+      );
       assert.ok(
         Math.abs((after.color[3] ?? 0) / 255 - share) < 0.02,
         `${after.color.join()} is not ${share} of ${before.color.join()}`,
@@ -3278,7 +3299,7 @@ suite('App commander', () => {
     );
   });
 
-  test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, never the parent row, and drops the marks in another folder', async () => {
+  test('marks files moving with Shift, with Space and Insert, with Ctrl+click and Shift+click, and with a click on their box, which leaves the selection where it was, never the parent row, checking their box and washing them gray in their own color, and drops the marks in another folder', async () => {
     const markingFolder = path.join(opened, 'marking');
     fs.mkdirSync(markingFolder);
     for (const name of ['a', 'b', 'c', 'd']) {
@@ -3290,6 +3311,9 @@ suite('App commander', () => {
       async () => (await rowNames()).join() === '..,a.txt,b.txt,c.txt,d.txt',
       'the markingFolder to be listed',
     );
+    await page.mouse.move(0, 0);
+    const unmarked = await looksOf(markingRow('b'));
+    assert.strictEqual(unmarked.box, 'hidden');
     await page.keyboard.press('Shift+ArrowDown');
     await page.keyboard.press('Shift+ArrowDown');
     await page.keyboard.press('Shift+ArrowDown');
@@ -3324,29 +3348,46 @@ suite('App commander', () => {
       async () => (await markedNames()).join() === 'a,b,c,d',
       'Shift+click to mark the range',
     );
-    const colors = await right()
-      .locator('.commander-row.marked .commander-name')
-      .evaluateAll((names) =>
-        names.map((name) => getComputedStyle(name).color),
-      );
-    assert.strictEqual(
-      new Set(colors).size,
-      1,
-      `The marked rows, the selected one among them, have the colors ${colors.join(', ')}`,
+    const selectedName = () =>
+      right().locator('.commander-row.selected .commander-name').textContent();
+    assert.strictEqual(await selectedName(), 'd');
+    await markingRow('b').hover();
+    await markingRow('b').locator('.commander-check').click();
+    await waitFor(
+      async () => (await markedNames()).join() === 'a,c,d',
+      'a click on the box of a marked file to unmark it',
     );
-    const hiddenColor = await right()
-      .locator('.commander-row.marked')
-      .first()
-      .evaluate((row) => {
-        row.classList.add('hidden');
-        const color = getComputedStyle(row).color;
-        row.classList.remove('hidden');
-        return color;
-      });
-    assert.strictEqual(
-      hiddenColor,
-      colors[0],
-      'A hidden file marked is red too',
+    assert.strictEqual(await selectedName(), 'd');
+    await markingRow('b').locator('.commander-check').click();
+    await waitFor(
+      async () => (await markedNames()).join() === 'a,b,c,d',
+      'a click on the box of a file to mark it',
+    );
+    assert.strictEqual(await selectedName(), 'd');
+    await page.mouse.move(0, 0);
+
+    const marked = await looksOf(markingRow('b'));
+    assert.deepStrictEqual(
+      {
+        color: marked.color,
+        weight: marked.weight,
+        box: marked.box,
+        check: marked.check,
+      },
+      {
+        color: unmarked.color,
+        weight: unmarked.weight,
+        box: 'visible',
+        check: 'visible',
+      },
+    );
+    assert.notStrictEqual(marked.background, unmarked.background);
+    const hidden = await hiding(
+      right().locator('.commander-row.marked').first(),
+    );
+    assert.ok(
+      (hidden.after.color[3] ?? 0) < (hidden.before.color[3] ?? 0),
+      `A hidden file marked is dimmed as any hidden file, ${hidden.after.color.join()} after ${hidden.before.color.join()}`,
     );
 
     await page.keyboard.press('Backspace');

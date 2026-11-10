@@ -143,7 +143,7 @@
             "jse",
             "wsf"
           ],
-          "colors": { "light": "#13692c", "dark": "#5fd068" }
+          "colors": { "light": "#a0a", "dark": "#da7" }
         },
         {
           "extensions": [
@@ -216,7 +216,7 @@
             "oft",
             "mbox"
           ],
-          "colors": { "light": "#874c00", "dark": "#f0a838" }
+          "colors": { "light": "#080", "dark": "#5a5" }
         },
         {
           "extensions": [
@@ -327,7 +327,7 @@
             "qt",
             "wtv"
           ],
-          "colors": { "light": "#7a2f9e", "dark": "#cf98ee" }
+          "colors": { "light": "#d00", "dark": "#e75" }
         },
         {
           "extensions": [
@@ -407,15 +407,15 @@
             "vsix",
             "asar"
           ],
-          "colors": { "light": "#00636f", "dark": "#4fc8d6" }
+          "colors": { "light": "#088", "dark": "#088" }
         },
         {
           "extensions": "languages",
-          "colors": { "light": "#7a6e00", "dark": "#e0d070" }
+          "colors": { "light": "#00d", "dark": "#59c" }
         },
         {
           "extensions": "executables",
-          "colors": { "light": "#13692c", "dark": "#5fd068" }
+          "colors": { "light": "#a0a", "dark": "#da7" }
         }
       ],
       "colors": {
@@ -486,6 +486,7 @@
       "foreground": "#000",
       "foreground-muted": "45%",
       "hidden-file": "50%",
+      "marked-file": "7%",
       "error-foreground": "#f00",
       "warning-foreground": "#e90",
 
@@ -530,6 +531,7 @@
       "foreground": "#ddd",
       "foreground-muted": "45%",
       "hidden-file": "50%",
+      "marked-file": "10%",
       "error-foreground": "#f44",
       "warning-foreground": "#fb0",
 
