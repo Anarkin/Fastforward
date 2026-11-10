@@ -492,6 +492,28 @@ suite('Commander view', () => {
     assert.deepStrictEqual(view.layouts, defaultLayouts);
   });
 
+  test('shows a tab opened under the id of the tab it showed that was closed as a new one, with nothing of the closed tab, as the main process tells no hide once another tool is shown', () => {
+    let view = run(
+      { type: 'show', tab: '2', file: '/work/logo.png' },
+      { type: 'choose', choices: { mode: 'preview' } },
+      { type: 'closed', tab: '2' },
+      { type: 'show', tab: '2', file: '/work/README.md' },
+    );
+
+    assert.deepStrictEqual(
+      [view.tab, view.viewing, viewerChoices(view), view.closedTab],
+      ['2', '/work/README.md', {}, undefined],
+    );
+
+    view = reduceView(view, { type: 'closed', tab: '2' });
+    view = reduceView(view, { type: 'show', tab: '2' });
+
+    assert.deepStrictEqual(
+      [view.tab, view.viewing, view.panes, view.layouts],
+      ['2', undefined, emptyView.panes, defaultLayouts],
+    );
+  });
+
   test('selects only rows there are', () => {
     const view = run(
       { type: 'show', tab: '1' },
@@ -735,6 +757,9 @@ const flat = (...actions: ViewAction[]) =>
 const binOffAfter = (...actions: ViewAction[]) =>
   run({ type: 'show', tab: '1' }, ...actions).panes.left?.binOff;
 
+const archiveAfter = (...actions: ViewAction[]) =>
+  run({ type: 'show', tab: '1' }, ...actions).panes.left?.archive;
+
 suite('The view of a flat side', () => {
   test('starts with the row of the parent alone, reading, until the rows of its files come', () => {
     const view = flat();
@@ -756,6 +781,19 @@ suite('The view of a flat side', () => {
     assert.strictEqual(binOffAfter(flatOff), true);
     assert.strictEqual(binOffAfter(flatOff, flatOff), true);
     assert.strictEqual(flat().panes.left?.binOff, undefined);
+  });
+
+  test('keeps the archive it is listed inside, as a side not flat does, so Delete in it deletes from the archive', () => {
+    const inside = listing('/a.zip/docs', [], { archive: '/a.zip' });
+    const flatInside = listing('/a.zip/docs', [], {
+      archive: '/a.zip',
+      flat: 1,
+    });
+
+    assert.strictEqual(archiveAfter(inside), '/a.zip');
+    assert.strictEqual(archiveAfter(flatInside), '/a.zip');
+    assert.strictEqual(archiveAfter(flatInside, flatInside), '/a.zip');
+    assert.strictEqual(archiveAfter(flatInside, listing('/a', [])), undefined);
   });
 
   test('takes the rows of its files, keeping the row selected', () => {

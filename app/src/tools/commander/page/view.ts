@@ -337,6 +337,7 @@ function flatListed(
     forward,
     elevated,
     binOff,
+    archive,
     selected,
     flat,
   }: Listed & { readonly selected: string | undefined; readonly flat: number },
@@ -350,6 +351,7 @@ function flatListed(
     forward,
     elevated,
     ...(binOff && { binOff }),
+    ...(archive !== undefined && { archive }),
   };
   if (pane?.flat?.walk === flat && pane.folder === folder) {
     return {
@@ -466,7 +468,7 @@ export function reduceView(
 ): CommanderView {
   switch (action.type) {
     case 'show': {
-      if (view.tab === action.tab) {
+      if (view.tab === action.tab && view.closedTab !== action.tab) {
         return view;
       }
       const kept = keptAway(view);
