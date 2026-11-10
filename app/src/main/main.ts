@@ -100,6 +100,7 @@ import {
   appFile,
   appOrigin,
   appScheme,
+  cascaded,
   firstWindowSize,
   isAppUrl,
   keptBounds,
@@ -113,6 +114,15 @@ import {
   visibleBounds,
 } from './files';
 import { tellMaximized } from './maximized';
+import {
+  boundsKey,
+  maximizedKey,
+  placesKey,
+  savedPlace,
+  withPlace,
+  type Place,
+  type SavedPlace,
+} from './places';
 import { reloadWhenGone } from './pageGone';
 import {
   archivesFolder,
@@ -141,8 +151,6 @@ import { removeUnviewedCopies } from './viewedFiles';
 const dist = __dirname;
 const development = !app.isPackaged;
 const smallestThumbnailCache = 16;
-const boundsKey = 'windowBounds';
-const maximizedKey = 'windowMaximized';
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -271,87 +279,170 @@ async function start(asked: readonly string[]): Promise<void> {
       : new Response(strings.errors.notFound, { status: 404 });
   });
   setMenu();
-  const window = createWindow(
-    state,
-    userSettings.settings,
-    gitSearch.then((git) => git.kind === 'found'),
-  );
+  const storage = new Storage(userSettings, state);
+  const gitFound = gitSearch.then((git) => git.kind === 'found');
   let asking: Shell | undefined;
   const quitGuard = new QuitGuard(() => asking);
-  window.on('close', (event) => {
-    if (quitGuard.holds(() => app.quit())) {
-      event.preventDefault();
-    }
-  });
-  window.on('query-session-end', () => quitGuard.systemEnding());
-  window.on('unresponsive', () => quitGuard.responsive(false));
-  window.on('responsive', () => quitGuard.responsive(true));
   powerMonitor.on('shutdown', () => quitGuard.systemEnding());
-  let connection: Promise<Connection | undefined> = Promise.resolve(undefined);
-  const connect = () => {
-    connection = Promise.all([connection, views.promise]).then(
-      ([previous, { shell: view }]) => {
-        previous?.dispose();
-        const [first = '1'] = view.windows();
-        return view.connect(first, (message: ToWebview) => {
-          if (!window.isDestroyed()) {
-            window.webContents.send('message', message);
-          }
-        });
-      },
-    );
-  };
-  window.webContents.on('did-start-navigation', (details) => {
-    if (startsAppPage(details)) {
-      connect();
-    }
+  let quitting = false;
+  app.on('before-quit', () => {
+    quitting = true;
   });
-  const disconnect = () =>
-    void connection.then((current) => current?.dispose());
-  reloadWhenGone(window, log, disconnect);
-  const fromApp = (event: Electron.IpcMainEvent) =>
-    event.sender === window.webContents &&
-    event.senderFrame !== null &&
-    isAppUrl(event.senderFrame.url);
-  ipcMain.on('message', (event, message: ToHost) => {
-    if (fromApp(event)) {
-      void connection.then((current) => current?.receive(message));
+  const opened = new Map<string, OpenedWindow>();
+  let focused: string | undefined;
+  const focusedWindow = (): BrowserWindow | undefined =>
+    (
+      (focused === undefined ? undefined : opened.get(focused)) ??
+      [...opened.values()].at(-1)
+    )?.window;
+  const windowIds = () => storage.layout.map((window) => window.id);
+  const savePlace = (id: string, entry: OpenedWindow) => {
+    void state.update(
+      placesKey,
+      withPlace(state.get(placesKey), id, entry.place(), windowIds()),
+    );
+    for (const key of [boundsKey, maximizedKey]) {
+      if (state.get(key) !== undefined) {
+        void state.update(key, undefined);
+      }
     }
+  };
+  const openWindow = (id: string, saved: SavedPlace): OpenedWindow => {
+    const { window, place } = createWindow(
+      saved,
+      userSettings.settings,
+      gitFound,
+    );
+    const entry: OpenedWindow = {
+      window,
+      place,
+      loading: Promise.resolve(),
+      connection: Promise.resolve(undefined),
+      closing: false,
+    };
+    opened.set(id, entry);
+    window.on('focus', () => {
+      focused = id;
+      asking?.focus(id);
+    });
+    window.on('close', (event) => {
+      if (quitting || opened.size === 1) {
+        if (quitGuard.holds(() => app.quit())) {
+          event.preventDefault();
+          quitting = false;
+          return;
+        }
+      } else if (
+        !entry.closing &&
+        asking?.asksBeforeClosing(id) === true &&
+        asking.askToCloseWindow(id)
+      ) {
+        event.preventDefault();
+        return;
+      } else {
+        asking?.closeWindow(id);
+      }
+      savePlace(id, entry);
+    });
+    window.on('query-session-end', () => quitGuard.systemEnding());
+    window.on('unresponsive', () => quitGuard.responsive(false));
+    window.on('responsive', () => quitGuard.responsive(true));
+    window.webContents.on('did-start-navigation', (details) => {
+      if (startsAppPage(details)) {
+        entry.connection = Promise.all([entry.connection, views.promise]).then(
+          ([previous, { shell: view }]) => {
+            previous?.dispose();
+            return view.connect(id, (message: ToWebview) => {
+              if (!window.isDestroyed()) {
+                window.webContents.send('message', message);
+              }
+            });
+          },
+        );
+      }
+    });
+    const disconnect = () =>
+      void entry.connection.then((current) => current?.dispose());
+    reloadWhenGone(window, log, disconnect);
+    tellMaximized(window, (maximized) => {
+      if (!window.isDestroyed()) {
+        window.webContents.send('maximized', maximized);
+      }
+    });
+    window.on('closed', () => {
+      disconnect();
+      opened.delete(id);
+      if (focused === id) {
+        focused = undefined;
+      }
+    });
+    entry.loading = window.loadURL(`${appOrigin}/index.html`);
+    void entry.loading.catch((error: unknown) => {
+      log.error(strings.log.pageNotLoaded);
+      log.error(error);
+    });
+    return entry;
+  };
+  const sendToEvery = (channel: string, message: unknown) => {
+    for (const { window } of opened.values()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send(channel, message);
+      }
+    }
+  };
+  const openedBy = (sender: Electron.WebContents): OpenedWindow | undefined =>
+    [...opened.values()].find(
+      ({ window }) => !window.isDestroyed() && window.webContents === sender,
+    );
+  const fromApp = (event: Electron.IpcMainEvent): OpenedWindow | undefined =>
+    event.senderFrame !== null && isAppUrl(event.senderFrame.url)
+      ? openedBy(event.sender)
+      : undefined;
+  ipcMain.on('message', (event, message: ToHost) => {
+    void fromApp(event)?.connection.then((current) =>
+      current?.receive(message),
+    );
   });
   ipcMain.on(
     'dropFiles',
     (event, files: unknown, tool: unknown, message: unknown) => {
-      if (fromApp(event)) {
-        void connection.then((current) =>
-          current?.dropped(files, tool, message),
-        );
-      }
+      void fromApp(event)?.connection.then((current) =>
+        current?.dropped(files, tool, message),
+      );
     },
   );
-  tellMaximized(window, (maximized) => {
-    if (!window.isDestroyed()) {
-      window.webContents.send('maximized', maximized);
-    }
-  });
   ipcMain.on('windowButtonColor', (event, color: unknown) => {
+    const entry = openedBy(event.sender);
     if (
-      event.sender === window.webContents &&
+      entry !== undefined &&
       typeof color === 'string' &&
       process.platform !== 'darwin'
     ) {
       try {
-        window.setTitleBarOverlay({ color: '#00000000', symbolColor: color });
+        entry.window.setTitleBarOverlay({
+          color: '#00000000',
+          symbolColor: color,
+        });
       } catch (error) {
         log.error(strings.log.coloringWindowButtonsFailed);
         log.error(error);
       }
     }
   });
-  window.on('closed', disconnect);
+  const [firstWindow] = storage.layout.map((window, index) =>
+    openWindow(
+      window.id,
+      savedPlace((key) => state.get(key), window.id, index === 0),
+    ),
+  );
+  const loading = firstWindow?.loading ?? Promise.resolve();
   app.on(
     'second-instance',
     (_event, _argv, _workingDirectory, additionalData) => {
-      showAgain(window);
+      const window = focusedWindow();
+      if (window !== undefined) {
+        showAgain(window);
+      }
       if (process.platform === 'darwin') {
         app.focus({ steal: true });
       }
@@ -368,21 +459,41 @@ async function start(asked: readonly string[]): Promise<void> {
     () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
     () => Promise.all([stopRunningGit(), archiveWork.clear()]),
   );
-  const loading = window.loadURL(`${appOrigin}/index.html`);
-  void loading.catch((error: unknown) => {
-    log.error(strings.log.pageNotLoaded);
-    log.error(error);
-  });
+  const chooseFolders = async (
+    options: Electron.OpenDialogOptions,
+  ): Promise<Electron.OpenDialogReturnValue> => {
+    const parent = focusedWindow();
+    return parent === undefined
+      ? dialog.showOpenDialog(options)
+      : dialog.showOpenDialog(parent, options);
+  };
+  const everyWindow = {
+    isDestroyed: () => opened.size === 0,
+    once: (_event: 'closed', listener: () => void) =>
+      app.once('will-quit', listener),
+    on: (_event: 'closed', listener: () => void) =>
+      app.once('will-quit', listener),
+    webContents: {
+      reloadIgnoringCache: () => {
+        for (const { window } of opened.values()) {
+          if (!window.isDestroyed()) {
+            window.webContents.reloadIgnoringCache();
+          }
+        }
+      },
+    },
+  };
 
   const git = await gitSearch;
   if (git.kind !== 'found') {
     await reportMissingGit(log, git);
-    window.destroy();
+    for (const { window } of opened.values()) {
+      window.destroy();
+    }
     app.quit();
     return;
   }
   log.info(strings.log.usingGit(git.version, git.path));
-  const storage = new Storage(userSettings, state);
   const commandPlace = commandPlaceOf({
     platform: process.platform,
     packaged: app.isPackaged,
@@ -400,9 +511,7 @@ async function start(asked: readonly string[]): Promise<void> {
       if (message.type === 'update' && message.status.kind === 'failed') {
         quitGuard.reset();
       }
-      if (!window.isDestroyed()) {
-        window.webContents.send('message', message);
-      }
+      sendToEvery('message', message);
     },
     (notice) =>
       void views.promise.then(({ shell: view }) => view.notify(notice)),
@@ -449,7 +558,7 @@ async function start(asked: readonly string[]): Promise<void> {
     {
       viewedFiles,
       chooseFolders: async () => {
-        const chosen = await dialog.showOpenDialog(window, {
+        const chosen = await chooseFolders({
           title: strings.app.openRepositories,
           buttonLabel: strings.app.open,
           properties: ['openDirectory', 'multiSelections'],
@@ -457,7 +566,7 @@ async function start(asked: readonly string[]): Promise<void> {
         return chosen.canceled ? [] : chosen.filePaths;
       },
       chooseFolder: async (purpose, from) => {
-        const chosen = await dialog.showOpenDialog(window, {
+        const chosen = await chooseFolders({
           ...(purpose === 'init'
             ? {
                 title: strings.app.initRepository,
@@ -510,7 +619,7 @@ async function start(asked: readonly string[]): Promise<void> {
       isFolder,
       now: () => Date.now(),
       choose: async () => {
-        const chosen = await dialog.showOpenDialog(window, {
+        const chosen = await chooseFolders({
           title: strings.app.openInTerminal,
           buttonLabel: strings.app.open,
           properties: ['openDirectory', 'multiSelections'],
@@ -577,8 +686,12 @@ async function start(asked: readonly string[]): Promise<void> {
           windowsLauncher(
             process.execPath,
             process.defaultApp ? path.resolve(process.argv[1]) : undefined,
-            () =>
-              window.isDestroyed() ? undefined : window.getNativeWindowHandle(),
+            () => {
+              const window = focusedWindow();
+              return window === undefined || window.isDestroyed()
+                ? undefined
+                : window.getNativeWindowHandle();
+            },
           ),
           process.platform,
         );
@@ -586,7 +699,8 @@ async function start(asked: readonly string[]): Promise<void> {
       shellMenu: async (files, at, extended) => {
         const { showShellMenu } =
           await import('../tools/commander/main/windowsShellMenu.js');
-        if (window.isDestroyed()) {
+        const window = focusedWindow();
+        if (window === undefined || window.isDestroyed()) {
           return;
         }
         const content = window.getContentBounds();
@@ -630,7 +744,8 @@ async function start(asked: readonly string[]): Promise<void> {
       const icon = await app
         .getFileIcon(file, { size: 'normal' })
         .catch(() => nativeImage.createEmpty());
-      if (!window.isDestroyed()) {
+      const window = focusedWindow();
+      if (window !== undefined && !window.isDestroyed()) {
         window.webContents.startDrag({ file, files: [file, ...more], icon });
       }
     },
@@ -694,6 +809,30 @@ async function start(asked: readonly string[]): Promise<void> {
               linkAsAdmin(),
               (process.env.PATH ?? '').split(path.delimiter),
             ),
+      openWindow: (id, near) => {
+        const from = near === undefined ? undefined : opened.get(near)?.window;
+        const bounds =
+          from === undefined || from.isDestroyed()
+            ? undefined
+            : cascaded(
+                from.getNormalBounds(),
+                screen.getDisplayMatching(from.getNormalBounds()).workArea,
+              );
+        openWindow(id, { bounds, maximized: false });
+      },
+      closeWindow: (id) => {
+        const entry = opened.get(id);
+        if (entry !== undefined && !entry.window.isDestroyed()) {
+          entry.closing = true;
+          entry.window.close();
+        }
+      },
+      showWindow: (id) => {
+        const entry = opened.get(id);
+        if (entry !== undefined) {
+          showAgain(entry.window);
+        }
+      },
     },
     {
       terminal: terminalTool,
@@ -713,10 +852,10 @@ async function start(asked: readonly string[]): Promise<void> {
     }
     applyTheme(userSettings.settings.theme);
     view.reloadSettings();
-    window.webContents.reloadIgnoringCache();
+    everyWindow.webContents.reloadIgnoringCache();
   };
   tryWatching(log, strings.log.watchingSettingsFailed, () =>
-    whileWindowOpen(window, (ifOpen) =>
+    whileWindowOpen(everyWindow, (ifOpen) =>
       watchSettings(userSettingsFile, () =>
         ifOpen(() => {
           if (userSettings.reload()) {
@@ -737,7 +876,7 @@ async function start(asked: readonly string[]): Promise<void> {
       app.quit();
     }
     tryWatching(log, strings.log.watchingBuildFailed, () =>
-      reloadOnRebuild(window, dist, () => {
+      reloadOnRebuild(everyWindow, dist, () => {
         try {
           if (
             userSettings.replaceDefaults(
@@ -810,14 +949,22 @@ function applyTheme(theme: Theme): void {
   nativeTheme.themeSource = theme === 'auto' ? 'system' : theme;
 }
 
+interface OpenedWindow {
+  readonly window: BrowserWindow;
+  readonly place: () => Place;
+  loading: Promise<void>;
+  connection: Promise<Connection | undefined>;
+  closing: boolean;
+}
+
 function createWindow(
-  store: JsonFileStore,
+  saved: SavedPlace,
   settings: Settings,
   shown: Promise<boolean>,
-): BrowserWindow {
+): { readonly window: BrowserWindow; readonly place: () => Place } {
   const workAreas = screen.getAllDisplays().map((display) => display.workArea);
   const size = firstWindowSize(screen.getPrimaryDisplay().workArea);
-  const bounds = visibleBounds(store.get(boundsKey), workAreas);
+  const bounds = visibleBounds(saved.bounds, workAreas);
   const window = new BrowserWindow({
     ...(bounds ?? size),
     minWidth: minimumWidth(workAreas),
@@ -847,7 +994,7 @@ function createWindow(
       spellcheck: false,
     },
   });
-  const maximized = store.get(maximizedKey) === true;
+  const { maximized } = saved;
   window.once(
     'ready-to-show',
     () =>
@@ -871,13 +1018,6 @@ function createWindow(
   window.on('resized', kept.resized);
   window.on('moved', kept.moved);
   const reportsUserMoves = process.platform !== 'linux';
-  window.on('close', () => {
-    void store.update(
-      boundsKey,
-      reportsUserMoves ? kept.bounds() : window.getNormalBounds(),
-    );
-    void store.update(maximizedKey, restores());
-  });
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (opensExternally(url)) {
       void shell.openExternal(url);
@@ -899,7 +1039,13 @@ function createWindow(
       event.preventDefault();
     }
   });
-  return window;
+  return {
+    window,
+    place: () => ({
+      bounds: reportsUserMoves ? kept.bounds() : window.getNormalBounds(),
+      maximized: restores(),
+    }),
+  };
 }
 
 function setMenu(): void {

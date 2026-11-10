@@ -183,6 +183,18 @@ export class FakeHost implements ShellHost, GitHost {
     this.opened.push('quit');
   }
 
+  openWindow(window: string, near: string | undefined): void {
+    this.opened.push(`open window ${window} near ${near ?? 'none'}`);
+  }
+
+  closeWindow(window: string): void {
+    this.opened.push(`close window ${window}`);
+  }
+
+  showWindow(window: string): void {
+    this.opened.push(`show window ${window}`);
+  }
+
   updateStatus(): UpdateStatus {
     return this.update;
   }
@@ -389,6 +401,8 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   moveTab: true,
   preloadTab: true,
   newTab: true,
+  newWindow: true,
+  closeWindow: true,
   openWith: true,
   openIn: true,
   copyText: true,

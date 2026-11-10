@@ -23,6 +23,7 @@ export const terminalKeymap = {
       'Ctrl+Tab': true,
       'Ctrl+Shift+Tab': true,
       'Mod+Shift+T': true,
+      'Mod+Shift+N': true,
       'Mod+Shift+W': true,
       'Mod+Shift+O': true,
     },

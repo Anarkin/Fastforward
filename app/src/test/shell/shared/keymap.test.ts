@@ -473,6 +473,27 @@ suite('Keymap', () => {
     assert.strictEqual(pressed(keymap.newTab, shifted('T'), false), undefined);
   });
 
+  test('opens a new window on Ctrl+N and Ctrl+Shift+N, or Cmd on macOS, as a terminal leaves Ctrl+N to its shell', () => {
+    assert.strictEqual(
+      pressed(keymap.newWindow, keyPress('n', { ctrlKey: true }), false),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.newWindow, { ...shifted('N'), ctrlKey: true }, false),
+      true,
+    );
+    assert.strictEqual(
+      withMacKeys(() =>
+        pressed(keymap.newWindow, keyPress('n', { metaKey: true }), false),
+      ),
+      true,
+    );
+    assert.strictEqual(
+      pressed(keymap.newWindow, keyPress('n'), false),
+      undefined,
+    );
+  });
+
   test('opens the folder of the tab in another tool on Ctrl+Shift+O, or Cmd+Shift+O on macOS, but not on Ctrl+O, which a shell takes', () => {
     assert.strictEqual(
       pressed(keymap.openIn, { ...shifted('O'), ctrlKey: true }, false),

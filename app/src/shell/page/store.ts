@@ -64,6 +64,7 @@ function deliver<K extends ToolId>(
 
 export type Confirming =
   | { readonly kind: 'tab'; readonly tab: TabInfo }
+  | { readonly kind: 'window' }
   | { readonly kind: 'quit'; readonly note?: string };
 
 export interface TabMenu {
@@ -145,6 +146,7 @@ interface ShellActions {
   readonly selectTab: (id: string) => void;
   readonly preloadTab: (id: string) => void;
   readonly newTab: (tool: ToolId) => void;
+  readonly newWindow: () => void;
   readonly openSettings: () => void;
   readonly openDefaultSettings: () => void;
   readonly checkForUpdates: () => void;
@@ -214,6 +216,11 @@ function received(
       return { about: message };
     case 'terminalCommand':
       return { installsCommand: message.installable };
+    case 'confirmCloseWindow':
+      return {
+        confirming: { kind: 'window' },
+        popups: withPopup(state.popups, 'confirm', true),
+      };
     case 'confirmQuit':
       return {
         confirming: {
@@ -335,7 +342,9 @@ export function createShellStore(
         post(
           confirming.kind === 'tab'
             ? { type: 'closeTab', tab: confirming.tab.id }
-            : { type: 'quit' },
+            : confirming.kind === 'window'
+              ? { type: 'closeWindow' }
+              : { type: 'quit' },
         );
       },
       cancel: () =>
@@ -383,6 +392,7 @@ export function createShellStore(
       selectTab: (id) => post({ type: 'selectTab', tab: id }),
       preloadTab: (id) => post({ type: 'preloadTab', tab: id }),
       newTab: (tool) => post({ type: 'newTab', tool }),
+      newWindow: () => post({ type: 'newWindow' }),
       openSettings: () => post({ type: 'openSettings' }),
       openDefaultSettings: () => post({ type: 'openDefaultSettings' }),
       checkForUpdates: () => post({ type: 'checkForUpdates' }),

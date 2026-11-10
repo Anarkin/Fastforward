@@ -455,6 +455,11 @@ suite('Window', () => {
         confirm: 'Close',
       },
     );
+    assert.deepStrictEqual(confirmation({ kind: 'window' }), {
+      title: 'Close Window',
+      message: 'Are you sure you want to close this window and its tabs?',
+      confirm: 'Close',
+    });
     assert.deepStrictEqual(confirmation({ kind: 'quit' }), {
       title: 'Quit',
       message: 'Are you sure you want to quit Fastforward?',

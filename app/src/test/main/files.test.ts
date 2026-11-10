@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
   appFile,
+  cascaded,
   firstWindowSize,
   isAppUrl,
   keptBounds,
@@ -123,6 +124,28 @@ suite('Window bounds', () => {
     { x: 0, y: 0, width: 1920, height: 1040 },
     { x: 1920, y: 0, width: 1280, height: 1024 },
   ];
+
+  test('opens a new window a little right of and below the one it is opened from, as large as it', () => {
+    assert.deepStrictEqual(
+      cascaded({ x: 100, y: 50, width: 1200, height: 800 }, screens[0]),
+      { x: 132, y: 82, width: 1200, height: 800 },
+    );
+    assert.deepStrictEqual(
+      cascaded({ x: 2000, y: 50, width: 800, height: 600 }, screens[1]),
+      { x: 2032, y: 82, width: 800, height: 600 },
+    );
+  });
+
+  test('opens a new window at the left or top of the screen once it would reach past that edge, and no larger than the screen', () => {
+    assert.deepStrictEqual(
+      cascaded({ x: 700, y: 400, width: 1200, height: 800 }, screens[0]),
+      { x: 0, y: 0, width: 1200, height: 800 },
+    );
+    assert.deepStrictEqual(
+      cascaded({ x: 0, y: 0, width: 2500, height: 1200 }, screens[0]),
+      { x: 0, y: 0, width: 1920, height: 1040 },
+    );
+  });
 
   test('keeps a window on one of the screens', () => {
     const saved = { x: 2000, y: 100, width: 800, height: 600 };

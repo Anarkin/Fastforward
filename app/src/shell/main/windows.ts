@@ -26,6 +26,13 @@ export function activeTabOf(
   return window?.tabs.find((tab) => tab.id === window.active);
 }
 
+export function nextWindowId(layout: Layout): string {
+  const ids = layout
+    .map((window) => Number(window.id))
+    .filter(Number.isInteger);
+  return String(Math.max(0, ...ids) + 1);
+}
+
 export function nextTabId(layout: Layout): string {
   const ids = layout.flatMap((window) =>
     window.tabs.map((tab) => Number(tab.id)).filter(Number.isInteger),

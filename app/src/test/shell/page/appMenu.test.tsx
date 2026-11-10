@@ -23,6 +23,7 @@ function menuOf(
         checkForUpdates: 'check',
         installUpdate: 'install',
         installTerminalCommand: 'ff',
+        newWindow: 'window',
       };
       const name = named[message.type];
       if (name !== undefined) {
@@ -48,12 +49,14 @@ function menuOf(
 }
 
 suite('App menu', () => {
-  test('offers opening the settings files, then checking for updates, then the shortcuts and the About, each in a group of its own', () => {
+  test('offers a new window, then opening the settings files, then checking for updates, then the shortcuts and the About, each in a group of its own', () => {
     const picked: string[] = [];
     const { items } = menuOf({ kind: 'idle' }, picked);
     assert.deepStrictEqual(
       items.map((item) => ('separator' in item ? '-' : item.label)),
       [
+        'New Window',
+        '-',
         'Open Default Settings',
         'Open User Settings',
         '-',
@@ -69,6 +72,7 @@ suite('App menu', () => {
       }
     }
     assert.deepStrictEqual(picked, [
+      'window',
       'defaults',
       'settings',
       'check',

@@ -219,8 +219,8 @@ suite('Storage', () => {
       terminalTab('4'),
     ]);
     await store.update(windowsKey, [
-      { id: '7', tabs: ['9', 5], active: '9' },
       { id: '8', tabs: ['2', '1'], active: '1' },
+      { id: '7', tabs: ['9', 5], active: '9' },
       { id: '8', tabs: ['4'] },
       { id: 'no tabs' },
       { id: '9', tabs: ['1', '3'], active: '1' },
@@ -231,7 +231,21 @@ suite('Storage', () => {
         tabs: [terminalTab('2'), terminalTab('1'), terminalTab('4')],
         active: '1',
       },
+      { id: '7', tabs: [] },
       { id: '9', tabs: [terminalTab('3')] },
+    ]);
+  });
+
+  test('keeps a window with no tab among the others, as a window opened anew holds none until one opens in it', async () => {
+    const store = new FakeStore();
+    await store.update(tabsKey, [terminalTab('1')]);
+    await store.update(windowsKey, [
+      { id: '1', tabs: ['1'], active: '1' },
+      { id: '2', tabs: [] },
+    ]);
+    assert.deepStrictEqual(storageOf(store).layout, [
+      { id: '1', tabs: [terminalTab('1')], active: '1' },
+      { id: '2', tabs: [] },
     ]);
   });
 

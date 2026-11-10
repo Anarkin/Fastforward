@@ -84,6 +84,8 @@ export type ToHost =
   | { readonly type: 'setTextView'; readonly view: TextView }
   | { readonly type: 'setImageView'; readonly view: ImageView }
   | { readonly type: 'newTab'; readonly tool: ToolId }
+  | { readonly type: 'newWindow' }
+  | { readonly type: 'closeWindow' }
   | { readonly type: 'openWith'; readonly tool: ToolId | undefined }
   | { readonly type: 'openIn' }
   | { readonly type: 'copyText'; readonly text: string }
@@ -118,6 +120,7 @@ export type ToWebview =
   | ({ readonly type: 'about' } & AboutInfo)
   | { readonly type: 'terminalCommand'; readonly installable: boolean }
   | { readonly type: 'confirmQuit'; readonly note?: string }
+  | { readonly type: 'confirmCloseWindow' }
   | {
       readonly type: 'chooseTool';
       readonly folders: readonly string[];

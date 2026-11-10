@@ -140,6 +140,21 @@ function isBounds(value: unknown): value is Bounds {
   );
 }
 
+const cascadeStep = 32;
+
+export function cascaded(from: Bounds, area: Bounds): Bounds {
+  const width = Math.min(from.width, area.width);
+  const height = Math.min(from.height, area.height);
+  const x = from.x + cascadeStep;
+  const y = from.y + cascadeStep;
+  return {
+    x: x + width > area.x + area.width ? area.x : x,
+    y: y + height > area.y + area.height ? area.y : y,
+    width,
+    height,
+  };
+}
+
 export function firstWindowSize(workArea: Bounds): {
   readonly width: number;
   readonly height: number;

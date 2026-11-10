@@ -159,6 +159,22 @@ suite('Shell store', () => {
     ]);
   });
 
+  test('asks whether to close the window the main process asks about, closing it once confirmed, and opens a new window when asked', () => {
+    const { posted, store } = posting();
+    store.getState().receive({ type: 'confirmCloseWindow' });
+    assert.deepStrictEqual(store.getState().confirming, { kind: 'window' });
+    assert.deepStrictEqual(store.getState().popups, ['confirm']);
+    store.getState().cancel();
+    assert.deepStrictEqual(posted, []);
+    store.getState().receive({ type: 'confirmCloseWindow' });
+    store.getState().confirm();
+    store.getState().newWindow();
+    assert.deepStrictEqual(posted, [
+      { type: 'closeWindow' },
+      { type: 'newWindow' },
+    ]);
+  });
+
   test('opens the Open With popup the main process asks for, and answers it with the tool chosen or none', () => {
     const { posted, store } = posting();
     const choosing = {

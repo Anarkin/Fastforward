@@ -51,6 +51,11 @@ suite('Terminal keys', () => {
     assert.strictEqual(terminalKey(keyPress('w', ctrl), false), 'shell');
   });
 
+  test('leaves opening a new window to the app, but Ctrl+N to the shell, whose history it steps through', () => {
+    assert.strictEqual(terminalKey(keyPress('N', ctrlShift), false), 'app');
+    assert.strictEqual(terminalKey(keyPress('n', ctrl), false), 'shell');
+  });
+
   test('leaves opening the folder of the tab in another tool to the app, but Ctrl+O to the shell', () => {
     assert.strictEqual(terminalKey(keyPress('O', ctrlShift), false), 'app');
     assert.strictEqual(terminalKey(keyPress('o', ctrl), false), 'shell');

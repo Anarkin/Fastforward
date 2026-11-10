@@ -4,6 +4,7 @@ import type { SavedTab } from '../../../shell/main/storage';
 import { TabHistory } from '../../../shell/main/tabHistory';
 import {
   nextTabId,
+  nextWindowId,
   withActive,
   withChanged,
   withClosed,
@@ -47,6 +48,11 @@ suite('Windows of tabs', () => {
       '13',
     );
     assert.strictEqual(nextTabId(layoutOf(['1', []])), '1');
+  });
+
+  test('gives a new window an id no window has', () => {
+    assert.strictEqual(nextWindowId(layoutOf(['1', []], ['4', []])), '5');
+    assert.strictEqual(nextWindowId([]), '1');
   });
 
   test('opens tabs at the end of the window asked, leaving the others as they were', () => {

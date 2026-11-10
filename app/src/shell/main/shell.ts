@@ -31,6 +31,7 @@ import { TabHistory } from './tabHistory';
 import {
   activeTabOf,
   nextTabId,
+  nextWindowId,
   windowOf,
   withActive,
   withChanged,
@@ -134,6 +135,9 @@ export interface ShellHost {
   canInstallCommand(): boolean;
   commandState(): Promise<CommandState>;
   installCommand(): Promise<CommandInstall>;
+  openWindow(window: string, near: string | undefined): void;
+  closeWindow(window: string): void;
+  showWindow(window: string): void;
 }
 
 export interface Connection {
@@ -167,6 +171,8 @@ export const unattachedShell: ShellAccess = {
   track: (work) => work,
   idle: () => Promise.resolve(),
 };
+
+const closedPage: Page = { post: () => undefined, disposed: true };
 
 function receiveIn<K extends ToolId>(
   all: Tools,
@@ -383,6 +389,40 @@ export class Shell {
     this.notice(undefined, notice);
   }
 
+  focus(window: string): void {
+    this.focusedWindow = window;
+  }
+
+  asksBeforeClosing(window: string): boolean {
+    return (
+      this.storage.layout
+        .find((each) => each.id === window)
+        ?.tabs.some((tab) => confirmsClose[tab.tool]) === true
+    );
+  }
+
+  askToCloseWindow(window: string): boolean {
+    const page = this.livePage(window);
+    page?.post({ type: 'confirmCloseWindow' });
+    return page !== undefined;
+  }
+
+  closeWindow(window: string): void {
+    const { storage } = this;
+    const closing = storage.layout.find((each) => each.id === window);
+    if (closing === undefined || storage.layout.length < 2) {
+      return;
+    }
+    this.save(
+      storage.setLayout(storage.layout.filter((each) => each !== closing)),
+    );
+    const page = this.pages.get(window) ?? closedPage;
+    for (const tab of closing.tabs) {
+      this.history.forget(tab.id);
+      this.tools[tab.tool].closed(page, tab);
+    }
+  }
+
   private focused(): Page | undefined {
     return this.focusedWindow === undefined
       ? undefined
@@ -433,6 +473,17 @@ export class Shell {
         return;
       case 'quit':
         host.quit();
+        return;
+      case 'newWindow': {
+        const window = nextWindowId(storage.layout);
+        this.save(
+          storage.setLayout([...storage.layout, { id: window, tabs: [] }]),
+        );
+        host.openWindow(window, this.windowOf(page).id);
+        return;
+      }
+      case 'closeWindow':
+        host.closeWindow(this.windowOf(page).id);
         return;
       case 'copyText':
         if (typeof message.text === 'string') {
@@ -677,6 +728,7 @@ export class Shell {
       await this.show(live, last);
       return;
     }
+    this.host.showWindow(holder.id);
     const there = this.livePage(holder.id);
     if (there === undefined) {
       this.save(storage.setLayout(withActive(storage.layout, holder.id, last)));

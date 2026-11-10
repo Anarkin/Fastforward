@@ -399,7 +399,7 @@ function savedLayout(
   const saved = (Array.isArray(windows) ? windows : [])
     .filter(isSavedWindow)
     .filter((window) => !ids.has(window.id) && Boolean(ids.add(window.id)));
-  const layout = saved.flatMap((window) => {
+  const layout = saved.map((window) => {
     const own = window.tabs.flatMap((id) => {
       const tab = typeof id === 'string' ? byId.get(id) : undefined;
       if (tab === undefined || placed.has(tab.id)) {
@@ -408,12 +408,12 @@ function savedLayout(
       placed.add(tab.id);
       return [tab];
     });
-    return own.length === 0 ? [] : [windowWith(window.id, own, window.active)];
+    return windowWith(window.id, own, window.active);
   });
   const left = tabs.filter((tab) => !placed.has(tab.id));
   const [first, ...rest] = layout;
   return first === undefined
-    ? [windowWith(saved[0]?.id ?? '1', left, saved[0]?.active ?? active)]
+    ? [windowWith('1', left, active)]
     : [{ ...first, tabs: [...first.tabs, ...left] }, ...rest];
 }
 

@@ -49,21 +49,32 @@ export function confirmation(confirming: Confirming): {
   note?: string;
   confirm: string;
 } {
-  return confirming.kind === 'tab'
-    ? {
+  switch (confirming.kind) {
+    case 'tab':
+      return {
         title: strings.confirm.closeTitle,
         message: strings.confirm.closeTab(strings.tools[confirming.tab.tool]),
         lines: strings.confirm.closeTabLines(
           strings.tabs.label(confirming.tab.name, confirming.tab.folder),
         ),
         confirm: strings.confirm.close,
-      }
-    : {
+      };
+    case 'window':
+      return {
+        title: strings.confirm.closeWindowTitle,
+        message: strings.confirm.closeWindow,
+        confirm: strings.confirm.close,
+      };
+    case 'quit':
+      return {
         title: strings.confirm.quitTitle,
         message: strings.confirm.quitApp,
         ...(confirming.note !== undefined && { note: confirming.note }),
         confirm: strings.confirm.quit,
       };
+    default:
+      return confirming satisfies never;
+  }
 }
 
 function ShellMenu() {
@@ -159,7 +170,7 @@ function NoticeKey() {
 
 export function App({ name, post, listen, dropFiles }: Props) {
   const [store] = useState(() => createShellStore(post, {}, dropFiles));
-  const { togglePopup, closeTab, ready, openIn } = store.getState();
+  const { togglePopup, closeTab, ready, openIn, newWindow } = store.getState();
 
   useEffect(() => {
     const stop = listen(store.getState().receive);
@@ -170,6 +181,7 @@ export function App({ name, post, listen, dropFiles }: Props) {
   useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
   useBinding(keymap.about, () => togglePopup('about'));
   useBinding(keymap.openIn, openIn);
+  useBinding(keymap.newWindow, newWindow);
   useBinding(keymap.closeTab, () => {
     const { active } = store.getState();
     if (active !== undefined) {

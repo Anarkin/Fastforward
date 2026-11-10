@@ -241,6 +241,8 @@ export const strings = {
       `Are you sure you want to close this ${tool} tab?`,
     closeTabLines: (tab: string) => [labeled('Tab', named(tab))],
     close: 'Close',
+    closeWindowTitle: 'Close Window',
+    closeWindow: 'Are you sure you want to close this window and its tabs?',
     quitTitle: 'Quit',
     quitApp: `Are you sure you want to quit ${brand}?`,
     quit: 'Quit',
@@ -258,6 +260,7 @@ export const strings = {
   tabs: {
     tabs: 'Tabs',
     newTab: 'New Tab',
+    newWindow: 'New Window',
     worktrees: 'Worktrees',
     browse: 'Browse...',
     open: 'Open...',
@@ -282,6 +285,7 @@ export const strings = {
   },
   actions: {
     newTab: 'Open a new tab',
+    newWindow: 'Open a new window',
     openIn: 'Open the folder of the tab in another tool',
     tab: 'Next or previous tab',
     worktree: 'Next or previous worktree',

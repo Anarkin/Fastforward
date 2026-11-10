@@ -698,6 +698,13 @@ suite('Shell with no tab open', () => {
 
 const commanderTab = (id: string) => ({ id, tool: 'commander' }) as const;
 
+const savedIds = (saved: unknown) =>
+  Array.isArray(saved)
+    ? saved.flatMap((tab: unknown) =>
+        typeof tab === 'object' && tab !== null && 'id' in tab ? [tab.id] : [],
+      )
+    : [];
+
 const shownIn = (page: FakePage) => [
   page.tabs?.tabs.map((tab) => tab.id),
   page.tabs?.active,
@@ -711,8 +718,8 @@ suite('Shell with several windows', () => {
 
   afterAll(closeViews);
 
-  async function twoWindows() {
-    const first = await openView(log, [], false, undefined, undefined, noGit);
+  async function twoWindows(host = new FakeHost()) {
+    const first = await openView(log, [], false, host, undefined, noGit);
     await first.store.update(
       tabsKey,
       ['1', '5', '2', '3', '4'].map(commanderTab),
@@ -738,6 +745,49 @@ suite('Shell with several windows', () => {
     await second.connection.receive({ type: 'newTab', tool: 'commander' });
     assert.deepStrictEqual(shownIn(second.page), [['2', '3', '4', '6'], '6']);
     assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
+  });
+
+  test('opens a new window with no tab beside the one whose page asks for it, keeping it among the windows', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(host);
+    await second.connection.receive({ type: 'newWindow' });
+    assert.deepStrictEqual(host.opened, ['open window 3 near 2']);
+    assert.deepStrictEqual(first.shell.windows(), ['1', '2', '3']);
+    const third = attach(first.view, '3');
+    await third.connection.receive({ type: 'ready' });
+    assert.deepStrictEqual(shownIn(third.page), [[], undefined]);
+  });
+
+  test('closes a window and its tabs while another window is open', async () => {
+    const { first } = await twoWindows();
+    first.shell.closeWindow('2');
+    assert.deepStrictEqual(first.shell.windows(), ['1']);
+    assert.deepStrictEqual(savedIds(first.store.get(tabsKey)), ['1', '5']);
+  });
+
+  test('never closes the last window, as quitting keeps its tabs for the next start', async () => {
+    const { first } = await twoWindows();
+    first.shell.closeWindow('2');
+    first.shell.closeWindow('1');
+    assert.deepStrictEqual(first.shell.windows(), ['1']);
+    assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
+  });
+
+  test('asks the page of a window before closing it while it holds a tab of a tool that confirms closing, as closing a Terminal ends its shell, and leaves closing it to the app once the page confirms', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(host);
+    assert.strictEqual(first.shell.asksBeforeClosing('2'), false);
+    await second.connection.receive({ type: 'newTab', tool: 'terminal' });
+    assert.strictEqual(first.shell.asksBeforeClosing('2'), true);
+    assert.strictEqual(first.shell.asksBeforeClosing('1'), false);
+
+    assert.strictEqual(first.shell.askToCloseWindow('2'), true);
+    assert.deepStrictEqual(second.page.last('confirmCloseWindow'), {
+      type: 'confirmCloseWindow',
+    });
+    assert.strictEqual(first.page.last('confirmCloseWindow'), undefined);
+    await second.connection.receive({ type: 'closeWindow' });
+    assert.deepStrictEqual(host.opened, ['close window 2']);
   });
 
   test('selects, moves and closes only the tabs of the window whose page asks, as the page is not trusted', async () => {

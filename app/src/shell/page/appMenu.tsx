@@ -38,6 +38,7 @@ export function AppMenu() {
     checkForUpdates: onCheckForUpdates,
     installUpdate: onInstallUpdate,
     installTerminalCommand,
+    newWindow: onNewWindow,
   } = useShellActions();
   const onShowShortcuts = () => showPopup('shortcuts', true);
   const onShowAbout = () => showPopup('about', true);
@@ -52,6 +53,8 @@ export function AppMenu() {
       icon={<AppIcon />}
       marked={installs}
       items={[
+        { label: strings.tabs.newWindow, onClick: onNewWindow },
+        { separator: true },
         {
           label: strings.tabs.openDefaultSettings,
           onClick: onOpenDefaultSettings,

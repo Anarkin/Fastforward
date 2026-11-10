@@ -25,7 +25,7 @@
 | Type a path | Go to a folder by typing or pasting its path | — | Core | ❌ No | The path atop each side is shown only |
 | Breadcrumbs | Go to a folder of the path by clicking it | — | Common | ❌ No |  |
 | Folder tree | Show the folders as a tree | Ctrl+F8 | Common | ❌ No |  |
-| Folder tabs | Keep several folders open on a side in tabs | Ctrl+T | Common | 🟡 Partial | Commander tabs among the app's tabs, each with both sides, the layout of each kept while the app runs; none per side |
+| Folder tabs | Keep several folders open on a side in tabs | Ctrl+T | Common | 🟡 Partial | Commander tabs among the app's tabs, in one window or several, each with both sides, the layout of each kept while the app runs; none per side |
 | Bookmarks | Keep folders at hand to go to | Ctrl+D | Common | ✅ Yes | The star of each side, filled while its folder is bookmarked, or Ctrl+D: adds or removes the folder of the side, and lists the bookmarks sorted, keyed 1 to 9 and A to Z, removed with their X or Delete; kept in `tools.commander.bookmarks` of the user settings, shared by both sides and every tab |
 | Recent folders | Go back to a folder visited before | — | Common | ❌ No | Back and forward keep only the folders of each side while the app runs |
 | Outside changes | Refresh a folder when something changes it | — | Core | ✅ Yes | Watches the folders shown; a folder deleted meanwhile gives way to the nearest folder still there |

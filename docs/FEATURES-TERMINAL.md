@@ -35,12 +35,12 @@
 | Folder of the shell | Know the folder the shell is in | OSC 7, OSC 9;9 | Common | ✅ Yes | PowerShell, bash, zsh, fish and the Command Prompt are set up to tell it at each prompt; it names the tab and is where Mod+Shift+O opens; a folder on a share is taken only on the server the shell started on, as what a program prints could name any host |
 | Background shells | Keep shells running in the tabs not shown | — | Core | ✅ Yes | A headless `xterm.js` keeps each screen, so a tab shown again gets it back whole |
 | Survive a reload | Keep the shells running while the window's page reloads | — | Niche | ✅ Yes | The shells run in a utility process of their own; the page reloads as the settings are saved |
-| Restore after a restart | Reopen the tabs and their shells once the app starts again | — | Common | 🟡 Partial | The tabs come back, each with a new shell in the folder it was last in, without their output |
-| Ask before closing | Ask before closing a tab, or quitting, while a shell runs | — | Common | ✅ Yes | Asks for every terminal tab, whether a command runs or not, and before quitting or restarting to update while one is open |
+| Restore after a restart | Reopen the tabs and their shells once the app starts again | — | Common | 🟡 Partial | The tabs come back in their windows, each with a new shell in the folder it was last in, without their output |
+| Ask before closing | Ask before closing a tab, or quitting, while a shell runs | — | Common | ✅ Yes | Asks for every terminal tab, whether a command runs or not, before closing a window that holds one, and before quitting or restarting to update while one is open |
 | Crash isolation | Keep a crash of the shells' process from taking the window | — | Advanced | ✅ Yes | `node-pty` runs in a utility process; when it stops, the tab shown says so and starts a new shell on Enter, the others once shown again |
 | Heavy output | Stay responsive while a program prints without end | — | Common | ✅ Yes | The shell is paused while 100,000 characters wait to be drawn, and goes on below 10,000 |
 | Split panes | Show several shells in one tab | — | Common | ❌ No |  |
-| Windows of their own | Open shells in more than one window | — | Common | ❌ No | One window, its tabs shared by every tool |
+| Windows of their own | Open shells in more than one window | — | Common | ✅ Yes | Mod+N, Mod+Shift+N in a terminal, or New Window in the menu opens a window beside the one in front, with tabs of its own; closing a window closes its tabs, the last one quitting; every window comes back after a restart where it was |
 | Drop-down window | Show a terminal from the top of the screen on a hotkey | — | Advanced | ❌ No |  |
 | Broadcast input | Type into several shells at once | — | Advanced | ❌ No |  |
 | Rename a tab | Give a tab a name of one's own | — | Common | ❌ No | Named after the folder of its shell |
@@ -76,7 +76,7 @@
 | Copy on select | Copy what is selected, and paste on a middle click | — | Common | ❌ No |  |
 | Context menu | Copy, paste and more from a right click | — | Common | ❌ No |  |
 | Selection | Select words and lines by clicking | — | Core | ✅ Yes | By `xterm.js`: a double click selects a word, a triple click a line |
-| Keys left to programs | Send the shell the keys the app doesn't need | — | Core | ✅ Yes | Every key but Ctrl+Tab, Ctrl+Shift+Tab, Mod+Shift+T, Mod+Shift+W, Mod+Shift+O and Mod+Shift+I, which opens the developer tools, reaches the shell, and Mod+C while text is selected |
+| Keys left to programs | Send the shell the keys the app doesn't need | — | Core | ✅ Yes | Every key but Ctrl+Tab, Ctrl+Shift+Tab, Mod+Shift+T, Mod+Shift+N, Mod+Shift+W, Mod+Shift+O and Mod+Shift+I, which opens the developer tools, reaches the shell, and Mod+C while text is selected |
 | Key bindings | Change the shortcuts | — | Common | ❌ No |  |
 | Option as Meta | Send Option as Meta on macOS | — | Common | ❌ No | Option types characters as macOS has it |
 | Full keyboard reporting | Tell programs every key and modifier | kitty keyboard protocol | Advanced | ❌ No |  |
