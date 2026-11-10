@@ -224,6 +224,9 @@ function commander(
   const opensHeld: { until: Promise<unknown> | undefined } = {
     until: undefined,
   };
+  const extractsHeld: { until: Promise<unknown> | undefined } = {
+    until: undefined,
+  };
   const passwords = new Map<string, string>();
   const secrets = new Map<string, string>();
   const extracted: (readonly string[])[] = [];
@@ -290,6 +293,7 @@ function commander(
     },
     extract: async (archive, paths, options) => {
       extracted.push(paths);
+      await extractsHeld.until;
       const into = options?.into;
       if (copies.refused !== undefined) {
         return { kind: 'refused', reason: copies.refused };
@@ -719,6 +723,7 @@ function commander(
     archived,
     copies,
     opensHeld,
+    extractsHeld,
     secrets,
     passwords,
     extracted,
@@ -5484,6 +5489,55 @@ suite('Commander tool in archives', () => {
       assert.ok(fromInner !== undefined && fromInner !== copy);
       assert.strictEqual(fs.statSync(fromInner).mode & 0o222, 0);
       assert.ok(!watched().includes(path.dirname(fromInner)));
+    });
+
+    test('puts a copy back where it was opened from, though the side went on to a folder with a file of its name while it was taken out', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), [
+        archiveItem('docs/readme.md'),
+        archiveItem('notes/readme.md'),
+      ]);
+      made.copies.folder = copiesFolder;
+      const { tool, page, send, opened, change, extractsHeld } = made;
+      await tool.show(page, tab);
+      const opening = (name: string) =>
+        send({ type: 'open', tab: '1', side: 'right', name });
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      await opening('docs');
+      const held = Promise.withResolvers<void>();
+      extractsHeld.until = held.promise;
+
+      const readme = opening('readme.md');
+      await opening('..');
+      await opening('notes');
+      held.resolve();
+      await readme;
+      const [copy] = opened;
+      assert.ok(copy !== undefined);
+      fs.writeFileSync(copy, 'Changed.');
+      await change(path.dirname(copy));
+      await waitFor(
+        () => page.of('askUpdate').length === 1,
+        'the update to be asked',
+      );
+      await send({ type: 'updateArchive', ask: 1, update: true });
+      await waitFor(
+        () => made.changedInArchives.length === 1,
+        'the copy to be put back',
+      );
+
+      assert.strictEqual(
+        page.of('askUpdate')[0]?.name,
+        path.join('docs', 'readme.md'),
+      );
+      assert.deepStrictEqual(made.changedInArchives, [
+        ['add', at('a.zip'), ['docs'], path.dirname(copy), ['readme.md']],
+      ]);
     });
 
     test('compares a file of an archive with one on disk from a copy of it, the first named the old side', async () => {

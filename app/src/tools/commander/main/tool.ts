@@ -1267,7 +1267,7 @@ export class CommanderTool implements Tool<'commander'> {
       if (copy === undefined) {
         return;
       }
-      const putBack = this.putBackOf(shown.pane, name, copy);
+      const putBack = this.putBackOf(folder, name, copy);
       if (putBack === undefined) {
         await fs.promises.chmod(copy, 0o444);
       } else {
@@ -1573,7 +1573,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private putBackOf(
-    pane: Pane,
+    folder: string,
     name: string,
     copy: string,
   ):
@@ -1584,7 +1584,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
     | undefined {
     const { archives } = this.access;
-    const inside = archives?.within(pane.folder);
+    const inside = archives?.within(folder);
     const parts = name.split(path.sep);
     const last = parts.at(-1) ?? name;
     const inner = [...(inside?.inner ?? []), ...parts.slice(0, -1)];
