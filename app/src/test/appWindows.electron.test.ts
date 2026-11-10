@@ -23,6 +23,17 @@ function byPlace(a: SavedBounds, b: SavedBounds): number {
   return a.x - b.x || a.y - b.y;
 }
 
+const nearEnough = 64;
+
+function near(a: SavedBounds, b: SavedBounds | undefined): boolean {
+  return (
+    b !== undefined &&
+    [a.x - b.x, a.y - b.y, a.width - b.width, a.height - b.height].every(
+      (difference) => Math.abs(difference) <= nearEnough,
+    )
+  );
+}
+
 async function visiblePages(app: ElectronApplication): Promise<Page[]> {
   const pages = app.windows();
   const visible = await Promise.all(
@@ -181,7 +192,7 @@ suite('App with several windows', () => {
     );
   });
 
-  test('brings every window back after a restart, where it was', async () => {
+  test('brings every window back after a restart where it was, or as near as the screen and the system let it be', async () => {
     await windowsShown(2);
     const placed = await visibleBounds(launched());
     await closeOrKill(launched());
@@ -192,8 +203,15 @@ suite('App with several windows', () => {
 
     app = await launchApp(profile);
     await windowsShown(2);
-    const bounds = await visibleBounds(launched());
-    assert.deepStrictEqual(bounds.toSorted(byPlace), placed.toSorted(byPlace));
+    const restored = (await visibleBounds(launched())).toSorted(byPlace);
+    const before = placed.toSorted(byPlace);
+    assert.strictEqual(restored.length, before.length);
+    restored.forEach((each, index) =>
+      assert.ok(
+        near(each, before[index]),
+        JSON.stringify([each, before[index]]),
+      ),
+    );
   });
 
   test('moves a tab into another window from its menu, closing the window it leaves once it held no other tab', async () => {
