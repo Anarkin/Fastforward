@@ -4,14 +4,18 @@ import { strings } from '../../../shared/strings';
 export const terminalGroups = ['Terminal'] as const;
 
 export const terminalKeymap = {
-  copy: bind('Terminal', strings.actions.copySelection, {
-    'Mod+C': 'selected',
-    'Mod+Shift+C': 'always',
-  }),
-  paste: bind('Terminal', strings.actions.paste, {
-    'Mod+V': true,
-    'Mod+Shift+V': true,
-  }),
+  copy: bind(
+    'Terminal',
+    strings.actions.copySelection,
+    { 'Mod+C': 'selected', 'Mod+Shift+C': 'always' },
+    { repeats: true },
+  ),
+  paste: bind(
+    'Terminal',
+    strings.actions.paste,
+    { 'Mod+V': true, 'Mod+Shift+V': true },
+    { repeats: true },
+  ),
   leftToApp: bind(
     undefined,
     strings.actions.leftToApp,

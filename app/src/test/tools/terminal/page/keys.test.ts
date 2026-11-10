@@ -29,6 +29,16 @@ suite('Terminal keys', () => {
     );
   });
 
+  test('goes on copying and pasting while the key is held, sending the shell nothing, as a held Ctrl+V typed ^V after the paste', () => {
+    const held = { ...ctrl, repeat: true };
+    assert.strictEqual(terminalKey(keyPress('v', held), false), 'paste');
+    assert.strictEqual(terminalKey(keyPress('c', held), true), 'copy');
+    assert.strictEqual(
+      terminalKey(keyPress('C', { ...ctrlShift, repeat: true }), false),
+      'copy',
+    );
+  });
+
   test('leaves switching, opening and closing tabs to the app, held down too, but Ctrl+T and Ctrl+W to the shell', () => {
     assert.strictEqual(terminalKey(keyPress('Tab', ctrl), false), 'app');
     assert.strictEqual(terminalKey(keyPress('Tab', ctrlShift), false), 'app');
