@@ -149,14 +149,22 @@ export function tearsOffTabs(
 
 const cascadeStep = 32;
 
+function cascadedEdge(
+  start: number,
+  size: number,
+  low: number,
+  high: number,
+): number {
+  const next = start + cascadeStep;
+  return next + size <= high || start === low ? next : low;
+}
+
 export function cascaded(from: Bounds, area: Bounds): Bounds {
   const width = Math.min(from.width, area.width);
   const height = Math.min(from.height, area.height);
-  const x = from.x + cascadeStep;
-  const y = from.y + cascadeStep;
   return {
-    x: x + width > area.x + area.width ? area.x : x,
-    y: y + height > area.y + area.height ? area.y : y,
+    x: cascadedEdge(from.x, width, area.x, area.x + area.width),
+    y: cascadedEdge(from.y, height, area.y, area.y + area.height),
     width,
     height,
   };

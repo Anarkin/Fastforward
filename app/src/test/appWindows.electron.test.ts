@@ -15,21 +15,6 @@ interface SavedBounds {
   readonly height: number;
 }
 
-function isBounds(value: unknown): value is SavedBounds {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'x' in value &&
-    typeof value.x === 'number' &&
-    'y' in value &&
-    typeof value.y === 'number' &&
-    'width' in value &&
-    typeof value.width === 'number' &&
-    'height' in value &&
-    typeof value.height === 'number'
-  );
-}
-
 function tabsIn(page: Page): Promise<number> {
   return page.locator('.tabs [role="tab"]').count();
 }
@@ -158,7 +143,8 @@ suite('App with several windows', () => {
     assert.strictEqual((await visiblePages(launched())).length, 2);
     await asked
       .locator('.confirm-button.default')
-      .evaluate((button: HTMLElement) => button.click());
+      .evaluate((button: HTMLElement) => button.click())
+      .catch(() => undefined);
     await windowsShown(1);
     await waitFor(
       () =>
@@ -179,23 +165,19 @@ suite('App with several windows', () => {
       .locator('.empty-state', { hasText: strings.app.noTab })
       .waitFor();
     const bounds = await visibleBounds(launched());
-    assert.strictEqual(new Set(bounds.map((each) => each.x)).size, 2);
+    assert.strictEqual(
+      new Set(bounds.map((each) => `${each.x},${each.y}`)).size,
+      2,
+    );
   });
 
   test('brings every window back after a restart, where it was', async () => {
     await windowsShown(2);
+    const placed = await visibleBounds(launched());
     await closeOrKill(launched());
     app = undefined;
     const places = saved().windowPlaces;
     assert.ok(typeof places === 'object' && places !== null);
-    const placed = Object.values(places).flatMap((place: unknown) =>
-      typeof place === 'object' &&
-      place !== null &&
-      'bounds' in place &&
-      isBounds(place.bounds)
-        ? [place.bounds]
-        : [],
-    );
     assert.deepStrictEqual(Object.keys(places).toSorted(), ['1', '2']);
 
     app = await launchApp(profile);
@@ -222,7 +204,8 @@ suite('App with several windows', () => {
       .hover();
     await menu
       .locator('.menu-item', { hasText: strings.tabs.noTabWindow })
-      .evaluate((item: HTMLElement) => item.click());
+      .evaluate((item: HTMLElement) => item.click())
+      .catch(() => undefined);
     await windowsShown(1);
     assert.strictEqual(await tabsIn(empty), 1);
   });
