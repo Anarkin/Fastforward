@@ -139,14 +139,14 @@ suite('App with lists longer than their columns', () => {
 const dark = (page: Page) =>
   page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
 
-const turnedLight = (page: Page) =>
+const turned = (page: Page, toDark: boolean) =>
   dark(page).then(
-    (isDark) => !isDark,
+    (isDark) => isDark === toDark,
     () => false,
   );
 
 suite('App with a theme', () => {
-  test('starts dark by default, turns light at once when the settings file is saved with the light theme, and starts light from then on', async () => {
+  test('follows the system by default, turns to the other theme at once when the settings file is saved with it, and starts in it from then on', async () => {
     const folder = tempFolder('themes');
     const profile = path.join(folder, 'profile');
     fs.mkdirSync(profile, { recursive: true });
@@ -157,18 +157,31 @@ suite('App with a theme', () => {
       let page = await app.firstWindow();
       await page.emulateMedia({ colorScheme: null });
       await page.locator('.tabs > .menu-button > button').waitFor();
-      assert.strictEqual(await dark(page), true);
+      const [source, systemDark] = await app.evaluate(({ nativeTheme }) => [
+        nativeTheme.themeSource,
+        nativeTheme.shouldUseDarkColors,
+      ]);
+      assert.deepStrictEqual(
+        [source, await dark(page)],
+        ['system', systemDark],
+      );
       fs.writeFileSync(
         settingsFile,
-        JSON.stringify({ ...baseSettings, theme: 'light' }),
+        JSON.stringify({
+          ...baseSettings,
+          theme: systemDark ? 'light' : 'dark',
+        }),
       );
-      await waitFor(() => turnedLight(page), 'the window to turn light');
+      await waitFor(
+        () => turned(page, !systemDark),
+        'the window to turn to the other theme',
+      );
       await closeOrKill(app);
       app = await launchApp(profile);
       page = await app.firstWindow();
       await page.emulateMedia({ colorScheme: null });
       await page.locator('.tabs > .menu-button > button').waitFor();
-      assert.strictEqual(await dark(page), false);
+      assert.strictEqual(await dark(page), !systemDark);
     } finally {
       await closeOrKill(app);
       removeFolder(folder);
