@@ -288,7 +288,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Keyboard | Work every list, column and popup by keyboard | — | Common | ✅ Yes | F1 lists the shortcuts |
+| Keyboard | Work every list, column and popup by keyboard | — | Common | ✅ Yes | F1 lists the shortcuts of every tool, opening on the one in use, grouped by what they are for and narrowed to the words or keys typed |
 | Command palette | Find any command by typing | — | Common | ❌ No |  |
 | Themes | Light and dark, colors and fonts | — | Common | ✅ Yes | Following the system by default, or light or dark by the theme setting; every color and font in the settings |
 | Settings | Change the settings | — | Common | 🟡 Partial | JSON files, applied as saved and checked, no settings page |

@@ -2,26 +2,31 @@ import { bind } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
 
 export const commanderGroups = [
-  'Folders',
-  'Sides',
+  'Moving',
+  'Listing',
+  'Filtering',
   'Marking',
+  'Operations',
   'Viewing',
+  'Archives',
 ] as const;
 
-export const viewerGroups = ['Viewer'] as const;
+export const viewerGroups = [
+  'Scrolling',
+  'Showing',
+  'Text',
+  'Searching',
+] as const;
 
 export type ViewMode = 'text' | 'hex' | 'preview';
 
 export const commanderKeymap = {
-  openFolder: bind('Folders', strings.actions.openFolder, { Enter: true }),
-  openWithSevenZip: bind('Folders', strings.actions.openWithSevenZip, {
-    'Shift+Enter': true,
-  }),
-  parentFolder: bind('Folders', strings.actions.parentFolder, {
+  openFolder: bind('Moving', strings.actions.openFolder, { Enter: true }),
+  parentFolder: bind('Moving', strings.actions.parentFolder, {
     Backspace: true,
   }),
   history: bind(
-    'Folders',
+    'Moving',
     strings.actions.folderHistory,
     {
       'Alt+ArrowLeft': -1,
@@ -31,25 +36,59 @@ export const commanderKeymap = {
     },
     { repeats: true },
   ),
-  bookmarks: bind('Folders', strings.actions.bookmarks, { 'Ctrl+D': true }),
-  reread: bind('Folders', strings.actions.reread, {
+  bookmarks: bind('Moving', strings.actions.bookmarks, { 'Ctrl+D': true }),
+  moveAcross: bind(
+    'Moving',
+    strings.actions.moveAcross,
+    { ArrowLeft: 'left', ArrowRight: 'right' } as const,
+    { repeats: true },
+  ),
+  side: bind('Moving', strings.actions.side, {
+    Tab: true,
+    'Shift+Tab': true,
+  }),
+  drive: bind('Moving', strings.actions.drive, {
+    'Alt+F1': 'left',
+    'Alt+F2': 'right',
+  }),
+  openOnSide: bind('Moving', strings.actions.openOnSide, {
+    'Mod+ArrowLeft': 'left',
+    'Mod+ArrowRight': 'right',
+  }),
+  layout: bind('Listing', strings.actions.layout, {
+    'Mod+1': 'details',
+    'Mod+2': 'thumbnails',
+  } as const),
+  sort: bind('Listing', strings.actions.sort, { Click: true }),
+  groupByColor: bind('Listing', strings.actions.groupByColor, {
+    'Ctrl+G': true,
+  }),
+  showHidden: bind('Listing', strings.actions.showHidden, {
+    'Ctrl+H': true,
+  }),
+  flatView: bind('Listing', strings.actions.flatView, { 'Ctrl+B': true }),
+  countSizes: bind('Listing', strings.actions.countSizes, {
+    'Alt+Shift+Enter': true,
+  }),
+  stopReading: bind('Listing', strings.actions.stopReading, { Escape: true }),
+  reread: bind('Listing', strings.actions.reread, {
     F2: true,
     'Ctrl+R': true,
   }),
   filter: bind(
-    'Folders',
+    'Filtering',
     strings.actions.filterFolder,
     { 'Mod+F': true },
     { fields: true },
   ),
   filterLetter: bind(
-    'Folders',
+    'Filtering',
     strings.actions.filterLetter,
     { 'Alt+Letter': true },
     { fields: true },
   ),
   stopFiltering: bind(
-    'Folders',
+    'Filtering',
     strings.actions.stopFiltering,
     { Escape: true },
     { fields: true },
@@ -71,39 +110,9 @@ export const commanderKeymap = {
     } as const,
     { repeats: true, fields: true },
   ),
-  showHidden: bind('Folders', strings.actions.showHidden, {
-    'Ctrl+H': true,
-  }),
-  flatView: bind('Folders', strings.actions.flatView, { 'Ctrl+B': true }),
-  countSizes: bind('Folders', strings.actions.countSizes, {
-    'Alt+Shift+Enter': true,
-  }),
-  stopReading: bind('Folders', strings.actions.stopReading, { Escape: true }),
-  layout: bind('Folders', strings.actions.layout, {
-    'Mod+1': 'details',
-    'Mod+2': 'thumbnails',
-  } as const),
-  groupByColor: bind('Folders', strings.actions.groupByColor, {
-    'Ctrl+G': true,
-  }),
-  moveAcross: bind(
-    'Folders',
-    strings.actions.moveAcross,
-    { ArrowLeft: 'left', ArrowRight: 'right' } as const,
-    { repeats: true },
-  ),
-  sort: bind('Folders', strings.actions.sort, { Click: true }),
-  side: bind('Sides', strings.actions.side, {
-    Tab: true,
-    'Shift+Tab': true,
-  }),
-  drive: bind('Sides', strings.actions.drive, {
-    'Alt+F1': 'left',
-    'Alt+F2': 'right',
-  }),
-  openOnSide: bind('Sides', strings.actions.openOnSide, {
-    'Mod+ArrowLeft': 'left',
-    'Mod+ArrowRight': 'right',
+  toggleMark: bind('Marking', strings.actions.toggleMark, {
+    Space: true,
+    Insert: false,
   }),
   markMoving: bind(
     'Marking',
@@ -120,54 +129,53 @@ export const commanderKeymap = {
     } as const,
     { repeats: true },
   ),
-  toggleMark: bind('Marking', strings.actions.toggleMark, {
-    Space: true,
-    Insert: false,
-  }),
   markAll: bind('Marking', strings.actions.markAll, { 'Mod+A': true }),
   markClick: bind('Marking', strings.actions.markClick, {
     'Mod+Click': 'toggle',
     'Shift+Click': 'range',
   } as const),
-  view: bind('Viewing', strings.actions.viewFile, { F3: true }),
-  newFolder: bind('Folders', strings.actions.newFolder, { F7: true }),
-  renameItem: bind('Marking', strings.actions.renameItem, {
-    'Shift+F6': true,
-  }),
-  packItems: bind('Marking', strings.actions.packItems, { 'Alt+F5': true }),
-  testArchives: bind('Marking', strings.actions.testArchives, {
-    'Alt+Shift+F9': true,
-  }),
-  copyToClipboard: bind('Marking', strings.actions.copyToClipboard, {
-    'Mod+C': true,
-  }),
-  paste: bind('Folders', strings.actions.pasteFiles, { 'Mod+V': true }),
-  transferItems: bind('Marking', strings.actions.transferItems, {
+  transferItems: bind('Operations', strings.actions.transferItems, {
     F5: false,
     F6: true,
   }),
-  deleteItems: bind('Marking', strings.actions.deleteItems, {
+  renameItem: bind('Operations', strings.actions.renameItem, {
+    'Shift+F6': true,
+  }),
+  newFolder: bind('Operations', strings.actions.newFolder, { F7: true }),
+  deleteItems: bind('Operations', strings.actions.deleteItems, {
     Delete: false,
     F8: false,
     'Shift+Delete': true,
     'Shift+F8': true,
   }),
-  contextMenu: bind('Marking', strings.actions.contextMenu, {
+  copyToClipboard: bind('Operations', strings.actions.copyToClipboard, {
+    'Mod+C': true,
+  }),
+  paste: bind('Operations', strings.actions.pasteFiles, { 'Mod+V': true }),
+  contextMenu: bind('Operations', strings.actions.contextMenu, {
     RightClick: true,
     'Shift+F10': true,
     ContextMenu: true,
   }),
-  systemMenu: bind('Marking', strings.actions.systemMenu, {
+  systemMenu: bind('Operations', strings.actions.systemMenu, {
     'Shift+RightClick': true,
   }),
+  view: bind('Viewing', strings.actions.viewFile, { F3: true }),
   compare: bind('Viewing', strings.actions.compareFiles, {
     'Shift+F3': true,
+  }),
+  openWithSevenZip: bind('Archives', strings.actions.openWithSevenZip, {
+    'Shift+Enter': true,
+  }),
+  packItems: bind('Archives', strings.actions.packItems, { 'Alt+F5': true }),
+  testArchives: bind('Archives', strings.actions.testArchives, {
+    'Alt+Shift+F9': true,
   }),
 };
 
 export const viewerKeymap = {
   scroll: bind(
-    'Viewer',
+    'Scrolling',
     strings.actions.scrollFile,
     {
       ArrowUp: 'up',
@@ -180,42 +188,42 @@ export const viewerKeymap = {
     { repeats: true },
   ),
   scrollSideways: bind(
-    'Viewer',
+    'Scrolling',
     strings.actions.scrollSideways,
     { ArrowLeft: -1, ArrowRight: 1 } as const,
     { repeats: true },
   ),
-  wheelSideways: bind('Viewer', strings.actions.wheelSideways, {
+  wheelSideways: bind('Scrolling', strings.actions.wheelSideways, {
     'Shift+Wheel': true,
   }),
-  viewAs: bind<ViewMode>('Viewer', strings.actions.viewAs, {
+  viewAs: bind<ViewMode>('Showing', strings.actions.viewAs, {
     '1': 'hex',
     '2': 'text',
     '3': 'preview',
   }),
-  encoding: bind('Viewer', strings.actions.chooseEncoding, { E: true }),
-  language: bind('Viewer', strings.actions.chooseLanguage, { L: true }),
-  wrap: bind('Viewer', strings.actions.wrap, { W: true }),
-  showWhitespace: bind('Viewer', strings.actions.showWhitespace, { '.': true }),
+  encoding: bind('Text', strings.actions.chooseEncoding, { E: true }),
+  language: bind('Text', strings.actions.chooseLanguage, { L: true }),
+  wrap: bind('Text', strings.actions.wrap, { W: true }),
+  showWhitespace: bind('Text', strings.actions.showWhitespace, { '.': true }),
   find: bind(
-    'Viewer',
+    'Searching',
     strings.actions.findInFile,
     { 'Mod+F': true },
     { fields: true },
   ),
   match: bind(
-    'Viewer',
+    'Searching',
     strings.actions.match,
     { Enter: 1, 'Shift+Enter': -1 } as const,
     { repeats: true, fields: true },
   ),
   stopFinding: bind(
-    'Viewer',
+    'Searching',
     strings.actions.stopFinding,
     { Escape: true },
     { fields: true },
   ),
-  zoomPdf: bind('Viewer', strings.actions.zoomPdf, { 'Mod+Wheel': true }),
-  realSize: bind('Viewer', strings.actions.realSize, { F: true }),
-  closeViewer: bind('Viewer', strings.actions.closeViewer, { Escape: true }),
+  zoomPdf: bind('Showing', strings.actions.zoomPdf, { 'Mod+Wheel': true }),
+  realSize: bind('Showing', strings.actions.realSize, { F: true }),
+  closeViewer: bind('Showing', strings.actions.closeViewer, { Escape: true }),
 };

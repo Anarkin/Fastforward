@@ -6,6 +6,7 @@ import {
   clicked,
   hovered,
   keyLabels,
+  keyParts,
   bind,
   keymap,
   letterTyped,
@@ -18,6 +19,7 @@ import {
   setKeyPlatform,
   shortcutOf,
   wheeled,
+  type Binding,
   type KeyPress,
 } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
@@ -40,6 +42,14 @@ const altPress = (key: string, code?: string) =>
 function shifted(key: string) {
   return keyPress(key, { shiftKey: true });
 }
+
+const parts = (keys: string) =>
+  keyParts(keys, false).map(({ label, pointer }) =>
+    pointer ? `${label} by mouse` : label,
+  );
+
+const inField = (binding: Binding<1 | -1>, key: string, held = {}) =>
+  pressed(binding, keyPress(key, held), true);
 
 suite('Keymap', () => {
   test('opens the main menu with Alt+F, or Option+F though it types ƒ, but not with F alone, nor in a text field', () => {
@@ -597,6 +607,41 @@ suite('Keymap', () => {
     );
     assert.deepStrictEqual(keyLabels('MiddleClick', false), ['Middle-click']);
     assert.deepStrictEqual(keyLabels('Drag', false), ['Drag']);
+  });
+
+  test('tells the part done with the mouse from the keys held with it, so the shortcuts screen marks it, naming the mouse buttons without the word mouse, which the mark says', () => {
+    assert.deepStrictEqual(parts('Alt+Click'), ['Alt', 'Click by mouse']);
+    assert.deepStrictEqual(parts('Shift+Wheel'), ['Shift', 'Wheel by mouse']);
+    assert.deepStrictEqual(parts('Alt+Hover'), ['Alt', 'Hover by mouse']);
+    assert.deepStrictEqual(parts('BackButton'), ['Back by mouse']);
+    assert.deepStrictEqual(parts('ForwardButton'), ['Forward by mouse']);
+    assert.deepStrictEqual(parts('Drag'), ['Drag by mouse']);
+    assert.deepStrictEqual(parts('Mod+Shift+T'), ['Ctrl', 'Shift', 'T']);
+    assert.deepStrictEqual(parts('Alt'), ['Alt']);
+    assert.deepStrictEqual(
+      keyParts('Alt+Click', true).map(({ label }) => label),
+      ['⌥', 'Click'],
+    );
+  });
+
+  test('moves through the shortcuts screen from its filter: Ctrl+Tab and Ctrl+Shift+Tab to the next and previous tool, ↑ and ↓ through the groups, and PgUp and PgDn a page, held down too', () => {
+    assert.strictEqual(
+      inField(keymap.shortcutsTool, 'Tab', { ctrlKey: true }),
+      1,
+    );
+    assert.strictEqual(
+      inField(keymap.shortcutsTool, 'Tab', { ctrlKey: true, shiftKey: true }),
+      -1,
+    );
+    assert.strictEqual(inField(keymap.shortcutsTool, 'Tab'), undefined);
+    assert.strictEqual(inField(keymap.shortcutsGroup, 'ArrowDown'), 1);
+    assert.strictEqual(inField(keymap.shortcutsGroup, 'ArrowUp'), -1);
+    assert.strictEqual(inField(keymap.shortcutsPage, 'PageDown'), 1);
+    assert.strictEqual(inField(keymap.shortcutsPage, 'PageUp'), -1);
+    assert.strictEqual(
+      inField(keymap.shortcutsGroup, 'ArrowDown', { repeat: true }),
+      1,
+    );
   });
 
   test('names every key a binding uses from the dictionary, but letters, symbols and F keys, which name themselves, so a translation reaches the shortcuts screen whole', () => {

@@ -160,6 +160,24 @@ export function ToolIcon({ tool }: { tool: ToolId }) {
   return <Icon className={`tool-icon tool-${tool}`}>{toolSigns[tool]}</Icon>;
 }
 
+export function TabsIcon() {
+  return (
+    <Icon>
+      <rect x="1.75" y="3" width="12.5" height="10.5" rx="1.5" />
+      <path d="M1.75 6.25h12.5M6 3v3.25" />
+    </Icon>
+  );
+}
+
+export function MouseIcon() {
+  return (
+    <Icon className="mouse-icon">
+      <rect x="4" y="1.75" width="8" height="12.5" rx="4" />
+      <path d="M8 1.75v4" />
+    </Icon>
+  );
+}
+
 export function AddIcon() {
   return (
     <Icon>

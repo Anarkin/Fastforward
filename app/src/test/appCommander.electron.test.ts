@@ -2623,13 +2623,13 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         (await page.locator('.shortcuts-heading').allTextContents()).includes(
-          'Viewer',
+          'Text',
         ),
       'the shortcuts of the viewer',
     );
     assert.ok(
       !(await page.locator('.shortcuts-heading').allTextContents()).includes(
-        'Folders',
+        'Listing',
       ),
     );
     await page.keyboard.press('F1');
@@ -4148,8 +4148,8 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         (await page.locator('.shortcuts-heading').allTextContents()).join() ===
-        'Tabs,App,Diff',
-      'only the shortcuts of the diff',
+        'Moving around,Commits,Commit messages,Files,Diff,Searching',
+      'the shortcuts of git, the diff among them',
     );
     await page.keyboard.press('F1');
     await page
@@ -4192,53 +4192,85 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
-  test('lines up the shortcuts of the viewer, its only group, that go on in the second column with those of the first, under its heading', async () => {
+  test('lists the shortcuts of the commander beside the tools, scrolling them only down in a small window, marking the group scrolled to, clicked or stepped to, each shortcut one key cap a line high', async () => {
     const size = await app.evaluate(({ BrowserWindow }) => {
       const [window] = BrowserWindow.getAllWindows();
       const before = window?.getSize();
-      window?.setSize(1290, 779);
+      window?.setSize(900, 600);
       return before;
     });
-    await select('notes');
-    await page.keyboard.press('F3');
-    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
     await page.keyboard.press('F1');
-    await page.locator('.shortcuts-heading', { hasText: 'Viewer' }).waitFor();
-    const tops = await page
-      .locator('.shortcuts-group', {
-        has: page.locator('.shortcuts-heading', { hasText: 'Viewer' }),
-      })
-      .locator('.shortcut-keys')
-      .evaluateAll((cells) => {
-        const firstOfColumn = new Map<number, number>();
-        for (const cell of cells) {
-          const { left, top } = cell.getBoundingClientRect();
-          const column = Math.round(left);
-          firstOfColumn.set(
-            column,
-            Math.min(firstOfColumn.get(column) ?? Infinity, top),
-          );
-        }
-        return [...firstOfColumn.values()];
-      });
-    await page.keyboard.press('F1');
+    const pane = page.locator('.shortcuts-pane');
+    await pane.locator('.shortcuts-heading', { hasText: 'Archives' }).waitFor();
+    const inView = async () =>
+      (await page.locator('.shortcuts-group-link.in-view').textContent()) ?? '';
+    const laidOut = await page.evaluate(() => {
+      const scrollers = [
+        ...document.querySelectorAll<HTMLElement>(
+          '.shortcuts-pane, .shortcuts-tree',
+        ),
+      ];
+      const heights = [
+        ...document.querySelectorAll<HTMLElement>(
+          '.shortcuts-pane .shortcut-combo',
+        ),
+      ].map((cap) => cap.getBoundingClientRect().height);
+      const box = document.querySelector<HTMLElement>('.shortcuts-pane');
+      return {
+        sideways: scrollers.filter(
+          (scroller) => scroller.scrollWidth > scroller.clientWidth,
+        ).length,
+        down: box !== null && box.scrollHeight > box.clientHeight,
+        heights: [Math.min(...heights), Math.max(...heights)],
+        mice: document.querySelectorAll('.shortcuts-pane .mouse-icon').length,
+      };
+    });
+    await pane.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await waitFor(
+      async () => (await inView()) === 'Archives',
+      'the last group to be in view at the end',
+    );
     await page
-      .locator('.shortcuts-heading')
-      .first()
-      .waitFor({ state: 'detached' });
+      .locator('.shortcuts-group-link', { hasText: 'Filtering' })
+      .click();
+    await waitFor(
+      async () => (await inView()) === 'Filtering',
+      'the group clicked to be in view',
+    );
+    const atFiltering = await pane.evaluate((element) => {
+      const section = [
+        ...element.querySelectorAll<HTMLElement>('[data-group]'),
+      ].find((each) => each.dataset.group === 'commander/Filtering');
+      return Math.abs(element.scrollTop - (section?.offsetTop ?? -1)) < 1;
+    });
+    await page.keyboard.press('ArrowUp');
+    await waitFor(
+      async () => (await inView()) === 'Listing',
+      'the group before to be in view',
+    );
+    const focused = await page.evaluate(() =>
+      document.activeElement?.matches('.shortcuts-filter input'),
+    );
+    await page.keyboard.press('F1');
+    await pane.waitFor({ state: 'detached' });
     await app.evaluate(
       ({ BrowserWindow }, [width, height]) => {
         BrowserWindow.getAllWindows()[0]?.setSize(width, height);
       },
       size ?? [1280, 800],
     );
-    await page.keyboard.press('Escape');
-    await page.locator('.viewer').waitFor({ state: 'detached' });
-    assert.strictEqual(tops.length, 2);
+    assert.strictEqual(laidOut.sideways, 0, 'Something scrolls sideways');
+    assert.ok(laidOut.down, 'The shortcuts fit without scrolling down');
+    const [lowest = 0, highest = 0] = laidOut.heights;
     assert.ok(
-      Math.abs((tops[0] ?? 0) - (tops[1] ?? 0)) < 2,
-      `The columns start at ${tops.join(' and ')}`,
+      highest - lowest < 2,
+      `The key caps are ${lowest} to ${highest} high`,
     );
+    assert.ok(laidOut.mice > 0);
+    assert.ok(atFiltering, 'The group clicked is not at the top of the pane');
+    assert.ok(focused, 'The filter lost the keyboard');
   });
 
   test('reads a file in the encoding its byte order mark names, and in the one chosen from the menu E opens, found by what is typed, staying where it was', async () => {

@@ -1,8 +1,6 @@
 import { strings } from '../../shared/strings';
 
-export const tabGroups = ['Tabs'] as const;
-
-export const appGroups = ['App'] as const;
+export const everywhereGroups = ['Tabs', 'App', 'Lists'] as const;
 
 export interface Binding<Value> {
   readonly group: string | undefined;
@@ -16,7 +14,6 @@ export interface Binding<Value> {
 export interface ShortcutGroup {
   readonly title: string;
   readonly bindings: readonly Binding<unknown>[];
-  readonly pinned?: boolean;
 }
 
 export function shortcutGroupsOf<const Group extends string>(
@@ -80,25 +77,25 @@ export const keymap = {
   ),
   devTools: bind(undefined, strings.actions.devTools, { 'Mod+Shift+I': true }),
   move: bind(
-    undefined,
+    'Lists',
     strings.actions.move,
     { ArrowUp: 'up', ArrowDown: 'down' },
     { repeats: true },
   ),
   page: bind(
-    undefined,
+    'Lists',
     strings.actions.page,
     { PageUp: 'pageUp', PageDown: 'pageDown', Home: 'first', End: 'last' },
     { repeats: true },
   ),
   close: bind(
-    undefined,
+    'Lists',
     strings.actions.close,
     { Escape: true },
     { fields: true },
   ),
   dialogFocus: bind(
-    undefined,
+    'Lists',
     strings.actions.dialogFocus,
     { Tab: 1, 'Shift+Tab': -1 },
     { repeats: true, fields: true },
@@ -140,6 +137,24 @@ export const keymap = {
   ),
   go: bind(undefined, strings.actions.go, { Enter: true }, { fields: true }),
   drag: bind(undefined, strings.actions.drag, { Click: true }),
+  shortcutsTool: bind(
+    undefined,
+    strings.actions.shortcutsTool,
+    { 'Ctrl+Tab': 1, 'Ctrl+Shift+Tab': -1 } as const,
+    { repeats: true, fields: true },
+  ),
+  shortcutsGroup: bind(
+    undefined,
+    strings.actions.shortcutsGroup,
+    { ArrowDown: 1, ArrowUp: -1 } as const,
+    { repeats: true, fields: true },
+  ),
+  shortcutsPage: bind(
+    undefined,
+    strings.actions.shortcutsPage,
+    { PageDown: 1, PageUp: -1 } as const,
+    { repeats: true, fields: true },
+  ),
 };
 
 export interface Modifiers {
@@ -400,4 +415,19 @@ export function keyLabels(keys: string, mac = macKeys): string[] {
     ...(combo.shift ? [strings.keys.Shift] : []),
     names[mac && combo.key === 'Alt' ? 'Option' : combo.key] ?? combo.key,
   ];
+}
+
+export interface KeyPart {
+  readonly label: string;
+  readonly pointer: boolean;
+}
+
+export function keyParts(keys: string, mac = macKeys): KeyPart[] {
+  const { key } = comboOf(keys);
+  const pointer = key in buttons || pointerKeys.has(key);
+  const labels = keyLabels(keys, mac);
+  return labels.map((label, place) => ({
+    label,
+    pointer: pointer && place === labels.length - 1,
+  }));
 }

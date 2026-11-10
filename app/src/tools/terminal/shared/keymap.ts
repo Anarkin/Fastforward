@@ -1,23 +1,23 @@
 import { bind } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
 
-export const terminalGroups = ['Terminal'] as const;
+export const terminalGroups = ['Clipboard', 'Kept'] as const;
 
 export const terminalKeymap = {
   copy: bind(
-    'Terminal',
+    'Clipboard',
     strings.actions.copySelection,
     { 'Mod+C': 'selected', 'Mod+Shift+C': 'always' },
     { repeats: true },
   ),
   paste: bind(
-    'Terminal',
+    'Clipboard',
     strings.actions.paste,
     { 'Mod+V': true, 'Mod+Shift+V': true },
     { repeats: true },
   ),
   leftToApp: bind(
-    undefined,
+    'Kept',
     strings.actions.leftToApp,
     {
       'Ctrl+Tab': true,

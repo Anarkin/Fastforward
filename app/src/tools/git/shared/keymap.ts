@@ -2,26 +2,25 @@ import { bind } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
 
 export const gitGroups = [
-  'Worktrees',
   'Moving',
   'Commits',
   'Messages',
-  'Columns',
   'Files',
   'Diff',
+  'Searching',
 ] as const;
 
 export const gitKeymap = {
   worktree: bind(
-    'Worktrees',
+    'Moving',
     strings.actions.worktree,
     { 'Ctrl+PageDown': 1, 'Ctrl+PageUp': -1 },
     { repeats: true },
   ),
-  head: bind('Moving', strings.actions.head, { H: true }),
-  upstream: bind('Moving', strings.actions.upstream, { U: true }),
-  parent: bind('Moving', strings.actions.parent, { 'Mod+ArrowDown': true }),
-  navigate: bind('Moving', strings.actions.navigate, {
+  head: bind('Commits', strings.actions.head, { H: true }),
+  upstream: bind('Commits', strings.actions.upstream, { U: true }),
+  parent: bind('Commits', strings.actions.parent, { 'Mod+ArrowDown': true }),
+  navigate: bind('Commits', strings.actions.navigate, {
     BackButton: 'back',
     ForwardButton: 'forward',
     'Alt+ArrowLeft': 'back',
@@ -44,7 +43,7 @@ export const gitKeymap = {
     { repeats: true },
   ),
   column: bind(
-    'Columns',
+    'Moving',
     strings.actions.column,
     {
       Tab: 'next',
@@ -54,10 +53,16 @@ export const gitKeymap = {
     },
     { repeats: true },
   ),
-  commits: bind('Columns', strings.actions.commits, { C: true }),
-  find: bind('Columns', strings.actions.find, { 'Mod+F': true }),
+  commits: bind('Moving', strings.actions.commits, { C: true }),
+  find: bind('Searching', strings.actions.find, { 'Mod+F': true }),
+  match: bind(
+    'Searching',
+    strings.actions.match,
+    { Enter: 1, 'Shift+Enter': -1 },
+    { repeats: true, fields: true },
+  ),
   stopFinding: bind(
-    'Columns',
+    'Searching',
     strings.actions.stopFinding,
     { Escape: true },
     { fields: true },
@@ -88,15 +93,7 @@ export const gitKeymap = {
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
   language: bind('Diff', strings.actions.chooseLanguage, { L: true }),
-  match: bind(
-    'Diff',
-    strings.actions.match,
-    { Enter: 1, 'Shift+Enter': -1 },
-    { repeats: true, fields: true },
-  ),
 };
-
-export const compareGroups = ['Diff'] as const;
 
 export const compareKeymap = {
   change: gitKeymap.change,
@@ -106,7 +103,7 @@ export const compareKeymap = {
   showWhitespace: gitKeymap.showWhitespace,
   language: gitKeymap.language,
   match: gitKeymap.match,
-  find: { ...gitKeymap.find, group: 'Diff' },
-  stopFinding: { ...gitKeymap.stopFinding, group: 'Diff' },
+  find: gitKeymap.find,
+  stopFinding: gitKeymap.stopFinding,
   closeCompare: bind('Diff', strings.actions.closeCompare, { Escape: true }),
 };

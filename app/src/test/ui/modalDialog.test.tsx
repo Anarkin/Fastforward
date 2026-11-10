@@ -215,11 +215,11 @@ suite('Modal dialogs', () => {
     });
   });
 
-  test('take the keyboard as they open, on their default button or else on themselves, telling assistive technology the app behind waits, and give it back as they close', async () => {
+  test('take the keyboard as they open, on their default button or their field, telling assistive technology the app behind waits, and give it back as they close', async () => {
     await inPage(async ({ document, before, show }) => {
       for (const [popup, focused] of [
         [<AboutPopup key="about" />, '.about-copy'],
-        [<ShortcutsPopup key="shortcuts" />, '[role="dialog"]'],
+        [<ShortcutsPopup key="shortcuts" />, '.shortcuts-filter input'],
       ] as const) {
         await show(popup);
         const dialog = document.querySelector('[role="dialog"]');

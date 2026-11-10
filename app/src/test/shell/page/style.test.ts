@@ -36,7 +36,12 @@ import {
   markerWidth,
   numberWidth,
 } from '../../../tools/git/page/overflow';
-import { ShortcutsPopup } from '../../../shell/page/shortcutsPopup';
+import {
+  ShortcutsList,
+  ShortcutsPopup,
+  shownEntries,
+} from '../../../shell/page/shortcutsPopup';
+import { shortcutEntries } from '../../../shell/page/tools';
 import { SkeletonRows } from '../../../ui/skeleton';
 import { VirtualRows } from '../../../ui/virtualRows';
 import { tabSize } from '../../../ui/wordWrap';
@@ -3413,10 +3418,10 @@ suite('Style', () => {
     }
   });
 
-  test("heads the shortcuts and the About with a band in the window's grey, holding their title in line with what follows and their close button as far in from the side as from the top, rounded with the popup's top corners and set apart from what follows, which both pad alike, the line under the pinned shortcuts reaching across the popup", () => {
-    const groups = withClass(shortcutsPopup(), 'shortcuts-groups');
-    looks(groups, { padding: '0 16px 16px' });
-    const inside = paddingOf(groups);
+  test("heads the shortcuts and the About with a band in the window's grey, holding their title in line with the filter below it and their close button as far in from the side as from the top, rounded with the popup's top corners, the About's body padded at the sides as the filter is", () => {
+    const filter = withClass(shortcutsPopup(), 'shortcuts-filter');
+    looks(filter, { padding: '8px 16px' });
+    const inside = paddingOf(filter);
     for (const popup of [shortcutsPopup(), aboutPopup()]) {
       const header = withClass(popup, 'shortcuts-title');
       looks(header, {
@@ -3431,24 +3436,153 @@ suite('Style', () => {
       );
       assert.ok(withClass(header, 'nav-button'));
     }
-    const pinned = withClass(shortcutsPopup(), 'shortcuts-pinned');
-    const reach = sidesOf(pinned, 'margin');
-    const room = paddingOf(pinned);
+    const aboutBody = paddingOf(withClass(aboutPopup(), 'about-body'));
     assert.deepStrictEqual(
-      [reach.left, reach.right, room.left, room.right],
-      [`-${inside.left}`, `-${inside.right}`, inside.left, inside.right],
+      [aboutBody.left, aboutBody.right],
+      [inside.left, inside.right],
     );
-    looks(pinned, {
-      'border-bottom': cascaded(
-        withClass(shortcutsPopup(), 'shortcuts-note'),
-        'border-top',
+  });
+
+  test('lays the tools out in a column beside the shortcuts, each scrolling on its own, in a popup of a set height, so it keeps its size from tool to tool, and the filter, set apart above them, in the field the files column uses', () => {
+    const popup = shortcutsPopup();
+    assert.match(
+      cascaded(withClass(popup, 'shortcuts-window'), 'height') ?? '',
+      /^\d+px$/,
+    );
+    looks(withClass(popup, 'shortcuts-filter'), {
+      flex: 'none',
+      display: 'flex',
+      '--search-height': 'var(--button-size)',
+      'border-bottom': '1px solid var(--color-border)',
+    });
+    looks(withClass(popup, 'search-field'), { flex: '1' });
+    looks(withClass(popup, 'shortcuts-main'), {
+      flex: '1',
+      'min-height': '0',
+      display: 'grid',
+    });
+    assert.match(
+      cascaded(withClass(popup, 'shortcuts-main'), 'grid-template-columns') ??
+        '',
+      /^\d+px minmax\(0, 1fr\)$/,
+    );
+    looks(withClass(popup, 'shortcuts-tree'), {
+      'overflow-y': 'auto',
+      'border-right': '1px solid var(--color-border)',
+    });
+    looks(withClass(popup, 'shortcuts-pane'), {
+      position: 'relative',
+      'overflow-y': 'auto',
+      columns: undefined,
+    });
+  });
+
+  test("keeps the heading of the group scrolled under it at the top of the pane, over the shortcuts passing beneath it, a pixel short of the popup's edge, whose line the popup's inset shadow draws under it", () => {
+    looks(withClass(shortcutsPopup(), 'shortcuts-main'), {
+      'margin-right': '1px',
+    });
+    const heading = withClass(shortcutsPopup(), 'shortcuts-heading');
+    looks(heading, {
+      position: 'sticky',
+      top: '0',
+      background: 'var(--color-panel-background)',
+      'font-weight': '700',
+    });
+    const reach = sidesOf(heading, 'margin');
+    const room = paddingOf(withClass(shortcutsPopup(), 'shortcuts-pane'));
+    assert.deepStrictEqual(
+      [reach.left, reach.right],
+      [`-${room.left}`, `-${room.right}`],
+    );
+  });
+
+  test('fills the tool open as the selected row of a list, the others tinted under the pointer, and marks the group in view by a line in the color of focus beside its name, the others muted, dimming what has no match', () => {
+    const popup = shortcutsPopup();
+    looks(withClass(popup, 'shortcuts-tool', 'open'), {
+      background: 'var(--selection-background)',
+    });
+    const closed = allWithClass(popup, 'shortcuts-tool').find(
+      (tool) => !tool.classes.includes('open'),
+    );
+    assert.ok(closed);
+    looks(closed, { background: 'none' });
+    looks(closed, { background: 'var(--hover-background)' }, hovered);
+    looks(withClass(popup, 'shortcuts-group-link', 'in-view'), {
+      color: 'var(--color-foreground)',
+      'border-left-color': 'var(--color-focus)',
+    });
+    const other = allWithClass(popup, 'shortcuts-group-link').find(
+      (link) => !link.classes.includes('in-view'),
+    );
+    assert.ok(other);
+    looks(other, {
+      color: 'var(--muted-foreground)',
+      'border-left': '2px solid transparent',
+    });
+    for (const className of ['shortcuts-tool empty', 'shortcuts-group-link']) {
+      const dimmed = withClass(
+        rendered(
+          createElement(
+            'div',
+            { className: 'shortcuts-popup' },
+            createElement('button', { className, disabled: true }),
+          ),
+        ),
+        className.split(' ')[0] ?? '',
+      );
+      looks(dimmed, { opacity: 'var(--muted-opacity)' });
+    }
+  });
+
+  test('draws a shortcut as one key cap holding its keys, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted', () => {
+    const popup = shortcutsPopup();
+    const combo = withClass(popup, 'shortcut-combo');
+    looks(combo, {
+      display: 'inline-flex',
+      'white-space': 'nowrap',
+      border: '1px solid var(--color-border)',
+      'border-bottom-width': '2px',
+      'border-radius': '4px',
+    });
+    const key = keyOf(combo);
+    assert.ok(key);
+    looks(key, { border: undefined, padding: '0 5px' });
+    looks(withClass(combo, 'shortcut-joiner'), {
+      'align-self': 'stretch',
+      width: '1px',
+      'min-width': '0',
+      overflow: 'hidden',
+      color: 'transparent',
+      background: 'var(--color-border)',
+    });
+    looks(withClass(popup, 'mouse-icon'), {
+      color: 'var(--muted-foreground)',
+      'vertical-align': 'middle',
+    });
+  });
+
+  test('marks what the filter found in a shortcut, words and keys alike, in the colors of a search match', () => {
+    const commander = shownEntries(shortcutEntries, 'rename f6').find(
+      (entry) => entry.id === 'commander',
+    );
+    assert.ok(commander);
+    const list = rendered(
+      createElement(
+        'div',
+        { className: 'shortcuts-popup' },
+        createElement(ShortcutsList, { entry: commander }),
       ),
-    });
-    const heading = paddingOf(withClass(shortcutsPopup(), 'shortcuts-heading'));
-    assert.deepStrictEqual(paddingOf(withClass(aboutPopup(), 'about-body')), {
-      ...inside,
-      top: heading.top,
-    });
+    );
+    for (const found of allWithClass(list, 'match')) {
+      looks(found, {
+        color: 'var(--color-search-match-foreground)',
+        background: 'var(--color-search-match)',
+      });
+    }
+    assert.deepStrictEqual(
+      allWithClass(list, 'match').map((found) => found.tag),
+      ['kbd', 'mark'],
+    );
   });
 
   test("paints the About's copy button as the default button of a dialog, in the color of focus hovered, pressed or once it copied, and tinted inside the outline of focus while focused from the keyboard", () => {
@@ -3946,19 +4080,19 @@ suite('Style', () => {
     });
   });
 
-  test('gives the keys of every shortcut group the same share of the width, wrapping a long list of them, so the actions line up', () => {
-    const lists = allWithClass(shortcutsPopup(), 'shortcuts-list');
-    const share = cascaded(lists[0], 'grid-template-columns');
-    assert.match(share ?? '', /^[\d.]+% 1fr$/);
-    for (const list of lists) {
-      looks(list, { 'grid-template-columns': share });
+  test('lines the actions of every shortcut up after a column of keys of one width, wrapping a long list of keys', () => {
+    const rows = allWithClass(shortcutsPopup(), 'shortcut-row');
+    const share = cascaded(rows[0], 'grid-template-columns');
+    assert.match(share ?? '', /^minmax\(\d+px, [\d.]+%\) minmax\(0, 1fr\)$/);
+    for (const row of rows) {
+      looks(row, { 'grid-template-columns': share });
     }
     for (const keys of allWithClass(shortcutsPopup(), 'shortcut-keys')) {
       looks(keys, { 'flex-wrap': 'wrap' });
     }
   });
 
-  test('sets the note about the keys working everywhere apart under the shortcuts, muted, kept in view as they scroll', () => {
+  test('sets the note about moving through the shortcuts by keys apart under them, muted, kept in view as they scroll', () => {
     looks(withClass(shortcutsPopup(), 'shortcuts-note'), {
       flex: 'none',
       color: 'var(--muted-foreground)',
@@ -4013,16 +4147,27 @@ suite('Style', () => {
       display: 'flex',
       'align-items': 'center',
     });
-    const shortcutKey = keyOf(shortcutsPopup());
-    const cornerKey = keyOf(corner);
-    assert.ok(shortcutKey && cornerKey);
-    for (const property of ['border', 'border-radius', 'padding']) {
+    const shortcutCap = withClass(shortcutsPopup(), 'shortcut-combo');
+    const cornerCap = withClass(corner, 'shortcut-combo');
+    for (const property of [
+      'display',
+      'border',
+      'border-bottom-width',
+      'border-radius',
+    ]) {
       assert.strictEqual(
-        cascaded(cornerKey, property),
-        cascaded(shortcutKey, property),
+        cascaded(cornerCap, property),
+        cascaded(shortcutCap, property),
         property,
       );
     }
+    const shortcutKey = keyOf(shortcutCap);
+    const cornerKey = keyOf(cornerCap);
+    assert.ok(shortcutKey && cornerKey);
+    assert.strictEqual(
+      cascaded(cornerKey, 'padding'),
+      cascaded(shortcutKey, 'padding'),
+    );
     const close = withClass(messagePanel({}, true), 'message-close');
     looks(close, {
       'grid-area': '1 / 1',

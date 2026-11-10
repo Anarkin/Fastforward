@@ -1,10 +1,14 @@
 import {
-  compareGroups,
   compareKeymap,
   gitGroups,
   gitKeymap,
 } from '../../tools/git/shared/keymap';
-import { shortcutGroupsOf, type ShortcutGroup } from '../shared/keymap';
+import {
+  everywhereGroups,
+  keymap,
+  shortcutGroupsOf,
+  type ShortcutGroup,
+} from '../shared/keymap';
 import { strings } from '../../shared/strings';
 import type { ToolId } from '../shared/tools';
 import { CommanderTool } from '../../tools/commander/page/tool';
@@ -22,32 +26,46 @@ import {
 import { GitTool } from '../../tools/git/page/tool';
 import { activeTabOf, useShell, useShellActions } from './store';
 
-export const toolShortcuts: Readonly<Record<ToolId, readonly ShortcutGroup[]>> =
+export type ShortcutEntryId = ToolId | 'viewer' | 'everywhere';
+
+export interface ShortcutEntry {
+  readonly id: ShortcutEntryId;
+  readonly title: string;
+  readonly groups: readonly ShortcutGroup[];
+}
+
+const titles = strings.shortcuts.groups;
+
+export const shortcutEntries: readonly ShortcutEntry[] = [
   {
-    terminal: shortcutGroupsOf(
-      terminalGroups,
-      strings.shortcuts.groups,
-      terminalKeymap,
-    ),
-    commander: shortcutGroupsOf(
-      commanderGroups,
-      strings.shortcuts.groups,
-      commanderKeymap,
-    ),
-    git: shortcutGroupsOf(gitGroups, strings.shortcuts.groups, gitKeymap),
-  };
-
-export const compareShortcuts: readonly ShortcutGroup[] = shortcutGroupsOf(
-  compareGroups,
-  strings.shortcuts.groups,
-  compareKeymap,
-);
-
-export const viewerShortcuts: readonly ShortcutGroup[] = shortcutGroupsOf(
-  viewerGroups,
-  strings.shortcuts.groups,
-  viewerKeymap,
-);
+    id: 'commander',
+    title: strings.tools.commander,
+    groups: shortcutGroupsOf(commanderGroups, titles, commanderKeymap),
+  },
+  {
+    id: 'viewer',
+    title: strings.shortcuts.viewer,
+    groups: shortcutGroupsOf(viewerGroups, titles, viewerKeymap),
+  },
+  {
+    id: 'git',
+    title: strings.tools.git,
+    groups: shortcutGroupsOf(gitGroups, titles, {
+      ...gitKeymap,
+      closeCompare: compareKeymap.closeCompare,
+    }),
+  },
+  {
+    id: 'terminal',
+    title: strings.tools.terminal,
+    groups: shortcutGroupsOf(terminalGroups, titles, terminalKeymap),
+  },
+  {
+    id: 'everywhere',
+    title: strings.shortcuts.everywhere,
+    groups: shortcutGroupsOf(everywhereGroups, titles, keymap),
+  },
+];
 
 export function ToolViews() {
   const active = useShell((state) => activeTabOf(state)?.tool);

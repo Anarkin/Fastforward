@@ -287,7 +287,10 @@ suite('Message peek', () => {
     const pinned = renderToStaticMarkup(<MessageCorner onUnpin={() => 0} />);
     for (const html of [peeked, pinned]) {
       assert.strictEqual(tagsWith(html, 'message-hint').length, 1);
-      assert.match(html, /<kbd>Alt<\/kbd>\+<kbd>Click<\/kbd>/);
+      assert.match(
+        html,
+        /<kbd>Alt<\/kbd><span class="shortcut-joiner">\+<\/span><kbd class="pointer"><svg class="icon mouse-icon"[^>]*>.*?<\/svg>Click<\/kbd>/,
+      );
       assert.strictEqual(tagsWith(html, 'message-close').length, 1);
     }
     assert.deepStrictEqual(
@@ -306,7 +309,10 @@ suite('Message peek', () => {
       renderToStaticMarkup(<MessageCorner byKeys />),
       renderToStaticMarkup(<MessageCorner byKeys onUnpin={() => 0} />),
     ]) {
-      assert.match(html, /<kbd>Alt<\/kbd>\+<kbd>Enter<\/kbd>/);
+      assert.match(
+        html,
+        /<kbd>Alt<\/kbd><span class="shortcut-joiner">\+<\/span><kbd>Enter<\/kbd>/,
+      );
       assert.doesNotMatch(html, /Click/);
     }
   });
