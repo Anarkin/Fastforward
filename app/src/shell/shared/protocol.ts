@@ -19,6 +19,21 @@ export interface WindowInfo {
   readonly name: string;
 }
 
+export interface TabVisit {
+  readonly tab: TabInfo;
+  readonly x: number;
+  readonly grabX: number;
+}
+
+export interface StripPlace {
+  readonly left: number;
+  readonly right: number;
+  readonly top: number;
+  readonly bottom: number;
+  readonly firstTabLeft: number;
+  readonly tabTop: number;
+}
+
 export interface ToolChoice {
   readonly tool: ToolId;
   readonly fits: boolean;
@@ -86,6 +101,23 @@ export type ToHost =
   | { readonly type: 'closeTab'; readonly tab: string }
   | { readonly type: 'moveTab'; readonly tab: string; readonly index: number }
   | {
+      readonly type: 'tearTab';
+      readonly tab: string;
+      readonly grabX: number;
+      readonly grabY: number;
+      readonly screenX: number;
+      readonly screenY: number;
+    }
+  | {
+      readonly type: 'dragTabTo';
+      readonly screenX: number;
+      readonly screenY: number;
+    }
+  | { readonly type: 'dropTab' }
+  | { readonly type: 'cancelTabDrag' }
+  | ({ readonly type: 'tabStrip' } & StripPlace)
+  | { readonly type: 'visitIndex'; readonly index: number }
+  | {
       readonly type: 'moveTabToWindow';
       readonly tab: string;
       readonly window?: string;
@@ -119,6 +151,8 @@ export type ToWebview =
       readonly active: string | undefined;
     }
   | { readonly type: 'windows'; readonly windows: readonly WindowInfo[] }
+  | { readonly type: 'tabVisit'; readonly visit?: TabVisit }
+  | { readonly type: 'tearsOff'; readonly allowed: boolean }
   | { readonly type: 'dateFormat'; readonly format: string }
   | {
       readonly type: 'scrolling';

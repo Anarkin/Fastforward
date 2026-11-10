@@ -85,7 +85,9 @@ suite('App buttons', () => {
     const display = await page.evaluate(() => devicePixelRatio);
     await app.evaluate(
       ({ BrowserWindow }, zoom) =>
-        BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(zoom),
+        BrowserWindow.getAllWindows()
+          .toSorted((a, b) => a.id - b.id)[0]
+          ?.webContents.setZoomFactor(zoom),
       1.25 / display,
     );
     await waitFor(

@@ -908,6 +908,118 @@ suite('Shell with several windows', () => {
     ]);
   });
 
+  test('passes on the drag of a tab only from the page of the window that holds it, with numbers for where it was grabbed and where the pointer is, saying whether it is the only tab of its window, as the page is not trusted', async () => {
+    const host = new FakeHost();
+    const { first } = await twoWindows(host);
+    const strip = {
+      left: 8,
+      right: 700,
+      top: 0,
+      bottom: 32,
+      firstTabLeft: 8,
+      tabTop: 4,
+    };
+    const grabbed = { grabX: 20, grabY: 10, screenX: 300, screenY: 40 };
+    await first.connection.receive({ type: 'tearTab', tab: '2', ...grabbed });
+    await first.connection.receive({
+      type: 'tearTab',
+      tab: '5',
+      ...grabbed,
+      screenX: Number.NaN,
+    });
+    await first.connection.receive({ type: 'tearTab', tab: '5', ...grabbed });
+    await first.connection.receive({
+      type: 'dragTabTo',
+      screenX: Infinity,
+      screenY: 3,
+    });
+    await first.connection.receive({
+      type: 'dragTabTo',
+      screenX: 310,
+      screenY: 50,
+    });
+    await first.connection.receive({ type: 'visitIndex', index: -1 });
+    await first.connection.receive({ type: 'visitIndex', index: 1.5 });
+    await first.connection.receive({ type: 'visitIndex', index: 2 });
+    await first.connection.receive({
+      type: 'tabStrip',
+      ...strip,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      top: 'top' as unknown as number,
+    });
+    await first.connection.receive({ type: 'tabStrip', ...strip });
+    await first.connection.receive({ type: 'dropTab' });
+    await first.connection.receive({ type: 'cancelTabDrag' });
+    assert.deepStrictEqual(host.dragged, [
+      [
+        '1',
+        {
+          kind: 'start',
+          tab: '5',
+          index: 1,
+          grab: { x: 20, y: 10 },
+          at: { x: 300, y: 40 },
+          alone: false,
+        },
+      ],
+      ['1', { kind: 'move', at: { x: 310, y: 50 } }],
+      ['1', { kind: 'index', index: 2 }],
+      ['1', { kind: 'strip', strip }],
+      ['1', { kind: 'drop' }],
+      ['1', { kind: 'cancel' }],
+    ]);
+  });
+
+  test('tells each page whether a tab can be torn off into a window of its own', async () => {
+    const { first } = await twoWindows();
+    assert.deepStrictEqual(first.page.last('tearsOff'), {
+      type: 'tearsOff',
+      allowed: true,
+    });
+  });
+
+  test('tears a tab off into a window kept ready for it, showing it there and in the window it left the tab shown before it, leaving the window in front as it was while that window loaded', async () => {
+    const { first, second } = await twoWindows();
+    const spare = attach(first.view, 's1');
+    await spare.connection.receive({ type: 'ready' });
+    first.shell.notify({ level: 'info', message: 'to the window in front' });
+    assert.strictEqual(spare.page.last('notice'), undefined);
+    assert.ok(second.page.last('notice'));
+
+    assert.strictEqual(await first.shell.tearOff('5', '2'), false);
+    assert.strictEqual(await first.shell.tearOff('1', 's1'), true);
+    assert.deepStrictEqual(shownIn(spare.page), [['1'], '1']);
+    assert.deepStrictEqual(shownIn(first.page), [['5'], '5']);
+    assert.strictEqual(await first.shell.tearOff('5', 's2'), false);
+  });
+
+  test('moves a dragged tab into the window it is dropped on at the place its strip told, closing the window it was torn into once that holds no tab', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(host);
+    const spare = attach(first.view, 's1');
+    await spare.connection.receive({ type: 'ready' });
+    await first.shell.tearOff('1', 's1');
+    await first.shell.moveTab('1', '2', 1);
+    assert.deepStrictEqual(shownIn(second.page), [['2', '1', '3', '4'], '1']);
+    assert.deepStrictEqual(host.opened, ['close window s1']);
+    assert.deepStrictEqual(first.shell.windows(), ['1', '2']);
+  });
+
+  test('shows the page of a window the tab dragged over it, named as it is, and stops showing it once asked', async () => {
+    const { first, second } = await twoWindows();
+    first.shell.visit('2', { tab: '1', x: 100, grabX: 20 });
+    assert.deepStrictEqual(second.page.last('tabVisit'), {
+      type: 'tabVisit',
+      visit: {
+        tab: { id: '1', tool: 'commander', name: strings.tools.commander },
+        x: 100,
+        grabX: 20,
+      },
+    });
+    first.shell.visit('2', undefined);
+    assert.deepStrictEqual(second.page.last('tabVisit'), { type: 'tabVisit' });
+  });
+
   test("tells every window how text is shown once one of them changes it, as that is the app's setting", async () => {
     const { first, second } = await twoWindows();
     const view = {

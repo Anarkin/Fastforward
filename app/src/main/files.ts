@@ -140,6 +140,13 @@ function isBounds(value: unknown): value is Bounds {
   );
 }
 
+export function tearsOffTabs(
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+): boolean {
+  return platform !== 'linux' || env.XDG_SESSION_TYPE !== 'wayland';
+}
+
 const cascadeStep = 32;
 
 export function cascaded(from: Bounds, area: Bounds): Bounds {

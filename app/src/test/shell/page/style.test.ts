@@ -1278,6 +1278,27 @@ suite('Style', () => {
     }
   });
 
+  test('leaves a lone tab to the app while another window could take it, as dragging it then moves its window into that one rather than letting the system move the window', () => {
+    const [lone] = allWithClass(
+      rendered(
+        createElement(
+          ShellStore,
+          {
+            value: createShellStore(noop, {
+              tabs: [{ id: '/a', tool: 'git', root: '/a', name: 'a' }],
+              active: '/a',
+              tearsOff: true,
+              windows: [{ id: '2', name: 'b' }],
+            }),
+          },
+          createElement(TabBar, {}),
+        ),
+      ),
+      'tab',
+    );
+    looks(lone, { '-webkit-app-region': 'no-drag' });
+  });
+
   test('keeps a repository tab dragged over the others and right under the pointer, while the others slide into their places', () => {
     const row = rendered(
       createElement(

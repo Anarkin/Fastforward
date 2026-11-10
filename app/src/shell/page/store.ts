@@ -15,6 +15,8 @@ import type {
   ToHost,
   ToWebview,
   ToWebviewOf,
+  StripPlace,
+  TabVisit,
   UpdateStatus,
   WindowInfo,
 } from '../shared/protocol';
@@ -63,6 +65,11 @@ function deliver<K extends ToolId>(
   }
 }
 
+export interface ScreenPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
 export type Confirming =
   | { readonly kind: 'tab'; readonly tab: TabInfo }
   | { readonly kind: 'window' }
@@ -104,6 +111,8 @@ interface ShellSource {
   readonly tabs: readonly TabInfo[] | undefined;
   readonly active: string | undefined;
   readonly windows: readonly WindowInfo[];
+  readonly tearsOff: boolean;
+  readonly visit: TabVisit | undefined;
   readonly notices: readonly Notice[];
   readonly update: UpdateStatus;
   readonly about: AboutInfo | undefined;
@@ -135,6 +144,12 @@ interface ShellActions {
   readonly openWith: (tool: ToolId | undefined) => void;
   readonly moveTab: (id: string, index: number) => void;
   readonly moveTabToWindow: (id: string, window?: string) => void;
+  readonly tearTab: (id: string, grab: ScreenPoint, at: ScreenPoint) => void;
+  readonly dragTabTo: (at: ScreenPoint) => void;
+  readonly dropTab: () => void;
+  readonly cancelTabDrag: () => void;
+  readonly reportStrip: (strip: StripPlace) => void;
+  readonly visitIndex: (index: number) => void;
   readonly setToolItems: (
     tool: ToolId,
     items: readonly ContextMenuItem[],
@@ -164,6 +179,8 @@ const shellDefaults: ShellSource = {
   tabs: undefined,
   active: undefined,
   windows: [],
+  tearsOff: false,
+  visit: undefined,
   notices: [],
   update: { kind: 'idle' },
   about: undefined,
@@ -188,6 +205,10 @@ function received(
   switch (message.type) {
     case 'windows':
       return { windows: message.windows };
+    case 'tearsOff':
+      return { tearsOff: message.allowed };
+    case 'tabVisit':
+      return { visit: message.visit };
     case 'tabs':
       return {
         tabs: message.tabs,
@@ -371,6 +392,21 @@ export function createShellStore(
         }));
         post({ type: 'moveTab', tab: id, index });
       },
+      tearTab: (id, grab, at) =>
+        post({
+          type: 'tearTab',
+          tab: id,
+          grabX: grab.x,
+          grabY: grab.y,
+          screenX: at.x,
+          screenY: at.y,
+        }),
+      dragTabTo: (at) =>
+        post({ type: 'dragTabTo', screenX: at.x, screenY: at.y }),
+      dropTab: () => post({ type: 'dropTab' }),
+      cancelTabDrag: () => post({ type: 'cancelTabDrag' }),
+      reportStrip: (strip) => post({ type: 'tabStrip', ...strip }),
+      visitIndex: (index) => post({ type: 'visitIndex', index }),
       moveTabToWindow: (id, window) =>
         post({
           type: 'moveTabToWindow',

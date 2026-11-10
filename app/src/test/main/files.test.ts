@@ -14,6 +14,7 @@ import {
   restoresMaximized,
   showAgain,
   startsAppPage,
+  tearsOffTabs,
   visibleBounds,
 } from '../../main/files';
 
@@ -116,6 +117,21 @@ suite('App files', () => {
     ]) {
       assert.ok(!opensExternally(url), url);
     }
+  });
+});
+
+suite('Tearing tabs off', () => {
+  test('tears tabs off into windows of their own but on Wayland, where a window can neither place itself nor know where the pointer is', () => {
+    assert.strictEqual(tearsOffTabs('win32', {}), true);
+    assert.strictEqual(tearsOffTabs('darwin', {}), true);
+    assert.strictEqual(
+      tearsOffTabs('linux', { XDG_SESSION_TYPE: 'x11' }),
+      true,
+    );
+    assert.strictEqual(
+      tearsOffTabs('linux', { XDG_SESSION_TYPE: 'wayland' }),
+      false,
+    );
   });
 });
 

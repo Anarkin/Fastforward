@@ -882,7 +882,7 @@ body {
   }
 }
 
-.tabs .tab:first-child:last-child {
+.tabs:not(.tearing) .tab:first-child:last-child {
   -webkit-app-region: drag;
 }
 

@@ -102,7 +102,9 @@ suite('App diff filler', () => {
 
   async function zoomTo(ratio: number): Promise<void> {
     await app.evaluate(({ BrowserWindow, screen }, wanted) => {
-      const window = BrowserWindow.getAllWindows()[0];
+      const window = BrowserWindow.getAllWindows().toSorted(
+        (a, b) => a.id - b.id,
+      )[0];
       const display = screen.getDisplayMatching(
         window?.getBounds() ?? { x: 0, y: 0, width: 1, height: 1 },
       );
@@ -195,7 +197,9 @@ suite('App diff filler', () => {
 
   async function captured(areas: Areas): Promise<Capture> {
     const shot = await app.evaluate(async ({ BrowserWindow, screen }) => {
-      const window = BrowserWindow.getAllWindows()[0];
+      const window = BrowserWindow.getAllWindows().toSorted(
+        (a, b) => a.id - b.id,
+      )[0];
       if (window === undefined) {
         throw new Error('The app has no window.');
       }

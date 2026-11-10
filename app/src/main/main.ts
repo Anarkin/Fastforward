@@ -101,6 +101,7 @@ import {
   appOrigin,
   appScheme,
   cascaded,
+  tearsOffTabs,
   firstWindowSize,
   isAppUrl,
   keptBounds,
@@ -114,6 +115,7 @@ import {
   visibleBounds,
 } from './files';
 import { tellMaximized } from './maximized';
+import { TabDrag, type DragHost, type DragWindow, type Strip } from './tabDrag';
 import {
   boundsKey,
   maximizedKey,
@@ -307,11 +309,20 @@ async function start(asked: readonly string[]): Promise<void> {
       }
     }
   };
-  const openWindow = (id: string, saved: SavedPlace): OpenedWindow => {
+  const strips = new Map<string, Strip>();
+  let frontToBack: string[] = [];
+  let drag: TabDrag | undefined;
+  let spare: { readonly id: string; readonly entry: OpenedWindow } | undefined;
+  let spares = 0;
+  const openWindow = (
+    id: string,
+    saved: SavedPlace,
+    kept = false,
+  ): OpenedWindow => {
     const { window, place } = createWindow(
       saved,
       userSettings.settings,
-      gitFound,
+      kept ? Promise.resolve(false) : gitFound,
     );
     const entry: OpenedWindow = {
       window,
@@ -320,12 +331,19 @@ async function start(asked: readonly string[]): Promise<void> {
       connection: Promise.resolve(undefined),
       closing: false,
     };
-    opened.set(id, entry);
+    if (!kept) {
+      opened.set(id, entry);
+      frontToBack = [id, ...frontToBack];
+    }
     window.on('focus', () => {
       focused = id;
+      frontToBack = [id, ...frontToBack.filter((other) => other !== id)];
       asking?.focus(id);
     });
     window.on('close', (event) => {
+      if (opened.get(id) !== entry) {
+        return;
+      }
       if (quitting || opened.size === 1) {
         if (quitGuard.holds(() => app.quit())) {
           event.preventDefault();
@@ -371,9 +389,19 @@ async function start(asked: readonly string[]): Promise<void> {
     });
     window.on('closed', () => {
       disconnect();
-      opened.delete(id);
+      strips.delete(id);
+      frontToBack = frontToBack.filter((other) => other !== id);
+      if (spare?.entry === entry) {
+        spare = undefined;
+      }
+      if (opened.get(id) === entry) {
+        opened.delete(id);
+      }
       if (focused === id) {
         focused = undefined;
+      }
+      if (opened.size === 0) {
+        spare?.entry.window.destroy();
       }
     });
     entry.loading = window.loadURL(`${appOrigin}/index.html`);
@@ -391,9 +419,84 @@ async function start(asked: readonly string[]): Promise<void> {
     }
   };
   const openedBy = (sender: Electron.WebContents): OpenedWindow | undefined =>
-    [...opened.values()].find(
+    [...opened.values(), ...(spare === undefined ? [] : [spare.entry])].find(
       ({ window }) => !window.isDestroyed() && window.webContents === sender,
     );
+  const keepSpare = () => {
+    if (spare === undefined && !quitting && opened.size > 0) {
+      const id = `s${++spares}`;
+      spare = {
+        id,
+        entry: openWindow(id, { bounds: undefined, maximized: false }, true),
+      };
+    }
+  };
+  const dragWindowOf = (id: string): DragWindow | undefined => {
+    const entry = opened.get(id);
+    if (entry === undefined || entry.window.isDestroyed()) {
+      return undefined;
+    }
+    const { window } = entry;
+    return {
+      id,
+      bounds: () => window.getBounds(),
+      contentBounds: () => window.getContentBounds(),
+      strip: () => strips.get(id),
+      shown: () =>
+        !window.isDestroyed() &&
+        window.isVisible() &&
+        !window.isMinimized() &&
+        window.getOpacity() > 0,
+      moveTo: (x, y) => {
+        if (!window.isDestroyed()) {
+          window.setPosition(x, y);
+        }
+      },
+      hide: (hidden) => {
+        if (window.isDestroyed()) {
+          return;
+        }
+        window.setOpacity(hidden ? 0 : 1);
+        if (hidden) {
+          return;
+        }
+        if (!window.isVisible()) {
+          window.showInactive();
+        }
+        window.moveTop();
+      },
+    };
+  };
+  const dragHost: DragHost = {
+    windows: () => frontToBack.flatMap((id) => dragWindowOf(id) ?? []),
+    tearOff: (tab, from) => {
+      const source = opened.get(from);
+      if (source === undefined || asking === undefined) {
+        return undefined;
+      }
+      keepSpare();
+      const taken = spare;
+      if (taken === undefined) {
+        return undefined;
+      }
+      spare = undefined;
+      opened.set(taken.id, taken.entry);
+      frontToBack = [taken.id, ...frontToBack];
+      const size = source.window.getNormalBounds();
+      taken.entry.window.setSize(size.width, size.height);
+      void asking.tearOff(tab, taken.id);
+      return dragWindowOf(taken.id);
+    },
+    visit: (window, visit) => asking?.visit(window, visit),
+    move: (tab, into, index) => void asking?.moveTab(tab, into, index),
+    focus: (window) => {
+      const entry = opened.get(window);
+      if (entry !== undefined && !entry.window.isDestroyed()) {
+        entry.window.setOpacity(1);
+        showAgain(entry.window);
+      }
+    },
+  };
   const fromApp = (event: Electron.IpcMainEvent): OpenedWindow | undefined =>
     event.senderFrame !== null && isAppUrl(event.senderFrame.url)
       ? openedBy(event.sender)
@@ -436,6 +539,11 @@ async function start(asked: readonly string[]): Promise<void> {
     ),
   );
   const loading = firstWindow?.loading ?? Promise.resolve();
+  void Promise.all([loading, gitFound]).then(([, found]) => {
+    if (found) {
+      keepSpare();
+    }
+  });
   app.on(
     'second-instance',
     (_event, _argv, _workingDirectory, additionalData) => {
@@ -475,7 +583,10 @@ async function start(asked: readonly string[]): Promise<void> {
       app.once('will-quit', listener),
     webContents: {
       reloadIgnoringCache: () => {
-        for (const { window } of opened.values()) {
+        for (const { window } of [
+          ...opened.values(),
+          ...(spare === undefined ? [] : [spare.entry]),
+        ]) {
           if (!window.isDestroyed()) {
             window.webContents.reloadIgnoringCache();
           }
@@ -831,6 +942,48 @@ async function start(asked: readonly string[]): Promise<void> {
         const entry = opened.get(id);
         if (entry !== undefined) {
           showAgain(entry.window);
+        }
+      },
+      tearsOff: () => tearsOffTabs(process.platform, process.env),
+      drag: (window, event) => {
+        switch (event.kind) {
+          case 'strip':
+            strips.set(window, event.strip);
+            return;
+          case 'start': {
+            const source = dragWindowOf(window);
+            if (
+              drag === undefined &&
+              source !== undefined &&
+              tearsOffTabs(process.platform, process.env) &&
+              (!event.alone || opened.size > 1)
+            ) {
+              drag = TabDrag.start(dragHost, source, event);
+            }
+            return;
+          }
+          case 'move':
+            if (drag?.source.id === window) {
+              drag.move(event.at);
+            }
+            return;
+          case 'index':
+            drag?.index(window, event.index);
+            return;
+          case 'drop':
+          case 'cancel': {
+            const ended = drag;
+            if (ended?.source.id !== window) {
+              return;
+            }
+            drag = undefined;
+            if (event.kind === 'drop') {
+              ended.drop();
+            } else {
+              ended.cancel();
+            }
+            keepSpare();
+          }
         }
       },
     },

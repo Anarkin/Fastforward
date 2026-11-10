@@ -17,7 +17,9 @@ import {
   stripOverflows,
   tabMenuItems,
   tabsWidth,
+  tornOut,
   TabBar,
+  visitedSlot,
 } from '../../../shell/page/tabBar';
 import { AddIcon } from '../../../ui/icons';
 import { rested } from '../../componentFixtures';
@@ -556,10 +558,16 @@ function roots(tabs: readonly { id: string }[]): string[] {
   return tabs.map((tab) => tab.id);
 }
 
-function draggable(shown: readonly TabInfo[]): boolean[] {
-  return tabsOf(
-    renderedBy(TabBar, {}, { shell: tabsShell(shown, shown[0].id) }),
-  ).map(
+function draggable(shown: readonly TabInfo[], tearing = false): boolean[] {
+  const shell = tearing
+    ? createShellStore(() => undefined, {
+        tabs: shown,
+        active: shown[0].id,
+        tearsOff: true,
+        windows: [{ id: '2', name: 'other' }],
+      })
+    : tabsShell(shown, shown[0].id);
+  return tabsOf(renderedBy(TabBar, {}, { shell })).map(
     (tab) =>
       isValidElement<{ onPointerDown?: unknown }>(tab) &&
       tab.props.onPointerDown !== undefined,
@@ -613,6 +621,37 @@ suite('Tabs dragged', () => {
     }));
     assert.deepStrictEqual(draggable(three), [true, true, true]);
     assert.deepStrictEqual(draggable(three.slice(0, 1)), [false]);
+  });
+
+  test('lets a lone tab be dragged once tabs tear off and another window is there to take it, as it then moves its window into that one', () => {
+    const lone = [
+      { id: '/a', tool: 'git' as const, root: '/a', name: 'a' },
+    ] as const;
+    assert.deepStrictEqual(draggable(lone, true), [true]);
+  });
+
+  test('tears a tab off once the pointer leaves the row of tabs by more than a little, above or below it', () => {
+    const row = { top: 0, bottom: 32 };
+    assert.strictEqual(tornOut(row, 40), false);
+    assert.strictEqual(tornOut(row, 48), true);
+    assert.strictEqual(tornOut(row, -14), false);
+    assert.strictEqual(tornOut(row, -16), true);
+  });
+
+  test('shows a tab dragged in from another window in the place its left edge comes nearest, under the pointer', () => {
+    assert.deepStrictEqual(visitedSlot([100, 100], 10, 0), {
+      index: 0,
+      shift: 0,
+    });
+    assert.deepStrictEqual(visitedSlot([100, 100], 10, 60), {
+      index: 1,
+      shift: -50,
+    });
+    assert.deepStrictEqual(visitedSlot([100, 100], 10, 500), {
+      index: 2,
+      shift: 0,
+    });
+    assert.deepStrictEqual(visitedSlot([], 10, 40), { index: 0, shift: 0 });
   });
 });
 

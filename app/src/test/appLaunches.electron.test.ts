@@ -403,7 +403,9 @@ suite('App with a row of tabs', () => {
 
   test('grows a tab opened into a full row without the row taking the tabs for too many and back, which shifted them all while it grew', async () => {
     await app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1000, 600);
+      BrowserWindow.getAllWindows()
+        .toSorted((a, b) => a.id - b.id)[0]
+        ?.setContentSize(1000, 600);
     });
     const { strips } = await openedTab();
     assert.deepStrictEqual([...new Set(strips)], ['tab-strip']);
@@ -505,11 +507,15 @@ suite('App whose page is gone', () => {
       const page = await app.firstWindow();
       await page.locator('.commit', { hasText: 'first' }).waitFor();
       const killed = await app.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0].webContents.getOSProcessId(),
+        BrowserWindow.getAllWindows()
+          .toSorted((a, b) => a.id - b.id)[0]
+          .webContents.getOSProcessId(),
       );
       const gone = await within(
         app.evaluate(({ BrowserWindow }, pid) => {
-          const contents = BrowserWindow.getAllWindows()[0].webContents;
+          const contents = BrowserWindow.getAllWindows().toSorted(
+            (a, b) => a.id - b.id,
+          )[0].webContents;
           const went = new Promise<{ reason: string; exitCode: number }>(
             (resolve) =>
               contents.once('render-process-gone', (_event, details) =>
@@ -531,7 +537,9 @@ suite('App whose page is gone', () => {
           }
           return {
             running,
-            crashed: BrowserWindow.getAllWindows()[0].webContents.isCrashed(),
+            crashed: BrowserWindow.getAllWindows()
+              .toSorted((a, b) => a.id - b.id)[0]
+              .webContents.isCrashed(),
           };
         }, killed);
         throw new Error(
@@ -548,7 +556,9 @@ suite('App whose page is gone', () => {
       );
       const windowShowsTheHistoryAgain = () =>
         app.evaluate(async ({ BrowserWindow }) => {
-          const contents = BrowserWindow.getAllWindows()[0].webContents;
+          const contents = BrowserWindow.getAllWindows().toSorted(
+            (a, b) => a.id - b.id,
+          )[0].webContents;
           if (contents.isCrashed() || contents.isLoading()) {
             return false;
           }

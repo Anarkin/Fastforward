@@ -161,7 +161,9 @@ suite('App quitting', () => {
       await waitFor(() => fs.existsSync(alive), 'the checkout to run');
       assert.ok(holdsStartLock(profile));
       await app.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0].close(),
+        BrowserWindow.getAllWindows()
+          .toSorted((a, b) => a.id - b.id)[0]
+          .close(),
       );
       await waitFor(
         () => !holdsStartLock(profile),

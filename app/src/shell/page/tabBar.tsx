@@ -1,14 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { flushSync } from 'react-dom';
-import { type TabInfo, type WindowInfo } from '../shared/protocol';
+import {
+  type StripPlace,
+  type TabInfo,
+  type TabVisit,
+  type WindowInfo,
+} from '../shared/protocol';
 import type { ContextMenuItem } from '../../ui/contextMenu';
 import type { ToolId } from '../shared/tools';
 import { AddIcon, CloseIcon, ToolIcon } from '../../ui/icons';
-import { titleBarHeight } from '../shared/titleBar';
+import { tabMagnetism, titleBarHeight } from '../shared/titleBar';
 import { clicked, keymap, released } from '../shared/keymap';
 import { strings } from '../../shared/strings';
-import { useBinding } from '../../ui/shortcuts';
-import { useShell, useShellActions } from './store';
+import { keyPressed, useBinding } from '../../ui/shortcuts';
+import { useShell, useShellActions, type ScreenPoint } from './store';
 
 export function adjacentTab(
   tabs: readonly { readonly id: string }[],
@@ -281,9 +294,36 @@ interface Press {
   readonly pointer: number;
   readonly x: number;
   readonly y: number;
+  readonly grab: ScreenPoint;
   readonly scrolled: number;
   order: readonly string[];
   start?: number;
+  remote?: true;
+}
+
+interface Tearing {
+  readonly tear: (id: string, grab: ScreenPoint, at: ScreenPoint) => void;
+  readonly to: (at: ScreenPoint) => void;
+  readonly drop: () => void;
+  readonly cancel: () => void;
+}
+
+export function tornOut(
+  row: { readonly top: number; readonly bottom: number },
+  y: number,
+): boolean {
+  return y < row.top - tabMagnetism || y > row.bottom + tabMagnetism;
+}
+
+export function visitedSlot(
+  widths: readonly number[],
+  gap: number,
+  left: number,
+): { readonly index: number; readonly shift: number } {
+  const lefts = slotLefts([...widths, 0], gap, widths.length);
+  const clamped = Math.min(Math.max(left, 0), lefts.at(-1) ?? 0);
+  const index = nearestSlot(lefts, clamped);
+  return { index, shift: clamped - (lefts[index] ?? 0) };
 }
 
 interface Drag {
@@ -334,10 +374,47 @@ function useTabDrag(
   active: string | undefined,
   onSelect: (id: string) => void,
   onMove: ((id: string, index: number) => void) | undefined,
+  tearing: Tearing | undefined,
 ) {
   const press = useRef<Press>(undefined);
   const elements = useRef(new Map<string, HTMLElement>());
   const [drag, setDrag] = useState<Drag>();
+  const [torn, setTorn] = useState<string>();
+  const cancelTearing = useEffectEvent(() => tearing?.cancel());
+
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (
+        press.current?.remote &&
+        keyPressed(keymap.close, event) !== undefined
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        press.current = undefined;
+        setTorn(undefined);
+        cancelTearing();
+      }
+    };
+    window.addEventListener('keydown', escape, true);
+    return () => window.removeEventListener('keydown', escape, true);
+  }, []);
+
+  const endRemote = () => {
+    press.current = undefined;
+    setTorn(undefined);
+    tearing?.drop();
+  };
+
+  const tearOff = (pressed: Press, at: ScreenPoint) => {
+    if (pressed.start !== undefined) {
+      finish(pressed, false);
+    }
+    press.current = { ...pressed, remote: true };
+    if (tabs.length > 1) {
+      setTorn(pressed.id);
+    }
+    tearing?.tear(pressed.id, pressed.grab, at);
+  };
 
   const sameTabs = (order: readonly string[]) =>
     order.length === tabs.length && tabs.every((tab) => order.includes(tab.id));
@@ -416,13 +493,15 @@ function useTabDrag(
 
   const cancel = (event: React.PointerEvent<HTMLElement>) => {
     const pressed = press.current;
-    if (pressed?.pointer === event.pointerId) {
+    if (pressed?.remote && pressed.pointer === event.pointerId) {
+      endRemote();
+    } else if (pressed?.pointer === event.pointerId) {
       finish(pressed, false);
     }
   };
 
   const pressing = (id: string) =>
-    onMove && tabs.length > 1
+    onMove && (tabs.length > 1 || tearing !== undefined)
       ? {
           onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
             if (
@@ -432,13 +511,15 @@ function useTabDrag(
             ) {
               return;
             }
+            const tab = event.currentTarget.getBoundingClientRect();
             press.current = {
               id,
               pointer: event.pointerId,
               x: event.clientX,
               y: event.clientY,
+              grab: { x: event.clientX - tab.left, y: event.clientY - tab.top },
               scrolled: strip.current?.scrollLeft ?? 0,
-              order: tabs.map((tab) => tab.id),
+              order: tabs.map((each) => each.id),
             };
           },
         }
@@ -449,6 +530,14 @@ function useTabDrag(
       const pressed = press.current;
       const row = strip.current;
       if (!pressed || pressed.pointer !== event.pointerId || !row) {
+        return;
+      }
+      if (pressed.remote) {
+        if (released(event)) {
+          endRemote();
+        } else {
+          tearing?.to({ x: event.screenX, y: event.screenY });
+        }
         return;
       }
       if (released(event)) {
@@ -468,13 +557,28 @@ function useTabDrag(
           return;
         }
         row.setPointerCapture(event.pointerId);
+        if (tabs.length < 2) {
+          tearOff(pressed, { x: event.screenX, y: event.screenY });
+          return;
+        }
         start(pressed, row);
+      }
+      if (
+        tearing !== undefined &&
+        tornOut(row.getBoundingClientRect(), event.clientY)
+      ) {
+        tearOff(pressed, { x: event.screenX, y: event.screenY });
+        return;
       }
       follow(pressed, row, event.clientX);
     },
     onPointerUp: (event: React.PointerEvent<HTMLElement>) => {
       const pressed = press.current;
       if (!pressed || pressed.pointer !== event.pointerId) {
+        return;
+      }
+      if (pressed.remote) {
+        endRemote();
         return;
       }
       press.current = undefined;
@@ -490,10 +594,11 @@ function useTabDrag(
   const shown =
     drag && sameTabs(drag.order)
       ? drag.order.flatMap((id) => byId.get(id) ?? [])
-      : tabs;
+      : tabs.filter((tab) => tab.id !== torn);
 
   return {
     shown,
+    elements,
     dragged: drag?.id,
     pressing,
     dragging,
@@ -532,6 +637,116 @@ export function tabMenuItems(
           },
         ]),
   ];
+}
+
+function useVisit(
+  strip: React.RefObject<HTMLDivElement | null>,
+  elements: React.RefObject<Map<string, HTMLElement>>,
+  tabs: readonly TabInfo[],
+  visit: TabVisit | undefined,
+  onIndex: (index: number) => void,
+): readonly TabInfo[] {
+  const [index, setIndex] = useState<number>();
+  const visited = useRef<string>(undefined);
+  const others = useMemo(
+    () => (visit ? tabs.filter((tab) => tab.id !== visit.tab.id) : tabs),
+    [tabs, visit],
+  );
+  useLayoutEffect(() => {
+    const row = strip.current;
+    const left = visited.current;
+    if (left !== undefined && left !== visit?.tab.id) {
+      visited.current = undefined;
+      const element = elements.current.get(left);
+      if (element !== undefined) {
+        const from = element.getBoundingClientRect().left;
+        element.style.transform = '';
+        slide(element, from);
+      }
+    }
+    if (visit === undefined || row === null) {
+      setIndex(undefined);
+      return;
+    }
+    visited.current = visit.tab.id;
+    const style = getComputedStyle(row);
+    const origin =
+      row.getBoundingClientRect().left +
+      (parseFloat(style.paddingLeft) || 0) -
+      row.scrollLeft;
+    const widths = others.map(
+      (tab) => elements.current.get(tab.id)?.offsetWidth ?? 0,
+    );
+    const visitor = elements.current.get(visit.tab.id);
+    const { index: to, shift } = visitedSlot(
+      widths,
+      parseFloat(style.columnGap) || 0,
+      visit.x - visit.grabX - origin,
+    );
+    if (to !== index) {
+      setIndex(to);
+      onIndex(to);
+    } else if (visitor !== undefined) {
+      visitor.style.transform = `translateX(${shift}px)`;
+    }
+  }, [strip, elements, others, visit, index, onIndex]);
+  return visit === undefined
+    ? tabs
+    : others.toSpliced(index ?? others.length, 0, visit.tab);
+}
+
+function useStripReport(
+  bar: React.RefObject<HTMLElement | null>,
+  list: React.RefObject<HTMLElement | null>,
+  strip: React.RefObject<HTMLElement | null>,
+  report: (strip: StripPlace) => void,
+): void {
+  const told = useRef<string>(undefined);
+  useEffect(() => {
+    const measure = () => {
+      const nav = bar.current?.getBoundingClientRect();
+      const area = list.current?.getBoundingClientRect();
+      const row = strip.current;
+      if (nav === undefined || area === undefined || !row) {
+        return;
+      }
+      const first = row.querySelector('[role="tab"]');
+      const tab = first?.getBoundingClientRect();
+      const place: StripPlace = {
+        left: area.left,
+        right: area.right,
+        top: nav.top,
+        bottom: nav.bottom,
+        firstTabLeft:
+          tab?.left ??
+          row.getBoundingClientRect().left +
+            (parseFloat(getComputedStyle(row).paddingLeft) || 0),
+        tabTop: tab?.top ?? nav.top,
+      };
+      const json = JSON.stringify(place);
+      if (json !== told.current) {
+        told.current = json;
+        report(place);
+      }
+    };
+    measure();
+    const resized = new ResizeObserver(measure);
+    for (const element of [bar.current, list.current, strip.current]) {
+      if (element) {
+        resized.observe(element);
+      }
+    }
+    const changed = new MutationObserver(measure);
+    if (strip.current) {
+      changed.observe(strip.current, { childList: true });
+    }
+    window.addEventListener('resize', measure);
+    return () => {
+      resized.disconnect();
+      changed.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [bar, list, strip, report]);
 }
 
 export const preloadDelay = 200;
@@ -605,6 +820,8 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
   const tabs = useShell((state) => state.tabs ?? noTabs);
   const active = useShell((state) => state.active);
   const windows = useShell((state) => state.windows);
+  const tearsOff = useShell((state) => state.tearsOff);
+  const visit = useShell((state) => state.visit);
   const adding = useShell(
     (state) => state.menu?.menu.trigger === newTabTrigger,
   );
@@ -614,6 +831,12 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
     closeTab: onClose,
     moveTab: onMove,
     moveTabToWindow,
+    tearTab,
+    dragTabTo,
+    dropTab,
+    cancelTabDrag,
+    reportStrip,
+    visitIndex,
     log: onLog,
     showMenu,
     closeMenu,
@@ -636,10 +859,28 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
   const strip = useRef<HTMLDivElement>(null);
 
   const overflowing = useOverflowing(strip, list);
-  const drag = useTabDrag(strip, tabs, active, onSelect, onMove);
+  const tears = tearsOff && (tabs.length > 1 || windows.length > 0);
+  const drag = useTabDrag(
+    strip,
+    tabs,
+    active,
+    onSelect,
+    onMove,
+    tears
+      ? {
+          tear: tearTab,
+          to: dragTabTo,
+          drop: dropTab,
+          cancel: cancelTabDrag,
+        }
+      : undefined,
+  );
+  useStripReport(bar, list, strip, reportStrip);
+  const shown = useVisit(strip, drag.elements, drag.shown, visit, visitIndex);
+  const visitor = visit?.tab.id;
   const dragging = drag.dragged !== undefined;
   const activeIndex = tabs.findIndex((tab) => tab.id === active);
-  const { placed, settled } = usePlacedTabs(drag.shown);
+  const { placed, settled } = usePlacedTabs(shown);
   const activeOpening = placed.some(
     ({ tab, motion }) => tab.id === active && motion === 'opening',
   );
@@ -689,7 +930,11 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
   });
 
   return (
-    <nav className="tabs" ref={bar} style={{ minHeight: titleBarHeight }}>
+    <nav
+      className={tears && windows.length > 0 ? 'tabs tearing' : 'tabs'}
+      ref={bar}
+      style={{ minHeight: titleBarHeight }}
+    >
       {menu}
       <div className="tab-list" ref={list}>
         <div
@@ -724,7 +969,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
                 ref={drag.element(tab.id)}
                 role="tab"
                 aria-selected={tab.id === open}
-                className={`tab ${tab.id === open ? 'active' : ''} ${tab.id === drag.dragged ? 'dragging' : ''} ${motion ?? ''}`}
+                className={`tab ${tab.id === open || tab.id === visitor ? 'active' : ''} ${tab.id === drag.dragged || tab.id === visitor ? 'dragging' : ''} ${motion ?? ''}`}
                 title={tab.root ?? tab.name}
                 {...drag.pressing(tab.id)}
                 onClick={() => {

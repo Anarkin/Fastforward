@@ -2909,7 +2909,9 @@ suite('App commander', () => {
     };
     const zoomTo = async (ratio: number) => {
       await app.evaluate(({ BrowserWindow, screen }, wanted) => {
-        const window = BrowserWindow.getAllWindows()[0];
+        const window = BrowserWindow.getAllWindows().toSorted(
+          (a, b) => a.id - b.id,
+        )[0];
         const display = screen.getDisplayMatching(
           window?.getBounds() ?? { x: 0, y: 0, width: 1, height: 1 },
         );
@@ -3239,7 +3241,9 @@ suite('App commander', () => {
     await app.evaluate(({ BrowserWindow }) => {
       const dragged: string[][] = [];
       Reflect.set(globalThis, 'dragged', dragged);
-      const [window] = BrowserWindow.getAllWindows();
+      const [window] = BrowserWindow.getAllWindows().toSorted(
+        (a, b) => a.id - b.id,
+      );
       window.webContents.startDrag = (item) => {
         dragged.push(item.files ?? [item.file]);
       };
@@ -3281,7 +3285,9 @@ suite('App commander', () => {
       /^three/,
     );
     await app.evaluate(({ BrowserWindow }) => {
-      const [window] = BrowserWindow.getAllWindows();
+      const [window] = BrowserWindow.getAllWindows().toSorted(
+        (a, b) => a.id - b.id,
+      );
       Reflect.deleteProperty(window.webContents, 'startDrag');
     });
     await page.keyboard.press('Backspace');
@@ -4194,7 +4200,9 @@ suite('App commander', () => {
 
   test('lists the shortcuts of the commander beside the tools, scrolling them only down in a small window, marking every group with a shortcut in view as it scrolls, brings a group clicked or stepped to to the top, and goes on to the next tool once the pane can scroll no further, each shortcut one key cap a line high', async () => {
     const size = await app.evaluate(({ BrowserWindow }) => {
-      const [window] = BrowserWindow.getAllWindows();
+      const [window] = BrowserWindow.getAllWindows().toSorted(
+        (a, b) => a.id - b.id,
+      );
       const before = window?.getSize();
       window?.setSize(900, 600);
       return before;
@@ -4309,7 +4317,9 @@ suite('App commander', () => {
     await pane.waitFor({ state: 'detached' });
     await app.evaluate(
       ({ BrowserWindow }, [width, height]) => {
-        BrowserWindow.getAllWindows()[0]?.setSize(width, height);
+        BrowserWindow.getAllWindows()
+          .toSorted((a, b) => a.id - b.id)[0]
+          ?.setSize(width, height);
       },
       size ?? [1280, 800],
     );

@@ -337,7 +337,9 @@ suite('Terminal', () => {
   test('asks before quitting while a terminal tab is open, staying open on Cancel and quitting on Enter', async () => {
     const close = () =>
       app.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0]?.close(),
+        BrowserWindow.getAllWindows()
+          .toSorted((a, b) => a.id - b.id)[0]
+          ?.close(),
       );
     const popup = page.locator('.confirm-popup');
     await close();
@@ -346,7 +348,9 @@ suite('Terminal', () => {
     await popup.waitFor({ state: 'detached' });
     assert.strictEqual(
       await app.evaluate(
-        ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+        ({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows().filter((each) => each.isVisible())
+            .length,
       ),
       1,
     );

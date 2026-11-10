@@ -32,7 +32,7 @@ import {
 } from '../tools/git/main/tool';
 import type { Log } from '../shell/main/log';
 import type { CommandInstall, CommandState } from '../main/terminalCommand';
-import { Shell, type ShellHost } from '../shell/main/shell';
+import { Shell, type DragEvent, type ShellHost } from '../shell/main/shell';
 import {
   activeTabKey,
   sameRoot,
@@ -193,6 +193,16 @@ export class FakeHost implements ShellHost, GitHost {
 
   showWindow(window: string): void {
     this.opened.push(`show window ${window}`);
+  }
+
+  tearsOff(): boolean {
+    return true;
+  }
+
+  readonly dragged: (readonly [string, DragEvent])[] = [];
+
+  drag(window: string, event: DragEvent): void {
+    this.dragged.push([window, event]);
   }
 
   updateStatus(): UpdateStatus {
@@ -400,6 +410,12 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   closeTab: true,
   moveTab: true,
   moveTabToWindow: true,
+  tearTab: true,
+  dragTabTo: true,
+  dropTab: true,
+  cancelTabDrag: true,
+  tabStrip: true,
+  visitIndex: true,
   preloadTab: true,
   newTab: true,
   newWindow: true,

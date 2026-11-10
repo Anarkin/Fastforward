@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import type { Log } from './log';
 import { isImageView, isTextView } from '../shared/protocol';
 import type { CommandInstall, CommandState } from '../../main/terminalCommand';
+import type { DragStart, Point, Strip, Visit } from '../../main/tabDrag';
 import { InFlight } from '../../shared/inFlight';
 import { addNotice } from '../shared/notices';
 import type {
@@ -138,6 +139,38 @@ export interface ShellHost {
   openWindow(window: string, near: string | undefined): void;
   closeWindow(window: string): void;
   showWindow(window: string): void;
+  tearsOff(): boolean;
+  drag(window: string, event: DragEvent): void;
+}
+
+export type DragEvent =
+  | ({ readonly kind: 'start' } & DragStart)
+  | { readonly kind: 'move'; readonly at: Point }
+  | { readonly kind: 'drop' }
+  | { readonly kind: 'cancel' }
+  | { readonly kind: 'strip'; readonly strip: Strip }
+  | { readonly kind: 'index'; readonly index: number };
+
+function stripOf(message: Record<string, unknown>): Strip | undefined {
+  const { left, right, top, bottom, firstTabLeft, tabTop } = message;
+  return typeof left === 'number' &&
+    typeof right === 'number' &&
+    typeof top === 'number' &&
+    typeof bottom === 'number' &&
+    typeof firstTabLeft === 'number' &&
+    typeof tabTop === 'number' &&
+    [left, right, top, bottom, firstTabLeft, tabTop].every(Number.isFinite)
+    ? { left, right, top, bottom, firstTabLeft, tabTop }
+    : undefined;
+}
+
+function pointOf(x: unknown, y: unknown): Point | undefined {
+  return typeof x === 'number' &&
+    typeof y === 'number' &&
+    Number.isFinite(x) &&
+    Number.isFinite(y)
+    ? { x, y }
+    : undefined;
 }
 
 export interface Connection {
@@ -491,6 +524,51 @@ export class Shell {
       case 'moveTabToWindow':
         await this.moveToWindow(page, message.tab, message.window);
         return;
+      case 'tearTab': {
+        const window = this.windowOf(page);
+        const index = window.tabs.findIndex((tab) => tab.id === message.tab);
+        const grab = pointOf(message.grabX, message.grabY);
+        const at = pointOf(message.screenX, message.screenY);
+        if (index !== -1 && grab !== undefined && at !== undefined) {
+          host.drag(window.id, {
+            kind: 'start',
+            tab: message.tab,
+            index,
+            grab,
+            at,
+            alone: window.tabs.length === 1,
+          });
+        }
+        return;
+      }
+      case 'dragTabTo': {
+        const at = pointOf(message.screenX, message.screenY);
+        if (at !== undefined) {
+          host.drag(this.windowOf(page).id, { kind: 'move', at });
+        }
+        return;
+      }
+      case 'dropTab':
+        host.drag(this.windowOf(page).id, { kind: 'drop' });
+        return;
+      case 'cancelTabDrag':
+        host.drag(this.windowOf(page).id, { kind: 'cancel' });
+        return;
+      case 'tabStrip': {
+        const strip = stripOf({ ...message });
+        if (strip !== undefined) {
+          host.drag(this.windowOf(page).id, { kind: 'strip', strip });
+        }
+        return;
+      }
+      case 'visitIndex':
+        if (Number.isSafeInteger(message.index) && message.index >= 0) {
+          host.drag(this.windowOf(page).id, {
+            kind: 'index',
+            index: message.index,
+          });
+        }
+        return;
       case 'copyText':
         if (typeof message.text === 'string') {
           host.copyText(message.text);
@@ -601,6 +679,7 @@ export class Shell {
     page.post({ type: 'imageView', view: storage.imageView });
     page.post({ type: 'update', status: host.updateStatus() });
     page.post({ type: 'about', ...host.about() });
+    page.post({ type: 'tearsOff', allowed: host.tearsOff() });
     page.post({
       type: 'terminalCommand',
       installable: host.canInstallCommand(),
@@ -623,7 +702,9 @@ export class Shell {
     }
     const window = this.windowOf(page);
     this.pages.set(window.id, page);
-    this.focusedWindow = window.id;
+    if (this.storage.layout.some((each) => each.id === window.id)) {
+      this.focusedWindow = window.id;
+    }
     this.shownTools.delete(page);
     await this.show(page, window.active);
     await this.askFolders(page);
@@ -644,7 +725,9 @@ export class Shell {
       return;
     }
     this.pages.set(window.id, page);
-    this.focusedWindow = window.id;
+    if (this.storage.layout.some((each) => each.id === window.id)) {
+      this.focusedWindow = window.id;
+    }
     this.postTabs(page);
     const unsent = this.unsentNotices;
     this.unsentNotices = [];
@@ -924,31 +1007,90 @@ export class Shell {
       this.postTabs(page);
       return;
     }
-    const into =
-      typeof target === 'string' ? target : nextWindowId(storage.layout);
-    const before =
-      target === undefined
-        ? [...storage.layout, { id: into, tabs: [] }]
-        : storage.layout;
-    const index = before.find((window) => window.id === into)?.tabs.length ?? 0;
-    const layout = withMoved(before, tab, into, index, this.history);
-    this.save(storage.setLayout(layout));
-    if (target === undefined) {
-      this.host.openWindow(into, from.id);
-    } else {
-      this.host.showWindow(into);
-      const there = this.livePage(into);
-      if (there !== undefined) {
-        await this.show(there, tab);
-      }
-    }
-    const left = layout.find((window) => window.id === from.id);
-    if (left === undefined) {
-      this.host.closeWindow(from.id);
-      this.postWindows();
+    if (typeof target === 'string') {
+      this.host.showWindow(target);
+      await this.relocate(
+        tab,
+        from.id,
+        target,
+        storage.layout.find((window) => window.id === target)?.tabs.length ?? 0,
+        false,
+      );
       return;
     }
-    await this.show(page, left.active);
+    const into = nextWindowId(storage.layout);
+    const moving = this.relocate(tab, from.id, into, 0, true);
+    this.host.openWindow(into, from.id);
+    await moving;
+  }
+
+  async tearOff(tab: string, into: string): Promise<boolean> {
+    const { layout } = this.storage;
+    const from = windowOf(layout, tab);
+    if (
+      from === undefined ||
+      from.tabs.length < 2 ||
+      layout.some((window) => window.id === into)
+    ) {
+      return false;
+    }
+    await this.relocate(tab, from.id, into, 0, true);
+    return true;
+  }
+
+  async moveTab(tab: string, into: string, index: number): Promise<void> {
+    const { layout } = this.storage;
+    const from = windowOf(layout, tab);
+    if (from === undefined || !layout.some((window) => window.id === into)) {
+      return;
+    }
+    await this.relocate(tab, from.id, into, index, false);
+  }
+
+  visit(window: string, visit: Visit | undefined): void {
+    const page = this.livePage(window);
+    const tab =
+      visit === undefined
+        ? undefined
+        : this.storage.savedTabs.find((each) => each.id === visit.tab);
+    const [info] = tab === undefined ? [] : this.infos([tab]);
+    page?.post(
+      visit === undefined || info === undefined
+        ? { type: 'tabVisit' }
+        : {
+            type: 'tabVisit',
+            visit: { tab: info, x: visit.x, grabX: visit.grabX },
+          },
+    );
+  }
+
+  private async relocate(
+    tab: string,
+    from: string,
+    into: string,
+    index: number,
+    added: boolean,
+  ): Promise<void> {
+    const { storage } = this;
+    const before = added
+      ? [...storage.layout, { id: into, tabs: [] }]
+      : storage.layout;
+    const layout = withMoved(before, tab, into, index, this.history);
+    this.save(storage.setLayout(layout));
+    const there = this.livePage(into);
+    const shown = there === undefined ? undefined : this.show(there, tab);
+    const left = layout.find((window) => window.id === from);
+    if (left === undefined) {
+      this.host.closeWindow(from);
+      this.postWindows();
+      await shown;
+      return;
+    }
+    const page = this.livePage(from);
+    await Promise.all([
+      shown,
+      page === undefined ? undefined : this.show(page, left.active),
+    ]);
   }
 
   private infos(tabs: readonly Tab[]): TabInfo[] {

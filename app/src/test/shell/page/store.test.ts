@@ -175,6 +175,50 @@ suite('Shell store', () => {
     ]);
   });
 
+  test('keeps whether tabs tear off and the tab another window drags over the tab row, and tells the main process where the row is and how a drag goes', () => {
+    const { posted, store } = posting();
+    store.getState().receive({ type: 'tearsOff', allowed: true });
+    assert.strictEqual(store.getState().tearsOff, true);
+    const visit = {
+      tab: { id: '4', tool: 'terminal', name: 'work' },
+      x: 100,
+      grabX: 20,
+    } as const;
+    store.getState().receive({ type: 'tabVisit', visit });
+    assert.deepStrictEqual(store.getState().visit, visit);
+    store.getState().receive({ type: 'tabVisit' });
+    assert.strictEqual(store.getState().visit, undefined);
+    const strip = {
+      left: 8,
+      right: 700,
+      top: 0,
+      bottom: 32,
+      firstTabLeft: 8,
+      tabTop: 4,
+    };
+    store.getState().reportStrip(strip);
+    store.getState().tearTab('1', { x: 20, y: 10 }, { x: 300, y: 40 });
+    store.getState().dragTabTo({ x: 310, y: 50 });
+    store.getState().visitIndex(2);
+    store.getState().dropTab();
+    store.getState().cancelTabDrag();
+    assert.deepStrictEqual(posted, [
+      { type: 'tabStrip', ...strip },
+      {
+        type: 'tearTab',
+        tab: '1',
+        grabX: 20,
+        grabY: 10,
+        screenX: 300,
+        screenY: 40,
+      },
+      { type: 'dragTabTo', screenX: 310, screenY: 50 },
+      { type: 'visitIndex', index: 2 },
+      { type: 'dropTab' },
+      { type: 'cancelTabDrag' },
+    ]);
+  });
+
   test('keeps the other windows the main process names, and moves a tab to a new window or into one of them', () => {
     const { posted, store } = posting();
     const windows = [{ id: '2', name: 'repo' }];
