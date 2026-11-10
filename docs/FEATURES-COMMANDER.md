@@ -93,7 +93,7 @@
 | Syntax highlighting | Color the code of a file | — | Advanced | ✅ Yes | `shiki`, with VS Code's TextMate grammars, for files up to 10 MB; L chooses the language, or Plain Text |
 | Wrap and whitespace | Wrap long lines, and draw the spaces, tabs and line ends | — | Common | ✅ Yes | W and `.`, wrapping on and whitespace off by default, as in the diff |
 | Find in the file | Search the text of a file | F7 | Common | ✅ Yes | Mod+F, through the whole file in its encoding, counting the matches and marking them in the text, the bytes and the hex |
-| Images | Preview images | — | Common | ✅ Yes | 3: fitted, or at their real size with F, an SVG drawn among them |
+| Images | Preview images | — | Common | ✅ Yes | 3: fitted, a large one shrunk to the viewer and a small one at its real size, never larger, or at their real size with F, an SVG drawn among them |
 | Markdown | Preview Markdown rendered | — | Advanced | ✅ Yes | 3: `markdown-it`, its code colored, its diagrams drawn and its images next to it shown |
 | PDF | Preview PDFs | — | Common | ✅ Yes | 3: `pdfjs-dist`, read by ranges, searched with Mod+F, zoomed with Mod and the wheel, opened again where it was left; none locked with a password |
 | Media | Play audio and video | — | Common | ❌ No |  |

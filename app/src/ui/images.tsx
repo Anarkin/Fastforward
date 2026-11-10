@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   useEffect,
   useLayoutEffect,
   useState,
@@ -224,34 +225,43 @@ export function usePixelRatio(): number {
   );
 }
 
-export interface RealSize {
+function fittedWithin(real: Size): CSSProperties {
+  return {
+    maxWidth: `min(100%, ${real.width}px)`,
+    maxHeight: `min(100%, ${real.height}px)`,
+  };
+}
+
+export interface ImageSizing {
   readonly vector: boolean;
-  readonly onShown: () => void;
+  readonly realSize: boolean;
+  readonly onRealSize: () => void;
 }
 
 export function ImagePane({
   url,
-  realSize,
+  sizing,
 }: {
   url: string;
-  realSize?: RealSize;
+  sizing?: ImageSizing;
 }) {
   const image = useLoadedImage(url);
   const [size, setSize] = useState<Size>();
   const [broken, setBroken] = useState(false);
   const pixelRatio = usePixelRatio();
-  const shown =
-    realSize === undefined || size === undefined || size.width === 0
+  const real =
+    sizing === undefined || size === undefined || size.width === 0
       ? undefined
-      : realSizeOf(size, pixelRatio, realSize.vector);
-  const shownWidth = shown?.width;
-  const shownHeight = shown?.height;
-  const onShown = realSize?.onShown;
+      : realSizeOf(size, pixelRatio, sizing.vector);
+  const realSize = sizing?.realSize === true;
+  const realWidth = realSize ? real?.width : undefined;
+  const realHeight = realSize ? real?.height : undefined;
+  const onRealSize = sizing?.onRealSize;
   useLayoutEffect(() => {
-    if (shownWidth !== undefined && shownHeight !== undefined) {
-      onShown?.();
+    if (realWidth !== undefined && realHeight !== undefined) {
+      onRealSize?.();
     }
-  }, [shownWidth, shownHeight, onShown]);
+  }, [realWidth, realHeight, onRealSize]);
   const note =
     image?.kind === 'tooLarge'
       ? strings.diff.imageTooLarge(maxImageSize / 1024 / 1024)
@@ -269,13 +279,19 @@ export function ImagePane({
               src={image.url}
               alt=""
               className={
-                realSize === undefined
+                !realSize
                   ? undefined
-                  : realSize.vector
+                  : sizing?.vector
                     ? 'real-size'
                     : 'real-size device-pixels'
               }
-              style={shown}
+              style={
+                real === undefined
+                  ? undefined
+                  : realSize
+                    ? real
+                    : fittedWithin(real)
+              }
               title={
                 size &&
                 strings.diff.imageDetails(size.width, size.height, image.bytes)

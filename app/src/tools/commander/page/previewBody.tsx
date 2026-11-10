@@ -66,9 +66,9 @@ export function PreviewBody({
     }
   }, []);
   const vector = imageType(file) === vectorType;
-  const imageRealSize = useMemo(
-    () => (realSize ? { vector, onShown: centerImage } : undefined),
-    [realSize, vector, centerImage],
+  const sizing = useMemo(
+    () => ({ vector, realSize, onRealSize: centerImage }),
+    [vector, realSize, centerImage],
   );
   if (
     preview === 'pdf' &&
@@ -118,7 +118,7 @@ export function PreviewBody({
         </div>
       ) : preview === 'image' ? (
         <div className={`viewer-image${realSize ? ' real-size' : ''}`}>
-          <ImagePane key={imageUrl} url={imageUrl} realSize={imageRealSize} />
+          <ImagePane key={imageUrl} url={imageUrl} sizing={sizing} />
         </div>
       ) : (
         <MarkdownPreview file={file} viewing={viewing} />

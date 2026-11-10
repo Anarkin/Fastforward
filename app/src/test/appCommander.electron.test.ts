@@ -2877,6 +2877,100 @@ suite('App commander', () => {
     );
   });
 
+  test('fits an image smaller than the viewer at its real size at 125%, a pixel of it on a pixel of the screen as F shows it, rather than enlarged to the pixels of the page, and shrinks one larger than the viewer to fit', async () => {
+    fs.writeFileSync(path.join(opened, 'small.png'), grayPng(400, 300));
+    fs.writeFileSync(path.join(opened, 'huge.png'), grayPng(3000, 2000));
+    const realSize = page.locator(
+      `.viewer button[title="${strings.commander.realSize}"]`,
+    );
+    const shown = () =>
+      page.locator('.viewer-preview').evaluate((body) => {
+        const image = body.querySelector('img');
+        const box = image?.getBoundingClientRect();
+        return {
+          width: Math.round((box?.width ?? 0) * devicePixelRatio),
+          height: Math.round((box?.height ?? 0) * devicePixelRatio),
+          natural: image?.naturalWidth ?? 0,
+          widest: body.scrollWidth - body.clientWidth,
+          tallest: body.scrollHeight - body.clientHeight,
+        };
+      });
+    const view = async (name: string, natural: number) => {
+      await select(name);
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await shown()).natural === natural,
+        'the image',
+      );
+    };
+    const close = async () => {
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+    };
+    const zoomTo = async (ratio: number) => {
+      await app.evaluate(({ BrowserWindow, screen }, wanted) => {
+        const window = BrowserWindow.getAllWindows()[0];
+        const display = screen.getDisplayMatching(
+          window?.getBounds() ?? { x: 0, y: 0, width: 1, height: 1 },
+        );
+        window?.webContents.setZoomFactor(wanted / display.scaleFactor);
+      }, ratio);
+      await waitFor(
+        () => page.evaluate((wanted) => devicePixelRatio === wanted, ratio),
+        `the window at ${ratio * 100}%`,
+      );
+    };
+    const display = await page.evaluate(() => devicePixelRatio);
+
+    await zoomTo(1.25);
+    try {
+      await view('small', 400);
+      assert.strictEqual(await realSize.getAttribute('aria-pressed'), 'false');
+      await waitFor(
+        async () => (await shown()).width === 400,
+        'the image fitted at its real size',
+      );
+      assert.strictEqual((await shown()).height, 300);
+
+      await page.keyboard.press('f');
+      await waitFor(
+        async () => (await realSize.getAttribute('aria-pressed')) === 'true',
+        'real size',
+      );
+      assert.deepStrictEqual(
+        { width: (await shown()).width, height: (await shown()).height },
+        { width: 400, height: 300 },
+      );
+      await page.keyboard.press('f');
+      await waitFor(
+        () => savedSetting(profile, 'images', 'realSize') === undefined,
+        'the default to be saved',
+      );
+      await close();
+
+      await view('huge', 3000);
+      const fitted = await shown();
+      assert.ok(fitted.width < 3000, JSON.stringify(fitted));
+      assert.strictEqual(
+        Math.round((fitted.width / fitted.height) * 100),
+        150,
+        JSON.stringify(fitted),
+      );
+      assert.strictEqual(fitted.widest, 0);
+      assert.strictEqual(fitted.tallest, 0);
+      await close();
+    } finally {
+      await zoomTo(display);
+    }
+
+    fs.rmSync(path.join(opened, 'small.png'));
+    fs.rmSync(path.join(opened, 'huge.png'));
+    await waitFor(async () => {
+      const names = await rowNames();
+      return !names.includes('small.png') && !names.includes('huge.png');
+    }, 'the images to be gone from the list');
+  });
+
   test('deletes the marked files, or the selected one, for good on Shift+Delete and Shift+F8 once confirmed, keeping them when Cancel is picked with the arrow keys, and selects the file after the deleted ones', async () => {
     const deletingFolder = path.join(opened, 'deleting');
     fs.mkdirSync(deletingFolder);
