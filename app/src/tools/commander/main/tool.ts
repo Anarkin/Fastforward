@@ -764,6 +764,7 @@ export class CommanderTool implements Tool<'commander'> {
         );
         if (
           listed !== undefined &&
+          !this.encryptedInArchive(listed) &&
           isThumbnailBox(message.box, message.pixelRatio) &&
           message.bytes instanceof Uint8Array &&
           message.bytes.length <= maxThumbnailBytes &&
@@ -1018,6 +1019,16 @@ export class CommanderTool implements Tool<'commander'> {
     );
   }
 
+  private encryptedInArchive(listed: {
+    readonly pane: Pane;
+    readonly name: string;
+  }): boolean {
+    return (
+      listed.pane.archive !== undefined &&
+      this.archiveItems(listed.pane, [listed.name])?.encrypted === true
+    );
+  }
+
   private listedImage(
     tab: unknown,
     side: unknown,
@@ -1073,9 +1084,11 @@ export class CommanderTool implements Tool<'commander'> {
       listed?.pane.archive === undefined
         ? undefined
         : this.archiveItems(listed.pane, [listed.name]);
+    const encrypted = archived?.encrypted === true;
     if (
       listed === undefined ||
-      (listed.pane.archive !== undefined && archived === undefined)
+      (listed.pane.archive !== undefined && archived === undefined) ||
+      (encrypted && !archived.archives.hasPassword(archived.archive.file))
     ) {
       return new Response(null, { status: 404 });
     }
@@ -1087,16 +1100,18 @@ export class CommanderTool implements Tool<'commander'> {
           listed,
           boxed,
           archived?.archive.source ?? listed.file,
+          encrypted,
         ));
       if (boxed === undefined || skipped !== undefined) {
         return new Response(null, { status: skipped ?? 404 });
       }
     }
     const made =
-      boxed &&
-      (await this.access.thumbnails.read(
-        this.thumbnailKeyOf(listed, boxed.box, boxed.pixelRatio),
-      ));
+      boxed === undefined || encrypted
+        ? undefined
+        : await this.access.thumbnails.read(
+            this.thumbnailKeyOf(listed, boxed.box, boxed.pixelRatio),
+          );
     if (made !== undefined) {
       return new Response(new Uint8Array(made), {
         headers: { 'content-type': 'image/webp', [madeThumbnailHeader]: '1' },
@@ -1146,11 +1161,13 @@ export class CommanderTool implements Tool<'commander'> {
     listed: { readonly file: string; readonly entry: Entry },
     { box, pixelRatio }: ThumbnailBox,
     read: string,
+    encrypted: boolean,
   ): Promise<number | undefined> {
     if (
-      await this.access.thumbnails.has(
+      !encrypted &&
+      (await this.access.thumbnails.has(
         this.thumbnailKeyOf(listed, box, pixelRatio),
-      )
+      ))
     ) {
       return storedStatus;
     }

@@ -5950,6 +5950,7 @@ suite('Commander tool in archives', () => {
         extracted,
         passwords,
         secrets,
+        thumbnails,
       } = commander({ [root]: [file('a.zip')] });
       copies.folder = copiesFolder;
       archived.set(at('a.zip'), [
@@ -6003,6 +6004,29 @@ suite('Commander tool in archives', () => {
       assert.strictEqual(await thumbnail('secret.png'), 404);
       assert.strictEqual(await thumbnail('top.txt'), 404);
       assert.deepStrictEqual(extracted, [['a.png', 'pics/b.png']]);
+      const webp = new Uint8Array(Buffer.from('RIFF    WEBPVP8 made'));
+      const keyOf = (name: string) =>
+        thumbnailKey(path.join(at('a.zip'), name), 1, 0, 144, 1.5);
+      for (const name of ['a.png', 'secret.png']) {
+        await send({
+          type: 'saveThumbnail',
+          tab: '1',
+          side: 'right',
+          folder: at('a.zip'),
+          name,
+          box: 144,
+          pixelRatio: 1.5,
+          bytes: webp,
+        });
+      }
+      assert.deepStrictEqual([...thumbnails.keys()], [keyOf('a.png')]);
+      thumbnails.set(keyOf('secret.png'), webp);
+      const cached = await tool.thumbnail(
+        new URL(
+          `fastforward://app${thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name: 'secret.png' }, '1:0')}&box=144&ratio=1.5`,
+        ),
+      );
+      assert.strictEqual(cached.status, 404);
       passwords.set(at('a.zip'), 'right');
       assert.deepStrictEqual(await thumbnail('secret.png'), [
         'image/png',
