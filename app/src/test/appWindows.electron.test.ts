@@ -302,6 +302,17 @@ suite('App with tabs dragged between windows', () => {
     assert.ok(page, `a window with ${count} tabs`);
     return page;
   };
+  const inFront = async (page: Page) => {
+    const window = await launched().browserWindow(page);
+    await launched().evaluate((electron) =>
+      electron.app.focus({ steal: true }),
+    );
+    await window.evaluate((shown) => shown.focus());
+    await waitFor(
+      () => window.evaluate((shown) => shown.isFocused()),
+      'the window to be in front',
+    );
+  };
   const explained = async (
     waiting: Promise<void>,
     at: { readonly x: number; readonly y: number },
@@ -385,7 +396,7 @@ suite('App with tabs dragged between windows', () => {
     await sparesReady();
     const source = await byTabs(3);
     const target = await byTabs(1);
-    await target.bringToFront();
+    await inFront(target);
     await recordSelected(target);
     await grabTab(source, 1);
     const sourceContent = await contentOf(source);
@@ -455,7 +466,7 @@ suite('App with tabs dragged between windows', () => {
     await sparesReady();
     const source = await byTabs(2);
     const target = await byTabs(1);
-    await target.bringToFront();
+    await inFront(target);
     await target.evaluate(() => {
       const strip = document.querySelector('.tab-strip');
       const leaving: number[] = [];
@@ -475,6 +486,7 @@ suite('App with tabs dragged between windows', () => {
         });
       }
     });
+    await recordSelected(target);
     await grabTab(source, 1);
     const sourceContent = await contentOf(source);
     const targetContent = await contentOf(target);
@@ -488,9 +500,13 @@ suite('App with tabs dragged between windows', () => {
       y: targetContent.y + first.y + first.height / 2 - sourceContent.y,
     };
     await source.mouse.move(over.x, over.y, { steps: 10 });
-    await waitFor(
-      async () => (await selectedIn(target)) === 'true,false',
-      'the tab to show first in the other window',
+    await explained(
+      waitFor(
+        async () => (await selectedIn(target)) === 'true,false',
+        'the tab to show first in the other window',
+      ),
+      { x: over.x + sourceContent.x, y: over.y + sourceContent.y },
+      { source, target },
     );
     await source.mouse.move(over.x, over.y + 300, { steps: 5 });
     await waitFor(
