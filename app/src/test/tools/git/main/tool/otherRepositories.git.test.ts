@@ -603,6 +603,35 @@ suite('Git tool of other repositories', () => {
     }
   });
 
+  test('keeps a recent repository whose folder cannot be reached, with its bookmarks and all else kept of it, saying so, as an unplugged drive or a share offline comes back', async () => {
+    const unplugged = path.join(folder, 'unplugged', 'repository');
+    await withView(log, [repository.root], async (view) => {
+      await keepAll(view.store, [repository.root, unplugged]);
+      await gitState(view.store).update(recentKey, [unplugged, other]);
+      await view.connection.receive({
+        type: 'openRepository',
+        root: unplugged,
+      });
+
+      assert.deepStrictEqual(
+        view.page.last('notice')?.message,
+        strings.messages.couldNotOpen(unplugged, strings.messages.unreachable),
+      );
+      assert.deepStrictEqual(gitState(view.store).get(recentKey), [
+        unplugged,
+        other,
+      ]);
+      assert.ok(
+        keptOf(view.store).every((roots) => roots.includes(unplugged)),
+        JSON.stringify(keptOf(view.store)),
+      );
+      assert.deepStrictEqual(
+        shownTabs(view.page)?.tabs.map((tab) => tab.name),
+        ['main'],
+      );
+    });
+  });
+
   test('keeps a recent repository git refuses to open, and says what git said', async () => {
     await withView(log, [repository.root], async (view) => {
       await gitState(view.store).update(recentKey, [other]);

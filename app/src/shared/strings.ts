@@ -1108,6 +1108,7 @@ export const strings = {
       sentence`Couldn't open ${named(folder)}. ${reason}`,
     notInRepository: (folder: string) =>
       sentence`${named(folder)} is not in a git repository`,
+    unreachable: "The folder isn't there, or can't be reached.",
     alreadyRepository: (folder: string) =>
       sentence`${named(folder)} is a git repository already, so it was opened`,
     couldNotInit: (folder: string, reason: Sentence) =>

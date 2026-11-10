@@ -1284,6 +1284,17 @@ export class GitTool implements Tool<'git'> {
         });
         continue;
       }
+      if (!location && !(await isFolder(folder))) {
+        page().post({
+          type: 'notice',
+          level: 'error',
+          message: strings.messages.couldNotOpen(
+            folder,
+            strings.messages.unreachable,
+          ),
+        });
+        continue;
+      }
       if (!location) {
         this.save(
           storage.removeRecent(folder).then(() => this.forgetUnused([folder])),
