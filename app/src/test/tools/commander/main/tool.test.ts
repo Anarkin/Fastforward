@@ -5793,6 +5793,10 @@ suite('Commander tool in archives', () => {
         await betweenArchives();
 
       await transfer(['docs', 'top.txt'], false);
+      assert.deepStrictEqual(
+        page.of('askExisting').map((message) => message.existing),
+        [['top.txt']],
+      );
       await transfer(['docs', 'top.txt'], false, { existing: 'skip' });
       await waitFor(() => added().length === 1, 'the copy to be added');
       await transfer(['top.txt'], true, { existing: 'replace' });
@@ -6378,6 +6382,18 @@ suite('Commander tool in archives', () => {
       );
 
     await transfer(['top.txt', 'new.txt'], false);
+    assert.deepStrictEqual(page.of('askExisting'), [
+      {
+        type: 'askExisting',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        names: ['top.txt', 'new.txt'],
+        target: at('a.zip'),
+        move: false,
+        existing: ['top.txt'],
+      },
+    ]);
     await transfer(['a.zip'], false);
     await transfer(['top.txt', 'new.txt'], false, 'skip');
     await added(1);

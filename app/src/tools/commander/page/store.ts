@@ -370,6 +370,12 @@ function received(
           archive: message.archive,
         },
       };
+    case 'askExisting': {
+      const { tab, side, folder, names, target, move, existing } = message;
+      return {
+        transferring: { tab, side, folder, names, target, move, existing },
+      };
+    }
     case 'readingArchive': {
       const readingArchives = new Map(state.readingArchives);
       const key = readingKey(message.tab, message.side);

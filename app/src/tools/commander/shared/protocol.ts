@@ -524,6 +524,16 @@ export type CommanderToWebview =
       readonly archive: string;
     }
   | {
+      readonly type: 'askExisting';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly names: readonly string[];
+      readonly target: string;
+      readonly move: boolean;
+      readonly existing: readonly string[];
+    }
+  | {
       readonly type: 'readingArchive';
       readonly tab: string;
       readonly side: Side;

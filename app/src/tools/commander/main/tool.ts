@@ -1939,6 +1939,7 @@ export class CommanderTool implements Tool<'commander'> {
       there.has(key(path.basename(name))),
     );
     if (clashing.length > 0 && existing !== 'replace' && existing !== 'skip') {
+      this.askExisting(page, shown, other, names, move, clashing);
       return;
     }
     const kept =
@@ -2063,6 +2064,7 @@ export class CommanderTool implements Tool<'commander'> {
       there.has(key(path.basename(name))),
     );
     if (clashing.length > 0 && existing !== 'replace' && existing !== 'skip') {
+      this.askExisting(page, shown, other, names, move, clashing);
       return;
     }
     const kept =
@@ -2189,6 +2191,26 @@ export class CommanderTool implements Tool<'commander'> {
         this.access.connectTransfer,
       ),
     );
+  }
+
+  private askExisting(
+    page: Page,
+    shown: ShownPane,
+    other: Pane,
+    names: readonly string[],
+    move: boolean,
+    existing: readonly string[],
+  ): void {
+    this.post(page, {
+      type: 'askExisting',
+      tab: shown.tab,
+      side: shown.side,
+      folder: shown.pane.folder,
+      names,
+      target: other.folder,
+      move,
+      existing,
+    });
   }
 
   private refuse(page: Page, message: Sentence): void {

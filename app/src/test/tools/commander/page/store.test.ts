@@ -1248,6 +1248,37 @@ suite('The commander store in archives', () => {
     );
   });
 
+  test('asks about the items there already once the host finds them, as a side listed flat inside an archive shows none of what its folder holds and a listing may be behind, sending the answer with the copy', () => {
+    const { posted, store } = shown();
+    const asked = {
+      tab: '1',
+      side: 'left',
+      folder: 'D:\\x',
+      names: ['top.txt'],
+      target: 'C:\\a.zip',
+      move: false,
+    } as const;
+    store.getState().receive(listing('D:\\x'));
+    store.getState().receive({
+      ...listing('C:\\a.zip'),
+      side: 'right',
+      archive: 'C:\\a.zip',
+    });
+    store
+      .getState()
+      .receive({ type: 'askExisting', ...asked, existing: ['top.txt'] });
+
+    assert.deepStrictEqual(store.getState().transferring, {
+      ...asked,
+      existing: ['top.txt'],
+    });
+    store.getState().confirmTransfer('replace');
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'transfer'),
+      [{ type: 'transfer', ...asked, existing: 'replace' }],
+    );
+  });
+
   test('asks before copying or moving items of a side on disk into the folder of an archive on the other, telling which are there already, sends the answer to replace or skip them, and from one archive into another too', () => {
     const { posted, store } = shown();
     store.getState().receive({
