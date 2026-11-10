@@ -11,6 +11,7 @@ import {
   comparedImage,
   filesAlike,
 } from '../../../../../tools/git/main/cli/compare';
+import { runGit } from '../../../../../tools/git/main/cli/run';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import { replaceBuiltin } from '../../../../builtins';
 import {
@@ -67,6 +68,28 @@ suite('Comparing two files outside any repository', () => {
       await comparedFilesPatch(gitPath, {
         old: at('left', 'crlf.txt'),
         new: at('right side', 'crlf.txt'),
+      }),
+    );
+
+    assert.ok(
+      file?.hunks.some((hunk) =>
+        hunk.lines.some((line) => line.kind === 'removed'),
+      ),
+    );
+  });
+
+  test('shows the line ends that differ inside a repository whose attributes would make them alike, as the files are compared as they are', async () => {
+    const repository = at('repository');
+    fs.mkdirSync(repository);
+    await runGit(gitPath, repository, ['init', '-q']);
+    fs.writeFileSync(path.join(repository, '.gitattributes'), '* text=auto\n');
+    fs.writeFileSync(path.join(repository, 'a.txt'), 'one\r\ntwo\r\n');
+    fs.writeFileSync(path.join(repository, 'b.txt'), 'one\ntwo\n');
+
+    const [file] = parsePatch(
+      await comparedFilesPatch(gitPath, {
+        old: path.join(repository, 'a.txt'),
+        new: path.join(repository, 'b.txt'),
       }),
     );
 

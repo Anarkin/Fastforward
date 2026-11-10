@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { basename, dirname } from 'node:path';
 import type { Compared } from '../../../../shell/main/storage';
 import { maxImageSize } from '../../shared/images';
@@ -157,12 +158,15 @@ export async function comparedFilesPatch(
 ): Promise<string> {
   const [old, changed] = await regularFiles(compared);
   const errors: Buffer[] = [];
+  const outside = tmpdir();
   const patch = await runGit(
     gitPath,
-    dirname(changed),
+    outside,
     [
       '-c',
       'core.autocrlf=false',
+      '-c',
+      'core.attributesFile=',
       'diff',
       '--no-index',
       ...diffArgs,
@@ -174,6 +178,10 @@ export async function comparedFilesPatch(
     {
       okExitCodes: [0, 1],
       readsNoRepository: true,
+      env: {
+        GIT_CEILING_DIRECTORIES: dirname(outside),
+        GIT_ATTR_NOSYSTEM: '1',
+      },
       signal,
       onErrorOutput: (chunk) => errors.push(chunk),
     },
