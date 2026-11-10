@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
@@ -16,6 +17,7 @@ import { recordingLog } from '../../../../stub';
 import {
   closeViews,
   failOnErrorsLogged,
+  FakeHost,
   gate,
   type FakePage,
   lockedRepository,
@@ -178,6 +180,40 @@ suite('Git tool fetching', () => {
       for (const branch of ['brought', 'brought-later']) {
         await remote.git('update-ref', '-d', `refs/heads/${branch}`);
       }
+      opened.connection.dispose();
+    }
+  });
+
+  test('fetches a bare repository in the background in the worktree its tab shows, as git refuses to fetch in the bare folder itself', async () => {
+    const layout = path.join(folder, 'bare-layout');
+    const bare = await tempRepository(path.join(layout, '.bare'), {
+      bare: true,
+    });
+    fs.writeFileSync(path.join(layout, '.git'), 'gitdir: ./.bare\n');
+    await repository.git('push', '-q', bare.root, 'main');
+    await bare.git('remote', 'add', 'origin', remote.root);
+    await bare.git('worktree', 'add', '-q', path.join(layout, 'main'), 'main');
+    const rounds: (() => void)[] = [];
+    const host = new FakeHost();
+    host.folders = [layout];
+    const opened = await openView(log, [], true, host, (run) => {
+      rounds.push(run);
+      return () => undefined;
+    });
+    try {
+      await opened.connection.receive({ type: 'browseRepositories' });
+      await remote.git('branch', 'brought-bare', 'main');
+      await opened.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 1, 'the round to end');
+      await waitFor(
+        () =>
+          opened.page
+            .last('repository')
+            ?.refs.some((ref) => ref.name === 'origin/brought-bare') === true,
+        'the branch to be fetched in the background',
+      );
+    } finally {
+      await remote.git('update-ref', '-d', 'refs/heads/brought-bare');
       opened.connection.dispose();
     }
   });

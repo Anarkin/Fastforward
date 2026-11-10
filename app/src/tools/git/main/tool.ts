@@ -2546,10 +2546,12 @@ export class GitTool implements Tool<'git'> {
 
   private async fetchInBackground(repository: string): Promise<void> {
     const session = this.page;
+    const worktree = this.storage.worktreeOf(repository);
+    const root = (await isFolder(worktree)) ? worktree : repository;
     if (
       !session ||
       !this.hasRepository(repository) ||
-      !(await isFolder(repository))
+      !(await isFolder(root))
     ) {
       return;
     }
@@ -2563,7 +2565,7 @@ export class GitTool implements Tool<'git'> {
       ? this.noticesOf(session, repository)
       : silent;
     const fetched = await this.fetchRemotes(
-      { gitPath: this.gitPath, root: repository, repository },
+      { gitPath: this.gitPath, root, repository },
       log,
       notify,
       false,
