@@ -58,6 +58,7 @@ export function isTextEncoding(value: unknown): value is TextEncoding {
 }
 
 export const maxRowsAsked = 1000;
+export const maxFindLength = 1000;
 
 export const maxColoredBytes = 10 * 1024 * 1024;
 

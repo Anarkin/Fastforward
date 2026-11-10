@@ -9,6 +9,7 @@ import {
 } from 'react';
 import {
   maxColoredBytes,
+  maxRowsAsked,
   wholeLineBytes,
   type TextEncoding,
   type TextRow,
@@ -429,18 +430,23 @@ export function TextBody({
       }
       const within = scrolled(shown, by, screen, size ?? 0);
       if (within === undefined) {
+        const reach = Math.max(screen, maxRowsAsked - screen * 3);
+        const step = Math.max(-reach, Math.min(reach, by));
         askPlace({
           anchor: from.row.start,
           exact: true,
-          before: Math.max(0, -by) + screen * 2,
-          after: Math.max(0, by) + screen * 3,
+          before: Math.min(maxRowsAsked, Math.max(0, -step) + screen * 2),
+          after: Math.min(maxRowsAsked, Math.max(0, step) + screen * 3),
           topOf: (first, arrived) =>
             topWithin(
-              rowWithChar(arrived, first, from.from) + by,
+              rowWithChar(arrived, first, from.from) + step,
               arrived.length,
               screen,
             ),
         });
+        if (placing.current !== undefined) {
+          placing.current.by += by - step;
+        }
         return;
       }
       current.current = { ...shown, top: within.top };

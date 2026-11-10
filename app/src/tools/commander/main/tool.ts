@@ -24,6 +24,7 @@ import {
   isTextEncoding,
   maxBytesAsked,
   maxColoredBytes,
+  maxFindLength,
   maxRowsAsked,
   type TextEncoding,
   parentFolder,
@@ -241,7 +242,6 @@ type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
 const storedStatus = 204;
 const onlineStatus = 409;
 const fullStatus = 507;
-const maxFindLength = 1000;
 const findProgressEvery = 150;
 const maxHistory = 100;
 const flushEvery = 100;

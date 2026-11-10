@@ -8,9 +8,10 @@ import {
   createCommanderStore,
 } from '../../../../tools/commander/page/store';
 import type { Viewing } from '../../../../tools/commander/page/viewer';
-import type {
-  CommanderToHost,
-  TextRow,
+import {
+  maxRowsAsked,
+  type CommanderToHost,
+  type TextRow,
 } from '../../../../tools/commander/shared/protocol';
 import { renderIn } from '../../../componentFixtures';
 import { noop } from '../../../fixtures';
@@ -227,6 +228,26 @@ suite('Text of a viewed file', () => {
 
       assert.strictEqual(place(), 1000 + page * 2 * 10 - page * 3 * 10);
     }, 1000);
+  });
+
+  test('asks for no more rows than the main process gives at once however many pages were asked meanwhile, going on with the rest once answered, as a bigger ask got no answer and the viewer moved no more', async () => {
+    await viewing(async ({ show, asked, answer, answerAll, press, place }) => {
+      await show('1');
+      await answerAll(evenLines);
+
+      for (let pressed = 0; pressed < 120; pressed++) {
+        await press('PageDown');
+      }
+      for (let ask = asked()[0]; ask !== undefined; ask = asked()[0]) {
+        assert.ok(
+          ask.before <= maxRowsAsked && ask.after <= maxRowsAsked,
+          JSON.stringify([ask.before, ask.after]),
+        );
+        await answer(evenLines, ask);
+      }
+
+      assert.strictEqual(place(), (1000 - screen) * 10);
+    });
   });
 
   test('moves a page for every page asked while rows past those read were asked for, as a page asked meanwhile was lost', async () => {

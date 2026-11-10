@@ -25,6 +25,7 @@ import { useCommanderActions } from './store';
 interface Bytes {
   readonly start: number;
   readonly data: readonly number[];
+  readonly asked: number;
 }
 
 export type ByteLayout = 'hex' | 'text';
@@ -71,12 +72,16 @@ export function ByteBody({
   useEffect(
     () =>
       listen((message) => {
-        if (
-          message.type === 'bytes' &&
-          message.tab === tab &&
-          requests.answered(message.request) !== undefined
-        ) {
-          setBytes({ start: message.start, data: message.data });
+        if (message.type !== 'bytes' || message.tab !== tab) {
+          return;
+        }
+        const asked = requests.answered(message.request);
+        if (asked !== undefined) {
+          setBytes({
+            start: message.start,
+            data: message.data,
+            asked: asked.length,
+          });
         }
       }),
     [listen, tab, requests],
@@ -94,7 +99,10 @@ export function ByteBody({
       top,
       screen,
       viewing.size ?? 0,
-      bytes && { start: bytes.start, length: bytes.data.length },
+      bytes && {
+        start: bytes.start,
+        length: Math.max(bytes.data.length, bytes.asked),
+      },
       rowBytes,
     );
     if (wanted !== undefined) {

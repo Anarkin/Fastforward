@@ -7,6 +7,7 @@ import { strings } from '../../../shared/strings';
 import { maxDroppedIcons, type IconSource } from '../shared/icons';
 import type { PdfPlace } from '../../../shared/pdf';
 import {
+  maxFindLength,
   otherSide,
   sides,
   type ByteRange,
@@ -399,6 +400,14 @@ function received(
     case 'viewing': {
       const viewed = viewedOf(message);
       return sameViewed(state.viewed, viewed) ? state : { viewed };
+    }
+    case 'show':
+    case 'hide': {
+      const view = reduceView(state.view, message);
+      return {
+        ...(view !== state.view && { view }),
+        ...(state.viewed !== undefined && { viewed: undefined }),
+      };
     }
     case 'noAccess':
       return {
@@ -807,6 +816,10 @@ export function createCommanderStore(
       request: post,
       listenViewer,
       findText: (tab, encoding, query, onFound) => {
+        if (query.length > maxFindLength) {
+          onFound({ matches: [], done: true });
+          return () => undefined;
+        }
         const request = ++viewerRequests;
         const stop = listenViewer((message) => {
           if (

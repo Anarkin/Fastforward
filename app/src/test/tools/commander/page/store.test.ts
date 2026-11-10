@@ -1,11 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
-import type {
-  CommanderToHost,
-  CommanderToWebview,
-  CommanderToWebviewOf,
-  Entry,
-  FlatFolder,
+import {
+  maxFindLength,
+  type CommanderToHost,
+  type CommanderToWebview,
+  type CommanderToWebviewOf,
+  type Entry,
+  type FlatFolder,
 } from '../../../../tools/commander/shared/protocol';
 import { FlatSorter } from '../../../../tools/commander/page/flatOrder';
 import type {
@@ -100,6 +101,20 @@ suite('Commander store', () => {
     const { posted, store } = shown();
     store.getState().compare();
     assert.deepStrictEqual(posted, [{ type: 'compare', tab: '1', files: [] }]);
+  });
+
+  test('finds nothing in a viewed file for a text longer than the main process searches for, saying so at once rather than searching for ever', () => {
+    const { posted, store } = shown();
+    const found: unknown[] = [];
+
+    store
+      .getState()
+      .findText('3', 'utf-8', 'x'.repeat(maxFindLength + 1), (answer) =>
+        found.push(answer),
+      )();
+
+    assert.deepStrictEqual(found, [{ matches: [], done: true }]);
+    assert.deepStrictEqual(posted, []);
   });
 
   test('finds a text in a viewed file, handing on only what is found for that search, until it is stopped', () => {
@@ -338,6 +353,22 @@ suite('Commander store', () => {
     });
     receive({ type: 'text', tab: '1', request: 1, text: 'text' });
     assert.strictEqual(store.getState(), state);
+  });
+
+  test('forgets what the viewer showed once a tab is shown or hidden, so a viewer shown again asks for nothing before the main process views its file anew, which drops what is asked meanwhile', () => {
+    const store = createCommanderStore(noop);
+    const { receive } = store.getState();
+    const viewing = () =>
+      receive({ type: 'viewing', tab: '1', size: 10, version: '1' });
+
+    receive({ type: 'show', tab: '1', file: '/work/a.txt' });
+    viewing();
+    receive({ type: 'show', tab: '2' });
+    assert.strictEqual(store.getState().viewed, undefined);
+    receive({ type: 'show', tab: '1', file: '/work/a.txt' });
+    viewing();
+    receive({ type: 'hide' });
+    assert.strictEqual(store.getState().viewed, undefined);
   });
 
   test('keeps what the viewer shows when the main process tells it again unchanged, as every telling read, found and colored the whole file anew', () => {
