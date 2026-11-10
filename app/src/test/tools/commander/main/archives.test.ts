@@ -285,6 +285,51 @@ suite('Archives', () => {
     ]);
   });
 
+  test('takes the one tar an encrypted archive holds out with the password of the archive, so it opens once the password is given', async () => {
+    const archive = path.join(folder, 'docs.tar.7z');
+    fs.writeFileSync(archive, 'encrypted');
+    const given: (string | undefined)[] = [];
+    const reader: ArchiveReader = {
+      ...readerOf({}).reader,
+      list: (file) =>
+        Promise.resolve(
+          path.basename(file) === 'docs.tar'
+            ? { kind: 'listed', items: [item('docs/readme.md')] }
+            : {
+                kind: 'listed',
+                items: [item('docs.tar', { encrypted: true })],
+              },
+        ),
+      extract: async (_file, paths, into, options) => {
+        given.push(options?.password);
+        if (options?.password !== 'secret') {
+          return { reason: 'Wrong password', needsPassword: true };
+        }
+        for (const each of paths) {
+          await fs.promises.writeFile(path.join(into, each), each);
+        }
+        return undefined;
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+
+    assert.deepStrictEqual(await archives.open(archive), {
+      kind: 'refused',
+      reason: 'Wrong password',
+      needsPassword: true,
+      passwordOf: archive,
+    });
+    archives.usePassword(archive, 'secret');
+    const opened = await archives.open(archive);
+
+    assert.ok(opened.kind === 'opened');
+    assert.deepStrictEqual(
+      opened.archive.tree.entries([])?.map((entry) => entry.name),
+      ['docs'],
+    );
+    assert.deepStrictEqual(given, [undefined, 'secret']);
+  });
+
   test('refuses what the reader refuses, a folder and a file that is gone, saying why', async () => {
     const text = path.join(folder, 'plain.txt');
     fs.writeFileSync(text, 'text');

@@ -582,7 +582,15 @@ export class Archives implements ArchiveAccess {
       more.length === 0 &&
       !only.folder &&
       tarName.test(only.path)
-      ? this.openedTar(reader, file, source, version, only.path, signal)
+      ? this.openedTar(
+          reader,
+          file,
+          source,
+          version,
+          only.path,
+          signal,
+          password,
+        )
       : {
           kind: 'opened',
           archive: {
@@ -601,9 +609,13 @@ export class Archives implements ArchiveAccess {
     version: string,
     tar: string,
     signal: AbortSignal | undefined,
+    password: string | undefined,
   ): Promise<Opening> {
     return this.inWorkFolder(async (into) => {
-      const refused = await reader.extract(source, [tar], into, { signal });
+      const refused = await reader.extract(source, [tar], into, {
+        signal,
+        ...(password !== undefined && { password }),
+      });
       const [unpacked] = await filesUnder(into);
       if (refused !== undefined || unpacked === undefined) {
         return {
