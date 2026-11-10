@@ -358,7 +358,7 @@ export function selectionAfter(
   if (has(before.key)) {
     return before.key;
   }
-  return rows.at(Math.min(before.index, rows.length - 1))?.key;
+  return rows.at(Math.max(0, Math.min(before.index, rows.length - 1)))?.key;
 }
 
 export function opens(row: Row | undefined): boolean {

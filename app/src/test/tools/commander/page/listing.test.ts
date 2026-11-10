@@ -374,6 +374,24 @@ suite('Commander listing', () => {
     );
   });
 
+  test('selects the first row once files come to a side of the same folder that had none, as a root of an empty drive has no parent row, rather than the last', () => {
+    const rows = rowsOf(
+      [entry('a.txt'), entry('b.txt'), entry('c.txt')],
+      false,
+      true,
+      defaultSort,
+    );
+    assert.strictEqual(
+      selectionAfter(
+        { folder: '/', key: undefined, index: -1 },
+        '/',
+        rows,
+        undefined,
+      ),
+      rows[0]?.key,
+    );
+  });
+
   test('keeps the selected row when its folder is listed again, or the row now in its place when it is gone', () => {
     const rows = rowsOf(
       [folder('src'), entry('a.txt')],
