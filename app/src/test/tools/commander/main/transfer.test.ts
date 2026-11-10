@@ -543,6 +543,28 @@ suite('Transfer', () => {
     assert.deepStrictEqual(fs.readdirSync(source), ['real.txt']);
   });
 
+  test('copies a junction as a link to the same folder, also on Windows without the right to make symbolic links, as pnpm makes its packages of them', async () => {
+    write(path.join(source, 'real', 'index.js'), 'index');
+    fs.symlinkSync(
+      path.join(source, 'real'),
+      path.join(source, 'package'),
+      'junction',
+    );
+
+    const { failures } = await run({
+      sources: [path.join(source, 'package')],
+      target,
+      move: false,
+    });
+
+    assert.deepStrictEqual(failures, []);
+    assert.ok(fs.lstatSync(path.join(target, 'package')).isSymbolicLink());
+    assert.strictEqual(
+      fs.readFileSync(path.join(target, 'package', 'index.js'), 'utf8'),
+      'index',
+    );
+  });
+
   test('copies files of several folders into the one target, as a flat view lists them, asking about the second of one name', async () => {
     write(path.join(source, 'one', 'photo.jpg'), 'one');
     write(path.join(source, 'two', 'photo.jpg'), 'two');

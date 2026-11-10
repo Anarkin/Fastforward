@@ -405,7 +405,19 @@ class Transfer {
       if (overwrite) {
         await fs.promises.rm(target, { force: true });
       }
-      await fs.promises.symlink(pointed, target, folder ? 'dir' : 'file');
+      await fs.promises
+        .symlink(pointed, target, folder ? 'dir' : 'file')
+        .catch((error: unknown) => {
+          if (
+            process.platform !== 'win32' ||
+            folder !== true ||
+            !path.isAbsolute(pointed) ||
+            codeOf(error) !== 'EPERM'
+          ) {
+            throw error;
+          }
+          return fs.promises.symlink(pointed, target, 'junction');
+        });
       if (this.plan.move) {
         await fs.promises.unlink(source);
       }
