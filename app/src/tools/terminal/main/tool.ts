@@ -75,7 +75,7 @@ export class TerminalTool implements Tool<'terminal'> {
   private readonly sessions = new Map<string, Session>();
   private shown: Shown | undefined;
   private quitting = false;
-  private queued: Promise<void> | undefined;
+  private readonly queued = new Map<string, Promise<void>>();
   private foldersAsked = 0;
 
   constructor(
@@ -106,7 +106,7 @@ export class TerminalTool implements Tool<'terminal'> {
 
   show(page: Page, tab: Tab): Promise<void> {
     if (this.shown !== undefined && this.shown.tab !== tab.id) {
-      this.host?.send({ type: 'detach', id: this.shown.tab });
+      this.send({ type: 'detach', id: this.shown.tab }, false);
     }
     this.shown = { page, tab: tab.id, attached: false, columns: 0, rows: 0 };
     this.post(page, { type: 'show', tab: tab.id });
@@ -119,7 +119,7 @@ export class TerminalTool implements Tool<'terminal'> {
 
   hide(page: Page): void {
     if (this.shown?.page === page) {
-      this.host?.send({ type: 'detach', id: this.shown.tab });
+      this.send({ type: 'detach', id: this.shown.tab }, false);
       this.shown = undefined;
       this.post(page, { type: 'hide' });
     }
@@ -131,7 +131,7 @@ export class TerminalTool implements Tool<'terminal'> {
 
   closed(_page: Page, tab: Tab): void {
     if (this.sessions.delete(tab.id)) {
-      this.host?.send({ type: 'kill', id: tab.id });
+      this.send({ type: 'kill', id: tab.id }, false);
     }
     if (this.shown?.tab === tab.id) {
       this.shown = undefined;
@@ -219,7 +219,7 @@ export class TerminalTool implements Tool<'terminal'> {
       default:
         return Promise.resolve(message satisfies never);
     }
-    return this.queued ?? Promise.resolve();
+    return this.queued.get(shown.tab) ?? Promise.resolve();
   }
 
   refreshShown(): Promise<void> {
@@ -290,7 +290,7 @@ export class TerminalTool implements Tool<'terminal'> {
     const root = this.shell.tabs().find((each) => each.id === tab)?.root;
     const session: Session = { exited: false };
     this.sessions.set(tab, session);
-    this.sendWhen(this.launch(root), (launch) =>
+    this.sendWhen(tab, this.launch(root), (launch) =>
       this.sessions.get(tab) === session
         ? {
             type: 'spawn',
@@ -319,19 +319,22 @@ export class TerminalTool implements Tool<'terminal'> {
     });
   }
 
-  private send(command: HostCommand): void {
-    if (this.queued === undefined) {
+  private send(command: HostCommand, starting = true): void {
+    if (this.queued.has(command.id)) {
+      this.sendWhen(command.id, Promise.resolve(), () => command);
+    } else if (starting) {
       this.connected().send(command);
     } else {
-      this.sendWhen(Promise.resolve(), () => command);
+      this.host?.send(command);
     }
   }
 
   private sendWhen<T>(
+    tab: string,
     ready: Promise<T>,
     command: (value: T) => HostCommand | undefined,
   ): void {
-    const queued = Promise.all([this.queued, ready])
+    const queued = Promise.all([this.queued.get(tab), ready])
       .then(([, value]) => {
         const sent = command(value);
         if (sent !== undefined && !this.quitting) {
@@ -341,10 +344,10 @@ export class TerminalTool implements Tool<'terminal'> {
       .catch((error: unknown) => {
         this.log.error(error);
       });
-    this.queued = queued;
+    this.queued.set(tab, queued);
     void queued.then(() => {
-      if (this.queued === queued) {
-        this.queued = undefined;
+      if (this.queued.get(tab) === queued) {
+        this.queued.delete(tab);
       }
     });
   }

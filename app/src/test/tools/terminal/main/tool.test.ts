@@ -302,6 +302,41 @@ suite('Terminal tool', () => {
     );
   });
 
+  test('starts the shell of a tab while that of another waits for the system to answer where it starts, and leaves the other detached once it starts, as a share cut off from the network held up every terminal', async () => {
+    const answers: (() => void)[] = [];
+    const { tool, ptys, page, send } = terminal([], {
+      launch: (folder) =>
+        folder === '/work'
+          ? new Promise((resolve) =>
+              answers.push(() => resolve(launchIn(folder))),
+            )
+          : Promise.resolve(launchIn(folder)),
+    });
+    await tool.show(page, work);
+    const waiting = send({ type: 'open', tab: '1', columns: 80, rows: 24 });
+    await tool.show(page, other);
+    await send({ type: 'open', tab: '2', columns: 80, rows: 24 });
+    await send({ type: 'input', tab: '2', data: 'ls' });
+
+    assert.deepStrictEqual(
+      ptys.spawned.map((pty) => [pty.launch.cwd, pty.written]),
+      [['/home/me', ['ls']]],
+    );
+    const screens = page.of('screen').length;
+    answers[0]?.();
+    await waiting;
+    await until(() => ptys.spawned.length === 2);
+    ptys.spawned[1]?.print('from work');
+    await send({ type: 'input', tab: '2', data: 'pwd' });
+
+    assert.deepStrictEqual(
+      ptys.spawned.map((pty) => pty.launch.cwd),
+      ['/home/me', '/work'],
+    );
+    assert.strictEqual(page.of('screen').length, screens);
+    assert.ok(!page.output().includes('from work'));
+  });
+
   test('starts no shell once quitting, though the system answers where it starts after', async () => {
     const answers: (() => void)[] = [];
     const { tool, ptys, page, send, listeners } = terminal([], {
