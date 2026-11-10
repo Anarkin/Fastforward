@@ -596,6 +596,7 @@ function commander(
   const tabs: Tab[] = [];
   tool.attach({
     page: () => page,
+    pages: () => [page],
     tabs: () => tabs,
     active: () => undefined,
     open: () => Promise.resolve(),

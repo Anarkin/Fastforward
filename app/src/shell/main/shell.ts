@@ -57,6 +57,7 @@ export type Notice = Omit<ToWebviewOf<'notice'>, 'type'>;
 
 export interface ShellAccess {
   page(): Page | undefined;
+  pages(): readonly Page[];
   tabs(): readonly Tab[];
   active(): Tab | undefined;
   open(
@@ -142,6 +143,7 @@ interface Asking {
 
 export const unattachedShell: ShellAccess = {
   page: () => undefined,
+  pages: () => [],
   tabs: () => [],
   active: () => undefined,
   open: () => Promise.resolve(),
@@ -233,6 +235,7 @@ export class Shell {
   ) {
     const access: ShellAccess = {
       page: () => this.focused(),
+      pages: () => [...this.pages.values()].filter((page) => !page.disposed),
       tabs: () => this.storage.savedTabs,
       active: () => activeTabOf(this.focusedWindowOf()),
       open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),

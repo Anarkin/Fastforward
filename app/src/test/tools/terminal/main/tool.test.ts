@@ -129,6 +129,7 @@ function terminal(
   const moved: (readonly [string, string])[] = [];
   tool.attach({
     page: () => page,
+    pages: () => pages,
     tabs: () => [work, other],
     active: () => undefined,
     open: (_page, _tool, roots) => {
@@ -147,6 +148,7 @@ function terminal(
     idle: () => Promise.resolve(),
   });
   const page = new TerminalPage();
+  const pages: TerminalPage[] = [page];
   const send = (message: TerminalToHost, from: Page = page) =>
     tool.receive(from, message);
   const open = async (tab: Tab, on: TerminalPage = page) => {
@@ -175,6 +177,7 @@ function terminal(
     visitsOf,
     listed,
     page,
+    pages,
     send,
     open,
     stopHost,
@@ -636,5 +639,86 @@ suite('Terminal tool', () => {
         ['2', { name: 'Terminal' }],
       ],
     );
+  });
+});
+
+suite('Terminal tool in several windows', () => {
+  test('shows a terminal tab in each window at once, sending each page the output of the shell of its own tab', async () => {
+    const { ptys, clock, page, open } = terminal();
+    const second = new TerminalPage();
+    await open(work);
+    await open(other, second);
+    const [first, next] = ptys.spawned;
+    first?.print('first');
+    next?.print('second');
+    await clock.fire();
+    await clock.fire();
+    assert.strictEqual(page.output(), 'first');
+    assert.strictEqual(second.output(), 'second');
+  });
+
+  test('passes on what a page types only to the shell of the tab that page shows', async () => {
+    const { ptys, send, open } = terminal();
+    const second = new TerminalPage();
+    await open(work);
+    await open(other, second);
+    await send({ type: 'input', tab: '2', data: 'not shown here' });
+    await send({ type: 'input', tab: '2', data: 'ls\r' }, second);
+    assert.deepStrictEqual(ptys.spawned[0]?.written, []);
+    assert.deepStrictEqual(ptys.spawned[1]?.written, ['ls\r']);
+  });
+
+  test('leaves the shell of one window attached while another window stops showing its own', async () => {
+    const { tool, ptys, clock, page, open } = terminal();
+    const second = new TerminalPage();
+    await open(work);
+    await open(other, second);
+    tool.hide(second);
+    ptys.spawned[0]?.print('still shown');
+    await clock.fire();
+    assert.strictEqual(page.output(), 'still shown');
+    assert.strictEqual(second.of('hide').length, 1);
+  });
+
+  test('shows a tab moved to another window there, telling the window it left to stop showing it, and leaves it attached once that window shows another tab', async () => {
+    const { ptys, clock, page, open } = terminal();
+    const second = new TerminalPage();
+    await open(work);
+    const screen = await open(work, second);
+    await open(other);
+    ptys.spawned[0]?.print('moved');
+    await clock.fire();
+    assert.ok(screen !== undefined);
+    assert.strictEqual(page.of('hide').length, 1);
+    assert.strictEqual(second.output(), 'moved');
+    assert.strictEqual(ptys.spawned.length, 2);
+  });
+
+  test('tells every window that shows a terminal that the terminal process stopped', async () => {
+    const { page, open, stopHost } = terminal();
+    const second = new TerminalPage();
+    await open(work);
+    await open(other, second);
+    stopHost(1);
+    assert.ok(page.output().includes(strings.terminal.stopped));
+    assert.ok(second.output().includes(strings.terminal.stopped));
+  });
+
+  test('tells every window the folders to offer once they change, as each lists them in its + menu', async () => {
+    const { tool, page, pages } = terminal();
+    const second = new TerminalPage();
+    pages.push(second);
+    tool.ready(page);
+    tool.ready(second);
+    await until(
+      () =>
+        page.of('folders').length === 1 && second.of('folders').length === 1,
+    );
+    tool.visited('/code/app');
+    await until(
+      () =>
+        page.of('folders').length === 2 && second.of('folders').length === 2,
+    );
+    assert.deepStrictEqual(second.of('folders').at(-1)?.folders, ['/code/app']);
   });
 });
