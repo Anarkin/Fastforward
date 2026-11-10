@@ -3082,7 +3082,7 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(last(), [root, 'Users', false, true]);
   });
 
-  test('opens on a side the folder selected on the other, its parent for .., or the folder the other is in for a file', async () => {
+  test('opens on a side the folder selected on the other, or the folder the other is in for .. or a file', async () => {
     const { tool, page, send } = commander({
       [root]: [folder('Users'), file('notes.txt')],
       [at('Users')]: [folder('me')],
@@ -3102,9 +3102,9 @@ suite('Commander tool', () => {
 
     assert.deepStrictEqual(page.listings().slice(3), [
       `left ${at('Users', 'me')} ↑: `,
-      `left ${root}: Users notes.txt [Users]`,
+      `left ${at('Users')} ↑: me [me]`,
       `right ${root}: Users notes.txt [Users]`,
-      `left ${root}: Users notes.txt`,
+      `left ${root}: Users notes.txt [Users]`,
       `right ${at('Users')} ↑: me`,
     ]);
   });

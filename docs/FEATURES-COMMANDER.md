@@ -20,7 +20,7 @@
 | Parent folder | Go up a folder | Backspace | Core | ✅ Yes | Backspace, or `..` atop the list |
 | Back and forward | Retrace the folders a side went through | Alt+Left, Alt+Right | Core | ✅ Yes | Alt+Left and Alt+Right, the mouse buttons and the buttons of the side, up to 100 folders per side |
 | Drives | Choose the drive of a side | Alt+F1, Alt+F2 | Common | ✅ Yes | From the drive menu of each side, its letter pressed to choose it; on Windows only |
-| Open on the other side | Open the selected folder, or the one shown, on the other side | Ctrl+Left, Ctrl+Right | Common | ✅ Yes | Mod+Left and Mod+Right, going into a file selected when 7-Zip opens it as an archive, and saying why when 7-Zip finds an archive in it it can't open |
+| Open on the other side | Open the selected folder, or the one shown, on the other side | Ctrl+Left, Ctrl+Right | Common | ✅ Yes | Mod+Left and Mod+Right, the folder shown for .., as its menu has it, going into a file selected when 7-Zip opens it as an archive, and saying why when 7-Zip finds an archive in it it can't open |
 | Swap the sides | Exchange the folders of the two sides | Ctrl+U | Common | ❌ No |  |
 | Type a path | Go to a folder by typing or pasting its path | — | Core | ❌ No | The path atop each side is shown only |
 | Breadcrumbs | Go to a folder of the path by clicking it | — | Common | ❌ No |  |

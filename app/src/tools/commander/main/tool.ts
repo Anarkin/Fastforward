@@ -3467,7 +3467,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
     const target =
       name === parentFolder
-        ? parentOf(folder)
+        ? folder
         : entry === undefined
           ? undefined
           : entry.folder
