@@ -62,6 +62,25 @@ export function watchFolder(
   let failures = 0;
   let stopped = false;
   let stopWatching: (() => void) | undefined;
+  let watchedIno: number | undefined;
+  let looking = false;
+  const lookAgain = () => {
+    if (looking || stopWatching === undefined) {
+      return;
+    }
+    looking = true;
+    void stat(folder)
+      .then(
+        (stats) => stats.ino === watchedIno,
+        () => false,
+      )
+      .then((same) => {
+        looking = false;
+        if (!same && !stopped && stopWatching !== undefined) {
+          watchAgain();
+        }
+      });
+  };
   const changed = () => {
     if (stopped) {
       return;
@@ -69,10 +88,17 @@ export function watchFolder(
     pending ??= setTimeout(() => {
       pending = undefined;
       onChange();
+      lookAgain();
     }, delay);
   };
+  const heard = (_event: string, name: string | null) => {
+    if (name !== null && path.isAbsolute(name) && stopWatching !== undefined) {
+      watchAgain();
+    }
+    changed();
+  };
   const watchAnswered = (stamp: string): (() => void) | undefined => {
-    const own = watched(start, folder, changed);
+    const own = watched(start, folder, heard);
     if (own === undefined) {
       return undefined;
     }
@@ -109,10 +135,12 @@ export function watchFolder(
         if (stopped) {
           return;
         }
+        watchedIno = stats.ino;
         stopWatching = watchAnswered(listed ?? stampOf(stats));
         if (stopWatching === undefined) {
           watchAgain();
         } else if (failures > 0) {
+          failures = 0;
           changed();
         }
       },
@@ -155,9 +183,16 @@ export function watchTree(
 ): () => void {
   let stopped = false;
   const watcher = watched(start, folder, (_event, name) => {
-    if (!stopped) {
-      onChange(name ?? undefined);
+    if (stopped) {
+      return;
     }
+    if (name !== null && path.isAbsolute(name)) {
+      stopped = true;
+      watcher?.close();
+      onChange(undefined);
+      return;
+    }
+    onChange(name ?? undefined);
   });
   if (watcher === undefined) {
     return () => {};

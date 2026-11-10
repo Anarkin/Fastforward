@@ -319,6 +319,44 @@ suite('Watching a folder of the commander', () => {
     }, 'a change after');
   });
 
+  test('watches anew a folder made in place of the one it watched, and stops watching one removed rather than hearing of it without end, as Windows tells of a removed folder again and again', async () => {
+    const watched = path.join(folder, 'watched');
+    fs.mkdirSync(watched);
+    const counted = { started: 0 };
+    let changes = 0;
+    stops.push(
+      watchFolder(watched, () => changes++, undefined, {
+        delay: 10,
+        settle: 20,
+        start: watching(counted),
+      }),
+    );
+    await waitFor(() => {
+      fs.writeFileSync(path.join(watched, 'ready.txt'), String(Date.now()));
+      return changes > 0;
+    }, 'the watching to start');
+    const startedBefore = counted.started;
+
+    fs.rmSync(watched, { recursive: true });
+    fs.mkdirSync(watched);
+    await waitFor(
+      () => counted.started > startedBefore,
+      'the folder made anew to be watched',
+    );
+    const beforeAdded = changes;
+    await waitFor(() => {
+      fs.writeFileSync(path.join(watched, 'added.txt'), String(Date.now()));
+      return changes > beforeAdded;
+    }, 'a file added to the folder made anew');
+
+    fs.rmSync(watched, { recursive: true });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const afterRemoval = changes;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    assert.ok(changes - afterRemoval < 3, String(changes - afterRemoval));
+  });
+
   test('tells nothing once stopped, nor for a folder it could not watch', async () => {
     let changes = 0;
     watchFolder(folder, () => changes++, undefined, { delay: 10 })();
@@ -395,6 +433,34 @@ suite('Watching a folder and every folder in it', () => {
       undefined,
       undefined,
     ]);
+    assert.strictEqual(closed, 1);
+  });
+
+  test('tells of no path and stops watching once the system names the folder itself, as Windows names a removed folder by its whole path without end', () => {
+    const events: ((event: string, name: string | null) => void)[] = [];
+    let closed = 0;
+    const start = (
+      watched: string,
+      listener: (event: string, name: string | null) => void,
+    ) => {
+      events.push(listener);
+      const watcher = fs.watch(watched, { persistent: false });
+      const close = watcher.close.bind(watcher);
+      watcher.close = () => {
+        closed++;
+        close();
+      };
+      return watcher;
+    };
+    const changed: (string | undefined)[] = [];
+    stops.push(watchTree(folder, (each) => changed.push(each), start));
+
+    events[0]('rename', 'photos');
+    events[0]('rename', `\\\\?\\${folder}`);
+    events[0]('rename', `\\\\?\\${folder}`);
+    events[0]('rename', folder);
+
+    assert.deepStrictEqual(changed, ['photos', undefined]);
     assert.strictEqual(closed, 1);
   });
 
