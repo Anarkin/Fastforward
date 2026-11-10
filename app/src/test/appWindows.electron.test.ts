@@ -107,6 +107,16 @@ suite('App with several windows', () => {
           { id: '1', tabs: ['1'], active: '1' },
           { id: '2', tabs: ['2', '3'], active: '2' },
         ],
+        windowPlaces: {
+          '1': {
+            bounds: { x: 0, y: 40, width: 900, height: 600 },
+            maximized: false,
+          },
+          '2': {
+            bounds: { x: 40, y: 80, width: 900, height: 600 },
+            maximized: false,
+          },
+        },
       }),
     );
     app = await launchApp(profile);

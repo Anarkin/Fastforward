@@ -152,14 +152,14 @@ suite('Window bounds', () => {
     );
   });
 
-  test('opens a new window at the left or top of the screen once it would reach past that edge, no larger than the screen, and past the edge from a window as large as the screen, so it never lies right over the one it is opened from', () => {
+  test('opens a new window at the left or top of the screen once it would reach past that edge, no larger than the screen, and a step smaller from a window as large as the screen, so it never lies right over the one it is opened from and stays on the screen', () => {
     assert.deepStrictEqual(
       cascaded({ x: 700, y: 400, width: 1200, height: 800 }, screens[0]),
       { x: 0, y: 0, width: 1200, height: 800 },
     );
     assert.deepStrictEqual(
       cascaded({ x: 0, y: 0, width: 2500, height: 1200 }, screens[0]),
-      { x: 32, y: 32, width: 1920, height: 1040 },
+      { x: 32, y: 32, width: 1888, height: 1008 },
     );
   });
 

@@ -149,25 +149,26 @@ export function tearsOffTabs(
 
 const cascadeStep = 32;
 
-function cascadedEdge(
+function cascadedSpan(
   start: number,
   size: number,
   low: number,
   high: number,
-): number {
+): { readonly at: number; readonly size: number } {
+  const span = Math.min(size, high - low);
   const next = start + cascadeStep;
-  return next + size <= high || start === low ? next : low;
+  if (next + span <= high) {
+    return { at: next, size: span };
+  }
+  return start === low
+    ? { at: next, size: Math.max(high - next, 0) }
+    : { at: low, size: span };
 }
 
 export function cascaded(from: Bounds, area: Bounds): Bounds {
-  const width = Math.min(from.width, area.width);
-  const height = Math.min(from.height, area.height);
-  return {
-    x: cascadedEdge(from.x, width, area.x, area.x + area.width),
-    y: cascadedEdge(from.y, height, area.y, area.y + area.height),
-    width,
-    height,
-  };
+  const across = cascadedSpan(from.x, from.width, area.x, area.x + area.width);
+  const down = cascadedSpan(from.y, from.height, area.y, area.y + area.height);
+  return { x: across.at, y: down.at, width: across.size, height: down.size };
 }
 
 export function firstWindowSize(workArea: Bounds): {
