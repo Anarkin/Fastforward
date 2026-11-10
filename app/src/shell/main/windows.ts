@@ -8,6 +8,8 @@ export interface TabWindow {
 
 export type Layout = readonly TabWindow[];
 
+export type Emptied = 'closed' | 'kept';
+
 interface History {
   after(
     closed: string,
@@ -100,6 +102,7 @@ export function withClosed(
   layout: Layout,
   tab: string,
   history: History,
+  emptied: Emptied = 'closed',
 ): Layout {
   const from = windowOf(layout, tab);
   if (from === undefined) {
@@ -107,7 +110,7 @@ export function withClosed(
   }
   const index = from.tabs.findIndex((each) => each.id === tab);
   const rest = from.tabs.toSpliced(index, 1);
-  if (rest.length === 0 && layout.length > 1) {
+  if (rest.length === 0 && layout.length > 1 && emptied === 'closed') {
     return layout.filter((window) => window !== from);
   }
   const active =
@@ -123,6 +126,7 @@ export function withMoved(
   window: string,
   index: number,
   history: History,
+  emptied: Emptied = 'closed',
 ): Layout {
   const from = windowOf(layout, tab);
   const moved = from?.tabs.find((each) => each.id === tab);
@@ -141,9 +145,13 @@ export function withMoved(
         .toSpliced(index, 0, moved),
     }));
   }
-  return withWindow(withClosed(layout, tab, history), window, (each) => ({
-    ...each,
-    tabs: each.tabs.toSpliced(index, 0, moved),
-    active: tab,
-  }));
+  return withWindow(
+    withClosed(layout, tab, history, emptied),
+    window,
+    (each) => ({
+      ...each,
+      tabs: each.tabs.toSpliced(index, 0, moved),
+      active: tab,
+    }),
+  );
 }

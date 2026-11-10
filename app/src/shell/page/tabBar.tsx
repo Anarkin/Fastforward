@@ -648,6 +648,7 @@ function useVisit(
 ): readonly TabInfo[] {
   const [index, setIndex] = useState<number>();
   const visited = useRef<string>(undefined);
+  const shifted = useRef<HTMLElement>(undefined);
   const others = useMemo(
     () => (visit ? tabs.filter((tab) => tab.id !== visit.tab.id) : tabs),
     [tabs, visit],
@@ -657,7 +658,8 @@ function useVisit(
     const left = visited.current;
     if (left !== undefined && left !== visit?.tab.id) {
       visited.current = undefined;
-      const element = elements.current.get(left);
+      const element = shifted.current;
+      shifted.current = undefined;
       if (element !== undefined) {
         const from = element.getBoundingClientRect().left;
         element.style.transform = '';
@@ -688,6 +690,7 @@ function useVisit(
       onIndex(to);
     } else if (visitor !== undefined) {
       visitor.style.transform = `translateX(${shift}px)`;
+      shifted.current = visitor;
     }
   }, [strip, elements, others, visit, index, onIndex]);
   return visit === undefined

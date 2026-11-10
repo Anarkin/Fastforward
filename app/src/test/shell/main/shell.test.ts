@@ -993,7 +993,7 @@ suite('Shell with several windows', () => {
     assert.strictEqual(await first.shell.tearOff('5', 's2'), false);
   });
 
-  test('moves a dragged tab into the window it is dropped on at the place its strip told, closing the window it was torn into once that holds no tab', async () => {
+  test('moves a dragged tab into the window whose strip it is over and back out, showing it in the window that holds it, and keeps the window it leaves while the drag lasts though that holds no tab', async () => {
     const host = new FakeHost();
     const { first, second } = await twoWindows(host);
     const spare = attach(first.view, 's1');
@@ -1001,8 +1001,17 @@ suite('Shell with several windows', () => {
     await first.shell.tearOff('1', 's1');
     await first.shell.moveTab('1', '2', 1);
     assert.deepStrictEqual(shownIn(second.page), [['2', '1', '3', '4'], '1']);
-    assert.deepStrictEqual(host.opened, ['close window s1']);
-    assert.deepStrictEqual(first.shell.windows(), ['1', '2']);
+    assert.deepStrictEqual(shownIn(spare.page), [[], undefined]);
+    assert.deepStrictEqual(host.opened, []);
+    assert.deepStrictEqual(first.shell.windows(), ['1', '2', 's1']);
+
+    await first.shell.moveTab('1', '2', 3);
+    assert.deepStrictEqual(shownIn(second.page), [['2', '3', '4', '1'], '1']);
+
+    await first.shell.moveTab('1', 's1', 0);
+    assert.deepStrictEqual(shownIn(spare.page), [['1'], '1']);
+    assert.deepStrictEqual(shownIn(second.page), [['2', '3', '4'], '4']);
+    assert.deepStrictEqual(host.opened, []);
   });
 
   test('shows the page of a window the tab dragged over it, named as it is, and stops showing it once asked', async () => {

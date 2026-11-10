@@ -467,6 +467,13 @@ async function start(asked: readonly string[]): Promise<void> {
       },
     };
   };
+  const closeOpened = (id: string) => {
+    const entry = opened.get(id);
+    if (entry !== undefined && !entry.window.isDestroyed()) {
+      entry.closing = true;
+      entry.window.close();
+    }
+  };
   const dragHost: DragHost = {
     windows: () => frontToBack.flatMap((id) => dragWindowOf(id) ?? []),
     tearOff: (tab, from) => {
@@ -489,6 +496,7 @@ async function start(asked: readonly string[]): Promise<void> {
     },
     visit: (window, visit) => asking?.visit(window, visit),
     move: (tab, into, index) => void asking?.moveTab(tab, into, index),
+    close: (window) => closeOpened(window),
     focus: (window) => {
       const entry = opened.get(window);
       if (entry !== undefined && !entry.window.isDestroyed()) {
@@ -932,13 +940,7 @@ async function start(asked: readonly string[]): Promise<void> {
               );
         openWindow(id, { bounds, maximized: false });
       },
-      closeWindow: (id) => {
-        const entry = opened.get(id);
-        if (entry !== undefined && !entry.window.isDestroyed()) {
-          entry.closing = true;
-          entry.window.close();
-        }
-      },
+      closeWindow: closeOpened,
       showWindow: (id) => {
         const entry = opened.get(id);
         if (entry !== undefined) {

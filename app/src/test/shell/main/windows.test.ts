@@ -158,6 +158,21 @@ suite('Windows of tabs', () => {
     assert.deepStrictEqual(shapeOf(moved), [['2', ['1', '2'], '1']]);
   });
 
+  test('keeps the window a dragged tab leaves though it holds no tab, so the drag can bring the tab back into it', () => {
+    const moved = withMoved(
+      layoutOf(['1', ['1'], '1'], ['2', ['2'], '2']),
+      '1',
+      '2',
+      0,
+      historyOf('1'),
+      'kept',
+    );
+    assert.deepStrictEqual(shapeOf(moved), [
+      ['1', []],
+      ['2', ['1', '2'], '1'],
+    ]);
+  });
+
   test('puts a tab moved past the end of a window at its end', () => {
     const moved = withMoved(
       layoutOf(['1', ['1', '2'], '1'], ['2', ['3'], '3']),

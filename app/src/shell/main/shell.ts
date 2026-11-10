@@ -39,6 +39,7 @@ import {
   withClosed,
   withMoved,
   withOpened,
+  type Emptied,
   type TabWindow,
 } from './windows';
 
@@ -1039,12 +1040,27 @@ export class Shell {
   }
 
   async moveTab(tab: string, into: string, index: number): Promise<void> {
-    const { layout } = this.storage;
-    const from = windowOf(layout, tab);
-    if (from === undefined || !layout.some((window) => window.id === into)) {
+    const { storage } = this;
+    const from = windowOf(storage.layout, tab);
+    if (
+      from === undefined ||
+      !storage.layout.some((window) => window.id === into)
+    ) {
       return;
     }
-    await this.relocate(tab, from.id, into, index, false);
+    if (from.id !== into) {
+      await this.relocate(tab, from.id, into, index, false, 'kept');
+      return;
+    }
+    this.save(
+      storage.setLayout(
+        withMoved(storage.layout, tab, into, index, this.history),
+      ),
+    );
+    const page = this.livePage(into);
+    if (page !== undefined) {
+      this.postTabs(page);
+    }
   }
 
   visit(window: string, visit: Visit | undefined): void {
@@ -1070,12 +1086,13 @@ export class Shell {
     into: string,
     index: number,
     added: boolean,
+    emptied: Emptied = 'closed',
   ): Promise<void> {
     const { storage } = this;
     const before = added
       ? [...storage.layout, { id: into, tabs: [] }]
       : storage.layout;
-    const layout = withMoved(before, tab, into, index, this.history);
+    const layout = withMoved(before, tab, into, index, this.history, emptied);
     this.save(storage.setLayout(layout));
     const there = this.livePage(into);
     const shown = there === undefined ? undefined : this.show(there, tab);

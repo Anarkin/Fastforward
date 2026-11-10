@@ -19,6 +19,15 @@ function tabsIn(page: Page): Promise<number> {
   return page.locator('.tabs [role="tab"]').count();
 }
 
+async function selectedIn(page: Page): Promise<string> {
+  const selected = await page
+    .locator('.tabs [role="tab"]')
+    .evaluateAll((tabs) =>
+      tabs.map((tab) => tab.getAttribute('aria-selected')),
+    );
+  return selected.join();
+}
+
 function byPlace(a: SavedBounds, b: SavedBounds): number {
   return a.x - b.x || a.y - b.y;
 }
@@ -312,7 +321,7 @@ suite('App with tabs dragged between windows', () => {
     removeFolder(folder);
   });
 
-  test('tears a tab off its window and drops it into the row of tabs of another, where it stays', async () => {
+  test('tears a tab off its window into the row of tabs of another, which shows it before it is dropped, and drops it there', async () => {
     await sparesReady();
     const source = await byTabs(3);
     const target = await byTabs(1);
@@ -326,6 +335,10 @@ suite('App with tabs dragged between windows', () => {
       targetContent.x + row.x + row.width - 60 - sourceContent.x,
       targetContent.y + row.y + row.height / 2 - sourceContent.y,
       { steps: 10 },
+    );
+    await waitFor(
+      async () => (await selectedIn(target)) === 'false,true',
+      'the tab to show in the other window before it is dropped',
     );
     await source.mouse.up();
     await waitFor(
@@ -367,6 +380,67 @@ suite('App with tabs dragged between windows', () => {
             .allTextContents(),
         ) === JSON.stringify(names),
       'the tab to be back',
+    );
+    await shownWindows(launched(), 3);
+  });
+
+  test('takes a tab dragged over the row of tabs of another window out of it from the place it was shown there, rather than from the place it was put', async () => {
+    await sparesReady();
+    const source = await byTabs(2);
+    const target = await byTabs(1);
+    await target.bringToFront();
+    await target.evaluate(() => {
+      const strip = document.querySelector('.tab-strip');
+      const leaving: number[] = [];
+      Object.assign(window, { leaving });
+      if (strip !== null) {
+        new MutationObserver(() =>
+          [...strip.children].forEach((child, index) => {
+            if (child.classList.contains('closing')) {
+              leaving.push(index);
+            }
+          }),
+        ).observe(strip, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class'],
+        });
+      }
+    });
+    await grabTab(source, 1);
+    const sourceContent = await contentOf(source);
+    const targetContent = await contentOf(target);
+    const first = await target
+      .locator('.tabs [role="tab"]')
+      .first()
+      .boundingBox();
+    assert.ok(first);
+    const over = {
+      x: targetContent.x + first.x + 20 - sourceContent.x,
+      y: targetContent.y + first.y + first.height / 2 - sourceContent.y,
+    };
+    await source.mouse.move(over.x, over.y, { steps: 10 });
+    await waitFor(
+      async () => (await selectedIn(target)) === 'true,false',
+      'the tab to show first in the other window',
+    );
+    await source.mouse.move(over.x, over.y + 300, { steps: 5 });
+    await waitFor(
+      async () => (await tabsIn(target)) === 1,
+      'the tab to leave the other window',
+    );
+    const leaving = await target.evaluate(() =>
+      'leaving' in window && Array.isArray(window.leaving)
+        ? window.leaving.filter((index) => typeof index === 'number')
+        : [],
+    );
+    assert.deepStrictEqual([...new Set(leaving)], [0]);
+    await source.keyboard.press('Escape');
+    await source.mouse.up();
+    await waitFor(
+      async () => (await tabsIn(source)) === 2,
+      'the tab to be back where it was',
     );
     await shownWindows(launched(), 3);
   });

@@ -36,6 +36,7 @@ export interface DragHost {
   tearOff(tab: string, from: string): DragWindow | undefined;
   visit(window: string, visit: Visit | undefined): void;
   move(tab: string, into: string, index: number): void;
+  close(window: string): void;
   focus(window: string): void;
 }
 
@@ -140,27 +141,34 @@ export class TabDrag {
 
   move(at: Point): void {
     const found = targetAt(this.host.windows(), at, this.floating);
-    if (
-      this.target !== undefined &&
-      this.target.window.id !== found?.window.id
-    ) {
-      this.host.visit(this.target.window.id, undefined);
-      this.target = undefined;
+    const left = this.target;
+    if (found !== undefined && !this.hidden) {
+      this.hidden = true;
+      this.floating.hide(true);
+    }
+    if (left?.window.id !== found?.window.id) {
+      this.target =
+        found === undefined
+          ? undefined
+          : {
+              window: found.window,
+              index: stripIndex(found.window.strip(), found.x),
+            };
+      this.host.move(
+        this.started.tab,
+        this.target?.window.id ?? this.floating.id,
+        this.target?.index ?? 0,
+      );
+      if (left !== undefined) {
+        this.host.visit(left.window.id, undefined);
+      }
     }
     if (found !== undefined) {
-      this.target ??= {
-        window: found.window,
-        index: stripIndex(found.window.strip(), found.x),
-      };
       this.host.visit(found.window.id, {
         tab: this.started.tab,
         x: found.x,
         grabX: this.started.grab.x,
       });
-      if (!this.hidden) {
-        this.hidden = true;
-        this.floating.hide(true);
-      }
       return;
     }
     this.place(at);
@@ -171,8 +179,10 @@ export class TabDrag {
   }
 
   index(window: string, index: number): void {
-    if (this.target?.window.id === window) {
-      this.target.index = index;
+    const { target } = this;
+    if (target?.window.id === window && target.index !== index) {
+      target.index = index;
+      this.host.move(this.started.tab, window, index);
     }
   }
 
@@ -182,21 +192,25 @@ export class TabDrag {
       this.host.focus(this.floating.id);
       return;
     }
-    this.host.move(this.started.tab, target.window.id, target.index);
     this.host.visit(target.window.id, undefined);
+    this.host.close(this.floating.id);
     this.host.focus(target.window.id);
   }
 
   cancel(): void {
-    if (this.target !== undefined) {
-      this.host.visit(this.target.window.id, undefined);
-      this.target = undefined;
+    const { target } = this;
+    this.target = undefined;
+    if (!this.started.alone || target !== undefined) {
+      this.host.move(this.started.tab, this.source.id, this.started.index);
+    }
+    if (target !== undefined) {
+      this.host.visit(target.window.id, undefined);
     }
     if (this.started.alone) {
       this.floating.moveTo(this.from.x, this.from.y);
       this.floating.hide(false);
     } else {
-      this.host.move(this.started.tab, this.source.id, this.started.index);
+      this.host.close(this.floating.id);
     }
     this.host.focus(this.source.id);
   }

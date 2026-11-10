@@ -64,23 +64,32 @@ function hostOf(
 ) {
   const visits: (readonly [string, Visit | undefined])[] = [];
   const moved: (readonly [string, string, number])[] = [];
+  const closed: string[] = [];
   const focused: string[] = [];
+  const calls: string[] = [];
   const host: DragHost = {
     windows: () => windows,
     tearOff: () => {
       windows.unshift(torn);
       return torn;
     },
-    visit: (window, visit) => visits.push([window, visit]),
-    move: (tab, into, index) => moved.push([tab, into, index]),
+    visit: (window, visit) => {
+      visits.push([window, visit]);
+      calls.push(`visit ${window} ${visit === undefined ? 'ends' : visit.x}`);
+    },
+    move: (tab, into, index) => {
+      moved.push([tab, into, index]);
+      calls.push(`move ${tab} ${into} ${index}`);
+    },
+    close: (window) => closed.push(window),
     focus: (window) => focused.push(window),
   };
-  return { host, visits, moved, focused, torn };
+  return { host, visits, moved, closed, focused, calls, torn };
 }
 
 const start = (at: { x: number; y: number }, alone = false): DragStart => ({
   tab: '3',
-  index: 1,
+  index: alone ? 0 : 1,
   grab: { x: 20, y: 10 },
   at,
   alone,
@@ -98,7 +107,7 @@ suite('Dragging a tab between windows', () => {
     assert.deepStrictEqual(torn.moves.at(-1), [972, 686]);
   });
 
-  test('shows the tab in the strip of a window under the pointer, hiding the window it was torn into meanwhile, and shows that window again once the pointer leaves the strip', () => {
+  test('moves the tab into the window whose strip is under the pointer, showing it there under the pointer while the window it was torn into hides, and back into that window once the pointer leaves the strip, before the strip stops showing it, so it never shows there at another place', () => {
     const source = new FakeWindow('1', { x: 0, y: 0, width: 900, height: 600 });
     const other = new FakeWindow('2', {
       x: 1000,
@@ -106,15 +115,20 @@ suite('Dragging a tab between windows', () => {
       width: 900,
       height: 600,
     });
-    const { host, visits, torn } = hostOf([source, other]);
+    const { host, visits, moved, calls, torn } = hostOf([source, other]);
     const drag = TabDrag.start(host, source, start({ x: 300, y: 120 }));
     assert.ok(drag);
     drag.move({ x: 1300, y: 16 });
+    drag.move({ x: 1310, y: 16 });
     assert.strictEqual(torn.hidden, true);
-    assert.deepStrictEqual(visits, [['2', { tab: '3', x: 300, grabX: 20 }]]);
+    assert.deepStrictEqual(moved, [['3', '2', Number.MAX_SAFE_INTEGER]]);
+    assert.deepStrictEqual(visits, [
+      ['2', { tab: '3', x: 300, grabX: 20 }],
+      ['2', { tab: '3', x: 310, grabX: 20 }],
+    ]);
     drag.move({ x: 1300, y: 300 });
     assert.strictEqual(torn.hidden, false);
-    assert.deepStrictEqual(visits.at(-1), ['2', undefined]);
+    assert.deepStrictEqual(calls.slice(-2), ['move 3 9 0', 'visit 2 ends']);
   });
 
   test('takes the strip of the window in front where windows overlap, and none where another window covers it, a pointer a little above or below a strip counting as over it', () => {
@@ -136,13 +150,18 @@ suite('Dragging a tab between windows', () => {
       width: 900,
       height: 600,
     });
-    const { host, visits } = hostOf([front, behind, source]);
+    const { host, visits, moved, calls } = hostOf([front, behind, source]);
     const drag = TabDrag.start(host, source, start({ x: 300, y: 420 }));
     assert.ok(drag);
     drag.move({ x: 600, y: 30 });
     assert.deepStrictEqual(visits.at(-1)?.[0], '2');
     drag.move({ x: 300, y: 30 });
     assert.deepStrictEqual(visits.at(-1)?.[0], '3');
+    assert.deepStrictEqual(calls.slice(-3), [
+      `move 3 3 ${Number.MAX_SAFE_INTEGER}`,
+      'visit 2 ends',
+      'visit 3 300',
+    ]);
     drag.move({ x: 300, y: 80 });
     assert.deepStrictEqual(visits.at(-1), ['3', undefined]);
     drag.move({ x: 600, y: 100 });
@@ -150,9 +169,14 @@ suite('Dragging a tab between windows', () => {
       visits.filter(([window, visit]) => window === '2' && visit).length,
       1,
     );
+    assert.deepStrictEqual(moved, [
+      ['3', '2', Number.MAX_SAFE_INTEGER],
+      ['3', '3', Number.MAX_SAFE_INTEGER],
+      ['3', '9', 0],
+    ]);
   });
 
-  test('drops the tab where the strip under the pointer shows it, at the place the strip told, bringing that window to the front', () => {
+  test('moves the tab within the strip under the pointer to the place the strip tells, so it is where the strip shows it, and drops it there, closing the window it was torn into and bringing the one it is dropped on to the front', () => {
     const source = new FakeWindow('1', { x: 0, y: 0, width: 900, height: 600 });
     const other = new FakeWindow('2', {
       x: 1000,
@@ -160,25 +184,32 @@ suite('Dragging a tab between windows', () => {
       width: 900,
       height: 600,
     });
-    const { host, visits, moved, focused } = hostOf([source, other]);
+    const { host, visits, moved, closed, focused } = hostOf([source, other]);
     const drag = TabDrag.start(host, source, start({ x: 300, y: 120 }));
     assert.ok(drag);
     drag.move({ x: 1300, y: 16 });
     drag.index('2', 2);
+    drag.index('2', 2);
     drag.index('1', 0);
+    assert.deepStrictEqual(moved, [
+      ['3', '2', Number.MAX_SAFE_INTEGER],
+      ['3', '2', 2],
+    ]);
     drag.drop();
-    assert.deepStrictEqual(moved, [['3', '2', 2]]);
+    assert.strictEqual(moved.length, 2);
     assert.deepStrictEqual(visits.at(-1), ['2', undefined]);
+    assert.deepStrictEqual(closed, ['9']);
     assert.deepStrictEqual(focused, ['2']);
   });
 
   test('leaves the tab in the window it was torn into when dropped over no strip, bringing that window to the front', () => {
     const source = new FakeWindow('1', { x: 0, y: 0, width: 900, height: 600 });
-    const { host, moved, focused, torn } = hostOf([source]);
+    const { host, moved, closed, focused, torn } = hostOf([source]);
     const drag = TabDrag.start(host, source, start({ x: 300, y: 120 }));
     assert.ok(drag);
     drag.drop();
     assert.deepStrictEqual(moved, []);
+    assert.deepStrictEqual(closed, []);
     assert.deepStrictEqual(focused, ['9']);
     assert.strictEqual(torn.shown(), true);
   });
@@ -191,17 +222,21 @@ suite('Dragging a tab between windows', () => {
       width: 900,
       height: 600,
     });
-    const { host, visits, moved, focused } = hostOf([source, other]);
+    const { host, visits, moved, closed, focused } = hostOf([source, other]);
     const drag = TabDrag.start(host, source, start({ x: 300, y: 120 }));
     assert.ok(drag);
     drag.move({ x: 1300, y: 16 });
     drag.cancel();
     assert.deepStrictEqual(visits.at(-1), ['2', undefined]);
-    assert.deepStrictEqual(moved, [['3', '1', 1]]);
+    assert.deepStrictEqual(moved, [
+      ['3', '2', Number.MAX_SAFE_INTEGER],
+      ['3', '1', 1],
+    ]);
+    assert.deepStrictEqual(closed, ['9']);
     assert.deepStrictEqual(focused, ['1']);
   });
 
-  test('moves the window itself when its only tab is dragged, dropping the tab into a strip or putting the window back where it was once cancelled', () => {
+  test('moves the window itself when its only tab is dragged, moving the tab into a strip and back, closing the window once the tab is dropped into another, or putting it back where it was with its tab once cancelled', () => {
     const source = new FakeWindow('1', {
       x: 100,
       y: 100,
@@ -214,7 +249,7 @@ suite('Dragging a tab between windows', () => {
       width: 900,
       height: 600,
     });
-    const { host, moved, focused } = hostOf([source, other]);
+    const { host, moved, closed, focused } = hostOf([source, other]);
     const drag = TabDrag.start(host, source, start({ x: 400, y: 116 }, true));
     assert.ok(drag);
     assert.strictEqual(drag.window, '1');
@@ -225,13 +260,35 @@ suite('Dragging a tab between windows', () => {
     assert.deepStrictEqual(moved, []);
     assert.deepStrictEqual(focused, ['1']);
 
+    const back = TabDrag.start(host, source, start({ x: 400, y: 116 }, true));
+    assert.ok(back);
+    back.move({ x: 1500, y: 16 });
+    back.move({ x: 1500, y: 300 });
+    assert.strictEqual(source.hidden, false);
+    back.move({ x: 1500, y: 16 });
+    back.cancel();
+    assert.deepStrictEqual(moved, [
+      ['3', '2', Number.MAX_SAFE_INTEGER],
+      ['3', '1', 0],
+      ['3', '2', Number.MAX_SAFE_INTEGER],
+      ['3', '1', 0],
+    ]);
+    assert.deepStrictEqual(source.moves.at(-1), [100, 100]);
+    assert.strictEqual(source.hidden, false);
+    assert.deepStrictEqual(closed, []);
+    moved.length = 0;
+
     const again = TabDrag.start(host, source, start({ x: 400, y: 116 }, true));
     assert.ok(again);
     again.move({ x: 1500, y: 16 });
     assert.strictEqual(source.hidden, true);
     again.index('2', 0);
     again.drop();
-    assert.deepStrictEqual(moved, [['3', '2', 0]]);
+    assert.deepStrictEqual(moved, [
+      ['3', '2', Number.MAX_SAFE_INTEGER],
+      ['3', '2', 0],
+    ]);
+    assert.deepStrictEqual(closed, ['1']);
   });
 
   test('starts no drag while the window dragged from has not told where its strip is', () => {
