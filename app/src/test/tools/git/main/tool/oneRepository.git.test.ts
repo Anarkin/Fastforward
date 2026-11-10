@@ -21,6 +21,7 @@ import {
   activeTabKey,
   JsonFileStore,
   tabsKey,
+  windowsKey,
 } from '../../../../../shell/main/storage';
 import {
   bookmarksKey,
@@ -96,7 +97,9 @@ suite('Git tool of one repository', () => {
         () => opened.page.last('commits') !== undefined,
         'the history',
       );
-      assert.strictEqual(state.get(activeTabKey), '1');
+      assert.deepStrictEqual(state.get(windowsKey), [
+        { id: '1', tabs: ['1'], active: '1' },
+      ]);
       assert.deepStrictEqual(gitState(state).get(recentKey), [repository.root]);
       written.open();
       await ready;

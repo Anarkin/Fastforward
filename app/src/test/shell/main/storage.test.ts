@@ -11,10 +11,13 @@ import {
   Storage,
   tabsKey,
   toolState,
+  windowsKey,
 } from '../../../shell/main/storage';
 import { FakeStore } from '../../fakeStore';
 import { defaultSettings } from '../../fixtures';
 import { removeFolder, tempFolder } from '../../repositories';
+
+const terminalTab = (id: string) => ({ id, tool: 'terminal' }) as const;
 
 function storageOf(state = new FakeStore()): Storage {
   return new Storage(new UserSettings(defaultSettings()), state);
@@ -82,7 +85,7 @@ suite('Storage', () => {
     await store.update(activeTabKey, 5);
     const storage = storageOf(store);
     assert.deepStrictEqual(storage.savedTabs, []);
-    assert.strictEqual(storage.activeTabId, undefined);
+    assert.deepStrictEqual(storage.layout, [{ id: '1', tabs: [] }]);
   });
 
   test('leaves out the tabs of the wrong shape', async () => {
@@ -108,7 +111,7 @@ suite('Storage', () => {
     assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
 
     const written = new FakeStore();
-    await storageOf(written).setSavedTabs([tab], '1');
+    await storageOf(written).setLayout([{ id: '1', tabs: [tab], active: '1' }]);
     assert.deepStrictEqual(written.get(tabsKey), [tab]);
   });
 
@@ -127,7 +130,7 @@ suite('Storage', () => {
     assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
 
     const written = new FakeStore();
-    await storageOf(written).setSavedTabs([tab], '1');
+    await storageOf(written).setLayout([{ id: '1', tabs: [tab], active: '1' }]);
     assert.deepStrictEqual(written.get(tabsKey), [tab]);
   });
 
@@ -148,7 +151,7 @@ suite('Storage', () => {
     });
   });
 
-  test('takes in the tabs and the active one together, before either is written', async () => {
+  test('takes in the tabs and the windows together, before either is written', async () => {
     const written = Promise.withResolvers<void>();
     const store = new FakeStore();
     store.update = (key, value) => {
@@ -160,19 +163,25 @@ suite('Storage', () => {
       { id: '1', tool: 'git', root: path.resolve('one') },
       { id: '2', tool: 'commander' },
     ] as const;
-    const saved = storage.setSavedTabs(tabs, '2');
+    const saved = storage.setLayout([{ id: '1', tabs, active: '2' }]);
     assert.deepStrictEqual(storage.savedTabs, tabs);
-    assert.strictEqual(storage.activeTabId, '2');
+    assert.deepStrictEqual(storage.layout, [{ id: '1', tabs, active: '2' }]);
     written.resolve();
     await saved;
   });
 
   test('reads the saved tabs once until they change, as every message a tool posts asks which tab is open', async () => {
     const storage = storageOf();
-    await storage.setSavedTabs([{ id: '1', tool: 'commander' }], '1');
+    await storage.setLayout([
+      { id: '1', tabs: [{ id: '1', tool: 'commander' }], active: '1' },
+    ]);
     const read = storage.savedTabs;
+    const layout = storage.layout;
     assert.strictEqual(storage.savedTabs, read);
-    await storage.setSavedTabs([{ id: '2', tool: 'terminal' }], '2');
+    assert.strictEqual(storage.layout, layout);
+    await storage.setLayout([
+      { id: '1', tabs: [{ id: '2', tool: 'terminal' }], active: '2' },
+    ]);
     assert.deepStrictEqual(storage.savedTabs, [{ id: '2', tool: 'terminal' }]);
   });
 
@@ -186,6 +195,70 @@ suite('Storage', () => {
     assert.deepStrictEqual(storageOf(store).savedTabs, [
       { id: '1', tool: 'git', root },
     ]);
+  });
+
+  test('puts every saved tab in one window, showing the one that was active, when the state holds no windows, as the app had a single window before', async () => {
+    const store = new FakeStore();
+    const tabs = [
+      { id: '1', tool: 'terminal' },
+      { id: '2', tool: 'commander' },
+    ] as const;
+    await store.update(tabsKey, tabs);
+    await store.update(activeTabKey, '2');
+    assert.deepStrictEqual(storageOf(store).layout, [
+      { id: '1', tabs, active: '2' },
+    ]);
+  });
+
+  test('keeps each tab in the first window that lists it, adds the tabs no window lists to the first window and drops the rest a window names, as a hand edit can leave the windows at odds with the tabs', async () => {
+    const store = new FakeStore();
+    await store.update(tabsKey, [
+      terminalTab('1'),
+      terminalTab('2'),
+      terminalTab('3'),
+      terminalTab('4'),
+    ]);
+    await store.update(windowsKey, [
+      { id: '7', tabs: ['9', 5], active: '9' },
+      { id: '8', tabs: ['2', '1'], active: '1' },
+      { id: '8', tabs: ['4'] },
+      { id: 'no tabs' },
+      { id: '9', tabs: ['1', '3'], active: '1' },
+    ]);
+    assert.deepStrictEqual(storageOf(store).layout, [
+      {
+        id: '8',
+        tabs: [terminalTab('2'), terminalTab('1'), terminalTab('4')],
+        active: '1',
+      },
+      { id: '9', tabs: [terminalTab('3')] },
+    ]);
+  });
+
+  test('keeps a single window with no tab, as the last window stays open once its last tab closes', async () => {
+    const store = new FakeStore();
+    await store.update(tabsKey, []);
+    await store.update(windowsKey, [{ id: '4', tabs: [] }]);
+    assert.deepStrictEqual(storageOf(store).layout, [{ id: '4', tabs: [] }]);
+  });
+
+  test('saves the tabs of every window in one list, window by window, and each window as the ids of its tabs and its active one, forgetting the active tab kept for the single window of before', async () => {
+    const store = new FakeStore();
+    await store.update(activeTabKey, '1');
+    await storageOf(store).setLayout([
+      { id: '1', tabs: [terminalTab('2'), terminalTab('1')], active: '1' },
+      { id: '3', tabs: [terminalTab('3')] },
+    ]);
+    assert.deepStrictEqual(store.get(tabsKey), [
+      terminalTab('2'),
+      terminalTab('1'),
+      terminalTab('3'),
+    ]);
+    assert.deepStrictEqual(store.get(windowsKey), [
+      { id: '1', tabs: ['2', '1'], active: '1' },
+      { id: '3', tabs: ['3'] },
+    ]);
+    assert.strictEqual(store.get(activeTabKey), undefined);
   });
 
   test('reads a thousand tabs without comparing every pair of them', async () => {
@@ -250,7 +323,7 @@ suite('State file', () => {
       { id: '1', tool: 'git', root: '/a' },
       { id: '2', tool: 'git', root: '/b' },
     ]);
-    assert.strictEqual(storage.activeTabId, '2');
+    assert.strictEqual(storage.layout[0]?.active, '2');
     await store.saved();
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, 'utf8')), {
       tabs: [

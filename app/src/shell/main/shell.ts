@@ -28,6 +28,16 @@ import {
   type Storage,
 } from './storage';
 import { TabHistory } from './tabHistory';
+import {
+  activeTabOf,
+  nextTabId,
+  withActive,
+  withChanged,
+  withClosed,
+  withMoved,
+  withOpened,
+  type TabWindow,
+} from './windows';
 
 export interface Page {
   post(message: ToWebview): void;
@@ -346,9 +356,12 @@ export class Shell {
     this.notice(undefined, notice);
   }
 
+  private get window(): TabWindow {
+    return this.storage.layout[0] ?? noWindow;
+  }
+
   private activeTab(): Tab | undefined {
-    const { savedTabs, activeTabId } = this.storage;
-    return savedTabs.find((tab) => tab.id === activeTabId);
+    return activeTabOf(this.window);
   }
 
   private tabOf(id: unknown): Tab | undefined {
@@ -418,18 +431,22 @@ export class Shell {
         return;
       }
       case 'moveTab': {
-        const tabs = storage.savedTabs;
-        const from = tabs.findIndex((tab) => tab.id === message.tab);
+        const { window } = this;
         if (
-          from !== -1 &&
+          window.tabs.some((tab) => tab.id === message.tab) &&
           Number.isInteger(message.index) &&
           message.index >= 0 &&
-          message.index < tabs.length
+          message.index < window.tabs.length
         ) {
           this.save(
-            storage.setSavedTabs(
-              tabs.toSpliced(from, 1).toSpliced(message.index, 0, tabs[from]),
-              storage.activeTabId,
+            storage.setLayout(
+              withMoved(
+                storage.layout,
+                message.tab,
+                window.id,
+                message.index,
+                this.history,
+              ),
             ),
           );
         }
@@ -505,15 +522,17 @@ export class Shell {
     }
     this.page = page;
     this.shownTool = undefined;
-    await this.show(page, storage.activeTabId);
+    await this.show(page, this.window.active);
     await this.askFolders(page);
   }
 
   private async show(page: Page, id: string | undefined): Promise<void> {
-    const { storage } = this;
-    const tabs = storage.savedTabs;
-    const active = tabs.find((tab) => tab.id === id) ?? tabs.at(0);
-    this.save(storage.setSavedTabs(tabs, active?.id));
+    const { storage, window } = this;
+    const active =
+      window.tabs.find((tab) => tab.id === id) ?? window.tabs.at(0);
+    this.save(
+      storage.setLayout(withActive(storage.layout, window.id, active?.id)),
+    );
     if (active !== undefined) {
       this.history.visit(active.id);
     }
@@ -538,20 +557,17 @@ export class Shell {
   }
 
   private async close(page: Page, id: string): Promise<void> {
-    const { storage } = this;
-    const tabs = storage.savedTabs;
-    const index = tabs.findIndex((tab) => tab.id === id);
-    if (index === -1) {
+    const { storage, window } = this;
+    const closed = window.tabs.find((tab) => tab.id === id);
+    if (closed === undefined) {
       this.postTabs(page);
       return;
     }
-    const closed = tabs[index];
-    const rest = tabs.toSpliced(index, 1);
     const activeId = this.activeTab()?.id;
-    const active =
-      activeId === id ? this.history.after(id, rest, index) : activeId;
+    const layout = withClosed(storage.layout, id, this.history);
+    const active = layout.find((each) => each.id === window.id)?.active;
     this.history.forget(id);
-    this.save(storage.setSavedTabs(rest, active));
+    this.save(storage.setLayout(layout));
     this.tools[closed.tool].closed(page, closed);
     if (active === activeId && active !== undefined) {
       this.postTabs(page);
@@ -571,7 +587,7 @@ export class Shell {
     const tabs = storage.savedTabs;
     const added: Tab[] = [];
     const opened: string[] = [];
-    let next = nextId(tabs);
+    let next = Number(nextTabId(storage.layout));
     for (const root of roots) {
       const existing = reuse
         ? [...tabs, ...added].find(
@@ -595,7 +611,9 @@ export class Shell {
       added.push(tab);
       opened.push(tab.id);
     }
-    this.save(storage.setSavedTabs([...tabs, ...added], storage.activeTabId));
+    this.save(
+      storage.setLayout(withOpened(storage.layout, this.window.id, added)),
+    );
     const live = page.disposed ? (this.page ?? page) : page;
     const last = opened.at(-1);
     if (last === undefined) {
@@ -607,16 +625,13 @@ export class Shell {
 
   private setRoot(id: string, root: string): void {
     const { storage, page } = this;
-    const tabs = storage.savedTabs;
-    if (!tabs.some((tab) => tab.id === id && tab.root !== root)) {
+    const tab = storage.savedTabs.find(
+      (each) => each.id === id && each.root !== root,
+    );
+    if (tab === undefined) {
       return;
     }
-    this.save(
-      storage.setSavedTabs(
-        tabs.map((tab) => (tab.id === id ? { ...tab, root } : tab)),
-        storage.activeTabId,
-      ),
-    );
+    this.save(storage.setLayout(withChanged(storage.layout, { ...tab, root })));
     if (page !== undefined && !page.disposed) {
       this.postTabs(page);
     }
@@ -734,7 +749,7 @@ export class Shell {
   private postTabs(page: Page): void {
     page.post({
       type: 'tabs',
-      tabs: this.infos(this.storage.savedTabs),
+      tabs: this.infos(this.window.tabs),
       active: this.activeTab()?.id,
     });
   }
@@ -819,9 +834,4 @@ export class Shell {
   }
 }
 
-function nextId(tabs: readonly Tab[]): number {
-  return (
-    Math.max(0, ...tabs.map((tab) => Number(tab.id)).filter(Number.isInteger)) +
-    1
-  );
-}
+const noWindow: TabWindow = { id: '1', tabs: [] };

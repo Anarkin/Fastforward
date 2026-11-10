@@ -10,9 +10,11 @@ import type { ImageView, TextView } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings, type Sentence } from '../../shared/strings';
 import { isTool, type ToolId } from '../shared/tools';
+import type { Layout, TabWindow } from './windows';
 
 export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
+export const windowsKey = 'windows';
 const toolsKey = 'tools';
 const commandOfferedKey = 'terminalCommandOffered';
 export const maxRecentItems = 50;
@@ -179,7 +181,14 @@ function readJson(file: string): {
 
 export class Storage {
   private read:
-    { readonly saved: unknown; readonly tabs: readonly SavedTab[] } | undefined;
+    | {
+        readonly saved: unknown;
+        readonly windows: unknown;
+        readonly active: unknown;
+        readonly layout: Layout;
+        readonly tabs: readonly SavedTab[];
+      }
+    | undefined;
 
   constructor(
     private readonly userSettings: UserSettings,
@@ -190,33 +199,56 @@ export class Storage {
     return this.userSettings.settings;
   }
 
+  get layout(): Layout {
+    return this.current().layout;
+  }
+
   get savedTabs(): readonly SavedTab[] {
+    return this.current().tabs;
+  }
+
+  private current(): NonNullable<Storage['read']> {
     const saved = this.state.get(tabsKey);
+    const windows = this.state.get(windowsKey);
+    const active = this.state.get(activeTabKey);
     const { read } = this;
-    if (read !== undefined && read.saved === saved) {
-      return read.tabs;
+    if (
+      read !== undefined &&
+      read.saved === saved &&
+      read.windows === windows &&
+      read.active === active
+    ) {
+      return read;
     }
     const ids = new Set<string>();
-    const tabs = (Array.isArray(saved) ? saved.filter(isSavedTab) : []).filter(
-      (tab) => !ids.has(tab.id) && Boolean(ids.add(tab.id)),
+    const layout = savedLayout(
+      (Array.isArray(saved) ? saved.filter(isSavedTab) : []).filter(
+        (tab) => !ids.has(tab.id) && Boolean(ids.add(tab.id)),
+      ),
+      windows,
+      active,
     );
-    this.read = { saved, tabs };
-    return tabs;
+    this.read = {
+      saved,
+      windows,
+      active,
+      layout,
+      tabs: layout.flatMap((window) => window.tabs),
+    };
+    return this.read;
   }
 
-  get activeTabId(): string | undefined {
-    const active = this.state.get(activeTabKey);
-    return typeof active === 'string' ? active : undefined;
-  }
-
-  async setSavedTabs(
-    tabs: readonly SavedTab[],
-    active: string | undefined,
-  ): Promise<void> {
+  async setLayout(layout: Layout): Promise<void> {
+    const tabs = layout.flatMap((window) => window.tabs);
     const saved = this.savedTabs;
     const tabsChanged =
       tabs.length !== saved.length ||
       tabs.some((tab, index) => !sameTab(tab, saved[index]));
+    const windows = layout.map(({ id, tabs: own, active }) => ({
+      id,
+      tabs: own.map((tab) => tab.id),
+      ...(active !== undefined && { active }),
+    }));
     await Promise.all([
       tabsChanged
         ? this.state.update(
@@ -232,9 +264,12 @@ export class Storage {
             })),
           )
         : undefined,
-      active === this.activeTabId
+      JSON.stringify(windows) === JSON.stringify(this.state.get(windowsKey))
         ? undefined
-        : this.state.update(activeTabKey, active),
+        : this.state.update(windowsKey, windows),
+      this.state.get(activeTabKey) === undefined
+        ? undefined
+        : this.state.update(activeTabKey, undefined),
     ]);
   }
 
@@ -326,6 +361,60 @@ function isSavedTab(value: unknown): value is SavedTab {
     (value.view === undefined || value.view === true) &&
     (value.compare === undefined || isCompared(value.compare))
   );
+}
+
+interface SavedWindow {
+  readonly id: string;
+  readonly tabs: readonly unknown[];
+  readonly active?: unknown;
+}
+
+function isSavedWindow(value: unknown): value is SavedWindow {
+  return (
+    isObject(value) && typeof value.id === 'string' && Array.isArray(value.tabs)
+  );
+}
+
+function windowWith(
+  id: string,
+  tabs: readonly SavedTab[],
+  active: unknown,
+): TabWindow {
+  return {
+    id,
+    tabs,
+    ...(typeof active === 'string' &&
+      tabs.some((tab) => tab.id === active) && { active }),
+  };
+}
+
+function savedLayout(
+  tabs: readonly SavedTab[],
+  windows: unknown,
+  active: unknown,
+): Layout {
+  const byId = new Map(tabs.map((tab) => [tab.id, tab]));
+  const placed = new Set<string>();
+  const ids = new Set<string>();
+  const saved = (Array.isArray(windows) ? windows : [])
+    .filter(isSavedWindow)
+    .filter((window) => !ids.has(window.id) && Boolean(ids.add(window.id)));
+  const layout = saved.flatMap((window) => {
+    const own = window.tabs.flatMap((id) => {
+      const tab = typeof id === 'string' ? byId.get(id) : undefined;
+      if (tab === undefined || placed.has(tab.id)) {
+        return [];
+      }
+      placed.add(tab.id);
+      return [tab];
+    });
+    return own.length === 0 ? [] : [windowWith(window.id, own, window.active)];
+  });
+  const left = tabs.filter((tab) => !placed.has(tab.id));
+  const [first, ...rest] = layout;
+  return first === undefined
+    ? [windowWith(saved[0]?.id ?? '1', left, saved[0]?.active ?? active)]
+    : [{ ...first, tabs: [...first.tabs, ...left] }, ...rest];
 }
 
 function sameTab(a: SavedTab, b: SavedTab | undefined): boolean {
