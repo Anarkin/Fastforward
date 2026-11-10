@@ -195,9 +195,10 @@ export class TabDrag {
     if (this.started.alone) {
       this.floating.moveTo(this.from.x, this.from.y);
       this.floating.hide(false);
-      return;
+    } else {
+      this.host.move(this.started.tab, this.source.id, this.started.index);
     }
-    this.host.move(this.started.tab, this.source.id, this.started.index);
+    this.host.focus(this.source.id);
   }
 
   private place(at: Point): void {

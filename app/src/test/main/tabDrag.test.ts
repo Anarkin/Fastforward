@@ -183,7 +183,7 @@ suite('Dragging a tab between windows', () => {
     assert.strictEqual(torn.shown(), true);
   });
 
-  test('puts the tab back where it was once the drag is cancelled, from the window torn into or the strip it shows in', () => {
+  test('puts the tab back where it was once the drag is cancelled, from the window torn into or the strip it shows in, bringing the window it came from to the front', () => {
     const source = new FakeWindow('1', { x: 0, y: 0, width: 900, height: 600 });
     const other = new FakeWindow('2', {
       x: 1000,
@@ -191,13 +191,14 @@ suite('Dragging a tab between windows', () => {
       width: 900,
       height: 600,
     });
-    const { host, visits, moved } = hostOf([source, other]);
+    const { host, visits, moved, focused } = hostOf([source, other]);
     const drag = TabDrag.start(host, source, start({ x: 300, y: 120 }));
     assert.ok(drag);
     drag.move({ x: 1300, y: 16 });
     drag.cancel();
     assert.deepStrictEqual(visits.at(-1), ['2', undefined]);
     assert.deepStrictEqual(moved, [['3', '1', 1]]);
+    assert.deepStrictEqual(focused, ['1']);
   });
 
   test('moves the window itself when its only tab is dragged, dropping the tab into a strip or putting the window back where it was once cancelled', () => {
@@ -213,7 +214,7 @@ suite('Dragging a tab between windows', () => {
       width: 900,
       height: 600,
     });
-    const { host, moved } = hostOf([source, other]);
+    const { host, moved, focused } = hostOf([source, other]);
     const drag = TabDrag.start(host, source, start({ x: 400, y: 116 }, true));
     assert.ok(drag);
     assert.strictEqual(drag.window, '1');
@@ -222,6 +223,7 @@ suite('Dragging a tab between windows', () => {
     drag.cancel();
     assert.deepStrictEqual(source.moves.at(-1), [100, 100]);
     assert.deepStrictEqual(moved, []);
+    assert.deepStrictEqual(focused, ['1']);
 
     const again = TabDrag.start(host, source, start({ x: 400, y: 116 }, true));
     assert.ok(again);

@@ -463,7 +463,7 @@ async function start(asked: readonly string[]): Promise<void> {
         if (!window.isVisible()) {
           window.showInactive();
         }
-        window.moveTop();
+        window.setAlwaysOnTop(true);
       },
     };
   };
@@ -492,6 +492,7 @@ async function start(asked: readonly string[]): Promise<void> {
     focus: (window) => {
       const entry = opened.get(window);
       if (entry !== undefined && !entry.window.isDestroyed()) {
+        entry.window.setAlwaysOnTop(false);
         entry.window.setOpacity(1);
         showAgain(entry.window);
       }
