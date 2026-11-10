@@ -258,6 +258,31 @@ async function grabTab(page: Page, index: number) {
   return at;
 }
 
+function recordSelected(page: Page): Promise<void> {
+  return page.evaluate(() => {
+    const selected: string[] = [];
+    Object.assign(window, { selected });
+    const note = () => {
+      const now = [...document.querySelectorAll('.tabs [role="tab"]')]
+        .map((tab) => tab.getAttribute('aria-selected'))
+        .join();
+      if (selected.at(-1) !== now) {
+        selected.push(now);
+      }
+    };
+    note();
+    const strip = document.querySelector('.tab-strip');
+    if (strip !== null) {
+      new MutationObserver(note).observe(strip, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['aria-selected'],
+      });
+    }
+  });
+}
+
 suite('App with tabs dragged between windows', () => {
   let folder: string;
   let app: ElectronApplication | undefined;
@@ -276,6 +301,41 @@ suite('App with tabs dragged between windows', () => {
     const page = pages[counts.indexOf(count)];
     assert.ok(page, `a window with ${count} tabs`);
     return page;
+  };
+  const explained = async (
+    waiting: Promise<void>,
+    at: { readonly x: number; readonly y: number },
+    pages: Readonly<Record<string, Page>>,
+  ) => {
+    try {
+      await waiting;
+    } catch (error) {
+      const windows = await launched().evaluate(({ BrowserWindow }) => {
+        const focused = BrowserWindow.getFocusedWindow();
+        return BrowserWindow.getAllWindows().map((window) => ({
+          id: window.id,
+          bounds: window.getBounds(),
+          visible: window.isVisible(),
+          opacity: window.getOpacity(),
+          focused: window === focused,
+          onTop: window.isAlwaysOnTop(),
+        }));
+      });
+      const shown = await Promise.all(
+        Object.entries(pages).map(async ([name, page]) => ({
+          name,
+          bounds: await contentOf(page),
+          tabs: await tabsIn(page),
+          selected: await page.evaluate(() =>
+            'selected' in window ? window.selected : undefined,
+          ),
+        })),
+      );
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)} ${JSON.stringify({ at, windows, shown })}`,
+        { cause: error },
+      );
+    }
   };
   const sparesReady = () =>
     waitFor(
@@ -326,19 +386,26 @@ suite('App with tabs dragged between windows', () => {
     const source = await byTabs(3);
     const target = await byTabs(1);
     await target.bringToFront();
+    await recordSelected(target);
     await grabTab(source, 1);
     const sourceContent = await contentOf(source);
     const targetContent = await contentOf(target);
     const row = await target.locator('.tabs .tab-list').boundingBox();
     assert.ok(row);
-    await source.mouse.move(
-      targetContent.x + row.x + row.width - 60 - sourceContent.x,
-      targetContent.y + row.y + row.height / 2 - sourceContent.y,
-      { steps: 10 },
-    );
-    await waitFor(
-      async () => (await selectedIn(target)) === 'false,true',
-      'the tab to show in the other window before it is dropped',
+    const at = {
+      x: targetContent.x + row.x + row.width - 60,
+      y: targetContent.y + row.y + row.height / 2,
+    };
+    await source.mouse.move(at.x - sourceContent.x, at.y - sourceContent.y, {
+      steps: 10,
+    });
+    await explained(
+      waitFor(
+        async () => (await selectedIn(target)) === 'false,true',
+        'the tab to show in the other window before it is dropped',
+      ),
+      at,
+      { source, target },
     );
     await source.mouse.up();
     await waitFor(
