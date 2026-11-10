@@ -1,11 +1,14 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
+  isProgram,
   shellLaunch,
   type ShellSystem,
 } from '../../../../tools/terminal/main/shellLaunch';
 import type { TerminalSettings } from '../../../../tools/terminal/shared/settings';
+import { removeFolder, tempFolder } from '../../../repositories';
 
 const defaults: TerminalSettings = {
   shell: '',
@@ -26,6 +29,7 @@ function system(overrides: Partial<ShellSystem> = {}): ShellSystem {
     version: '22.0.0',
     isFolder: () => Promise.resolve(true),
     isFile: () => Promise.resolve(false),
+    isProgram: () => Promise.resolve(false),
     integration,
     ...overrides,
   };
@@ -61,12 +65,12 @@ function launched(overrides: Partial<ShellSystem>, folder?: string) {
 }
 
 async function windowsShell(
-  isFile: (file: string) => Promise<boolean>,
+  isFound: (file: string) => Promise<boolean>,
 ): Promise<string> {
   const launch = await launched({
     platform: 'win32',
     env: { Path: 'C:\\Windows;C:\\Program Files\\PowerShell\\7' },
-    isFile,
+    isProgram: isFound,
   });
   return launch.file;
 }
@@ -87,6 +91,31 @@ suite('Shell launch', () => {
       [file, args],
       ['C:\\Git\\bin\\bash.exe', ['--login']],
     );
+  });
+
+  test('takes for a program on the PATH a file, or a link it cannot follow, as PowerShell 7 from the Store is only an alias of the system there, but no folder', async (context) => {
+    const folder = tempFolder('programs');
+    try {
+      const file = path.join(folder, 'pwsh.exe');
+      fs.writeFileSync(file, '');
+      const alias = path.join(folder, 'alias.exe');
+      try {
+        fs.symlinkSync(path.join(folder, 'nowhere'), alias, 'file');
+      } catch {
+        context.skip();
+      }
+
+      assert.deepStrictEqual(
+        await Promise.all(
+          [file, alias, folder, path.join(folder, 'missing.exe')].map(
+            isProgram,
+          ),
+        ),
+        [true, true, false, false],
+      );
+    } finally {
+      removeFolder(folder);
+    }
   });
 
   test('starts PowerShell 7 on Windows when it is on the PATH, and Windows PowerShell otherwise', async () => {

@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ShellLaunch } from './hostProtocol';
 import { integrated, type IntegrationSystem } from './shellIntegration';
@@ -9,6 +10,18 @@ export interface ShellSystem extends IntegrationSystem {
   readonly home: string;
   readonly version: string;
   readonly isFolder: (folder: string) => Promise<boolean>;
+  readonly isProgram: (file: string) => Promise<boolean>;
+}
+
+export function isProgram(file: string): Promise<boolean> {
+  return fs.promises.stat(file).then(
+    (stats) => stats.isFile(),
+    () =>
+      fs.promises.lstat(file).then(
+        (stats) => stats.isSymbolicLink(),
+        () => false,
+      ),
+  );
 }
 
 const leftOut = /^(?:ELECTRON_|FASTFORWARD_)/i;
@@ -32,7 +45,7 @@ export async function shellLaunch(
 
 async function shellCommand(
   settings: TerminalSettings,
-  { platform, env, isFile }: ShellSystem,
+  { platform, env, isProgram: found }: ShellSystem,
 ): Promise<Pick<ShellLaunch, 'file' | 'args'>> {
   const args = settings.shellArgs.filter((arg) => typeof arg === 'string');
   if (settings.shell !== '') {
@@ -41,7 +54,7 @@ async function shellCommand(
   switch (platform) {
     case 'win32':
       return {
-        file: (await onPath('pwsh.exe', env, isFile)) ?? 'powershell.exe',
+        file: (await onPath('pwsh.exe', env, found)) ?? 'powershell.exe',
         args,
       };
     case 'darwin':

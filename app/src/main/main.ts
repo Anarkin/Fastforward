@@ -91,7 +91,7 @@ import {
   writeClipboardFiles,
 } from '../tools/commander/main/clipboardFiles';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
-import { shellLaunch } from '../tools/terminal/main/shellLaunch';
+import { isProgram, shellLaunch } from '../tools/terminal/main/shellLaunch';
 import { windowsPtyOf } from '../tools/terminal/main/windowsPty';
 import { TerminalTool } from '../tools/terminal/main/tool';
 import { GitStorage } from '../tools/git/main/storage';
@@ -489,6 +489,7 @@ async function start(asked: readonly string[]): Promise<void> {
         version: app.getVersion(),
         isFolder,
         isFile,
+        isProgram,
         integration,
       });
     },

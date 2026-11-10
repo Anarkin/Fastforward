@@ -7,7 +7,10 @@ import { flowLimits } from '../../../../tools/terminal/main/flowControl';
 import type { HostEvent } from '../../../../tools/terminal/main/hostProtocol';
 import { PtyHost, realTimer } from '../../../../tools/terminal/main/sessions';
 import { writeShellIntegration } from '../../../../tools/terminal/main/shellIntegration';
-import { shellLaunch } from '../../../../tools/terminal/main/shellLaunch';
+import {
+  isProgram,
+  shellLaunch,
+} from '../../../../tools/terminal/main/shellLaunch';
 import { waitFor } from '../../../fixtures';
 import { removeFolder, tempFolder } from '../../../repositories';
 
@@ -178,6 +181,7 @@ suite('Terminal folders in real shells', () => {
             version: '1.0.0',
             isFolder,
             isFile,
+            isProgram,
             integration,
           },
         );
