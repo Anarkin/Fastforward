@@ -69,6 +69,10 @@ export class Icons {
     });
   }
 
+  forgetDropped(): void {
+    this.dropped.clear();
+  }
+
   drop(tickets: readonly string[]): void {
     for (const ticket of tickets) {
       const batch = this.batches.find((each) =>

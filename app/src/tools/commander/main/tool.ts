@@ -521,6 +521,7 @@ export class CommanderTool implements Tool<'commander'> {
 
   ready(page: Page): void {
     this.cancelPasswords();
+    this.icons.forgetDropped();
     for (const pane of this.allPanes()) {
       if (pane.flat !== undefined) {
         pane.flat.tree.resend();

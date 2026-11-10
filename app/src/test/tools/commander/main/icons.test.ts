@@ -113,6 +113,17 @@ suite('Commander icons', () => {
     assert.deepStrictEqual(started, ['a.exe', 'b.exe']);
   });
 
+  test('forgets the tickets dropped by a page once it loads anew, as the tickets of the new page start over and one of its icons was refused', async () => {
+    const { icons, started, finish } = held();
+    icons.drop(['1']);
+    icons.forgetDropped();
+
+    const asked = icons.of(at('a.exe'), '1');
+    await finish('a.exe');
+    await asked;
+    assert.deepStrictEqual(started, ['a.exe']);
+  });
+
   test('gives an icon loaded or loading to whoever asks for it, without waiting its turn or loading it again', async () => {
     const { icons, started, finish } = held();
     const one = icons.of(at('one.txt'), '1');
