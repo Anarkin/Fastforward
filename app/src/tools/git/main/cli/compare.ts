@@ -15,7 +15,11 @@ export class CompareTooLarge extends Error {}
 export class CompareNotFile extends Error {}
 
 export function checkedPatch(patch: string, errors: string): string {
-  const said = errors.trim();
+  const said = errors
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !line.startsWith('warning:'))
+    .join('\n');
   if (patch === '' && said !== '') {
     throw new Error(said);
   }

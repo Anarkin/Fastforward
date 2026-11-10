@@ -153,13 +153,24 @@ suite('Comparing two files outside any repository', () => {
     );
   });
 
-  test('takes git saying nothing but an error for the error it is, not for files alike', () => {
+  test('takes git saying nothing but an error for the error it is, not for files alike, nor its warnings, as the one of line ends a text attribute brings', () => {
     assert.throws(
-      () => checkedPatch('', "error: Could not access 'gone.txt'\n"),
-      /Could not access/,
+      () =>
+        checkedPatch(
+          '',
+          "warning: in the working copy of 'a.txt', LF will be replaced by CRLF\nerror: Could not access 'gone.txt'\n",
+        ),
+      /^Error: error: Could not access 'gone.txt'$/,
     );
     assert.strictEqual(checkedPatch('', ''), '');
     assert.strictEqual(checkedPatch('diff --git', 'warning'), 'diff --git');
+    assert.strictEqual(
+      checkedPatch(
+        '',
+        "warning: in the working copy of 'a.txt', LF will be replaced by CRLF the next time Git touches it\n",
+      ),
+      '',
+    );
   });
 
   test('tells files alike apart from files that differ only in whitespace', async () => {
