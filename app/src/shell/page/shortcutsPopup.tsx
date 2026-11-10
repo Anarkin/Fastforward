@@ -44,6 +44,14 @@ interface ShownEntry {
 interface Section {
   readonly key: string;
   readonly top: number;
+  readonly bottom: number;
+}
+
+interface PaneView {
+  readonly first: string | undefined;
+  readonly cut: boolean;
+  readonly atStart: boolean;
+  readonly atEnd: boolean;
 }
 
 const unmatched: ShortcutMatch = { words: [], keys: new Set() };
@@ -116,18 +124,14 @@ export function entryFor(
   return tool === 'commander' && kind.view === true ? 'viewer' : tool;
 }
 
-export function groupInView(
+export function groupsInView(
   sections: readonly Section[],
-  scrollTop: number,
-  atEnd: boolean,
-): string | undefined {
-  if (atEnd) {
-    return sections.at(-1)?.key;
-  }
-  return (
-    sections.findLast((section) => section.top <= scrollTop + 1)?.key ??
-    sections.at(0)?.key
-  );
+  from: number,
+  to: number,
+): string[] {
+  return sections
+    .filter((section) => section.top < to - 1 && section.bottom > from + 1)
+    .map((section) => section.key);
 }
 
 export function steppedEntry(
@@ -138,25 +142,38 @@ export function steppedEntry(
   return ids[(ids.indexOf(from) + step + ids.length) % ids.length] ?? from;
 }
 
+function keysWithMatches(entries: readonly ShownEntry[]): string[] {
+  return entries.flatMap((entry) =>
+    entry.groups
+      .filter((group) => group.rows.length > 0)
+      .map((group) => group.key),
+  );
+}
+
 export function steppedGroup(
   entries: readonly ShownEntry[],
   open: ShortcutEntryId,
-  from: string | undefined,
+  view: PaneView,
   step: 1 | -1,
 ): string | undefined {
-  const groups = entries.flatMap((entry, place) =>
-    entry.groups
-      .filter((group) => group.rows.length > 0)
-      .map((group) => ({ key: group.key, place })),
-  );
-  const at = groups.findIndex((group) => group.key === from);
-  if (at !== -1) {
-    return groups[at + step]?.key;
-  }
   const openAt = entries.findIndex((entry) => entry.id === open);
+  const own = keysWithMatches(entries.slice(openAt, openAt + 1));
+  const at = view.first === undefined ? -1 : own.indexOf(view.first);
+  if (at !== -1 && step === 1 && !view.atEnd) {
+    const next = own[at + 1];
+    if (next !== undefined) {
+      return next;
+    }
+  }
+  if (at !== -1 && step === -1 && !view.atStart) {
+    const back = view.cut ? view.first : own[at - 1];
+    if (back !== undefined) {
+      return back;
+    }
+  }
   return step === 1
-    ? groups.find((group) => group.place >= openAt)?.key
-    : groups.findLast((group) => group.place < openAt)?.key;
+    ? keysWithMatches(entries.slice(openAt + 1)).at(0)
+    : keysWithMatches(entries.slice(0, openAt)).at(-1);
 }
 
 export function ShortcutsList({ entry }: { entry: ShownEntry }) {
@@ -205,7 +222,7 @@ function ShortcutsTree({
 }: {
   entries: readonly ShownEntry[];
   open: ShortcutEntryId;
-  marked: string | undefined;
+  marked: readonly string[];
   filtering: boolean;
   onOpen: (id: ShortcutEntryId) => void;
   onGo: (key: string) => void;
@@ -244,13 +261,15 @@ function ShortcutsTree({
                   <button
                     key={group.key}
                     className={
-                      group.key === marked
+                      marked.includes(group.key)
                         ? 'shortcuts-group-link in-view'
                         : 'shortcuts-group-link'
                     }
                     tabIndex={-1}
                     disabled={group.rows.length === 0}
-                    aria-current={group.key === marked ? 'location' : undefined}
+                    aria-current={
+                      group.key === marked[0] ? 'location' : undefined
+                    }
                     onClick={() => onGo(group.key)}
                   >
                     {group.title}
@@ -270,11 +289,47 @@ function ShortcutsTree({
   );
 }
 
-function sectionsIn(pane: HTMLElement): Section[] {
-  return [...pane.querySelectorAll<HTMLElement>('[data-group]')].map(
-    (section) => ({ key: section.dataset.group ?? '', top: section.offsetTop }),
-  );
+function groupsIn(pane: HTMLElement): HTMLElement[] {
+  return [...pane.querySelectorAll<HTMLElement>('[data-group]')];
 }
+
+function paneView(
+  pane: HTMLElement,
+): PaneView & { readonly keys: readonly string[] } {
+  const heading =
+    pane.querySelector<HTMLElement>('.shortcuts-heading')?.offsetHeight ?? 0;
+  const groups = groupsIn(pane);
+  const keys = groupsInView(
+    groups.map((group) => {
+      const rows = [...group.querySelectorAll<HTMLElement>('.shortcut-row')];
+      const last = rows.at(-1);
+      return {
+        key: group.dataset.group ?? '',
+        top: rows.at(0)?.offsetTop ?? group.offsetTop,
+        bottom: last
+          ? last.offsetTop + last.offsetHeight
+          : group.offsetTop + group.offsetHeight,
+      };
+    }),
+    pane.scrollTop + heading,
+    pane.scrollTop + pane.clientHeight,
+  );
+  const first = groups.find((group) => group.dataset.group === keys[0]);
+  return {
+    keys,
+    first: keys[0],
+    cut: first !== undefined && first.offsetTop < pane.scrollTop - 1,
+    atStart: pane.scrollTop <= 0,
+    atEnd: pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 1,
+  };
+}
+
+const everything: PaneView = {
+  first: undefined,
+  cut: false,
+  atStart: true,
+  atEnd: true,
+};
 
 export function ShortcutsPopup() {
   const tool = useShell((state) => activeTabOf(state)?.tool);
@@ -284,12 +339,11 @@ export function ShortcutsPopup() {
   const onClose = useCallback(() => showPopup('shortcuts', false), [showPopup]);
   const [open, setOpen] = useState(() => entryFor(tool, { view, compare }));
   const [query, setQuery] = useState('');
-  const [inView, setInView] = useState<string>();
+  const [visible, setVisible] = useState<readonly string[]>();
   const popup = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
   const pane = useRef<HTMLDivElement>(null);
   const pending = useRef<string>(undefined);
-  const ownScroll = useRef<number>(undefined);
   useDismiss(popup, onClose, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
@@ -298,18 +352,23 @@ export function ShortcutsPopup() {
   }, []);
   const entries = useMemo(() => shownEntries(shortcutEntries, query), [query]);
   const entry = entries.find((each) => each.id === open);
-  const marked =
-    inView ?? entry?.groups.find((group) => group.rows.length > 0)?.key;
-  const scrollPane = (key: string) => {
+  const firstKey = entry?.groups.find((group) => group.rows.length > 0)?.key;
+  const marked = visible ?? (firstKey === undefined ? [] : [firstKey]);
+  const measure = () => {
     const element = pane.current;
     if (!element) {
       return;
     }
-    const section = sectionsIn(element).find((each) => each.key === key);
-    const before = element.scrollTop;
-    element.scrollTop = section?.top ?? 0;
-    ownScroll.current =
-      element.scrollTop === before ? undefined : element.scrollTop;
+    const { keys } = paneView(element);
+    setVisible((before) => (before?.join() === keys.join() ? before : keys));
+  };
+  const scrollPane = (key: string) => {
+    const element = pane.current;
+    if (element) {
+      element.scrollTop =
+        groupsIn(element).find((group) => group.dataset.group === key)
+          ?.offsetTop ?? 0;
+    }
   };
   useLayoutEffect(() => {
     const key = pending.current;
@@ -317,9 +376,9 @@ export function ShortcutsPopup() {
       pending.current = undefined;
       scrollPane(key);
     }
+    measure();
   });
   const openEntry = (id: ShortcutEntryId) => {
-    setInView(undefined);
     if (id === open) {
       scrollPane('');
     } else {
@@ -331,7 +390,6 @@ export function ShortcutsPopup() {
     const owner = entries.find((each) =>
       each.groups.some((group) => group.key === key),
     );
-    setInView(key);
     if (owner === undefined || owner.id === open) {
       scrollPane(key);
     } else {
@@ -341,23 +399,9 @@ export function ShortcutsPopup() {
   };
   const onQuery = (value: string) => {
     setQuery(value);
-    setInView(undefined);
     pending.current = '';
   };
-  const onScroll = () => {
-    const element = pane.current;
-    const own = ownScroll.current;
-    ownScroll.current = undefined;
-    if (
-      !element ||
-      (own !== undefined && Math.abs(element.scrollTop - own) < 1)
-    ) {
-      return;
-    }
-    const atEnd =
-      element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
-    setInView(groupInView(sectionsIn(element), element.scrollTop, atEnd));
-  };
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     dialog.onKeyDown(event);
     const toolStep = keyPressed(keymap.shortcutsTool, event);
@@ -368,7 +412,12 @@ export function ShortcutsPopup() {
       openEntry(steppedEntry(open, toolStep));
     } else if (groupStep !== undefined) {
       event.preventDefault();
-      const key = steppedGroup(entries, open, marked, groupStep);
+      const key = steppedGroup(
+        entries,
+        open,
+        pane.current ? paneView(pane.current) : everything,
+        groupStep,
+      );
       if (key !== undefined) {
         goTo(key);
       }
@@ -428,7 +477,7 @@ export function ShortcutsPopup() {
             onOpen={openEntry}
             onGo={goTo}
           />
-          <div className="shortcuts-pane" ref={pane} onScroll={onScroll}>
+          <div className="shortcuts-pane" ref={pane} onScroll={measure}>
             {entry && <ShortcutsList entry={entry} />}
           </div>
         </div>

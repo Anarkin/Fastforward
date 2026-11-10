@@ -637,6 +637,10 @@ body {
   background: var(--color-panel-background);
 }
 
+.shortcuts-group {
+  padding: 0 0 9px;
+}
+
 .shortcuts-group + .shortcuts-group .shortcuts-heading {
   box-shadow: inset 0 1px var(--color-border);
 }

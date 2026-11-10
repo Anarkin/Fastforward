@@ -4192,7 +4192,7 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
-  test('lists the shortcuts of the commander beside the tools, scrolling them only down in a small window, marking the group scrolled to, clicked or stepped to, each shortcut one key cap a line high', async () => {
+  test('lists the shortcuts of the commander beside the tools, scrolling them only down in a small window, marking every group with a shortcut in view as it scrolls, brings a group clicked or stepped to to the top, and goes on to the next tool once the pane can scroll no further, each shortcut one key cap a line high', async () => {
     const size = await app.evaluate(({ BrowserWindow }) => {
       const [window] = BrowserWindow.getAllWindows();
       const before = window?.getSize();
@@ -4202,8 +4202,41 @@ suite('App commander', () => {
     await page.keyboard.press('F1');
     const pane = page.locator('.shortcuts-pane');
     await pane.locator('.shortcuts-heading', { hasText: 'Archives' }).waitFor();
-    const inView = async () =>
-      (await page.locator('.shortcuts-group-link.in-view').textContent()) ?? '';
+    const marks = () =>
+      page.evaluate(() => {
+        const box = document.querySelector<HTMLElement>('.shortcuts-pane');
+        const heading = box?.querySelector<HTMLElement>('.shortcuts-heading');
+        if (!box || !heading) {
+          return { showing: [], marked: [] };
+        }
+        const { top, bottom } = box.getBoundingClientRect();
+        const below = top + heading.getBoundingClientRect().height;
+        const showing = [
+          ...box.querySelectorAll<HTMLElement>('.shortcuts-group'),
+        ]
+          .filter((group) =>
+            [...group.querySelectorAll('.shortcut-row')].some((row) => {
+              const place = row.getBoundingClientRect();
+              return place.bottom > below + 1 && place.top < bottom - 1;
+            }),
+          )
+          .map(
+            (group) =>
+              group.querySelector('.shortcuts-heading')?.textContent ?? '',
+          );
+        const marked = [
+          ...document.querySelectorAll('.shortcuts-group-link.in-view'),
+        ].map((link) => link.textContent ?? '');
+        return { showing, marked };
+      });
+    const markedAsShown = async (first: string) => {
+      const { showing, marked } = await marks();
+      return (
+        marked[0] === first &&
+        marked.join() === showing.join() &&
+        marked.length > 0
+      );
+    };
     const laidOut = await page.evaluate(() => {
       const scrollers = [
         ...document.querySelectorAll<HTMLElement>(
@@ -4225,19 +4258,21 @@ suite('App commander', () => {
         mice: document.querySelectorAll('.shortcuts-pane .mouse-icon').length,
       };
     });
+    const atFirst = await marks();
     await pane.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
     await waitFor(
-      async () => (await inView()) === 'Archives',
-      'the last group to be in view at the end',
+      async () => (await marks()).marked.at(-1) === 'Archives',
+      'the last group to be marked at the end',
     );
+    const atEnd = await marks();
     await page
       .locator('.shortcuts-group-link', { hasText: 'Filtering' })
       .click();
     await waitFor(
-      async () => (await inView()) === 'Filtering',
-      'the group clicked to be in view',
+      () => markedAsShown('Filtering'),
+      'the group clicked to come to the top',
     );
     const atFiltering = await pane.evaluate((element) => {
       const section = [
@@ -4247,8 +4282,25 @@ suite('App commander', () => {
     });
     await page.keyboard.press('ArrowUp');
     await waitFor(
-      async () => (await inView()) === 'Listing',
-      'the group before to be in view',
+      () => markedAsShown('Listing'),
+      'the group before to come to the top',
+    );
+    await pane.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await waitFor(
+      async () => (await marks()).marked.at(-1) === 'Archives',
+      'the end again',
+    );
+    await page.keyboard.press('ArrowDown');
+    await page
+      .locator('.shortcuts-tool.open', { hasText: 'File viewer' })
+      .waitFor();
+    await page.locator('.shortcuts-tool', { hasText: 'Terminal' }).click();
+    await waitFor(
+      async () =>
+        (await marks()).marked.join() === 'Clipboard,Kept from the shell',
+      'both groups of the terminal to be marked, as both show',
     );
     const focused = await page.evaluate(() =>
       document.activeElement?.matches('.shortcuts-filter input'),
@@ -4269,6 +4321,10 @@ suite('App commander', () => {
       `The key caps are ${lowest} to ${highest} high`,
     );
     assert.ok(laidOut.mice > 0);
+    assert.deepStrictEqual(atFirst.marked, atFirst.showing);
+    assert.ok(atFirst.marked.length > 1, atFirst.marked.join());
+    assert.strictEqual(atFirst.marked[0], 'Moving around');
+    assert.deepStrictEqual(atEnd.marked, atEnd.showing);
     assert.ok(atFiltering, 'The group clicked is not at the top of the pane');
     assert.ok(focused, 'The filter lost the keyboard');
   });

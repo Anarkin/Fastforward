@@ -3496,6 +3496,17 @@ suite('Style', () => {
     );
   });
 
+  test('leaves as much room under the last shortcut of a group as over the heading of the next, the line between them halfway', () => {
+    const popup = shortcutsPopup();
+    const under =
+      Number.parseFloat(paddingOf(withClass(popup, 'shortcuts-group')).bottom) +
+      Number.parseFloat(paddingOf(withClass(popup, 'shortcut-row')).bottom);
+    assert.strictEqual(
+      under,
+      Number.parseFloat(paddingOf(withClass(popup, 'shortcuts-heading')).top),
+    );
+  });
+
   test('fills the tool open as the selected row of a list, the others tinted under the pointer, and marks the group in view by a line in the color of focus beside its name, the others muted, dimming what has no match', () => {
     const popup = shortcutsPopup();
     looks(withClass(popup, 'shortcuts-tool', 'open'), {

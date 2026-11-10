@@ -19,7 +19,7 @@ import {
 import { terminalKeymap } from '../../../tools/terminal/shared/keymap';
 import {
   entryFor,
-  groupInView,
+  groupsInView,
   ShortcutsList,
   ShortcutsPopup,
   shownEntries,
@@ -84,6 +84,14 @@ function onMac<T>(draw: () => T): T {
     setKeyPlatform('win32');
   }
 }
+
+const view = (first: string | undefined, more = {}) => ({
+  first,
+  cut: false,
+  atStart: false,
+  atEnd: false,
+  ...more,
+});
 
 interface Held {
   readonly ctrlKey?: boolean;
@@ -155,10 +163,6 @@ async function inPopup(
 
 const openTool = (document: Document) =>
   document.querySelector('.shortcuts-tool.open .shortcuts-tool-name')
-    ?.textContent;
-
-const groupInViewOf = (document: Document) =>
-  document.querySelector('.shortcuts-group-link.in-view')?.childNodes[0]
     ?.textContent;
 
 const headingsOf = (document: Document) =>
@@ -589,69 +593,116 @@ suite('Shortcuts popup', () => {
     assert.strictEqual(tagsWith(html, 'shortcuts-heading').length, 0);
   });
 
-  test('marks as in view the last group whose top has scrolled up to the top of the pane, or the last group once scrolled to the end', () => {
+  test('marks as in view every group with a shortcut showing between the heading stuck at the top of the pane and its bottom, allowing a pixel of rounding', () => {
     const sections = [
-      { key: 'a', top: 0 },
-      { key: 'b', top: 100 },
-      { key: 'c', top: 250 },
+      { key: 'a', top: 30, bottom: 100 },
+      { key: 'b', top: 130, bottom: 250 },
+      { key: 'c', top: 280, bottom: 300 },
     ];
-    assert.strictEqual(groupInView(sections, 0, false), 'a');
-    assert.strictEqual(groupInView(sections, 98, false), 'a');
-    assert.strictEqual(groupInView(sections, 99.5, false), 'b');
-    assert.strictEqual(groupInView(sections, 260, false), 'c');
-    assert.strictEqual(groupInView(sections, 120, true), 'c');
-    assert.strictEqual(groupInView([], 0, false), undefined);
+    assert.deepStrictEqual(groupsInView(sections, 30, 200), ['a', 'b']);
+    assert.deepStrictEqual(groupsInView(sections, 101, 400), ['b', 'c']);
+    assert.deepStrictEqual(groupsInView(sections, 99.5, 280.5), ['b']);
+    assert.deepStrictEqual(groupsInView(sections, 0, 1000), ['a', 'b', 'c']);
+    assert.deepStrictEqual(groupsInView([], 0, 100), []);
   });
 
-  test("steps through the groups into the next tool's after a tool's last one, skipping those without a match, and no further than the ends", () => {
+  test("brings the next or previous group to the top of the pane, or the top of the group cut by it back, going on into the next or previous tool's once the pane can scroll no further, skipping those without a match, and no further than the ends", () => {
     const all = shown('');
     assert.strictEqual(
-      steppedGroup(all, 'commander', 'commander/Moving around', -1),
-      undefined,
-    );
-    assert.strictEqual(
-      steppedGroup(all, 'commander', 'commander/Moving around', 1),
+      steppedGroup(all, 'commander', view('commander/Moving around'), 1),
       'commander/Listing',
     );
     assert.strictEqual(
-      steppedGroup(all, 'commander', 'commander/Archives', 1),
+      steppedGroup(all, 'commander', view('commander/Listing'), -1),
+      'commander/Moving around',
+    );
+    assert.strictEqual(
+      steppedGroup(
+        all,
+        'commander',
+        view('commander/Listing', { cut: true }),
+        -1,
+      ),
+      'commander/Listing',
+    );
+    assert.strictEqual(
+      steppedGroup(
+        all,
+        'commander',
+        view('commander/Viewing and comparing', { atEnd: true }),
+        1,
+      ),
       'viewer/Scrolling',
     );
     assert.strictEqual(
-      steppedGroup(all, 'everywhere', 'everywhere/Lists and popups', 1),
+      steppedGroup(
+        all,
+        'viewer',
+        view('viewer/Scrolling', { atStart: true }),
+        -1,
+      ),
+      'commander/Archives',
+    );
+    assert.strictEqual(
+      steppedGroup(
+        all,
+        'terminal',
+        view('terminal/Clipboard', { atStart: true, atEnd: true }),
+        1,
+      ),
+      'everywhere/Tabs',
+    );
+    assert.strictEqual(
+      steppedGroup(
+        all,
+        'everywhere',
+        view('everywhere/Tabs', { atEnd: true }),
+        1,
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      steppedGroup(
+        all,
+        'commander',
+        view('commander/Moving around', { atStart: true }),
+        -1,
+      ),
       undefined,
     );
     const f3 = shown('f3');
+    const whole = { atStart: true, atEnd: true };
     assert.strictEqual(
-      steppedGroup(f3, 'commander', 'commander/Viewing and comparing', 1),
+      steppedGroup(
+        f3,
+        'commander',
+        view('commander/Viewing and comparing', whole),
+        1,
+      ),
       'git/Files',
     );
     assert.strictEqual(
-      steppedGroup(f3, 'commander', 'commander/Viewing and comparing', -1),
-      undefined,
+      steppedGroup(f3, 'git', view('git/Files', whole), -1),
+      'commander/Viewing and comparing',
     );
-    assert.strictEqual(steppedGroup(f3, 'viewer', undefined, 1), 'git/Files');
     assert.strictEqual(
-      steppedGroup(f3, 'viewer', undefined, -1),
+      steppedGroup(f3, 'viewer', view(undefined, whole), 1),
+      'git/Files',
+    );
+    assert.strictEqual(
+      steppedGroup(f3, 'viewer', view(undefined, whole), -1),
       'commander/Viewing and comparing',
     );
   });
 
-  test('takes the keyboard in its filter, going to the next and previous tool on Ctrl+Tab and Ctrl+Shift+Tab and through the groups on ↓ and ↑, into the next tool after the last, as the filter narrows them to what is typed', async () => {
+  test('takes the keyboard in its filter, going to the next and previous tool on Ctrl+Tab and Ctrl+Shift+Tab, and on ↓ and ↑ too once the pane can scroll no further, as the filter narrows the shortcuts to what is typed', async () => {
     await inPopup('commander', async ({ document, press, type }) => {
       const field = document.querySelector('.shortcuts-filter input');
       assert.ok(field);
       assert.strictEqual(document.activeElement, field);
       assert.strictEqual(openTool(document), 'Commander');
-      assert.strictEqual(groupInViewOf(document), 'Moving around');
-      await press('ArrowDown');
-      assert.strictEqual(groupInViewOf(document), 'Listing');
-      await press('ArrowUp');
-      await press('ArrowUp');
-      assert.strictEqual(groupInViewOf(document), 'Moving around');
       await press('Tab', { ctrlKey: true });
       assert.strictEqual(openTool(document), 'File viewer');
-      assert.strictEqual(groupInViewOf(document), 'Scrolling');
       assert.deepStrictEqual(headingsOf(document), [
         'Scrolling',
         'Showing the file',
@@ -659,6 +710,10 @@ suite('Shortcuts popup', () => {
         'Searching',
       ]);
       await press('Tab', { ctrlKey: true, shiftKey: true });
+      assert.strictEqual(openTool(document), 'Commander');
+      await press('ArrowDown');
+      assert.strictEqual(openTool(document), 'File viewer');
+      await press('ArrowUp');
       assert.strictEqual(openTool(document), 'Commander');
       await type('f3');
       assert.deepStrictEqual(
@@ -674,13 +729,12 @@ suite('Shortcuts popup', () => {
       assert.deepStrictEqual(headingsOf(document), ['Viewing and comparing']);
       await press('ArrowDown');
       assert.strictEqual(openTool(document), 'Git');
-      assert.strictEqual(groupInViewOf(document), 'Files');
       assert.deepStrictEqual(headingsOf(document), ['Files']);
       assert.strictEqual(document.activeElement, field);
     });
   });
 
-  test('opens a tool clicked, and goes to a group clicked, leaving the keyboard in the filter', async () => {
+  test('opens a tool clicked, leaving the keyboard in the filter, a group clicked too', async () => {
     await inPopup('git', async ({ document }) => {
       const click = (selector: string, text: string) =>
         act(async () => {
@@ -694,7 +748,7 @@ suite('Shortcuts popup', () => {
       await click('.shortcuts-tool', 'Terminal');
       assert.strictEqual(openTool(document), 'Terminal');
       await click('.shortcuts-group-link', 'Kept from the shell');
-      assert.strictEqual(groupInViewOf(document), 'Kept from the shell');
+      assert.strictEqual(openTool(document), 'Terminal');
       assert.strictEqual(
         document.activeElement,
         document.querySelector('.shortcuts-filter input'),
