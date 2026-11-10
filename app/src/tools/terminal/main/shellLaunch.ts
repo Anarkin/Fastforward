@@ -71,6 +71,38 @@ async function onPath(
   return undefined;
 }
 
+const appImageOwn = ['APPIMAGE', 'APPDIR', 'ARGV0', 'OWD'];
+const appImageLists = [
+  'PATH',
+  'LD_LIBRARY_PATH',
+  'XDG_DATA_DIRS',
+  'GSETTINGS_SCHEMA_DIR',
+];
+
+function withoutAppImage(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const { APPIMAGE: image, APPDIR: mounted } = env;
+  if (image === undefined || mounted === undefined || mounted === '') {
+    return env;
+  }
+  const inside = (entry: string) =>
+    entry === mounted || entry.startsWith(`${mounted}/`);
+  const left: NodeJS.ProcessEnv = { ...env };
+  for (const name of appImageOwn) {
+    delete left[name];
+  }
+  for (const name of appImageLists) {
+    const entries = (env[name] ?? '')
+      .split(':')
+      .filter((entry) => entry !== '' && !inside(entry));
+    if (entries.length === 0) {
+      delete left[name];
+    } else {
+      left[name] = entries.join(':');
+    }
+  }
+  return left;
+}
+
 function shellEnv({
   platform,
   env,
@@ -80,7 +112,7 @@ function shellEnv({
     ORIGINAL_XDG_CURRENT_DESKTOP: desktop,
     XDG_CURRENT_DESKTOP: replaced,
     ...rest
-  } = env;
+  } = platform === 'linux' ? withoutAppImage(env) : env;
   const kept = Object.entries({
     ...rest,
     XDG_CURRENT_DESKTOP: desktop ?? replaced,

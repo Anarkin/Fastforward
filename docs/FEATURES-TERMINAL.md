@@ -20,7 +20,7 @@
 | WSL | List the WSL distributions as shells | — | Advanced | ❌ No | `wsl.exe` as the shell runs the default one |
 | Restart a shell | Start a new shell once one exits | — | Common | ✅ Yes | Enter, once the tab says the exit code, or why the shell couldn't start |
 | Windows console | Run console programs through ConPTY | — | Common | ✅ Yes | The ConPTY `node-pty` ships rather than the one of Windows; `xterm.js` is told its build, to reflow lines as ConPTY does |
-| Environment | Tell programs what terminal they run in | `TERM`, `COLORTERM`, `TERM_PROGRAM` | Common | ✅ Yes | `TERM=xterm-256color` outside Windows, `COLORTERM=truecolor`, `TERM_PROGRAM=Fastforward` and `TERM_PROGRAM_VERSION`; Electron's own variables left out, and `LANG` set on macOS when missing |
+| Environment | Tell programs what terminal they run in | `TERM`, `COLORTERM`, `TERM_PROGRAM` | Common | ✅ Yes | `TERM=xterm-256color` outside Windows, `COLORTERM=truecolor`, `TERM_PROGRAM=Fastforward` and `TERM_PROGRAM_VERSION`; Electron's own variables and what the AppImage adds left out, and `LANG` set on macOS when missing |
 | SSH | Keep remote hosts in a list and connect to them | — | Advanced | ❌ No | `ssh` runs in the shell |
 | Serial ports | Connect to a serial port | — | Niche | ❌ No |  |
 

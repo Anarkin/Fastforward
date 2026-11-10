@@ -147,6 +147,45 @@ suite('Shell launch', () => {
     });
   });
 
+  test('leaves out what the AppImage it runs from adds to the environment, as zsh runs every program under the ARGV0 of the AppImage and programs loaded the libraries inside it', async () => {
+    const mounted = '/tmp/.mount_FastfoAbc';
+    const { env } = await launched({
+      env: {
+        APPIMAGE: '/home/me/Fastforward.AppImage',
+        APPDIR: mounted,
+        ARGV0: 'Fastforward.AppImage',
+        OWD: '/home/me',
+        PATH: `${mounted}:${mounted}/usr/sbin:/usr/local/bin:/usr/bin`,
+        LD_LIBRARY_PATH: `${mounted}/usr/lib`,
+        XDG_DATA_DIRS: `${mounted}/usr/share/:/usr/share:/usr/share/gnome`,
+        GSETTINGS_SCHEMA_DIR: `${mounted}/usr/share/glib-2.0/schemas:/opt/schemas`,
+      },
+    });
+
+    assert.deepStrictEqual(
+      [
+        'APPIMAGE',
+        'APPDIR',
+        'ARGV0',
+        'OWD',
+        'PATH',
+        'LD_LIBRARY_PATH',
+        'XDG_DATA_DIRS',
+        'GSETTINGS_SCHEMA_DIR',
+      ].map((name) => env[name]),
+      [
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        '/usr/local/bin:/usr/bin',
+        undefined,
+        '/usr/share:/usr/share/gnome',
+        '/opt/schemas',
+      ],
+    );
+  });
+
   test('leaves TERM unset on Windows, where programs read the console instead', async () => {
     assert.strictEqual(
       (await launched({ platform: 'win32', env: {} })).env.TERM,
