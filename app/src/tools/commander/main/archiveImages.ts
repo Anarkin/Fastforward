@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ArchiveAccess, OpenedArchive } from './archives';
+import { entryParts, type ArchiveAccess, type OpenedArchive } from './archives';
 
 type Answer = (bytes: Buffer | undefined) => void;
 
@@ -52,7 +52,7 @@ export class ArchiveImages {
         ...(await Promise.all(
           [...waiting.keys()].map((item) =>
             fs.promises
-              .readFile(path.join(folder, ...item.split('/')))
+              .readFile(path.join(folder, ...entryParts(item)))
               .catch(() => undefined),
           ),
         )),

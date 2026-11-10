@@ -129,6 +129,12 @@ function childKey(folder: string, name: string): string {
   return folder === '' ? name : `${folder}/${name}`;
 }
 
+export function entryParts(entry: string): string[] {
+  return entry
+    .split('/')
+    .filter((part) => part !== '' && part !== '.' && part !== '..');
+}
+
 export class ArchiveTree {
   private readonly folders = new Map<string, Map<string, ArchiveNode>>([
     ['', new Map()],
@@ -136,9 +142,7 @@ export class ArchiveTree {
 
   constructor(items: readonly ArchiveItem[], platform: NodeJS.Platform) {
     for (const item of items) {
-      const parts = item.path
-        .split('/')
-        .filter((part) => part !== '' && part !== '.' && part !== '..');
+      const parts = entryParts(item.path);
       const name = parts.at(-1);
       if (name === undefined) {
         continue;
