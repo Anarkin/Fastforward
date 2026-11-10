@@ -389,6 +389,22 @@ function entriesShown({ entries = [], sizing }: Pane): readonly Entry[] {
       );
 }
 
+function nameShared(
+  names: readonly string[],
+  key: (name: string) => string,
+): string | undefined {
+  const seen = new Set<string>();
+  for (const name of names) {
+    const base = path.basename(name);
+    const each = key(base);
+    if (seen.has(each)) {
+      return base;
+    }
+    seen.add(each);
+  }
+  return undefined;
+}
+
 function listedIn(pane: Pane | undefined, name: unknown): Entry | undefined {
   if (pane?.flat === undefined) {
     return entryNamed(pane?.entries, name);
@@ -1886,6 +1902,11 @@ export class CommanderTool implements Tool<'commander'> {
       existing === 'skip'
         ? names.filter((name) => !clashing.includes(name))
         : names;
+    const alike = nameShared(kept, key);
+    if (alike !== undefined) {
+      this.refuse(page, strings.commander.namesAlike(alike));
+      return;
+    }
     const { folder } = shown.pane;
     const into = kept.find((name) => {
       const item = key(path.join(folder, name));
@@ -2011,17 +2032,9 @@ export class CommanderTool implements Tool<'commander'> {
     }
     const { archive, inner, paths, withoutFolders, files, bytes, encrypted } =
       found;
-    const alike = withoutFolders
-      ? kept.find((name, at) =>
-          kept
-            .slice(at + 1)
-            .some(
-              (later) => key(path.basename(later)) === key(path.basename(name)),
-            ),
-        )
-      : undefined;
+    const alike = withoutFolders ? nameShared(kept, key) : undefined;
     if (alike !== undefined) {
-      this.refuse(page, strings.commander.namesAlike(path.basename(alike)));
+      this.refuse(page, strings.commander.namesAlike(alike));
       return;
     }
     if (

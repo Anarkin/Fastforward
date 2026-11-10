@@ -371,7 +371,7 @@ async function linkedTree(from: string, to: string): Promise<void> {
   try {
     await fs.promises.link(from, to);
   } catch {
-    await fs.promises.copyFile(from, to);
+    await fs.promises.copyFile(from, to, fs.constants.COPYFILE_EXCL);
     await fs.promises.utimes(to, stats.atime, stats.mtime);
   }
 }
@@ -437,6 +437,7 @@ function reasonOfError(error: unknown): string {
 export class Archives implements ArchiveAccess {
   private readonly opened = new Map<string, OpenedArchive>();
   private readonly passwords = new Map<string, string>();
+  private readonly changing = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly reader: ArchiveReader | undefined,
@@ -782,7 +783,27 @@ export class Archives implements ArchiveAccess {
       : undefined;
   }
 
-  private async updating(
+  private updating(
+    archive: OpenedArchive,
+    run: (
+      reader: ArchiveReader,
+      password: { readonly password?: string },
+    ) => Promise<Packing>,
+  ): Promise<Packing> {
+    const key = this.keyOf(archive.file);
+    const before = this.changing.get(key) ?? Promise.resolve();
+    const turn = before.then(() => this.updated(archive, run));
+    const ended = turn.catch(() => undefined);
+    this.changing.set(key, ended);
+    void ended.then(() => {
+      if (this.changing.get(key) === ended) {
+        this.changing.delete(key);
+      }
+    });
+    return turn;
+  }
+
+  private async updated(
     archive: OpenedArchive,
     run: (
       reader: ArchiveReader,

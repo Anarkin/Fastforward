@@ -8,8 +8,10 @@ import {
   type ArchiveItem,
   type ArchiveListing,
   type ArchiveReader,
+  type Packing,
 } from '../../../../tools/commander/main/archives';
 import { strings } from '../../../../shared/strings';
+import { waitFor } from '../../../fixtures';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 function item(itemPath: string, more: Partial<ArchiveItem> = {}): ArchiveItem {
@@ -681,6 +683,107 @@ suite('Archives', () => {
       fs.readdirSync(folder).filter((name) => name.startsWith('work-')),
       [],
     );
+  });
+
+  test('never stages a file over another of its name, so two files listed flat leave both originals as they were', async () => {
+    const zip = path.join(folder, 'a.zip');
+    const source = path.join(folder, 'source');
+    fs.writeFileSync(zip, 'zip');
+    for (const name of ['one', 'two']) {
+      fs.mkdirSync(path.join(source, name), { recursive: true });
+      fs.writeFileSync(path.join(source, name, 'same.txt'), name);
+    }
+    const reader: ArchiveReader = {
+      ...readerOf({}).reader,
+      list: () => Promise.resolve({ kind: 'listed', items: [item('x.txt')] }),
+      add: () => Promise.resolve({ kind: 'packed' }),
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+
+    await assert.rejects(
+      archives.addItems(opened.archive, [], source, [
+        path.join('one', 'same.txt'),
+        path.join('two', 'same.txt'),
+      ]),
+    );
+
+    assert.deepStrictEqual(
+      ['one', 'two'].map((name) =>
+        fs.readFileSync(path.join(source, name, 'same.txt'), 'utf8'),
+      ),
+      ['one', 'two'],
+    );
+    assert.deepStrictEqual(
+      fs.readdirSync(folder).filter((name) => name.startsWith('work-')),
+      [],
+    );
+  });
+
+  test('changes an archive one change at a time, each once the one before it ended, failed or not, while another archive changes alongside', async () => {
+    const zip = path.join(folder, 'a.zip');
+    const other = path.join(folder, 'b.zip');
+    fs.writeFileSync(zip, 'a');
+    fs.writeFileSync(other, 'b');
+    fs.writeFileSync(path.join(folder, 'new.txt'), 'new');
+    const started: string[] = [];
+    const ends = new Map<string, (end: Packing | Error) => void>();
+    const change = (what: string) =>
+      new Promise<Packing>((resolve, reject) => {
+        started.push(what);
+        ends.set(what, (end) => {
+          if (end instanceof Error) {
+            reject(end);
+          } else {
+            resolve(end);
+          }
+        });
+      });
+    const reader: ArchiveReader = {
+      ...readerOf({}).reader,
+      list: () => Promise.resolve({ kind: 'listed', items: [item('x.txt')] }),
+      add: (file, _from, items) =>
+        change(`add ${path.basename(file)} ${items.join(' ')}`),
+      remove: (file, paths) =>
+        change(`remove ${path.basename(file)} ${paths.join(' ')}`),
+      rename: (file, from, to) =>
+        change(`rename ${path.basename(file)} ${from} ${to}`),
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const first = await archives.open(zip);
+    const second = await archives.open(other);
+    assert.ok(first.kind === 'opened' && second.kind === 'opened');
+    const end = async (what: string, outcome: Packing | Error) => {
+      await waitFor(() => ends.has(what), what);
+      ends.get(what)?.(outcome);
+    };
+
+    const added = archives.addItems(first.archive, [], folder, ['new.txt']);
+    const removed = archives.remove(first.archive, ['x.txt']);
+    const renamed = archives.rename(first.archive, 'x.txt', 'y.txt');
+    const elsewhere = archives.remove(second.archive, ['x.txt']);
+    await waitFor(() => started.length >= 2, 'the first two changes');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    assert.deepStrictEqual(started.toSorted(), [
+      'add a.zip new.txt',
+      'remove b.zip x.txt',
+    ]);
+    await end('add a.zip new.txt', new Error('7-Zip failed.'));
+    await assert.rejects(added);
+    await end('remove a.zip x.txt', { kind: 'packed' });
+    assert.deepStrictEqual(await removed, { kind: 'packed' });
+    await end('rename a.zip x.txt y.txt', { kind: 'packed' });
+    await end('remove b.zip x.txt', { kind: 'packed' });
+    assert.deepStrictEqual(await Promise.all([renamed, elsewhere]), [
+      { kind: 'packed' },
+      { kind: 'packed' },
+    ]);
+    assert.deepStrictEqual(started.slice(2), [
+      'remove a.zip x.txt',
+      'rename a.zip x.txt y.txt',
+    ]);
   });
 
   test('finds the opened archive a folder is inside of, and the file a path inside an archive runs through', async () => {

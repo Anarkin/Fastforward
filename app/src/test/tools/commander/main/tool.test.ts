@@ -6260,6 +6260,49 @@ suite('Commander tool in archives', () => {
     ]);
   });
 
+  test('refuses files of one name listed flat into an archive, as only one of them could go into its folder', async () => {
+    const { tool, page, send, archived, changedInArchives, notices } =
+      commander({
+        [root]: [file('a.zip'), folder('one'), folder('two')],
+        [at('one')]: [file('same.txt')],
+        [at('two')]: [file('same.txt'), file('other.txt')],
+      });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({ type: 'enterArchive', tab: '1', side: 'left', name: 'a.zip' });
+    await send({ type: 'flat', tab: '1', side: 'right', flat: true });
+    await waitFor(
+      () =>
+        page
+          .of('flatFiles')
+          .flatMap((message) => message.folders)
+          .flatMap((listed) => listed.entries).length === 4,
+      'the files to be listed flat',
+    );
+
+    for (const move of [false, true]) {
+      await send({
+        type: 'transfer',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        names: [
+          path.join('one', 'same.txt'),
+          path.join('two', 'other.txt'),
+          path.join('two', 'same.txt'),
+        ],
+        target: at('a.zip'),
+        move,
+      });
+    }
+
+    assert.deepStrictEqual(changedInArchives, []);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.namesAlike('same.txt') },
+      { level: 'error', message: strings.commander.namesAlike('same.txt') },
+    ]);
+  });
+
   test('stays inside an archive read again once changed while its watch tells of the change, the refresh waiting for that reading rather than stopping it', async () => {
     const {
       tool,
