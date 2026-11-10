@@ -110,6 +110,61 @@ suite('Terminal view', () => {
     });
   });
 
+  test('opens no box of xterm.js for a link a program printed, as its English question blocked the window and its OK opened nothing', () => {
+    withPage((screen) => {
+      let given: { linkHandler?: { activate(...args: unknown[]): void } } = {};
+      const xterm = posingAsXterm({
+        Terminal: class {
+          readonly cols = 80;
+          readonly rows = 24;
+          readonly options = {};
+          constructor(options: typeof given) {
+            given = options;
+          }
+          loadAddon() {}
+          attachCustomKeyEventHandler() {}
+          onData() {}
+          onResize() {}
+          open() {}
+          focus() {}
+          dispose() {}
+        },
+        FitAddon: class {
+          fit() {}
+        },
+        UnicodeGraphemesAddon: class {
+          dispose() {}
+        },
+      });
+      const asked: string[] = [];
+      Object.assign(globalThis, {
+        confirm: () => {
+          asked.push('confirm');
+          return true;
+        },
+        open: () => {
+          asked.push('open');
+          return null;
+        },
+      });
+      const view = new TerminalView(xterm, screen, {
+        tab: '1',
+        renderer: 'dom',
+        scrollback: 1000,
+        minimumContrastRatio: 4.5,
+        windowsPty: undefined,
+        post: noop,
+        onCopy: noop,
+        scrolling: () => ({ wheelRows: 3, smooth: false }),
+      });
+
+      assert.ok(given.linkHandler !== undefined);
+      given.linkHandler.activate({}, 'https://example.com', undefined);
+      assert.deepStrictEqual(asked, []);
+      view.dispose();
+    });
+  });
+
   test('moves the terminal onto whole device pixels by its margin rather than a transform, which would make the compositor resample its canvas, blurring it', () => {
     const [top, , , left] = screenMargin(14, 43.2, 1.25)
       .split(' ')

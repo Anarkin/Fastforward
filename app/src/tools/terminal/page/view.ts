@@ -112,6 +112,7 @@ export class TerminalView {
       smoothScrollDuration: glideOf(options.scrolling().smooth),
       ...this.cells(),
       theme: this.theme(),
+      linkHandler: { activate: () => undefined },
       ...(options.windowsPty && { windowsPty: options.windowsPty }),
     });
     this.terminal.loadAddon(this.fit);
