@@ -964,6 +964,7 @@ export const strings = {
     gone: "It doesn't exist anymore.",
     folderThere: 'A folder of that name is there.',
     fileThere: 'A file of that name is there.',
+    itselfThere: 'The item there is this one, reached by another path.',
     couldNotRead: (file: string, reason: Sentence) =>
       sentence`Couldn't read ${named(file)}. ${reason}`,
     layout: 'Layout',

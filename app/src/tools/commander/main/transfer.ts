@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type {
@@ -57,6 +58,27 @@ async function statsOf(file: string): Promise<fs.Stats | undefined> {
   } catch {
     return undefined;
   }
+}
+
+async function identityOf(file: string): Promise<string | undefined> {
+  try {
+    const { dev, ino } = await fs.promises.lstat(file, { bigint: true });
+    return ino === 0n ? undefined : `${dev}:${ino}`;
+  } catch {
+    return undefined;
+  }
+}
+
+async function sameItem(source: string, target: string): Promise<boolean> {
+  const [from, to] = await Promise.all([
+    identityOf(source),
+    identityOf(target),
+  ]);
+  return from !== undefined && from === to;
+}
+
+function partOf(target: string): string {
+  return `${target}.${randomBytes(4).toString('hex')}.part`;
 }
 
 const ownerWrites = 0o200;
@@ -269,6 +291,11 @@ class Transfer {
     let into = target;
     let overwrite = false;
     if (there !== undefined) {
+      if (await sameItem(source, target)) {
+        this.events.failed(name, strings.commander.itselfThere);
+        this.passed(this.countOf(source, from));
+        return;
+      }
       if (from.isDirectory() && there.isDirectory()) {
         await this.merge(source, target, renaming);
         return;
@@ -397,19 +424,25 @@ class Transfer {
   ): Promise<void> {
     this.current = name;
     const bytesBefore = this.bytes;
+    const into = overwrite ? partOf(target) : target;
     try {
       if (stats.size >= (this.options.piecesFrom ?? 16 * 1024 * 1024)) {
-        await this.copyLarge(source, target, stats, overwrite);
+        await this.copyLarge(source, into, stats);
       } else {
         await fs.promises.copyFile(
           source,
-          target,
-          fs.constants.COPYFILE_FICLONE |
-            (overwrite ? 0 : fs.constants.COPYFILE_EXCL),
+          into,
+          fs.constants.COPYFILE_FICLONE | fs.constants.COPYFILE_EXCL,
         );
       }
-      await fs.promises.utimes(target, stats.atime, stats.mtime).catch(ignored);
+      await fs.promises.utimes(into, stats.atime, stats.mtime).catch(ignored);
+      if (into !== target) {
+        await fs.promises.rename(into, target);
+      }
     } catch (error) {
+      if (into !== target) {
+        await fs.promises.rm(into, { force: true }).catch(ignored);
+      }
       if (error instanceof Stopped) {
         throw error;
       }
@@ -431,15 +464,13 @@ class Transfer {
     source: string,
     target: string,
     stats: fs.Stats,
-    overwrite: boolean,
   ): Promise<void> {
     if (this.options.cloning ?? true) {
       try {
         await fs.promises.copyFile(
           source,
           target,
-          fs.constants.COPYFILE_FICLONE_FORCE |
-            (overwrite ? 0 : fs.constants.COPYFILE_EXCL),
+          fs.constants.COPYFILE_FICLONE_FORCE | fs.constants.COPYFILE_EXCL,
         );
         return;
       } catch (error) {

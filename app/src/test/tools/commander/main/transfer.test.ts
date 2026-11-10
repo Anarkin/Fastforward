@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
@@ -36,6 +37,12 @@ function write(file: string, text: string): string {
   fs.writeFileSync(file, text);
   fs.utimesSync(file, past, past);
   return file;
+}
+
+function hide(file: string): void {
+  if (process.platform === 'win32') {
+    execFileSync('attrib', ['+h', file]);
+  }
 }
 
 function tree(root: string): Record<string, string> {
@@ -319,6 +326,101 @@ suite('Transfer', () => {
       'copied.txt': 'new copied.txt',
       'moved.txt': 'new moved.txt',
       'writable.txt': 'new writable.txt',
+    });
+  });
+
+  test('refuses to copy or move an item onto itself, reached through a link to its folder or as a hard link of it, without asking, keeping its bytes', async () => {
+    write(path.join(source, 'big.bin'), 'b'.repeat(10_000));
+    write(path.join(source, 'docs', 'note.txt'), 'note');
+    write(path.join(source, 'twin.bin'), 't'.repeat(10_000));
+    fs.linkSync(path.join(source, 'twin.bin'), path.join(target, 'twin.bin'));
+    const linked = path.join(folder, 'linked');
+    fs.symlinkSync(source, linked, 'junction');
+    const pieces = { piecesFrom: 4000, pieceBytes: 1000, cloning: false };
+
+    const copied = await run(
+      {
+        sources: [path.join(source, 'big.bin'), path.join(source, 'docs')],
+        target: linked,
+        move: false,
+      },
+      pieces,
+    );
+    const moved = await run(
+      { sources: [path.join(source, 'big.bin')], target: linked, move: true },
+      { ...pieces, rename: crossingDrives },
+    );
+    const twin = await run(
+      { sources: [path.join(source, 'twin.bin')], target, move: true },
+      { ...pieces, rename: crossingDrives },
+    );
+
+    assert.deepStrictEqual(
+      [...copied.clashes, ...moved.clashes, ...twin.clashes],
+      [],
+    );
+    assert.deepStrictEqual(
+      [...copied.failures, ...moved.failures, ...twin.failures],
+      [
+        `big.bin: ${strings.commander.itselfThere}`,
+        `docs: ${strings.commander.itselfThere}`,
+        `big.bin: ${strings.commander.itselfThere}`,
+        `twin.bin: ${strings.commander.itselfThere}`,
+      ],
+    );
+    assert.deepStrictEqual(tree(source), {
+      'big.bin': 'b'.repeat(10_000),
+      docs: '/',
+      'docs/note.txt': 'note',
+      'twin.bin': 't'.repeat(10_000),
+    });
+    assert.strictEqual(
+      fs.readFileSync(path.join(target, 'twin.bin'), 'utf8'),
+      't'.repeat(10_000),
+    );
+  });
+
+  test('overwrites a hidden file there already, and keeps a file it was told to overwrite as it was until its copy is whole, once stopped too', async () => {
+    write(path.join(source, 'desktop.ini'), 'new desktop.ini');
+    write(path.join(source, 'big.bin'), 'n'.repeat(10_000));
+    for (const name of ['desktop.ini', 'big.bin']) {
+      write(path.join(target, name), `old ${name}`);
+      hide(path.join(target, name));
+    }
+    const pieces = { piecesFrom: 4000, pieceBytes: 1000, cloning: false };
+    let asked = 0;
+
+    const stopped = await run(
+      { sources: [path.join(source, 'big.bin')], target, move: false },
+      {
+        ...pieces,
+        answers: [{ answer: 'overwrite', all: false }],
+        stopped: () => ++asked > 4,
+      },
+    );
+
+    assert.strictEqual(stopped.end, 'stopped');
+    assert.deepStrictEqual(tree(target), {
+      'big.bin': 'old big.bin',
+      'desktop.ini': 'old desktop.ini',
+    });
+
+    const overwritten = await run(
+      {
+        sources: ['desktop.ini', 'big.bin'].map((name) =>
+          path.join(source, name),
+        ),
+        target,
+        move: false,
+      },
+      { ...pieces, answers: [{ answer: 'overwrite', all: true }] },
+    );
+
+    assert.strictEqual(overwritten.end, 'done');
+    assert.deepStrictEqual(overwritten.failures, []);
+    assert.deepStrictEqual(tree(target), {
+      'big.bin': 'n'.repeat(10_000),
+      'desktop.ini': 'new desktop.ini',
     });
   });
 
