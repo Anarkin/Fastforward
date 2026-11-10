@@ -234,6 +234,10 @@ export class Transfers {
     this.show();
   }
 
+  busy(): boolean {
+    return this.running.length > 0;
+  }
+
   quit(): void {
     for (const running of this.running.splice(0)) {
       running.connection?.dispose();

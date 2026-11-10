@@ -88,10 +88,18 @@ export interface Tool<K extends ToolId> {
   open(page: Page, folders: readonly string[]): Promise<void>;
   newTab(page: Page): Promise<void>;
   reloadSettings(): void;
+  quitNote?(): string | undefined;
   quit(): void;
 }
 
 export type Tools = { readonly [K in ToolId]: Tool<K> };
+
+export function quitNoteOf(
+  tools: Readonly<Record<ToolId, Pick<Tool<ToolId>, 'quitNote'>>>,
+): string | undefined {
+  const notes = toolIds.flatMap((tool) => tools[tool].quitNote?.() ?? []);
+  return notes.length === 0 ? undefined : notes.join(' ');
+}
 
 export interface ShellHost {
   openSettings(): Promise<void>;
@@ -321,12 +329,17 @@ export class Shell {
     return (
       page !== undefined &&
       !page.disposed &&
-      this.storage.savedTabs.some((tab) => confirmsClose[tab.tool])
+      (this.storage.savedTabs.some((tab) => confirmsClose[tab.tool]) ||
+        quitNoteOf(this.tools) !== undefined)
     );
   }
 
   askToQuit(): void {
-    this.page?.post({ type: 'confirmQuit' });
+    const note = quitNoteOf(this.tools);
+    this.page?.post({
+      type: 'confirmQuit',
+      ...(note !== undefined && { note }),
+    });
   }
 
   notify(notice: Notice): void {

@@ -913,6 +913,16 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
+  quitNote(): string | undefined {
+    const notes = [
+      ...(this.transfers.busy() ? [strings.commander.quitStopsTransfers] : []),
+      ...(this.updatesAsked.size > 0
+        ? [strings.commander.quitDropsChanges]
+        : []),
+    ];
+    return notes.length === 0 ? undefined : notes.join(' ');
+  }
+
   quit(): void {
     this.transfers.quit();
     for (const stop of this.copiesWatched) {

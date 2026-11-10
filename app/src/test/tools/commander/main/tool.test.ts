@@ -2025,6 +2025,29 @@ suite('Commander tool', () => {
     ]);
   });
 
+  test('has the shell ask before quitting while a copy runs, saying quitting stops it, and no longer once it is done', async () => {
+    const { tool, page, send, transfers } = commander({
+      [root]: [file('a.txt'), folder('target')],
+      [at('target')]: [],
+    });
+    await tool.show(page, tab);
+    assert.strictEqual(tool.quitNote(), undefined);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'target' });
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'right',
+      names: ['a.txt'],
+      target: at('target'),
+      move: false,
+    });
+    await send({ type: 'hideTransfer', transfer: 1 });
+
+    assert.strictEqual(tool.quitNote(), strings.commander.quitStopsTransfers);
+    transfers[0].listener.event({ type: 'done', stopped: false });
+    await waitFor(() => tool.quitNote() === undefined, 'the copy to end');
+  });
+
   test('shows the page the transfer to show and what it asks, sends on what the page answers to it, and lists the side showing its target again once it is done', async () => {
     const { tool, page, send, transfers } = commander({
       [root]: [file('a.txt'), folder('target')],
@@ -5403,11 +5426,14 @@ suite('Commander tool in archives', () => {
       const name = path.join('docs', 'readme.md');
 
       await change(holding);
+      assert.strictEqual(tool.quitNote(), undefined);
       await saved('Changed once.');
       await waitFor(() => asked().length === 1, 'the update to be asked');
+      assert.strictEqual(tool.quitNote(), strings.commander.quitDropsChanges);
       await saved('Changed again before an answer.');
       await send({ type: 'updateArchive', ask: 1, update: true });
       await waitFor(() => notices.length === 1, 'the copy to be put back');
+      assert.strictEqual(tool.quitNote(), undefined);
       assert.deepStrictEqual(asked(), [
         { type: 'askUpdate', ask: 1, name, archive: 'a.zip' },
       ]);
@@ -5437,7 +5463,10 @@ suite('Commander tool in archives', () => {
       await made.settled();
       tool.hide(page);
       await saved('Changed while the commander is hidden.');
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await waitFor(
+        () => tool.quitNote() === strings.commander.quitDropsChanges,
+        'the change to wait for an answer while the commander is hidden',
+      );
       assert.strictEqual(asked().length, 2);
       await tool.show(page, tab);
       await waitFor(() => asked().length === 3, 'the update to be asked');

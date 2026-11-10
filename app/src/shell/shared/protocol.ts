@@ -117,7 +117,7 @@ export type ToWebview =
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
   | { readonly type: 'terminalCommand'; readonly installable: boolean }
-  | { readonly type: 'confirmQuit' }
+  | { readonly type: 'confirmQuit'; readonly note?: string }
   | {
       readonly type: 'chooseTool';
       readonly folders: readonly string[];

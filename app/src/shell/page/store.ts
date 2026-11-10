@@ -63,7 +63,8 @@ function deliver<K extends ToolId>(
 }
 
 export type Confirming =
-  { readonly kind: 'tab'; readonly tab: TabInfo } | { readonly kind: 'quit' };
+  | { readonly kind: 'tab'; readonly tab: TabInfo }
+  | { readonly kind: 'quit'; readonly note?: string };
 
 export interface TabMenu {
   readonly tab: string | undefined;
@@ -215,7 +216,10 @@ function received(
       return { installsCommand: message.installable };
     case 'confirmQuit':
       return {
-        confirming: { kind: 'quit' },
+        confirming: {
+          kind: 'quit',
+          ...(message.note !== undefined && { note: message.note }),
+        },
         popups: withPopup(state.popups, 'confirm', true),
       };
     case 'chooseTool':

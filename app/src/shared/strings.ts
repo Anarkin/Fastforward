@@ -653,6 +653,10 @@ export const strings = {
     zipPasswordAscii:
       "A zip's password can hold only the letters, digits and signs of English, as 7-Zip writes no other into a zip.",
     nothingTakenOut: '7-Zip took nothing out.',
+    quitStopsTransfers:
+      'A copy, a move or a change of an archive is still running, and quitting stops it unfinished.',
+    quitDropsChanges:
+      'A file opened from an archive was changed and not put back yet, and quitting deletes the change.',
     lineBreakInName:
       "7-Zip can't be told the name of an item that holds a line break.",
     namesAlike: (name: string) =>

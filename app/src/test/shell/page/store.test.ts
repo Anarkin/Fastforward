@@ -141,8 +141,15 @@ suite('Shell store', () => {
     store.getState().confirm();
     assert.strictEqual(store.getState().confirming, undefined);
     store.getState().receive({ type: 'confirmQuit' });
+    assert.deepStrictEqual(store.getState().confirming, { kind: 'quit' });
     store.getState().cancel();
     assert.strictEqual(store.getState().confirming, undefined);
+    store.getState().receive({ type: 'confirmQuit', note: 'A copy runs.' });
+    assert.deepStrictEqual(store.getState().confirming, {
+      kind: 'quit',
+      note: 'A copy runs.',
+    });
+    store.getState().cancel();
     store.getState().receive({ type: 'confirmQuit' });
     store.getState().confirm();
     assert.deepStrictEqual(posted, [

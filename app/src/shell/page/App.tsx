@@ -46,6 +46,7 @@ export function confirmation(confirming: Confirming): {
   title: string;
   message: string;
   lines?: readonly Line[];
+  note?: string;
   confirm: string;
 } {
   return confirming.kind === 'tab'
@@ -60,6 +61,7 @@ export function confirmation(confirming: Confirming): {
     : {
         title: strings.confirm.quitTitle,
         message: strings.confirm.quitApp,
+        ...(confirming.note !== undefined && { note: confirming.note }),
         confirm: strings.confirm.quit,
       };
 }

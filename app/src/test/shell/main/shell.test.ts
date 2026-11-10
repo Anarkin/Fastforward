@@ -18,6 +18,9 @@ import {
   type FakePage,
 } from '../../harness';
 import { removeFolder, tempFolder } from '../../repositories';
+import { quitNoteOf } from '../../../shell/main/shell';
+
+const saying = (note?: string) => ({ quitNote: () => note });
 
 function noticesOf(page: FakePage): (readonly [string, Sentence])[] {
   return page.messages.flatMap((message) =>
@@ -153,6 +156,21 @@ suite('Shell with no tab open', () => {
       true,
       host,
       noGit,
+    );
+  });
+
+  test('asks before quitting while a tool says quitting would cut its work short, saying what each tool says', () => {
+    assert.strictEqual(
+      quitNoteOf({ terminal: saying(), commander: saying(), git: saying() }),
+      undefined,
+    );
+    assert.strictEqual(
+      quitNoteOf({
+        terminal: saying(),
+        commander: saying('A copy runs.'),
+        git: saying('A clone runs.'),
+      }),
+      'A copy runs. A clone runs.',
     );
   });
 

@@ -460,6 +460,18 @@ suite('Window', () => {
       message: 'Are you sure you want to quit Fastforward?',
       confirm: 'Quit',
     });
+    assert.deepStrictEqual(
+      confirmation({
+        kind: 'quit',
+        note: strings.commander.quitStopsTransfers,
+      }),
+      {
+        title: 'Quit',
+        message: 'Are you sure you want to quit Fastforward?',
+        note: strings.commander.quitStopsTransfers,
+        confirm: 'Quit',
+      },
+    );
   });
 
   test('offers every tool in the + menu by name, with its icon, as a submenu where the tool gives one, or opening a new tab of it', () => {

@@ -27,12 +27,14 @@ export function Crash({
   listen: Listen;
   onQuit: () => void;
 }) {
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState<{ readonly note?: string } | undefined>(
+    undefined,
+  );
   useEffect(
     () =>
       listen((message) => {
         if (message.type === 'confirmQuit') {
-          setAsking(true);
+          setAsking(message.note === undefined ? {} : { note: message.note });
         }
       }),
     [listen],
@@ -48,14 +50,14 @@ export function Crash({
         </div>
         <button onClick={onReload}>{strings.app.reload}</button>
       </div>
-      {asking && (
+      {asking !== undefined && (
         <ConfirmPopup
-          {...confirmation({ kind: 'quit' })}
+          {...confirmation({ kind: 'quit', ...asking })}
           onConfirm={() => {
-            setAsking(false);
+            setAsking(undefined);
             onQuit();
           }}
-          onCancel={() => setAsking(false)}
+          onCancel={() => setAsking(undefined)}
         />
       )}
     </div>
