@@ -429,6 +429,38 @@ export function pointedKeys(
     : [key];
 }
 
+const regexSpecial = /[.+^${}()|[\]\\]/g;
+
+export function patternMatcher(
+  pattern: string,
+  platform: string | undefined,
+): (name: string) => boolean {
+  const flags = platform === 'win32' || platform === 'darwin' ? 'i' : '';
+  const patterns = pattern
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part !== '')
+    .map(
+      (part) =>
+        new RegExp(
+          `^${part.replaceAll(regexSpecial, '\\$&').replaceAll('*', '.*').replaceAll('?', '.')}$`,
+          flags,
+        ),
+    );
+  return (name) => patterns.some((each) => each.test(name));
+}
+
+export function keysMatching(
+  rows: readonly Row[],
+  pattern: string,
+  platform: string | undefined,
+): string[] {
+  const matches = patternMatcher(pattern, platform);
+  return rows.flatMap((row) =>
+    row.entry !== undefined && matches(row.entry.name) ? [row.key] : [],
+  );
+}
+
 export interface DuplicateRows {
   readonly rows: readonly Row[];
   readonly starts: ReadonlySet<string>;

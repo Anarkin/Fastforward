@@ -218,6 +218,8 @@ suite('App commander', () => {
       };
     });
 
+  const markedSorted = async () => (await markedNames()).toSorted().join();
+
   const thumbnailed = () =>
     right()
       .locator('.virtual-rows')
@@ -443,8 +445,8 @@ suite('App commander', () => {
       return {
         underButtons: text.top >= buttons.bottom,
         aboveHeadings: text.bottom <= names.top,
-        fromNames: Math.round(text.left - names.left),
-        shortOfDates: Math.round(dates.right - text.right),
+        fromNames: Math.round(text.left - names.left) + 0,
+        shortOfDates: Math.round(dates.right - text.right) + 0,
       };
     });
   const savedBookmarks = () => {
@@ -1248,6 +1250,66 @@ suite('App commander', () => {
     } finally {
       await page.keyboard.press('Backspace');
       fs.rmSync(dupes, { recursive: true, force: true });
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    }
+  });
+
+  test('marks the files and folders whose names match a pattern typed on Num+, saying how many it matches as it is typed, inverts the marks on Num*, marks those of the extension of the file selected on Alt and Num+, and unmarks by the last pattern on Num-', async () => {
+    const marking = path.join(opened, 'marking');
+    fs.mkdirSync(path.join(marking, 'album.jpg'), { recursive: true });
+    for (const name of ['a.jpg', 'b.jpg', 'c.png', 'd.png']) {
+      fs.writeFileSync(path.join(marking, name), name);
+    }
+    const field = page.locator('.prompt-input');
+    try {
+      await openFolder('marking', marking);
+
+      await page.keyboard.press('NumpadAdd');
+      await field.waitFor();
+      await field.fill('*.jpg');
+      await waitFor(
+        async () =>
+          (await page.locator('.prompt-note').textContent()) ===
+          strings.commander.patternMatches(3),
+        'the count of what the pattern matches',
+      );
+      await page.keyboard.press('Enter');
+      await field.waitFor({ state: 'detached' });
+      await waitFor(
+        async () => (await markedSorted()) === 'a,album.jpg,b',
+        'the files and the folder the pattern matches to be marked',
+      );
+
+      await page.keyboard.press('NumpadMultiply');
+      await waitFor(
+        async () => (await markedSorted()) === 'c,d',
+        'the marks to be inverted',
+      );
+
+      await page.keyboard.press('NumpadSubtract');
+      await field.waitFor();
+      assert.strictEqual(await field.inputValue(), '*.jpg');
+      await field.fill('*.png');
+      await page.keyboard.press('Enter');
+      await field.waitFor({ state: 'detached' });
+      await waitFor(
+        async () => (await markedSorted()) === '',
+        'the marks gone',
+      );
+
+      await select('c');
+      await page.keyboard.press('Alt+NumpadAdd');
+      await waitFor(
+        async () => (await markedSorted()) === 'c,d',
+        'the files of the extension of the one selected to be marked',
+      );
+    } finally {
+      await page.keyboard.press('Backspace');
+      fs.rmSync(marking, { recursive: true, force: true });
       await waitFor(
         async () =>
           (await right().locator('.column-name').textContent()) === opened,

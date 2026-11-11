@@ -21,7 +21,29 @@ const prompted = (secret?: boolean) =>
     />,
   );
 
+const noted = (initial: string) =>
+  renderToStaticMarkup(
+    <PromptPopup
+      title="Mark"
+      label="Pattern"
+      confirm="Mark"
+      initial={initial}
+      problemOf={(value) => (value === 'bad' ? 'Not that.' : undefined)}
+      noteOf={(value) => `Matches ${value.length} items`}
+      onConfirm={noop}
+      onCancel={noop}
+    />,
+  );
+
 suite('Prompt popup', () => {
+  test('notes under its field what the value typed would do, as how many files a pattern matches, unless something is wrong with it', () => {
+    assert.match(
+      noted('*.jpg'),
+      /<div class="prompt-note">Matches 5 items<\/div>/,
+    );
+    assert.doesNotMatch(noted('bad'), /prompt-note/);
+  });
+
   test('hides what is typed when it asks for a secret, as a password, and shows it otherwise', () => {
     assert.match(prompted(true), /<input class="prompt-input" type="password"/);
     assert.match(prompted(), /<input class="prompt-input" type="text"/);

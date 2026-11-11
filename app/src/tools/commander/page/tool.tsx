@@ -31,9 +31,11 @@ import { useShellActions } from '../../../shell/page/store';
 import {
   CommanderStore,
   createCommanderStore,
+  shownRowsOf,
   useCommander,
   useCommanderActions,
 } from './store';
+import { keysMatching } from './listing';
 
 const minimumShare = 0.15;
 
@@ -73,6 +75,12 @@ function CommanderPopups() {
       : state.view.panes[state.renaming.side]?.entries,
   );
   const goingTo = useCommander((state) => state.goingTo);
+  const markingPattern = useCommander((state) => state.markingPattern);
+  const patternRows = useCommander((state) =>
+    state.markingPattern === undefined
+      ? undefined
+      : shownRowsOf(state, state.markingPattern.side).rows,
+  );
   const askingPassword = useCommander((state) => state.askingPassword);
   const askingUpdate = useCommander((state) => state.askingUpdate);
   const {
@@ -90,6 +98,8 @@ function CommanderPopups() {
     cancelRename,
     goTo,
     cancelGoTo,
+    markPattern,
+    cancelMarkPattern,
   } = useCommanderActions();
   const renamed =
     renaming === undefined ? undefined : baseNameOf(renaming.name, platform);
@@ -159,6 +169,33 @@ function CommanderPopups() {
           problemOf={(to) => renameProblem(to, renamed, renamedIn, platform)}
           onConfirm={rename}
           onCancel={cancelRename}
+        />
+      )}
+      {markingPattern !== undefined && (
+        <PromptPopup
+          title={
+            markingPattern.mark
+              ? strings.commander.markTitle
+              : strings.commander.unmarkTitle
+          }
+          label={strings.commander.patternField}
+          confirm={
+            markingPattern.mark
+              ? strings.commander.markConfirm
+              : strings.commander.unmarkConfirm
+          }
+          initial={markingPattern.initial}
+          selectedUpTo={markingPattern.initial.length}
+          problemOf={(pattern) =>
+            pattern === '' ? strings.commander.noPattern : undefined
+          }
+          noteOf={(pattern) =>
+            strings.commander.patternMatches(
+              keysMatching(patternRows ?? [], pattern, platform).length,
+            )
+          }
+          onConfirm={markPattern}
+          onCancel={cancelMarkPattern}
         />
       )}
       {goingTo !== undefined && (

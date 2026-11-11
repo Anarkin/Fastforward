@@ -2195,3 +2195,7 @@ body.resizing {
   overflow-wrap: anywhere;
   color: var(--color-error-foreground);
 }
+
+.prompt-note {
+  color: var(--muted-foreground);
+}

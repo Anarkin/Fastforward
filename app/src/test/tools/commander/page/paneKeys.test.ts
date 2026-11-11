@@ -117,6 +117,56 @@ suite('Commander keys', () => {
     });
   });
 
+  test('asks for a pattern to mark by on plus, starting from the extension of the file selected, and to unmark by on minus, inverts the marks of the files and folders on the asterisk, and marks or unmarks those of the extension of the one selected with Alt', () => {
+    const plus = pressed('+', { code: 'NumpadAdd' });
+    const minus = pressed('-', { code: 'NumpadSubtract' });
+    assert.deepStrictEqual(paneKey(plus, at('a.txt')), {
+      act: { kind: 'markPattern', mark: true, suggested: '*.txt' },
+    });
+    assert.deepStrictEqual(paneKey(minus, at('docs')), {
+      act: { kind: 'markPattern', mark: false, suggested: '*' },
+    });
+    assert.deepStrictEqual(
+      paneKey(
+        pressed('*', { code: 'NumpadMultiply' }),
+        at('a.txt', { marked: new Set(['docs', 'a.txt']) }),
+      ),
+      {
+        act: {
+          kind: 'invertMarks',
+          marking: ['repo', 'b.txt'],
+          unmarking: ['docs', 'a.txt'],
+        },
+      },
+    );
+    assert.deepStrictEqual(
+      paneKey(pressed('+', { altKey: true }), at('a.txt')),
+      {
+        act: {
+          kind: 'mark',
+          keys: ['a.txt', 'b.txt'],
+          marked: true,
+          select: 'a.txt',
+        },
+      },
+    );
+    assert.deepStrictEqual(
+      paneKey(pressed('-', { altKey: true }), at('b.txt')),
+      {
+        act: {
+          kind: 'mark',
+          keys: ['a.txt', 'b.txt'],
+          marked: false,
+          select: 'b.txt',
+        },
+      },
+    );
+    assert.deepStrictEqual(
+      paneKey(pressed('+', { altKey: true }), at('..')),
+      {},
+    );
+  });
+
   test('asks for the new name of the file or folder selected on Shift+F6, of no other marked, and of nothing on the parent folder', () => {
     const rename = pressed('F6', { shiftKey: true });
     assert.deepStrictEqual(

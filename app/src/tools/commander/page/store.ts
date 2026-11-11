@@ -29,6 +29,7 @@ import { filterWords } from '../../../shared/fileFilter';
 import { filesToCompare } from './comparing';
 import {
   duplicateRows,
+  keysMatching,
   filteredRows,
   filteredSelection,
   nearestShown,
@@ -118,6 +119,11 @@ interface MakingFolder {
 
 type GoingTo = MakingFolder;
 
+interface MarkingPattern extends MakingFolder {
+  readonly mark: boolean;
+  readonly initial: string;
+}
+
 interface NoAccess {
   readonly side: Side;
   readonly folder: string;
@@ -141,6 +147,8 @@ interface CommanderSource {
   readonly makingFolder: MakingFolder | undefined;
   readonly renaming: Renaming | undefined;
   readonly goingTo: GoingTo | undefined;
+  readonly markingPattern: MarkingPattern | undefined;
+  readonly lastPattern: string | undefined;
   readonly packing: Packing | undefined;
   readonly packChoices: PackChoices;
   readonly noAccess: NoAccess | undefined;
@@ -249,6 +257,13 @@ interface CommanderActions {
   readonly rename: (to: string) => void;
   readonly cancelRename: () => void;
   readonly askGoTo: (side: Side) => void;
+  readonly askMarkPattern: (
+    side: Side,
+    mark: boolean,
+    suggested: string,
+  ) => void;
+  readonly markPattern: (pattern: string) => void;
+  readonly cancelMarkPattern: () => void;
   readonly goTo: (to: string) => void;
   readonly cancelGoTo: () => void;
   readonly askPack: (side: Side, names: readonly string[]) => void;
@@ -295,6 +310,8 @@ const commanderDefaults: CommanderSource = {
   makingFolder: undefined,
   renaming: undefined,
   goingTo: undefined,
+  markingPattern: undefined,
+  lastPattern: undefined,
   packing: undefined,
   packChoices: {
     format: 'zip',
@@ -733,9 +750,15 @@ export function createCommanderStore(
       if (renaming !== undefined && !stillShown(get().view, renaming)) {
         set({ renaming: undefined });
       }
-      const { goingTo } = get();
+      const { goingTo, markingPattern } = get();
       if (goingTo !== undefined && !stillShown(get().view, goingTo)) {
         set({ goingTo: undefined });
+      }
+      if (
+        markingPattern !== undefined &&
+        !stillShown(get().view, markingPattern)
+      ) {
+        set({ markingPattern: undefined });
       }
       const { packing } = get();
       if (packing !== undefined && !stillShown(get().view, packing)) {
@@ -1140,6 +1163,32 @@ export function createCommanderStore(
         }
       },
       cancelGoTo: () => set({ goingTo: undefined }),
+      askMarkPattern: (side, mark, suggested) =>
+        onPane(side, (tab, folder) =>
+          set({
+            markingPattern: {
+              tab,
+              side,
+              folder,
+              mark,
+              initial: get().lastPattern ?? suggested,
+            },
+          }),
+        ),
+      markPattern: (pattern) => {
+        const { markingPattern, view } = get();
+        if (markingPattern === undefined) {
+          return;
+        }
+        set({ markingPattern: undefined, lastPattern: pattern });
+        const { rows } = shownRowsOf(get(), markingPattern.side);
+        get().mark(
+          markingPattern.side,
+          keysMatching(rows, pattern, view.platform),
+          markingPattern.mark,
+        );
+      },
+      cancelMarkPattern: () => set({ markingPattern: undefined }),
       askPack: (side, names) =>
         onDisk(side, (tab, folder) => {
           const other = get().view.panes[otherSide(side)];

@@ -369,6 +369,12 @@ export const strings = {
     copyToClipboard:
       'Put the marked items, or the selected one, on the clipboard, to paste them here or into another app',
     pasteFiles: 'Copy the files on the clipboard into the folder of the side',
+    markPattern:
+      'Mark the files and folders whose names match a pattern, or unmark them with minus',
+    markExtension:
+      'Mark the files and folders with the extension of the selected one, or unmark them with minus',
+    invertMarks:
+      'Mark the files and folders not marked, and unmark those marked',
     copyPaths:
       'Copy the paths of the marked items, or of the selected one, as text, or the path of the folder of the side on ..',
     copyNames:
@@ -454,6 +460,9 @@ export const strings = {
     Enter: 'Enter',
     Escape: 'Esc',
     Space: 'Space',
+    Plus: '+',
+    Minus: '-',
+    Asterisk: '*',
     Home: 'Home',
     End: 'End',
     Delete: 'Delete',
@@ -801,6 +810,18 @@ export const strings = {
     goToConfirm: 'Go',
     goToItem: 'Go To...',
     duplicatesTag: 'duplicates',
+    markTitle: 'Mark',
+    unmarkTitle: 'Unmark',
+    patternField: 'Pattern',
+    markConfirm: 'Mark',
+    unmarkConfirm: 'Unmark',
+    noPattern: 'Type a pattern, as *.jpg.',
+    patternMatches: (count: number) =>
+      count === 0
+        ? 'Matches nothing here'
+        : count === 1
+          ? 'Matches 1 item'
+          : `Matches ${count.toLocaleString()} items`,
     findingDuplicates: 'Looking for duplicates…',
     noDuplicates: 'No duplicates found',
     noPath: 'Type the path to go to.',

@@ -956,6 +956,13 @@ export function Pane({
       case 'countSizes':
         actions.countSizes(side, action.names);
         return;
+      case 'markPattern':
+        actions.askMarkPattern(side, action.mark, action.suggested);
+        return;
+      case 'invertMarks':
+        onMark(action.marking, true);
+        onMark(action.unmarking, false);
+        return;
       case 'select':
         onSelect(action.key);
     }

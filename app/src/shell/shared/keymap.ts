@@ -214,7 +214,13 @@ const pointerKeys = new Set(['Wheel', 'Hover']);
 
 const modifierKeys = new Set(['Alt', 'AltGraph', 'Control', 'Shift', 'Meta']);
 
-const named: Readonly<Record<string, string>> = { Space: ' ' };
+const signs: Readonly<Record<string, string>> = {
+  Plus: '+',
+  Minus: '-',
+  Asterisk: '*',
+};
+
+const named: Readonly<Record<string, string>> = { Space: ' ', ...signs };
 
 const caretKeys = new Set([
   'ArrowLeft',
@@ -240,7 +246,7 @@ function letterOf(press: KeyPress): string {
 }
 
 function shiftMatters(key: string): boolean {
-  return isLetter(key) || key.length > 1;
+  return isLetter(key) || (key.length > 1 && !(key in signs));
 }
 
 let macKeys = false;

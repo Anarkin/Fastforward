@@ -321,6 +321,48 @@ suite('Commander store', () => {
     );
   });
 
+  test('asks for a pattern to mark the files and folders of a side by, from the last pattern used, marking or unmarking those the side shows that match it, and nothing once cancelled or the side shows another folder', () => {
+    const store = byName();
+    const { receive, filterSide } = store.getState();
+    receive(withFiles(left.folder, 'a.jpg', 'b.png', 'c.jpg'));
+    const marked = () => [...(store.getState().view.panes.left?.marked ?? [])];
+    const actions = () => store.getState();
+
+    actions().askMarkPattern('left', true, '*.png');
+    const asked = actions().markingPattern;
+    actions().markPattern('*.jpg');
+    const afterMark = marked();
+    actions().askMarkPattern('left', false, '*.png');
+    const fromLast = actions().markingPattern?.initial;
+    actions().markPattern('a*');
+    const afterUnmark = marked();
+    actions().askMarkPattern('left', true, '*');
+    filterSide('left', 'b');
+    actions().markPattern('*');
+    const filtered = marked();
+    filterSide('left', undefined);
+    actions().askMarkPattern('left', true, '*');
+    actions().cancelMarkPattern();
+    actions().markPattern('*');
+    const afterCancel = marked();
+    actions().askMarkPattern('left', true, '*');
+    receive(withFiles(`${left.folder}/sub`, 'd.jpg'));
+
+    assert.deepStrictEqual(asked, {
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+      mark: true,
+      initial: '*.png',
+    });
+    assert.deepStrictEqual(afterMark, ['a.jpg', 'c.jpg']);
+    assert.strictEqual(fromLast, '*.jpg');
+    assert.deepStrictEqual(afterUnmark, ['c.jpg']);
+    assert.deepStrictEqual(filtered.toSorted(), ['b.png', 'c.jpg']);
+    assert.deepStrictEqual(afterCancel.toSorted(), ['b.png', 'c.jpg']);
+    assert.strictEqual(actions().markingPattern, undefined);
+  });
+
   test('asks to show the duplicates of a side, and every file again once it shows them', () => {
     const { posted, store } = shown();
     store.getState().duplicates('left');

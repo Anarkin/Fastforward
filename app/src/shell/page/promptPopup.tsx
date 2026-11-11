@@ -13,6 +13,7 @@ export function PromptPopup({
   label,
   confirm,
   problemOf,
+  noteOf,
   secret = false,
   initial = '',
   selectedUpTo,
@@ -25,6 +26,7 @@ export function PromptPopup({
   label: string;
   confirm: string;
   problemOf: (value: string) => Sentence | undefined;
+  noteOf?: (value: string) => string | undefined;
   secret?: boolean;
   initial?: string;
   selectedUpTo?: number;
@@ -45,6 +47,7 @@ export function PromptPopup({
   }, [selectedUpTo]);
   const typed = secret ? value : value.trim();
   const problem = problemOf(typed);
+  const note = noteOf?.(typed);
   return (
     <div
       className="backdrop"
@@ -98,6 +101,9 @@ export function PromptPopup({
             <div className="prompt-problem" role="alert">
               <Words>{problem}</Words>
             </div>
+          )}
+          {problem === undefined && note !== undefined && (
+            <div className="prompt-note">{note}</div>
           )}
           <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
             <button type="button" className="confirm-button" onClick={onCancel}>

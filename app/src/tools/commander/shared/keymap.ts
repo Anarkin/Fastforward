@@ -134,6 +134,17 @@ export const commanderKeymap = {
     { repeats: true },
   ),
   markAll: bind('Marking', strings.actions.markAll, { 'Mod+A': true }),
+  markPattern: bind('Marking', strings.actions.markPattern, {
+    Plus: true,
+    Minus: false,
+  }),
+  markExtension: bind('Marking', strings.actions.markExtension, {
+    'Alt+Plus': true,
+    'Alt+Minus': false,
+  }),
+  invertMarks: bind('Marking', strings.actions.invertMarks, {
+    Asterisk: true,
+  }),
   markClick: bind('Marking', strings.actions.markClick, {
     'Mod+Click': 'toggle',
     'Shift+Click': 'range',

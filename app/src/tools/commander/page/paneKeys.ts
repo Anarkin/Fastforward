@@ -57,6 +57,16 @@ export type PaneAct =
       readonly count?: readonly string[];
     }
   | { readonly kind: 'countSizes'; readonly names: readonly string[] }
+  | {
+      readonly kind: 'markPattern';
+      readonly mark: boolean;
+      readonly suggested: string;
+    }
+  | {
+      readonly kind: 'invertMarks';
+      readonly marking: readonly string[];
+      readonly unmarking: readonly string[];
+    }
   | { readonly kind: 'select'; readonly key: string };
 
 export interface PaneKeys {
@@ -229,6 +239,50 @@ export function paneKey(
         keys: passedKeys(rows, selectedIndex, next),
         marked: !marked?.has(row.key),
         select: rows[next].key,
+      },
+    };
+  }
+  const byExtension = keyPressed(commanderKeymap.markExtension, event);
+  if (byExtension !== undefined) {
+    if (row?.entry === undefined) {
+      return done;
+    }
+    const extension = row.extension.toLowerCase();
+    return {
+      act: {
+        kind: 'mark',
+        keys: rows.flatMap((each) =>
+          each.entry !== undefined && each.extension.toLowerCase() === extension
+            ? [each.key]
+            : [],
+        ),
+        marked: byExtension,
+        select: row.key,
+      },
+    };
+  }
+  const byPattern = keyPressed(commanderKeymap.markPattern, event);
+  if (byPattern !== undefined) {
+    return {
+      act: {
+        kind: 'markPattern',
+        mark: byPattern,
+        suggested:
+          row?.entry !== undefined && row.extension !== ''
+            ? `*.${row.extension}`
+            : '*',
+      },
+    };
+  }
+  if (keyPressed(commanderKeymap.invertMarks, event) !== undefined) {
+    const keys = rows.flatMap((each) =>
+      each.entry === undefined ? [] : [each.key],
+    );
+    return {
+      act: {
+        kind: 'invertMarks',
+        marking: keys.filter((key) => marked?.has(key) !== true),
+        unmarking: keys.filter((key) => marked?.has(key) === true),
       },
     };
   }

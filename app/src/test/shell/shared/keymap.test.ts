@@ -52,6 +52,39 @@ const inField = (binding: Binding<1 | -1>, key: string, held = {}) =>
   pressed(binding, keyPress(key, held), true);
 
 suite('Keymap', () => {
+  test('takes the plus, minus and asterisk keys of the number pad and of the keyboard alike, whether Shift types them or not, Alt with them, and shows them as their signs', () => {
+    const signs = bind(undefined, 'signs', {
+      Plus: 'plus',
+      Minus: 'minus',
+      Asterisk: 'asterisk',
+      'Alt+Plus': 'alt plus',
+    } as const);
+    const press = (key: string, extra: Partial<KeyPress> = {}) =>
+      pressed(signs, keyPress(key, extra), false);
+
+    assert.deepStrictEqual(
+      [
+        press('+', { code: 'NumpadAdd' }),
+        press('+', { code: 'Equal', shiftKey: true }),
+        press('-', { code: 'NumpadSubtract' }),
+        press('*', { code: 'Digit8', shiftKey: true }),
+        press('+', { code: 'NumpadAdd', altKey: true }),
+        press('+', { code: 'NumpadAdd', ctrlKey: true }),
+        press('=', { code: 'Equal' }),
+      ],
+      ['plus', 'plus', 'minus', 'asterisk', 'alt plus', undefined, undefined],
+    );
+    assert.deepStrictEqual(
+      [
+        keyLabels('Plus', false),
+        keyLabels('Minus', false),
+        keyLabels('Asterisk', false),
+        keyLabels('Alt+Plus', false),
+      ],
+      [['+'], ['-'], ['*'], ['Alt', '+']],
+    );
+  });
+
   test('opens the main menu with Alt+F, or Option+F though it types ƒ, but not with F alone, nor in a text field', () => {
     assert.strictEqual(
       pressed(keymap.mainMenu, keyPress('f', { altKey: true }), false),
