@@ -26,7 +26,7 @@ import {
   shownChildren,
   shownStashes,
   type Highlighted,
-  stickyRowHeight,
+  stuckRowTop,
 } from '../../../../tools/git/page/locations';
 import { FolderRow } from '../../../../tools/git/page/tree';
 import { buildTree, indexRefs } from '../../../../tools/git/page/refIndex';
@@ -442,17 +442,18 @@ suite('Locations popup', () => {
     assert.strictEqual(focusLeaves(popup, null), false);
   });
 
-  test("stacks stuck folders at the height the stylesheet gives the popup's rows", () => {
-    assert.strictEqual(
-      stylesheetPx(/^\.locations-list \.row \{[^}]*?\sheight: (\d+)px/m),
-      stickyRowHeight,
-    );
+  test("stacks stuck folders a line of the line height of the settings apart, as tall as the popup's rows", () => {
+    assert.deepStrictEqual([0, 1, 2].map(stuckRowTop), [
+      'calc(0 * var(--row-line-height))',
+      'calc(1 * var(--row-line-height))',
+      'calc(2 * var(--row-line-height))',
+    ]);
   });
 
   test("lines a ref up with the heading, with its folder's name, and with the names past the twisty of the folders beside it", () => {
     assert.strictEqual(
       leafIndent(0, false),
-      stylesheetPx(/^\.locations-heading \{[^}]*?\spadding: \d+px (\d+)px/m),
+      stylesheetPx(/^\.locations-heading \{[^}]*?\spadding: 0 (\d+)px/m),
     );
     assert.strictEqual(leafIndent(1, false), folderNameStart(0));
     assert.strictEqual(leafIndent(0, true), folderNameStart(0));

@@ -3039,7 +3039,7 @@ suite('Style', () => {
     }
   });
 
-  test("keeps the line under the field of the search opened over the commit column's title, where the title's is, hides those between its groups, keeping their pixel, and draws none between the commits it found, as the list draws none", () => {
+  test("keeps the line under the field of the search opened over the commit column's title, where the title's is, and draws none between its groups nor between the commits it found, as the list draws none", () => {
     const popup = locationsPopup('');
     const groups = allWithClass(popup, 'locations-group');
     assert.ok(groups.length > 1, String(groups.length));
@@ -3049,8 +3049,8 @@ suite('Style', () => {
     });
     for (const group of groups.slice(1)) {
       looks(group, {
-        'border-top': '1px solid var(--color-border)',
-        'border-top-color': 'transparent',
+        'border-top': undefined,
+        'border-top-color': undefined,
       });
     }
     const found = allWithClass(commitsFound('next'), 'commit');
@@ -3061,6 +3061,48 @@ suite('Style', () => {
         'border-bottom-color': undefined,
       });
     }
+  });
+
+  test('lays the search opened over the commit column out in lines of the line height of the settings, as the columns beside it, each heading, row and note a line with nothing above or below it, a blank line between its groups', () => {
+    const popup = locationsPopup('');
+    const groups = allWithClass(popup, 'locations-group');
+    assert.ok(groups.length > 1, String(groups.length));
+    looks(groups[0], { 'margin-top': undefined, padding: undefined });
+    for (const group of groups.slice(1)) {
+      looks(group, {
+        'margin-top': 'var(--row-line-height)',
+        padding: undefined,
+      });
+    }
+    for (const group of groups) {
+      looks(withClass(group, 'locations-heading'), {
+        padding: '0 8px',
+        'padding-top': undefined,
+        'line-height': 'var(--row-line-height)',
+      });
+      looks(withClass(group, 'locations-list'), {
+        padding: undefined,
+        'padding-bottom': undefined,
+      });
+    }
+    const rows = allWithClass(popup, 'row');
+    assert.ok(rows.length > 1, String(rows.length));
+    for (const row of rows) {
+      looks(row, {
+        height: 'var(--row-line-height)',
+        'line-height': 'var(--row-line-height)',
+      });
+    }
+    looks(rendered(createElement('div', { className: 'locations-empty' })), {
+      padding: '0 8px',
+      'line-height': 'var(--row-line-height)',
+    });
+    looks(withClass(locationsPopup('abcd'), 'hash-suggestion', 'empty'), {
+      height: 'var(--row-line-height)',
+      padding: '0 8px',
+      margin: undefined,
+      'margin-top': 'var(--row-line-height)',
+    });
   });
 
   test('draws the rows of the lists as tall as one line of the line height of the settings, the size of the font rounded to the device pixel, with nothing above or below the text', () => {

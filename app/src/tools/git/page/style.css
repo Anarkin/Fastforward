@@ -654,10 +654,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   border-color: var(--color-focus);
 }
 
-.locations-list {
-  padding-bottom: 4px;
-}
-
 .locations-list .row.result.active,
 .locations-list .row.tree-row.active {
   color: var(--color-foreground);
@@ -672,7 +668,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .locations-empty {
-  padding: 4px 8px;
+  padding: 0 8px;
+  line-height: var(--row-line-height);
   color: var(--muted-foreground);
 }
 
@@ -688,24 +685,17 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   border-top: 1px solid var(--color-border);
 }
 
-.locations-group + .locations-group {
-  border-top: 1px solid var(--color-border);
-}
-
-.locations-group + .locations-group {
-  border-top-color: transparent;
+.locations-groups > * + * {
+  margin-top: var(--row-line-height);
 }
 
 .locations-heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 12px 8px 4px;
+  padding: 0 8px;
+  line-height: var(--row-line-height);
   font-weight: 700;
-}
-
-.locations-group:first-child .locations-heading {
-  padding-top: 8px;
 }
 
 .locations-count {
@@ -732,8 +722,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .locations-list .row {
-  box-sizing: border-box;
-  height: 24px;
   display: flex;
   align-items: center;
 }
@@ -1147,11 +1135,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 .history-hash {
   margin-right: 8px;
   color: var(--muted-foreground);
-}
-
-.hash-suggestion {
-  margin: 0 6px 6px;
-  padding: 4px 12px;
 }
 
 .hash-suggestion.empty {

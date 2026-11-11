@@ -1045,7 +1045,7 @@ function TreeFolder({
         depth={depth}
         open={open}
         className={`sticky ${activeClass(rows, key)}`}
-        style={{ top: depth * stickyRowHeight, zIndex: 100 - depth }}
+        style={{ top: stuckRowTop(depth), zIndex: 100 - depth }}
         onToggle={() => rows.onToggle(key)}
         itemProps={{
           ...rowProps(rows, key, depth + 1),
@@ -1068,7 +1068,9 @@ function TreeFolder({
   );
 }
 
-export const stickyRowHeight = 24;
+export function stuckRowTop(depth: number): string {
+  return `calc(${depth} * var(--row-line-height))`;
+}
 
 export function leafIndent(depth: number, withFolders: boolean): number {
   return treeIndent(depth) + (withFolders ? twistyWidth : 0);
