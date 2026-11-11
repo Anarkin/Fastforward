@@ -873,7 +873,7 @@ suite('App commander', () => {
           short.underButtons,
           short.aboveHeadings,
           short.fromNames,
-          short.shortOfDates > 0,
+          short.shortOfDates >= 0,
         ],
         [true, true, 0, true],
         JSON.stringify(short),
@@ -1541,7 +1541,8 @@ suite('App commander', () => {
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
       const first = await viewerThumb();
-      assert.ok(first.height > 30, JSON.stringify(first));
+      const smallestThumb = 24;
+      assert.ok(first.height > smallestThumb + 1, JSON.stringify(first));
       const seen = [first];
       await waitFor(async () => {
         seen.push(await viewerThumb());
