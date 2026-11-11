@@ -476,29 +476,43 @@ suite('Overlay scrollbars', () => {
     );
   });
 
-  test('keeps the thumb inside the line a rounded area around it draws along the edges they share, against that line, and ends it where the rounded corner starts', () => {
+  test('keeps the thumb inside the line a rounded area around it draws along the edges they share, against that line, all the way to its ends, rounding the corner of the thumb as the area rounds its corner once the thumb reaches it', () => {
     const shared = { left: 101, top: 0, right: 501, bottom: 551, line: 2 };
     const framed = framedMetrics(scroller, { ...shared, radius: 6 });
     const rounder = framedMetrics(scroller, { ...shared, radius: 14 });
+
+    const atEnd = { ...framed, scrollTop: 500 };
+    const nearEnd = { ...framed, scrollTop: 495 };
+    const atStart = { ...framed, scrollLeft: 0 };
 
     assert.deepStrictEqual(trackBox('vertical', framed, 25), {
       left: 101 + 400 - 25 - 2,
       top: 51,
       width: 25,
-      height: 500 - 2 - 4,
+      height: 500 - 2,
     });
     assert.deepStrictEqual(trackBox('horizontal', framed, 25), {
-      left: 101 + 2 + 4,
+      left: 101 + 2,
       top: 51 + 500 - 25 - 2,
-      width: 400 - 2 - 4 - 2 - 4,
+      width: 400 - 2 - 2,
       height: 25,
     });
-    assert.deepStrictEqual(trackBox('vertical', rounder, 25), {
-      left: 101 + 400 - 25 - 2,
-      top: 51,
-      width: 25,
-      height: 500 - 2 - 12,
-    });
+    assert.deepStrictEqual(
+      [
+        thumbBox('vertical', framed, 25)?.corners,
+        thumbBox('vertical', atEnd, 25)?.corners,
+        thumbBox('vertical', nearEnd, 25)?.corners,
+        thumbBox('horizontal', atStart, 25)?.corners,
+        thumbBox('vertical', { ...rounder, scrollTop: 500 }, 25)?.corners,
+      ],
+      [
+        { start: 0, end: 0 },
+        { start: 0, end: 4 },
+        { start: 0, end: 4 },
+        { start: 4, end: 0 },
+        { start: 0, end: 12 },
+      ],
+    );
     assert.strictEqual(
       thumbBox('vertical', framed, 25)?.left,
       101 + 400 - 25 - 2,

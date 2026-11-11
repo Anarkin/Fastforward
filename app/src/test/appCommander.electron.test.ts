@@ -209,10 +209,9 @@ suite('App commander', () => {
         top: Math.round(thumb.top + border - list.top),
         bottom: Math.round(bottomGap),
         corner: Math.round(inner),
-        inCorner:
-          rightGap >= inner ||
-          bottomGap >= inner ||
-          (inner - rightGap) ** 2 + (inner - bottomGap) ** 2 <= inner ** 2,
+        rounded: Math.round(
+          parseFloat(getComputedStyle(bar).borderBottomRightRadius),
+        ),
         atEnd:
           scroller.scrollTop + scroller.clientHeight >=
           scroller.scrollHeight - 1,
@@ -1695,10 +1694,12 @@ suite('App commander', () => {
       );
       const edges = await page.locator('.viewer-thumb').evaluate((thumb) => {
         const column = thumb.closest('.column');
-        if (column === null) {
+        const track = thumb.parentElement;
+        if (column === null || track === null) {
           return undefined;
         }
         const style = getComputedStyle(column);
+        const clip = getComputedStyle(track);
         const line = parseFloat(style.getPropertyValue('--column-line'));
         const edge = column.getBoundingClientRect();
         const box = thumb.getBoundingClientRect();
@@ -1706,11 +1707,13 @@ suite('App commander', () => {
           right: Math.round(edge.right - line - box.right),
           bottom: Math.round(edge.bottom - line - box.bottom),
           corner: Math.round(parseFloat(style.borderBottomRightRadius) - line),
+          clipped: clip.overflow,
+          rounded: Math.round(parseFloat(clip.borderBottomRightRadius)),
         };
       });
       assert.deepStrictEqual(
-        [edges?.right, edges?.bottom],
-        [0, edges?.corner],
+        [edges?.right, edges?.bottom, edges?.clipped, edges?.rounded],
+        [0, 0, 'hidden', edges?.corner],
         JSON.stringify(edges),
       );
       const atEnd = seen.at(-1)?.top ?? 0;
@@ -5296,7 +5299,7 @@ suite('App commander', () => {
     );
   });
 
-  test('keeps the thumb of a side against the header of the side and the line its column draws on the right, ending it at the bottom where the rounded corner of the column starts', async () => {
+  test('keeps the thumb of a side against the header of the side and the line its column draws on the right and at the bottom, rounding its corner as the column rounds its own once it reaches it', async () => {
     const long = path.join(opened, 'thumbs');
     fs.mkdirSync(long);
     for (let index = 0; index < 200; index++) {
@@ -5318,14 +5321,8 @@ suite('App commander', () => {
       const atEnd = await thumbGaps();
 
       assert.deepStrictEqual(
-        [
-          atTop?.right,
-          atTop?.top,
-          atEnd?.right,
-          atEnd?.bottom,
-          atEnd?.inCorner,
-        ],
-        [0, 0, 0, atEnd?.corner, true],
+        [atTop?.right, atTop?.top, atEnd?.right, atEnd?.bottom, atEnd?.rounded],
+        [0, 0, 0, 0, atEnd?.corner],
         JSON.stringify({ atTop, atEnd }),
       );
     } finally {

@@ -2539,7 +2539,7 @@ suite('Style', () => {
     looks(withClass(minimap(), 'minimap-viewport'), { border: undefined });
   });
 
-  test('keeps the minimap of a diff and the scrollbar of a file viewed inside the line their column draws, ending them where its rounded corner starts, as their thumbs reach the edges of their boxes', () => {
+  test('keeps the minimap of a diff and the scrollbar of a file viewed inside the line their column draws, all the way down, clipped to its rounded corner, as their thumbs reach the edges of their boxes', () => {
     looks(columns(columnsClass(true, 'a'), 'commits'), {
       '--column-line': undefined,
     });
@@ -2559,7 +2559,10 @@ suite('Style', () => {
     ]) {
       looks(track, {
         right: 'var(--column-line, 0px)',
-        bottom: 'var(--card-radius)',
+        bottom: 'var(--column-line, 0px)',
+        'border-bottom-right-radius':
+          'calc( var(--card-radius) - var(--column-line, 0px) )',
+        overflow: 'hidden',
       });
     }
   });

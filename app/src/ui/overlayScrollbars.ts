@@ -209,6 +209,7 @@ export interface ScrollerMetrics {
   readonly scrollTop: number;
   readonly track?: Track;
   readonly edges?: Edges;
+  readonly bends?: Track;
 }
 
 interface Edges {
@@ -223,10 +224,6 @@ export interface Frame {
   readonly bottom: number;
   readonly line: number;
   readonly radius: number;
-}
-
-function cornerInset(radius: number, line: number): number {
-  return Math.ceil(Math.max(0, radius - line));
 }
 
 function meets(one: number, other: number): boolean {
@@ -252,19 +249,25 @@ export function framedMetrics(
     return metrics;
   }
   const line = (shared: boolean) => (shared ? frame.line : 0);
-  const end = (shared: boolean, corner: boolean) =>
-    line(shared) +
-    (shared && corner ? cornerInset(frame.radius, frame.line) : 0);
+  const inner = Math.max(0, frame.radius - frame.line);
+  const bend = (shared: boolean, corner: boolean) =>
+    shared && corner ? inner : 0;
   const track = metrics.track ?? noTrackInsets;
   return {
     ...metrics,
     track: {
-      top: Math.max(track.top, end(at.top, at.right)),
-      bottom: Math.max(track.bottom, end(at.bottom, at.right)),
-      left: Math.max(track.left, end(at.left, at.bottom)),
-      right: Math.max(track.right, end(at.right, at.bottom)),
+      top: Math.max(track.top, line(at.top)),
+      bottom: Math.max(track.bottom, line(at.bottom)),
+      left: Math.max(track.left, line(at.left)),
+      right: Math.max(track.right, line(at.right)),
     },
     edges: { right: line(at.right), bottom: line(at.bottom) },
+    bends: {
+      top: bend(at.top, at.right),
+      bottom: bend(at.bottom, at.right),
+      left: bend(at.left, at.bottom),
+      right: bend(at.right, at.bottom),
+    },
   };
 }
 
@@ -273,6 +276,19 @@ export interface ThumbBox {
   readonly top: number;
   readonly width: number;
   readonly height: number;
+  readonly corners?: { readonly start: number; readonly end: number };
+}
+
+function cornersOf(
+  thumb: Thumb,
+  track: number,
+  start: number,
+  end: number,
+): { readonly start: number; readonly end: number } {
+  return {
+    start: thumb.offset < start ? start : 0,
+    end: track - thumb.offset - thumb.length < end ? end : 0,
+  };
 }
 
 export function thumbBox(
@@ -296,6 +312,14 @@ export function thumbBox(
         top: top + track.top + thumb.offset,
         width: size,
         height: thumb.length,
+        ...(scroller.bends && {
+          corners: cornersOf(
+            thumb,
+            verticalTrack(scroller),
+            scroller.bends.top,
+            scroller.bends.bottom,
+          ),
+        }),
       }
     );
   }
@@ -311,6 +335,14 @@ export function thumbBox(
       top: top + scroller.clientHeight - size - (scroller.edges?.bottom ?? 0),
       width: thumb.length,
       height: size,
+      ...(scroller.bends && {
+        corners: cornersOf(
+          thumb,
+          horizontalTrack(scroller),
+          scroller.bends.left,
+          scroller.bends.right,
+        ),
+      }),
     }
   );
 }
@@ -533,6 +565,10 @@ export function elementMetrics(scroller: Element): ScrollerMetrics {
   };
 }
 
+function cornerRadius(radius: number | undefined): string {
+  return radius === undefined || radius === 0 ? '' : `${radius}px`;
+}
+
 function barSize(): number {
   return parseFloat(
     getComputedStyle(document.body).getPropertyValue('--scrollbar-size'),
@@ -579,6 +615,12 @@ class Bar {
     style.top = `${box.top}px`;
     style.width = `${box.width}px`;
     style.height = `${box.height}px`;
+    const [start, end] =
+      this.axis === 'vertical'
+        ? ['border-top-right-radius', 'border-bottom-right-radius']
+        : ['border-bottom-left-radius', 'border-bottom-right-radius'];
+    style.setProperty(start, cornerRadius(box.corners?.start));
+    style.setProperty(end, cornerRadius(box.corners?.end));
     return true;
   }
 

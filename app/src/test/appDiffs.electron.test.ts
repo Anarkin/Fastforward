@@ -472,7 +472,7 @@ suite('App', () => {
     assert.strictEqual((await lines()).column, 0);
   });
 
-  test('keeps the scrollbar of a diff against the line its column draws on the right, and its minimap ending where the rounded corner of the column starts', async () => {
+  test('keeps the scrollbar and the minimap of a diff against the line its column draws on the right and at the bottom, clipped to its rounded corner', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
     await page.locator('.diff-line', { hasText: 'line0 ' }).first().waitFor();
@@ -494,12 +494,16 @@ suite('App', () => {
           edge.bottom - line - minimap.getBoundingClientRect().bottom,
         ),
         corner: Math.round(parseFloat(style.borderBottomRightRadius) - line),
+        clipped: getComputedStyle(minimap).overflow,
+        rounded: Math.round(
+          parseFloat(getComputedStyle(minimap).borderBottomRightRadius),
+        ),
       };
     });
 
     assert.deepStrictEqual(
-      [edges?.right, edges?.bottom],
-      [0, edges?.corner],
+      [edges?.right, edges?.bottom, edges?.clipped, edges?.rounded],
+      [0, 0, 'hidden', edges?.corner],
       JSON.stringify(edges),
     );
   });

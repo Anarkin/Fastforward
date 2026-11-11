@@ -459,7 +459,11 @@
   position: absolute;
   top: 0;
   right: var(--column-line, 0px);
-  bottom: var(--card-radius);
+  bottom: var(--column-line, 0px);
+  overflow: hidden;
+  border-bottom-right-radius: calc(
+    var(--card-radius) - var(--column-line, 0px)
+  );
   width: var(--scrollbar-size);
 }
 
