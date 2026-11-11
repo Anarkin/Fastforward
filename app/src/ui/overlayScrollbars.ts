@@ -225,15 +225,8 @@ export interface Frame {
   readonly radius: number;
 }
 
-const thumbBorder = 2;
-
 function cornerInset(radius: number, line: number): number {
-  const inner = radius - line;
-  if (inner <= thumbBorder) {
-    return 0;
-  }
-  const along = inner - Math.sqrt(inner * inner - (inner - thumbBorder) ** 2);
-  return Math.max(0, Math.ceil(along - thumbBorder));
+  return Math.ceil(Math.max(0, radius - line));
 }
 
 function meets(one: number, other: number): boolean {

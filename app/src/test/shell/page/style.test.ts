@@ -141,7 +141,11 @@ function activeEdge(): string {
     cascaded(edge, 'box-shadow', after),
     'inset 0 0 0 var(--frame-line) var(--color-focus)',
   );
-  return cascaded(edge, '--frame-line', after) ?? '';
+  assert.strictEqual(
+    cascaded(edge, '--frame-line', after),
+    'var(--column-line)',
+  );
+  return cascaded(edge, '--column-line') ?? '';
 }
 
 function indented(wordWrap: boolean): MarkupElement {
@@ -2530,9 +2534,39 @@ suite('Style', () => {
     );
   });
 
+  test('draws a thumb across the whole of its box, as wide as the scrollbar size, with no border keeping it off the edges it runs along', () => {
+    looks(overlayScrollbar('shown'), { border: undefined });
+    looks(withClass(minimap(), 'minimap-viewport'), { border: undefined });
+  });
+
+  test('keeps the minimap of a diff and the scrollbar of a file viewed inside the line their column draws, ending them where its rounded corner starts, as their thumbs reach the edges of their boxes', () => {
+    looks(columns(columnsClass(true, 'a'), 'commits'), {
+      '--column-line': undefined,
+    });
+    looks(withClass(columns(columnsClass(true, 'a'), 'commits'), 'column'), {
+      '--column-line': '2px',
+    });
+    looks(
+      withClass(columns(columnsClass(true, 'a'), 'commits'), 'column'),
+      {
+        '--frame-line': 'var(--column-line)',
+      },
+      after,
+    );
+    for (const track of [
+      minimap(),
+      rendered(createElement('div', { className: 'viewer-scrollbar' })),
+    ]) {
+      looks(track, {
+        right: 'var(--column-line, 0px)',
+        bottom: 'var(--card-radius)',
+      });
+    }
+  });
+
   test('keeps the minimap of a diff as wide as its setting and its scrollbar as wide as the scrollbars, against its right edge, the marks across the whole minimap', () => {
     const shown = minimap();
-    looks(shown, { width: 'var(--minimap-width)', right: '0' });
+    looks(shown, { width: 'var(--minimap-width)' });
     looks(withClass(shown, 'minimap-viewport'), {
       left: undefined,
       right: '0',
@@ -4433,7 +4467,7 @@ suite('Style', () => {
           {
             content: "''",
             position: 'absolute',
-            '--frame-line': '2px',
+            '--frame-line': 'var(--column-line)',
             'box-shadow': shown
               ? 'inset 0 0 0 var(--frame-line) var(--color-focus)'
               : 'inset 0 0 0 var(--frame-line) var(--color-border)',

@@ -476,7 +476,7 @@ suite('Overlay scrollbars', () => {
     );
   });
 
-  test('keeps the thumb inside the line a rounded area around it draws along the edges they share, as far from that line as from an edge they do not share, and its corner inside the rounded corner', () => {
+  test('keeps the thumb inside the line a rounded area around it draws along the edges they share, against that line, and ends it where the rounded corner starts', () => {
     const shared = { left: 101, top: 0, right: 501, bottom: 551, line: 2 };
     const framed = framedMetrics(scroller, { ...shared, radius: 6 });
     const rounder = framedMetrics(scroller, { ...shared, radius: 14 });
@@ -485,19 +485,19 @@ suite('Overlay scrollbars', () => {
       left: 101 + 400 - 25 - 2,
       top: 51,
       width: 25,
-      height: 500 - 2,
+      height: 500 - 2 - 4,
     });
     assert.deepStrictEqual(trackBox('horizontal', framed, 25), {
-      left: 101 + 2,
+      left: 101 + 2 + 4,
       top: 51 + 500 - 25 - 2,
-      width: 400 - 2 - 2,
+      width: 400 - 2 - 4 - 2 - 4,
       height: 25,
     });
     assert.deepStrictEqual(trackBox('vertical', rounder, 25), {
       left: 101 + 400 - 25 - 2,
       top: 51,
       width: 25,
-      height: 500 - 6,
+      height: 500 - 2 - 12,
     });
     assert.strictEqual(
       thumbBox('vertical', framed, 25)?.left,

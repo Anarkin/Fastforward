@@ -192,6 +192,7 @@ export function ScrollBody({
   const body = useRef<HTMLDivElement>(null);
   const probe = useRef<HTMLDivElement>(null);
   const sideways = useRef<HTMLDivElement>(null);
+  const scrollbar = useRef<HTMLDivElement>(null);
   const advance = useRef(1);
   const inset = useRef(0);
   const revealed = useRef(0);
@@ -260,7 +261,7 @@ export function ScrollBody({
       const rows = Math.max(1, Math.floor(element.clientHeight / height));
       setScreen(rows);
       onScreen(rows);
-      setTrack(element.clientHeight);
+      setTrack(scrollbar.current?.clientHeight ?? element.clientHeight);
       const style = getComputedStyle(row);
       const padding =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
@@ -390,38 +391,45 @@ export function ScrollBody({
           <Words>{error}</Words>
         </div>
       )}
-      {box !== undefined && (
-        <div
-          className="viewer-scrollbar"
-          onPointerDown={(event) => {
-            event.preventDefault();
-            const bar = event.currentTarget.getBoundingClientRect();
-            const grab = grabbedAt(event.clientY - bar.top, box);
-            const at = (clientY: number) => {
-              setDragging(true);
-              jump(shareAt(clientY, bar.top, bar.height, box.height, grab));
-            };
-            at(event.clientY);
-            followDrag(
-              window,
-              (pointer: PointerEvent) => at(pointer.clientY),
-              () => {
-                setDragging(false);
-                showBar();
-              },
-            );
-          }}
-        >
-          <MatchTicks matches={matches} size={size} track={track} />
-          <div
-            className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging || barPinned ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
-            style={{
-              top: box.top,
-              height: box.height,
-            }}
-          />
-        </div>
-      )}
+      <div
+        className="viewer-scrollbar"
+        ref={scrollbar}
+        style={box === undefined ? { pointerEvents: 'none' } : undefined}
+        onPointerDown={(event) => {
+          if (box === undefined) {
+            return;
+          }
+          event.preventDefault();
+          const bar = event.currentTarget.getBoundingClientRect();
+          const grab = grabbedAt(event.clientY - bar.top, box);
+          const at = (clientY: number) => {
+            setDragging(true);
+            jump(shareAt(clientY, bar.top, bar.height, box.height, grab));
+          };
+          at(event.clientY);
+          followDrag(
+            window,
+            (pointer: PointerEvent) => at(pointer.clientY),
+            () => {
+              setDragging(false);
+              showBar();
+            },
+          );
+        }}
+      >
+        {box !== undefined && (
+          <>
+            <MatchTicks matches={matches} size={size} track={track} />
+            <div
+              className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging || barPinned ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
+              style={{
+                top: box.top,
+                height: box.height,
+              }}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

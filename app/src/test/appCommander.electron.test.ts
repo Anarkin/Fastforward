@@ -208,6 +208,7 @@ suite('App commander', () => {
         right: Math.round(rightGap),
         top: Math.round(thumb.top + border - list.top),
         bottom: Math.round(bottomGap),
+        corner: Math.round(inner),
         inCorner:
           rightGap >= inner ||
           bottomGap >= inner ||
@@ -1623,7 +1624,7 @@ suite('App commander', () => {
     }
   });
 
-  test('keeps the thumb of a file viewed as tall wherever it is scrolled to, though its lines grow long further down, moves it down as the rows do, and ends it at the end of its track without a jump', async () => {
+  test('keeps the thumb of a file viewed as tall wherever it is scrolled to, though its lines grow long further down, moves it down as the rows do, and ends it at the end of its track without a jump, against the line its column draws on the right and where the rounded corner of the column starts', async () => {
     const lines = Array.from({ length: 300 }, (_, index) =>
       index < 150
         ? `short ${index}`.padEnd(19, '.')
@@ -1673,6 +1674,26 @@ suite('App commander', () => {
       assert.ok(
         Math.abs(seen.at(-1)?.fromEnd ?? 1) < 0.5,
         JSON.stringify(seen),
+      );
+      const edges = await page.locator('.viewer-thumb').evaluate((thumb) => {
+        const column = thumb.closest('.column');
+        if (column === null) {
+          return undefined;
+        }
+        const style = getComputedStyle(column);
+        const line = parseFloat(style.getPropertyValue('--column-line'));
+        const edge = column.getBoundingClientRect();
+        const box = thumb.getBoundingClientRect();
+        return {
+          right: Math.round(edge.right - line - box.right),
+          bottom: Math.round(edge.bottom - line - box.bottom),
+          corner: Math.round(parseFloat(style.borderBottomRightRadius) - line),
+        };
+      });
+      assert.deepStrictEqual(
+        [edges?.right, edges?.bottom],
+        [0, edges?.corner],
+        JSON.stringify(edges),
       );
       const atEnd = seen.at(-1)?.top ?? 0;
       const lastTop = await firstViewerRow();
@@ -5257,7 +5278,7 @@ suite('App commander', () => {
     );
   });
 
-  test('keeps the thumb of a side as far inside the line its column draws on the right and at the bottom as it keeps below the header of the side, its corner inside the rounded corner', async () => {
+  test('keeps the thumb of a side against the header of the side and the line its column draws on the right, ending it at the bottom where the rounded corner of the column starts', async () => {
     const long = path.join(opened, 'thumbs');
     fs.mkdirSync(long);
     for (let index = 0; index < 200; index++) {
@@ -5286,7 +5307,7 @@ suite('App commander', () => {
           atEnd?.bottom,
           atEnd?.inCorner,
         ],
-        [2, 2, 2, 2, true],
+        [0, 0, 0, atEnd?.corner, true],
         JSON.stringify({ atTop, atEnd }),
       );
     } finally {

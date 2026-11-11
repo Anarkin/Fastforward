@@ -472,6 +472,38 @@ suite('App', () => {
     assert.strictEqual((await lines()).column, 0);
   });
 
+  test('keeps the scrollbar of a diff against the line its column draws on the right, and its minimap ending where the rounded corner of the column starts', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await page.locator('.diff-line', { hasText: 'line0 ' }).first().waitFor();
+    await page.locator('.diff-view .virtual-rows').hover();
+    const edges = await page.locator('.diff-minimap').evaluate((minimap) => {
+      const column = minimap.closest('.column');
+      const viewport = minimap.querySelector('.minimap-viewport');
+      if (column === null || viewport === null) {
+        return undefined;
+      }
+      const style = getComputedStyle(column);
+      const line = parseFloat(style.getPropertyValue('--column-line'));
+      const edge = column.getBoundingClientRect();
+      return {
+        right: Math.round(
+          edge.right - line - viewport.getBoundingClientRect().right,
+        ),
+        bottom: Math.round(
+          edge.bottom - line - minimap.getBoundingClientRect().bottom,
+        ),
+        corner: Math.round(parseFloat(style.borderBottomRightRadius) - line),
+      };
+    });
+
+    assert.deepStrictEqual(
+      [edges?.right, edges?.bottom],
+      [0, edges?.corner],
+      JSON.stringify(edges),
+    );
+  });
+
   test('never scrolls the column around the diff, which has its own scrollbar, even when the diff sticks out of it by a few pixels', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();

@@ -458,8 +458,8 @@
 .viewer-scrollbar {
   position: absolute;
   top: 0;
-  right: 0;
-  bottom: 0;
+  right: var(--column-line, 0px);
+  bottom: var(--card-radius);
   width: var(--scrollbar-size);
 }
 
