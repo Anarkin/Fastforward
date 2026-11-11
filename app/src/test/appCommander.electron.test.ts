@@ -1177,7 +1177,7 @@ suite('App commander', () => {
     await page.locator('.viewer').waitFor({ state: 'detached' });
   });
 
-  test('shows only the files of a side that have a copy of the same content on Ctrl+Shift+G, whatever their names, a line above the first of each group, in flat view too, follows a delete, says when it found none, and shows every file again on Ctrl+Shift+G', async () => {
+  test('shows only the files of a side that have a copy of the same content on Ctrl+Shift+G, whatever their names, a line above the first of each group that moves no row and adds no space, in flat view too, follows a delete, says when it found none, and shows every file again on Ctrl+Shift+G', async () => {
     const dupes = path.join(opened, 'dupes');
     fs.mkdirSync(path.join(dupes, 'sub'), { recursive: true });
     fs.writeFileSync(path.join(dupes, 'one.txt'), 'same content');
@@ -1193,6 +1193,24 @@ suite('App commander', () => {
         'the files with a copy',
       );
       assert.strictEqual((await groupStartsShown()).length, 1);
+      const spacing = await right()
+        .locator('.commander-row')
+        .evaluateAll((rows) =>
+          rows
+            .map((row) => row.getBoundingClientRect())
+            .map((box, index, boxes) => ({
+              height: box.height,
+              gap: index === 0 ? 0 : box.top - (boxes[index - 1]?.bottom ?? 0),
+            })),
+        );
+      assert.ok(
+        spacing.every(
+          ({ height, gap }) =>
+            Math.abs(height - (spacing[0]?.height ?? 0)) < 0.01 &&
+            Math.abs(gap) < 0.01,
+        ),
+        JSON.stringify(spacing),
+      );
       assert.match(
         (await right().locator('.path-title').textContent()) ?? '',
         new RegExp(`${strings.commander.duplicatesTag}$`),
