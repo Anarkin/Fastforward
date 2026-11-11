@@ -199,6 +199,13 @@ function make() {
       );
     }
   }
+  for (const item of ofKind('hardLink')) {
+    try {
+      fs.linkSync(at(item.target), placed(item.path));
+    } catch {
+      skip(`${item.path}: the drive can't make a hard link`);
+    }
+  }
   for (const item of ofKind('junction')) {
     const full = placed(item.path);
     fs.symlinkSync(

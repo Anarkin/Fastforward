@@ -33,6 +33,7 @@ interface Item {
   readonly hidden?: true;
   readonly system?: true;
   readonly unreadable?: true;
+  readonly target?: string;
 }
 
 interface Plan {
@@ -328,6 +329,67 @@ suite('Playground of files', () => {
         (a, b) => String(a).localeCompare(String(b)),
       ),
       ['csv', 'tsv'],
+    );
+  });
+
+  test('holds files with copies of the same content under other names and in deeper folders, files of one size that differ at their start or only past the first 64 KiB, a hard link, empty files and a link, for the view of duplicates', () => {
+    const made = planFor('linux');
+    const head = 64 * 1024;
+    const files = made.items.filter(
+      (item) => item.kind === 'file' && item.path.startsWith('duplicates/'),
+    );
+    const contents = new Map(files.map((item) => [item, contentOf(item)]));
+    const byContent = new Map<string, string[]>();
+    for (const [item, content] of contents) {
+      if (content.length > 0) {
+        const key = content.toString('base64');
+        byContent.set(key, [...(byContent.get(key) ?? []), item.path]);
+      }
+    }
+    const groups = [...byContent.values()].filter((group) => group.length > 1);
+    const pairs = [...contents].flatMap(([one, first]) =>
+      [...contents].flatMap(([other, second]) =>
+        one !== other && first.length > 0 && first.length === second.length
+          ? [{ first, second }]
+          : [],
+      ),
+    );
+    const renamedDeep = groups.some(
+      (group) =>
+        new Set(group.map((each) => path.posix.basename(each))).size > 1 &&
+        group.some((each) => each.split('/').length > 4),
+    );
+    const hardLink = made.items.find(
+      (item) => item.kind === 'hardLink' && item.path.startsWith('duplicates/'),
+    );
+
+    assert.ok(groups.length >= 3, String(groups.length));
+    assert.ok(renamedDeep, 'a group under other names, one of them deep');
+    assert.ok(
+      pairs.some(({ first, second }) => first[0] !== second[0]),
+      'files of one size that differ at their start',
+    );
+    assert.ok(
+      pairs.some(
+        ({ first, second }) =>
+          first.length > head &&
+          first.subarray(0, head).equals(second.subarray(0, head)) &&
+          !first.equals(second),
+      ),
+      'files of one size that differ only past their first 64 KiB',
+    );
+    assert.ok(
+      [...contents.values()].filter((content) => content.length === 0).length >=
+        2,
+    );
+    assert.ok(
+      hardLink?.target !== undefined &&
+        files.some((item) => item.path === hardLink.target),
+    );
+    assert.ok(
+      made.items.some(
+        (item) => item.kind === 'link' && item.path.startsWith('duplicates/'),
+      ),
     );
   });
 

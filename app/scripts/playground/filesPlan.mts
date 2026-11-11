@@ -89,6 +89,11 @@ export interface CopyItem extends Placed {
   readonly from: string;
 }
 
+export interface HardLinkItem extends Placed {
+  readonly kind: 'hardLink';
+  readonly target: string;
+}
+
 export interface RepositoryItem extends Placed {
   readonly kind: 'repository';
 }
@@ -101,6 +106,7 @@ export type Item =
   | LinkItem
   | JunctionItem
   | CopyItem
+  | HardLinkItem
   | RepositoryItem;
 
 export interface EncodedSample {
@@ -876,6 +882,62 @@ export function plan({
       target: 'target-folder',
     });
   }
+
+  section(
+    'duplicates',
+    'Files with copies of the same content under other names and in other folders, deeper ones for flat view, six copies of one text, files of one size that differ at their start or only past the first 64 KiB, a hard link to a file that has no copy, empty files and a link, to try Ctrl+Shift+G in the folder and in flat view.',
+  );
+  const photo = () => Buffer.concat([...randomOfSize(300 * kib, 7)]);
+  for (const where of [
+    'duplicates/photo.jpg',
+    'duplicates/photo (1).jpg',
+    'duplicates/backup/photo.jpg',
+    'duplicates/backup/2024/IMG_0412.jpg',
+    'duplicates/deep/a/b/c/photo copy.jpg',
+  ]) {
+    file(where, photo);
+  }
+  const notes =
+    'Meeting notes\n\n- Ship the duplicates view\n- Look at the scrollbars\n';
+  for (const where of [
+    'duplicates/notes.txt',
+    'duplicates/archive/notes-old.md',
+    'duplicates/archive/2025/notes.txt',
+  ]) {
+    file(where, notes);
+  }
+  for (let copy = 1; copy <= 6; copy++) {
+    file(`duplicates/many/copy-${copy}.txt`, 'One of six copies.\n');
+  }
+  file('duplicates/same-size-a.txt', 'AAAA: the same size as b\n');
+  file('duplicates/same-size-b.txt', 'BBBB: the same size as a\n');
+  const sameStart = Buffer.alloc(64 * kib, 'x');
+  file(
+    'duplicates/same-start-a.bin',
+    Buffer.concat([sameStart, Buffer.from('ends as a')]),
+  );
+  file(
+    'duplicates/same-start-b.bin',
+    Buffer.concat([sameStart, Buffer.from('ends as b')]),
+  );
+  file(
+    'duplicates/same-start-copy-of-a.bin',
+    Buffer.concat([sameStart, Buffer.from('ends as a')]),
+  );
+  file('duplicates/unique.txt', 'No other file holds this.\n');
+  items.push({
+    kind: 'hardLink',
+    path: 'duplicates/hard-link-to-unique.txt',
+    target: 'duplicates/unique.txt',
+  });
+  file('duplicates/empty-1.txt', '');
+  file('duplicates/empty-2.txt', '');
+  items.push({
+    kind: 'link',
+    path: 'duplicates/link-to-notes.txt',
+    target: 'notes.txt',
+    folder: false,
+  });
 
   section(
     'executables',
