@@ -208,12 +208,13 @@ suite('Release build', { timeout: 30_000 }, () => {
     assert.strictEqual(build.npmRebuild, false);
   });
 
-  test('bundles the git starter, the commit reader and the counter of folder sizes next to the main bundle, importing only modules of Node, as they are read from the asar and run from their text in a worker thread, where nothing else can be loaded, the counter loading koffi from where it is unpacked', async () => {
+  test('bundles the git starter, the commit reader, the counter of folder sizes and the hasher of duplicate files next to the main bundle, importing only modules of Node, as they are read from the asar and run from their text in a worker thread, where nothing else can be loaded, the counter loading koffi from where it is unpacked', async () => {
     const { outputs } = (await releaseBuild('mainOptions')).metafile;
     for (const file of [
       'dist/gitSpawner.js',
       'dist/commitReader.js',
       'dist/sizeWorker.js',
+      'dist/hashWorker.js',
     ]) {
       const worker = outputs[file];
       assert.ok(worker, file);

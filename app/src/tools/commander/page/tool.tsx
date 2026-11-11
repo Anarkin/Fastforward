@@ -262,6 +262,7 @@ export function CommanderTool({
     toggleHidden,
     flat,
     askGoTo,
+    duplicates,
   } = store.getState();
   const { closeTab: onClose } = useShellActions();
   const [share, setShare] = useState(0.5);
@@ -335,6 +336,11 @@ export function CommanderTool({
   useBinding(
     commanderKeymap.flatView,
     () => flat(activeSide),
+    shown && !viewing,
+  );
+  useBinding(
+    commanderKeymap.duplicates,
+    () => duplicates(activeSide),
     shown && !viewing,
   );
   useBinding(

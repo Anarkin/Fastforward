@@ -81,6 +81,7 @@ import {
   sizeWorkers,
   unpackedKoffi,
 } from '../tools/commander/main/sizeWorkers';
+import { hashWorkers } from '../tools/commander/main/hashWorkers';
 import {
   sevenZipProgram,
   sevenZipReaderAt,
@@ -870,6 +871,7 @@ async function start(asked: readonly string[]): Promise<void> {
       }
     },
     connectTransfer: transferProcess(path.join(dist, 'transferHost.js'), log),
+    contentReader: hashWorkers(dist),
     sizeWalker: sizeWorkers(
       dist,
       process.platform === 'win32' ? unpackedKoffi() : undefined,

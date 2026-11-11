@@ -90,6 +90,7 @@ async function inPane(
     readonly marked: () => readonly string[];
   }) => Promise<void>,
   layout: Layout = 'details',
+  shownPane: PaneView = workPane(),
 ) {
   const dom = new JSDOM('<!doctype html><main></main>');
   dom.window.matchMedia = () =>
@@ -136,7 +137,7 @@ async function inPane(
         platform: 'win32',
         bookmarks: ['/work/docs'],
         layouts: { left: layout, right: 'details' },
-        panes: { left: workPane(), right: undefined },
+        panes: { left: shownPane, right: undefined },
       },
     });
     const shellPosted: ToHost[] = [];
@@ -232,6 +233,86 @@ const shownFolderMenu = [
   strings.commander.goToItem,
   strings.commander.showMoreOptions,
 ];
+
+function duplicatesPane(
+  duplicates: PaneView['duplicates'] = {
+    look: 1,
+    groups: [['notes.txt', 'copy.txt']],
+    reading: false,
+  },
+): PaneView {
+  const entries = ['copy.txt', 'notes.txt', 'other.txt'].map((name) => ({
+    name,
+    folder: false,
+    link: false,
+    hidden: false,
+    size: 1,
+    modified: 0,
+  }));
+  return {
+    ...workPane(),
+    entries,
+    rows: rowsOf(entries, true, true, sort),
+    duplicates,
+  };
+}
+
+const statusOf = (duplicates: PaneView['duplicates']) => {
+  let status: string | null | undefined;
+  return inPane(
+    async ({ main }) => {
+      status = main.querySelector('.column-status')?.textContent;
+    },
+    'details',
+    duplicatesPane(duplicates),
+  ).then(() => status);
+};
+
+suite('Commander side showing duplicates', () => {
+  test('says under the side that it looks for duplicates while it reads, that Esc stops it, and that it found none once done without any, and nothing once it found some', async () => {
+    assert.deepStrictEqual(
+      [
+        await statusOf({ look: 1, groups: [], reading: true }),
+        await statusOf({ look: 1, groups: [], reading: false }),
+        await statusOf(undefined),
+        await statusOf({
+          look: 1,
+          groups: [['notes.txt', 'copy.txt']],
+          reading: false,
+        }),
+      ],
+      [
+        `${strings.commander.findingDuplicates} · ${strings.commander.escapeStops}`,
+        strings.commander.noDuplicates,
+        undefined,
+        undefined,
+      ],
+    );
+  });
+
+  test('shows only the files that have a copy, a line above the first file of each group, and says so after its path', async () => {
+    await inPane(
+      async ({ main }) => {
+        const rows = [...main.querySelectorAll('.commander-row')].map((row) => [
+          row.querySelector('.commander-name')?.textContent,
+          row.classList.contains('group-start'),
+        ]);
+
+        assert.deepStrictEqual(rows, [
+          ['..', false],
+          ['copy', true],
+          ['notes', false],
+        ]);
+        assert.strictEqual(
+          main.querySelector('.commander-path .path-duplicates')?.textContent,
+          strings.commander.duplicatesTag,
+        );
+      },
+      'details',
+      duplicatesPane(),
+    );
+  });
+});
 
 suite('Commander menu on a side', () => {
   test('hands the focus to the list of the side once a drive, a bookmark or a layout is chosen from the menus of its header, so its keys work at once', async () => {

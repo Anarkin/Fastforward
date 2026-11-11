@@ -285,6 +285,57 @@ suite('Commander store', () => {
     assert.strictEqual(shownRowsOf(store.getState(), 'left'), filtered);
   });
 
+  test('shows only the files of a side that have a copy while it shows duplicates, grouped in the order of the side and after its filter, once for each change of its rows or groups', () => {
+    const store = byName();
+    const { receive, filterSide } = store.getState();
+    receive({
+      ...withFiles(left.folder, 'a.txt', 'b.log', 'c.txt', 'd.txt'),
+      duplicates: 1,
+    });
+    receive({
+      type: 'duplicateGroups',
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+      look: 1,
+      groups: [
+        ['d.txt', 'b.log'],
+        ['c.txt', 'a.txt'],
+      ],
+      reading: false,
+    });
+    const grouped = shownRowsOf(store.getState(), 'left');
+    const again = shownRowsOf(store.getState(), 'left');
+    filterSide('left', 'txt');
+    const filtered = shownRowsOf(store.getState(), 'left');
+
+    assert.deepStrictEqual(
+      grouped.rows.map((row) => row.key),
+      ['..', 'a.txt', 'c.txt', 'b.log', 'd.txt'],
+    );
+    assert.deepStrictEqual([...(grouped.starts ?? [])], ['a.txt', 'b.log']);
+    assert.strictEqual(again, grouped);
+    assert.deepStrictEqual(
+      filtered.rows.map((row) => row.key),
+      ['..', 'a.txt', 'c.txt'],
+    );
+  });
+
+  test('asks to show the duplicates of a side, and every file again once it shows them', () => {
+    const { posted, store } = shown();
+    store.getState().duplicates('left');
+    store.getState().receive({ ...listing(left.folder), duplicates: 1 });
+    store.getState().duplicates('left');
+
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'duplicates'),
+      [
+        { type: 'duplicates', tab: '1', side: 'left', duplicates: true },
+        { type: 'duplicates', tab: '1', side: 'left', duplicates: false },
+      ],
+    );
+  });
+
   test('selects the first file the filter shows as it is typed, keeping the one selected while the filter shows it', () => {
     const store = byName();
     const { receive, filterSide, select } = store.getState();

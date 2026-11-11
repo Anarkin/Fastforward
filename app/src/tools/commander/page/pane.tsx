@@ -257,6 +257,28 @@ function ReadingStatus({ side }: { side: Side }) {
   );
 }
 
+function DuplicatesStatus({ side }: { side: Side }) {
+  const duplicates = useCommander(
+    (state) => state.view.panes[side]?.duplicates,
+  );
+  if (duplicates === undefined) {
+    return null;
+  }
+  if (duplicates.reading) {
+    return (
+      <StatusLine announced>
+        {[
+          strings.commander.findingDuplicates,
+          strings.commander.escapeStops,
+        ].join(' · ')}
+      </StatusLine>
+    );
+  }
+  return duplicates.groups.length === 0 ? (
+    <StatusLine announced>{strings.commander.noDuplicates}</StatusLine>
+  ) : null;
+}
+
 function CountingStatus({ side }: { side: Side }) {
   const counting = useCommander(
     (state) => state.view.panes[side]?.counting ?? 0,
@@ -505,7 +527,7 @@ export function Pane({
   ) => actions.shellMenu(side, names, at, extended);
   const onCompare = actions.compare;
   const filter = useCommander((state) => filterOf(state, side));
-  const { rows, files, total } = useCommander((state) =>
+  const { rows, files, total, starts } = useCommander((state) =>
     shownRowsOf(state, side),
   );
   const setFilter = (query: string | undefined) =>
@@ -713,7 +735,7 @@ export function Pane({
   const fileColor = (row: Row) =>
     row.entry === undefined ? undefined : fileColorOf(row.entry, fileColors);
   const rowClass = (row: Row) =>
-    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${row.key === dropInto ? ' drop-target' : ''}${fileColor(row) === undefined ? '' : ' colored'}`;
+    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${row.key === dropInto ? ' drop-target' : ''}${fileColor(row) === undefined ? '' : ' colored'}${starts?.has(row.key) === true ? ' group-start' : ''}`;
   const colorStyle = (row: Row): CSSProperties => {
     const color = fileColor(row);
     return color === undefined ? {} : { '--file-color': color };
@@ -1076,6 +1098,7 @@ export function Pane({
           {...(pane?.archive !== undefined &&
             archivePart(pane.archive, fileColors))}
           flat={pane?.flat !== undefined}
+          duplicates={pane?.duplicates !== undefined}
         />
       </div>
       {!tiled && <ColumnHeader side={side} />}
@@ -1163,6 +1186,7 @@ export function Pane({
                 filtering,
                 reading:
                   pane?.flat?.progress.reading === true ||
+                  pane?.duplicates?.reading === true ||
                   readingArchive !== undefined ||
                   (pane?.counting ?? 0) > 0,
                 parent: pane?.parent === true,
@@ -1182,6 +1206,7 @@ export function Pane({
         )}
       </div>
       <ReadingStatus side={side} />
+      <DuplicatesStatus side={side} />
       <FlatStatus
         side={side}
         files={total}

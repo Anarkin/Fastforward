@@ -386,6 +386,12 @@ export type CommanderToHost =
       readonly folder: string;
       readonly to: string;
     }
+  | {
+      readonly type: 'duplicates';
+      readonly tab: string;
+      readonly side: Side;
+      readonly duplicates: boolean;
+    }
   | { readonly type: 'dropIcons'; readonly tickets: readonly string[] };
 
 export interface CommanderDrop {
@@ -502,6 +508,16 @@ export type CommanderToWebview =
       readonly archive?: string;
       readonly selected: string | undefined;
       readonly flat?: number;
+      readonly duplicates?: number;
+    }
+  | {
+      readonly type: 'duplicateGroups';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly look: number;
+      readonly groups: readonly (readonly string[])[];
+      readonly reading: boolean;
     }
   | {
       readonly type: 'folderSizes';

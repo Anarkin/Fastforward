@@ -267,6 +267,16 @@
   flex: none;
 }
 
+.path-duplicates {
+  flex: none;
+  margin-left: var(--commander-advance);
+  color: var(--muted-foreground);
+}
+
+.row.commander-row.group-start {
+  box-shadow: inset 0 1px 0 var(--color-border);
+}
+
 .path-part.colored,
 .path-name.colored {
   color: var(--file-color);

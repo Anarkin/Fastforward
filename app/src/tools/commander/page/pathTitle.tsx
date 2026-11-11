@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { strings } from '../../../shared/strings';
 import { pathParts } from '../shared/paths';
 
 export function nameOf(path: string): string {
@@ -18,12 +19,14 @@ export function PathTitle({
   color,
   coloredPart,
   flat = false,
+  duplicates = false,
 }: {
   readonly path: string;
   readonly hidden: readonly boolean[];
   readonly color?: string;
   readonly coloredPart?: number;
   readonly flat?: boolean;
+  readonly duplicates?: boolean;
 }) {
   const parts = pathParts(path);
   const last = parts.length - 1;
@@ -64,6 +67,11 @@ export function PathTitle({
             </span>
           )}
           {flat && <span className="path-flat">{flatSuffixOf(path)}</span>}
+          {duplicates && (
+            <span className="path-duplicates">
+              {strings.commander.duplicatesTag}
+            </span>
+          )}
         </span>
       </span>
     </span>

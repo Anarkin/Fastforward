@@ -14,6 +14,7 @@ import {
   pointedKeys,
   filteredRows,
   filteredSelection,
+  duplicateRows,
 } from '../../../../tools/commander/page/listing';
 import { fileColorsOf } from '../../../../tools/commander/page/fileColors';
 import type { Sort } from '../../../../tools/commander/shared/settings';
@@ -708,5 +709,47 @@ suite('Filtering the rows of a side', () => {
       '..',
     );
     assert.strictEqual(filteredSelection([], 'notes.txt'), undefined);
+  });
+});
+
+suite('Showing the duplicates of a side', () => {
+  const byName: Sort = {
+    column: 'name',
+    descending: false,
+    groupByColor: false,
+  };
+  const rows = rowsOf(
+    ['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt', 'f.txt', 'g.txt'].map(
+      (name) => entry(name),
+    ),
+    true,
+    true,
+    byName,
+  );
+
+  test('keeps the parent folder and the files that have a copy, each group where its first file stands in the order of the side and its files in that order, setting the first file of each group apart', () => {
+    const shown = duplicateRows(rows, [
+      ['e.txt', 'b.txt'],
+      ['f.txt', 'a.txt', 'd.txt'],
+    ]);
+
+    assert.deepStrictEqual(
+      shown.rows.map((row) => row.key),
+      ['..', 'a.txt', 'd.txt', 'f.txt', 'b.txt', 'e.txt'],
+    );
+    assert.deepStrictEqual([...shown.starts], ['a.txt', 'b.txt']);
+  });
+
+  test('leaves out a group of which the side shows fewer than two files, as one filtered out or hidden', () => {
+    const shown = duplicateRows(rows, [
+      ['c.txt', 'gone.txt'],
+      ['g.txt', 'b.txt'],
+    ]);
+
+    assert.deepStrictEqual(
+      shown.rows.map((row) => row.key),
+      ['..', 'b.txt', 'g.txt'],
+    );
+    assert.deepStrictEqual([...shown.starts], ['b.txt']);
   });
 });

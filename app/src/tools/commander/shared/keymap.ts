@@ -64,6 +64,9 @@ export const commanderKeymap = {
   groupByColor: bind('Listing', strings.actions.groupByColor, {
     'Ctrl+G': true,
   }),
+  duplicates: bind('Listing', strings.actions.duplicates, {
+    'Ctrl+Shift+G': true,
+  }),
   showHidden: bind('Listing', strings.actions.showHidden, {
     'Ctrl+H': true,
   }),

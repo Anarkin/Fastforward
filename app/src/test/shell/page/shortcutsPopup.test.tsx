@@ -281,6 +281,7 @@ suite('Shortcuts popup', () => {
           'Show the side as details or as thumbnails',
           'Sort by a column, or reverse the order',
           'Group the files of the side by their colors, or stop',
+          'Show only the files of the side that have a copy of the same content, grouped, or every file again',
           'Show or hide the hidden files',
           'List the files of every folder in the folder of the side, or the folder alone again',
           'Count the sizes of the folders of the side',

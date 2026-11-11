@@ -869,6 +869,25 @@ suite('Style', () => {
     );
   });
 
+  test('draws a line above the first file of each group of duplicates inside its row, so every row keeps its height, and names the view after the path in the muted color', () => {
+    looks(
+      rendered(
+        createElement('div', {
+          className: 'row commander-row commander-line group-start',
+        }),
+      ),
+      {
+        'box-shadow': 'inset 0 1px 0 var(--color-border)',
+        height: 'var(--commander-row-height)',
+        'border-top': undefined,
+      },
+    );
+    looks(rendered(createElement('span', { className: 'path-duplicates' })), {
+      color: 'var(--muted-foreground)',
+      'margin-left': 'var(--commander-advance)',
+    });
+  });
+
   test('lays the path of a commander side out as its rows are, on a line of its own with a line under it, starting where the names of the rows start and running to the end of their dates', () => {
     const line = rendered(
       createElement(

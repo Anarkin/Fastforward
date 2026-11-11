@@ -345,6 +345,8 @@ export const strings = {
     showHidden: 'Show or hide the hidden files',
     layout: 'Show the side as details or as thumbnails',
     groupByColor: 'Group the files of the side by their colors, or stop',
+    duplicates:
+      'Show only the files of the side that have a copy of the same content, grouped, or every file again',
     moveAcross: 'Move to the thumbnail on the left or right',
     drive: 'Choose the drive of the left or right side',
     sort: 'Sort by a column, or reverse the order',
@@ -798,6 +800,9 @@ export const strings = {
     goToField: 'Path',
     goToConfirm: 'Go',
     goToItem: 'Go To...',
+    duplicatesTag: 'duplicates',
+    findingDuplicates: 'Looking for duplicates…',
+    noDuplicates: 'No duplicates found',
     noPath: 'Type the path to go to.',
     copyPath: 'Copy Path',
     copyPaths: 'Copy Paths',

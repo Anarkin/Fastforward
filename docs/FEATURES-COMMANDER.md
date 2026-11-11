@@ -135,6 +135,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Search files | Find files by name or content in the subfolders | Alt+F7 | Core | ❌ No |  |
 | Compare folders | Mark the files that differ between the two sides | Shift+F2 | Common | ❌ No |  |
+| Duplicate files | Show the files that have a copy of the same content | Alt+F7 | Advanced | ✅ Yes | Ctrl+Shift+G, among the files the side lists, those of its folder or, in flat view, every file under it: grouped by size, then by a hash of their first 64 KB and only then of the whole file, in four worker threads, whatever their names; each group where its first file stands in the order of the side, a line above that file; hard links to one file taken once, and links, empty files and files kept online only, Google Drive's streamed ones too, left out, as reading them would download them; a line under the side saying it looks for them, Esc stopping it, or that it found none; follows changes without reading the files again, F2 or Ctrl+R reading them all again, and ends on Ctrl+Shift+G or once the side shows another folder; not inside an archive |
 | Synchronize folders | Make two folders the same | — | Advanced | ❌ No |  |
 | Remote file systems | Browse FTP, SFTP, WebDAV and cloud storage | Ctrl+F | Common | ❌ No |  |
 | Cloud files | Show which files are kept online only | — | Common | 🟡 Partial | No thumbnail is made of them, which would download them; not marked |

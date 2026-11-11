@@ -53,6 +53,22 @@ interface FlatView {
   readonly shown: FlatShown | undefined;
 }
 
+interface DuplicatesView {
+  readonly look: number;
+  readonly groups: readonly (readonly string[])[];
+  readonly reading: boolean;
+}
+
+function duplicatesOf(
+  before: DuplicatesView | undefined,
+  look: number | undefined,
+): DuplicatesView | undefined {
+  if (look === undefined) {
+    return undefined;
+  }
+  return before?.look === look ? before : { look, groups: [], reading: true };
+}
+
 export interface PaneView extends Listed {
   readonly sort: Sort;
   readonly rows: readonly Row[];
@@ -61,6 +77,7 @@ export interface PaneView extends Listed {
   readonly repositories: ReadonlySet<string>;
   readonly inRepository?: boolean;
   readonly flat?: FlatView;
+  readonly duplicates?: DuplicatesView;
   readonly counting: number;
 }
 
@@ -217,6 +234,7 @@ export type ViewAction =
       readonly type: 'repositories';
     })
   | CommanderToWebviewOf<'folderSizes'>
+  | CommanderToWebviewOf<'duplicateGroups'>
   | {
       readonly type: 'flatRows';
       readonly tab: string;
@@ -562,9 +580,7 @@ export function reduceView(
         pane?.flat !== undefined && pane.folder === action.folder
           ? folderOfSelected(pane)
           : undefined;
-      return withPane(
-        view,
-        action.side,
+      const listed =
         flat === undefined
           ? relisted(
               pane,
@@ -577,8 +593,34 @@ export function reduceView(
                 ? pane
                 : undefined,
             )
-          : flatListed(pane, sort, { ...action, flat }),
+          : flatListed(pane, sort, { ...action, flat });
+      const duplicates = duplicatesOf(
+        pane?.folder === action.folder ? pane.duplicates : undefined,
+        action.duplicates,
       );
+      const { duplicates: _left, ...withoutDuplicates } = listed;
+      return withPane(
+        view,
+        action.side,
+        duplicates === undefined
+          ? withoutDuplicates
+          : { ...withoutDuplicates, duplicates },
+      );
+    }
+    case 'duplicateGroups': {
+      const pane = view.panes[action.side];
+      return action.tab === view.tab &&
+        pane?.folder === action.folder &&
+        pane.duplicates?.look === action.look
+        ? withPane(view, action.side, {
+            ...pane,
+            duplicates: {
+              look: action.look,
+              groups: action.groups,
+              reading: action.reading,
+            },
+          })
+        : view;
     }
     case 'flatRows': {
       const pane = view.panes[action.side];

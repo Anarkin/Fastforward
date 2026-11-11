@@ -179,6 +179,13 @@ suite('App commander', () => {
         ),
       );
 
+  const groupStartsShown = () =>
+    right()
+      .locator('.commander-row.group-start .commander-name')
+      .allTextContents();
+  const statusShown = () => right().locator('.column-status').textContent();
+  const sortedRows = async () => (await rowNames()).toSorted().join();
+
   const thumbnailed = () =>
     right()
       .locator('.virtual-rows')
@@ -1135,6 +1142,68 @@ suite('App commander', () => {
     assert.deepStrictEqual(chosen, [true, true, true, true, true]);
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
+  });
+
+  test('shows only the files of a side that have a copy of the same content on Ctrl+Shift+G, whatever their names, a line above the first of each group, in flat view too, follows a delete, says when it found none, and shows every file again on Ctrl+Shift+G', async () => {
+    const dupes = path.join(opened, 'dupes');
+    fs.mkdirSync(path.join(dupes, 'sub'), { recursive: true });
+    fs.writeFileSync(path.join(dupes, 'one.txt'), 'same content');
+    fs.writeFileSync(path.join(dupes, 'two.log'), 'same content');
+    fs.writeFileSync(path.join(dupes, 'other.txt'), 'same contenX');
+    fs.writeFileSync(path.join(dupes, 'sub', 'three.md'), 'same content');
+    try {
+      await openFolder('dupes', dupes);
+
+      await page.keyboard.press('Control+Shift+G');
+      await waitFor(
+        async () => (await sortedRows()) === '..,one.txt,two.log',
+        'the files with a copy',
+      );
+      assert.strictEqual((await groupStartsShown()).length, 1);
+      assert.match(
+        (await right().locator('.path-title').textContent()) ?? '',
+        new RegExp(`${strings.commander.duplicatesTag}$`),
+      );
+
+      await page.keyboard.press('Control+B');
+      await waitFor(
+        async () => (await sortedRows()) === '..,one.txt,three.md,two.log',
+        'the files with a copy under the folder',
+      );
+      await page.keyboard.press('Control+B');
+      await waitFor(
+        async () => (await sortedRows()) === '..,one.txt,two.log',
+        'the files of the folder alone again',
+      );
+
+      fs.rmSync(path.join(dupes, 'two.log'));
+      await waitFor(
+        async () => (await rowNames()).join() === '..',
+        'the group left with one file to go',
+      );
+      await waitFor(
+        async () => (await statusShown()) === strings.commander.noDuplicates,
+        'the side to say it found none',
+      );
+
+      await page.keyboard.press('Control+Shift+G');
+      await waitFor(
+        async () => (await sortedRows()) === '..,one.txt,other.txt,sub',
+        'every file again',
+      );
+      assert.strictEqual(
+        await groupStartsShown().then((starts) => starts.length),
+        0,
+      );
+    } finally {
+      await page.keyboard.press('Backspace');
+      fs.rmSync(dupes, { recursive: true, force: true });
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    }
   });
 
   test('lists the files of every folder in the folder of a side on Ctrl+B, saying how many it read in how many folders and the folder of the file selected, following changes in them, and the folder alone again on Ctrl+B', async () => {

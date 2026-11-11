@@ -28,6 +28,7 @@ import type {
 import { filterWords } from '../../../shared/fileFilter';
 import { filesToCompare } from './comparing';
 import {
+  duplicateRows,
   filteredRows,
   filteredSelection,
   nearestShown,
@@ -267,6 +268,7 @@ interface CommanderActions {
   readonly keepPlace: (tab: string, byte: number) => void;
   readonly filterSide: (side: Side, query: string | undefined) => void;
   readonly flat: (side: Side) => void;
+  readonly duplicates: (side: Side) => void;
   readonly stopReading: (side: Side) => void;
   readonly countSizes: (side: Side, names: readonly string[]) => void;
   readonly keepScroll: (key: string, offset: number) => void;
@@ -506,6 +508,7 @@ export interface ShownRows {
   readonly rows: readonly Row[];
   readonly files: number;
   readonly total: number;
+  readonly starts?: ReadonlySet<string>;
 }
 
 const noRows: readonly Row[] = [];
@@ -558,16 +561,38 @@ function flatShownRows(
   return shown;
 }
 
+const duplicatesShown = new WeakMap<
+  ShownRows,
+  { readonly groups: readonly (readonly string[])[]; readonly shown: ShownRows }
+>();
+
+function withDuplicates(
+  all: ShownRows,
+  groups: readonly (readonly string[])[],
+): ShownRows {
+  const kept = duplicatesShown.get(all);
+  if (kept?.groups === groups) {
+    return kept.shown;
+  }
+  const { rows, starts } = duplicateRows(all.rows, groups);
+  const shown = { rows, files: filesIn(rows), total: all.total, starts };
+  duplicatesShown.set(all, { groups, shown });
+  return shown;
+}
+
 export function shownRowsOf(state: CommanderSource, side: Side): ShownRows {
   const pane = state.view.panes[side];
   const query = filterOf(state, side) ?? '';
-  if (pane?.flat !== undefined) {
-    return flatShownRows(
-      pane.rows,
-      filterWords(query).length === 0 ? undefined : pane.flat.shown?.rows,
-    );
-  }
-  return shownRowsIn(pane?.rows ?? noRows, query);
+  const all =
+    pane?.flat === undefined
+      ? shownRowsIn(pane?.rows ?? noRows, query)
+      : flatShownRows(
+          pane.rows,
+          filterWords(query).length === 0 ? undefined : pane.flat.shown?.rows,
+        );
+  return pane?.duplicates === undefined
+    ? all
+    : withDuplicates(all, pane.duplicates.groups);
 }
 
 function startFlatWorker(): FlatWorker {
@@ -1259,6 +1284,15 @@ export function createCommanderStore(
             tab,
             side,
             flat: get().view.panes[side]?.flat === undefined,
+          }),
+        ),
+      duplicates: (side) =>
+        onTab((tab) =>
+          post({
+            type: 'duplicates',
+            tab,
+            side,
+            duplicates: get().view.panes[side]?.duplicates === undefined,
           }),
         ),
       stopReading: (side) =>

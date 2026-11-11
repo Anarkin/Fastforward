@@ -56,6 +56,8 @@ import {
 import { typedPath } from './typedPaths';
 import type { WatchFolder, WatchTree } from './watch';
 import { FlatTree } from './flatTree';
+import { Duplicates, type Compared, type ContentReader } from './duplicates';
+import { hashingHere } from './contentHash';
 import {
   fillsThumbnail,
   heldBox,
@@ -200,6 +202,14 @@ export interface CommanderAccess {
   readonly home?: string;
   readonly variable?: (name: string) => string | undefined;
   readonly knownFolder?: (name: string) => Promise<string | undefined>;
+  readonly contentReader?: ContentReader;
+}
+
+interface Duplicating {
+  readonly look: number;
+  readonly duplicates: Duplicates;
+  flushing: NodeJS.Timeout | undefined;
+  flushed: number;
 }
 
 interface Flat {
@@ -221,6 +231,7 @@ interface Pane {
   folder: string;
   flat?: Flat;
   sizing?: Sizing;
+  duplicates?: Duplicating;
   hidden?: readonly boolean[];
   entries: readonly Entry[] | undefined;
   asked: number;
@@ -506,6 +517,7 @@ export class CommanderTool implements Tool<'commander'> {
   private updateAskedIn: Page | undefined;
   private readonly pdfTabs = new Map<string, string>();
   private walks = 0;
+  private looks = 0;
   private readonly transfers: Transfers;
   private readonly savedSides: SavedSides;
 
@@ -603,6 +615,7 @@ export class CommanderTool implements Tool<'commander'> {
       for (const side of sides) {
         this.endFlat(panes[side]);
         this.endSizing(panes[side]);
+        this.endDuplicates(panes[side]);
       }
     }
     this.panes.delete(tab.id);
@@ -734,6 +747,7 @@ export class CommanderTool implements Tool<'commander'> {
         const shown = this.shownPane(page, message.tab, message.side);
         if (shown !== undefined) {
           this.endSizing(shown.pane);
+          shown.pane.duplicates?.duplicates.forget();
         }
         if (shown?.pane.flat !== undefined) {
           this.startFlat(page, shown);
@@ -750,6 +764,7 @@ export class CommanderTool implements Tool<'commander'> {
         shown?.pane.opening?.abort();
         shown?.pane.flat?.tree.stop();
         shown?.pane.sizing?.sizes.stop();
+        shown?.pane.duplicates?.duplicates.stop();
         return undefined;
       }
       case 'countSizes':
@@ -860,6 +875,9 @@ export class CommanderTool implements Tool<'commander'> {
         return this.goToBookmark(page, message);
       case 'goTo':
         return this.goTo(page, message);
+      case 'duplicates':
+        this.turnDuplicates(page, message);
+        return undefined;
       default:
         return message satisfies never;
     }
@@ -3822,6 +3840,7 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       this.postListing(page, tab, side, pane, undefined);
       this.flushFlat(tab, side, pane.flat);
+      this.flushDuplicates(tab, side, pane.duplicates);
       return;
     }
     if (how === 'refresh' && pane.reading !== undefined) {
@@ -3913,6 +3932,7 @@ export class CommanderTool implements Tool<'commander'> {
       pane.repositories = new Set();
       this.endFlat(pane);
       this.endSizing(pane);
+      this.endDuplicates(pane);
     }
     if (how === 'visit' || typeof how === 'object' || pane.denied === folder) {
       pane.denied = undefined;
@@ -3928,6 +3948,7 @@ export class CommanderTool implements Tool<'commander'> {
     pane.binOff = binOff;
     pane.landed = asked;
     this.postListing(page, tab, side, pane, selected);
+    this.feedDuplicates(pane);
     this.watch(page, tab, side, folder, stamp);
     if (listing.archive === undefined) {
       void this.shell.track(
@@ -4127,6 +4148,125 @@ export class CommanderTool implements Tool<'commander'> {
         progress,
       });
     }
+    if (!progress.reading) {
+      this.feedDuplicates(pane);
+    }
+  }
+
+  private turnDuplicates(
+    page: Page,
+    { tab, side, duplicates }: Extract<CommanderToHost, { type: 'duplicates' }>,
+  ): void {
+    const shown = this.shownPane(page, tab, side);
+    if (
+      shown === undefined ||
+      typeof duplicates !== 'boolean' ||
+      shown.pane.archive !== undefined ||
+      duplicates === (shown.pane.duplicates !== undefined)
+    ) {
+      return;
+    }
+    if (duplicates) {
+      this.startDuplicates(shown);
+    } else {
+      this.endDuplicates(shown.pane);
+    }
+    this.postListing(page, shown.tab, shown.side, shown.pane, undefined);
+  }
+
+  private startDuplicates({ tab, side, pane }: ShownPane): void {
+    const duplicating: Duplicating = {
+      look: ++this.looks,
+      duplicates: new Duplicates(
+        this.access.contentReader ?? hashingHere,
+        () => this.duplicatesChanged(tab, side, duplicating),
+        { skip: async (file) => (await this.access.streamed?.(file)) === true },
+      ),
+      flushing: undefined,
+      flushed: 0,
+    };
+    pane.duplicates = duplicating;
+    if (pane.flat === undefined || !pane.flat.tree.progress.reading) {
+      this.feedDuplicates(pane);
+    }
+  }
+
+  private feedDuplicates(pane: Pane): void {
+    const { duplicates, flat, folder } = pane;
+    if (duplicates === undefined) {
+      return;
+    }
+    const files: Iterable<readonly [string, Entry]> =
+      flat === undefined
+        ? (pane.entries ?? []).map((entry) => [entry.name, entry] as const)
+        : flat.tree.filesRead;
+    const compared: Compared[] = [];
+    for (const [key, entry] of files) {
+      if (
+        !entry.folder &&
+        !entry.link &&
+        entry.online !== true &&
+        entry.size !== undefined &&
+        entry.size > 0
+      ) {
+        compared.push({
+          key,
+          file: path.join(folder, key),
+          size: entry.size,
+          modified: entry.modified,
+        });
+      }
+    }
+    duplicates.duplicates.look(compared);
+  }
+
+  private endDuplicates(pane: Pane): void {
+    const { duplicates } = pane;
+    if (duplicates !== undefined) {
+      pane.duplicates = undefined;
+      duplicates.duplicates.close();
+      clearTimeout(duplicates.flushing);
+    }
+  }
+
+  private duplicatesChanged(
+    tab: string,
+    side: Side,
+    duplicating: Duplicating,
+  ): void {
+    duplicating.flushing ??= setTimeout(
+      () => {
+        duplicating.flushing = undefined;
+        this.flushDuplicates(tab, side, duplicating);
+      },
+      Math.max(0, duplicating.flushed + flushEvery - Date.now()),
+    );
+  }
+
+  private flushDuplicates(
+    tab: string,
+    side: Side,
+    duplicating: Duplicating | undefined,
+  ): void {
+    const pane = this.panes.get(tab)?.[side];
+    const shownIn = this.pageShowing(tab);
+    if (
+      duplicating === undefined ||
+      pane?.duplicates !== duplicating ||
+      shownIn === undefined
+    ) {
+      return;
+    }
+    duplicating.flushed = Date.now();
+    this.post(shownIn, {
+      type: 'duplicateGroups',
+      tab,
+      side,
+      folder: pane.folder,
+      look: duplicating.look,
+      groups: duplicating.duplicates.groups,
+      reading: duplicating.duplicates.reading,
+    });
   }
 
   private countSizes(
@@ -4235,6 +4375,9 @@ export class CommanderTool implements Tool<'commander'> {
         forward: pane.at < pane.history.length - 1,
         selected,
         ...(pane.flat !== undefined && { flat: pane.flat.walk }),
+        ...(pane.duplicates !== undefined && {
+          duplicates: pane.duplicates.look,
+        }),
       });
     }
   }

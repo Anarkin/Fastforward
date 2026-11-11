@@ -99,6 +99,10 @@ export class FlatTree {
     return this.files.get(key);
   }
 
+  get filesRead(): ReadonlyMap<string, Entry> {
+    return this.files;
+  }
+
   take(): FlatFolder[] {
     const taken = [...this.dirty].map((under) => ({
       under,

@@ -19,6 +19,7 @@ export function mainOptions(production: boolean): BuildOptions {
       gitSpawner: 'src/tools/git/main/cli/gitSpawnerWorker.ts',
       commitReader: 'src/tools/git/main/history/commitReaderWorker.ts',
       sizeWorker: 'src/tools/commander/main/sizeWorker.ts',
+      hashWorker: 'src/tools/commander/main/hashWorker.ts',
     },
     format: 'cjs',
     platform: 'node',
