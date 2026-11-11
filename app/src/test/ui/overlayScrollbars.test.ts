@@ -32,7 +32,7 @@ const painted = () =>
     setTimeout(() => setTimeout(() => setTimeout(resolve))),
   );
 
-function framedList() {
+function framedList(height = 100) {
   const dom = new JSDOM(
     '<!doctype html><body style="--scrollbar-size: 20px"><div id="list" style="overflow-y: auto"></div></body>',
   );
@@ -61,6 +61,7 @@ function framedList() {
     clientWidth: { value: 400 },
     scrollTop: { get: () => scrollTop },
   });
+  list.getBoundingClientRect = () => new dom.window.DOMRect(0, 0, 400, height);
   installOverlayScrollbars();
   const bar = document.querySelector<HTMLElement>(
     `.${overlayScrollbarClass}.vertical`,
@@ -107,6 +108,25 @@ suite('Overlay scrollbars', () => {
       assert.ok(
         Number.parseFloat(bar.style.top) > Number.parseFloat(middle.top),
         `${middle.top} then ${bar.style.top}`,
+      );
+    } finally {
+      close();
+    }
+  });
+
+  test('takes the height of an area between pixels, as the browser measures it while its whole pixels round it, so the thumb of an area scrolled to its end reaches its end', () => {
+    const { bar, scrollTo, frame, close } = framedList(100.4);
+    try {
+      scrollTo(1000 - 100.4);
+      frame();
+
+      assert.strictEqual(
+        Math.round(
+          (Number.parseFloat(bar.style.top) +
+            Number.parseFloat(bar.style.height)) *
+            10,
+        ) / 10,
+        100.4,
       );
     } finally {
       close();
@@ -280,6 +300,17 @@ suite('Overlay scrollbars', () => {
       offset: 476,
       length: 24,
     });
+  });
+
+  test('ends the thumb at the end of its track once the content is scrolled to within a pixel of its end, as the browser stops it a fraction of a pixel short at some scales', () => {
+    assert.deepStrictEqual(thumbOf(1000, 100, 899.4), {
+      offset: 76,
+      length: 24,
+    });
+    assert.strictEqual(
+      Math.round((thumbOf(1000, 100, 898)?.offset ?? 0) * 100) / 100,
+      75.83,
+    );
   });
 
   test('scrolls the content as far for each pixel the thumb is dragged as it has room to, and not at all when the thumb fills an area too small for it to move', () => {
@@ -516,6 +547,75 @@ suite('Overlay scrollbars', () => {
     assert.strictEqual(
       thumbBox('vertical', framed, 25)?.left,
       101 + 400 - 25 - 2,
+    );
+  });
+
+  test('takes the rounding of an area along an edge it shares with the rounded area around it as the rounding of that area, which the thumb follows, keeping only its scroll padding off there, as the rounded body of a column showing a preview', () => {
+    const rounded = framedMetrics(
+      {
+        ...scroller,
+        track: { top: 6, bottom: 6, left: 6, right: 6 },
+        padding: { top: 0, bottom: 0, left: 0, right: 0 },
+      },
+      { left: 101, top: 0, right: 501, bottom: 551, line: 2, radius: 6 },
+    );
+
+    assert.deepStrictEqual(trackBox('vertical', rounded, 25), {
+      left: 101 + 400 - 25 - 2,
+      top: 51 + 6,
+      width: 25,
+      height: 500 - 6 - 2,
+    });
+  });
+
+  test('meets the line of the rounded area around it exactly where that area ends between pixels, as an area measures its own size in whole pixels', () => {
+    const between = framedMetrics(scroller, {
+      left: 101,
+      top: 0,
+      right: 501.4,
+      bottom: 551.4,
+      line: 2,
+      radius: 6,
+    });
+    const vertical = trackBox('vertical', between, 25);
+    const horizontal = trackBox('horizontal', between, 25);
+
+    assert.deepStrictEqual(
+      [
+        vertical && vertical.left + vertical.width,
+        vertical && vertical.top + vertical.height,
+        horizontal && horizontal.top + horizontal.height,
+        horizontal && horizontal.left + horizontal.width,
+      ].map((edge) => edge && Math.round(edge * 10) / 10),
+      [499.4, 549.4, 549.4, 499.4],
+    );
+  });
+
+  test('runs the thumb of a rounded area of its own, as a menu, to its edges, keeping it off the end its scroll padding covers, as the filter held atop it, and rounding it only at a corner it reaches', () => {
+    const menu = framedMetrics(
+      {
+        ...scroller,
+        track: { top: 40, bottom: 6, left: 6, right: 6 },
+        padding: { top: 40, bottom: 0, left: 0, right: 0 },
+      },
+      { left: 100, top: 50, right: 502, bottom: 552, line: 1, radius: 6 },
+    );
+
+    assert.deepStrictEqual(trackBox('vertical', menu, 25), {
+      left: 101 + 400 - 25,
+      top: 51 + 40,
+      width: 25,
+      height: 500 - 40,
+    });
+    assert.deepStrictEqual(
+      [
+        thumbBox('vertical', { ...menu, scrollTop: 0 }, 25)?.corners,
+        thumbBox('vertical', { ...menu, scrollTop: 500 }, 25)?.corners,
+      ],
+      [
+        { start: 0, end: 0 },
+        { start: 0, end: 5 },
+      ],
     );
   });
 

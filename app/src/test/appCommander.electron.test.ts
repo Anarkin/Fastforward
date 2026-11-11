@@ -1703,6 +1703,69 @@ suite('App commander', () => {
     }
   });
 
+  test('runs the thumb of a Markdown preview all the way down to the line its column draws, rounding its corner as the column rounds its own, though the body of the preview is rounded itself', async () => {
+    const lines = Array.from(
+      { length: 200 },
+      (_, index) => `Paragraph ${index}.`,
+    );
+    fs.writeFileSync(
+      path.join(opened, 'long.md'),
+      lines.join(`${String.fromCharCode(10)}${String.fromCharCode(10)}`),
+    );
+    try {
+      await select('long');
+      await page.keyboard.press('F3');
+      await page.locator('.viewer .markdown').waitFor();
+      const preview = page.locator('.viewer-preview');
+      await preview.evaluate((body) => {
+        body.scrollTop = body.scrollHeight;
+      });
+      await preview.hover();
+      const edges = () =>
+        preview.evaluate((body) => {
+          const column = body.closest('.column');
+          const bar = document.querySelector(
+            '.overlay-scrollbar.vertical.shown',
+          );
+          if (column === null || bar === null) {
+            return undefined;
+          }
+          const style = getComputedStyle(column);
+          const line = parseFloat(style.getPropertyValue('--column-line'));
+          const edge = column.getBoundingClientRect();
+          const thumb = bar.getBoundingClientRect();
+          return {
+            right: Math.round(edge.right - line - thumb.right) + 0,
+            bottom: Math.round(edge.bottom - line - thumb.bottom) + 0,
+            rounded: Math.round(
+              parseFloat(getComputedStyle(bar).borderBottomRightRadius),
+            ),
+            corner: Math.round(
+              parseFloat(style.borderBottomRightRadius) - line,
+            ),
+          };
+        });
+      await waitFor(async () => (await edges()) !== undefined, 'the thumb');
+      const placed = await edges();
+
+      assert.deepStrictEqual(
+        [placed?.right, placed?.bottom, placed?.rounded],
+        [0, 0, placed?.corner],
+        JSON.stringify(placed),
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'long.md'));
+      await waitFor(
+        async () => !(await rowNames()).includes('long.md'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
   test('keeps the thumb of a file viewed as tall wherever it is scrolled to, though its lines grow long further down, moves it down as the rows do, and ends it at the end of its track without a jump, against the line its column draws on the right and where the rounded corner of the column starts', async () => {
     const lines = Array.from({ length: 300 }, (_, index) =>
       index < 150
@@ -4721,7 +4784,7 @@ suite('App commander', () => {
     );
   });
 
-  test('keeps the scrollbar of the language menu below its filter and off its rounded corners, from the first language to the last', async () => {
+  test('keeps the scrollbar of the language menu below its filter, and at the last language runs it to the bottom of the menu, rounding its corner as the menu rounds its own', async () => {
     fs.writeFileSync(path.join(opened, 'menu.ts'), 'const a = 1;');
     await select('menu');
     await page.keyboard.press('F3');
@@ -4757,11 +4820,28 @@ suite('App commander', () => {
       'the thumb at the end of its track',
     );
     const end = await boxes();
+    const [thumbRadius, menuRadius] = await Promise.all([
+      thumb.evaluate(
+        (element) => getComputedStyle(element).borderBottomRightRadius,
+      ),
+      menu.evaluate(
+        (element) => getComputedStyle(element).borderBottomRightRadius,
+      ),
+    ]);
     assert.ok(
-      end.thumbBox.y + end.thumbBox.height <=
-        end.menuBox.y + end.menuBox.height - 6 + subpixel,
+      Math.abs(
+        end.thumbBox.y +
+          end.thumbBox.height -
+          (end.menuBox.y + end.menuBox.height),
+      ) < subpixel &&
+        Math.abs(
+          end.thumbBox.x +
+            end.thumbBox.width -
+            (end.menuBox.x + end.menuBox.width),
+        ) < subpixel,
       JSON.stringify(end),
     );
+    assert.strictEqual(thumbRadius, menuRadius);
 
     await page.keyboard.press('Home');
     await waitFor(

@@ -32,8 +32,8 @@ export function thumbOf(
     Math.max(minThumb, (track * clientSize) / scrollSize),
   );
   const range = scrollSize - clientSize;
-  const offset =
-    ((track - length) * Math.min(Math.max(scrolled, 0), range)) / range;
+  const position = scrolled >= range - 1 ? range : Math.max(scrolled, 0);
+  const offset = ((track - length) * position) / range;
   return { offset, length };
 }
 
@@ -87,6 +87,23 @@ export function trackOf(
       pixels(style.scrollPaddingRight),
       pixels(style.borderBottomRightRadius),
     ),
+  };
+}
+
+function paddingOf(
+  style: Pick<
+    CSSStyleDeclaration,
+    | 'scrollPaddingTop'
+    | 'scrollPaddingBottom'
+    | 'scrollPaddingLeft'
+    | 'scrollPaddingRight'
+  >,
+): Track {
+  return {
+    top: pixels(style.scrollPaddingTop),
+    bottom: pixels(style.scrollPaddingBottom),
+    left: pixels(style.scrollPaddingLeft),
+    right: pixels(style.scrollPaddingRight),
   };
 }
 
@@ -208,6 +225,7 @@ export interface ScrollerMetrics {
   readonly scrollLeft: number;
   readonly scrollTop: number;
   readonly track?: Track;
+  readonly padding?: Track;
   readonly edges?: Edges;
   readonly bends?: Track;
 }
@@ -230,43 +248,67 @@ function meets(one: number, other: number): boolean {
   return Math.abs(one - other) <= 1;
 }
 
-export function framedMetrics(
+function sharedEdges(
   metrics: ScrollerMetrics,
-  frame: Frame | undefined,
-): ScrollerMetrics {
-  if (frame === undefined) {
-    return metrics;
-  }
+  frame: Frame,
+): Record<keyof Track, boolean> {
   const left = metrics.left + metrics.clientLeft;
   const top = metrics.top + metrics.clientTop;
-  const at = {
+  return {
     left: meets(left, frame.left),
     top: meets(top, frame.top),
     right: meets(left + metrics.clientWidth, frame.right),
     bottom: meets(top + metrics.clientHeight, frame.bottom),
   };
-  if (!at.left && !at.top && !at.right && !at.bottom) {
+}
+
+function sharesEdge(metrics: ScrollerMetrics, frame: Frame): boolean {
+  return Object.values(sharedEdges(metrics, frame)).some(Boolean);
+}
+
+export function framedMetrics(
+  metrics: ScrollerMetrics,
+  frame: Frame | undefined,
+): ScrollerMetrics {
+  if (frame === undefined || !sharesEdge(metrics, frame)) {
     return metrics;
   }
-  const line = (shared: boolean) => (shared ? frame.line : 0);
+  const at = sharedEdges(metrics, frame);
+  const left = metrics.left + metrics.clientLeft;
+  const top = metrics.top + metrics.clientTop;
+  const right = left + metrics.clientWidth;
+  const bottom = top + metrics.clientHeight;
+  const inset: Track = {
+    top: frame.top + frame.line - top,
+    bottom: bottom - (frame.bottom - frame.line),
+    left: frame.left + frame.line - left,
+    right: right - (frame.right - frame.line),
+  };
   const inner = Math.max(0, frame.radius - frame.line);
-  const bend = (shared: boolean, corner: boolean) =>
-    shared && corner ? inner : 0;
-  const track = metrics.track ?? noTrackInsets;
+  const own = metrics.track ?? noTrackInsets;
+  const padding = metrics.padding ?? own;
+  const end = (side: keyof Track) =>
+    at[side] ? Math.max(padding[side], inset[side]) : own[side];
+  const track: Track = {
+    top: end('top'),
+    bottom: end('bottom'),
+    left: end('left'),
+    right: end('right'),
+  };
+  const bend = (side: keyof Track, corner: boolean) =>
+    at[side] && corner && track[side] - inset[side] < 0.5 ? inner : 0;
   return {
     ...metrics,
-    track: {
-      top: Math.max(track.top, line(at.top)),
-      bottom: Math.max(track.bottom, line(at.bottom)),
-      left: Math.max(track.left, line(at.left)),
-      right: Math.max(track.right, line(at.right)),
+    track,
+    edges: {
+      right: at.right ? inset.right : 0,
+      bottom: at.bottom ? inset.bottom : 0,
     },
-    edges: { right: line(at.right), bottom: line(at.bottom) },
     bends: {
-      top: bend(at.top, at.right),
-      bottom: bend(at.bottom, at.right),
-      left: bend(at.left, at.bottom),
-      right: bend(at.right, at.bottom),
+      top: bend('top', at.right),
+      bottom: bend('bottom', at.right),
+      left: bend('left', at.bottom),
+      right: bend('right', at.bottom),
     },
   };
 }
@@ -493,7 +535,12 @@ function radiusOf(style: CSSStyleDeclaration): number {
   );
 }
 
-const frameElements = new WeakMap<Element, Element | null>();
+interface Framing {
+  readonly lined: readonly Element[];
+  readonly rounded: readonly Element[];
+}
+
+const framings = new WeakMap<Element, Framing>();
 
 function lineOf(element: Element): number {
   return pixels(
@@ -501,67 +548,97 @@ function lineOf(element: Element): number {
   );
 }
 
-function frameElementOf(scroller: Element): Element | null {
-  const known = frameElements.get(scroller);
-  if (known === null || known?.isConnected === true) {
+function framingOf(scroller: Element): Framing {
+  const known = framings.get(scroller);
+  if (
+    known !== undefined &&
+    [...known.lined, ...known.rounded].every((element) => element.isConnected)
+  ) {
     return known;
   }
-  let rounded: Element | null = null;
-  let lined: Element | null = null;
+  const lined: Element[] = [];
+  const rounded: Element[] = [];
   for (
     let element = scroller.parentElement;
-    element !== null && element !== document.body && lined === null;
+    element !== null && element !== document.body;
     element = element.parentElement
   ) {
     if (lineOf(element) > 0) {
-      lined = element;
-    } else if (rounded === null && radiusOf(getComputedStyle(element)) > 0) {
-      rounded = element;
+      lined.push(element);
+    } else if (radiusOf(getComputedStyle(element)) > 0) {
+      rounded.push(element);
     }
   }
-  const found = lined ?? rounded;
-  frameElements.set(scroller, found);
-  return found;
+  const framing = { lined, rounded };
+  framings.set(scroller, framing);
+  return framing;
 }
 
-function frameOf(scroller: Element): Frame | undefined {
-  const element = frameElementOf(scroller);
-  if (element === null) {
-    return undefined;
-  }
+function frameFrom(element: Element, line: number): Frame {
   const { left, top, right, bottom } = element.getBoundingClientRect();
   return {
     left,
     top,
     right,
     bottom,
-    line: lineOf(element),
+    line,
     radius: radiusOf(getComputedStyle(element)),
   };
 }
 
+function borderOf(element: Element): number {
+  return pixels(getComputedStyle(element).borderRightWidth);
+}
+
+function frameOf(
+  scroller: Element,
+  metrics: ScrollerMetrics,
+): Frame | undefined {
+  const { lined, rounded } = framingOf(scroller);
+  const shared = [
+    ...lined.map((element) => frameFrom(element, lineOf(element))),
+    ...rounded.map((element) => frameFrom(element, borderOf(element))),
+  ].find((frame) => sharesEdge(metrics, frame));
+  if (shared !== undefined) {
+    return shared;
+  }
+  return radiusOf(getComputedStyle(scroller)) > 0
+    ? frameFrom(scroller, borderOf(scroller))
+    : undefined;
+}
+
 function metricsOf(scroller: Element, axis: Axis): ScrollerMetrics {
   const sideways = axis === 'horizontal' && sidewaysScrollers.get(scroller);
-  return framedMetrics(
-    sideways ? sideways.metrics() : elementMetrics(scroller),
-    frameOf(scroller),
-  );
+  const metrics = sideways ? sideways.metrics() : elementMetrics(scroller);
+  return framedMetrics(metrics, frameOf(scroller, metrics));
+}
+
+function refined(whole: number, measured: number): number {
+  return measured > 0 && Math.abs(measured - whole) < 1 ? measured : whole;
 }
 
 export function elementMetrics(scroller: Element): ScrollerMetrics {
-  const { left, top } = scroller.getBoundingClientRect();
+  const { left, top, width, height } = scroller.getBoundingClientRect();
+  const style = getComputedStyle(scroller);
   return {
     left,
     top,
     clientLeft: scroller.clientLeft,
     clientTop: scroller.clientTop,
-    clientWidth: scroller.clientWidth,
-    clientHeight: scroller.clientHeight,
+    clientWidth: refined(
+      scroller.clientWidth,
+      width - scroller.clientLeft - pixels(style.borderRightWidth),
+    ),
+    clientHeight: refined(
+      scroller.clientHeight,
+      height - scroller.clientTop - pixels(style.borderBottomWidth),
+    ),
     scrollWidth: scroller.scrollWidth,
     scrollHeight: scroller.scrollHeight,
     scrollLeft: scroller.scrollLeft,
     scrollTop: scroller.scrollTop,
-    track: trackOf(getComputedStyle(scroller)),
+    track: trackOf(style),
+    padding: paddingOf(style),
   };
 }
 
