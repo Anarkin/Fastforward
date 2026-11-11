@@ -1872,8 +1872,8 @@ body.resizing {
 
 .minimap-viewport {
   position: absolute;
-  left: 0;
   right: 0;
+  width: var(--scrollbar-size);
   box-sizing: border-box;
   min-height: 8px;
   border: 2px solid transparent;

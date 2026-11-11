@@ -2530,6 +2530,20 @@ suite('Style', () => {
     );
   });
 
+  test('keeps the minimap of a diff as wide as its setting and its scrollbar as wide as the scrollbars, against its right edge, the marks across the whole minimap', () => {
+    const shown = minimap();
+    looks(shown, { width: 'var(--minimap-width)', right: '0' });
+    looks(withClass(shown, 'minimap-viewport'), {
+      left: undefined,
+      right: '0',
+      width: 'var(--scrollbar-size)',
+    });
+    looks(withClass(shown, 'minimap-mark', 'added'), {
+      left: '2px',
+      right: '2px',
+    });
+  });
+
   test('draws the minimap marks as see-through as the theme says', () => {
     for (const [kind, color] of [
       ['added', 'added'],
