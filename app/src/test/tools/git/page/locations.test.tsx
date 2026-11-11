@@ -201,13 +201,7 @@ suite('Locations search', () => {
       { kind: 'branch', name: 'feat/main', commit: 'b' },
     ];
     const stash = { name: 'stash@{0}', commit: 's0', message: 'On main: x' };
-    const pinned = pinnedResults(
-      {
-        checkedOut: [{ kind: 'branch', name: 'main' }],
-        bookmarks: [{ kind: 'tag', name: 'v1-main' }],
-      },
-      matching,
-    );
+    const pinned = pinnedResults([{ kind: 'tag', name: 'v1-main' }], matching);
     assert.deepStrictEqual(
       resultItems(
         [commitInfo('f1'), commitInfo('f2')],
@@ -216,8 +210,7 @@ suite('Locations search', () => {
         pinned,
       ).map(itemKey),
       [
-        'pinned:checkedOut:branch:main',
-        'pinned:bookmarks:tag:v1-main',
+        'pinned:tag:v1-main',
         'branch:feat/main',
         'branch:main',
         'tag:v1-main',
@@ -230,13 +223,11 @@ suite('Locations search', () => {
 
   test('jumps on Enter to the commit of a pinned row, or nowhere for a bookmark that is gone', () => {
     const [main, gone, hash] = pinnedResults(
-      {
-        checkedOut: [{ kind: 'branch', name: 'main' }],
-        bookmarks: [
-          { kind: 'branch', name: 'gone' },
-          { kind: 'commit', name: 'e'.repeat(40) },
-        ],
-      },
+      [
+        { kind: 'branch', name: 'main' },
+        { kind: 'branch', name: 'gone' },
+        { kind: 'commit', name: 'e'.repeat(40) },
+      ],
       refs,
     );
     assert.strictEqual(enterTarget('main', undefined, main), 'b');
@@ -249,7 +240,7 @@ suite('Locations search', () => {
 
   test('jumps on Enter to the bookmark named as typed, though its name may be a hash not looked up yet', () => {
     const [bookmark] = pinnedResults(
-      { checkedOut: [], bookmarks: [{ kind: 'tag', name: '2024' }] },
+      [{ kind: 'tag', name: '2024' }],
       [{ kind: 'tag', name: '2024', commit: 'e' }],
     );
     assert.strictEqual(enterTarget(' 2024 ', undefined, bookmark), 'e');
@@ -749,7 +740,6 @@ suite('Commit results', () => {
       },
     });
     assert.deepStrictEqual(headings(html), [
-      'Checked out',
       'Bookmarks',
       'Local branches',
       'Remote branches',
@@ -896,15 +886,13 @@ suite('Search', () => {
     assert.match(active[0], /title="v1"/);
   });
 
-  test('pins the checked-out branch and bookmarks, showing one that is gone as such', () => {
+  test('pins the bookmarks, showing one that is gone as such, and not the checked-out branch, which its group shows', () => {
     const html = popup('', undefined, {
       repository: { ...refState, head: 'main' },
       bookmarks: [{ kind: 'branch', name: 'gone' }],
     });
-    assert.match(
-      html,
-      /<header class="locations-heading">Checked out<span class="locations-count">1<\/span><\/header><div class="locations-list"><div[^>]*><span class="badge branch[^"]*"[^>]*>main</,
-    );
+    assert.deepStrictEqual(headings(html)[0], 'Bookmarks');
+    assert.doesNotMatch(html, /Checked out/);
     assert.match(
       html,
       /<header class="locations-heading">Bookmarks<span class="locations-count">1<\/span><\/header><div class="locations-list"><div[^>]*><span class="badge branch[^"]* missing[^"]*"[^>]*>gone</,
@@ -1056,14 +1044,13 @@ suite('Browsing the locations by keyboard', () => {
       },
       async ({ press, active }) => {
         const seen: (string | null | undefined)[] = [];
-        for (let step = 0; step < 7; step++) {
+        for (let step = 0; step < 6; step++) {
           await press('ArrowDown');
           const row = active();
           assert.strictEqual(row?.getAttribute('aria-selected'), 'true');
           seen.push(row?.textContent);
         }
         assert.deepStrictEqual(seen, [
-          'main',
           'e'.repeat(7),
           '▸feat',
           'main',
@@ -1086,7 +1073,6 @@ suite('Browsing the locations by keyboard', () => {
     await browsed(
       { repository: browsedState, onJump: (commit) => jumped.push(commit) },
       async ({ press, active }) => {
-        await press('ArrowDown');
         await press('ArrowDown');
         const folder = active();
         assert.strictEqual(folder?.getAttribute('role'), 'treeitem');
@@ -1148,7 +1134,7 @@ suite('Browsing the locations by keyboard', () => {
           '',
         );
         const seen: (string | undefined)[] = [];
-        for (let step = 0; step < 8; step++) {
+        for (let step = 0; step < 7; step++) {
           const row = active();
           assert.strictEqual(row?.getAttribute('role'), 'option');
           assert.strictEqual(row.getAttribute('aria-selected'), 'true');
@@ -1156,8 +1142,7 @@ suite('Browsing the locations by keyboard', () => {
           await press('ArrowDown');
         }
         assert.deepStrictEqual(seen, [
-          'pinned:checkedOut:branch:main',
-          'pinned:bookmarks:branch:maint',
+          'pinned:branch:maint',
           'branch:main',
           'branch:maint',
           'remote:o/main',

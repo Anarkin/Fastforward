@@ -71,42 +71,18 @@ export function toggleBookmark(
     : [...bookmarks, bookmark];
 }
 
-function checkedOutRefs(
-  refs: readonly RefInfo[],
-  head: string | undefined,
-): BookmarkRef[] {
-  return head && hasRef(refs, { kind: 'branch', name: head })
-    ? [{ kind: 'branch', name: head }]
-    : [];
-}
-
-export interface PinnedRefs {
-  readonly checkedOut: readonly Bookmark[];
-  readonly bookmarks: readonly Bookmark[];
-}
-
-export function pinnedRefs(
+export function searchedBookmarks(
   bookmarks: readonly Bookmark[],
   refs: readonly RefInfo[],
-  head: string | undefined,
-  detached: string | undefined,
   query: string,
-): PinnedRefs {
+): Bookmark[] {
   const needle = folded(query.trim());
-  const matches = (bookmark: Bookmark) =>
-    folded(bookmark.name).includes(needle);
-  const checkedOut: Bookmark[] = detached
-    ? [{ kind: 'commit', name: detached }]
-    : checkedOutRefs(refs, head);
-  return {
-    checkedOut: checkedOut.filter(matches),
-    bookmarks: bookmarks
-      .filter(matches)
-      .map((bookmark): [Bookmark, SortedBookmark] => [
-        bookmark,
-        onRemote(bookmark) ? (findRef(refs, bookmark) ?? bookmark) : bookmark,
-      ])
-      .toSorted(([, a], [, b]) => compareBookmarks(a, b))
-      .map(([bookmark]) => bookmark),
-  };
+  return bookmarks
+    .filter((bookmark) => folded(bookmark.name).includes(needle))
+    .map((bookmark): [Bookmark, SortedBookmark] => [
+      bookmark,
+      onRemote(bookmark) ? (findRef(refs, bookmark) ?? bookmark) : bookmark,
+    ])
+    .toSorted(([, a], [, b]) => compareBookmarks(a, b))
+    .map(([bookmark]) => bookmark);
 }

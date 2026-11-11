@@ -491,7 +491,6 @@ export const strings = {
     tags: 'Tags',
     stashes: 'Stashes',
     commits: 'Commits',
-    checkedOut: 'Checked out',
     bookmarks: 'Bookmarks',
     lookingUp: (hash: string) => sentence`Looking for commit ${named(hash)}…`,
     searching: 'Searching commits…',

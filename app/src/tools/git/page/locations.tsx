@@ -17,7 +17,7 @@ import type {
   StashInfo,
 } from '../shared/protocol';
 import { findRef } from '../shared/refNames';
-import { pinnedRefs, type PinnedRefs } from './bookmarks';
+import { searchedBookmarks } from './bookmarks';
 import { BackIcon } from '../../../ui/icons';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { CommitBubble, HeadBubble, RefBubble, useCheckedOut } from './bubbles';
@@ -128,13 +128,8 @@ function RefLabel({
   );
 }
 
-const pinnedSections = ['checkedOut', 'bookmarks'] as const;
-
-type PinnedSectionName = (typeof pinnedSections)[number];
-
 export interface PinnedResult {
   readonly kind: 'pinned';
-  readonly section: PinnedSectionName;
   readonly bookmark: Bookmark;
   readonly commit: string | undefined;
 }
@@ -149,17 +144,14 @@ const pinnedCommit = (item: Bookmark, refs: readonly RefInfo[]) =>
   item.kind === 'commit' ? item.name : findRef(refs, item)?.commit;
 
 export function pinnedResults(
-  pinned: PinnedRefs,
+  bookmarks: readonly Bookmark[],
   refs: readonly RefInfo[],
 ): PinnedResult[] {
-  return pinnedSections.flatMap((section) =>
-    pinned[section].map((bookmark) => ({
-      kind: 'pinned' as const,
-      section,
-      bookmark,
-      commit: pinnedCommit(bookmark, refs),
-    })),
-  );
+  return bookmarks.map((bookmark) => ({
+    kind: 'pinned' as const,
+    bookmark,
+    commit: pinnedCommit(bookmark, refs),
+  }));
 }
 
 export function resultItems(
@@ -184,8 +176,7 @@ const stashKey = (stash: StashInfo) => `stash:${stash.name}`;
 
 const refKey = (ref: RefInfo) => `${ref.kind}:${ref.name}`;
 
-const pinnedKey = (section: string, item: Bookmark) =>
-  `pinned:${section}:${item.kind}:${item.name}`;
+const pinnedKey = (item: Bookmark) => `pinned:${item.kind}:${item.name}`;
 
 const folderKey = (kind: RefKind, path: string) => `folder:${kind}:${path}`;
 
@@ -195,7 +186,7 @@ export function itemKey(item: ResultItem): string {
     : item.kind === 'stash'
       ? stashKey(item.stash)
       : item.kind === 'pinned'
-        ? pinnedKey(item.section, item.bookmark)
+        ? pinnedKey(item.bookmark)
         : refKey(item.ref);
 }
 
@@ -504,7 +495,6 @@ export function LocationsPopup({
   const stashes = useGit(
     (state) => state.tab.repository?.stashes ?? noStashList,
   );
-  const head = useGit((state) => state.tab.repository?.head);
   const lookup = useGit((state) => state.tab.hashLookup);
   const commitSearch = useGit((state) => state.tab.commitSearch);
   const {
@@ -538,10 +528,9 @@ export function LocationsPopup({
     [stashes, query],
   );
   const hasQuery = query.trim() !== '';
-  const detached = useGit(detachedHead);
   const pinned = useMemo(
-    () => pinnedRefs(bookmarks, refs, head, detached, query),
-    [bookmarks, refs, head, detached, query],
+    () => searchedBookmarks(bookmarks, refs, query),
+    [bookmarks, refs, query],
   );
   const pinnedItems = useMemo(
     () => pinnedResults(pinned, refs),
@@ -574,8 +563,7 @@ export function LocationsPopup({
     commits.length === 0 &&
     !lookingUp &&
     !searching &&
-    pinned.checkedOut.length === 0 &&
-    pinned.bookmarks.length === 0 &&
+    pinned.length === 0 &&
     search.every((group) => group.refs.length === 0) &&
     stashSearch.stashes.length === 0;
   const items = useMemo(
@@ -696,20 +684,7 @@ export function LocationsPopup({
         role={hasQuery ? 'listbox' : 'tree'}
         aria-label={strings.search.locations}
       >
-        <PinnedSection
-          title={strings.search.checkedOut}
-          section="checkedOut"
-          pinned={pinnedItems}
-          rows={rows}
-          onJump={jump}
-        />
-        <PinnedSection
-          title={strings.search.bookmarks}
-          section="bookmarks"
-          pinned={pinnedItems}
-          rows={rows}
-          onJump={jump}
-        />
+        <BookmarksSection pinned={pinnedItems} rows={rows} onJump={jump} />
         {hasQuery && !hash && nothingFound && (
           <div className="locations-empty">{strings.search.noMatches}</div>
         )}
@@ -837,30 +812,29 @@ function GroupHeading({ title, count }: { title: string; count: number }) {
   );
 }
 
-function PinnedSection({
-  title,
-  section,
+function BookmarksSection({
   pinned,
   rows,
   onJump,
 }: {
-  title: string;
-  section: PinnedSectionName;
   pinned: readonly PinnedResult[];
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
-  const items = pinned.filter((item) => item.section === section);
   const detached = useGit(detachedHead);
-  if (items.length === 0) {
+  if (pinned.length === 0) {
     return null;
   }
   return (
-    <section className="locations-group" role="group" aria-label={title}>
-      <GroupHeading title={title} count={items.length} />
+    <section
+      className="locations-group"
+      role="group"
+      aria-label={strings.search.bookmarks}
+    >
+      <GroupHeading title={strings.search.bookmarks} count={pinned.length} />
       <div className="locations-list">
-        {items.map(({ bookmark, commit }) => {
-          const key = pinnedKey(section, bookmark);
+        {pinned.map(({ bookmark, commit }) => {
+          const key = pinnedKey(bookmark);
           return (
             <div
               key={`${bookmark.kind}:${bookmark.name}`}

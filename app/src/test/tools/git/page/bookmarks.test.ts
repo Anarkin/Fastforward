@@ -8,7 +8,7 @@ import type {
 import {
   compareBookmarks,
   bookmarkOptions,
-  pinnedRefs,
+  searchedBookmarks,
   toggleBookmark,
 } from '../../../../tools/git/page/bookmarks';
 
@@ -159,7 +159,7 @@ suite('Bookmark options', () => {
   });
 });
 
-suite('Pinned refs of the search', () => {
+suite('Bookmarks of the search', () => {
   const refs: RefInfo[] = [
     { kind: 'branch', name: 'main', commit: 'a' },
     { kind: 'remote', name: 'origin/main', commit: 'a' },
@@ -167,18 +167,19 @@ suite('Pinned refs of the search', () => {
     { kind: 'remote', name: 'fork/feature-work', commit: 'b' },
     { kind: 'tag', name: 'v1', commit: 'b' },
   ];
-  const checkedOut = (head: string) =>
-    names(pinnedRefs([], refs, head, undefined, '').checkedOut);
   const bookmarks: Bookmark[] = [
     { kind: 'tag', name: 'v1' },
     { kind: 'commit', name: 'c1' },
     { kind: 'branch', name: 'main' },
   ];
 
-  test('lists only the checked-out branch, not its upstream, and every bookmark in order', () => {
-    const pinned = pinnedRefs(bookmarks, refs, 'main', undefined, '');
-    assert.deepStrictEqual(names(pinned.checkedOut), ['main']);
-    assert.deepStrictEqual(names(pinned.bookmarks), ['main', 'v1', 'c1']);
+  test('lists every bookmark in order, and nothing else, not the checked-out branch', () => {
+    assert.deepStrictEqual(names(searchedBookmarks(bookmarks, refs, '')), [
+      'main',
+      'v1',
+      'c1',
+    ]);
+    assert.deepStrictEqual(searchedBookmarks([], refs, ''), []);
   });
 
   test('orders a bookmarked remote tag right after the local tag of its name, knowing the remote it is on, also one with a slash in its name', () => {
@@ -192,22 +193,16 @@ suite('Pinned refs of the search', () => {
       },
       { kind: 'tag', name: 'u2', commit: 'a' },
     ];
-    const pinned = pinnedRefs(
+    const found = searchedBookmarks(
       [
         { kind: 'remote-tag', name: 'team/fork/v1' },
         { kind: 'tag', name: 'v1' },
         { kind: 'tag', name: 'u2' },
       ],
       tagged,
-      undefined,
-      undefined,
       '',
     );
-    assert.deepStrictEqual(names(pinned.bookmarks), [
-      'u2',
-      'v1',
-      'team/fork/v1',
-    ]);
+    assert.deepStrictEqual(names(found), ['u2', 'v1', 'team/fork/v1']);
   });
 
   test('orders bookmarked remote branches by the remote they are on, also one with a slash in its name', () => {
@@ -220,43 +215,25 @@ suite('Pinned refs of the search', () => {
         commit: 'a',
       },
     ];
-    const pinned = pinnedRefs(
+    const found = searchedBookmarks(
       [
         { kind: 'remote', name: 'team/fork/main' },
         { kind: 'branch', name: 'hotfix' },
         { kind: 'branch', name: 'main' },
       ],
       forked,
-      'main',
-      undefined,
       '',
     );
-    assert.deepStrictEqual(names(pinned.bookmarks), [
-      'hotfix',
-      'main',
-      'team/fork/main',
-    ]);
-  });
-
-  test('shows no branch before its first commit', () => {
-    assert.deepStrictEqual(checkedOut('unborn'), []);
-  });
-
-  test('lists a detached HEAD as the commit checked out', () => {
-    assert.deepStrictEqual(
-      pinnedRefs(bookmarks, refs, undefined, 'c9', '').checkedOut,
-      [{ kind: 'commit', name: 'c9' }],
-    );
+    assert.deepStrictEqual(names(found), ['hotfix', 'main', 'team/fork/main']);
   });
 
   test('keeps only what matches the search, ignoring case and spaces around it', () => {
-    const pinned = pinnedRefs(bookmarks, refs, 'main', undefined, ' MAI ');
-    assert.deepStrictEqual(names(pinned.checkedOut), ['main']);
-    assert.deepStrictEqual(names(pinned.bookmarks), ['main']);
-    assert.deepStrictEqual(
-      names(pinnedRefs(bookmarks, refs, 'main', undefined, 'V1').checkedOut),
-      [],
-    );
+    assert.deepStrictEqual(names(searchedBookmarks(bookmarks, refs, ' MAI ')), [
+      'main',
+    ]);
+    assert.deepStrictEqual(names(searchedBookmarks(bookmarks, refs, 'V1')), [
+      'v1',
+    ]);
   });
 
   test('folds the search and the names as every find does, so a letter finds its accented letter and either sigma the other', () => {
@@ -264,15 +241,18 @@ suite('Pinned refs of the search', () => {
       { kind: 'branch', name: 'feature/café', commit: 'a' },
       { kind: 'tag', name: 'ΛΟΓΟΣ', commit: 'b' },
     ];
-    const pinned = (query: string) =>
-      pinnedRefs(
-        [{ kind: 'tag', name: 'ΛΟΓΟΣ' }],
-        folding,
-        'feature/café',
-        undefined,
-        query,
+    const found = (query: string) =>
+      names(
+        searchedBookmarks(
+          [
+            { kind: 'branch', name: 'feature/café' },
+            { kind: 'tag', name: 'ΛΟΓΟΣ' },
+          ],
+          folding,
+          query,
+        ),
       );
-    assert.deepStrictEqual(names(pinned('CAFE').checkedOut), ['feature/café']);
-    assert.deepStrictEqual(names(pinned('λογοσ').bookmarks), ['ΛΟΓΟΣ']);
+    assert.deepStrictEqual(found('CAFE'), ['feature/café']);
+    assert.deepStrictEqual(found('λογοσ'), ['ΛΟΓΟΣ']);
   });
 });
