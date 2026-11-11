@@ -3063,18 +3063,16 @@ suite('Style', () => {
     }
   });
 
-  test('lays the search opened over the commit column out in lines of the line height of the settings, as the columns beside it, each heading, row and note a line with nothing above or below it, a blank line between its groups', () => {
+  test('lays the search opened over the commit column out in lines of the line height of the settings, as the columns beside it, each heading, row and note a line with nothing above or below it, and its groups one under the other', () => {
     const popup = locationsPopup('');
     const groups = allWithClass(popup, 'locations-group');
     assert.ok(groups.length > 1, String(groups.length));
-    looks(groups[0], { 'margin-top': undefined, padding: undefined });
-    for (const group of groups.slice(1)) {
+    for (const group of groups) {
       looks(group, {
-        'margin-top': 'var(--row-line-height)',
+        margin: undefined,
+        'margin-top': undefined,
         padding: undefined,
       });
-    }
-    for (const group of groups) {
       looks(withClass(group, 'locations-heading'), {
         padding: '0 8px',
         'padding-top': undefined,
@@ -3101,7 +3099,7 @@ suite('Style', () => {
       height: 'var(--row-line-height)',
       padding: '0 8px',
       margin: undefined,
-      'margin-top': 'var(--row-line-height)',
+      'margin-top': undefined,
     });
   });
 
