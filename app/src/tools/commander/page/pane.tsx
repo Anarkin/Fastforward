@@ -19,6 +19,7 @@ import { commanderKeymap } from '../shared/keymap';
 import { clicked } from '../../../shell/shared/keymap';
 import { parentFolder, type Entry, type Side } from '../shared/protocol';
 import { fileMenuItems, menuTargetOf } from './fileMenu';
+import { copiedText, type Copied } from './naming';
 import { formatSize } from './format';
 import { goesInto, opens, pointedKeys, rangeKeys, type Row } from './listing';
 import { filterStep, PaneFilter } from './paneFilter';
@@ -399,9 +400,11 @@ export function layoutMenu({
 function BookmarkButton({
   side,
   trigger,
+  onChosen,
 }: {
   side: Side;
   trigger: React.Ref<HTMLButtonElement>;
+  onChosen: () => void;
 }) {
   const bookmarks = useCommander((state) => state.view.bookmarks);
   const bookmark = useCommander((state) =>
@@ -418,6 +421,7 @@ function BookmarkButton({
       icon={<BookmarkIcon filled={bookmark !== undefined} />}
       arrow
       trigger={trigger}
+      onChosen={onChosen}
       items={bookmarkMenu({
         bookmarks,
         bookmark,
@@ -514,8 +518,13 @@ export function Pane({
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
   const [pairsClick] = useState(clickPairs);
   const [dropInto, setDropInto] = useState<string | null>();
-  const { showMenu } = useShellActions();
+  const { showMenu, copyText } = useShellActions();
   const platform = useCommander((state) => state.view.platform);
+  const copyItems = (copied: Copied, names: readonly string[]) => {
+    if (pane !== undefined) {
+      copyText(copiedText(copied, pane.folder, names, platform));
+    }
+  };
   useEffect(() => {
     if (focusAsks.count > 0) {
       filterInput.current?.focus();
@@ -563,6 +572,8 @@ export function Pane({
       {
         onFolder: (command, name) => actions.folderCommand(side, name, command),
         onEnterArchive: (name) => actions.enterArchive(side, name),
+        onCopy: copyItems,
+        onGoTo: () => actions.askGoTo(side),
         onSystemMenu:
           platform === 'win32' && !inArchive
             ? (names) => onShellMenu(names, at, false)
@@ -572,6 +583,15 @@ export function Pane({
     );
     if (items.length > 0) {
       showMenu({ x: at.x, y: at.y, items });
+    }
+  };
+  const openFolderMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    const at = { x: event.clientX, y: event.clientY };
+    if (menuOfClick(event) === 'system') {
+      onShellMenu([], at, true);
+    } else {
+      openMenu(undefined, at);
     }
   };
 
@@ -853,6 +873,9 @@ export function Pane({
       case 'paste':
         actions.paste(side);
         return;
+      case 'copyText':
+        copyItems(action.copied, action.names);
+        return;
       case 'transfer':
         actions.askTransfer(side, action.names, action.move);
         return;
@@ -994,6 +1017,7 @@ export function Pane({
                   title={strings.commander.chooseDrive}
                   label={(current ?? '').replace(/\\$/, '')}
                   trigger={driveTrigger}
+                  onChosen={focusList}
                   items={drives.map((drive) => ({
                     label: drive,
                     accessKey: drive.charAt(0),
@@ -1003,29 +1027,18 @@ export function Pane({
                 />
               </div>
             )}
-            <BookmarkButton side={side} trigger={bookmarkTrigger} />
+            <BookmarkButton
+              side={side}
+              trigger={bookmarkTrigger}
+              onChosen={focusList}
+            />
           </div>
-          <PathTitle
-            path={pane?.folder ?? ''}
-            hidden={pane?.hidden ?? []}
-            {...(pane?.archive !== undefined &&
-              archivePart(pane.archive, fileColors))}
-            flat={pane?.flat !== undefined}
-          >
-            {pane?.elevated && (
-              <span
-                className="elevated-mark"
-                title={strings.commander.readAsAdministrator}
-              >
-                <ShieldIcon />
-              </span>
-            )}
-          </PathTitle>
           <div className="column-actions">
             <div className="commander-layout">
               <MenuButton
                 title={strings.commander.layout}
                 label={strings.commander.layouts[layout]}
+                onChosen={focusList}
                 items={layoutMenu({
                   layout,
                   groupByColor: pane?.sort.groupByColor ?? false,
@@ -1043,19 +1056,33 @@ export function Pane({
           </div>
         </header>
       )}
+      <div
+        className="commander-path commander-line"
+        onContextMenu={openFolderMenu}
+      >
+        <span className="commander-icon">
+          {pane?.elevated && (
+            <span
+              className="elevated-mark"
+              title={strings.commander.readAsAdministrator}
+            >
+              <ShieldIcon />
+            </span>
+          )}
+        </span>
+        <PathTitle
+          path={pane?.folder ?? ''}
+          hidden={pane?.hidden ?? []}
+          {...(pane?.archive !== undefined &&
+            archivePart(pane.archive, fileColors))}
+          flat={pane?.flat !== undefined}
+        />
+      </div>
       {!tiled && <ColumnHeader side={side} />}
       <div
         className={`column-body${dropInto === null ? ' drop-target' : ''}`}
         ref={body}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          const at = { x: event.clientX, y: event.clientY };
-          if (menuOfClick(event) === 'system') {
-            onShellMenu([], at, true);
-          } else {
-            openMenu(undefined, at);
-          }
-        }}
+        onContextMenu={openFolderMenu}
         onDragOver={(event) => {
           if (
             !event.dataTransfer.types.includes('Files') ||

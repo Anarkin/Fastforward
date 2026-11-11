@@ -72,6 +72,7 @@ function CommanderPopups() {
       ? undefined
       : state.view.panes[state.renaming.side]?.entries,
   );
+  const goingTo = useCommander((state) => state.goingTo);
   const askingPassword = useCommander((state) => state.askingPassword);
   const askingUpdate = useCommander((state) => state.askingUpdate);
   const {
@@ -87,6 +88,8 @@ function CommanderPopups() {
     answerUpdate,
     rename,
     cancelRename,
+    goTo,
+    cancelGoTo,
   } = useCommanderActions();
   const renamed =
     renaming === undefined ? undefined : baseNameOf(renaming.name, platform);
@@ -156,6 +159,18 @@ function CommanderPopups() {
           problemOf={(to) => renameProblem(to, renamed, renamedIn, platform)}
           onConfirm={rename}
           onCancel={cancelRename}
+        />
+      )}
+      {goingTo !== undefined && (
+        <PromptPopup
+          title={strings.commander.goToTitle}
+          label={strings.commander.goToField}
+          confirm={strings.commander.goToConfirm}
+          initial={goingTo.folder}
+          selectedUpTo={goingTo.folder.length}
+          problemOf={(to) => (to === '' ? strings.commander.noPath : undefined)}
+          onConfirm={goTo}
+          onCancel={cancelGoTo}
         />
       )}
       {transferring !== undefined && (
@@ -246,6 +261,7 @@ export function CommanderTool({
     reread,
     toggleHidden,
     flat,
+    askGoTo,
   } = store.getState();
   const { closeTab: onClose } = useShellActions();
   const [share, setShare] = useState(0.5);
@@ -310,6 +326,11 @@ export function CommanderTool({
     return () => window.removeEventListener('mouseup', onMouseUp);
   }, [shown, activeSide, step]);
 
+  useBinding(
+    commanderKeymap.goTo,
+    () => askGoTo(activeSide),
+    shown && !viewing,
+  );
   useBinding(commanderKeymap.showHidden, toggleHidden, shown && !viewing);
   useBinding(
     commanderKeymap.flatView,

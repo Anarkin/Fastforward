@@ -10,6 +10,28 @@ import {
 import { DropdownIcon, MoreIcon } from './icons';
 import { keyPressed } from './shortcuts';
 
+function thenChosen(
+  items: readonly ContextMenuItem[],
+  onChosen: () => void,
+): readonly ContextMenuItem[] {
+  return items.map((item) => {
+    if ('separator' in item) {
+      return item;
+    }
+    const { onClick, submenu } = item;
+    return {
+      ...item,
+      ...(onClick !== undefined && {
+        onClick: () => {
+          onClick();
+          onChosen();
+        },
+      }),
+      ...(submenu !== undefined && { submenu: thenChosen(submenu, onChosen) }),
+    };
+  });
+}
+
 export function MenuButton({
   title,
   items,
@@ -19,6 +41,7 @@ export function MenuButton({
   label,
   trigger,
   filter,
+  onChosen,
 }: {
   title: string;
   items: readonly ContextMenuItem[];
@@ -28,10 +51,12 @@ export function MenuButton({
   label?: string;
   trigger?: React.Ref<HTMLButtonElement>;
   filter?: string;
+  onChosen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
+  const shown = onChosen === undefined ? items : thenChosen(items, onChosen);
 
   return (
     <div
@@ -64,11 +89,11 @@ export function MenuButton({
       </button>
       {open &&
         (filter === undefined ? (
-          <Dropdown container={container} items={items} onClose={close} />
+          <Dropdown container={container} items={shown} onClose={close} />
         ) : (
           <FilteredDropdown
             container={container}
-            items={items}
+            items={shown}
             placeholder={filter}
             onClose={close}
           />

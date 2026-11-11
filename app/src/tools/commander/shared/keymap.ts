@@ -37,6 +37,7 @@ export const commanderKeymap = {
     { repeats: true },
   ),
   bookmarks: bind('Moving', strings.actions.bookmarks, { 'Ctrl+D': true }),
+  goTo: bind('Moving', strings.actions.goToPath, { 'Ctrl+Shift+F6': true }),
   moveAcross: bind(
     'Moving',
     strings.actions.moveAcross,
@@ -152,6 +153,12 @@ export const commanderKeymap = {
     'Mod+C': true,
   }),
   paste: bind('Operations', strings.actions.pasteFiles, { 'Mod+V': true }),
+  copyPaths: bind('Operations', strings.actions.copyPaths, {
+    'Mod+Shift+C': 'paths',
+  } as const),
+  copyNames: bind('Operations', strings.actions.copyNames, {
+    'Alt+Shift+C': 'names',
+  } as const),
   contextMenu: bind('Operations', strings.actions.contextMenu, {
     RightClick: true,
     'Shift+F10': true,

@@ -53,6 +53,7 @@ import {
   withoutBookmark,
   type BookmarkSystem,
 } from './bookmarks';
+import { typedPath } from './typedPaths';
 import type { WatchFolder, WatchTree } from './watch';
 import { FlatTree } from './flatTree';
 import {
@@ -196,6 +197,9 @@ export interface CommanderAccess {
   readonly viewedCopies?: string;
   readonly sizeWalker?: SizeWalker;
   readonly root: string;
+  readonly home?: string;
+  readonly variable?: (name: string) => string | undefined;
+  readonly knownFolder?: (name: string) => Promise<string | undefined>;
 }
 
 interface Flat {
@@ -854,6 +858,8 @@ export class CommanderTool implements Tool<'commander'> {
       }
       case 'goToBookmark':
         return this.goToBookmark(page, message);
+      case 'goTo':
+        return this.goTo(page, message);
       default:
         return message satisfies never;
     }
@@ -3744,6 +3750,39 @@ export class CommanderTool implements Tool<'commander'> {
     if (shown !== undefined && bookmarked !== undefined) {
       await this.list(page, shown.tab, shown.side, bookmarked, 'visit');
     }
+  }
+
+  private async goTo(
+    page: Page,
+    { tab, side, folder, to }: Extract<CommanderToHost, { type: 'goTo' }>,
+  ): Promise<void> {
+    const shown = this.namingPane(page, tab, side, folder);
+    const { home, variable, knownFolder } = this.access;
+    const target =
+      shown === undefined || typeof to !== 'string'
+        ? undefined
+        : await typedPath(to, shown.pane.folder, {
+            ...this.bookmarkSystem,
+            home,
+            variable: variable ?? (() => undefined),
+            knownFolder,
+          });
+    if (shown === undefined || target === undefined) {
+      return;
+    }
+    if (await isFile(target)) {
+      await this.list(
+        page,
+        shown.tab,
+        shown.side,
+        path.dirname(target),
+        'visit',
+        undefined,
+        path.basename(target),
+      );
+      return;
+    }
+    await this.list(page, shown.tab, shown.side, target, 'visit');
   }
 
   private async drive(

@@ -875,6 +875,14 @@ async function start(asked: readonly string[]): Promise<void> {
       process.platform === 'win32' ? unpackedKoffi() : undefined,
     ),
     root: rootFolder(process.platform, process.env),
+    home: os.homedir(),
+    variable: (name) => process.env[name],
+    ...(process.platform === 'win32' && {
+      knownFolder: async (name: string) =>
+        (
+          await import('../tools/commander/main/windowsKnownFolders.js')
+        ).windowsKnownFolder(name),
+    }),
   });
   const view = new Shell(
     log,

@@ -1,6 +1,4 @@
 .commander {
-  --widest-layout-button: 104px;
-  --widest-drive-button: 48px;
   --widest-encoding-button: 88px;
   --widest-language-button: 120px;
   --commander-row-height: round(
@@ -27,33 +25,8 @@
   --text-advance: var(--commander-advance);
 }
 
-.commander .column-title:not(.searching) {
-  --start-buttons: calc(
-    2 * var(--button-size) + 2 * var(--button-gap) + var(--arrowed-button-width)
-  );
-  padding: 0
-    calc(
-      4px +
-        max(
-          var(--widest-layout-button) + 2 * var(--button-gap) + 2 *
-            var(--button-size),
-          var(--start-buttons)
-        ) +
-        8px
-    );
-}
-
-.commander .column-title:not(.searching):has(.drive-menu) {
-  --start-buttons: calc(
-    2 * var(--button-size) + 3 * var(--button-gap) +
-      var(--widest-drive-button) + var(--arrowed-button-width)
-  );
-}
-
 .elevated-mark {
-  display: inline-flex;
-  margin-right: 4px;
-  vertical-align: -3px;
+  display: flex;
   color: var(--color-warning-foreground);
 }
 
@@ -86,6 +59,18 @@
   color: var(--muted-foreground);
   border-bottom: 1px solid var(--color-border);
   box-sizing: content-box;
+}
+
+.commander-path {
+  flex: none;
+  box-sizing: content-box;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.commander-path > .path-title {
+  grid-column: 2 / -1;
+  max-width: none;
+  margin-left: calc(var(--commander-advance) - var(--commander-gap));
 }
 
 .commander-line > * {
@@ -243,10 +228,6 @@
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
   letter-spacing: calc(var(--commander-advance) - 1ch);
-}
-
-.path-title .elevated-mark {
-  flex: none;
 }
 
 .path-text {
@@ -558,10 +539,21 @@
   flex: none;
 }
 
-.column-title:has(> .column-start.viewer-actions) > .path-title {
-  flex: 0 1 auto;
+.column-title:has(> .column-start.viewer-actions) > .column-actions {
+  margin-left: auto;
+}
+
+.viewer-path {
+  flex: none;
+  display: flex;
+  height: var(--commander-row-height);
+  padding: 0 calc(var(--scrollbar-size) + 8px) 0 8px;
+  line-height: var(--commander-row-height);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.viewer-path > .path-title {
   min-width: 0;
-  margin: 0 auto;
 }
 
 .viewer-encoding .menu-button-trigger {

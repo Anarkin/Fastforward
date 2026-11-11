@@ -869,6 +869,36 @@ suite('Style', () => {
     );
   });
 
+  test('lays the path of a commander side out as its rows are, on a line of its own with a line under it, starting where the names of the rows start and running to the end of their dates', () => {
+    const line = rendered(
+      createElement(
+        'div',
+        { className: 'commander' },
+        createElement(
+          'div',
+          { className: 'commander-path commander-line' },
+          createElement('span', { className: 'commander-icon' }),
+          createElement(PathTitle, { path: 'C:/notes.txt', hidden: [] }),
+        ),
+      ),
+    );
+    looks(withClass(line, 'commander-path'), {
+      display: 'grid',
+      flex: 'none',
+      'box-sizing': 'content-box',
+      height: 'var(--commander-row-height)',
+      padding:
+        '0 calc(8px + var(--scrollbar-size)) 0 var(--commander-row-start)',
+      'border-bottom': '1px solid var(--color-border)',
+    });
+    looks(withClass(line, 'path-title'), {
+      'grid-column': '2 / -1',
+      'margin-left': 'calc(var(--commander-advance) - var(--commander-gap))',
+      'max-width': 'none',
+      'justify-content': undefined,
+    });
+  });
+
   test('draws the path of a commander title in the font of its rows, each part in the color its own row has, the folders giving way to an ellipsis at their start first, and the name only once it alone is too long, leaving the folders room for their ellipsis', () => {
     const title = rendered(
       createElement(PathTitle, { path: 'C:/notes.txt', hidden: [] }),

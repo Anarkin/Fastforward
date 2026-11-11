@@ -249,6 +249,73 @@ suite('Menu button', () => {
       },
     );
   });
+  test('tells once an item is chosen, from a submenu too, after the item acts, so the focus can go where the choice is used, keeping it on its button once closed without a choice', async () => {
+    const told: string[] = [];
+    await rendered(
+      <>
+        <MenuButton
+          title="Drive"
+          label="C:"
+          items={[
+            { label: 'D:', onClick: () => told.push('D:') },
+            {
+              label: 'More',
+              submenu: [{ label: 'E:', onClick: () => told.push('E:') }],
+            },
+          ]}
+          onChosen={() => {
+            told.push('chosen');
+            document.querySelector<HTMLElement>('.list')?.focus();
+          }}
+        />
+        <div className="list" tabIndex={-1} />
+      </>,
+      async (main, window) => {
+        const trigger = main.querySelector<HTMLButtonElement>(
+          '.menu-button-trigger',
+        );
+        const list = main.querySelector('.list');
+        assert.ok(trigger);
+        const item = (label: string) =>
+          [...main.querySelectorAll<HTMLButtonElement>('.menu-item')].find(
+            (each) => each.textContent.endsWith(label),
+          );
+        const focused: string[] = [];
+        const noteFocus = () => {
+          const active = window.document.activeElement;
+          focused.push(
+            active === list ? 'list' : active === trigger ? 'button' : 'other',
+          );
+        };
+        await act(async () => trigger.focus());
+        await act(async () => trigger.click());
+        await act(async () => item('D:')?.click());
+        noteFocus();
+
+        await act(async () => trigger.focus());
+        await act(async () => trigger.click());
+        await act(async () => item('More')?.click());
+        await act(async () => item('E:')?.click());
+        noteFocus();
+
+        await act(async () => trigger.focus());
+        await act(async () => trigger.click());
+        await act(async () =>
+          main.querySelector('.menu')?.dispatchEvent(
+            new window.KeyboardEvent('keydown', {
+              key: 'Escape',
+              bubbles: true,
+            }),
+          ),
+        );
+        noteFocus();
+        assert.strictEqual(main.querySelector('.menu'), null);
+        assert.deepStrictEqual(focused, ['list', 'list', 'button']);
+        assert.deepStrictEqual(told, ['D:', 'chosen', 'E:', 'chosen']);
+      },
+    );
+  });
+
   test('gives the focus back to its button once a menu with a filter closes, as it held it before the filter took it', async () => {
     await rendered(
       <MenuButton

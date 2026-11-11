@@ -4,6 +4,7 @@ import type { ContextMenuItem } from '../../../ui/contextMenu';
 import { ImageIcon, SevenZipIcon, ToolIcon } from '../../../ui/icons';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
 import { pointedKeys, type Row } from './listing';
+import type { Copied } from './naming';
 
 export type MenuTarget =
   | {
@@ -17,6 +18,8 @@ export type MenuTarget =
 export interface FileMenuActions {
   readonly onFolder: (command: FolderCommand, name: string | undefined) => void;
   readonly onEnterArchive: (name: string) => void;
+  readonly onCopy: (copied: Copied, names: readonly string[]) => void;
+  readonly onGoTo: () => void;
   readonly onSystemMenu: ((names: readonly string[]) => void) | undefined;
 }
 
@@ -127,23 +130,49 @@ function ownItems(
   }
 }
 
+function copyItems(
+  target: MenuTarget,
+  { onCopy }: FileMenuActions,
+): ContextMenuItem[] {
+  const names = namesOf(target);
+  const many = target.kind === 'items';
+  return [
+    {
+      label: many ? strings.commander.copyPaths : strings.commander.copyPath,
+      onClick: () => onCopy('paths', names),
+    },
+    {
+      label: many ? strings.commander.copyNames : strings.commander.copyName,
+      onClick: () => onCopy('names', names),
+    },
+  ];
+}
+
 export function fileMenuItems(
   target: MenuTarget,
   actions: FileMenuActions,
   inArchive = false,
 ): ContextMenuItem[] {
-  const { onSystemMenu } = actions;
-  const own = ownItems(target, actions, inArchive);
-  if (onSystemMenu === undefined) {
-    return own;
-  }
-  return [
-    ...own,
-    ...(own.length > 0 ? [{ separator: true } as const] : []),
-    {
-      label: strings.commander.showMoreOptions,
-      title: strings.commander.showMoreOptionsTitle,
-      onClick: () => onSystemMenu(namesOf(target)),
-    },
+  const { onGoTo, onSystemMenu } = actions;
+  const groups: ContextMenuItem[][] = [
+    ownItems(target, actions, inArchive),
+    copyItems(target, actions),
+    target.kind === 'folder' && target.name === undefined
+      ? [{ label: strings.commander.goToItem, onClick: onGoTo }]
+      : [],
+    onSystemMenu === undefined
+      ? []
+      : [
+          {
+            label: strings.commander.showMoreOptions,
+            title: strings.commander.showMoreOptionsTitle,
+            onClick: () => onSystemMenu(namesOf(target)),
+          },
+        ],
   ];
+  return groups
+    .filter((group) => group.length > 0)
+    .flatMap((group, index) =>
+      index === 0 ? group : [{ separator: true } as const, ...group],
+    );
 }

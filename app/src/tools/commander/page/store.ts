@@ -115,6 +115,8 @@ interface MakingFolder {
   readonly folder: string;
 }
 
+type GoingTo = MakingFolder;
+
 interface NoAccess {
   readonly side: Side;
   readonly folder: string;
@@ -137,6 +139,7 @@ interface CommanderSource {
     | undefined;
   readonly makingFolder: MakingFolder | undefined;
   readonly renaming: Renaming | undefined;
+  readonly goingTo: GoingTo | undefined;
   readonly packing: Packing | undefined;
   readonly packChoices: PackChoices;
   readonly noAccess: NoAccess | undefined;
@@ -244,6 +247,9 @@ interface CommanderActions {
   readonly askRename: (side: Side, name: string) => void;
   readonly rename: (to: string) => void;
   readonly cancelRename: () => void;
+  readonly askGoTo: (side: Side) => void;
+  readonly goTo: (to: string) => void;
+  readonly cancelGoTo: () => void;
   readonly askPack: (side: Side, names: readonly string[]) => void;
   readonly pack: (answer: PackAnswer) => void;
   readonly cancelPack: () => void;
@@ -286,6 +292,7 @@ const commanderDefaults: CommanderSource = {
   askingUpdate: undefined,
   makingFolder: undefined,
   renaming: undefined,
+  goingTo: undefined,
   packing: undefined,
   packChoices: {
     format: 'zip',
@@ -701,6 +708,10 @@ export function createCommanderStore(
       if (renaming !== undefined && !stillShown(get().view, renaming)) {
         set({ renaming: undefined });
       }
+      const { goingTo } = get();
+      if (goingTo !== undefined && !stillShown(get().view, goingTo)) {
+        set({ goingTo: undefined });
+      }
       const { packing } = get();
       if (packing !== undefined && !stillShown(get().view, packing)) {
         set({ packing: undefined });
@@ -1094,6 +1105,16 @@ export function createCommanderStore(
         }
       },
       cancelRename: () => set({ renaming: undefined }),
+      askGoTo: (side) =>
+        onPane(side, (tab, folder) => set({ goingTo: { tab, side, folder } })),
+      goTo: (to) => {
+        const { goingTo } = get();
+        if (goingTo !== undefined) {
+          set({ goingTo: undefined });
+          post({ type: 'goTo', ...goingTo, to });
+        }
+      },
+      cancelGoTo: () => set({ goingTo: undefined }),
       askPack: (side, names) =>
         onDisk(side, (tab, folder) => {
           const other = get().view.panes[otherSide(side)];

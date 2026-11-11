@@ -830,6 +830,39 @@ suite('Commander store', () => {
     );
   });
 
+  test('asks for the path to go to on a side, from the folder it shows, going there once told, and nowhere once cancelled or the side shows another folder', () => {
+    const { posted, store } = shown();
+    const actions = store.getState();
+    actions.askGoTo('left');
+    assert.deepStrictEqual(store.getState().goingTo, {
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+    });
+    actions.cancelGoTo();
+    assert.strictEqual(store.getState().goingTo, undefined);
+    actions.askGoTo('left');
+    actions.goTo('D:\\Work');
+    assert.strictEqual(store.getState().goingTo, undefined);
+    actions.askGoTo('left');
+    store.getState().receive(listing(`${left.folder}/sub`));
+    assert.strictEqual(store.getState().goingTo, undefined);
+    actions.goTo('late');
+
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'goTo'),
+      [
+        {
+          type: 'goTo',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          to: 'D:\\Work',
+        },
+      ],
+    );
+  });
+
   test('asks how to pack the items of a side into the folder of the other side, its own while the other is in an archive, packing them once told and remembering the choices but no password, and nothing once cancelled or the side shows another folder', () => {
     const { posted, store } = shown();
     const actions = store.getState();

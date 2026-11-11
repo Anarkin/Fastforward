@@ -268,6 +268,7 @@ suite('Shortcuts popup', () => {
           'Go up to the parent folder',
           'Back or forward through the folders of the side',
           'Open the bookmarks of the side, to go to one or to bookmark the folder of the side',
+          'Go to a folder by typing or pasting its path, or to the folder of a file with the file selected',
           'Move to the thumbnail on the left or right',
           'Go to the other side',
           'Choose the drive of the left or right side',
@@ -313,6 +314,8 @@ suite('Shortcuts popup', () => {
           'Move the marked items, or the selected one, to the Recycle Bin, or with Shift delete them permanently',
           'Put the marked items, or the selected one, on the clipboard, to paste them here or into another app',
           'Copy the files on the clipboard into the folder of the side',
+          'Copy the paths of the marked items, or of the selected one, as text, or the path of the folder of the side on ..',
+          'Copy the names of the marked items, or of the selected one, as text, or the name of the folder of the side on ..',
           'Show the menu of the marked items, the one clicked or selected, or the folder of the side',
           'Show the extended menu of Windows for the marked items, the one clicked, or the folder of the side',
         ],
@@ -536,10 +539,13 @@ suite('Shortcuts popup', () => {
       ['everywhere', 0],
     ]);
     assert.deepStrictEqual(counts('ARCHIVE')[0], ['commander', 2]);
-    const renames = shown('shift f6')
+    const shiftF6 = shown('shift f6')
       .flatMap((each) => each.groups.flatMap((group) => group.rows))
       .map((row) => row.binding.action);
-    assert.deepStrictEqual(renames, ['Rename the selected file or folder']);
+    assert.deepStrictEqual(shiftF6, [
+      'Go to a folder by typing or pasting its path, or to the folder of a file with the file selected',
+      'Rename the selected file or folder',
+    ]);
     assert.ok(shown('mark zzz').every((each) => each.count === 0));
     assert.deepStrictEqual(
       shown('').map((each) => each.count),

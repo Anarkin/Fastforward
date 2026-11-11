@@ -13,6 +13,7 @@ import { keyPressed } from '../../../ui/shortcuts';
 import { commanderKeymap } from '../shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import { chosenKeys, opens, passedKeys, type Row } from './listing';
+import type { Copied } from './naming';
 import { moveInGrid } from './tiles';
 
 export type PaneAct =
@@ -23,6 +24,11 @@ export type PaneAct =
   | { readonly kind: 'enterArchive'; readonly name: string }
   | { readonly kind: 'copyToClipboard'; readonly names: readonly string[] }
   | { readonly kind: 'paste' }
+  | {
+      readonly kind: 'copyText';
+      readonly copied: Copied;
+      readonly names: readonly string[];
+    }
   | {
       readonly kind: 'transfer';
       readonly names: readonly string[];
@@ -105,6 +111,18 @@ export function paneKey(
   }
   if (keyPressed(commanderKeymap.paste, event) !== undefined) {
     return { act: { kind: 'paste' } };
+  }
+  const copied =
+    keyPressed(commanderKeymap.copyPaths, event) ??
+    keyPressed(commanderKeymap.copyNames, event);
+  if (copied !== undefined) {
+    return {
+      act: {
+        kind: 'copyText',
+        copied,
+        names: chosenKeys(rows, selected, marked),
+      },
+    };
   }
   if (keyPressed(commanderKeymap.renameItem, event) !== undefined) {
     return row?.entry === undefined

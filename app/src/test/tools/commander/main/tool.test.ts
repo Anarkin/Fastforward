@@ -589,6 +589,8 @@ function commander(
       return counting.walker;
     },
     root,
+    home: at('work'),
+    variable: (name) => (name === 'WORK' ? at('work') : undefined),
   });
   const page = new CommanderPage();
   const pages: CommanderPage[] = [page];
@@ -4277,6 +4279,111 @@ suite('Commander tool', () => {
           strings.commander.gone,
         ),
       },
+    ]);
+  });
+
+  test('goes to the path typed for a side as to any other folder, back again through its history, a relative one from the folder of the side, a file to its folder with the file selected, saying why one can’t be opened, and nowhere for a side showing another folder or a forged path', async () => {
+    const work = at('work');
+    const opened = tempFolder('commander-go');
+    try {
+      fs.writeFileSync(path.join(opened, 'notes.txt'), '');
+      const { tool, page, send, notices } = commander({
+        [root]: [folder('work')],
+        [work]: [file('a.txt')],
+        [opened]: [file('notes.txt')],
+      });
+      await tool.show(page, tab);
+
+      await send({
+        type: 'goTo',
+        tab: '1',
+        side: 'left',
+        folder: root,
+        to: `"${work}"`,
+      });
+      await send({ type: 'step', tab: '1', side: 'left', step: -1 });
+      await send({
+        type: 'goTo',
+        tab: '1',
+        side: 'left',
+        folder: root,
+        to: 'work',
+      });
+      await send({
+        type: 'goTo',
+        tab: '2',
+        side: 'left',
+        folder: work,
+        to: root,
+      });
+      await send({
+        type: 'goTo',
+        tab: '1',
+        side: 'left',
+        folder: root,
+        to: root,
+      });
+      await send(
+        forged(
+          `{ "type": "goTo", "tab": "1", "side": "left", "folder": ${JSON.stringify(work)}, "to": 2 }`,
+        ),
+      );
+      await send({
+        type: 'goTo',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        to: path.join(opened, 'notes.txt'),
+      });
+      await send({
+        type: 'goTo',
+        tab: '1',
+        side: 'right',
+        folder: opened,
+        to: at('gone'),
+      });
+
+      assert.deepStrictEqual(page.listings().slice(2), [
+        `left ${work} ↑: a.txt`,
+        `left ${root}: work [work]`,
+        `left ${work} ↑: a.txt`,
+        `right ${opened} ↑: notes.txt [notes.txt]`,
+        `right ${opened} ↑: notes.txt`,
+      ]);
+      assert.deepStrictEqual(notices, [
+        {
+          level: 'error',
+          message: strings.commander.couldNotOpen(
+            at('gone'),
+            strings.commander.gone,
+          ),
+        },
+      ]);
+    } finally {
+      removeFolder(opened);
+    }
+  });
+
+  test('goes to the home folder of the system for a tilde typed, and to the value of an environment variable for its name', async () => {
+    const work = at('work');
+    const { tool, page, send } = commander({
+      [root]: [folder('work')],
+      [work]: [file('a.txt')],
+    });
+    await tool.show(page, tab);
+
+    await send({ type: 'goTo', tab: '1', side: 'left', folder: root, to: '~' });
+    await send({
+      type: 'goTo',
+      tab: '1',
+      side: 'right',
+      folder: root,
+      to: '$WORK',
+    });
+
+    assert.deepStrictEqual(page.listings().slice(2), [
+      `left ${work} ↑: a.txt`,
+      `right ${work} ↑: a.txt`,
     ]);
   });
 

@@ -250,6 +250,9 @@ suite('App commander', () => {
           .map((uri) => fileURLToPath(uri)),
       );
 
+  const textOnClipboard = () =>
+    app.evaluate(({ clipboard }) => clipboard.readText());
+
   const markedNames = () =>
     right().locator('.commander-row.marked .commander-name').allTextContents();
 
@@ -385,38 +388,26 @@ suite('App commander', () => {
           nameInView: name.right <= title.getBoundingClientRect().right + 0.02,
         };
       });
-  const headerPlaces = () =>
-    right()
-      .locator('.column-title')
-      .evaluate((header) => {
-        const box = (selector: string) => {
-          const found = header.querySelector(selector);
-          if (found === null) {
-            throw new Error(selector);
-          }
-          return found.getBoundingClientRect();
-        };
-        const start = box('.column-start');
-        const actions = box('.column-actions');
-        const title = box('.path-title');
-        const edges = header.getBoundingClientRect();
-        const { paddingLeft, paddingRight } = getComputedStyle(header);
-        const room =
-          header.clientWidth -
-          parseFloat(paddingLeft) -
-          parseFloat(paddingRight);
-        return {
-          width: edges.width,
-          clearOfStart: Math.round(title.left - start.right),
-          clearOfActions: Math.round(actions.left - title.right),
-          offCenter: Math.round(
-            Math.abs(
-              (title.left + title.right) / 2 - (edges.left + edges.right) / 2,
-            ),
-          ),
-          shortOfRoom: Math.round(room - title.width),
-        };
-      });
+  const pathPlaces = () =>
+    right().evaluate((side) => {
+      const box = (selector: string) => {
+        const found = side.querySelector(selector);
+        if (found === null) {
+          throw new Error(selector);
+        }
+        return found.getBoundingClientRect();
+      };
+      const buttons = box('.column-title');
+      const text = box('.path-text');
+      const names = box('.commander-header .commander-name');
+      const dates = box('.commander-header .commander-date');
+      return {
+        underButtons: text.top >= buttons.bottom,
+        aboveHeadings: text.bottom <= names.top,
+        fromNames: Math.round(text.left - names.left),
+        shortOfDates: Math.round(dates.right - text.right),
+      };
+    });
   const savedBookmarks = () => {
     const file = path.join(profile, 'settings.user.json');
     return fs.existsSync(file)
@@ -872,10 +863,21 @@ suite('App commander', () => {
     );
   });
 
-  test('keeps the path of a side clear of the buttons at either end of its header, however long the path, its middle where the middle of the header is', async () => {
+  test('puts the path of a side on a line of its own under its buttons, starting where the names of its rows start, and a long one running to the end of their dates', async () => {
     const long = `a folder named at such length that its path is cut ${'x'.repeat(160)}`;
     fs.mkdirSync(path.join(opened, long));
     try {
+      const short = await pathPlaces();
+      assert.deepStrictEqual(
+        [
+          short.underButtons,
+          short.aboveHeadings,
+          short.fromNames,
+          short.shortOfDates > 0,
+        ],
+        [true, true, 0, true],
+        JSON.stringify(short),
+      );
       await select(long);
       await page.keyboard.press('Enter');
       await waitFor(
@@ -884,15 +886,15 @@ suite('App commander', () => {
           path.join(opened, long),
         'the long folder to open',
       );
-      const places = await headerPlaces();
+      const places = await pathPlaces();
       assert.deepStrictEqual(
         [
-          places.shortOfRoom <= 1,
-          places.clearOfStart >= 0,
-          places.clearOfActions >= 0,
-          places.offCenter <= 1,
+          places.underButtons,
+          places.aboveHeadings,
+          places.fromNames,
+          places.shortOfDates,
         ],
-        [true, true, true, true],
+        [true, true, 0, 0],
         JSON.stringify(places),
       );
       await page.keyboard.press('Backspace');
@@ -1048,44 +1050,91 @@ suite('App commander', () => {
     );
   });
 
-  test('centers the path of a file viewed in the room between the buttons of its header, rather than in the whole header, the buttons staying at its edges', async () => {
+  test('puts the path of a file viewed on a line of its own under the buttons of its header, starting where its text starts, the buttons staying at the edges of the header', async () => {
     await select('notes');
     await page.keyboard.press('F3');
-    await page.locator('.viewer .path-title').waitFor();
+    await page.locator('.viewer .viewer-rows .viewer-row').first().waitFor();
     const placesOf = () =>
-      page.locator('.viewer .column-title').evaluate((header) => {
+      page.locator('.viewer').evaluate((viewer) => {
         const box = (selector: string) => {
-          const found = header.querySelector(selector);
+          const found = viewer.querySelector(selector);
           if (found === null) {
             throw new Error(selector);
           }
           return found.getBoundingClientRect();
         };
-        const start = box('.column-start');
-        const actions = box('.column-actions');
-        const title = box('.path-title');
-        const edges = header.getBoundingClientRect();
+        const header = box('.column-title');
+        const start = box('.column-title .column-start');
+        const actions = box('.column-title .column-actions');
+        const text = box('.path-text');
+        const row = box('.viewer-rows .viewer-row');
         return {
-          offCenter: Math.abs(
-            (title.left + title.right) / 2 - (start.right + actions.left) / 2,
-          ),
-          start: start.left - edges.left,
-          actions: edges.right - actions.right,
+          inHeader: viewer.querySelector('.column-title .path-title') !== null,
+          underHeader: text.top >= header.bottom,
+          aboveText: text.bottom <= row.top,
+          fromText: Math.round(text.left - row.left),
+          start: Math.round(start.left - header.left),
+          actions: Math.round(header.right - actions.right),
         };
       });
-    await waitFor(
-      async () => (await placesOf()).offCenter <= 1,
-      'the path centered between the buttons',
-    );
-    const placed = await placesOf();
-    assert.deepStrictEqual(
-      [Math.round(placed.start), Math.round(placed.actions)],
-      [4, 4],
-    );
+    assert.deepStrictEqual(await placesOf(), {
+      inHeader: false,
+      underHeader: true,
+      aboveText: true,
+      fromText: 0,
+      start: 4,
+      actions: 4,
+    });
 
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
     await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+  });
+
+  test('hands the focus to the list of a side once a layout or a bookmark is chosen with the pointer from the menus of its header, and to the text of a file viewed once an encoding or a language is, so their keys work at once', async () => {
+    const focusIn = (selector: string) =>
+      page.evaluate(
+        (wanted) => Boolean(document.activeElement?.closest(wanted)),
+        selector,
+      );
+    const choose = async (menu: string, item: string) => {
+      await page.locator(menu).locator('.menu-button-trigger').click();
+      await page.locator(menu).locator(item).first().click();
+    };
+    const inList = '.commander-pane:nth-child(2) .column-body';
+    await select('notes');
+
+    const chosen: boolean[] = [];
+    await choose(
+      `.commander-pane:nth-child(2) .commander-layout`,
+      `.menu-item:has-text("${strings.commander.layouts.details}")`,
+    );
+    chosen.push(await focusIn(inList));
+    const bookmarks = right().locator(
+      `button[title="${strings.commander.bookmarks}"]`,
+    );
+    const addOrRemove = page.locator('.menu-item', {
+      hasText: new RegExp(
+        `^(${strings.commander.addBookmark}|${strings.commander.removeBookmark})$`,
+      ),
+    });
+    const toggleBookmark = async () => {
+      await bookmarks.click();
+      await addOrRemove.click();
+      return focusIn(inList);
+    };
+    chosen.push(await toggleBookmark(), await toggleBookmark());
+
+    await page.keyboard.press('F3');
+    await page.locator('.viewer .viewer-rows .viewer-row').first().waitFor();
+    await choose('.viewer-encoding', '.menu-item[aria-checked="true"]');
+    chosen.push(await focusIn('.viewer-body'));
+    await choose('.viewer .language-button', '.menu-item[aria-checked="true"]');
+    chosen.push(await focusIn('.viewer-body'));
+
+    assert.deepStrictEqual(chosen, [true, true, true, true, true]);
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
   });
 
   test('lists the files of every folder in the folder of a side on Ctrl+B, saying how many it read in how many folders and the folder of the file selected, following changes in them, and the folder alone again on Ctrl+B', async () => {
@@ -3180,6 +3229,69 @@ suite('App commander', () => {
     );
   });
 
+  test('goes to the path typed on Ctrl+Shift+F6, starting from the path of the side selected whole, so a path pasted takes its place, and to the folder of a file with the file selected', async () => {
+    const field = page.locator('.prompt-input');
+    await select('notes');
+
+    await page.keyboard.press('Control+Shift+F6');
+    await field.waitFor();
+    assert.deepStrictEqual(
+      await field.evaluate((input: HTMLInputElement) => [
+        input.value,
+        input.selectionStart,
+        input.selectionEnd,
+      ]),
+      [opened, 0, opened.length],
+    );
+    await page.keyboard.type(path.join(opened, 'src'));
+    await page.keyboard.press('Enter');
+    await field.waitFor({ state: 'detached' });
+    await waitFor(
+      async () =>
+        (await right().locator('.column-name').textContent()) ===
+        path.join(opened, 'src'),
+      'the folder typed to open',
+    );
+    await page.keyboard.press('Control+Shift+F6');
+    await field.waitFor();
+    await page.keyboard.type(`"${path.join(opened, 'notes.txt')}"`);
+    await page.keyboard.press('Enter');
+    await field.waitFor({ state: 'detached' });
+    await waitFor(
+      async () =>
+        (await right().locator('.column-name').textContent()) === opened,
+      'the folder of the file to open',
+    );
+    await waitFor(
+      async () =>
+        (
+          await right().locator('.commander-row.selected').textContent()
+        )?.includes('notes') === true,
+      'the file to be selected',
+    );
+  });
+
+  test('copies the path of the file selected as text on Mod+Shift+C and its name on Alt+Shift+C, without quotes, and the path of the folder shown on ..', async () => {
+    await select('notes');
+
+    await page.keyboard.press('ControlOrMeta+Shift+C');
+    await waitFor(
+      async () => (await textOnClipboard()) === path.join(opened, 'notes.txt'),
+      'the path of the file to be on the clipboard',
+    );
+    await page.keyboard.press('Alt+Shift+C');
+    await waitFor(
+      async () => (await textOnClipboard()) === 'notes.txt',
+      'the name of the file to be on the clipboard',
+    );
+    await page.keyboard.press('Home');
+    await page.keyboard.press('ControlOrMeta+Shift+C');
+    await waitFor(
+      async () => (await textOnClipboard()) === opened,
+      'the path of the folder shown to be on the clipboard',
+    );
+  });
+
   test('puts the marked folder and file on the clipboard of the system on Mod+C as files, which other apps paste, and copies the files there into the folder of the side on Mod+V', async () => {
     const from = path.join(opened, 'clipfrom');
     const into = path.join(opened, 'clipinto');
@@ -3561,8 +3673,12 @@ suite('App commander', () => {
       await layoutLabel(),
       strings.commander.layouts.thumbnails,
     );
-    assert.strictEqual(await right().locator('.commander-line').count(), 0);
+    assert.strictEqual(
+      await right().locator('.commander-row.commander-line').count(),
+      0,
+    );
     assert.strictEqual(await right().locator('.commander-header').count(), 0);
+    assert.strictEqual(await right().locator('.commander-path').count(), 1);
     const third = right().locator('.commander-tile', { hasText: 't3.txt' });
     assert.strictEqual(
       await third.locator('.commander-tile-size').textContent(),
@@ -4647,6 +4763,8 @@ suite('App commander', () => {
         assert.match(await selected(), /menu/);
         assert.deepStrictEqual(await appMenuItems(), [
           strings.commander.openWithSevenZip,
+          strings.commander.copyPath,
+          strings.commander.copyName,
           strings.commander.showMoreOptions,
         ]);
         const choosing = appMenu
@@ -4689,6 +4807,8 @@ suite('App commander', () => {
         await appMenu.waitFor();
         assert.deepStrictEqual(await appMenuItems(), [
           strings.commander.openWithSevenZip,
+          strings.commander.copyPath,
+          strings.commander.copyName,
           strings.commander.showMoreOptions,
         ]);
         await page.keyboard.press('Escape');

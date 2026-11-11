@@ -51,8 +51,12 @@ const pane = (elevated: boolean, hidden: readonly boolean[]): PaneView => ({
   repositories: new Set(),
   counting: 0,
 });
-const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
-  /<span class="column-name path-title">(.*?)<\/span><div class="column-actions">/.exec(
+const paneDocument = (
+  elevated: boolean,
+  hidden: readonly boolean[] = [],
+  filter?: string,
+) =>
+  new JSDOM(
     renderToStaticMarkup(
       <CommanderStore
         value={createCommanderStore(noop, {
@@ -62,6 +66,14 @@ const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
             active: 'left',
             panes: { left: pane(elevated, hidden), right: undefined },
           },
+          ...(filter !== undefined && {
+            filters: new Map([
+              [
+                JSON.stringify(['1', 'left']),
+                { folder: 'C:\\Config.Msi', query: filter },
+              ],
+            ]),
+          }),
         })}
       >
         <Pane
@@ -72,7 +84,19 @@ const header = (elevated: boolean, hidden: readonly boolean[] = []) =>
         />
       </CommanderStore>,
     ),
-  )?.[1];
+  ).window.document;
+const pathLine = (elevated: boolean, hidden: readonly boolean[] = []) =>
+  paneDocument(elevated, hidden).querySelector('.commander-path')?.innerHTML;
+const pathOf = (elevated: boolean, hidden: readonly boolean[] = []) =>
+  paneDocument(elevated, hidden).querySelector('.path-title')?.innerHTML;
+const pathPlace = (document: Document) => ({
+  inButtons: document.querySelector('.column-title .path-title') !== null,
+  underButtons: document.querySelector(
+    '.column-title + .commander-path.commander-line > .path-title',
+  )?.textContent,
+  aboveHeadings:
+    document.querySelector('.commander-path + .commander-header') !== null,
+});
 const bookmarkStar = (bookmarks: readonly string[], platform: string) =>
   new JSDOM(
     renderToStaticMarkup(
@@ -406,23 +430,49 @@ suite('Commander pane', () => {
     assert.strictEqual(bookmarkStar([], 'win32'), 'icon bookmark-icon');
   });
 
-  test('marks a folder read as administrator before its path, and no other', () => {
+  test('puts the path of a side on a line of its own under its buttons and above the headings of its columns, while the side is filtered too', () => {
+    const filtered = paneDocument(false, [], 'msi');
+    assert.notStrictEqual(
+      filtered.querySelector('.column-title.searching'),
+      null,
+    );
+    assert.deepStrictEqual(
+      [pathPlace(paneDocument(false)), pathPlace(filtered)],
+      [
+        {
+          inButtons: false,
+          underButtons: 'C:\\Config.Msi',
+          aboveHeadings: true,
+        },
+        {
+          inButtons: false,
+          underButtons: 'C:\\Config.Msi',
+          aboveHeadings: true,
+        },
+      ],
+    );
+  });
+
+  test('marks a folder read as administrator where the icons of its rows are, before its path, and no other', () => {
     assert.match(
-      header(true) ?? '',
+      pathLine(true) ?? '',
       new RegExp(
-        `^<span class="elevated-mark" title="${strings.commander.readAsAdministrator}">.*<span class="path-text">`,
+        `^<span class="commander-icon"><span class="elevated-mark" title="${strings.commander.readAsAdministrator}">.*</span></span><span class="column-name path-title"><span class="path-text">`,
       ),
     );
-    assert.match(header(false) ?? '', /^<span class="path-text">/);
+    assert.match(
+      pathLine(false) ?? '',
+      /^<span class="commander-icon"><\/span><span class="column-name path-title"><span class="path-text">/,
+    );
   });
 
   test('dims each hidden folder of its path, as its row is, and no other', () => {
     assert.strictEqual(
-      header(false, [false, true]),
+      pathOf(false, [false, true]),
       '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name hidden">Config.Msi</span></span></span>',
     );
     assert.strictEqual(
-      header(false),
+      pathOf(false),
       '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name">Config.Msi</span></span></span>',
     );
   });

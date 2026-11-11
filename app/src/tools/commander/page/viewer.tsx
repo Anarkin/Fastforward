@@ -148,6 +148,8 @@ export function Viewer() {
     setFinding(true);
     setFocusAsks((count) => count + 1);
   };
+  const viewer = useRef<HTMLElement>(null);
+  const focusBody = () => columnFocusOf(viewer.current)?.focus();
   const closeFind = () => {
     columnFocusOf(findInput.current)?.focus();
     setFinding(false);
@@ -164,6 +166,7 @@ export function Viewer() {
   return (
     <section
       className="column viewer"
+      ref={viewer}
       onKeyDown={(event) => {
         const pressed = viewerKey(event, { mode, readsText, showsImage });
         if (pressed === undefined) {
@@ -235,6 +238,7 @@ export function Viewer() {
                 <MenuButton
                   title={strings.commander.encoding}
                   trigger={encodingTrigger}
+                  onChosen={focusBody}
                   label={strings.commander.encodingShort[shown]}
                   filter={strings.common.findEncoding}
                   items={encodingMenu(encoding, shown, setEncoding)}
@@ -248,6 +252,7 @@ export function Viewer() {
                 single
                 choose={chooseLanguage}
                 trigger={languageTrigger}
+                onChosen={focusBody}
               />
             )}
             {showsImage && <span className="nav-button-space" />}
@@ -290,11 +295,6 @@ export function Viewer() {
               </div>
             )}
           </div>
-          <PathTitle
-            path={file}
-            hidden={viewing?.hidden ?? []}
-            color={fileColor}
-          />
           <div className="column-actions">
             <SearchButton
               title={strings.commander.findInFile}
@@ -303,6 +303,13 @@ export function Viewer() {
           </div>
         </header>
       )}
+      <div className="viewer-path">
+        <PathTitle
+          path={file}
+          hidden={viewing?.hidden ?? []}
+          color={fileColor}
+        />
+      </div>
       {viewing === undefined ? (
         <div className="column-body viewer-body" />
       ) : mode === 'preview' && preview !== undefined ? (

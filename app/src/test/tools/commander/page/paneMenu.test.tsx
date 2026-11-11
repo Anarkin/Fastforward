@@ -12,12 +12,15 @@ import {
 } from '../../../../tools/commander/page/view';
 import { createCommanderStore } from '../../../../tools/commander/page/store';
 import type { CommanderToHost } from '../../../../tools/commander/shared/protocol';
+import type { ToHost } from '../../../../shell/shared/protocol';
 import type { Layout } from '../../../../tools/commander/shared/settings';
 import { withStores } from '../../../componentFixtures';
 import { noop } from '../../../fixtures';
 
 vi.mock('../../../../ui/virtualRows', async (importOriginal) => {
   const { createElement, Fragment } = await import('react');
+  const { columnFocusAttribute } =
+    await import('../../../../ui/columnFocus.js');
   return {
     ...(await importOriginal<typeof import('../../../../ui/virtualRows')>()),
     VirtualRows: ({
@@ -29,7 +32,7 @@ vi.mock('../../../../ui/virtualRows', async (importOriginal) => {
     }) =>
       createElement(
         'div',
-        null,
+        { [columnFocusAttribute]: '', tabIndex: 0 },
         Array.from({ length: rows.count }, (_, index) =>
           createElement(Fragment, { key: index }, renderRow(index)),
         ),
@@ -81,6 +84,8 @@ async function inPane(
     readonly menu: () => readonly string[];
     readonly choose: (label: string) => void;
     readonly posted: CommanderToHost[];
+    readonly copied: () => readonly string[];
+    readonly goingTo: () => string | undefined;
     readonly selected: () => string | undefined;
     readonly marked: () => readonly string[];
   }) => Promise<void>,
@@ -99,6 +104,7 @@ async function inPane(
     window: dom.window,
     document: dom.window.document,
     HTMLElement: dom.window.HTMLElement,
+    Node: dom.window.Node,
     matchMedia: dom.window.matchMedia,
     devicePixelRatio: 1,
     ResizeObserver: class {
@@ -122,16 +128,19 @@ async function inPane(
     const root = createRoot(main);
     const posted: CommanderToHost[] = [];
     const commander = createCommanderStore((message) => posted.push(message), {
+      drives: ['C:\\', 'D:\\'],
       view: {
         ...emptyView,
         tab: '1',
         active: 'left',
         platform: 'win32',
+        bookmarks: ['/work/docs'],
         layouts: { left: layout, right: 'details' },
         panes: { left: workPane(), right: undefined },
       },
     });
-    const shell = createShellStore(noop);
+    const shellPosted: ToHost[] = [];
+    const shell = createShellStore((message) => shellPosted.push(message));
     await act(async () => {
       root.render(
         withStores(
@@ -187,6 +196,11 @@ async function inPane(
         act(() => item.onClick?.());
       },
       posted,
+      copied: () =>
+        shellPosted.flatMap((message) =>
+          message.type === 'copyText' ? [message.text] : [],
+        ),
+      goingTo: () => commander.getState().goingTo?.folder,
       selected: () => commander.getState().view.panes.left?.selected,
       marked: () => [...(commander.getState().view.panes.left?.marked ?? [])],
     });
@@ -213,10 +227,65 @@ const shownFolderMenu = [
   strings.commander.newTerminalHere,
   strings.commander.cloneHere,
   strings.commander.initHere,
+  strings.commander.copyPath,
+  strings.commander.copyName,
+  strings.commander.goToItem,
   strings.commander.showMoreOptions,
 ];
 
 suite('Commander menu on a side', () => {
+  test('hands the focus to the list of the side once a drive, a bookmark or a layout is chosen from the menus of its header, so its keys work at once', async () => {
+    await inPane(async ({ main }) => {
+      const chosenFrom = async (title: string, label: string) => {
+        const trigger = main.querySelector<HTMLButtonElement>(
+          `button[title="${title}"]`,
+        );
+        assert.ok(trigger, title);
+        await act(async () => trigger.focus());
+        await act(async () => trigger.click());
+        const item = [
+          ...main.querySelectorAll<HTMLButtonElement>('.menu-item'),
+        ].find((each) => each.textContent.endsWith(label));
+        assert.ok(item, label);
+        await act(async () => item.click());
+        return Boolean(
+          main.ownerDocument.activeElement?.closest('.column-body'),
+        );
+      };
+
+      assert.deepStrictEqual(
+        [
+          await chosenFrom(strings.commander.chooseDrive, 'D:\\'),
+          await chosenFrom(strings.commander.bookmarks, '/work/docs'),
+          await chosenFrom(
+            strings.commander.layout,
+            strings.commander.layouts.details,
+          ),
+        ],
+        [true, true, true],
+      );
+    });
+  });
+
+  test('opens the menu of the folder shown on a right click on its path, copying its path or name as text, or asking for a path to go to', async () => {
+    await inPane(
+      async ({ main, rightClick, menu, choose, copied, goingTo }) => {
+        rightClick(main.querySelector('.commander-path .path-name'));
+        assert.deepStrictEqual(menu(), shownFolderMenu);
+        choose(strings.commander.copyPath);
+        rightClick(main.querySelector('.commander-path'));
+        choose(strings.commander.copyName);
+        rightClick(rowNamed(main, 'notes'));
+        choose(strings.commander.copyName);
+        rightClick(main.querySelector('.commander-path'));
+        choose(strings.commander.goToItem);
+
+        assert.deepStrictEqual(copied(), ['/work', 'work', 'notes.txt']);
+        assert.strictEqual(goingTo(), '/work');
+      },
+    );
+  });
+
   test('opens the menu of the folder shown on a right click on .. or on the empty space, asking for its commands without naming a folder', async () => {
     await inPane(async ({ main, rightClick, menu, choose, posted }) => {
       rightClick(main.querySelector('.commander-row'));
@@ -257,6 +326,8 @@ suite('Commander menu on a side', () => {
         assert.deepStrictEqual(menu(), [
           strings.commander.newTerminalHere,
           strings.commander.openInGit,
+          strings.commander.copyPath,
+          strings.commander.copyName,
           strings.commander.showMoreOptions,
         ]);
         choose(strings.commander.openInGit);
@@ -265,6 +336,8 @@ suite('Commander menu on a side', () => {
         assert.strictEqual(selected(), 'notes.txt');
         assert.deepStrictEqual(menu(), [
           strings.commander.openWithSevenZip,
+          strings.commander.copyPath,
+          strings.commander.copyName,
           strings.commander.showMoreOptions,
         ]);
 

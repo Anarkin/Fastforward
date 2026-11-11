@@ -351,6 +351,8 @@ export const strings = {
     folderHistory: 'Back or forward through the folders of the side',
     bookmarks:
       'Open the bookmarks of the side, to go to one or to bookmark the folder of the side',
+    goToPath:
+      'Go to a folder by typing or pasting its path, or to the folder of a file with the file selected',
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
     dialogButton: 'Move between the buttons of a dialog',
@@ -365,6 +367,10 @@ export const strings = {
     copyToClipboard:
       'Put the marked items, or the selected one, on the clipboard, to paste them here or into another app',
     pasteFiles: 'Copy the files on the clipboard into the folder of the side',
+    copyPaths:
+      'Copy the paths of the marked items, or of the selected one, as text, or the path of the folder of the side on ..',
+    copyNames:
+      'Copy the names of the marked items, or of the selected one, as text, or the name of the folder of the side on ..',
     transferItems:
       'Copy the marked items, or the selected one, into the folder of the other side, or move them there with F6',
     deleteItems:
@@ -788,6 +794,15 @@ export const strings = {
     renameTitle: 'Rename',
     newName: 'New name',
     renameConfirm: 'Rename',
+    goToTitle: 'Go To',
+    goToField: 'Path',
+    goToConfirm: 'Go',
+    goToItem: 'Go To...',
+    noPath: 'Type the path to go to.',
+    copyPath: 'Copy Path',
+    copyPaths: 'Copy Paths',
+    copyName: 'Copy Name',
+    copyNames: 'Copy Names',
     renameFailed: (name: string, reason: Sentence) =>
       sentence`${named(name)} could not be renamed: ${reason}`,
     renameAsAdministrator:

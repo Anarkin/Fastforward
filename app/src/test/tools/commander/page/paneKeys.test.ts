@@ -99,6 +99,24 @@ suite('Commander keys', () => {
     });
   });
 
+  test('copies the path of the file selected, or of the ones marked, as text on Mod+Shift+C and their names on Alt+Shift+C, those of the folder shown on the parent folder', () => {
+    const paths = pressed('C', { ctrlKey: true, shiftKey: true });
+    const names = pressed('C', { altKey: true, shiftKey: true });
+    assert.deepStrictEqual(paneKey(paths, at('a.txt')), {
+      act: { kind: 'copyText', copied: 'paths', names: ['a.txt'] },
+    });
+    assert.deepStrictEqual(
+      paneKey(names, at('a.txt', { marked: new Set(['docs', 'b.txt']) })),
+      { act: { kind: 'copyText', copied: 'names', names: ['docs', 'b.txt'] } },
+    );
+    assert.deepStrictEqual(paneKey(paths, at('..')), {
+      act: { kind: 'copyText', copied: 'paths', names: [] },
+    });
+    assert.deepStrictEqual(paneKey(names, at('..')), {
+      act: { kind: 'copyText', copied: 'names', names: [] },
+    });
+  });
+
   test('asks for the new name of the file or folder selected on Shift+F6, of no other marked, and of nothing on the parent folder', () => {
     const rename = pressed('F6', { shiftKey: true });
     assert.deepStrictEqual(

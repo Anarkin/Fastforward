@@ -379,6 +379,13 @@ export type CommanderToHost =
       readonly side: Side;
       readonly folder: string;
     }
+  | {
+      readonly type: 'goTo';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly to: string;
+    }
   | { readonly type: 'dropIcons'; readonly tickets: readonly string[] };
 
 export interface CommanderDrop {

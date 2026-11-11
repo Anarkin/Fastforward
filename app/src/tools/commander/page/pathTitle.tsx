@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import { pathParts } from '../shared/paths';
 
 export function nameOf(path: string): string {
@@ -18,14 +18,12 @@ export function PathTitle({
   color,
   coloredPart,
   flat = false,
-  children,
 }: {
   readonly path: string;
   readonly hidden: readonly boolean[];
   readonly color?: string;
   readonly coloredPart?: number;
   readonly flat?: boolean;
-  readonly children?: ReactNode;
 }) {
   const parts = pathParts(path);
   const last = parts.length - 1;
@@ -38,7 +36,6 @@ export function PathTitle({
       : undefined;
   return (
     <span className="column-name path-title">
-      {children}
       <span className="path-text">
         {last > 0 && (
           <span className="path-folder">
