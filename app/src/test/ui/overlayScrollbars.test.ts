@@ -6,6 +6,7 @@ import {
   draggedScroll,
   drawsOverlay,
   followedScroller,
+  framedMetrics,
   grabbedAt,
   installOverlayScrollbars,
   jumpedScroll,
@@ -473,6 +474,57 @@ suite('Overlay scrollbars', () => {
       trackBox('horizontal', { ...scroller, scrollWidth: 400 }, 25),
       undefined,
     );
+  });
+
+  test('keeps the thumb inside the line a rounded area around it draws along the edges they share, as far from that line as from an edge they do not share, and its corner inside the rounded corner', () => {
+    const shared = { left: 101, top: 0, right: 501, bottom: 551, line: 2 };
+    const framed = framedMetrics(scroller, { ...shared, radius: 6 });
+    const rounder = framedMetrics(scroller, { ...shared, radius: 14 });
+
+    assert.deepStrictEqual(trackBox('vertical', framed, 25), {
+      left: 101 + 400 - 25 - 2,
+      top: 51,
+      width: 25,
+      height: 500 - 2,
+    });
+    assert.deepStrictEqual(trackBox('horizontal', framed, 25), {
+      left: 101 + 2,
+      top: 51 + 500 - 25 - 2,
+      width: 400 - 2 - 2,
+      height: 25,
+    });
+    assert.deepStrictEqual(trackBox('vertical', rounder, 25), {
+      left: 101 + 400 - 25 - 2,
+      top: 51,
+      width: 25,
+      height: 500 - 6,
+    });
+    assert.strictEqual(
+      thumbBox('vertical', framed, 25)?.left,
+      101 + 400 - 25 - 2,
+    );
+  });
+
+  test('leaves the thumb where it was where the area shares no edge with a rounded area around it, or there is none, keeping the further of its own ends and the frame', () => {
+    const apart = framedMetrics(scroller, {
+      left: 0,
+      top: 0,
+      right: 900,
+      bottom: 900,
+      line: 2,
+      radius: 6,
+    });
+    const padded = framedMetrics(
+      { ...scroller, track: { top: 0, bottom: 10, left: 0, right: 0 } },
+      { left: 101, top: 0, right: 501, bottom: 551, line: 2, radius: 6 },
+    );
+
+    assert.deepStrictEqual(
+      trackBox('vertical', apart, 25),
+      trackBox('vertical', scroller, 25),
+    );
+    assert.deepStrictEqual(framedMetrics(scroller, undefined), scroller);
+    assert.strictEqual(trackBox('vertical', padded, 25)?.height, 500 - 10);
   });
 
   test('scrolls an area so that its thumb is centered where its track is pressed, as far as the ends allow', () => {

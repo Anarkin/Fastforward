@@ -137,11 +137,11 @@ function buttonsWidth(count: number, side: 'left' | 'right' = 'left'): number {
 
 function activeEdge(): string {
   const edge = withClass(columns(columnsClass(true, 'a'), 'commits'), 'column');
-  const [, width = ''] =
-    /^inset 0 0 0 (\S+) var\(--color-focus\)$/.exec(
-      cascaded(edge, 'box-shadow', after) ?? '',
-    ) ?? [];
-  return width;
+  assert.strictEqual(
+    cascaded(edge, 'box-shadow', after),
+    'inset 0 0 0 var(--frame-line) var(--color-focus)',
+  );
+  return cascaded(edge, '--frame-line', after) ?? '';
 }
 
 function indented(wordWrap: boolean): MarkupElement {
@@ -4419,7 +4419,7 @@ suite('Style', () => {
     looks(withClass(notices(), 'notice'), { 'pointer-events': 'auto' });
   });
 
-  test('edges the active column in the focus color and the others in the border color, over their contents but letting the pointer through, and outlines nothing in them', () => {
+  test('edges the active column in the focus color and the others in the border color, over their contents but letting the pointer through, as wide as the line it tells the scrollbars it draws, and outlines nothing in them', () => {
     const names: readonly ColumnName[] = ['commits', 'files', 'diff'];
     for (const active of names) {
       const edges = allWithClass(
@@ -4433,9 +4433,10 @@ suite('Style', () => {
           {
             content: "''",
             position: 'absolute',
+            '--frame-line': '2px',
             'box-shadow': shown
-              ? 'inset 0 0 0 2px var(--color-focus)'
-              : 'inset 0 0 0 2px var(--color-border)',
+              ? 'inset 0 0 0 var(--frame-line) var(--color-focus)'
+              : 'inset 0 0 0 var(--frame-line) var(--color-border)',
             'pointer-events': 'none',
           },
           after,

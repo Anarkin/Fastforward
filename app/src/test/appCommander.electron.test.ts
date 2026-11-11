@@ -186,6 +186,38 @@ suite('App commander', () => {
   const statusShown = () => right().locator('.column-status').textContent();
   const sortedRows = async () => (await rowNames()).toSorted().join();
 
+  const thumbGaps = () =>
+    right().evaluate((side) => {
+      const scroller = side.querySelector('.virtual-rows');
+      const bar = document.querySelector('.overlay-scrollbar.vertical.shown');
+      if (scroller === null || bar === null) {
+        return undefined;
+      }
+      const line = parseFloat(
+        getComputedStyle(side, '::after').getPropertyValue('--frame-line'),
+      );
+      const inner =
+        parseFloat(getComputedStyle(side).borderBottomRightRadius) - line;
+      const border = parseFloat(getComputedStyle(bar).borderTopWidth);
+      const edge = side.getBoundingClientRect();
+      const list = scroller.getBoundingClientRect();
+      const thumb = bar.getBoundingClientRect();
+      const rightGap = edge.right - line - (thumb.right - border);
+      const bottomGap = edge.bottom - line - (thumb.bottom - border);
+      return {
+        right: Math.round(rightGap),
+        top: Math.round(thumb.top + border - list.top),
+        bottom: Math.round(bottomGap),
+        inCorner:
+          rightGap >= inner ||
+          bottomGap >= inner ||
+          (inner - rightGap) ** 2 + (inner - bottomGap) ** 2 <= inner ** 2,
+        atEnd:
+          scroller.scrollTop + scroller.clientHeight >=
+          scroller.scrollHeight - 1,
+      };
+    });
+
   const thumbnailed = () =>
     right()
       .locator('.virtual-rows')
@@ -5223,6 +5255,49 @@ suite('App commander', () => {
       async () => !(await rowNames()).includes('many'),
       'the folder to be gone from the list',
     );
+  });
+
+  test('keeps the thumb of a side as far inside the line its column draws on the right and at the bottom as it keeps below the header of the side, its corner inside the rounded corner', async () => {
+    const long = path.join(opened, 'thumbs');
+    fs.mkdirSync(long);
+    for (let index = 0; index < 200; index++) {
+      fs.writeFileSync(path.join(long, `file${index}.txt`), '');
+    }
+    try {
+      await openFolder('thumbs', long);
+      await right().locator('.virtual-rows').hover();
+      await waitFor(async () => (await thumbGaps()) !== undefined, 'the thumb');
+      const atTop = await thumbGaps();
+      await page.keyboard.press('End');
+      await waitFor(async () => (await thumbGaps())?.atEnd === true, 'the end');
+      await page.evaluate(
+        () =>
+          new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          ),
+      );
+      const atEnd = await thumbGaps();
+
+      assert.deepStrictEqual(
+        [
+          atTop?.right,
+          atTop?.top,
+          atEnd?.right,
+          atEnd?.bottom,
+          atEnd?.inCorner,
+        ],
+        [2, 2, 2, 2, true],
+        JSON.stringify({ atTop, atEnd }),
+      );
+    } finally {
+      await page.keyboard.press('Backspace');
+      fs.rmSync(long, { recursive: true, force: true });
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    }
   });
 
   test('scrolls thumbnails a row of tiles for each notch of the wheel, and for as little touchpad as a row of text, gliding there once set to', async () => {

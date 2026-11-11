@@ -208,6 +208,71 @@ export interface ScrollerMetrics {
   readonly scrollLeft: number;
   readonly scrollTop: number;
   readonly track?: Track;
+  readonly edges?: Edges;
+}
+
+interface Edges {
+  readonly right: number;
+  readonly bottom: number;
+}
+
+export interface Frame {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly line: number;
+  readonly radius: number;
+}
+
+const thumbBorder = 2;
+
+function cornerInset(radius: number, line: number): number {
+  const inner = radius - line;
+  if (inner <= thumbBorder) {
+    return 0;
+  }
+  const along = inner - Math.sqrt(inner * inner - (inner - thumbBorder) ** 2);
+  return Math.max(0, Math.ceil(along - thumbBorder));
+}
+
+function meets(one: number, other: number): boolean {
+  return Math.abs(one - other) <= 1;
+}
+
+export function framedMetrics(
+  metrics: ScrollerMetrics,
+  frame: Frame | undefined,
+): ScrollerMetrics {
+  if (frame === undefined) {
+    return metrics;
+  }
+  const left = metrics.left + metrics.clientLeft;
+  const top = metrics.top + metrics.clientTop;
+  const at = {
+    left: meets(left, frame.left),
+    top: meets(top, frame.top),
+    right: meets(left + metrics.clientWidth, frame.right),
+    bottom: meets(top + metrics.clientHeight, frame.bottom),
+  };
+  if (!at.left && !at.top && !at.right && !at.bottom) {
+    return metrics;
+  }
+  const line = (shared: boolean) => (shared ? frame.line : 0);
+  const end = (shared: boolean, corner: boolean) =>
+    line(shared) +
+    (shared && corner ? cornerInset(frame.radius, frame.line) : 0);
+  const track = metrics.track ?? noTrackInsets;
+  return {
+    ...metrics,
+    track: {
+      top: Math.max(track.top, end(at.top, at.right)),
+      bottom: Math.max(track.bottom, end(at.bottom, at.right)),
+      left: Math.max(track.left, end(at.left, at.bottom)),
+      right: Math.max(track.right, end(at.right, at.bottom)),
+    },
+    edges: { right: line(at.right), bottom: line(at.bottom) },
+  };
 }
 
 export interface ThumbBox {
@@ -234,7 +299,7 @@ export function thumbBox(
     );
     return (
       thumb && {
-        left: left + scroller.clientWidth - size,
+        left: left + scroller.clientWidth - size - (scroller.edges?.right ?? 0),
         top: top + track.top + thumb.offset,
         width: size,
         height: thumb.length,
@@ -250,7 +315,7 @@ export function thumbBox(
   return (
     thumb && {
       left: left + track.left + thumb.offset,
-      top: top + scroller.clientHeight - size,
+      top: top + scroller.clientHeight - size - (scroller.edges?.bottom ?? 0),
       width: thumb.length,
       height: size,
     }
@@ -270,14 +335,14 @@ export function trackBox(
   const track = scroller.track ?? noTrackInsets;
   return axis === 'vertical'
     ? {
-        left: left + scroller.clientWidth - size,
+        left: left + scroller.clientWidth - size - (scroller.edges?.right ?? 0),
         top: top + track.top,
         width: size,
         height: verticalTrack(scroller),
       }
     : {
         left: left + track.left,
-        top: top + scroller.clientHeight - size,
+        top: top + scroller.clientHeight - size - (scroller.edges?.bottom ?? 0),
         width: horizontalTrack(scroller),
         height: size,
       };
@@ -394,9 +459,68 @@ export function draggedScroll(
   return drag.scroll + (now - drag.pointer) * drag.ratio;
 }
 
+function radiusOf(style: CSSStyleDeclaration): number {
+  return Math.max(
+    pixels(style.borderTopLeftRadius),
+    pixels(style.borderTopRightRadius),
+    pixels(style.borderBottomRightRadius),
+    pixels(style.borderBottomLeftRadius),
+  );
+}
+
+const frameElements = new WeakMap<Element, Element | null>();
+
+function lineOf(element: Element): number {
+  return pixels(
+    getComputedStyle(element, '::after').getPropertyValue('--frame-line'),
+  );
+}
+
+function frameElementOf(scroller: Element): Element | null {
+  const known = frameElements.get(scroller);
+  if (known === null || known?.isConnected === true) {
+    return known;
+  }
+  let rounded: Element | null = null;
+  let lined: Element | null = null;
+  for (
+    let element = scroller.parentElement;
+    element !== null && element !== document.body && lined === null;
+    element = element.parentElement
+  ) {
+    if (lineOf(element) > 0) {
+      lined = element;
+    } else if (rounded === null && radiusOf(getComputedStyle(element)) > 0) {
+      rounded = element;
+    }
+  }
+  const found = lined ?? rounded;
+  frameElements.set(scroller, found);
+  return found;
+}
+
+function frameOf(scroller: Element): Frame | undefined {
+  const element = frameElementOf(scroller);
+  if (element === null) {
+    return undefined;
+  }
+  const { left, top, right, bottom } = element.getBoundingClientRect();
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    line: lineOf(element),
+    radius: radiusOf(getComputedStyle(element)),
+  };
+}
+
 function metricsOf(scroller: Element, axis: Axis): ScrollerMetrics {
   const sideways = axis === 'horizontal' && sidewaysScrollers.get(scroller);
-  return sideways ? sideways.metrics() : elementMetrics(scroller);
+  return framedMetrics(
+    sideways ? sideways.metrics() : elementMetrics(scroller),
+    frameOf(scroller),
+  );
 }
 
 export function elementMetrics(scroller: Element): ScrollerMetrics {
