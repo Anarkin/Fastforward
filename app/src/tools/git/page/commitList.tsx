@@ -71,9 +71,8 @@ import { activeDescendant, rowId } from '../../../ui/virtualRows';
 import { useLineHeight } from '../../../ui/lineHeight';
 
 const defaultRowLineHeight = 18;
-const rowBorder = 1;
-export const commitRowHeight = 2 * defaultRowLineHeight + rowBorder;
-export const workingTreeRowHeight = defaultRowLineHeight + rowBorder;
+export const commitRowHeight = 2 * defaultRowLineHeight;
+export const workingTreeRowHeight = defaultRowLineHeight;
 export const bubbleLineHeight = defaultRowLineHeight;
 const loadDelay = 80;
 const scrolledDelay = 150;
@@ -92,10 +91,10 @@ export function estimatedRowHeight(
   line = defaultRowLineHeight,
 ): number {
   if (index < offset) {
-    return line + rowBorder;
+    return line;
   }
   const lines = history?.hasBubbles(index - offset) ? 3 : 2;
-  return lines * line + rowBorder;
+  return lines * line;
 }
 
 export function rowKeyOf(
@@ -771,7 +770,7 @@ export function Commits({
         return;
       }
       const top = scrollTop(element);
-      const shifted = workingTreeShift(top, action.shiftBy, line + rowBorder);
+      const shifted = workingTreeShift(top, action.shiftBy, line);
       if (shifted !== undefined) {
         places.moved(shifted - top);
         virtualizer.scrollToOffset(shifted);

@@ -2110,7 +2110,7 @@ suite('Style', () => {
   test("extends the popped-out row: as white as the other popups, though its row is under the pointer or selected, or the pointer is on it pinned, its subject wrapped in lines as tall as the row's, its author and date as wide as the row, then the rest of the message with its line breaks", () => {
     const panel = messagePanel();
     const row = withClass(panel, 'commit');
-    looks(row, { 'border-bottom': 'none', background: 'none' });
+    looks(row, { 'border-bottom': undefined, background: 'none' });
     looks(row, { background: 'none' }, hovered);
     looks(withClass(messagePanel({ selected: 'a' }), 'commit'), {
       background: 'none',
@@ -2987,12 +2987,12 @@ suite('Style', () => {
     );
   });
 
-  test('draws a commit row and the one-line working tree row as tall as the list expects, as lines of the line height of the settings with nothing above or below them but the border', () => {
+  test('draws a commit row and the one-line working tree row as tall as the list expects, as lines of the line height of the settings with nothing above or below them', () => {
     const commit = rendered(commitRow({ refs: repository.refs }));
     for (const row of [commit, workingTreeRow(1)]) {
       looks(row, {
         padding: '0 8px',
-        'border-bottom': '1px solid var(--color-border)',
+        'border-bottom': undefined,
       });
       looks(withClass(row, 'commit-line'), {
         height: 'var(--row-line-height)',
@@ -3009,11 +3009,11 @@ suite('Style', () => {
     });
     assert.deepStrictEqual(
       [commitRowHeight, workingTreeRowHeight, bubbleLineHeight],
-      [2 * 18 + 1, 18 + 1, 18],
+      [2 * 18, 18, 18],
     );
   });
 
-  test('hides the lines between the commits of the commit column, keeping their pixel so the rows stay as tall as the list expects, and keeps the line under its title, as the other columns have it', () => {
+  test('draws no lines between the commits of the commit column, so its lines fall on those of the other columns, and keeps the line under its title, as the other columns have it', () => {
     const column = rendered(
       renderedBy(Column, {
         start: navButtons(),
@@ -3025,8 +3025,8 @@ suite('Style', () => {
       }),
     );
     looks(withClass(column, 'commit'), {
-      'border-bottom': '1px solid var(--color-border)',
-      'border-bottom-color': 'transparent',
+      'border-bottom': undefined,
+      'border-bottom-color': undefined,
     });
     for (const title of [
       withClass(column, 'column-title'),
@@ -3039,7 +3039,7 @@ suite('Style', () => {
     }
   });
 
-  test("keeps the line under the field of the search opened over the commit column's title, where the title's is, and hides those between its groups and between the commits it found, keeping their pixel so the commits stay as tall as in the list", () => {
+  test("keeps the line under the field of the search opened over the commit column's title, where the title's is, hides those between its groups, keeping their pixel, and draws none between the commits it found, as the list draws none", () => {
     const popup = locationsPopup('');
     const groups = allWithClass(popup, 'locations-group');
     assert.ok(groups.length > 1, String(groups.length));
@@ -3057,8 +3057,8 @@ suite('Style', () => {
     assert.strictEqual(found.length, 2);
     for (const commit of found) {
       looks(commit, {
-        'border-bottom': '1px solid var(--color-border)',
-        'border-bottom-color': 'transparent',
+        'border-bottom': undefined,
+        'border-bottom-color': undefined,
       });
     }
   });

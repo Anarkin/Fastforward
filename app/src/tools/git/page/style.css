@@ -198,11 +198,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   line-height: var(--row-line-height);
 }
 
-.commit-rows .commit,
-.locations-list .commit {
-  border-bottom-color: transparent;
-}
-
 .commit-line {
   display: flex;
   align-items: center;
@@ -265,7 +260,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   box-sizing: border-box;
   max-height: inherit;
   overflow: hidden;
-  border-bottom: none;
   border-radius: inherit;
 }
 

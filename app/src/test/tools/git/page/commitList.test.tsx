@@ -141,7 +141,7 @@ suite('Commit list rows', () => {
     );
   });
 
-  test('sizes the rows from the line height measured, two lines and the border for a commit, a line more for its bubbles, one line and the border for the working tree', () => {
+  test('sizes the rows from the line height measured, two lines for a commit, a line more for its bubbles, one line for the working tree', () => {
     const history = new CommitHistory(3, [1]);
     assert.deepStrictEqual(
       [
@@ -149,7 +149,7 @@ suite('Commit list rows', () => {
         estimatedRowHeight(history, 1, 1, 20),
         estimatedRowHeight(history, 1, 2, 20),
       ],
-      [21, 41, 61],
+      [20, 40, 60],
     );
   });
 

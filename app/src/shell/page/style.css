@@ -1342,7 +1342,6 @@ body.resizing {
 
 .commit {
   padding: 0 8px;
-  border-bottom: 1px solid var(--color-border);
 }
 
 .date {
