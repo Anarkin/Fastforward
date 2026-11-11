@@ -27,3 +27,15 @@ export function afterPaint(run: () => void): {
     },
   };
 }
+
+export function inNextFrame(run: () => void): { readonly ask: () => void } {
+  let frame: number | undefined;
+  return {
+    ask: () => {
+      frame ??= requestAnimationFrame(() => {
+        frame = undefined;
+        run();
+      });
+    },
+  };
+}

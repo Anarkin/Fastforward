@@ -1,7 +1,7 @@
 import { clicked, keymap } from '../shell/shared/keymap';
 import { scrollbarDrags, type ScrollbarDrag } from './cappedScroll';
 import { followDrag } from './followDrag';
-import { afterPaint } from './afterPaint';
+import { afterPaint, inNextFrame } from './afterPaint';
 
 export const overlayScrollbarClass = 'overlay-scrollbar';
 export const ownScrollbarAttribute = 'data-own-vertical-scrollbar';
@@ -561,7 +561,10 @@ class Bar {
 export function installOverlayScrollbars(): void {
   const bars = [new Bar('vertical'), new Bar('horizontal')] as const;
   const showFor = (target: EventTarget | null) => {
-    if (bars.some((bar) => bar.element === target)) {
+    if (
+      bars.some((bar) => bar.element === target) ||
+      (target instanceof Element && !target.isConnected)
+    ) {
       return;
     }
     bars[0].show(scrollerOf(target, 'vertical'));
@@ -580,7 +583,7 @@ export function installOverlayScrollbars(): void {
     );
   }
   let scrolled: EventTarget | null = null;
-  const scrolling = afterPaint(() => onScroll(scrolled));
+  const scrolling = inNextFrame(() => onScroll(scrolled));
   const onScroll = (target: EventTarget | null) => {
     for (const bar of bars) {
       const scroller = scrolledScroller(bar.scroller, bar.shown, target, () =>

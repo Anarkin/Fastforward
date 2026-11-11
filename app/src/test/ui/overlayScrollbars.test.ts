@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import {
   dragFrom,
   draggedScroll,
@@ -31,7 +31,107 @@ const painted = () =>
     setTimeout(() => setTimeout(() => setTimeout(resolve))),
   );
 
+function framedList() {
+  const dom = new JSDOM(
+    '<!doctype html><body style="--scrollbar-size: 20px"><div id="list" style="overflow-y: auto"></div></body>',
+  );
+  const { document } = dom.window;
+  const frames: (() => void)[] = [];
+  const globals = {
+    window: dom.window,
+    document,
+    Element: dom.window.Element,
+    Node: dom.window.Node,
+    getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+    requestAnimationFrame: (run: () => void) => frames.push(run),
+    cancelAnimationFrame: () => {},
+  };
+  const saved = Object.fromEntries(
+    Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+  );
+  Object.assign(globalThis, globals);
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const list = document.getElementById('list');
+  assert.ok(list);
+  let scrollTop = 0;
+  Object.defineProperties(list, {
+    scrollHeight: { value: 1000 },
+    clientHeight: { value: 100 },
+    clientWidth: { value: 400 },
+    scrollTop: { get: () => scrollTop },
+  });
+  installOverlayScrollbars();
+  const bar = document.querySelector<HTMLElement>(
+    `.${overlayScrollbarClass}.vertical`,
+  );
+  assert.ok(bar);
+  return {
+    dom,
+    list,
+    bar,
+    scrollTo: (to: number) => {
+      scrollTop = to;
+      list.dispatchEvent(new dom.window.Event('scroll'));
+    },
+    frame: () => {
+      for (const run of frames.splice(0)) {
+        run();
+      }
+    },
+    close: () => {
+      vi.useRealTimers();
+      Object.assign(globalThis, saved);
+      dom.window.close();
+    },
+  };
+}
+
 suite('Overlay scrollbars', () => {
+  test('shows and places the scrollbar of an area scrolled, by keys too, in the frame after the scroll, without waiting for a timer, as timers wait behind a flood of key presses held down', () => {
+    const { bar, scrollTo, frame, close } = framedList();
+    try {
+      scrollTo(450);
+      frame();
+      const middle = {
+        shown: bar.classList.contains('shown'),
+        top: bar.style.top,
+      };
+      scrollTo(900);
+      frame();
+
+      assert.deepStrictEqual(
+        [middle.shown, middle.top !== '', bar.classList.contains('shown')],
+        [true, true, true],
+      );
+      assert.ok(
+        Number.parseFloat(bar.style.top) > Number.parseFloat(middle.top),
+        `${middle.top} then ${bar.style.top}`,
+      );
+    } finally {
+      close();
+    }
+  });
+
+  test('keeps the scrollbar of an area shown when the row a pointer came over is gone by the next frame, as one the list scrolled away from', () => {
+    const { dom, list, bar, scrollTo, frame, close } = framedList();
+    try {
+      scrollTo(450);
+      frame();
+      const row = dom.window.document.createElement('div');
+      list.append(row);
+      row.dispatchEvent(
+        new dom.window.MouseEvent('pointerover', { bubbles: true }),
+      );
+      row.remove();
+      frame();
+      vi.advanceTimersByTime(0);
+
+      assert.ok(bar.classList.contains('shown'));
+    } finally {
+      close();
+    }
+  });
+
   test('follows what comes under a pointer that stays put, hiding the scrollbar of an area once something with nothing to scroll comes over it there, such as a message pinned by a click, once the frame is painted', async () => {
     const dom = new JSDOM(
       '<!doctype html><div id="list" style="overflow-y: auto"></div><div id="pinned"></div>',
