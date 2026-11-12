@@ -1003,6 +1003,15 @@ suite('Syntax', () => {
     assert.strictEqual(textsToLoad(files, 2, requested).length, 2);
   });
 
+  test('forgets the whole texts asked for by the diffs before, as a diff refreshed for hours kept every one', () => {
+    const requested = new Set<string>();
+    const files = parsePatch(gappedPatch);
+    for (const diff of [1, 2, 3]) {
+      textsToLoad(files, diff, requested);
+    }
+    assert.deepStrictEqual([...requested], ['3:old:a.ts', '3:new:a.ts']);
+  });
+
   test('asks a diff drawn anew only for the whole texts of the sides whose blob changed', () => {
     const texts = loadedTexts([['old:a.ts', 'old text']]).set('new:a.ts', {
       blob: '3'.repeat(40),

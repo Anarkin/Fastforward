@@ -341,9 +341,15 @@ export function textsToLoad(
   texts: ReadonlyMap<string, LoadedText> = new Map(),
   chosen?: string,
 ): TextRequest[] {
+  const ofDiff = `${diff}:`;
+  for (const key of requested) {
+    if (!key.startsWith(ofDiff)) {
+      requested.delete(key);
+    }
+  }
   return sidePlans(files, open, chosen).flatMap(({ file, side, wholeText }) => {
     const blob = file.blobs?.[side];
-    const key = `${diff}:${textKey(file.path, side)}`;
+    const key = `${ofDiff}${textKey(file.path, side)}`;
     if (
       !wholeText ||
       !blob ||
