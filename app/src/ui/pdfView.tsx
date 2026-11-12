@@ -14,6 +14,7 @@ export type { PdfFound, ShownPdf };
 export function PdfPane({
   url,
   size,
+  query,
   zoomKeys,
   placeOf,
   onPlace,
@@ -22,6 +23,7 @@ export function PdfPane({
 }: {
   url: string;
   size: number;
+  query: string;
   zoomKeys: Binding<true>;
   placeOf: (fingerprint: string) => Promise<PdfPlace | undefined>;
   onPlace: (fingerprint: string, place: PdfPlace) => void;
@@ -35,6 +37,8 @@ export function PdfPane({
   const placeEvent = useEffectEvent(onPlace);
   const foundEvent = useEffectEvent(onFound);
   const shownEvent = useEffectEvent(onShown);
+  const queryEvent = useEffectEvent(() => query);
+  const opened = useRef(false);
 
   useLayoutEffect(() => () => shown.current?.tellPlace(), []);
 
@@ -43,7 +47,20 @@ export function PdfPane({
     if (element === null) {
       return undefined;
     }
-    element.focus();
+    const reopened = opened.current;
+    opened.current = true;
+    const focused = element.ownerDocument.activeElement;
+    if (
+      !reopened ||
+      focused === null ||
+      focused === element.ownerDocument.body ||
+      element.contains(focused)
+    ) {
+      element.focus();
+    }
+    if (reopened && queryEvent() !== '') {
+      foundEvent({ current: 0, total: 0, done: false });
+    }
     setFailure(undefined);
     const leaving = new AbortController();
     void import('./pdfDocument.js').then(({ showPdf, pdfFailure }) => {
@@ -66,10 +83,14 @@ export function PdfPane({
           onFailure: failed,
         },
         leaving.signal,
-      ).then((opened: ShownPdf | undefined) => {
-        if (opened !== undefined && !leaving.signal.aborted) {
-          shown.current = opened;
-          shownEvent(opened);
+      ).then((pdf: ShownPdf | undefined) => {
+        if (pdf !== undefined && !leaving.signal.aborted) {
+          shown.current = pdf;
+          shownEvent(pdf);
+          const finding = queryEvent();
+          if (finding !== '') {
+            pdf.find(finding, 0);
+          }
         }
       }, failed);
     });

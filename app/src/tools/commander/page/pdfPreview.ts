@@ -18,6 +18,7 @@ export function pdfFindCount(
 }
 
 export interface PdfControls {
+  readonly query: string;
   readonly placeOf: (fingerprint: string) => Promise<PdfPlace | undefined>;
   readonly onPlace: (fingerprint: string, place: PdfPlace) => void;
   readonly onFound: (found: PdfFound) => void;
@@ -32,6 +33,7 @@ export function usePdfPreview(tab: string | undefined) {
   useEffect(() => flushPdfPlace, [flushPdfPlace]);
 
   const controls: PdfControls = {
+    query,
     placeOf: (fingerprint) =>
       tab === undefined
         ? Promise.resolve(undefined)

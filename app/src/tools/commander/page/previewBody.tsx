@@ -80,6 +80,7 @@ export function PreviewBody({
         <PdfPane
           url={previewUrl(viewing, file)}
           size={viewing.size}
+          query={pdf.query}
           zoomKeys={viewerKeymap.zoomPdf}
           placeOf={pdf.placeOf}
           onPlace={pdf.onPlace}
