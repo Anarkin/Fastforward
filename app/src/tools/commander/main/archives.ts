@@ -300,6 +300,7 @@ export interface OpenedArchive {
   readonly source: string;
   readonly tree: ArchiveTree;
   readonly outer?: { readonly file: string; readonly version: string };
+  readonly work?: readonly string[];
 }
 
 export type Opening =
@@ -475,6 +476,8 @@ export class Archives implements ArchiveAccess {
   private readonly opened = new Map<string, OpenedArchive>();
   private readonly passwords = new Map<string, string>();
   private readonly changing = new Map<string, Promise<unknown>>();
+  private readonly reading = new Map<OpenedArchive, number>();
+  private readonly retired = new WeakSet<OpenedArchive>();
 
   constructor(
     private readonly reader: ArchiveReader | undefined,
@@ -484,6 +487,55 @@ export class Archives implements ArchiveAccess {
 
   private keyOf(file: string): string {
     return folderKey(path.resolve(file), this.platform);
+  }
+
+  private async replaced(
+    key: string,
+    archive: OpenedArchive | undefined,
+  ): Promise<void> {
+    const before = this.opened.get(key);
+    if (archive === undefined) {
+      this.opened.delete(key);
+    } else {
+      this.opened.set(key, archive);
+    }
+    if (before === undefined || before === archive) {
+      return;
+    }
+    this.retired.add(before);
+    if (!this.reading.has(before)) {
+      await this.removedWork(before);
+    }
+  }
+
+  private async removedWork(archive: OpenedArchive): Promise<void> {
+    await Promise.all((archive.work ?? []).map((each) => removed(each)));
+  }
+
+  private latest(archive: OpenedArchive): OpenedArchive {
+    return this.retired.has(archive)
+      ? (this.opened.get(this.keyOf(archive.file)) ?? archive)
+      : archive;
+  }
+
+  private async readFrom<T>(
+    archive: OpenedArchive,
+    read: () => Promise<T>,
+  ): Promise<T> {
+    this.reading.set(archive, (this.reading.get(archive) ?? 0) + 1);
+    try {
+      return await read();
+    } finally {
+      const left = (this.reading.get(archive) ?? 1) - 1;
+      if (left > 0) {
+        this.reading.set(archive, left);
+      } else {
+        this.reading.delete(archive);
+        if (this.retired.has(archive)) {
+          await this.removedWork(archive);
+        }
+      }
+    }
   }
 
   async open(file: string, signal?: AbortSignal): Promise<Opening> {
@@ -505,7 +557,7 @@ export class Archives implements ArchiveAccess {
       ) {
         return { kind: 'opened', archive: known };
       }
-      this.opened.delete(key);
+      await this.replaced(key, undefined);
       return {
         kind: 'refused',
         reason: strings.commander.notAFile,
@@ -538,10 +590,10 @@ export class Archives implements ArchiveAccess {
       this.passwords.get(key),
     );
     if (opening.kind === 'opened') {
-      this.opened.set(key, opening.archive);
+      await this.replaced(key, opening.archive);
       return opening;
     }
-    this.opened.delete(key);
+    await this.replaced(key, undefined);
     return opening.needsPassword === true
       ? { ...opening, passwordOf: file }
       : opening;
@@ -549,11 +601,12 @@ export class Archives implements ArchiveAccess {
 
   async openInside(
     file: string,
-    outer: OpenedArchive,
+    given: OpenedArchive,
     inside: string,
     signal?: AbortSignal,
   ): Promise<Opening> {
     const { reader } = this;
+    const outer = this.latest(given);
     const key = this.keyOf(file);
     const known = this.opened.get(key);
     if (known?.outer?.version === outer.version) {
@@ -567,11 +620,13 @@ export class Archives implements ArchiveAccess {
       };
     }
     const opening = await this.inWorkFolder(async (into) => {
-      const refused = await reader.extract(outer.source, [inside], into, {
-        signal,
-        withoutFolders: true,
-        ...this.passwordOf(outer.file),
-      });
+      const refused = await this.readFrom(outer, () =>
+        reader.extract(outer.source, [inside], into, {
+          signal,
+          withoutFolders: true,
+          ...this.passwordOf(outer.file),
+        }),
+      );
       const [copy] = await filesUnder(into);
       if (refused !== undefined || copy === undefined) {
         return {
@@ -598,7 +653,7 @@ export class Archives implements ArchiveAccess {
       ...opening.archive,
       outer: { file: outer.file, version: outer.version },
     };
-    this.opened.set(key, archive);
+    await this.replaced(key, archive);
     return { kind: 'opened', archive };
   }
 
@@ -683,8 +738,15 @@ export class Archives implements ArchiveAccess {
       const opening = await open(into);
       if (opening.kind !== 'opened') {
         await removed(into);
+        return opening;
       }
-      return opening;
+      return {
+        kind: 'opened',
+        archive: {
+          ...opening.archive,
+          work: [...(opening.archive.work ?? []), into],
+        },
+      };
     } catch (error) {
       await removed(into);
       throw error;
@@ -696,14 +758,18 @@ export class Archives implements ArchiveAccess {
     paths: readonly string[],
     { into, ...options }: ExtractOptions & { readonly into?: string } = {},
   ): Promise<Extracting> {
-    if (this.reader === undefined) {
+    const { reader } = this;
+    if (reader === undefined) {
       return { kind: 'refused', reason: strings.commander.noSevenZip };
     }
     const folder = into ?? (await this.workFolder());
-    const extracting = this.reader.extract(archive.source, paths, folder, {
-      ...this.passwordOf(archive.file),
-      ...options,
-    });
+    const from = this.latest(archive);
+    const extracting = this.readFrom(from, () =>
+      reader.extract(from.source, paths, folder, {
+        ...this.passwordOf(from.file),
+        ...options,
+      }),
+    );
     const refused =
       into === undefined
         ? await extracting.catch(async (error: unknown) => {

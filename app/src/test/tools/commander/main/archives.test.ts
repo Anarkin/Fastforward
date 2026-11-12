@@ -238,6 +238,12 @@ suite('Archives', () => {
     removeFolder(folder);
   });
 
+  const workLeft = () =>
+    fs
+      .readdirSync(folder)
+      .filter((name) => name.startsWith('work-'))
+      .toSorted();
+
   test('opens a file the reader lists, keeping it opened while the file is unchanged, and opens it again once it changes', async () => {
     const zip = path.join(folder, 'a.zip');
     fs.writeFileSync(zip, 'first');
@@ -403,6 +409,81 @@ suite('Archives', () => {
       archives.within(path.join(nested, 'src'))?.archive.file,
       zip,
     );
+  });
+
+  test('removes the tar it unpacked from a compressed file once the file is opened again or can be no longer, but only once no extraction from it runs, extracting from the tar unpacked since for one asked of the tar before', async () => {
+    const gzip = path.join(folder, 'a.tar.gz');
+    fs.writeFileSync(gzip, 'compressed');
+    const listings: Record<string, ArchiveListing> = {
+      'a.tar.gz': { kind: 'listed', items: [item('a.tar')] },
+      'a.tar': { kind: 'listed', items: [item('index.js')] },
+    };
+    const extracted: string[] = [];
+    const holding = Promise.withResolvers<void>();
+    const reader: ArchiveReader = {
+      ...readerOf(listings).reader,
+      extract: async (file, paths, into) => {
+        extracted.push(path.relative(folder, file));
+        if (paths.includes('index.js') && extracted.length === 2) {
+          await holding.promise;
+        }
+        for (const each of paths) {
+          await fs.promises.writeFile(path.join(into, each), each);
+        }
+        return undefined;
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const first = await archives.open(gzip);
+    assert.ok(first.kind === 'opened');
+    const reading = archives.extract(first.archive, ['index.js']);
+    await waitFor(() => extracted.length === 2, 'the extraction to start');
+
+    fs.writeFileSync(gzip, 'compressed, changed since');
+    assert.strictEqual((await archives.open(gzip)).kind, 'opened');
+    assert.deepStrictEqual(workLeft(), ['work-1', 'work-2', 'work-3']);
+    holding.resolve();
+    assert.deepStrictEqual(await reading, {
+      kind: 'extracted',
+      folder: path.join(folder, 'work-2'),
+    });
+    assert.deepStrictEqual(workLeft(), ['work-2', 'work-3']);
+
+    const out = path.join(folder, 'out');
+    fs.mkdirSync(out);
+    await archives.extract(first.archive, ['index.js'], { into: out });
+    assert.strictEqual(extracted.at(-1), path.join('work-3', 'a.tar'));
+
+    listings['a.tar.gz'] = { kind: 'refused', reason: 'Damaged' };
+    fs.writeFileSync(gzip, 'compressed, and damaged since');
+    assert.strictEqual((await archives.open(gzip)).kind, 'refused');
+    assert.deepStrictEqual(workLeft(), ['work-2']);
+  });
+
+  test('removes the copy of an archive inside another and the tar it unpacked from it once it is opened again from the outer archive changed, or the outer archive changed drops it', async () => {
+    const zip = path.join(folder, 'outer.zip');
+    fs.writeFileSync(zip, 'outer');
+    const { reader } = readerOf({
+      'outer.zip': { kind: 'listed', items: [item('inner.tgz')] },
+      'inner.tgz': { kind: 'listed', items: [item('inner.tar')] },
+      'inner.tar': { kind: 'listed', items: [item('index.js')] },
+    });
+    const archives = new Archives(reader, 'linux', workFolder);
+    const nested = path.join(zip, 'inner.tgz');
+    const openedInside = async () => {
+      const outer = await archives.open(zip);
+      assert.ok(outer.kind === 'opened');
+      return archives.openInside(nested, outer.archive, 'inner.tgz');
+    };
+
+    assert.strictEqual((await openedInside()).kind, 'opened');
+    assert.deepStrictEqual(workLeft(), ['work-1', 'work-2']);
+    fs.writeFileSync(zip, 'outer, changed since');
+    assert.strictEqual((await openedInside()).kind, 'opened');
+    assert.deepStrictEqual(workLeft(), ['work-3', 'work-4']);
+    fs.writeFileSync(zip, 'outer, changed again');
+    assert.strictEqual((await archives.open(nested)).kind, 'refused');
+    assert.deepStrictEqual(workLeft(), []);
   });
 
   test('lists and extracts an archive with the password it was given until told to forget it, saying whose password is missing, the outer archive for the extraction of one inside it', async () => {
