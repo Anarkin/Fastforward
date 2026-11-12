@@ -216,6 +216,41 @@ suite('Pack popup', () => {
     );
   });
 
+  test('says it replaces the volumes there already while it cuts the archive into volumes, looking for the first of them as the host does, and not the archive of the name alone', async () => {
+    const { commander } = strings;
+    const posted: CommanderToHost[] = [];
+    const noted = (dom: JSDOM) =>
+      dom.window.document.body.textContent.includes(commander.archiveThere);
+    const seen: boolean[] = [];
+    await packing(
+      async ({ dom, click, posted: sent }) => {
+        seen.push(noted(dom));
+        await click(commander.splitVolumes);
+        seen.push(noted(dom));
+        await click(commander.packConfirm);
+        posted.push(...sent);
+      },
+      ['code.zip.001'],
+    );
+    await packing(
+      async ({ dom, click, posted: sent }) => {
+        await click(commander.splitVolumes);
+        seen.push(noted(dom));
+        await click(commander.packConfirm);
+        posted.push(...sent);
+      },
+      ['code.zip'],
+    );
+
+    assert.deepStrictEqual(seen, [false, true, false]);
+    assert.deepStrictEqual(
+      posted.flatMap((message) =>
+        message.type === 'pack' ? [message.replace] : [],
+      ),
+      [true, undefined],
+    );
+  });
+
   test('says what is wrong as it is typed and packs nothing until it is right: no path, one not from the root, a zip password beyond ASCII, a volume too small or unread', async () => {
     await packing(async ({ type, click, problem, packable }) => {
       const { commander } = strings;

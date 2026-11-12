@@ -20,6 +20,10 @@ export type ZipCipher = (typeof zipCiphers)[number];
 
 export const smallestVolume = 64 * 1024;
 
+export function firstVolumeOf(archive: string): string {
+  return `${archive}.001`;
+}
+
 export function isPackFormat(value: unknown): value is PackFormat {
   return packFormats.some((format) => format === value);
 }

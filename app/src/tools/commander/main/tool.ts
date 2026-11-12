@@ -74,6 +74,7 @@ import { thumbnailKey } from './thumbnailStore';
 import { archiveJob, archiveTests } from './packing';
 import { copiedBetween } from './betweenArchives';
 import {
+  firstVolumeOf,
   isPackFormat,
   isPackLevel,
   isZipCipher,
@@ -2603,7 +2604,7 @@ export class CommanderTool implements Tool<'commander'> {
       });
       return;
     }
-    const first = volumeBytes === undefined ? archive : `${archive}.001`;
+    const first = volumeBytes === undefined ? archive : firstVolumeOf(archive);
     if (
       replace !== true &&
       (await fs.promises.lstat(first).then(

@@ -9,6 +9,7 @@ import { nameProblem } from '../shared/names';
 import {
   compresses,
   encrypts,
+  firstVolumeOf,
   packFormats,
   packLevels,
   packPasswordProblem,
@@ -171,7 +172,8 @@ function PackForm({
     volume,
     platform,
   });
-  const name = lastPart(archive.trim(), platform);
+  const named = lastPart(archive.trim(), platform);
+  const name = splitting ? firstVolumeOf(named) : named;
   const there =
     folderKey(folderPart(archive.trim(), platform), platform) ===
       folderKey(withoutTrailing(target, platform), platform) &&
