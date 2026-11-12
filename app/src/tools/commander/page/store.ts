@@ -775,8 +775,12 @@ export function createCommanderStore(
       }
       for (const side of sides) {
         const pane = get().view.panes[side];
+        const was = before.panes[side];
         const nearest =
-          pane === undefined || pane.rows === before.panes[side]?.rows
+          pane === undefined ||
+          (pane.rows === was?.rows && pane.duplicates === was.duplicates) ||
+          (pane.duplicates?.reading === true &&
+            pane.duplicates.groups.length === 0)
             ? undefined
             : nearestShown(
                 pane.rows,

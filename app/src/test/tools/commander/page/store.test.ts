@@ -363,6 +363,28 @@ suite('Commander store', () => {
     assert.strictEqual(actions().markingPattern, undefined);
   });
 
+  test('selects the nearest file shown once the duplicates found leave out the one selected, keeping it while none are found yet, as no row was selected and the keys for files did nothing', () => {
+    const store = byName();
+    const { receive, select } = store.getState();
+    const files = withFiles(left.folder, 'a.txt', 'b.log', 'c.txt', 'd.txt');
+    receive(files);
+    select('left', 'b.log');
+    receive({ ...files, duplicates: 1 });
+    const whileReading = selectedOf(store);
+    receive({
+      type: 'duplicateGroups',
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+      look: 1,
+      groups: [['c.txt', 'd.txt']],
+      reading: false,
+    });
+
+    assert.strictEqual(whileReading, 'b.log');
+    assert.strictEqual(selectedOf(store), 'c.txt');
+  });
+
   test('asks to show the duplicates of a side, and every file again once it shows them', () => {
     const { posted, store } = shown();
     store.getState().duplicates('left');
