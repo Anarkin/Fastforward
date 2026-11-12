@@ -300,7 +300,11 @@ export function framedMetrics(
   const own = metrics.track ?? noTrackInsets;
   const padding = metrics.padding ?? own;
   const end = (side: keyof Track) =>
-    at[side] ? Math.max(padding[side], inset[side]) : own[side];
+    !at[side]
+      ? own[side]
+      : padding[side] > 0
+        ? Math.max(padding[side], inset[side])
+        : inset[side];
   const track: Track = {
     top: end('top'),
     bottom: end('bottom'),

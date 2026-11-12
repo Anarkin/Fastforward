@@ -644,6 +644,31 @@ suite('Overlay scrollbars', () => {
     );
   });
 
+  test('runs the thumb of a rounded area of its own to the edge the screen paints a fraction of a pixel beyond its box, rounding its corner there, where no scroll padding keeps it off', () => {
+    const menu = framedMetrics(
+      {
+        ...scroller,
+        top: 50.5,
+        clientLeft: 0,
+        clientTop: 0,
+        track: { top: 40, bottom: 6, left: 6, right: 6 },
+        padding: { top: 40, bottom: 0, left: 0, right: 0 },
+      },
+      { left: 100, top: 51, right: 500, bottom: 551, line: 0, radius: 6 },
+    );
+
+    assert.deepStrictEqual(trackBox('vertical', menu, 25), {
+      left: 100 + 400 - 25,
+      top: 50.5 + 40,
+      width: 25,
+      height: 460.5,
+    });
+    assert.deepStrictEqual(
+      thumbBox('vertical', { ...menu, scrollTop: 500 }, 25)?.corners,
+      { start: 0, end: 6 },
+    );
+  });
+
   test('leaves the thumb where it was where the area shares no edge with a rounded area around it, or there is none, keeping the further of its own ends and the frame', () => {
     const apart = framedMetrics(scroller, {
       left: 0,
