@@ -852,7 +852,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   letter-spacing: calc(var(--diff-advance) - 1ch);
 }
 
-.diff-row > .diff-line:not(.split-side) {
+.diff-row > .diff-line:not(.split-side),
+.wrap-probe > .diff-line:not(.split-side) {
   margin-left: var(--diff-snap-inline, 0px);
 }
 

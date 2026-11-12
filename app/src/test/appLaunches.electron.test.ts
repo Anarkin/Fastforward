@@ -254,6 +254,14 @@ suite('App at a scale of 125%', () => {
       path.join(folder, 'long.txt'),
       `${longLines.join('\n')}\n`,
     );
+    fs.writeFileSync(
+      path.join(folder, 'apart.txt'),
+      `${longLines.join('\n')}\n`,
+    );
+    fs.writeFileSync(
+      path.join(folder, 'beside.txt'),
+      `${longLines.map((line, index) => (index % 3 === 0 ? `${line} more` : line)).join('\n')}\n`,
+    );
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
@@ -581,6 +589,44 @@ suite('App at a scale of 125%', () => {
     await page.keyboard.press('Escape');
     await column.locator('.locations-popup').waitFor({ state: 'detached' });
     assert.deepStrictEqual(opened, closed);
+  });
+
+  test('measures the width it wraps a diff to on lines placed as the lines it wraps are, so the marks of the breaks fall after the last word of a row where the code starts between device pixels, inline and side by side', async () => {
+    await page.locator('.tabs [role="tab"]').nth(1).click();
+    const side = page.locator('.commander-pane').nth(1);
+    await side.locator('.commander-row', { hasText: 'apart' }).click();
+    await page.keyboard.press('Insert');
+    await page.keyboard.press('Insert');
+    await page.keyboard.press('Shift+F3');
+    const diff = page.locator('.diff-view .virtual-rows');
+    await diff.locator('.diff-line').nth(5).waitFor();
+    await diff.click({ position: { x: 200, y: 100 } });
+    await page.keyboard.press('w');
+    const widths = () =>
+      page.locator('.diff-view').evaluate((view) => {
+        const row = [...view.querySelectorAll('.diff-row')].find((each) =>
+          each.querySelector('.code'),
+        );
+        return [
+          view.querySelectorAll('.wrap-probe .diff-line:has(> .number) .code'),
+          row?.querySelectorAll('.code') ?? [],
+        ].map((codes) =>
+          [...codes].map(
+            (code) =>
+              Math.round(code.getBoundingClientRect().width * 100) / 100,
+          ),
+        );
+      });
+    await page.locator('.diff-view .wrap-break').first().waitFor();
+    const inline = await widths();
+    await page.locator(`[title="${strings.diff.sideBySide}"]`).click();
+    await page.locator('.diff-view .diff-row .split-side').first().waitFor();
+    await page.locator('.diff-view .wrap-break').first().waitFor();
+    const sideBySide = await widths();
+    assert.deepStrictEqual(
+      [inline[0], sideBySide[0]],
+      [inline[1], sideBySide[1]],
+    );
   });
 });
 

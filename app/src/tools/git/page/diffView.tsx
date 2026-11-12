@@ -1928,7 +1928,11 @@ const WrapProbe = memo(function WrapProbe({
       {split ? (
         <div className="split-line">
           {[0, 1].map((side) => (
-            <div key={side} className="diff-line split-side">
+            <div
+              key={side}
+              className="diff-line split-side"
+              style={sideSnaps[side]}
+            >
               <span className="number" />
               <span className="split-code">{code}</span>
             </div>
