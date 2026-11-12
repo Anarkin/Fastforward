@@ -936,7 +936,7 @@ export class GitTool implements Tool<'git'> {
       case 'forgetRecent':
         await this.storage.removeRecent(message.root);
         await this.forgetUnused([message.root]);
-        this.sendTabs(session);
+        this.sendRecentEverywhere();
         return;
       case 'preloadWorktree': {
         const repository = this.activeRepositoryIn(session);

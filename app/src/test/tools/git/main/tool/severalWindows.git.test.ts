@@ -1,6 +1,12 @@
 import * as assert from 'node:assert';
+import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
+import {
+  sameRoot,
+  tabsKey,
+  windowsKey,
+} from '../../../../../shell/main/storage';
+import { recentKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../fixtures';
 import { removeFolder, type TempRepository } from '../../../../repositories';
 import { recordingLog } from '../../../../stub';
@@ -9,6 +15,7 @@ import {
   closeViews,
   failOnErrorsLogged,
   FakeHost,
+  gitState,
   openView,
   viewRepositories,
   type FakePage,
@@ -98,5 +105,34 @@ suite('Git tool in several windows', () => {
       { id: '1', tabs: ['1'], active: '1' },
       { id: '2', tabs: ['2', '3'], active: '2' },
     ]);
+  });
+
+  test('forgets a recent repository in every window once one forgets it', async () => {
+    const gone = path.join(folder, 'forgotten-everywhere');
+    const host = new FakeHost();
+    const first = await openView(log, [], false, host);
+    await gitState(first.store).update(recentKey, [gone]);
+    await first.store.update(tabsKey, [
+      { id: '1', tool: 'git', root: repository.root },
+      { id: '2', tool: 'git', root: other },
+    ]);
+    await first.store.update(windowsKey, [
+      { id: '1', tabs: ['1'], active: '1' },
+      { id: '2', tabs: ['2'], active: '2' },
+    ]);
+    const second = attach(first.view, '2');
+    await first.connection.receive({ type: 'ready' });
+    await second.connection.receive({ type: 'ready' });
+    await first.view.idle();
+    const listed = (page: FakePage) =>
+      (page.last('recent')?.recent ?? []).some((recent) =>
+        sameRoot(recent.root, gone),
+      );
+    assert.ok(listed(second.page));
+    await first.connection.receive({ type: 'forgetRecent', root: gone });
+    assert.deepStrictEqual(
+      [listed(first.page), listed(second.page)],
+      [false, false],
+    );
   });
 });
