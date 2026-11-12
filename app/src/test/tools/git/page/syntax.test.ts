@@ -1088,6 +1088,44 @@ suite('Syntax', () => {
     );
   });
 
+  test('takes an old side shown from its first line from its hunks as the whole text of its blob only when it shows no unchanged line, as git ignoring whitespace prints those as the new side has them', () => {
+    const reindented = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        `index ${'1'.repeat(40)}..${'2'.repeat(40)} 100644`,
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,3 +1,3 @@',
+        ' int x;',
+        ' foo();',
+        '-bar();',
+        '+qux();',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(reindented, undefined).map(({ entire }) => entire),
+      [undefined, true],
+    );
+    const deleted = parsePatch(
+      [
+        'diff --git a/b.ts b/b.ts',
+        'deleted file mode 100644',
+        `index ${'3'.repeat(40)}..${'0'.repeat(40)}`,
+        '--- a/b.ts',
+        '+++ /dev/null',
+        '@@ -1,2 +0,0 @@',
+        '-let a = 1;',
+        '-let b = 2;',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(deleted, undefined).map(({ entire }) => entire),
+      [true],
+    );
+  });
+
   test('asks for no text of a side that owns none of the lines shown, or with lines shown too far into it', () => {
     assert.deepStrictEqual(textsToLoad(parsePatch(addedPatch), 1, new Set()), [
       { path: 'a.ts', side: 'new', blob: '2'.repeat(40) },

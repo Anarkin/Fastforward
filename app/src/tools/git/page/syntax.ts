@@ -97,8 +97,10 @@ function sideSource(plan: SidePlan, text: string | undefined): NumberedSource {
     )
   ) {
     const kept = shown.slice(0, maxSourceLines);
-    const fromFirstLine = kept.every(
-      ({ number }, index) => number === index + 1,
+    const asInBlob = kept.every(
+      ({ line, number }, index) =>
+        number === index + 1 &&
+        (plan.side === 'new' || line.kind !== 'context'),
     );
     return {
       plan,
@@ -106,7 +108,7 @@ function sideSource(plan: SidePlan, text: string | undefined): NumberedSource {
         language,
         lines: kept.map(({ line }) => line.text),
         keys: kept.map(keyOf),
-        ...(fromFirstLine && { entire: true }),
+        ...(asInBlob && { entire: true }),
       },
       numbers: kept.map(({ number }) => number),
     };
