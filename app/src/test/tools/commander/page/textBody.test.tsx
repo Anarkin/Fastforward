@@ -250,6 +250,20 @@ suite('Text of a viewed file', () => {
     });
   });
 
+  test('asks for rows only once it knows how many rows its screen holds, as rows asked for a screen of one row and answered after it was measured sized the thumb by those few rows for as long as the file was viewed', async () => {
+    await viewing(async ({ show, asked }) => {
+      await show('1');
+
+      assert.deepStrictEqual(
+        asked().map((ask) => [ask.before, ask.after]),
+        [
+          [screen, 0],
+          [screen * 2, screen * 3],
+        ],
+      );
+    });
+  });
+
   test('moves a page for every page asked while rows past those read were asked for, as a page asked meanwhile was lost', async () => {
     await viewing(async ({ show, answerAll, press, place }) => {
       await show('1');

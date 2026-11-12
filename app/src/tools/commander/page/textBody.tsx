@@ -260,7 +260,8 @@ export function TextBody({
     rows: [],
     top: { index: 0, from: 0 },
   });
-  const [screen, setScreen] = useState(1);
+  const [measured, setMeasured] = useState<number>();
+  const screen = measured ?? 1;
   const [columns, setColumns] = useState<number>();
   const [font, setFont] = useState({ char: 0, family: '', spacing: 0 });
   const onFont = useCallback(
@@ -367,11 +368,11 @@ export function TextBody({
     [listen, tab, ends, size, screen],
   );
   useEffect(() => {
-    if (size !== undefined) {
+    if (size !== undefined && measured !== undefined) {
       ends.restart();
       ends.ask({ version });
     }
-  }, [ends, size, version]);
+  }, [ends, size, version, measured]);
   const [estimate, setEstimate] = useState<{
     readonly size: number | undefined;
     readonly screen: number;
@@ -532,7 +533,7 @@ export function TextBody({
   );
 
   useEffect(() => {
-    if (viewing.size === undefined) {
+    if (viewing.size === undefined || measured === undefined) {
       return;
     }
     const from = current.current.rows[current.current.top];
@@ -554,7 +555,7 @@ export function TextBody({
           screen,
         ),
     });
-  }, [requests, viewing, screen, place]);
+  }, [requests, viewing, screen, measured, place]);
 
   const goToMatch = useEffectEvent(() => {
     const target = find?.current;
@@ -672,7 +673,7 @@ export function TextBody({
       matches={find?.matches}
       size={size}
       thumb={textThumb(loaded, screen, size ?? 0, estimate?.perRow, lastTop)}
-      onScreen={setScreen}
+      onScreen={setMeasured}
       onColumns={setColumns}
       onFont={onFont}
       move={move}
