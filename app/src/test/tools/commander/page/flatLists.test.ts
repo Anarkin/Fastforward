@@ -180,6 +180,35 @@ suite('The rows of flat views', () => {
     assert.deepStrictEqual(keys('a', 1), ['sub/c.txt', 'top.txt']);
   });
 
+  test('gives the files of a folder told again and again the slots freed once the worker sorted without them, so the slots grow no further than the files kept', () => {
+    const { flat, sort, keys, pass, told } = lists();
+    flat.ensure('a', 1, false, choices);
+    flat.files('a', 1, [{ under: '', entries: [file('top.txt')] }]);
+    sort();
+    for (let round = 0; round < 50; round++) {
+      flat.files('a', 1, [
+        {
+          under: 'logs/',
+          entries: [file(`${round}.log`), file(`${round + 1}.log`)],
+        },
+      ]);
+      sort();
+      pass(100);
+    }
+    const slots = told.flatMap((message) =>
+      message.type === 'files'
+        ? message.folders.flatMap((folder) => folder.slots)
+        : [],
+    );
+
+    assert.deepStrictEqual(keys('a', 1), [
+      'logs/49.log',
+      'logs/50.log',
+      'top.txt',
+    ]);
+    assert.ok(Math.max(...slots) < 6, `slot ${Math.max(...slots)}`);
+  });
+
   test('keeps the files of a folder told again in the rows built from an order the worker sorted before it was told, rather than leaving them out until its next order', () => {
     const { flat, sort, keys, pass } = lists();
     flat.ensure('a', 1, false, choices);

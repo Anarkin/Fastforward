@@ -36,6 +36,7 @@ interface Kept {
   readonly bySlot: (Row | undefined)[];
   readonly slotsOf: Map<string, readonly number[]>;
   readonly freeing: { readonly batch: number; readonly slots: number[] }[];
+  readonly free: number[];
   sent: number;
   choices: FlatChoices;
   built: FlatBuilt | undefined;
@@ -91,6 +92,7 @@ export class FlatLists {
       bySlot: [],
       slotsOf: new Map(),
       freeing: [],
+      free: [],
       sent: 0,
       choices,
       built: undefined,
@@ -114,8 +116,13 @@ export class FlatLists {
         freed.push(slot);
       }
       const slots = entries.map((entry) => {
-        kept.bySlot.push(flatRowOf(entry, under));
-        return kept.bySlot.length - 1;
+        const row = flatRowOf(entry, under);
+        const slot = kept.free.pop();
+        if (slot === undefined) {
+          return kept.bySlot.push(row) - 1;
+        }
+        kept.bySlot[slot] = row;
+        return slot;
       });
       if (slots.length === 0) {
         kept.slotsOf.delete(under);
@@ -209,6 +216,7 @@ export class FlatLists {
     ) {
       for (const slot of kept.freeing[0].slots) {
         kept.bySlot[slot] = undefined;
+        kept.free.push(slot);
       }
       kept.freeing.shift();
     }
