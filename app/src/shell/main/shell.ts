@@ -763,6 +763,11 @@ export class Shell {
     this.history.forget(id);
     this.save(storage.setLayout(layout));
     this.tools[closed.tool].closed(page, closed);
+    if (!layout.some((each) => each.id === window.id)) {
+      this.host.closeWindow(window.id);
+      this.postWindows();
+      return;
+    }
     if (active === activeId && active !== undefined) {
       this.postTabs(page);
       return;

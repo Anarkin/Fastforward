@@ -770,6 +770,17 @@ suite('Shell with several windows', () => {
     assert.deepStrictEqual(savedIds(first.store.get(tabsKey)), ['1', '5']);
   });
 
+  test('closes a window once its last tab closes while another window is open, as it stayed open showing no tab, and no tab could open in it again', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(host);
+    for (const tab of ['2', '3', '4']) {
+      await second.connection.receive({ type: 'closeTab', tab });
+    }
+    assert.deepStrictEqual(host.opened, ['close window 2']);
+    assert.deepStrictEqual(first.shell.windows(), ['1']);
+    assert.deepStrictEqual(windowsListed(first.page).at(-1), []);
+  });
+
   test('never closes the last window, as quitting keeps its tabs for the next start', async () => {
     const { first } = await twoWindows();
     first.shell.closeWindow('2');
