@@ -1656,6 +1656,28 @@ suite('Syntax', () => {
     );
   });
 
+  test('keeps no colors of a text over 100000 lines, keeping those of the others, as storing it forgot every other text and then itself', async () => {
+    const { counting, lines: tokenized } = countingLines(
+      await loadLanguages(['typescript']),
+    );
+    const color = (name: string, length: number) =>
+      syntaxRanges(counting, [
+        {
+          language: 'typescript',
+          lines: [name, ...Array<string>(length - 1).fill('')],
+          keys: ['0:0'],
+        },
+      ]);
+    color('keptBeside', 50_000);
+    color('overLines', 100_001);
+    color('keptBeside', 50_000);
+    color('overLines', 100_001);
+    assert.deepStrictEqual(
+      tokenized.filter((line) => line !== ''),
+      ['keptBeside', 'overLines', 'overLines'],
+    );
+  });
+
   test('colors no file that is collapsed', () => {
     const files = parsePatch(
       ['a.ts', 'b.ts']

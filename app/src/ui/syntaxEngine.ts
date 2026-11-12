@@ -139,8 +139,12 @@ function firstLineOf(key: string): string {
   return end === -1 ? key : key.slice(0, end);
 }
 
+function cacheable(key: string, lines: number): boolean {
+  return textLength(key) <= maxCachedChars / 4 && lines <= maxCachedLines;
+}
+
 function store(key: string, colors: Colors) {
-  if (textLength(key) > maxCachedChars / 4 || cache.has(key)) {
+  if (!cacheable(key, colors.ranges.length) || cache.has(key)) {
     return;
   }
   cache.set(key, colors);
@@ -611,7 +615,7 @@ export function colorCode(
   }
   const key = `${id}\n${code}`;
   const lines = code.split('\n');
-  const kept = textLength(key) <= maxCachedChars / 4;
+  const kept = cacheable(key, lines.length);
   const work = (highlighter: HighlighterCore) => {
     const found = cached(key);
     if (found !== undefined) {
