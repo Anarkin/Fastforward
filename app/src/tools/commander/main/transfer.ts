@@ -411,16 +411,14 @@ class Transfer {
     overwrite: boolean,
     name: string,
   ): Promise<void> {
+    const into = overwrite ? partOf(target) : target;
     try {
       const pointed = await fs.promises.readlink(source);
       const folder = (
         await fs.promises.stat(source).catch(() => undefined)
       )?.isDirectory();
-      if (overwrite) {
-        await fs.promises.rm(target, { force: true });
-      }
       await fs.promises
-        .symlink(pointed, target, folder ? 'dir' : 'file')
+        .symlink(pointed, into, folder ? 'dir' : 'file')
         .catch((error: unknown) => {
           if (
             process.platform !== 'win32' ||
@@ -430,12 +428,18 @@ class Transfer {
           ) {
             throw error;
           }
-          return fs.promises.symlink(pointed, target, 'junction');
+          return fs.promises.symlink(pointed, into, 'junction');
         });
+      if (into !== target) {
+        await fs.promises.rename(into, target);
+      }
       if (this.plan.move) {
         await fs.promises.unlink(source);
       }
     } catch (error) {
+      if (into !== target) {
+        await fs.promises.rm(into, { force: true }).catch(ignored);
+      }
       this.failed(name, error);
     }
     this.passed({ files: 1, bytes: 0 });

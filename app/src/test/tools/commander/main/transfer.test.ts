@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterEach, beforeEach, suite, test } from 'vitest';
+import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import {
   runTransfer,
   type ClashReply,
@@ -28,7 +28,10 @@ beforeEach(() => {
   fs.mkdirSync(target);
 });
 
-afterEach(() => removeFolder(folder));
+afterEach(() => {
+  vi.restoreAllMocks();
+  removeFolder(folder);
+});
 
 const past = new Date('2020-02-03T04:05:06Z');
 
@@ -567,6 +570,40 @@ suite('Transfer', () => {
       'real.txt',
     );
     assert.deepStrictEqual(fs.readdirSync(source), ['real.txt']);
+  });
+
+  test('overwrites a file with a link only once the link is made, keeping the file when it cannot be', async () => {
+    write(path.join(source, 'real', 'index.js'), 'index');
+    fs.symlinkSync(
+      path.join(source, 'real'),
+      path.join(source, 'package'),
+      'junction',
+    );
+    write(path.join(target, 'package'), 'old');
+    const plan = {
+      sources: [path.join(source, 'package')],
+      target,
+      move: false,
+    };
+    const overwrite: ClashReply = { answer: 'overwrite', all: false };
+    const refused = vi.spyOn(fs.promises, 'symlink').mockRejectedValue(
+      Object.assign(new Error('EPERM: operation not permitted'), {
+        code: 'EPERM',
+      }),
+    );
+
+    const failed = await run(plan, { answers: [overwrite] });
+    assert.strictEqual(failed.failures.length, 1);
+    assert.deepStrictEqual(tree(target), { package: 'old' });
+
+    refused.mockRestore();
+    const { failures } = await run(plan, { answers: [overwrite] });
+    assert.deepStrictEqual(failures, []);
+    assert.deepStrictEqual(fs.readdirSync(target), ['package']);
+    assert.strictEqual(
+      fs.readFileSync(path.join(target, 'package', 'index.js'), 'utf8'),
+      'index',
+    );
   });
 
   test('copies a junction as a link to the same folder, also on Windows without the right to make symbolic links, as pnpm makes its packages of them', async () => {
