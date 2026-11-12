@@ -379,6 +379,22 @@ suite('flatTree', () => {
     assert.deepStrictEqual(asked, [root, at('slow'), at('slow', 'later')]);
   });
 
+  test('reads a folder again once a change in it comes while it is first read', async () => {
+    const { flat, hold, asked, listed, taken } = tree({
+      [root]: [folder('slow')],
+      [at('slow')]: [file('a.txt')],
+    });
+    const release = hold(at('slow'));
+    flat.start();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    listed[at('slow')] = [file('a.txt'), file('new.txt')];
+    flat.changed(path.join('slow', 'new.txt'));
+    release();
+    await flat.idle();
+    assert.deepStrictEqual(asked, [root, at('slow'), at('slow')]);
+    assert.deepStrictEqual(taken(), ['.: ', `${under('slow')}: a.txt new.txt`]);
+  });
+
   test('counts no failure for a folder removed with its parent while being read', async () => {
     const { flat, hold, listed } = tree({
       [root]: [folder('slow'), folder('gone')],

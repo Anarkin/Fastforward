@@ -83,6 +83,11 @@ export class FlatTree {
 
   changed(changed: string): void {
     const under = underOf(changed);
+    const reading = this.reading.get(under);
+    if (reading !== undefined) {
+      reading.again = true;
+      return;
+    }
     const known = this.read.get(under);
     if (known !== undefined) {
       this.queue({ under, hidden: known.hidden }, true);
