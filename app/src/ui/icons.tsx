@@ -30,19 +30,21 @@ export type ChangeKind = 'added' | 'modified' | 'deleted' | 'renamed';
 const changeSigns: Record<ChangeKind, React.ReactNode> = {
   added: (
     <>
-      <path d="M8 5.5v5" />
-      <path d="M5.5 8h5" />
+      <path d="M7.5 5v5" />
+      <path d="M5 7.5h5" />
     </>
   ),
-  modified: <circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none" />,
-  deleted: <path d="M5.5 8h5" />,
-  renamed: <path d="M5 8h5.5M8.5 6l2 2-2 2" />,
+  modified: (
+    <circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none" />
+  ),
+  deleted: <path d="M5 7.5h5" />,
+  renamed: <path d="M4.5 7.5h5.5M8 5.5l2 2-2 2" />,
 };
 
 export function ChangeIcon({ kind }: { kind: ChangeKind }) {
   return (
     <Icon className={`change-icon ${kind}`}>
-      <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+      <rect x="2.5" y="2.5" width="10" height="10" rx="2" />
       {changeSigns[kind]}
     </Icon>
   );
@@ -51,7 +53,7 @@ export function ChangeIcon({ kind }: { kind: ChangeKind }) {
 export function LinkIcon() {
   return (
     <Icon className="link-icon">
-      <path d="M4 4.5v3a2.5 2.5 0 0 0 2.5 2.5H12M9.5 7.5L12 10l-2.5 2.5" />
+      <path d="M4.5 4.5v3.5a2.5 2.5 0 0 0 2.5 2.5H12M9.5 8L12 10.5l-2.5 2.5" />
     </Icon>
   );
 }
@@ -92,11 +94,11 @@ const toolSigns: Record<ToolId, React.ReactNode> = {
   ),
   git: (
     <>
-      <circle cx="5" cy="3.5" r="1.5" />
-      <circle cx="5" cy="12.5" r="1.5" />
-      <circle cx="11" cy="5" r="1.5" />
-      <path d="M5 5v6" />
-      <path d="M11 6.5c0 2.5-6 2-6 4.5" />
+      <circle cx="5.5" cy="3.5" r="1.5" />
+      <circle cx="5.5" cy="12.5" r="1.5" />
+      <circle cx="11.5" cy="5" r="1.5" />
+      <path d="M5.5 5v6" />
+      <path d="M11.5 6.5c0 2.5-6 2-6 4.5" />
     </>
   ),
 };
@@ -104,7 +106,7 @@ const toolSigns: Record<ToolId, React.ReactNode> = {
 export function ShieldIcon() {
   return (
     <Icon className="shield-icon">
-      <path d="M8 1.75 2.75 3.75v4c0 3.2 2.25 5.5 5.25 6.5 3-1 5.25-3.3 5.25-6.5v-4Z" />
+      <path d="M8 1.75 2.5 3.75v4c0 3.2 2.5 5.5 5.5 6.5 3-1 5.5-3.3 5.5-6.5v-4Z" />
     </Icon>
   );
 }
@@ -112,9 +114,9 @@ export function ShieldIcon() {
 export function ErrorIcon() {
   return (
     <Icon className="error-icon">
-      <circle cx="8" cy="8" r="6" />
-      <path d="M8 4.75v3.5" />
-      <circle cx="8" cy="10.75" r="0.6" fill="currentColor" stroke="none" />
+      <circle cx="7.5" cy="7.5" r="6" />
+      <path d="M7.5 4.25v3.5" />
+      <circle cx="7.5" cy="10.25" r="0.6" fill="currentColor" stroke="none" />
     </Icon>
   );
 }
@@ -122,9 +124,9 @@ export function ErrorIcon() {
 export function SevenZipIcon() {
   return (
     <Icon className="seven-zip-icon">
-      <rect x="1.75" y="1.75" width="12.5" height="12.5" rx="1.5" />
+      <rect x="1.5" y="1.5" width="13" height="13" rx="1.5" />
       <path d="M4 4.5h4.25L5.75 11.5" strokeWidth="1.7" />
-      <path d="M8.75 7.75h2.75l-2.75 3.75h2.75" />
+      <path d="M8.75 7.5h2.75l-2.75 4h2.75" />
     </Icon>
   );
 }
@@ -132,7 +134,7 @@ export function SevenZipIcon() {
 export function FolderIcon() {
   return (
     <Icon className="folder-icon">
-      <path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" />
+      <path d="M2.5 4.5a1 1 0 0 1 1-1h3l1 1h5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" />
     </Icon>
   );
 }
@@ -140,8 +142,8 @@ export function FolderIcon() {
 export function FileIcon() {
   return (
     <Icon className="file-icon">
-      <path d="M4 1.5h5L12.5 5v8.5a1 1 0 0 1-1 1h-7.5a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z" />
-      <path d="M9 1.5V5h3.5" />
+      <path d="M4.5 1.5h5l3 3v9a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z" />
+      <path d="M9.5 1.5v3h3" />
     </Icon>
   );
 }
@@ -149,7 +151,7 @@ export function FileIcon() {
 export function ImageIcon() {
   return (
     <Icon>
-      <rect x="2" y="3" width="12" height="10" rx="1.5" />
+      <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" />
       <circle cx="5.75" cy="6.25" r="1.1" />
       <path d="M2.5 11.5 6 8.5l2.5 2 2-1.5 3 2.5" />
     </Icon>
@@ -163,8 +165,8 @@ export function ToolIcon({ tool }: { tool: ToolId }) {
 export function TabsIcon() {
   return (
     <Icon>
-      <rect x="1.75" y="3" width="12.5" height="10.5" rx="1.5" />
-      <path d="M1.75 6.25h12.5M6 3v3.25" />
+      <rect x="1.5" y="3.5" width="13" height="10" rx="1.5" />
+      <path d="M1.5 6.5h13M6.5 3.5v3" />
     </Icon>
   );
 }
@@ -172,8 +174,8 @@ export function TabsIcon() {
 export function MouseIcon() {
   return (
     <Icon className="mouse-icon">
-      <rect x="4" y="1.75" width="8" height="12.5" rx="4" />
-      <path d="M8 1.75v4" />
+      <rect x="3.5" y="1.5" width="8" height="13" rx="4" />
+      <path d="M7.5 1.5v4" />
     </Icon>
   );
 }
@@ -181,8 +183,8 @@ export function MouseIcon() {
 export function AddIcon() {
   return (
     <Icon>
-      <path d="M8 3.5v9" />
-      <path d="M3.5 8h9" />
+      <path d="M7.5 3v9" />
+      <path d="M3 7.5h9" />
     </Icon>
   );
 }
@@ -190,7 +192,7 @@ export function AddIcon() {
 export function BackIcon() {
   return (
     <Icon>
-      <path d="M13 8H3M7.5 3.5L3 8l4.5 4.5" />
+      <path d="M13 7.5H3M7.5 3L3 7.5l4.5 4.5" />
     </Icon>
   );
 }
@@ -198,7 +200,7 @@ export function BackIcon() {
 export function ForwardIcon() {
   return (
     <Icon>
-      <path d="M3 8h10M8.5 3.5L13 8l-4.5 4.5" />
+      <path d="M3 7.5h10M8.5 3L13 7.5l-4.5 4.5" />
     </Icon>
   );
 }
@@ -206,8 +208,8 @@ export function ForwardIcon() {
 export function RefreshIcon() {
   return (
     <Icon>
-      <path d="M13 8a5 5 0 1 1-5-5c1.33 0 2.6.53 3.54 1.46L13 6" />
-      <path d="M13 3v3h-3" />
+      <path d="M13 8a5 5 0 1 1-5-5c1.33 0 2.6.53 3.54 1.46L13.5 6.5" />
+      <path d="M13.5 3v3.5h-3.5" />
     </Icon>
   );
 }
@@ -216,7 +218,7 @@ export function HomeIcon() {
   return (
     <Icon>
       <path d="M2.5 7.5L8 2.5l5.5 5" />
-      <path d="M4 6.5v7h3v-4h2v4h3v-7" />
+      <path d="M4.5 6.5v7h2v-4h3v4h2v-7" />
     </Icon>
   );
 }
@@ -224,8 +226,8 @@ export function HomeIcon() {
 export function PullIcon() {
   return (
     <Icon>
-      <path d="M8 2.5v8M4.5 7L8 10.5 11.5 7" />
-      <path d="M3 13.5h10" />
+      <path d="M7.5 2.5v8M4 7l3.5 3.5L11 7" />
+      <path d="M2.5 13.5h10" />
     </Icon>
   );
 }
@@ -233,8 +235,8 @@ export function PullIcon() {
 export function PushIcon() {
   return (
     <Icon>
-      <path d="M8 13.5v-8M4.5 9L8 5.5 11.5 9" />
-      <path d="M3 2.5h10" />
+      <path d="M7.5 13.5v-8M4 9l3.5-3.5L11 9" />
+      <path d="M2.5 2.5h10" />
     </Icon>
   );
 }
@@ -242,10 +244,10 @@ export function PushIcon() {
 export function SoloIcon() {
   return (
     <Icon>
-      <path d="M6 1.5v1.3M6 6.2v3.6M6 13.2v1.3" />
-      <circle cx="6" cy="4.5" r="1.7" />
-      <circle cx="6" cy="11.5" r="1.7" />
-      <path d="M6 8.3c3 0 5-1.5 5-4.5V2" opacity="0.35" />
+      <path d="M6.5 1.5v1.3M6.5 6.2v3.6M6.5 13.2v1.3" />
+      <circle cx="6.5" cy="4.5" r="1.7" />
+      <circle cx="6.5" cy="11.5" r="1.7" />
+      <path d="M6.5 8.3c3 0 5-1.5 5-4.5V2" opacity="0.35" />
     </Icon>
   );
 }
@@ -265,10 +267,10 @@ export function MoreIcon() {
 export function AllFilesIcon() {
   return (
     <Icon>
-      <path d="M3 2.5v9.5h4M3 7.5h4" />
-      <rect x="7.5" y="5.5" width="5.5" height="4" rx="0.8" />
-      <rect x="7.5" y="10" width="5.5" height="4" rx="0.8" />
-      <rect x="1.5" y="1" width="5.5" height="3" rx="0.8" />
+      <path d="M3.5 4.5v8h4M3.5 7.5h4" />
+      <rect x="7.5" y="5.5" width="5" height="4" rx="0.8" />
+      <rect x="7.5" y="10.5" width="5" height="4" rx="0.8" />
+      <rect x="1.5" y="1.5" width="5" height="3" rx="0.8" />
     </Icon>
   );
 }
@@ -276,9 +278,9 @@ export function AllFilesIcon() {
 export function FlatViewIcon() {
   return (
     <Icon>
-      <path d="M2.5 3.5v9h2.5" opacity="0.55" />
-      <path d="M2.5 8h2.5" opacity="0.55" />
-      <path d="M7 3.5h6.5M7 8h6.5M7 12.5h6.5" />
+      <path d="M2.5 3.5v8h2.5" opacity="0.55" />
+      <path d="M2.5 7.5h2.5" opacity="0.55" />
+      <path d="M7 3.5h6.5M7 7.5h6.5M7 11.5h6.5" />
     </Icon>
   );
 }
@@ -287,8 +289,8 @@ export function CollapseAllIcon() {
   return (
     <Icon>
       <path d="M2.5 11V3.5a1 1 0 0 1 1-1H11" />
-      <rect x="4.5" y="4.5" width="9" height="9" rx="1" />
-      <path d="M6.5 9h5" />
+      <rect x="4.5" y="4.5" width="8" height="8" rx="1" />
+      <path d="M6.5 8.5h4" />
     </Icon>
   );
 }
@@ -297,9 +299,9 @@ export function ExpandAllIcon() {
   return (
     <Icon>
       <path d="M2.5 11V3.5a1 1 0 0 1 1-1H11" />
-      <rect x="4.5" y="4.5" width="9" height="9" rx="1" />
-      <path d="M6.5 9h5" />
-      <path d="M9 6.5v5" />
+      <rect x="4.5" y="4.5" width="8" height="8" rx="1" />
+      <path d="M6.5 8.5h4" />
+      <path d="M8.5 6.5v4" />
     </Icon>
   );
 }
@@ -307,8 +309,8 @@ export function ExpandAllIcon() {
 export function EntireFileIcon() {
   return (
     <Icon>
-      <path d="M8 1.5v4.5M6 3.5l2-2 2 2M8 14.5V10M6 12.5l2 2 2-2" />
-      <path d="M3 8h10" opacity="0.5" />
+      <path d="M7.5 1.5v4.5M5.5 3.5l2-2 2 2M7.5 14.5V10M5.5 12.5l2 2 2-2" />
+      <path d="M2.5 7.5h10" opacity="0.5" />
     </Icon>
   );
 }
@@ -316,7 +318,7 @@ export function EntireFileIcon() {
 export function WhitespaceChangesIcon() {
   return (
     <Icon>
-      <path d="M2.5 8.5v2.5h11V8.5" />
+      <path d="M2.5 8.5v2h11v-2" />
     </Icon>
   );
 }
@@ -324,7 +326,7 @@ export function WhitespaceChangesIcon() {
 export function ShowWhitespaceIcon() {
   return (
     <Icon>
-      <path d="M3 5.5h.01M6 5.5h.01M9 5.5h.01M12 5.5h.01M3 10.5h9M10 8.5l2 2-2 2" />
+      <path d="M3.5 5.5h.01M6.5 5.5h.01M9.5 5.5h.01M12.5 5.5h.01M3.5 10.5h9M10.5 8.5l2 2-2 2" />
     </Icon>
   );
 }
@@ -332,7 +334,7 @@ export function ShowWhitespaceIcon() {
 export function WordWrapIcon() {
   return (
     <Icon>
-      <path d="M2.5 4h11M2.5 8h9a2 2 0 0 1 0 4H8M9.5 10.5 8 12l1.5 1.5M2.5 12H5" />
+      <path d="M2.5 3.5h11M2.5 7.5h9a2 2 0 0 1 0 4H8M9.5 10 8 11.5l1.5 1.5M2.5 11.5H5" />
     </Icon>
   );
 }
@@ -367,7 +369,7 @@ export function CheckBoxIcon() {
 export function PinIcon() {
   return (
     <Icon>
-      <path d="M5.5 2h5M6.5 2v4L4 8.5h8L9.5 6V2M8 8.5v5.5" />
+      <path d="M5.5 2.5h6M6.5 2.5v3.5L4 8.5h9L10.5 6V2.5M8.5 8.5v5.5" />
     </Icon>
   );
 }
@@ -392,7 +394,7 @@ export function DropdownIcon() {
 export function RealSizeIcon() {
   return (
     <Icon>
-      <path d="M3.5 5.5 5 4v8M11 5.5 12.5 4v8M8 6.5h.01M8 9.5h.01" />
+      <path d="M4 5.5 5.5 4v8M11 5.5 12.5 4v8M8.5 6.5h.01M8.5 9.5h.01" />
     </Icon>
   );
 }
@@ -400,7 +402,7 @@ export function RealSizeIcon() {
 export function TextIcon() {
   return (
     <Icon>
-      <path d="M3 4h10M3 7h10M3 10h10M3 13h6" />
+      <path d="M3 3.5h10M3 6.5h10M3 9.5h10M3 12.5h6" />
     </Icon>
   );
 }
@@ -416,8 +418,8 @@ export function HexIcon() {
 export function InlineIcon() {
   return (
     <Icon>
-      <rect x="2" y="2.5" width="12" height="11" rx="1" />
-      <path d="M4.5 6h7M4.5 10h7" />
+      <rect x="1.5" y="2.5" width="12" height="11" rx="1" />
+      <path d="M3.5 5.5h8M3.5 10.5h8" />
     </Icon>
   );
 }
@@ -425,8 +427,8 @@ export function InlineIcon() {
 export function SideBySideIcon() {
   return (
     <Icon>
-      <rect x="2" y="2.5" width="12" height="11" rx="1" />
-      <path d="M8 2.5v11M4 6h2.5M9.5 10H12" />
+      <rect x="1.5" y="2.5" width="12" height="11" rx="1" />
+      <path d="M7.5 2.5v11M3.5 5.5h2M9.5 10.5h2" />
     </Icon>
   );
 }
