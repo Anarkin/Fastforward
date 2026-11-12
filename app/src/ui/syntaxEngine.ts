@@ -60,6 +60,7 @@ const plainScopes = [
   'meta.template.expression',
   'support.type.property-name',
   'punctuation.support.type.property-name',
+  'entity.name.tag.yaml',
 ];
 
 const plainColor = '#000000';

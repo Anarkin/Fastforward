@@ -374,6 +374,25 @@ suite('Syntax', () => {
     );
   });
 
+  test('leaves the keys of YAML plain, as those of JSON, coloring their values', async () => {
+    const lines = await colored([], {
+      path: 'settings.yaml',
+      binary: false,
+      content: 'name: Fastforward\nscripts:\n  build: esbuild app\n',
+    });
+    const tokens = Object.values(lines).flat();
+    assert.deepStrictEqual(
+      tokens.filter((token) =>
+        ['name', 'scripts', 'build'].includes(
+          token.split(' ').slice(1).join(' '),
+        ),
+      ),
+      [],
+    );
+    assert.ok(tokens.includes('string Fastforward'), JSON.stringify(lines));
+    assert.ok(tokens.includes('string esbuild app'), JSON.stringify(lines));
+  });
+
   test('leaves the keys of JSON plain, quotes and all', async () => {
     assert.deepStrictEqual(
       await colored([], {
