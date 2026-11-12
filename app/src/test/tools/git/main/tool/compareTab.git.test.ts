@@ -6,7 +6,7 @@ import { imageUrl } from '../../../../../tools/git/shared/images';
 import type { CompareView } from '../../../../../tools/git/shared/protocol';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import { strings } from '../../../../../shared/strings';
-import { tabsKey } from '../../../../../shell/main/storage';
+import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
 import {
   removeFolder,
   tempFolder,
@@ -16,6 +16,7 @@ import {
 import { recordingLog } from '../../../../stub';
 import { waitFor } from '../../../../fixtures';
 import {
+  attach,
   closeViews,
   failOnErrorsLogged,
   openView,
@@ -229,5 +230,52 @@ suite('Git tool comparing two files', () => {
       ],
     );
     await opened.connection.receive({ type: 'selectTab', tab: '1' });
+  });
+
+  test('serves the images of a compare tab moved into another window, as the window it left lets go of no comparison but its own', async () => {
+    const compare = {
+      old: path.join(files, 'moved-before.png'),
+      new: path.join(files, 'moved-after.png'),
+    };
+    fs.writeFileSync(compare.old, Buffer.from(' moved before'));
+    fs.writeFileSync(compare.new, Buffer.from(' moved after'));
+    const first = await openView(log, [], false);
+    await first.store.update(tabsKey, [
+      { id: '1', tool: 'git', root: repository.root },
+      { id: '2', tool: 'git', compare },
+      { id: '3', tool: 'terminal' },
+    ]);
+    await first.store.update(windowsKey, [
+      { id: '1', tabs: ['1', '2'], active: '2' },
+      { id: '2', tabs: ['3'], active: '3' },
+    ]);
+    const second = attach(first.view, '2');
+    await first.connection.receive({ type: 'ready' });
+    await second.connection.receive({ type: 'ready' });
+    await first.view.idle();
+    await first.connection.receive({
+      type: 'moveTabToWindow',
+      tab: '2',
+      window: '2',
+    });
+    await first.view.idle();
+    const moved = second.page.messages
+      .flatMap((message) =>
+        message.type === 'compare' ? [message.compare] : [],
+      )
+      .at(-1);
+    const [file] = parsePatch(moved?.patch ?? '');
+    const shown = await first.view.image(
+      new URL(
+        imageUrl({
+          root: '2',
+          path: 'moved-before.png',
+          id: file?.blobs?.old ?? '',
+          disk: false,
+        }),
+        'fastforward://app',
+      ),
+    );
+    assert.strictEqual(shown.status, 200);
   });
 });

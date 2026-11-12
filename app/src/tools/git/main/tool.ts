@@ -332,7 +332,7 @@ export class GitTool implements Tool<'git'> {
   private readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
   private readonly imageReads = new ImageReads();
-  private readonly comparisons = new Map<string, Compared>();
+  private readonly comparisons = new Map<string, Comparing>();
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
   private readonly clones: Clones;
@@ -729,7 +729,7 @@ export class GitTool implements Tool<'git'> {
     const source = imageSourceOf(url);
     const type = source && imageType(source.path);
     const tab = source && this.tabStates.get(source.root);
-    const compared = source && this.comparisons.get(source.root);
+    const compared = source && this.comparisons.get(source.root)?.compared;
     if (
       !source ||
       !type ||
@@ -1923,11 +1923,9 @@ export class GitTool implements Tool<'git'> {
       await this.sendCompare(session);
       return;
     }
-    shown?.stop();
     if (shown !== undefined) {
-      this.comparisons.delete(shown.tab);
+      this.forgetComparing(shown);
     }
-    this.comparisons.set(tab, compared);
     const comparing: Comparing = {
       tab,
       compared,
@@ -1954,6 +1952,7 @@ export class GitTool implements Tool<'git'> {
         },
       ),
     };
+    this.comparisons.set(tab, comparing);
     session.comparing = comparing;
     await this.sendCompare(session);
   }
@@ -1992,11 +1991,17 @@ export class GitTool implements Tool<'git'> {
   private stopComparing(session: Session): void {
     const { comparing } = session;
     if (comparing !== undefined) {
-      comparing.stop();
+      this.forgetComparing(comparing);
       comparing.running?.abort();
-      this.comparisons.delete(comparing.tab);
       session.comparing = undefined;
       session.post({ type: 'compare', compare: undefined });
+    }
+  }
+
+  private forgetComparing(comparing: Comparing): void {
+    comparing.stop();
+    if (this.comparisons.get(comparing.tab) === comparing) {
+      this.comparisons.delete(comparing.tab);
     }
   }
 
