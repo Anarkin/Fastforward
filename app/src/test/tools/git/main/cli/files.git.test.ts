@@ -268,6 +268,31 @@ suite('Repository files', () => {
     assert.strictEqual(fs.readFileSync(viewed.file, 'utf8'), 'one\n');
   });
 
+  test('gives a copy of a blob whose name Windows keeps for a device or ends in a dot or a space, under a name Windows takes, keeping its extension', async () => {
+    const copies = path.join(parent, 'viewed-reserved');
+    const blob = (
+      await repository.git('rev-parse', 'HEAD:src/tracked.txt')
+    ).trim();
+    const names = ['aux.c', 'CON', 'com1.txt', 'lpt9', 'notes ', 'ends.'];
+    const viewed = await Promise.all(
+      names.map((name) =>
+        viewedFile(gitPath, cwd, `src/${name}`, blob, copies),
+      ),
+    );
+    assert.deepStrictEqual(
+      viewed.map((each) =>
+        each.kind === 'file' ? path.basename(each.file) : each.kind,
+      ),
+      process.platform === 'win32'
+        ? ['_aux.c', '_CON', '_com1.txt', '_lpt9', 'notes_', 'ends_']
+        : names,
+    );
+    for (const each of viewed) {
+      assert.ok(each.kind === 'file');
+      assert.strictEqual(fs.readFileSync(each.file, 'utf8'), 'one\n');
+    }
+  });
+
   test('gives no file to view outside the repository, missing from the working tree, or of a blob it does not have', async () => {
     const copies = path.join(parent, 'viewed');
     await assert.rejects(

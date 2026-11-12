@@ -4,6 +4,11 @@ import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { maxImageSize, type ImageSource } from '../../shared/images';
 import { linkMode } from '../../shared/protocol';
 import { isFullHash } from '../../shared/hashes';
+import {
+  forbiddenCharacters,
+  forbiddenEnd,
+  reservedNames,
+} from '../../shared/windowsNames';
 import { strings } from '../../../../shared/strings';
 import { gitDirOf } from './gitDir';
 import { headCommit } from './history';
@@ -638,12 +643,16 @@ export async function viewedFile(
 
 const copiesBeingWritten = new Map<string, Promise<ViewedFile>>();
 
-const unnamedOnWindows = /[<>:"|?*]/g;
+const unnamedOnWindows = new RegExp(forbiddenCharacters.source, 'gu');
 
 function copyName(name: string): string {
-  return process.platform === 'win32'
-    ? name.replaceAll(unnamedOnWindows, '_')
-    : name;
+  if (process.platform !== 'win32') {
+    return name;
+  }
+  const kept = name
+    .replaceAll(unnamedOnWindows, '_')
+    .replace(forbiddenEnd, (end) => '_'.repeat(end.length));
+  return reservedNames.test(kept) ? `_${kept}` : kept;
 }
 
 async function copied(

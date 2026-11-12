@@ -1,4 +1,9 @@
 import { strings, type Sentence } from '../../../shared/strings';
+import {
+  forbiddenCharacters,
+  forbiddenEnd,
+  reservedNames,
+} from './windowsNames';
 
 export interface CloneAsk {
   readonly url: string;
@@ -24,8 +29,6 @@ export type CloneView =
 const scheme = /^[a-z][a-z0-9+.-]*:\/\//i;
 const trailingSeparators = /[\\/]+$/;
 const gitSuffix = /(?:[\\/]\.git|\.git)$/i;
-const forbiddenCharacters = /[<>:"/\\|?*\p{Cc}]/u;
-const reservedNames = /^(?:con|prn|aux|nul|com\d|lpt\d)(?:\..*)?$/i;
 const urlLike = /^(?:(?:https?|ssh|git|file):\/\/|[\w.-]+@[\w.-]+:)[^\s]+$/i;
 
 export function cloneName(url: string): string {
@@ -66,7 +69,7 @@ export function nameProblem(name: string): Sentence | undefined {
   return name === '.' ||
     name === '..' ||
     forbiddenCharacters.test(name) ||
-    /[. ]$/.test(name) ||
+    forbiddenEnd.test(name) ||
     reservedNames.test(name)
     ? strings.clone.badName(name)
     : undefined;
