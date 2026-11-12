@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterEach, beforeEach, suite, test } from 'vitest';
+import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import { renameUnlessTaken } from '../../../../tools/commander/main/renaming';
 import { removeFolder, tempFolder } from '../../../repositories';
 
@@ -18,6 +18,7 @@ suite('renameUnlessTaken', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     removeFolder(folder);
   });
 
@@ -43,5 +44,20 @@ suite('renameUnlessTaken', () => {
     });
     assert.strictEqual(fs.readFileSync(at('b.txt'), 'utf8'), 'b');
     assert.deepStrictEqual(listed(), ['a.txt', 'b.txt', 'docs', 'empty']);
+  });
+
+  test('refuses a name another item has where the drive tells no identities of its files, and renames a name to itself in another case there, as every file would seem the same', async () => {
+    fs.writeFileSync(at('a.txt'), 'a');
+    fs.writeFileSync(at('b.txt'), 'b');
+    const lstat = fs.promises.lstat.bind(fs.promises);
+    vi.spyOn(fs.promises, 'lstat').mockImplementation(async (file, options) =>
+      Object.assign(await lstat(file, options), { ino: 0n, dev: 1n }),
+    );
+    await assert.rejects(renameUnlessTaken(at('a.txt'), at('b.txt')), {
+      code: 'EEXIST',
+    });
+    await renameUnlessTaken(at('a.txt'), at('A.txt'));
+    assert.strictEqual(fs.readFileSync(at('b.txt'), 'utf8'), 'b');
+    assert.deepStrictEqual(listed(), ['A.txt', 'b.txt']);
   });
 });

@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { fileIdOf } from './fileIds';
 import { codeOf } from './reasons';
 
 async function statOf(file: string): Promise<fs.BigIntStats | undefined> {
@@ -12,6 +13,18 @@ async function statOf(file: string): Promise<fs.BigIntStats | undefined> {
   }
 }
 
+function sameItem(
+  from: string,
+  to: string,
+  source: fs.BigIntStats,
+  there: fs.BigIntStats,
+): boolean {
+  const id = fileIdOf(source);
+  return id === undefined
+    ? from.toLowerCase() === to.toLowerCase()
+    : id === fileIdOf(there);
+}
+
 export async function renameUnlessTaken(
   from: string,
   to: string,
@@ -19,7 +32,7 @@ export async function renameUnlessTaken(
   const there = await statOf(to);
   if (there !== undefined) {
     const source = await fs.promises.lstat(from, { bigint: true });
-    if (source.ino !== there.ino || source.dev !== there.dev) {
+    if (!sameItem(from, to, source, there)) {
       throw Object.assign(new Error(`EEXIST: file already exists, ${to}`), {
         code: 'EEXIST',
       });

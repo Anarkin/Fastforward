@@ -8,6 +8,7 @@ import type {
   TransferProgress,
 } from '../shared/transfers';
 import { strings } from '../../../shared/strings';
+import { fileIdOf } from './fileIds';
 import { reasonOf } from './reasons';
 
 export interface TransferPlan {
@@ -62,8 +63,7 @@ async function statsOf(file: string): Promise<fs.Stats | undefined> {
 
 async function identityOf(file: string): Promise<string | undefined> {
   try {
-    const { dev, ino } = await fs.promises.lstat(file, { bigint: true });
-    return ino === 0n ? undefined : `${dev}:${ino}`;
+    return fileIdOf(await fs.promises.lstat(file, { bigint: true }));
   } catch {
     return undefined;
   }
