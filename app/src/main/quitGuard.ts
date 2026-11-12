@@ -13,7 +13,7 @@ export class QuitGuard {
   private pending: (() => void) | undefined;
   private allowed = false;
   private ending = false;
-  private hung = false;
+  private readonly hung = new Set<string>();
   private quitting = false;
   private held = false;
   private stopEnding: (() => void) | undefined;
@@ -28,7 +28,7 @@ export class QuitGuard {
     if (
       this.allowed ||
       this.ending ||
-      this.hung ||
+      this.hung.size > 0 ||
       shell === undefined ||
       !shell.asksBeforeQuit()
     ) {
@@ -94,7 +94,15 @@ export class QuitGuard {
     }, systemEndingFor);
   }
 
-  responsive(answers: boolean): void {
-    this.hung = !answers;
+  responsive(window: string, answers: boolean): void {
+    if (answers) {
+      this.hung.delete(window);
+    } else {
+      this.hung.add(window);
+    }
+  }
+
+  forget(window: string): void {
+    this.hung.delete(window);
   }
 }

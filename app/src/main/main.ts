@@ -364,8 +364,8 @@ async function start(asked: readonly string[]): Promise<void> {
       savePlace(id, entry);
     });
     window.on('query-session-end', () => quitGuard.systemEnding());
-    window.on('unresponsive', () => quitGuard.responsive(false));
-    window.on('responsive', () => quitGuard.responsive(true));
+    window.on('unresponsive', () => quitGuard.responsive(id, false));
+    window.on('responsive', () => quitGuard.responsive(id, true));
     window.webContents.on('did-start-navigation', (details) => {
       if (startsAppPage(details)) {
         entry.connection = Promise.all([entry.connection, views.promise]).then(
@@ -389,6 +389,7 @@ async function start(asked: readonly string[]): Promise<void> {
       }
     });
     window.on('closed', () => {
+      quitGuard.forget(id);
       disconnect();
       strips.delete(id);
       frontToBack = frontToBack.filter((other) => other !== id);

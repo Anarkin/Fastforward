@@ -111,12 +111,12 @@ suite('Quit guard', () => {
       false,
     );
     const hung = guarded().guard;
-    hung.responsive(false);
+    hung.responsive('1', false);
     assert.strictEqual(
       hung.holds(() => undefined),
       false,
     );
-    hung.responsive(true);
+    hung.responsive('1', true);
     assert.strictEqual(
       hung.holds(() => undefined),
       true,
@@ -130,6 +130,22 @@ suite('Quit guard', () => {
     assert.strictEqual(
       new QuitGuard(() => undefined).holds(() => undefined),
       false,
+    );
+  });
+
+  test('lets a quit go on while any window hangs, not only the last one to say so, and forgets a window once it is gone, as one closed while it hung let every later quit go unasked', () => {
+    const { guard } = guarded();
+    guard.responsive('1', false);
+    guard.responsive('2', false);
+    guard.responsive('2', true);
+    assert.strictEqual(
+      guard.holds(() => undefined),
+      false,
+    );
+    guard.forget('1');
+    assert.strictEqual(
+      guard.holds(() => undefined),
+      true,
     );
   });
 
