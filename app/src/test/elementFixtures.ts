@@ -1,8 +1,7 @@
 import { JSDOM } from 'jsdom';
 
-const document = new JSDOM(
-  '',
-).window.document.implementation.createHTMLDocument();
+const { window } = new JSDOM('');
+const document = window.document.implementation.createHTMLDocument();
 
 export function laidOutElement(
   sizes: { clientHeight?: number; offsetHeight?: number; scrollTop?: number },
@@ -17,4 +16,10 @@ export function laidOutElement(
   }
   document.body.append(element);
   return element;
+}
+
+export function laidOutRow(height: number, index?: number): HTMLElement {
+  const row = laidOutElement({ offsetHeight: Math.round(height) }, index);
+  row.getBoundingClientRect = () => new window.DOMRect(0, 0, 0, height);
+  return row;
 }

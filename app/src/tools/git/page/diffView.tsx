@@ -91,6 +91,7 @@ import {
   type RowBreak,
 } from '../../../ui/wordWrap';
 import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
+import { inLines, measureInLines } from '../../../ui/lineHeight';
 import { afterPaint } from '../../../ui/afterPaint';
 import {
   followRows,
@@ -212,12 +213,6 @@ const rowLines: Record<
   image: 19,
   hunk: 1,
 };
-
-const onLine = 0.01;
-
-function inLines(height: number, lineHeight: number): number {
-  return Math.max(0, Math.ceil(height / lineHeight - onLine)) * lineHeight;
-}
 
 const measuredEstimates: Record<MeasuredKind, number> = {
   error: 200,
@@ -752,14 +747,7 @@ function measuresOf(
       const key = diffRowKey(rows[index], index);
       return columns && isCode(rows[index]) ? `${key}:${generation}` : key;
     },
-    measureElement: (element, entry) =>
-      inLines(
-        Math.round(
-          (entry?.borderBoxSize[0]?.blockSize ??
-            element.getBoundingClientRect().height) * ratio,
-        ) / ratio,
-        lineHeight,
-      ),
+    measureElement: measureInLines(lineHeight, ratio),
     columns,
     lineHeight,
     ratio,

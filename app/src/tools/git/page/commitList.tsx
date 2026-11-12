@@ -5,6 +5,7 @@ import {
   useEffectEvent,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -69,7 +70,7 @@ import { realHeight } from '../../../ui/cappedScroll';
 import { rowPlace } from '../../../ui/rowPlace';
 import { watchDevicePixels } from '../../../ui/devicePixels';
 import { activeDescendant, endCovered, rowId } from '../../../ui/virtualRows';
-import { useLineHeight } from '../../../ui/lineHeight';
+import { measureInLines, useLineHeight } from '../../../ui/lineHeight';
 
 const defaultRowLineHeight = 18;
 export const commitRowHeight = 2 * defaultRowLineHeight;
@@ -96,6 +97,21 @@ export function estimatedRowHeight(
   }
   const lines = history?.hasBubbles(index - offset) ? 3 : 2;
   return lines * line;
+}
+
+export function rowSizes(
+  history: CommitHistory | undefined,
+  offset: number,
+  line: number,
+  ratio: number,
+): {
+  readonly estimateSize: (index: number) => number;
+  readonly measureElement: ReturnType<typeof measureInLines>;
+} {
+  return {
+    estimateSize: (index) => estimatedRowHeight(history, offset, index, line),
+    measureElement: measureInLines(line, ratio),
+  };
 }
 
 export function rowKeyOf(
@@ -690,10 +706,15 @@ export function Commits({
   const skeleton = useSkeleton(opening);
   const count = offset + (history?.total ?? (skeleton ? openingRows : 0));
 
-  const line = useLineHeight(list, defaultRowLineHeight);
-  const rowHeight = useCallback(
-    (index: number) => estimatedRowHeight(history, offset, index, line),
-    [history, offset, line],
+  const [scale, setScale] = useState(() => window.devicePixelRatio);
+  useEffect(
+    () => watchDevicePixels(() => setScale(window.devicePixelRatio)),
+    [],
+  );
+  const line = useLineHeight(list, defaultRowLineHeight, scale);
+  const sizes = useMemo(
+    () => rowSizes(history, offset, line, scale),
+    [history, offset, line, scale],
   );
   const rowKey = useCallback(
     (index: number) => rowKeyOf(history, offset, index),
@@ -705,17 +726,12 @@ export function Commits({
   const [scrollToFn] = useState(() =>
     movingPlaces(places, scrolling.scrollToFn),
   );
-  const [scale, setScale] = useState(() => window.devicePixelRatio);
-  useEffect(
-    () => watchDevicePixels(() => setScale(window.devicePixelRatio)),
-    [],
-  );
   const [endPadding, setEndPadding] = useState(0);
   useLayoutEffect(() => setEndPadding(endCovered(list.current)), [line]);
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
-    estimateSize: rowHeight,
+    ...sizes,
     getItemKey: rowKey,
     overscan: 10,
     scrollPaddingEnd: endPadding,

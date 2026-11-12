@@ -50,6 +50,7 @@ import {
   mergeToToggle,
   movingPlaces,
   rowKeyOf,
+  rowSizes,
   SoloButton,
   WorkingTreeRow,
   workingTreeRowHeight,
@@ -68,7 +69,7 @@ import {
   renderedBy,
   withMacKeys,
 } from '../../../fixtures';
-import { laidOutElement } from '../../../elementFixtures';
+import { laidOutElement, laidOutRow } from '../../../elementFixtures';
 import { withStores } from '../../../componentFixtures';
 
 const unchangingMedia = (window: JSDOM['window']) => (): MediaQueryList =>
@@ -93,7 +94,7 @@ function bubblesOf(hash: string, shown: ShownGit = {}): string {
   );
 }
 
-function laidOut() {
+function laidOut(line = bubbleLineHeight, ratio = 1) {
   const scroller = laidOutElement({ clientHeight: 500 });
   const scrolling = {
     getScrollElement: () => scroller,
@@ -116,20 +117,18 @@ function laidOut() {
   const drawn = () => drawnRows(virtualizer, virtualizer.options.getItemKey);
   return {
     drawn,
-    lay: (history: CommitHistory) => {
+    lay: (history: CommitHistory, offset = 0) => {
       virtualizer.setOptions({
         ...scrolling,
-        count: history.total,
-        estimateSize: (index) => estimatedRowHeight(history, 0, index),
-        getItemKey: (index) => rowKeyOf(history, 0, index),
+        count: offset + history.total,
+        ...rowSizes(history, offset, line, ratio),
+        getItemKey: (index) => rowKeyOf(history, offset, index),
       });
       drawn();
     },
     draw: (index: number, height: number) => {
       drawn();
-      virtualizer.measureElement(
-        laidOutElement({ offsetHeight: height }, index),
-      );
+      virtualizer.measureElement(laidOutRow(height, index));
       return virtualizer.getVirtualItems();
     },
   };
@@ -212,6 +211,21 @@ suite('Commit list rows', () => {
     lay(later);
     later.add(0, [commitInfo('a'), commitInfo('b')]);
     assert.strictEqual(draw(0, wrapped)[1].start, wrapped);
+  });
+
+  test('starts each row where the lines of the rows above it end, at 125% the rows after an uncommitted changes row of 17.6 and commits of 35.2 at 22, 66 and 110 device pixels rather than the 22.5 and 66.25 of rows rounded to whole CSS pixels, so their lines meet those of the files beside them and no pale line shows under the uncommitted changes', () => {
+    const line = 17.6;
+    const { lay, draw } = laidOut(line, 1.25);
+    const history = new CommitHistory(3);
+    history.add(0, [commitInfo('a'), commitInfo('b'), commitInfo('c')]);
+    lay(history, 1);
+    draw(0, line);
+    draw(1, 2 * line);
+    const rows = draw(2, 2 * line);
+    assert.deepStrictEqual(
+      rows.slice(0, 4).map((row) => Math.round(row.start * 1.25 * 1000) / 1000),
+      [0, 22, 66, 110],
+    );
   });
 
   test("puts a commit's bubbles on one line that can break between them", () => {
@@ -1419,6 +1433,11 @@ async function scrollingList(
     offsetHeight: {
       get(this: HTMLElement) {
         return laidOutSize(this);
+      },
+    },
+    getBoundingClientRect: {
+      value(this: HTMLElement) {
+        return new window.DOMRect(0, 0, 300, laidOutSize(this));
       },
     },
     clientHeight: {
