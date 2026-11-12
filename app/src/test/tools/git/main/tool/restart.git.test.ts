@@ -13,8 +13,11 @@ import {
   newView,
   openView,
   saveTabs,
+  rootOf,
   settingsForViews,
   stubMethod,
+  tabOf,
+  takeErrorsLogged,
 } from '../../../../harness';
 import {
   installedGit,
@@ -147,5 +150,46 @@ suite('Git tool started again', () => {
       storageOf(store).selectionOf(repository.root),
       undefined,
     );
+  });
+
+  test('selects again the commit and the file last selected in a tab whose preload failed', async () => {
+    const other = await tempRepository(path.join(folder, 'preloaded'));
+    await other.commit('other', { 'o.txt': 'o\n' });
+    const store = new FakeStore();
+    await saveTabs(store, [other.root, repository.root], other.root);
+    await storageOf(store).setSelection(repository.root, {
+      hash: first,
+      path: 'b.txt',
+    });
+    const view = newView(log, await installedGit(), settingsForViews(), store);
+    stubMethod(view, 'watch', () => Promise.resolve());
+    let failed = false;
+    stubMethod(view, 'sendWorkingTree', async (original, ...args) => {
+      if (!failed && rootOf(args[0]) === repository.root) {
+        failed = true;
+        throw new Error('working tree failed');
+      }
+      await original(...args);
+    });
+    const { page, connection } = attach(view);
+    await connection.receive({ type: 'ready' });
+    await view.idle();
+    await connection.receive({
+      type: 'preloadTab',
+      tab: tabOf(page, repository.root),
+    });
+    assert.ok(failed);
+    takeErrorsLogged(
+      logged,
+      /^Preloading tab .* failed$/,
+      /^working tree failed$/,
+    );
+    await connection.receive({
+      type: 'selectTab',
+      tab: tabOf(page, repository.root),
+    });
+    assert.strictEqual(page.last('commits')?.selectedIndex, 1);
+    assert.strictEqual(page.last('files')?.hash, first);
+    assert.strictEqual(page.last('diff')?.path, 'b.txt');
   });
 });

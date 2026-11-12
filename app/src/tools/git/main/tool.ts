@@ -1644,6 +1644,7 @@ export class GitTool implements Tool<'git'> {
     if (tab.opened || tab.preloading) {
       return;
     }
+    const selected = { hash: tab.hash, path: tab.path, area: tab.area };
     tab.preloading = (async () => {
       try {
         const context = await this.context(session, root, false);
@@ -1654,7 +1655,7 @@ export class GitTool implements Tool<'git'> {
         tab.opened = true;
         await this.loadTab(context);
       } catch (error) {
-        Object.assign(tab, newTabState());
+        Object.assign(tab, newTabState(), selected);
         this.log.error(strings.log.preloadingFailed(root));
         this.log.error(error);
       } finally {
