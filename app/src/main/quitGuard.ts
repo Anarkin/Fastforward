@@ -2,6 +2,8 @@ import { realTimer, type Timer } from '../tools/git/main/autoFetch';
 
 const systemEndingFor = 10_000;
 
+export type Closing = 'held' | 'quits' | 'alone';
+
 interface AskingShell {
   asksBeforeQuit(): boolean;
   askToQuit(): void;
@@ -12,6 +14,8 @@ export class QuitGuard {
   private allowed = false;
   private ending = false;
   private hung = false;
+  private quitting = false;
+  private held = false;
   private stopEnding: (() => void) | undefined;
 
   constructor(
@@ -33,6 +37,34 @@ export class QuitGuard {
     this.pending = then;
     shell.askToQuit();
     return true;
+  }
+
+  get quits(): boolean {
+    return this.quitting;
+  }
+
+  quitStarts(): void {
+    this.quitting = true;
+  }
+
+  closing(last: boolean, then: () => void): Closing {
+    if (!this.quitting && !last) {
+      return 'alone';
+    }
+    if (this.quitting && this.held) {
+      return 'held';
+    }
+    if (!this.holds(then)) {
+      return 'quits';
+    }
+    if (this.quitting) {
+      this.held = true;
+      this.timer(() => {
+        this.quitting = false;
+        this.held = false;
+      }, 0);
+    }
+    return 'held';
   }
 
   confirmed(): void {

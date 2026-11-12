@@ -288,10 +288,7 @@ async function start(asked: readonly string[]): Promise<void> {
   let asking: Shell | undefined;
   const quitGuard = new QuitGuard(() => asking);
   powerMonitor.on('shutdown', () => quitGuard.systemEnding());
-  let quitting = false;
-  app.on('before-quit', () => {
-    quitting = true;
-  });
+  app.on('before-quit', () => quitGuard.quitStarts());
   const opened = new Map<string, OpenedWindow>();
   let focused: string | undefined;
   const focusedWindow = (): BrowserWindow | undefined =>
@@ -346,22 +343,24 @@ async function start(asked: readonly string[]): Promise<void> {
       if (opened.get(id) !== entry) {
         return;
       }
-      if (quitting || opened.size === 1) {
-        if (quitGuard.holds(() => app.quit())) {
-          event.preventDefault();
-          quitting = false;
-          return;
-        }
-      } else if (
+      const closing = quitGuard.closing(opened.size === 1, () => app.quit());
+      if (closing === 'held') {
+        event.preventDefault();
+        return;
+      }
+      if (closing === 'quits') {
+        savePlace(id, entry);
+        return;
+      }
+      if (
         !entry.closing &&
         asking?.asksBeforeClosing(id) === true &&
         asking.askToCloseWindow(id)
       ) {
         event.preventDefault();
         return;
-      } else {
-        asking?.closeWindow(id);
       }
+      asking?.closeWindow(id);
       savePlace(id, entry);
     });
     window.on('query-session-end', () => quitGuard.systemEnding());
@@ -425,7 +424,7 @@ async function start(asked: readonly string[]): Promise<void> {
       ({ window }) => !window.isDestroyed() && window.webContents === sender,
     );
   const keepSpare = () => {
-    if (spare === undefined && !quitting && opened.size > 0) {
+    if (spare === undefined && !quitGuard.quits && opened.size > 0) {
       const id = spareId();
       spare = {
         id,

@@ -29,6 +29,45 @@ suite('Quit guard', () => {
     );
   });
 
+  test('holds every window a quit closes once it holds the quit for one, asking once, as the windows closed after it dropped their tabs from those kept for the next start, and closes a window alone once that quit is over', async () => {
+    const { timer, fire } = fakeTimer();
+    const { guard, done } = guarded(true, timer);
+    assert.strictEqual(
+      guard.closing(false, () => done.push('quit')),
+      'alone',
+    );
+    guard.quitStarts();
+    assert.strictEqual(
+      guard.closing(false, () => done.push('quit')),
+      'held',
+    );
+    assert.strictEqual(
+      guard.closing(false, () => done.push('quit')),
+      'held',
+    );
+    assert.deepStrictEqual(done, ['asked']);
+    await fire();
+    assert.strictEqual(
+      guard.closing(false, () => done.push('quit')),
+      'alone',
+    );
+    assert.strictEqual(
+      guard.closing(true, () => done.push('quit')),
+      'held',
+    );
+    guard.confirmed();
+    assert.deepStrictEqual(done, ['asked', 'asked', 'quit']);
+    guard.quitStarts();
+    assert.strictEqual(
+      guard.closing(false, () => done.push('again')),
+      'quits',
+    );
+    assert.strictEqual(
+      guarded(false).guard.closing(true, () => undefined),
+      'quits',
+    );
+  });
+
   test('goes on with the last quit held, as Restart to Update rather than quitting', () => {
     const { guard, done } = guarded();
     guard.holds(() => done.push('quit'));
