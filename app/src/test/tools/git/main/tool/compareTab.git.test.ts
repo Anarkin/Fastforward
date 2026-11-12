@@ -238,8 +238,8 @@ suite('Git tool comparing two files', () => {
       old: path.join(files, 'moved-before.png'),
       new: path.join(files, 'moved-after.png'),
     };
-    fs.writeFileSync(compare.old, Buffer.from(' moved before'));
-    fs.writeFileSync(compare.new, Buffer.from(' moved after'));
+    fs.writeFileSync(compare.old, Buffer.from('\0moved before'));
+    fs.writeFileSync(compare.new, Buffer.from('\0moved after'));
     const first = await openView(log, [], false);
     await first.store.update(tabsKey, [
       { id: '1', tool: 'git', root: repository.root },
