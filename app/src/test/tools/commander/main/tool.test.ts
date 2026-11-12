@@ -6410,6 +6410,101 @@ suite('Commander tool in archives', () => {
       assert.strictEqual(viewed.length, 1);
     });
 
+    test('keeps a question for a password while the page of another window loads, giving it up once the page asking is gone', async () => {
+      const { tool, page, send, archived, secrets, viewed } = await inArchive();
+      archived.set(at('a.zip'), [
+        ...zipped,
+        { ...archiveItem('secret.txt'), encrypted: true },
+      ]);
+      secrets.set(at('a.zip'), 'right');
+      await send({ type: 'reread', tab: '1', side: 'right' });
+      const asked = () => page.of('askPassword');
+      const view = () =>
+        send({ type: 'view', tab: '1', side: 'right', name: 'secret.txt' });
+
+      const first = view();
+      await waitFor(() => asked().length === 1, 'the first question');
+      tool.ready(new CommanderPage());
+      await send({
+        type: 'password',
+        ask: asked()[0]?.ask ?? 0,
+        password: 'right',
+      });
+      await first;
+      assert.strictEqual(viewed.length, 1);
+
+      secrets.set(at('a.zip'), 'other');
+      const second = view();
+      await waitFor(() => asked().length === 2, 'the second question');
+      page.disposed = true;
+      tool.ready(new CommanderPage());
+      await second;
+      assert.strictEqual(viewed.length, 1);
+    });
+
+    test('asks for passwords in two windows at once, each keeping its question', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), [
+        ...zipped,
+        { ...archiveItem('secret.txt'), encrypted: true },
+      ]);
+      made.secrets.set(at('a.zip'), 'right');
+      made.copies.folder = copiesFolder;
+      const { tool, page, send, viewed } = made;
+      const other = new CommanderPage();
+      await tool.show(page, tab);
+      await tool.show(other, { id: '2', tool: 'commander' });
+      for (const [id, from] of [
+        ['1', page],
+        ['2', other],
+      ] as const) {
+        await send(
+          {
+            type: 'enterArchive',
+            tab: id,
+            side: 'right',
+            name: 'a.zip',
+            folder: root,
+          },
+          from,
+        );
+      }
+      const view = (id: string, from: CommanderPage) =>
+        send(
+          {
+            type: 'view',
+            tab: id,
+            side: 'right',
+            name: 'secret.txt',
+            folder: at('a.zip'),
+          },
+          from,
+        );
+
+      const first = view('1', page);
+      await waitFor(
+        () => page.of('askPassword').length === 1,
+        'the first question',
+      );
+      const second = view('2', other);
+      await waitFor(
+        () => other.of('askPassword').length === 1,
+        'the second question',
+      );
+      for (const from of [page, other]) {
+        await send(
+          {
+            type: 'password',
+            ask: from.of('askPassword')[0]?.ask ?? 0,
+            password: 'right',
+          },
+          from,
+        );
+      }
+      await Promise.all([first, second]);
+      assert.strictEqual(viewed.length, 2);
+    });
+
     test('copies nothing out of an archive when the password of its encrypted files is not given, and says why nothing could be taken out of an archive', async () => {
       const {
         page,

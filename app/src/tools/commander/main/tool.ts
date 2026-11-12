@@ -510,7 +510,10 @@ export class CommanderTool implements Tool<'commander'> {
   private archiveImages: ArchiveImages | undefined;
   private readonly passwordsAsked = new Map<
     number,
-    (password: string | undefined) => void
+    {
+      readonly page: Page;
+      readonly answer: (password: string | undefined) => void;
+    }
   >();
   private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
   private transferPage: Page | undefined;
@@ -544,7 +547,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   ready(page: Page): void {
-    this.cancelPasswords();
+    this.cancelPasswords(page);
     this.icons.forgetDropped();
     for (const pane of this.allPanes()) {
       if (pane.flat !== undefined) {
@@ -1466,10 +1469,10 @@ export class CommanderTool implements Tool<'commander'> {
       return false;
     }
     archives.usePassword(file, undefined);
-    this.cancelPasswords();
+    this.cancelPasswords(page);
     const ask = ++this.passwordAsks;
     const password = await new Promise<string | undefined>((resolve) => {
-      this.passwordsAsked.set(ask, resolve);
+      this.passwordsAsked.set(ask, { page, answer: resolve });
       this.post(page, {
         type: 'askPassword',
         ask,
@@ -1484,11 +1487,12 @@ export class CommanderTool implements Tool<'commander'> {
     return true;
   }
 
-  private cancelPasswords(): void {
-    const asked = [...this.passwordsAsked.values()];
-    this.passwordsAsked.clear();
-    for (const answer of asked) {
-      answer(undefined);
+  private cancelPasswords(of: Page): void {
+    for (const [ask, { page, answer }] of this.passwordsAsked) {
+      if (page === of || page.disposed) {
+        this.passwordsAsked.delete(ask);
+        answer(undefined);
+      }
     }
   }
 
@@ -1499,10 +1503,10 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
-    const answer = this.passwordsAsked.get(ask);
-    if (answer !== undefined) {
+    const asked = this.passwordsAsked.get(ask);
+    if (asked !== undefined) {
       this.passwordsAsked.delete(ask);
-      answer(password);
+      asked.answer(password);
     }
   }
 
