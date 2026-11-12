@@ -54,6 +54,9 @@ function grouped<T>(items: readonly T[], keyOf: (item: T) => string | number) {
 function oncePerFile(reads: readonly Read[]): Read[] {
   const seen = new Set<string>();
   return reads.filter(({ hashed }) => {
+    if (hashed.id === undefined) {
+      return true;
+    }
     if (seen.has(hashed.id)) {
       return false;
     }

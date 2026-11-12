@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 import { closeSync, fstatSync, openSync, readSync } from 'node:fs';
 import type { ContentReader } from './duplicates';
+import { fileIdOf } from './fileIds';
 
 const chunkBytes = 1024 * 1024;
 
 export interface Hashed {
   readonly hash: string;
-  readonly id: string;
+  readonly id: string | undefined;
   readonly size: number;
 }
 
@@ -28,7 +29,7 @@ export function hashOf(file: string, bytes: number | undefined): Hashed {
     }
     return {
       hash: hash.digest('hex'),
-      id: `${stats.dev}:${stats.ino}`,
+      id: fileIdOf(stats),
       size: Number(stats.size),
     };
   } finally {

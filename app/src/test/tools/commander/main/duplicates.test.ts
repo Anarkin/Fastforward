@@ -17,7 +17,7 @@ interface Fake {
 
 function fakeReader(
   contents: Record<string, string>,
-  ids: Record<string, string> = {},
+  ids: Record<string, string | undefined> = {},
   holding: readonly string[] = [],
 ): Fake {
   const reads: string[] = [];
@@ -28,7 +28,7 @@ function fakeReader(
       ? undefined
       : {
           hash: bytes === undefined ? content : content.slice(0, bytes),
-          id: ids[file] ?? file,
+          id: Object.hasOwn(ids, file) ? ids[file] : file,
           size: content.length,
         };
   };
@@ -65,7 +65,7 @@ const sorted = (groups: readonly (readonly string[])[]) =>
 
 async function found(
   contents: Record<string, string>,
-  ids: Record<string, string> = {},
+  ids: Record<string, string | undefined> = {},
 ) {
   const fake = fakeReader(contents, ids);
   const duplicates = new Duplicates(fake.reader, () => {}, { head });
@@ -109,6 +109,15 @@ suite('Duplicate files', () => {
 
     assert.deepStrictEqual(linked.groups, [['a.txt', 'copy.txt']]);
     assert.deepStrictEqual(alone.groups, []);
+  });
+
+  test('takes files whose drive tells no identity of them for files of their own, rather than for links to one file', async () => {
+    const { groups } = await found(
+      { 'a.txt': 'abcdef', 'copy.txt': 'abcdef', 'other.txt': 'abcdef' },
+      { 'a.txt': undefined, 'copy.txt': undefined, 'other.txt': undefined },
+    );
+
+    assert.deepStrictEqual(groups, [['a.txt', 'copy.txt', 'other.txt']]);
   });
 
   test('leaves out empty files and the files it is told to skip, as files kept online only, without reading them', async () => {
