@@ -67,6 +67,7 @@ import { useCappedScroll } from '../../../ui/cappedVirtualizer';
 import { SearchButton } from '../../../ui/search';
 import { realHeight } from '../../../ui/cappedScroll';
 import { rowPlace } from '../../../ui/rowPlace';
+import { watchDevicePixels } from '../../../ui/devicePixels';
 import { activeDescendant, endCovered, rowId } from '../../../ui/virtualRows';
 import { useLineHeight } from '../../../ui/lineHeight';
 
@@ -704,6 +705,11 @@ export function Commits({
   const [scrollToFn] = useState(() =>
     movingPlaces(places, scrolling.scrollToFn),
   );
+  const [scale, setScale] = useState(() => window.devicePixelRatio);
+  useEffect(
+    () => watchDevicePixels(() => setScale(window.devicePixelRatio)),
+    [],
+  );
   const [endPadding, setEndPadding] = useState(0);
   useLayoutEffect(() => setEndPadding(endCovered(list.current)), [line]);
   const virtualizer = useVirtualizer({
@@ -910,6 +916,7 @@ export function Commits({
           height={height}
           line={line}
           hash={history?.at(index - offset)?.hash}
+          scale={scale}
           onToggleMerge={onToggleMerge}
         />
       )

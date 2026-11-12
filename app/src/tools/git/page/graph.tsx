@@ -8,6 +8,7 @@ import {
 import { strings } from '../../../shared/strings';
 
 const laneWidth = 12;
+const laneLine = 2;
 const dotRadius = 4;
 const overlap = 1;
 
@@ -28,17 +29,36 @@ export function graphWidth(lanes: number): number {
   return Math.max(1, Math.min(lanes, maxLanes)) * laneWidth + 2 * margin;
 }
 
-function x(lane: number): number {
-  return margin + Math.min(lane, maxLanes - 1) * laneWidth + laneWidth / 2;
+function devicePixelsOfLine(scale: number): number {
+  return Math.max(1, Math.round(laneLine * scale - 1e-6));
+}
+
+function lineWidth(scale: number): number {
+  return devicePixelsOfLine(scale) / scale;
+}
+
+function x(lane: number, scale: number): number {
+  const middle =
+    (margin + Math.min(lane, maxLanes - 1) * laneWidth + laneWidth / 2) * scale;
+  return (
+    (devicePixelsOfLine(scale) % 2 === 0
+      ? Math.round(middle)
+      : Math.floor(middle) + 0.5) / scale
+  );
 }
 
 function color(index: number): string {
   return colors[index % graphColors];
 }
 
-function path(line: GraphLine, height: number, lineHeight: number): string {
-  const from = x(line.from);
-  const to = x(line.to);
+function path(
+  line: GraphLine,
+  height: number,
+  lineHeight: number,
+  scale: number,
+): string {
+  const from = x(line.from, scale);
+  const to = x(line.to, scale);
   const dotY = lineHeight / 2;
   const turn = lineHeight;
   if (!line.bottom) {
@@ -57,28 +77,30 @@ export const GraphCell = memo(function GraphCell({
   height,
   line,
   hash,
+  scale = 1,
   onToggleMerge,
 }: {
   row: GraphRow;
   height: number;
   line: number;
   hash?: string;
+  scale?: number;
   onToggleMerge: (hash: string) => void;
 }) {
-  const cx = x(row.lane);
+  const cx = x(row.lane, scale);
   const dotY = line / 2;
   const laneColor = color(row.color);
   return (
     <svg className="graph" width={graphWidth(rowLanes(row))} height={height}>
       {row.lines.map((graphLine) => {
-        const d = path(graphLine, height, line);
+        const d = path(graphLine, height, line, scale);
         const stroke = color(graphLine.color);
         return (
           <path
             key={`${d} ${stroke} ${graphLine.dashed ?? false}`}
             d={d}
             stroke={stroke}
-            strokeWidth={2}
+            strokeWidth={lineWidth(scale)}
             strokeDasharray={graphLine.dashed ? '2 3' : undefined}
             fill="none"
           />
@@ -112,7 +134,7 @@ export const GraphCell = memo(function GraphCell({
             r={ringRadius(row)}
             fill="var(--graph-ground)"
             stroke={laneColor}
-            strokeWidth={2}
+            strokeWidth={lineWidth(scale)}
           />
           {row.merge === 'expanded' && (
             <circle cx={cx} cy={dotY} r={1.5} fill={laneColor} />

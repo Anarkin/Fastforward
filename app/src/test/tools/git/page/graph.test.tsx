@@ -9,9 +9,15 @@ import {
 } from '../../../../tools/git/page/graph';
 import { noop } from '../../../fixtures';
 
-const cell = (row: GraphRow, height = 30, line = 20) =>
+const cell = (row: GraphRow, height = 30, line = 20, scale = 1) =>
   renderToStaticMarkup(
-    <GraphCell row={row} height={height} line={line} onToggleMerge={noop} />,
+    <GraphCell
+      row={row}
+      height={height}
+      line={line}
+      scale={scale}
+      onToggleMerge={noop}
+    />,
   );
 
 const attributes = (html: string, tag: string, name: string) =>
@@ -21,6 +27,24 @@ const attributes = (html: string, tag: string, name: string) =>
 
 const titles = (html: string) =>
   [...html.matchAll(/<title>([^<]*)<\/title>/g)].map((match) => match[1]);
+
+const laneAt = (scale: number) => {
+  const html = cell(
+    {
+      lane: 1,
+      color: 0,
+      lines: [{ from: 1, to: 1, color: 0, bottom: true }],
+    },
+    30,
+    20,
+    scale,
+  );
+  return {
+    d: attributes(html, 'path', 'd'),
+    width: attributes(html, 'path', 'stroke-width'),
+    cx: attributes(html, 'circle', 'cx'),
+  };
+};
 
 suite('Graph cell', () => {
   test('draws solid lines from 1 px above the row, over the ends of the lines of the row above, so rows meeting within a device pixel at scales like 125% leave no seam, and dashed ones from its top, keeping their dashes in step with those of the row above, to the foot of the row, curving between lanes over a line, with the dot in the middle of the first line', () => {
@@ -149,6 +173,24 @@ suite('Graph cell', () => {
       ),
       ['transparent', ground],
     );
+  });
+
+  test('puts the lanes on whole device pixels at any scale, 2px wide rounded to whole pixels, down when halfway, their middle where a line that wide covers whole pixels, the dot on it', () => {
+    assert.deepStrictEqual(laneAt(1), {
+      d: ['M 21 10 V 30'],
+      width: ['2'],
+      cx: ['21'],
+    });
+    assert.deepStrictEqual(laneAt(1.25), {
+      d: ['M 20.8 10 V 30'],
+      width: ['1.6'],
+      cx: ['20.8'],
+    });
+    assert.deepStrictEqual(laneAt(1.5), {
+      d: ['M 21 10 V 30'],
+      width: ['2'],
+      cx: ['21'],
+    });
   });
 
   test('draws a merge as a ring sized and titled by what it hides, the working tree and stashes as a square', () => {

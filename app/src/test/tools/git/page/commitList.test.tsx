@@ -70,6 +70,15 @@ import {
 } from '../../../fixtures';
 import { laidOutElement } from '../../../elementFixtures';
 import { withStores } from '../../../componentFixtures';
+
+const unchangingMedia = (window: JSDOM['window']) => (): MediaQueryList =>
+  Object.assign(new window.EventTarget(), {
+    matches: false,
+    media: '',
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+  });
 import { renderIn } from '../../../componentFixtures';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
@@ -680,6 +689,7 @@ suite('Telling the place scrolled to', () => {
 
   test('tells a scroll made as another history is drawn as a place in that history, as the browser scrolls a list emptied or replaced before effects run, which told the place as one in the history shown before', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
+    dom.window.matchMedia = unchangingMedia(dom.window);
     const globals = {
       window: dom.window,
       document: dom.window.document,
@@ -1389,6 +1399,7 @@ async function scrollingList(
     pretendToBeVisual: true,
   });
   const { window } = dom;
+  window.matchMedia = unchangingMedia(window);
   const tops = new WeakMap<Element, number>();
   const scrollTo = (element: Element, top: number) => {
     const next = Math.max(

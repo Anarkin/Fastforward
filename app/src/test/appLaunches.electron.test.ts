@@ -561,6 +561,66 @@ suite('App at a scale of 125%', () => {
     );
   });
 
+  test('draws the lanes of the graph on whole device pixels, with no pixel half in a lane', async () => {
+    await page.mouse.move(2, 2);
+    const list = page
+      .locator('.columns > .column')
+      .first()
+      .locator('.virtual-rows');
+    const across = await list.evaluate((element) => {
+      const shown = element.getBoundingClientRect();
+      const row = [...element.querySelectorAll('.virtual-row')].find(
+        (each) =>
+          each.getBoundingClientRect().top > shown.top &&
+          each.getBoundingClientRect().bottom < shown.bottom &&
+          each.querySelector('.commit:not(.selected)') &&
+          each.querySelector('.graph path'),
+      );
+      const graph = row?.querySelector('.graph');
+      const line = graph?.querySelector('path');
+      if (!row || !graph || !line) {
+        return undefined;
+      }
+      const box = graph.getBoundingClientRect();
+      return {
+        left: box.left,
+        top: row.getBoundingClientRect().top + 2,
+        lane: getComputedStyle(line).stroke,
+        ground: getComputedStyle(element).backgroundColor,
+      };
+    });
+    assert.ok(across, 'no row of the graph');
+    const shot = await page.screenshot();
+    const start = Math.ceil((across.left + 3) * scale);
+    const pixels = await pixelsOf(
+      page,
+      shot,
+      Array.from({ length: 16 }, (_, index): [number, number] => [
+        start + index,
+        Math.round(across.top * scale),
+      ]),
+    );
+    const colors = await page.evaluate(
+      (css) =>
+        css.map((color) => {
+          const canvas = new OffscreenCanvas(1, 1);
+          const context = canvas.getContext('2d');
+          if (!context) {
+            return '';
+          }
+          context.fillStyle = color;
+          context.fillRect(0, 0, 1, 1);
+          return Array.from(context.getImageData(0, 0, 1, 1).data).join(',');
+        }),
+      [across.lane, across.ground],
+    );
+    assert.deepStrictEqual(
+      pixels.filter((pixel) => !colors.includes(pixel)),
+      [],
+      JSON.stringify({ pixels, colors }),
+    );
+  });
+
   test('opens the search of the commits over their title with its button and line where those of the title are, to a device pixel', async () => {
     const column = page.locator('.columns > .column').first();
     const place = () =>
