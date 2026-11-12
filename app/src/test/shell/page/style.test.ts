@@ -2993,6 +2993,25 @@ suite('Style', () => {
     }
   });
 
+  test('sets a name on a button apart only in the monospace font, as the button frames it as its tint would', () => {
+    const name = withClass(
+      rendered(
+        createElement(MenuButton, {
+          title: 'Drive',
+          label: 'C:',
+          named: true,
+          items: [],
+        }),
+      ),
+      'name',
+    );
+    looks(name, {
+      'font-family': 'var(--monospace-font-family)',
+      background: 'none',
+      padding: '0',
+    });
+  });
+
   test('keeps the spaces of a name that follow a separator, which a piece of a path kept whole would drop at its start, as in the characters a name cannot hold', () => {
     const name = withClass(
       rendered(createElement(Name, null, '\\ / : * ?')),

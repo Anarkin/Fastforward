@@ -8,6 +8,7 @@ import {
   type ContextMenuItem,
 } from './contextMenu';
 import { DropdownIcon, MoreIcon } from './icons';
+import { Name } from './name';
 import { keyPressed } from './shortcuts';
 
 function thenChosen(
@@ -39,6 +40,7 @@ export function MenuButton({
   icon = <MoreIcon />,
   arrow = false,
   label,
+  named = false,
   trigger,
   filter,
   onChosen,
@@ -49,6 +51,7 @@ export function MenuButton({
   icon?: React.ReactNode;
   arrow?: boolean;
   label?: string;
+  named?: boolean;
   trigger?: React.Ref<HTMLButtonElement>;
   filter?: string;
   onChosen?: () => void;
@@ -82,7 +85,9 @@ export function MenuButton({
         {label === undefined ? (
           icon
         ) : (
-          <span className="menu-button-label">{label}</span>
+          <span className="menu-button-label">
+            {named ? <Name>{label}</Name> : label}
+          </span>
         )}
         {(label !== undefined || arrow) && <DropdownIcon />}
         {marked && <span className="menu-mark" />}

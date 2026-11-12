@@ -259,7 +259,7 @@ suite('Terminal', () => {
     fs.mkdirSync(inner);
     const tabs = page.locator('.tabs .tab');
     const popup = page.locator('.open-with-popup');
-    const shown = popup.locator('.open-with-folders > span');
+    const shown = popup.locator('.open-with-folders > div');
     await run('cd inner');
     await waitFor(
       async () =>

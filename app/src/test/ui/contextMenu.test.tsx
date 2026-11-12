@@ -55,6 +55,25 @@ function open(
 }
 
 suite('Dismissing menus and popups', () => {
+  test('sets an item whose label is a name, as a folder or a drive, apart as a name, and the others in the words of the menu', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'C:\\', name: true },
+          { label: 'Open', onClick: () => undefined },
+        ]}
+        onClose={() => undefined}
+      />,
+    );
+    assert.deepStrictEqual(
+      [...html.matchAll(/<code class="name">(.*?)<\/code>/g)].map(([, inner]) =>
+        inner.replaceAll(/<[^>]*>/g, ''),
+      ),
+      ['C:\\'],
+    );
+    assert.match(html, />Open</);
+  });
+
   test('closes only the top one on Escape, keeping it from anything else', () => {
     const window = new EventTarget();
     const popup = open(window);

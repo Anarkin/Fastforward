@@ -417,12 +417,6 @@ body {
   color: var(--muted-foreground);
 }
 
-.open-with-folders > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .open-with-tools {
   display: flex;
   flex-direction: column;
@@ -498,6 +492,11 @@ body {
   background: var(--name-background);
   border-radius: 3px;
   box-decoration-break: clone;
+}
+
+.menu-button-label > .name {
+  padding: 0;
+  background: none;
 }
 
 .name > span {

@@ -7,6 +7,7 @@ import { keyPressed } from '../../ui/shortcuts';
 import { CloseIcon, ToolIcon } from '../../ui/icons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
 import { useShell, useShellActions } from './store';
+import { Name } from '../../ui/name';
 
 function moveBetweenTools(event: React.KeyboardEvent<HTMLElement>): void {
   const move = keyPressed(keymap.menuItem, event);
@@ -76,9 +77,9 @@ export function OpenWithPopup() {
         <div className="open-with-body">
           <div className="open-with-folders">
             {choice.folders.map((folder) => (
-              <span key={folder} title={folder}>
-                {folder}
-              </span>
+              <div key={folder}>
+                <Name>{folder}</Name>
+              </div>
             ))}
           </div>
           <div className="open-with-tools" onKeyDown={moveBetweenTools}>

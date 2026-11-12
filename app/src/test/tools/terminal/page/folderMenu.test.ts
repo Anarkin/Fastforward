@@ -3,6 +3,19 @@ import { suite, test } from 'vitest';
 import { folderMenuItems } from '../../../../tools/terminal/page/folderMenu';
 
 suite('Terminal folder menu', () => {
+  test('sets each folder apart as a name, and the actions in the words of the menu', () => {
+    const items = folderMenuItems(['C:\\Code\\app'], {
+      onNew: () => undefined,
+      onBrowse: () => undefined,
+      onOpen: () => undefined,
+      onForget: () => undefined,
+    });
+    assert.deepStrictEqual(
+      items.map((item) => ('separator' in item ? '-' : (item.name ?? false))),
+      [false, false, '-', true],
+    );
+  });
+
   test('offers New and Open..., then the folders by their whole paths, opening each', () => {
     const done: string[] = [];
     const items = folderMenuItems(['C:\\Code\\app', 'C:\\Code\\site'], {

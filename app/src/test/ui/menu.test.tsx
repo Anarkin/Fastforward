@@ -49,6 +49,20 @@ const labelsOf = (items: ReturnType<typeof filteredItems>) =>
   items.map((item) => ('separator' in item ? '-' : item.label));
 
 suite('Menu button', () => {
+  test('sets the label of its button apart as a name when the label is one, as a drive', () => {
+    const named = triggerOf(
+      <MenuButton title="Drive" label="C:" named items={[]} />,
+    );
+    const plain = triggerOf(
+      <MenuButton title="Layout" label="Details" items={[]} />,
+    );
+    assert.strictEqual(
+      named?.querySelector('.menu-button-label code.name')?.textContent,
+      'C:',
+    );
+    assert.strictEqual(plain?.querySelector('.menu-button-label code'), null);
+  });
+
   test('tells assistive technology it opens a menu, and that the menu is closed', () => {
     const trigger = new JSDOM(
       renderToStaticMarkup(<MenuButton title="Settings" items={[]} />),

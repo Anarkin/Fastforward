@@ -43,6 +43,7 @@ export function bookmarkMenu({
     ...(bookmarks.length > 0 ? [{ separator: true } as const] : []),
     ...bookmarks.map((folder, index) => ({
       label: folder,
+      name: true,
       title: folder,
       accessKey: bookmarkKey(index),
       showAccessKey: true,

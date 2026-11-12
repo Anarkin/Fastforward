@@ -31,6 +31,47 @@ function question(
 }
 
 suite('Open With popup', () => {
+  test('names each folder it opens on a line of its own, as a name', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const store = choosingStore(question(['C:\\one', 'C:\\two'], 'git'));
+      await act(async () => {
+        renderIn(
+          root,
+          <ShellStore value={store}>
+            <OpenWithPopup />
+          </ShellStore>,
+        );
+      });
+      assert.deepStrictEqual(
+        Array.from(
+          dom.window.document.querySelectorAll(
+            '.open-with-folders > * > code.name',
+          ),
+          (name) => name.textContent,
+        ),
+        ['C:\\one', 'C:\\two'],
+      );
+      await act(async () => root.unmount());
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
   test('focuses the tool picked for the folders, and again once another question picks another while it is open', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {

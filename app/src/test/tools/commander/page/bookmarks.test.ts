@@ -23,6 +23,20 @@ const shown = (items: readonly ContextMenuItem[]) =>
   );
 
 suite('Commander bookmarks menu', () => {
+  test('sets each bookmark apart as a name, as it is a folder, and the actions in the words of the menu', () => {
+    const items = bookmarkMenu({
+      bookmarks: ['C:\\Code'],
+      bookmark: undefined,
+      onAdd: noop,
+      onRemove: noop,
+      onGo: noop,
+    });
+    assert.deepStrictEqual(
+      items.map((item) => ('separator' in item ? '---' : (item.name ?? false))),
+      [false, '---', true],
+    );
+  });
+
   test('offers to add the folder of the side, then past a line every bookmark, each with its key before it and an X removing it', () => {
     const done: string[] = [];
     const items = bookmarkMenu({

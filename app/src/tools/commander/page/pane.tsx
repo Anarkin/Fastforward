@@ -63,6 +63,7 @@ import { fileColorOf, type FileColors } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 import { pathParts } from '../shared/paths';
 import { bookmarkMenu, bookmarkOf } from './bookmarks';
+import { driveMenu } from './driveMenu';
 import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 
 declare module 'react' {
@@ -1045,14 +1046,10 @@ export function Pane({
                 <MenuButton
                   title={strings.commander.chooseDrive}
                   label={(current ?? '').replace(/\\$/, '')}
+                  named
                   trigger={driveTrigger}
                   onChosen={focusList}
-                  items={drives.map((drive) => ({
-                    label: drive,
-                    accessKey: drive.charAt(0),
-                    checked: drive === current,
-                    onClick: () => onDrive(drive),
-                  }))}
+                  items={driveMenu(drives, current, onDrive)}
                 />
               </div>
             )}
