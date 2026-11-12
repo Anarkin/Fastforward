@@ -415,7 +415,7 @@ export class Shell {
 
   askToQuit(): void {
     const note = quitNoteOf(this.tools);
-    this.focused()?.post({
+    this.shownPage()?.post({
       type: 'confirmQuit',
       ...(note !== undefined && { note }),
     });
@@ -458,6 +458,15 @@ export class Shell {
       this.tools[tab.tool].closed(page, tab);
     }
     this.postWindows();
+  }
+
+  private shownPage(): Page | undefined {
+    return (
+      this.livePage(this.focusedWindow) ??
+      this.storage.layout
+        .map((window) => this.livePage(window.id))
+        .find((page) => page !== undefined)
+    );
   }
 
   private focused(): Page | undefined {

@@ -806,6 +806,17 @@ suite('Shell with several windows', () => {
     assert.deepStrictEqual(host.opened, ['close window 2']);
   });
 
+  test('asks before quitting in a window still open once the window in front closed, as the question went to the page of the window closed, and quitting did nothing', async () => {
+    const { first, second } = await twoWindows();
+    first.shell.focus('2');
+    first.shell.closeWindow('2');
+    second.connection.dispose();
+    first.shell.askToQuit();
+    assert.deepStrictEqual(first.page.last('confirmQuit'), {
+      type: 'confirmQuit',
+    });
+  });
+
   test('selects, moves and closes only the tabs of the window whose page asks, as the page is not trusted', async () => {
     const { first } = await twoWindows();
     await first.connection.receive({ type: 'selectTab', tab: '2' });
