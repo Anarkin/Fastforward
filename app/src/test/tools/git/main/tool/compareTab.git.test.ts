@@ -20,6 +20,7 @@ import {
   closeViews,
   failOnErrorsLogged,
   openView,
+  stubMethod,
   type OpenView,
 } from '../../../../harness';
 
@@ -277,5 +278,50 @@ suite('Git tool comparing two files', () => {
       ),
     );
     assert.strictEqual(shown.status, 200);
+  });
+
+  test('stops the comparison of a compare tab once another compare tab shows in its window', async () => {
+    const view = await openView(log, [repository.root]);
+    const running: (AbortController | undefined)[] = [];
+    stubMethod(view.view, 'sendCompare', (original, session) => {
+      const sending = original(session);
+      const comparing: unknown =
+        typeof session === 'object' && session !== null
+          ? Reflect.get(session, 'comparing')
+          : undefined;
+      const controller: unknown =
+        typeof comparing === 'object' && comparing !== null
+          ? Reflect.get(comparing, 'running')
+          : undefined;
+      running.push(
+        controller instanceof AbortController ? controller : undefined,
+      );
+      return sending;
+    });
+    await view.store.update(tabsKey, [
+      { id: '1', tool: 'git', root: repository.root },
+      {
+        id: '14',
+        tool: 'git',
+        compare: {
+          old: path.join(files, 'old.txt'),
+          new: path.join(files, 'new.txt'),
+        },
+      },
+      {
+        id: '15',
+        tool: 'git',
+        compare: {
+          old: path.join(files, 'new.txt'),
+          new: path.join(files, 'old.txt'),
+        },
+      },
+    ]);
+    await view.connection.receive({ type: 'selectTab', tab: '14' });
+    await view.connection.receive({ type: 'selectTab', tab: '15' });
+    assert.deepStrictEqual(
+      running.map((each) => each?.signal.aborted),
+      [true, false],
+    );
   });
 });

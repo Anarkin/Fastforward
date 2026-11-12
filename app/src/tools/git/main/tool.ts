@@ -1992,7 +1992,6 @@ export class GitTool implements Tool<'git'> {
     const { comparing } = session;
     if (comparing !== undefined) {
       this.forgetComparing(comparing);
-      comparing.running?.abort();
       session.comparing = undefined;
       session.post({ type: 'compare', compare: undefined });
     }
@@ -2000,6 +1999,7 @@ export class GitTool implements Tool<'git'> {
 
   private forgetComparing(comparing: Comparing): void {
     comparing.stop();
+    comparing.running?.abort();
     if (this.comparisons.get(comparing.tab) === comparing) {
       this.comparisons.delete(comparing.tab);
     }
