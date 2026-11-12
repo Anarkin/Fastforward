@@ -685,6 +685,31 @@ export class Shell {
       type: 'terminalCommand',
       installable: host.canInstallCommand(),
     });
+    const window = this.windowOf(page);
+    const laidOut = this.laidOut(window.id);
+    if (laidOut) {
+      this.tellProblems(page);
+    }
+    for (const tool of toolIds) {
+      this.tools[tool].ready(page);
+    }
+    this.pages.set(window.id, page);
+    if (laidOut) {
+      this.focusedWindow = window.id;
+    }
+    this.shownTools.delete(page);
+    await this.show(page, window.active);
+    if (laidOut) {
+      await this.askFolders(page);
+    }
+  }
+
+  private laidOut(window: string): boolean {
+    return this.storage.layout.some((each) => each.id === window);
+  }
+
+  private tellProblems(page: Page): void {
+    const { storage, host } = this;
     if (host.canInstallCommand() && !storage.commandOffered) {
       void this.inFlight.track(this.offerCommand(page));
     }
@@ -698,17 +723,6 @@ export class Shell {
     for (const problem of host.stateProblems()) {
       page.post({ type: 'notice', level: 'error', message: problem });
     }
-    for (const tool of toolIds) {
-      this.tools[tool].ready(page);
-    }
-    const window = this.windowOf(page);
-    this.pages.set(window.id, page);
-    if (this.storage.layout.some((each) => each.id === window.id)) {
-      this.focusedWindow = window.id;
-    }
-    this.shownTools.delete(page);
-    await this.show(page, window.active);
-    await this.askFolders(page);
   }
 
   private async show(page: Page, id: string | undefined): Promise<void> {
@@ -726,14 +740,17 @@ export class Shell {
       return;
     }
     this.pages.set(window.id, page);
-    if (this.storage.layout.some((each) => each.id === window.id)) {
+    const laidOut = this.laidOut(window.id);
+    if (laidOut) {
       this.focusedWindow = window.id;
     }
     this.postTabs(page);
-    const unsent = this.unsentNotices;
-    this.unsentNotices = [];
-    for (const notice of unsent) {
-      page.post(notice);
+    if (laidOut) {
+      const unsent = this.unsentNotices;
+      this.unsentNotices = [];
+      for (const notice of unsent) {
+        page.post(notice);
+      }
     }
     const shown = this.shownTools.get(page);
     if (active === undefined) {

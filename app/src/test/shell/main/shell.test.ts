@@ -1004,6 +1004,34 @@ suite('Shell with several windows', () => {
     assert.strictEqual(await first.shell.tearOff('5', 's2'), false);
   });
 
+  test('tells the window kept ready for a tab torn off neither the notices waiting for a window nor the folders asked about, as it shows them only once a tab is torn into it, long after they were answered or gone', async () => {
+    const work = tempFolder('work');
+    try {
+      const host = new FakeHost();
+      const { first, second } = await twoWindows(host);
+      await first.shell.openFolders([work]);
+      assert.ok(second.page.last('chooseTool'));
+      first.connection.dispose();
+      second.connection.dispose();
+      first.shell.notify({ level: 'info', message: 'update ready' });
+      host.unsavedState = [strings.state.putAside('state.json.corrupt')];
+      const spare = attach(first.view, 's1');
+      await spare.connection.receive({ type: 'ready' });
+      assert.deepStrictEqual(noticesOf(spare.page), []);
+      assert.strictEqual(spare.page.last('chooseTool'), undefined);
+
+      const reloaded = attach(first.view, '1');
+      await reloaded.connection.receive({ type: 'ready' });
+      assert.deepStrictEqual(
+        noticesOf(reloaded.page).map(([, message]) => plainOf(message)),
+        [plainOf(strings.state.putAside('state.json.corrupt')), 'update ready'],
+      );
+      assert.deepStrictEqual(reloaded.page.last('chooseTool')?.folders, [work]);
+    } finally {
+      removeFolder(work);
+    }
+  });
+
   test('moves a dragged tab into the window whose strip it is over and back out, showing it in the window that holds it, and keeps the window it leaves while the drag lasts though that holds no tab', async () => {
     const host = new FakeHost();
     const { first, second } = await twoWindows(host);
