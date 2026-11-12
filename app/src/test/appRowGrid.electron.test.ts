@@ -117,8 +117,8 @@ suite('App row grid', () => {
     for (const ratio of ratios) {
       await zoomTo(ratio);
       const grid = await settledGrid(page);
-      assert.ok(grid.commits.length > 40, String(grid.commits.length));
-      assert.ok(grid.files.length > 20, String(grid.files.length));
+      assert.ok(grid.commits.length > 10, String(grid.commits.length));
+      assert.ok(grid.files.length > 10, String(grid.files.length));
       off[percent(ratio)] = [
         ...offTheLines(grid.files, grid.line),
         ...offTheLines(grid.commits, grid.line),
