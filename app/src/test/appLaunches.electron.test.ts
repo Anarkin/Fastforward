@@ -321,6 +321,82 @@ suite('App at a scale of 125%', () => {
     );
   });
 
+  test('paints the device pixels the app leaves at the edge of a window, which is no whole number of pixels wide, in the color around its columns', async () => {
+    const shot = await page.screenshot();
+    const width = await page.evaluate(() =>
+      Math.ceil(innerWidth * devicePixelRatio),
+    );
+    const height = Math.round((await page.evaluate(() => innerHeight)) * scale);
+    const [last, before] = await pixelsOf(page, shot, [
+      [width - 1, Math.round(height / 2)],
+      [width - 2, Math.round(height / 2)],
+    ]);
+    assert.strictEqual(last, before);
+  });
+
+  test('centers the buttons of the title of each column between the line of the column and the line under the title, to a device pixel', async () => {
+    const gaps = await page
+      .locator('.columns > .column')
+      .evaluateAll((columns) =>
+        columns.map((column) => {
+          const title = column.querySelector('.column-title');
+          const button = title?.querySelector('button');
+          if (!title || !button) {
+            return undefined;
+          }
+          const ratio = devicePixelRatio;
+          const device = (value: number) => Math.round(value * ratio);
+          const line = parseFloat(
+            getComputedStyle(column).getPropertyValue('--column-line'),
+          );
+          const under = parseFloat(getComputedStyle(title).borderBottomWidth);
+          const box = button.getBoundingClientRect();
+          const edges = title.getBoundingClientRect();
+          return {
+            above: device(box.top) - device(edges.top + line),
+            below: device(edges.bottom - under) - device(box.bottom),
+          };
+        }),
+      );
+    for (const gap of gaps) {
+      assert.ok(
+        gap !== undefined && Math.abs(gap.above - gap.below) <= 1,
+        JSON.stringify(gaps),
+      );
+    }
+  });
+
+  test('edges a menu with its line on one whole device pixel, with no faint pixel inside it', async () => {
+    await page.locator('.tabs .tab-add').click();
+    const menu = page.locator('.menu').first();
+    await menu.waitFor();
+    await page.waitForTimeout(300);
+    const box = await menu.boundingBox();
+    assert.ok(box, 'the menu has no box');
+    const line = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.color = 'var(--color-border)';
+      document.body.append(probe);
+      const { color } = getComputedStyle(probe);
+      probe.remove();
+      return `${color.match(/\d+/g)?.slice(0, 3).join(',') ?? ''},255`;
+    });
+    const start = Math.round(box.x * scale);
+    const row = await pixelsOf(
+      page,
+      await page.screenshot(),
+      Array.from({ length: 5 }, (_, index): [number, number] => [
+        start - 1 + index,
+        Math.round((box.y + box.height / 2) * scale),
+      ]),
+    );
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached' });
+    const inside = row.at(-1);
+    const edge = row.findLastIndex((pixel) => pixel !== inside);
+    assert.strictEqual(row[edge], line, JSON.stringify(row));
+  });
+
   test('runs the thumb of a file viewed at its end over every pixel up to the bottom line of its column, and over none the line fills', async () => {
     await page.locator('.tabs [role="tab"]').nth(1).click();
     const side = page.locator('.commander-pane').nth(1);

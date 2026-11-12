@@ -9,6 +9,10 @@ body,
   overflow: hidden;
 }
 
+html {
+  background: var(--color-background);
+}
+
 button,
 input {
   font: inherit;
@@ -21,6 +25,7 @@ a:focus-visible {
 }
 
 body {
+  --hairline: round(down, 1px, var(--device-pixel, 1px));
   --button-size: round(26px, var(--device-pixel, 1px));
   --button-gap: round(2px, var(--device-pixel, 1px));
   --arrowed-button-width: round(44px, var(--device-pixel, 1px));
@@ -82,8 +87,8 @@ body {
   );
   --popup-background: var(--color-background);
   --popup-shadow:
-    inset 0 0 0 1px var(--color-border), 0 12px 32px rgba(0, 0, 0, 0.22),
-    0 2px 8px rgba(0, 0, 0, 0.16);
+    inset 0 0 0 var(--hairline) var(--color-border),
+    0 12px 32px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.16);
   --backdrop: rgba(0, 0, 0, 0.2);
   color: var(--color-foreground);
   background: var(--color-panel-background);
@@ -447,6 +452,7 @@ body {
   display: inline-block;
   max-width: 100%;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .name-lines {
@@ -641,7 +647,7 @@ body {
 }
 
 .shortcuts-group + .shortcuts-group .shortcuts-heading {
-  box-shadow: inset 0 1px var(--color-border);
+  box-shadow: inset 0 var(--hairline) var(--color-border);
 }
 
 .shortcut-row {
@@ -1230,7 +1236,7 @@ body.resizing {
   justify-content: center;
   box-sizing: border-box;
   height: var(--title-height);
-  padding: 0 8px;
+  padding: var(--column-line, 0px) 8px 0;
   text-align: center;
   color: var(--muted-foreground);
   border-bottom: 1px solid var(--color-border);
@@ -1253,7 +1259,7 @@ body.resizing {
 
 .column-start {
   position: absolute;
-  top: 0;
+  top: var(--column-line, 0px);
   left: 4px;
   bottom: 0;
   display: flex;
@@ -1610,7 +1616,7 @@ body.resizing {
 }
 
 .pdf-pane .textLayer .highlight.selected {
-  box-shadow: 0 0 0 1px var(--color-search-match-foreground);
+  box-shadow: 0 0 0 var(--hairline) var(--color-search-match-foreground);
 }
 
 .pdf-failure {
@@ -1965,12 +1971,13 @@ body.resizing {
   top: 0;
   z-index: 3;
   background: var(--color-panel-background);
-  box-shadow: 0 1px 0 var(--color-border);
+  box-shadow: 0 var(--hairline) 0 var(--color-border);
 }
 
 .virtual-rows {
   height: 100%;
   overflow: auto;
+  background: var(--color-panel-background);
 }
 
 .virtual-spacer {
@@ -2027,7 +2034,7 @@ body.resizing {
 
 .column-actions {
   position: absolute;
-  top: 0;
+  top: var(--column-line, 0px);
   right: 4px;
   bottom: 0;
   display: flex;
@@ -2088,7 +2095,7 @@ body.resizing {
 }
 
 .column-title.searching {
-  padding: 0 var(--search-gap) 0 4px;
+  padding: var(--column-line, 0px) var(--search-gap) 0 4px;
 }
 
 .search-row {

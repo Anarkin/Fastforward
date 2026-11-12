@@ -29,6 +29,7 @@ import { TabBar } from '../../../shell/page/tabBar';
 import { ContextMenu } from '../../../ui/contextMenu';
 import { ToolIcon } from '../../../ui/icons';
 import { MenuButton } from '../../../ui/menu';
+import { Name } from '../../../ui/name';
 import { Crash } from '../../../shell/page/errorBoundary';
 import { overlayScrollbarClass } from '../../../ui/overlayScrollbars';
 import {
@@ -863,7 +864,7 @@ suite('Style', () => {
       width: '16px',
       height: '16px',
       'border-radius': '3px',
-      'box-shadow': '0 0 0 1px var(--color-panel-background)',
+      'box-shadow': '0 0 0 var(--hairline) var(--color-panel-background)',
     });
     looks(withClass(tile, 'check-box-frame'), {
       fill: 'var(--color-panel-background)',
@@ -884,7 +885,7 @@ suite('Style', () => {
         }),
       ),
       {
-        'box-shadow': 'inset 0 1px 0 var(--color-border)',
+        'box-shadow': 'inset 0 var(--hairline) 0 var(--color-border)',
         height: 'var(--commander-row-height)',
         'border-top': undefined,
       },
@@ -2760,7 +2761,8 @@ suite('Style', () => {
       looks(bubble, {
         color: 'var(--color-git-bubble-foreground)',
         background: 'var(--color-git-bubble)',
-        'box-shadow': 'inset 0 0 0 1px var(--color-git-bubble-border)',
+        'box-shadow':
+          'inset 0 0 0 var(--hairline) var(--color-git-bubble-border)',
         border: undefined,
       });
     }
@@ -2887,6 +2889,30 @@ suite('Style', () => {
     looks(withClass(popup, 'name-label'), {
       color: 'var(--muted-foreground)',
     });
+  });
+
+  test('paints the color of the panel behind every list and preview that scrolls in a column, so the text in it keeps ClearType where Chromium composites a scrolling area, from 150% on', () => {
+    for (const scroller of [
+      rendered(createElement('div', { className: 'virtual-rows' })),
+      rendered(
+        createElement('div', {
+          className: 'column-body viewer-body viewer-preview',
+        }),
+      ),
+    ]) {
+      looks(scroller, { background: 'var(--color-panel-background)' });
+    }
+  });
+
+  test('keeps the spaces of a name that follow a separator, which a piece of a path kept whole would drop at its start, as in the characters a name cannot hold', () => {
+    const name = withClass(
+      rendered(createElement(Name, null, '\\ / : * ?')),
+      'name',
+    );
+    assert.strictEqual(name.children.length, 3);
+    for (const piece of name.children) {
+      looks(piece, { 'white-space': 'pre-wrap' });
+    }
   });
 
   test("keeps a tag's hole and point clear of the push button on it, which squares off, as the tag goes on past it", () => {
@@ -3389,10 +3415,14 @@ suite('Style', () => {
     }
   });
 
-  test("edges a popup with an inset shadow rather than a border, which Chromium rounds to whole device pixels, shifting the popup's contents at scales like 125%", () => {
+  test("edges a popup with an inset shadow rather than a border, which Chromium rounds to whole device pixels, shifting the popup's contents at scales like 125%, the shadow a hairline rounded down to whole device pixels as a border is, so it shows no faint pixel inside it", () => {
+    assert.strictEqual(
+      bodyVariable('hairline'),
+      'round(down, 1px, var(--device-pixel, 1px))',
+    );
     assert.match(
       bodyVariable('popup-shadow') ?? '',
-      /^inset 0 0 0 1px var\(--color-border\),/,
+      /^inset 0 0 0 var\(--hairline\) var\(--color-border\),/,
     );
     for (const popup of [
       contextMenu(),
@@ -4069,7 +4099,8 @@ suite('Style', () => {
     looks(match, { ...colors, 'box-shadow': undefined });
     looks(current, {
       ...colors,
-      'box-shadow': '0 0 0 1px var(--color-search-match-foreground)',
+      'box-shadow':
+        '0 0 0 var(--hairline) var(--color-search-match-foreground)',
     });
     assert.ok(current.classes.includes('current'));
     looks(withClass(minimap(), 'minimap-mark', 'match'), {
