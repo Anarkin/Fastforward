@@ -61,7 +61,7 @@ async function placed(temporary: string, plan: PackPlan): Promise<void> {
   await removed(beyond);
 }
 
-const temporaryEnding = /^\.[0-9a-f]{8}\.packing(?:\.\d+)?$/;
+const temporaryEnding = /^\.[0-9a-f]{8}\.packing(?:\.\d+|\.paths)?$/;
 
 const writing = new Set<string>();
 
@@ -74,7 +74,7 @@ async function leftBefore(archive: string): Promise<void> {
       const file = path.join(folder, each);
       return each.startsWith(`${name}.`) &&
         temporaryEnding.test(each.slice(name.length)) &&
-        !writing.has(file.replace(/\.\d+$/, ''))
+        !writing.has(file.replace(/\.(?:\d+|paths)$/, ''))
         ? [file]
         : [];
     }),

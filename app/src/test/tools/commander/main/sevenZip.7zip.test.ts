@@ -393,6 +393,58 @@ suite('7-Zip', () => {
     }
   });
 
+  test('packs and adds more items than a command line of Windows can name, into a zip and through the tar of a compressed tar', async () => {
+    const many = path.join(folder, 'many');
+    fs.mkdirSync(many);
+    const names = Array.from(
+      { length: 300 },
+      (_, index) => `${String(index).padStart(3, '0')} ${'n'.repeat(120)}.txt`,
+    );
+    for (const name of names) {
+      fs.writeFileSync(path.join(many, name), name);
+    }
+    const pathsIn = async (archive: string) => {
+      const listing = await reader.list(archive);
+      return listing.kind === 'listed'
+        ? listing.items.map((item) => item.path).toSorted()
+        : listing;
+    };
+    for (const format of ['zip', 'tar.gz'] as const) {
+      const archive = path.join(folder, `many.${format}`);
+      assert.deepStrictEqual(
+        await reader.pack(
+          { folder: many, items: names, archive, format, level: 'store' },
+          archive,
+        ),
+        { kind: 'packed' },
+        format,
+      );
+    }
+    assert.deepStrictEqual(await pathsIn(path.join(folder, 'many.zip')), names);
+    const tar = path.join(folder, 'many.tar');
+    await reader.extract(
+      path.join(folder, 'many.tar.gz'),
+      ['many.tar'],
+      folder,
+    );
+    assert.deepStrictEqual(await pathsIn(tar), names);
+
+    const zip = await packed('added.zip');
+    const archives = new Archives(reader, process.platform, workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+    assert.deepStrictEqual(
+      await archives.addItems(opened.archive, [], many, names),
+      { kind: 'packed' },
+    );
+    const added = await pathsIn(zip);
+    assert.ok(Array.isArray(added));
+    assert.deepStrictEqual(
+      added.filter((each) => names.includes(each)),
+      names,
+    );
+  });
+
   test('cuts an archive into volumes of the size asked, listed together from the first', async () => {
     made('big.txt', 'x'.repeat(250_000));
     await packedAs('v.zip', {

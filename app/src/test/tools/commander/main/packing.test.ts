@@ -110,10 +110,11 @@ suite('packInto', () => {
     ]);
   });
 
-  test('removes what an earlier pack into the archive left under a name of its own, as one the app quit during, and nothing else', async () => {
+  test('removes what an earlier pack into the archive left under a name of its own, its list of items too, as one the app quit during, and nothing else', async () => {
     for (const name of [
       'photos.zip.0a1b2c3d.packing',
       'photos.zip.0a1b2c3d.packing.001',
+      'photos.zip.0a1b2c3d.packing.paths',
       'photos.zip.mine.packing',
       'other.zip.0a1b2c3d.packing',
     ]) {

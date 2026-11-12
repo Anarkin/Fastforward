@@ -13,7 +13,7 @@ import type {
   PackOptions,
   PackPlan,
   Packing,
-  RemoveOptions,
+  ListedOptions,
   UpdateOptions,
 } from './archives';
 
@@ -425,6 +425,7 @@ function tarNameOf(archive: string): string {
 function packRun(
   plan: PackPlan,
   into: string,
+  list: string,
   progress: boolean,
 ): { readonly args: readonly string[]; readonly pipeInto?: readonly string[] } {
   const level = `-mx${packLevels[plan.level]}`;
@@ -440,8 +441,8 @@ function packRun(
         ...packNames,
         '-bso2',
         progress ? '-bsp2' : '-bsp0',
+        `-i@${list}`,
         '--',
-        ...plan.items,
       ],
       pipeInto: [
         'a',
@@ -471,9 +472,9 @@ function packRun(
       ...volumes,
       ...packNames,
       ...(progress ? ['-bsp1'] : []),
+      `-i@${list}`,
       '--',
       into,
-      ...plan.items,
     ],
   };
 }
@@ -557,29 +558,34 @@ async function packed(
   into: string,
   options: PackOptions = {},
 ): Promise<Packing> {
+  const names = listOf(plan.items);
+  if (names === undefined) {
+    return { kind: 'refused', reason: strings.commander.lineBreakInName };
+  }
+  const list = `${into}.paths`;
+  await fs.promises.writeFile(list, names);
   const { signal } = options;
   const onOutput = packOutput(options);
-  const { args, pipeInto } = packRun(plan, into, onOutput !== undefined);
-  const run = await sevenZip(args, {
-    cwd: plan.folder,
-    ...(signal !== undefined && { signal }),
-    ...(pipeInto !== undefined && { pipeInto }),
-    ...(passwordUsed(plan) && { input: `${plan.password}\n` }),
-    ...(onOutput !== undefined && { onOutput }),
-  });
-  if (run.code === 0) {
-    return { kind: 'packed' };
+  const { args, pipeInto } = packRun(plan, into, list, onOutput !== undefined);
+  try {
+    const run = await sevenZip(args, {
+      cwd: plan.folder,
+      ...(signal !== undefined && { signal }),
+      ...(pipeInto !== undefined && { pipeInto }),
+      ...(passwordUsed(plan) && { input: `${plan.password}\n` }),
+      ...(onOutput !== undefined && { onOutput }),
+    });
+    return outcomeOf(run, into);
+  } finally {
+    await fs.promises.rm(list, { force: true });
   }
-  return run.code === 1
-    ? { kind: 'packed', warning: warningOf(run, into) }
-    : { kind: 'refused', ...refusalOf(run, into) };
 }
 
 async function removed(
   sevenZip: SevenZip,
   file: string,
   paths: readonly string[],
-  { listIn, password, signal, ...told }: RemoveOptions,
+  { listIn, password, signal, ...told }: ListedOptions,
 ): Promise<Packing> {
   const names = listOf(paths);
   if (names === undefined) {
@@ -668,28 +674,40 @@ async function addedTo(
   file: string,
   folder: string,
   items: readonly string[],
-  { password, signal, ...told }: UpdateOptions,
+  { listIn, password, signal, ...told }: ListedOptions,
 ): Promise<Packing> {
+  const names = listOf(items);
+  if (names === undefined) {
+    return { kind: 'refused', reason: strings.commander.lineBreakInName };
+  }
+  const list = path.join(listIn, 'added.paths');
+  await fs.promises.writeFile(list, names);
   const onOutput = packOutput(told);
-  const run = await sevenZip(
-    [
-      'a',
-      '-y',
-      ...(password === undefined ? [] : ['-p']),
-      ...packNames,
-      ...(onOutput === undefined ? [] : ['-bsp1']),
-      '--',
-      file,
-      ...items,
-    ],
-    {
-      cwd: folder,
-      ...(signal !== undefined && { signal }),
-      ...(password !== undefined && { input: `${password}\n${password}\n` }),
-      ...(onOutput !== undefined && { onOutput }),
-    },
-  );
-  return outcomeOf(run, file);
+  try {
+    const run = await sevenZip(
+      [
+        'a',
+        '-y',
+        ...(password === undefined ? [] : ['-p']),
+        ...packNames,
+        ...(onOutput === undefined ? [] : ['-bsp1']),
+        `-i@${list}`,
+        '--',
+        file,
+      ],
+      {
+        cwd: folder,
+        ...(signal !== undefined && { signal }),
+        ...(password !== undefined && {
+          input: `${password}\n${password}\n`,
+        }),
+        ...(onOutput !== undefined && { onOutput }),
+      },
+    );
+    return outcomeOf(run, file);
+  } finally {
+    await fs.promises.rm(list, { force: true });
+  }
 }
 
 async function tested(

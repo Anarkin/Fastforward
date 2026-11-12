@@ -71,7 +71,7 @@ export interface UpdateOptions extends PackOptions {
   readonly password?: string;
 }
 
-export interface RemoveOptions extends UpdateOptions {
+export interface ListedOptions extends UpdateOptions {
   readonly listIn: string;
 }
 
@@ -95,7 +95,7 @@ export interface ArchiveReader {
   remove(
     file: string,
     paths: readonly string[],
-    options: RemoveOptions,
+    options: ListedOptions,
   ): Promise<Packing>;
   rename(
     file: string,
@@ -107,7 +107,7 @@ export interface ArchiveReader {
     file: string,
     folder: string,
     items: readonly string[],
-    options: UpdateOptions,
+    options: ListedOptions,
   ): Promise<Packing>;
   test(file: string, options: UpdateOptions): Promise<Packing>;
 }
@@ -731,18 +731,20 @@ export class Archives implements ArchiveAccess {
     paths: readonly string[],
     options: PackOptions = {},
   ): Promise<Packing> {
-    return this.updating(archive, async (reader, password) => {
-      const listIn = await this.workFolder();
-      try {
-        return await reader.remove(archive.file, paths, {
-          ...options,
-          ...password,
-          listIn,
-        });
-      } finally {
-        await removed(listIn);
-      }
-    });
+    return this.updating(archive, (reader, password) =>
+      this.listedIn((listIn) =>
+        reader.remove(archive.file, paths, { ...options, ...password, listIn }),
+      ),
+    );
+  }
+
+  private async listedIn<T>(run: (listIn: string) => Promise<T>): Promise<T> {
+    const listIn = await this.workFolder();
+    try {
+      return await run(listIn);
+    } finally {
+      await removed(listIn);
+    }
   }
 
   rename(
@@ -769,10 +771,13 @@ export class Archives implements ArchiveAccess {
         await fs.promises.mkdir(path.join(staged, ...made), {
           recursive: true,
         });
-        return await reader.add(archive.file, staged, [made.join('/')], {
-          ...options,
-          ...password,
-        });
+        return await this.listedIn((listIn) =>
+          reader.add(archive.file, staged, [made.join('/')], {
+            ...options,
+            ...password,
+            listIn,
+          }),
+        );
       } finally {
         await removed(staged);
       }
@@ -787,12 +792,19 @@ export class Archives implements ArchiveAccess {
     options: PackOptions = {},
   ): Promise<Packing> {
     return this.updating(archive, async (reader, password) => {
-      const given = { ...options, ...password };
+      const adding = (from: string, names: readonly string[]) =>
+        this.listedIn((listIn) =>
+          reader.add(archive.file, from, names, {
+            ...options,
+            ...password,
+            listIn,
+          }),
+        );
       if (
         inner.length === 0 &&
         items.every((item) => path.basename(item) === item)
       ) {
-        return reader.add(archive.file, folder, items, given);
+        return adding(folder, items);
       }
       const staged = await this.workFolder();
       try {
@@ -804,11 +816,9 @@ export class Archives implements ArchiveAccess {
             path.join(into, path.basename(item)),
           );
         }
-        return await reader.add(
-          archive.file,
+        return await adding(
           staged,
           items.map((item) => [...inner, path.basename(item)].join('/')),
-          given,
         );
       } finally {
         await removed(staged);

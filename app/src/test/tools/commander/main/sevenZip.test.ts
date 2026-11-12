@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { suite, test } from 'vitest';
+import { afterEach, beforeEach, suite, test } from 'vitest';
 import { strings } from '../../../../shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import {
@@ -287,7 +287,13 @@ interface Asked {
   readonly cwd?: string;
   readonly pipeInto?: readonly string[];
   readonly signal?: AbortSignal;
+  readonly list?: string;
 }
+
+const listedBy = (args: readonly string[]) => {
+  const list = args.find((arg) => arg.startsWith('-i@'))?.slice(3);
+  return list === undefined ? {} : { list: fs.readFileSync(list, 'utf8') };
+};
 
 suite('packing with 7-Zip', () => {
   const plan: PackPlan = {
@@ -297,7 +303,15 @@ suite('packing with 7-Zip', () => {
     format: 'zip',
     level: 'normal',
   };
-  const into = path.join('D:', 'out', 'photos.part');
+  let out = '';
+  let into = '';
+  beforeEach(() => {
+    out = tempFolder('packing');
+    into = path.join(out, 'photos.part');
+  });
+  afterEach(() => {
+    removeFolder(out);
+  });
   const packedBy = async (
     planned: PackPlan,
     run: Partial<SevenZipRun> = {},
@@ -305,7 +319,7 @@ suite('packing with 7-Zip', () => {
   ) => {
     const asked: Asked[] = [];
     const result = await sevenZipReader((args, options) => {
-      asked.push({ args, ...options, onOutput: undefined });
+      asked.push({ args, ...options, onOutput: undefined, ...listedBy(args) });
       return Promise.resolve({ code: 0, output: '', errors: '', ...run });
     }).pack(planned, into, onProgress === undefined ? {} : { onProgress });
     return { asked, result };
@@ -313,17 +327,29 @@ suite('packing with 7-Zip', () => {
   const common = ['-ssw', '-sccUTF-8', '-scsUTF-8', '-spd'];
   const argsOf = async (planned: PackPlan) => {
     const [asked] = (await packedBy(planned)).asked;
-    return [asked?.args.slice(1, -4).join(' '), asked?.input];
+    return [asked?.args.slice(1, -3).join(' '), asked?.input];
   };
 
-  test('packs the items named from the folder they are in, so they keep the folders under it, after -- so no name is taken for a switch, without wildcards and with the files other apps are writing', async () => {
+  test('packs the items named in a list file from the folder they are in, so they keep the folders under it and any number of them fits on the command line, the archive after -- so its name is taken for no switch, without wildcards and with the files other apps are writing, removing the list once done', async () => {
     assert.deepStrictEqual((await packedBy(plan)).asked, [
       {
-        args: ['a', '-tzip', '-mx5', ...common, '--', into, 'a.txt', 'docs'],
+        args: ['a', '-tzip', '-mx5', ...common, `-i@${into}.paths`, '--', into],
         cwd: plan.folder,
         onOutput: undefined,
+        list: '"a.txt"\n"docs"',
       },
     ]);
+    assert.deepStrictEqual(fs.readdirSync(out), []);
+  });
+
+  test('refuses to pack an item whose name holds a line break, which a list file cannot hold, without running 7-Zip', async () => {
+    assert.deepStrictEqual(
+      await packedBy({ ...plan, items: ['a.txt', 'two\nlines.txt'] }),
+      {
+        asked: [],
+        result: { kind: 'refused', reason: strings.commander.lineBreakInName },
+      },
+    );
   });
 
   test('gives 7-Zip the password on its input, encrypting a zip with AES-256 or ZipCrypto as chosen, the names of a 7z too when asked, and no tar', async () => {
@@ -368,9 +394,8 @@ suite('packing with 7-Zip', () => {
           ...common,
           '-bso2',
           '-bsp2',
+          `-i@${into}.paths`,
           '--',
-          'a.txt',
-          'docs',
         ],
         cwd: plan.folder,
         pipeInto: [
@@ -385,6 +410,7 @@ suite('packing with 7-Zip', () => {
           into,
         ],
         onOutput: undefined,
+        list: '"a.txt"\n"docs"',
       },
     ]);
   });
@@ -542,7 +568,7 @@ const askedBy = async (
   const asked: Asked[] = [];
   await change(
     sevenZipReader((args, options) => {
-      asked.push({ args, ...options, onOutput: undefined });
+      asked.push({ args, ...options, onOutput: undefined, ...listedBy(args) });
       return Promise.resolve({ code: 0, output: '', errors: '' });
     }),
   );
@@ -582,36 +608,50 @@ suite('changing an archive with 7-Zip', () => {
     assert.ok(unlocked?.args.includes('-p-'));
   });
 
-  test('adds items from the folder they are in, so they keep their folders under it, setting no password unless one is given, as -p- would set the password -, and giving it twice, as 7-Zip asks once to open a 7z with its names encrypted and again for what it adds', async () => {
-    assert.deepStrictEqual(
-      await askedBy((reader) =>
-        reader.add('a.zip', 'stage', ['docs/fresh'], {}),
-      ),
-      [
-        {
-          args: [
-            'a',
-            '-y',
-            '-ssw',
-            '-sccUTF-8',
-            '-scsUTF-8',
-            '-spd',
-            '--',
-            'a.zip',
-            'docs/fresh',
-          ],
-          cwd: 'stage',
-          onOutput: undefined,
-        },
-      ],
-    );
-    const [locked] = await askedBy((reader) =>
-      reader.add('a.7z', 'stage', ['x'], { password: 'secret' }),
-    );
-    assert.deepStrictEqual(
-      [locked?.args.includes('-p'), locked?.input],
-      [true, 'secret\nsecret\n'],
-    );
+  test('adds the items named in a list file from the folder they are in, so they keep their folders under it and any number of them fits on the command line, setting no password unless one is given, as -p- would set the password -, and giving it twice, as 7-Zip asks once to open a 7z with its names encrypted and again for what it adds', async () => {
+    const listIn = tempFolder('adding');
+    const list = path.join(listIn, 'added.paths');
+    try {
+      assert.deepStrictEqual(
+        await askedBy((reader) =>
+          reader.add('a.zip', 'stage', ['docs/fresh', 'b.txt'], { listIn }),
+        ),
+        [
+          {
+            args: [
+              'a',
+              '-y',
+              '-ssw',
+              '-sccUTF-8',
+              '-scsUTF-8',
+              '-spd',
+              `-i@${list}`,
+              '--',
+              'a.zip',
+            ],
+            cwd: 'stage',
+            onOutput: undefined,
+            list: '"docs/fresh"\n"b.txt"',
+          },
+        ],
+      );
+      const [locked] = await askedBy((reader) =>
+        reader.add('a.7z', 'stage', ['x'], { listIn, password: 'secret' }),
+      );
+      assert.deepStrictEqual(
+        [locked?.args.includes('-p'), locked?.input],
+        [true, 'secret\nsecret\n'],
+      );
+      assert.deepStrictEqual(
+        await askedBy((reader) =>
+          reader.add('a.zip', 'stage', ['two\nlines'], { listIn }),
+        ),
+        [],
+      );
+      assert.deepStrictEqual(fs.readdirSync(listIn), []);
+    } finally {
+      removeFolder(listIn);
+    }
   });
 });
 
