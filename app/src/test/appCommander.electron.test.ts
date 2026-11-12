@@ -205,9 +205,9 @@ suite('App commander', () => {
       const rightGap = edge.right - line - (thumb.right - border);
       const bottomGap = edge.bottom - line - (thumb.bottom - border);
       return {
-        right: Math.round(rightGap),
-        top: Math.round(thumb.top + border - list.top),
-        bottom: Math.round(bottomGap),
+        right: Math.round(rightGap) + 0,
+        top: Math.round(thumb.top + border - list.top) + 0,
+        bottom: Math.round(bottomGap) + 0,
         corner: Math.round(inner),
         rounded: Math.round(
           parseFloat(getComputedStyle(bar).borderBottomRightRadius),
@@ -1829,8 +1829,8 @@ suite('App commander', () => {
         const edge = column.getBoundingClientRect();
         const box = thumb.getBoundingClientRect();
         return {
-          right: Math.round(edge.right - line - box.right),
-          bottom: Math.round(edge.bottom - line - box.bottom),
+          right: Math.round(edge.right - line - box.right) + 0,
+          bottom: Math.round(edge.bottom - line - box.bottom) + 0,
           corner: Math.round(parseFloat(style.borderBottomRightRadius) - line),
           clipped: clip.overflow,
           rounded: Math.round(parseFloat(clip.borderBottomRightRadius)),

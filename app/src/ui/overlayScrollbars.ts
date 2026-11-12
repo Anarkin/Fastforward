@@ -244,6 +244,18 @@ export interface Frame {
   readonly radius: number;
 }
 
+export function paintedFrame(frame: Frame, ratio: number): Frame {
+  const snapped = (value: number) => Math.round(value * ratio) / ratio;
+  return {
+    left: snapped(frame.left),
+    top: snapped(frame.top),
+    right: snapped(frame.right),
+    bottom: snapped(frame.bottom),
+    line: Math.floor(frame.line * ratio + 0.001) / ratio,
+    radius: frame.radius,
+  };
+}
+
 function meets(one: number, other: number): boolean {
   return Math.abs(one - other) <= 1;
 }
@@ -576,14 +588,17 @@ function framingOf(scroller: Element): Framing {
 
 function frameFrom(element: Element, line: number): Frame {
   const { left, top, right, bottom } = element.getBoundingClientRect();
-  return {
-    left,
-    top,
-    right,
-    bottom,
-    line,
-    radius: radiusOf(getComputedStyle(element)),
-  };
+  return paintedFrame(
+    {
+      left,
+      top,
+      right,
+      bottom,
+      line,
+      radius: radiusOf(getComputedStyle(element)),
+    },
+    window.devicePixelRatio,
+  );
 }
 
 function borderOf(element: Element): number {

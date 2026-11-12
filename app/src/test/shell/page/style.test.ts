@@ -145,7 +145,10 @@ function activeEdge(): string {
     cascaded(edge, '--frame-line', after),
     'var(--column-line)',
   );
-  return cascaded(edge, '--column-line') ?? '';
+  const line = cascaded(edge, '--column-line') ?? '';
+  return (
+    /^round\((\d+px), var\(--device-pixel, 1px\)\)$/.exec(line)?.[1] ?? line
+  );
 }
 
 function indented(wordWrap: boolean): MarkupElement {
@@ -2544,7 +2547,7 @@ suite('Style', () => {
       '--column-line': undefined,
     });
     looks(withClass(columns(columnsClass(true, 'a'), 'commits'), 'column'), {
-      '--column-line': '2px',
+      '--column-line': 'round(2px, var(--device-pixel, 1px))',
     });
     looks(
       withClass(columns(columnsClass(true, 'a'), 'commits'), 'column'),

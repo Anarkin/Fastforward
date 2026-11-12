@@ -136,6 +136,218 @@ suite('App with lists longer than their columns', () => {
   });
 });
 
+const scale = 1.25;
+
+async function pixelsOf(
+  page: Page,
+  shot: Buffer,
+  points: readonly (readonly [number, number])[],
+): Promise<string[]> {
+  return page.evaluate(
+    async ({ data, at }) => {
+      const bytes = Uint8Array.from(atob(data), (each) => each.charCodeAt(0));
+      const image = await createImageBitmap(
+        new Blob([bytes], { type: 'image/png' }),
+      );
+      const canvas = new OffscreenCanvas(image.width, image.height);
+      const context = canvas.getContext('2d');
+      context?.drawImage(image, 0, 0);
+      return at.map(([x, y]) =>
+        Array.from(context?.getImageData(x, y, 1, 1).data ?? []).join(','),
+      );
+    },
+    { data: shot.toString('base64'), at: points },
+  );
+}
+
+async function thumbAgainstLine(
+  page: Page,
+  list: Locator,
+  edge: 'right' | 'bottom',
+  bar = page.locator('.overlay-scrollbar.vertical.shown'),
+): Promise<{
+  readonly reached: string;
+  readonly before: string;
+  readonly line: string;
+}> {
+  await page.mouse.move(2, 2);
+  await bar.waitFor({ state: 'detached' });
+  await page.waitForTimeout(400);
+  const bare = await page.screenshot();
+  const box = await list.boundingBox();
+  assert.ok(box, 'the list has no box');
+  await page.mouse.move(
+    box.x + 20,
+    edge === 'right' ? box.y + box.height - 10 : box.y + 10,
+  );
+  await bar.waitFor();
+  await page.waitForTimeout(400);
+  const shown = await page.screenshot();
+  const thumb = await bar.boundingBox();
+  const column = await list.evaluate((element) => {
+    const { right, bottom } = element
+      .closest('.column')
+      ?.getBoundingClientRect() ?? { right: 0, bottom: 0 };
+    return { right, bottom };
+  });
+  assert.ok(thumb, 'the thumb has no box');
+  const points: [number, number][] =
+    edge === 'right'
+      ? Array.from(
+          {
+            length:
+              Math.round(column.right * scale) -
+              Math.round((thumb.x + thumb.width / 2) * scale),
+          },
+          (_, index) => [
+            Math.round((thumb.x + thumb.width / 2) * scale) + index,
+            Math.round((thumb.y + 8) * scale),
+          ],
+        )
+      : Array.from(
+          {
+            length:
+              Math.round(column.bottom * scale) -
+              Math.round((thumb.y + thumb.height / 2) * scale),
+          },
+          (_, index) => [
+            Math.round((thumb.x + 4) * scale),
+            Math.round((thumb.y + thumb.height / 2) * scale) + index,
+          ],
+        );
+  const [without, withThumb] = await Promise.all([
+    pixelsOf(page, bare, points),
+    pixelsOf(page, shown, points),
+  ]);
+  const reached = without.findIndex(
+    (pixel, index) => pixel === withThumb[index],
+  );
+  return {
+    reached: without[reached],
+    before: without[reached - 1],
+    line: without[without.length - 1],
+  };
+}
+
+suite('App at a scale of 125%', () => {
+  let folder: string;
+  let app: ElectronApplication;
+  let page: Page;
+
+  beforeAll(async () => {
+    folder = tempFolder('scaled');
+    const profile = path.join(folder, 'profile');
+    const repository = await tempRepository(path.join(folder, 'repo'));
+    await repository.commit(
+      'first',
+      Object.fromEntries(
+        Array.from({ length: 80 }, (_, index) => [
+          `src/file${index}.txt`,
+          `${index}\n`,
+        ]),
+      ),
+    );
+    fs.writeFileSync(
+      path.join(folder, 'long.txt'),
+      `${longLines.join('\n')}\n`,
+    );
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({
+        tabs: [
+          { id: '1', tool: 'git', root: repository.root },
+          { id: '2', tool: 'commander', root: folder },
+        ],
+        activeTab: '1',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify(baseSettings),
+    );
+    app = await launchApp(profile, {
+      before: [`--force-device-scale-factor=${scale}`],
+    });
+    page = await app.firstWindow();
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
+  });
+
+  afterAll(async () => {
+    await app?.close();
+    removeFolder(folder);
+  });
+
+  test('runs the thumb of the files over every pixel up to the line of their column, those the line fills in part too, and over none the line fills whole, wherever the column falls between pixels', async () => {
+    const columns = page.locator('.columns > .column');
+    for (const [list, edge] of [
+      [columns.nth(1).locator('.virtual-rows'), 'right'],
+      [columns.nth(1).locator('.virtual-rows'), 'bottom'],
+    ] as const) {
+      if (edge === 'bottom') {
+        await list.evaluate((element) => {
+          element.scrollTop = element.scrollHeight;
+        });
+      }
+      const met = await thumbAgainstLine(page, list, edge);
+      assert.strictEqual(
+        met.reached,
+        met.line,
+        `${edge} ${JSON.stringify(met)}`,
+      );
+      assert.notStrictEqual(
+        met.before,
+        met.line,
+        `${edge} ${JSON.stringify(met)}`,
+      );
+    }
+  });
+
+  test('draws the line of each column on whole device pixels, so what stands against it meets it', async () => {
+    const lines = await page
+      .locator('.columns > .column')
+      .evaluateAll((columns) =>
+        columns.map(
+          (column) =>
+            parseFloat(
+              getComputedStyle(column).getPropertyValue('--column-line'),
+            ) * devicePixelRatio,
+        ),
+      );
+    assert.deepStrictEqual(
+      lines.map((line) => Math.round(line * 1000) / 1000),
+      lines.map((line) => Math.max(1, Math.round(line))),
+    );
+  });
+
+  test('runs the thumb of a file viewed at its end over every pixel up to the bottom line of its column, and over none the line fills', async () => {
+    await page.locator('.tabs [role="tab"]').nth(1).click();
+    const side = page.locator('.commander-pane').nth(1);
+    await side.locator('.commander-row', { hasText: 'long' }).click();
+    await page.keyboard.press('F3');
+    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    await page.keyboard.press('End');
+    await waitFor(
+      async () =>
+        (await page
+          .locator('.viewer-row', { hasText: `line${longLines.length - 1} ` })
+          .count()) > 0,
+      'the last line of the file',
+    );
+    const met = await thumbAgainstLine(
+      page,
+      page.locator('.viewer-body'),
+      'bottom',
+      page.locator('.viewer-thumb.shown'),
+    );
+    assert.strictEqual(met.reached, met.line, JSON.stringify(met));
+    assert.notStrictEqual(met.before, met.line, JSON.stringify(met));
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+  });
+});
+
 const dark = (page: Page) =>
   page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
 

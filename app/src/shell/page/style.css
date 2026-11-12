@@ -1162,8 +1162,14 @@ body {
   padding: var(--gutter-width);
 }
 
+@property --column-line {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
 .columns > .column {
-  --column-line: 2px;
+  --column-line: round(2px, var(--device-pixel, 1px));
   background: var(--color-panel-background);
   border-radius: var(--card-radius);
 }

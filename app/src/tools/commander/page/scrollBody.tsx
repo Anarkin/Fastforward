@@ -261,7 +261,10 @@ export function ScrollBody({
       const rows = Math.max(1, Math.floor(element.clientHeight / height));
       setScreen(rows);
       onScreen(rows);
-      setTrack(scrollbar.current?.clientHeight ?? element.clientHeight);
+      setTrack(
+        scrollbar.current?.getBoundingClientRect().height ??
+          element.clientHeight,
+      );
       const style = getComputedStyle(row);
       const padding =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);

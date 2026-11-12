@@ -11,6 +11,7 @@ import {
   installOverlayScrollbars,
   jumpedScroll,
   overlayScrollbarClass,
+  paintedFrame,
   scrolledScroller,
   shareAt,
   thumbBox,
@@ -547,6 +548,30 @@ suite('Overlay scrollbars', () => {
     assert.strictEqual(
       thumbBox('vertical', framed, 25)?.left,
       101 + 400 - 25 - 2,
+    );
+  });
+
+  test('takes the rounded area around a scrolling area as the screen paints it, its edges on whole device pixels and its line only as far as it fills them, so a thumb against the line covers a pixel the line fills in part', () => {
+    assert.deepStrictEqual(
+      paintedFrame(
+        {
+          left: 10.2,
+          top: 5.75,
+          right: 100.3,
+          bottom: 300.1,
+          line: 1.25,
+          radius: 6,
+        },
+        2,
+      ),
+      { left: 10, top: 6, right: 100.5, bottom: 300, line: 1, radius: 6 },
+    );
+    assert.deepStrictEqual(
+      paintedFrame(
+        { left: 0, top: 0, right: 400, bottom: 300, line: 2, radius: 6 },
+        1.5,
+      ),
+      { left: 0, top: 0, right: 400, bottom: 300, line: 2, radius: 6 },
     );
   });
 
