@@ -22,10 +22,13 @@ import { folderKey } from '../shared/paths';
 import { otherSide, type Entry } from '../shared/protocol';
 import {
   archiveFor,
+  folderPart,
+  lastPart,
   namedPart,
   volumeBytesOf,
   volumeSizes,
   withFormat,
+  withoutTrailing,
 } from './packing';
 import { useCommander, useCommanderActions } from './store';
 import { whatOf } from './transferring';
@@ -61,14 +64,6 @@ function Choices<Choice extends string>({
   );
 }
 
-const lastPart = (file: string) =>
-  file.split(/[\\/]/).findLast((part) => part !== '') ?? '';
-
-const trailing = /[\\/]+$/;
-
-const folderPart = (file: string) =>
-  file.slice(0, file.length - lastPart(file).length).replace(trailing, '');
-
 const rootedOnWindows = /^(?:[a-zA-Z]:[\\/]|[\\/]{2}[^\\/])/;
 
 function whole(file: string, platform: string | undefined): boolean {
@@ -100,7 +95,7 @@ function packProblem({
   if (!whole(archive.trim(), platform)) {
     return strings.commander.archiveNotWhole;
   }
-  const named = nameProblem(lastPart(archive.trim()), platform);
+  const named = nameProblem(lastPart(archive.trim(), platform), platform);
   if (named !== undefined) {
     return named;
   }
@@ -148,7 +143,7 @@ function PackForm({
   const field = useRef<HTMLInputElement>(null);
   const [format, setFormat] = useState<PackFormat>(choices.format);
   const [archive, setArchive] = useState(() =>
-    archiveFor(names, folder, target, choices.format, onlyIsFolder),
+    archiveFor(names, folder, target, choices.format, platform, onlyIsFolder),
   );
   const [level, setLevel] = useState<PackLevel>(choices.level);
   const [password, setPassword] = useState('');
@@ -164,10 +159,10 @@ function PackForm({
     const typed = field.current;
     if (typed !== null) {
       typed.focus();
-      const { start, end } = namedPart(typed.value);
+      const { start, end } = namedPart(typed.value, platform);
       typed.setSelectionRange(start, end);
     }
-  }, []);
+  }, [platform]);
   const problem = packProblem({
     archive,
     format,
@@ -176,10 +171,10 @@ function PackForm({
     volume,
     platform,
   });
-  const name = lastPart(archive.trim());
+  const name = lastPart(archive.trim(), platform);
   const there =
-    folderKey(folderPart(archive.trim()), platform) ===
-      folderKey(target.replace(trailing, ''), platform) &&
+    folderKey(folderPart(archive.trim(), platform), platform) ===
+      folderKey(withoutTrailing(target, platform), platform) &&
     targetEntries?.some(
       (entry) => folderKey(entry.name, platform) === folderKey(name, platform),
     ) === true;

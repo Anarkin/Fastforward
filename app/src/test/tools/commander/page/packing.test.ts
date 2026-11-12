@@ -2,53 +2,90 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   archiveFor,
+  folderPart,
+  lastPart,
   namedPart,
   volumeBytesOf,
   volumeSizes,
   withFormat,
 } from '../../../../tools/commander/page/packing';
 
-const selected = (archive: string) => {
-  const { start, end } = namedPart(archive);
+const selected = (archive: string, platform = 'linux') => {
+  const { start, end } = namedPart(archive, platform);
   return archive.slice(start, end);
 };
 
 suite('Packing on the page', () => {
   test('names the archive after the one item packed, without its extension, or after the folder of the items, in the folder it goes to', () => {
     assert.strictEqual(
-      archiveFor(['report.final.pdf'], '/code/docs', '/backup', 'zip'),
+      archiveFor(['report.final.pdf'], '/code/docs', '/backup', 'zip', 'linux'),
       '/backup/report.final.zip',
     );
     assert.strictEqual(
-      archiveFor(['photos'], 'C:\\Users\\me', 'D:\\', '7z'),
+      archiveFor(['photos'], 'C:\\Users\\me', 'D:\\', '7z', 'win32'),
       'D:\\photos.7z',
     );
     assert.strictEqual(
-      archiveFor(['a.txt', 'b.txt'], '/code/docs', '/backup/', 'tar.gz'),
+      archiveFor(
+        ['a.txt', 'b.txt'],
+        '/code/docs',
+        '/backup/',
+        'tar.gz',
+        'linux',
+      ),
       '/backup/docs.tar.gz',
     );
     assert.strictEqual(
-      archiveFor(['a.txt', 'b.txt'], 'C:\\', 'D:\\out', 'zip'),
+      archiveFor(['a.txt', 'b.txt'], 'C:\\', 'D:\\out', 'zip', 'win32'),
       'D:\\out\\archive.zip',
     );
     assert.strictEqual(
-      archiveFor(['sub/a.txt'], '/code', '/backup', 'zip'),
+      archiveFor(['sub/a.txt'], '/code', '/backup', 'zip', 'linux'),
       '/backup/a.zip',
     );
     assert.strictEqual(
-      archiveFor(['my.photos'], '/code', '/backup', 'zip', true),
+      archiveFor(['my.photos'], '/code', '/backup', 'zip', 'linux', true),
       '/backup/my.photos.zip',
     );
     assert.strictEqual(
-      archiveFor(['a.txt', 'b.txt'], '/', '/backup', 'zip'),
+      archiveFor(['a.txt', 'b.txt'], '/', '/backup', 'zip', 'linux'),
       '/backup/archive.zip',
+    );
+  });
+
+  test('parts the path of the archive by the separators of the platform, a backslash being part of a name outside Windows', () => {
+    assert.strictEqual(
+      archiveFor(['a.txt', 'b.txt'], '/home/u', '/home/u/a\\b', 'zip', 'linux'),
+      '/home/u/a\\b/u.zip',
+    );
+    assert.strictEqual(
+      archiveFor(['x\\a.txt'], '/home/u', '/backup', 'zip', 'darwin'),
+      '/backup/x\\a.zip',
+    );
+    assert.strictEqual(
+      archiveFor(['sub\\a.txt'], 'C:\\code', 'D:/out', 'zip', 'win32'),
+      'D:/out\\a.zip',
+    );
+    assert.strictEqual(selected('/home/u/a\\b.zip'), 'a\\b');
+    assert.deepStrictEqual(
+      [
+        lastPart('/home/u/a\\b', 'linux'),
+        folderPart('/home/u/a\\b', 'linux'),
+        lastPart('D:\\out\\a.zip', 'win32'),
+        folderPart('D:\\out\\a.zip', 'win32'),
+        folderPart('D:\\out\\\\a.zip', 'win32'),
+      ],
+      ['a\\b', '/home/u', 'a.zip', 'D:\\out', 'D:\\out'],
     );
   });
 
   test('selects the name of the archive to type over, after its folder and before the extension of its format', () => {
     assert.strictEqual(selected('/backup/photos.tar.gz'), 'photos');
-    assert.strictEqual(selected('D:\\out\\report.final.zip'), 'report.final');
-    assert.strictEqual(selected('D:\\out\\notes'), 'notes');
+    assert.strictEqual(
+      selected('D:\\out\\report.final.zip', 'win32'),
+      'report.final',
+    );
+    assert.strictEqual(selected('D:\\out\\notes', 'win32'), 'notes');
   });
 
   test('changes the extension of the archive for another format, adding it to a name without one it knows', () => {

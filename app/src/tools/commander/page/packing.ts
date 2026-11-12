@@ -1,10 +1,28 @@
 import { strings } from '../../../shared/strings';
 import { packFormats, type PackFormat } from '../shared/packing';
 
-const separators = /[\\/]/;
+function separatorsOf(platform: string | undefined): RegExp {
+  return platform === 'win32' ? /[\\/]/ : /\//;
+}
 
-function lastPart(file: string): string {
-  return file.split(separators).findLast((part) => part !== '') ?? '';
+export function lastPart(file: string, platform: string | undefined): string {
+  return (
+    file.split(separatorsOf(platform)).findLast((part) => part !== '') ?? ''
+  );
+}
+
+export function withoutTrailing(
+  folder: string,
+  platform: string | undefined,
+): string {
+  return folder.replace(platform === 'win32' ? /[\\/]+$/ : /\/+$/, '');
+}
+
+export function folderPart(file: string, platform: string | undefined): string {
+  return withoutTrailing(
+    file.slice(0, file.length - lastPart(file, platform).length),
+    platform,
+  );
 }
 
 const knownExtension = new RegExp(
@@ -15,12 +33,18 @@ const knownExtension = new RegExp(
   'i',
 );
 
-export function namedPart(archive: string): {
+export function namedPart(
+  archive: string,
+  platform: string | undefined,
+): {
   readonly start: number;
   readonly end: number;
 } {
   const start =
-    Math.max(archive.lastIndexOf('/'), archive.lastIndexOf('\\')) + 1;
+    Math.max(
+      archive.lastIndexOf('/'),
+      platform === 'win32' ? archive.lastIndexOf('\\') : -1,
+    ) + 1;
   const extension = knownExtension.exec(archive.slice(start));
   return {
     start,
@@ -42,19 +66,20 @@ export function archiveFor(
   folder: string,
   target: string,
   format: PackFormat,
+  platform: string | undefined,
   onlyIsFolder = false,
 ): string {
   const [only, ...more] = names;
   const named =
     only !== undefined && more.length === 0
       ? onlyIsFolder
-        ? lastPart(only)
-        : baseOf(lastPart(only))
-      : lastPart(folder);
+        ? lastPart(only, platform)
+        : baseOf(lastPart(only, platform))
+      : lastPart(folder, platform);
   const name =
     named === '' || named.endsWith(':') ? strings.commander.archiveName : named;
-  const separator = target.includes('\\') ? '\\' : '/';
-  const into = separators.test(target.at(-1) ?? '')
+  const separator = platform === 'win32' ? '\\' : '/';
+  const into = separatorsOf(platform).test(target.at(-1) ?? '')
     ? target
     : `${target}${separator}`;
   return `${into}${name}.${format}`;
