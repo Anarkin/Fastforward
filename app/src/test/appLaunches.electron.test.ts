@@ -519,6 +519,69 @@ suite('App at a scale of 125%', () => {
     });
     assert.ok(below >= -0.01, String(below));
   });
+
+  test('rings the dot of a commit in the color its row shows, plain or selected', async () => {
+    const grounds = await page
+      .locator('.columns > .column')
+      .first()
+      .locator('.virtual-rows')
+      .evaluate((list) => {
+        const view = list.ownerDocument.defaultView;
+        const ring = (commit: Element | null | undefined) => {
+          const dot = commit?.previousElementSibling?.querySelector('circle');
+          return dot ? (view?.getComputedStyle(dot).stroke ?? '') : 'no dot';
+        };
+        const selected = list.querySelector('.commit.selected');
+        const plain = [...list.querySelectorAll('.commit:not(.selected)')].find(
+          (commit) =>
+            !commit.matches(':hover') &&
+            commit.previousElementSibling?.querySelector('circle'),
+        );
+        const column = list.closest('.column');
+        return {
+          selected: ring(selected),
+          selectedRow: selected
+            ? getComputedStyle(selected).backgroundColor
+            : '',
+          plain: ring(plain),
+          panel: column ? getComputedStyle(column).backgroundColor : '',
+        };
+      });
+    assert.deepStrictEqual(
+      [grounds.selected, grounds.plain],
+      [grounds.selectedRow, grounds.panel],
+    );
+  });
+
+  test('opens the search of the commits over their title with its button and line where those of the title are, to a device pixel', async () => {
+    const column = page.locator('.columns > .column').first();
+    const place = () =>
+      column.evaluate((element) => {
+        const ratio = devicePixelRatio;
+        const device = (value: number) => Math.round(value * ratio);
+        const popup = element.querySelector('.locations-popup');
+        const title = element.querySelector('.column-title');
+        const button = (popup ?? title)?.querySelector('button');
+        const line = popup
+          ? popup.querySelector('.locations-groups')?.getBoundingClientRect()
+              .top
+          : title
+            ? title.getBoundingClientRect().bottom -
+              parseFloat(getComputedStyle(title).borderBottomWidth)
+            : undefined;
+        return {
+          button: device(button?.getBoundingClientRect().top ?? Number.NaN),
+          line: device(line ?? Number.NaN),
+        };
+      });
+    const closed = await place();
+    await column.locator('.search-button').first().click();
+    await column.locator('.locations-popup').waitFor();
+    const opened = await place();
+    await page.keyboard.press('Escape');
+    await column.locator('.locations-popup').waitFor({ state: 'detached' });
+    assert.deepStrictEqual(opened, closed);
+  });
 });
 
 const dark = (page: Page) =>

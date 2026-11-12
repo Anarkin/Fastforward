@@ -184,18 +184,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   font-weight: 600;
 }
 
-.commit {
-  --graph-ground: var(--color-panel-background);
-}
-
-.commit:hover {
-  --graph-ground: var(--hover-ground);
-}
-
-.commit.selected {
-  --graph-ground: var(--selection-background);
-}
-
 .commit.compare-from {
   box-shadow: inset 3px 0 0 var(--color-focus);
 }
@@ -583,11 +571,20 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 }
 
 .graph {
+  --graph-ground: var(--color-panel-background);
   position: absolute;
   top: 0;
   left: 0;
   overflow: visible;
   pointer-events: none;
+}
+
+.graph:has(+ .commit:hover) {
+  --graph-ground: var(--hover-ground);
+}
+
+.graph:has(+ .commit.selected) {
+  --graph-ground: var(--selection-background);
 }
 
 .merge-dot {
@@ -628,8 +625,8 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   align-items: center;
   gap: 4px;
   box-sizing: border-box;
-  height: calc(var(--title-height) - 1px);
-  padding: 0 var(--search-gap) 0 4px;
+  height: calc(var(--title-height) - var(--hairline));
+  padding: var(--column-line, 0px) var(--search-gap) 0 4px;
 }
 
 .locations-search {

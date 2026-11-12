@@ -231,6 +231,22 @@ function looksAlike(
 
 const body = rendered(createElement('body'));
 
+function graphBesideCommit(selected?: string): MarkupElement {
+  return rendered(
+    createElement(
+      'div',
+      { className: 'virtual-row' },
+      createElement(GraphCell, {
+        row: { lane: 0, color: 0, lines: [] },
+        height: commitRowHeight,
+        line: bubbleLineHeight,
+        onToggleMerge: noop,
+      }),
+      commitRow({ selected }),
+    ),
+  );
+}
+
 function bodyVariable(name: string): string | undefined {
   return cascaded(body, `--${name}`);
 }
@@ -1805,13 +1821,14 @@ suite('Style', () => {
     );
     const edge = cascaded(withClass(title, 'column-start'), 'left');
     assert.match(edge ?? '', /^\d+px$/);
+    assert.strictEqual(line, '1px');
     looks(withClass(locationsPopup(''), 'locations-search-row'), {
-      height: `calc(var(--title-height) - ${line})`,
+      height: 'calc(var(--title-height) - var(--hairline))',
       'box-sizing': 'border-box',
       margin: undefined,
       'margin-top': undefined,
       'margin-bottom': undefined,
-      padding: `0 var(--search-gap) 0 ${edge}`,
+      padding: `var(--column-line, 0px) var(--search-gap) 0 ${edge}`,
     });
   });
 
@@ -3280,7 +3297,7 @@ suite('Style', () => {
     );
   });
 
-  test('grounds the graph of a commit in the color its row shows, each color that mixes in transparent made opaque by mixing in the panel instead, so the edge around a dot matches a hovered or selected row', () => {
+  test('grounds the graph of a commit, which stands beside its row rather than in it, in the color the row shows, each color that mixes in transparent made opaque by mixing in the panel instead, so the edge around a dot matches a hovered or selected row', () => {
     assert.strictEqual(
       bodyVariable('hover-ground'),
       bodyVariable('hover-background')?.replace(
@@ -3292,10 +3309,15 @@ suite('Style', () => {
       bodyVariable('selection-background') ?? '',
       /transparent/,
     );
-    const row = withClass(rendered(commitRow()), 'commit');
-    looks(row, { '--graph-ground': 'var(--color-panel-background)' });
-    looks(row, { '--graph-ground': 'var(--hover-ground)' }, hovered);
-    looks(withClass(rendered(commitRow({ selected: 'a' })), 'commit'), {
+    const plain = graphBesideCommit();
+    const graph = withClass(plain, 'graph');
+    looks(graph, { '--graph-ground': 'var(--color-panel-background)' });
+    looks(
+      graph,
+      { '--graph-ground': 'var(--hover-ground)' },
+      { hover: withClass(plain, 'commit') },
+    );
+    looks(withClass(graphBesideCommit('a'), 'graph'), {
       '--graph-ground': 'var(--selection-background)',
     });
   });
