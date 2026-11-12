@@ -111,6 +111,7 @@ export class TerminalTool implements Tool<'terminal'> {
     }
     for (const [other, shown] of this.shown) {
       if (other !== page && shown.tab === tab.id) {
+        this.send({ type: 'detach', id: tab.id }, false);
         this.shown.delete(other);
         this.post(other, { type: 'hide' });
       }

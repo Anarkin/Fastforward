@@ -696,6 +696,16 @@ suite('Terminal tool in several windows', () => {
     assert.strictEqual(ptys.spawned.length, 2);
   });
 
+  test('answers where the cursor is for a tab moved to another window until that window shows it, as the shell asked while the window it left was still attached and no one answered', async () => {
+    const { tool, ptys, clock, open } = terminal();
+    const second = new TerminalPage();
+    await open(work);
+    await tool.show(second, work);
+    ptys.last().print('ab\x1b[6n');
+    await clock.fire();
+    await until(() => ptys.last().written.includes('\x1b[1;3R'));
+  });
+
   test('tells every window that shows a terminal that the terminal process stopped', async () => {
     const { page, open, stopHost } = terminal();
     const second = new TerminalPage();

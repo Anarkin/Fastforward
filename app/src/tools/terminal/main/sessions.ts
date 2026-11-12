@@ -165,9 +165,9 @@ class Session {
   }
 
   attach(columns: number, rows: number, scrollback: number): void {
+    this.attached = false;
     this.flush();
     const attachment = ++this.attachment;
-    this.attached = false;
     this.holding = true;
     this.resize(columns, rows);
     this.mirror.scrollback(scrollback);

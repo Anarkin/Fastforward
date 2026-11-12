@@ -349,6 +349,17 @@ suite('Terminal sessions', () => {
     await until(() => ptys.last().written.includes('\x1b[1;3R'));
   });
 
+  test('answers what the shell printed last while a page attaches again, sending it in the screen rather than as output, as the page attaching drops the output before its screen', async () => {
+    const { ptys, start, attach, outputs } = host();
+    start();
+    await attach();
+    ptys.last().print('ab\x1b[6n');
+    const screen = await attach();
+    await until(() => ptys.last().written.includes('\x1b[1;3R'));
+    assert.ok(screen?.type === 'screen' && screen.data.includes('ab'));
+    assert.deepStrictEqual(outputs(), []);
+  });
+
   test('tells the folder the shell reports at each prompt, the same one again too, as that tells a command ran there, as Windows Terminal or a file URL has it, with no page attached too', async () => {
     const { ptys, clock, start, folders } = host();
     start();
