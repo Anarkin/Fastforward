@@ -35,6 +35,17 @@ export function nextWindowId(layout: Layout): string {
   return String(Math.max(0, ...ids) + 1);
 }
 
+export function spareWindowIds(layout: Layout): () => string {
+  let made = Math.max(
+    0,
+    ...layout.flatMap((window) => {
+      const number = /^s(\d+)$/.exec(window.id)?.[1];
+      return number === undefined ? [] : [Number(number)];
+    }),
+  );
+  return () => `s${++made}`;
+}
+
 export function nextTabId(layout: Layout): string {
   const ids = layout.flatMap((window) =>
     window.tabs.map((tab) => Number(tab.id)).filter(Number.isInteger),

@@ -97,6 +97,7 @@ import { TerminalTool } from '../tools/terminal/main/tool';
 import { GitStorage } from '../tools/git/main/storage';
 import { GitTool } from '../tools/git/main/tool';
 import { Shell, type Connection } from '../shell/main/shell';
+import { spareWindowIds } from '../shell/main/windows';
 import {
   appFile,
   appOrigin,
@@ -314,7 +315,7 @@ async function start(asked: readonly string[]): Promise<void> {
   let frontToBack: string[] = [];
   let drag: TabDrag | undefined;
   let spare: { readonly id: string; readonly entry: OpenedWindow } | undefined;
-  let spares = 0;
+  const spareId = spareWindowIds(storage.layout);
   const openWindow = (
     id: string,
     saved: SavedPlace,
@@ -425,7 +426,7 @@ async function start(asked: readonly string[]): Promise<void> {
     );
   const keepSpare = () => {
     if (spare === undefined && !quitting && opened.size > 0) {
-      const id = `s${++spares}`;
+      const id = spareId();
       spare = {
         id,
         entry: openWindow(id, { bounds: undefined, maximized: false }, true),

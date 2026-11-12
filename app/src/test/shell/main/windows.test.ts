@@ -5,6 +5,7 @@ import { TabHistory } from '../../../shell/main/tabHistory';
 import {
   nextTabId,
   nextWindowId,
+  spareWindowIds,
   withActive,
   withChanged,
   withClosed,
@@ -53,6 +54,12 @@ suite('Windows of tabs', () => {
   test('gives a new window an id no window has', () => {
     assert.strictEqual(nextWindowId(layoutOf(['1', []], ['4', []])), '5');
     assert.strictEqual(nextWindowId([]), '1');
+  });
+
+  test('gives each window kept ready for a tab torn off an id no window of the layout it starts from has, as a torn-off window keeps that id after a restart', () => {
+    const next = spareWindowIds(layoutOf(['1', []], ['s1', []], ['s3', []]));
+    assert.deepStrictEqual([next(), next()], ['s4', 's5']);
+    assert.strictEqual(spareWindowIds(layoutOf(['1', []]))(), 's1');
   });
 
   test('opens tabs at the end of the window asked, leaving the others as they were', () => {
