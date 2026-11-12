@@ -20,6 +20,8 @@ export interface ElevatedFileSystem extends FileSystem {
 }
 
 const connectWithin = 60_000;
+const authenticateWithin = 10_000;
+const longestSecret = 1024;
 
 function errorFrom(error: HelperError): Error {
   return Object.assign(
@@ -32,21 +34,33 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function connected(server: net.Server, token: string): Promise<net.Socket> {
+function connected(
+  server: net.Server,
+  token: string,
+  authenticate: number,
+): Promise<net.Socket> {
   return new Promise((resolve) => {
     server.on('connection', (socket) => {
+      socket.on('error', () => socket.destroy());
+      socket.setTimeout(authenticate, () => socket.destroy());
       let answered = false;
-      lines(socket, (value) => {
-        if (answered) {
-          return;
-        }
-        answered = true;
-        if (isObject(value) && value.token === token) {
-          resolve(socket);
-        } else {
-          socket.destroy();
-        }
-      });
+      const stop = lines(
+        socket,
+        (value) => {
+          if (answered) {
+            return;
+          }
+          answered = true;
+          stop();
+          socket.setTimeout(0);
+          if (isObject(value) && value.token === token) {
+            resolve(socket);
+          } else {
+            socket.destroy();
+          }
+        },
+        longestSecret,
+      );
     });
   });
 }
@@ -139,6 +153,7 @@ export async function elevatedFileSystem(
   launch: LaunchHelper,
   platform: NodeJS.Platform,
   timeout = connectWithin,
+  authenticate = authenticateWithin,
 ): Promise<ElevatedFileSystem | undefined> {
   const address = newHelperAddress(platform);
   const server = net.createServer();
@@ -147,7 +162,7 @@ export async function elevatedFileSystem(
     server.listen(address.pipe, resolve);
   });
   try {
-    const connecting = connected(server, address.token);
+    const connecting = connected(server, address.token, authenticate);
     if (!(await launch(address))) {
       return undefined;
     }

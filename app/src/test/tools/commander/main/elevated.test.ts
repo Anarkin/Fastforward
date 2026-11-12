@@ -159,6 +159,58 @@ suite('The elevated helper of the commander', () => {
     elevated.close();
   });
 
+  test('closes a program connecting that never tells the secret in good time', async () => {
+    let strangerClosed = false;
+    const elevated = await elevatedFileSystem(
+      async (address) => {
+        const stranger = net.connect(address.pipe);
+        stranger.on('close', () => (strangerClosed = true));
+        stranger.on('error', () => {});
+        await waitFor(() => strangerClosed, 'the silent stranger to be closed');
+        runHelper(
+          address,
+          () => Promise.resolve(files),
+          () => {},
+        );
+        return true;
+      },
+      process.platform,
+      undefined,
+      100,
+    );
+    assert.ok(elevated);
+    assert.deepStrictEqual(await elevated.list(root), [notes]);
+    elevated.close();
+  });
+
+  test('closes a program connecting that sends a line longer than any secret, yet takes long answers from the helper', async () => {
+    let strangerClosed = false;
+    const many = Array.from({ length: 2000 }, (_, at) => ({
+      ...notes,
+      name: `notes ${at}.txt`,
+    }));
+    const elevated = await elevatedFileSystem(async (address) => {
+      const stranger = net.connect(address.pipe);
+      stranger.on('close', () => (strangerClosed = true));
+      stranger.on('error', () => {});
+      stranger.write('x'.repeat(100_000));
+      await waitFor(() => strangerClosed, 'the stranger to be closed');
+      runHelper(
+        address,
+        () =>
+          Promise.resolve({
+            list: () => Promise.resolve(many),
+            drives: () => Promise.resolve([]),
+          }),
+        () => {},
+      );
+      return true;
+    }, process.platform);
+    assert.ok(elevated);
+    assert.deepStrictEqual(await elevated.list(root), many);
+    elevated.close();
+  });
+
   test('tells the app when the helper stops, failing what it still waited for', async () => {
     let socketOfHelper: (() => void) | undefined;
     const elevated = await elevatedFileSystem((address) => {

@@ -53,10 +53,11 @@ export interface HelperError {
 export function lines(
   socket: net.Socket,
   onLine: (value: unknown) => void,
-): void {
+  longest = Infinity,
+): () => void {
   let buffered = '';
   socket.setEncoding('utf8');
-  socket.on('data', (chunk: string) => {
+  const onData = (chunk: string) => {
     buffered += chunk;
     for (
       let end = buffered.indexOf('\n');
@@ -71,7 +72,12 @@ export function lines(
         socket.destroy();
       }
     }
-  });
+    if (buffered.length > longest) {
+      socket.destroy();
+    }
+  };
+  socket.on('data', onData);
+  return () => socket.off('data', onData);
 }
 
 export function send(socket: net.Socket, value: unknown): void {
