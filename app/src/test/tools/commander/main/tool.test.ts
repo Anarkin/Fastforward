@@ -6102,6 +6102,56 @@ suite('Commander tool in archives', () => {
       );
     });
 
+    test('copies and moves nothing out of an archive into a folder read as administrator, saying so, and takes nothing out', async () => {
+      const helper: ElevatedFileSystem = {
+        list: () => Promise.resolve([]),
+        drives: () => Promise.resolve([]),
+        watch: () => () => {},
+        closed: new Promise(() => {}),
+        close: () => {},
+      };
+      const made = commander(
+        {
+          [root]: [file('a.zip'), folder('Config.Msi')],
+          [at('Config.Msi')]: Object.assign(new Error('denied'), {
+            code: 'EPERM',
+          }),
+        },
+        [],
+        () => Promise.resolve(helper),
+      );
+      made.archived.set(at('a.zip'), zipped);
+      made.copies.folder = copiesFolder;
+      const { tool, page, send, notices, transfers, extracted } = made;
+      await tool.show(page, tab);
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      await send({ type: 'open', tab: '1', side: 'left', name: 'Config.Msi' });
+      await send({ type: 'elevate', tab: '1', side: 'left' });
+
+      for (const move of [false, true]) {
+        await send({
+          type: 'transfer',
+          tab: '1',
+          side: 'right',
+          names: ['top.txt'],
+          target: at('Config.Msi'),
+          move,
+        });
+      }
+
+      assert.deepStrictEqual(plansOf(transfers), []);
+      assert.deepStrictEqual(extracted, []);
+      assert.deepStrictEqual(notices, [
+        { level: 'error', message: strings.commander.transferAsAdministrator },
+        { level: 'error', message: strings.commander.transferAsAdministrator },
+      ]);
+    });
+
     test('moves the items asked for out of an archive into the folder of the other side, deleting them from the archive once the transfer moved them and reading it again, and moves nothing out of an archive inside another, saying it cannot be changed', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);

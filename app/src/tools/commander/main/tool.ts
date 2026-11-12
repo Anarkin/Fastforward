@@ -1949,6 +1949,10 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
+    if (shown.pane.elevated === true || other.elevated === true) {
+      this.refuse(page, strings.commander.transferAsAdministrator);
+      return;
+    }
     if (other.archive !== undefined) {
       if (shown.pane.archive === undefined) {
         this.transferIn(page, shown, other, names, move, existing);
@@ -1963,10 +1967,6 @@ export class CommanderTool implements Tool<'commander'> {
       void this.shell.track(
         this.transferOut(page, shown.pane, target, names, move),
       );
-      return;
-    }
-    if (shown.pane.elevated === true || other.elevated === true) {
-      this.refuse(page, strings.commander.transferAsAdministrator);
       return;
     }
     this.startTransfer(page, {
@@ -1995,10 +1995,6 @@ export class CommanderTool implements Tool<'commander'> {
       inside === undefined ||
       (move && remove === undefined)
     ) {
-      return;
-    }
-    if (shown.pane.elevated === true) {
-      this.refuse(page, strings.commander.transferAsAdministrator);
       return;
     }
     const { archive, inner } = inside;
