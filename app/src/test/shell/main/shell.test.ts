@@ -981,6 +981,13 @@ suite('Shell with several windows', () => {
     ]);
   });
 
+  test('ends the drag of a tab where it is once the page of a window goes away, as a window closed, reloaded or crashed while its tab was dragged never ended the drag, and no tab could be torn off again', async () => {
+    const host = new FakeHost();
+    const { second } = await twoWindows(host);
+    second.connection.dispose();
+    assert.deepStrictEqual(host.dragged, [['2', { kind: 'drop' }]]);
+  });
+
   test('tells each page whether a tab can be torn off into a window of its own', async () => {
     const { first } = await twoWindows();
     assert.deepStrictEqual(first.page.last('tearsOff'), {

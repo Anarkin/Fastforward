@@ -369,6 +369,7 @@ export class Shell {
         for (const tool of toolIds) {
           this.tools[tool].hide(page);
         }
+        this.host.drag(window, { kind: 'drop' });
       },
     };
   }
