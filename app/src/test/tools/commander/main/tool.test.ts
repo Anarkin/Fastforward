@@ -2855,6 +2855,26 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(page.of('closed'), [{ type: 'closed', tab: '1' }]);
   });
 
+  test('keeps no sides of a tab closed while it was starting, so a tab taking its id starts afresh', async () => {
+    const opened = tempFolder('commander-starting');
+    try {
+      const { tool, page } = commander({ [root]: [], [opened]: [] });
+      const starting: Tab = { id: '5', tool: 'commander', root: opened };
+      const showing = tool.show(page, starting);
+      tool.closed(page, starting);
+      await showing;
+      assert.deepStrictEqual(page.listings(), []);
+
+      await tool.show(page, { id: '5', tool: 'commander' });
+      assert.deepStrictEqual(page.listings(), [
+        `left ${root}: `,
+        `right ${root}: `,
+      ]);
+    } finally {
+      removeFolder(opened);
+    }
+  });
+
   test('goes on opening a folder when the folder it leaves changes meanwhile, and drops a listing of that folder begun before the opening', async () => {
     const opening = Promise.withResolvers<readonly Entry[]>();
     const listed: Record<string, Listed> = {

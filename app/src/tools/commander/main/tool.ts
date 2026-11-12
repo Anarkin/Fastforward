@@ -587,6 +587,9 @@ export class CommanderTool implements Tool<'commander'> {
     }
     this.post(page, { type: 'show', tab: tab.id });
     const panes = this.panes.get(tab.id) ?? (await this.start(tab));
+    if (!this.shows(page, tab)) {
+      return;
+    }
     this.panes.set(tab.id, panes);
     await Promise.all([
       ...sides.map((side) =>
