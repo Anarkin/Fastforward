@@ -704,7 +704,7 @@ body {
 
 .shortcut-joiner {
   align-self: stretch;
-  width: 1px;
+  width: var(--hairline);
   min-width: 0;
   overflow: hidden;
   color: transparent;

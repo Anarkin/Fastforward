@@ -3810,7 +3810,7 @@ suite('Style', () => {
     looks(key, { border: undefined, padding: '0 5px' });
     looks(withClass(combo, 'shortcut-joiner'), {
       'align-self': 'stretch',
-      width: '1px',
+      width: 'var(--hairline)',
       'min-width': '0',
       overflow: 'hidden',
       color: 'transparent',
@@ -4257,7 +4257,7 @@ suite('Style', () => {
     looks(other, { background: 'var(--color-panel-background)' }, hovered);
   });
 
-  test('divides the two sides with one line from top to bottom, across headers and hunk gaps, letting the pointer through', () => {
+  test('divides the two sides with one hairline from top to bottom, across headers and hunk gaps, letting the pointer through', () => {
     const view = diffView({ sideBySide: true }, splitLine('', ''));
     looks(
       view,
@@ -4267,7 +4267,7 @@ suite('Style', () => {
         top: '0',
         bottom: '0',
         left: '50%',
-        width: '1px',
+        width: 'var(--hairline)',
         background: 'var(--color-border)',
         'pointer-events': 'none',
       },
