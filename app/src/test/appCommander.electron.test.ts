@@ -139,13 +139,18 @@ const hiding = (element: Locator) =>
 const looksOf = (row: Locator) =>
   row.evaluate((shown) => {
     const box = shown.querySelector('.commander-check');
-    const check = shown.querySelector('.check-box-mark');
+    const check = shown.querySelector('.check-box');
     return {
       color: getComputedStyle(shown).color,
       weight: getComputedStyle(shown).fontWeight,
       background: getComputedStyle(shown).backgroundColor,
       box: box === null ? undefined : getComputedStyle(box).visibility,
-      check: check === null ? undefined : getComputedStyle(check).visibility,
+      check:
+        check === null
+          ? undefined
+          : getComputedStyle(check, '::after').content === 'none'
+            ? 'hidden'
+            : 'visible',
     };
   });
 

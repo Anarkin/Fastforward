@@ -231,6 +231,12 @@ function looksAlike(
 
 const body = rendered(createElement('body'));
 
+function checkBox(checked: boolean): MarkupElement {
+  return rendered(
+    createElement('input', { type: 'checkbox', checked, readOnly: true }),
+  );
+}
+
 function graphBesideCommit(selected?: string): MarkupElement {
   return rendered(
     createElement(
@@ -802,36 +808,68 @@ suite('Style', () => {
     const parts = (className: string, pointed = false) => {
       const item = commanderItem(className);
       const states: States = pointed ? { hover: item } : {};
+      const box = withClass(item, 'check-box');
       return {
         box: cascaded(withClass(item, 'commander-check'), 'visibility', states),
-        frame: ['fill', 'stroke'].map((property) =>
-          cascaded(withClass(item, 'check-box-frame'), property, states),
+        frame: ['background', 'border-color'].map((property) =>
+          cascaded(box, property, states),
         ),
-        check: cascaded(
-          withClass(item, 'check-box-mark'),
-          'visibility',
-          states,
-        ),
+        check: cascaded(box, 'content', {
+          ...states,
+          pseudoElement: '::after',
+        }),
       };
     };
     assert.deepStrictEqual(parts('commander-line'), {
       box: 'hidden',
       frame: [undefined, 'var(--muted-foreground)'],
-      check: 'hidden',
+      check: undefined,
     });
     assert.deepStrictEqual(parts('commander-line', true), {
       box: 'visible',
       frame: [undefined, 'var(--muted-foreground)'],
-      check: 'hidden',
+      check: undefined,
     });
     assert.deepStrictEqual(parts('commander-line marked'), {
       box: 'visible',
       frame: ['var(--color-foreground)', 'var(--color-foreground)'],
-      check: 'visible',
+      check: "''",
     });
-    looks(withClass(commanderItem('commander-line marked'), 'check-box-mark'), {
-      stroke: 'var(--color-panel-background)',
+    looks(
+      withClass(commanderItem('commander-line marked'), 'check-box'),
+      { background: 'var(--color-panel-background)' },
+      after,
+    );
+  });
+
+  test('draws a check box of a dialog or of a Markdown task as the commander draws its own, a frame in the muted color filled in the color of the text with the check in the color of the panel once checked, rather than as the browser does', () => {
+    const own = commanderItem('commander-line marked');
+    for (const property of ['appearance', 'width', 'height', 'margin']) {
+      assert.ok(cascaded(checkBox(false), property) !== undefined, property);
+    }
+    looks(checkBox(false), {
+      appearance: 'none',
+      'border-color': cascaded(
+        withClass(commanderItem('commander-line'), 'check-box'),
+        'border-color',
+      ),
+      'border-radius': cascaded(withClass(own, 'check-box'), 'border-radius'),
+      width: 'var(--check-size)',
+      margin: '0',
     });
+    looks(checkBox(true), {
+      background: cascaded(withClass(own, 'check-box'), 'background'),
+      'border-color': cascaded(withClass(own, 'check-box'), 'border-color'),
+    });
+    looks(checkBox(true), { content: "''" }, after);
+    looks(checkBox(false), { content: undefined }, after);
+    for (const property of ['background', 'mask', 'inset']) {
+      assert.strictEqual(
+        cascaded(checkBox(true), property, after),
+        cascaded(withClass(own, 'check-box'), property, after),
+        property,
+      );
+    }
   });
 
   test('washes a marked row of the commander light gray, the text mixed into the panel by the share the theme gives marked files, under the tint of the pointer or of the selection as any row, and keeps the wash where a side without focus drops the tint of its selection', () => {
@@ -882,15 +920,13 @@ suite('Style', () => {
       'border-radius': '3px',
       'box-shadow': '0 0 0 var(--hairline) var(--color-panel-background)',
     });
-    looks(withClass(tile, 'check-box-frame'), {
-      fill: 'var(--color-panel-background)',
+    looks(withClass(tile, 'check-box'), {
+      background: 'var(--color-panel-background)',
+      'border-radius': '3px',
     });
-    looks(
-      withClass(commanderItem('commander-tile marked'), 'check-box-frame'),
-      {
-        fill: 'var(--color-foreground)',
-      },
-    );
+    looks(withClass(commanderItem('commander-tile marked'), 'check-box'), {
+      background: 'var(--color-foreground)',
+    });
   });
 
   test('draws a line above the first file of each group of duplicates inside its row, so every row keeps its height, and names the view after the path in the muted color', () => {

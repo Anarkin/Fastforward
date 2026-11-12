@@ -226,6 +226,8 @@ function matchesSimple(
       return siblings.at(-1) === element;
     case ':disabled':
       return element.attributes.has('disabled');
+    case ':checked':
+      return element.attributes.has('checked');
     case ':hover':
       return context.hovered.has(element);
     case ':focus':

@@ -20,7 +20,7 @@ function withoutProps(value: unknown): value is () => React.ReactNode {
 
 function everyIcon(): { readonly name: string; readonly html: string }[] {
   const plain = Object.entries(icons).flatMap(([name, icon]) =>
-    name.endsWith('Icon') && name !== 'CheckBoxIcon' && withoutProps(icon)
+    name.endsWith('Icon') && withoutProps(icon)
       ? [{ name, html: renderToStaticMarkup(createElement(icon)) }]
       : [],
   );
