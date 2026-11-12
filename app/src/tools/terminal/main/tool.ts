@@ -18,7 +18,7 @@ import {
   type Tool,
 } from '../../../shell/main/shell';
 import {
-  isSize,
+  sizeWithin,
   maxInputLength,
   type TerminalToHost,
   type TerminalToWebview,
@@ -178,16 +178,18 @@ export class TerminalTool implements Tool<'terminal'> {
     }
     const session = this.sessions.get(shown.tab);
     switch (message.type) {
-      case 'open':
-        if (isSize(message.columns, message.rows)) {
-          shown.columns = message.columns;
-          shown.rows = message.rows;
+      case 'open': {
+        const size = sizeWithin(message.columns, message.rows);
+        if (size !== undefined) {
+          shown.columns = size.columns;
+          shown.rows = size.rows;
           if (session === undefined) {
             this.spawn(shown);
           }
           this.attachTo(shown);
         }
         break;
+      }
       case 'input':
         if (
           session?.exited === false &&
@@ -197,20 +199,17 @@ export class TerminalTool implements Tool<'terminal'> {
           this.send({ type: 'input', id: shown.tab, data: message.data });
         }
         break;
-      case 'resize':
-        if (isSize(message.columns, message.rows)) {
-          shown.columns = message.columns;
-          shown.rows = message.rows;
+      case 'resize': {
+        const size = sizeWithin(message.columns, message.rows);
+        if (size !== undefined) {
+          shown.columns = size.columns;
+          shown.rows = size.rows;
           if (session !== undefined) {
-            this.send({
-              type: 'resize',
-              id: shown.tab,
-              columns: message.columns,
-              rows: message.rows,
-            });
+            this.send({ type: 'resize', id: shown.tab, ...size });
           }
         }
         break;
+      }
       case 'ack':
         if (
           shown.attached &&

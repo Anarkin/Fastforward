@@ -20,7 +20,11 @@ import {
   terminalTheme,
   type TerminalFont,
 } from './theme';
-import { inputChunks, type TerminalToWebview } from '../shared/protocol';
+import {
+  inputChunks,
+  sizeWithin,
+  type TerminalToWebview,
+} from '../shared/protocol';
 import type { Renderer } from '../shared/settings';
 import type { WindowsPty } from '../shared/protocol';
 import type { FromScreen } from './store';
@@ -282,6 +286,14 @@ export class TerminalView {
   private layOut(): void {
     this.snapToPixels();
     this.fit.fit();
+    const { cols, rows } = this.terminal;
+    const within = sizeWithin(cols, rows);
+    if (
+      within !== undefined &&
+      (within.columns !== cols || within.rows !== rows)
+    ) {
+      this.terminal.resize(within.columns, within.rows);
+    }
   }
 
   private readonly snapToPixels = () => {

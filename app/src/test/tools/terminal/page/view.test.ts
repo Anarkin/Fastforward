@@ -110,6 +110,58 @@ suite('Terminal view', () => {
     });
   });
 
+  test('fits the terminal to at most 1000 columns and rows, as the shell runs at no more of them, and its lines would wrap apart from those shown', () => {
+    withPage((screen) => {
+      const fitted = { cols: 80, rows: 24 };
+      const xterm = posingAsXterm({
+        Terminal: class {
+          get cols() {
+            return fitted.cols;
+          }
+          get rows() {
+            return fitted.rows;
+          }
+          readonly options = {};
+          loadAddon() {}
+          attachCustomKeyEventHandler() {}
+          onData() {}
+          onResize() {}
+          open() {}
+          focus() {}
+          resize(columns: number, rows: number) {
+            fitted.cols = columns;
+            fitted.rows = rows;
+          }
+          dispose() {}
+        },
+        FitAddon: class {
+          fit() {
+            fitted.cols = 1150;
+            fitted.rows = 1200;
+          }
+        },
+        UnicodeGraphemesAddon: class {
+          dispose() {}
+        },
+      });
+      const posted: unknown[] = [];
+      const view = new TerminalView(xterm, screen, {
+        tab: '1',
+        renderer: 'dom',
+        scrollback: 1000,
+        minimumContrastRatio: 4.5,
+        windowsPty: undefined,
+        post: (message) => posted.push(message),
+        onCopy: noop,
+        scrolling: () => ({ wheelRows: 3, smooth: false }),
+      });
+      assert.deepStrictEqual(posted, [
+        { type: 'open', tab: '1', columns: 1000, rows: 1000 },
+      ]);
+      view.dispose();
+    });
+  });
+
   test('opens no box of xterm.js for a link a program printed, as its English question blocked the window and its OK opened nothing', () => {
     withPage((screen) => {
       let given: { linkHandler?: { activate(...args: unknown[]): void } } = {};

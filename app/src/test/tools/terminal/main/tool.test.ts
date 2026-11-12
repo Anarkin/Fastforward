@@ -356,19 +356,30 @@ suite('Terminal tool', () => {
     assert.deepStrictEqual([listeners.length, ptys.spawned.length], [0, 0]);
   });
 
-  test('resizes the shell only to a whole number of columns and rows from 1 to 1000', async () => {
+  test('resizes the shell only to a whole number of columns and rows from 1, to as many as 1000 of them past them', async () => {
     const { ptys, send, open } = terminal();
     await open(work);
     for (const [columns, rows] of [
       [0, 24],
-      [1001, 24],
       [80.5, 24],
       [80, Number.NaN],
     ]) {
       await send({ type: 'resize', tab: '1', columns, rows });
     }
     await send({ type: 'resize', tab: '1', columns: 120, rows: 40 });
-    assert.deepStrictEqual(ptys.last().sizes, [[120, 40]]);
+    await send({ type: 'resize', tab: '1', columns: 1200, rows: 40 });
+    assert.deepStrictEqual(ptys.last().sizes, [
+      [120, 40],
+      [1000, 40],
+    ]);
+  });
+
+  test('starts the shell of a terminal wider than 1000 columns at 1000 of them, as it never started', async () => {
+    const { tool, ptys, page, send } = terminal();
+    await tool.show(page, work);
+    await send({ type: 'open', tab: '1', columns: 1150, rows: 24 });
+    await until(() => page.of('screen').length > 0);
+    assert.deepStrictEqual([ptys.last().columns, ptys.last().rows], [1000, 24]);
   });
 
   test('sends the page the output of the shell of the tab it shows, and nothing of the others', async () => {
