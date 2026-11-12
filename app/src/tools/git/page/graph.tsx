@@ -91,7 +91,7 @@ export const GraphCell = memo(function GraphCell({
           width={2 * dotRadius}
           height={2 * dotRadius}
           fill={laneColor}
-          stroke="var(--color-panel-background)"
+          stroke="var(--graph-ground)"
           strokeWidth={1.5}
         />
       ) : row.merge ? (
@@ -110,7 +110,7 @@ export const GraphCell = memo(function GraphCell({
             cx={cx}
             cy={dotY}
             r={ringRadius(row)}
-            fill="var(--color-panel-background)"
+            fill="var(--graph-ground)"
             stroke={laneColor}
             strokeWidth={2}
           />
@@ -124,7 +124,7 @@ export const GraphCell = memo(function GraphCell({
           cy={dotY}
           r={dotRadius}
           fill={laneColor}
-          stroke="var(--color-panel-background)"
+          stroke="var(--graph-ground)"
           strokeWidth={1.5}
         />
       )}

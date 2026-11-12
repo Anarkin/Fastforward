@@ -2904,6 +2904,42 @@ suite('Style', () => {
     }
   });
 
+  test("draws the line of a filtered menu's edge along the top of its filter, which stays atop the menu as it scrolls and would cover that line", () => {
+    looks(rendered(createElement('input', { className: 'menu-filter' })), {
+      'box-shadow': 'inset 0 var(--hairline) 0 var(--color-border)',
+    });
+  });
+
+  test("pads the bottom of a pinned commit's message, so its last line keeps clear of the popup's edge as its first line does", () => {
+    looks(
+      withClass(
+        rendered(
+          createElement(
+            'div',
+            { className: 'message-peek pinned' },
+            createElement('div', { className: 'commit' }),
+          ),
+        ),
+        'commit',
+      ),
+      { 'padding-bottom': '4px' },
+    );
+  });
+
+  test('lines the check boxes of a dialog up with its labels, without the margin the browser gives them', () => {
+    for (const className of ['pack-check', 'transfer-all']) {
+      const label = rendered(
+        createElement(
+          'label',
+          { className },
+          createElement('input', { type: 'checkbox' }),
+        ),
+      );
+      const [box] = label.children;
+      looks(box, { margin: '0' });
+    }
+  });
+
   test('keeps the spaces of a name that follow a separator, which a piece of a path kept whole would drop at its start, as in the characters a name cannot hold', () => {
     const name = withClass(
       rendered(createElement(Name, null, '\\ / : * ?')),
@@ -3242,6 +3278,26 @@ suite('Style', () => {
       stylesheet(),
       /--row-line-height: round\(\s*var\(--font-size\) \* var\(--line-height\),\s*var\(--device-pixel, 1px\)\s*\);/,
     );
+  });
+
+  test('grounds the graph of a commit in the color its row shows, each color that mixes in transparent made opaque by mixing in the panel instead, so the edge around a dot matches a hovered or selected row', () => {
+    assert.strictEqual(
+      bodyVariable('hover-ground'),
+      bodyVariable('hover-background')?.replace(
+        'transparent',
+        'var(--color-panel-background)',
+      ),
+    );
+    assert.doesNotMatch(
+      bodyVariable('selection-background') ?? '',
+      /transparent/,
+    );
+    const row = withClass(rendered(commitRow()), 'commit');
+    looks(row, { '--graph-ground': 'var(--color-panel-background)' });
+    looks(row, { '--graph-ground': 'var(--hover-ground)' }, hovered);
+    looks(withClass(rendered(commitRow({ selected: 'a' })), 'commit'), {
+      '--graph-ground': 'var(--selection-background)',
+    });
   });
 
   test('lets the graph of a row draw past its edges, so its lines can reach over the ends of those of the row above', () => {
@@ -3671,9 +3727,9 @@ suite('Style', () => {
     });
   });
 
-  test("keeps the heading of the group scrolled under it at the top of the pane, over the shortcuts passing beneath it, a pixel short of the popup's edge, whose line the popup's inset shadow draws under it", () => {
+  test("keeps the heading of the group scrolled under it at the top of the pane, over the shortcuts passing beneath it, a hairline short of the popup's edge, whose line the popup's inset shadow draws under it", () => {
     looks(withClass(shortcutsPopup(), 'shortcuts-main'), {
-      'margin-right': '1px',
+      'margin-right': 'var(--hairline)',
     });
     const heading = withClass(shortcutsPopup(), 'shortcuts-heading');
     looks(heading, {

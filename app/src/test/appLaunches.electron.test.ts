@@ -238,6 +238,9 @@ suite('App at a scale of 125%', () => {
     folder = tempFolder('scaled');
     const profile = path.join(folder, 'profile');
     const repository = await tempRepository(path.join(folder, 'repo'));
+    for (let index = 0; index < 60; index++) {
+      await repository.git('commit', '--allow-empty', '-m', `step ${index}`);
+    }
     await repository.commit(
       'first',
       Object.fromEntries(
@@ -302,6 +305,71 @@ suite('App at a scale of 125%', () => {
         `${edge} ${JSON.stringify(met)}`,
       );
     }
+  });
+
+  test('ends a list scrolled to its end above the line of its column, so its last row shows whole', async () => {
+    const list = page
+      .locator('.columns > .column')
+      .nth(1)
+      .locator('.virtual-rows');
+    await list.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await page.evaluate(
+      () =>
+        new Promise((drawn) =>
+          requestAnimationFrame(() => requestAnimationFrame(drawn)),
+        ),
+    );
+    const below = await list.evaluate((element) => {
+      const column = element.closest('.column');
+      if (!column) {
+        return Number.NaN;
+      }
+      const line = parseFloat(
+        getComputedStyle(column).getPropertyValue('--column-line'),
+      );
+      const last = Math.max(
+        ...[...element.querySelectorAll('.virtual-row')].map(
+          (row) => row.getBoundingClientRect().bottom,
+        ),
+      );
+      return column.getBoundingClientRect().bottom - line - last;
+    });
+    assert.ok(below >= -0.01, String(below));
+  });
+
+  test('reveals a row it moves to at the bottom of a list above the line of its column', async () => {
+    const list = page
+      .locator('.columns > .column')
+      .nth(1)
+      .locator('.virtual-rows');
+    await list.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await page.locator('.row.file', { hasText: 'file0.txt' }).click();
+    for (let step = 0; step < 45; step++) {
+      await page.keyboard.press('ArrowDown');
+    }
+    const below = async () =>
+      list.evaluate((element) => {
+        const column = element.closest('.column');
+        const selected = element.querySelector('.row.selected');
+        if (!column || !selected) {
+          return Number.NaN;
+        }
+        const line = parseFloat(
+          getComputedStyle(column).getPropertyValue('--column-line'),
+        );
+        return (
+          column.getBoundingClientRect().bottom -
+          line -
+          selected.getBoundingClientRect().bottom
+        );
+      });
+    await waitFor(async () => !Number.isNaN(await below()), 'a row selected');
+    await page.waitForTimeout(500);
+    assert.ok((await below()) >= -0.01, String(await below()));
   });
 
   test('draws the line of each column on whole device pixels, so what stands against it meets it', async () => {
@@ -421,6 +489,35 @@ suite('App at a scale of 125%', () => {
     assert.notStrictEqual(met.before, met.line, JSON.stringify(met));
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
+  });
+
+  test('reveals a commit it moves to at the bottom of the list above the line of its column', async () => {
+    await page.locator('.tabs [role="tab"]').first().click();
+    const list = page
+      .locator('.columns > .column')
+      .first()
+      .locator('.virtual-rows');
+    await page.locator('.commit', { hasText: 'first' }).click();
+    for (let step = 0; step < 45; step++) {
+      await page.keyboard.press('ArrowDown');
+    }
+    await page.waitForTimeout(500);
+    const below = await list.evaluate((element) => {
+      const column = element.closest('.column');
+      const selected = element.querySelector('.commit.selected');
+      if (!column || !selected) {
+        return Number.NaN;
+      }
+      const line = parseFloat(
+        getComputedStyle(column).getPropertyValue('--column-line'),
+      );
+      return (
+        column.getBoundingClientRect().bottom -
+        line -
+        selected.getBoundingClientRect().bottom
+      );
+    });
+    assert.ok(below >= -0.01, String(below));
   });
 });
 

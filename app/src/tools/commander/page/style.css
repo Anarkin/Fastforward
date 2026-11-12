@@ -784,6 +784,11 @@
   gap: 8px;
 }
 
+.pack-check > input,
+.transfer-all > input {
+  margin: 0;
+}
+
 .pack-note {
   color: var(--muted-foreground);
 }

@@ -55,6 +55,11 @@ body {
     var(--color-focus) var(--color-focus-hover),
     transparent
   );
+  --hover-ground: color-mix(
+    in srgb,
+    var(--color-focus) var(--color-focus-hover),
+    var(--color-panel-background)
+  );
   --toggle-on-background: color-mix(
     in srgb,
     var(--color-focus) var(--color-focus-selected),
@@ -535,7 +540,7 @@ body {
   min-height: 0;
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr);
-  margin-right: 1px;
+  margin-right: var(--hairline);
 }
 
 .shortcuts-tree {
@@ -792,6 +797,7 @@ body {
   background: var(--color-panel-background);
   border: none;
   border-bottom: 1px solid var(--color-border);
+  box-shadow: inset 0 var(--hairline) 0 var(--color-border);
   outline: none;
 }
 
@@ -1975,7 +1981,9 @@ body.resizing {
 }
 
 .virtual-rows {
+  box-sizing: border-box;
   height: 100%;
+  padding-bottom: calc(var(--column-line, 0px) + var(--device-pixel, 1px));
   overflow: auto;
   background: var(--color-panel-background);
 }

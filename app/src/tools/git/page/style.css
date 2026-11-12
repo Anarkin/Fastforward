@@ -184,6 +184,18 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   font-weight: 600;
 }
 
+.commit {
+  --graph-ground: var(--color-panel-background);
+}
+
+.commit:hover {
+  --graph-ground: var(--hover-ground);
+}
+
+.commit.selected {
+  --graph-ground: var(--selection-background);
+}
+
 .commit.compare-from {
   box-shadow: inset 3px 0 0 var(--color-focus);
 }
@@ -276,6 +288,7 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
 .message-peek.pinned > .commit {
   display: flex;
   flex-direction: column;
+  padding-bottom: 4px;
 }
 
 .message-peek.pinned > .commit > :not(.message-body) {

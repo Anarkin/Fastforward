@@ -67,7 +67,7 @@ import { useCappedScroll } from '../../../ui/cappedVirtualizer';
 import { SearchButton } from '../../../ui/search';
 import { realHeight } from '../../../ui/cappedScroll';
 import { rowPlace } from '../../../ui/rowPlace';
-import { activeDescendant, rowId } from '../../../ui/virtualRows';
+import { activeDescendant, endCovered, rowId } from '../../../ui/virtualRows';
 import { useLineHeight } from '../../../ui/lineHeight';
 
 const defaultRowLineHeight = 18;
@@ -704,12 +704,15 @@ export function Commits({
   const [scrollToFn] = useState(() =>
     movingPlaces(places, scrolling.scrollToFn),
   );
+  const [endPadding, setEndPadding] = useState(0);
+  useLayoutEffect(() => setEndPadding(endCovered(list.current)), [line]);
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => list.current,
     estimateSize: rowHeight,
     getItemKey: rowKey,
     overscan: 10,
+    scrollPaddingEnd: endPadding,
     ...scrolling,
     scrollToFn,
   });
@@ -868,7 +871,7 @@ export function Commits({
       fullyVisible(
         virtualizer.getVirtualItems(),
         scrollTop(element),
-        element?.clientHeight ?? 0,
+        (element?.clientHeight ?? 0) - endPadding,
         offset,
       ),
       headCommit,

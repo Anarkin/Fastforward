@@ -125,6 +125,32 @@ suite('Graph cell', () => {
     assert.strictEqual(graphWidth(20), 150);
   });
 
+  test('draws the edge around a dot or a square, and the inside of a merge ring, in the ground of its row, which a hovered or selected row changes', () => {
+    const ground = 'var(--graph-ground)';
+    assert.deepStrictEqual(
+      attributes(cell({ lane: 0, color: 0, lines: [] }), 'circle', 'stroke'),
+      [ground],
+    );
+    for (const square of [{ workingTree: true }, { stash: true }]) {
+      assert.deepStrictEqual(
+        attributes(
+          cell({ lane: 0, color: 0, lines: [], ...square }),
+          'rect',
+          'stroke',
+        ),
+        [ground],
+      );
+    }
+    assert.deepStrictEqual(
+      attributes(
+        cell({ lane: 0, color: 0, lines: [], merge: 'collapsed' }),
+        'circle',
+        'fill',
+      ),
+      ['transparent', ground],
+    );
+  });
+
   test('draws a merge as a ring sized and titled by what it hides, the working tree and stashes as a square', () => {
     const merge = (hidden: number | undefined) =>
       cell({ lane: 0, color: 0, lines: [], merge: 'collapsed', hidden });

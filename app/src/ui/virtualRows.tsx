@@ -154,6 +154,14 @@ export function revealOffset(
   return undefined;
 }
 
+export function endCovered(element: Element | null): number {
+  const style =
+    element === null
+      ? undefined
+      : element.ownerDocument.defaultView?.getComputedStyle(element);
+  return parseFloat(style?.paddingBottom ?? '') || 0;
+}
+
 const noAncestors = () => [];
 
 const noValues: readonly unknown[] = [];
@@ -229,25 +237,24 @@ export function VirtualRows({
   const perNotch = useEffectEvent(() => notchRows ?? scrolling.wheelRows);
   const smooth = useEffectEvent(() => scrolling.smooth);
   const follower = useRef<RowFollower>(undefined);
-  const [viewportHeight, setViewportHeight] = useState(0);
+  const [roomHeight, setRoomHeight] = useState(0);
   const padding = wholeRows
-    ? rowPadding(viewportHeight, fixedHeight ?? estimatedRowHeight)
+    ? rowPadding(roomHeight, fixedHeight ?? estimatedRowHeight)
     : 0;
   useEffect(() => {
     const element = list.current;
     if (!wholeRows || !element) {
       return undefined;
     }
-    const viewport = () => exactHeight(element);
+    const room = () => exactHeight(element) - endCovered(element);
     const following = followRows(element, rowHeight, {
-      limit: () =>
-        totalSize() + rowPadding(viewport(), rowHeight()) - viewport(),
+      limit: () => totalSize() + rowPadding(room(), rowHeight()) - room(),
       step: stepOf,
       perNotch,
       smooth,
     });
     follower.current = following;
-    const measure = () => setViewportHeight(viewport());
+    const measure = () => setRoomHeight(room());
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -264,7 +271,7 @@ export function VirtualRows({
     if (
       restored.current ||
       !element ||
-      (wholeRows && (fixedHeight === undefined || viewportHeight === 0))
+      (wholeRows && (fixedHeight === undefined || roomHeight === 0))
     ) {
       return;
     }
@@ -287,7 +294,7 @@ export function VirtualRows({
     const offset = revealOffset(
       row,
       scrolled,
-      element.clientHeight,
+      element.clientHeight - endCovered(element),
       ancestorsOf(index).reduce((sum, ancestor) => sum + heightOf(ancestor), 0),
     );
     if (offset === undefined) {
@@ -358,7 +365,9 @@ export function VirtualRows({
                 fullyVisible(
                   virtualizer.getVirtualItems(),
                   (list.current?.scrollTop ?? 0) + covered,
-                  (list.current?.clientHeight ?? 0) - covered,
+                  (list.current?.clientHeight ?? 0) -
+                    covered -
+                    endCovered(list.current),
                   0,
                 ),
               );
