@@ -329,24 +329,44 @@ export function framedMetrics(
   };
 }
 
+export interface ThumbClip {
+  readonly before: number;
+  readonly after: number;
+  readonly start: number;
+  readonly end: number;
+}
+
 export interface ThumbBox {
   readonly left: number;
   readonly top: number;
   readonly width: number;
   readonly height: number;
-  readonly corners?: { readonly start: number; readonly end: number };
+  readonly clip?: ThumbClip;
 }
 
-function cornersOf(
+function clipOf(
   thumb: Thumb,
   track: number,
   start: number,
   end: number,
-): { readonly start: number; readonly end: number } {
+): ThumbClip {
   return {
-    start: thumb.offset < start ? start : 0,
-    end: track - thumb.offset - thumb.length < end ? end : 0,
+    before: thumb.offset,
+    after: track - thumb.offset - thumb.length,
+    start,
+    end,
   };
+}
+
+export function clipPathOf(axis: Axis, clip: ThumbClip | undefined): string {
+  if (clip === undefined) {
+    return '';
+  }
+  const { before, after, start, end } = clip;
+  const across = Math.max(start, end);
+  return axis === 'vertical'
+    ? `inset(${-before}px 0px ${-after}px ${-across}px round 0px ${start}px ${end}px 0px)`
+    : `inset(${-across}px ${-after}px 0px ${-before}px round 0px 0px ${end}px ${start}px)`;
 }
 
 export function thumbBox(
@@ -371,7 +391,7 @@ export function thumbBox(
         width: size,
         height: thumb.length,
         ...(scroller.bends && {
-          corners: cornersOf(
+          clip: clipOf(
             thumb,
             verticalTrack(scroller),
             scroller.bends.top,
@@ -394,7 +414,7 @@ export function thumbBox(
       width: thumb.length,
       height: size,
       ...(scroller.bends && {
-        corners: cornersOf(
+        clip: clipOf(
           thumb,
           horizontalTrack(scroller),
           scroller.bends.left,
@@ -661,10 +681,6 @@ export function elementMetrics(scroller: Element): ScrollerMetrics {
   };
 }
 
-function cornerRadius(radius: number | undefined): string {
-  return radius === undefined || radius === 0 ? '' : `${radius}px`;
-}
-
 function barSize(): number {
   return parseFloat(
     getComputedStyle(document.body).getPropertyValue('--scrollbar-size'),
@@ -711,12 +727,7 @@ class Bar {
     style.top = `${box.top}px`;
     style.width = `${box.width}px`;
     style.height = `${box.height}px`;
-    const [start, end] =
-      this.axis === 'vertical'
-        ? ['border-top-right-radius', 'border-bottom-right-radius']
-        : ['border-bottom-left-radius', 'border-bottom-right-radius'];
-    style.setProperty(start, cornerRadius(box.corners?.start));
-    style.setProperty(end, cornerRadius(box.corners?.end));
+    style.setProperty('clip-path', clipPathOf(this.axis, box.clip));
     return true;
   }
 

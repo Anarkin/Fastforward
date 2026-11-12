@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test, vi } from 'vitest';
 import {
+  clipPathOf,
   dragFrom,
   draggedScroll,
   drawsOverlay,
@@ -27,6 +28,12 @@ import { stylesheet } from '../fixtures';
 const none = () => null;
 
 const at = (clientX: number, clientY: number) => ({ clientX, clientY });
+
+const clipInHundredths = (box: ReturnType<typeof thumbBox>) =>
+  box?.clip && {
+    ...box.clip,
+    after: Math.round(box.clip.after * 100) / 100,
+  };
 
 const painted = () =>
   new Promise((resolve) =>
@@ -508,7 +515,7 @@ suite('Overlay scrollbars', () => {
     );
   });
 
-  test('keeps the thumb inside the line a rounded area around it draws along the edges they share, against that line, all the way to its ends, rounding the corner of the thumb as the area rounds its corner once the thumb reaches it', () => {
+  test('keeps the thumb inside the line a rounded area around it draws along the edges they share, against that line, all the way to its ends, clipping it by the corner the area rounds there wherever it is, so the corner cuts into it a pixel more for each pixel it runs in rather than rounding it at once', () => {
     const shared = { left: 101, top: 0, right: 501, bottom: 551, line: 2 };
     const framed = framedMetrics(scroller, { ...shared, radius: 6 });
     const rounder = framedMetrics(scroller, { ...shared, radius: 14 });
@@ -531,18 +538,32 @@ suite('Overlay scrollbars', () => {
     });
     assert.deepStrictEqual(
       [
-        thumbBox('vertical', framed, 25)?.corners,
-        thumbBox('vertical', atEnd, 25)?.corners,
-        thumbBox('vertical', nearEnd, 25)?.corners,
-        thumbBox('horizontal', atStart, 25)?.corners,
-        thumbBox('vertical', { ...rounder, scrollTop: 500 }, 25)?.corners,
+        clipInHundredths(thumbBox('vertical', framed, 25)),
+        clipInHundredths(thumbBox('vertical', atEnd, 25)),
+        clipInHundredths(thumbBox('vertical', nearEnd, 25)),
+        clipInHundredths(thumbBox('horizontal', atStart, 25)),
+        clipInHundredths(
+          thumbBox('vertical', { ...rounder, scrollTop: 500 }, 25),
+        ),
       ],
       [
-        { start: 0, end: 0 },
-        { start: 0, end: 4 },
-        { start: 0, end: 4 },
-        { start: 4, end: 0 },
-        { start: 0, end: 12 },
+        { before: 124.5, after: 124.5, start: 0, end: 4 },
+        { before: 249, after: 0, start: 0, end: 4 },
+        { before: 246.51, after: 2.49, start: 0, end: 4 },
+        { before: 0, after: 198, start: 4, end: 4 },
+        { before: 249, after: 0, start: 0, end: 12 },
+      ],
+    );
+    assert.deepStrictEqual(
+      [
+        clipPathOf('vertical', { before: 249, after: 2.5, start: 0, end: 4 }),
+        clipPathOf('horizontal', { before: 0, after: 198, start: 4, end: 6 }),
+        clipPathOf('vertical', undefined),
+      ],
+      [
+        'inset(-249px 0px -2.5px -4px round 0px 0px 4px 0px)',
+        'inset(-6px -198px 0px 0px round 0px 0px 6px 4px)',
+        '',
       ],
     );
     assert.strictEqual(
@@ -616,7 +637,7 @@ suite('Overlay scrollbars', () => {
     );
   });
 
-  test('runs the thumb of a rounded area of its own, as a menu, to its edges, keeping it off the end its scroll padding covers, as the filter held atop it, and rounding it only at a corner it reaches', () => {
+  test('runs the thumb of a rounded area of its own, as a menu, to its edges, keeping it off the end its scroll padding covers, as the filter held atop it, and clipping it only by a corner it reaches', () => {
     const menu = framedMetrics(
       {
         ...scroller,
@@ -634,17 +655,17 @@ suite('Overlay scrollbars', () => {
     });
     assert.deepStrictEqual(
       [
-        thumbBox('vertical', { ...menu, scrollTop: 0 }, 25)?.corners,
-        thumbBox('vertical', { ...menu, scrollTop: 500 }, 25)?.corners,
+        thumbBox('vertical', { ...menu, scrollTop: 0 }, 25)?.clip,
+        thumbBox('vertical', { ...menu, scrollTop: 500 }, 25)?.clip,
       ],
       [
-        { start: 0, end: 0 },
-        { start: 0, end: 5 },
+        { before: 0, after: 230, start: 0, end: 5 },
+        { before: 230, after: 0, start: 0, end: 5 },
       ],
     );
   });
 
-  test('runs the thumb of a rounded area of its own to the edge the screen paints a fraction of a pixel beyond its box, rounding its corner there, where no scroll padding keeps it off', () => {
+  test('runs the thumb of a rounded area of its own to the edge the screen paints a fraction of a pixel beyond its box, clipping it by its corner there, where no scroll padding keeps it off', () => {
     const menu = framedMetrics(
       {
         ...scroller,
@@ -664,8 +685,8 @@ suite('Overlay scrollbars', () => {
       height: 460.5,
     });
     assert.deepStrictEqual(
-      thumbBox('vertical', { ...menu, scrollTop: 500 }, 25)?.corners,
-      { start: 0, end: 6 },
+      thumbBox('vertical', { ...menu, scrollTop: 500 }, 25)?.clip,
+      { before: 230.25, after: 0, start: 0, end: 6 },
     );
   });
 

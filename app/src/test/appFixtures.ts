@@ -149,6 +149,28 @@ export function waitForCount(
   );
 }
 
+function boxSides(text: string): readonly number[] {
+  const [top = 0, right = top, bottom = top, left = right] = text
+    .trim()
+    .split(/\s+/)
+    .map(parseFloat);
+  return [top, right, bottom, left];
+}
+
+function atEdge(inset = 0): boolean {
+  return Math.abs(inset) < 0.01;
+}
+
+export function clippedCorner(clipPath: string): number {
+  const shape = /^inset\(([^)]*?)(?: round ([^)]*))?\)$/.exec(clipPath);
+  if (shape === null) {
+    return 0;
+  }
+  const [, right, bottom] = boxSides(shape[1] ?? '');
+  const [, , corner = 0] = boxSides(shape[2] ?? '0px');
+  return atEdge(right) && atEdge(bottom) ? corner : 0;
+}
+
 export function within<T>(
   promise: Promise<T>,
   what: string,

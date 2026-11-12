@@ -12,6 +12,7 @@ import { defaultSettings, waitFor } from './fixtures';
 import { pdfOf } from './pdfs';
 import {
   barsOffGrid,
+  clippedCorner,
   closeOrKill,
   scrollPlaces,
   gridLines,
@@ -192,36 +193,39 @@ suite('App commander', () => {
   const sortedRows = async () => (await rowNames()).toSorted().join();
 
   const thumbGaps = () =>
-    right().evaluate((side) => {
-      const scroller = side.querySelector('.virtual-rows');
-      const bar = document.querySelector('.overlay-scrollbar.vertical.shown');
-      if (scroller === null || bar === null) {
-        return undefined;
-      }
-      const line = parseFloat(
-        getComputedStyle(side, '::after').getPropertyValue('--frame-line'),
+    right()
+      .evaluate((side) => {
+        const scroller = side.querySelector('.virtual-rows');
+        const bar = document.querySelector('.overlay-scrollbar.vertical.shown');
+        if (scroller === null || bar === null) {
+          return undefined;
+        }
+        const line = parseFloat(
+          getComputedStyle(side, '::after').getPropertyValue('--frame-line'),
+        );
+        const inner =
+          parseFloat(getComputedStyle(side).borderBottomRightRadius) - line;
+        const border = parseFloat(getComputedStyle(bar).borderTopWidth);
+        const edge = side.getBoundingClientRect();
+        const list = scroller.getBoundingClientRect();
+        const thumb = bar.getBoundingClientRect();
+        const rightGap = edge.right - line - (thumb.right - border);
+        const bottomGap = edge.bottom - line - (thumb.bottom - border);
+        return {
+          right: Math.round(rightGap) + 0,
+          top: Math.round(thumb.top + border - list.top) + 0,
+          bottom: Math.round(bottomGap) + 0,
+          corner: Math.round(inner),
+          clip: getComputedStyle(bar).clipPath,
+          atEnd:
+            scroller.scrollTop + scroller.clientHeight >=
+            scroller.scrollHeight - 1,
+        };
+      })
+      .then(
+        (gaps) =>
+          gaps && { ...gaps, rounded: Math.round(clippedCorner(gaps.clip)) },
       );
-      const inner =
-        parseFloat(getComputedStyle(side).borderBottomRightRadius) - line;
-      const border = parseFloat(getComputedStyle(bar).borderTopWidth);
-      const edge = side.getBoundingClientRect();
-      const list = scroller.getBoundingClientRect();
-      const thumb = bar.getBoundingClientRect();
-      const rightGap = edge.right - line - (thumb.right - border);
-      const bottomGap = edge.bottom - line - (thumb.bottom - border);
-      return {
-        right: Math.round(rightGap) + 0,
-        top: Math.round(thumb.top + border - list.top) + 0,
-        bottom: Math.round(bottomGap) + 0,
-        corner: Math.round(inner),
-        rounded: Math.round(
-          parseFloat(getComputedStyle(bar).borderBottomRightRadius),
-        ),
-        atEnd:
-          scroller.scrollTop + scroller.clientHeight >=
-          scroller.scrollHeight - 1,
-      };
-    });
 
   const markedSorted = async () => (await markedNames()).toSorted().join();
 
@@ -1742,9 +1746,7 @@ suite('App commander', () => {
           return {
             right: Math.round(edge.right - line - thumb.right) + 0,
             bottom: Math.round(edge.bottom - line - thumb.bottom) + 0,
-            rounded: Math.round(
-              parseFloat(getComputedStyle(bar).borderBottomRightRadius),
-            ),
+            clip: getComputedStyle(bar).clipPath,
             corner: Math.round(
               parseFloat(style.borderBottomRightRadius) - line,
             ),
@@ -1754,7 +1756,11 @@ suite('App commander', () => {
       const placed = await edges();
 
       assert.deepStrictEqual(
-        [placed?.right, placed?.bottom, placed?.rounded],
+        [
+          placed?.right,
+          placed?.bottom,
+          Math.round(clippedCorner(placed?.clip ?? '')),
+        ],
         [0, 0, placed?.corner],
         JSON.stringify(placed),
       );
@@ -4825,10 +4831,8 @@ suite('App commander', () => {
       'the thumb at the end of its track',
     );
     const end = await boxes();
-    const [thumbRadius, menuRadius] = await Promise.all([
-      thumb.evaluate(
-        (element) => getComputedStyle(element).borderBottomRightRadius,
-      ),
+    const [thumbClip, menuRadius] = await Promise.all([
+      thumb.evaluate((element) => getComputedStyle(element).clipPath),
       menu.evaluate(
         (element) => getComputedStyle(element).borderBottomRightRadius,
       ),
@@ -4846,7 +4850,11 @@ suite('App commander', () => {
         ) < subpixel,
       JSON.stringify(end),
     );
-    assert.strictEqual(thumbRadius, menuRadius);
+    assert.strictEqual(
+      clippedCorner(thumbClip),
+      parseFloat(menuRadius),
+      thumbClip,
+    );
 
     await page.keyboard.press('Home');
     await waitFor(
@@ -5446,7 +5454,7 @@ suite('App commander', () => {
     );
   });
 
-  test('keeps the thumb of a side against the header of the side and the line its column draws on the right and at the bottom, rounding its corner as the column rounds its own once it reaches it', async () => {
+  test('keeps the thumb of a side against the header of the side and the line its column draws on the right and at the bottom, clipped by the corner the column rounds as it runs into it', async () => {
     const long = path.join(opened, 'thumbs');
     fs.mkdirSync(long);
     for (let index = 0; index < 200; index++) {
