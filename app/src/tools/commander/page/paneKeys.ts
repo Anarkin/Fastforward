@@ -12,7 +12,13 @@ import {
 import { keyPressed } from '../../../ui/shortcuts';
 import { commanderKeymap } from '../shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
-import { chosenKeys, opens, passedKeys, type Row } from './listing';
+import {
+  chosenKeys,
+  namesIgnoreCase,
+  opens,
+  passedKeys,
+  type Row,
+} from './listing';
 import type { Copied } from './naming';
 import { moveInGrid } from './tiles';
 
@@ -80,6 +86,7 @@ export interface PaneKeys {
   readonly tiled: boolean;
   readonly across: number;
   readonly visible: VisibleRows;
+  readonly platform: string | undefined;
 }
 
 const done = {};
@@ -107,6 +114,7 @@ export function paneKey(
     tiled,
     across,
     visible,
+    platform,
   }: PaneKeys,
 ): { readonly act?: PaneAct } | undefined {
   const row = selectedIndex === -1 ? undefined : rows[selectedIndex];
@@ -244,15 +252,19 @@ export function paneKey(
   }
   const byExtension = keyPressed(commanderKeymap.markExtension, event);
   if (byExtension !== undefined) {
-    if (row?.entry === undefined) {
+    if (row?.entry === undefined || row.entry.folder) {
       return done;
     }
-    const extension = row.extension.toLowerCase();
+    const keyOf = (extension: string) =>
+      namesIgnoreCase(platform) ? extension.toLowerCase() : extension;
+    const extension = keyOf(row.extension);
     return {
       act: {
         kind: 'mark',
         keys: rows.flatMap((each) =>
-          each.entry !== undefined && each.extension.toLowerCase() === extension
+          each.entry !== undefined &&
+          !each.entry.folder &&
+          keyOf(each.extension) === extension
             ? [each.key]
             : [],
         ),

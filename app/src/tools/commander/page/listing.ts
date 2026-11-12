@@ -431,11 +431,15 @@ export function pointedKeys(
 
 const regexSpecial = /[.+^${}()|[\]\\]/g;
 
+export function namesIgnoreCase(platform: string | undefined): boolean {
+  return platform === 'win32' || platform === 'darwin';
+}
+
 export function patternMatcher(
   pattern: string,
   platform: string | undefined,
 ): (name: string) => boolean {
-  const flags = platform === 'win32' || platform === 'darwin' ? 'i' : '';
+  const flags = namesIgnoreCase(platform) ? 'i' : '';
   const patterns = pattern
     .split(';')
     .map((part) => part.trim())

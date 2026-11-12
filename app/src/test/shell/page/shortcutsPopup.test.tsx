@@ -304,7 +304,7 @@ suite('Shortcuts popup', () => {
           'Mark the files passed while moving, or unmark them',
           'Mark every file, or unmark them all once all are marked',
           'Mark the files and folders whose names match a pattern, or unmark them with minus',
-          'Mark the files and folders with the extension of the selected one, or unmark them with minus',
+          'Mark the files with the extension of the selected one, or unmark them with minus',
           'Mark the files and folders not marked, and unmark those marked',
           'Mark or unmark a file, or mark the files up to it',
         ],

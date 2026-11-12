@@ -372,7 +372,7 @@ export const strings = {
     markPattern:
       'Mark the files and folders whose names match a pattern, or unmark them with minus',
     markExtension:
-      'Mark the files and folders with the extension of the selected one, or unmark them with minus',
+      'Mark the files with the extension of the selected one, or unmark them with minus',
     invertMarks:
       'Mark the files and folders not marked, and unmark those marked',
     copyPaths:

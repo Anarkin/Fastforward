@@ -1197,6 +1197,7 @@ export function Pane({
                 tiled,
                 across,
                 visible,
+                platform,
               });
               if (pressed === undefined) {
                 return;

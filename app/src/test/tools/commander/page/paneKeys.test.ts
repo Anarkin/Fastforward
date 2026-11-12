@@ -36,11 +36,15 @@ const at = (key: string, shown: Partial<PaneKeys> = {}): PaneKeys => ({
   tiled: false,
   across: 1,
   visible: { first: 0, last: rows.length - 1 },
+  platform: 'win32',
   ...shown,
 });
 
 const pressed = (key: string, extra: Parameters<typeof keyPress>[1] = {}) =>
   keyPress(key, extra);
+
+const keysOf = (pressedOn: ReturnType<typeof paneKey>) =>
+  pressedOn?.act?.kind === 'mark' ? pressedOn.act.keys : undefined;
 
 suite('Commander keys', () => {
   test('lays out the rows the keys are tried on, the parent folder first and the folders before the files', () => {
@@ -165,6 +169,47 @@ suite('Commander keys', () => {
       paneKey(pressed('+', { altKey: true }), at('..')),
       {},
     );
+  });
+
+  test('marks with Alt the files of the extension of the file selected, ignoring case only where the patterns do, never the folders, and nothing on a folder', () => {
+    const mixed = rowsOf(
+      [
+        entry('src', true),
+        entry('a.c'),
+        entry('b.C'),
+        entry('Makefile'),
+        entry('LICENSE'),
+      ],
+      true,
+      true,
+      { column: 'name', descending: false, groupByColor: false },
+      new Set(),
+    );
+    const on = (key: string, platform: string) =>
+      at(key, {
+        rows: mixed,
+        selectedIndex: mixed.findIndex((row) => row.key === key),
+        visible: { first: 0, last: mixed.length - 1 },
+        platform,
+      });
+    const marking = pressed('+', { altKey: true });
+
+    assert.deepStrictEqual(keysOf(paneKey(marking, on('a.c', 'linux'))), [
+      'a.c',
+    ]);
+    assert.deepStrictEqual(keysOf(paneKey(marking, on('a.c', 'win32'))), [
+      'a.c',
+      'b.C',
+    ]);
+    assert.deepStrictEqual(keysOf(paneKey(marking, on('a.c', 'darwin'))), [
+      'a.c',
+      'b.C',
+    ]);
+    assert.deepStrictEqual(keysOf(paneKey(marking, on('Makefile', 'linux'))), [
+      'LICENSE',
+      'Makefile',
+    ]);
+    assert.deepStrictEqual(paneKey(marking, on('src', 'linux')), {});
   });
 
   test('asks for the new name of the file or folder selected on Shift+F6, of no other marked, and of nothing on the parent folder', () => {
