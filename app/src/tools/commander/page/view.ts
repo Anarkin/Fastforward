@@ -336,6 +336,8 @@ function relisted(
     marked: marksKept(pane, folder, rows),
     repositories,
     inRepository: inRepositoryKept(pane, folder),
+    ...(pane?.folder === folder &&
+      pane.duplicates !== undefined && { duplicates: pane.duplicates }),
     counting: countingIn(entries),
   };
 }

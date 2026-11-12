@@ -1009,6 +1009,35 @@ suite('Commander view of duplicates', () => {
     assert.strictEqual(plain.panes.left?.duplicates, undefined);
   });
 
+  test('keeps showing the duplicates of a side once the settings sort it again, the sizes of its folders come or its tab is shown again', () => {
+    const told = run(
+      sortedBy('name'),
+      { type: 'show', tab: '1' },
+      listing('/a', [...files, folderEntry('src')], { duplicates: 3 }),
+      groupsTold(3, [['a.txt', 'b.txt']]),
+    );
+    const resorted = reduceView(told, sortedBy('size', false));
+    const counted = reduceView(
+      told,
+      sized([entry('src', { folder: true, size: 5 })], { folder: '/a' }),
+    );
+    const again = run(
+      sortedBy('name'),
+      { type: 'show', tab: '1' },
+      listing('/a', [...files, folderEntry('src')], { duplicates: 3 }),
+      groupsTold(3, [['a.txt', 'b.txt']]),
+      { type: 'show', tab: '2' },
+      { type: 'show', tab: '1' },
+    );
+
+    for (const view of [resorted, counted, again]) {
+      assert.deepStrictEqual(
+        view.panes.left?.duplicates,
+        told.panes.left?.duplicates,
+      );
+    }
+  });
+
   test('takes no groups of another look, another folder or a side not showing duplicates', () => {
     const asked = run(
       { type: 'show', tab: '1' },
