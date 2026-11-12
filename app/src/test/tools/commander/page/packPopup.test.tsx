@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../shared/strings';
+import { flatRowOf, parentRow } from '../../../../tools/commander/page/listing';
 import { PackPopup } from '../../../../tools/commander/page/packPopup';
 import {
   CommanderStore,
@@ -14,6 +15,31 @@ import {
 } from '../../../../tools/commander/page/view';
 import type { CommanderToHost } from '../../../../tools/commander/shared/protocol';
 import { renderIn } from '../../../componentFixtures';
+
+const file = (name: string) => ({
+  name,
+  folder: false,
+  link: false,
+  hidden: false,
+  size: 1,
+  modified: 0,
+});
+
+const flatOf = (folder: string, files: readonly string[]): PaneView => ({
+  ...pane(folder),
+  rows: [
+    parentRow,
+    ...files.map((each) => {
+      const at = each.lastIndexOf('/') + 1;
+      return flatRowOf(file(each.slice(at)), each.slice(0, at));
+    }),
+  ],
+  flat: {
+    walk: 1,
+    progress: { reading: false, stopped: false, folders: 1, failed: 0 },
+    shown: undefined,
+  },
+});
 
 const pane = (folder: string): PaneView => ({
   folder,
@@ -42,6 +68,7 @@ async function packing(
     readonly packable: () => boolean;
   }) => Promise<void>,
   backup: readonly string[] = [],
+  flat = false,
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>');
   const globals = {
@@ -67,17 +94,9 @@ async function packing(
         platform: 'linux',
         panes: {
           left: pane('/code'),
-          right: {
-            ...pane('/backup'),
-            entries: backup.map((name) => ({
-              name,
-              folder: false,
-              link: false,
-              hidden: false,
-              size: 1,
-              modified: 0,
-            })),
-          },
+          right: flat
+            ? flatOf('/backup', backup)
+            : { ...pane('/backup'), entries: backup.map(file) },
         },
       },
     });
@@ -243,6 +262,33 @@ suite('Pack popup', () => {
     );
 
     assert.deepStrictEqual(seen, [false, true, false]);
+    assert.deepStrictEqual(
+      posted.flatMap((message) =>
+        message.type === 'pack' ? [message.replace] : [],
+      ),
+      [true, undefined],
+    );
+  });
+
+  test('says it replaces an archive there already while the side it goes to lists every file under its folder, looking among the files of the folder alone', async () => {
+    const { commander } = strings;
+    const posted: CommanderToHost[] = [];
+    const noted = (dom: JSDOM) =>
+      dom.window.document.body.textContent.includes(commander.archiveThere);
+    const seen: boolean[] = [];
+    for (const backup of [['code.zip', 'sub/a.txt'], ['sub/code.zip']]) {
+      await packing(
+        async ({ dom, click, posted: sent }) => {
+          seen.push(noted(dom));
+          await click(commander.packConfirm);
+          posted.push(...sent);
+        },
+        backup,
+        true,
+      );
+    }
+
+    assert.deepStrictEqual(seen, [true, false]);
     assert.deepStrictEqual(
       posted.flatMap((message) =>
         message.type === 'pack' ? [message.replace] : [],

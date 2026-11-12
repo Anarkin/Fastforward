@@ -1,5 +1,7 @@
 import { strings } from '../../../shared/strings';
-import { packFormats, type PackFormat } from '../shared/packing';
+import { firstVolumeOf, packFormats, type PackFormat } from '../shared/packing';
+import { folderKey } from '../shared/paths';
+import type { PaneView } from './view';
 
 function separatorsOf(platform: string | undefined): RegExp {
   return platform === 'win32' ? /[\\/]/ : /\//;
@@ -11,10 +13,7 @@ export function lastPart(file: string, platform: string | undefined): string {
   );
 }
 
-export function withoutTrailing(
-  folder: string,
-  platform: string | undefined,
-): string {
+function withoutTrailing(folder: string, platform: string | undefined): string {
   return folder.replace(platform === 'win32' ? /[\\/]+$/ : /\/+$/, '');
 }
 
@@ -23,6 +22,34 @@ export function folderPart(file: string, platform: string | undefined): string {
     file.slice(0, file.length - lastPart(file, platform).length),
     platform,
   );
+}
+
+export function archiveThere(
+  pane: PaneView | undefined,
+  archive: string,
+  volumes: boolean,
+  platform: string | undefined,
+): boolean {
+  if (pane === undefined || pane.archive !== undefined) {
+    return false;
+  }
+  const key = (each: string) => folderKey(each, platform);
+  if (
+    key(folderPart(archive, platform)) !==
+    key(withoutTrailing(pane.folder, platform))
+  ) {
+    return false;
+  }
+  const named = lastPart(archive, platform);
+  const name = key(volumes ? firstVolumeOf(named) : named);
+  return pane.flat === undefined
+    ? pane.entries.some((entry) => key(entry.name) === name)
+    : pane.rows.some(
+        (row) =>
+          row.under === '' &&
+          row.entry !== undefined &&
+          key(row.entry.name) === name,
+      );
 }
 
 const knownExtension = new RegExp(

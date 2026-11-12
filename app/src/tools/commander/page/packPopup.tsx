@@ -9,7 +9,6 @@ import { nameProblem } from '../shared/names';
 import {
   compresses,
   encrypts,
-  firstVolumeOf,
   packFormats,
   packLevels,
   packPasswordProblem,
@@ -19,17 +18,15 @@ import {
   type PackLevel,
   type ZipCipher,
 } from '../shared/packing';
-import { folderKey } from '../shared/paths';
-import { otherSide, type Entry } from '../shared/protocol';
+import { sides } from '../shared/protocol';
 import {
   archiveFor,
-  folderPart,
+  archiveThere,
   lastPart,
   namedPart,
   volumeBytesOf,
   volumeSizes,
   withFormat,
-  withoutTrailing,
 } from './packing';
 import { useCommander, useCommanderActions } from './store';
 import { whatOf } from './transferring';
@@ -121,12 +118,10 @@ function PackForm({
   names,
   folder,
   target,
-  targetEntries,
 }: {
   names: readonly string[];
   folder: string;
   target: string;
-  targetEntries: readonly Entry[] | undefined;
 }) {
   const choices = useCommander((state) => state.packChoices);
   const platform = useCommander((state) => state.view.platform);
@@ -172,14 +167,11 @@ function PackForm({
     volume,
     platform,
   });
-  const named = lastPart(archive.trim(), platform);
-  const name = splitting ? firstVolumeOf(named) : named;
-  const there =
-    folderKey(folderPart(archive.trim(), platform), platform) ===
-      folderKey(withoutTrailing(target, platform), platform) &&
-    targetEntries?.some(
-      (entry) => folderKey(entry.name, platform) === folderKey(name, platform),
-    ) === true;
+  const there = useCommander((state) =>
+    sides.some((side) =>
+      archiveThere(state.view.panes[side], archive.trim(), splitting, platform),
+    ),
+  );
   const encrypted = encrypts(format) && password !== '';
   return (
     <form
@@ -358,15 +350,6 @@ export function PackPopup() {
 
 function PackDialog() {
   const packing = useCommander((state) => state.packing);
-  const targetEntries = useCommander((state) => {
-    const other =
-      state.packing && state.view.panes[otherSide(state.packing.side)];
-    return other?.folder === state.packing?.target
-      ? other?.entries
-      : state.packing === undefined
-        ? undefined
-        : state.view.panes[state.packing.side]?.entries;
-  });
   const { cancelPack } = useCommanderActions();
   const popup = useRef<HTMLDivElement>(null);
   useDismiss(popup, cancelPack, { byKeyOnly: true });
@@ -404,7 +387,6 @@ function PackDialog() {
           names={packing.names}
           folder={packing.folder}
           target={packing.target}
-          targetEntries={targetEntries}
         />
       </div>
     </div>
