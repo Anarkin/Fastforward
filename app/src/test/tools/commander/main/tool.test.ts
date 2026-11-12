@@ -5936,6 +5936,48 @@ suite('Commander tool in archives', () => {
       assert.ok(!watched().includes(path.dirname(fromInner)));
     });
 
+    test('stops watching a copy opened from an archive once no side of an open tab shows the archive, making it read-only, so a change saved to it is not lost unnoticed', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), zipped);
+      made.copies.folder = copiesFolder;
+      const { tool, page, send, opened, watched, change } = made;
+      await tool.show(page, tab);
+      const enter = (side: Side) =>
+        send({ type: 'enterArchive', tab: '1', side, name: 'a.zip' });
+      const opening = (side: Side, name: string) =>
+        send({ type: 'open', tab: '1', side, name });
+      await enter('right');
+      await enter('left');
+      await opening('right', 'top.txt');
+      const [copy] = opened;
+      assert.ok(copy !== undefined);
+      const holding = path.dirname(copy);
+
+      await opening('right', '..');
+      assert.ok(watched().includes(holding));
+      assert.notStrictEqual(fs.statSync(copy).mode & 0o200, 0);
+      await opening('left', 'docs');
+      assert.ok(watched().includes(holding));
+
+      await opening('left', '..');
+      await opening('left', '..');
+      await made.settled();
+      assert.ok(!watched().includes(holding));
+      assert.strictEqual(fs.statSync(copy).mode & 0o222, 0);
+
+      await enter('right');
+      await opening('right', 'top.txt');
+      const again = opened.at(-1);
+      assert.ok(again !== undefined && again !== copy);
+      assert.ok(watched().includes(path.dirname(again)));
+      tool.closed(page, tab);
+      await made.settled();
+      assert.ok(!watched().includes(path.dirname(again)));
+      assert.strictEqual(fs.statSync(again).mode & 0o222, 0);
+      await change(path.dirname(again));
+      assert.deepStrictEqual(page.of('askUpdate'), []);
+    });
+
     test('asks whether to put a changed copy back in one window alone, the one in front while it shows a commander, or else another that shows one', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), zipped);

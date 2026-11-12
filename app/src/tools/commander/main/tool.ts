@@ -506,7 +506,11 @@ export class CommanderTool implements Tool<'commander'> {
       readonly answer: (update: boolean) => void;
     }
   >();
-  private readonly copiesWatched = new Set<() => void>();
+  private readonly copiesWatched = new Set<{
+    readonly archive: string;
+    readonly copy: string;
+    readonly stop: () => void;
+  }>();
   private archiveImages: ArchiveImages | undefined;
   private readonly passwordsAsked = new Map<
     number,
@@ -625,6 +629,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
     }
     this.panes.delete(tab.id);
+    this.letGoOfCopies();
     this.saveQuietly(this.savedSides.keep((kept) => kept !== tab.id));
     for (const [shownIn, showing] of this.shown) {
       if (showing.tab === tab.id) {
@@ -992,7 +997,7 @@ export class CommanderTool implements Tool<'commander'> {
 
   quit(): void {
     this.transfers.quit();
-    for (const stop of this.copiesWatched) {
+    for (const { stop } of this.copiesWatched) {
       stop();
     }
     this.copiesWatched.clear();
@@ -1713,11 +1718,33 @@ export class CommanderTool implements Tool<'commander'> {
         busy = false;
       }
     };
-    this.copiesWatched.add(
-      this.access.watch(path.dirname(copy), () => {
+    this.copiesWatched.add({
+      archive: archive.file,
+      copy,
+      stop: this.access.watch(path.dirname(copy), () => {
         void this.shell.track(changed());
       }),
-    );
+    });
+    this.letGoOfCopies();
+  }
+
+  private letGoOfCopies(): void {
+    const folders = this.allPanes().map((pane) => pane.folder);
+    for (const watched of this.copiesWatched) {
+      const { archive, copy, stop } = watched;
+      if (
+        !folders.some(
+          (folder) =>
+            folder === archive || folder.startsWith(`${archive}${path.sep}`),
+        )
+      ) {
+        stop();
+        this.copiesWatched.delete(watched);
+        void this.shell.track(
+          fs.promises.chmod(copy, 0o444).catch(() => undefined),
+        );
+      }
+    }
   }
 
   private updateWanted(name: string, archive: string): Promise<boolean> {
@@ -3943,7 +3970,11 @@ export class CommanderTool implements Tool<'commander'> {
     if (pane.folder !== folder && !listing.elevated) {
       this.saveQuietly(this.savedSides.save(tab, side, folder));
     }
+    const left = pane.folder !== folder;
     pane.folder = folder;
+    if (left) {
+      this.letGoOfCopies();
+    }
     pane.hidden = hidden;
     pane.entries = listing.entries;
     pane.elevated = listing.elevated;
