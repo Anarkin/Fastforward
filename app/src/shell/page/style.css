@@ -1886,6 +1886,49 @@ body.resizing {
   width: 0;
 }
 
+.cm-editor.editor-text {
+  --text-advance: round(1ch, var(--device-pixel, 1px));
+}
+
+.cm-editor.editor-text .cm-scroller {
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  line-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  letter-spacing: calc(var(--text-advance) - 1ch);
+}
+
+.cm-editor.editor-text .cm-content {
+  padding: 0;
+}
+
+.cm-editor.editor-text .cm-content.cm-lineWrapping {
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.cm-editor.editor-text .cm-line {
+  padding: 0 0 0 var(--wrap-indent, 0px);
+  text-indent: calc(-1 * var(--wrap-indent, 0px));
+}
+
+.cm-editor.editor-text .cm-lineWrapping .lead {
+  white-space: pre;
+}
+
+.cm-editor.editor-selection .cm-scroller .cm-line ::selection,
+.cm-editor.editor-selection .cm-scroller .cm-line::selection {
+  background-color: transparent;
+}
+
+.cm-editor.editor-selection .cm-scroller .cm-content,
+.cm-editor.editor-selection .cm-scroller .cm-line {
+  caret-color: transparent;
+}
+
 .spaces,
 .wrap-spaces,
 .viewer-wrap-spaces {

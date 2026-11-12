@@ -414,6 +414,23 @@ async function resetSettings(): Promise<void> {
   await reloaded;
 }
 
+export async function diffLineNumbered(number: number): Promise<Locator> {
+  const list = page.locator('.diff-view .virtual-rows');
+  const line = page.locator('.diff-view .virtual-row .diff-line').filter({
+    has: page.locator('.number', { hasText: new RegExp(`^${number}$`) }),
+  });
+  await waitFor(async () => {
+    if ((await line.count()) > 0) {
+      return true;
+    }
+    await list.evaluate((element) => {
+      element.scrollTop += element.clientHeight / 2;
+    });
+    return false;
+  }, `line ${number} of the diff`);
+  return line.first();
+}
+
 export async function openChangedFile(): Promise<void> {
   await page.locator('.commit', { hasText: 'second' }).click();
   await page.locator('.row.file', { hasText: 'changed.txt' }).click();

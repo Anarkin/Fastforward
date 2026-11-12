@@ -248,3 +248,12 @@ export const viewerKeymap = {
   realSize: bind('Showing', strings.actions.realSize, { F: true }),
   closeViewer: bind('Showing', strings.actions.closeViewer, { Escape: true }),
 };
+
+export const editorKeymap = {
+  rowEnd: bind(
+    undefined,
+    strings.actions.rowEnd,
+    { End: 'move', 'Shift+End': 'select' } as const,
+    { repeats: true, fields: true },
+  ),
+};

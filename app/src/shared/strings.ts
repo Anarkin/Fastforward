@@ -393,6 +393,7 @@ export const strings = {
     closeCompare: 'Close the files being compared',
     viewAs: 'View the file as hex, text or a preview',
     scrollFile: 'Scroll by a row, a page, or to the start or end',
+    rowEnd: 'Move to the end of the row, or select up to it',
     scrollSideways: 'Scroll sideways',
     chooseEncoding: 'Choose the encoding of the text',
     chooseLanguage: 'Choose the language the text is colored in',

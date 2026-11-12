@@ -12,6 +12,7 @@ import { wrapColumns, wrappedLines, wrapStarts } from '../ui/wordWrap';
 import {
   barsOffGrid,
   baseSettings,
+  diffLineNumbered,
   firstLongLine,
   gridLines,
   longLines,
@@ -163,23 +164,6 @@ async function wrappingInPage(): Promise<JSHandle<PageWrapping>> {
   return page.evaluateHandle<PageWrapping>(
     `${built.outputFiles[0].text};wrappingOfTheApp`,
   );
-}
-
-async function diffLineNumbered(number: number): Promise<Locator> {
-  const list = page.locator('.diff-view .virtual-rows');
-  const line = page.locator('.diff-view .virtual-row .diff-line').filter({
-    has: page.locator('.number', { hasText: new RegExp(`^${number}$`) }),
-  });
-  await waitFor(async () => {
-    if ((await line.count()) > 0) {
-      return true;
-    }
-    await list.evaluate((element) => {
-      element.scrollTop += element.clientHeight / 2;
-    });
-    return false;
-  }, `line ${number} of the diff`);
-  return line.first();
 }
 
 function browserStarts(line: Locator) {
