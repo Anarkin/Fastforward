@@ -781,6 +781,19 @@ suite('Shell with several windows', () => {
     assert.deepStrictEqual(windowsListed(first.page).at(-1), []);
   });
 
+  test('lets go of the page of a window closed, or of one kept ready for a tab torn off, once it is gone, as every window torn off and closed in a long run was held for good', async () => {
+    const { first, second } = await twoWindows();
+    const spare = attach(first.view, 's1');
+    await spare.connection.receive({ type: 'ready' });
+    first.shell.closeWindow('2');
+    second.connection.dispose();
+    spare.connection.dispose();
+    first.connection.dispose();
+    const pages: unknown = Reflect.get(first.shell, 'pages');
+    assert.ok(pages instanceof Map);
+    assert.deepStrictEqual([...pages.keys()], ['1']);
+  });
+
   test('never closes the last window, as quitting keeps its tabs for the next start', async () => {
     const { first } = await twoWindows();
     first.shell.closeWindow('2');

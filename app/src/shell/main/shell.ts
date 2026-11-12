@@ -370,6 +370,9 @@ export class Shell {
           this.tools[tool].hide(page);
         }
         this.host.drag(window, { kind: 'drop' });
+        if (this.pages.get(window) === page && !this.laidOut(window)) {
+          this.pages.delete(window);
+        }
       },
     };
   }
