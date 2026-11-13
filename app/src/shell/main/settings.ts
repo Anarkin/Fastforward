@@ -641,12 +641,15 @@ export function watchSettings(
   let timer: NodeJS.Timeout | undefined;
   const watchers = [...new Set([file, target])].map((watched) => {
     const folder = path.dirname(watched);
+    let stamp = stampOf(watched);
     const watcher = fs.watch(folder, (_event, name) => {
       if (!fs.existsSync(folder)) {
         watcher.close();
         return;
       }
-      if (name === path.basename(watched)) {
+      const now = stampOf(watched);
+      if (name === path.basename(watched) || now !== stamp) {
+        stamp = now;
         clearTimeout(timer);
         timer = setTimeout(onChange, delay);
       }
@@ -661,6 +664,15 @@ export function watchSettings(
       watcher.close();
     }
   };
+}
+
+function stampOf(file: string): string | undefined {
+  try {
+    const stats = fs.statSync(file);
+    return `${stats.size}:${stats.mtimeMs}`;
+  } catch {
+    return undefined;
+  }
 }
 
 function realPath(file: string): string {

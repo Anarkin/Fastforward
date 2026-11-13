@@ -606,6 +606,30 @@ suite('User settings file', () => {
     }
   });
 
+  test('notices the file changed though the system names another file or none, as macOS does once it merges the changes of several files, and nothing while it is as it was', async () => {
+    let checks = 0;
+    let stop: (() => void) | undefined;
+    const [watcher] = watchersMade(() => {
+      stop = watchSettings(file, () => (checks += 1), 10);
+    });
+    try {
+      await waitFor(() => checks > 0, 'the first check');
+      watcher.close();
+      checks = 0;
+      watcher.emit('change', 'change', 'state.json');
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      assert.strictEqual(checks, 0);
+      fs.writeFileSync(file, JSON.stringify({ solo: true }));
+      watcher.emit('change', 'change', 'state.json');
+      await waitFor(() => checks === 1, 'the change named after another file');
+      fs.writeFileSync(file, JSON.stringify({ solo: false, more: 1 }));
+      watcher.emit('change', 'rename', null);
+      await waitFor(() => checks === 2, 'the change named after no file');
+    } finally {
+      stop?.();
+    }
+  });
+
   test('stops watching a folder whose watcher fails, rather than throwing into the main process', async () => {
     let stop: (() => void) | undefined;
     const [watcher] = watchersMade(() => {
