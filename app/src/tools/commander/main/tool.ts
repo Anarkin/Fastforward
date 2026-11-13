@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { plainOf, strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../shared/strings';
 import {
   unattachedShell,
   type Page,
@@ -13,7 +13,6 @@ import {
 import { SavedSides } from './savedSides';
 import {
   isSide,
-  parentFolder,
   sides,
   type CommanderToHost,
   type Entry,
@@ -32,7 +31,6 @@ import { typedPath } from './typedPaths';
 import { heldBox } from '../../../shared/images';
 import { fileVersion } from '../shared/files';
 import { firstBytes } from './textRows';
-import type { OpenedArchive, Opening } from './archives';
 import type { ElevatedFileSystem } from './elevated';
 import { Editing } from './editing';
 import { saveFile } from './fileSaving';
@@ -49,7 +47,6 @@ import {
   post,
   type Listing,
   sizedEntry,
-  listedIn,
   parentOf,
 } from './sides';
 import { Viewers } from './viewers';
@@ -60,6 +57,7 @@ import { TransferCommands } from './transferCommands';
 import type { CommanderAccess } from './commanderAccess';
 import { isFolder, isFile } from './fileStats';
 import { FileCommands } from './fileCommands';
+import { ReadingStopped, type Opener, ArchiveListing } from './archiveListing';
 
 const maxHistory = 100;
 export function childToward(folder: string, from: string): string | undefined {
@@ -88,16 +86,6 @@ function isDenied(error: unknown): boolean {
   return code === 'EACCES' || code === 'EPERM';
 }
 
-const readingToldAfter = 300;
-
-class ReadingStopped extends Error {
-  constructor(readonly file: string) {
-    super(file);
-  }
-}
-
-type Opener = (file: string) => Promise<Opening | undefined>;
-
 class RefusedAsAdministrator extends Error {
   readonly code: unknown;
 
@@ -124,6 +112,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly copies: ArchiveCopies;
   private readonly transferCommands: TransferCommands;
   private readonly fileCommands: FileCommands;
+  private readonly archiveListing: ArchiveListing;
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
@@ -256,6 +245,11 @@ export class CommanderTool implements Tool<'commander'> {
           this.list(page, tab, side, folder, how, fallback, selecting),
       },
     );
+    this.archiveListing = new ArchiveListing(access, this.sides, this.copies, {
+      refuse: (page, message) => this.refuse(page, message),
+      list: (page, tab, side, folder, how, fallback, selecting) =>
+        this.list(page, tab, side, folder, how, fallback, selecting),
+    });
   }
 
   attach(shell: ShellAccess): void {
@@ -510,9 +504,9 @@ export class CommanderTool implements Tool<'commander'> {
         this.scans.countSizes(page, message);
         return undefined;
       case 'openOnSide':
-        return this.openOnSide(page, message);
+        return this.archiveListing.openOnSide(page, message);
       case 'enterArchive':
-        return this.enterArchive(page, message);
+        return this.archiveListing.enterArchive(page, message);
       case 'password':
         this.copies.answerPassword(message.ask, message.password);
         return undefined;
@@ -812,7 +806,12 @@ export class CommanderTool implements Tool<'commander'> {
   }> {
     const inside = this.access.archives?.within(folder);
     if (inside !== undefined) {
-      return this.archiveListed(inside.archive.file, folder, undefined, opener);
+      return this.archiveListing.archiveListed(
+        inside.archive.file,
+        folder,
+        undefined,
+        opener,
+      );
     }
     const files = await this.files();
     try {
@@ -822,7 +821,12 @@ export class CommanderTool implements Tool<'commander'> {
         ? await this.access.archives?.fileHolding(folder)
         : undefined;
       if (holding !== undefined) {
-        return this.archiveListed(holding, folder, error, opener);
+        return this.archiveListing.archiveListed(
+          holding,
+          folder,
+          error,
+          opener,
+        );
       }
       if (!isDenied(error) || this.elevated === undefined) {
         throw error;
@@ -833,305 +837,6 @@ export class CommanderTool implements Tool<'commander'> {
     } catch (error) {
       throw isDenied(error) ? new RefusedAsAdministrator(error) : error;
     }
-  }
-
-  private async archiveListed(
-    file: string,
-    folder: string,
-    unopened?: unknown,
-    opener?: Opener,
-  ): Promise<{
-    readonly entries: readonly Entry[];
-    readonly elevated: boolean;
-    readonly archive: string;
-  }> {
-    const { archives } = this.access;
-    const opened = opener === undefined ? archives?.open(file) : opener(file);
-    const opening: Opening | undefined = await (opened ??
-      Promise.resolve({
-        kind: 'refused',
-        reason: strings.commander.noSevenZip,
-      }));
-    if (opening === undefined) {
-      throw new ReadingStopped(file);
-    }
-    if (opening.kind === 'refused') {
-      if (unopened !== undefined) {
-        throw unopened;
-      }
-      throw Object.assign(
-        new Error(plainOf(opening.reason)),
-        (await isFile(file)) ? {} : { code: 'ENOENT' },
-      );
-    }
-    const inner = path
-      .relative(path.resolve(opening.archive.file), path.resolve(folder))
-      .split(path.sep)
-      .filter((part) => part !== '');
-    const entries = opening.archive.tree.entries(inner);
-    if (entries !== undefined) {
-      return { entries, elevated: false, archive: opening.archive.file };
-    }
-    const nested = await this.nestedIn(opening.archive, inner);
-    if (nested === undefined) {
-      throw Object.assign(new Error(folder), { code: 'ENOENT' });
-    }
-    return this.archiveListed(nested, folder, unopened, opener);
-  }
-
-  private async nestedIn(
-    archive: OpenedArchive,
-    inner: readonly string[],
-  ): Promise<string | undefined> {
-    const { archives } = this.access;
-    if (archives === undefined) {
-      return undefined;
-    }
-    for (let length = inner.length; length > 0; length--) {
-      const parts = inner.slice(0, length);
-      const folderParts = parts.slice(0, -1);
-      const last = parts.at(-1) ?? '';
-      const entry = archive.tree
-        .entries(folderParts)
-        ?.find((each) => each.name === last);
-      const item = archive.tree.item(folderParts, last);
-      if (entry?.folder === false && item !== undefined) {
-        const file = path.join(archive.file, ...parts);
-        const opening = await archives.openInside(file, archive, item.path);
-        return opening.kind === 'opened' ? file : undefined;
-      }
-    }
-    return undefined;
-  }
-
-  private async isArchiveFolder(folder: string): Promise<boolean> {
-    const inside = this.access.archives?.within(folder);
-    return (
-      inside !== undefined &&
-      (await this.archiveListed(inside.archive.file, folder).then(
-        () => true,
-        () => false,
-      ))
-    );
-  }
-
-  private async openFor(
-    page: Page,
-    tab: string,
-    side: Side,
-    file: string,
-    opening: (signal: AbortSignal) => Promise<Opening> | undefined = (signal) =>
-      this.access.archives?.open(file, signal),
-  ): Promise<Opening | undefined> {
-    const { archives } = this.access;
-    const pane = this.sides.panes.get(tab)?.[side];
-    if (archives === undefined || pane === undefined) {
-      return {
-        kind: 'refused',
-        reason: strings.commander.noSevenZip,
-        noArchive: true,
-      };
-    }
-    pane.opening?.abort();
-    const aborting = new AbortController();
-    pane.opening = aborting;
-    const { promise: read, resolve: landed } = Promise.withResolvers<void>();
-    pane.reading = read;
-    let told = false;
-    let telling: ReturnType<typeof setTimeout> | undefined;
-    const tellLater = () => {
-      telling = setTimeout(() => {
-        told = true;
-        post(page, {
-          type: 'readingArchive',
-          tab,
-          side,
-          name: path.basename(file),
-        });
-      }, readingToldAfter);
-    };
-    const stopTelling = () => {
-      clearTimeout(telling);
-      if (told) {
-        told = false;
-        post(page, { type: 'readingArchive', tab, side });
-      }
-    };
-    const attempt = () => opening(aborting.signal) ?? archives.open(file);
-    tellLater();
-    try {
-      let opened = await attempt();
-      while (opened.kind === 'refused' && opened.needsPassword === true) {
-        stopTelling();
-        const passwordOf = opened.passwordOf ?? file;
-        if (
-          !(await this.copies.passwordGiven(
-            page,
-            passwordOf,
-            archives.hasPassword(passwordOf),
-          ))
-        ) {
-          return undefined;
-        }
-        tellLater();
-        opened = await attempt();
-      }
-      return opened;
-    } catch (error) {
-      if (aborting.signal.aborted) {
-        return undefined;
-      }
-      throw error;
-    } finally {
-      if (pane.opening === aborting) {
-        pane.opening = undefined;
-      }
-      if (pane.reading === read) {
-        pane.reading = undefined;
-      }
-      landed();
-      stopTelling();
-    }
-  }
-
-  private openingInside(
-    pane: Pane,
-    name: string,
-    signal?: AbortSignal,
-  ): Promise<Opening> {
-    const { archives } = this.access;
-    const inside = archives?.within(pane.folder);
-    const parts = name.split(path.sep);
-    const last = parts.at(-1) ?? name;
-    const folderParts = [...(inside?.inner ?? []), ...parts.slice(0, -1)];
-    const entry = inside?.archive.tree
-      .entries(folderParts)
-      ?.find((each) => each.name === last);
-    const item = inside?.archive.tree.item(folderParts, last);
-    if (
-      archives === undefined ||
-      inside === undefined ||
-      item === undefined ||
-      entry?.folder !== false
-    ) {
-      return Promise.resolve({
-        kind: 'refused',
-        reason: strings.commander.notAFile,
-        noArchive: true,
-      });
-    }
-    return archives.openInside(
-      path.join(pane.folder, name),
-      inside.archive,
-      item.path,
-      signal,
-    );
-  }
-
-  private async enterArchive(
-    page: Page,
-    {
-      tab,
-      side,
-      folder,
-      name,
-    }: Extract<CommanderToHost, { type: 'enterArchive' }>,
-  ): Promise<void> {
-    const shown = this.sides.namingPane(page, tab, side, folder);
-    const entry = listedIn(shown?.pane, name);
-    if (
-      shown === undefined ||
-      typeof name !== 'string' ||
-      entry === undefined ||
-      entry.folder
-    ) {
-      return;
-    }
-    const file = path.join(shown.pane.folder, name);
-    const { pane } = shown;
-    const opening = await this.openFor(
-      page,
-      shown.tab,
-      shown.side,
-      file,
-      pane.archive === undefined
-        ? undefined
-        : (signal) => this.openingInside(pane, name, signal),
-    );
-    if (opening === undefined) {
-      return;
-    }
-    if (opening.kind === 'refused') {
-      this.refuse(
-        page,
-        strings.commander.notArchive(path.basename(file), opening.reason),
-      );
-      return;
-    }
-    await this.list(page, shown.tab, shown.side, file, 'visit');
-  }
-
-  private async openOnSide(
-    page: Page,
-    {
-      tab,
-      from,
-      side,
-      folder: named,
-      name,
-    }: Extract<CommanderToHost, { type: 'openOnSide' }>,
-  ): Promise<void> {
-    const source = this.sides.namingPane(page, tab, from, named);
-    if (source === undefined || !isSide(side) || typeof name !== 'string') {
-      return Promise.resolve();
-    }
-    const { folder, flat } = source.pane;
-    const entry = listedIn(source.pane, name);
-    if (flat === undefined && entry?.folder === false) {
-      const file = path.join(folder, name);
-      const { pane } = source;
-      const opening = await this.openFor(
-        page,
-        source.tab,
-        side,
-        file,
-        pane.archive === undefined
-          ? undefined
-          : (signal) => this.openingInside(pane, name, signal),
-      );
-      if (opening === undefined) {
-        return undefined;
-      }
-      if (opening.kind === 'opened') {
-        return this.list(page, source.tab, side, file, 'visit');
-      }
-      if (opening.kind === 'refused' && opening.noArchive !== true) {
-        this.refuse(page, strings.commander.notArchive(name, opening.reason));
-        return undefined;
-      }
-    }
-    if (flat !== undefined && entry !== undefined) {
-      return this.list(
-        page,
-        source.tab,
-        side,
-        path.dirname(path.join(folder, name)),
-        'visit',
-        undefined,
-        entry.name,
-      );
-    }
-    const target =
-      name === parentFolder
-        ? folder
-        : entry === undefined
-          ? undefined
-          : entry.folder
-            ? path.join(folder, name)
-            : folder;
-    return target === undefined
-      ? Promise.resolve()
-      : this.list(page, source.tab, side, target, 'visit');
   }
 
   private openRepository(
@@ -1341,7 +1046,7 @@ export class CommanderTool implements Tool<'commander'> {
     let listing: Awaited<ReturnType<CommanderTool['listed']>>;
     try {
       listing = await this.listed(folder, (file) =>
-        this.openFor(page, tab, side, file),
+        this.archiveListing.openFor(page, tab, side, file),
       );
     } catch (error) {
       if (error instanceof ReadingStopped) {
@@ -1466,7 +1171,10 @@ export class CommanderTool implements Tool<'commander'> {
       folder !== undefined;
       folder = parentOf(folder)
     ) {
-      if ((await isFolder(folder)) || (await this.isArchiveFolder(folder))) {
+      if (
+        (await isFolder(folder)) ||
+        (await this.archiveListing.isArchiveFolder(folder))
+      ) {
         return folder;
       }
     }
