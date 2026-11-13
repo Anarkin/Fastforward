@@ -177,7 +177,7 @@ suite('Shortcuts popup', () => {
       shortcutEntries.map((each) => [each.id, each.title]),
       [
         ['commander', 'Commander'],
-        ['viewer', 'File viewer'],
+        ['viewer', 'Viewer'],
         ['editor', 'Editor'],
         ['git', 'Git'],
         ['terminal', 'Terminal'],
@@ -205,7 +205,7 @@ suite('Shortcuts popup', () => {
             'Archives',
           ],
         ],
-        ['File viewer', ['Scrolling', 'Showing the file', 'Text', 'Searching']],
+        ['Viewer', ['Scrolling', 'Showing the file', 'Text', 'Searching']],
         [
           'Editor',
           ['Editing', 'Moving around', 'Cursors and selections', 'Searching'],
@@ -499,7 +499,7 @@ suite('Shortcuts popup', () => {
     const html = shortcutsMarkup('commander');
     assert.deepStrictEqual(textsOf(html, 'shortcuts-tool-name'), [
       'Commander',
-      'File viewer',
+      'Viewer',
       'Editor',
       'Git',
       'Terminal',
@@ -725,7 +725,7 @@ suite('Shortcuts popup', () => {
       assert.strictEqual(document.activeElement, field);
       assert.strictEqual(openTool(document), 'Commander');
       await press('Tab', { ctrlKey: true });
-      assert.strictEqual(openTool(document), 'File viewer');
+      assert.strictEqual(openTool(document), 'Viewer');
       assert.deepStrictEqual(headingsOf(document), [
         'Scrolling',
         'Showing the file',
@@ -735,7 +735,7 @@ suite('Shortcuts popup', () => {
       await press('Tab', { ctrlKey: true, shiftKey: true });
       assert.strictEqual(openTool(document), 'Commander');
       await press('ArrowDown');
-      assert.strictEqual(openTool(document), 'File viewer');
+      assert.strictEqual(openTool(document), 'Viewer');
       await press('ArrowUp');
       assert.strictEqual(openTool(document), 'Commander');
       await type('f3');

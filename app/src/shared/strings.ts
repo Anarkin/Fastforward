@@ -454,7 +454,7 @@ export const strings = {
     filter: 'Filter by words or keys',
     noMatches: 'No shortcut here has all of these words.',
     tools: 'Tools',
-    viewer: 'File viewer',
+    viewer: 'Viewer',
     editor: 'Editor',
     everywhere: 'Every tab',
     groups: {

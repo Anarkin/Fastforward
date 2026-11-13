@@ -4697,9 +4697,7 @@ suite('App commander', () => {
       'the end again',
     );
     await page.keyboard.press('ArrowDown');
-    await page
-      .locator('.shortcuts-tool.open', { hasText: 'File viewer' })
-      .waitFor();
+    await page.locator('.shortcuts-tool.open', { hasText: 'Viewer' }).waitFor();
     await page.locator('.shortcuts-tool', { hasText: 'Terminal' }).click();
     await waitFor(
       async () =>
