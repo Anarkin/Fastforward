@@ -10,7 +10,7 @@ export const perfBuild = path.resolve(
   __dirname,
   '..',
   '..',
-  process.env.FASTFORWARD_PERF_BUILD ?? 'perf-build',
+  process.env.FASTFORWARD_PERF_BUILD ?? path.join('perf-build', 'current'),
 );
 
 export interface PerfData {

@@ -2,7 +2,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { TestProject } from 'vitest/node';
 import { perfBuild, perfData, type PerfData } from './perfData';
-import { resultSuffix, resultsTable, type SavedResult } from './perfTrace';
+import {
+  isSaved,
+  resultSuffix,
+  resultsTable,
+  type SavedResult,
+} from './perfTrace';
 
 declare module 'vitest' {
   export interface ProvidedContext {
@@ -25,15 +30,6 @@ function assertProductionBuild(): void {
   }
 }
 
-function isSaved(value: unknown): value is SavedResult {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof Reflect.get(value, 'startedAt') === 'number' &&
-    typeof Reflect.get(value, 'result') === 'object'
-  );
-}
-
 function savedResults(folder: string): SavedResult[] {
   return fs
     .readdirSync(folder)
@@ -49,12 +45,14 @@ function savedResults(folder: string): SavedResult[] {
 
 export default function setup(project: TestProject): () => void {
   assertProductionBuild();
-  fs.copyFileSync(
-    path.join(appFolder, 'package.json'),
-    path.join(perfBuild, 'package.json'),
-  );
+  const packaged = path.join(perfBuild, 'package.json');
+  if (!fs.existsSync(packaged)) {
+    fs.copyFileSync(path.join(appFolder, 'package.json'), packaged);
+  }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const results = path.join(appFolder, 'perf-results', stamp);
+  const results =
+    process.env.FASTFORWARD_PERF_RESULTS ??
+    path.join(appFolder, 'perf-results', stamp);
   fs.mkdirSync(results, { recursive: true });
   project.provide('perfData', perfData());
   project.provide('perfResults', results);

@@ -73,6 +73,15 @@ export interface SavedResult {
 
 export const resultSuffix = '.result.json';
 
+export function isSaved(value: unknown): value is SavedResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'startedAt') === 'number' &&
+    typeof Reflect.get(value, 'result') === 'object'
+  );
+}
+
 const frameStates: Readonly<Record<string, FrameState>> = {
   STATE_PRESENTED_ALL: 'presented',
   STATE_PRESENTED_PARTIAL: 'partial',
@@ -295,7 +304,7 @@ export function inputLatency(
 
 export type SourceOf = (url: string, line: number) => string | undefined;
 
-const bundledModule = /^\/\/ ((?:src|node_modules)\/\S+)$/;
+const bundledModule = /^\/\/ (?:\.\.\/)*((?:src|node_modules)\/\S+)$/;
 
 export function moduleAt(
   bundle: readonly string[],

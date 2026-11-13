@@ -28,7 +28,7 @@
     "test": "vitest run --project=!playground --project=!perf",
     "test:unit": "vitest run --project unit",
     "test:playground": "vitest run --project playground",
-    "perf": "node scripts/esbuild.mts --production --outdir=perf-build/dist && vitest run --project perf",
+    "perf": "node scripts/perf.mts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "coverage": "npm run build && vitest run --coverage --project=!playground --project=!perf",

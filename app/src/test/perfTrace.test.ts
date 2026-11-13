@@ -403,6 +403,16 @@ suite('Finding the source of a line of a bundle', () => {
     assert.strictEqual(moduleAt(bundle, 5), '@tanstack/virtual-core');
   });
 
+  test('takes a module of a bundle built from a folder under the app, marked with the way up to it', () => {
+    assert.strictEqual(
+      moduleAt(
+        ['// ../../node_modules/react-dom/cjs/client.js', 'render();'],
+        2,
+      ),
+      'react-dom',
+    );
+  });
+
   test('finds none before the first module', () => {
     assert.strictEqual(moduleAt(bundle, 1), undefined);
   });
