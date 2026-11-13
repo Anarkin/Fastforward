@@ -636,6 +636,10 @@
   max-width: var(--widest-encoding-button);
 }
 
+.viewer-encoding.editor-encoding .menu-button-trigger {
+  max-width: none;
+}
+
 .viewer-actions .language-button .menu-button-trigger {
   max-width: var(--widest-language-button);
 }

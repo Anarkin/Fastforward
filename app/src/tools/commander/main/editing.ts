@@ -137,6 +137,40 @@ const startBytes = 64 * 1024;
 
 const noWatching = () => {};
 
+interface Found {
+  readonly bom: TextEncoding | undefined;
+  readonly order: TextEncoding | undefined;
+  readonly valid: boolean;
+  readonly encoding: TextEncoding;
+}
+
+function foundIn(bytes: Buffer, codePage: TextEncoding): Found {
+  const start = bytes.subarray(0, startBytes);
+  const bom = byteOrderMarkOf(start);
+  const order = bom === undefined ? utf16Order(start) : undefined;
+  const valid = isUtf8(bytes);
+  return {
+    bom,
+    order,
+    valid,
+    encoding: bom ?? order ?? (valid ? 'utf-8' : codePage),
+  };
+}
+
+function sourcesOf(
+  { bom, order, valid }: Found,
+  chosen: TextEncoding | undefined,
+  codePage: TextEncoding,
+): EncodingSource[] {
+  return [
+    { kind: 'chosen', ...(chosen !== undefined && { encoding: chosen }) },
+    { kind: 'bom', ...(bom !== undefined && { encoding: bom }) },
+    { kind: 'utf16', ...(order !== undefined && { encoding: order }) },
+    { kind: 'utf8', ...(valid && { encoding: 'utf-8' }) },
+    { kind: 'codePage', encoding: codePage },
+  ];
+}
+
 export class Editing {
   private readonly opened = new Map<string, Opened>();
   private readonly opening = new Map<string, Promise<Opened>>();
@@ -197,7 +231,7 @@ export class Editing {
   private postEditing(page: Page, tab: string, opened: Opened): void {
     const { read } = opened;
     const target = read.text?.target();
-    const readAs = read.text?.readAs();
+    const onDisk = read.text?.onDisk();
     this.shell.post(page, {
       type: 'editing',
       tab,
@@ -205,7 +239,10 @@ export class Editing {
       ...(read.text !== undefined && { version: read.text.version }),
       ...(target !== undefined && { encoding: target.encoding }),
       ...(target?.bom === true && { bom: true }),
-      ...(readAs !== undefined && readAs !== target?.encoding && { readAs }),
+      ...(onDisk !== undefined &&
+        (onDisk.encoding !== target?.encoding || onDisk.bom !== target.bom) && {
+          onDisk,
+        }),
       ...(opened.changed && { changed: true }),
       ...(opened.readOnly && { readOnly: true }),
       ...(read.made && { made: true }),
@@ -302,11 +339,9 @@ export class Editing {
     if (refusal !== undefined) {
       return { text: undefined, error: refusal, made: false, stamp };
     }
-    const bom = byteOrderMarkOf(start);
-    const order = bom === undefined ? utf16Order(start) : undefined;
-    const valid = isUtf8(bytes);
     const codePage = await this.access.codePage();
-    const encoding = chosen ?? bom ?? order ?? (valid ? 'utf-8' : codePage);
+    const found = foundIn(bytes, codePage);
+    const encoding = chosen ?? found.encoding;
     const decoded = decodedText(bytes, encoding);
     const defaults = await this.access.textDefaults?.(
       file,
@@ -317,13 +352,7 @@ export class Editing {
       made: false,
       stamp,
       ...rulesOf(defaults),
-      encodings: [
-        { kind: 'chosen', ...(chosen !== undefined && { encoding: chosen }) },
-        { kind: 'bom', ...(bom !== undefined && { encoding: bom }) },
-        { kind: 'utf16', ...(order !== undefined && { encoding: order }) },
-        { kind: 'utf8', ...(valid && { encoding: 'utf-8' }) },
-        { kind: 'codePage', encoding: codePage },
-      ],
+      encodings: sourcesOf(found, chosen, codePage),
       ...(startByte !== undefined && {
         startAt: Math.min(
           decodedText(bytes.subarray(0, startByte), encoding).text.length,
@@ -452,17 +481,25 @@ export class Editing {
     text: EditedText,
     { encoding, bom }: { readonly encoding: unknown; readonly bom: unknown },
   ): void {
-    if (!isTextEncoding(encoding) || typeof bom !== 'boolean') {
+    if (
+      (encoding !== 'auto' && !isTextEncoding(encoding)) ||
+      typeof bom !== 'boolean'
+    ) {
       return;
     }
-    const tried = text.saveIn(encoding, bom);
+    const wanted = encoding === 'auto' ? text.onDisk() : { encoding, bom };
+    const tried = text.saveIn(wanted.encoding, wanted.bom);
     if (!('bytes' in tried)) {
       const characters = [
         ...new Set(tried.unencodable.map(({ character }) => character)),
       ].slice(0, maxUnencodableNamed);
       this.shell.notice(page, {
         level: 'error',
-        message: strings.editor.unencodable(opened.file, encoding, characters),
+        message: strings.editor.unencodable(
+          opened.file,
+          wanted.encoding,
+          characters,
+        ),
       });
       return;
     }
@@ -600,17 +637,30 @@ export class Editing {
     }
     text.saved(checkpoint);
     const target = text.target().encoding;
-    if (opened.chosen !== undefined || target !== text.readAs()) {
+    const codePage = await this.access.codePage();
+    const found = foundIn(
+      Buffer.from(
+        written.bytes.buffer,
+        written.bytes.byteOffset,
+        written.bytes.byteLength,
+      ),
+      codePage,
+    );
+    if (opened.chosen !== undefined || found.encoding !== target) {
       opened.chosen = target;
     }
     opened.read = {
       ...opened.read,
       made: false,
       stamp: await this.access.stampOf(file),
+      encodings: sourcesOf(found, opened.chosen, codePage),
     };
     opened.saving = false;
     opened.outside = false;
     this.changedTo(page, tab, opened, text.changed());
+    for (const shownIn of this.shell.pagesShowing(tab)) {
+      this.postEditing(shownIn, tab, opened);
+    }
     return true;
   }
 

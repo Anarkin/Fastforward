@@ -52,10 +52,10 @@ suite('Where the editor says its text comes from', () => {
         ),
       ),
       [
-        '(off) New lines end in',
+        '(off) New lines end in:',
         '✓ CRLF, as most lines of the file end',
         '-',
-        '(off) For a file with no line break yet',
+        '(off) With no line break yet, new lines end in the first of these that applies:',
         `✓ LF, from "end_of_line" in "${config}"`,
         'CRLF, from "core.autocrlf" of git',
         '(off) "editor.files" in the settings sets nothing for ".txt"',
@@ -78,7 +78,7 @@ suite('Where the editor says its text comes from', () => {
       [
         '(off) The file has no line break yet',
         '-',
-        '(off) For a file with no line break yet',
+        '(off) With no line break yet, new lines end in the first of these that applies:',
         '(off) No .editorconfig sets "end_of_line"',
         '✓ LF, from the "eol" attribute of git',
         'CRLF, from "editor.files" for ".cmd" in the settings',
@@ -137,8 +137,8 @@ suite('Where the editor says its text comes from', () => {
         ),
       ),
       [
-        '(off) Read in',
-        '(off) Nothing chosen with Reopen in',
+        '(off) Read in the first of these that applies:',
+        '(off) No encoding chosen for this file',
         '(off) No byte order mark',
         "(off) Its bytes don't look like UTF-16",
         '✓ UTF-8, as its bytes are UTF-8',
@@ -159,7 +159,7 @@ suite('Where the editor says its text comes from', () => {
         ),
       ).slice(1),
       [
-        '✓ ISO-8859-2 Central European, chosen with Reopen in',
+        '✓ ISO-8859-2 Central European, chosen for this file',
         'UTF-16 LE, from its byte order mark',
         'UTF-16 BE, as its bytes look like UTF-16',
         "(off) Its bytes aren't UTF-8",
@@ -183,8 +183,8 @@ suite('Where the editor says its text comes from', () => {
       opens,
     );
     assert.deepStrictEqual(rowsOf(items), [
-      '(off) Written in',
-      `✓ UTF-8 BOM, from "charset" in "${config}"`,
+      '(off) Written in the first of these that applies:',
+      `✓ UTF-8 with BOM, from "charset" in "${config}"`,
       'UTF-8, from "editor.charset" in the settings',
     ]);
     click(items, 1);

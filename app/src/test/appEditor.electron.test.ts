@@ -460,24 +460,32 @@ suite('App editor', () => {
 
     await backToCommander();
     await edit('latin.txt');
-    await page
-      .locator('.editor .menu-button-trigger[title="Encoding"]')
-      .click();
-    await page
-      .locator('.menu-item', { hasText: /^UTF-8$/ })
-      .first()
-      .click();
-    await page
-      .locator('.editor .menu-button-trigger[title="Encoding"]', {
-        hasText: /→ UTF-8$/,
-      })
-      .waitFor();
+    const readButton = page.locator(
+      '.editor .menu-button-trigger[title="Encoding to read in"]',
+    );
+    const writeButton = page.locator(
+      '.editor .menu-button-trigger[title="Encoding to write in"]',
+    );
+    await writeButton.click();
+    await page.locator('.menu-item', { hasText: /^UTF-8 with BOM$/ }).click();
+    await writeButton.filter({ hasText: /^UTF-8 BOM \(write\)$/ }).waitFor();
+    assert.ok(
+      await writeButton
+        .locator('.menu-button-label')
+        .evaluate((label) => label.scrollWidth <= label.clientWidth),
+      'the whole label shown',
+    );
+    await writeButton.click();
+    await page.locator('.menu-item', { hasText: /^UTF-8$/ }).click();
+    await writeButton.filter({ hasText: /^UTF-8 \(write\)$/ }).waitFor();
+    assert.strictEqual(await readButton.textContent(), '1252 (read)');
     await page.keyboard.press('ControlOrMeta+S');
     await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
     assert.deepStrictEqual(
       [...fs.readFileSync(latin)],
       [0x63, 0x61, 0x66, 0xc3, 0xa9, 0x0a],
     );
+    await readButton.filter({ hasText: /^UTF-8 \(read\)$/ }).waitFor();
   });
 
   test('indents on Tab, comments a line out on Ctrl+K, moves it on Alt+Down, goes to a line on Ctrl+G and types at every occurrence Ctrl+D selected, telling the line, column and cursors below', async () => {
@@ -613,7 +621,7 @@ suite('App editor', () => {
     await edit('sourced.txt');
     const items = page.locator('.menu-item');
     await page
-      .locator('.editor .menu-button-trigger[title="Encoding"]')
+      .locator('.editor .menu-button-trigger[title="Encoding to read in"]')
       .click();
     await items.filter({ hasText: 'UTF-8, as its bytes are UTF-8' }).waitFor();
     await page.keyboard.press('Escape');

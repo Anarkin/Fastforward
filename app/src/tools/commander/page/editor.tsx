@@ -69,7 +69,6 @@ import {
 import { editorKeymap } from '../shared/keymap';
 import {
   maxColoredBytes,
-  textEncodings,
   type CommanderToWebviewOf,
   type TextEncoding,
   type TextShown,
@@ -96,13 +95,13 @@ import { colorOfFileNamed } from './fileColors';
 import { viewerChoices } from './view';
 import type { LineEnding } from '../shared/textMarks';
 import { MenuButton } from '../../../ui/menu';
-import type { ContextMenuItem } from '../../../ui/contextMenu';
 import {
   LanguageButton,
   languageChoiceOf,
   shownLanguage,
 } from '../../../ui/languageChoice';
 import { nameOf, PathTitle } from './pathTitle';
+import { readMenu, savedName, saveMenu, type Encoded } from './editorEncodings';
 import {
   backTo,
   placeIn,
@@ -118,7 +117,7 @@ export interface EditedTab {
   readonly version: number | undefined;
   readonly encoding: TextEncoding | undefined;
   readonly bom: boolean;
-  readonly readAs: TextEncoding | undefined;
+  readonly onDisk: Encoded | undefined;
   readonly changed: boolean;
   readonly readOnly: boolean;
   readonly made: boolean;
@@ -260,9 +259,6 @@ function endingsTitle({ ending, counts }: EndingsShown): string {
     strings.editor.endingNames[ending],
   );
 }
-
-const encodingName = (encoding: TextEncoding) =>
-  strings.commander.encodingShort[encoding];
 
 function keptJson(state: EditorState, place: EditorPlace | undefined): unknown {
   const json: unknown = state.toJSON({ history: historyField });
@@ -608,12 +604,6 @@ export function Editor() {
   }, [language, highlightSyntax]);
 
   const encoding = edited?.encoding;
-  const encodingLabel =
-    encoding === undefined
-      ? undefined
-      : edited?.bom === true
-        ? strings.editor.withBom(encodingName(encoding))
-        : encodingName(encoding);
   const reopen = (chosen: TextEncoding | 'auto') => {
     if (tab === undefined) {
       return;
@@ -634,45 +624,15 @@ export function Editor() {
   };
   const endingSources = edited?.endingSources;
   const encodingSources = edited?.encodingSources;
-  const encodingItems: readonly ContextMenuItem[] =
-    tab === undefined || encoding === undefined
+  const firstSource = encodingSources?.[0];
+  const chosenEncoding =
+    (firstSource?.kind === 'chosen' && firstSource.encoding) || 'auto';
+  const made = edited?.made === true;
+  const bom = edited?.bom === true;
+  const encodingSourcesShown =
+    encodingSources === undefined
       ? []
-      : [
-          ...(encodingSources === undefined
-            ? []
-            : [
-                ...encodingSourceItems(encodingSources, opening),
-                { separator: true } as const,
-              ]),
-          { label: strings.editor.saveIn, disabled: true },
-          ...textEncodings.flatMap((each) =>
-            (each === 'utf-8'
-              ? [false, true]
-              : [each.startsWith('utf-16')]
-            ).map((bom) => ({
-              label:
-                bom && each === 'utf-8'
-                  ? strings.editor.withBom(encodingName(each))
-                  : encodingName(each),
-              keywords: strings.editor.saveIn,
-              checked: each === encoding && bom === edited?.bom,
-              onClick: () => saveIn(tab, each, bom),
-            })),
-          ),
-          { separator: true },
-          { label: strings.editor.reopenIn, disabled: true },
-          {
-            label: strings.common.auto,
-            keywords: strings.editor.reopenIn,
-            onClick: () => reopen('auto'),
-          },
-          ...textEncodings.map((each) => ({
-            label: encodingName(each),
-            keywords: strings.editor.reopenIn,
-            checked: each === (edited?.readAs ?? encoding),
-            onClick: () => reopen(each),
-          })),
-        ];
+      : encodingSourceItems(encodingSources, opening);
   const convert = (ending: LineEnding) =>
     view.current?.dispatch(convertedTo(ending));
   useEffect(() => {
@@ -792,23 +752,44 @@ export function Editor() {
       ) : (
         <header className="column-title">
           <div className="column-start nav-buttons viewer-actions">
-            {encodingLabel !== undefined && !readOnly && (
-              <div className="viewer-encoding">
-                <MenuButton
-                  title={strings.editor.encodingTitle}
-                  label={
-                    edited?.readAs === undefined
-                      ? encodingLabel
-                      : strings.editor.savedAs(
-                          encodingName(edited.readAs),
-                          encodingLabel,
-                        )
-                  }
-                  filter={strings.common.findEncoding}
-                  items={encodingItems}
-                  onChosen={() => view.current?.focus()}
-                />
-              </div>
+            {tab !== undefined && encoding !== undefined && !readOnly && (
+              <>
+                {!made && (
+                  <div className="viewer-encoding editor-encoding">
+                    <MenuButton
+                      title={strings.editor.readEncodingTitle}
+                      label={strings.editor.readLabel(
+                        strings.commander.encodingShort[
+                          edited?.onDisk?.encoding ?? encoding
+                        ],
+                      )}
+                      filter={strings.common.findEncoding}
+                      items={readMenu(
+                        {
+                          choice: chosenEncoding,
+                          shown: edited?.onDisk?.encoding ?? encoding,
+                        },
+                        reopen,
+                        encodingSourcesShown,
+                      )}
+                      onChosen={() => view.current?.focus()}
+                    />
+                  </div>
+                )}
+                <div className="viewer-encoding editor-encoding">
+                  <MenuButton
+                    title={strings.editor.writeEncodingTitle}
+                    label={strings.editor.writeLabel(savedName(encoding, bom))}
+                    filter={strings.common.findEncoding}
+                    items={saveMenu(
+                      { saving: encoding, bom, onDisk: edited?.onDisk },
+                      (each, withBom) => saveIn(tab, each, withBom),
+                      made ? encodingSourcesShown : [],
+                    )}
+                    onChosen={() => view.current?.focus()}
+                  />
+                </div>
+              </>
             )}
             {endingsShown !== undefined && !readOnly && (
               <div className="viewer-encoding">

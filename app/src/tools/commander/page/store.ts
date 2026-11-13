@@ -227,7 +227,11 @@ interface CommanderActions {
     at: number,
     encoding: TextEncoding | undefined,
   ) => void;
-  readonly saveIn: (tab: string, encoding: TextEncoding, bom: boolean) => void;
+  readonly saveIn: (
+    tab: string,
+    encoding: TextEncoding | 'auto',
+    bom: boolean,
+  ) => void;
   readonly reopenIn: (tab: string, encoding: TextEncoding | 'auto') => void;
   readonly keptEditor: (tab: string) => KeptEditor | undefined;
   readonly keepEditor: (tab: string, kept: KeptEditor) => void;
@@ -433,7 +437,7 @@ function received(
           version: message.version,
           encoding: message.encoding,
           bom: message.bom === true,
-          readAs: message.readAs,
+          onDisk: message.onDisk,
           changed: message.changed === true,
           readOnly: message.readOnly === true,
           made: message.made === true,

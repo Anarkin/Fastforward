@@ -6,8 +6,7 @@ export type ShownEncoding = TextEncoding | 'bytes';
 
 export type EncodingChoice = ShownEncoding | 'auto';
 
-const encodingGroups: readonly (readonly ShownEncoding[])[] = [
-  ['bytes'],
+export const textEncodingGroups: readonly (readonly TextEncoding[])[] = [
   ['utf-8', 'utf-16be', 'utf-16le'],
   [
     'windows-874',
@@ -38,6 +37,11 @@ const encodingGroups: readonly (readonly ShownEncoding[])[] = [
   ],
   ['ibm866', 'koi8-r', 'koi8-u'],
   ['x-mac-cyrillic', 'macintosh'],
+];
+
+const encodingGroups: readonly (readonly ShownEncoding[])[] = [
+  ['bytes'],
+  ...textEncodingGroups,
 ];
 
 const codePages: Partial<Record<ShownEncoding, number>> = {
@@ -72,7 +76,7 @@ function codePageOf(encoding: ShownEncoding): number | undefined {
   return iso ? 28590 + Number(iso[1]) : codePages[encoding];
 }
 
-function keywordsOf(encoding: ShownEncoding): string {
+export function keywordsOf(encoding: ShownEncoding): string {
   const codePage = codePageOf(encoding);
   const latin = latinNumbers[encoding];
   return [
@@ -92,10 +96,21 @@ export function shownEncoding(
   return viewing.detected ?? (viewing.binary === true ? 'bytes' : 'utf-8');
 }
 
-export function encodingMenu(
-  choice: EncodingChoice,
-  shown: ShownEncoding,
-  choose: (choice: EncodingChoice) => void,
+export function inGroups<Encoding extends ShownEncoding>(
+  groups: readonly (readonly Encoding[])[],
+  itemsOf: (encoding: Encoding) => readonly ContextMenuItem[],
+): ContextMenuItem[] {
+  return groups.flatMap((group, index): ContextMenuItem[] => [
+    ...(index === 0 ? [] : [{ separator: true } as const]),
+    ...group.flatMap(itemsOf),
+  ]);
+}
+
+function choiceItems<Encoding extends ShownEncoding>(
+  choice: Encoding | 'auto',
+  shown: Encoding,
+  choose: (choice: Encoding | 'auto') => void,
+  groups: readonly (readonly Encoding[])[],
 ): ContextMenuItem[] {
   const { encodings } = strings.commander;
   const { autoChoice } = strings.common;
@@ -106,14 +121,30 @@ export function encodingMenu(
       checked: choice === 'auto',
       onClick: () => choose('auto'),
     },
-    ...encodingGroups.flatMap((group): ContextMenuItem[] => [
-      { separator: true },
-      ...group.map((each) => ({
+    { separator: true },
+    ...inGroups(groups, (each) => [
+      {
         label: encodings[each],
         keywords: keywordsOf(each),
         checked: choice === each,
         onClick: () => choose(each),
-      })),
+      },
     ]),
   ];
+}
+
+export function encodingMenu(
+  choice: EncodingChoice,
+  shown: ShownEncoding,
+  choose: (choice: EncodingChoice) => void,
+): ContextMenuItem[] {
+  return choiceItems(choice, shown, choose, encodingGroups);
+}
+
+export function textEncodingMenu(
+  choice: TextEncoding | 'auto',
+  shown: TextEncoding,
+  choose: (choice: TextEncoding | 'auto') => void,
+): ContextMenuItem[] {
+  return choiceItems(choice, shown, choose, textEncodingGroups);
 }

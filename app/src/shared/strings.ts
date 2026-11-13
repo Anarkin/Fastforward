@@ -1231,14 +1231,17 @@ export const strings = {
     replacePlaceholder: 'Replace with…',
     replaceOne: 'Replace',
     replaceAll: 'Replace All',
-    reopenIn: 'Reopen in',
-    saveIn: 'Save in',
-    encodingTitle: 'Encoding',
-    withBom: (encoding: string) => `${encoding} BOM`,
-    newLinesEndIn: 'New lines end in',
-    withoutLineBreak: 'For a file with no line break yet',
-    readIn: 'Read in',
-    writtenIn: 'Written in',
+    readEncodingTitle: 'Encoding to read in',
+    writeEncodingTitle: 'Encoding to write in',
+    readLabel: (encoding: string) => `${encoding} (read)`,
+    writeLabel: (encoding: string) => `${encoding} (write)`,
+    withBom: (encoding: string) => `${encoding} with BOM`,
+    shortWithBom: (encoding: string) => `${encoding} BOM`,
+    newLinesEndIn: 'New lines end in:',
+    withoutLineBreak:
+      'With no line break yet, new lines end in the first of these that applies:',
+    readIn: 'Read in the first of these that applies:',
+    writtenIn: 'Written in the first of these that applies:',
     endingOfLines: (ending: string) =>
       `${ending}, as most lines of the file end`,
     noLineBreak: 'The file has no line break yet',
@@ -1258,8 +1261,8 @@ export const strings = {
         : sentence`${named('editor.files')} in the settings sets nothing for ${named(`.${extension}`)}`,
     endingFromSettings: (ending: string) =>
       sentence`${ending}, from ${named('editor.endOfLine')} in the settings`,
-    chosenEncoding: (encoding: string) => `${encoding}, chosen with Reopen in`,
-    notChosen: 'Nothing chosen with Reopen in',
+    chosenEncoding: (encoding: string) => `${encoding}, chosen for this file`,
+    notChosen: 'No encoding chosen for this file',
     fromByteOrderMark: (encoding: string) =>
       `${encoding}, from its byte order mark`,
     noByteOrderMark: 'No byte order mark',
@@ -1275,7 +1278,6 @@ export const strings = {
     charsetNotInEditorConfig: sentence`No .editorconfig sets ${named('charset')}`,
     charsetFromSettings: (encoding: string) =>
       sentence`${encoding}, from ${named('editor.charset')} in the settings`,
-    savedAs: (read: string, saved: string) => `${read} → ${saved}`,
     reopenTitle: 'Reopen',
     reopenAsked:
       'Reopening the file in another encoding drops the changes made here. Reopen it?',

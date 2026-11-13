@@ -477,6 +477,80 @@ suite('Editing a file', () => {
     assert.strictEqual(edits.unsaved('1'), false);
   });
 
+  test('saves the text in the encoding and byte order mark the file has on disk once Auto is asked for, telling the page what it has on disk only while it is to be saved otherwise', async () => {
+    const { edits, showing } = editing({
+      'a.txt': Buffer.from('\xef\xbb\xbfcaf\xc3\xa9\n', 'latin1'),
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editing')?.onDisk, undefined);
+
+    await edits.receive(page, {
+      type: 'saveIn',
+      tab: '1',
+      encoding: 'windows-1252',
+      bom: false,
+    });
+    assert.deepStrictEqual(page.last('editing')?.onDisk, {
+      encoding: 'utf-8',
+      bom: true,
+    });
+    assert.strictEqual(edits.unsaved('1'), true);
+
+    await edits.receive(page, {
+      type: 'saveIn',
+      tab: '1',
+      encoding: 'auto',
+      bom: false,
+    });
+    assert.strictEqual(page.last('editing')?.encoding, 'utf-8');
+    assert.strictEqual(page.last('editing')?.bom, true);
+    assert.strictEqual(page.last('editing')?.onDisk, undefined);
+    assert.strictEqual(edits.unsaved('1'), false);
+  });
+
+  test('takes a file saved in another encoding as read in it, listing where its encoding comes from as reading it again would', async () => {
+    const { edits, showing } = editing({
+      'a.txt': Buffer.from('caf\xe9\n', 'latin1'),
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editing')?.encoding, 'windows-1252');
+
+    await edits.receive(page, {
+      type: 'saveIn',
+      tab: '1',
+      encoding: 'utf-8',
+      bom: false,
+    });
+    await edits.receive(page, { type: 'saveText', tab: '1' });
+    assert.strictEqual(page.last('editing')?.encoding, 'utf-8');
+    assert.strictEqual(page.last('editing')?.onDisk, undefined);
+    assert.deepStrictEqual(page.last('editing')?.encodingSources, [
+      { kind: 'chosen' },
+      { kind: 'bom' },
+      { kind: 'utf16' },
+      { kind: 'utf8', encoding: 'utf-8' },
+      { kind: 'codePage', encoding: 'windows-1252' },
+    ]);
+
+    await edits.receive(page, {
+      type: 'saveIn',
+      tab: '1',
+      encoding: 'windows-1250',
+      bom: false,
+    });
+    await edits.receive(page, { type: 'saveText', tab: '1' });
+    assert.deepStrictEqual(page.last('editing')?.encodingSources?.[0], {
+      kind: 'chosen',
+      encoding: 'windows-1250',
+    });
+  });
+
   test('starts a file the viewer showed at the text of the byte it showed, in the encoding it was read in there, once only', async () => {
     const { edits } = editing({ 'a.txt': 'one\r\ntwo\r\ncaf\xc3\xa9\r\n' });
     const page = new EditorPage();

@@ -201,7 +201,7 @@ export type CommanderToHost =
   | {
       readonly type: 'saveIn';
       readonly tab: string;
-      readonly encoding: TextEncoding;
+      readonly encoding: TextEncoding | 'auto';
       readonly bom: boolean;
     }
   | {
@@ -559,7 +559,10 @@ export type CommanderToWebview =
       readonly version?: number;
       readonly encoding?: TextEncoding;
       readonly bom?: true;
-      readonly readAs?: TextEncoding;
+      readonly onDisk?: {
+        readonly encoding: TextEncoding;
+        readonly bom: boolean;
+      };
       readonly changed?: true;
       readonly readOnly?: true;
       readonly made?: true;

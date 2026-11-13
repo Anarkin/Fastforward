@@ -114,8 +114,8 @@ export class EditedText {
     };
   }
 
-  readAs(): TextEncoding {
-    return this.read.encoding;
+  onDisk(): { readonly encoding: TextEncoding; readonly bom: boolean } {
+    return { encoding: this.last.encoding, bom: this.last.bom };
   }
 
   target(): { readonly encoding: TextEncoding; readonly bom: boolean } {
