@@ -784,3 +784,19 @@ export const defaultSorts: Sorts = {
 };
 
 export const forged = (json: string): CommanderToHost => JSON.parse(json);
+
+export const archiveItem = (itemPath: string): ArchiveItem => ({
+  path: itemPath,
+  folder: false,
+  size: 1,
+  modified: 0,
+  hiddenAttribute: false,
+  link: false,
+  encrypted: false,
+});
+
+export const zipped = [
+  archiveItem('docs/readme.md'),
+  archiveItem('docs/deep/notes.md'),
+  archiveItem('top.txt'),
+];

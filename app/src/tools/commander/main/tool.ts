@@ -64,18 +64,14 @@ import {
 } from '../shared/packing';
 import { fileVersion } from '../shared/files';
 import { firstBytes } from './textRows';
-import {
-  itemsAt,
-  type ArchiveAccess,
-  type ArchiveBranch,
-  type OpenedArchive,
-  type PackOptions,
-  type PackPlan,
-  type Packing,
-  type Opening,
+import type {
+  ArchiveAccess,
+  ArchiveBranch,
+  OpenedArchive,
+  PackPlan,
+  Opening,
 } from './archives';
 import { unpackingFirst } from './unpacking';
-import type { ArchiveJob } from '../shared/transfers';
 import type { ElevatedFileSystem } from './elevated';
 import { Editing } from './editing';
 import type { TextDefaults } from './textDefaults';
@@ -102,6 +98,7 @@ import { archiveItems } from './archiveItems';
 import { type PdfPlaceStore, Viewers } from './viewers';
 import { SideScans } from './sideScans';
 import { type Thumbnails, Serving } from './serving';
+import { ArchiveCopies } from './archiveCopies';
 
 export interface CommanderAccess {
   readonly pdfPlaces: PdfPlaceStore;
@@ -279,43 +276,12 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly viewers: Viewers;
   private readonly scans: SideScans;
   private readonly serving: Serving;
+  private readonly copies: ArchiveCopies;
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
-  private passwordAsks = 0;
-  private updateAsks = 0;
-  private readonly updatesAsked = new Map<
-    number,
-    {
-      readonly name: string;
-      readonly archive: string;
-      readonly answer: (update: boolean) => void;
-    }
-  >();
-  private readonly copiesWatched = new Set<{
-    readonly archive: string;
-    readonly copy: string;
-    readonly stop: () => void;
-  }>();
-  private readonly editedCopies = new Map<
-    string,
-    {
-      readonly archives: ArchiveAccess;
-      readonly archive: OpenedArchive;
-      readonly inner: readonly string[];
-      readonly name: string;
-    }
-  >();
-  private readonly passwordsAsked = new Map<
-    number,
-    {
-      readonly page: Page;
-      readonly answer: (password: string | undefined) => void;
-    }
-  >();
   private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
   private transferPage: Page | undefined;
-  private updateAskedIn: Page | undefined;
   private readonly transfers: Transfers;
   private readonly savedSides: SavedSides;
   private readonly editing: Editing;
@@ -369,13 +335,14 @@ export class CommanderTool implements Tool<'commander'> {
                 overwriteReadOnly: overwriting,
               }))
           )(file, bytes, overwriteReadOnly);
-          this.editedCopySaved(file);
+          this.copies.editedCopySaved(file);
           return saved;
         },
         codePage: () => access.codePage(),
         readOnly: (file) =>
           access.readOnlyFile?.(file) === true ||
-          (this.copyOf(file) !== undefined && !this.editedCopies.has(file)),
+          (this.copies.copyOf(file) !== undefined &&
+            !this.copies.editedCopies.has(file)),
         ...(access.editorSources !== undefined && {
           endingSources: access.editorSources,
         }),
@@ -408,6 +375,17 @@ export class CommanderTool implements Tool<'commander'> {
       notice: (notice) => this.shell.notice(undefined, notice),
       finished: (ask) => this.transferred(ask),
     });
+    this.copies = new ArchiveCopies(
+      access,
+      this.sides,
+      this.editing,
+      this.transfers,
+      {
+        shell: () => this.shell,
+        refuse: (page, message) => this.refuse(page, message),
+        saveQuietly: (saving) => this.saveQuietly(saving),
+      },
+    );
   }
 
   attach(shell: ShellAccess): void {
@@ -415,7 +393,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   ready(page: Page): void {
-    this.cancelPasswords(page);
+    this.copies.cancelPasswords(page);
     this.icons.forgetDropped();
     for (const pane of this.sides.allPanes()) {
       if (pane.flat !== undefined) {
@@ -447,7 +425,7 @@ export class CommanderTool implements Tool<'commander'> {
       watching: new Map(),
       viewingsAsked: 0,
     });
-    this.askNextUpdate();
+    this.copies.askNextUpdate();
     if (tab.edit === true && tab.root !== undefined) {
       post(page, {
         type: 'show',
@@ -503,7 +481,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
     }
     this.sides.panes.delete(tab.id);
-    this.letGoOfCopies();
+    this.copies.letGoOfCopies();
     this.saveQuietly(this.savedSides.keep((kept) => kept !== tab.id));
     for (const [shownIn, showing] of this.sides.shown) {
       if (showing.tab === tab.id) {
@@ -511,45 +489,10 @@ export class CommanderTool implements Tool<'commander'> {
       }
     }
     if (tab.view === true && tab.root !== undefined) {
-      this.removeCopy(tab.root);
+      this.copies.removeCopy(tab.root);
     }
     if (tab.edit === true) {
       this.editing.closed(tab.id);
-    }
-  }
-
-  private copyOf(viewed: string): string | undefined {
-    const { viewedCopies } = this.access;
-    if (viewedCopies === undefined) {
-      return undefined;
-    }
-    const inside = path.relative(viewedCopies, viewed);
-    const [entry] = inside.split(path.sep);
-    return entry === undefined ||
-      inside === '' ||
-      entry === '..' ||
-      path.isAbsolute(inside)
-      ? undefined
-      : path.join(viewedCopies, entry);
-  }
-
-  private removeCopy(viewed: string): void {
-    const copy = this.copyOf(viewed);
-    if (copy === undefined) {
-      return;
-    }
-    const stillViewed = this.shell
-      .tabs()
-      .some(
-        (open) =>
-          open.view === true &&
-          open.root !== undefined &&
-          (open.root === copy || open.root.startsWith(`${copy}${path.sep}`)),
-      );
-    if (!stillViewed) {
-      this.saveQuietly(
-        fs.promises.rm(copy, { recursive: true, force: true, maxRetries: 3 }),
-      );
     }
   }
 
@@ -701,10 +644,10 @@ export class CommanderTool implements Tool<'commander'> {
       case 'enterArchive':
         return this.enterArchive(page, message);
       case 'password':
-        this.answerPassword(message.ask, message.password);
+        this.copies.answerPassword(message.ask, message.password);
         return undefined;
       case 'updateArchive':
-        this.answerUpdate(message.ask, message.update);
+        this.copies.answerUpdate(message.ask, message.update);
         return undefined;
       case 'openRepository':
         return this.openRepository(page, message);
@@ -893,7 +836,7 @@ export class CommanderTool implements Tool<'commander'> {
   quitNote(): string | undefined {
     const notes = [
       ...(this.transfers.busy() ? [strings.commander.quitStopsTransfers] : []),
-      ...(this.updatesAsked.size > 0
+      ...(this.copies.updatesAsked.size > 0
         ? [strings.commander.quitDropsChanges]
         : []),
     ];
@@ -902,10 +845,10 @@ export class CommanderTool implements Tool<'commander'> {
 
   quit(): void {
     this.transfers.quit();
-    for (const { stop } of this.copiesWatched) {
+    for (const { stop } of this.copies.copiesWatched) {
       stop();
     }
-    this.copiesWatched.clear();
+    this.copies.copiesWatched.clear();
     for (const pane of this.sides.allPanes()) {
       this.scans.endFlat(pane);
     }
@@ -967,15 +910,16 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     if (!entry.folder && shown.pane.archive !== undefined) {
-      const [copy] = (await this.copiesIn(page, shown.pane, [name])) ?? [];
+      const [copy] =
+        (await this.copies.copiesIn(page, shown.pane, [name])) ?? [];
       if (copy === undefined) {
         return;
       }
-      const putBack = this.putBackOf(folder, name, copy);
+      const putBack = this.copies.putBackOf(folder, name, copy);
       if (putBack === undefined) {
         await fs.promises.chmod(copy, 0o444);
       } else {
-        await this.watchCopy(putBack, copy);
+        await this.copies.watchCopy(putBack, copy);
       }
       await this.openFileNamed(page, copy, name);
       return;
@@ -1012,100 +956,6 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private async copiesIn(
-    page: Page,
-    pane: Pane,
-    names: readonly string[],
-    into?: string,
-  ): Promise<string[] | undefined> {
-    const found = archiveItems(this.access.archives, pane, names);
-    if (found === undefined) {
-      return undefined;
-    }
-    const { archives, archive, inner, paths, withoutFolders, encrypted } =
-      found;
-    if (
-      encrypted &&
-      !archives.hasPassword(archive.file) &&
-      !(await this.passwordGiven(page, archive.file, false))
-    ) {
-      return undefined;
-    }
-    for (;;) {
-      const extracted = await archives.extract(archive, paths, {
-        ...(into !== undefined && { into }),
-        withoutFolders,
-      });
-      if (extracted.kind === 'extracted') {
-        return itemsAt(extracted.folder, withoutFolders ? 0 : inner.length);
-      }
-      if (extracted.needsPassword !== true) {
-        this.refuse(page, strings.commander.couldNotExtract(extracted.reason));
-        return undefined;
-      }
-      if (
-        !(await this.passwordGiven(
-          page,
-          archive.file,
-          archives.hasPassword(archive.file),
-        ))
-      ) {
-        return undefined;
-      }
-    }
-  }
-
-  private async passwordGiven(
-    page: Page,
-    file: string,
-    wrong: boolean,
-  ): Promise<boolean> {
-    const { archives } = this.access;
-    if (archives === undefined) {
-      return false;
-    }
-    archives.usePassword(file, undefined);
-    this.cancelPasswords(page);
-    const ask = ++this.passwordAsks;
-    const password = await new Promise<string | undefined>((resolve) => {
-      this.passwordsAsked.set(ask, { page, answer: resolve });
-      post(page, {
-        type: 'askPassword',
-        ask,
-        name: path.basename(file),
-        wrong,
-      });
-    });
-    if (password === undefined) {
-      return false;
-    }
-    archives.usePassword(file, password);
-    return true;
-  }
-
-  private cancelPasswords(of: Page): void {
-    for (const [ask, { page, answer }] of this.passwordsAsked) {
-      if (page === of || page.disposed) {
-        this.passwordsAsked.delete(ask);
-        answer(undefined);
-      }
-    }
-  }
-
-  private answerPassword(ask: unknown, password: unknown): void {
-    if (
-      typeof ask !== 'number' ||
-      (password !== undefined && typeof password !== 'string')
-    ) {
-      return;
-    }
-    const asked = this.passwordsAsked.get(ask);
-    if (asked !== undefined) {
-      this.passwordsAsked.delete(ask);
-      asked.answer(password);
-    }
-  }
-
   private async view(
     page: Page,
     shown: ShownPane | undefined,
@@ -1130,7 +980,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
     const { viewedCopies } = this.access;
     const [copy] =
-      (await this.copiesIn(
+      (await this.copies.copiesIn(
         page,
         shown.pane,
         [name],
@@ -1157,7 +1007,7 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     if (!entry.folder && shown.pane.archive !== undefined) {
-      await this.editInArchive(page, shown, name);
+      await this.copies.editInArchive(page, shown, name);
       return;
     }
     const file = path.join(shown.pane.folder, name);
@@ -1173,84 +1023,6 @@ export class CommanderTool implements Tool<'commander'> {
     await this.shell.openEdit(page, 'commander', file);
   }
 
-  private async editInArchive(
-    page: Page,
-    shown: ShownPane,
-    name: string,
-  ): Promise<void> {
-    const { viewedCopies } = this.access;
-    const [copy] =
-      (await this.copiesIn(
-        page,
-        shown.pane,
-        [name],
-        viewedCopies === undefined
-          ? undefined
-          : path.join(viewedCopies, randomUUID()),
-      )) ?? [];
-    if (copy === undefined) {
-      return;
-    }
-    const refusal = await this.editing.refusal(copy, name);
-    if (refusal !== undefined) {
-      this.shell.notice(page, { level: 'error', message: refusal });
-      return;
-    }
-    const putBack = this.putBackOf(shown.pane.folder, name, copy);
-    if (putBack !== undefined) {
-      this.editedCopies.set(copy, { ...putBack, name });
-    }
-    await this.shell.openEdit(page, 'commander', copy);
-  }
-
-  private async newFileInArchive(
-    page: Page,
-    shown: ShownPane,
-    name: string,
-  ): Promise<void> {
-    if (listedIn(shown.pane, name) !== undefined) {
-      await this.editInArchive(page, shown, name);
-      return;
-    }
-    const { archives, viewedCopies } = this.access;
-    const inside = archives?.within(shown.pane.folder);
-    if (
-      archives === undefined ||
-      inside === undefined ||
-      viewedCopies === undefined
-    ) {
-      return;
-    }
-    const refusal = archives.unchangeable(inside.archive);
-    if (refusal !== undefined) {
-      this.refuse(page, refusal);
-      return;
-    }
-    const folder = path.join(viewedCopies, randomUUID());
-    await fs.promises.mkdir(folder, { recursive: true });
-    const copy = path.join(folder, name);
-    this.editedCopies.set(copy, {
-      archives,
-      archive: inside.archive,
-      inner: inside.inner,
-      name,
-    });
-    await this.shell.openEdit(page, 'commander', copy);
-  }
-
-  private editedCopySaved(copy: string): void {
-    const edited = this.editedCopies.get(copy);
-    if (edited !== undefined) {
-      this.putBack(
-        edited.archives,
-        edited.archive,
-        edited.inner,
-        copy,
-        edited.name,
-      );
-    }
-  }
-
   private async delete(
     page: Page,
     {
@@ -1263,7 +1035,7 @@ export class CommanderTool implements Tool<'commander'> {
   ): Promise<void> {
     const inArchive = this.sides.namingPane(page, tab, side, named);
     if (inArchive?.pane.archive !== undefined) {
-      this.deleteInArchive(page, inArchive, names);
+      this.copies.deleteInArchive(page, inArchive, names);
       return;
     }
     const shown = this.sides.diskPane(page, tab, side, named);
@@ -1311,338 +1083,6 @@ export class CommanderTool implements Tool<'commander'> {
     } else if (shown.pane.folder === folder) {
       await this.list(page, shown.tab, shown.side, folder, 'show');
     }
-  }
-
-  private deleteInArchive(page: Page, shown: ShownPane, names: unknown): void {
-    const { pane } = shown;
-    if (
-      !Array.isArray(names) ||
-      names.length === 0 ||
-      !names.every((name: unknown) => listedIn(pane, name) !== undefined)
-    ) {
-      return;
-    }
-    const found = archiveItems(this.access.archives, pane, names);
-    if (found === undefined) {
-      return;
-    }
-    const { archives, archive, paths } = found;
-    if (this.changeable(page, archive)) {
-      this.archiveChange(shown, archive, names, 'delete', (options) =>
-        archives.remove(archive, paths, options),
-      );
-    }
-  }
-
-  private changeable(page: Page, archive: OpenedArchive): boolean {
-    const refusal = this.access.archives?.unchangeable(archive);
-    if (refusal === undefined) {
-      return true;
-    }
-    this.refuse(page, refusal);
-    return false;
-  }
-
-  private putBackOf(
-    folder: string,
-    name: string,
-    copy: string,
-  ):
-    | {
-        readonly archives: ArchiveAccess;
-        readonly archive: OpenedArchive;
-        readonly inner: readonly string[];
-      }
-    | undefined {
-    const { archives } = this.access;
-    const inside = archives?.within(folder);
-    const parts = name.split(path.sep);
-    const last = parts.at(-1) ?? name;
-    const inner = [...(inside?.inner ?? []), ...parts.slice(0, -1)];
-    return archives !== undefined &&
-      inside !== undefined &&
-      archives.unchangeable(inside.archive) === undefined &&
-      path.basename(copy) === last &&
-      inside.archive.tree.item(inner, last)?.path === [...inner, last].join('/')
-      ? { archives, archive: inside.archive, inner }
-      : undefined;
-  }
-
-  private async watchCopy(
-    {
-      archives,
-      archive,
-      inner,
-    }: {
-      readonly archives: ArchiveAccess;
-      readonly archive: OpenedArchive;
-      readonly inner: readonly string[];
-    },
-    copy: string,
-  ): Promise<void> {
-    const stampNow = () =>
-      fs.promises.stat(copy).then(
-        (stats) => `${stats.size}:${stats.mtimeMs}`,
-        () => undefined,
-      );
-    const name = [...inner, path.basename(copy)].join(path.sep);
-    let stamp = await stampNow();
-    let busy = false;
-    let again = false;
-    const changed = async () => {
-      if (busy) {
-        again = true;
-        return;
-      }
-      busy = true;
-      try {
-        do {
-          again = false;
-          const now = await stampNow();
-          if (now !== undefined && now !== stamp) {
-            const update = await this.updateWanted(
-              name,
-              path.basename(archive.file),
-            );
-            stamp = (await stampNow()) ?? now;
-            if (update) {
-              this.putBack(archives, archive, inner, copy, name);
-            }
-          }
-        } while (again);
-      } finally {
-        busy = false;
-      }
-    };
-    this.copiesWatched.add({
-      archive: archive.file,
-      copy,
-      stop: this.access.watch(path.dirname(copy), () => {
-        void this.shell.track(changed());
-      }),
-    });
-    this.letGoOfCopies();
-  }
-
-  private letGoOfCopies(): void {
-    const folders = this.sides.allPanes().map((pane) => pane.folder);
-    for (const watched of this.copiesWatched) {
-      const { archive, copy, stop } = watched;
-      if (
-        !folders.some(
-          (folder) =>
-            folder === archive || folder.startsWith(`${archive}${path.sep}`),
-        )
-      ) {
-        stop();
-        this.copiesWatched.delete(watched);
-        void this.shell.track(
-          fs.promises.chmod(copy, 0o444).catch(() => undefined),
-        );
-      }
-    }
-  }
-
-  private updateWanted(name: string, archive: string): Promise<boolean> {
-    return new Promise((answer) => {
-      this.updatesAsked.set(++this.updateAsks, { name, archive, answer });
-      if (this.updatesAsked.size === 1) {
-        this.askNextUpdate();
-      }
-    });
-  }
-
-  private askNextUpdate(): void {
-    const [next] = this.updatesAsked;
-    if (next === undefined) {
-      this.updateAskedIn = undefined;
-      return;
-    }
-    const page = this.pageToAsk();
-    this.updateAskedIn = page;
-    if (page !== undefined) {
-      const [ask, { name, archive }] = next;
-      post(page, { type: 'askUpdate', ask, name, archive });
-    }
-  }
-
-  private pageToAsk(): Page | undefined {
-    const asked = this.updateAskedIn;
-    if (asked !== undefined && this.sides.shown.has(asked)) {
-      return asked;
-    }
-    const focused = this.shell.page();
-    if (focused !== undefined && this.sides.shown.has(focused)) {
-      return focused;
-    }
-    return [...this.sides.shown.keys()].at(0);
-  }
-
-  private answerUpdate(ask: unknown, update: unknown): void {
-    if (typeof ask !== 'number' || typeof update !== 'boolean') {
-      return;
-    }
-    const asked = this.updatesAsked.get(ask);
-    if (asked === undefined) {
-      return;
-    }
-    this.updatesAsked.delete(ask);
-    asked.answer(update);
-    this.askNextUpdate();
-  }
-
-  private putBack(
-    archives: ArchiveAccess,
-    archive: OpenedArchive,
-    inner: readonly string[],
-    copy: string,
-    name: string,
-  ): void {
-    this.transfers.start(
-      {
-        plan: {
-          sources: [archive.file],
-          target: path.dirname(archive.file),
-          move: false,
-        },
-        folder: path.join(archive.file, ...inner),
-        names: [name],
-        archive: { job: 'update', file: archive.file },
-      },
-      archiveJob(path.basename(archive.file), (options) =>
-        archives.addItems(
-          archive,
-          inner,
-          path.dirname(copy),
-          [path.basename(copy)],
-          options,
-        ),
-      ),
-    );
-  }
-
-  private takenIn(
-    page: Page,
-    archive: OpenedArchive,
-    inner: readonly string[],
-    name: string,
-    except?: string,
-  ): boolean {
-    const key = (each: string) => folderKey(each, this.access.platform);
-    const taken =
-      archive.tree
-        .entries(inner)
-        ?.some(
-          (entry) =>
-            key(entry.name) === key(name) &&
-            (except === undefined || key(entry.name) !== key(except)),
-        ) === true;
-    if (taken) {
-      this.shell.notice(page, {
-        level: 'error',
-        message: strings.commander.nameTaken(name),
-      });
-    }
-    return taken;
-  }
-
-  private archiveChange(
-    shown: ShownPane,
-    archive: OpenedArchive,
-    names: readonly string[],
-    job: ArchiveJob,
-    run: (options: PackOptions) => Promise<Packing>,
-    select?: string,
-  ): void {
-    this.transfers.start(
-      {
-        plan: {
-          sources: [archive.file],
-          target: path.dirname(archive.file),
-          move: false,
-        },
-        folder: shown.pane.folder,
-        names,
-        archive: {
-          job,
-          file: archive.file,
-          ...(select !== undefined &&
-            shown.pane.flat === undefined && { select }),
-        },
-      },
-      archiveJob(path.basename(archive.file), run),
-    );
-  }
-
-  private renameInArchive(
-    page: Page,
-    shown: ShownPane,
-    name: unknown,
-    to: unknown,
-  ): void {
-    const { pane } = shown;
-    if (
-      typeof name !== 'string' ||
-      listedIn(pane, name) === undefined ||
-      typeof to !== 'string' ||
-      to !== path.basename(to) ||
-      nameProblem(to, this.access.platform) !== undefined
-    ) {
-      return;
-    }
-    const found = archiveItems(this.access.archives, pane, [name]);
-    const [from] = found?.paths ?? [];
-    if (found === undefined || from === undefined) {
-      return;
-    }
-    const { archives, archive } = found;
-    const parts = name.split(path.sep);
-    const inner = [...found.inner, ...parts.slice(0, -1)];
-    if (
-      !this.changeable(page, archive) ||
-      this.takenIn(page, archive, inner, to, parts.at(-1))
-    ) {
-      return;
-    }
-    const slash = from.lastIndexOf('/');
-    const renamed = slash < 0 ? to : `${from.slice(0, slash)}/${to}`;
-    this.archiveChange(
-      shown,
-      archive,
-      [name],
-      'rename',
-      (options) => archives.rename(archive, from, renamed, options),
-      to,
-    );
-  }
-
-  private folderInArchive(page: Page, shown: ShownPane, name: unknown): void {
-    const { archives } = this.access;
-    const inside = archives?.within(shown.pane.folder);
-    if (
-      archives === undefined ||
-      inside === undefined ||
-      typeof name !== 'string' ||
-      name !== path.basename(name) ||
-      nameProblem(name, this.access.platform) !== undefined
-    ) {
-      return;
-    }
-    const { archive, inner } = inside;
-    if (
-      !this.changeable(page, archive) ||
-      this.takenIn(page, archive, inner, name)
-    ) {
-      return;
-    }
-    this.archiveChange(
-      shown,
-      archive,
-      [name],
-      'folder',
-      (options) => archives.addFolder(archive, inner, name, options),
-      name,
-    );
   }
 
   private transfer(
@@ -1754,7 +1194,7 @@ export class CommanderTool implements Tool<'commander'> {
       this.refuse(page, strings.commander.intoItself(into));
       return;
     }
-    if (kept.length === 0 || !this.changeable(page, archive)) {
+    if (kept.length === 0 || !this.copies.changeable(page, archive)) {
       return;
     }
     this.transfers.start(
@@ -1874,15 +1314,15 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     if (
-      !this.changeable(page, into.archive) ||
-      (move && !this.changeable(page, archive))
+      !this.copies.changeable(page, into.archive) ||
+      (move && !this.copies.changeable(page, archive))
     ) {
       return;
     }
     if (
       encrypted &&
       !archives.hasPassword(archive.file) &&
-      !(await this.passwordGiven(page, archive.file, false))
+      !(await this.copies.passwordGiven(page, archive.file, false))
     ) {
       return;
     }
@@ -1932,7 +1372,7 @@ export class CommanderTool implements Tool<'commander'> {
     const found = archiveItems(this.access.archives, pane, names);
     if (
       found === undefined ||
-      (move && !this.changeable(page, found.archive))
+      (move && !this.copies.changeable(page, found.archive))
     ) {
       return;
     }
@@ -1949,7 +1389,7 @@ export class CommanderTool implements Tool<'commander'> {
     if (
       encrypted &&
       !archives.hasPassword(archive.file) &&
-      !(await this.passwordGiven(page, archive.file, false))
+      !(await this.copies.passwordGiven(page, archive.file, false))
     ) {
       return;
     }
@@ -2069,7 +1509,7 @@ export class CommanderTool implements Tool<'commander'> {
       names.length > 0 &&
       names.every((name: unknown) => listedIn(shown.pane, name) !== undefined)
     ) {
-      const copies = await this.copiesIn(page, shown.pane, names);
+      const copies = await this.copies.copiesIn(page, shown.pane, names);
       if (copies !== undefined) {
         await this.access.clipboardFiles?.write(copies);
       }
@@ -2134,7 +1574,7 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     if (shown.pane.archive !== undefined) {
-      await this.newFileInArchive(page, shown, name);
+      await this.copies.newFileInArchive(page, shown, name);
       return;
     }
     const file = path.join(shown.pane.folder, name);
@@ -2167,7 +1607,7 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     const refusal =
-      this.copyOf(file) === undefined
+      this.copies.copyOf(file) === undefined
         ? await this.editing.refusal(file)
         : strings.editor.viewedCopy(path.basename(file));
     if (refusal !== undefined) {
@@ -2205,7 +1645,7 @@ export class CommanderTool implements Tool<'commander'> {
   ): Promise<void> {
     const inArchive = this.sides.namingPane(page, tab, side, folder);
     if (inArchive?.pane.archive !== undefined) {
-      this.folderInArchive(page, inArchive, name);
+      this.copies.folderInArchive(page, inArchive, name);
       return;
     }
     const shown = this.sides.diskPane(page, tab, side, folder);
@@ -2296,7 +1736,11 @@ export class CommanderTool implements Tool<'commander'> {
             return tested;
           }
           if (
-            !(await this.passwordGiven(page, file, archives.hasPassword(file)))
+            !(await this.copies.passwordGiven(
+              page,
+              file,
+              archives.hasPassword(file),
+            ))
           ) {
             return {
               kind: 'refused',
@@ -2429,7 +1873,7 @@ export class CommanderTool implements Tool<'commander'> {
   ): Promise<void> {
     const inArchive = this.sides.namingPane(page, tab, side, folder);
     if (inArchive?.pane.archive !== undefined) {
-      this.renameInArchive(page, inArchive, name, to);
+      this.copies.renameInArchive(page, inArchive, name, to);
       return;
     }
     const shown = this.sides.diskPane(page, tab, side, folder);
@@ -2676,7 +2120,7 @@ export class CommanderTool implements Tool<'commander'> {
       const [file] =
         pane.archive === undefined
           ? [path.join(pane.folder, name)]
-          : ((await this.copiesIn(page, pane, [name])) ?? []);
+          : ((await this.copies.copiesIn(page, pane, [name])) ?? []);
       if (file === undefined) {
         return;
       }
@@ -2927,7 +2371,7 @@ export class CommanderTool implements Tool<'commander'> {
         stopTelling();
         const passwordOf = opened.passwordOf ?? file;
         if (
-          !(await this.passwordGiven(
+          !(await this.copies.passwordGiven(
             page,
             passwordOf,
             archives.hasPassword(passwordOf),
@@ -3402,7 +2846,7 @@ export class CommanderTool implements Tool<'commander'> {
     const left = pane.folder !== folder;
     pane.folder = folder;
     if (left) {
-      this.letGoOfCopies();
+      this.copies.letGoOfCopies();
     }
     pane.hidden = hidden;
     pane.entries = listing.entries;
