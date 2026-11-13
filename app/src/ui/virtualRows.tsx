@@ -1,5 +1,6 @@
 import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
 import {
+  memo,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -161,6 +162,16 @@ export function endCovered(element: Element | null): number {
       : element.ownerDocument.defaultView?.getComputedStyle(element);
   return parseFloat(style?.paddingBottom ?? '') || 0;
 }
+
+const RowContent = memo(function RowContent({
+  index,
+  renderRow,
+}: {
+  index: number;
+  renderRow: (index: number) => React.ReactNode;
+}) {
+  return renderRow(index);
+});
 
 const noAncestors = () => [];
 
@@ -395,7 +406,7 @@ export function VirtualRows({
             ref={virtualizer.measureElement}
             style={rowPlace(item.start, undefined)}
           >
-            {renderRow(item.index)}
+            <RowContent index={item.index} renderRow={renderRow} />
           </div>
         ))}
       </div>

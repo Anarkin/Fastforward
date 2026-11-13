@@ -81,6 +81,73 @@ suite('Virtual rows', () => {
     assert.ok(drawn.length < 100, `${drawn.length} rows drawn`);
   });
 
+  test('draws a row again only once the function that draws it changes, not each time the list is drawn again as it scrolls, as drawing every row each frame took most of the frame', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>', {
+      pretendToBeVisual: true,
+    });
+    for (const [side, size] of [
+      ['offsetWidth', 400],
+      ['offsetHeight', 240],
+    ] as const) {
+      Object.defineProperty(dom.window.HTMLElement.prototype, side, {
+        get: () => size,
+      });
+    }
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      Element: dom.window.Element,
+      HTMLElement: dom.window.HTMLElement,
+      requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window),
+      cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { act } = await import('react');
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      let drawn = 0;
+      const keys = Array.from({ length: 1000 }, (_, index) => `row:${index}`);
+      const listed = {
+        count: keys.length,
+        keyOf: (index: number) => keys[index],
+        indexOf: (key: string) => keys.indexOf(key),
+      };
+      const drawRow = (index: number) => {
+        drawn++;
+        return keys[index];
+      };
+      const list = (renderRow: (index: number) => React.ReactNode) => (
+        <VirtualRows
+          scrolling={defaultScrolling}
+          rows={listed}
+          renderRow={renderRow}
+          selectedKey={undefined}
+          initialRect={{ width: 400, height: 240 }}
+        />
+      );
+      await act(async () => root.render(list(drawRow)));
+      const shown = main.querySelectorAll('.virtual-row').length;
+      assert.ok(shown > 0);
+
+      drawn = 0;
+      await act(async () => root.render(list(drawRow)));
+      assert.strictEqual(drawn, 0);
+
+      await act(async () => root.render(list((index) => drawRow(index))));
+      assert.strictEqual(drawn, main.querySelectorAll('.virtual-row').length);
+      await act(async () => root.unmount());
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
   test('sizes the rows not drawn yet at the fixed height of a row, so the list is as long as it will be', () => {
     const html = renderToStaticMarkup(
       <VirtualRows
