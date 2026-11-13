@@ -6,6 +6,7 @@ import {
 import {
   memo,
   useCallback,
+  useDeferredValue,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -1377,13 +1378,12 @@ export function lineKeys(rows: readonly DiffRow[]): string[][] {
   const next = new Map<number, number>();
   return rows.map((row) => {
     if (row.kind === 'split') {
-      return [
-        ...new Set(
-          [row.left, row.right].flatMap((cell) =>
-            cell ? [lineKey(row.file, cell.index)] : [],
-          ),
-        ),
-      ];
+      const left = row.left ? lineKey(row.file, row.left.index) : undefined;
+      const right = row.right ? lineKey(row.file, row.right.index) : undefined;
+      if (left === undefined) {
+        return right === undefined ? [] : [right];
+      }
+      return right === undefined || right === left ? [left] : [left, right];
     }
     if (row.kind !== 'line' && row.kind !== 'wholeLine') {
       return [];
@@ -1657,6 +1657,36 @@ export function findRangesByLine(
   }
   return byLine;
 }
+
+interface SyntaxInput {
+  readonly files: readonly DiffFile[];
+  readonly whole: WholeFile | undefined;
+  readonly texts: ReadonlyMap<string, LoadedText>;
+  readonly open: ReadonlySet<number>;
+}
+
+const noSyntaxInput: SyntaxInput = {
+  files: [],
+  whole: undefined,
+  texts: new Map(),
+  open: new Set(),
+};
+
+interface MarksInput {
+  readonly rows: readonly DiffRow[];
+  readonly keys: readonly (readonly string[])[];
+  readonly matched: ReadonlyMap<string, unknown>;
+  readonly changeMarks: boolean;
+  readonly measurements: readonly { readonly size: number }[];
+}
+
+const noMarksInput: MarksInput = {
+  rows: [],
+  keys: [],
+  matched: new Map(),
+  changeMarks: false,
+  measurements: [],
+};
 
 export function diffMinimapMarks(
   rows: readonly DiffRow[],
@@ -2514,11 +2544,15 @@ export function DiffView({
     [rows],
   );
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
+  const syntaxInput = useDeferredValue(
+    useMemo(() => ({ files, whole, texts, open }), [files, whole, texts, open]),
+    noSyntaxInput,
+  );
   const syntax = useSyntax(
-    files,
-    whole,
-    texts,
-    open,
+    syntaxInput.files,
+    syntaxInput.whole,
+    syntaxInput.texts,
+    syntaxInput.open,
     highlightSyntax || chosenLanguage !== undefined,
     chosenLanguage,
   );
@@ -2991,16 +3025,29 @@ export function DiffView({
     lineHeight,
   ]);
   const measurements = virtualizer.measurementsCache;
+  const marksInput = useDeferredValue(
+    useMemo(
+      () => ({
+        rows,
+        keys,
+        matched: rangesByLine,
+        changeMarks,
+        measurements,
+      }),
+      [rows, keys, rangesByLine, changeMarks, measurements],
+    ),
+    noMarksInput,
+  );
   const marks = useMemo(
     () =>
       diffMinimapMarks(
-        rows,
-        keys,
-        rangesByLine,
-        changeMarks,
-        (index) => measurements[index]?.size,
+        marksInput.rows,
+        marksInput.keys,
+        marksInput.matched,
+        marksInput.changeMarks,
+        (index) => marksInput.measurements[index]?.size,
       ),
-    [rows, keys, rangesByLine, changeMarks, measurements],
+    [marksInput],
   );
 
   const scrollTop = virtualizer.scrollOffset ?? 0;
