@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appFixtures';
-import { waitFor } from './fixtures';
+import { defaultSettings, waitFor } from './fixtures';
 import { removeFolder, tempFolder } from './repositories';
 import { storedZip } from './zips';
 
@@ -769,6 +769,43 @@ suite('App editor', () => {
       name: '.tab-name',
       star: '.tab-unsaved',
     });
+  });
+
+  test('scrolls the text by the rows of a notch of the wheel on whole rows, as the diff and the viewer do, the rows whole at the end too', async () => {
+    const lines = Array.from({ length: 300 }, (_, at) => `row ${at + 1}`);
+    fs.writeFileSync(path.join(opened, 'rows.txt'), `${lines.join('\n')}\n`);
+    await backToCommander();
+    await edit('rows.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('row 1\n'),
+      'the text',
+    );
+    const scroller = page.locator('.editor .cm-scroller');
+    const box = await scroller.boundingBox();
+    assert.ok(box !== null);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const rowsScrolled = () =>
+      scroller.evaluate((element) => {
+        const row =
+          element.querySelector('.cm-line')?.getBoundingClientRect().height ??
+          1;
+        return element.scrollTop / row;
+      });
+    await page.mouse.wheel(0, 100);
+    await waitFor(
+      async () =>
+        Math.abs(
+          (await rowsScrolled()) - defaultSettings().scrolling.wheelRows,
+        ) < 0.01,
+      'the text to scroll the rows of a notch',
+    );
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await waitFor(async () => {
+      const rows = await rowsScrolled();
+      return rows > 200 && Math.abs(rows - Math.round(rows)) < 0.01;
+    }, 'the last rows whole');
   });
 
   test('marks the bracket matching the one beside the cursor, and one matching none', async () => {

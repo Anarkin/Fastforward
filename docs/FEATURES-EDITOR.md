@@ -91,6 +91,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Look of the app | Draw the text as the diff and the viewer draw it | — | Niche | ✅ Yes | The monospace font, the width of its characters on device pixels, the line height, the tab stops, emoji and Chinese, Japanese and Korean characters on the grid of the terminal, and wrapped lines broken where the diff breaks them, hanging as far in as their indentation; a test compares where every character of a set of lines is drawn in both |
 | Syntax highlighting | Color the code | — | Core | ✅ Yes | With the TextMate grammars the viewer and the diff use, colored again as typed only from the line edited to the first whose state is as it was, in the worker of the colors; the language chosen on its button, nothing over 10 MB |
+| Scrolling | Scroll by whole rows, a few a notch | — | Common | ✅ Yes | As the diff and the viewer: the wheel moves `scrolling.wheelRows` rows a notch, gliding with `scrolling.smooth`, the top row always whole, at the end too |
 | Line numbers | Number the lines | — | Core | ✅ Yes | In the column of the diff, as wide, in its color and font, the text starting as far from the edge, a test comparing them |
 | Wrap | Wrap long lines | Alt+Z | Common | ✅ Yes | By the wrap button, shared with the viewer and the diff |
 | Show whitespace | Draw the spaces, tabs and line ends | — | Common | ✅ Yes | By the whitespace button, shared with the viewer and the diff and marking the same characters as they do, a test checking every one, with a sign after each line that ends in CRLF or CR |

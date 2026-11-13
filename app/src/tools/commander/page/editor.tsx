@@ -22,6 +22,8 @@ import { useShell, useShellActions } from '../../../shell/page/store';
 import { syntaxColors } from '../../../ui/editorColors';
 import { appSelection } from '../../../ui/editorSelection';
 import { appTextLook, blanksShown } from '../../../ui/editorText';
+import { rowScrolling } from '../../../ui/editorScroll';
+import type { ScrollSettings } from '../../../ui/rowScroll';
 import { ShowWhitespaceIcon, WordWrapIcon } from '../../../ui/icons';
 import { Words } from '../../../ui/name';
 import { languageOf } from '../../../ui/languages';
@@ -140,6 +142,7 @@ interface EditorParts {
   readonly coloring: Compartment;
   readonly colors: Extension;
   readonly keys: EditorKeyActions;
+  readonly scrolling: () => ScrollSettings;
   readonly onUpdate: (update: ViewUpdate) => void;
 }
 
@@ -155,6 +158,7 @@ function extensionsOf({
   coloring,
   colors,
   keys,
+  scrolling,
   onUpdate,
 }: EditorParts): Extension {
   return [
@@ -177,6 +181,7 @@ function extensionsOf({
       autocapitalize: 'off',
     }),
     editorKeys(keys),
+    rowScrolling(scrolling),
     EditorView.updateListener.of(onUpdate),
   ];
 }
@@ -333,6 +338,8 @@ export function Editor() {
   );
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
+  const scrolling = useShell((state) => state.scrolling);
+  const scrollingNow = useEffectEvent(() => scrolling);
   const closesBrackets = useCommander((state) => state.view.closeBrackets);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const { changeTextView, openSettings } = useShellActions();
@@ -443,6 +450,7 @@ export function Editor() {
           setGoingToLine(true);
         },
       },
+      scrolling: scrollingNow,
       onUpdate: (update) => {
         const converted = endingsChanged(update.transactions);
         if (update.docChanged || converted) {
@@ -507,7 +515,10 @@ export function Editor() {
         ).from;
         shown.dispatch({
           selection: EditorSelection.cursor(start),
-          effects: EditorView.scrollIntoView(start, { y: 'start', yMargin: 0 }),
+          effects: EditorView.scrollIntoView(start, {
+            y: 'start',
+            yMargin: shown.defaultLineHeight / 2,
+          }),
         });
       }
       keepEditor(tab, { state: shown.state, version });
