@@ -12,6 +12,7 @@ import {
   threeLines,
   right,
   rowNames,
+  markedSorted,
   markedNames,
   shownState,
   closeViewer,
@@ -160,6 +161,58 @@ suite('App commander', () => {
     await waitFor(async () => {
       const names = await rowNames();
       return !names.includes('before.txt') && !names.includes('after.txt');
+    }, 'the files to be gone from the list');
+  });
+
+  test('opens two files compared at their first change, where J lands from the top, though the rows the diff draws as it opens turn out shorter than guessed', async () => {
+    const lines = Array.from({ length: 200 }, (_, index) => `line${index}`);
+    fs.writeFileSync(
+      path.join(opened, 'jump-old.txt'),
+      `${lines.join('\n')}\n`,
+    );
+    fs.writeFileSync(
+      path.join(opened, 'jump-new.txt'),
+      `${lines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
+    );
+    await select('jump-old');
+    await page.keyboard.press('Space');
+    await select('jump-new');
+    await page.keyboard.press('Space');
+    await waitFor(
+      async () => (await markedSorted()) === 'jump-new,jump-old',
+      'both files to be marked',
+    );
+    await page.keyboard.press('Shift+F3');
+    const change = page.locator('.compare-view .split-side', {
+      hasText: 'line150',
+    });
+    await change.waitFor();
+    const row = await change.evaluate((line) =>
+      parseFloat(getComputedStyle(line).lineHeight),
+    );
+    const belowTop = () =>
+      change.evaluate((line) => {
+        const list = line.closest('.virtual-rows');
+        if (!list) {
+          throw new Error('No diff list');
+        }
+        return Math.round(
+          line.getBoundingClientRect().top - list.getBoundingClientRect().top,
+        );
+      });
+    await waitFor(
+      async () => (await belowTop()) === Math.round(3 * row),
+      'the first change to be shown 3 rows below the top, as J shows it',
+    );
+
+    await page.keyboard.press('Escape');
+    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    for (const name of ['jump-old.txt', 'jump-new.txt']) {
+      fs.rmSync(path.join(opened, name));
+    }
+    await waitFor(async () => {
+      const names = await rowNames();
+      return !names.includes('jump-old.txt') && !names.includes('jump-new.txt');
     }, 'the files to be gone from the list');
   });
 

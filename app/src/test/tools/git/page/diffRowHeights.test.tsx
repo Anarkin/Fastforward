@@ -197,6 +197,23 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('guesses no height for the row of an error while the diff shows none, as it draws that row empty, so the first change it jumps to before measuring that row is where it guessed', () => {
+    const rows = diffRows(parsePatch(patch('a.ts', 1)), new Map(), undefined);
+    assert.strictEqual(
+      rowMeasures(
+        rows,
+        undefined,
+        17,
+        1,
+        undefined,
+        undefined,
+        false,
+      ).estimateSize(0),
+      0,
+    );
+    assert.strictEqual(rowMeasures(rows, undefined, 17).estimateSize(0), 204);
+  });
+
   test('measures how far the widest line of an inline diff reaches, a tab to its next stop, to widen every row to it', () => {
     const files = parsePatch(
       [

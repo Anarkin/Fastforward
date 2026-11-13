@@ -675,6 +675,7 @@ interface RowMeasures {
   readonly ratio: number;
   readonly widths: TextWidths | undefined;
   readonly near: ShownRow | undefined;
+  readonly errorShown: boolean;
 }
 
 interface ShownRow {
@@ -691,6 +692,7 @@ export function rowMeasures(
   ratio = 1,
   widths?: TextWidths,
   near?: ShownRow,
+  errorShown = true,
 ): RowMeasures {
   let measures = measuresOfRows.get(rows);
   if (
@@ -700,9 +702,18 @@ export function rowMeasures(
     measures.lineHeight !== lineHeight ||
     measures.ratio !== ratio ||
     measures.widths !== widths ||
-    measures.near !== near
+    measures.near !== near ||
+    measures.errorShown !== errorShown
   ) {
-    measures = measuresOf(rows, columns, lineHeight, ratio, widths, near);
+    measures = measuresOf(
+      rows,
+      columns,
+      lineHeight,
+      ratio,
+      widths,
+      near,
+      errorShown,
+    );
     measuresOfRows.set(rows, measures);
   }
   return measures;
@@ -715,6 +726,7 @@ function measuresOf(
   ratio: number,
   widths: TextWidths | undefined,
   near: ShownRow | undefined,
+  errorShown: boolean,
 ): RowMeasures {
   const generation = wrapGeneration++;
   const wrapped: number[] = [];
@@ -741,6 +753,9 @@ function measuresOf(
         return columns ? wrappedRow(row, index, columns) : lineHeight;
       }
       const kind = row.kind;
+      if (kind === 'error' && !errorShown) {
+        return 0;
+      }
       return isMeasured(kind)
         ? inLines(measuredEstimates[kind], lineHeight)
         : rowLines[kind] * lineHeight;
@@ -755,6 +770,7 @@ function measuresOf(
     ratio,
     widths,
     near,
+    errorShown,
   };
 }
 
@@ -2448,6 +2464,7 @@ export function DiffView({
       scale,
       wordWrap && table !== undefined ? cellWidthsOf(table) : undefined,
       shownRow,
+      Boolean(error),
     ),
     overscan: rowOverscan(dragged),
     observeElementOffset: observeOffset,
