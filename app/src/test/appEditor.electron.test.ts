@@ -496,7 +496,14 @@ suite('App editor', () => {
     const viewerTab = await activeIndex();
     await page.keyboard.press('End');
     await rows.filter({ hasText: 'line 400' }).waitFor();
-    const top = /line (\d+)/.exec((await rows.first().textContent()) ?? '');
+    let shownTop = '';
+    await waitFor(async () => {
+      const was = shownTop;
+      shownTop = (await rows.first().textContent()) ?? '';
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return shownTop === was;
+    }, 'the viewer to stop scrolling');
+    const top = /line (\d+)/.exec(shownTop);
     assert.ok(top !== null);
     await page.keyboard.press('F4');
     await content().waitFor();
