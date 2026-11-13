@@ -6,6 +6,7 @@
 - @docs/FEATURES-GIT.md
 - @docs/FEATURES-TERMINAL.md
 - @docs/FEATURES-COMMANDER.md
+- @docs/FEATURES-EDITOR.md
 
 ## Protected files
 
