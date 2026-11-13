@@ -39,7 +39,10 @@ const settled = async () => {
   }
 };
 
-function editing(files: Record<string, string | Uint8Array> = {}) {
+function editing(
+  files: Record<string, string | Uint8Array> = {},
+  textDefaults?: EditingAccess['textDefaults'],
+) {
   const saved: { file: string; bytes: string; overwrite: boolean }[] = [];
   const notices: string[] = [];
   const named: Page[] = [];
@@ -93,6 +96,7 @@ function editing(files: Record<string, string | Uint8Array> = {}) {
     },
     codePage: () => Promise.resolve('windows-1252'),
     readOnly: (file) => file.endsWith('.defaults.json'),
+    ...(textDefaults !== undefined && { textDefaults }),
   };
   const edits = new Editing(access, {
     post: (page, message) =>
@@ -487,6 +491,58 @@ suite('Editing a file', () => {
     await edits.show(page, '3', 'a.txt');
     await edits.receive(page, { type: 'readEdited', tab: '3' });
     assert.strictEqual(page.last('editedText')?.at, undefined);
+  });
+
+  test('reads the file again in the encoding chosen once it changes on disk, in the one found once Auto is chosen, and in the one it was saved in', async () => {
+    const { edits, showing, changeOnDisk } = editing({
+      'a.txt': 'caf\xc3\xa9\n',
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, {
+      type: 'reopenIn',
+      tab: '1',
+      encoding: 'windows-1252',
+    });
+    await changeOnDisk('a.txt', 'caf\xc3\xa9!\n');
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'windows-1252');
+    assert.strictEqual(page.last('editedText')?.shown.text, 'caf\xc3\xa9!\n');
+
+    await edits.receive(page, { type: 'reopenIn', tab: '1', encoding: 'auto' });
+    await changeOnDisk('a.txt', 'caf\xc3\xa9?\n');
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'utf-8');
+
+    await edits.receive(page, {
+      type: 'saveIn',
+      tab: '1',
+      encoding: 'windows-1250',
+      bom: false,
+    });
+    await edits.receive(page, { type: 'saveText', tab: '1' });
+    await changeOnDisk('a.txt', 'caf\xe9.\n');
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'windows-1250');
+  });
+
+  test('gives the text read again the indentation the file is to have, as it gave the text first read', async () => {
+    const { edits, showing, changeOnDisk } = editing({ 'a.txt': 'one\n' }, () =>
+      Promise.resolve({
+        ending: 'lf',
+        encoding: 'utf-8',
+        bom: false,
+        indent: '\t',
+        fallbackIndent: '  ',
+      }),
+    );
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editedText')?.shown.indent, '\t');
+    await changeOnDisk('a.txt', 'two\n');
+    assert.strictEqual(page.last('editedText')?.shown.text, 'two\n');
+    assert.strictEqual(page.last('editedText')?.shown.indent, '\t');
+    assert.strictEqual(page.last('editedText')?.shown.fallbackIndent, '  ');
   });
 
   test('reads the file again in the encoding asked for, and in the one found once asked for Auto', async () => {

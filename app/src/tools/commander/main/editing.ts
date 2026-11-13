@@ -5,6 +5,7 @@ import {
   type CommanderToHost,
   type CommanderToWebview,
   type TextEncoding,
+  type TextShown,
 } from '../shared/protocol';
 import { EditedText } from './editedText';
 import { NoRoomToSave, ReadOnlyFile, type Saved } from './fileSaving';
@@ -81,6 +82,14 @@ export interface ViewedStart {
   readonly encoding?: TextEncoding;
 }
 
+const shownOf = (read: Read, text: EditedText): TextShown => ({
+  ...text.shown(),
+  ...(read.indent !== undefined && { indent: read.indent }),
+  ...(read.fallbackIndent !== undefined && {
+    fallbackIndent: read.fallbackIndent,
+  }),
+});
+
 const indentsOf = (defaults: TextDefaults | undefined) => ({
   ...(defaults?.indent !== undefined && { indent: defaults.indent }),
   ...(defaults !== undefined && { fallbackIndent: defaults.fallbackIndent }),
@@ -90,6 +99,7 @@ interface Opened {
   readonly file: string;
   readonly readOnly: boolean;
   read: Read;
+  chosen?: TextEncoding;
   changed: boolean;
   outside: boolean;
   saving: boolean;
@@ -179,6 +189,7 @@ export class Editing {
         file,
         readOnly: this.access.readOnly(file),
         read,
+        ...(start?.encoding !== undefined && { chosen: start.encoding }),
         changed: false,
         outside: false,
         saving: false,
@@ -298,14 +309,16 @@ export class Editing {
   private async readAgain(
     tab: string,
     opened: Opened,
-    chosen?: TextEncoding,
+    choice: TextEncoding | 'auto' = opened.chosen ?? 'auto',
   ): Promise<void> {
+    const chosen = choice === 'auto' ? undefined : choice;
     const version = (opened.read.text?.version ?? 0) + 1;
     const read = await this.load(opened.file, version, chosen);
     if (this.opened.get(tab) !== opened) {
       return;
     }
     opened.read = read;
+    opened.chosen = chosen;
     opened.outside = false;
     opened.kept = undefined;
     for (const page of this.shell.pagesShowing(tab)) {
@@ -315,7 +328,7 @@ export class Editing {
         this.shell.post(page, {
           type: 'editedText',
           tab,
-          shown: read.text.shown(),
+          shown: shownOf(read, read.text),
           reloaded: true,
         });
       }
@@ -357,11 +370,7 @@ export class Editing {
         return;
       case 'reopenIn':
         if (message.encoding === 'auto' || isTextEncoding(message.encoding)) {
-          await this.readAgain(
-            message.tab,
-            opened,
-            message.encoding === 'auto' ? undefined : message.encoding,
-          );
+          await this.readAgain(message.tab, opened, message.encoding);
         }
         return;
       default:
@@ -406,13 +415,7 @@ export class Editing {
     this.shell.post(page, {
       type: 'editedText',
       tab,
-      shown: {
-        ...text.shown(),
-        ...(read.indent !== undefined && { indent: read.indent }),
-        ...(read.fallbackIndent !== undefined && {
-          fallbackIndent: read.fallbackIndent,
-        }),
-      },
+      shown: shownOf(read, text),
       ...(kept !== undefined && kept.version === text.version
         ? { state: kept.state }
         : read.startAt !== undefined && { at: read.startAt }),
@@ -529,6 +532,10 @@ export class Editing {
       return false;
     }
     text.saved(checkpoint);
+    const target = text.target().encoding;
+    if (opened.chosen !== undefined || target !== text.readAs()) {
+      opened.chosen = target;
+    }
     opened.read = {
       ...opened.read,
       made: false,
