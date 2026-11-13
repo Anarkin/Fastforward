@@ -55,7 +55,10 @@ const categories = [
   'viz',
 ];
 
-const sampled = ['disabled-by-default-v8.cpu_profiler'];
+const sampled = [
+  'disabled-by-default-v8.cpu_profiler',
+  'disabled-by-default-devtools.timeline.stack',
+];
 
 const startMark = 'fastforward-perf-start';
 const endMark = 'fastforward-perf-end';
