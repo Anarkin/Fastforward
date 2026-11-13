@@ -120,6 +120,8 @@ import {
 import { unpackingFirst } from './unpacking';
 import type { ArchiveJob } from '../shared/transfers';
 import type { ElevatedFileSystem } from './elevated';
+import { Editing } from './editing';
+import { saveFile, type Saved } from './fileSaving';
 import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
 import { Transfers, type ConnectTransfer, type TransferAsk } from './transfers';
@@ -177,6 +179,12 @@ export interface CommanderAccess {
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly platform: NodeJS.Platform;
   readonly codePage: () => Promise<TextEncoding>;
+  readonly saveEdited?: (
+    file: string,
+    bytes: Uint8Array,
+    overwriteReadOnly: boolean,
+  ) => Promise<Saved>;
+  readonly readOnlyFile?: (file: string) => boolean;
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly realPath: (link: string) => Promise<string>;
   readonly openFile?: (file: string) => Promise<string>;
@@ -528,9 +536,38 @@ export class CommanderTool implements Tool<'commander'> {
   private looks = 0;
   private readonly transfers: Transfers;
   private readonly savedSides: SavedSides;
+  private readonly editing: Editing;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
+    this.editing = new Editing(
+      {
+        readFile: (file) => fs.promises.readFile(file),
+        readStart: firstBytes,
+        statFile: async (file) => {
+          try {
+            const stat = await fs.promises.stat(file);
+            return { folder: stat.isDirectory(), size: stat.size };
+          } catch (error) {
+            if (codeOf(error) === 'ENOENT') {
+              return undefined;
+            }
+            throw error;
+          }
+        },
+        saveFile:
+          access.saveEdited ??
+          ((file, bytes, overwriteReadOnly) =>
+            saveFile(file, bytes, { overwriteReadOnly })),
+        codePage: () => access.codePage(),
+        readOnly: (file) => access.readOnlyFile?.(file) === true,
+      },
+      {
+        post: (page, message) => this.post(page, message),
+        notice: (page, notice) => this.shell.notice(page, notice),
+        namesChanged: (page) => this.shell.postTabs(page),
+      },
+    );
     this.savedSides = new SavedSides(access.store);
     this.transfers = new Transfers(access.connectTransfer, {
       show: (view) => {
@@ -585,6 +622,16 @@ export class CommanderTool implements Tool<'commander'> {
       viewingsAsked: 0,
     });
     this.askNextUpdate();
+    if (tab.edit === true && tab.root !== undefined) {
+      this.post(page, {
+        type: 'show',
+        tab: tab.id,
+        file: tab.root,
+        edit: true,
+      });
+      await this.editing.show(page, tab.id, tab.root);
+      return;
+    }
     if (tab.view === true && tab.root !== undefined) {
       this.post(page, { type: 'show', tab: tab.id, file: tab.root });
       await this.startViewing(page, tab.id, tab.root);
@@ -640,6 +687,9 @@ export class CommanderTool implements Tool<'commander'> {
     if (tab.view === true && tab.root !== undefined) {
       this.removeCopy(tab.root);
     }
+    if (tab.edit === true) {
+      this.editing.closed(tab.id);
+    }
   }
 
   private removeCopy(viewed: string): void {
@@ -675,6 +725,17 @@ export class CommanderTool implements Tool<'commander'> {
 
   async receive(page: Page, message: CommanderToHost): Promise<void> {
     switch (message.type) {
+      case 'editFile':
+        return this.editFile(
+          page,
+          this.namingPane(page, message.tab, message.side, message.folder),
+          message.name,
+        );
+      case 'readEdited':
+      case 'editText':
+      case 'editState':
+      case 'saveText':
+        return this.editing.receive(page, message);
       case 'open':
         return this.openEntry(
           page,
@@ -944,10 +1005,12 @@ export class CommanderTool implements Tool<'commander'> {
     return new Map(
       tabs.map((tab): [string, TabName] => [
         tab.id,
-        tab.view === true && tab.root !== undefined
+        (tab.view === true || tab.edit === true) && tab.root !== undefined
           ? {
               name: path.basename(tab.root),
               icon: viewerIconUrl(tab.id, tab.root),
+              ...(tab.edit === true &&
+                this.editing.unsaved(tab.id) && { unsaved: true }),
             }
           : { name: strings.tools.commander },
       ]),
@@ -959,7 +1022,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   folderOf(tab: Tab): string | undefined {
-    if (tab.view === true && tab.root !== undefined) {
+    if ((tab.view === true || tab.edit === true) && tab.root !== undefined) {
       return path.dirname(tab.root);
     }
     const panes = this.panes.get(tab.id);
@@ -1554,6 +1617,34 @@ export class CommanderTool implements Tool<'commander'> {
     if (copy !== undefined) {
       await this.shell.openView(page, 'commander', copy);
     }
+  }
+
+  private async editFile(
+    page: Page,
+    shown: ShownPane | undefined,
+    name: unknown,
+  ): Promise<void> {
+    const entry = listedIn(shown?.pane, name);
+    if (
+      shown === undefined ||
+      typeof name !== 'string' ||
+      entry === undefined
+    ) {
+      return;
+    }
+    const file = path.join(shown.pane.folder, name);
+    const refusal = entry.folder
+      ? strings.editor.folder(name)
+      : shown.pane.archive !== undefined
+        ? strings.editor.inArchive(name)
+        : shown.pane.elevated === true
+          ? strings.editor.asAdministrator(name)
+          : await this.editing.refusal(file);
+    if (refusal !== undefined) {
+      this.shell.notice(page, { level: 'error', message: refusal });
+      return;
+    }
+    await this.shell.openEdit(page, 'commander', file);
   }
 
   private async delete(

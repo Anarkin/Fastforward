@@ -795,6 +795,15 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
     <span key="name" className="tab-name">
       {tab.name}
     </span>,
+    tab.unsaved === true && (
+      <span
+        key="unsaved"
+        className="tab-unsaved"
+        title={strings.editor.unsaved}
+      >
+        {strings.symbols.unsaved}
+      </span>
+    ),
     tab.folder !== undefined && (
       <span key="folder" className="tab-folder">
         {tab.folder}

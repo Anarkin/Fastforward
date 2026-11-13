@@ -53,6 +53,7 @@ export type PaneAct =
   | { readonly kind: 'switchSide' }
   | { readonly kind: 'compare' }
   | { readonly kind: 'view'; readonly name: string }
+  | { readonly kind: 'edit'; readonly name: string }
   | { readonly kind: 'openOnSide'; readonly side: Side; readonly name: string }
   | { readonly kind: 'open'; readonly name: string }
   | {
@@ -205,6 +206,11 @@ export function paneKey(
   if (keyPressed(commanderKeymap.view, event) !== undefined) {
     return row?.entry !== undefined && !row.entry.folder
       ? { act: { kind: 'view', name: row.key } }
+      : done;
+  }
+  if (keyPressed(commanderKeymap.edit, event) !== undefined) {
+    return row?.entry !== undefined
+      ? { act: { kind: 'edit', name: row.key } }
       : done;
   }
   const side = keyPressed(commanderKeymap.openOnSide, event);

@@ -207,6 +207,7 @@ export const strings = {
     foldersLeftOut: '…',
     ascending: '▴',
     descending: '▾',
+    unsaved: '●',
   },
   about: {
     title: 'About',
@@ -357,6 +358,11 @@ export const strings = {
       'Go to a folder by typing or pasting its path, or to the folder of a file with the file selected',
     reread: 'Read the folder of the side again',
     viewFile: 'View the selected file in a tab of its own',
+    editFile: 'Edit the selected file in a tab of its own',
+    saveFile: 'Save the file',
+    undo: 'Undo the last change',
+    redo: 'Redo the change undone last',
+    newLine: 'Start a new line, indented as the one before',
     dialogButton: 'Move between the buttons of a dialog',
     newFolder: 'Make a folder in the folder of the side',
     renameItem: 'Rename the selected file or folder',
@@ -1144,6 +1150,37 @@ export const strings = {
     nothingToCompare:
       'Mark two files on a side, or select a file on each side, to compare them.',
   },
+  editor: {
+    tooLarge: (file: string) =>
+      sentence`${named(file)} is over 50 MB, too large to edit. F3 views it.`,
+    binary: (file: string) =>
+      sentence`${named(file)} holds binary data, so it can't be edited as text. F3 views it.`,
+    folder: (name: string) =>
+      sentence`${named(name)} is a folder. F4 edits files.`,
+    inArchive: (name: string) =>
+      sentence`${named(name)} is inside an archive, where files can't be edited yet.`,
+    asAdministrator: (name: string) =>
+      sentence`${named(name)} is in a folder read as administrator, where files can't be edited yet.`,
+    couldNotSave: (file: string, reason: Sentence) =>
+      sentence`Couldn't save ${named(file)}. ${reason}`,
+    noRoom: (file: string) =>
+      sentence`Couldn't save ${named(file)}, as its drive hasn't room for it.`,
+    unencodable: (
+      file: string,
+      encoding: string,
+      characters: readonly string[],
+    ) =>
+      sentence`Couldn't save ${named(file)}, as ${encoding} has no ${namesBetween(characters, ', ')}.`,
+    readOnly: (file: string) =>
+      sentence`${named(file)} is open read-only, so it isn't saved.`,
+    overwriteTitle: 'Read-only file',
+    overwriteAsked: 'The file is read-only. Save over it anyway?',
+    overwriteLines: (file: string) => [labeled('File', named(file))],
+    overwrite: 'Save Anyway',
+    unsaved: 'Unsaved changes',
+    readOnlyMark: 'Read-only',
+    newFile: 'New file, made once saved',
+  },
   pdf: {
     page: (page: number) => `Page ${page}`,
     couldNotOpen: (reason: string) => `Couldn't show the PDF. ${reason}`,
@@ -1377,8 +1414,6 @@ export const strings = {
     rebuiltDefaultsFailed: 'Reading the rebuilt default settings failed',
     updater: (message: string) => `Updater: ${message}`,
     updateFailed: 'Updating failed',
-    openingFileFailed: (file: string, reason: string) =>
-      `Opening ${file} failed: ${reason}`,
     pageNotLoaded: 'The page did not finish loading',
     coloringWindowButtonsFailed: 'Coloring the window buttons failed',
     pageGone: (reason: string, exitCode: number) =>

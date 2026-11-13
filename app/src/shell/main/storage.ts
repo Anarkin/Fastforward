@@ -253,11 +253,12 @@ export class Storage {
       tabsChanged
         ? this.state.update(
             tabsKey,
-            tabs.map(({ id, tool, root, view, compare }) => ({
+            tabs.map(({ id, tool, root, view, edit, compare }) => ({
               id,
               tool,
               ...(root !== undefined && { root }),
               ...(view === true && { view }),
+              ...(edit === true && { edit }),
               ...(compare !== undefined && {
                 compare: { old: compare.old, new: compare.new },
               }),
@@ -341,6 +342,7 @@ export interface SavedTab {
   readonly tool: ToolId;
   readonly root?: string;
   readonly view?: true;
+  readonly edit?: true;
   readonly compare?: Compared;
 }
 
@@ -359,6 +361,7 @@ function isSavedTab(value: unknown): value is SavedTab {
     isTool(value.tool) &&
     (value.root === undefined || typeof value.root === 'string') &&
     (value.view === undefined || value.view === true) &&
+    (value.edit === undefined || value.edit === true) &&
     (value.compare === undefined || isCompared(value.compare))
   );
 }
@@ -424,6 +427,7 @@ function sameTab(a: SavedTab, b: SavedTab | undefined): boolean {
     a.tool === b.tool &&
     a.root === b.root &&
     a.view === b.view &&
+    a.edit === b.edit &&
     a.compare?.old === b.compare?.old &&
     a.compare?.new === b.compare?.new
   );

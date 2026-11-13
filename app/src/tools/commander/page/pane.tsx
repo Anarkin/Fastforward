@@ -519,6 +519,7 @@ export function Pane({
     actions.openOnSide(side, target, name);
   const onOpenRepository = (name: string) => actions.openRepository(side, name);
   const onView = (name: string) => actions.viewFile(side, name);
+  const onEdit = (name: string) => actions.editFile(side, name);
   const onDelete = (names: readonly string[], permanently: boolean) =>
     actions.askDelete(side, names, permanently);
   const onShellMenu = (
@@ -940,6 +941,9 @@ export function Pane({
         return;
       case 'view':
         onView(action.name);
+        return;
+      case 'edit':
+        onEdit(action.name);
         return;
       case 'openOnSide':
         onOpenOnSide(action.side, action.name);

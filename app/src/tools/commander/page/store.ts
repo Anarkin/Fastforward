@@ -45,6 +45,8 @@ import {
   type ViewerChoices,
 } from './view';
 import type { ToViewer, Viewing } from './viewer';
+import type { EditorState } from '@codemirror/state';
+import type { EditedTab, ToEditor } from './editor';
 import { ScrollPlaces } from './scrollPlaces';
 import { FlatLists, type FlatTiming, type FlatWorker } from './flatLists';
 
@@ -134,6 +136,7 @@ interface CommanderSource {
   readonly view: CommanderView;
   readonly drives: readonly string[];
   readonly viewed: Viewing | undefined;
+  readonly edited: EditedTab | undefined;
   readonly deleting: Deleting | undefined;
   readonly transferring: Transferring | undefined;
   readonly transfer: TransferView | undefined;
@@ -202,6 +205,18 @@ interface CommanderActions {
   readonly open: (side: Side, name: string) => void;
   readonly step: (side: Side, step: -1 | 1) => void;
   readonly viewFile: (side: Side, name: string) => void;
+  readonly editFile: (side: Side, name: string) => void;
+  readonly listenEditor: (handler: (message: ToEditor) => void) => () => void;
+  readonly readEdited: (tab: string) => void;
+  readonly editText: (tab: string, update: unknown) => void;
+  readonly keepEditState: (
+    tab: string,
+    version: number,
+    state: unknown,
+  ) => void;
+  readonly saveText: (tab: string, overwriteReadOnly?: boolean) => void;
+  readonly keptEditor: (tab: string) => KeptEditor | undefined;
+  readonly keepEditor: (tab: string, kept: KeptEditor) => void;
   readonly openRepository: (side: Side, name: string) => void;
   readonly folderCommand: (
     side: Side,
@@ -295,12 +310,18 @@ interface CommanderActions {
   ) => Promise<void>;
 }
 
+interface KeptEditor {
+  readonly state: EditorState;
+  readonly version: number;
+}
+
 type CommanderState = CommanderSource & CommanderActions;
 
 const commanderDefaults: CommanderSource = {
   view: emptyView,
   drives: [],
   viewed: undefined,
+  edited: undefined,
   deleting: undefined,
   transferring: undefined,
   transfer: undefined,
@@ -331,6 +352,14 @@ const viewerStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
 
 function isViewerStream(message: CommanderToWebview): message is ToViewer {
   return viewerStreams.has(message.type);
+}
+
+const editorStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
+  ToEditor['type']
+>(['editedText', 'askOverwrite']);
+
+function isEditorStream(message: CommanderToWebview): message is ToEditor {
+  return editorStreams.has(message.type);
 }
 
 export function shownColumns({ view, resized }: CommanderSource): ColumnWidths {
@@ -373,10 +402,26 @@ function received(
   state: CommanderSource,
   message: CommanderToWebview,
 ): Partial<CommanderSource> {
-  if (isViewerStream(message)) {
+  if (isViewerStream(message) || isEditorStream(message)) {
     return state;
   }
   switch (message.type) {
+    case 'editing':
+      return {
+        edited: {
+          tab: message.tab,
+          file: message.file,
+          version: message.version,
+          changed: message.changed === true,
+          readOnly: message.readOnly === true,
+          made: message.made === true,
+          error: message.error,
+        },
+      };
+    case 'textChanged':
+      return state.edited?.tab === message.tab
+        ? { edited: { ...state.edited, changed: message.changed } }
+        : state;
     case 'drives':
       return { drives: message.drives };
     case 'transfer':
@@ -433,6 +478,7 @@ function received(
       return {
         ...(view !== state.view && { view }),
         ...(state.viewed !== undefined && { viewed: undefined }),
+        ...(state.edited !== undefined && { edited: undefined }),
       };
     }
     case 'noAccess':
@@ -659,6 +705,14 @@ export function createCommanderStore(
   const scrolls = new ScrollPlaces();
   const places = new Map<string, number>();
   const viewerListeners = new Set<(message: ToViewer) => void>();
+  const editorListeners = new Set<(message: ToEditor) => void>();
+  const keptEditors = new Map<string, KeptEditor>();
+  const listenEditor = (handler: (message: ToEditor) => void) => {
+    editorListeners.add(handler);
+    return () => {
+      editorListeners.delete(handler);
+    };
+  };
   const listenViewer = (handler: (message: ToViewer) => void) => {
     viewerListeners.add(handler);
     return () => {
@@ -855,6 +909,12 @@ export function createCommanderStore(
           }
           return;
         }
+        if (isEditorStream(message)) {
+          for (const handler of editorListeners) {
+            handler(message);
+          }
+          return;
+        }
         if (message.type === 'flatFiles') {
           const { tab, panes } = get().view;
           const pane = panes[message.side];
@@ -873,6 +933,7 @@ export function createCommanderStore(
         announced(() => set((state) => received(state, message)));
         if (message.type === 'closed') {
           places.delete(message.tab);
+          keptEditors.delete(message.tab);
           set((state) => ({ filters: withoutTab(state.filters, message.tab) }));
         }
       },
@@ -959,6 +1020,25 @@ export function createCommanderStore(
         onPane(side, (tab, folder) =>
           post({ type: 'view', tab, side, folder, name }),
         ),
+      editFile: (side, name) =>
+        onPane(side, (tab, folder) =>
+          post({ type: 'editFile', tab, side, folder, name }),
+        ),
+      listenEditor,
+      keptEditor: (tab) => keptEditors.get(tab),
+      keepEditor: (tab, kept) => {
+        keptEditors.set(tab, kept);
+      },
+      readEdited: (tab) => post({ type: 'readEdited', tab }),
+      editText: (tab, update) => post({ type: 'editText', tab, update }),
+      keepEditState: (tab, version, state) =>
+        post({ type: 'editState', tab, version, state }),
+      saveText: (tab, overwriteReadOnly) =>
+        post({
+          type: 'saveText',
+          tab,
+          ...(overwriteReadOnly === true && { overwriteReadOnly: true }),
+        }),
       openRepository: (side, name) =>
         onDisk(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),

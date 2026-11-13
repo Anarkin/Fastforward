@@ -627,6 +627,7 @@ function commander(
       viewed.push(viewedFile);
       return Promise.resolve();
     },
+    openEdit: () => Promise.resolve(),
     openCompare: (_page, toolOpened, files) => {
       compared.push({ ...files, tool: toolOpened });
       return Promise.resolve();

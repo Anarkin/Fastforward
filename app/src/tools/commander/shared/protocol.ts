@@ -2,6 +2,7 @@ import type { Sentence } from '../../../shared/strings';
 import type { PdfPlace } from '../../../shared/pdf';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';
+import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';
 import type { ClashAnswer, TransferView } from './transfers';
 
 export interface ComparedFile {
@@ -120,7 +121,41 @@ export function isFolderCommand(value: unknown): value is FolderCommand {
   return folderCommands.some((command) => command === value);
 }
 
+export interface TextShown {
+  readonly text: string;
+  readonly version: number;
+  readonly encoding: TextEncoding;
+  readonly bom: boolean;
+  readonly ending: LineEnding;
+  readonly strayEndings: readonly StrayEnding[];
+  readonly keptBytes: readonly KeptBytes[];
+}
+
 export type CommanderToHost =
+  | {
+      readonly type: 'editFile';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name: string;
+    }
+  | { readonly type: 'readEdited'; readonly tab: string }
+  | {
+      readonly type: 'editText';
+      readonly tab: string;
+      readonly update: unknown;
+    }
+  | {
+      readonly type: 'editState';
+      readonly tab: string;
+      readonly version: number;
+      readonly state: unknown;
+    }
+  | {
+      readonly type: 'saveText';
+      readonly tab: string;
+      readonly overwriteReadOnly?: true;
+    }
   | {
       readonly type: 'open';
       readonly tab: string;
@@ -439,7 +474,34 @@ export type CommanderToWebview =
     }
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'transfer'; readonly view: TransferView | undefined }
-  | { readonly type: 'show'; readonly tab: string; readonly file?: string }
+  | {
+      readonly type: 'show';
+      readonly tab: string;
+      readonly file?: string;
+      readonly edit?: true;
+    }
+  | {
+      readonly type: 'editing';
+      readonly tab: string;
+      readonly file: string;
+      readonly version?: number;
+      readonly changed?: true;
+      readonly readOnly?: true;
+      readonly made?: true;
+      readonly error?: Sentence;
+    }
+  | {
+      readonly type: 'editedText';
+      readonly tab: string;
+      readonly shown: TextShown;
+      readonly state?: unknown;
+    }
+  | {
+      readonly type: 'textChanged';
+      readonly tab: string;
+      readonly changed: boolean;
+    }
+  | { readonly type: 'askOverwrite'; readonly tab: string }
   | { readonly type: 'hide' }
   | { readonly type: 'closed'; readonly tab: string }
   | {

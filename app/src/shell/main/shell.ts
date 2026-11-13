@@ -54,6 +54,7 @@ export interface TabName {
   readonly name: string;
   readonly folder?: string;
   readonly icon?: string;
+  readonly unsaved?: true;
 }
 
 export type Notice = Omit<ToWebviewOf<'notice'>, 'type'>;
@@ -77,6 +78,7 @@ export interface ShellAccess {
     reuse: boolean,
   ): Promise<void>;
   openView(page: Page, tool: ToolId, file: string): Promise<void>;
+  openEdit(page: Page, tool: ToolId, file: string): Promise<void>;
   openCompare(page: Page, tool: ToolId, compare: Compared): Promise<void>;
   openFolders(
     page: Page,
@@ -124,8 +126,8 @@ export function quitNoteOf(
 }
 
 export interface ShellHost {
-  openSettings(): Promise<void>;
-  openDefaultSettings(): Promise<void>;
+  userSettingsFile(): Promise<string>;
+  defaultSettingsFile(): Promise<string>;
   settingsProblems(): readonly Sentence[];
   stateProblems(): readonly Sentence[];
   checkForUpdates(): void;
@@ -195,6 +197,7 @@ export const unattachedShell: ShellAccess = {
   shown: () => [],
   open: () => Promise.resolve(),
   openView: () => Promise.resolve(),
+  openEdit: () => Promise.resolve(),
   openCompare: () => Promise.resolve(),
   openFolders: () => Promise.resolve(),
   setRoot: () => undefined,
@@ -300,6 +303,8 @@ export class Shell {
       open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),
       openView: (page, tool, file) =>
         this.open(page, tool, [file], false, { view: true }),
+      openEdit: (page, tool, file) =>
+        this.open(page, tool, [file], true, { edit: true }),
       openCompare: (page, tool, compare) =>
         this.open(page, tool, [undefined], false, { compare }),
       openFolders: (page, tool, folders) =>
@@ -506,10 +511,24 @@ export class Shell {
         await this.ready(page);
         return;
       case 'openSettings':
-        await host.openSettings();
+        await this.open(
+          page,
+          'commander',
+          [await host.userSettingsFile()],
+          true,
+          {
+            edit: true,
+          },
+        );
         return;
       case 'openDefaultSettings':
-        await host.openDefaultSettings();
+        await this.open(
+          page,
+          'commander',
+          [await host.defaultSettingsFile()],
+          true,
+          { edit: true },
+        );
         return;
       case 'installTerminalCommand':
         await this.installCommand(page);
@@ -810,7 +829,7 @@ export class Shell {
     tool: ToolId,
     roots: readonly (string | undefined)[],
     reuse: boolean,
-    kind: Pick<Tab, 'view' | 'compare'> = {},
+    kind: Pick<Tab, 'view' | 'edit' | 'compare'> = {},
   ): Promise<void> {
     const { storage } = this;
     const window = this.windowOf(page);
@@ -823,6 +842,8 @@ export class Shell {
         ? [...tabs, ...added].find(
             (tab) =>
               tab.tool === tool &&
+              tab.view === kind.view &&
+              tab.edit === kind.edit &&
               tab.root !== undefined &&
               root !== undefined &&
               sameRoot(tab.root, root),
@@ -1151,7 +1172,7 @@ export class Shell {
         ...this.tools[tool].names(tabs.filter((tab) => tab.tool === tool)),
       ]),
     );
-    return tabs.map(({ id, tool, root, view, compare }) => {
+    return tabs.map(({ id, tool, root, view, edit, compare }) => {
       const name = names.get(id);
       return {
         id,
@@ -1161,7 +1182,9 @@ export class Shell {
         ...(name?.icon !== undefined && { icon: name.icon }),
         ...(root !== undefined && { root }),
         ...(view === true && { view }),
+        ...(edit === true && { edit }),
         ...(compare !== undefined && { compare: true as const }),
+        ...(name?.unsaved === true && { unsaved: true as const }),
       };
     });
   }

@@ -150,6 +150,7 @@ import {
 } from './terminalCommand';
 import { addExplorerMenu, explorerMenuOf } from './explorerMenu';
 import { runsAsAppImage, updateMode, Updates } from './updates';
+import { saveFile } from '../tools/commander/main/fileSaving';
 import { removeUnviewedCopies } from './viewedFiles';
 
 const dist = __dirname;
@@ -754,6 +755,16 @@ async function start(asked: readonly string[]): Promise<void> {
     pdfPlaces,
     fileSystem: () => fileSystemFor(process.platform),
     codePage: () => systemCodePage(process.platform),
+    saveEdited: async (file, bytes, overwriteReadOnly) =>
+      saveFile(file, bytes, {
+        overwriteReadOnly,
+        ...(process.platform === 'win32' && {
+          replaceFile: (
+            await import('../tools/commander/main/windowsReplaceFile.js')
+          ).windowsReplaceFile(),
+        }),
+      }),
+    readOnlyFile: (file) => path.relative(file, defaultSettingsCopy) === '',
     settings: () => userSettings.settings.tools.commander,
     defaultColumns: () => userSettings.defaults.tools.commander.columns,
     saveShowHidden: (shown) =>
@@ -891,18 +902,18 @@ async function start(asked: readonly string[]): Promise<void> {
     log,
     storage,
     {
-      openSettings: async () => {
+      userSettingsFile: async () => {
         if (!fs.existsSync(userSettingsFile)) {
-          fs.writeFileSync(userSettingsFile, '{}\n');
+          await fs.promises.writeFile(userSettingsFile, '{}\n');
         }
-        await openFile(log, userSettingsFile);
+        return userSettingsFile;
       },
-      openDefaultSettings: async () => {
+      defaultSettingsFile: () => {
         writeReadOnly(
           defaultSettingsCopy,
           fs.readFileSync(path.join(dist, 'settings.json'), 'utf8'),
         );
-        await openFile(log, defaultSettingsCopy);
+        return Promise.resolve(defaultSettingsCopy);
       },
       settingsProblems: () => userSettings.problems,
       stateProblems: () => untoldStateProblems.splice(0),
@@ -1249,13 +1260,6 @@ async function reportMissingGit(
   });
   if (response === 0) {
     await shell.openExternal('https://git-scm.com/downloads');
-  }
-}
-
-async function openFile(log: Log, file: string): Promise<void> {
-  const failure = await shell.openPath(file);
-  if (failure) {
-    log.error(strings.log.openingFileFailed(file, failure));
   }
 }
 

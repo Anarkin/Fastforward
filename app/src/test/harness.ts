@@ -153,14 +153,14 @@ export class FakeHost implements ShellHost, GitHost {
     return Promise.resolve(this.clipboard);
   }
 
-  openSettings(): Promise<void> {
+  userSettingsFile(): Promise<string> {
     this.opened.push('settings');
-    return Promise.resolve();
+    return Promise.resolve(path.resolve('settings.user.json'));
   }
 
-  openDefaultSettings(): Promise<void> {
+  defaultSettingsFile(): Promise<string> {
     this.opened.push('defaults');
-    return Promise.resolve();
+    return Promise.resolve(path.resolve('settings.defaults.json'));
   }
 
   settingsProblems(): readonly Sentence[] {

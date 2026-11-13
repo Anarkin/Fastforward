@@ -182,6 +182,7 @@ export const commanderKeymap = {
     'Shift+RightClick': true,
   }),
   view: bind('Viewing', strings.actions.viewFile, { F3: true }),
+  edit: bind('Viewing', strings.actions.editFile, { F4: true }),
   compare: bind('Viewing', strings.actions.compareFiles, {
     'Shift+F3': true,
   }),
@@ -250,6 +251,32 @@ export const viewerKeymap = {
 };
 
 export const editorKeymap = {
+  save: bind(
+    undefined,
+    strings.actions.saveFile,
+    { 'Mod+S': true },
+    {
+      fields: true,
+    },
+  ),
+  undo: bind(
+    undefined,
+    strings.actions.undo,
+    { 'Mod+Z': true },
+    { repeats: true, fields: true },
+  ),
+  redo: bind(
+    undefined,
+    strings.actions.redo,
+    { 'Mod+Y': true, 'Mod+Shift+Z': true },
+    { repeats: true, fields: true },
+  ),
+  newLine: bind(
+    undefined,
+    strings.actions.newLine,
+    { Enter: true },
+    { repeats: true, fields: true },
+  ),
   rowEnd: bind(
     undefined,
     strings.actions.rowEnd,

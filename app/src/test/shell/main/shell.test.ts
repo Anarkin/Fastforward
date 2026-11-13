@@ -41,7 +41,7 @@ suite('Shell with no tab open', () => {
 
   afterAll(closeViews);
 
-  test('opens the settings files through the app', async () => {
+  test('opens the settings files in editor tabs of the app, a file already open in its tab', async () => {
     const host = new FakeHost();
     await withView(
       log,
@@ -49,7 +49,32 @@ suite('Shell with no tab open', () => {
       async (view) => {
         await view.connection.receive({ type: 'openSettings' });
         await view.connection.receive({ type: 'openDefaultSettings' });
-        assert.deepStrictEqual(host.opened, ['settings', 'defaults']);
+        await view.connection.receive({ type: 'openSettings' });
+        assert.deepStrictEqual(host.opened, [
+          'settings',
+          'defaults',
+          'settings',
+        ]);
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map(({ tool, root, edit }) => ({
+            tool,
+            root,
+            edit,
+          })),
+          [
+            {
+              tool: 'commander',
+              root: path.resolve('settings.user.json'),
+              edit: true,
+            },
+            {
+              tool: 'commander',
+              root: path.resolve('settings.defaults.json'),
+              edit: true,
+            },
+          ],
+        );
+        assert.strictEqual(view.page.tabs?.active, view.page.tabs?.tabs[0]?.id);
       },
       false,
       host,
@@ -59,7 +84,7 @@ suite('Shell with no tab open', () => {
 
   test('says on the page why the app could not do what the page asked, as well as in the log', async () => {
     const host = new FakeHost();
-    host.openSettings = () =>
+    host.userSettingsFile = () =>
       Promise.reject(new Error('no editor opens settings.user.json'));
     await withView(
       log,

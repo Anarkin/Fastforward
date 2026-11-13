@@ -11,7 +11,9 @@ export interface TabInfo {
   readonly icon?: string;
   readonly root?: string;
   readonly view?: true;
+  readonly edit?: true;
   readonly compare?: true;
+  readonly unsaved?: true;
 }
 
 export interface WindowInfo {

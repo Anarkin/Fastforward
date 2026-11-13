@@ -139,6 +139,7 @@ function terminal(
       return Promise.resolve();
     },
     openView: () => Promise.resolve(),
+    openEdit: () => Promise.resolve(),
     openCompare: () => Promise.resolve(),
     openFolders: () => Promise.resolve(),
     setRoot: (tab, root) => moved.push([tab, root]),

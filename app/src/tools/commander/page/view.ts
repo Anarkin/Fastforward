@@ -128,6 +128,7 @@ function marksKept(
 export interface CommanderView {
   readonly tab: string | undefined;
   readonly viewing: string | undefined;
+  readonly editing: string | undefined;
   readonly showHidden: boolean;
   readonly sorts: Sorts;
   readonly columns: ColumnWidths;
@@ -195,6 +196,7 @@ function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
 export const emptyView: CommanderView = {
   tab: undefined,
   viewing: undefined,
+  editing: undefined,
   showHidden: true,
   sorts: {
     left: { column: 'extension', descending: false, groupByColor: true },
@@ -220,6 +222,7 @@ export type ViewAction =
       readonly type: 'show';
       readonly tab: string;
       readonly file?: string;
+      readonly edit?: true;
     }
   | { readonly type: 'hide' }
   | CommanderToWebviewOf<'closed'>
@@ -496,7 +499,8 @@ export function reduceView(
       return {
         ...view,
         tab: action.tab,
-        viewing: action.file,
+        viewing: action.edit === true ? undefined : action.file,
+        editing: action.edit === true ? action.file : undefined,
         active: back?.active ?? emptyView.active,
         layouts: back?.layouts ?? emptyView.layouts,
         panes: back === undefined ? emptyView.panes : settledPanes(view, back),
@@ -509,6 +513,7 @@ export function reduceView(
         ...view,
         tab: undefined,
         viewing: undefined,
+        editing: undefined,
         layouts: emptyView.layouts,
         panes: emptyView.panes,
         kept: keptAway(view),

@@ -1,5 +1,5 @@
 import { ChangeSet, RangeSet, Text } from '@codemirror/state';
-import type { TextEncoding } from '../shared/protocol';
+import type { TextShown } from '../shared/protocol';
 import {
   isLineEnding,
   keptMarks,
@@ -7,22 +7,11 @@ import {
   movedMarks,
   strayMarks,
   type EndingMark,
-  type KeptBytes,
   type KeptMark,
   type LineEnding,
   type StrayEnding,
 } from '../shared/textMarks';
 import { encodedText, type DecodedText, type EncodedText } from './textCodec';
-
-export interface ShownText {
-  readonly text: string;
-  readonly version: number;
-  readonly encoding: TextEncoding;
-  readonly bom: boolean;
-  readonly ending: LineEnding;
-  readonly strayEndings: readonly StrayEnding[];
-  readonly keptBytes: readonly KeptBytes[];
-}
 
 const maxEditedLength = 64 * 1024 * 1024;
 
@@ -73,6 +62,9 @@ function changesOf(value: unknown, length: number): ChangeSet | undefined {
   }
 }
 
+const isSaved = (value: object): value is Saved =>
+  'doc' in value && value.doc instanceof Text;
+
 interface Saved {
   readonly doc: Text;
   readonly ending: LineEnding;
@@ -97,6 +89,10 @@ export class EditedText {
     this.strays = strayMarks(this.doc, read.strayEndings);
     this.kept = keptMarks(this.doc, read.keptBytes);
     this.last = this.current();
+  }
+
+  checkpoint(): object {
+    return this.current();
   }
 
   private current(): Saved {
@@ -156,11 +152,13 @@ export class EditedText {
     );
   }
 
-  saved(): void {
-    this.last = this.current();
+  saved(checkpoint: object = this.current()): void {
+    if (isSaved(checkpoint)) {
+      this.last = checkpoint;
+    }
   }
 
-  shown(): ShownText {
+  shown(): TextShown {
     return {
       text: this.doc.toString(),
       version: this.version,

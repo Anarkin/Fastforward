@@ -10,6 +10,7 @@ import {
   type CommanderToWebview,
 } from '../shared/protocol';
 import { Pane } from './pane';
+import { Editor } from './editor';
 import { Viewer } from './viewer';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { followDrag } from '../../../ui/followDrag';
@@ -284,6 +285,10 @@ export function CommanderTool({
     store,
     (state) => state.view.viewing !== undefined,
   );
+  const editsFile = useStore(
+    store,
+    (state) => state.view.editing !== undefined,
+  );
   const activeSide = useStore(store, (state) => state.view.active);
   const canGroupByColor = useStore(
     store,
@@ -317,21 +322,22 @@ export function CommanderTool({
 
   const shown = active && tab !== undefined;
   const viewing = shown && viewsFile;
+  const panesShown = shown && !viewsFile && !editsFile;
 
   useEffect(() => {
-    if (!shown || viewing) {
+    if (!panesShown) {
       return;
     }
     sideToFocus(
       columns.current?.children[sides.indexOf(activeSide)],
       document.activeElement,
     )?.focus();
-  }, [shown, viewing, activeSide]);
+  }, [panesShown, activeSide]);
 
   useBinding(
     commanderKeymap.history,
     (direction) => step(activeSide, direction),
-    shown && !viewing,
+    panesShown,
   );
   useBinding(
     viewerKeymap.closeViewer,
@@ -342,11 +348,11 @@ export function CommanderTool({
     },
     viewing,
   );
-  useBinding(commanderKeymap.reread, reread, shown && !viewing);
+  useBinding(commanderKeymap.reread, reread, panesShown);
   useBinding(
     commanderKeymap.bookmarks,
     () => bookmarkTriggers[activeSide].current?.click(),
-    shown && !viewing,
+    panesShown,
   );
   useEffect(() => {
     if (!shown) {
@@ -364,31 +370,23 @@ export function CommanderTool({
     return () => window.removeEventListener('mouseup', onMouseUp);
   }, [shown, activeSide, step]);
 
-  useBinding(
-    commanderKeymap.goTo,
-    () => askGoTo(activeSide),
-    shown && !viewing,
-  );
-  useBinding(commanderKeymap.showHidden, toggleHidden, shown && !viewing);
-  useBinding(
-    commanderKeymap.flatView,
-    () => flat(activeSide),
-    shown && !viewing,
-  );
+  useBinding(commanderKeymap.goTo, () => askGoTo(activeSide), panesShown);
+  useBinding(commanderKeymap.showHidden, toggleHidden, panesShown);
+  useBinding(commanderKeymap.flatView, () => flat(activeSide), panesShown);
   useBinding(
     commanderKeymap.duplicates,
     () => duplicates(activeSide),
-    shown && !viewing,
+    panesShown,
   );
   useBinding(
     commanderKeymap.groupByColor,
     () => groupByColor(activeSide),
-    shown && !viewing && canGroupByColor,
+    panesShown && canGroupByColor,
   );
   useBinding(
     commanderKeymap.layout,
     (layout) => chooseLayout(activeSide, layout),
-    shown && !viewing,
+    panesShown,
   );
   useBinding(
     commanderKeymap.drive,
@@ -400,13 +398,25 @@ export function CommanderTool({
       )?.focus();
       triggers[side].current?.click();
     },
-    shown && !viewing && hasDrives,
+    panesShown && hasDrives,
   );
 
   if (!active) {
     return null;
   }
   const resizer = <Resizer columns={columns} onShare={setShare} />;
+
+  if (editsFile) {
+    return (
+      <CommanderStore value={store}>
+        <div className="repository commander">
+          <div className="columns viewer-columns">
+            <Editor key={tab} />
+          </div>
+        </div>
+      </CommanderStore>
+    );
+  }
 
   if (viewsFile) {
     return (

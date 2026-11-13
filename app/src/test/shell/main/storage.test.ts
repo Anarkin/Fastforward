@@ -115,6 +115,30 @@ suite('Storage', () => {
     assert.deepStrictEqual(written.get(tabsKey), [tab]);
   });
 
+  test('keeps a tab that edits a file as one, read and written, apart from one viewing it', async () => {
+    const store = new FakeStore();
+    const file = path.resolve('notes.txt');
+    const tab = { id: '1', tool: 'commander', root: file, edit: true } as const;
+    const viewing = {
+      id: '2',
+      tool: 'commander',
+      root: file,
+      view: true,
+    } as const;
+    await store.update(tabsKey, [
+      tab,
+      viewing,
+      { id: '3', tool: 'commander', root: file, edit: 'yes' },
+    ]);
+    assert.deepStrictEqual(storageOf(store).savedTabs, [tab, viewing]);
+
+    const written = new FakeStore();
+    await storageOf(written).setLayout([
+      { id: '1', tabs: [tab, viewing], active: '1' },
+    ]);
+    assert.deepStrictEqual(written.get(tabsKey), [tab, viewing]);
+  });
+
   test('keeps a tab that compares two files as one, read and written, dropping a comparison not of two paths', async () => {
     const store = new FakeStore();
     const compare = {

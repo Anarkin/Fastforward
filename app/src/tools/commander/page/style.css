@@ -370,6 +370,34 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.editor-body {
+  position: relative;
+  overflow: hidden;
+}
+
+.editor-body > .cm-editor {
+  height: 100%;
+}
+
+.editor-body > .cm-editor.cm-focused {
+  outline: none;
+}
+
+.editor-path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-mark {
+  flex: none;
+  color: var(--muted-foreground);
+}
+
+.editor-mark.unsaved {
+  color: var(--foreground);
+}
+
 .viewer-body {
   position: relative;
   overflow: hidden auto;

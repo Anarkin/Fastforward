@@ -328,6 +328,7 @@ suite('Shortcuts popup', () => {
         'Viewing and comparing',
         [
           'View the selected file in a tab of its own',
+          'Edit the selected file in a tab of its own',
           'Compare the marked files, or the selected file of each side, in a git tab',
         ],
       ],

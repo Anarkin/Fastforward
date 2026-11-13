@@ -42,6 +42,7 @@
     "playground:files": "node scripts/playground/files.mts"
   },
   "devDependencies": {
+    "@codemirror/commands": "^6.11.1",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
     "@tanstack/react-virtual": "^3.14.15",

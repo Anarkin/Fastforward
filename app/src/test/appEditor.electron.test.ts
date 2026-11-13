@@ -1,0 +1,192 @@
+import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { ElectronApplication, Page } from 'playwright-core';
+import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
+import { closeOrKill, launchApp } from './appFixtures';
+import { waitFor } from './fixtures';
+import { removeFolder, tempFolder } from './repositories';
+
+suite('App editor', () => {
+  let folder: string;
+  let opened: string;
+  let profile: string;
+  let app: ElectronApplication;
+  let page: Page;
+
+  const right = () => page.locator('.commander-pane').nth(1);
+  const content = () => page.locator('.editor .cm-content');
+  const activeTab = () => page.locator('.tabs .tab.active');
+  const editedText = () =>
+    content().evaluate((element) =>
+      Array.from(
+        element.querySelectorAll('.cm-line'),
+        (line) => line.textContent ?? '',
+      ).join('\n'),
+    );
+  const select = async (file: string) => {
+    const name = file.replace(/\.[^.]*$/, '');
+    await right().locator('.commander-row', { hasText: name }).first().click();
+    await waitFor(
+      async () =>
+        (
+          await right().locator('.commander-row.selected').textContent()
+        )?.includes(name) === true,
+      `${name} to be selected`,
+    );
+  };
+  const backToCommander = async () => {
+    await page.locator('.tabs [role="tab"]').first().click();
+    await right().locator('.commander-row').first().waitFor();
+  };
+  const edit = async (name: string) => {
+    await select(name);
+    await page.keyboard.press('F4');
+    await content().waitFor();
+  };
+  const notices = () => page.locator('.notice').allTextContents();
+  const closeNotices = async () => {
+    const close = page.locator('.notice-close').first();
+    while ((await close.count()) > 0) {
+      await close.click({ timeout: 1000 }).catch(() => undefined);
+    }
+  };
+
+  beforeAll(async () => {
+    folder = tempFolder('app-editor');
+    profile = path.join(folder, 'profile');
+    opened = path.join(folder, 'opened');
+    fs.mkdirSync(path.join(opened, 'folder'), { recursive: true });
+    fs.writeFileSync(path.join(opened, 'notes.txt'), 'one\r\ntwo\r\n');
+    fs.writeFileSync(
+      path.join(opened, 'mixed.txt'),
+      Buffer.from('caf\xe9\nline\r\nend', 'latin1'),
+    );
+    fs.writeFileSync(path.join(opened, 'image.bin'), Buffer.alloc(64));
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({
+        tabs: [{ id: '1', tool: 'commander', root: opened }],
+        activeTab: '1',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ scrolling: { smooth: true } }),
+    );
+    app = await launchApp(profile);
+    page = await app.firstWindow();
+    await right().locator('.commander-row').first().waitFor();
+  });
+
+  beforeEach(async () => {
+    await closeNotices();
+  });
+
+  afterAll(async () => {
+    if (app !== undefined) {
+      await closeOrKill(app);
+    }
+    removeFolder(folder);
+  });
+
+  test('opens the file selected on F4 in an editor tab of its own named after it, its text in the editor, and goes back to that tab on F4 again rather than opening another', async () => {
+    await edit('notes.txt');
+    assert.strictEqual(
+      await activeTab().locator('.tab-name').textContent(),
+      'notes.txt',
+    );
+    await waitFor(
+      async () => (await editedText()) === 'one\ntwo\n',
+      'the text',
+    );
+    const tabs = await page.locator('.tabs [role="tab"]').count();
+    await backToCommander();
+    await edit('notes.txt');
+    assert.strictEqual(await page.locator('.tabs [role="tab"]').count(), tabs);
+    assert.strictEqual(
+      await activeTab().locator('.tab-name').textContent(),
+      'notes.txt',
+    );
+    const saved: unknown = JSON.parse(
+      fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
+    );
+    assert.ok(
+      JSON.stringify(saved).includes('"edit":true'),
+      JSON.stringify(saved),
+    );
+  });
+
+  test('marks the tab of a file once edited, saves it on Ctrl+S byte for byte, with the line endings and the bytes it cannot decode as they were, and unmarks the tab', async () => {
+    await backToCommander();
+    await edit('mixed.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('caf'),
+      'the text',
+    );
+    await content().click();
+    await page.keyboard.press('ControlOrMeta+Home');
+    await page.keyboard.type('> ');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.strictEqual(
+      fs.readFileSync(path.join(opened, 'mixed.txt')).toString('latin1'),
+      '> caf\xe9\nline\r\nend',
+    );
+  });
+
+  test('keeps the text edited and its undo history while the page reloads as the settings are saved', async () => {
+    await backToCommander();
+    await edit('notes.txt');
+    await content().click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.type('three');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await waitFor(
+      async () => (await editedText()) === 'one\ntwo\nthree',
+      'the edit',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const reloaded = page.waitForEvent('load');
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ scrolling: { smooth: true }, dateFormat: 'YYYY-MM-DD' }),
+    );
+    await reloaded;
+    await content().waitFor();
+    await waitFor(
+      async () => (await editedText()) === 'one\ntwo\nthree',
+      'the edit kept',
+    );
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await content().click();
+    await page.keyboard.press('ControlOrMeta+Z');
+    await waitFor(
+      async () => (await editedText()) === 'one\ntwo\n',
+      'the edit undone',
+    );
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+  });
+
+  test('says why it opens no editor for a folder or a file of binary data', async () => {
+    await backToCommander();
+    const tabs = await page.locator('.tabs [role="tab"]').count();
+    await select('folder');
+    await page.keyboard.press('F4');
+    await waitFor(
+      async () =>
+        (await notices()).some((notice) => notice.includes('is a folder')),
+      'a notice about the folder',
+    );
+    await select('image.bin');
+    await page.keyboard.press('F4');
+    await waitFor(
+      async () =>
+        (await notices()).some((notice) => notice.includes('binary data')),
+      'a notice about the binary file',
+    );
+    assert.strictEqual(await page.locator('.tabs [role="tab"]').count(), tabs);
+  });
+});

@@ -1009,6 +1009,12 @@ body {
   color: var(--color-terminal-icon);
 }
 
+.tabs .tab-unsaved {
+  flex: none;
+  margin-left: 4px;
+  color: var(--muted-foreground);
+}
+
 .tabs .tab-name {
   flex-shrink: 1000;
   min-width: 2ch;
