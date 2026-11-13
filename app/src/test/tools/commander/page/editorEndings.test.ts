@@ -3,6 +3,7 @@ import { history, undo } from '@codemirror/commands';
 import { EditorState, Text } from '@codemirror/state';
 import { suite, test } from 'vitest';
 import {
+  conversionsOf,
   convertedTo,
   endingCounts,
   endingsField,
@@ -26,7 +27,36 @@ function opened(text: string) {
   });
 }
 
+const offered = (counts: { lf: number; crlf: number; cr: number }) =>
+  conversionsOf(counts).map(
+    ({ ending, label, changes }) =>
+      `${changes ? '' : '(off) '}${label} ${ending}`,
+  );
+
 suite('Line endings of the editor', () => {
+  test('offers to convert every line ending to LF or CRLF, spelled out, a conversion that would change no line break marked so', () => {
+    assert.deepStrictEqual(offered({ lf: 3, crlf: 0, cr: 0 }), [
+      '(off) Convert all line endings to LF lf',
+      'Convert all line endings to CRLF crlf',
+    ]);
+    assert.deepStrictEqual(offered({ lf: 0, crlf: 2, cr: 0 }), [
+      'Convert all line endings to LF lf',
+      '(off) Convert all line endings to CRLF crlf',
+    ]);
+    assert.deepStrictEqual(offered({ lf: 2, crlf: 1, cr: 0 }), [
+      'Convert all line endings to LF lf',
+      'Convert all line endings to CRLF crlf',
+    ]);
+    assert.deepStrictEqual(offered({ lf: 0, crlf: 0, cr: 4 }), [
+      'Convert all line endings to LF lf',
+      'Convert all line endings to CRLF crlf',
+    ]);
+    assert.deepStrictEqual(offered({ lf: 0, crlf: 0, cr: 0 }), [
+      '(off) Convert all line endings to LF lf',
+      '(off) Convert all line endings to CRLF crlf',
+    ]);
+  });
+
   test('counts the lines ending in each line ending, the file ending those not marked otherwise', () => {
     assert.deepStrictEqual(endingCounts(opened('a\nb\nc\nd')), {
       lf: 1,

@@ -405,8 +405,23 @@ suite('App editor', () => {
     const endingsButton = trigger(/^Mixed$/);
     await endingsButton.waitFor();
     await endingsButton.click();
-    await page.locator('.menu-item', { hasText: 'Convert to CRLF' }).click();
+    await page
+      .locator('.menu-item', { hasText: 'Convert all line endings to CRLF' })
+      .click();
     await trigger(/^CRLF$/).waitFor();
+    await trigger(/^CRLF$/).click();
+    assert.ok(
+      await page
+        .locator('.menu-item', { hasText: 'Convert all line endings to CRLF' })
+        .isDisabled(),
+    );
+    assert.ok(
+      await page
+        .locator('.menu-item', { hasText: 'Convert all line endings to LF' })
+        .isEnabled(),
+    );
+    await page.keyboard.press('Escape');
+    await content().click();
     await activeTab().locator('.tab-unsaved').waitFor();
     await page.keyboard.press('ControlOrMeta+S');
     await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });

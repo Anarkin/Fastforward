@@ -179,3 +179,22 @@ export const endingSigns = ViewPlugin.fromClass(
   },
   { decorations: (plugin) => plugin.decorations },
 );
+
+const convertible: readonly LineEnding[] = ['lf', 'crlf'];
+
+export interface Conversion {
+  readonly ending: LineEnding;
+  readonly label: string;
+  readonly changes: boolean;
+}
+
+export const conversionsOf = (
+  counts: Readonly<Record<LineEnding, number>>,
+): readonly Conversion[] =>
+  convertible.map((ending) => ({
+    ending,
+    label: strings.editor.convertTo(strings.editor.endingNames[ending]),
+    changes: Object.entries(counts).some(
+      ([other, count]) => other !== ending && count > 0,
+    ),
+  }));

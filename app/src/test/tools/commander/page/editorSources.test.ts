@@ -36,7 +36,7 @@ const click = (items: readonly ContextMenuItem[], at: number) => {
 };
 
 suite('Where the editor says its text comes from', () => {
-  test('lists every place the line ending of new lines may come from, checking the first that sets it and dimming those that set nothing', () => {
+  test('lists where the line ending of new lines comes from, the lines of the file apart from the places a file with no line break yet takes it from, checking in each the first that sets it and dimming those that set nothing', () => {
     const { opening: none } = opening();
     assert.deepStrictEqual(
       rowsOf(
@@ -54,7 +54,9 @@ suite('Where the editor says its text comes from', () => {
       [
         '(off) New lines end in',
         '✓ CRLF, as most lines of the file end',
-        `LF, from "end_of_line" in "${config}"`,
+        '-',
+        '(off) For a file with no line break yet',
+        `✓ LF, from "end_of_line" in "${config}"`,
         'CRLF, from "core.autocrlf" of git',
         '(off) "editor.files" in the settings sets nothing for ".txt"',
         'LF, from "editor.endOfLine" in the settings',
@@ -75,6 +77,8 @@ suite('Where the editor says its text comes from', () => {
       ).slice(1),
       [
         '(off) The file has no line break yet',
+        '-',
+        '(off) For a file with no line break yet',
         '(off) No .editorconfig sets "end_of_line"',
         '✓ LF, from the "eol" attribute of git',
         'CRLF, from "editor.files" for ".cmd" in the settings',
@@ -92,7 +96,7 @@ suite('Where the editor says its text comes from', () => {
           undefined,
           none,
         ),
-      ).slice(2, 4),
+      ).slice(4, 6),
       [
         '(off) Git sets no "eol" attribute, "core.autocrlf" or "core.eol"',
         '(off) "editor.files" in the settings sets nothing for files without an extension',
@@ -111,9 +115,9 @@ suite('Where the editor says its text comes from', () => {
       undefined,
       opens,
     );
-    click(items, 2);
-    click(items, 3);
     click(items, 4);
+    click(items, 5);
+    click(items, 6);
     assert.deepStrictEqual(opened, [config, 'settings', 'settings']);
   });
 

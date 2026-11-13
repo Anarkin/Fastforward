@@ -82,6 +82,7 @@ import {
   type SourceOpening,
 } from './editorSources';
 import {
+  conversionsOf,
   convertedTo,
   endingCounts,
   endingsChanged,
@@ -788,15 +789,14 @@ export function Editor() {
                   title={endingsTitle(endingsShown)}
                   label={endingsLabel(endingsShown)}
                   items={[
-                    ...(['lf', 'crlf'] as const).map((ending) => ({
-                      label: strings.editor.convertTo(
-                        strings.editor.endingNames[ending],
-                      ),
-                      checked:
-                        endingsLabel(endingsShown) ===
-                        strings.editor.endingNames[ending],
-                      onClick: () => convert(ending),
-                    })),
+                    ...conversionsOf(endingsShown.counts).map(
+                      ({ ending, label, changes }) => ({
+                        label,
+                        ...(changes
+                          ? { onClick: () => convert(ending) }
+                          : { disabled: true }),
+                      }),
+                    ),
                     ...(endingSources === undefined
                       ? []
                       : [

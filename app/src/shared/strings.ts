@@ -1236,6 +1236,7 @@ export const strings = {
     encodingTitle: 'Encoding',
     withBom: (encoding: string) => `${encoding} BOM`,
     newLinesEndIn: 'New lines end in',
+    withoutLineBreak: 'For a file with no line break yet',
     readIn: 'Read in',
     writtenIn: 'Written in',
     endingOfLines: (ending: string) =>
@@ -1281,7 +1282,7 @@ export const strings = {
     reopen: 'Reopen',
     endingNames: { lf: 'LF', crlf: 'CRLF', cr: 'CR' },
     mixed: 'Mixed',
-    convertTo: (ending: string) => `Convert to ${ending}`,
+    convertTo: (ending: string) => `Convert all line endings to ${ending}`,
     endingCounts: (counts: readonly string[], newLines: string) =>
       `${counts.join(', ')}; new lines end in ${newLines}`,
     linesEndingIn: (lines: number, ending: string) =>

@@ -91,12 +91,18 @@ export function endingSourceItems(
   lines: LineEnding | undefined,
   opening: SourceOpening,
 ): ContextMenuItem[] {
-  return itemsOf(strings.editor.newLinesEndIn, [
-    lines === undefined
-      ? unset(strings.editor.noLineBreak)
-      : set(strings.editor.endingOfLines(endingName(lines))),
-    ...sources.map((source) => endingRow(source, opening)),
-  ]);
+  return [
+    ...itemsOf(strings.editor.newLinesEndIn, [
+      lines === undefined
+        ? unset(strings.editor.noLineBreak)
+        : set(strings.editor.endingOfLines(endingName(lines))),
+    ]),
+    { separator: true },
+    ...itemsOf(
+      strings.editor.withoutLineBreak,
+      sources.map((source) => endingRow(source, opening)),
+    ),
+  ];
 }
 
 const encodingName = (encoding: TextEncoding, bom = false) =>
