@@ -65,7 +65,9 @@ const rules = [
     .matchAll(/([^{}]+)\{([^{}]*)\}/g),
 ].map(([, selectors, body], order) => ({
   order,
-  selectors: split(selectors, ',').map((selector) => selector.trim()),
+  selectors: split(selectors, ',').map((selector) =>
+    selector.trim().replace(/\s+/g, ' '),
+  ),
   declarations: new Map(
     body
       .split(';')
