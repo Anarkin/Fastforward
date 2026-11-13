@@ -119,17 +119,6 @@
       }
     },
     {
-      "files": ["src/test/appCommander.electron.test.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 5900
-          }
-        ]
-      }
-    },
-    {
       "files": ["src/test/shell/page/style.test.ts"],
       "rules": {
         "max-lines": [
