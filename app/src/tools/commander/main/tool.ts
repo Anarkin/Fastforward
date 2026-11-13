@@ -30,8 +30,6 @@ import {
   type CommanderToHost,
   type EndingSource,
   type Entry,
-  type FlatFolder,
-  type FlatProgress,
   type Side,
 } from '../shared/protocol';
 import {
@@ -52,9 +50,7 @@ import {
 } from './bookmarks';
 import { typedPath } from './typedPaths';
 import type { WatchFolder, WatchTree } from './watch';
-import { FlatTree } from './flatTree';
-import { Duplicates, type Compared, type ContentReader } from './duplicates';
-import { hashingHere } from './contentHash';
+import type { ContentReader } from './duplicates';
 import {
   fillsThumbnail,
   heldBox,
@@ -104,12 +100,7 @@ import { codeOf, reasonOf } from './reasons';
 import { Transfers, type ConnectTransfer, type TransferAsk } from './transfers';
 import { nameProblem } from '../shared/names';
 import { onSameVolume, repositoriesIn } from './repositories';
-import {
-  FolderSizes,
-  listingWalker,
-  type FolderSize,
-  type SizeWalker,
-} from './folderSizes';
+import type { SizeWalker } from './folderSizes';
 import {
   iconSourceOf,
   iconTicketOf,
@@ -119,17 +110,18 @@ import {
   viewerOfIcon,
 } from '../shared/icons';
 import {
-  type Duplicating,
-  type Flat,
-  type Sizing,
   type Pane,
   newPane,
   type Panes,
   type ShownPane,
   Sides,
   post,
+  type Listing,
+  sizedEntry,
+  entryNamed,
 } from './sides';
 import { type PdfPlaceStore, Viewers } from './viewers';
+import { SideScans } from './sideScans';
 
 export interface CommanderAccess {
   readonly pdfPlaces: PdfPlaceStore;
@@ -199,47 +191,10 @@ export interface CommanderAccess {
   readonly contentReader?: ContentReader;
 }
 
-type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
-
 const storedStatus = 204;
 const onlineStatus = 409;
 const fullStatus = 507;
 const maxHistory = 100;
-const flushEvery = 100;
-const maxEntriesTold = 5000;
-
-function sameProgress(
-  one: FlatProgress | undefined,
-  other: FlatProgress,
-): boolean {
-  return (
-    one !== undefined &&
-    one.reading === other.reading &&
-    one.stopped === other.stopped &&
-    one.folders === other.folders &&
-    one.failed === other.failed
-  );
-}
-
-function inParts(folders: readonly FlatFolder[]): FlatFolder[][] {
-  const parts: FlatFolder[][] = [];
-  let part: FlatFolder[] = [];
-  let entries = 0;
-  for (const folder of folders) {
-    if (part.length > 0 && entries + folder.entries.length > maxEntriesTold) {
-      parts.push(part);
-      part = [];
-      entries = 0;
-    }
-    part.push(folder);
-    entries += folder.entries.length;
-  }
-  if (part.length > 0 || parts.length === 0) {
-    parts.push(part);
-  }
-  return parts;
-}
-
 export function childToward(folder: string, from: string): string | undefined {
   const relative = path.relative(folder, from);
   return relative === '' ||
@@ -306,22 +261,6 @@ async function isFile(file: string): Promise<boolean> {
   }
 }
 
-const entriesByName = new WeakMap<
-  readonly Entry[],
-  ReadonlyMap<string, Entry>
->();
-
-function sizedEntry(entry: Entry, size: FolderSize | undefined): Entry {
-  return size === undefined
-    ? entry
-    : {
-        ...entry,
-        size: size.bytes,
-        ...(size.counting && { counting: true }),
-        ...(size.unread > 0 && { unreadFolders: size.unread }),
-      };
-}
-
 function entriesShown({ entries = [], sizing }: Pane): readonly Entry[] {
   return sizing === undefined
     ? entries
@@ -369,31 +308,11 @@ function listedIn(pane: Pane | undefined, name: unknown): Entry | undefined {
   return typeof name === 'string' ? pane.flat.tree.file(name) : undefined;
 }
 
-function entryNamed(
-  entries: readonly Entry[] | undefined,
-  name: unknown,
-): Entry | undefined {
-  if (entries === undefined || typeof name !== 'string') {
-    return undefined;
-  }
-  let named = entriesByName.get(entries);
-  if (named === undefined) {
-    const built = new Map<string, Entry>();
-    for (const entry of entries) {
-      if (!built.has(entry.name)) {
-        built.set(entry.name, entry);
-      }
-    }
-    named = built;
-    entriesByName.set(entries, named);
-  }
-  return named.get(name);
-}
-
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
   private readonly sides = new Sides();
   private readonly viewers: Viewers;
+  private readonly scans: SideScans;
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
@@ -432,8 +351,6 @@ export class CommanderTool implements Tool<'commander'> {
   private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
   private transferPage: Page | undefined;
   private updateAskedIn: Page | undefined;
-  private walks = 0;
-  private looks = 0;
   private readonly transfers: Transfers;
   private readonly savedSides: SavedSides;
   private readonly editing: Editing;
@@ -443,6 +360,13 @@ export class CommanderTool implements Tool<'commander'> {
     this.viewers = new Viewers(access, this.sides, (file) =>
       this.hiddenParts(file),
     );
+    this.scans = new SideScans(access, this.sides, {
+      listed: (folder) => this.listed(folder),
+      postListing: (page, tab, side, pane, selected) =>
+        this.postListing(page, tab, side, pane, selected),
+      list: (page, tab, side, folder, how) =>
+        this.list(page, tab, side, folder, how),
+    });
     this.editing = new Editing(
       {
         readFile: (file) => fs.promises.readFile(file),
@@ -605,9 +529,9 @@ export class CommanderTool implements Tool<'commander'> {
     const panes = this.sides.panes.get(tab.id);
     if (panes !== undefined) {
       for (const side of sides) {
-        this.endFlat(panes[side]);
-        this.endSizing(panes[side]);
-        this.endDuplicates(panes[side]);
+        this.scans.endFlat(panes[side]);
+        this.scans.endSizing(panes[side]);
+        this.scans.endDuplicates(panes[side]);
       }
     }
     this.sides.panes.delete(tab.id);
@@ -780,11 +704,11 @@ export class CommanderTool implements Tool<'commander'> {
       case 'reread': {
         const shown = this.sides.shownPane(page, message.tab, message.side);
         if (shown !== undefined) {
-          this.endSizing(shown.pane);
+          this.scans.endSizing(shown.pane);
           shown.pane.duplicates?.duplicates.forget();
         }
         if (shown?.pane.flat !== undefined) {
-          this.startFlat(page, shown);
+          this.scans.startFlat(page, shown);
           return undefined;
         }
         return shown === undefined
@@ -792,7 +716,7 @@ export class CommanderTool implements Tool<'commander'> {
           : this.list(page, shown.tab, shown.side, shown.pane.folder, 'show');
       }
       case 'flat':
-        return this.turnFlat(page, message);
+        return this.scans.turnFlat(page, message);
       case 'stopReading': {
         const shown = this.sides.shownPane(page, message.tab, message.side);
         shown?.pane.opening?.abort();
@@ -802,7 +726,7 @@ export class CommanderTool implements Tool<'commander'> {
         return undefined;
       }
       case 'countSizes':
-        this.countSizes(page, message);
+        this.scans.countSizes(page, message);
         return undefined;
       case 'openOnSide':
         return this.openOnSide(page, message);
@@ -910,7 +834,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'goTo':
         return this.goTo(page, message);
       case 'duplicates':
-        this.turnDuplicates(page, message);
+        this.scans.turnDuplicates(page, message);
         return undefined;
       default:
         return message satisfies never;
@@ -1037,7 +961,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
     this.copiesWatched.clear();
     for (const pane of this.sides.allPanes()) {
-      this.endFlat(pane);
+      this.scans.endFlat(pane);
     }
     for (const page of this.sides.shown.keys()) {
       this.sides.stopShowing(page);
@@ -3702,8 +3626,8 @@ export class CommanderTool implements Tool<'commander'> {
       (how === 'show' || how === 'refresh')
     ) {
       this.postListing(page, tab, side, pane, undefined);
-      this.flushFlat(tab, side, pane.flat);
-      this.flushDuplicates(tab, side, pane.duplicates);
+      this.scans.flushFlat(tab, side, pane.flat);
+      this.scans.flushDuplicates(tab, side, pane.duplicates);
       return;
     }
     if (how === 'refresh' && pane.reading !== undefined) {
@@ -3803,9 +3727,9 @@ export class CommanderTool implements Tool<'commander'> {
     }
     if (pane.folder !== folder) {
       pane.repositories = new Set();
-      this.endFlat(pane);
-      this.endSizing(pane);
-      this.endDuplicates(pane);
+      this.scans.endFlat(pane);
+      this.scans.endSizing(pane);
+      this.scans.endDuplicates(pane);
     }
     if (how === 'visit' || typeof how === 'object' || pane.denied === folder) {
       pane.denied = undefined;
@@ -3827,7 +3751,7 @@ export class CommanderTool implements Tool<'commander'> {
     if (!listedAsBefore) {
       this.postListing(page, tab, side, pane, selected);
     }
-    this.feedDuplicates(pane);
+    this.scans.feedDuplicates(pane);
     this.watch(page, tab, side, folder, stamp);
     if (listing.archive === undefined) {
       void this.shell.track(
@@ -3896,308 +3820,6 @@ export class CommanderTool implements Tool<'commander'> {
           ? watch(folder, refresh, listed)
           : watch(archive, refresh),
     });
-  }
-
-  private async turnFlat(
-    page: Page,
-    { tab, side, flat }: Extract<CommanderToHost, { type: 'flat' }>,
-  ): Promise<void> {
-    const shown = this.sides.shownPane(page, tab, side);
-    if (shown === undefined || typeof flat !== 'boolean') {
-      return;
-    }
-    if (flat && shown.pane.flat === undefined) {
-      this.startFlat(page, shown);
-    } else if (!flat && shown.pane.flat !== undefined) {
-      this.endFlat(shown.pane);
-      await this.list(page, shown.tab, shown.side, shown.pane.folder, 'show');
-    }
-  }
-
-  private startFlat(page: Page, { tab, side, pane }: ShownPane): void {
-    this.endFlat(pane);
-    this.endSizing(pane);
-    const watching = this.sides.shown.get(page)?.watching;
-    watching?.get(side)?.stop();
-    watching?.delete(side);
-    pane.asked++;
-    pane.repositoriesAsked++;
-    pane.repositories = new Set();
-    const { folder } = pane;
-    const tree = new FlatTree(
-      folder,
-      async (each) => (await this.listed(each)).entries,
-      () => this.flatChanged(tab, side, flat),
-    );
-    const flat: Flat = {
-      walk: ++this.walks,
-      tree,
-      stopWatching: () => {},
-      told: undefined,
-      flushing: undefined,
-      flushed: 0,
-    };
-    pane.flat = flat;
-    flat.stopWatching =
-      pane.archive === undefined
-        ? (this.access.watchTree?.(folder, (changed) => {
-            if (changed === undefined) {
-              tree.changedAll();
-            } else {
-              tree.changed(changed);
-            }
-          }) ?? (() => {}))
-        : this.access.watch(pane.archive, () => tree.changedAll());
-    this.postListing(page, tab, side, pane, undefined);
-    tree.start();
-  }
-
-  private endFlat(pane: Pane): void {
-    const { flat } = pane;
-    if (flat !== undefined) {
-      pane.flat = undefined;
-      flat.tree.close();
-      flat.stopWatching();
-      clearTimeout(flat.flushing);
-    }
-  }
-
-  private flatChanged(tab: string, side: Side, flat: Flat): void {
-    flat.flushing ??= setTimeout(
-      () => {
-        flat.flushing = undefined;
-        this.flushFlat(tab, side, flat);
-      },
-      Math.max(0, flat.flushed + flushEvery - Date.now()),
-    );
-  }
-
-  private flushFlat(tab: string, side: Side, flat: Flat): void {
-    const pane = this.sides.panes.get(tab)?.[side];
-    const shownIn = this.sides.pageShowing(tab);
-    if (pane?.flat !== flat || shownIn === undefined) {
-      return;
-    }
-    const progress = flat.tree.progress;
-    const folders = flat.tree.take();
-    if (folders.length === 0 && sameProgress(flat.told, progress)) {
-      return;
-    }
-    flat.told = progress;
-    flat.flushed = Date.now();
-    for (const part of inParts(folders)) {
-      post(shownIn, {
-        type: 'flatFiles',
-        tab,
-        side,
-        folder: pane.folder,
-        walk: flat.walk,
-        folders: part,
-        progress,
-      });
-    }
-    if (!progress.reading) {
-      this.feedDuplicates(pane);
-    }
-  }
-
-  private turnDuplicates(
-    page: Page,
-    { tab, side, duplicates }: Extract<CommanderToHost, { type: 'duplicates' }>,
-  ): void {
-    const shown = this.sides.shownPane(page, tab, side);
-    if (
-      shown === undefined ||
-      typeof duplicates !== 'boolean' ||
-      shown.pane.archive !== undefined ||
-      duplicates === (shown.pane.duplicates !== undefined)
-    ) {
-      return;
-    }
-    if (duplicates) {
-      this.startDuplicates(shown);
-    } else {
-      this.endDuplicates(shown.pane);
-    }
-    this.postListing(page, shown.tab, shown.side, shown.pane, undefined);
-  }
-
-  private startDuplicates({ tab, side, pane }: ShownPane): void {
-    const duplicating: Duplicating = {
-      look: ++this.looks,
-      duplicates: new Duplicates(
-        this.access.contentReader ?? hashingHere,
-        () => this.duplicatesChanged(tab, side, duplicating),
-        { skip: async (file) => (await this.access.streamed?.(file)) === true },
-      ),
-      flushing: undefined,
-      flushed: 0,
-    };
-    pane.duplicates = duplicating;
-    if (pane.flat === undefined || !pane.flat.tree.progress.reading) {
-      this.feedDuplicates(pane);
-    }
-  }
-
-  private feedDuplicates(pane: Pane): void {
-    const { duplicates, flat, folder } = pane;
-    if (duplicates === undefined) {
-      return;
-    }
-    const files: Iterable<readonly [string, Entry]> =
-      flat === undefined
-        ? (pane.entries ?? []).map((entry) => [entry.name, entry] as const)
-        : flat.tree.filesRead;
-    const compared: Compared[] = [];
-    for (const [key, entry] of files) {
-      if (
-        !entry.folder &&
-        !entry.link &&
-        entry.online !== true &&
-        entry.size !== undefined &&
-        entry.size > 0
-      ) {
-        compared.push({
-          key,
-          file: path.join(folder, key),
-          size: entry.size,
-          modified: entry.modified,
-        });
-      }
-    }
-    duplicates.duplicates.look(compared);
-  }
-
-  private endDuplicates(pane: Pane): void {
-    const { duplicates } = pane;
-    if (duplicates !== undefined) {
-      pane.duplicates = undefined;
-      duplicates.duplicates.close();
-      clearTimeout(duplicates.flushing);
-    }
-  }
-
-  private duplicatesChanged(
-    tab: string,
-    side: Side,
-    duplicating: Duplicating,
-  ): void {
-    duplicating.flushing ??= setTimeout(
-      () => {
-        duplicating.flushing = undefined;
-        this.flushDuplicates(tab, side, duplicating);
-      },
-      Math.max(0, duplicating.flushed + flushEvery - Date.now()),
-    );
-  }
-
-  private flushDuplicates(
-    tab: string,
-    side: Side,
-    duplicating: Duplicating | undefined,
-  ): void {
-    const pane = this.sides.panes.get(tab)?.[side];
-    const shownIn = this.sides.pageShowing(tab);
-    if (
-      duplicating === undefined ||
-      pane?.duplicates !== duplicating ||
-      shownIn === undefined
-    ) {
-      return;
-    }
-    duplicating.flushed = Date.now();
-    post(shownIn, {
-      type: 'duplicateGroups',
-      tab,
-      side,
-      folder: pane.folder,
-      look: duplicating.look,
-      groups: duplicating.duplicates.groups,
-      reading: duplicating.duplicates.reading,
-    });
-  }
-
-  private countSizes(
-    page: Page,
-    {
-      tab,
-      side,
-      folder,
-      names,
-    }: Extract<CommanderToHost, { type: 'countSizes' }>,
-  ): void {
-    const shown = this.sides.diskPane(page, tab, side, folder);
-    if (
-      shown === undefined ||
-      shown.pane.flat !== undefined ||
-      !Array.isArray(names) ||
-      names.length === 0 ||
-      !names.every(
-        (name: unknown) =>
-          entryNamed(shown.pane.entries, name)?.folder === true,
-      )
-    ) {
-      return;
-    }
-    shown.pane.sizing ??= this.newSizing(shown);
-    shown.pane.sizing.sizes.count(names);
-  }
-
-  private newSizing({ tab, side, pane }: ShownPane): Sizing {
-    const sizing: Sizing = {
-      sizes: new FolderSizes(
-        pane.folder,
-        (pane.elevated !== true && this.access.sizeWalker) ||
-          listingWalker(async (each) => (await this.listed(each)).entries),
-        () => this.sizesChanged(tab, side, sizing),
-      ),
-      flushing: undefined,
-      flushed: 0,
-    };
-    return sizing;
-  }
-
-  private endSizing(pane: Pane): void {
-    const { sizing } = pane;
-    if (sizing !== undefined) {
-      pane.sizing = undefined;
-      sizing.sizes.close();
-      clearTimeout(sizing.flushing);
-    }
-  }
-
-  private sizesChanged(tab: string, side: Side, sizing: Sizing): void {
-    sizing.flushing ??= setTimeout(
-      () => {
-        sizing.flushing = undefined;
-        this.flushSizes(tab, side, sizing);
-      },
-      Math.max(0, sizing.flushed + flushEvery - Date.now()),
-    );
-  }
-
-  private flushSizes(tab: string, side: Side, sizing: Sizing): void {
-    const pane = this.sides.panes.get(tab)?.[side];
-    const shownIn = this.sides.pageShowing(tab);
-    if (pane?.sizing !== sizing || shownIn === undefined) {
-      return;
-    }
-    sizing.flushed = Date.now();
-    const entries = sizing.sizes.take().flatMap((name) => {
-      const entry = entryNamed(pane.entries, name);
-      return entry?.folder === true
-        ? [sizedEntry(entry, sizing.sizes.of(name))]
-        : [];
-    });
-    if (entries.length > 0) {
-      post(shownIn, {
-        type: 'folderSizes',
-        tab,
-        side,
-        folder: pane.folder,
-        entries,
-      });
-    }
   }
 
   private postListing(
