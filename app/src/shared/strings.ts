@@ -255,6 +255,16 @@ export const strings = {
       labeled('Repository', named(repository)),
     ],
     init: 'Init',
+    saveTitle: 'Unsaved Changes',
+    saveFile: 'Save the changes to this file before closing it?',
+    saveWindowFiles:
+      'Save the changes to these files before closing the window?',
+    saveQuitFiles: `Save the changes to these files before quitting ${brand}?`,
+    filesLines: (names: readonly string[]) =>
+      names.map((name) => labeled('File', named(name))),
+    save: 'Save',
+    saveAll: 'Save All',
+    dontSave: "Don't Save",
     cancel: 'Cancel',
     ok: 'OK',
   },
@@ -365,6 +375,7 @@ export const strings = {
     newLine: 'Start a new line, indented as the one before',
     dialogButton: 'Move between the buttons of a dialog',
     newFolder: 'Make a folder in the folder of the side',
+    newFile: 'Edit a new file in the folder of the side, made once saved',
     renameItem: 'Rename the selected file or folder',
     packItems:
       'Pack the marked items, or the selected one, into an archive in the folder of the other side',
@@ -793,6 +804,8 @@ export const strings = {
     dropMoveTitle: (what: Value, target: string) =>
       `Move ${plain(what)} to "${target}"`,
     newFolderTitle: 'New Folder',
+    newFileTitle: 'New File',
+    editNewFile: 'Edit',
     newFolderLines: (folder: string) => [labeled('In', named(folder))],
     newFolderName: 'Name',
     makeFolder: 'Make',

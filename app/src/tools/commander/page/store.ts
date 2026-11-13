@@ -148,6 +148,7 @@ interface CommanderSource {
     | { readonly ask: number; readonly name: string; readonly archive: string }
     | undefined;
   readonly makingFolder: MakingFolder | undefined;
+  readonly makingFile: MakingFolder | undefined;
   readonly renaming: Renaming | undefined;
   readonly goingTo: GoingTo | undefined;
   readonly markingPattern: MarkingPattern | undefined;
@@ -268,6 +269,9 @@ interface CommanderActions {
   readonly askNewFolder: (side: Side) => void;
   readonly makeFolder: (name: string) => void;
   readonly cancelNewFolder: () => void;
+  readonly askNewFile: (side: Side) => void;
+  readonly makeFile: (name: string) => void;
+  readonly cancelNewFile: () => void;
   readonly askRename: (side: Side, name: string) => void;
   readonly rename: (to: string) => void;
   readonly cancelRename: () => void;
@@ -329,6 +333,7 @@ const commanderDefaults: CommanderSource = {
   askingPassword: undefined,
   askingUpdate: undefined,
   makingFolder: undefined,
+  makingFile: undefined,
   renaming: undefined,
   goingTo: undefined,
   markingPattern: undefined,
@@ -797,9 +802,13 @@ export function createCommanderStore(
       if (filters !== get().filters) {
         set({ filters });
       }
-      const { deleting, transferring, makingFolder, renaming } = get();
+      const { deleting, transferring, makingFolder, makingFile, renaming } =
+        get();
       if (makingFolder !== undefined && !stillShown(get().view, makingFolder)) {
         set({ makingFolder: undefined });
+      }
+      if (makingFile !== undefined && !stillShown(get().view, makingFile)) {
+        set({ makingFile: undefined });
       }
       if (renaming !== undefined && !stillShown(get().view, renaming)) {
         set({ renaming: undefined });
@@ -1222,6 +1231,18 @@ export function createCommanderStore(
         }
       },
       cancelNewFolder: () => set({ makingFolder: undefined }),
+      askNewFile: (side) =>
+        onDisk(side, (tab, folder) =>
+          set({ makingFile: { tab, side, folder } }),
+        ),
+      makeFile: (name) => {
+        const { makingFile } = get();
+        if (makingFile !== undefined) {
+          set({ makingFile: undefined });
+          post({ type: 'newFile', ...makingFile, name });
+        }
+      },
+      cancelNewFile: () => set({ makingFile: undefined }),
       askRename: (side, name) =>
         onPane(side, (tab, folder) =>
           set({ renaming: { tab, side, folder, name } }),

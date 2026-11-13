@@ -18,6 +18,23 @@ export function newFolderProblem(
     : undefined;
 }
 
+export function newFileProblem(
+  name: string,
+  listed: readonly Entry[] | undefined,
+  platform: string | undefined,
+): Sentence | undefined {
+  const problem = nameProblem(name, platform);
+  if (problem !== undefined) {
+    return problem;
+  }
+  const key = folderKey(name, platform);
+  return listed?.some(
+    (entry) => entry.folder && folderKey(entry.name, platform) === key,
+  )
+    ? strings.commander.folderThere
+    : undefined;
+}
+
 export function renameProblem(
   to: string,
   name: string,

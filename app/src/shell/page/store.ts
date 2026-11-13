@@ -72,8 +72,38 @@ export interface ScreenPoint {
 
 export type Confirming =
   | { readonly kind: 'tab'; readonly tab: TabInfo }
-  | { readonly kind: 'window' }
-  | { readonly kind: 'quit'; readonly note?: string };
+  | { readonly kind: 'unsavedTab'; readonly tab: TabInfo }
+  | { readonly kind: 'window'; readonly unsaved?: readonly string[] }
+  | {
+      readonly kind: 'quit';
+      readonly note?: string;
+      readonly unsaved?: readonly string[];
+    };
+
+function closingOf(confirming: Confirming, save: boolean): ToHost {
+  switch (confirming.kind) {
+    case 'tab':
+      return { type: 'closeTab', tab: confirming.tab.id };
+    case 'unsavedTab':
+      return {
+        type: 'closeTab',
+        tab: confirming.tab.id,
+        ...(save && { save: true }),
+      };
+    case 'window':
+      return {
+        type: 'closeWindow',
+        ...(save && confirming.unsaved !== undefined && { save: true }),
+      };
+    case 'quit':
+      return {
+        type: 'quit',
+        ...(save && confirming.unsaved !== undefined && { save: true }),
+      };
+    default:
+      return confirming satisfies never;
+  }
+}
 
 export interface TabMenu {
   readonly tab: string | undefined;
@@ -140,6 +170,7 @@ interface ShellActions {
   readonly closeMenu: () => void;
   readonly closeTab: (id: string) => void;
   readonly confirm: () => void;
+  readonly dontSave: () => void;
   readonly cancel: () => void;
   readonly openWith: (tool: ToolId | undefined) => void;
   readonly moveTab: (id: string, index: number) => void;
@@ -245,7 +276,10 @@ function received(
       return { installsCommand: message.installable };
     case 'confirmCloseWindow':
       return {
-        confirming: { kind: 'window' },
+        confirming: {
+          kind: 'window',
+          ...(message.unsaved !== undefined && { unsaved: message.unsaved }),
+        },
         popups: withPopup(state.popups, 'confirm', true),
       };
     case 'confirmQuit':
@@ -253,6 +287,7 @@ function received(
         confirming: {
           kind: 'quit',
           ...(message.note !== undefined && { note: message.note }),
+          ...(message.unsaved !== undefined && { unsaved: message.unsaved }),
         },
         popups: withPopup(state.popups, 'confirm', true),
       };
@@ -348,7 +383,12 @@ export function createShellStore(
       closeMenu: () => set({ menu: undefined }),
       closeTab: (id) => {
         const tab = get().tabs?.find((each) => each.id === id);
-        if (tab !== undefined && confirmsClose[tab.tool]) {
+        if (tab?.unsaved === true) {
+          set((state) => ({
+            confirming: { kind: 'unsavedTab', tab },
+            popups: withPopup(state.popups, 'confirm', true),
+          }));
+        } else if (tab !== undefined && confirmsClose[tab.tool]) {
           set((state) => ({
             confirming: { kind: 'tab', tab },
             popups: withPopup(state.popups, 'confirm', true),
@@ -366,13 +406,18 @@ export function createShellStore(
           confirming: undefined,
           popups: withPopup(state.popups, 'confirm', false),
         }));
-        post(
-          confirming.kind === 'tab'
-            ? { type: 'closeTab', tab: confirming.tab.id }
-            : confirming.kind === 'window'
-              ? { type: 'closeWindow' }
-              : { type: 'quit' },
-        );
+        post(closingOf(confirming, true));
+      },
+      dontSave: () => {
+        const { confirming } = get();
+        if (confirming === undefined) {
+          return;
+        }
+        set((state) => ({
+          confirming: undefined,
+          popups: withPopup(state.popups, 'confirm', false),
+        }));
+        post(closingOf(confirming, false));
       },
       cancel: () =>
         set((state) => ({

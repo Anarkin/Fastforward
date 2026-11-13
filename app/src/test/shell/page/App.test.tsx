@@ -479,6 +479,50 @@ suite('Window', () => {
     );
   });
 
+  test('asks whether to save the changes of a file before closing its tab, and of the files a window or the app holds before closing or quitting, naming each on a line of its own and offering not to save them', () => {
+    assert.deepStrictEqual(
+      confirmation({
+        kind: 'unsavedTab',
+        tab: { id: '1', tool: 'commander', name: 'notes.txt', unsaved: true },
+      }),
+      {
+        title: 'Unsaved Changes',
+        message: 'Save the changes to this file before closing it?',
+        lines: [{ label: 'File', name: 'notes.txt' }],
+        confirm: 'Save',
+        dontSave: true,
+      },
+    );
+    assert.deepStrictEqual(
+      confirmation({ kind: 'window', unsaved: ['a.txt', 'b.txt'] }),
+      {
+        title: 'Close Window',
+        message: 'Save the changes to these files before closing the window?',
+        lines: [
+          { label: 'File', name: 'a.txt' },
+          { label: 'File', name: 'b.txt' },
+        ],
+        confirm: 'Save All',
+        dontSave: true,
+      },
+    );
+    assert.deepStrictEqual(
+      confirmation({
+        kind: 'quit',
+        unsaved: ['a.txt'],
+        note: strings.commander.quitStopsTransfers,
+      }),
+      {
+        title: 'Quit',
+        message: 'Save the changes to these files before quitting Fastforward?',
+        lines: [{ label: 'File', name: 'a.txt' }],
+        note: strings.commander.quitStopsTransfers,
+        confirm: 'Save All',
+        dontSave: true,
+      },
+    );
+  });
+
   test('offers every tool in the + menu by name, with its icon, as a submenu where the tool gives one, or opening a new tab of it', () => {
     const opened: ToolId[] = [];
     const recent = [{ label: 'main', onClick: noop }];

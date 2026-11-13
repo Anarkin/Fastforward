@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   baseNameOf,
   copiedText,
+  newFileProblem,
   newFolderProblem,
   renameProblem,
   renamedPart,
@@ -31,6 +32,20 @@ suite('Commander naming', () => {
     );
     assert.strictEqual(newFolderProblem('photos', listed, 'linux'), undefined);
     assert.strictEqual(newFolderProblem('new', listed, 'win32'), undefined);
+  });
+
+  test('lets a new file be named as a file already there, which opens it, but not as a folder there or with a name the system refuses', () => {
+    const listed = [entry('notes.txt'), { ...entry('docs'), folder: true }];
+    assert.strictEqual(newFileProblem('notes.txt', listed, 'win32'), undefined);
+    assert.strictEqual(
+      newFileProblem('DOCS', listed, 'win32'),
+      strings.commander.folderThere,
+    );
+    assert.strictEqual(newFileProblem('DOCS', listed, 'linux'), undefined);
+    assert.deepStrictEqual(
+      newFileProblem('con', listed, 'win32'),
+      strings.commander.reservedName('con'),
+    );
   });
 
   test('says what is wrong with a name before whether it is there', () => {

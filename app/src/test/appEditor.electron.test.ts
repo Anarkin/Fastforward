@@ -44,6 +44,15 @@ suite('App editor', () => {
     await page.keyboard.press('F4');
     await content().waitFor();
   };
+  const toStart = () =>
+    content()
+      .locator('.cm-line')
+      .first()
+      .click({ position: { x: 0, y: 2 } });
+  const toEnd = async () => {
+    await content().locator('.cm-line').last().click();
+    await page.keyboard.press('End');
+  };
   const notices = () => page.locator('.notice').allTextContents();
   const closeNotices = async () => {
     const close = page.locator('.notice-close').first();
@@ -125,8 +134,7 @@ suite('App editor', () => {
       async () => (await editedText()).startsWith('caf'),
       'the text',
     );
-    await content().click();
-    await page.keyboard.press('ControlOrMeta+Home');
+    await toStart();
     await page.keyboard.type('> ');
     await activeTab().locator('.tab-unsaved').waitFor();
     await page.keyboard.press('ControlOrMeta+S');
@@ -140,8 +148,7 @@ suite('App editor', () => {
   test('keeps the text edited and its undo history while the page reloads as the settings are saved', async () => {
     await backToCommander();
     await edit('notes.txt');
-    await content().click();
-    await page.keyboard.press('ControlOrMeta+End');
+    await toEnd();
     await page.keyboard.type('three');
     await activeTab().locator('.tab-unsaved').waitFor();
     await waitFor(
@@ -168,6 +175,57 @@ suite('App editor', () => {
       'the edit undone',
     );
     await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+  });
+
+  test("asks whether to save the changes of a tab before closing it, saving them on Save and leaving the file as it was on Don't Save", async () => {
+    const file = path.join(opened, 'notes.txt');
+    const before = fs.readFileSync(file, 'latin1');
+    const tabs = () => page.locator('.tabs [role="tab"]').count();
+    const typeAndClose = async (typed: string) => {
+      await backToCommander();
+      await edit('notes.txt');
+      await toStart();
+      await page.keyboard.type(typed);
+      await activeTab().locator('.tab-unsaved').waitFor();
+      await activeTab().locator('.tab-close').click();
+      await page.locator('.confirm-popup').waitFor();
+    };
+    const count = await tabs();
+    await typeAndClose('x');
+    assert.match(
+      (await page.locator('.confirm-popup').textContent()) ?? '',
+      /Save the changes to this file before closing it\?.*notes\.txt/,
+    );
+    await page.locator('.confirm-button.default').click();
+    await waitFor(async () => (await tabs()) === count - 1, 'the tab closed');
+    assert.strictEqual(fs.readFileSync(file, 'latin1'), `x${before}`);
+    await typeAndClose('y');
+    await page.locator('.confirm-button', { hasText: "Don't Save" }).click();
+    await waitFor(async () => (await tabs()) === count - 1, 'the tab closed');
+    assert.strictEqual(fs.readFileSync(file, 'latin1'), `x${before}`);
+  });
+
+  test('edits a new file named on Shift+F4 as empty text, making the file only once it is saved', async () => {
+    await backToCommander();
+    const file = path.join(opened, 'fresh.txt');
+    await right().locator('.commander-row').first().click();
+    await page.keyboard.press('Shift+F4');
+    const prompt = page.locator('.prompt-input');
+    await prompt.waitFor();
+    await prompt.fill('fresh.txt');
+    await prompt.press('Enter');
+    await content().waitFor();
+    assert.strictEqual(
+      await activeTab().locator('.tab-name').textContent(),
+      'fresh.txt',
+    );
+    assert.strictEqual(fs.existsSync(file), false);
+    await content().click();
+    await page.keyboard.type('hello');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), 'hello');
   });
 
   test('says why it opens no editor for a folder or a file of binary data', async () => {

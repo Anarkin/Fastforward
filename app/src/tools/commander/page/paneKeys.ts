@@ -24,6 +24,7 @@ import { moveInGrid } from './tiles';
 
 export type PaneAct =
   | { readonly kind: 'newFolder' }
+  | { readonly kind: 'newFile' }
   | { readonly kind: 'rename'; readonly name: string }
   | { readonly kind: 'pack'; readonly names: readonly string[] }
   | { readonly kind: 'test'; readonly names: readonly string[] }
@@ -119,6 +120,9 @@ export function paneKey(
   }: PaneKeys,
 ): { readonly act?: PaneAct } | undefined {
   const row = selectedIndex === -1 ? undefined : rows[selectedIndex];
+  if (keyPressed(commanderKeymap.newFile, event) !== undefined) {
+    return { act: { kind: 'newFile' } };
+  }
   if (keyPressed(commanderKeymap.newFolder, event) !== undefined) {
     return { act: { kind: 'newFolder' } };
   }

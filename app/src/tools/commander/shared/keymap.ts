@@ -157,6 +157,7 @@ export const commanderKeymap = {
     'Shift+F6': true,
   }),
   newFolder: bind('Operations', strings.actions.newFolder, { F7: true }),
+  newFile: bind('Operations', strings.actions.newFile, { 'Shift+F4': true }),
   deleteItems: bind('Operations', strings.actions.deleteItems, {
     Delete: false,
     F8: false,

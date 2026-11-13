@@ -19,6 +19,7 @@ import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../shell/page/promptPopup';
 import {
   baseNameOf,
+  newFileProblem,
   newFolderProblem,
   renamedPart,
   renameProblem,
@@ -62,6 +63,12 @@ function CommanderPopups() {
   const deleting = useCommander((state) => state.deleting);
   const transferring = useCommander((state) => state.transferring);
   const makingFolder = useCommander((state) => state.makingFolder);
+  const makingFile = useCommander((state) => state.makingFile);
+  const listedForFile = useCommander((state) =>
+    state.makingFile === undefined
+      ? undefined
+      : state.view.panes[state.makingFile.side]?.entries,
+  );
   const platform = useCommander((state) => state.view.platform);
   const listed = useCommander((state) =>
     state.makingFolder === undefined
@@ -91,6 +98,8 @@ function CommanderPopups() {
     cancelTransfer,
     makeFolder,
     cancelNewFolder,
+    makeFile,
+    cancelNewFile,
     closeNoAccess,
     elevate,
     answerPassword,
@@ -152,6 +161,17 @@ function CommanderPopups() {
           problemOf={(name) => newFolderProblem(name, listed, platform)}
           onConfirm={makeFolder}
           onCancel={cancelNewFolder}
+        />
+      )}
+      {makingFile !== undefined && (
+        <PromptPopup
+          title={strings.commander.newFileTitle}
+          lines={strings.commander.newFolderLines(makingFile.folder)}
+          label={strings.commander.newFolderName}
+          confirm={strings.commander.editNewFile}
+          problemOf={(name) => newFileProblem(name, listedForFile, platform)}
+          onConfirm={makeFile}
+          onCancel={cancelNewFile}
         />
       )}
       {renaming !== undefined && renamed !== undefined && (

@@ -273,6 +273,13 @@ export type CommanderToHost =
       readonly name: string;
     }
   | {
+      readonly type: 'newFile';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name: string;
+    }
+  | {
       readonly type: 'testArchives';
       readonly tab: string;
       readonly side: Side;

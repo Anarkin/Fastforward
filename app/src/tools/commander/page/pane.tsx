@@ -879,6 +879,9 @@ export function Pane({
       case 'newFolder':
         actions.askNewFolder(side);
         return;
+      case 'newFile':
+        actions.askNewFile(side);
+        return;
       case 'rename':
         actions.askRename(side, action.name);
         return;

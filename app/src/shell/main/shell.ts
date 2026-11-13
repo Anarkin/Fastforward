@@ -113,6 +113,8 @@ export interface Tool<K extends ToolId> {
   newTab(page: Page): Promise<void>;
   reloadSettings(): void;
   quitNote?(): string | undefined;
+  unsaved?(tab: Tab): boolean;
+  saveUnsaved?(page: Page, tab: Tab): Promise<boolean>;
   quit(): void;
 }
 
@@ -417,16 +419,43 @@ export class Shell {
     return (
       [...this.pages.values()].some((page) => !page.disposed) &&
       (this.storage.savedTabs.some((tab) => confirmsClose[tab.tool]) ||
+        this.unsavedOf(this.storage.savedTabs).length > 0 ||
         quitNoteOf(this.tools) !== undefined)
     );
   }
 
   askToQuit(): void {
     const note = quitNoteOf(this.tools);
+    const unsaved = this.namesOf(this.unsavedOf(this.storage.savedTabs));
     this.shownPage()?.post({
       type: 'confirmQuit',
       ...(note !== undefined && { note }),
+      ...(unsaved.length > 0 && { unsaved }),
     });
+  }
+
+  private unsavedOf(tabs: readonly Tab[]): Tab[] {
+    return tabs.filter((tab) => this.tools[tab.tool].unsaved?.(tab) === true);
+  }
+
+  private namesOf(tabs: readonly Tab[]): string[] {
+    return this.infos(tabs).map((info) => info.name);
+  }
+
+  private tabsOfWindow(window: string): readonly Tab[] {
+    return this.storage.layout.find((each) => each.id === window)?.tabs ?? [];
+  }
+
+  private async savedAll(page: Page, tabs: readonly Tab[]): Promise<boolean> {
+    for (const tab of this.unsavedOf(tabs)) {
+      const holder = windowOf(this.storage.layout, tab.id);
+      const shownIn =
+        (holder === undefined ? undefined : this.livePage(holder.id)) ?? page;
+      if ((await this.tools[tab.tool].saveUnsaved?.(shownIn, tab)) !== true) {
+        return false;
+      }
+    }
+    return true;
   }
 
   notify(notice: Notice): void {
@@ -438,16 +467,20 @@ export class Shell {
   }
 
   asksBeforeClosing(window: string): boolean {
+    const tabs = this.tabsOfWindow(window);
     return (
-      this.storage.layout
-        .find((each) => each.id === window)
-        ?.tabs.some((tab) => confirmsClose[tab.tool]) === true
+      tabs.some((tab) => confirmsClose[tab.tool]) ||
+      this.unsavedOf(tabs).length > 0
     );
   }
 
   askToCloseWindow(window: string): boolean {
     const page = this.livePage(window);
-    page?.post({ type: 'confirmCloseWindow' });
+    const unsaved = this.namesOf(this.unsavedOf(this.tabsOfWindow(window)));
+    page?.post({
+      type: 'confirmCloseWindow',
+      ...(unsaved.length > 0 && { unsaved }),
+    });
     return page !== undefined;
   }
 
@@ -540,6 +573,12 @@ export class Shell {
         host.installUpdate();
         return;
       case 'quit':
+        if (
+          message.save === true &&
+          !(await this.savedAll(page, this.storage.savedTabs))
+        ) {
+          return;
+        }
         host.quit();
         return;
       case 'newWindow': {
@@ -551,9 +590,17 @@ export class Shell {
         this.postWindows();
         return;
       }
-      case 'closeWindow':
-        host.closeWindow(this.windowOf(page).id);
+      case 'closeWindow': {
+        const window = this.windowOf(page);
+        if (
+          message.save === true &&
+          !(await this.savedAll(page, window.tabs))
+        ) {
+          return;
+        }
+        host.closeWindow(window.id);
         return;
+      }
       case 'moveTabToWindow':
         await this.moveToWindow(page, message.tab, message.window);
         return;
@@ -631,9 +678,16 @@ export class Shell {
         await this.show(page, tab.id);
         return;
       }
-      case 'closeTab':
+      case 'closeTab': {
+        const closing = storage.savedTabs.filter(
+          (tab) => tab.id === message.tab,
+        );
+        if (message.save === true && !(await this.savedAll(page, closing))) {
+          return;
+        }
         await this.close(page, message.tab);
         return;
+      }
       case 'preloadTab': {
         const window = this.windowOf(page);
         const tab = window.tabs.find((each) => each.id === message.tab);

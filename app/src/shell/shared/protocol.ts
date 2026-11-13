@@ -100,7 +100,7 @@ export type Theme = (typeof themes)[number];
 export type ToHost =
   | { readonly type: 'ready' }
   | { readonly type: 'selectTab'; readonly tab: string }
-  | { readonly type: 'closeTab'; readonly tab: string }
+  | { readonly type: 'closeTab'; readonly tab: string; readonly save?: true }
   | { readonly type: 'moveTab'; readonly tab: string; readonly index: number }
   | {
       readonly type: 'tearTab';
@@ -129,7 +129,7 @@ export type ToHost =
   | { readonly type: 'setImageView'; readonly view: ImageView }
   | { readonly type: 'newTab'; readonly tool: ToolId }
   | { readonly type: 'newWindow' }
-  | { readonly type: 'closeWindow' }
+  | { readonly type: 'closeWindow'; readonly save?: true }
   | { readonly type: 'openWith'; readonly tool: ToolId | undefined }
   | { readonly type: 'openIn' }
   | { readonly type: 'copyText'; readonly text: string }
@@ -137,7 +137,7 @@ export type ToHost =
   | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'checkForUpdates' }
   | { readonly type: 'installUpdate' }
-  | { readonly type: 'quit' }
+  | { readonly type: 'quit'; readonly save?: true }
   | { readonly type: 'installTerminalCommand' }
   | {
       readonly type: 'log';
@@ -166,8 +166,15 @@ export type ToWebview =
   | { readonly type: 'update'; readonly status: UpdateStatus }
   | ({ readonly type: 'about' } & AboutInfo)
   | { readonly type: 'terminalCommand'; readonly installable: boolean }
-  | { readonly type: 'confirmQuit'; readonly note?: string }
-  | { readonly type: 'confirmCloseWindow' }
+  | {
+      readonly type: 'confirmQuit';
+      readonly note?: string;
+      readonly unsaved?: readonly string[];
+    }
+  | {
+      readonly type: 'confirmCloseWindow';
+      readonly unsaved?: readonly string[];
+    }
   | {
       readonly type: 'chooseTool';
       readonly folders: readonly string[];

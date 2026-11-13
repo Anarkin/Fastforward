@@ -48,8 +48,17 @@ export function confirmation(confirming: Confirming): {
   lines?: readonly Line[];
   note?: string;
   confirm: string;
+  dontSave?: true;
 } {
   switch (confirming.kind) {
+    case 'unsavedTab':
+      return {
+        title: strings.confirm.saveTitle,
+        message: strings.confirm.saveFile,
+        lines: strings.confirm.filesLines([confirming.tab.name]),
+        confirm: strings.confirm.save,
+        dontSave: true,
+      };
     case 'tab':
       return {
         title: strings.confirm.closeTitle,
@@ -60,21 +69,63 @@ export function confirmation(confirming: Confirming): {
         confirm: strings.confirm.close,
       };
     case 'window':
-      return {
-        title: strings.confirm.closeWindowTitle,
-        message: strings.confirm.closeWindow,
-        confirm: strings.confirm.close,
-      };
+      return confirming.unsaved === undefined
+        ? {
+            title: strings.confirm.closeWindowTitle,
+            message: strings.confirm.closeWindow,
+            confirm: strings.confirm.close,
+          }
+        : {
+            title: strings.confirm.closeWindowTitle,
+            message: strings.confirm.saveWindowFiles,
+            lines: strings.confirm.filesLines(confirming.unsaved),
+            confirm: strings.confirm.saveAll,
+            dontSave: true,
+          };
     case 'quit':
       return {
         title: strings.confirm.quitTitle,
-        message: strings.confirm.quitApp,
+        message:
+          confirming.unsaved === undefined
+            ? strings.confirm.quitApp
+            : strings.confirm.saveQuitFiles,
+        ...(confirming.unsaved !== undefined && {
+          lines: strings.confirm.filesLines(confirming.unsaved),
+        }),
         ...(confirming.note !== undefined && { note: confirming.note }),
-        confirm: strings.confirm.quit,
+        confirm:
+          confirming.unsaved === undefined
+            ? strings.confirm.quit
+            : strings.confirm.saveAll,
+        ...(confirming.unsaved !== undefined && { dontSave: true as const }),
       };
     default:
       return confirming satisfies never;
   }
+}
+
+function ShellConfirm({
+  confirming,
+  onConfirm,
+  onDontSave,
+  onCancel,
+}: {
+  readonly confirming: Confirming;
+  readonly onConfirm: () => void;
+  readonly onDontSave: () => void;
+  readonly onCancel: () => void;
+}) {
+  const { dontSave, ...asked } = confirmation(confirming);
+  return (
+    <ConfirmPopup
+      {...asked}
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+      {...(dontSave === true && {
+        extra: { label: strings.confirm.dontSave, onClick: onDontSave },
+      })}
+    />
+  );
 }
 
 function ShellMenu() {
@@ -118,7 +169,7 @@ function Popups() {
   const aboutKnown = useShell((state) => state.about !== undefined);
   const popups = useShell((state) => state.popups);
   const confirming = useShell((state) => state.confirming);
-  const { confirm, cancel } = useShellActions();
+  const { confirm, dontSave, cancel } = useShellActions();
   return (
     <>
       {popups.map((popup) => {
@@ -132,10 +183,11 @@ function Popups() {
           case 'confirm':
             return (
               confirming && (
-                <ConfirmPopup
+                <ShellConfirm
                   key={popup}
-                  {...confirmation(confirming)}
+                  confirming={confirming}
                   onConfirm={confirm}
+                  onDontSave={dontSave}
                   onCancel={cancel}
                 />
               )

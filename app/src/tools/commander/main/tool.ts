@@ -762,6 +762,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.transfer(page, message);
       case 'newFolder':
         return this.newFolder(page, message);
+      case 'newFile':
+        return this.newFile(page, message);
       case 'rename':
         return this.rename(page, message);
       case 'pack':
@@ -1047,6 +1049,16 @@ export class CommanderTool implements Tool<'commander'> {
     for (const page of this.shell.pages()) {
       this.postSettings(page);
     }
+  }
+
+  unsaved(tab: Tab): boolean {
+    return tab.edit === true && this.editing.unsaved(tab.id);
+  }
+
+  saveUnsaved(page: Page, tab: Tab): Promise<boolean> {
+    return tab.edit === true
+      ? this.editing.save(page, tab.id)
+      : Promise.resolve(true);
   }
 
   quitNote(): string | undefined {
@@ -2513,6 +2525,33 @@ export class CommanderTool implements Tool<'commander'> {
       folder: path.dirname(first),
       names: sources.map((source) => path.basename(source)),
     });
+  }
+
+  private async newFile(
+    page: Page,
+    { tab, side, folder, name }: Extract<CommanderToHost, { type: 'newFile' }>,
+  ): Promise<void> {
+    const shown = this.namingPane(page, tab, side, folder);
+    if (
+      shown === undefined ||
+      typeof name !== 'string' ||
+      name !== path.basename(name) ||
+      nameProblem(name, this.access.platform) !== undefined
+    ) {
+      return;
+    }
+    const file = path.join(shown.pane.folder, name);
+    const refusal =
+      shown.pane.archive !== undefined
+        ? strings.editor.inArchive(name)
+        : shown.pane.elevated === true
+          ? strings.editor.asAdministrator(name)
+          : await this.editing.refusal(file);
+    if (refusal !== undefined) {
+      this.shell.notice(page, { level: 'error', message: refusal });
+      return;
+    }
+    await this.shell.openEdit(page, 'commander', file);
   }
 
   private async newFolder(
