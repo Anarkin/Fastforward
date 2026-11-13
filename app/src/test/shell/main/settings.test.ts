@@ -630,6 +630,25 @@ suite('User settings file', () => {
     }
   });
 
+  test('notices the file changed though the system tells nothing of it, as macOS may not while it watches folders anew, by looking at the file every so often', async () => {
+    let checks = 0;
+    let stop: (() => void) | undefined;
+    const watchers = watchersMade(() => {
+      stop = watchSettings(file, () => (checks += 1), 10, file, 20);
+    });
+    try {
+      await waitFor(() => checks > 0, 'the first check');
+      for (const watcher of watchers) {
+        watcher.close();
+      }
+      checks = 0;
+      fs.writeFileSync(file, JSON.stringify({ solo: true }));
+      await waitFor(() => checks > 0, 'the change seen without being told');
+    } finally {
+      stop?.();
+    }
+  });
+
   test('stops watching a folder whose watcher fails, rather than throwing into the main process', async () => {
     let stop: (() => void) | undefined;
     const [watcher] = watchersMade(() => {

@@ -637,9 +637,15 @@ export function watchSettings(
   onChange: () => void,
   delay = 200,
   target = realPath(file),
+  lookEvery = 1000,
 ): () => void {
   let timer: NodeJS.Timeout | undefined;
-  const watchers = [...new Set([file, target])].map((watched) => {
+  const changed = () => {
+    clearTimeout(timer);
+    timer = setTimeout(onChange, delay);
+  };
+  const files = [...new Set([file, target])];
+  const watchers = files.map((watched) => {
     const folder = path.dirname(watched);
     let stamp = stampOf(watched);
     const watcher = fs.watch(folder, (_event, name) => {
@@ -650,18 +656,28 @@ export function watchSettings(
       const now = stampOf(watched);
       if (name === path.basename(watched) || now !== stamp) {
         stamp = now;
-        clearTimeout(timer);
-        timer = setTimeout(onChange, delay);
+        changed();
       }
     });
     watcher.on('error', () => watcher.close());
     return watcher;
   });
+  const looked = (now: fs.Stats, before: fs.Stats) => {
+    if (now.mtimeMs !== before.mtimeMs || now.size !== before.size) {
+      changed();
+    }
+  };
+  for (const watched of files) {
+    fs.watchFile(watched, { interval: lookEvery, persistent: false }, looked);
+  }
   timer = setTimeout(onChange, delay);
   return () => {
     clearTimeout(timer);
     for (const watcher of watchers) {
       watcher.close();
+    }
+    for (const watched of files) {
+      fs.unwatchFile(watched, looked);
     }
   };
 }
