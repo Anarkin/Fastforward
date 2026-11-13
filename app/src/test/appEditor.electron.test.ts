@@ -72,6 +72,10 @@ suite('App editor', () => {
       Buffer.from('caf\xe9\nline\r\nend', 'latin1'),
     );
     fs.writeFileSync(path.join(opened, 'image.bin'), Buffer.alloc(64));
+    fs.writeFileSync(
+      path.join(opened, 'code.ts'),
+      'const a = 1;\nlet b = 2;\n',
+    );
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
@@ -263,6 +267,36 @@ suite('App editor', () => {
     await page.locator('.confirm-button.default').click();
     await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
     assert.strictEqual(fs.readFileSync(file, 'utf8'), 'mine second\n');
+  });
+
+  test('colors the code edited by its language as the viewer does, coloring again as it is typed', async () => {
+    await backToCommander();
+    await edit('code.ts');
+    const keywords = content()
+      .locator('.cm-line')
+      .first()
+      .locator('.syntax-keyword');
+    await keywords.first().waitFor();
+    assert.strictEqual(await keywords.first().textContent(), 'const');
+    await toStart();
+    await page.keyboard.type('// ');
+    await waitFor(
+      async () =>
+        (
+          await content()
+            .locator('.cm-line')
+            .first()
+            .locator('.syntax-comment')
+            .allTextContents()
+        ).join('') === '// const a = 1;',
+      'the line colored as a comment',
+    );
+    await content()
+      .locator('.cm-line')
+      .nth(1)
+      .locator('.syntax-keyword')
+      .first()
+      .waitFor();
   });
 
   test('says why it opens no editor for a folder or a file of binary data', async () => {

@@ -17,14 +17,21 @@ import { EditorView, lineNumbers, type ViewUpdate } from '@codemirror/view';
 import { strings, type Sentence } from '../../../shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { useShell, useShellActions } from '../../../shell/page/store';
+import { syntaxColors } from '../../../ui/editorColors';
 import { appSelection } from '../../../ui/editorSelection';
 import { appTextLook } from '../../../ui/editorText';
 import { WordWrapIcon } from '../../../ui/icons';
 import { Words } from '../../../ui/name';
+import { languageOf } from '../../../ui/languages';
 import { keyPressed } from '../../../ui/shortcuts';
+import { colorer, startColorer } from '../../../ui/syntax';
 import { useCellTable, type CellTable } from '../../../ui/textWidths';
 import { editorKeymap } from '../shared/keymap';
-import type { CommanderToWebviewOf, TextShown } from '../shared/protocol';
+import {
+  maxColoredBytes,
+  type CommanderToWebviewOf,
+  type TextShown,
+} from '../shared/protocol';
 import { colorOfFileNamed } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 import { useCommander, useCommanderActions } from './store';
@@ -50,6 +57,8 @@ interface EditorParts {
   readonly readOnly: boolean;
   readonly wrapping: Compartment;
   readonly wordWrap: boolean;
+  readonly coloring: Compartment;
+  readonly colors: Extension;
   readonly onSave: () => void;
   readonly onUpdate: (update: ViewUpdate) => void;
 }
@@ -85,10 +94,13 @@ function extensionsOf({
   readOnly,
   wrapping,
   wordWrap,
+  coloring,
+  colors,
   onSave,
   onUpdate,
 }: EditorParts): Extension {
   return [
+    coloring.of(colors),
     appTextLook(table),
     appSelection(editorKeymap.rowEnd),
     lineNumbers(),
@@ -134,7 +146,11 @@ function keptJson(state: EditorState): unknown {
     : undefined;
 }
 
+const colorsOf = (file: string, on: boolean): Extension =>
+  on ? syntaxColors(languageOf(file), colorer, maxColoredBytes) : [];
+
 export function Editor() {
+  useEffect(startColorer, []);
   const file = useCommander((state) => state.view.editing) ?? '';
   const tab = useCommander((state) => state.view.tab);
   const edited = useCommander((state) =>
@@ -144,6 +160,7 @@ export function Editor() {
     colorOfFileNamed(nameOf(state.view.editing ?? ''), state.view.fileColors),
   );
   const wordWrap = useShell((state) => state.textView.wordWrap);
+  const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const { changeTextView } = useShellActions();
   const {
     listenEditor,
@@ -159,12 +176,14 @@ export function Editor() {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
   const wrapping = useRef(new Compartment());
+  const coloring = useRef(new Compartment());
   const [askingOverwrite, setAskingOverwrite] = useState(false);
   const [askingChanged, setAskingChanged] = useState(false);
   const loaded = edited?.version !== undefined;
   const readOnly = edited?.readOnly === true;
   const startingVersion = useEffectEvent(() => edited?.version ?? 0);
   const wrapsFirst = useEffectEvent(() => wordWrap);
+  const colorsFirst = useEffectEvent(() => colorsOf(file, highlightSyntax));
 
   useEffect(() => {
     if (tab === undefined || !loaded || table === undefined) {
@@ -189,6 +208,8 @@ export function Editor() {
       readOnly,
       wrapping: wrapping.current,
       wordWrap: wrapsFirst(),
+      coloring: coloring.current,
+      colors: colorsFirst(),
       onSave: () => saveText(tab),
       onUpdate: (update) => {
         if (update.docChanged) {
@@ -269,6 +290,12 @@ export function Editor() {
       ),
     });
   }, [wordWrap]);
+
+  useEffect(() => {
+    view.current?.dispatch({
+      effects: coloring.current.reconfigure(colorsOf(file, highlightSyntax)),
+    });
+  }, [file, highlightSyntax]);
 
   const mark = edited?.readOnly
     ? strings.editor.readOnlyMark

@@ -58,6 +58,16 @@ export interface Colorer {
     code: string,
     colored: (part: CodePart | undefined) => void,
   ): () => void;
+  colorEdited(
+    language: string,
+    lines: readonly string[],
+    colored: (part: CodePart | undefined) => void,
+  ): EditedColors;
+}
+
+export interface EditedColors {
+  edit(from: number, removed: number, lines: readonly string[]): void;
+  stop(): void;
 }
 
 export function colorerOf(port: SyntaxPort): Colorer {
@@ -92,6 +102,24 @@ export function colorerOf(port: SyntaxPort): Colorer {
     (error) => reportError(error),
   );
   return {
+    colorEdited(language, lines, colored) {
+      const job = (jobs += 1);
+      waiting.set(job, (message) => {
+        if (message.type === 'code') {
+          colored(message.part);
+        }
+      });
+      port.post({ type: 'openLines', job, language, lines });
+      return {
+        edit: (from, removed, edited) =>
+          port.post({ type: 'editLines', job, from, removed, lines: edited }),
+        stop: () => {
+          if (waiting.delete(job)) {
+            port.post({ type: 'stop', job });
+          }
+        },
+      };
+    },
     color(sources, colored, entire, background) {
       const job = (jobs += 1);
       waiting.set(job, (message) => {

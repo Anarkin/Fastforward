@@ -2014,32 +2014,38 @@ body.resizing {
 }
 
 .diff-line .syntax-keyword,
-.markdown .syntax-keyword {
+.markdown .syntax-keyword,
+.cm-editor.editor-text .syntax-keyword {
   color: var(--color-syntax-keyword);
 }
 
 .diff-line .syntax-type,
-.markdown .syntax-type {
+.markdown .syntax-type,
+.cm-editor.editor-text .syntax-type {
   color: var(--color-syntax-type);
 }
 
 .diff-line .syntax-function,
-.markdown .syntax-function {
+.markdown .syntax-function,
+.cm-editor.editor-text .syntax-function {
   color: var(--color-syntax-function);
 }
 
 .diff-line .syntax-string,
-.markdown .syntax-string {
+.markdown .syntax-string,
+.cm-editor.editor-text .syntax-string {
   color: var(--color-syntax-string);
 }
 
 .diff-line .syntax-number,
-.markdown .syntax-number {
+.markdown .syntax-number,
+.cm-editor.editor-text .syntax-number {
   color: var(--color-syntax-number);
 }
 
 .diff-line .syntax-comment,
-.markdown .syntax-comment {
+.markdown .syntax-comment,
+.cm-editor.editor-text .syntax-comment {
   color: var(--color-syntax-comment);
 }
 
