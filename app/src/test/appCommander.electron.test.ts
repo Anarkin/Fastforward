@@ -1100,7 +1100,7 @@ suite('App commander', () => {
     );
   });
 
-  test('puts the path of a file viewed on a line of its own under the buttons of its header, starting where its text starts, the buttons staying at the edges of the header', async () => {
+  test('puts the path of a file viewed on a line of its own under the buttons of its header, starting where the editor starts its path, the empty column of line numbers before its text, the buttons staying at the edges of the header', async () => {
     await select('notes');
     await page.keyboard.press('F3');
     await page.locator('.viewer .viewer-rows .viewer-row').first().waitFor();
@@ -1131,7 +1131,7 @@ suite('App commander', () => {
       inHeader: false,
       underHeader: true,
       aboveText: true,
-      fromText: 0,
+      fromText: 8 - 56 - 6,
       start: 4,
       actions: 4,
     });

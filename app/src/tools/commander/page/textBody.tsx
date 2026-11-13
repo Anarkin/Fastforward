@@ -669,6 +669,7 @@ export function TextBody({
 
   return (
     <ScrollBody
+      numbered
       barPinned={finding}
       matches={find?.matches}
       size={size}

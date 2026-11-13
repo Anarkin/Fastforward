@@ -164,6 +164,7 @@ export function ScrollBody({
   error,
   width,
   wrapped = false,
+  numbered = false,
   onSideways,
   reveal,
   rowText,
@@ -181,6 +182,7 @@ export function ScrollBody({
   error: Sentence | undefined;
   width?: number;
   wrapped?: boolean;
+  numbered?: boolean;
   onSideways?: (column: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
   rowText?: (row: Element) => RowText | undefined;
@@ -363,7 +365,10 @@ export function ScrollBody({
         }
       }}
     >
-      <div className="viewer-row commander-viewer-probe" ref={probe}>
+      <div
+        className={`viewer-row commander-viewer-probe${numbered ? ' numbered' : ''}`}
+        ref={probe}
+      >
         {probeText}
       </div>
       {error === undefined ? (
@@ -377,7 +382,7 @@ export function ScrollBody({
           }
         >
           <div
-            className={`viewer-rows${wrapped ? ' wrapped' : ''}`}
+            className={`viewer-rows${wrapped ? ' wrapped' : ''}${numbered ? ' numbered' : ''}`}
             style={
               width === undefined
                 ? undefined

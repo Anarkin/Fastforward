@@ -66,6 +66,18 @@ async function starredAfter(
   );
 }
 
+function firstLeftOf(element: Element): number {
+  const first = document
+    .createTreeWalker(element, NodeFilter.SHOW_TEXT)
+    .nextNode();
+  const range = document.createRange();
+  if (first !== null) {
+    range.setStart(first, 0);
+    range.setEnd(first, 1);
+  }
+  return range.getBoundingClientRect().left;
+}
+
 suite('App editor', () => {
   let folder: string;
   let opened: string;
@@ -834,6 +846,29 @@ suite('App editor', () => {
       const rows = await rowsScrolled();
       return rows > 200 && Math.abs(rows - Math.round(rows)) < 0.01;
     }, 'the last rows whole');
+  });
+
+  test('starts the text of a file viewed where the editor starts it, after an empty column as wide as its line numbers', async () => {
+    fs.writeFileSync(path.join(opened, 'columns.txt'), 'first line\nsecond\n');
+    await backToCommander();
+    await select('columns.txt');
+    await page.keyboard.press('F3');
+    const viewerRow = page.locator('.viewer .viewer-rows .viewer-row').first();
+    await viewerRow.waitFor();
+    const inViewer = await viewerRow.evaluate(firstLeftOf);
+    await page.keyboard.press('F4');
+    await waitFor(
+      async () => (await editedText()) === 'first line\nsecond\n',
+      'the text in the editor',
+    );
+    const inEditor = await content()
+      .locator('.cm-line')
+      .first()
+      .evaluate(firstLeftOf);
+    assert.ok(
+      Math.abs(inViewer - inEditor) < 0.5,
+      `${inViewer} in the viewer, ${inEditor} in the editor`,
+    );
   });
 
   test('marks the bracket matching the one beside the cursor, and one matching none', async () => {

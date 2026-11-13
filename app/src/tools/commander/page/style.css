@@ -457,6 +457,11 @@
   box-sizing: border-box;
 }
 
+.viewer-rows.numbered,
+.commander-viewer-probe.numbered {
+  padding-left: calc(var(--line-number-width) + var(--line-number-gap));
+}
+
 .viewer-rows.wrapped {
   width: 100%;
   overflow-x: clip;
