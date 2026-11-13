@@ -6,6 +6,7 @@ import type { ToWebview } from '../../../../shell/shared/protocol';
 import {
   Editing,
   type EditingAccess,
+  type EditingMessage,
 } from '../../../../tools/commander/main/editing';
 import { ReadOnlyFile } from '../../../../tools/commander/main/fileSaving';
 import type {
@@ -42,9 +43,11 @@ const settled = async () => {
 function editing(
   files: Record<string, string | Uint8Array> = {},
   textDefaults?: EditingAccess['textDefaults'],
+  endingSources?: EditingAccess['endingSources'],
 ) {
   const saved: { file: string; bytes: string; overwrite: boolean }[] = [];
   const notices: string[] = [];
+  const editedSources: string[] = [];
   const named: Page[] = [];
   const showing: Page[] = [];
   const stamps = new Map<string, number>();
@@ -97,6 +100,7 @@ function editing(
     codePage: () => Promise.resolve('windows-1252'),
     readOnly: (file) => file.endsWith('.defaults.json'),
     ...(textDefaults !== undefined && { textDefaults }),
+    ...(endingSources !== undefined && { endingSources }),
   };
   const edits = new Editing(access, {
     post: (page, message) =>
@@ -104,6 +108,10 @@ function editing(
     notice: (_page, notice) => notices.push(plainOf(notice.message)),
     namesChanged: (page) => named.push(page),
     pagesShowing: () => showing,
+    openEdit: (_page, file) => {
+      editedSources.push(file);
+      return Promise.resolve();
+    },
   });
   const touched = async (file: string) => {
     for (const watcher of watchers.filter((each) => each.file === file)) {
@@ -120,6 +128,7 @@ function editing(
     edits,
     saved,
     notices,
+    editedSources,
     named,
     showing,
     changeOnDisk,
@@ -127,6 +136,8 @@ function editing(
     watchers,
   };
 }
+
+const forgedSource = (json: string): EditingMessage => JSON.parse(json);
 
 function editFrom(
   page: EditorPage,
@@ -162,6 +173,13 @@ suite('Editing a file', () => {
       file: 'a.txt',
       version: 0,
       encoding: 'utf-8',
+      encodingSources: [
+        { kind: 'chosen' },
+        { kind: 'bom' },
+        { kind: 'utf16' },
+        { kind: 'utf8', encoding: 'utf-8' },
+        { kind: 'codePage', encoding: 'windows-1252' },
+      ],
     });
     await edits.receive(page, { type: 'readEdited', tab: '1' });
     assert.deepStrictEqual(page.last('editedText')?.shown, {
@@ -532,6 +550,7 @@ suite('Editing a file', () => {
         bom: false,
         indent: '\t',
         fallbackIndent: '  ',
+        charsets: [],
       }),
     );
     const page = new EditorPage();
@@ -543,6 +562,102 @@ suite('Editing a file', () => {
     assert.strictEqual(page.last('editedText')?.shown.text, 'two\n');
     assert.strictEqual(page.last('editedText')?.shown.indent, '\t');
     assert.strictEqual(page.last('editedText')?.shown.fallbackIndent, '  ');
+  });
+
+  test('tells the pages showing a file where its encoding and the line ending of its new lines come from once found out, a new file the charsets it may be written in', async () => {
+    const endings = [
+      { kind: 'editorConfig' },
+      { kind: 'git', ending: 'crlf', by: 'core.autocrlf' },
+      { kind: 'extension', extension: 'txt' },
+      { kind: 'settings', ending: 'lf' },
+    ] as const;
+    const charsets = [
+      { kind: 'editorConfig' },
+      { kind: 'settings', encoding: 'utf-8', bom: false },
+    ] as const;
+    const { edits, showing } = editing(
+      {
+        'a.txt': 'caf\xc3\xa9\n',
+        'b.txt': Uint8Array.of(0xff, 0xfe, 0x61, 0x00),
+        'c.txt': Uint8Array.of(0x61, 0x00, 0x62, 0x00, 0x63, 0x00),
+        'd.txt': 'caf\xe9\n',
+      },
+      () =>
+        Promise.resolve({
+          ending: 'lf',
+          encoding: 'utf-8',
+          bom: false,
+          fallbackIndent: '    ',
+          charsets,
+        }),
+      () => Promise.resolve(endings),
+    );
+    const page = new EditorPage();
+    showing.push(page);
+    const shownOf = async (tab: string, file: string) => {
+      await edits.show(page, tab, file);
+      const first = page.last('editing');
+      await settled();
+      return { first, last: page.last('editing') };
+    };
+    const { first, last } = await shownOf('1', 'a.txt');
+    assert.deepStrictEqual(first?.encodingSources, [
+      { kind: 'chosen' },
+      { kind: 'bom' },
+      { kind: 'utf16' },
+      { kind: 'utf8', encoding: 'utf-8' },
+      { kind: 'codePage', encoding: 'windows-1252' },
+    ]);
+    assert.deepStrictEqual(last?.endingSources, endings);
+    const encodingsOf = async (tab: string, file: string) =>
+      (await shownOf(tab, file)).last?.encodingSources;
+    assert.deepStrictEqual((await encodingsOf('2', 'b.txt'))?.slice(1, 3), [
+      { kind: 'bom', encoding: 'utf-16le' },
+      { kind: 'utf16' },
+    ]);
+    assert.deepStrictEqual((await encodingsOf('3', 'c.txt'))?.slice(1, 3), [
+      { kind: 'bom' },
+      { kind: 'utf16', encoding: 'utf-16le' },
+    ]);
+    assert.deepStrictEqual((await encodingsOf('4', 'd.txt'))?.slice(3), [
+      { kind: 'utf8' },
+      { kind: 'codePage', encoding: 'windows-1252' },
+    ]);
+    await edits.receive(page, {
+      type: 'reopenIn',
+      tab: '4',
+      encoding: 'iso-8859-2',
+    });
+    assert.deepStrictEqual((await encodingsOf('4', 'd.txt'))?.[0], {
+      kind: 'chosen',
+      encoding: 'iso-8859-2',
+    });
+    assert.deepStrictEqual(await encodingsOf('5', 'new.txt'), charsets);
+  });
+
+  test('edits the .editorconfig a line ending or charset of the file comes from once asked, and no other file, as the page is not trusted', async () => {
+    const config = 'work/.editorconfig';
+    const { edits, showing, editedSources } = editing(
+      { 'a.txt': 'one\n' },
+      undefined,
+      () =>
+        Promise.resolve([
+          { kind: 'editorConfig', ending: 'lf', file: config },
+          { kind: 'settings', ending: 'lf' },
+        ]),
+    );
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await settled();
+    await edits.receive(page, { type: 'editSource', tab: '1', file: config });
+    await edits.receive(page, {
+      type: 'editSource',
+      tab: '1',
+      file: 'work/secret.txt',
+    });
+    await edits.receive(page, forgedSource('{"type":"editSource","tab":"1"}'));
+    assert.deepStrictEqual(editedSources, [config]);
   });
 
   test('reads the file again in the encoding asked for, and in the one found once asked for Auto', async () => {

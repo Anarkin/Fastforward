@@ -4,6 +4,8 @@ import {
   isTextEncoding,
   type CommanderToHost,
   type CommanderToWebview,
+  type EncodingSource,
+  type EndingSource,
   type TextEncoding,
   type TextShown,
 } from '../shared/protocol';
@@ -37,8 +39,9 @@ export interface EditingAccess {
   readonly readOnly: (file: string) => boolean;
   readonly textDefaults?: (
     file: string,
-    made: boolean,
+    asksGit: boolean,
   ) => Promise<TextDefaults>;
+  readonly endingSources?: (file: string) => Promise<readonly EndingSource[]>;
 }
 
 export interface EditingShell {
@@ -46,6 +49,7 @@ export interface EditingShell {
   notice(page: Page, notice: Notice): void;
   namesChanged(page: Page): void;
   pagesShowing(tab: string): readonly Page[];
+  openEdit(page: Page, file: string): Promise<void>;
 }
 
 export type EditingMessage = Extract<
@@ -58,7 +62,8 @@ export type EditingMessage = Extract<
       | 'saveText'
       | 'reloadEdited'
       | 'saveIn'
-      | 'reopenIn';
+      | 'reopenIn'
+      | 'editSource';
   }
 >;
 
@@ -75,6 +80,7 @@ interface Read {
   readonly indent?: string;
   readonly fallbackIndent?: string;
   readonly startAt?: number;
+  readonly encodings?: readonly EncodingSource[];
 }
 
 export interface ViewedStart {
@@ -100,6 +106,7 @@ interface Opened {
   readonly readOnly: boolean;
   read: Read;
   chosen?: TextEncoding;
+  endings?: readonly EndingSource[];
   changed: boolean;
   outside: boolean;
   saving: boolean;
@@ -152,6 +159,27 @@ export class Editing {
   async show(page: Page, tab: string, file: string): Promise<void> {
     const opened = await this.open(tab, file);
     this.postEditing(page, tab, opened);
+    void this.findSources(tab, opened);
+  }
+
+  private async findSources(tab: string, opened: Opened): Promise<void> {
+    const { endingSources } = this.access;
+    if (endingSources === undefined) {
+      return;
+    }
+    let endings: readonly EndingSource[];
+    try {
+      endings = await endingSources(opened.file);
+    } catch {
+      return;
+    }
+    if (this.opened.get(tab) !== opened) {
+      return;
+    }
+    opened.endings = endings;
+    for (const page of this.shell.pagesShowing(tab)) {
+      this.postEditing(page, tab, opened);
+    }
   }
 
   private postEditing(page: Page, tab: string, opened: Opened): void {
@@ -170,6 +198,8 @@ export class Editing {
       ...(opened.readOnly && { readOnly: true }),
       ...(read.made && { made: true }),
       ...(read.error !== undefined && { error: read.error }),
+      ...(opened.endings !== undefined && { endingSources: opened.endings }),
+      ...(read.encodings !== undefined && { encodingSources: read.encodings }),
     });
   }
 
@@ -239,6 +269,7 @@ export class Editing {
           made: true,
           stamp: undefined,
           ...indentsOf(defaults),
+          ...(defaults !== undefined && { encodings: defaults.charsets }),
         };
       }
       return {
@@ -259,17 +290,28 @@ export class Editing {
     if (refusal !== undefined) {
       return { text: undefined, error: refusal, made: false, stamp };
     }
-    const encoding =
-      chosen ??
-      marked ??
-      (isUtf8(bytes) ? 'utf-8' : await this.access.codePage());
-    const defaults = await this.access.textDefaults?.(file, false);
+    const bom = byteOrderMarkOf(start);
+    const order = bom === undefined ? utf16Order(start) : undefined;
+    const valid = isUtf8(bytes);
+    const codePage = await this.access.codePage();
+    const encoding = chosen ?? bom ?? order ?? (valid ? 'utf-8' : codePage);
     const decoded = decodedText(bytes, encoding);
+    const defaults = await this.access.textDefaults?.(
+      file,
+      decoded.ending === undefined,
+    );
     return {
       text: new EditedText(decoded, defaults?.ending ?? 'lf', version),
       made: false,
       stamp,
       ...indentsOf(defaults),
+      encodings: [
+        { kind: 'chosen', ...(chosen !== undefined && { encoding: chosen }) },
+        { kind: 'bom', ...(bom !== undefined && { encoding: bom }) },
+        { kind: 'utf16', ...(order !== undefined && { encoding: order }) },
+        { kind: 'utf8', ...(valid && { encoding: 'utf-8' }) },
+        { kind: 'codePage', encoding: codePage },
+      ],
       ...(startByte !== undefined && {
         startAt: Math.min(
           decodedText(bytes.subarray(0, startByte), encoding).text.length,
@@ -371,6 +413,19 @@ export class Editing {
       case 'reopenIn':
         if (message.encoding === 'auto' || isTextEncoding(message.encoding)) {
           await this.readAgain(message.tab, opened, message.encoding);
+        }
+        return;
+      case 'editSource':
+        if (
+          [...(opened.endings ?? []), ...(opened.read.encodings ?? [])]
+            .flatMap((source) =>
+              'file' in source && source.file !== undefined
+                ? [source.file]
+                : [],
+            )
+            .some((file) => file === message.file)
+        ) {
+          await this.shell.openEdit(page, message.file);
         }
         return;
       default:

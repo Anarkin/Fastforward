@@ -58,7 +58,14 @@ import {
   type CommanderToWebviewOf,
   type TextEncoding,
   type TextShown,
+  type EncodingSource,
+  type EndingSource,
 } from '../shared/protocol';
+import {
+  encodingSourceItems,
+  endingSourceItems,
+  type SourceOpening,
+} from './editorSources';
 import {
   convertedTo,
   endingCounts,
@@ -92,6 +99,8 @@ export interface EditedTab {
   readonly readOnly: boolean;
   readonly made: boolean;
   readonly error: Sentence | undefined;
+  readonly endingSources: readonly EndingSource[] | undefined;
+  readonly encodingSources: readonly EncodingSource[] | undefined;
 }
 
 export type ToEditor = CommanderToWebviewOf<
@@ -184,6 +193,9 @@ function endingsLabel({ ending, counts }: EndingsShown): string {
     ? strings.editor.mixed
     : strings.editor.endingNames[used[0] ?? ending];
 }
+
+const linesEnding = ({ ending, counts }: EndingsShown) =>
+  endingOrder.some((each) => counts[each] > 0) ? ending : undefined;
 
 function endingsTitle({ ending, counts }: EndingsShown): string {
   return strings.editor.endingCounts(
@@ -279,7 +291,7 @@ export function Editor() {
   );
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
-  const { changeTextView } = useShellActions();
+  const { changeTextView, openSettings } = useShellActions();
   const choices = useCommander((state) => viewerChoices(state.view));
   const { choose: onChoose } = useCommanderActions();
   const { choice: languageChoice, choose: chooseLanguage } = languageChoiceOf(
@@ -306,6 +318,7 @@ export function Editor() {
     reopenIn,
     keptEditor,
     keepEditor,
+    editSource,
   } = useCommanderActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
   const [reopening, setReopening] = useState<TextEncoding | 'auto'>();
@@ -500,10 +513,26 @@ export function Editor() {
       reopenIn(tab, chosen);
     }
   };
+  const opening: SourceOpening = {
+    file: (source) => {
+      if (tab !== undefined) {
+        editSource(tab, source);
+      }
+    },
+    settings: openSettings,
+  };
+  const endingSources = edited?.endingSources;
+  const encodingSources = edited?.encodingSources;
   const encodingItems: readonly ContextMenuItem[] =
     tab === undefined || encoding === undefined
       ? []
       : [
+          ...(encodingSources === undefined
+            ? []
+            : [
+                ...encodingSourceItems(encodingSources, opening),
+                { separator: true } as const,
+              ]),
           { label: strings.editor.saveIn, disabled: true },
           ...textEncodings.flatMap((each) =>
             (each === 'utf-8'
@@ -675,15 +704,27 @@ export function Editor() {
                 <MenuButton
                   title={endingsTitle(endingsShown)}
                   label={endingsLabel(endingsShown)}
-                  items={(['lf', 'crlf'] as const).map((ending) => ({
-                    label: strings.editor.convertTo(
-                      strings.editor.endingNames[ending],
-                    ),
-                    checked:
-                      endingsLabel(endingsShown) ===
-                      strings.editor.endingNames[ending],
-                    onClick: () => convert(ending),
-                  }))}
+                  items={[
+                    ...(['lf', 'crlf'] as const).map((ending) => ({
+                      label: strings.editor.convertTo(
+                        strings.editor.endingNames[ending],
+                      ),
+                      checked:
+                        endingsLabel(endingsShown) ===
+                        strings.editor.endingNames[ending],
+                      onClick: () => convert(ending),
+                    })),
+                    ...(endingSources === undefined
+                      ? []
+                      : [
+                          { separator: true } as const,
+                          ...endingSourceItems(
+                            endingSources,
+                            linesEnding(endingsShown),
+                            opening,
+                          ),
+                        ]),
+                  ]}
                   onChosen={() => view.current?.focus()}
                 />
               </div>

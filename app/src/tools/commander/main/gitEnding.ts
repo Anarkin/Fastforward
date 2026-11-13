@@ -18,10 +18,15 @@ async function output(
   }
 }
 
+export interface GitEnding {
+  readonly ending: LineEnding;
+  readonly by: 'eol' | 'core.autocrlf' | 'core.eol';
+}
+
 export async function gitEndingOf(
   git: string,
   file: string,
-): Promise<LineEnding | undefined> {
+): Promise<GitEnding | undefined> {
   const folder = path.dirname(file);
   const attributes = await output(git, folder, [
     'check-attr',
@@ -35,7 +40,7 @@ export async function gitEndingOf(
   }
   const eol = /: eol: (\S+)/.exec(attributes)?.[1];
   if (eol === 'lf' || eol === 'crlf') {
-    return eol;
+    return { ending: eol, by: 'eol' };
   }
   if (/: text: unset/.test(attributes)) {
     return undefined;
@@ -43,14 +48,13 @@ export async function gitEndingOf(
   const autocrlf = (
     await output(git, folder, ['config', '--get', 'core.autocrlf'])
   )?.trim();
-  if (autocrlf === 'true') {
-    return 'crlf';
-  }
-  if (autocrlf === 'input') {
-    return 'lf';
+  if (autocrlf === 'true' || autocrlf === 'input') {
+    return { ending: autocrlf === 'true' ? 'crlf' : 'lf', by: 'core.autocrlf' };
   }
   const configured = (
     await output(git, folder, ['config', '--get', 'core.eol'])
   )?.trim();
-  return configured === 'lf' || configured === 'crlf' ? configured : undefined;
+  return configured === 'lf' || configured === 'crlf'
+    ? { ending: configured, by: 'core.eol' }
+    : undefined;
 }

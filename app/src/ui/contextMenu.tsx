@@ -1,14 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { keymap, pressedAlone, type KeyPress } from '../shell/shared/keymap';
 import { CloseIcon, SubmenuIcon } from './icons';
-import { Name } from './name';
+import { Name, Words } from './name';
 import { isKeyPress, keyPressed } from './shortcuts';
-import { strings } from '../shared/strings';
+import { strings, type Sentence } from '../shared/strings';
 import { overlayScrollbarClass } from './overlayScrollbars';
 
 export type ContextMenuItem =
   | {
       readonly label: string;
+      readonly sentence?: Sentence;
       readonly name?: boolean;
       readonly icon?: React.ReactNode;
       readonly title?: string;
@@ -382,7 +383,13 @@ export function MenuItems({
                   {shownKey(item)}
                 </span>
               )}
-              {item.name ? <Name>{item.label}</Name> : item.label}
+              {item.sentence !== undefined ? (
+                <Words>{item.sentence}</Words>
+              ) : item.name ? (
+                <Name>{item.label}</Name>
+              ) : (
+                item.label
+              )}
               {item.submenu && (
                 <span className="submenu-arrow">
                   <SubmenuIcon />

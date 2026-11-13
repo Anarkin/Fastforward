@@ -30,22 +30,34 @@ suite('Line endings git gives a new file', () => {
     );
     await repository.git('config', 'core.autocrlf', 'true');
     const at = (name: string) => path.join(repository.root, name);
-    assert.strictEqual(await gitEndingOf(repository.gitPath, at('a.ts')), 'lf');
-    assert.strictEqual(
+    assert.deepStrictEqual(await gitEndingOf(repository.gitPath, at('a.ts')), {
+      ending: 'lf',
+      by: 'eol',
+    });
+    assert.deepStrictEqual(
       await gitEndingOf(repository.gitPath, at('run.cmd')),
-      'crlf',
+      { ending: 'crlf', by: 'eol' },
     );
   });
 
   test('takes core.autocrlf, then core.eol, where no attribute says, and nothing for a path not text or outside a repository', async () => {
     const file = path.join(repository.root, 'a.txt');
     await repository.git('config', 'core.autocrlf', 'true');
-    assert.strictEqual(await gitEndingOf(repository.gitPath, file), 'crlf');
+    assert.deepStrictEqual(await gitEndingOf(repository.gitPath, file), {
+      ending: 'crlf',
+      by: 'core.autocrlf',
+    });
     await repository.git('config', 'core.autocrlf', 'input');
-    assert.strictEqual(await gitEndingOf(repository.gitPath, file), 'lf');
+    assert.deepStrictEqual(await gitEndingOf(repository.gitPath, file), {
+      ending: 'lf',
+      by: 'core.autocrlf',
+    });
     await repository.git('config', 'core.autocrlf', 'false');
     await repository.git('config', 'core.eol', 'crlf');
-    assert.strictEqual(await gitEndingOf(repository.gitPath, file), 'crlf');
+    assert.deepStrictEqual(await gitEndingOf(repository.gitPath, file), {
+      ending: 'crlf',
+      by: 'core.eol',
+    });
     fs.writeFileSync(
       path.join(repository.root, '.gitattributes'),
       '*.bin -text\n',

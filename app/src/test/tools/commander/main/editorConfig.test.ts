@@ -59,6 +59,10 @@ suite('EditorConfig', () => {
       indentSize: 4,
       insertFinalNewline: true,
       files: [at('src', 'app', '.editorconfig'), at('src', '.editorconfig')],
+      setIn: {
+        endOfLine: at('src', '.editorconfig'),
+        charset: at('src', '.editorconfig'),
+      },
     });
   });
 
@@ -76,10 +80,28 @@ suite('EditorConfig', () => {
         indentStyle: 'tab',
         tabWidth: 8,
         files: [at('.editorconfig')],
+        setIn: { charset: at('.editorconfig') },
       },
     );
     assert.deepStrictEqual(await editorConfigOf(at('a.txt'), reading({})), {
       files: [],
+      setIn: {},
+    });
+  });
+
+  test('says which file sets the line ending and the charset, the one closest to the file, and none once a closer one unsets it', async () => {
+    const config = await editorConfigOf(
+      at('src', 'a.txt'),
+      reading({
+        [at('.editorconfig')]: '[*]\nend_of_line = crlf\ncharset = latin1\n',
+        [at('src', '.editorconfig')]:
+          '[*.txt]\nend_of_line = lf\ncharset = unset\n',
+      }),
+    );
+    assert.strictEqual(config.endOfLine, 'lf');
+    assert.strictEqual(config.charset, undefined);
+    assert.deepStrictEqual(config.setIn, {
+      endOfLine: at('src', '.editorconfig'),
     });
   });
 });

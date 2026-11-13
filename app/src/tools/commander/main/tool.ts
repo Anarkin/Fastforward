@@ -32,6 +32,7 @@ import {
   isDrop,
   type CommanderToHost,
   type CommanderToWebview,
+  type EndingSource,
   type Entry,
   type FlatFolder,
   type FlatProgress,
@@ -188,8 +189,9 @@ export interface CommanderAccess {
   readonly readOnlyFile?: (file: string) => boolean;
   readonly editorDefaults?: (
     file: string,
-    made: boolean,
+    asksGit: boolean,
   ) => Promise<TextDefaults>;
+  readonly editorSources?: (file: string) => Promise<readonly EndingSource[]>;
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly realPath: (link: string) => Promise<string>;
   readonly openFile?: (file: string) => Promise<string>;
@@ -577,6 +579,9 @@ export class CommanderTool implements Tool<'commander'> {
             saveFile(file, bytes, { overwriteReadOnly })),
         codePage: () => access.codePage(),
         readOnly: (file) => access.readOnlyFile?.(file) === true,
+        ...(access.editorSources !== undefined && {
+          endingSources: access.editorSources,
+        }),
         ...(access.editorDefaults !== undefined && {
           textDefaults: access.editorDefaults,
         }),
@@ -589,6 +594,7 @@ export class CommanderTool implements Tool<'commander'> {
           [...this.shown]
             .filter(([, showing]) => showing.tab === tab)
             .map(([page]) => page),
+        openEdit: (page, file) => this.shell.openEdit(page, 'commander', file),
       },
     );
     this.savedSides = new SavedSides(access.store);
@@ -765,6 +771,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'reloadEdited':
       case 'saveIn':
       case 'reopenIn':
+      case 'editSource':
         return this.editing.receive(page, message);
       case 'open':
         return this.openEntry(

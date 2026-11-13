@@ -20,6 +20,10 @@ export interface EditorConfig {
   readonly insertFinalNewline?: boolean;
   readonly trimTrailingWhitespace?: boolean;
   readonly files: readonly string[];
+  readonly setIn: {
+    readonly endOfLine?: string;
+    readonly charset?: string;
+  };
 }
 
 interface Section {
@@ -152,19 +156,25 @@ const boolean = (value: string | undefined) =>
 const isCharset = (value: unknown): value is EditorCharset =>
   charsets.some((charset) => charset === value);
 
+interface Property {
+  readonly value: string;
+  readonly file: string;
+}
+
 function typed(
-  properties: ReadonlyMap<string, string>,
+  properties: ReadonlyMap<string, Property>,
   files: readonly string[],
 ): EditorConfig {
-  const endOfLine = properties.get('end_of_line');
-  const charset = properties.get('charset');
-  const indentStyle = properties.get('indent_style');
-  const indentSize = positive(properties.get('indent_size'));
-  const tabWidth = positive(properties.get('tab_width'));
-  const insertFinalNewline = boolean(properties.get('insert_final_newline'));
-  const trimTrailingWhitespace = boolean(
-    properties.get('trim_trailing_whitespace'),
-  );
+  const valueOf = (key: string) => properties.get(key)?.value;
+  const endOfLine = valueOf('end_of_line');
+  const charset = valueOf('charset');
+  const indentStyle = valueOf('indent_style');
+  const indentSize = positive(valueOf('indent_size'));
+  const tabWidth = positive(valueOf('tab_width'));
+  const insertFinalNewline = boolean(valueOf('insert_final_newline'));
+  const trimTrailingWhitespace = boolean(valueOf('trim_trailing_whitespace'));
+  const endOfLineIn = properties.get('end_of_line')?.file;
+  const charsetIn = properties.get('charset')?.file;
   return {
     ...(isLineEnding(endOfLine) && { endOfLine }),
     ...(isCharset(charset) && { charset }),
@@ -174,6 +184,12 @@ function typed(
     ...(insertFinalNewline !== undefined && { insertFinalNewline }),
     ...(trimTrailingWhitespace !== undefined && { trimTrailingWhitespace }),
     files,
+    setIn: {
+      ...(isLineEnding(endOfLine) &&
+        endOfLineIn !== undefined && { endOfLine: endOfLineIn }),
+      ...(isCharset(charset) &&
+        charsetIn !== undefined && { charset: charsetIn }),
+    },
   };
 }
 
@@ -183,14 +199,18 @@ export async function editorConfigOf(
   file: string,
   read: (config: string) => Promise<string | undefined>,
 ): Promise<EditorConfig> {
-  const found: { readonly folder: string; readonly config: Parsed }[] = [];
+  const found: {
+    readonly folder: string;
+    readonly file: string;
+    readonly config: Parsed;
+  }[] = [];
   const files: string[] = [];
   for (let folder = path.dirname(file); ;) {
     const configFile = path.join(folder, fileName);
     const content = await read(configFile);
     if (content !== undefined) {
       const config = parsed(content);
-      found.push({ folder, config });
+      found.push({ folder, file: configFile, config });
       files.push(configFile);
       if (config.root) {
         break;
@@ -202,8 +222,8 @@ export async function editorConfigOf(
     }
     folder = parent;
   }
-  const properties = new Map<string, string>();
-  for (const { folder, config } of found.toReversed()) {
+  const properties = new Map<string, Property>();
+  for (const { folder, file: configFile, config } of found.toReversed()) {
     const relative = path.relative(folder, file).split(path.sep).join('/');
     for (const { glob, properties: set } of config.sections) {
       if (globPattern(glob).test(relative)) {
@@ -211,7 +231,7 @@ export async function editorConfigOf(
           if (value === 'unset') {
             properties.delete(key);
           } else {
-            properties.set(key, value);
+            properties.set(key, { value, file: configFile });
           }
         }
       }

@@ -1236,6 +1236,45 @@ export const strings = {
     saveIn: 'Save in',
     encodingTitle: 'Encoding',
     withBom: (encoding: string) => `${encoding} BOM`,
+    newLinesEndIn: 'New lines end in',
+    readIn: 'Read in',
+    writtenIn: 'Written in',
+    endingOfLines: (ending: string) =>
+      `${ending}, as most lines of the file end`,
+    noLineBreak: 'The file has no line break yet',
+    endingFromEditorConfig: (ending: string, file: string) =>
+      sentence`${ending}, from ${named('end_of_line')} in ${named(file)}`,
+    endingNotInEditorConfig: sentence`No .editorconfig sets ${named('end_of_line')}`,
+    endingFromGitAttribute: (ending: string) =>
+      sentence`${ending}, from the ${named('eol')} attribute of git`,
+    endingFromGitConfig: (ending: string, key: string) =>
+      sentence`${ending}, from ${named(key)} of git`,
+    endingNotInGit: sentence`Git sets no ${named('eol')} attribute, ${named('core.autocrlf')} or ${named('core.eol')}`,
+    endingFromExtension: (ending: string, extension: string) =>
+      sentence`${ending}, from ${named('editor.files')} for ${named(`.${extension}`)} in the settings`,
+    endingNotForExtension: (extension: string) =>
+      extension === ''
+        ? sentence`${named('editor.files')} in the settings sets nothing for files without an extension`
+        : sentence`${named('editor.files')} in the settings sets nothing for ${named(`.${extension}`)}`,
+    endingFromSettings: (ending: string) =>
+      sentence`${ending}, from ${named('editor.endOfLine')} in the settings`,
+    chosenEncoding: (encoding: string) => `${encoding}, chosen with Reopen in`,
+    notChosen: 'Nothing chosen with Reopen in',
+    fromByteOrderMark: (encoding: string) =>
+      `${encoding}, from its byte order mark`,
+    noByteOrderMark: 'No byte order mark',
+    looksUtf16: (encoding: string) =>
+      `${encoding}, as its bytes look like UTF-16`,
+    notUtf16: "Its bytes don't look like UTF-16",
+    isUtf8: 'UTF-8, as its bytes are UTF-8',
+    notUtf8: "Its bytes aren't UTF-8",
+    systemCodePage: (encoding: string) =>
+      `${encoding}, the code page of the system`,
+    charsetFromEditorConfig: (encoding: string, file: string) =>
+      sentence`${encoding}, from ${named('charset')} in ${named(file)}`,
+    charsetNotInEditorConfig: sentence`No .editorconfig sets ${named('charset')}`,
+    charsetFromSettings: (encoding: string) =>
+      sentence`${encoding}, from ${named('editor.charset')} in the settings`,
     savedAs: (read: string, saved: string) => `${read} → ${saved}`,
     reopenTitle: 'Reopen',
     reopenAsked:

@@ -484,6 +484,58 @@ suite('App editor', () => {
     assert.strictEqual(fs.readFileSync(file, 'latin1'), 'one\r\ntwo');
   });
 
+  test('lists where the line ending of new lines and the encoding come from in their menus, and edits the .editorconfig one comes from once its row is clicked', async () => {
+    const config = path.join(opened, '.editorconfig');
+    fs.writeFileSync(
+      config,
+      '[*.crlf.txt]\nend_of_line = crlf\n[sourced.txt]\nend_of_line = lf\n',
+    );
+    fs.writeFileSync(path.join(opened, 'sourced.txt'), 'a\r\nb\r\n');
+    await backToCommander();
+    await edit('sourced.txt');
+    const items = page.locator('.menu-item');
+    await page
+      .locator('.editor .menu-button-trigger[title="Encoding"]')
+      .click();
+    await items.filter({ hasText: 'UTF-8, as its bytes are UTF-8' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page
+      .locator('.editor .menu-button-trigger', { hasText: /^CRLF$/ })
+      .click();
+    const fromConfig = `LF, from end_of_line in ${config}`;
+    await waitFor(
+      async () =>
+        (await items.allTextContents()).some((text) =>
+          text.endsWith(fromConfig),
+        ),
+      'the .editorconfig among the sources',
+    );
+    const texts = await items.allTextContents();
+    assert.ok(
+      texts.some((text) =>
+        text.endsWith('CRLF, as most lines of the file end'),
+      ),
+      texts.join('\n'),
+    );
+    assert.ok(
+      texts.some((text) =>
+        text.endsWith('LF, from editor.endOfLine in the settings'),
+      ),
+      texts.join('\n'),
+    );
+    await items.filter({ hasText: fromConfig }).click();
+    await waitFor(
+      async () =>
+        (await activeTab().locator('.tab-name').textContent()) ===
+        '.editorconfig',
+      'the .editorconfig in a tab of its own',
+    );
+    await waitFor(
+      async () => (await editedText()).includes('[sourced.txt]'),
+      'the .editorconfig edited',
+    );
+  });
+
   test('turns the tab of a file viewed into one editing it on F4, in its place among the tabs, the cursor on the line the viewer showed at its top', async () => {
     const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
     fs.writeFileSync(path.join(opened, 'long.txt'), `${lines.join('\n')}\n`);

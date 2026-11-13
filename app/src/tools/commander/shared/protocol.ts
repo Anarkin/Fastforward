@@ -121,6 +121,42 @@ export function isFolderCommand(value: unknown): value is FolderCommand {
   return folderCommands.some((command) => command === value);
 }
 
+export type EndingSource =
+  | {
+      readonly kind: 'editorConfig';
+      readonly ending?: LineEnding;
+      readonly file?: string;
+    }
+  | {
+      readonly kind: 'git';
+      readonly ending?: LineEnding;
+      readonly by?: 'eol' | 'core.autocrlf' | 'core.eol';
+    }
+  | {
+      readonly kind: 'extension';
+      readonly ending?: LineEnding;
+      readonly extension: string;
+    }
+  | { readonly kind: 'settings'; readonly ending: LineEnding };
+
+export type EncodingSource =
+  | { readonly kind: 'chosen'; readonly encoding?: TextEncoding }
+  | { readonly kind: 'bom'; readonly encoding?: TextEncoding }
+  | { readonly kind: 'utf16'; readonly encoding?: TextEncoding }
+  | { readonly kind: 'utf8'; readonly encoding?: TextEncoding }
+  | { readonly kind: 'codePage'; readonly encoding: TextEncoding }
+  | {
+      readonly kind: 'editorConfig';
+      readonly encoding?: TextEncoding;
+      readonly bom?: boolean;
+      readonly file?: string;
+    }
+  | {
+      readonly kind: 'settings';
+      readonly encoding: TextEncoding;
+      readonly bom: boolean;
+    };
+
 export interface TextShown {
   readonly text: string;
   readonly version: number;
@@ -293,6 +329,11 @@ export type CommanderToHost =
       readonly side: Side;
       readonly folder: string;
       readonly name: string;
+    }
+  | {
+      readonly type: 'editSource';
+      readonly tab: string;
+      readonly file: string;
     }
   | {
       readonly type: 'editViewed';
@@ -520,6 +561,8 @@ export type CommanderToWebview =
       readonly readOnly?: true;
       readonly made?: true;
       readonly error?: Sentence;
+      readonly endingSources?: readonly EndingSource[];
+      readonly encodingSources?: readonly EncodingSource[];
     }
   | {
       readonly type: 'editedText';
