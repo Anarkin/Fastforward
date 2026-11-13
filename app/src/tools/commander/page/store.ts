@@ -220,6 +220,8 @@ interface CommanderActions {
     overwrite?: { readonly readOnly?: boolean; readonly changed?: boolean },
   ) => void;
   readonly reloadEdited: (tab: string) => void;
+  readonly saveIn: (tab: string, encoding: TextEncoding, bom: boolean) => void;
+  readonly reopenIn: (tab: string, encoding: TextEncoding | 'auto') => void;
   readonly keptEditor: (tab: string) => KeptEditor | undefined;
   readonly keepEditor: (tab: string, kept: KeptEditor) => void;
   readonly openRepository: (side: Side, name: string) => void;
@@ -421,6 +423,9 @@ function received(
           tab: message.tab,
           file: message.file,
           version: message.version,
+          encoding: message.encoding,
+          bom: message.bom === true,
+          readAs: message.readAs,
           changed: message.changed === true,
           readOnly: message.readOnly === true,
           made: message.made === true,
@@ -1054,6 +1059,9 @@ export function createCommanderStore(
           ...(overwrite?.changed === true && { overwriteChanged: true }),
         }),
       reloadEdited: (tab) => post({ type: 'reloadEdited', tab }),
+      saveIn: (tab, encoding, bom) =>
+        post({ type: 'saveIn', tab, encoding, bom }),
+      reopenIn: (tab, encoding) => post({ type: 'reopenIn', tab, encoding }),
       openRepository: (side, name) =>
         onDisk(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),

@@ -299,6 +299,55 @@ suite('App editor', () => {
       .waitFor();
   });
 
+  test('shows a file of mixed line endings as Mixed and converts every line of it to the one chosen, saving it so, and saves a file read in a code page in the encoding chosen', async () => {
+    const endings = path.join(opened, 'endings.txt');
+    const latin = path.join(opened, 'latin.txt');
+    fs.writeFileSync(endings, 'a\r\nb\nc\r\n');
+    fs.writeFileSync(latin, Uint8Array.of(0x63, 0x61, 0x66, 0xe9, 0x0a));
+    const trigger = (label: RegExp) =>
+      page.locator('.editor .menu-button-trigger', { hasText: label });
+    await backToCommander();
+    await waitFor(
+      async () =>
+        (await right()
+          .locator('.commander-row', { hasText: 'latin' })
+          .count()) > 0,
+      'the files listed',
+    );
+    await edit('endings.txt');
+    const endingsButton = trigger(/^Mixed$/);
+    await endingsButton.waitFor();
+    await endingsButton.click();
+    await page.locator('.menu-item', { hasText: 'Convert to CRLF' }).click();
+    await trigger(/^CRLF$/).waitFor();
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.strictEqual(fs.readFileSync(endings, 'latin1'), 'a\r\nb\r\nc\r\n');
+
+    await backToCommander();
+    await edit('latin.txt');
+    await page
+      .locator('.editor .menu-button-trigger[title="Encoding"]')
+      .click();
+    await page.locator('.menu-item', { hasText: 'Save in' }).click();
+    await page
+      .locator('.menu-item', { hasText: /^UTF-8$/ })
+      .first()
+      .click();
+    await page
+      .locator('.editor .menu-button-trigger[title="Encoding"]', {
+        hasText: /→ UTF-8$/,
+      })
+      .waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.deepStrictEqual(
+      [...fs.readFileSync(latin)],
+      [0x63, 0x61, 0x66, 0xc3, 0xa9, 0x0a],
+    );
+  });
+
   test('says why it opens no editor for a folder or a file of binary data', async () => {
     await backToCommander();
     const tabs = await page.locator('.tabs [role="tab"]').count();

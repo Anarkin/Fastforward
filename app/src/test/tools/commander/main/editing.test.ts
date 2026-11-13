@@ -157,6 +157,7 @@ suite('Editing a file', () => {
       tab: '1',
       file: 'a.txt',
       version: 0,
+      encoding: 'utf-8',
     });
     await edits.receive(page, { type: 'readEdited', tab: '1' });
     assert.deepStrictEqual(page.last('editedText')?.shown, {
@@ -412,5 +413,73 @@ suite('Editing a file', () => {
     assert.strictEqual(watchers.length, 1);
     edits.closed('1');
     assert.strictEqual(watchers.length, 0);
+  });
+
+  test('saves the text in the encoding asked for, with or without a byte order mark, as a change until saved, and names the characters it cannot hold rather than taking it', async () => {
+    const text = 'café 中\n';
+    const { edits, saved, notices, showing } = editing({
+      'a.txt': Buffer.from(text, 'utf8'),
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editing')?.encoding, 'utf-8');
+    await edits.receive(page, {
+      type: 'saveIn',
+      tab: '1',
+      encoding: 'windows-1252',
+      bom: false,
+    });
+    assert.deepStrictEqual(notices, [
+      'Couldn\'t save "a.txt", as windows-1252 has no "中".',
+    ]);
+    await edits.receive(page, {
+      type: 'saveIn',
+      tab: '1',
+      encoding: 'utf-8',
+      bom: true,
+    });
+    assert.strictEqual(page.last('editing')?.bom, true);
+    assert.strictEqual(edits.unsaved('1'), true);
+    await edits.receive(page, { type: 'saveText', tab: '1' });
+    assert.deepStrictEqual(
+      saved.map(({ bytes }) => bytes),
+      [
+        Buffer.concat([
+          Buffer.from([0xef, 0xbb, 0xbf]),
+          Buffer.from(text, 'utf8'),
+        ]).toString('latin1'),
+      ],
+    );
+    assert.strictEqual(edits.unsaved('1'), false);
+  });
+
+  test('reads the file again in the encoding asked for, and in the one found once asked for Auto', async () => {
+    const { edits, showing } = editing({
+      'a.txt': Uint8Array.of(0x63, 0x61, 0x66, 0xe9, 0x0a),
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'windows-1252');
+    await edits.receive(page, {
+      type: 'reopenIn',
+      tab: '1',
+      encoding: 'utf-8',
+    });
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'utf-8');
+    assert.strictEqual(
+      page.last('editedText')?.shown.text,
+      String.fromCharCode(0x63, 0x61, 0x66, 0xfffd, 0x0a),
+    );
+    await edits.receive(page, { type: 'reopenIn', tab: '1', encoding: 'auto' });
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'windows-1252');
+    await edits.receive(
+      page,
+      JSON.parse('{"type":"reopenIn","tab":"1","encoding":"klingon"}'),
+    );
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'windows-1252');
   });
 });

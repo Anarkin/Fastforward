@@ -751,6 +751,8 @@ export class CommanderTool implements Tool<'commander'> {
       case 'editState':
       case 'saveText':
       case 'reloadEdited':
+      case 'saveIn':
+      case 'reopenIn':
         return this.editing.receive(page, message);
       case 'open':
         return this.openEntry(

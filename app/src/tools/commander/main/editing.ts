@@ -1,9 +1,10 @@
 import type { Notice, Page } from '../../../shell/main/shell';
 import { strings, type Sentence } from '../../../shared/strings';
-import type {
-  CommanderToHost,
-  CommanderToWebview,
-  TextEncoding,
+import {
+  isTextEncoding,
+  type CommanderToHost,
+  type CommanderToWebview,
+  type TextEncoding,
 } from '../shared/protocol';
 import { EditedText } from './editedText';
 import { NoRoomToSave, ReadOnlyFile, type Saved } from './fileSaving';
@@ -45,7 +46,13 @@ export type EditingMessage = Extract<
   CommanderToHost,
   {
     readonly type:
-      'readEdited' | 'editText' | 'editState' | 'saveText' | 'reloadEdited';
+      | 'readEdited'
+      | 'editText'
+      | 'editState'
+      | 'saveText'
+      | 'reloadEdited'
+      | 'saveIn'
+      | 'reopenIn';
   }
 >;
 
@@ -116,11 +123,16 @@ export class Editing {
 
   private postEditing(page: Page, tab: string, opened: Opened): void {
     const { read } = opened;
+    const target = read.text?.target();
+    const readAs = read.text?.readAs();
     this.shell.post(page, {
       type: 'editing',
       tab,
       file: opened.file,
       ...(read.text !== undefined && { version: read.text.version }),
+      ...(target !== undefined && { encoding: target.encoding }),
+      ...(target?.bom === true && { bom: true }),
+      ...(readAs !== undefined && readAs !== target?.encoding && { readAs }),
       ...(opened.changed && { changed: true }),
       ...(opened.readOnly && { readOnly: true }),
       ...(read.made && { made: true }),
@@ -164,7 +176,11 @@ export class Editing {
     }
   }
 
-  private async load(file: string, version: number): Promise<Read> {
+  private async load(
+    file: string,
+    version: number,
+    chosen?: TextEncoding,
+  ): Promise<Read> {
     const stamp = await this.access.stampOf(file);
     let bytes: Buffer;
     try {
@@ -200,7 +216,9 @@ export class Editing {
       return { text: undefined, error: refusal, made: false, stamp };
     }
     const encoding =
-      marked ?? (isUtf8(bytes) ? 'utf-8' : await this.access.codePage());
+      chosen ??
+      marked ??
+      (isUtf8(bytes) ? 'utf-8' : await this.access.codePage());
     return {
       text: new EditedText(decodedText(bytes, encoding), 'lf', version),
       made: false,
@@ -235,9 +253,13 @@ export class Editing {
     }
   }
 
-  private async readAgain(tab: string, opened: Opened): Promise<void> {
+  private async readAgain(
+    tab: string,
+    opened: Opened,
+    chosen?: TextEncoding,
+  ): Promise<void> {
     const version = (opened.read.text?.version ?? 0) + 1;
-    const read = await this.load(opened.file, version);
+    const read = await this.load(opened.file, version, chosen);
     if (this.opened.get(tab) !== opened) {
       return;
     }
@@ -288,9 +310,48 @@ export class Editing {
       case 'reloadEdited':
         await this.readAgain(message.tab, opened);
         return;
+      case 'saveIn':
+        this.saveIn(page, message.tab, opened, text, message);
+        return;
+      case 'reopenIn':
+        if (message.encoding === 'auto' || isTextEncoding(message.encoding)) {
+          await this.readAgain(
+            message.tab,
+            opened,
+            message.encoding === 'auto' ? undefined : message.encoding,
+          );
+        }
+        return;
       default:
         message satisfies never;
     }
+  }
+
+  private saveIn(
+    page: Page,
+    tab: string,
+    opened: Opened,
+    text: EditedText,
+    { encoding, bom }: { readonly encoding: unknown; readonly bom: unknown },
+  ): void {
+    if (!isTextEncoding(encoding) || typeof bom !== 'boolean') {
+      return;
+    }
+    const tried = text.saveIn(encoding, bom);
+    if (!('bytes' in tried)) {
+      const characters = [
+        ...new Set(tried.unencodable.map(({ character }) => character)),
+      ].slice(0, maxUnencodableNamed);
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.editor.unencodable(opened.file, encoding, characters),
+      });
+      return;
+    }
+    for (const shownIn of this.shell.pagesShowing(tab)) {
+      this.postEditing(shownIn, tab, opened);
+    }
+    this.changedTo(page, tab, opened, text.changed());
   }
 
   private sendText(

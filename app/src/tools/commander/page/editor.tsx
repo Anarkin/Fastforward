@@ -11,6 +11,7 @@ import {
   EditorSelection,
   EditorState,
   StateEffect,
+  Text,
   type Extension,
 } from '@codemirror/state';
 import { EditorView, lineNumbers, type ViewUpdate } from '@codemirror/view';
@@ -29,10 +30,29 @@ import { useCellTable, type CellTable } from '../../../ui/textWidths';
 import { editorKeymap } from '../shared/keymap';
 import {
   maxColoredBytes,
+  textEncodings,
   type CommanderToWebviewOf,
+  type TextEncoding,
   type TextShown,
 } from '../shared/protocol';
+import {
+  convertedTo,
+  endingCounts,
+  endingsChanged,
+  endingsField,
+  endingsFrom,
+  endingsSent,
+  endingsUndone,
+} from './editorEndings';
 import { colorOfFileNamed } from './fileColors';
+import { viewerChoices } from './view';
+import type { LineEnding } from '../shared/textMarks';
+import { MenuButton } from '../../../ui/menu';
+import {
+  LanguageButton,
+  languageChoiceOf,
+  shownLanguage,
+} from '../../../ui/languageChoice';
 import { nameOf, PathTitle } from './pathTitle';
 import { useCommander, useCommanderActions } from './store';
 
@@ -40,6 +60,9 @@ export interface EditedTab {
   readonly tab: string;
   readonly file: string;
   readonly version: number | undefined;
+  readonly encoding: TextEncoding | undefined;
+  readonly bom: boolean;
+  readonly readAs: TextEncoding | undefined;
   readonly changed: boolean;
   readonly readOnly: boolean;
   readonly made: boolean;
@@ -105,6 +128,7 @@ function extensionsOf({
     appSelection(editorKeymap.rowEnd),
     lineNumbers(),
     history(),
+    endingsUndone,
     wrapping.of(wordWrap ? EditorView.lineWrapping : []),
     EditorState.readOnly.of(readOnly),
     EditorView.contentAttributes.of({
@@ -122,19 +146,61 @@ function stateOf(
   kept: unknown,
   extensions: Extension,
 ): EditorState {
+  const doc = Text.of(shown.text.split(lineBreak));
+  const all = [extensions, endingsFrom(doc, shown)];
   if (typeof kept === 'object' && kept !== null) {
     try {
       return EditorState.fromJSON(
         { ...kept, doc: shown.text },
-        { extensions },
+        { extensions: all },
         { history: historyField },
       );
     } catch {
-      return EditorState.create({ doc: shown.text, extensions });
+      return EditorState.create({ doc, extensions: all });
     }
   }
-  return EditorState.create({ doc: shown.text, extensions });
+  return EditorState.create({ doc, extensions: all });
 }
+
+const lineBreak = String.fromCharCode(10);
+
+interface EndingsShown {
+  readonly ending: LineEnding;
+  readonly counts: Readonly<Record<LineEnding, number>>;
+}
+
+const endingOrder: readonly LineEnding[] = ['lf', 'crlf', 'cr'];
+
+function endingsShownOf(state: EditorState): EndingsShown {
+  return {
+    ending: state.field(endingsField).ending,
+    counts: endingCounts(state),
+  };
+}
+
+function endingsLabel({ ending, counts }: EndingsShown): string {
+  const used = endingOrder.filter((each) => counts[each] > 0);
+  return used.length > 1
+    ? strings.editor.mixed
+    : strings.editor.endingNames[used[0] ?? ending];
+}
+
+function endingsTitle({ ending, counts }: EndingsShown): string {
+  return strings.editor.endingCounts(
+    endingOrder
+      .filter((each) => counts[each] > 0)
+      .map((each) =>
+        strings.editor.linesEndingIn(
+          counts[each],
+          strings.editor.endingNames[each],
+        ),
+      ),
+    strings.editor.endingNames[ending],
+  );
+}
+
+const encodingName = (encoding: TextEncoding) =>
+  strings.commander.encodingShort[encoding];
 
 function keptJson(state: EditorState): unknown {
   const json: unknown = state.toJSON({ history: historyField });
@@ -146,8 +212,8 @@ function keptJson(state: EditorState): unknown {
     : undefined;
 }
 
-const colorsOf = (file: string, on: boolean): Extension =>
-  on ? syntaxColors(languageOf(file), colorer, maxColoredBytes) : [];
+const colorsOf = (language: string | undefined, on: boolean): Extension =>
+  on ? syntaxColors(language, colorer, maxColoredBytes) : [];
 
 export function Editor() {
   useEffect(startColorer, []);
@@ -162,6 +228,21 @@ export function Editor() {
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const { changeTextView } = useShellActions();
+  const choices = useCommander((state) => viewerChoices(state.view));
+  const { choose: onChoose } = useCommanderActions();
+  const { choice: languageChoice, choose: chooseLanguage } = languageChoiceOf(
+    file,
+    {
+      on: highlightSyntax,
+      change: (on) => changeTextView({ highlightSyntax: on }),
+    },
+    {
+      language: choices.language,
+      keep: (chosen) => onChoose({ language: chosen }),
+    },
+  );
+  const detectedLanguage = languageOf(file);
+  const language = shownLanguage(languageChoice, detectedLanguage);
   const {
     listenEditor,
     readEdited,
@@ -169,9 +250,13 @@ export function Editor() {
     keepEditState,
     saveText,
     reloadEdited,
+    saveIn,
+    reopenIn,
     keptEditor,
     keepEditor,
   } = useCommanderActions();
+  const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
+  const [reopening, setReopening] = useState<TextEncoding | 'auto'>();
   const table = useCellTable();
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
@@ -183,7 +268,7 @@ export function Editor() {
   const readOnly = edited?.readOnly === true;
   const startingVersion = useEffectEvent(() => edited?.version ?? 0);
   const wrapsFirst = useEffectEvent(() => wordWrap);
-  const colorsFirst = useEffectEvent(() => colorsOf(file, highlightSyntax));
+  const colorsFirst = useEffectEvent(() => colorsOf(language, highlightSyntax));
 
   useEffect(() => {
     if (tab === undefined || !loaded || table === undefined) {
@@ -212,9 +297,17 @@ export function Editor() {
       colors: colorsFirst(),
       onSave: () => saveText(tab),
       onUpdate: (update) => {
-        if (update.docChanged) {
-          editText(tab, { version, changes: update.changes.toJSON() });
+        const converted = endingsChanged(update.transactions);
+        if (update.docChanged || converted) {
+          editText(tab, {
+            version,
+            ...(update.docChanged && { changes: update.changes.toJSON() }),
+            ...(converted && {
+              endings: endingsSent(update.state.field(endingsField)),
+            }),
+          });
           version += 1;
+          setEndingsShown(endingsShownOf(update.state));
         }
         if (update.docChanged || update.selectionSet) {
           keepState(update.state);
@@ -226,10 +319,12 @@ export function Editor() {
     const shown = new EditorView({
       parent: element,
       state: reused
-        ? kept.state.update({ effects: StateEffect.reconfigure.of(extensions) })
-            .state
-        : EditorState.create({ extensions }),
+        ? kept.state.update({
+            effects: StateEffect.reconfigure.of([extensions, endingsField]),
+          }).state
+        : EditorState.create({ extensions: [extensions, endingsField] }),
     });
+    setEndingsShown(reused ? endingsShownOf(shown.state) : undefined);
     if (!reused) {
       readEdited(tab);
     }
@@ -258,6 +353,7 @@ export function Editor() {
         });
       }
       keepEditor(tab, { state: shown.state, version });
+      setEndingsShown(endingsShownOf(shown.state));
       shown.focus();
     });
     shown.focus();
@@ -293,9 +389,63 @@ export function Editor() {
 
   useEffect(() => {
     view.current?.dispatch({
-      effects: coloring.current.reconfigure(colorsOf(file, highlightSyntax)),
+      effects: coloring.current.reconfigure(
+        colorsOf(language, highlightSyntax),
+      ),
     });
-  }, [file, highlightSyntax]);
+  }, [language, highlightSyntax]);
+
+  const encoding = edited?.encoding;
+  const encodingLabel =
+    encoding === undefined
+      ? undefined
+      : edited?.bom === true
+        ? strings.editor.withBom(encodingName(encoding))
+        : encodingName(encoding);
+  const reopen = (chosen: TextEncoding | 'auto') => {
+    if (tab === undefined) {
+      return;
+    }
+    if (edited?.changed === true) {
+      setReopening(chosen);
+    } else {
+      reopenIn(tab, chosen);
+    }
+  };
+  const encodingItems =
+    tab === undefined || encoding === undefined
+      ? []
+      : [
+          {
+            label: strings.editor.reopenIn,
+            submenu: [
+              { label: strings.common.auto, onClick: () => reopen('auto') },
+              ...textEncodings.map((each) => ({
+                label: encodingName(each),
+                checked: each === (edited?.readAs ?? encoding),
+                onClick: () => reopen(each),
+              })),
+            ],
+          },
+          {
+            label: strings.editor.saveIn,
+            submenu: textEncodings.flatMap((each) =>
+              (each === 'utf-8'
+                ? [false, true]
+                : [each.startsWith('utf-16')]
+              ).map((bom) => ({
+                label:
+                  bom && each === 'utf-8'
+                    ? strings.editor.withBom(encodingName(each))
+                    : encodingName(each),
+                checked: each === encoding && bom === edited?.bom,
+                onClick: () => saveIn(tab, each, bom),
+              })),
+            ),
+          },
+        ];
+  const convert = (ending: LineEnding) =>
+    view.current?.dispatch(convertedTo(ending));
 
   const mark = edited?.readOnly
     ? strings.editor.readOnlyMark
@@ -309,6 +459,50 @@ export function Editor() {
     <section className="column viewer editor">
       <header className="column-title">
         <div className="column-start nav-buttons viewer-actions">
+          {encodingLabel !== undefined && !readOnly && (
+            <div className="viewer-encoding">
+              <MenuButton
+                title={strings.editor.encodingTitle}
+                label={
+                  edited?.readAs === undefined
+                    ? encodingLabel
+                    : strings.editor.savedAs(
+                        encodingName(edited.readAs),
+                        encodingLabel,
+                      )
+                }
+                filter={strings.common.findEncoding}
+                items={encodingItems}
+                onChosen={() => view.current?.focus()}
+              />
+            </div>
+          )}
+          {endingsShown !== undefined && !readOnly && (
+            <div className="viewer-encoding">
+              <MenuButton
+                title={endingsTitle(endingsShown)}
+                label={endingsLabel(endingsShown)}
+                items={(['lf', 'crlf'] as const).map((ending) => ({
+                  label: strings.editor.convertTo(
+                    strings.editor.endingNames[ending],
+                  ),
+                  checked:
+                    endingsLabel(endingsShown) ===
+                    strings.editor.endingNames[ending],
+                  onClick: () => convert(ending),
+                }))}
+                onChosen={() => view.current?.focus()}
+              />
+            </div>
+          )}
+          <LanguageButton
+            choice={languageChoice}
+            detected={detectedLanguage}
+            single
+            choose={chooseLanguage}
+            onChosen={() => view.current?.focus()}
+          />
+          <span className="nav-button-space" />
           <div className="viewer-toggles">
             <button
               className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
@@ -341,6 +535,23 @@ export function Editor() {
             <Words>{edited.error}</Words>
           </div>
         </div>
+      )}
+      {reopening !== undefined && tab !== undefined && (
+        <ConfirmPopup
+          title={strings.editor.reopenTitle}
+          message={strings.editor.reopenAsked}
+          lines={strings.editor.overwriteLines(file)}
+          confirm={strings.editor.reopen}
+          onConfirm={() => {
+            setReopening(undefined);
+            reopenIn(tab, reopening);
+            view.current?.focus();
+          }}
+          onCancel={() => {
+            setReopening(undefined);
+            view.current?.focus();
+          }}
+        />
       )}
       {askingChanged && tab !== undefined && (
         <ConfirmPopup

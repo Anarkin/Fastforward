@@ -1195,6 +1195,22 @@ export const strings = {
     readAgain: 'Read Again',
     askedInTab: (file: string) =>
       sentence`${named(file)} isn't saved: its tab asks what to do.`,
+    reopenIn: 'Reopen in',
+    saveIn: 'Save in',
+    encodingTitle: 'Encoding',
+    withBom: (encoding: string) => `${encoding} BOM`,
+    savedAs: (read: string, saved: string) => `${read} → ${saved}`,
+    reopenTitle: 'Reopen',
+    reopenAsked:
+      'Reopening the file in another encoding drops the changes made here. Reopen it?',
+    reopen: 'Reopen',
+    endingNames: { lf: 'LF', crlf: 'CRLF', cr: 'CR' },
+    mixed: 'Mixed',
+    convertTo: (ending: string) => `Convert to ${ending}`,
+    endingCounts: (counts: readonly string[], newLines: string) =>
+      `${counts.join(', ')}; new lines end in ${newLines}`,
+    linesEndingIn: (lines: number, ending: string) =>
+      `${lines} ${lines === 1 ? 'line ends' : 'lines end'} in ${ending}`,
     overwriteTitle: 'Read-only file',
     overwriteAsked: 'The file is read-only. Save over it anyway?',
     overwriteLines: (file: string) => [labeled('File', named(file))],

@@ -527,7 +527,8 @@ export function reduceView(
         viewers: without(view.viewers, action.tab),
       };
     case 'choose':
-      return view.tab === undefined || view.viewing === undefined
+      return view.tab === undefined ||
+        (view.viewing === undefined && view.editing === undefined)
         ? view
         : {
             ...view,

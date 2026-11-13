@@ -159,6 +159,17 @@ export type CommanderToHost =
     }
   | { readonly type: 'reloadEdited'; readonly tab: string }
   | {
+      readonly type: 'saveIn';
+      readonly tab: string;
+      readonly encoding: TextEncoding;
+      readonly bom: boolean;
+    }
+  | {
+      readonly type: 'reopenIn';
+      readonly tab: string;
+      readonly encoding: TextEncoding | 'auto';
+    }
+  | {
       readonly type: 'open';
       readonly tab: string;
       readonly side: Side;
@@ -494,6 +505,9 @@ export type CommanderToWebview =
       readonly tab: string;
       readonly file: string;
       readonly version?: number;
+      readonly encoding?: TextEncoding;
+      readonly bom?: true;
+      readonly readAs?: TextEncoding;
       readonly changed?: true;
       readonly readOnly?: true;
       readonly made?: true;

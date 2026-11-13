@@ -1,5 +1,5 @@
 import { ChangeSet, RangeSet, Text } from '@codemirror/state';
-import type { TextShown } from '../shared/protocol';
+import type { TextEncoding, TextShown } from '../shared/protocol';
 import {
   isLineEnding,
   keptMarks,
@@ -67,6 +67,8 @@ const isSaved = (value: object): value is Saved =>
 
 interface Saved {
   readonly doc: Text;
+  readonly encoding: TextEncoding;
+  readonly bom: boolean;
   readonly ending: LineEnding;
   readonly strays: RangeSet<EndingMark>;
   readonly kept: RangeSet<KeptMark>;
@@ -74,6 +76,8 @@ interface Saved {
 
 export class EditedText {
   private doc: Text;
+  private encoding: TextEncoding;
+  private bom: boolean;
   private ending: LineEnding;
   private strays: RangeSet<EndingMark>;
   private kept: RangeSet<KeptMark>;
@@ -86,6 +90,8 @@ export class EditedText {
     version = 0,
   ) {
     this.version = version;
+    this.encoding = read.encoding;
+    this.bom = read.bom;
     this.doc = Text.of(read.text.split('\n'));
     this.ending = read.ending ?? fallbackEnding;
     this.strays = strayMarks(this.doc, read.strayEndings);
@@ -100,10 +106,29 @@ export class EditedText {
   private current(): Saved {
     return {
       doc: this.doc,
+      encoding: this.encoding,
+      bom: this.bom,
       ending: this.ending,
       strays: this.strays,
       kept: this.kept,
     };
+  }
+
+  readAs(): TextEncoding {
+    return this.read.encoding;
+  }
+
+  target(): { readonly encoding: TextEncoding; readonly bom: boolean } {
+    return { encoding: this.encoding, bom: this.bom };
+  }
+
+  saveIn(encoding: TextEncoding, bom: boolean): EncodedText {
+    const tried = encodedText({ ...this.shown(), encoding, bom });
+    if ('bytes' in tried) {
+      this.encoding = encoding;
+      this.bom = bom;
+    }
+    return tried;
   }
 
   edit(update: unknown): boolean {
@@ -144,8 +169,10 @@ export class EditedText {
   }
 
   changed(): boolean {
-    const { doc, ending, strays, kept } = this.last;
+    const { doc, encoding, bom, ending, strays, kept } = this.last;
     return !(
+      encoding === this.encoding &&
+      bom === this.bom &&
       ending === this.ending &&
       doc.length === this.doc.length &&
       doc.eq(this.doc) &&
@@ -164,8 +191,8 @@ export class EditedText {
     return {
       text: this.doc.toString(),
       version: this.version,
-      encoding: this.read.encoding,
-      bom: this.read.bom,
+      encoding: this.encoding,
+      bom: this.bom,
       ending: this.ending,
       strayEndings: marksListed(this.strays, (at, { ending }) => ({
         at,
