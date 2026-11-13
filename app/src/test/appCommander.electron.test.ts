@@ -4550,8 +4550,8 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         (await page.locator('.shortcuts-heading').allTextContents()).join() ===
-        'Moving around,Commits,Commit messages,Files,Diff,Searching',
-      'the shortcuts of git, the diff among them',
+        'Diff,Searching',
+      'the shortcuts of the diff',
     );
     await page.keyboard.press('F1');
     await page

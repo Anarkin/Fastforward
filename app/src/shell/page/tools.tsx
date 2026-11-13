@@ -1,5 +1,6 @@
 import {
   compareKeymap,
+  diffGroups,
   gitGroups,
   gitKeymap,
 } from '../../tools/git/shared/keymap';
@@ -28,7 +29,8 @@ import {
 import { GitTool } from '../../tools/git/page/tool';
 import { activeTabOf, useShell, useShellActions } from './store';
 
-export type ShortcutEntryId = ToolId | 'viewer' | 'editor' | 'everywhere';
+export type ShortcutEntryId =
+  ToolId | 'viewer' | 'diff' | 'editor' | 'everywhere';
 
 export interface ShortcutEntry {
   readonly id: ShortcutEntryId;
@@ -50,6 +52,11 @@ export const shortcutEntries: readonly ShortcutEntry[] = [
     groups: shortcutGroupsOf(viewerGroups, titles, viewerKeymap),
   },
   {
+    id: 'diff',
+    title: strings.shortcuts.diff,
+    groups: shortcutGroupsOf(diffGroups, titles, compareKeymap),
+  },
+  {
     id: 'editor',
     title: strings.shortcuts.editor,
     groups: shortcutGroupsOf(editorGroups, titles, editorKeymap),
@@ -57,10 +64,7 @@ export const shortcutEntries: readonly ShortcutEntry[] = [
   {
     id: 'git',
     title: strings.tools.git,
-    groups: shortcutGroupsOf(gitGroups, titles, {
-      ...gitKeymap,
-      closeCompare: compareKeymap.closeCompare,
-    }),
+    groups: shortcutGroupsOf(gitGroups, titles, gitKeymap),
   },
   {
     id: 'terminal',

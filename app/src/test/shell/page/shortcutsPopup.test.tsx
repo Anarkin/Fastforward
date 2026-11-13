@@ -34,7 +34,7 @@ import { noop, renderedBy, tagsWith } from '../../fixtures';
 
 function shortcutsStore(
   tool?: ToolId,
-  kind: Pick<TabInfo, 'view' | 'compare'> = {},
+  kind: Pick<TabInfo, 'view' | 'edit' | 'compare'> = {},
 ) {
   return createShellStore(noop, {
     popups: ['shortcuts'],
@@ -46,7 +46,7 @@ function shortcutsStore(
 
 function shortcutsMarkup(
   tool?: ToolId,
-  kind?: Pick<TabInfo, 'view' | 'compare'>,
+  kind?: Pick<TabInfo, 'view' | 'edit' | 'compare'>,
 ): string {
   return renderToStaticMarkup(
     withStores(<ShortcutsPopup />, { shell: shortcutsStore(tool, kind) }),
@@ -106,6 +106,7 @@ async function inPopup(
     readonly press: (key: string, held?: Held) => Promise<void>;
     readonly type: (text: string) => Promise<void>;
   }) => Promise<void>,
+  prepare: (document: Document) => void = () => {},
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>');
   const globals = {
@@ -123,6 +124,7 @@ async function inPopup(
     const { document } = dom.window;
     const main = document.querySelector('main');
     assert.ok(main);
+    prepare(document);
     const root = createRoot(main);
     await act(async () => {
       root.render(
@@ -172,12 +174,13 @@ const headingsOf = (document: Document) =>
   );
 
 suite('Shortcuts popup', () => {
-  test('lists the tools, the file viewer apart from the commander, then the shortcuts of every tab, last', () => {
+  test('lists the tools, the viewer, the diff and the editor apart from the commander and git they open in, then the shortcuts of every tab, last', () => {
     assert.deepStrictEqual(
       shortcutEntries.map((each) => [each.id, each.title]),
       [
         ['commander', 'Commander'],
         ['viewer', 'Viewer'],
+        ['diff', 'Diff'],
         ['editor', 'Editor'],
         ['git', 'Git'],
         ['terminal', 'Terminal'],
@@ -206,20 +209,14 @@ suite('Shortcuts popup', () => {
           ],
         ],
         ['Viewer', ['Scrolling', 'Showing the file', 'Text', 'Searching']],
+        ['Diff', ['Diff', 'Searching']],
         [
           'Editor',
           ['Editing', 'Moving around', 'Cursors and selections', 'Searching'],
         ],
         [
           'Git',
-          [
-            'Moving around',
-            'Commits',
-            'Commit messages',
-            'Files',
-            'Diff',
-            'Searching',
-          ],
+          ['Moving around', 'Commits', 'Commit messages', 'Files', 'Searching'],
         ],
         ['Terminal', ['Clipboard', 'Kept from the shell']],
         ['Every tab', ['Tabs', 'App', 'Lists and popups']],
@@ -227,13 +224,21 @@ suite('Shortcuts popup', () => {
     );
   });
 
-  test("lists every binding with a group once, under the tool whose keymap has it, the comparison's closing under Git, and none without one", () => {
+  test("lists every binding with a group once, under the tool whose keymap has it, git's keys of the diff under Diff alone with the comparison's, and none without one", () => {
     const keymaps: [string, Readonly<Record<string, Binding<unknown>>>][] = [
       ['everywhere', keymap],
       ['commander', commanderKeymap],
       ['viewer', viewerKeymap],
       ['editor', editorKeymap],
-      ['git', { ...gitKeymap, closeCompare: compareKeymap.closeCompare }],
+      [
+        'git',
+        Object.fromEntries(
+          Object.entries(gitKeymap).filter(
+            ([, binding]) => binding.group !== 'Diff',
+          ),
+        ),
+      ],
+      ['diff', compareKeymap],
       ['terminal', terminalKeymap],
     ];
     for (const [id, bindings] of keymaps) {
@@ -245,9 +250,13 @@ suite('Shortcuts popup', () => {
       assert.deepStrictEqual(new Set(listed), new Set(grouped), id);
     }
     assert.ok(
-      entry('git')
-        .groups.find((group) => group.title === 'Diff')
-        ?.bindings.includes(compareKeymap.closeCompare),
+      Object.values(gitKeymap)
+        .filter((binding) => binding.group === 'Diff')
+        .every((binding) =>
+          entry('diff')
+            .groups.flatMap((group) => group.bindings)
+            .includes(binding),
+        ),
     );
   });
 
@@ -425,6 +434,16 @@ suite('Shortcuts popup', () => {
         ],
       ],
       [
+        'Searching',
+        [
+          "Search the column you're in",
+          'Next or previous match',
+          'Close the search',
+        ],
+      ],
+    ]);
+    assert.deepStrictEqual(contents('diff'), [
+      [
         'Diff',
         [
           'Next or previous change',
@@ -486,11 +505,13 @@ suite('Shortcuts popup', () => {
     ]);
   });
 
-  test('opens on the tool of the tab shown, the file viewer for a file viewed, Git for two files compared, and the shortcuts of every tab with no tab open', () => {
+  test('opens on the tool of the tab shown, the viewer for a file viewed, the editor for a file edited, the diff for two files compared or a diff with the focus, and the shortcuts of every tab with no tab open', () => {
     assert.strictEqual(entryFor('commander'), 'commander');
     assert.strictEqual(entryFor('commander', { view: true }), 'viewer');
     assert.strictEqual(entryFor('git'), 'git');
-    assert.strictEqual(entryFor('git', { compare: true }), 'git');
+    assert.strictEqual(entryFor('git', { compare: true }), 'diff');
+    assert.strictEqual(entryFor('git', {}, 'diff'), 'diff');
+    assert.strictEqual(entryFor('commander', { edit: true }), 'editor');
     assert.strictEqual(entryFor('terminal'), 'terminal');
     assert.strictEqual(entryFor(undefined), 'everywhere');
   });
@@ -500,6 +521,7 @@ suite('Shortcuts popup', () => {
     assert.deepStrictEqual(textsOf(html, 'shortcuts-tool-name'), [
       'Commander',
       'Viewer',
+      'Diff',
       'Editor',
       'Git',
       'Terminal',
@@ -520,7 +542,7 @@ suite('Shortcuts popup', () => {
     assert.ok(html.indexOf(marked[0] ?? '') < html.indexOf('>Listing<'));
   });
 
-  test('opens on the groups of the file viewer for a file viewed, and on those of Git for two files compared', () => {
+  test('opens on the groups of the viewer for a file viewed, of the editor for a file edited, and of the diff for two files compared', () => {
     assert.deepStrictEqual(
       textsOf(
         shortcutsMarkup('commander', { view: true }),
@@ -529,9 +551,37 @@ suite('Shortcuts popup', () => {
       ['Scrolling', 'Showing the file', 'Text', 'Searching'],
     );
     assert.deepStrictEqual(
-      textsOf(shortcutsMarkup('git', { compare: true }), 'shortcuts-heading'),
-      entry('git').groups.map((group) => group.title),
+      textsOf(
+        shortcutsMarkup('commander', { edit: true }),
+        'shortcuts-heading',
+      ),
+      entry('editor').groups.map((group) => group.title),
     );
+    assert.deepStrictEqual(
+      textsOf(shortcutsMarkup('git', { compare: true }), 'shortcuts-heading'),
+      entry('diff').groups.map((group) => group.title),
+    );
+  });
+
+  test('opens on the diff in a git tab while a diff has the focus, rather than on Git', async () => {
+    await inPopup(
+      'git',
+      ({ document }) => {
+        assert.strictEqual(openTool(document), 'Diff');
+        return Promise.resolve();
+      },
+      (document) => {
+        const diff = document.createElement('div');
+        diff.setAttribute('data-shortcuts', 'diff');
+        diff.tabIndex = 0;
+        document.body.append(diff);
+        diff.focus();
+      },
+    );
+    await inPopup('git', ({ document }) => {
+      assert.strictEqual(openTool(document), 'Git');
+      return Promise.resolve();
+    });
   });
 
   test('offers a filter above the tools and the shortcuts, telling what it takes', () => {
@@ -549,6 +599,7 @@ suite('Shortcuts popup', () => {
     assert.deepStrictEqual(counts('f3'), [
       ['commander', 2],
       ['viewer', 0],
+      ['diff', 0],
       ['editor', 0],
       ['git', 1],
       ['terminal', 0],
@@ -743,11 +794,11 @@ suite('Shortcuts popup', () => {
         [...document.querySelectorAll('.shortcuts-tool .shortcuts-count')].map(
           (count) => count.textContent,
         ),
-        ['2', '0', '0', '1', '0', '0'],
+        ['2', '0', '0', '0', '1', '0', '0'],
       );
       assert.strictEqual(
         document.querySelectorAll('.shortcuts-tool.empty').length,
-        4,
+        5,
       );
       assert.deepStrictEqual(headingsOf(document), ['Viewing and comparing']);
       await press('ArrowDown');

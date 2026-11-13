@@ -16,7 +16,7 @@ import { folded, matchesIn } from '../../shared/textMatches';
 import { useDismiss } from '../../ui/contextMenu';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../ui/icons';
 import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
-import { keyPressed } from '../../ui/shortcuts';
+import { keyPressed, shortcutsEntryOf } from '../../ui/shortcuts';
 
 interface ShortcutMatch {
   readonly words: readonly string[];
@@ -117,9 +117,17 @@ export function shownEntries(
 export function entryFor(
   tool: ToolId | undefined,
   kind: Pick<TabInfo, 'view' | 'edit' | 'compare'> = {},
+  focused?: string,
 ): ShortcutEntryId {
   if (tool === undefined) {
     return 'everywhere';
+  }
+  const focusedEntry = shortcutEntries.find((each) => each.id === focused);
+  if (focusedEntry !== undefined) {
+    return focusedEntry.id;
+  }
+  if (tool === 'git' && kind.compare === true) {
+    return 'diff';
   }
   return tool === 'commander' && kind.view === true
     ? 'viewer'
@@ -210,7 +218,7 @@ export function ShortcutsList({ entry }: { entry: ShownEntry }) {
 }
 
 function EntryIcon({ id }: { id: ShortcutEntryId }) {
-  if (id === 'viewer' || id === 'editor') {
+  if (id === 'viewer' || id === 'diff' || id === 'editor') {
     return <FileIcon />;
   }
   return id === 'everywhere' ? <TabsIcon /> : <ToolIcon tool={id} />;
@@ -339,9 +347,18 @@ export function ShortcutsPopup() {
   const tool = useShell((state) => activeTabOf(state)?.tool);
   const view = useShell((state) => activeTabOf(state)?.view);
   const compare = useShell((state) => activeTabOf(state)?.compare);
+  const edit = useShell((state) => activeTabOf(state)?.edit);
   const { showPopup } = useShellActions();
   const onClose = useCallback(() => showPopup('shortcuts', false), [showPopup]);
-  const [open, setOpen] = useState(() => entryFor(tool, { view, compare }));
+  const [open, setOpen] = useState(() =>
+    entryFor(
+      tool,
+      { view, edit, compare },
+      typeof document === 'undefined'
+        ? undefined
+        : shortcutsEntryOf(document.activeElement),
+    ),
+  );
   const [query, setQuery] = useState('');
   const [visible, setVisible] = useState<readonly string[]>();
   const popup = useRef<HTMLDivElement>(null);

@@ -113,6 +113,32 @@ suite('App', () => {
     await shortcuts.waitFor({ state: 'detached' });
   });
 
+  test('opens the shortcuts on the diff while the diff has the focus, and on git while the commits have it', async () => {
+    const shortcuts = page.getByRole('dialog', { name: 'Shortcuts' });
+    const open = page.locator('.shortcuts-tool.open .shortcuts-tool-name');
+    const opensOn = async (entry: string) => {
+      await page.keyboard.press('F1');
+      await shortcuts.waitFor();
+      assert.strictEqual(await open.textContent(), entry);
+      await page.keyboard.press('Escape');
+      await shortcuts.waitFor({ state: 'detached' });
+    };
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await opensOn('Git');
+    await page.locator('.row.file').first().click();
+    await page.locator('.diff-view .virtual-rows').click();
+    await waitFor(
+      () =>
+        page.evaluate(
+          () =>
+            document.activeElement?.closest('.diff-view') !== null &&
+            document.activeElement !== null,
+        ),
+      'the diff to have the focus',
+    );
+    await opensOn('Diff');
+  });
+
   test('shows About on Shift+F1, its copy button focused, closing it on Esc or Shift+F1', async () => {
     const about = page.getByRole('dialog', { name: 'About' });
     await page.keyboard.press('Shift+F1');

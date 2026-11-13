@@ -455,6 +455,7 @@ export const strings = {
     noMatches: 'No shortcut here has all of these words.',
     tools: 'Tools',
     viewer: 'Viewer',
+    diff: 'Diff',
     editor: 'Editor',
     everywhere: 'Every tab',
     groups: {

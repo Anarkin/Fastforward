@@ -38,6 +38,7 @@ import {
   type MinimapRow,
 } from '../../../ui/minimap';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
+import { shortcutsEntryAttribute } from '../../../ui/shortcuts';
 import { rowPlace } from '../../../ui/rowPlace';
 import { changePairs, pairingBudget, type PairingBudget } from './pairing';
 import { useSyntax, useTextsToLoad, type SyntaxRange } from './syntax';
@@ -3081,7 +3082,11 @@ export function DiffView({
         className="virtual-rows"
         ref={list}
         tabIndex={0}
-        {...{ [ownScrollbarAttribute]: '', [columnFocusAttribute]: '' }}
+        {...{
+          [ownScrollbarAttribute]: '',
+          [columnFocusAttribute]: '',
+          [shortcutsEntryAttribute]: 'diff',
+        }}
         onKeyDown={(event) => {
           const side = keyPressed(gitKeymap.sideways, event);
           const left =
