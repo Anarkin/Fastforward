@@ -208,6 +208,7 @@ export const strings = {
     ascending: '▴',
     descending: '▾',
     unsaved: '●',
+    unsavedPath: '*',
   },
   about: {
     title: 'About',

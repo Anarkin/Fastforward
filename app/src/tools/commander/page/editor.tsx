@@ -892,7 +892,7 @@ export function Editor() {
             className={`editor-mark ${edited?.changed ? 'unsaved' : ''}`}
             title={mark}
           >
-            {edited?.changed ? strings.symbols.unsaved : mark}
+            {edited?.changed ? strings.symbols.unsavedPath : mark}
           </span>
         )}
       </div>

@@ -417,7 +417,7 @@
 
 .editor-path {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
 }
 
@@ -427,6 +427,8 @@
 }
 
 .editor-mark.unsaved {
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
   color: var(--foreground);
 }
 

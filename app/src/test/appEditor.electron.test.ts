@@ -8,6 +8,31 @@ import { waitFor } from './fixtures';
 import { removeFolder, tempFolder } from './repositories';
 import { storedZip } from './zips';
 
+function lastTextOf(part: Element): {
+  readonly top: number;
+  readonly height: number;
+  readonly font: string;
+} {
+  const walker = document.createTreeWalker(part, NodeFilter.SHOW_TEXT);
+  let last: Node | null = null;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    last = node;
+  }
+  const range = document.createRange();
+  if (last !== null) {
+    range.selectNodeContents(last);
+  }
+  const rect = range.getBoundingClientRect();
+  return {
+    top: Math.round(rect.top * 100) / 100,
+    height: Math.round(rect.height * 100) / 100,
+    font:
+      last?.parentElement === null || last?.parentElement === undefined
+        ? ''
+        : getComputedStyle(last.parentElement).fontFamily,
+  };
+}
+
 suite('App editor', () => {
   let folder: string;
   let opened: string;
@@ -665,6 +690,50 @@ suite('App editor', () => {
     await right().locator('.virtual-rows').focus();
     await page.keyboard.press('Backspace');
     await right().locator('.commander-row', { hasText: 'packed' }).waitFor();
+  });
+
+  test('selects text in the color the app selects its rows in, focused or not', async () => {
+    fs.writeFileSync(path.join(opened, 'selected.txt'), 'one\ntwo\n');
+    await backToCommander();
+    await edit('selected.txt');
+    await content().click();
+    await page.keyboard.press('ControlOrMeta+A');
+    const drawn = () =>
+      page
+        .locator('.editor .cm-selectionBackground')
+        .first()
+        .evaluate((element) => {
+          const probe = document.createElement('div');
+          probe.style.background = 'var(--selection-background)';
+          document.body.append(probe);
+          const wanted = getComputedStyle(probe).backgroundColor;
+          probe.remove();
+          return [getComputedStyle(element).backgroundColor, wanted];
+        });
+    const [focused, wanted] = await drawn();
+    assert.strictEqual(focused, wanted);
+    await page.locator('.editor .editor-path').click();
+    await page
+      .locator('.editor .cm-editor.cm-focused')
+      .waitFor({ state: 'detached' });
+    const [unfocused] = await drawn();
+    assert.strictEqual(unfocused, wanted);
+  });
+
+  test('marks a file changed with a star in the font of its path, on the line of its name', async () => {
+    fs.writeFileSync(path.join(opened, 'starred.txt'), 'one\n');
+    await backToCommander();
+    await edit('starred.txt');
+    await toEnd();
+    await page.keyboard.type('!');
+    const mark = page.locator('.editor .editor-mark.unsaved');
+    await mark.waitFor();
+    assert.strictEqual(await mark.textContent(), '*');
+    const name = await page
+      .locator('.editor .editor-path .path-title')
+      .evaluate(lastTextOf);
+    const marked = await mark.evaluate(lastTextOf);
+    assert.deepStrictEqual(marked, name);
   });
 
   test('marks the bracket matching the one beside the cursor, and one matching none', async () => {

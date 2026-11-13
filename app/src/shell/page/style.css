@@ -1942,6 +1942,13 @@ body.resizing {
   background-color: transparent;
 }
 
+.cm-editor.editor-text.editor-selection
+  .cm-scroller
+  .cm-selectionLayer
+  .cm-selectionBackground {
+  background: var(--selection-background);
+}
+
 .cm-editor.editor-selection .cm-scroller .cm-content,
 .cm-editor.editor-selection .cm-scroller .cm-line {
   caret-color: transparent;
