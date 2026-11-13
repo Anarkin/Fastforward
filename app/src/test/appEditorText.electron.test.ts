@@ -178,6 +178,12 @@ async function editorLine(
   const line = page.locator('.editor-probe .cm-line');
   let last: LaidOut | undefined;
   await waitFor(async () => {
+    await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    );
     const now = await line.evaluate(laidOutText);
     const settled = last !== undefined && sameLaidOut(last, now);
     last = now;
