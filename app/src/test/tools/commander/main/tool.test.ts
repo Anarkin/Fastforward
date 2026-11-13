@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { ChangeSet } from '@codemirror/state';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Notice, Page, Tab } from '../../../../shell/main/shell';
 import type { Compared, Store } from '../../../../shell/main/storage';
@@ -129,6 +130,8 @@ type Naming =
   | 'folderCommand'
   | 'enterArchive'
   | 'countSizes'
+  | 'editFile'
+  | 'newFile'
   | 'openOnSide';
 
 type Unnamed<Message> = Message extends { readonly type: Naming }
@@ -183,6 +186,7 @@ function commander(
   const contentReads: string[] = [];
   const binsOff = new Set<string>();
   const thumbnailsFull = { now: false };
+  const closing = { now: false };
   const thumbnailWritesFail = { now: false };
   const repositories = new Set<string>();
   const repositoriesAsked: string[] = [];
@@ -582,6 +586,7 @@ function commander(
       };
     },
     archives,
+    closesBrackets: () => closing.now,
     get viewedCopies() {
       return copies.folder === ''
         ? undefined
@@ -681,6 +686,8 @@ function commander(
       case 'folderCommand':
       case 'enterArchive':
       case 'countSizes':
+      case 'editFile':
+      case 'newFile':
         return {
           ...message,
           folder: message.folder ?? folderShown(message.tab, message.side),
@@ -747,6 +754,7 @@ function commander(
     binsOff,
     thumbnailsFull,
     thumbnailWritesFail,
+    closing,
     settings,
     repositories,
     repositoriesAsked,
@@ -5948,6 +5956,118 @@ suite('Commander tool in archives', () => {
       assert.ok(!watched().includes(path.dirname(fromInner)));
     });
 
+    test('edits a file of an archive on F4 in a copy kept with the copies of viewed files, putting it back in the dialog of copies each time it is saved, without asking, and edits one of an archive that cannot be changed read-only', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);
+      made.archived.set(path.join(at('a.zip'), 'inner.zip'), zipped);
+      made.copies.folder = copiesFolder;
+      const { tool, page, send, edited, tabs, settled } = made;
+      await tool.show(page, tab);
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      await send({
+        type: 'editFile',
+        tab: '1',
+        side: 'right',
+        name: 'top.txt',
+      });
+      const [copy] = edited;
+      assert.ok(copy !== undefined);
+      assert.strictEqual(path.basename(copy), 'top.txt');
+      assert.strictEqual(
+        path.relative(path.join(copiesFolder, 'viewed'), copy).split(path.sep)
+          .length,
+        2,
+      );
+      const editTab = async (id: string, copied: string) => {
+        const editing: Tab = {
+          id,
+          tool: 'commander',
+          root: copied,
+          edit: true,
+        };
+        tabs.push(editing);
+        await tool.show(page, editing);
+        await send({ type: 'readEdited', tab: id });
+        return page.of('editing').findLast((each) => each.tab === id);
+      };
+      assert.strictEqual((await editTab('7', copy))?.readOnly, undefined);
+      const text = page.of('editedText').at(-1)?.shown.text ?? '';
+      assert.strictEqual(text, 'the top.txt of the archive');
+      const save = async (version: number, insert: string) => {
+        await send({
+          type: 'editText',
+          tab: '7',
+          update: {
+            version,
+            changes: ChangeSet.of(
+              { from: 0, insert },
+              version === 0 ? text.length : text.length + 9,
+            ).toJSON(),
+          },
+        });
+        await send({ type: 'saveText', tab: '7' });
+        await settled();
+      };
+      await save(0, 'Changed: ');
+      assert.strictEqual(
+        fs.readFileSync(copy, 'utf8'),
+        'Changed: the top.txt of the archive',
+      );
+      assert.deepStrictEqual(made.changedInArchives, [
+        ['add', at('a.zip'), [], path.dirname(copy), ['top.txt']],
+      ]);
+      await save(1, 'Again: ');
+      assert.strictEqual(made.changedInArchives.length, 2);
+      assert.deepStrictEqual(page.of('askUpdate'), []);
+
+      await tool.show(page, tab);
+      await send({ type: 'newFile', tab: '1', side: 'right', name: 'new.txt' });
+      const newCopy = edited.at(-1);
+      assert.ok(newCopy !== undefined && path.basename(newCopy) === 'new.txt');
+      assert.ok(!fs.existsSync(newCopy));
+      await editTab('9', newCopy);
+      await send({
+        type: 'editText',
+        tab: '9',
+        update: {
+          version: 0,
+          changes: ChangeSet.of({ from: 0, insert: 'new' }, 0).toJSON(),
+        },
+      });
+      await send({ type: 'saveText', tab: '9' });
+      await settled();
+      assert.strictEqual(fs.readFileSync(newCopy, 'utf8'), 'new');
+      assert.deepStrictEqual(made.changedInArchives.at(-1), [
+        'add',
+        at('a.zip'),
+        [],
+        path.dirname(newCopy),
+        ['new.txt'],
+      ]);
+
+      await tool.show(page, tab);
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'inner.zip',
+      });
+      await send({
+        type: 'editFile',
+        tab: '1',
+        side: 'right',
+        name: 'top.txt',
+      });
+      const fromInner = edited.at(-1);
+      assert.ok(fromInner !== undefined && fromInner !== copy);
+      assert.strictEqual((await editTab('8', fromInner))?.readOnly, true);
+    });
+
     test('stops watching a copy opened from an archive once no side of an open tab shows the archive, making it read-only, so a change saved to it is not lost unnoticed', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), zipped);
@@ -7304,6 +7424,15 @@ suite('Commander tool in several windows', () => {
     });
     assert.ok(page.of('transfer').at(-1)?.view?.clash !== undefined);
     assert.deepStrictEqual(other.of('transfer'), []);
+  });
+
+  test('tells the page to close brackets as they are typed in the editor once the settings say so', () => {
+    const { tool, page, closing } = commander({ [root]: [] });
+    tool.reloadSettings();
+    assert.strictEqual(page.of('settings').at(-1)?.closeBrackets, undefined);
+    closing.now = true;
+    tool.reloadSettings();
+    assert.strictEqual(page.of('settings').at(-1)?.closeBrackets, true);
   });
 
   test('tells every window the settings once they change', () => {

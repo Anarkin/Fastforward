@@ -21,7 +21,8 @@
     "charset": "utf-8",
     "indentStyle": "space",
     "indentSize": 4,
-    "files": [{ "extensions": ["bat", "cmd"], "endOfLine": "crlf" }]
+    "files": [{ "extensions": ["bat", "cmd"], "endOfLine": "crlf" }],
+    "closeBrackets": false
   },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",

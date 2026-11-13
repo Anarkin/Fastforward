@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { history, historyField } from '@codemirror/commands';
 import { bracketMatching } from '@codemirror/language';
 import {
@@ -9,7 +10,12 @@ import {
   Text,
   type Extension,
 } from '@codemirror/state';
-import { EditorView, lineNumbers, type ViewUpdate } from '@codemirror/view';
+import {
+  EditorView,
+  keymap,
+  lineNumbers,
+  type ViewUpdate,
+} from '@codemirror/view';
 import { strings, type Sentence } from '../../../shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { useShell, useShellActions } from '../../../shell/page/store';
@@ -117,6 +123,11 @@ export type ToEditor = CommanderToWebviewOf<
 
 const stateKeepDelay = 300;
 
+const bracketsClosed: Extension = [
+  closeBrackets(),
+  keymap.of(closeBracketsKeymap),
+];
+
 interface EditorParts {
   readonly table: CellTable;
   readonly readOnly: boolean;
@@ -124,6 +135,8 @@ interface EditorParts {
   readonly wordWrap: boolean;
   readonly blanking: Compartment;
   readonly showWhitespace: boolean;
+  readonly closing: Compartment;
+  readonly closesBrackets: boolean;
   readonly coloring: Compartment;
   readonly colors: Extension;
   readonly keys: EditorKeyActions;
@@ -137,6 +150,8 @@ function extensionsOf({
   wordWrap,
   blanking,
   showWhitespace,
+  closing,
+  closesBrackets,
   coloring,
   colors,
   keys,
@@ -153,6 +168,7 @@ function extensionsOf({
     editorFind,
     wrapping.of(wordWrap ? EditorView.lineWrapping : []),
     blanking.of(blanksShown.of(showWhitespace)),
+    closing.of(closesBrackets ? bracketsClosed : []),
     endingSigns,
     EditorState.readOnly.of(readOnly),
     EditorView.contentAttributes.of({
@@ -317,6 +333,7 @@ export function Editor() {
   );
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
+  const closesBrackets = useCommander((state) => state.view.closeBrackets);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const { changeTextView, openSettings } = useShellActions();
   const choices = useCommander((state) => viewerChoices(state.view));
@@ -370,6 +387,7 @@ export function Editor() {
   const view = useRef<EditorView | undefined>(undefined);
   const wrapping = useRef(new Compartment());
   const blanking = useRef(new Compartment());
+  const closing = useRef(new Compartment());
   const coloring = useRef(new Compartment());
   const [askingOverwrite, setAskingOverwrite] = useState(false);
   const [askingChanged, setAskingChanged] = useState(false);
@@ -378,6 +396,7 @@ export function Editor() {
   const startingVersion = useEffectEvent(() => edited?.version ?? 0);
   const wrapsFirst = useEffectEvent(() => wordWrap);
   const blanksFirst = useEffectEvent(() => showWhitespace);
+  const closesFirst = useEffectEvent(() => closesBrackets);
   const colorsFirst = useEffectEvent(() => colorsOf(language, highlightSyntax));
 
   useEffect(() => {
@@ -405,6 +424,8 @@ export function Editor() {
       wordWrap: wrapsFirst(),
       blanking: blanking.current,
       showWhitespace: blanksFirst(),
+      closing: closing.current,
+      closesBrackets: closesFirst(),
       coloring: coloring.current,
       colors: colorsFirst(),
       keys: {
@@ -530,6 +551,14 @@ export function Editor() {
       effects: blanking.current.reconfigure(blanksShown.of(showWhitespace)),
     });
   }, [showWhitespace]);
+
+  useEffect(() => {
+    view.current?.dispatch({
+      effects: closing.current.reconfigure(
+        closesBrackets ? bracketsClosed : [],
+      ),
+    });
+  }, [closesBrackets]);
 
   useEffect(() => {
     view.current?.dispatch({

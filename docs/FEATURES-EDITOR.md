@@ -24,7 +24,7 @@
 | Survive a reload | Keep the text and its undo while the page reloads | — | Niche | ✅ Yes | The text lives in the main process, so saving the settings, which reloads the page, and moving a tab to another window keep it, its undo and its selection |
 | Large files | Open files of many megabytes | — | Common | 🟡 Partial | Up to 50 MB, the whole text in memory; a larger one, a file of binary data and a folder are refused, saying why, F3 viewing them |
 | Settings files | Edit the settings of the app | — | Advanced | ✅ Yes | The two settings items of the app menu open the user settings and, read-only, the defaults; problems are told in notices as the settings are saved, not on their lines |
-| Files in archives | Edit a file inside an archive and put it back | — | Advanced | ❌ No | Refused, saying so; Enter opens a copy in its app to change |
+| Files in archives | Edit a file inside an archive and put it back | — | Advanced | ✅ Yes | F4 edits a copy 7-Zip takes out, kept with the copies of viewed files, each save putting it back in the dialog of copies without asking; Shift+F4 starts a new one, added on its first save; read-only from an archive that can't be changed, as one inside another, and once the app starts again |
 | Files read as administrator | Edit a file in a folder only an administrator may read | — | Advanced | ❌ No | Refused, saying so |
 | From the viewer | Switch a file viewed to editing it | — | Common | ✅ Yes | F4 in a viewer tab turns it into an editor tab, the cursor on the line at the top of the viewer, read in the encoding chosen there, or goes to the tab editing it already; a copy taken out of an archive or a commit to view it refused, saying so |
 
@@ -59,7 +59,7 @@
 | Comment lines | Comment lines out and back in | Ctrl+/ | Common | ✅ Yes | Ctrl+K, by the markers of the language of the file, a block comment where a language has no line comments |
 | Move lines | Move the lines selected up or down | Alt+Up, Alt+Down | Common | ✅ Yes |  |
 | Duplicate and delete lines | Copy or delete the lines selected | Shift+Alt+Down, Ctrl+Shift+K | Common | ❌ No |  |
-| Close brackets | Type the closing bracket or quote with the opening one | — | Common | ❌ No |  |
+| Close brackets | Type the closing bracket or quote with the opening one | — | Common | ✅ Yes | Off by default, `editor.closeBrackets` in the settings, by CodeMirror: a closing bracket typed over, and Backspace between a pair deleting both |
 | Trim trailing whitespace | Drop the spaces at the ends of lines as saved | — | Common | 🟡 Partial | Where `trim_trailing_whitespace` of the .editorconfig says so, on Ctrl+S, of the lines edited since saved alone, as an edit Ctrl+Z undoes; not as a tab is closed or the app quits with Save, nor by a setting of the app |
 | Final newline | End the file with a line break as saved | — | Common | 🟡 Partial | Where `insert_final_newline` of the .editorconfig says so, on Ctrl+S, once its last line was edited since saved, in the line ending of the file; not as a tab is closed or the app quits with Save, nor by a setting of the app |
 | Autocompletion | Suggest words and names as typed | Ctrl+Space | Common | ❌ No |  |
@@ -103,7 +103,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Keyboard | List every key of the editor | — | Common | ✅ Yes | In F1, under Editor; no key binds punctuation, so every key is the same on every layout |
-| Settings | Set how new files and indentation are | — | Common | ✅ Yes | The editor section of the settings: the line ending, charset and indentation of new files, by extension too |
+| Settings | Set how new files and indentation are | — | Common | ✅ Yes | The editor section of the settings: the line ending, charset and indentation of new files, by extension too, and whether brackets close as typed |
 | EditorConfig | Follow the .editorconfig of a project | — | Common | ✅ Yes | `end_of_line` and `charset` for new files, `indent_style`, `indent_size` and `tab_width` for indenting, and `trim_trailing_whitespace` and `insert_final_newline` for the lines edited, never changing the lines not edited |
 | Command palette | Find any command by typing | Ctrl+Shift+P | Common | ❌ No |  |
 | Screen readers | Read the text to assistive technology | — | Common | ✅ Yes | By CodeMirror, which edits a text the browser reads |

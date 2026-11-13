@@ -6,6 +6,7 @@ import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appFixtures';
 import { waitFor } from './fixtures';
 import { removeFolder, tempFolder } from './repositories';
+import { storedZip } from './zips';
 
 suite('App editor', () => {
   let folder: string;
@@ -587,6 +588,83 @@ suite('App editor', () => {
     }
     await content().locator('.spaces').first().waitFor({ state: 'detached' });
     assert.strictEqual(await content().locator('.ending-sign').count(), 0);
+  });
+
+  test('closes the brackets and quotes typed once the settings say so, and types them alone otherwise', async () => {
+    const settings = path.join(profile, 'settings.user.json');
+    const before = fs.readFileSync(settings, 'utf8');
+    fs.writeFileSync(path.join(opened, 'closing.txt'), '\n');
+    await backToCommander();
+    await edit('closing.txt');
+    await toStart();
+    await page.keyboard.type('a(');
+    await waitFor(async () => (await editedText()) === 'a(\n', 'one bracket');
+    await page.keyboard.press('ControlOrMeta+Z');
+    await waitFor(async () => (await editedText()) === '\n', 'undone');
+    const reloaded = page.waitForEvent('load');
+    fs.writeFileSync(
+      settings,
+      JSON.stringify({
+        scrolling: { smooth: true },
+        editor: { closeBrackets: true },
+      }),
+    );
+    try {
+      await reloaded;
+      await content().waitFor();
+      await toStart();
+      await page.keyboard.type('f([');
+      await waitFor(
+        async () => (await editedText()) === 'f([])\n',
+        'the brackets closed',
+      );
+      await page.keyboard.type('])');
+      await waitFor(
+        async () => (await editedText()) === 'f([])\n',
+        'the closing brackets typed over',
+      );
+      await page.keyboard.press('ControlOrMeta+S');
+      await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    } finally {
+      const restored = page.waitForEvent('load');
+      fs.writeFileSync(settings, before);
+      await restored;
+      await content().waitFor();
+    }
+  });
+
+  test('edits a file inside a zip on F4, putting it back into the zip as it is saved', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'packed.zip'),
+      storedZip([['top.txt', 'the top of the zip']]),
+    );
+    await backToCommander();
+    await select('packed.zip');
+    await page.keyboard.press('Shift+Enter');
+    await right().locator('.commander-row', { hasText: 'top' }).waitFor();
+    await edit('top.txt');
+    await waitFor(
+      async () => (await editedText()) === 'the top of the zip',
+      'the text of the copy',
+    );
+    await toEnd();
+    await page.keyboard.type('!');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await waitFor(
+      async () =>
+        (await notices()).some((notice) => notice.includes('back into')),
+      'the copy put back',
+    );
+    await backToCommander();
+    await select('top.txt');
+    await page.keyboard.press('F3');
+    await page.locator('.viewer', { hasText: 'the top of the zip!' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('Backspace');
+    await right().locator('.commander-row', { hasText: 'packed' }).waitFor();
   });
 
   test('marks the bracket matching the one beside the cursor, and one matching none', async () => {

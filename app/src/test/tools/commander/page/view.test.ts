@@ -287,6 +287,19 @@ suite('Commander view', () => {
     );
   });
 
+  test('closes brackets as they are typed in the editor once the settings say so, and stops once they no longer do', () => {
+    const settings = sortedBy('name', true);
+    assert.ok(settings.type === 'settings');
+    const view = run(settings);
+    assert.strictEqual(view.closeBrackets, false);
+    const closing = reduceView(view, { ...settings, closeBrackets: true });
+    assert.strictEqual(closing.closeBrackets, true);
+    assert.strictEqual(
+      reduceView(closing, sortedBy('name', true)).closeBrackets,
+      false,
+    );
+  });
+
   test('lists a side in the order the settings give it, and sorts it again when they change it', () => {
     const files = [entry('b.txt', { size: 1 }), entry('a.zip', { size: 2 })];
     const view = run(

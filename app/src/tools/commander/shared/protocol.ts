@@ -542,6 +542,7 @@ export type CommanderToWebview =
       readonly thumbnailSize: number;
       readonly fileColors: readonly FileColor[];
       readonly bookmarks: readonly string[];
+      readonly closeBrackets?: true;
     }
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'transfer'; readonly view: TransferView | undefined }

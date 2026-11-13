@@ -19,4 +19,5 @@ export interface EditorSettings {
   readonly indentStyle: (typeof indentStyles)[number];
   readonly indentSize: number;
   readonly files: readonly EditorFileRule[];
+  readonly closeBrackets: boolean;
 }

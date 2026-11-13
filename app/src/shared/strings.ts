@@ -1184,8 +1184,6 @@ export const strings = {
       sentence`${named(file)} holds binary data, so it can't be edited as text. F3 views it.`,
     folder: (name: string) =>
       sentence`${named(name)} is a folder. F4 edits files.`,
-    inArchive: (name: string) =>
-      sentence`${named(name)} is inside an archive, where files can't be edited yet.`,
     asAdministrator: (name: string) =>
       sentence`${named(name)} is in a folder read as administrator, where files can't be edited yet.`,
     viewedCopy: (name: string) =>

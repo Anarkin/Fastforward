@@ -147,20 +147,20 @@ export class Editing {
     private readonly shell: EditingShell,
   ) {}
 
-  async refusal(file: string): Promise<Sentence | undefined> {
+  async refusal(file: string, named = file): Promise<Sentence | undefined> {
     const stat = await this.access.statFile(file);
     if (stat === undefined) {
       return undefined;
     }
     if (stat.folder) {
-      return strings.editor.folder(file);
+      return strings.editor.folder(named);
     }
     if (stat.size > maxEditedBytes) {
-      return strings.editor.tooLarge(file);
+      return strings.editor.tooLarge(named);
     }
     const start = await this.access.readStart(file);
     return looksBinary(start) && textEncodingOf(start) === undefined
-      ? strings.editor.binary(file)
+      ? strings.editor.binary(named)
       : undefined;
   }
 

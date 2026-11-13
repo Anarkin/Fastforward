@@ -15,6 +15,7 @@ const settings: EditorSettings = {
   indentStyle: 'space',
   indentSize: 4,
   files: [{ extensions: ['bat', 'cmd'], endOfLine: 'crlf' }],
+  closeBrackets: false,
 };
 
 type Config = Omit<EditorConfig, 'files' | 'setIn'> &

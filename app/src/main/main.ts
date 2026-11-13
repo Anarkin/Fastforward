@@ -671,7 +671,9 @@ async function start(asked: readonly string[]): Promise<void> {
     process.env,
   );
   const viewedRoots = storage.savedTabs.flatMap((tab) =>
-    tab.view === true && tab.root !== undefined ? [tab.root] : [],
+    (tab.view === true || tab.edit === true) && tab.root !== undefined
+      ? [tab.root]
+      : [],
   );
   for (const copies of new Set([
     viewedFiles,
@@ -784,6 +786,7 @@ async function start(asked: readonly string[]): Promise<void> {
       textDefaultsOf(file, asksGit, editorSourcesOf()),
     editorSources: (file) => endingSourcesOf(file, editorSourcesOf()),
     settings: () => userSettings.settings.tools.commander,
+    closesBrackets: () => userSettings.settings.editor.closeBrackets,
     defaultColumns: () => userSettings.defaults.tools.commander.columns,
     saveShowHidden: (shown) =>
       userSettings.setIn('commander', 'showHidden', shown),

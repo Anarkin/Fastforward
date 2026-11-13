@@ -158,6 +158,7 @@ export interface CommanderAccess {
   readonly pdfPlaces: PdfPlaceStore;
   readonly fileSystem: () => Promise<LocalFileSystem>;
   readonly settings: () => CommanderSettings;
+  readonly closesBrackets?: () => boolean;
   readonly defaultColumns: () => ColumnWidths;
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
@@ -527,6 +528,15 @@ export class CommanderTool implements Tool<'commander'> {
     readonly copy: string;
     readonly stop: () => void;
   }>();
+  private readonly editedCopies = new Map<
+    string,
+    {
+      readonly archives: ArchiveAccess;
+      readonly archive: OpenedArchive;
+      readonly inner: readonly string[];
+      readonly name: string;
+    }
+  >();
   private archiveImages: ArchiveImages | undefined;
   private readonly passwordsAsked = new Map<
     number,
@@ -573,12 +583,21 @@ export class CommanderTool implements Tool<'commander'> {
           }
         },
         watch: (file, onChange) => access.watch(file, onChange),
-        saveFile:
-          access.saveEdited ??
-          ((file, bytes, overwriteReadOnly) =>
-            saveFile(file, bytes, { overwriteReadOnly })),
+        saveFile: async (file, bytes, overwriteReadOnly) => {
+          const saved = await (
+            access.saveEdited ??
+            ((edited, written, overwriting) =>
+              saveFile(edited, written, {
+                overwriteReadOnly: overwriting,
+              }))
+          )(file, bytes, overwriteReadOnly);
+          this.editedCopySaved(file);
+          return saved;
+        },
         codePage: () => access.codePage(),
-        readOnly: (file) => access.readOnlyFile?.(file) === true,
+        readOnly: (file) =>
+          access.readOnlyFile?.(file) === true ||
+          (this.copyOf(file) !== undefined && !this.editedCopies.has(file)),
         ...(access.editorSources !== undefined && {
           endingSources: access.editorSources,
         }),
@@ -1683,19 +1702,99 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
+    if (!entry.folder && shown.pane.archive !== undefined) {
+      await this.editInArchive(page, shown, name);
+      return;
+    }
     const file = path.join(shown.pane.folder, name);
     const refusal = entry.folder
       ? strings.editor.folder(name)
-      : shown.pane.archive !== undefined
-        ? strings.editor.inArchive(name)
-        : shown.pane.elevated === true
-          ? strings.editor.asAdministrator(name)
-          : await this.editing.refusal(file);
+      : shown.pane.elevated === true
+        ? strings.editor.asAdministrator(name)
+        : await this.editing.refusal(file);
     if (refusal !== undefined) {
       this.shell.notice(page, { level: 'error', message: refusal });
       return;
     }
     await this.shell.openEdit(page, 'commander', file);
+  }
+
+  private async editInArchive(
+    page: Page,
+    shown: ShownPane,
+    name: string,
+  ): Promise<void> {
+    const { viewedCopies } = this.access;
+    const [copy] =
+      (await this.copiesIn(
+        page,
+        shown.pane,
+        [name],
+        viewedCopies === undefined
+          ? undefined
+          : path.join(viewedCopies, randomUUID()),
+      )) ?? [];
+    if (copy === undefined) {
+      return;
+    }
+    const refusal = await this.editing.refusal(copy, name);
+    if (refusal !== undefined) {
+      this.shell.notice(page, { level: 'error', message: refusal });
+      return;
+    }
+    const putBack = this.putBackOf(shown.pane.folder, name, copy);
+    if (putBack !== undefined) {
+      this.editedCopies.set(copy, { ...putBack, name });
+    }
+    await this.shell.openEdit(page, 'commander', copy);
+  }
+
+  private async newFileInArchive(
+    page: Page,
+    shown: ShownPane,
+    name: string,
+  ): Promise<void> {
+    if (listedIn(shown.pane, name) !== undefined) {
+      await this.editInArchive(page, shown, name);
+      return;
+    }
+    const { archives, viewedCopies } = this.access;
+    const inside = archives?.within(shown.pane.folder);
+    if (
+      archives === undefined ||
+      inside === undefined ||
+      viewedCopies === undefined
+    ) {
+      return;
+    }
+    const refusal = archives.unchangeable(inside.archive);
+    if (refusal !== undefined) {
+      this.refuse(page, refusal);
+      return;
+    }
+    const folder = path.join(viewedCopies, randomUUID());
+    await fs.promises.mkdir(folder, { recursive: true });
+    const copy = path.join(folder, name);
+    this.editedCopies.set(copy, {
+      archives,
+      archive: inside.archive,
+      inner: inside.inner,
+      name,
+    });
+    await this.shell.openEdit(page, 'commander', copy);
+  }
+
+  private editedCopySaved(copy: string): void {
+    const edited = this.editedCopies.get(copy);
+    if (edited !== undefined) {
+      this.putBack(
+        edited.archives,
+        edited.archive,
+        edited.inner,
+        copy,
+        edited.name,
+      );
+    }
   }
 
   private async delete(
@@ -2579,13 +2678,15 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
+    if (shown.pane.archive !== undefined) {
+      await this.newFileInArchive(page, shown, name);
+      return;
+    }
     const file = path.join(shown.pane.folder, name);
     const refusal =
-      shown.pane.archive !== undefined
-        ? strings.editor.inArchive(name)
-        : shown.pane.elevated === true
-          ? strings.editor.asAdministrator(name)
-          : await this.editing.refusal(file);
+      shown.pane.elevated === true
+        ? strings.editor.asAdministrator(name)
+        : await this.editing.refusal(file);
     if (refusal !== undefined) {
       this.shell.notice(page, { level: 'error', message: refusal });
       return;
@@ -4670,6 +4771,7 @@ export class CommanderTool implements Tool<'commander'> {
       thumbnailSize: heldBox(thumbnailSize),
       fileColors,
       bookmarks: shownBookmarks(bookmarks, this.bookmarkSystem),
+      ...(this.access.closesBrackets?.() === true && { closeBrackets: true }),
     });
   }
 
