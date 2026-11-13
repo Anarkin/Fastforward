@@ -10,6 +10,12 @@ import {
 } from '../shared/tools';
 import { strings, type Sentence } from '../../shared/strings';
 import {
+  editorCharsets,
+  editorEndings,
+  indentStyles,
+  type EditorSettings,
+} from '../shared/editorSettings';
+import {
   themes,
   type ImageView,
   type TextView,
@@ -28,6 +34,7 @@ export interface Settings {
   };
   readonly text: TextView;
   readonly images: ImageView;
+  readonly editor: EditorSettings;
   readonly tools: ToolSettings;
   readonly fonts: {
     readonly family: string;
@@ -101,6 +108,9 @@ function sameKind(name: string, fallback: unknown, value: unknown): boolean {
 const choices: ReadonlyMap<string, readonly string[]> = new Map([
   ...toolSettingChoices,
   ['theme', themes],
+  ['editor.endOfLine', editorEndings],
+  ['editor.charset', editorCharsets],
+  ['editor.indentStyle', indentStyles],
 ]);
 
 const themed = /^(?:colors|fonts|sizes|tools\.[^.]+\.colors)\./;

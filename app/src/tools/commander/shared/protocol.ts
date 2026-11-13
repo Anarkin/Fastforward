@@ -129,6 +129,8 @@ export interface TextShown {
   readonly ending: LineEnding;
   readonly strayEndings: readonly StrayEnding[];
   readonly keptBytes: readonly KeptBytes[];
+  readonly indent?: string;
+  readonly fallbackIndent?: string;
 }
 
 export type CommanderToHost =

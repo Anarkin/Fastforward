@@ -445,6 +445,30 @@ suite('App editor', () => {
       .waitFor({ state: 'detached' });
   });
 
+  test('ends the lines of a new file as the .editorconfig beside it says', async () => {
+    fs.writeFileSync(
+      path.join(opened, '.editorconfig'),
+      '[*.crlf.txt]\nend_of_line = crlf\n',
+    );
+    const file = path.join(opened, 'made.crlf.txt');
+    await backToCommander();
+    await right().locator('.commander-row').first().click();
+    await page.keyboard.press('Shift+F4');
+    const prompt = page.locator('.prompt-input');
+    await prompt.waitFor();
+    await prompt.fill('made.crlf.txt');
+    await prompt.press('Enter');
+    await content().waitFor();
+    await content().click();
+    await page.keyboard.type('one');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('two');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.strictEqual(fs.readFileSync(file, 'latin1'), 'one\r\ntwo');
+  });
+
   test('says why it opens no editor for a folder or a file of binary data', async () => {
     await backToCommander();
     const tabs = await page.locator('.tabs [role="tab"]').count();

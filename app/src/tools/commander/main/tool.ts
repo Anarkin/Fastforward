@@ -121,6 +121,7 @@ import { unpackingFirst } from './unpacking';
 import type { ArchiveJob } from '../shared/transfers';
 import type { ElevatedFileSystem } from './elevated';
 import { Editing } from './editing';
+import type { TextDefaults } from './textDefaults';
 import { saveFile, type Saved } from './fileSaving';
 import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
@@ -185,6 +186,10 @@ export interface CommanderAccess {
     overwriteReadOnly: boolean,
   ) => Promise<Saved>;
   readonly readOnlyFile?: (file: string) => boolean;
+  readonly editorDefaults?: (
+    file: string,
+    made: boolean,
+  ) => Promise<TextDefaults>;
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly realPath: (link: string) => Promise<string>;
   readonly openFile?: (file: string) => Promise<string>;
@@ -572,6 +577,9 @@ export class CommanderTool implements Tool<'commander'> {
             saveFile(file, bytes, { overwriteReadOnly })),
         codePage: () => access.codePage(),
         readOnly: (file) => access.readOnlyFile?.(file) === true,
+        ...(access.editorDefaults !== undefined && {
+          textDefaults: access.editorDefaults,
+        }),
       },
       {
         post: (page, message) => this.post(page, message),

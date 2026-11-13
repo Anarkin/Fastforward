@@ -147,7 +147,7 @@ function stateOf(
   extensions: Extension,
 ): EditorState {
   const doc = Text.of(shown.text.split(lineBreak));
-  const all = [extensions, endingsFrom(doc, shown), indentionOf(doc)];
+  const all = [extensions, endingsFrom(doc, shown), indentionOf(doc, shown)];
   if (typeof kept === 'object' && kept !== null) {
     try {
       return EditorState.fromJSON(

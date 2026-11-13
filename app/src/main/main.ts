@@ -150,7 +150,10 @@ import {
 } from './terminalCommand';
 import { addExplorerMenu, explorerMenuOf } from './explorerMenu';
 import { runsAsAppImage, updateMode, Updates } from './updates';
+import { editorConfigOf } from '../tools/commander/main/editorConfig';
 import { saveFile } from '../tools/commander/main/fileSaving';
+import { gitEndingOf } from '../tools/commander/main/gitEnding';
+import { textDefaultsOf } from '../tools/commander/main/textDefaults';
 import { removeUnviewedCopies } from './viewedFiles';
 
 const dist = __dirname;
@@ -765,6 +768,15 @@ async function start(asked: readonly string[]): Promise<void> {
         }),
       }),
     readOnlyFile: (file) => path.relative(file, defaultSettingsCopy) === '',
+    editorDefaults: (file, made) =>
+      textDefaultsOf(file, made, {
+        settings: userSettings.settings.editor,
+        editorConfig: (edited) =>
+          editorConfigOf(edited, (config) =>
+            fs.promises.readFile(config, 'utf8').catch(() => undefined),
+          ),
+        gitEnding: (edited) => gitEndingOf(git.path, edited),
+      }),
     settings: () => userSettings.settings.tools.commander,
     defaultColumns: () => userSettings.defaults.tools.commander.columns,
     saveShowHidden: (shown) =>

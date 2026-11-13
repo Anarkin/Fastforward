@@ -113,7 +113,7 @@ export function commentsOf(language: string | undefined): Extension {
 const leadPattern = /^[ \t]*/;
 const scannedLines = 10_000;
 
-export function detectedIndent(doc: Text, tabSize = 4): string {
+export function detectedIndent(doc: Text, fallback = '    '): string {
   let tabbed = 0;
   let spaced = 0;
   let previous = 0;
@@ -143,7 +143,7 @@ export function detectedIndent(doc: Text, tabSize = 4): string {
   const [mostUsed] = [...steps].toSorted(
     ([stepA, countA], [stepB, countB]) => countB - countA || stepA - stepB,
   );
-  return ' '.repeat(mostUsed?.[0] ?? tabSize);
+  return mostUsed === undefined ? fallback : ' '.repeat(mostUsed[0]);
 }
 
 export const indentField = StateField.define<string>({
@@ -152,8 +152,14 @@ export const indentField = StateField.define<string>({
   provide: (field) => indentUnit.from(field),
 });
 
-export function indentionOf(doc: Text): Extension {
-  return indentField.init(() => detectedIndent(doc));
+export function indentionOf(
+  doc: Text,
+  {
+    indent,
+    fallbackIndent,
+  }: { readonly indent?: string; readonly fallbackIndent?: string },
+): Extension {
+  return indentField.init(() => indent ?? detectedIndent(doc, fallbackIndent));
 }
 
 const indentOrInsert: Command = (view) => {

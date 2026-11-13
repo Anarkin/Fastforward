@@ -16,6 +16,13 @@
   "images": {
     "realSize": false
   },
+  "editor": {
+    "endOfLine": "lf",
+    "charset": "utf-8",
+    "indentStyle": "space",
+    "indentSize": 4,
+    "files": [{ "extensions": ["bat", "cmd"], "endOfLine": "crlf" }]
+  },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",

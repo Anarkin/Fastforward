@@ -9,6 +9,7 @@ import {
 import { EditedText } from './editedText';
 import { NoRoomToSave, ReadOnlyFile, type Saved } from './fileSaving';
 import { reasonOf } from './reasons';
+import type { TextDefaults } from './textDefaults';
 import { decodedText } from './textCodec';
 import { byteOrderMarkOf, isUtf8, looksBinary, utf16Order } from './textRows';
 
@@ -33,6 +34,10 @@ export interface EditingAccess {
   ) => Promise<Saved>;
   readonly codePage: () => Promise<TextEncoding>;
   readonly readOnly: (file: string) => boolean;
+  readonly textDefaults?: (
+    file: string,
+    made: boolean,
+  ) => Promise<TextDefaults>;
 }
 
 export interface EditingShell {
@@ -66,7 +71,14 @@ interface Read {
   readonly error?: Sentence;
   readonly made: boolean;
   readonly stamp: string | undefined;
+  readonly indent?: string;
+  readonly fallbackIndent?: string;
 }
+
+const indentsOf = (defaults: TextDefaults | undefined) => ({
+  ...(defaults?.indent !== undefined && { indent: defaults.indent }),
+  ...(defaults !== undefined && { fallbackIndent: defaults.fallbackIndent }),
+});
 
 interface Opened {
   readonly file: string;
@@ -187,14 +199,19 @@ export class Editing {
       bytes = await this.access.readFile(file);
     } catch (error) {
       if (isMissing(error)) {
+        const defaults = await this.access.textDefaults?.(file, true);
         return {
           text: new EditedText(
-            decodedText(new Uint8Array(), 'utf-8'),
-            'lf',
+            {
+              ...decodedText(new Uint8Array(), defaults?.encoding ?? 'utf-8'),
+              bom: defaults?.bom ?? false,
+            },
+            defaults?.ending ?? 'lf',
             version,
           ),
           made: true,
           stamp: undefined,
+          ...indentsOf(defaults),
         };
       }
       return {
@@ -219,10 +236,16 @@ export class Editing {
       chosen ??
       marked ??
       (isUtf8(bytes) ? 'utf-8' : await this.access.codePage());
+    const defaults = await this.access.textDefaults?.(file, false);
     return {
-      text: new EditedText(decodedText(bytes, encoding), 'lf', version),
+      text: new EditedText(
+        decodedText(bytes, encoding),
+        defaults?.ending ?? 'lf',
+        version,
+      ),
       made: false,
       stamp,
+      ...indentsOf(defaults),
     };
   }
 
@@ -360,11 +383,17 @@ export class Editing {
     opened: Opened,
     text: EditedText,
   ): void {
-    const { kept } = opened;
+    const { kept, read } = opened;
     this.shell.post(page, {
       type: 'editedText',
       tab,
-      shown: text.shown(),
+      shown: {
+        ...text.shown(),
+        ...(read.indent !== undefined && { indent: read.indent }),
+        ...(read.fallbackIndent !== undefined && {
+          fallbackIndent: read.fallbackIndent,
+        }),
+      },
       ...(kept !== undefined &&
         kept.version === text.version && { state: kept.state }),
     });
