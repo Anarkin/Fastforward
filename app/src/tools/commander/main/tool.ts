@@ -32,7 +32,6 @@ import {
   sides,
   isDrop,
   type CommanderToHost,
-  type CommanderToWebview,
   type EndingSource,
   type Entry,
   type FlatFolder,
@@ -48,7 +47,7 @@ import {
   type CommanderSettings,
 } from '../shared/settings';
 import type { LocalFileSystem } from './fileSystem';
-import { pathParts } from '../shared/paths';
+import { pathParts, folderKey } from '../shared/paths';
 import {
   shownBookmarks,
   withBookmark,
@@ -94,7 +93,6 @@ import {
   looksBinary,
   utf16Order,
   readingFile,
-  type BlockCache,
   readBudgetBytes,
   rowsBefore,
   rowsFrom,
@@ -128,7 +126,6 @@ import { saveFile, type Saved } from './fileSaving';
 import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
 import { Transfers, type ConnectTransfer, type TransferAsk } from './transfers';
-import { folderKey } from '../shared/paths';
 import { nameProblem } from '../shared/names';
 import { onSameVolume, repositoriesIn } from './repositories';
 import {
@@ -145,6 +142,17 @@ import {
   viewerIconUrl,
   viewerOfIcon,
 } from '../shared/icons';
+import {
+  type Duplicating,
+  type Flat,
+  type Sizing,
+  type Pane,
+  newPane,
+  type Panes,
+  type ShownPane,
+  Sides,
+  post,
+} from './sides';
 
 interface PdfPlaceStore {
   readonly of: (fingerprint: string) => Promise<PdfPlace | undefined>;
@@ -223,53 +231,6 @@ export interface CommanderAccess {
   readonly contentReader?: ContentReader;
 }
 
-interface Duplicating {
-  readonly look: number;
-  readonly duplicates: Duplicates;
-  flushing: NodeJS.Timeout | undefined;
-  flushed: number;
-}
-
-interface Flat {
-  readonly walk: number;
-  readonly tree: FlatTree;
-  stopWatching: () => void;
-  told: FlatProgress | undefined;
-  flushing: NodeJS.Timeout | undefined;
-  flushed: number;
-}
-
-interface Sizing {
-  readonly sizes: FolderSizes;
-  flushing: NodeJS.Timeout | undefined;
-  flushed: number;
-}
-
-interface Pane {
-  folder: string;
-  flat?: Flat;
-  sizing?: Sizing;
-  duplicates?: Duplicating;
-  hidden?: readonly boolean[];
-  entries: readonly Entry[] | undefined;
-  asked: number;
-  landed: number;
-  history: readonly string[];
-  at: number;
-  denied?: string;
-  elevated?: boolean;
-  archive?: string;
-  opening?: AbortController;
-  reading?: Promise<void>;
-  binOff?: boolean;
-  repositories: ReadonlySet<string>;
-  repositoriesAsked: number;
-  looked?: {
-    readonly folder: string;
-    readonly folders: ReadonlyMap<string, number | undefined>;
-  };
-}
-
 type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
 
 const storedStatus = 204;
@@ -312,19 +273,6 @@ function inParts(folders: readonly FlatFolder[]): FlatFolder[][] {
   return parts;
 }
 
-function newPane(folder: string): Pane {
-  return {
-    folder,
-    entries: undefined,
-    asked: 0,
-    landed: 0,
-    history: [folder],
-    at: 0,
-    repositories: new Set(),
-    repositoriesAsked: 0,
-  };
-}
-
 export function childToward(folder: string, from: string): string | undefined {
   const relative = path.relative(folder, from);
   return relative === '' ||
@@ -332,38 +280,6 @@ export function childToward(folder: string, from: string): string | undefined {
     path.isAbsolute(relative)
     ? undefined
     : relative.split(path.sep)[0];
-}
-
-type Panes = Record<Side, Pane> & { active: Side };
-
-interface ShownPane {
-  readonly tab: string;
-  readonly side: Side;
-  readonly pane: Pane;
-}
-
-interface Viewing {
-  readonly tab: string;
-  readonly file: string;
-  size: number;
-  readonly binary: boolean;
-  readonly blocks: BlockCache;
-  readonly stop: () => void;
-}
-
-interface Watched {
-  readonly folder: string;
-  readonly elevated: boolean;
-  readonly stop: () => void;
-}
-
-interface Showing {
-  readonly tab: string;
-  readonly watching: Map<Side, Watched>;
-  viewing?: Viewing;
-  viewingsAsked: number;
-  finding?: AbortController;
-  findingRequest?: number;
 }
 
 export function rootFolder(
@@ -509,8 +425,7 @@ function entryNamed(
 
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
-  private readonly shown = new Map<Page, Showing>();
-  private readonly panes = new Map<string, Panes>();
+  private readonly sides = new Sides();
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
@@ -607,11 +522,11 @@ export class CommanderTool implements Tool<'commander'> {
         }),
       },
       {
-        post: (page, message) => this.post(page, message),
+        post: (page, message) => post(page, message),
         notice: (page, notice) => this.shell.notice(page, notice),
         namesChanged: (page) => this.shell.postTabs(page),
         pagesShowing: (tab) =>
-          [...this.shown]
+          [...this.sides.shown]
             .filter(([, showing]) => showing.tab === tab)
             .map(([page]) => page),
         openEdit: (page, file) => this.shell.openEdit(page, 'commander', file),
@@ -625,7 +540,7 @@ export class CommanderTool implements Tool<'commander'> {
           kept === undefined || kept.disposed ? this.shell.page() : kept;
         this.transferPage = view === undefined ? undefined : page;
         if (page !== undefined) {
-          this.post(page, { type: 'transfer', view });
+          post(page, { type: 'transfer', view });
         }
       },
       notice: (notice) => this.shell.notice(undefined, notice),
@@ -640,7 +555,7 @@ export class CommanderTool implements Tool<'commander'> {
   ready(page: Page): void {
     this.cancelPasswords(page);
     this.icons.forgetDropped();
-    for (const pane of this.allPanes()) {
+    for (const pane of this.sides.allPanes()) {
       if (pane.flat !== undefined) {
         pane.flat.tree.resend();
         pane.flat.told = undefined;
@@ -658,21 +573,21 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   async show(page: Page, tab: Tab): Promise<void> {
-    this.stopShowing(page);
-    for (const [other, showing] of this.shown) {
+    this.sides.stopShowing(page);
+    for (const [other, showing] of this.sides.shown) {
       if (showing.tab === tab.id) {
-        this.stopShowing(other);
-        this.post(other, { type: 'hide' });
+        this.sides.stopShowing(other);
+        post(other, { type: 'hide' });
       }
     }
-    this.shown.set(page, {
+    this.sides.shown.set(page, {
       tab: tab.id,
       watching: new Map(),
       viewingsAsked: 0,
     });
     this.askNextUpdate();
     if (tab.edit === true && tab.root !== undefined) {
-      this.post(page, {
+      post(page, {
         type: 'show',
         tab: tab.id,
         file: tab.root,
@@ -682,16 +597,16 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     if (tab.view === true && tab.root !== undefined) {
-      this.post(page, { type: 'show', tab: tab.id, file: tab.root });
+      post(page, { type: 'show', tab: tab.id, file: tab.root });
       await this.startViewing(page, tab.id, tab.root);
       return;
     }
-    this.post(page, { type: 'show', tab: tab.id });
-    const panes = this.panes.get(tab.id) ?? (await this.start(tab));
+    post(page, { type: 'show', tab: tab.id });
+    const panes = this.sides.panes.get(tab.id) ?? (await this.start(tab));
     if (!this.shows(page, tab)) {
       return;
     }
-    this.panes.set(tab.id, panes);
+    this.sides.panes.set(tab.id, panes);
     await Promise.all([
       ...sides.map((side) =>
         this.list(page, tab.id, side, panes[side].folder, 'show'),
@@ -701,13 +616,13 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   shows(page: Page, tab: Tab): boolean {
-    return this.shown.get(page)?.tab === tab.id;
+    return this.sides.shown.get(page)?.tab === tab.id;
   }
 
   hide(page: Page): void {
-    if (this.shown.has(page)) {
-      this.stopShowing(page);
-      this.post(page, { type: 'hide' });
+    if (this.sides.shown.has(page)) {
+      this.sides.stopShowing(page);
+      post(page, { type: 'hide' });
     }
   }
 
@@ -716,8 +631,8 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   closed(page: Page, tab: Tab): void {
-    this.post(page, { type: 'closed', tab: tab.id });
-    const panes = this.panes.get(tab.id);
+    post(page, { type: 'closed', tab: tab.id });
+    const panes = this.sides.panes.get(tab.id);
     if (panes !== undefined) {
       for (const side of sides) {
         this.endFlat(panes[side]);
@@ -725,12 +640,12 @@ export class CommanderTool implements Tool<'commander'> {
         this.endDuplicates(panes[side]);
       }
     }
-    this.panes.delete(tab.id);
+    this.sides.panes.delete(tab.id);
     this.letGoOfCopies();
     this.saveQuietly(this.savedSides.keep((kept) => kept !== tab.id));
-    for (const [shownIn, showing] of this.shown) {
+    for (const [shownIn, showing] of this.sides.shown) {
       if (showing.tab === tab.id) {
-        this.stopShowing(shownIn);
+        this.sides.stopShowing(shownIn);
       }
     }
     if (tab.view === true && tab.root !== undefined) {
@@ -781,7 +696,12 @@ export class CommanderTool implements Tool<'commander'> {
       case 'editFile':
         return this.editFile(
           page,
-          this.namingPane(page, message.tab, message.side, message.folder),
+          this.sides.namingPane(
+            page,
+            message.tab,
+            message.side,
+            message.folder,
+          ),
           message.name,
         );
       case 'readEdited':
@@ -796,7 +716,12 @@ export class CommanderTool implements Tool<'commander'> {
       case 'open':
         return this.openEntry(
           page,
-          this.namingPane(page, message.tab, message.side, message.folder),
+          this.sides.namingPane(
+            page,
+            message.tab,
+            message.side,
+            message.folder,
+          ),
           message.name,
         );
       case 'drive':
@@ -808,7 +733,12 @@ export class CommanderTool implements Tool<'commander'> {
       case 'view':
         return this.view(
           page,
-          this.namingPane(page, message.tab, message.side, message.folder),
+          this.sides.namingPane(
+            page,
+            message.tab,
+            message.side,
+            message.folder,
+          ),
           message.name,
         );
       case 'shellMenu':
@@ -859,7 +789,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'findText':
         return this.findText(page, message);
       case 'stopFind': {
-        const showing = this.shown.get(page);
+        const showing = this.sides.shown.get(page);
         if (
           showing?.findingRequest !== undefined &&
           message.request === showing.findingRequest &&
@@ -878,7 +808,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'readBytes':
         return this.readBytes(page, message);
       case 'reread': {
-        const shown = this.shownPane(page, message.tab, message.side);
+        const shown = this.sides.shownPane(page, message.tab, message.side);
         if (shown !== undefined) {
           this.endSizing(shown.pane);
           shown.pane.duplicates?.duplicates.forget();
@@ -894,7 +824,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'flat':
         return this.turnFlat(page, message);
       case 'stopReading': {
-        const shown = this.shownPane(page, message.tab, message.side);
+        const shown = this.sides.shownPane(page, message.tab, message.side);
         shown?.pane.opening?.abort();
         shown?.pane.flat?.tree.stop();
         shown?.pane.sizing?.sizes.stop();
@@ -921,8 +851,8 @@ export class CommanderTool implements Tool<'commander'> {
       case 'elevate':
         return this.elevate(page, message.tab, message.side);
       case 'activate': {
-        const shown = this.shownPane(page, message.tab, message.side);
-        const panes = shown && this.panes.get(shown.tab);
+        const shown = this.sides.shownPane(page, message.tab, message.side);
+        const panes = shown && this.sides.panes.get(shown.tab);
         if (shown !== undefined && panes !== undefined) {
           panes.active = shown.side;
         }
@@ -985,7 +915,7 @@ export class CommanderTool implements Tool<'commander'> {
         }
         return undefined;
       case 'addBookmark': {
-        const shown = this.diskPane(
+        const shown = this.sides.diskPane(
           page,
           message.tab,
           message.side,
@@ -1019,7 +949,7 @@ export class CommanderTool implements Tool<'commander'> {
 
   dropped(page: Page, files: unknown, message: unknown): Promise<void> {
     const shown = isDrop(message)
-      ? this.diskPane(page, message.tab, message.side, message.folder)
+      ? this.sides.diskPane(page, message.tab, message.side, message.folder)
       : undefined;
     if (
       shown === undefined ||
@@ -1086,7 +1016,7 @@ export class CommanderTool implements Tool<'commander'> {
     if ((tab.view === true || tab.edit === true) && tab.root !== undefined) {
       return path.dirname(tab.root);
     }
-    const panes = this.panes.get(tab.id);
+    const panes = this.sides.panes.get(tab.id);
     if (panes === undefined) {
       return tab.root;
     }
@@ -1136,11 +1066,11 @@ export class CommanderTool implements Tool<'commander'> {
       stop();
     }
     this.copiesWatched.clear();
-    for (const pane of this.allPanes()) {
+    for (const pane of this.sides.allPanes()) {
       this.endFlat(pane);
     }
-    for (const page of this.shown.keys()) {
-      this.stopShowing(page);
+    for (const page of this.sides.shown.keys()) {
+      this.sides.stopShowing(page);
     }
     this.elevated?.close();
   }
@@ -1210,7 +1140,7 @@ export class CommanderTool implements Tool<'commander'> {
         : this.iconResponse(tab.root);
     }
     const source = iconSourceOf(url);
-    const pane = source && this.panes.get(source.tab)?.[source.side];
+    const pane = source && this.sides.panes.get(source.tab)?.[source.side];
     const entry = listedIn(pane, source?.name);
     if (
       source === undefined ||
@@ -1253,7 +1183,7 @@ export class CommanderTool implements Tool<'commander'> {
     | undefined {
     const pane =
       typeof tab === 'string' && isSide(side)
-        ? this.panes.get(tab)?.[side]
+        ? this.sides.panes.get(tab)?.[side]
         : undefined;
     const entry =
       pane !== undefined && pane.folder === folder
@@ -1416,39 +1346,6 @@ export class CommanderTool implements Tool<'commander'> {
 
   private saveQuietly(saving: Promise<void>): void {
     void this.shell.track(saving.catch(() => undefined));
-  }
-
-  private shownPane(
-    page: Page,
-    tab: unknown,
-    side: unknown,
-  ): ShownPane | undefined {
-    const shown = this.shown.get(page)?.tab;
-    if (shown === undefined || shown !== tab || !isSide(side)) {
-      return undefined;
-    }
-    const pane = this.panes.get(shown)?.[side];
-    return pane && { tab: shown, side, pane };
-  }
-
-  private namingPane(
-    page: Page,
-    tab: unknown,
-    side: unknown,
-    folder: unknown,
-  ): ShownPane | undefined {
-    const shown = this.shownPane(page, tab, side);
-    return shown?.pane.folder === folder ? shown : undefined;
-  }
-
-  private diskPane(
-    page: Page,
-    tab: unknown,
-    side: unknown,
-    folder: unknown,
-  ): ShownPane | undefined {
-    const shown = this.namingPane(page, tab, side, folder);
-    return shown?.pane.archive === undefined ? shown : undefined;
   }
 
   private async openEntry(
@@ -1616,7 +1513,7 @@ export class CommanderTool implements Tool<'commander'> {
     const ask = ++this.passwordAsks;
     const password = await new Promise<string | undefined>((resolve) => {
       this.passwordsAsked.set(ask, { page, answer: resolve });
-      this.post(page, {
+      post(page, {
         type: 'askPassword',
         ask,
         name: path.basename(file),
@@ -1808,12 +1705,12 @@ export class CommanderTool implements Tool<'commander'> {
       permanently,
     }: Extract<CommanderToHost, { type: 'delete' }>,
   ): Promise<void> {
-    const inArchive = this.namingPane(page, tab, side, named);
+    const inArchive = this.sides.namingPane(page, tab, side, named);
     if (inArchive?.pane.archive !== undefined) {
       this.deleteInArchive(page, inArchive, names);
       return;
     }
-    const shown = this.diskPane(page, tab, side, named);
+    const shown = this.sides.diskPane(page, tab, side, named);
     if (
       shown === undefined ||
       !Array.isArray(names) ||
@@ -1972,7 +1869,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private letGoOfCopies(): void {
-    const folders = this.allPanes().map((pane) => pane.folder);
+    const folders = this.sides.allPanes().map((pane) => pane.folder);
     for (const watched of this.copiesWatched) {
       const { archive, copy, stop } = watched;
       if (
@@ -2009,20 +1906,20 @@ export class CommanderTool implements Tool<'commander'> {
     this.updateAskedIn = page;
     if (page !== undefined) {
       const [ask, { name, archive }] = next;
-      this.post(page, { type: 'askUpdate', ask, name, archive });
+      post(page, { type: 'askUpdate', ask, name, archive });
     }
   }
 
   private pageToAsk(): Page | undefined {
     const asked = this.updateAskedIn;
-    if (asked !== undefined && this.shown.has(asked)) {
+    if (asked !== undefined && this.sides.shown.has(asked)) {
       return asked;
     }
     const focused = this.shell.page();
-    if (focused !== undefined && this.shown.has(focused)) {
+    if (focused !== undefined && this.sides.shown.has(focused)) {
       return focused;
     }
-    return [...this.shown.keys()].at(0);
+    return [...this.sides.shown.keys()].at(0);
   }
 
   private answerUpdate(ask: unknown, update: unknown): void {
@@ -2204,8 +2101,9 @@ export class CommanderTool implements Tool<'commander'> {
       existing,
     }: Extract<CommanderToHost, { type: 'transfer' }>,
   ): void {
-    const shown = this.namingPane(page, tab, side, folder);
-    const other = shown && this.panes.get(shown.tab)?.[otherSide(shown.side)];
+    const shown = this.sides.namingPane(page, tab, side, folder);
+    const other =
+      shown && this.sides.panes.get(shown.tab)?.[otherSide(shown.side)];
     if (
       shown === undefined ||
       other === undefined ||
@@ -2538,7 +2436,7 @@ export class CommanderTool implements Tool<'commander'> {
     move: boolean,
     existing: readonly string[],
   ): void {
-    this.post(page, {
+    post(page, {
       type: 'askExisting',
       tab: shown.tab,
       side: shown.side,
@@ -2587,7 +2485,7 @@ export class CommanderTool implements Tool<'commander'> {
     folder: unknown,
     names: unknown,
   ): string[] | undefined {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     if (
       shown === undefined ||
       !Array.isArray(names) ||
@@ -2608,7 +2506,7 @@ export class CommanderTool implements Tool<'commander'> {
       names,
     }: Extract<CommanderToHost, { type: 'copyToClipboard' }>,
   ): Promise<void> {
-    const shown = this.namingPane(page, tab, side, folder);
+    const shown = this.sides.namingPane(page, tab, side, folder);
     if (
       shown?.pane.archive !== undefined &&
       Array.isArray(names) &&
@@ -2641,7 +2539,7 @@ export class CommanderTool implements Tool<'commander'> {
     page: Page,
     { tab, side, folder }: Extract<CommanderToHost, { type: 'paste' }>,
   ): Promise<void> {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     const { clipboardFiles } = this.access;
     if (shown === undefined || clipboardFiles === undefined) {
       return;
@@ -2670,7 +2568,7 @@ export class CommanderTool implements Tool<'commander'> {
     page: Page,
     { tab, side, folder, name }: Extract<CommanderToHost, { type: 'newFile' }>,
   ): Promise<void> {
-    const shown = this.namingPane(page, tab, side, folder);
+    const shown = this.sides.namingPane(page, tab, side, folder);
     if (
       shown === undefined ||
       typeof name !== 'string' ||
@@ -2705,7 +2603,7 @@ export class CommanderTool implements Tool<'commander'> {
     const file = viewed?.view === true ? viewed.root : undefined;
     if (
       file === undefined ||
-      this.shown.get(page)?.tab !== tab ||
+      this.sides.shown.get(page)?.tab !== tab ||
       !Number.isSafeInteger(at) ||
       at < 0 ||
       (encoding !== undefined && !isTextEncoding(encoding))
@@ -2749,12 +2647,12 @@ export class CommanderTool implements Tool<'commander'> {
       name,
     }: Extract<CommanderToHost, { type: 'newFolder' }>,
   ): Promise<void> {
-    const inArchive = this.namingPane(page, tab, side, folder);
+    const inArchive = this.sides.namingPane(page, tab, side, folder);
     if (inArchive?.pane.archive !== undefined) {
       this.folderInArchive(page, inArchive, name);
       return;
     }
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     const { makeFolder } = this.access;
     if (
       shown === undefined ||
@@ -2807,7 +2705,7 @@ export class CommanderTool implements Tool<'commander'> {
       names,
     }: Extract<CommanderToHost, { type: 'testArchives' }>,
   ): void {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     const { archives } = this.access;
     if (
       shown === undefined ||
@@ -2872,7 +2770,7 @@ export class CommanderTool implements Tool<'commander'> {
       replace,
     }: Extract<CommanderToHost, { type: 'pack' }>,
   ): Promise<void> {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     const { archives, platform } = this.access;
     if (
       shown === undefined ||
@@ -2973,12 +2871,12 @@ export class CommanderTool implements Tool<'commander'> {
       to,
     }: Extract<CommanderToHost, { type: 'rename' }>,
   ): Promise<void> {
-    const inArchive = this.namingPane(page, tab, side, folder);
+    const inArchive = this.sides.namingPane(page, tab, side, folder);
     if (inArchive?.pane.archive !== undefined) {
       this.renameInArchive(page, inArchive, name, to);
       return;
     }
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     const { renameItem } = this.access;
     if (
       shown === undefined ||
@@ -3032,7 +2930,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private transferred(ask: TransferAsk): void {
-    for (const [page, showing] of this.shown) {
+    for (const [page, showing] of this.sides.shown) {
       this.transferredIn(page, showing.tab, ask);
     }
   }
@@ -3042,7 +2940,7 @@ export class CommanderTool implements Tool<'commander'> {
     tab: string,
     { plan, folder, names, archive }: TransferAsk,
   ): void {
-    const panes = this.panes.get(tab);
+    const panes = this.sides.panes.get(tab);
     if (panes === undefined) {
       return;
     }
@@ -3111,7 +3009,7 @@ export class CommanderTool implements Tool<'commander'> {
       extended,
     }: Extract<CommanderToHost, { type: 'shellMenu' }>,
   ): Promise<void> {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     if (
       shown === undefined ||
       !Array.isArray(names) ||
@@ -3150,7 +3048,7 @@ export class CommanderTool implements Tool<'commander'> {
       command,
     }: Extract<CommanderToHost, { type: 'folderCommand' }>,
   ): Promise<void> {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     if (shown === undefined || !isFolderCommand(command)) {
       return;
     }
@@ -3195,7 +3093,7 @@ export class CommanderTool implements Tool<'commander'> {
       const side = 'side' in file ? file.side : undefined;
       const folder = 'folder' in file ? file.folder : undefined;
       const name = 'name' in file ? file.name : undefined;
-      const shown = this.namingPane(page, tab, side, folder);
+      const shown = this.sides.namingPane(page, tab, side, folder);
       const entry = listedIn(shown?.pane, name);
       return shown === undefined ||
         typeof name !== 'string' ||
@@ -3239,13 +3137,13 @@ export class CommanderTool implements Tool<'commander'> {
     tab: string,
     file: string,
   ): Promise<void> {
-    const showing = this.shown.get(page);
+    const showing = this.sides.shown.get(page);
     if (showing === undefined) {
       return;
     }
     const asked = ++showing.viewingsAsked;
     const current = () =>
-      this.shown.get(page) === showing &&
+      this.sides.shown.get(page) === showing &&
       showing.viewingsAsked === asked &&
       showing.tab === tab;
     let size: number;
@@ -3266,7 +3164,7 @@ export class CommanderTool implements Tool<'commander'> {
         (binary || isUtf8(first) ? undefined : await this.access.codePage());
     } catch (error) {
       if (current()) {
-        this.post(page, {
+        post(page, {
           type: 'viewing',
           tab,
           size: undefined,
@@ -3289,11 +3187,11 @@ export class CommanderTool implements Tool<'commander'> {
           (stats) => {
             if (
               showing.viewing === viewing &&
-              this.shown.get(page) === showing
+              this.sides.shown.get(page) === showing
             ) {
               viewing.blocks.forget();
               viewing.size = stats.size;
-              this.post(page, {
+              post(page, {
                 type: 'viewing',
                 tab,
                 size: stats.size,
@@ -3307,9 +3205,9 @@ export class CommanderTool implements Tool<'commander'> {
           (error: unknown) => {
             if (
               showing.viewing === viewing &&
-              this.shown.get(page) === showing
+              this.sides.shown.get(page) === showing
             ) {
-              this.post(page, {
+              post(page, {
                 type: 'viewing',
                 tab,
                 size: undefined,
@@ -3326,7 +3224,7 @@ export class CommanderTool implements Tool<'commander'> {
     if (isPdf(file)) {
       this.pdfTabs.set(tab, file);
     }
-    this.post(page, {
+    post(page, {
       type: 'viewing',
       tab,
       size,
@@ -3341,7 +3239,7 @@ export class CommanderTool implements Tool<'commander'> {
     page: Page,
     message: Extract<CommanderToHost, { type: 'readBytes' }>,
   ): Promise<void> {
-    const viewing = this.shown.get(page)?.viewing;
+    const viewing = this.sides.shown.get(page)?.viewing;
     const { tab, request, start, length } = message;
     if (
       viewing === undefined ||
@@ -3360,10 +3258,10 @@ export class CommanderTool implements Tool<'commander'> {
       const data = await readingFile(viewing.file, (read) =>
         blocks.reader(read)(start, length),
       );
-      this.post(page, { type: 'bytes', tab, request, start, data: [...data] });
+      post(page, { type: 'bytes', tab, request, start, data: [...data] });
     } catch (error) {
-      if (this.shown.get(page)?.viewing === viewing) {
-        this.post(page, {
+      if (this.sides.shown.get(page)?.viewing === viewing) {
+        post(page, {
           type: 'viewing',
           tab,
           size: undefined,
@@ -3377,7 +3275,7 @@ export class CommanderTool implements Tool<'commander'> {
     page: Page,
     { tab, request, encoding }: Extract<CommanderToHost, { type: 'readText' }>,
   ): Promise<void> {
-    const viewing = this.shown.get(page)?.viewing;
+    const viewing = this.sides.shown.get(page)?.viewing;
     if (
       viewing === undefined ||
       viewing.tab !== tab ||
@@ -3395,11 +3293,11 @@ export class CommanderTool implements Tool<'commander'> {
               new TextDecoder(encoding, { ignoreBOM: true }).decode(bytes),
             )
             .catch(() => undefined);
-    this.post(page, { type: 'text', tab, request, text });
+    post(page, { type: 'text', tab, request, text });
   }
 
   private viewedPdf(page: Page, tab: unknown, fingerprint: unknown) {
-    const viewing = this.shown.get(page)?.viewing;
+    const viewing = this.sides.shown.get(page)?.viewing;
     return viewing !== undefined &&
       viewing.tab === tab &&
       isPdf(viewing.file) &&
@@ -3423,7 +3321,7 @@ export class CommanderTool implements Tool<'commander'> {
     const place = await this.access.pdfPlaces
       .of(viewed.fingerprint)
       .catch(() => undefined);
-    this.post(page, {
+    post(page, {
       type: 'pdfPlace',
       tab,
       request,
@@ -3462,7 +3360,7 @@ export class CommanderTool implements Tool<'commander'> {
       query,
     }: Extract<CommanderToHost, { type: 'findText' }>,
   ): Promise<void> {
-    const showing = this.shown.get(page);
+    const showing = this.sides.shown.get(page);
     const viewing = showing?.viewing;
     if (
       showing === undefined ||
@@ -3487,7 +3385,7 @@ export class CommanderTool implements Tool<'commander'> {
         onChunk: (matches) => {
           if (Date.now() - told >= findProgressEvery) {
             told = Date.now();
-            this.post(page, {
+            post(page, {
               type: 'found',
               tab,
               request,
@@ -3508,8 +3406,11 @@ export class CommanderTool implements Tool<'commander'> {
     showing.finding = undefined;
     showing.findingRequest = undefined;
     if (found === undefined) {
-      if (failed !== undefined && this.shown.get(page)?.viewing === viewing) {
-        this.post(page, {
+      if (
+        failed !== undefined &&
+        this.sides.shown.get(page)?.viewing === viewing
+      ) {
+        post(page, {
           type: 'viewing',
           tab,
           size: undefined,
@@ -3518,7 +3419,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
       return;
     }
-    this.post(page, {
+    post(page, {
       type: 'found',
       tab,
       request,
@@ -3532,7 +3433,7 @@ export class CommanderTool implements Tool<'commander'> {
     page: Page,
     message: Extract<CommanderToHost, { type: 'readRows' }>,
   ): Promise<void> {
-    const viewing = this.shown.get(page)?.viewing;
+    const viewing = this.sides.shown.get(page)?.viewing;
     const { request, anchor, exact, before, after, least, encoding } = message;
     const counts = [before, after, least].every(
       (count) => Number.isInteger(count) && count >= 0 && count <= maxRowsAsked,
@@ -3566,7 +3467,7 @@ export class CommanderTool implements Tool<'commander'> {
           ]);
         },
       );
-      this.post(page, {
+      post(page, {
         type: 'rows',
         tab: viewing.tab,
         request,
@@ -3575,8 +3476,8 @@ export class CommanderTool implements Tool<'commander'> {
         anchorIndex: earlier.length,
       });
     } catch (error) {
-      if (this.shown.get(page)?.viewing === viewing) {
-        this.post(page, {
+      if (this.sides.shown.get(page)?.viewing === viewing) {
+        post(page, {
           type: 'viewing',
           tab: viewing.tab,
           size: undefined,
@@ -3591,7 +3492,7 @@ export class CommanderTool implements Tool<'commander'> {
     tab: unknown,
     side: unknown,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.sides.shownPane(page, tab, side);
     const folder = shown?.pane.denied;
     const { elevate } = this.access;
     if (shown === undefined || folder === undefined || elevate === undefined) {
@@ -3632,7 +3533,7 @@ export class CommanderTool implements Tool<'commander'> {
   private helperStopped(): void {
     const page = this.shell.page();
     let readAsAdministrator = false;
-    for (const [tab, panes] of this.panes) {
+    for (const [tab, panes] of this.sides.panes) {
       for (const side of sides) {
         const pane = panes[side];
         if (pane.elevated !== true) {
@@ -3642,10 +3543,10 @@ export class CommanderTool implements Tool<'commander'> {
         pane.elevated = false;
         pane.entries = undefined;
         pane.denied = pane.folder;
-        const shownIn = this.pageShowing(tab);
+        const shownIn = this.sides.pageShowing(tab);
         if (shownIn !== undefined) {
           this.postListing(shownIn, tab, side, pane, undefined);
-          this.post(shownIn, {
+          post(shownIn, {
             type: 'noAccess',
             side,
             folder: pane.folder,
@@ -3784,7 +3685,7 @@ export class CommanderTool implements Tool<'commander'> {
       this.access.archives?.open(file, signal),
   ): Promise<Opening | undefined> {
     const { archives } = this.access;
-    const pane = this.panes.get(tab)?.[side];
+    const pane = this.sides.panes.get(tab)?.[side];
     if (archives === undefined || pane === undefined) {
       return {
         kind: 'refused',
@@ -3802,7 +3703,7 @@ export class CommanderTool implements Tool<'commander'> {
     const tellLater = () => {
       telling = setTimeout(() => {
         told = true;
-        this.post(page, {
+        post(page, {
           type: 'readingArchive',
           tab,
           side,
@@ -3814,7 +3715,7 @@ export class CommanderTool implements Tool<'commander'> {
       clearTimeout(telling);
       if (told) {
         told = false;
-        this.post(page, { type: 'readingArchive', tab, side });
+        post(page, { type: 'readingArchive', tab, side });
       }
     };
     const attempt = () => opening(aborting.signal) ?? archives.open(file);
@@ -3897,7 +3798,7 @@ export class CommanderTool implements Tool<'commander'> {
       name,
     }: Extract<CommanderToHost, { type: 'enterArchive' }>,
   ): Promise<void> {
-    const shown = this.namingPane(page, tab, side, folder);
+    const shown = this.sides.namingPane(page, tab, side, folder);
     const entry = listedIn(shown?.pane, name);
     if (
       shown === undefined ||
@@ -3941,7 +3842,7 @@ export class CommanderTool implements Tool<'commander'> {
       name,
     }: Extract<CommanderToHost, { type: 'openOnSide' }>,
   ): Promise<void> {
-    const source = this.namingPane(page, tab, from, named);
+    const source = this.sides.namingPane(page, tab, from, named);
     if (source === undefined || !isSide(side) || typeof name !== 'string') {
       return Promise.resolve();
     }
@@ -4003,7 +3904,7 @@ export class CommanderTool implements Tool<'commander'> {
       name,
     }: Extract<CommanderToHost, { type: 'openRepository' }>,
   ): Promise<void> {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     return shown === undefined ||
       typeof name !== 'string' ||
       !shown.pane.repositories.has(name)
@@ -4049,8 +3950,8 @@ export class CommanderTool implements Tool<'commander'> {
     pane.looked = { folder, folders };
     const found = new Set([...kept, ...names]);
     pane.repositories = found;
-    if (this.shown.get(page)?.tab === tab) {
-      this.post(page, {
+    if (this.sides.shown.get(page)?.tab === tab) {
+      post(page, {
         type: 'repositories',
         tab,
         side,
@@ -4073,7 +3974,7 @@ export class CommanderTool implements Tool<'commander'> {
     side: unknown,
     step: unknown,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.sides.shownPane(page, tab, side);
     if (shown === undefined || (step !== -1 && step !== 1)) {
       return Promise.resolve();
     }
@@ -4107,7 +4008,7 @@ export class CommanderTool implements Tool<'commander'> {
     page: Page,
     { tab, side, folder }: Extract<CommanderToHost, { type: 'goToBookmark' }>,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.sides.shownPane(page, tab, side);
     const bookmarked = shownBookmarks(
       this.access.settings().bookmarks,
       this.bookmarkSystem,
@@ -4121,7 +4022,7 @@ export class CommanderTool implements Tool<'commander'> {
     page: Page,
     { tab, side, folder, to }: Extract<CommanderToHost, { type: 'goTo' }>,
   ): Promise<void> {
-    const shown = this.namingPane(page, tab, side, folder);
+    const shown = this.sides.namingPane(page, tab, side, folder);
     const { home, variable, knownFolder } = this.access;
     const target =
       shown === undefined || typeof to !== 'string'
@@ -4156,7 +4057,7 @@ export class CommanderTool implements Tool<'commander'> {
     side: unknown,
     drive: unknown,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.sides.shownPane(page, tab, side);
     if (shown === undefined) {
       return;
     }
@@ -4176,7 +4077,7 @@ export class CommanderTool implements Tool<'commander'> {
     fallback?: string,
     selecting?: string,
   ): Promise<void> {
-    const pane = this.panes.get(tab)?.[side];
+    const pane = this.sides.panes.get(tab)?.[side];
     if (pane === undefined) {
       return;
     }
@@ -4239,7 +4140,7 @@ export class CommanderTool implements Tool<'commander'> {
         }
         if (isDenied(error)) {
           pane.denied = folder;
-          this.post(page, {
+          post(page, {
             type: 'noAccess',
             side,
             folder,
@@ -4340,11 +4241,11 @@ export class CommanderTool implements Tool<'commander'> {
     folder: string,
     listed: string | undefined,
   ): void {
-    const showing = this.shown.get(page);
+    const showing = this.sides.shown.get(page);
     if (showing?.tab !== tab) {
       return;
     }
-    const pane = this.panes.get(tab)?.[side];
+    const pane = this.sides.panes.get(tab)?.[side];
     const elevated = pane?.elevated === true ? this.elevated : undefined;
     const archive = pane?.archive;
     const current = showing.watching.get(side);
@@ -4382,42 +4283,11 @@ export class CommanderTool implements Tool<'commander'> {
     });
   }
 
-  private stopShowing(page: Page): void {
-    const showing = this.shown.get(page);
-    if (showing === undefined) {
-      return;
-    }
-    this.shown.delete(page);
-    for (const { stop } of showing.watching.values()) {
-      stop();
-    }
-    showing.watching.clear();
-    showing.viewing?.stop();
-    showing.viewing = undefined;
-    showing.finding?.abort();
-    showing.finding = undefined;
-  }
-
-  private pageShowing(tab: string): Page | undefined {
-    for (const [page, showing] of this.shown) {
-      if (showing.tab === tab) {
-        return page;
-      }
-    }
-    return undefined;
-  }
-
-  private allPanes(): Pane[] {
-    return [...this.panes.values()].flatMap((panes) =>
-      sides.map((side) => panes[side]),
-    );
-  }
-
   private async turnFlat(
     page: Page,
     { tab, side, flat }: Extract<CommanderToHost, { type: 'flat' }>,
   ): Promise<void> {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.sides.shownPane(page, tab, side);
     if (shown === undefined || typeof flat !== 'boolean') {
       return;
     }
@@ -4432,7 +4302,7 @@ export class CommanderTool implements Tool<'commander'> {
   private startFlat(page: Page, { tab, side, pane }: ShownPane): void {
     this.endFlat(pane);
     this.endSizing(pane);
-    const watching = this.shown.get(page)?.watching;
+    const watching = this.sides.shown.get(page)?.watching;
     watching?.get(side)?.stop();
     watching?.delete(side);
     pane.asked++;
@@ -4488,8 +4358,8 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private flushFlat(tab: string, side: Side, flat: Flat): void {
-    const pane = this.panes.get(tab)?.[side];
-    const shownIn = this.pageShowing(tab);
+    const pane = this.sides.panes.get(tab)?.[side];
+    const shownIn = this.sides.pageShowing(tab);
     if (pane?.flat !== flat || shownIn === undefined) {
       return;
     }
@@ -4501,7 +4371,7 @@ export class CommanderTool implements Tool<'commander'> {
     flat.told = progress;
     flat.flushed = Date.now();
     for (const part of inParts(folders)) {
-      this.post(shownIn, {
+      post(shownIn, {
         type: 'flatFiles',
         tab,
         side,
@@ -4520,7 +4390,7 @@ export class CommanderTool implements Tool<'commander'> {
     page: Page,
     { tab, side, duplicates }: Extract<CommanderToHost, { type: 'duplicates' }>,
   ): void {
-    const shown = this.shownPane(page, tab, side);
+    const shown = this.sides.shownPane(page, tab, side);
     if (
       shown === undefined ||
       typeof duplicates !== 'boolean' ||
@@ -4611,8 +4481,8 @@ export class CommanderTool implements Tool<'commander'> {
     side: Side,
     duplicating: Duplicating | undefined,
   ): void {
-    const pane = this.panes.get(tab)?.[side];
-    const shownIn = this.pageShowing(tab);
+    const pane = this.sides.panes.get(tab)?.[side];
+    const shownIn = this.sides.pageShowing(tab);
     if (
       duplicating === undefined ||
       pane?.duplicates !== duplicating ||
@@ -4621,7 +4491,7 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     duplicating.flushed = Date.now();
-    this.post(shownIn, {
+    post(shownIn, {
       type: 'duplicateGroups',
       tab,
       side,
@@ -4641,7 +4511,7 @@ export class CommanderTool implements Tool<'commander'> {
       names,
     }: Extract<CommanderToHost, { type: 'countSizes' }>,
   ): void {
-    const shown = this.diskPane(page, tab, side, folder);
+    const shown = this.sides.diskPane(page, tab, side, folder);
     if (
       shown === undefined ||
       shown.pane.flat !== undefined ||
@@ -4692,8 +4562,8 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private flushSizes(tab: string, side: Side, sizing: Sizing): void {
-    const pane = this.panes.get(tab)?.[side];
-    const shownIn = this.pageShowing(tab);
+    const pane = this.sides.panes.get(tab)?.[side];
+    const shownIn = this.sides.pageShowing(tab);
     if (pane?.sizing !== sizing || shownIn === undefined) {
       return;
     }
@@ -4705,7 +4575,7 @@ export class CommanderTool implements Tool<'commander'> {
         : [];
     });
     if (entries.length > 0) {
-      this.post(shownIn, {
+      post(shownIn, {
         type: 'folderSizes',
         tab,
         side,
@@ -4722,8 +4592,8 @@ export class CommanderTool implements Tool<'commander'> {
     pane: Pane,
     selected: string | undefined,
   ): void {
-    if (this.shown.get(page)?.tab === tab) {
-      this.post(page, {
+    if (this.sides.shown.get(page)?.tab === tab) {
+      post(page, {
         type: 'listing',
         tab,
         side,
@@ -4764,7 +4634,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   private async postDrives(page: Page): Promise<void> {
-    this.post(page, {
+    post(page, {
       type: 'drives',
       drives: await (await this.files()).drives(),
     });
@@ -4773,7 +4643,7 @@ export class CommanderTool implements Tool<'commander'> {
   private postSettings(page: Page): void {
     const { showHidden, sort, columns, thumbnailSize, fileColors, bookmarks } =
       this.access.settings();
-    this.post(page, {
+    post(page, {
       type: 'settings',
       showHidden,
       sort,
@@ -4786,9 +4656,5 @@ export class CommanderTool implements Tool<'commander'> {
       bookmarks: shownBookmarks(bookmarks, this.bookmarkSystem),
       ...(this.access.closesBrackets?.() === true && { closeBrackets: true }),
     });
-  }
-
-  private post(page: Page, message: CommanderToWebview): void {
-    page.post({ type: 'tool', tool: 'commander', message });
   }
 }
