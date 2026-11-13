@@ -74,7 +74,7 @@
 | Column selection | Select a column, a cursor on each line | Shift+Alt+drag | Common | ✅ Yes |  |
 | End of a wrapped row | Go to the end of the row rather than the line | End | Common | ✅ Yes | Past the spaces hanging at the end of the row, the cursor drawn at its edge while in them |
 | Go to a line | Go to a line by its number | Ctrl+G | Common | ✅ Yes |  |
-| Bracket matching | Mark the bracket matching the one at the cursor | — | Common | ❌ No |  |
+| Bracket matching | Mark the bracket matching the one at the cursor | — | Common | ✅ Yes | Round, square and curly brackets, by CodeMirror, outlined, one that matches none outlined in the color of errors; brackets in strings and comments counted too, as no grammar tells it where they are |
 
 ## Finding
 

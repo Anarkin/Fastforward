@@ -404,6 +404,17 @@
   box-shadow: 0 0 0 var(--hairline) var(--color-search-match-foreground);
 }
 
+.cm-editor.editor-text.cm-focused .cm-matchingBracket,
+.cm-editor.editor-text.cm-focused .cm-nonmatchingBracket {
+  background: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 var(--hairline) var(--muted-foreground);
+}
+
+.cm-editor.editor-text.cm-focused .cm-nonmatchingBracket {
+  box-shadow: 0 0 0 var(--hairline) var(--color-error-foreground);
+}
+
 .editor-path {
   display: flex;
   align-items: center;

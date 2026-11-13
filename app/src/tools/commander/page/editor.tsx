@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { history, historyField } from '@codemirror/commands';
+import { bracketMatching } from '@codemirror/language';
 import {
   Compartment,
   EditorSelection,
@@ -146,6 +147,7 @@ function extensionsOf({
     appTextLook(table),
     appSelection(editorKeymap.rowEnd),
     lineNumbers(),
+    bracketMatching(),
     history(),
     endingsUndone,
     editorFind,

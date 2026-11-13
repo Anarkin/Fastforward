@@ -589,6 +589,28 @@ suite('App editor', () => {
     assert.strictEqual(await content().locator('.ending-sign').count(), 0);
   });
 
+  test('marks the bracket matching the one beside the cursor, and one matching none', async () => {
+    fs.writeFileSync(path.join(opened, 'brackets.txt'), 'call(a[0])\nopen(\n');
+    await backToCommander();
+    await edit('brackets.txt');
+    await waitFor(
+      async () => (await editedText()) === 'call(a[0])\nopen(\n',
+      'the text',
+    );
+    await content().locator('.cm-line').first().click();
+    await page.keyboard.press('End');
+    await waitFor(
+      async () =>
+        (await content().locator('.cm-matchingBracket').allTextContents()).join(
+          '',
+        ) === '()',
+      'the brackets around the call matched',
+    );
+    await content().locator('.cm-line').nth(1).click();
+    await page.keyboard.press('End');
+    await content().locator('.cm-nonmatchingBracket').waitFor();
+  });
+
   test('turns the tab of a file viewed into one editing it on F4, in its place among the tabs, the cursor on the line the viewer showed at its top', async () => {
     const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
     fs.writeFileSync(path.join(opened, 'long.txt'), `${lines.join('\n')}\n`);
