@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -11,28 +10,16 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/shell';
-import { sameRoot, type Store } from '../../../shell/main/storage';
 import { SavedSides } from './savedSides';
 import {
   isSide,
-  isFolderCommand,
-  isTextEncoding,
-  type TextEncoding,
   parentFolder,
   sides,
   type CommanderToHost,
-  type EndingSource,
   type Entry,
   type Side,
 } from '../shared/protocol';
-import {
-  heldColumns,
-  isColumnWidths,
-  isSort,
-  type Sorts,
-  type ColumnWidths,
-  type CommanderSettings,
-} from '../shared/settings';
+import { heldColumns, isColumnWidths, isSort } from '../shared/settings';
 import type { LocalFileSystem } from './fileSystem';
 import { pathParts } from '../shared/paths';
 import {
@@ -42,28 +29,22 @@ import {
   type BookmarkSystem,
 } from './bookmarks';
 import { typedPath } from './typedPaths';
-import type { WatchFolder, WatchTree } from './watch';
-import type { ContentReader } from './duplicates';
 import { heldBox } from '../../../shared/images';
 import { fileVersion } from '../shared/files';
 import { firstBytes } from './textRows';
-import type { ArchiveAccess, OpenedArchive, Opening } from './archives';
+import type { OpenedArchive, Opening } from './archives';
 import type { ElevatedFileSystem } from './elevated';
 import { Editing } from './editing';
-import type { TextDefaults } from './textDefaults';
-import { saveFile, type Saved } from './fileSaving';
+import { saveFile } from './fileSaving';
 import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
-import { Transfers, type ConnectTransfer } from './transfers';
-import { nameProblem } from '../shared/names';
+import { Transfers } from './transfers';
 import { repositoriesIn } from './repositories';
-import type { SizeWalker } from './folderSizes';
 import { maxDroppedIcons, viewerIconUrl } from '../shared/icons';
 import {
   type Pane,
   newPane,
   type Panes,
-  type ShownPane,
   Sides,
   post,
   type Listing,
@@ -71,74 +52,14 @@ import {
   listedIn,
   parentOf,
 } from './sides';
-import { type PdfPlaceStore, Viewers } from './viewers';
+import { Viewers } from './viewers';
 import { SideScans } from './sideScans';
-import { type Thumbnails, Serving } from './serving';
+import { Serving } from './serving';
 import { ArchiveCopies } from './archiveCopies';
 import { TransferCommands } from './transferCommands';
-
-export interface CommanderAccess {
-  readonly pdfPlaces: PdfPlaceStore;
-  readonly fileSystem: () => Promise<LocalFileSystem>;
-  readonly settings: () => CommanderSettings;
-  readonly closesBrackets?: () => boolean;
-  readonly defaultColumns: () => ColumnWidths;
-  readonly saveShowHidden: (shown: boolean) => Promise<void>;
-  readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
-  readonly saveSorts: (sorts: Sorts) => Promise<void>;
-  readonly saveBookmarks: (bookmarks: readonly string[]) => Promise<void>;
-  readonly store: Store;
-  readonly thumbnails: Thumbnails;
-  readonly streamed?: (file: string) => boolean | Promise<boolean>;
-  readonly isRepository: (folder: string) => Promise<boolean>;
-  readonly inRepository?: (folder: string) => Promise<boolean>;
-  readonly initRepository?: (folder: string) => Promise<void>;
-  readonly cloneInto?: (folder: string) => Promise<void>;
-  readonly stamp?: (folder: string) => Promise<string | undefined>;
-  readonly watch: WatchFolder;
-  readonly watchTree?: WatchTree;
-  readonly fileIcon: (file: string) => Promise<Uint8Array>;
-  readonly platform: NodeJS.Platform;
-  readonly codePage: () => Promise<TextEncoding>;
-  readonly saveEdited?: (
-    file: string,
-    bytes: Uint8Array,
-    overwriteReadOnly: boolean,
-  ) => Promise<Saved>;
-  readonly readOnlyFile?: (file: string) => boolean;
-  readonly editorDefaults?: (
-    file: string,
-    asksGit: boolean,
-  ) => Promise<TextDefaults>;
-  readonly editorSources?: (file: string) => Promise<readonly EndingSource[]>;
-  readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
-  readonly realPath: (link: string) => Promise<string>;
-  readonly openFile?: (file: string) => Promise<string>;
-  readonly trash?: (file: string) => Promise<void>;
-  readonly binOff?: (folder: string) => Promise<boolean>;
-  readonly remove?: (file: string) => Promise<void>;
-  readonly makeFolder?: (folder: string) => Promise<void>;
-  readonly renameItem?: (from: string, to: string) => Promise<void>;
-  readonly startDrag?: (files: readonly string[]) => Promise<void>;
-  readonly clipboardFiles?: {
-    readonly write: (files: readonly string[]) => Promise<void>;
-    readonly read: () => Promise<readonly string[]>;
-  };
-  readonly shellMenu?: (
-    files: readonly string[],
-    at: { readonly x: number; readonly y: number },
-    extended: boolean,
-  ) => Promise<void>;
-  readonly connectTransfer: ConnectTransfer;
-  readonly archives?: ArchiveAccess;
-  readonly viewedCopies?: string;
-  readonly sizeWalker?: SizeWalker;
-  readonly root: string;
-  readonly home?: string;
-  readonly variable?: (name: string) => string | undefined;
-  readonly knownFolder?: (name: string) => Promise<string | undefined>;
-  readonly contentReader?: ContentReader;
-}
+import type { CommanderAccess } from './commanderAccess';
+import { isFolder, isFile } from './fileStats';
+import { FileCommands } from './fileCommands';
 
 const maxHistory = 100;
 export function childToward(folder: string, from: string): string | undefined {
@@ -186,22 +107,6 @@ class RefusedAsAdministrator extends Error {
   }
 }
 
-async function isFolder(folder: string): Promise<boolean> {
-  try {
-    return (await fs.promises.stat(folder)).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-async function isFile(file: string): Promise<boolean> {
-  try {
-    return (await fs.promises.stat(file)).isFile();
-  } catch {
-    return false;
-  }
-}
-
 function entriesShown({ entries = [], sizing }: Pane): readonly Entry[] {
   return sizing === undefined
     ? entries
@@ -218,6 +123,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly serving: Serving;
   private readonly copies: ArchiveCopies;
   private readonly transferCommands: TransferCommands;
+  private readonly fileCommands: FileCommands;
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
@@ -339,6 +245,17 @@ export class CommanderTool implements Tool<'commander'> {
           this.list(page, tab, side, folder, how, fallback, selecting),
       },
     );
+    this.fileCommands = new FileCommands(
+      access,
+      this.sides,
+      this.copies,
+      this.editing,
+      {
+        shell: () => this.shell,
+        list: (page, tab, side, folder, how, fallback, selecting) =>
+          this.list(page, tab, side, folder, how, fallback, selecting),
+      },
+    );
   }
 
   attach(shell: ShellAccess): void {
@@ -452,7 +369,7 @@ export class CommanderTool implements Tool<'commander'> {
   async receive(page: Page, message: CommanderToHost): Promise<void> {
     switch (message.type) {
       case 'editFile':
-        return this.editFile(
+        return this.fileCommands.editFile(
           page,
           this.sides.namingPane(
             page,
@@ -472,7 +389,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'editSource':
         return this.editing.receive(page, message);
       case 'open':
-        return this.openEntry(
+        return this.fileCommands.openEntry(
           page,
           this.sides.namingPane(
             page,
@@ -489,7 +406,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'step':
         return this.step(page, message.tab, message.side, message.step);
       case 'view':
-        return this.view(
+        return this.fileCommands.view(
           page,
           this.sides.namingPane(
             page,
@@ -500,28 +417,28 @@ export class CommanderTool implements Tool<'commander'> {
           message.name,
         );
       case 'shellMenu':
-        return this.shellMenu(page, message);
+        return this.fileCommands.shellMenu(page, message);
       case 'delete':
-        return this.delete(page, message);
+        return this.fileCommands.delete(page, message);
       case 'transfer':
         return this.transferCommands.transfer(page, message);
       case 'newFolder':
-        return this.newFolder(page, message);
+        return this.fileCommands.newFolder(page, message);
       case 'newFile':
-        return this.newFile(page, message);
+        return this.fileCommands.newFile(page, message);
       case 'editViewed':
-        return this.editViewed(page, message);
+        return this.fileCommands.editViewed(page, message);
       case 'rename':
-        return this.rename(page, message);
+        return this.fileCommands.rename(page, message);
       case 'pack':
         return this.transferCommands.pack(page, message);
       case 'testArchives':
         this.transferCommands.testArchives(page, message);
         return undefined;
       case 'copyToClipboard':
-        return this.copyToClipboard(page, message);
+        return this.fileCommands.copyToClipboard(page, message);
       case 'drag':
-        return this.drag(page, message);
+        return this.fileCommands.drag(page, message);
       case 'paste':
         return this.transferCommands.paste(page, message);
       case 'answerClash':
@@ -539,7 +456,7 @@ export class CommanderTool implements Tool<'commander'> {
         this.transfers.hide(message.transfer);
         return undefined;
       case 'compare':
-        return this.compare(page, message.tab, message.files);
+        return this.fileCommands.compare(page, message.tab, message.files);
       case 'readRows':
         return this.viewers.readRows(page, message);
       case 'readText':
@@ -605,7 +522,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'openRepository':
         return this.openRepository(page, message);
       case 'folderCommand':
-        return this.folderCommand(page, message);
+        return this.fileCommands.folderCommand(page, message);
       case 'elevate':
         return this.elevate(page, message.tab, message.side);
       case 'activate': {
@@ -805,596 +722,8 @@ export class CommanderTool implements Tool<'commander'> {
     void this.shell.track(saving.catch(() => undefined));
   }
 
-  private async openEntry(
-    page: Page,
-    shown: ShownPane | undefined,
-    name: unknown,
-  ): Promise<void> {
-    if (shown === undefined || typeof name !== 'string') {
-      return;
-    }
-    const { folder } = shown.pane;
-    if (name === parentFolder) {
-      const parent = parentOf(folder);
-      if (parent !== undefined) {
-        await this.list(page, shown.tab, shown.side, parent, 'visit');
-      }
-      return;
-    }
-    const entry = listedIn(shown.pane, name);
-    if (entry === undefined) {
-      return;
-    }
-    if (!entry.folder && shown.pane.archive !== undefined) {
-      const [copy] =
-        (await this.copies.copiesIn(page, shown.pane, [name])) ?? [];
-      if (copy === undefined) {
-        return;
-      }
-      const putBack = this.copies.putBackOf(folder, name, copy);
-      if (putBack === undefined) {
-        await fs.promises.chmod(copy, 0o444);
-      } else {
-        await this.copies.watchCopy(putBack, copy);
-      }
-      await this.openFileNamed(page, copy, name);
-      return;
-    }
-    const opened = path.join(folder, name);
-    if (!entry.folder) {
-      await this.openFileNamed(page, opened, name);
-      return;
-    }
-    const target = entry.link
-      ? await this.access.realPath(opened).catch(() => undefined)
-      : undefined;
-    await this.list(
-      page,
-      shown.tab,
-      shown.side,
-      opened,
-      'visit',
-      target === opened ? undefined : target,
-    );
-  }
-
-  private async openFileNamed(
-    page: Page,
-    file: string,
-    name: string,
-  ): Promise<void> {
-    const failure = await this.access.openFile?.(file);
-    if (failure) {
-      this.shell.notice(page, {
-        level: 'error',
-        message: strings.commander.openFailed(name, failure),
-      });
-    }
-  }
-
-  private async view(
-    page: Page,
-    shown: ShownPane | undefined,
-    name: unknown,
-  ): Promise<void> {
-    const entry = listedIn(shown?.pane, name);
-    if (
-      shown === undefined ||
-      typeof name !== 'string' ||
-      entry === undefined ||
-      entry.folder
-    ) {
-      return;
-    }
-    if (shown.pane.archive === undefined) {
-      await this.shell.openView(
-        page,
-        'commander',
-        path.join(shown.pane.folder, name),
-      );
-      return;
-    }
-    const { viewedCopies } = this.access;
-    const [copy] =
-      (await this.copies.copiesIn(
-        page,
-        shown.pane,
-        [name],
-        viewedCopies === undefined
-          ? undefined
-          : path.join(viewedCopies, randomUUID()),
-      )) ?? [];
-    if (copy !== undefined) {
-      await this.shell.openView(page, 'commander', copy);
-    }
-  }
-
-  private async editFile(
-    page: Page,
-    shown: ShownPane | undefined,
-    name: unknown,
-  ): Promise<void> {
-    const entry = listedIn(shown?.pane, name);
-    if (
-      shown === undefined ||
-      typeof name !== 'string' ||
-      entry === undefined
-    ) {
-      return;
-    }
-    if (!entry.folder && shown.pane.archive !== undefined) {
-      await this.copies.editInArchive(page, shown, name);
-      return;
-    }
-    const file = path.join(shown.pane.folder, name);
-    const refusal = entry.folder
-      ? strings.editor.folder(name)
-      : shown.pane.elevated === true
-        ? strings.editor.asAdministrator(name)
-        : await this.editing.refusal(file);
-    if (refusal !== undefined) {
-      this.shell.notice(page, { level: 'error', message: refusal });
-      return;
-    }
-    await this.shell.openEdit(page, 'commander', file);
-  }
-
-  private async delete(
-    page: Page,
-    {
-      tab,
-      side,
-      folder: named,
-      names,
-      permanently,
-    }: Extract<CommanderToHost, { type: 'delete' }>,
-  ): Promise<void> {
-    const inArchive = this.sides.namingPane(page, tab, side, named);
-    if (inArchive?.pane.archive !== undefined) {
-      this.copies.deleteInArchive(page, inArchive, names);
-      return;
-    }
-    const shown = this.sides.diskPane(page, tab, side, named);
-    if (
-      shown === undefined ||
-      !Array.isArray(names) ||
-      names.length === 0 ||
-      !names.every(
-        (name: unknown) => listedIn(shown.pane, name) !== undefined,
-      ) ||
-      typeof permanently !== 'boolean'
-    ) {
-      return;
-    }
-    if (shown.pane.elevated === true) {
-      this.shell.notice(page, {
-        level: 'error',
-        message: strings.commander.deleteAsAdministrator,
-      });
-      return;
-    }
-    const deleting = permanently ? this.access.remove : this.access.trash;
-    if (deleting === undefined) {
-      return;
-    }
-    const { folder } = shown.pane;
-    for (const name of names) {
-      try {
-        await deleting(path.join(folder, name));
-      } catch (error) {
-        this.shell.notice(page, {
-          level: 'error',
-          message: strings.commander.deleteFailed(
-            name,
-            error instanceof Error ? error.message : String(error),
-          ),
-        });
-      }
-    }
-    const { flat } = shown.pane;
-    if (flat !== undefined) {
-      for (const name of names) {
-        flat.tree.changed(name);
-      }
-    } else if (shown.pane.folder === folder) {
-      await this.list(page, shown.tab, shown.side, folder, 'show');
-    }
-  }
-
   private refuse(page: Page, message: Sentence): void {
     this.shell.notice(page, { level: 'error', message });
-  }
-
-  private listedFiles(
-    page: Page,
-    tab: unknown,
-    side: unknown,
-    folder: unknown,
-    names: unknown,
-  ): string[] | undefined {
-    const shown = this.sides.diskPane(page, tab, side, folder);
-    if (
-      shown === undefined ||
-      !Array.isArray(names) ||
-      names.length === 0 ||
-      !names.every((name: unknown) => listedIn(shown.pane, name) !== undefined)
-    ) {
-      return undefined;
-    }
-    return names.map((name: string) => path.join(shown.pane.folder, name));
-  }
-
-  private async copyToClipboard(
-    page: Page,
-    {
-      tab,
-      side,
-      folder,
-      names,
-    }: Extract<CommanderToHost, { type: 'copyToClipboard' }>,
-  ): Promise<void> {
-    const shown = this.sides.namingPane(page, tab, side, folder);
-    if (
-      shown?.pane.archive !== undefined &&
-      Array.isArray(names) &&
-      names.length > 0 &&
-      names.every((name: unknown) => listedIn(shown.pane, name) !== undefined)
-    ) {
-      const copies = await this.copies.copiesIn(page, shown.pane, names);
-      if (copies !== undefined) {
-        await this.access.clipboardFiles?.write(copies);
-      }
-      return;
-    }
-    const files = this.listedFiles(page, tab, side, folder, names);
-    if (files !== undefined) {
-      await this.access.clipboardFiles?.write(files);
-    }
-  }
-
-  private async drag(
-    page: Page,
-    { tab, side, folder, names }: Extract<CommanderToHost, { type: 'drag' }>,
-  ): Promise<void> {
-    const files = this.listedFiles(page, tab, side, folder, names);
-    if (files !== undefined) {
-      await this.access.startDrag?.(files);
-    }
-  }
-
-  private async newFile(
-    page: Page,
-    { tab, side, folder, name }: Extract<CommanderToHost, { type: 'newFile' }>,
-  ): Promise<void> {
-    const shown = this.sides.namingPane(page, tab, side, folder);
-    if (
-      shown === undefined ||
-      typeof name !== 'string' ||
-      name !== path.basename(name) ||
-      nameProblem(name, this.access.platform) !== undefined
-    ) {
-      return;
-    }
-    if (shown.pane.archive !== undefined) {
-      await this.copies.newFileInArchive(page, shown, name);
-      return;
-    }
-    const file = path.join(shown.pane.folder, name);
-    const refusal =
-      shown.pane.elevated === true
-        ? strings.editor.asAdministrator(name)
-        : await this.editing.refusal(file);
-    if (refusal !== undefined) {
-      this.shell.notice(page, { level: 'error', message: refusal });
-      return;
-    }
-    await this.shell.openEdit(page, 'commander', file);
-  }
-
-  private async editViewed(
-    page: Page,
-    { tab, at, encoding }: Extract<CommanderToHost, { type: 'editViewed' }>,
-  ): Promise<void> {
-    const viewed = this.shell
-      .tabs()
-      .find((each) => each.id === tab && each.tool === 'commander');
-    const file = viewed?.view === true ? viewed.root : undefined;
-    if (
-      file === undefined ||
-      this.sides.shown.get(page)?.tab !== tab ||
-      !Number.isSafeInteger(at) ||
-      at < 0 ||
-      (encoding !== undefined && !isTextEncoding(encoding))
-    ) {
-      return;
-    }
-    const refusal =
-      this.copies.copyOf(file) === undefined
-        ? await this.editing.refusal(file)
-        : strings.editor.viewedCopy(path.basename(file));
-    if (refusal !== undefined) {
-      this.shell.notice(page, { level: 'error', message: refusal });
-      return;
-    }
-    const edited = this.shell
-      .tabs()
-      .some(
-        (each) =>
-          each.tool === 'commander' &&
-          each.edit === true &&
-          each.root !== undefined &&
-          sameRoot(each.root, file),
-      );
-    if (edited) {
-      await this.shell.openEdit(page, 'commander', file);
-      return;
-    }
-    this.editing.startAt(tab, {
-      byte: at,
-      ...(encoding !== undefined && { encoding }),
-    });
-    await this.shell.editViewed(page, tab);
-  }
-
-  private async newFolder(
-    page: Page,
-    {
-      tab,
-      side,
-      folder,
-      name,
-    }: Extract<CommanderToHost, { type: 'newFolder' }>,
-  ): Promise<void> {
-    const inArchive = this.sides.namingPane(page, tab, side, folder);
-    if (inArchive?.pane.archive !== undefined) {
-      this.copies.folderInArchive(page, inArchive, name);
-      return;
-    }
-    const shown = this.sides.diskPane(page, tab, side, folder);
-    const { makeFolder } = this.access;
-    if (
-      shown === undefined ||
-      makeFolder === undefined ||
-      typeof name !== 'string' ||
-      name !== path.basename(name) ||
-      nameProblem(name, this.access.platform) !== undefined
-    ) {
-      return;
-    }
-    if (shown.pane.elevated === true) {
-      this.shell.notice(page, {
-        level: 'error',
-        message: strings.commander.makeFolderAsAdministrator,
-      });
-      return;
-    }
-    const made = shown.pane.folder;
-    try {
-      await makeFolder(path.join(made, name));
-    } catch (error) {
-      this.shell.notice(page, {
-        level: 'error',
-        message:
-          codeOf(error) === 'EEXIST'
-            ? strings.commander.nameTaken(name)
-            : strings.commander.makeFolderFailed(name, reasonOf(error)),
-      });
-      return;
-    }
-    if (shown.pane.folder === made) {
-      await this.list(
-        page,
-        shown.tab,
-        shown.side,
-        made,
-        'show',
-        undefined,
-        name,
-      );
-    }
-  }
-
-  private async rename(
-    page: Page,
-    {
-      tab,
-      side,
-      folder,
-      name,
-      to,
-    }: Extract<CommanderToHost, { type: 'rename' }>,
-  ): Promise<void> {
-    const inArchive = this.sides.namingPane(page, tab, side, folder);
-    if (inArchive?.pane.archive !== undefined) {
-      this.copies.renameInArchive(page, inArchive, name, to);
-      return;
-    }
-    const shown = this.sides.diskPane(page, tab, side, folder);
-    const { renameItem } = this.access;
-    if (
-      shown === undefined ||
-      renameItem === undefined ||
-      typeof name !== 'string' ||
-      listedIn(shown.pane, name) === undefined ||
-      typeof to !== 'string' ||
-      to !== path.basename(to) ||
-      nameProblem(to, this.access.platform) !== undefined
-    ) {
-      return;
-    }
-    if (shown.pane.elevated === true) {
-      this.shell.notice(page, {
-        level: 'error',
-        message: strings.commander.renameAsAdministrator,
-      });
-      return;
-    }
-    const { pane } = shown;
-    const renamed = pane.folder;
-    const from = path.join(renamed, name);
-    try {
-      await renameItem(from, path.join(path.dirname(from), to));
-    } catch (error) {
-      this.shell.notice(page, {
-        level: 'error',
-        message:
-          codeOf(error) === 'EEXIST'
-            ? strings.commander.nameTaken(to)
-            : strings.commander.renameFailed(
-                path.basename(from),
-                reasonOf(error),
-              ),
-      });
-      return;
-    }
-    if (pane.flat !== undefined) {
-      pane.flat.tree.changed(name);
-    } else if (pane.folder === renamed) {
-      await this.list(
-        page,
-        shown.tab,
-        shown.side,
-        renamed,
-        'show',
-        undefined,
-        to,
-      );
-    }
-  }
-
-  private async shellMenu(
-    page: Page,
-    {
-      tab,
-      side,
-      folder,
-      names,
-      x,
-      y,
-      extended,
-    }: Extract<CommanderToHost, { type: 'shellMenu' }>,
-  ): Promise<void> {
-    const shown = this.sides.diskPane(page, tab, side, folder);
-    if (
-      shown === undefined ||
-      !Array.isArray(names) ||
-      !names.every(
-        (name: unknown) => listedIn(shown.pane, name) !== undefined,
-      ) ||
-      !Number.isFinite(x) ||
-      !Number.isFinite(y) ||
-      typeof extended !== 'boolean'
-    ) {
-      return;
-    }
-    if (new Set(names.map((name: string) => path.dirname(name))).size > 1) {
-      this.shell.notice(page, {
-        level: 'error',
-        message: strings.commander.menuOfOneFolder,
-      });
-      return;
-    }
-    await this.access.shellMenu?.(
-      names.length === 0
-        ? [shown.pane.folder]
-        : names.map((name: string) => path.join(shown.pane.folder, name)),
-      { x, y },
-      extended,
-    );
-  }
-
-  private async folderCommand(
-    page: Page,
-    {
-      tab,
-      side,
-      folder,
-      name,
-      command,
-    }: Extract<CommanderToHost, { type: 'folderCommand' }>,
-  ): Promise<void> {
-    const shown = this.sides.diskPane(page, tab, side, folder);
-    if (shown === undefined || !isFolderCommand(command)) {
-      return;
-    }
-    const target =
-      name === undefined
-        ? shown.pane.folder
-        : listedIn(shown.pane, name)?.folder === true
-          ? path.join(shown.pane.folder, name)
-          : undefined;
-    if (target === undefined) {
-      return;
-    }
-    switch (command) {
-      case 'newTerminal':
-        return this.shell.openFolders(page, 'terminal', [target]);
-      case 'openInGit':
-        return this.shell.openFolders(page, 'git', [target]);
-      case 'cloneHere':
-        return this.access.cloneInto?.(target);
-      case 'initHere':
-        return this.access.initRepository?.(target);
-      default:
-        return command satisfies never;
-    }
-  }
-
-  private compare(page: Page, tab: unknown, files: unknown): Promise<void> {
-    if (Array.isArray(files) && files.length === 0) {
-      this.shell.notice(page, {
-        level: 'info',
-        message: strings.commander.nothingToCompare,
-      });
-      return Promise.resolve();
-    }
-    if (!Array.isArray(files) || files.length !== 2) {
-      return Promise.resolve();
-    }
-    const named = files.map((file: unknown) => {
-      if (typeof file !== 'object' || file === null) {
-        return undefined;
-      }
-      const side = 'side' in file ? file.side : undefined;
-      const folder = 'folder' in file ? file.folder : undefined;
-      const name = 'name' in file ? file.name : undefined;
-      const shown = this.sides.namingPane(page, tab, side, folder);
-      const entry = listedIn(shown?.pane, name);
-      return shown === undefined ||
-        typeof name !== 'string' ||
-        entry === undefined ||
-        entry.folder
-        ? undefined
-        : { pane: shown.pane, name };
-    });
-    if (named.some((each) => each === undefined)) {
-      return Promise.resolve();
-    }
-    return this.compareFiles(
-      page,
-      named.flatMap((each) => (each === undefined ? [] : [each])),
-    );
-  }
-
-  private async compareFiles(
-    page: Page,
-    named: readonly { readonly pane: Pane; readonly name: string }[],
-  ): Promise<void> {
-    const paths: string[] = [];
-    for (const { pane, name } of named) {
-      const [file] =
-        pane.archive === undefined
-          ? [path.join(pane.folder, name)]
-          : ((await this.copies.copiesIn(page, pane, [name])) ?? []);
-      if (file === undefined) {
-        return;
-      }
-      paths.push(file);
-    }
-    const [old, changed] = paths;
-    if (old !== undefined && changed !== undefined) {
-      await this.shell.openCompare(page, 'git', { old, new: changed });
-    }
   }
 
   private async elevate(
