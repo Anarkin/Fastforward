@@ -130,10 +130,7 @@
       }
     },
     {
-      "files": [
-        "src/test/tools/git/page/diffView.test.tsx",
-        "src/tools/git/page/diffView.tsx"
-      ],
+      "files": ["src/tools/git/page/diffView.tsx"],
       "rules": {
         "max-lines": [
           "warn",
