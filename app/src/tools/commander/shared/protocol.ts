@@ -155,7 +155,9 @@ export type CommanderToHost =
       readonly type: 'saveText';
       readonly tab: string;
       readonly overwriteReadOnly?: true;
+      readonly overwriteChanged?: true;
     }
+  | { readonly type: 'reloadEdited'; readonly tab: string }
   | {
       readonly type: 'open';
       readonly tab: string;
@@ -502,6 +504,7 @@ export type CommanderToWebview =
       readonly tab: string;
       readonly shown: TextShown;
       readonly state?: unknown;
+      readonly reloaded?: true;
     }
   | {
       readonly type: 'textChanged';
@@ -509,6 +512,7 @@ export type CommanderToWebview =
       readonly changed: boolean;
     }
   | { readonly type: 'askOverwrite'; readonly tab: string }
+  | { readonly type: 'askChangedOnDisk'; readonly tab: string }
   | { readonly type: 'hide' }
   | { readonly type: 'closed'; readonly tab: string }
   | {

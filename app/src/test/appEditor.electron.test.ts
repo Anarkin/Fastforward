@@ -228,6 +228,43 @@ suite('App editor', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), 'hello');
   });
 
+  test('reads a file changed on disk again while it has no changes in the editor, and asks before saving changes over a file changed on disk since', async () => {
+    const file = path.join(opened, 'outside.txt');
+    fs.writeFileSync(file, 'first\n');
+    await backToCommander();
+    await waitFor(
+      async () =>
+        (await right()
+          .locator('.commander-row', { hasText: 'outside' })
+          .count()) > 0,
+      'the file listed',
+    );
+    await edit('outside.txt');
+    await waitFor(async () => (await editedText()) === 'first\n', 'the text');
+    fs.writeFileSync(file, 'second\n');
+    await waitFor(
+      async () => (await editedText()) === 'second\n',
+      'the text read again',
+    );
+    await toStart();
+    await page.keyboard.type('mine ');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    fs.writeFileSync(file, 'third\n');
+    await waitFor(
+      async () =>
+        (await notices()).some((notice) => notice.includes('changed on disk')),
+      'a notice of the change',
+    );
+    assert.strictEqual(await editedText(), 'mine second\n');
+    await page.keyboard.press('ControlOrMeta+S');
+    await page
+      .locator('.confirm-popup', { hasText: 'Changed on Disk' })
+      .waitFor();
+    await page.locator('.confirm-button.default').click();
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), 'mine second\n');
+  });
+
   test('says why it opens no editor for a folder or a file of binary data', async () => {
     await backToCommander();
     const tabs = await page.locator('.tabs [role="tab"]').count();

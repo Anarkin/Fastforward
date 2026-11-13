@@ -1186,6 +1186,15 @@ export const strings = {
       sentence`Couldn't save ${named(file)}, as ${encoding} has no ${namesBetween(characters, ', ')}.`,
     readOnly: (file: string) =>
       sentence`${named(file)} is open read-only, so it isn't saved.`,
+    changedOutside: (file: string) =>
+      sentence`${named(file)} changed on disk while edited here. Saving it writes over those changes.`,
+    changedTitle: 'Changed on Disk',
+    changedAsked:
+      'The file changed on disk since it was opened here. Save over it, or read it again and drop the changes made here?',
+    saveOver: 'Save Over It',
+    readAgain: 'Read Again',
+    askedInTab: (file: string) =>
+      sentence`${named(file)} isn't saved: its tab asks what to do.`,
     overwriteTitle: 'Read-only file',
     overwriteAsked: 'The file is read-only. Save over it anyway?',
     overwriteLines: (file: string) => [labeled('File', named(file))],

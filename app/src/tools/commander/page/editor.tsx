@@ -8,6 +8,7 @@ import {
 } from '@codemirror/commands';
 import {
   Compartment,
+  EditorSelection,
   EditorState,
   StateEffect,
   type Extension,
@@ -38,7 +39,9 @@ export interface EditedTab {
   readonly error: Sentence | undefined;
 }
 
-export type ToEditor = CommanderToWebviewOf<'editedText' | 'askOverwrite'>;
+export type ToEditor = CommanderToWebviewOf<
+  'editedText' | 'askOverwrite' | 'askChangedOnDisk'
+>;
 
 const stateKeepDelay = 300;
 
@@ -148,6 +151,7 @@ export function Editor() {
     editText,
     keepEditState,
     saveText,
+    reloadEdited,
     keptEditor,
     keepEditor,
   } = useCommanderActions();
@@ -156,6 +160,7 @@ export function Editor() {
   const view = useRef<EditorView | undefined>(undefined);
   const wrapping = useRef(new Compartment());
   const [askingOverwrite, setAskingOverwrite] = useState(false);
+  const [askingChanged, setAskingChanged] = useState(false);
   const loaded = edited?.version !== undefined;
   const readOnly = edited?.readOnly === true;
   const startingVersion = useEffectEvent(() => edited?.version ?? 0);
@@ -216,8 +221,21 @@ export function Editor() {
         setAskingOverwrite(true);
         return;
       }
+      if (message.type === 'askChangedOnDisk') {
+        setAskingChanged(true);
+        return;
+      }
+      const head = shown.state.selection.main.head;
       version = message.shown.version;
       shown.setState(stateOf(message.shown, message.state, extensions));
+      if (message.reloaded === true) {
+        shown.dispatch({
+          selection: EditorSelection.cursor(
+            Math.min(head, shown.state.doc.length),
+          ),
+          scrollIntoView: true,
+        });
+      }
       keepEditor(tab, { state: shown.state, version });
       shown.focus();
     });
@@ -297,6 +315,31 @@ export function Editor() {
           </div>
         </div>
       )}
+      {askingChanged && tab !== undefined && (
+        <ConfirmPopup
+          title={strings.editor.changedTitle}
+          message={strings.editor.changedAsked}
+          lines={strings.editor.overwriteLines(file)}
+          confirm={strings.editor.saveOver}
+          extra={{
+            label: strings.editor.readAgain,
+            onClick: () => {
+              setAskingChanged(false);
+              reloadEdited(tab);
+              view.current?.focus();
+            },
+          }}
+          onConfirm={() => {
+            setAskingChanged(false);
+            saveText(tab, { changed: true });
+            view.current?.focus();
+          }}
+          onCancel={() => {
+            setAskingChanged(false);
+            view.current?.focus();
+          }}
+        />
+      )}
       {askingOverwrite && tab !== undefined && (
         <ConfirmPopup
           title={strings.editor.overwriteTitle}
@@ -305,7 +348,7 @@ export function Editor() {
           confirm={strings.editor.overwrite}
           onConfirm={() => {
             setAskingOverwrite(false);
-            saveText(tab, true);
+            saveText(tab, { readOnly: true });
             view.current?.focus();
           }}
           onCancel={() => {

@@ -78,12 +78,14 @@ export class EditedText {
   private strays: RangeSet<EndingMark>;
   private kept: RangeSet<KeptMark>;
   private last: Saved;
-  version = 0;
+  version: number;
 
   constructor(
     private readonly read: DecodedText,
     fallbackEnding: LineEnding = 'lf',
+    version = 0,
   ) {
+    this.version = version;
     this.doc = Text.of(read.text.split('\n'));
     this.ending = read.ending ?? fallbackEnding;
     this.strays = strayMarks(this.doc, read.strayEndings);

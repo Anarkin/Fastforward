@@ -555,6 +555,17 @@ export class CommanderTool implements Tool<'commander'> {
             throw error;
           }
         },
+        stampOf: async (file) => {
+          try {
+            return fileVersion(await fs.promises.stat(file));
+          } catch (error) {
+            if (codeOf(error) === 'ENOENT') {
+              return undefined;
+            }
+            throw error;
+          }
+        },
+        watch: (file, onChange) => access.watch(file, onChange),
         saveFile:
           access.saveEdited ??
           ((file, bytes, overwriteReadOnly) =>
@@ -566,6 +577,10 @@ export class CommanderTool implements Tool<'commander'> {
         post: (page, message) => this.post(page, message),
         notice: (page, notice) => this.shell.notice(page, notice),
         namesChanged: (page) => this.shell.postTabs(page),
+        pagesShowing: (tab) =>
+          [...this.shown]
+            .filter(([, showing]) => showing.tab === tab)
+            .map(([page]) => page),
       },
     );
     this.savedSides = new SavedSides(access.store);
@@ -735,6 +750,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'editText':
       case 'editState':
       case 'saveText':
+      case 'reloadEdited':
         return this.editing.receive(page, message);
       case 'open':
         return this.openEntry(

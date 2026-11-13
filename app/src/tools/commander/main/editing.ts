@@ -23,6 +23,8 @@ export interface EditingAccess {
   readonly statFile: (
     file: string,
   ) => Promise<{ readonly folder: boolean; readonly size: number } | undefined>;
+  readonly stampOf: (file: string) => Promise<string | undefined>;
+  readonly watch: (file: string, onChange: () => void) => () => void;
   readonly saveFile: (
     file: string,
     bytes: Uint8Array,
@@ -36,21 +38,38 @@ export interface EditingShell {
   post(page: Page, message: CommanderToWebview): void;
   notice(page: Page, notice: Notice): void;
   namesChanged(page: Page): void;
+  pagesShowing(tab: string): readonly Page[];
 }
 
 export type EditingMessage = Extract<
   CommanderToHost,
-  { readonly type: 'readEdited' | 'editText' | 'editState' | 'saveText' }
+  {
+    readonly type:
+      'readEdited' | 'editText' | 'editState' | 'saveText' | 'reloadEdited';
+  }
 >;
+
+export interface Overwriting {
+  readonly readOnly?: boolean;
+  readonly changed?: boolean;
+}
+
+interface Read {
+  readonly text: EditedText | undefined;
+  readonly error?: Sentence;
+  readonly made: boolean;
+  readonly stamp: string | undefined;
+}
 
 interface Opened {
   readonly file: string;
-  readonly text: EditedText | undefined;
-  readonly error?: Sentence;
   readonly readOnly: boolean;
-  made: boolean;
+  read: Read;
   changed: boolean;
+  outside: boolean;
+  saving: boolean;
   kept?: { readonly version: number; readonly state: unknown };
+  stop: () => void;
 }
 
 const isMissing = (error: unknown) =>
@@ -61,6 +80,8 @@ function textEncodingOf(start: Buffer): TextEncoding | undefined {
 }
 
 const startBytes = 64 * 1024;
+
+const noWatching = () => {};
 
 export class Editing {
   private readonly opened = new Map<string, Opened>();
@@ -90,15 +111,20 @@ export class Editing {
 
   async show(page: Page, tab: string, file: string): Promise<void> {
     const opened = await this.open(tab, file);
+    this.postEditing(page, tab, opened);
+  }
+
+  private postEditing(page: Page, tab: string, opened: Opened): void {
+    const { read } = opened;
     this.shell.post(page, {
       type: 'editing',
       tab,
       file: opened.file,
-      ...(opened.text !== undefined && { version: opened.text.version }),
+      ...(read.text !== undefined && { version: read.text.version }),
       ...(opened.changed && { changed: true }),
       ...(opened.readOnly && { readOnly: true }),
-      ...(opened.made && { made: true }),
-      ...(opened.error !== undefined && { error: opened.error }),
+      ...(read.made && { made: true }),
+      ...(read.error !== undefined && { error: read.error }),
     });
   }
 
@@ -111,11 +137,23 @@ export class Editing {
     if (pending !== undefined) {
       return pending;
     }
-    const loading = this.load(file);
+    const loading = this.load(file, 0).then((read): Opened => ({
+      file,
+      readOnly: this.access.readOnly(file),
+      read,
+      changed: false,
+      outside: false,
+      saving: false,
+      stop: noWatching,
+    }));
     this.opening.set(tab, loading);
     try {
       const opened = await loading;
       if (this.opening.get(tab) === loading) {
+        known?.stop();
+        opened.stop = this.access.watch(file, () => {
+          void this.changedOnDisk(tab, opened);
+        });
         this.opened.set(tab, opened);
       }
       return opened;
@@ -126,28 +164,28 @@ export class Editing {
     }
   }
 
-  private async load(file: string): Promise<Opened> {
-    const readOnly = this.access.readOnly(file);
+  private async load(file: string, version: number): Promise<Read> {
+    const stamp = await this.access.stampOf(file);
     let bytes: Buffer;
     try {
       bytes = await this.access.readFile(file);
     } catch (error) {
       if (isMissing(error)) {
         return {
-          file,
-          text: new EditedText(decodedText(new Uint8Array(), 'utf-8')),
-          readOnly,
+          text: new EditedText(
+            decodedText(new Uint8Array(), 'utf-8'),
+            'lf',
+            version,
+          ),
           made: true,
-          changed: false,
+          stamp: undefined,
         };
       }
       return {
-        file,
         text: undefined,
         error: strings.commander.couldNotRead(file, reasonOf(error)),
-        readOnly,
         made: false,
-        changed: false,
+        stamp,
       };
     }
     const start = bytes.subarray(0, startBytes);
@@ -159,48 +197,96 @@ export class Editing {
           ? strings.editor.binary(file)
           : undefined;
     if (refusal !== undefined) {
-      return {
-        file,
-        text: undefined,
-        error: refusal,
-        readOnly,
-        made: false,
-        changed: false,
-      };
+      return { text: undefined, error: refusal, made: false, stamp };
     }
     const encoding =
       marked ?? (isUtf8(bytes) ? 'utf-8' : await this.access.codePage());
     return {
-      file,
-      text: new EditedText(decodedText(bytes, encoding)),
-      readOnly,
+      text: new EditedText(decodedText(bytes, encoding), 'lf', version),
       made: false,
-      changed: false,
+      stamp,
     };
+  }
+
+  private async changedOnDisk(tab: string, opened: Opened): Promise<void> {
+    if (opened.saving) {
+      return;
+    }
+    const stamp = await this.access.stampOf(opened.file);
+    if (
+      this.opened.get(tab) !== opened ||
+      opened.saving ||
+      stamp === opened.read.stamp
+    ) {
+      return;
+    }
+    if (!opened.changed) {
+      await this.readAgain(tab, opened);
+      return;
+    }
+    if (!opened.outside) {
+      opened.outside = true;
+      for (const page of this.shell.pagesShowing(tab)) {
+        this.shell.notice(page, {
+          level: 'info',
+          message: strings.editor.changedOutside(opened.file),
+        });
+      }
+    }
+  }
+
+  private async readAgain(tab: string, opened: Opened): Promise<void> {
+    const version = (opened.read.text?.version ?? 0) + 1;
+    const read = await this.load(opened.file, version);
+    if (this.opened.get(tab) !== opened) {
+      return;
+    }
+    opened.read = read;
+    opened.outside = false;
+    opened.kept = undefined;
+    for (const page of this.shell.pagesShowing(tab)) {
+      this.changedTo(page, tab, opened, false);
+      this.postEditing(page, tab, opened);
+      if (read.text !== undefined) {
+        this.shell.post(page, {
+          type: 'editedText',
+          tab,
+          shown: read.text.shown(),
+          reloaded: true,
+        });
+      }
+    }
   }
 
   async receive(page: Page, message: EditingMessage): Promise<void> {
     const opened = this.opened.get(message.tab);
-    if (opened?.text === undefined) {
+    const text = opened?.read.text;
+    if (opened === undefined || text === undefined) {
       return;
     }
     switch (message.type) {
       case 'readEdited':
-        this.sendText(page, message.tab, opened, opened.text);
+        this.sendText(page, message.tab, opened, text);
         return;
       case 'editText':
-        this.edit(page, message.tab, opened, opened.text, message.update);
+        this.edit(page, message.tab, opened, text, message.update);
         return;
       case 'editState':
         if (
-          message.version === opened.text.version &&
+          message.version === text.version &&
           (JSON.stringify(message.state)?.length ?? 0) <= maxKeptState
         ) {
           opened.kept = { version: message.version, state: message.state };
         }
         return;
       case 'saveText':
-        await this.save(page, message.tab, message.overwriteReadOnly === true);
+        await this.save(page, message.tab, {
+          readOnly: message.overwriteReadOnly === true,
+          changed: message.overwriteChanged === true,
+        });
+        return;
+      case 'reloadEdited':
+        await this.readAgain(message.tab, opened);
         return;
       default:
         message satisfies never;
@@ -252,9 +338,29 @@ export class Editing {
     this.shell.namesChanged(page);
   }
 
-  async save(page: Page, tab: string, overwrite = false): Promise<boolean> {
+  private ask(
+    page: Page,
+    tab: string,
+    file: string,
+    message: CommanderToWebview,
+  ): void {
+    if (this.shell.pagesShowing(tab).includes(page)) {
+      this.shell.post(page, message);
+    } else {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.editor.askedInTab(file),
+      });
+    }
+  }
+
+  async save(
+    page: Page,
+    tab: string,
+    overwriting: Overwriting = {},
+  ): Promise<boolean> {
     const opened = this.opened.get(tab);
-    const text = opened?.text;
+    const text = opened?.read.text;
     if (opened === undefined || text === undefined) {
       return false;
     }
@@ -264,6 +370,14 @@ export class Editing {
         level: 'error',
         message: strings.editor.readOnly(file),
       });
+      return false;
+    }
+    if (
+      overwriting.changed !== true &&
+      (opened.outside ||
+        (await this.access.stampOf(file)) !== opened.read.stamp)
+    ) {
+      this.ask(page, tab, file, { type: 'askChangedOnDisk', tab });
       return false;
     }
     const checkpoint = text.checkpoint();
@@ -282,11 +396,17 @@ export class Editing {
       });
       return false;
     }
+    opened.saving = true;
     try {
-      await this.access.saveFile(file, written.bytes, overwrite);
+      await this.access.saveFile(
+        file,
+        written.bytes,
+        overwriting.readOnly === true,
+      );
     } catch (error) {
+      opened.saving = false;
       if (error instanceof ReadOnlyFile) {
-        this.shell.post(page, { type: 'askOverwrite', tab });
+        this.ask(page, tab, file, { type: 'askOverwrite', tab });
       } else {
         this.shell.notice(page, {
           level: 'error',
@@ -299,7 +419,13 @@ export class Editing {
       return false;
     }
     text.saved(checkpoint);
-    opened.made = false;
+    opened.read = {
+      ...opened.read,
+      made: false,
+      stamp: await this.access.stampOf(file),
+    };
+    opened.saving = false;
+    opened.outside = false;
     this.changedTo(page, tab, opened, text.changed());
     return true;
   }
@@ -309,6 +435,7 @@ export class Editing {
   }
 
   closed(tab: string): void {
+    this.opened.get(tab)?.stop();
     this.opened.delete(tab);
     this.opening.delete(tab);
   }

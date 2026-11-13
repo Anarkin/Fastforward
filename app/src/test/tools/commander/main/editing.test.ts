@@ -33,10 +33,20 @@ class EditorPage implements Page {
   }
 }
 
+const settled = async () => {
+  for (let round = 0; round < 5; round++) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+};
+
 function editing(files: Record<string, string | Uint8Array> = {}) {
   const saved: { file: string; bytes: string; overwrite: boolean }[] = [];
   const notices: string[] = [];
   const named: Page[] = [];
+  const showing: Page[] = [];
+  const stamps = new Map<string, number>();
+  const watchers: { file: string; onChange: () => void }[] = [];
+  let stamped = 0;
   const access: EditingAccess = {
     readFile: (file) => {
       const content = files[file];
@@ -67,7 +77,19 @@ function editing(files: Record<string, string | Uint8Array> = {}) {
         overwrite,
       });
       files[file] = Buffer.from(bytes);
+      stamps.set(file, ++stamped);
       return Promise.resolve('replaced');
+    },
+    stampOf: (file) =>
+      Promise.resolve(
+        files[file] === undefined ? undefined : String(stamps.get(file) ?? 0),
+      ),
+    watch: (file, onChange) => {
+      const watcher = { file, onChange };
+      watchers.push(watcher);
+      return () => {
+        watchers.splice(watchers.indexOf(watcher), 1);
+      };
     },
     codePage: () => Promise.resolve('windows-1252'),
     readOnly: (file) => file.endsWith('.defaults.json'),
@@ -77,8 +99,29 @@ function editing(files: Record<string, string | Uint8Array> = {}) {
       page.post({ type: 'tool', tool: 'commander', message }),
     notice: (_page, notice) => notices.push(plainOf(notice.message)),
     namesChanged: (page) => named.push(page),
+    pagesShowing: () => showing,
   });
-  return { edits, saved, notices, named };
+  const touched = async (file: string) => {
+    for (const watcher of watchers.filter((each) => each.file === file)) {
+      watcher.onChange();
+    }
+    await settled();
+  };
+  const changeOnDisk = async (file: string, content: string) => {
+    files[file] = content;
+    stamps.set(file, ++stamped);
+    await touched(file);
+  };
+  return {
+    edits,
+    saved,
+    notices,
+    named,
+    showing,
+    changeOnDisk,
+    touched,
+    watchers,
+  };
 }
 
 function editFrom(
@@ -191,8 +234,9 @@ suite('Editing a file', () => {
   });
 
   test('asks before saving over a read-only file, and saves over it once told to', async () => {
-    const { edits, saved } = editing({ 'read-only.txt': 'a\n' });
+    const { edits, saved, showing } = editing({ 'read-only.txt': 'a\n' });
     const page = new EditorPage();
+    showing.push(page);
     await edits.show(page, '1', 'read-only.txt');
     await edits.receive(page, { type: 'readEdited', tab: '1' });
     await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'b' }));
@@ -302,5 +346,71 @@ suite('Editing a file', () => {
     await edits.show(page, '1', 'a.txt');
     await edits.receive(page, { type: 'readEdited', tab: '1' });
     assert.strictEqual(page.last('editedText')?.shown.text, 'two\n');
+  });
+
+  test('reads the file again once it changes on disk while it has no changes here, giving the pages showing it the new text in a version of its own, the cursor kept', async () => {
+    const { edits, changeOnDisk, showing } = editing({ 'a.txt': 'one\n' });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    await changeOnDisk('a.txt', 'two\nlines\n');
+    assert.strictEqual(page.last('editedText')?.shown.text, 'two\nlines\n');
+    assert.strictEqual(page.last('editedText')?.reloaded, true);
+    assert.strictEqual(page.last('editing')?.version, 1);
+    assert.strictEqual(page.last('editedText')?.shown.version, 1);
+  });
+
+  test('keeps the changes made here once the file changes on disk, saying so, and asks before saving over it, saving over it or reading it again as told', async () => {
+    const { edits, changeOnDisk, showing, notices, saved } = editing({
+      'a.txt': 'one\n',
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'x' }));
+    await changeOnDisk('a.txt', 'two\n');
+    assert.strictEqual(page.last('editedText')?.shown.text, 'one\n');
+    assert.deepStrictEqual(notices, [
+      '"a.txt" changed on disk while edited here. Saving it writes over those changes.',
+    ]);
+    await edits.receive(page, { type: 'saveText', tab: '1' });
+    assert.deepStrictEqual(page.last('askChangedOnDisk'), {
+      type: 'askChangedOnDisk',
+      tab: '1',
+    });
+    assert.deepStrictEqual(saved, []);
+    await edits.receive(page, {
+      type: 'saveText',
+      tab: '1',
+      overwriteChanged: true,
+    });
+    assert.deepStrictEqual(
+      saved.map(({ bytes }) => bytes),
+      ['xone\n'],
+    );
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'y' }));
+    await changeOnDisk('a.txt', 'three\n');
+    await edits.receive(page, { type: 'reloadEdited', tab: '1' });
+    assert.strictEqual(page.last('editedText')?.shown.text, 'three\n');
+    assert.strictEqual(edits.unsaved('1'), false);
+    assert.strictEqual(page.last('textChanged')?.changed, false);
+  });
+
+  test('reads nothing again for the change its own saving makes to the file, and stops watching it once its tab is closed', async () => {
+    const { edits, touched, showing, watchers } = editing({ 'a.txt': 'one\n' });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'x' }));
+    await edits.receive(page, { type: 'saveText', tab: '1' });
+    const sent = page.messages.length;
+    await touched('a.txt');
+    assert.deepStrictEqual(page.messages.slice(sent), []);
+    assert.strictEqual(watchers.length, 1);
+    edits.closed('1');
+    assert.strictEqual(watchers.length, 0);
   });
 });

@@ -215,7 +215,11 @@ interface CommanderActions {
     version: number,
     state: unknown,
   ) => void;
-  readonly saveText: (tab: string, overwriteReadOnly?: boolean) => void;
+  readonly saveText: (
+    tab: string,
+    overwrite?: { readonly readOnly?: boolean; readonly changed?: boolean },
+  ) => void;
+  readonly reloadEdited: (tab: string) => void;
   readonly keptEditor: (tab: string) => KeptEditor | undefined;
   readonly keepEditor: (tab: string, kept: KeptEditor) => void;
   readonly openRepository: (side: Side, name: string) => void;
@@ -361,7 +365,7 @@ function isViewerStream(message: CommanderToWebview): message is ToViewer {
 
 const editorStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
   ToEditor['type']
->(['editedText', 'askOverwrite']);
+>(['editedText', 'askOverwrite', 'askChangedOnDisk']);
 
 function isEditorStream(message: CommanderToWebview): message is ToEditor {
   return editorStreams.has(message.type);
@@ -1042,12 +1046,14 @@ export function createCommanderStore(
       editText: (tab, update) => post({ type: 'editText', tab, update }),
       keepEditState: (tab, version, state) =>
         post({ type: 'editState', tab, version, state }),
-      saveText: (tab, overwriteReadOnly) =>
+      saveText: (tab, overwrite) =>
         post({
           type: 'saveText',
           tab,
-          ...(overwriteReadOnly === true && { overwriteReadOnly: true }),
+          ...(overwrite?.readOnly === true && { overwriteReadOnly: true }),
+          ...(overwrite?.changed === true && { overwriteChanged: true }),
         }),
+      reloadEdited: (tab) => post({ type: 'reloadEdited', tab }),
       openRepository: (side, name) =>
         onDisk(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),
