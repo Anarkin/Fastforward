@@ -1,23 +1,6 @@
 import * as path from 'node:path';
 import { AutoFetch, fetchOrder, type Timer } from './autoFetch';
 import { readUpstream, remoteDefaultBranches } from './cli/branches';
-import {
-  compareFiles,
-  comparePatch,
-  comparePatchArgs,
-  leftOutOf,
-  newSideUnchanged,
-  pathspecs,
-  readPatch,
-  showFiles,
-  showPatch,
-  showPatchArgs,
-  commitPatch,
-  whitespaceOnlyChanges,
-  withoutFilesInside,
-  type PatchScope,
-  type ReadPatch,
-} from './cli/diff';
 import { gitErrorText } from './cli/errorText';
 import { keptGits } from './cli/run';
 import {
@@ -30,17 +13,7 @@ import {
   filesAlike,
 } from './cli/compare';
 import { watchFiles } from './compareWatch';
-import { BlobTexts } from './cli/blobTexts';
-import {
-  listIndex,
-  listTree,
-  readBlobs,
-  readFile,
-  readImage,
-  viewedFile,
-  uniquePaths,
-} from './cli/files';
-import { stashFiles, stashPatch } from './cli/stashes';
+import { readImage, viewedFile } from './cli/files';
 import {
   findCommit,
   findCommits,
@@ -75,13 +48,10 @@ import {
   type Watcher,
 } from './cli/watch';
 import {
-  stagedPatch,
   uncommittedCount,
   UntrackedPatches,
   workingTreeFiles,
-  workingTreePatch,
   type WorkingTree,
-  type WorkingTreeDiff,
 } from './cli/workingTree';
 import {
   listWorktrees,
@@ -107,10 +77,9 @@ import {
   type Fetched,
   type Pushed,
   type Notify,
-  type RepositoryAt,
 } from './operations';
 import { defaultBookmarks, fingerprint, remoteTagRefs, sameTags } from './refs';
-import { comparedOf, shownSide, workingTreeSide } from '../shared/comparisons';
+import { comparedOf, workingTreeSide } from '../shared/comparisons';
 import { isFullHash, shortHash } from '../shared/hashes';
 import { bookmarkedCommits, hasRef } from '../shared/refNames';
 import { imageSourceOf, imageType } from '../shared/images';
@@ -118,25 +87,18 @@ import {
   commitPageSize,
   commitPagesAsked,
   diffLayouts,
-  includedChanges,
-  leftOutChanges,
   workingTreeHash,
-  type ChangeArea,
   type CheckoutTarget,
   type CommitResults,
   type CommitSearch,
   type Direction,
-  type FileChange,
-  type LeftOut,
   type RepositoryInfo,
   type TabMessage,
   type TextRequest,
   type GitToHost,
-  type GitToWebview,
   type WorktreeInfo,
 } from '../shared/protocol';
 import { isColumnWidths } from '../shared/settings';
-import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import {
   unattachedShell,
   type Page,
@@ -154,7 +116,6 @@ import {
 } from '../../../shell/main/storage';
 import { isBookmark, type GitStorage } from './storage';
 import {
-  changesOf,
   commitsMessage,
   expandMerges,
   firstPage,
@@ -182,51 +143,28 @@ import {
   unselect,
   type TabState,
 } from './tabState';
+import {
+  type RunningOn,
+  type TabWork,
+  type ReadRefs,
+  type GitPost,
+  type Session,
+  type Comparing,
+  type Fetching,
+  type Refresh,
+  type Fetchable,
+  type Context,
+  notInHistory,
+  uniqueTexts,
+  shownCommit,
+} from './tabContext';
+import { Diffs } from './diffs';
 
 const maxKeptUntrackedChars = 32_000_000;
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 const everything: Changed = { refs: true, workingTree: true };
 const nothing: Changed = { refs: false, workingTree: false };
 const refsAlone: Changed = { refs: true, workingTree: false };
-
-type RunningOn = 'pushingTag' | 'pullingBranch' | 'pushingBranch';
-
-interface TabWork extends TabState {
-  preloading: Promise<void> | undefined;
-  loadingHistory: Promise<void> | undefined;
-  readingHistory: AbortController | undefined;
-  refreshing: boolean;
-  refreshAgain: Map<Session | undefined, Context>;
-  changedAgain: Changed;
-  refreshedAgain: PromiseWithResolvers<void> | undefined;
-  loadsAgain: Refresh[];
-  refreshError: Sentence | undefined;
-  isRepository: boolean | undefined;
-  refused: boolean;
-  selection: number | undefined;
-  navigating: Promise<void>;
-  movingHead: Promise<void>;
-  runningOn: Record<RunningOn, Set<string>>;
-  diffRequest: number;
-  diffOwed: boolean;
-  loadingFiles: AbortController;
-  loadingDiff: AbortController;
-  prefetching: Prefetching | undefined;
-  readonly closed: AbortController;
-  untrackedPatches: UntrackedPatches;
-  indexPaths: readonly string[] | undefined;
-  refsRead: number;
-  repositoryShown: number;
-}
-
-interface Prefetching {
-  readonly hash: string;
-  readonly controller: AbortController;
-}
-
-interface ReadRefs extends Refs {
-  readonly read: number;
-}
 
 export type FolderPurpose = 'init' | 'clone';
 
@@ -238,51 +176,6 @@ export interface GitHost {
     from?: string,
   ): Promise<string | undefined>;
   clipboardText(): Promise<string>;
-}
-
-type GitPost = GitToWebview | ToWebviewOf<'notice'>;
-
-interface Session {
-  readonly page: Page;
-  readonly post: (message: GitPost) => void;
-  readonly disposed: boolean;
-  watcher: Watcher | undefined;
-  watching: AbortController | undefined;
-  comparing?: Comparing;
-}
-
-interface Comparing {
-  readonly tab: string;
-  readonly compared: Compared;
-  running: AbortController | undefined;
-  readonly stop: () => void;
-  version: number;
-}
-
-interface Fetching {
-  readonly fetched: Promise<Fetched>;
-  readonly interactive: boolean;
-}
-
-interface Refresh {
-  readonly run: () => Promise<void>;
-  readonly done: PromiseWithResolvers<void>;
-}
-
-interface EarlyPatch {
-  readonly patch: Promise<ReadPatch | undefined>;
-  readonly loading: AbortController;
-  readonly ignoreWhitespace: boolean;
-}
-
-interface Fetchable extends RepositoryAt {
-  readonly repository: string;
-}
-
-interface Context extends Fetchable {
-  readonly tab: TabWork;
-  readonly session: Session | undefined;
-  readonly post: (message: GitPost) => void;
 }
 
 const silent = () => undefined;
@@ -322,7 +215,6 @@ export class GitTool implements Tool<'git'> {
   private readonly sessions = new WeakMap<Page, Session>();
   private cloningIn: Session | undefined;
   private readonly tabStates = new Map<string, TabWork>();
-  private readonly blobTexts = new BlobTexts();
   private readonly repositories = new Map<string, string>();
   private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
   private readonly worktreeListings = new Map<string, number>();
@@ -340,6 +232,7 @@ export class GitTool implements Tool<'git'> {
   private collapseMerges: boolean;
   private soloDefault: boolean;
   private initAsked: string | undefined;
+  private readonly diffs: Diffs;
 
   constructor(
     private readonly log: Log,
@@ -355,6 +248,7 @@ export class GitTool implements Tool<'git'> {
   ) {
     this.collapseMerges = storage.collapseMerges;
     this.soloDefault = storage.soloDefault;
+    this.diffs = new Diffs(storage, () => this.shell);
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
       () => fetchOrder(this.repositoryTabs, this.shownRepositories()),
@@ -978,7 +872,7 @@ export class GitTool implements Tool<'git'> {
         const context = await this.context(session);
         this.staleDiffs(context, (tab) => tab.path !== undefined);
         if (context?.tab.hash !== undefined && context.tab.path !== undefined) {
-          await this.sendDiff(context, context.tab.hash);
+          await this.diffs.sendDiff(context, context.tab.hash);
         }
         return;
       }
@@ -995,7 +889,7 @@ export class GitTool implements Tool<'git'> {
         const context = await this.context(session);
         this.staleDiffs(context, () => true);
         if (context?.tab.hash !== undefined) {
-          await this.sendDiff(context, context.tab.hash);
+          await this.diffs.sendDiff(context, context.tab.hash);
         }
         return;
       }
@@ -1134,7 +1028,7 @@ export class GitTool implements Tool<'git'> {
         break;
       case 'loadTree':
         if (this.isSelected(context, message.hash)) {
-          await this.sendTree(context, message.hash);
+          await this.diffs.sendTree(context, message.hash);
         }
         break;
       case 'jump': {
@@ -1184,33 +1078,33 @@ export class GitTool implements Tool<'git'> {
           break;
         }
         if (!pickable(context.tab, message.hash)) {
-          this.notInHistory(context, message.hash);
+          notInHistory(context, message.hash);
           break;
         }
         this.visit(context, message.hash, message.replace);
         select(context.tab, message.hash);
         this.rememberSelection(context);
-        await this.sendCommit(context);
+        await this.diffs.sendCommit(context);
         break;
       case 'selectFile':
         if (this.isSelected(context, message.hash)) {
           context.tab.path = message.path;
           context.tab.area = message.area;
           this.rememberSelection(context);
-          await this.sendDiff(context, message.hash);
+          await this.diffs.sendDiff(context, message.hash);
         }
         break;
       case 'loadTexts':
         if (this.isSelected(context, message.hash)) {
-          await this.sendTexts(context, message);
+          await this.diffs.sendTexts(context, message);
         }
         break;
       case 'prefetchDiff':
-        await this.prefetchDiff(context, message.hash);
+        await this.diffs.prefetchDiff(context, message.hash);
         break;
       case 'prefetchTexts':
         if (context.tab.prefetching?.hash === message.hash) {
-          await this.prefetchTexts(context, message.hash, message.texts);
+          await this.diffs.prefetchTexts(context, message.hash, message.texts);
         }
         break;
       case 'viewFile':
@@ -1218,7 +1112,7 @@ export class GitTool implements Tool<'git'> {
         break;
       case 'loadFileDiff':
         if (this.isSelected(context, message.hash)) {
-          await this.sendFileDiff(
+          await this.diffs.sendFileDiff(
             context,
             message.hash,
             message.path,
@@ -1233,19 +1127,12 @@ export class GitTool implements Tool<'git'> {
     if (stillThere(context.tab)(hash)) {
       return true;
     }
-    this.notInHistory(context, hash);
+    notInHistory(context, hash);
     return false;
   }
 
   private isSelected(context: Context, hash: string): boolean {
     return this.known(context, hash) && hash === context.tab.hash;
-  }
-
-  private notInHistory(context: Context, hash: string): void {
-    context.post({
-      type: 'error',
-      message: strings.commits.notInHistory(hash),
-    });
   }
 
   private async openRepositories(
@@ -1581,7 +1468,7 @@ export class GitTool implements Tool<'git'> {
     const resend = tab.diffStale && tab.opened;
     tab.diffStale = false;
     if (resend && tab.hash !== undefined) {
-      await this.sendDiff(context, tab.hash);
+      await this.diffs.sendDiff(context, tab.hash);
     }
     const firstOpen = !context.tab.opened;
     context.tab.opened = true;
@@ -1625,7 +1512,7 @@ export class GitTool implements Tool<'git'> {
             } else if (context.tab.shownStale) {
               await this.sendShownHistory(context, { keepPlace: true });
             }
-            await this.sendCommit(context);
+            await this.diffs.sendCommit(context);
           })(),
           this.sendWorkingTree(context),
         ]);
@@ -2131,7 +2018,7 @@ export class GitTool implements Tool<'git'> {
       if (isFullHash(target.hash) && context.tab.fullHistory.has(target.hash)) {
         return true;
       }
-      this.notInHistory(context, target.hash);
+      notInHistory(context, target.hash);
       return false;
     }
     const { refs } = await readRefs(context.gitPath, context.root);
@@ -2904,7 +2791,7 @@ export class GitTool implements Tool<'git'> {
         selection: picked,
       });
     }
-    await this.sendCommit(context);
+    await this.diffs.sendCommit(context);
   }
 
   private async showUpstream(
@@ -3038,12 +2925,12 @@ export class GitTool implements Tool<'git'> {
     const { hash } = context.tab;
     const unmeasured = hash === workingTreeHash && !measured;
     if (hash !== undefined && workingTreeSide(hash) && !unmeasured) {
-      await this.sendCommit(context, workingTree);
+      await this.diffs.sendCommit(context, workingTree);
       if (
         context.tab.shown.tree?.hash === hash &&
         shownCommit(hash) === undefined
       ) {
-        await this.sendTree(context, hash, workingTree);
+        await this.diffs.sendTree(context, hash, workingTree);
       }
     }
   }
@@ -3370,609 +3257,6 @@ export class GitTool implements Tool<'git'> {
       graph: graph.rows(start, commits.length),
     });
   }
-
-  private async sendCommit(
-    context: Context,
-    knownWorkingTree?: WorkingTree,
-  ): Promise<void> {
-    const { tab } = context;
-    const { hash } = tab;
-    if (!hash) {
-      return;
-    }
-    const refreshing = knownWorkingTree !== undefined;
-    if (!refreshing) {
-      tab.loadingFiles.abort();
-      tab.loadingDiff.abort();
-      tab.loadingFiles = new AbortController();
-    }
-    const { signal } = tab.loadingFiles;
-    let files: readonly FileChange[];
-    let staged: readonly FileChange[] | undefined;
-    let all: readonly FileChange[] | undefined;
-    let workingTree: WorkingTree | undefined;
-    let early: EarlyPatch | undefined;
-    try {
-      if (!stillThere(tab)(hash)) {
-        this.notInHistory(context, hash);
-        return;
-      }
-      if (workingTreeSide(hash)) {
-        workingTree =
-          (hash === workingTreeHash ? knownWorkingTree : undefined) ??
-          (await workingTreeFiles(
-            context.gitPath,
-            context.root,
-            workingTreeDiffOf(hash),
-            signal,
-            knownWorkingTree?.listedUntracked,
-          ));
-        files = workingTree.files;
-        staged = workingTree.staged;
-        all = workingTree.all?.files;
-      } else {
-        early = this.earlyPatch(context, hash, signal);
-        files = await this.commitFiles(context, hash, signal);
-      }
-    } catch (error) {
-      early?.loading.abort();
-      if (signal.aborted) {
-        return;
-      }
-      throw error;
-    }
-    if (tab.hash !== hash || signal.aborted) {
-      early?.loading.abort();
-      return;
-    }
-    context.tab.changedFiles = new Map(files.map((file) => [file.path, file]));
-    context.tab.stagedFiles = new Map(
-      (staged ?? []).map((file) => [file.path, file]),
-    );
-    context.tab.allFiles =
-      all === undefined
-        ? undefined
-        : new Map(all.map((file) => [file.path, file]));
-    if (workingTree) {
-      context.tab.workingTree = workingTree;
-    }
-    const shownFiles = context.tab.shown.files;
-    const unchanged =
-      shownFiles?.hash === hash &&
-      JSON.stringify([shownFiles.files, shownFiles.staged, shownFiles.all]) ===
-        JSON.stringify([files, staged, all]);
-    if (!(refreshing && unchanged)) {
-      context.post({
-        type: 'files',
-        hash,
-        files,
-        ...(staged === undefined ? {} : { staged }),
-        ...(all === undefined ? {} : { all }),
-      });
-    }
-    await this.sendDiff(context, hash, refreshing, early);
-  }
-
-  private earlyPatch(
-    context: Context,
-    hash: string,
-    signal: AbortSignal,
-  ): EarlyPatch | undefined {
-    if (context.tab.path !== undefined) {
-      return undefined;
-    }
-    const loading = new AbortController();
-    const { ignoreWhitespace } = this.storage;
-    const patch = this.budgetedPatch(
-      context,
-      hash,
-      AbortSignal.any([signal, loading.signal]),
-      { ignoreWhitespace },
-    ).catch(() => undefined);
-    return { patch, loading, ignoreWhitespace };
-  }
-
-  private budgetedPatch(
-    context: Context,
-    hash: string,
-    signal: AbortSignal,
-    scope: PatchScope = { ignoreWhitespace: this.storage.ignoreWhitespace },
-  ): Promise<ReadPatch> {
-    const compared = comparedOf(hash);
-    const stash = context.tab.stashes.get(hash);
-    if (
-      compared === undefined &&
-      stash === undefined &&
-      pathspecs(scope).length === 0
-    ) {
-      return commitPatch(context.gitPath, context.root, hash, scope, signal);
-    }
-    const commands = compared
-      ? [comparePatchArgs(compared.from, compared.to, scope)]
-      : stash
-        ? [
-            showPatchArgs(stash.commit, scope),
-            ...(stash.untracked === undefined
-              ? []
-              : [showPatchArgs(stash.untracked, scope)]),
-          ]
-        : [showPatchArgs(hash, scope)];
-    return readPatch(
-      context.gitPath,
-      context.root,
-      commands.map((args) => [...args, ...pathspecs(scope)]),
-      signal,
-    );
-  }
-
-  private async budgetedFilePatch(
-    context: Context,
-    hash: string,
-    change: FileChange,
-    scope: PatchScope,
-    signal: AbortSignal,
-  ): Promise<{ patch: string; leftOut: readonly LeftOut[] | undefined }> {
-    const read = await this.budgetedPatch(context, hash, signal, scope);
-    void this.shell.track(read.exited);
-    const leftOut = leftOutOf(read, [change]);
-    return {
-      patch: withoutFilesInside(read.patch, scope),
-      leftOut: leftOut.length === 0 ? undefined : leftOut,
-    };
-  }
-
-  private async wholePatch(
-    context: Context,
-    hash: string,
-    files: readonly FileChange[],
-    early: Promise<ReadPatch | undefined> | undefined,
-    signal: AbortSignal,
-  ): Promise<{ patch: string; leftOut: readonly LeftOut[] }> {
-    if (workingTreeSide(hash)) {
-      const patch = await this.patchOf(
-        context,
-        hash,
-        {
-          include: includedChanges(files),
-          ignoreWhitespace: this.storage.ignoreWhitespace,
-        },
-        signal,
-      );
-      return { patch, leftOut: leftOutChanges(files) };
-    }
-    const read =
-      (await early) ?? (await this.budgetedPatch(context, hash, signal));
-    void this.shell.track(read.exited);
-    return { patch: read.patch, leftOut: leftOutOf(read, files) };
-  }
-
-  private commitFiles(
-    context: Context,
-    hash: string,
-    signal: AbortSignal,
-  ): Promise<FileChange[]> {
-    const compared = comparedOf(hash);
-    const stash = context.tab.stashes.get(hash);
-    return compared
-      ? compareFiles(
-          context.gitPath,
-          context.root,
-          compared.from,
-          compared.to,
-          signal,
-        )
-      : stash
-        ? stashFiles(context.gitPath, context.root, stash, signal)
-        : showFiles(context.gitPath, context.root, hash, signal);
-  }
-
-  private async sendFileDiff(
-    context: Context,
-    hash: string,
-    file: string,
-    diff: number,
-    shownPatch?: string,
-  ): Promise<void> {
-    const change = changesOf(context.tab).get(file);
-    const { ignoreWhitespace } = this.storage;
-    const scope = {
-      path: file,
-      oldPath: change?.oldPath,
-      entireFile: this.showsEntire(context, file),
-    };
-    let patch = await this.patchOf(context, hash, {
-      ...scope,
-      ignoreWhitespace,
-    });
-    const whitespaceOnly =
-      ignoreWhitespace &&
-      change !== undefined &&
-      whitespaceOnlyChanges(patch, [change]).length > 0;
-    if (scope.entireFile && whitespaceOnly) {
-      patch = newSideUnchanged(await this.patchOf(context, hash, scope));
-    }
-    if (context.tab.hash === hash && patch !== shownPatch) {
-      context.post({
-        type: 'fileDiff',
-        hash,
-        path: file,
-        patch,
-        diff,
-        ...(whitespaceOnly ? { whitespaceOnly } : {}),
-      });
-    }
-  }
-
-  private showsEntire(context: Context, file: string | undefined): boolean {
-    return (
-      file !== undefined &&
-      file === context.tab.path &&
-      this.storage.showEntireFile
-    );
-  }
-
-  private async sendTexts(
-    context: Context,
-    { hash, diff, texts: asked }: Extract<TabMessage, { type: 'loadTexts' }>,
-  ): Promise<void> {
-    const { gitPath, root } = context;
-    const texts = uniqueTexts(asked);
-    const fromDisk = (request: TextRequest) =>
-      context.tab.area !== 'staged' && request.side === workingTreeSide(hash);
-    const blobs = await this.blobTexts.read(
-      texts
-        .filter((request) => !fromDisk(request) && isFullHash(request.blob))
-        .map(({ blob }) => blob),
-      (ids) => readBlobs(gitPath, root, ids),
-    );
-    const read = await Promise.all(
-      texts.map(async (request) => {
-        if (!fromDisk(request)) {
-          return {
-            ...request,
-            text: isFullHash(request.blob)
-              ? blobs.get(request.blob)
-              : undefined,
-          };
-        }
-        const onDisk =
-          (request.side === 'old'
-            ? changesOf(context.tab).get(request.path)?.oldPath
-            : undefined) ?? request.path;
-        if (!(await this.inWorkingTree(context, onDisk))) {
-          return { ...request, text: undefined };
-        }
-        const file = await readFile(gitPath, root, undefined, onDisk);
-        return { ...request, text: file.binary ? undefined : file.content };
-      }),
-    );
-    if (context.tab.hash === hash) {
-      context.post({ type: 'texts', hash, diff, texts: read });
-    }
-  }
-
-  private async prefetchDiff(context: Context, hash: string): Promise<void> {
-    const { tab } = context;
-    if (
-      tab.path !== undefined ||
-      !isFullHash(hash) ||
-      workingTreeSide(hash) ||
-      comparedOf(hash) !== undefined ||
-      tab.stashes.has(hash) ||
-      !pickable(tab, hash)
-    ) {
-      return;
-    }
-    tab.prefetching?.controller.abort();
-    const prefetching = { hash, controller: new AbortController() };
-    tab.prefetching = prefetching;
-    const { signal } = prefetching.controller;
-    let read: ReadPatch;
-    try {
-      read = await this.budgetedPatch(context, hash, signal);
-    } catch (error) {
-      if (signal.aborted) {
-        return;
-      }
-      throw error;
-    }
-    void this.shell.track(read.exited);
-    if (!signal.aborted) {
-      context.post({ type: 'prefetchedDiff', hash, patch: read.patch });
-    }
-  }
-
-  private async prefetchTexts(
-    context: Context,
-    hash: string,
-    asked: readonly TextRequest[],
-  ): Promise<void> {
-    const { gitPath, root } = context;
-    const texts = uniqueTexts(asked).filter(({ blob }) => isFullHash(blob));
-    const blobs = await this.blobTexts.read(
-      texts.map(({ blob }) => blob),
-      (ids) => readBlobs(gitPath, root, ids),
-    );
-    const { prefetching } = context.tab;
-    if (prefetching?.hash === hash && !prefetching.controller.signal.aborted) {
-      context.post({
-        type: 'prefetchedTexts',
-        hash,
-        texts: texts.map((request) => ({
-          ...request,
-          text: blobs.get(request.blob),
-        })),
-      });
-    }
-  }
-
-  private async patchOf(
-    context: Context,
-    hash: string,
-    scope: PatchScope,
-    signal?: AbortSignal,
-  ): Promise<string> {
-    const { gitPath, root } = context;
-    if (!workingTreeSide(hash)) {
-      const compared = comparedOf(hash);
-      const stash = context.tab.stashes.get(hash);
-      return compared
-        ? comparePatch(gitPath, root, compared.from, compared.to, scope, signal)
-        : stash
-          ? stashPatch(gitPath, root, stash, scope, signal)
-          : showPatch(gitPath, root, hash, scope, signal);
-    }
-    if (context.tab.area === 'staged') {
-      return stagedPatch(gitPath, root, scope, signal);
-    }
-    const workingTree =
-      context.tab.workingTree ??
-      (await workingTreeFiles(gitPath, root, workingTreeDiffOf(hash), signal));
-    return workingTreePatch(
-      gitPath,
-      root,
-      (context.tab.area === undefined ? workingTree.all : undefined) ??
-        workingTree,
-      scope,
-      context.tab.untrackedPatches,
-      signal,
-    );
-  }
-
-  private async inWorkingTree(
-    context: Context,
-    file: string,
-  ): Promise<boolean> {
-    const { tab } = context;
-    if (
-      [tab.changedFiles, tab.stagedFiles].some((changes) =>
-        [...changes.values()].some(
-          (change) => change.path === file || change.oldPath === file,
-        ),
-      ) ||
-      tab.workingTree?.untracked.includes(file)
-    ) {
-      return true;
-    }
-    tab.indexPaths ??= await listIndex(context.gitPath, context.root);
-    return tab.indexPaths.includes(file);
-  }
-
-  private async sendTree(
-    context: Context,
-    hash: string,
-    refreshed?: WorkingTree,
-  ): Promise<void> {
-    const { gitPath, root } = context;
-    const commit = shownCommit(hash);
-    let paths: string[];
-    if (refreshed === undefined || commit !== undefined) {
-      paths = await listTree(gitPath, root, commit);
-    } else {
-      context.tab.indexPaths ??= await listIndex(gitPath, root);
-      paths = uniquePaths(refreshed.untracked, context.tab.indexPaths);
-    }
-    if (context.tab.hash !== hash) {
-      return;
-    }
-    const shown = context.tab.shown.tree;
-    const unchanged =
-      refreshed !== undefined &&
-      shown?.hash === hash &&
-      shown.paths.length === paths.length &&
-      shown.paths.every((file, index) => file === paths[index]);
-    if (!unchanged) {
-      context.post({ type: 'tree', hash, paths });
-    }
-  }
-
-  private async sendDiff(
-    context: Context,
-    hash: string,
-    refreshing = false,
-    early?: EarlyPatch,
-  ): Promise<void> {
-    const { tab } = context;
-    const { path: file, area } = tab;
-    const request = ++tab.diffRequest;
-    if (!refreshing) {
-      tab.diffOwed = true;
-    }
-    tab.loadingDiff.abort();
-    const loading = new AbortController();
-    tab.loadingDiff = loading;
-    if (early) {
-      if (
-        file === undefined &&
-        early.ignoreWhitespace === this.storage.ignoreWhitespace
-      ) {
-        loading.signal.addEventListener('abort', () => early.loading.abort(), {
-          once: true,
-        });
-      } else {
-        early.loading.abort();
-      }
-    }
-    const stale = () =>
-      tab.diffRequest !== request ||
-      tab.hash !== hash ||
-      tab.path !== file ||
-      tab.area !== area;
-    const changes = changesOf(tab);
-    const change = file === undefined ? undefined : changes.get(file);
-    if (file !== undefined && !change) {
-      const commit = shownCommit(hash);
-      const { content, binary, id, link } =
-        commit === undefined && !(await this.inWorkingTree(context, file))
-          ? { content: '', binary: false, id: undefined, link: undefined }
-          : await readFile(context.gitPath, context.root, commit, file);
-      const shownDiff = context.tab.shown.diff;
-      const unchanged =
-        !tab.diffOwed &&
-        shownDiff?.type === 'fileContent' &&
-        shownDiff.hash === hash &&
-        shownDiff.path === file &&
-        shownDiff.area === area &&
-        shownDiff.content === content &&
-        shownDiff.binary === binary &&
-        shownDiff.id === id &&
-        shownDiff.link === link;
-      if (!stale() && !unchanged) {
-        tab.diffOwed = false;
-        context.post({
-          type: 'fileContent',
-          hash,
-          path: file,
-          ...areaOf(area),
-          content,
-          binary,
-          ...(id === undefined ? {} : { id }),
-          ...(link ? { link } : {}),
-        });
-      }
-      return;
-    }
-    const { ignoreWhitespace } = this.storage;
-    let patch: string;
-    let leftOut: readonly LeftOut[] | undefined;
-    let whitespaceOnly: string[] = [];
-    try {
-      const scope = { path: file, oldPath: change?.oldPath };
-      const entireFile = this.showsEntire(context, file);
-      const selectedLeftOut = change ? leftOutWhenSelected(change) : [];
-      if (file === undefined) {
-        ({ patch, leftOut } = await this.wholePatch(
-          context,
-          hash,
-          [...changes.values()],
-          early?.ignoreWhitespace === this.storage.ignoreWhitespace
-            ? early.patch
-            : undefined,
-          loading.signal,
-        ));
-      } else if (selectedLeftOut.length > 0) {
-        patch = '';
-        leftOut = selectedLeftOut;
-      } else if (change && !workingTreeSide(hash)) {
-        ({ patch, leftOut } = await this.budgetedFilePatch(
-          context,
-          hash,
-          change,
-          { ...scope, entireFile, ignoreWhitespace },
-          loading.signal,
-        ));
-      } else {
-        patch = await this.patchOf(
-          context,
-          hash,
-          { ...scope, entireFile, ignoreWhitespace },
-          loading.signal,
-        );
-      }
-      if (ignoreWhitespace) {
-        const deferred = new Set(leftOut?.map((out) => out.path));
-        whitespaceOnly = whitespaceOnlyChanges(
-          patch,
-          (change ? [change] : [...changes.values()]).filter(
-            (shown) => !deferred.has(shown.path),
-          ),
-        );
-      }
-      if (entireFile && whitespaceOnly.length > 0) {
-        patch = newSideUnchanged(
-          await this.patchOf(
-            context,
-            hash,
-            { ...scope, entireFile },
-            loading.signal,
-          ),
-        );
-      }
-    } catch (error) {
-      if (loading.signal.aborted) {
-        return;
-      }
-      throw error;
-    }
-    const shownDiff = context.tab.shown.diff;
-    const unchanged =
-      !tab.diffOwed &&
-      shownDiff?.type === 'diff' &&
-      shownDiff.hash === hash &&
-      shownDiff.path === file &&
-      shownDiff.area === area &&
-      shownDiff.patch === patch &&
-      JSON.stringify(shownDiff.leftOut) === JSON.stringify(leftOut) &&
-      JSON.stringify(shownDiff.whitespaceOnly ?? []) ===
-        JSON.stringify(whitespaceOnly);
-    if (stale()) {
-      return;
-    }
-    if (!unchanged) {
-      tab.diffOwed = false;
-      context.post({
-        type: 'diff',
-        hash,
-        path: file,
-        ...areaOf(area),
-        patch,
-        ...(leftOut === undefined ? {} : { leftOut }),
-        ...(whitespaceOnly.length === 0 ? {} : { whitespaceOnly }),
-      });
-    } else {
-      await this.sendFileDiffsAgain(context, hash);
-    }
-  }
-
-  private async sendFileDiffsAgain(
-    context: Context,
-    hash: string,
-  ): Promise<void> {
-    const { shown } = context.tab;
-    const changes = changesOf(context.tab);
-    await Promise.all(
-      [...(shown.fileDiffs?.values() ?? [])]
-        .filter((sent) => sent.hash === hash && changes.has(sent.path))
-        .map((sent) =>
-          this.sendFileDiff(context, hash, sent.path, sent.diff, sent.patch),
-        ),
-    );
-  }
-}
-
-function leftOutWhenSelected(change: FileChange): LeftOut[] {
-  const measured = !change.uncounted || change.bytes !== undefined;
-  return measured ? leftOutChanges([change]) : [];
-}
-
-function workingTreeDiffOf(hash: string): WorkingTreeDiff | undefined {
-  const compared = comparedOf(hash);
-  if (!compared) {
-    return undefined;
-  }
-  return compared.to === workingTreeHash
-    ? { base: compared.from, reverse: false }
-    : { base: compared.to, reverse: true };
 }
 
 function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
@@ -4006,14 +3290,6 @@ function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
     default:
       return false;
   }
-}
-
-function uniqueTexts(requests: readonly TextRequest[]): TextRequest[] {
-  return [
-    ...new Map(
-      requests.map((request) => [`${request.side}\0${request.path}`, request]),
-    ).values(),
-  ];
 }
 
 function isPathAsked(value: unknown): value is string {
@@ -4200,15 +3476,6 @@ function wellFormedInTab(message: TabMessage): boolean {
     default:
       return false;
   }
-}
-
-function areaOf(area: ChangeArea | undefined): { area?: ChangeArea } {
-  return area === undefined ? {} : { area };
-}
-
-function shownCommit(hash: string): string | undefined {
-  const shown = shownSide(hash);
-  return shown === workingTreeHash ? undefined : shown;
 }
 
 async function allSettled(

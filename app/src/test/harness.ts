@@ -618,17 +618,32 @@ export function stubMethod(
     ...args: unknown[]
   ) => Promise<unknown>,
 ): void {
-  const original: unknown = Reflect.get(view, name);
+  const holder = holderOf(view, name);
+  const original: unknown = Reflect.get(holder, name);
   assert.ok(typeof original === 'function', name);
-  Reflect.set(view, name, (...args: unknown[]) =>
+  Reflect.set(holder, name, (...args: unknown[]) =>
     replace(
       (...inner) => {
-        const result: unknown = Reflect.apply(original, view, inner);
+        const result: unknown = Reflect.apply(original, holder, inner);
         return Promise.resolve(result);
       },
       ...args,
     ),
   );
+}
+
+function holderOf(view: GitTool, name: string): object {
+  if (typeof Reflect.get(view, name) === 'function') {
+    return view;
+  }
+  const holders = Object.values(view).filter(
+    (part: unknown): part is object =>
+      typeof part === 'object' &&
+      part !== null &&
+      typeof Reflect.get(part, name) === 'function',
+  );
+  assert.strictEqual(holders.length, 1, name);
+  return holders[0];
 }
 
 export function failOnErrorsLogged(logged: unknown[]): void {
