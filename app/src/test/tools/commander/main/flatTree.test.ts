@@ -261,7 +261,26 @@ suite('flatTree', () => {
     assert.strictEqual(flat.file('new.txt')?.name, 'new.txt');
   });
 
-  test('reads every folder it read again once it cannot be told what changed', async () => {
+  test('takes nothing and tells of nothing when a folder read again lists as it did, as reading a file for its icon changes only when it was read last, and taking in a folder of 20,000 files stalled the page', async () => {
+    const { flat, taken, listed, asked, changes } = tree({
+      [root]: [file('a.exe'), folder('inner')],
+      [at('inner')]: [file('b.txt')],
+    });
+    flat.start();
+    await flat.idle();
+    taken();
+    const before = changes();
+
+    listed[root] = [file('a.exe'), folder('inner')];
+    flat.changed('a.exe');
+    await flat.idle();
+
+    assert.deepStrictEqual(asked, [root, at('inner'), root]);
+    assert.deepStrictEqual(taken(), []);
+    assert.strictEqual(changes(), before);
+  });
+
+  test('reads every folder it read again once it cannot be told what changed, taking only those that changed', async () => {
     const { flat, taken, listed, asked } = tree({
       [root]: [folder('photos')],
       [at('photos')]: [file('cat.jpg')],
@@ -278,7 +297,7 @@ suite('flatTree', () => {
       at('photos'),
       at('photos'),
     ]);
-    assert.deepStrictEqual(taken(), ['.: ', `${under('photos')}: dog.jpg`]);
+    assert.deepStrictEqual(taken(), [`${under('photos')}: dog.jpg`]);
   });
 
   test('reads a folder made under one it read', async () => {

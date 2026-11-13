@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import {
   plainOf,
   sentencesOf,
@@ -4264,6 +4265,16 @@ export class CommanderTool implements Tool<'commander'> {
     if (pane.asked !== asked || (how === 'refresh' && pane.folder !== folder)) {
       return;
     }
+    const listedAsBefore =
+      how === 'refresh' &&
+      pane.folder === folder &&
+      pane.landed === asked &&
+      pane.denied !== folder &&
+      pane.elevated === listing.elevated &&
+      pane.archive === listing.archive &&
+      pane.binOff === binOff &&
+      isDeepStrictEqual(pane.hidden, hidden) &&
+      isDeepStrictEqual(pane.entries, listing.entries);
     const selected = selecting ?? childToward(folder, pane.folder);
     if (typeof how === 'object') {
       pane.at = how.at;
@@ -4297,7 +4308,9 @@ export class CommanderTool implements Tool<'commander'> {
     pane.archive = listing.archive;
     pane.binOff = binOff;
     pane.landed = asked;
-    this.postListing(page, tab, side, pane, selected);
+    if (!listedAsBefore) {
+      this.postListing(page, tab, side, pane, selected);
+    }
     this.feedDuplicates(pane);
     this.watch(page, tab, side, folder, stamp);
     if (listing.archive === undefined) {

@@ -2355,10 +2355,11 @@ suite('Commander tool', () => {
   });
 
   test('renames a file listed flat in its own folder, reading that folder again', async () => {
-    const { tool, page, send, renamed } = commander({
+    const listed: Record<string, Listed> = {
       [root]: [folder('docs')],
       [at('docs')]: [file('a.txt')],
-    });
+    };
+    const { tool, page, send, renamed } = commander(listed);
     await tool.show(page, tab);
     await send({ type: 'flat', tab: '1', side: 'right', flat: true });
     const inDocs = path.join('docs', 'a.txt');
@@ -2367,13 +2368,14 @@ suite('Commander tool', () => {
         page
           .of('flatFiles')
           .some((message) =>
-            message.folders.some((listed) =>
-              listed.entries.some((entry) => entry.name === 'a.txt'),
+            message.folders.some((each) =>
+              each.entries.some((entry) => entry.name === 'a.txt'),
             ),
           ),
       'the file in docs to be listed flat',
     );
     const told = page.of('flatFiles').length;
+    listed[at('docs')] = [file('b.txt')];
     await send({
       type: 'rename',
       tab: '1',
@@ -2866,6 +2868,31 @@ suite('Commander tool', () => {
       [last('left'), last('right')],
       [`left ${root}: new.txt`, `right ${root}: new.txt`],
     );
+  });
+
+  test('sends the page nothing when a changed folder lists as it did, as reading a file for its icon changes only when it was read last, and taking in a listing of 20,000 files stalled the page for 25 ms each time', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [file('a.exe'), file('b.txt')],
+    };
+    const { tool, page, change } = commander(listed);
+    await tool.show(page, tab);
+    const before = page.listings().length;
+
+    listed[root] = [file('a.exe'), file('b.txt')];
+    await change(root);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.strictEqual(page.listings().length, before);
+
+    listed[root] = [file('a.exe'), file('c.txt')];
+    await change(root);
+    await waitFor(
+      () => page.listings().length === before + 2,
+      'the changed folder to be listed again',
+    );
+    assert.deepStrictEqual(page.listings().slice(before).toSorted(), [
+      `left ${root}: a.exe c.txt`,
+      `right ${root}: a.exe c.txt`,
+    ]);
   });
 
   test('tells the page a tab was closed, so it forgets what it kept of the tab, as a tab opened later can take its id', async () => {
@@ -5011,7 +5038,7 @@ suite('Commander tool in flat view', () => {
     ]);
   });
 
-  test('reads every folder again once the system cannot say what changed', async () => {
+  test('reads every folder again once the system cannot say what changed, sending the page only those that changed', async () => {
     const listed = tree();
     const { page, changeTree } = await flatDownloads(listed);
     const before = page.of('flatFiles').length;
@@ -5019,14 +5046,13 @@ suite('Commander tool in flat view', () => {
     listed[inDownloads('photos', '2024')] = [file('dog.jpg'), file('owl.jpg')];
     changeTree(downloads, undefined);
     await waitFor(
-      () => flatFiles(page, before).length === 3,
+      () => flatFiles(page, before).length > 0,
       'the folders read again',
     );
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     assert.deepStrictEqual(flatFiles(page, before), [
-      'right 1 .: setup.exe',
       `right 1 ${under('photos', '2024')}: dog.jpg owl.jpg`,
-      `right 1 ${under('photos')}: cat.jpg`,
     ]);
   });
 
@@ -5295,12 +5321,19 @@ suite('Commander tool counting the sizes of folders', () => {
   });
 
   test('keeps the sizes while the folder of the side changes, and forgets them once it reads its folder again or shows another', async () => {
-    const { page, send, change } = await inDownloadsFolder();
+    const downloadsTree = sizedTree();
+    const { page, send, change } = await inDownloadsFolder(downloadsTree);
     const countPhotos = () =>
       send({ type: 'countSizes', tab: '1', side: 'right', names: ['photos'] });
 
     await countPhotos();
     await counted(page, `right ${downloads} photos: 2`);
+    downloadsTree[downloads] = [
+      file('setup.exe'),
+      file('new.txt'),
+      folder('photos'),
+      folder('music'),
+    ];
     await change(downloads);
     await waitFor(
       () =>

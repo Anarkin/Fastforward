@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import type { Entry, FlatFolder, FlatProgress } from '../shared/protocol';
 
 const readAtOnce = 8;
@@ -239,6 +240,13 @@ export class FlatTree {
       } else if (!entry.link) {
         folders.set(`${under}${entry.name}${path.sep}`, hidden || entry.hidden);
       }
+    }
+    if (
+      before?.hidden === hidden &&
+      isDeepStrictEqual(before.files, files) &&
+      isDeepStrictEqual(before.folders, folders)
+    ) {
+      return;
     }
     for (const file of before?.files ?? []) {
       this.files.delete(`${under}${file.name}`);
