@@ -8,39 +8,54 @@ import { waitFor } from './fixtures';
 import { removeFolder, tempFolder } from './repositories';
 import { storedZip } from './zips';
 
-function lastTextOf(part: Element): {
+interface TextPlace {
   readonly top: number;
   readonly height: number;
   readonly font: string;
   readonly left: number;
   readonly right: number;
-} {
-  const walker = document.createTreeWalker(part, NodeFilter.SHOW_TEXT);
-  let last: Node | null = null;
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    last = node;
-  }
-  const range = document.createRange();
-  if (last !== null) {
-    range.selectNodeContents(last);
-  }
-  const rect = range.getBoundingClientRect();
-  return {
-    top: Math.round(rect.top * 100) / 100,
-    height: Math.round(rect.height * 100) / 100,
-    font:
-      last?.parentElement === null || last?.parentElement === undefined
-        ? ''
-        : getComputedStyle(last.parentElement).fontFamily,
-    left: rect.left,
-    right: Math.min(rect.right, part.getBoundingClientRect().right),
-  };
 }
 
-async function starredAfter(name: Locator, star: Locator): Promise<void> {
-  assert.strictEqual(await star.textContent(), '*');
-  const named = await name.evaluate(lastTextOf);
-  const starred = await star.evaluate(lastTextOf);
+function namedAndStarred(
+  root: Element,
+  { name, star }: { readonly name: string; readonly star: string },
+): readonly TextPlace[] {
+  return [root.querySelector(name), root.querySelector(star)].map((part) => {
+    let last: Node | null = null;
+    if (part !== null) {
+      const walker = document.createTreeWalker(part, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        last = node;
+      }
+    }
+    const range = document.createRange();
+    if (last !== null) {
+      range.selectNodeContents(last);
+    }
+    const rect = range.getBoundingClientRect();
+    return {
+      top: Math.round(rect.top * 100) / 100,
+      height: Math.round(rect.height * 100) / 100,
+      font:
+        last?.parentElement === null || last?.parentElement === undefined
+          ? ''
+          : getComputedStyle(last.parentElement).fontFamily,
+      left: rect.left,
+      right: Math.min(
+        rect.right,
+        part?.getBoundingClientRect().right ?? rect.right,
+      ),
+    };
+  });
+}
+
+async function starredAfter(
+  root: Locator,
+  parts: { readonly name: string; readonly star: string },
+): Promise<void> {
+  assert.strictEqual(await root.locator(parts.star).textContent(), '*');
+  const [named, starred] = await root.evaluate(namedAndStarred, parts);
+  assert.ok(named !== undefined && starred !== undefined);
   assert.deepStrictEqual(
     { top: starred.top, height: starred.height, font: starred.font },
     { top: named.top, height: named.height, font: named.font },
@@ -746,11 +761,14 @@ suite('App editor', () => {
     await page.keyboard.type('!');
     const mark = page.locator('.editor .editor-mark.unsaved');
     await mark.waitFor();
-    await starredAfter(page.locator('.editor .editor-path .path-title'), mark);
-    await starredAfter(
-      activeTab().locator('.tab-name'),
-      activeTab().locator('.tab-unsaved'),
-    );
+    await starredAfter(page.locator('.editor .editor-path'), {
+      name: '.path-title',
+      star: '.editor-mark',
+    });
+    await starredAfter(activeTab(), {
+      name: '.tab-name',
+      star: '.tab-unsaved',
+    });
   });
 
   test('marks the bracket matching the one beside the cursor, and one matching none', async () => {
