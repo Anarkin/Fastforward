@@ -77,8 +77,7 @@ interface Read {
   readonly error?: Sentence;
   readonly made: boolean;
   readonly stamp: string | undefined;
-  readonly indent?: string;
-  readonly fallbackIndent?: string;
+  readonly rules?: TextRules;
   readonly startAt?: number;
   readonly encodings?: readonly EncodingSource[];
 }
@@ -88,18 +87,31 @@ export interface ViewedStart {
   readonly encoding?: TextEncoding;
 }
 
+type TextRules = Pick<
+  TextShown,
+  'indent' | 'fallbackIndent' | 'trimTrailingWhitespace' | 'insertFinalNewline'
+>;
+
 const shownOf = (read: Read, text: EditedText): TextShown => ({
   ...text.shown(),
-  ...(read.indent !== undefined && { indent: read.indent }),
-  ...(read.fallbackIndent !== undefined && {
-    fallbackIndent: read.fallbackIndent,
-  }),
+  ...read.rules,
 });
 
-const indentsOf = (defaults: TextDefaults | undefined) => ({
-  ...(defaults?.indent !== undefined && { indent: defaults.indent }),
-  ...(defaults !== undefined && { fallbackIndent: defaults.fallbackIndent }),
-});
+const rulesOf = (defaults: TextDefaults | undefined) =>
+  defaults === undefined
+    ? {}
+    : {
+        rules: {
+          ...(defaults.indent !== undefined && { indent: defaults.indent }),
+          fallbackIndent: defaults.fallbackIndent,
+          ...(defaults.trimTrailingWhitespace === true && {
+            trimTrailingWhitespace: true,
+          }),
+          ...(defaults.insertFinalNewline === true && {
+            insertFinalNewline: true,
+          }),
+        } satisfies TextRules,
+      };
 
 interface Opened {
   readonly file: string;
@@ -268,7 +280,7 @@ export class Editing {
           ),
           made: true,
           stamp: undefined,
-          ...indentsOf(defaults),
+          ...rulesOf(defaults),
           ...(defaults !== undefined && { encodings: defaults.charsets }),
         };
       }
@@ -304,7 +316,7 @@ export class Editing {
       text: new EditedText(decoded, defaults?.ending ?? 'lf', version),
       made: false,
       stamp,
-      ...indentsOf(defaults),
+      ...rulesOf(defaults),
       encodings: [
         { kind: 'chosen', ...(chosen !== undefined && { encoding: chosen }) },
         { kind: 'bom', ...(bom !== undefined && { encoding: bom }) },

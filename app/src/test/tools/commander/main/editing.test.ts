@@ -660,6 +660,26 @@ suite('Editing a file', () => {
     assert.deepStrictEqual(editedSources, [config]);
   });
 
+  test('tells the page to trim the lines edited and end the file with a line break as saved where the .editorconfig says so', async () => {
+    const { edits } = editing({ 'a.txt': 'one' }, () =>
+      Promise.resolve({
+        ending: 'lf',
+        encoding: 'utf-8',
+        bom: false,
+        fallbackIndent: '    ',
+        charsets: [],
+        trimTrailingWhitespace: true,
+        insertFinalNewline: true,
+      }),
+    );
+    const page = new EditorPage();
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    const shown = page.last('editedText')?.shown;
+    assert.strictEqual(shown?.trimTrailingWhitespace, true);
+    assert.strictEqual(shown?.insertFinalNewline, true);
+  });
+
   test('reads the file again in the encoding asked for, and in the one found once asked for Auto', async () => {
     const { edits, showing } = editing({
       'a.txt': Uint8Array.of(0x63, 0x61, 0x66, 0xe9, 0x0a),

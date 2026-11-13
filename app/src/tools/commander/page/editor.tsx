@@ -51,6 +51,12 @@ import {
   indentionOf,
   type EditorKeyActions,
 } from './editorCommands';
+import {
+  savingFixes,
+  savingRulesField,
+  savingRulesOf,
+  sinceSavedField,
+} from './editorSaving';
 import { editorKeymap } from '../shared/keymap';
 import {
   maxColoredBytes,
@@ -156,7 +162,13 @@ function stateOf(
   extensions: Extension,
 ): EditorState {
   const doc = Text.of(shown.text.split(lineBreak));
-  const all = [extensions, endingsFrom(doc, shown), indentionOf(doc, shown)];
+  const all = [
+    extensions,
+    endingsFrom(doc, shown),
+    indentionOf(doc, shown),
+    sinceSavedField,
+    savingRulesOf(shown),
+  ];
   if (typeof kept === 'object' && kept !== null) {
     try {
       return EditorState.fromJSON(
@@ -229,7 +241,12 @@ const colorsOf = (language: string | undefined, on: boolean): Extension => [
   commentsOf(language),
 ];
 
-const fieldsKept = [endingsField, indentField];
+const fieldsKept = [
+  endingsField,
+  indentField,
+  sinceSavedField,
+  savingRulesField,
+];
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
@@ -377,7 +394,13 @@ export function Editor() {
       coloring: coloring.current,
       colors: colorsFirst(),
       keys: {
-        save: () => saveText(tab),
+        save: () => {
+          const fixes = savingFixes(shown.state);
+          if (fixes !== undefined) {
+            shown.dispatch(fixes);
+          }
+          saveText(tab);
+        },
         find: () => setFindAsk(findAskOf(false, shown.state)),
         replace: () => setFindAsk(findAskOf(true, shown.state)),
         goToLine: () => {

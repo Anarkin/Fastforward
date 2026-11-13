@@ -16,6 +16,8 @@ export interface TextDefaults {
   readonly indent?: string;
   readonly fallbackIndent: string;
   readonly charsets: readonly CharsetSource[];
+  readonly trimTrailingWhitespace?: true;
+  readonly insertFinalNewline?: true;
 }
 
 export interface TextDefaultSources {
@@ -140,5 +142,9 @@ export async function textDefaultsOf(
     fallbackIndent:
       settings.indentStyle === 'tab' ? '\t' : ' '.repeat(settings.indentSize),
     charsets: sources.charsets,
+    ...(config.trimTrailingWhitespace === true && {
+      trimTrailingWhitespace: true,
+    }),
+    ...(config.insertFinalNewline === true && { insertFinalNewline: true }),
   };
 }

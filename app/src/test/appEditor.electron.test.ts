@@ -536,6 +536,30 @@ suite('App editor', () => {
     );
   });
 
+  test('trims the whitespace at the end of the lines edited and ends the file with a line break as saved where the .editorconfig says so, leaving the lines not edited as they were', async () => {
+    fs.writeFileSync(
+      path.join(opened, '.editorconfig'),
+      '[trimmed.txt]\ntrim_trailing_whitespace = true\ninsert_final_newline = true\n',
+    );
+    const file = path.join(opened, 'trimmed.txt');
+    fs.writeFileSync(file, 'keep  \r\nlast');
+    await backToCommander();
+    await edit('trimmed.txt');
+    await waitFor(
+      async () => (await editedText()) === 'keep  \nlast',
+      'the text',
+    );
+    await toEnd();
+    await page.keyboard.type(' word  ');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.strictEqual(
+      fs.readFileSync(file, 'latin1'),
+      'keep  \r\nlast word\r\n',
+    );
+  });
+
   test('turns the tab of a file viewed into one editing it on F4, in its place among the tabs, the cursor on the line the viewer showed at its top', async () => {
     const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
     fs.writeFileSync(path.join(opened, 'long.txt'), `${lines.join('\n')}\n`);

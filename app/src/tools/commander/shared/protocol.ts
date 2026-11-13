@@ -167,6 +167,8 @@ export interface TextShown {
   readonly keptBytes: readonly KeptBytes[];
   readonly indent?: string;
   readonly fallbackIndent?: string;
+  readonly trimTrailingWhitespace?: true;
+  readonly insertFinalNewline?: true;
 }
 
 export type CommanderToHost =
