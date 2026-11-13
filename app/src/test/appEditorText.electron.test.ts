@@ -35,7 +35,7 @@ const editorLines = [
 ];
 
 type PageEditor = Pick<typeof viewModule, 'EditorView'> &
-  Pick<typeof editorTextModule, 'appTextLook'> &
+  Pick<typeof editorTextModule, 'appTextLook' | 'blanksShown'> &
   Pick<typeof editorSelectionModule, 'appSelection'> &
   Pick<typeof commanderKeymapModule, 'editorKeymap'> &
   Pick<typeof textWidthsModule, 'terminalCells'>;
@@ -45,7 +45,7 @@ async function editorInPage(): Promise<JSHandle<PageEditor>> {
     stdin: {
       contents: [
         "export { EditorView } from '@codemirror/view';",
-        "export { appTextLook } from './editorText';",
+        "export { appTextLook, blanksShown } from './editorText';",
         "export { appSelection } from './editorSelection';",
         "export { editorKeymap } from '../tools/commander/shared/keymap';",
         "export { terminalCells } from './textWidths';",
@@ -140,6 +140,7 @@ async function mountEditor(
   text: string,
   width: number,
   wrapping: boolean,
+  blanks = false,
 ): Promise<void> {
   await editor.evaluate(
     async (app, shown) => {
@@ -160,11 +161,12 @@ async function mountEditor(
           app.appTextLook(table),
           app.appSelection(app.editorKeymap.rowEnd),
           shown.wrapping ? app.EditorView.lineWrapping : [],
+          app.blanksShown.of(shown.blanks),
         ],
       });
       box.append(view.dom);
     },
-    { text, width, wrapping },
+    { text, width, wrapping, blanks },
   );
 }
 
@@ -173,8 +175,9 @@ async function editorLine(
   text: string,
   width: number,
   wrapping: boolean,
+  blanks = false,
 ): Promise<LaidOut> {
-  await mountEditor(editor, text, width, wrapping);
+  await mountEditor(editor, text, width, wrapping, blanks);
   const line = page.locator('.editor-probe .cm-line');
   let last: LaidOut | undefined;
   await waitFor(async () => {
@@ -252,6 +255,25 @@ async function misplacedLines(wrapping: boolean): Promise<Misplaced[]> {
     }
   }
   return found;
+}
+
+function blanksOf(element: Element): readonly string[] {
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const marked: string[] = [];
+  let at = 0;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const mark = node.parentElement?.closest('.blank, .spaces');
+    if (mark !== null && mark !== undefined && element.contains(mark)) {
+      const kind = mark.classList.contains('spaces')
+        ? 'spaces'
+        : `${mark.getAttribute('data-glyph') ?? ''} ${mark.className}`;
+      for (let index = 0; index < (node.textContent?.length ?? 0); index++) {
+        marked.push(`${at + index} ${kind}`);
+      }
+    }
+    at += node.textContent?.length ?? 0;
+  }
+  return marked;
 }
 
 const paddedRows = `| Feature${' '.repeat(100)}| What it does${' '.repeat(100)}| Notes|`;
@@ -350,6 +372,50 @@ suite('App', () => {
     await page.locator('.diff-view.wrap').waitFor();
 
     assert.deepStrictEqual(await misplacedLines(true), []);
+  });
+
+  test('marks the whitespace in the editor as the diff marks it once it is shown, every space dotted and every tab and other blank signed in a box like the diff, every character still where the diff draws it', async () => {
+    await openLines();
+    const toggle = page
+      .getByRole('button', { name: 'Show Whitespace' })
+      .first();
+    await toggle.click();
+    await page.locator('.diff-view .spaces').first().waitFor();
+    const wrapping = (await page.locator('.diff-view.wrap').count()) > 0;
+    const editor = await editorInPage();
+    const wrong: string[] = [];
+    try {
+      for (const number of editorLines.keys()) {
+        const code = (await diffLineNumbered(number + 1)).locator('.code');
+        const { laidOut, width } = await diffLine(number + 1);
+        const inDiff = await code.evaluate(blanksOf);
+        const shown = await editorLine(
+          editor,
+          laidOut.text,
+          width,
+          wrapping,
+          true,
+        );
+        const inEditor = await page
+          .locator('.editor-probe .cm-line')
+          .evaluate(blanksOf);
+        const moved = misplaced(number + 1, laidOut, shown);
+        if (moved !== undefined) {
+          wrong.push(JSON.stringify(moved));
+        }
+        const unlike = inDiff.findIndex(
+          (mark, index) => inEditor[index] !== mark,
+        );
+        if (unlike !== -1 || inDiff.length !== inEditor.length) {
+          wrong.push(
+            `${number + 1}: ${inDiff[unlike] ?? 'end'} ≠ ${inEditor[unlike] ?? inEditor.at(inDiff.length) ?? 'end'}`,
+          );
+        }
+      }
+    } finally {
+      await toggle.click();
+    }
+    assert.deepStrictEqual(wrong, []);
   });
 
   test('draws the cursor in a run of spaces hanging past the edge of a wrapped row at that edge rather than out of sight, a selection ending in one no further, and never scrolls a wrapped line sideways', async () => {

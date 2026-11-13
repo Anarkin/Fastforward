@@ -14,8 +14,8 @@ import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { syntaxColors } from '../../../ui/editorColors';
 import { appSelection } from '../../../ui/editorSelection';
-import { appTextLook } from '../../../ui/editorText';
-import { WordWrapIcon } from '../../../ui/icons';
+import { appTextLook, blanksShown } from '../../../ui/editorText';
+import { ShowWhitespaceIcon, WordWrapIcon } from '../../../ui/icons';
 import { Words } from '../../../ui/name';
 import { languageOf } from '../../../ui/languages';
 import { keyPressed } from '../../../ui/shortcuts';
@@ -79,6 +79,7 @@ import {
   endingsField,
   endingsFrom,
   endingsSent,
+  endingSigns,
   endingsUndone,
 } from './editorEndings';
 import { colorOfFileNamed } from './fileColors';
@@ -120,6 +121,8 @@ interface EditorParts {
   readonly readOnly: boolean;
   readonly wrapping: Compartment;
   readonly wordWrap: boolean;
+  readonly blanking: Compartment;
+  readonly showWhitespace: boolean;
   readonly coloring: Compartment;
   readonly colors: Extension;
   readonly keys: EditorKeyActions;
@@ -131,6 +134,8 @@ function extensionsOf({
   readOnly,
   wrapping,
   wordWrap,
+  blanking,
+  showWhitespace,
   coloring,
   colors,
   keys,
@@ -145,6 +150,8 @@ function extensionsOf({
     endingsUndone,
     editorFind,
     wrapping.of(wordWrap ? EditorView.lineWrapping : []),
+    blanking.of(blanksShown.of(showWhitespace)),
+    endingSigns,
     EditorState.readOnly.of(readOnly),
     EditorView.contentAttributes.of({
       spellcheck: 'false',
@@ -307,6 +314,7 @@ export function Editor() {
     colorOfFileNamed(nameOf(state.view.editing ?? ''), state.view.fileColors),
   );
   const wordWrap = useShell((state) => state.textView.wordWrap);
+  const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const { changeTextView, openSettings } = useShellActions();
   const choices = useCommander((state) => viewerChoices(state.view));
@@ -359,6 +367,7 @@ export function Editor() {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
   const wrapping = useRef(new Compartment());
+  const blanking = useRef(new Compartment());
   const coloring = useRef(new Compartment());
   const [askingOverwrite, setAskingOverwrite] = useState(false);
   const [askingChanged, setAskingChanged] = useState(false);
@@ -366,6 +375,7 @@ export function Editor() {
   const readOnly = edited?.readOnly === true;
   const startingVersion = useEffectEvent(() => edited?.version ?? 0);
   const wrapsFirst = useEffectEvent(() => wordWrap);
+  const blanksFirst = useEffectEvent(() => showWhitespace);
   const colorsFirst = useEffectEvent(() => colorsOf(language, highlightSyntax));
 
   useEffect(() => {
@@ -391,6 +401,8 @@ export function Editor() {
       readOnly,
       wrapping: wrapping.current,
       wordWrap: wrapsFirst(),
+      blanking: blanking.current,
+      showWhitespace: blanksFirst(),
       coloring: coloring.current,
       colors: colorsFirst(),
       keys: {
@@ -510,6 +522,12 @@ export function Editor() {
       ),
     });
   }, [wordWrap]);
+
+  useEffect(() => {
+    view.current?.dispatch({
+      effects: blanking.current.reconfigure(blanksShown.of(showWhitespace)),
+    });
+  }, [showWhitespace]);
 
   useEffect(() => {
     view.current?.dispatch({
@@ -761,6 +779,17 @@ export function Editor() {
             />
             <span className="nav-button-space" />
             <div className="viewer-toggles">
+              <button
+                className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
+                title={strings.common.showWhitespace}
+                aria-pressed={showWhitespace}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  changeTextView({ showWhitespace: !showWhitespace })
+                }
+              >
+                <ShowWhitespaceIcon />
+              </button>
               <button
                 className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
                 title={strings.common.wrap}

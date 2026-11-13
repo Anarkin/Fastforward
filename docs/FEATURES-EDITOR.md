@@ -93,7 +93,7 @@
 | Syntax highlighting | Color the code | — | Core | ✅ Yes | With the TextMate grammars the viewer and the diff use, colored again as typed only from the line edited to the first whose state is as it was, in the worker of the colors; the language chosen on its button, nothing over 10 MB |
 | Line numbers | Number the lines | — | Core | ✅ Yes |  |
 | Wrap | Wrap long lines | Alt+Z | Common | ✅ Yes | By the wrap button, shared with the viewer and the diff |
-| Show whitespace | Draw the spaces, tabs and line ends | — | Common | ❌ No |  |
+| Show whitespace | Draw the spaces, tabs and line ends | — | Common | ✅ Yes | By the whitespace button, shared with the viewer and the diff and marking the same characters as they do, a test checking every one, with a sign after each line that ends in CRLF or CR |
 | Status line | Show the line, column and selection | — | Common | ✅ Yes | The column counted in cells, as drawn, the characters selected as they are seen, and the cursors |
 | Minimap | Show the whole file in small beside it | — | Common | ❌ No |  |
 | Folding | Fold blocks of code away | Ctrl+Shift+[ | Common | ❌ No |  |

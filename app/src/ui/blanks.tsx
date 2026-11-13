@@ -9,9 +9,10 @@ const blankSigns: Readonly<Record<string, string>> = {
   ' ': strings.symbols.nonBreakingSpace,
 };
 
-const blank = /[ \t\r   -​  ⁠　﻿]/;
+export const blank = /[ \t\r   -​  ⁠　﻿]/;
 
-const spacesBlanksAndText = / +|[ \t\r   -​  ⁠　﻿]|[^ \t\r   -​  ⁠　﻿]+/g;
+export const spacesBlanksAndText =
+  / +|[ \t\r   -​  ⁠　﻿]|[^ \t\r   -​  ⁠　﻿]+/g;
 
 function boxedText(text: string, widths: TextWidths): React.ReactNode {
   const parts = cellParts(text, widths);
@@ -58,12 +59,15 @@ function blankShown(
     <span
       key={key}
       className={cells === undefined ? 'blank' : `blank ${cellClass(cells)}`}
-      data-glyph={blankSigns[part] ?? strings.symbols.invisible}
+      data-glyph={blankSignOf(part)}
     >
       {part}
     </span>
   );
 }
+
+export const blankSignOf = (character: string): string =>
+  blankSigns[character] ?? strings.symbols.invisible;
 
 const asIs = (text: string): React.ReactNode => text;
 

@@ -560,6 +560,35 @@ suite('App editor', () => {
     );
   });
 
+  test('shows the whitespace once its button is pressed, the spaces dotted, the tabs signed and a sign after each line that ends in CRLF, and hides it again', async () => {
+    fs.writeFileSync(path.join(opened, 'blanks.txt'), 'a  b\r\nc\td\n e\r\n');
+    await backToCommander();
+    await edit('blanks.txt');
+    await waitFor(
+      async () => (await editedText()) === 'a  b\nc\td\n e\n',
+      'the text',
+    );
+    const toggle = page.locator('.editor button[title="Show Whitespace"]');
+    await toggle.click();
+    try {
+      await content().locator('.spaces').first().waitFor();
+      assert.strictEqual(
+        await content().locator('.blank[data-glyph="→"]').count(),
+        1,
+      );
+      const signed = await content()
+        .locator('.cm-line')
+        .evaluateAll((lines) =>
+          lines.map((line) => line.querySelector('.ending-sign') !== null),
+        );
+      assert.deepStrictEqual(signed, [true, false, true, false]);
+    } finally {
+      await toggle.click();
+    }
+    await content().locator('.spaces').first().waitFor({ state: 'detached' });
+    assert.strictEqual(await content().locator('.ending-sign').count(), 0);
+  });
+
   test('turns the tab of a file viewed into one editing it on F4, in its place among the tabs, the cursor on the line the viewer showed at its top', async () => {
     const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
     fs.writeFileSync(path.join(opened, 'long.txt'), `${lines.join('\n')}\n`);

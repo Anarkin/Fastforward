@@ -1,4 +1,4 @@
-import type { Extension, Range } from '@codemirror/state';
+import { Facet, type Extension, type Range } from '@codemirror/state';
 import {
   Decoration,
   EditorView,
@@ -16,6 +16,7 @@ import {
   type TextWidths,
 } from './textWidths';
 import { breakOffsets, leadLength, wrapColumns, wrapIndent } from './wordWrap';
+import { blank, blankSignOf, spacesBlanksAndText } from './blanks';
 
 type LinePart =
   | {
@@ -90,16 +91,44 @@ const breakChance = Decoration.widget({ widget: new BreakChance() });
 
 const leadMark = Decoration.mark({ class: 'lead' });
 
-const boxMarks = new Map<number, Decoration>();
+const boxMarks = new Map<string, Decoration>();
 
-function boxMark(cells: number): Decoration {
-  let mark = boxMarks.get(cells);
+function boxMark(cells: number, sign?: string): Decoration {
+  const key = `${cells} ${sign ?? ''}`;
+  let mark = boxMarks.get(key);
   if (mark === undefined) {
-    mark = Decoration.mark({ class: cellClass(cells) });
-    boxMarks.set(cells, mark);
+    mark = Decoration.mark(
+      sign === undefined
+        ? { class: cellClass(cells) }
+        : {
+            class: `blank ${cellClass(cells)}`,
+            attributes: { 'data-glyph': sign },
+          },
+    );
+    boxMarks.set(key, mark);
   }
   return mark;
 }
+
+const spacesMark = Decoration.mark({ class: 'spaces' });
+
+const signMarks = new Map<string, Decoration>();
+
+function signMark(sign: string): Decoration {
+  let mark = signMarks.get(sign);
+  if (mark === undefined) {
+    mark = Decoration.mark({
+      class: 'blank',
+      attributes: { 'data-glyph': sign },
+    });
+    signMarks.set(sign, mark);
+  }
+  return mark;
+}
+
+export const blanksShown = Facet.define<boolean, boolean>({
+  combine: (shown) => shown.some((each) => each),
+});
 
 const shrunkMark = (scale: number) =>
   Decoration.mark({ attributes: { style: `font-size: ${scale}em` } });
@@ -114,6 +143,7 @@ const hangingLine = (indent: number) =>
 interface LookSets {
   readonly shrunk: DecorationSet;
   readonly boxes: DecorationSet;
+  readonly blanks: DecorationSet;
   readonly lines: DecorationSet;
 }
 
@@ -144,7 +174,15 @@ class LineLook implements PluginValue {
     const measured = update.geometryChanged && this.measure();
     const rewrapped = this.wrapping !== this.view.lineWrapping;
     this.wrapping = this.view.lineWrapping;
-    if (measured || rewrapped || update.docChanged || update.viewportChanged) {
+    const reblanked =
+      update.startState.facet(blanksShown) !== update.state.facet(blanksShown);
+    if (
+      measured ||
+      rewrapped ||
+      reblanked ||
+      update.docChanged ||
+      update.viewportChanged
+    ) {
       this.sets = this.build();
     }
   }
@@ -170,7 +208,9 @@ class LineLook implements PluginValue {
     const { state, visibleRanges } = this.view;
     const shrunk: Range<Decoration>[] = [];
     const boxes: Range<Decoration>[] = [];
+    const blanks: Range<Decoration>[] = [];
     const lines: Range<Decoration>[] = [];
+    const showsBlanks = state.facet(blanksShown);
     let last = 0;
     for (const { from, to } of visibleRanges) {
       for (let at = from; at <= to;) {
@@ -187,6 +227,7 @@ class LineLook implements PluginValue {
         if (indent) {
           lines.push(hangingLine(indent).range(line.from));
         }
+        const boxed = new Set<number>();
         for (const part of lineParts(line.text, indent, this.widths)) {
           const partFrom = line.from + part.from;
           const partTo = line.from + part.to;
@@ -195,9 +236,35 @@ class LineLook implements PluginValue {
           } else if (part.kind === 'break') {
             lines.push(breakChance.range(partFrom));
           } else {
-            boxes.push(boxMark(part.cells).range(partFrom, partTo));
+            const text = line.text.slice(part.from, part.to);
+            const signed = showsBlanks && blank.test(text);
+            if (signed) {
+              boxed.add(part.from);
+            }
+            boxes.push(
+              boxMark(part.cells, signed ? blankSignOf(text) : undefined).range(
+                partFrom,
+                partTo,
+              ),
+            );
             if (part.scale !== undefined) {
               shrunk.push(shrunkMark(part.scale).range(partFrom, partTo));
+            }
+          }
+        }
+        if (showsBlanks) {
+          for (const found of line.text.matchAll(spacesBlanksAndText)) {
+            const [part] = found;
+            const partFrom = line.from + found.index;
+            if (part.startsWith(' ')) {
+              blanks.push(spacesMark.range(partFrom, partFrom + part.length));
+            } else if (blank.test(part) && !boxed.has(found.index)) {
+              blanks.push(
+                signMark(blankSignOf(part)).range(
+                  partFrom,
+                  partFrom + part.length,
+                ),
+              );
             }
           }
         }
@@ -206,6 +273,7 @@ class LineLook implements PluginValue {
     return {
       shrunk: Decoration.set(shrunk),
       boxes: Decoration.set(boxes),
+      blanks: Decoration.set(blanks),
       lines: Decoration.set(lines, true),
     };
   }
@@ -221,6 +289,9 @@ export function appTextLook(table: CellTable): Extension {
         ),
         EditorView.decorations.of(
           (view) => view.plugin(plugin)?.sets.boxes ?? Decoration.none,
+        ),
+        EditorView.decorations.of(
+          (view) => view.plugin(plugin)?.sets.blanks ?? Decoration.none,
         ),
         EditorView.decorations.of(
           (view) => view.plugin(plugin)?.sets.lines ?? Decoration.none,
