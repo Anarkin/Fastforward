@@ -1910,6 +1910,18 @@ body.resizing {
   padding: 0;
 }
 
+.cm-editor.editor-text .cm-scroller > .cm-gutters {
+  padding-right: 6px;
+  color: var(--muted-foreground);
+  background: var(--color-panel-background);
+  border: none;
+}
+
+.cm-editor.editor-text .cm-lineNumbers .cm-gutterElement {
+  min-width: 56px;
+  padding: 0 6px;
+}
+
 .cm-editor.editor-text .cm-content.cm-lineWrapping {
   white-space: pre-wrap;
   word-break: normal;

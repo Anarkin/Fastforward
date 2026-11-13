@@ -34,7 +34,7 @@ const editorLines = [
   ...gridLines,
 ];
 
-type PageEditor = Pick<typeof viewModule, 'EditorView'> &
+type PageEditor = Pick<typeof viewModule, 'EditorView' | 'lineNumbers'> &
   Pick<typeof editorTextModule, 'appTextLook' | 'blanksShown'> &
   Pick<typeof editorSelectionModule, 'appSelection'> &
   Pick<typeof commanderKeymapModule, 'editorKeymap'> &
@@ -44,7 +44,7 @@ async function editorInPage(): Promise<JSHandle<PageEditor>> {
   const built = await esbuild.build({
     stdin: {
       contents: [
-        "export { EditorView } from '@codemirror/view';",
+        "export { EditorView, lineNumbers } from '@codemirror/view';",
         "export { appTextLook, blanksShown } from './editorText';",
         "export { appSelection } from './editorSelection';",
         "export { editorKeymap } from '../tools/commander/shared/keymap';",
@@ -141,6 +141,7 @@ async function mountEditor(
   width: number,
   wrapping: boolean,
   blanks = false,
+  numbers = false,
 ): Promise<void> {
   await editor.evaluate(
     async (app, shown) => {
@@ -162,11 +163,12 @@ async function mountEditor(
           app.appSelection(app.editorKeymap.rowEnd),
           shown.wrapping ? app.EditorView.lineWrapping : [],
           app.blanksShown.of(shown.blanks),
+          shown.numbers ? app.lineNumbers() : [],
         ],
       });
       box.append(view.dom);
     },
-    { text, width, wrapping, blanks },
+    { text, width, wrapping, blanks, numbers },
   );
 }
 
@@ -274,6 +276,58 @@ function blanksOf(element: Element): readonly string[] {
     at += node.textContent?.length ?? 0;
   }
   return marked;
+}
+
+interface Numbered {
+  readonly numberEnds: number;
+  readonly textStarts: number;
+  readonly numberDrop: number;
+  readonly color: string;
+  readonly font: string;
+}
+
+function numberedIn(
+  root: Element,
+  parts: {
+    readonly column: string | null;
+    readonly number: string;
+    readonly text: string;
+  },
+): Numbered {
+  const number = Array.from(root.querySelectorAll(parts.number)).find(
+    (each) =>
+      each.textContent?.trim() === '1' &&
+      getComputedStyle(each).visibility !== 'hidden',
+  );
+  const column =
+    parts.column === null ? number : root.querySelector(parts.column);
+  const text = root.querySelector(parts.text);
+  if (number === undefined || column === null || column === undefined) {
+    throw new Error('No number for the line');
+  }
+  if (text === null) {
+    throw new Error('No text for the line');
+  }
+  const first = document
+    .createTreeWalker(text, NodeFilter.SHOW_TEXT)
+    .nextNode();
+  const range = document.createRange();
+  if (first !== null) {
+    range.setStart(first, 0);
+    range.setEnd(first, Math.min(1, first.textContent?.length ?? 0));
+  }
+  const firstRect = range.getBoundingClientRect();
+  range.selectNodeContents(number);
+  const numberRect = range.getBoundingClientRect();
+  const left = column.getBoundingClientRect().left;
+  const style = getComputedStyle(number);
+  return {
+    numberEnds: Math.round((numberRect.right - left) * 100) / 100,
+    textStarts: Math.round((firstRect.left - left) * 100) / 100,
+    numberDrop: Math.round((numberRect.top - firstRect.top) * 100) / 100,
+    color: style.color,
+    font: `${style.fontFamily} ${style.fontSize} ${style.lineHeight} ${style.letterSpacing}`,
+  };
 }
 
 const paddedRows = `| Feature${' '.repeat(100)}| What it does${' '.repeat(100)}| Notes|`;
@@ -416,6 +470,23 @@ suite('App', () => {
       await toggle.click();
     }
     assert.deepStrictEqual(wrong, []);
+  });
+
+  test('numbers the lines in the editor as the diff numbers them, in the same color and font, the number ending and the text starting as far from the left edge', async () => {
+    await openLines();
+    const inDiff = await (
+      await diffLineNumbered(1)
+    ).evaluate(numberedIn, { column: null, number: '.number', text: '.code' });
+    const editor = await editorInPage();
+    await mountEditor(editor, editorLines[0] ?? '', 800, false, false, true);
+    const inEditor = await page
+      .locator('.editor-probe .cm-editor')
+      .evaluate(numberedIn, {
+        column: '.cm-gutters',
+        number: '.cm-lineNumbers .cm-gutterElement',
+        text: '.cm-line',
+      });
+    assert.deepStrictEqual(inEditor, inDiff);
   });
 
   test('draws the cursor in a run of spaces hanging past the edge of a wrapped row at that edge rather than out of sight, a selection ending in one no further, and never scrolls a wrapped line sideways', async () => {
