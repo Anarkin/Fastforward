@@ -178,11 +178,24 @@ suite('App editor', () => {
     removeFolder(folder);
   });
 
-  test('opens the file selected on F4 in an editor tab of its own named after it, its text in the editor, and goes back to that tab on F4 again rather than opening another', async () => {
+  test('opens the file selected on F4 in an editor tab of its own named and iconed after it, its text in the editor, and goes back to that tab on F4 again rather than opening another', async () => {
     await edit('notes.txt');
     assert.strictEqual(
       await activeTab().locator('.tab-name').textContent(),
       'notes.txt',
+    );
+    await waitFor(
+      () =>
+        activeTab()
+          .locator('img.tab-icon')
+          .evaluate(
+            (image) =>
+              image instanceof HTMLImageElement &&
+              image.complete &&
+              image.naturalWidth > 0,
+          )
+          .catch(() => false),
+      'the icon of the file on its tab',
     );
     await waitFor(
       async () => (await editedText()) === 'one\ntwo\n',

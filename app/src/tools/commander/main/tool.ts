@@ -1201,7 +1201,7 @@ export class CommanderTool implements Tool<'commander'> {
         .find(
           (each) =>
             each.id === viewer.tab &&
-            each.view === true &&
+            (each.view === true || each.edit === true) &&
             each.root === viewer.file,
         );
       return tab?.root === undefined

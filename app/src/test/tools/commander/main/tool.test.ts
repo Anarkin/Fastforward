@@ -3659,7 +3659,7 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(openedIn, [{ tool: 'git', folders: [at('app')] }]);
   });
 
-  test('gives a viewing tab the icon of its file, at an address naming the file, as a closed tab’s id comes back for another file, served for that tab and file only', async () => {
+  test('gives a viewing or editing tab the icon of its file, at an address naming the file, as a closed tab’s id comes back for another file, served for that tab and file only', async () => {
     const { tool, tabs, iconsLoaded } = commander({});
     const viewing: Tab = {
       id: '3',
@@ -3667,7 +3667,13 @@ suite('Commander tool', () => {
       root: at('notes.txt'),
       view: true,
     };
-    tabs.push(viewing, { id: '4', tool: 'commander', root });
+    const editing: Tab = {
+      id: '6',
+      tool: 'commander',
+      root: at('code.ts'),
+      edit: true,
+    };
+    tabs.push(viewing, { id: '4', tool: 'commander', root }, editing);
     const icon = tool.names([viewing]).get('3')?.icon;
     assert.strictEqual(icon, viewerIconUrl('3', at('notes.txt')));
     assert.notStrictEqual(
@@ -3681,7 +3687,12 @@ suite('Commander tool', () => {
     assert.strictEqual(await served(viewerIconUrl('3', at('other.md'))), 404);
     assert.strictEqual(await served(viewerIconUrl('4', root)), 404);
     assert.strictEqual(await served(viewerIconUrl('5', at('notes.txt'))), 404);
-    assert.deepStrictEqual(iconsLoaded, [at('notes.txt')]);
+    assert.strictEqual(
+      tool.names([editing]).get('6')?.icon,
+      viewerIconUrl('6', at('code.ts')),
+    );
+    assert.strictEqual(await served(viewerIconUrl('6', at('code.ts'))), 200);
+    assert.deepStrictEqual(iconsLoaded, [at('notes.txt'), at('code.ts')]);
     assert.strictEqual(
       tool.names([{ id: '4', tool: 'commander', root }]).get('4')?.icon,
       undefined,
