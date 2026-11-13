@@ -46,6 +46,7 @@ import {
 } from './view';
 import type { ToViewer, Viewing } from './viewer';
 import type { EditorState } from '@codemirror/state';
+import type { EditorPlace } from './editorPlace';
 import type { EditedTab, ToEditor } from './editor';
 import { ScrollPlaces } from './scrollPlaces';
 import { FlatLists, type FlatTiming, type FlatWorker } from './flatLists';
@@ -329,6 +330,7 @@ interface CommanderActions {
 interface KeptEditor {
   readonly state: EditorState;
   readonly version: number;
+  readonly place?: EditorPlace | undefined;
 }
 
 type CommanderState = CommanderSource & CommanderActions;

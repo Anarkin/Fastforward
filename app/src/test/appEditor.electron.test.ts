@@ -139,6 +139,25 @@ suite('App editor', () => {
         )?.textContent ?? ''
       );
     });
+  const scrolledDown = async (rows: number) => {
+    await page.locator('.editor .cm-scroller').evaluate((scroller, by) => {
+      const row =
+        scroller.querySelector('.cm-line')?.getBoundingClientRect().height ?? 1;
+      scroller.scrollTop = row * by;
+    }, rows);
+    let shown = '';
+    await waitFor(async () => {
+      const was = shown;
+      shown = await topLine();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return (
+        shown === was &&
+        shown !== '' &&
+        shown !== (await editedText()).split('\n')[0]
+      );
+    }, 'the text to stop scrolling');
+    return shown;
+  };
   const notices = () => page.locator('.notice').allTextContents();
   const closeNotices = async () => {
     const close = page.locator('.notice-close').first();
@@ -927,6 +946,64 @@ suite('App editor', () => {
     await waitFor(
       async () => (await topLine()) === `line ${top[1]}`,
       'the line at the top of the editor',
+    );
+  });
+
+  test('shows the text where it was scrolled to and the cursor where it was once its tab is shown again', async () => {
+    const lines = Array.from({ length: 300 }, (_, at) => `place ${at + 1}`);
+    fs.writeFileSync(path.join(opened, 'places.txt'), `${lines.join('\n')}\n`);
+    await backToCommander();
+    await edit('places.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('place 1\n'),
+      'the text',
+    );
+    const editorTab = await activeIndex();
+    const status = page.locator('.editor .column-status-text');
+    await content().locator('.cm-line').nth(4).click();
+    await waitFor(
+      async () => (await status.textContent())?.startsWith('Ln 5,') === true,
+      'the cursor on the fifth line',
+    );
+    const cursor = await status.textContent();
+    const scrolledTo = await scrolledDown(150);
+    await backToCommander();
+    await page.locator('.tabs [role="tab"]').nth(editorTab).click();
+    await waitFor(
+      async () => (await editedText()).length > 0,
+      'the text shown again',
+    );
+    await waitFor(
+      async () => (await topLine()) === scrolledTo,
+      `${scrolledTo} at the top again`,
+    );
+    assert.strictEqual(await status.textContent(), cursor);
+  });
+
+  test('shows the text where it was scrolled to while the page reloads as the settings are saved', async () => {
+    const lines = Array.from({ length: 300 }, (_, at) => `reread ${at + 1}`);
+    fs.writeFileSync(path.join(opened, 'reread.txt'), `${lines.join('\n')}\n`);
+    await backToCommander();
+    await edit('reread.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('reread 1\n'),
+      'the text',
+    );
+    const scrolledTo = await scrolledDown(120);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const reloaded = page.waitForEvent('load');
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ scrolling: { smooth: true }, dateFormat: 'DD.MM.YYYY' }),
+    );
+    await reloaded;
+    await waitFor(
+      async () => (await editedText()).startsWith('reread 1\n'),
+      'the text read again',
+    );
+    await waitFor(
+      async () => (await topLine()) === scrolledTo,
+      `${scrolledTo} at the top again`,
     );
   });
 

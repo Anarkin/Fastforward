@@ -103,6 +103,13 @@ import {
   shownLanguage,
 } from '../../../ui/languageChoice';
 import { nameOf, PathTitle } from './pathTitle';
+import {
+  backTo,
+  placeIn,
+  placeMapped,
+  placeOf,
+  type EditorPlace,
+} from './editorPlace';
 import { useCommander, useCommanderActions } from './store';
 
 export interface EditedTab {
@@ -257,12 +264,13 @@ function endingsTitle({ ending, counts }: EndingsShown): string {
 const encodingName = (encoding: TextEncoding) =>
   strings.commander.encodingShort[encoding];
 
-function keptJson(state: EditorState): unknown {
+function keptJson(state: EditorState, place: EditorPlace | undefined): unknown {
   const json: unknown = state.toJSON({ history: historyField });
   return typeof json === 'object' && json !== null
     ? {
         selection: Reflect.get(json, 'selection'),
         history: Reflect.get(json, 'history'),
+        ...(place !== undefined && { place }),
       }
     : undefined;
 }
@@ -416,12 +424,13 @@ export function Editor() {
       return undefined;
     }
     let version = startingVersion();
+    let place: EditorPlace | undefined;
     let keepTimer: ReturnType<typeof setTimeout> | undefined;
     const keepState = (state: EditorState) => {
-      keepEditor(tab, { state, version });
+      keepEditor(tab, { state, version, place });
       clearTimeout(keepTimer);
       keepTimer = setTimeout(
-        () => keepEditState(tab, version, keptJson(state)),
+        () => keepEditState(tab, version, keptJson(state, place)),
         stateKeepDelay,
       );
     };
@@ -454,6 +463,9 @@ export function Editor() {
       scrolling: scrollingNow,
       onUpdate: (update) => {
         const converted = endingsChanged(update.transactions);
+        if (update.docChanged && place !== undefined) {
+          place = placeMapped(place, update.changes);
+        }
         if (update.docChanged || converted) {
           editText(tab, {
             version,
@@ -486,7 +498,15 @@ export function Editor() {
     setEndingsShown(reused ? endingsShownOf(shown.state) : undefined);
     if (!reused) {
       readEdited(tab);
+    } else if (kept.place !== undefined) {
+      place = kept.place;
+      shown.dispatch({ effects: backTo(shown, kept.place) });
     }
+    const onScroll = () => {
+      place = placeOf(shown);
+      keepState(shown.state);
+    };
+    shown.scrollDOM.addEventListener('scroll', onScroll, { passive: true });
     view.current = shown;
     const stop = listenEditor((message) => {
       if (message.tab !== tab) {
@@ -521,8 +541,14 @@ export function Editor() {
             yMargin: shown.defaultLineHeight / 2,
           }),
         });
+      } else {
+        const keptPlace = placeIn(message.state);
+        if (keptPlace !== undefined) {
+          place = keptPlace;
+          shown.dispatch({ effects: backTo(shown, keptPlace) });
+        }
       }
-      keepEditor(tab, { state: shown.state, version });
+      keepEditor(tab, { state: shown.state, version, place });
       setEndingsShown(endingsShownOf(shown.state));
       setStatus(statusOf(shown.state, table));
       shown.focus();
@@ -531,8 +557,9 @@ export function Editor() {
     return () => {
       stop();
       clearTimeout(keepTimer);
-      keepEditor(tab, { state: shown.state, version });
-      keepEditState(tab, version, keptJson(shown.state));
+      shown.scrollDOM.removeEventListener('scroll', onScroll);
+      keepEditor(tab, { state: shown.state, version, place });
+      keepEditState(tab, version, keptJson(shown.state, place));
       shown.destroy();
       view.current = undefined;
     };
