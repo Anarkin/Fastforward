@@ -29,6 +29,7 @@ import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import type { ChosenFolder, CloneTarget } from './clonePopup';
 import { resetWidth, shownSelection, widthsToLoad } from './columns';
 import { parsePatch, textKey, type LoadedText } from './diff';
+import type { CodeSnap, TextMeasures, WrapColumns } from './diffView';
 import { foldersOf } from './fileTree';
 import type { ViewedSource } from './images';
 import type { MenuTarget } from './menus';
@@ -95,6 +96,9 @@ interface GitSource {
   readonly fileFilters: ReadonlyMap<string, string>;
   readonly searchQueries: ReadonlyMap<string, string>;
   readonly folders: ViewFolders;
+  readonly diffText: TextMeasures | undefined;
+  readonly diffSnap: CodeSnap;
+  readonly wrapColumns: WrapColumns | undefined;
 }
 
 interface GitCollections {
@@ -183,6 +187,9 @@ interface GitActions {
     language: string | undefined,
   ) => void;
   readonly seeLanguageKey: (key: string | undefined) => void;
+  readonly measureDiffText: (measures: TextMeasures) => void;
+  readonly snapDiffCode: (snap: (last: CodeSnap) => CodeSnap) => void;
+  readonly keepWrapColumns: (columns: WrapColumns) => void;
 }
 
 const noComparedTexts: ComparedTexts = { tab: undefined, texts: new Map() };
@@ -215,7 +222,26 @@ const gitDefaults: GitSource = {
   fileFilters: new Map(),
   searchQueries: new Map(),
   folders: noFolders,
+  diffText: undefined,
+  diffSnap: { inline: 0, left: 0, right: 0 },
+  wrapColumns: undefined,
 };
+
+function sameTextMeasures(
+  one: TextMeasures | undefined,
+  other: TextMeasures,
+): boolean {
+  return (
+    one !== undefined &&
+    one.charWidth === other.charWidth &&
+    one.font === other.font &&
+    one.spacing === other.spacing &&
+    one.scale === other.scale &&
+    one.lineHeight === other.lineHeight &&
+    one.padding.top === other.padding.top &&
+    one.padding.bottom === other.padding.bottom
+  );
+}
 
 export function languageKeyOf(
   comparing: string | undefined,
@@ -795,6 +821,24 @@ export function createGitStore(
               ? undefined
               : { key, language },
         }),
+      measureDiffText: (measures) =>
+        set((state) =>
+          sameTextMeasures(state.diffText, measures)
+            ? state
+            : { diffText: measures },
+        ),
+      snapDiffCode: (snap) =>
+        set((state) => {
+          const next = snap(state.diffSnap);
+          return next === state.diffSnap ? state : { diffSnap: next };
+        }),
+      keepWrapColumns: (columns) =>
+        set((state) =>
+          state.wrapColumns?.left === columns.left &&
+          state.wrapColumns.right === columns.right
+            ? state
+            : { wrapColumns: columns },
+        ),
     };
   });
 }

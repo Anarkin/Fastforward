@@ -102,7 +102,7 @@ import {
   type RowFollower,
 } from '../../../ui/rowScroll';
 import { useShell } from '../../../shell/page/store';
-import { pickedFor, useGit } from './store';
+import { pickedFor, useGit, useGitActions } from './store';
 import {
   areaColumns,
   codePadding,
@@ -1944,6 +1944,15 @@ interface Edges {
   readonly bottom: number;
 }
 
+export interface TextMeasures {
+  readonly charWidth: number;
+  readonly font: string;
+  readonly spacing: number;
+  readonly scale: number;
+  readonly lineHeight: number;
+  readonly padding: Edges;
+}
+
 const layoutSteps = 64;
 
 function onLayoutStep(gap: number, scale: number): number {
@@ -1976,8 +1985,6 @@ export interface CodeSnap {
   readonly left: number;
   readonly right: number;
 }
-
-const unsnapped: CodeSnap = { inline: 0, left: 0, right: 0 };
 
 export function codeSnapOf(
   starts: { readonly [K in keyof CodeSnap]: number | undefined },
@@ -2219,10 +2226,12 @@ export function DiffView({
   const scrolledSideways = useRef(sideways);
   const split = showsSideBySide(sideBySide, whole);
   const scrollsSides = split && !wordWrap;
-  const [columns, setColumns] = useState<WrapColumns>();
-  const [charWidth, setCharWidth] = useState(0);
-  const [font, setFont] = useState('');
-  const [spacing, setSpacing] = useState(0);
+  const columns = useGit((state) => state.wrapColumns);
+  const measuredText = useGit((state) => state.diffText);
+  const { measureDiffText, snapDiffCode, keepWrapColumns } = useGitActions();
+  const charWidth = measuredText?.charWidth ?? 0;
+  const font = measuredText?.font ?? '';
+  const spacing = measuredText?.spacing ?? 0;
   const table = useCellTable();
   const widths = useMemo(
     () => textWidths(charWidth, font, spacing, table ?? plainCells),
@@ -2233,9 +2242,9 @@ export function DiffView({
       widths.char > 0 ? (row: string) => columnsOf(row, widths) : undefined,
     [widths],
   );
-  const [padding, setPadding] = useState(unpadded);
-  const [scale, setScale] = useState(1);
-  const [lineHeight, setLineHeight] = useState(uniformHeight);
+  const padding = measuredText?.padding ?? unpadded;
+  const scale = measuredText?.scale ?? 1;
+  const lineHeight = measuredText?.lineHeight ?? uniformHeight;
   const measureText = useCallback(
     (
       width: number,
@@ -2244,32 +2253,29 @@ export function DiffView({
       measuredScale: number,
       measuredLineHeight: number,
       measuredSpacing: number,
-    ) => {
-      setCharWidth(width);
-      setFont(measuredFont);
-      setSpacing(measuredSpacing);
-      setScale(measuredScale);
-      setLineHeight(measuredLineHeight);
-      setPadding((last) =>
-        last.top === measured.top && last.bottom === measured.bottom
-          ? last
-          : measured,
-      );
-    },
-    [],
+    ) =>
+      measureDiffText({
+        charWidth: width,
+        font: measuredFont,
+        spacing: measuredSpacing,
+        scale: measuredScale,
+        lineHeight: measuredLineHeight,
+        padding: measured,
+      }),
+    [measureDiffText],
   );
   const [measured, setMeasured] = useState<Sideways>();
-  const [snap, setSnap] = useState(unsnapped);
+  const snap = useGit((state) => state.diffSnap);
   const snapCode = useCallback(() => {
     const element = list.current;
     if (!element) {
       return;
     }
-    setSnap((last) => {
+    snapDiffCode((last) => {
       const next = codeSnapOf(codeStarts(element), devicePixelRatio, last);
       return sameSnap(last, next) ? last : next;
     });
-  }, []);
+  }, [snapDiffCode]);
   useLayoutEffect(snapCode);
   useEffect(() => {
     const element = list.current;
@@ -2281,13 +2287,7 @@ export function DiffView({
     return () => observer.disconnect();
   }, [snapCode]);
   const view = measured && shownSideways(measured, scrollsSides, sideways);
-  const changeColumns = useCallback(
-    (next: WrapColumns) =>
-      setColumns((last) =>
-        last?.left === next.left && last.right === next.right ? last : next,
-      ),
-    [],
-  );
+  const changeColumns = keepWrapColumns;
   useEffect(() => {
     const element = list.current;
     if (!element || !scrollsSides) {
