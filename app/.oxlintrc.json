@@ -107,5 +107,5 @@
       }
     }
   ],
-  "ignorePatterns": ["dist", "release"]
+  "ignorePatterns": ["dist", "release", "perf-results", "perf-build"]
 }

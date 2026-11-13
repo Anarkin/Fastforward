@@ -8,6 +8,10 @@ import { mainOptions, webviewOptions } from '../esbuild.config.mts';
 
 const production = process.argv.includes('--production');
 const dev = process.argv.includes('--dev');
+const outdir =
+  process.argv
+    .find((arg) => arg.startsWith('--outdir='))
+    ?.slice('--outdir='.length) ?? 'dist';
 const electron: string = createRequire(import.meta.url)('electron');
 
 let webviewBuild = Promise.withResolvers<void>();
@@ -62,15 +66,15 @@ if (sevenZip === 'fetched') {
   );
 }
 
-fs.mkdirSync('dist', { recursive: true });
-for (const entry of fs.readdirSync('dist')) {
-  fs.rmSync(`dist/${entry}`, { recursive: true, force: true });
+fs.mkdirSync(outdir, { recursive: true });
+for (const entry of fs.readdirSync(outdir)) {
+  fs.rmSync(`${outdir}/${entry}`, { recursive: true, force: true });
 }
-fs.copyFileSync('src/shell/page/index.html', 'dist/index.html');
-fs.copyFileSync('build/window-icon.png', 'dist/icon.png');
-fs.copyFileSync('src/shell/main/settings.json', 'dist/settings.json');
+fs.copyFileSync('src/shell/page/index.html', `${outdir}/index.html`);
+fs.copyFileSync('build/window-icon.png', `${outdir}/icon.png`);
+fs.copyFileSync('src/shell/main/settings.json', `${outdir}/settings.json`);
 for (const folder of ['cmaps', 'standard_fonts', 'iccs', 'wasm']) {
-  fs.cpSync(`node_modules/pdfjs-dist/${folder}`, `dist/pdfjs/${folder}`, {
+  fs.cpSync(`node_modules/pdfjs-dist/${folder}`, `${outdir}/pdfjs/${folder}`, {
     recursive: true,
     filter: (source) => !source.includes('quickjs'),
   });
@@ -79,11 +83,13 @@ for (const folder of ['cmaps', 'standard_fonts', 'iccs', 'wasm']) {
 const contexts = await Promise.all([
   esbuild.context({
     ...mainOptions(production),
+    outdir,
     logLevel: 'info',
     plugins: [restartApp],
   }),
   esbuild.context({
     ...webviewOptions(production),
+    outdir,
     logLevel: 'info',
     plugins: [trackWebview],
   }),
@@ -99,7 +105,7 @@ if (dev) {
         copied.set(
           name,
           setTimeout(
-            () => fs.copyFileSync(`${folder}/${name}`, `dist/${name}`),
+            () => fs.copyFileSync(`${folder}/${name}`, `${outdir}/${name}`),
             100,
           ),
         );

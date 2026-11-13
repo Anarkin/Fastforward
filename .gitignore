@@ -6,3 +6,5 @@ release/
 .claude/settings.local.json
 .vs/
 .idea/
+app/perf-results/
+app/perf-build/

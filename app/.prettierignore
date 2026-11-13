@@ -2,3 +2,5 @@ dist/
 package-lock.json
 coverage/
 release/
+perf-results/
+perf-build/
