@@ -330,7 +330,6 @@ suite('App editor', () => {
     await page
       .locator('.editor .menu-button-trigger[title="Encoding"]')
       .click();
-    await page.locator('.menu-item', { hasText: 'Save in' }).click();
     await page
       .locator('.menu-item', { hasText: /^UTF-8$/ })
       .first()
@@ -345,6 +344,57 @@ suite('App editor', () => {
     assert.deepStrictEqual(
       [...fs.readFileSync(latin)],
       [0x63, 0x61, 0x66, 0xc3, 0xa9, 0x0a],
+    );
+  });
+
+  test('indents on Tab, comments a line out on Ctrl+K, moves it on Alt+Down, goes to a line on Ctrl+G and types at every occurrence Ctrl+D selected, telling the line, column and cursors below', async () => {
+    fs.writeFileSync(path.join(opened, 'keys.ts'), 'let a = 1;\nlet b = 2;\n');
+    const status = () =>
+      page.locator('.editor .column-status-text').textContent();
+    await backToCommander();
+    await waitFor(
+      async () =>
+        (await right().locator('.commander-row', { hasText: 'keys' }).count()) >
+        0,
+      'the file listed',
+    );
+    await edit('keys.ts');
+    await waitFor(
+      async () => (await editedText()).startsWith('let a'),
+      'the text',
+    );
+    await toStart();
+    await waitFor(async () => (await status()) === 'Ln 1, Col 1', 'the place');
+    await page.keyboard.press('Tab');
+    await waitFor(async () => (await status()) === 'Ln 1, Col 5', 'the indent');
+    await page.keyboard.press('ControlOrMeta+K');
+    await page.keyboard.press('Alt+ArrowDown');
+    await waitFor(
+      async () => (await editedText()) === 'let b = 2;\n    // let a = 1;\n',
+      'the line commented out and moved down',
+    );
+    await page.keyboard.press('Control+G');
+    const prompt = page.locator('.prompt-input');
+    await prompt.waitFor();
+    await prompt.fill('1');
+    await prompt.press('Enter');
+    await waitFor(async () => (await status()) === 'Ln 1, Col 1', 'line 1');
+    await page.keyboard.press('ControlOrMeta+D');
+    await page.keyboard.press('ControlOrMeta+D');
+    await waitFor(
+      async () => (await status())?.includes('2 cursors') === true,
+      'two cursors',
+    );
+    await page.keyboard.type('const');
+    await waitFor(
+      async () =>
+        (await editedText()) === 'const b = 2;\n    // const a = 1;\n',
+      'both occurrences typed over',
+    );
+    await page.keyboard.press('Escape');
+    await waitFor(
+      async () => (await status())?.includes('cursors') === false,
+      'one cursor',
     );
   });
 

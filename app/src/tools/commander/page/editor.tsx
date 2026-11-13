@@ -1,11 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import {
-  history,
-  historyField,
-  insertNewlineAndIndent,
-  redo,
-  undo,
-} from '@codemirror/commands';
+import { history, historyField } from '@codemirror/commands';
 import {
   Compartment,
   EditorSelection,
@@ -24,9 +18,22 @@ import { appTextLook } from '../../../ui/editorText';
 import { WordWrapIcon } from '../../../ui/icons';
 import { Words } from '../../../ui/name';
 import { languageOf } from '../../../ui/languages';
-import { keyPressed } from '../../../ui/shortcuts';
 import { colorer, startColorer } from '../../../ui/syntax';
-import { useCellTable, type CellTable } from '../../../ui/textWidths';
+import {
+  cellWidthsOf,
+  columnsOf,
+  useCellTable,
+  type CellTable,
+} from '../../../ui/textWidths';
+import { StatusLine } from '../../../ui/statusLine';
+import { PromptPopup } from '../../../shell/page/promptPopup';
+import {
+  commentsOf,
+  editorKeys,
+  indentField,
+  indentionOf,
+  type EditorKeyActions,
+} from './editorCommands';
 import { editorKeymap } from '../shared/keymap';
 import {
   maxColoredBytes,
@@ -48,6 +55,7 @@ import { colorOfFileNamed } from './fileColors';
 import { viewerChoices } from './view';
 import type { LineEnding } from '../shared/textMarks';
 import { MenuButton } from '../../../ui/menu';
+import type { ContextMenuItem } from '../../../ui/contextMenu';
 import {
   LanguageButton,
   languageChoiceOf,
@@ -82,34 +90,8 @@ interface EditorParts {
   readonly wordWrap: boolean;
   readonly coloring: Compartment;
   readonly colors: Extension;
-  readonly onSave: () => void;
+  readonly keys: EditorKeyActions;
   readonly onUpdate: (update: ViewUpdate) => void;
-}
-
-function keysOf(onSave: () => void): Extension {
-  return EditorView.domEventHandlers({
-    keydown(event, view) {
-      if (keyPressed(editorKeymap.save, event) !== undefined) {
-        event.preventDefault();
-        onSave();
-        return true;
-      }
-      const command =
-        keyPressed(editorKeymap.undo, event) !== undefined
-          ? undo
-          : keyPressed(editorKeymap.redo, event) !== undefined
-            ? redo
-            : keyPressed(editorKeymap.newLine, event) !== undefined
-              ? insertNewlineAndIndent
-              : undefined;
-      if (command === undefined) {
-        return false;
-      }
-      event.preventDefault();
-      command(view);
-      return true;
-    },
-  });
 }
 
 function extensionsOf({
@@ -119,7 +101,7 @@ function extensionsOf({
   wordWrap,
   coloring,
   colors,
-  onSave,
+  keys,
   onUpdate,
 }: EditorParts): Extension {
   return [
@@ -136,7 +118,7 @@ function extensionsOf({
       autocorrect: 'off',
       autocapitalize: 'off',
     }),
-    keysOf(onSave),
+    editorKeys(keys),
     EditorView.updateListener.of(onUpdate),
   ];
 }
@@ -147,7 +129,7 @@ function stateOf(
   extensions: Extension,
 ): EditorState {
   const doc = Text.of(shown.text.split(lineBreak));
-  const all = [extensions, endingsFrom(doc, shown)];
+  const all = [extensions, endingsFrom(doc, shown), indentionOf(doc)];
   if (typeof kept === 'object' && kept !== null) {
     try {
       return EditorState.fromJSON(
@@ -212,8 +194,43 @@ function keptJson(state: EditorState): unknown {
     : undefined;
 }
 
-const colorsOf = (language: string | undefined, on: boolean): Extension =>
-  on ? syntaxColors(language, colorer, maxColoredBytes) : [];
+const colorsOf = (language: string | undefined, on: boolean): Extension => [
+  on ? syntaxColors(language, colorer, maxColoredBytes) : [],
+  commentsOf(language),
+];
+
+const fieldsKept = [endingsField, indentField];
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+const countedCharacters = 1_000_000;
+
+function charactersIn(text: string): number {
+  return text.length > countedCharacters
+    ? text.length
+    : [...graphemes.segment(text)].length;
+}
+
+function statusOf(state: EditorState, table: CellTable): string {
+  const { main, ranges } = state.selection;
+  const line = state.doc.lineAt(main.head);
+  const column =
+    columnsOf(line.text, cellWidthsOf(table))(main.head - line.from) + 1;
+  const parts = [strings.editor.position(line.number, column)];
+  if (ranges.length > 1) {
+    parts.push(strings.editor.cursors(ranges.length));
+  } else if (!main.empty) {
+    parts.push(
+      strings.editor.selected(
+        state.doc.lineAt(main.to).number -
+          state.doc.lineAt(main.from).number +
+          1,
+        charactersIn(state.sliceDoc(main.from, main.to)),
+      ),
+    );
+  }
+  return parts.join(strings.editor.between);
+}
 
 export function Editor() {
   useEffect(startColorer, []);
@@ -257,6 +274,9 @@ export function Editor() {
   } = useCommanderActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
   const [reopening, setReopening] = useState<TextEncoding | 'auto'>();
+  const [status, setStatus] = useState<string>();
+  const [goingToLine, setGoingToLine] = useState(false);
+  const [lineCount, setLineCount] = useState(0);
   const table = useCellTable();
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
@@ -295,7 +315,15 @@ export function Editor() {
       wordWrap: wrapsFirst(),
       coloring: coloring.current,
       colors: colorsFirst(),
-      onSave: () => saveText(tab),
+      keys: {
+        save: () => saveText(tab),
+        find: () => {},
+        replace: () => {},
+        goToLine: () => {
+          setLineCount(shown.state.doc.lines);
+          setGoingToLine(true);
+        },
+      },
       onUpdate: (update) => {
         const converted = endingsChanged(update.transactions);
         if (update.docChanged || converted) {
@@ -311,6 +339,7 @@ export function Editor() {
         }
         if (update.docChanged || update.selectionSet) {
           keepState(update.state);
+          setStatus(statusOf(update.state, table));
         }
       },
     });
@@ -320,10 +349,11 @@ export function Editor() {
       parent: element,
       state: reused
         ? kept.state.update({
-            effects: StateEffect.reconfigure.of([extensions, endingsField]),
+            effects: StateEffect.reconfigure.of([extensions, fieldsKept]),
           }).state
-        : EditorState.create({ extensions: [extensions, endingsField] }),
+        : EditorState.create({ extensions: [extensions, fieldsKept] }),
     });
+    setStatus(reused ? statusOf(shown.state, table) : undefined);
     setEndingsShown(reused ? endingsShownOf(shown.state) : undefined);
     if (!reused) {
       readEdited(tab);
@@ -354,6 +384,7 @@ export function Editor() {
       }
       keepEditor(tab, { state: shown.state, version });
       setEndingsShown(endingsShownOf(shown.state));
+      setStatus(statusOf(shown.state, table));
       shown.focus();
     });
     shown.focus();
@@ -412,37 +443,38 @@ export function Editor() {
       reopenIn(tab, chosen);
     }
   };
-  const encodingItems =
+  const encodingItems: readonly ContextMenuItem[] =
     tab === undefined || encoding === undefined
       ? []
       : [
+          { label: strings.editor.saveIn, disabled: true },
+          ...textEncodings.flatMap((each) =>
+            (each === 'utf-8'
+              ? [false, true]
+              : [each.startsWith('utf-16')]
+            ).map((bom) => ({
+              label:
+                bom && each === 'utf-8'
+                  ? strings.editor.withBom(encodingName(each))
+                  : encodingName(each),
+              keywords: strings.editor.saveIn,
+              checked: each === encoding && bom === edited?.bom,
+              onClick: () => saveIn(tab, each, bom),
+            })),
+          ),
+          { separator: true },
+          { label: strings.editor.reopenIn, disabled: true },
           {
-            label: strings.editor.reopenIn,
-            submenu: [
-              { label: strings.common.auto, onClick: () => reopen('auto') },
-              ...textEncodings.map((each) => ({
-                label: encodingName(each),
-                checked: each === (edited?.readAs ?? encoding),
-                onClick: () => reopen(each),
-              })),
-            ],
+            label: strings.common.auto,
+            keywords: strings.editor.reopenIn,
+            onClick: () => reopen('auto'),
           },
-          {
-            label: strings.editor.saveIn,
-            submenu: textEncodings.flatMap((each) =>
-              (each === 'utf-8'
-                ? [false, true]
-                : [each.startsWith('utf-16')]
-              ).map((bom) => ({
-                label:
-                  bom && each === 'utf-8'
-                    ? strings.editor.withBom(encodingName(each))
-                    : encodingName(each),
-                checked: each === encoding && bom === edited?.bom,
-                onClick: () => saveIn(tab, each, bom),
-              })),
-            ),
-          },
+          ...textEncodings.map((each) => ({
+            label: encodingName(each),
+            keywords: strings.editor.reopenIn,
+            checked: each === (edited?.readAs ?? encoding),
+            onClick: () => reopen(each),
+          })),
         ];
   const convert = (ending: LineEnding) =>
     view.current?.dispatch(convertedTo(ending));
@@ -528,13 +560,46 @@ export function Editor() {
         )}
       </div>
       {edited?.error === undefined ? (
-        <div className="column-body editor-body" ref={host} />
+        <>
+          <div className="column-body editor-body" ref={host} />
+          {status !== undefined && <StatusLine>{status}</StatusLine>}
+        </>
       ) : (
         <div className="column-body editor-body">
           <div className="viewer-error">
             <Words>{edited.error}</Words>
           </div>
         </div>
+      )}
+      {goingToLine && (
+        <PromptPopup
+          title={strings.editor.goToLineTitle}
+          label={strings.editor.lineNumber(lineCount)}
+          confirm={strings.editor.goToLine}
+          problemOf={(typed) =>
+            /^\d+$/.test(typed) &&
+            Number(typed) >= 1 &&
+            Number(typed) <= lineCount
+              ? undefined
+              : strings.editor.noSuchLine(lineCount)
+          }
+          onConfirm={(typed) => {
+            setGoingToLine(false);
+            const shown = view.current;
+            if (shown !== undefined) {
+              const { from } = shown.state.doc.line(Number(typed));
+              shown.dispatch({
+                selection: { anchor: from },
+                scrollIntoView: true,
+              });
+              shown.focus();
+            }
+          }}
+          onCancel={() => {
+            setGoingToLine(false);
+            view.current?.focus();
+          }}
+        />
       )}
       {reopening !== undefined && tab !== undefined && (
         <ConfirmPopup

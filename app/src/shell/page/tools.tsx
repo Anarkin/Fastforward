@@ -14,6 +14,8 @@ import type { ToolId } from '../shared/tools';
 import { CommanderTool } from '../../tools/commander/page/tool';
 import {
   commanderGroups,
+  editorGroups,
+  editorKeymap,
   viewerGroups,
   viewerKeymap,
   commanderKeymap,
@@ -26,7 +28,7 @@ import {
 import { GitTool } from '../../tools/git/page/tool';
 import { activeTabOf, useShell, useShellActions } from './store';
 
-export type ShortcutEntryId = ToolId | 'viewer' | 'everywhere';
+export type ShortcutEntryId = ToolId | 'viewer' | 'editor' | 'everywhere';
 
 export interface ShortcutEntry {
   readonly id: ShortcutEntryId;
@@ -46,6 +48,11 @@ export const shortcutEntries: readonly ShortcutEntry[] = [
     id: 'viewer',
     title: strings.shortcuts.viewer,
     groups: shortcutGroupsOf(viewerGroups, titles, viewerKeymap),
+  },
+  {
+    id: 'editor',
+    title: strings.shortcuts.editor,
+    groups: shortcutGroupsOf(editorGroups, titles, editorKeymap),
   },
   {
     id: 'git',

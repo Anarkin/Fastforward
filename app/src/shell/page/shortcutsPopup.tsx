@@ -116,12 +116,16 @@ export function shownEntries(
 
 export function entryFor(
   tool: ToolId | undefined,
-  kind: Pick<TabInfo, 'view' | 'compare'> = {},
+  kind: Pick<TabInfo, 'view' | 'edit' | 'compare'> = {},
 ): ShortcutEntryId {
   if (tool === undefined) {
     return 'everywhere';
   }
-  return tool === 'commander' && kind.view === true ? 'viewer' : tool;
+  return tool === 'commander' && kind.view === true
+    ? 'viewer'
+    : tool === 'commander' && kind.edit === true
+      ? 'editor'
+      : tool;
 }
 
 export function groupsInView(
@@ -206,7 +210,7 @@ export function ShortcutsList({ entry }: { entry: ShownEntry }) {
 }
 
 function EntryIcon({ id }: { id: ShortcutEntryId }) {
-  if (id === 'viewer') {
+  if (id === 'viewer' || id === 'editor') {
     return <FileIcon />;
   }
   return id === 'everywhere' ? <TabsIcon /> : <ToolIcon tool={id} />;

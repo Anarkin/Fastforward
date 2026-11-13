@@ -14,6 +14,7 @@ import {
 import { compareKeymap, gitKeymap } from '../../../tools/git/shared/keymap';
 import {
   commanderKeymap,
+  editorKeymap,
   viewerKeymap,
 } from '../../../tools/commander/shared/keymap';
 import { terminalKeymap } from '../../../tools/terminal/shared/keymap';
@@ -177,6 +178,7 @@ suite('Shortcuts popup', () => {
       [
         ['commander', 'Commander'],
         ['viewer', 'File viewer'],
+        ['editor', 'Editor'],
         ['git', 'Git'],
         ['terminal', 'Terminal'],
         ['everywhere', 'Every tab'],
@@ -205,6 +207,10 @@ suite('Shortcuts popup', () => {
         ],
         ['File viewer', ['Scrolling', 'Showing the file', 'Text', 'Searching']],
         [
+          'Editor',
+          ['Editing', 'Moving around', 'Cursors and selections', 'Searching'],
+        ],
+        [
           'Git',
           [
             'Moving around',
@@ -226,6 +232,7 @@ suite('Shortcuts popup', () => {
       ['everywhere', keymap],
       ['commander', commanderKeymap],
       ['viewer', viewerKeymap],
+      ['editor', editorKeymap],
       ['git', { ...gitKeymap, closeCompare: compareKeymap.closeCompare }],
       ['terminal', terminalKeymap],
     ];
@@ -492,6 +499,7 @@ suite('Shortcuts popup', () => {
     assert.deepStrictEqual(textsOf(html, 'shortcuts-tool-name'), [
       'Commander',
       'File viewer',
+      'Editor',
       'Git',
       'Terminal',
       'Every tab',
@@ -540,6 +548,7 @@ suite('Shortcuts popup', () => {
     assert.deepStrictEqual(counts('f3'), [
       ['commander', 2],
       ['viewer', 0],
+      ['editor', 0],
       ['git', 1],
       ['terminal', 0],
       ['everywhere', 0],
@@ -733,11 +742,11 @@ suite('Shortcuts popup', () => {
         [...document.querySelectorAll('.shortcuts-tool .shortcuts-count')].map(
           (count) => count.textContent,
         ),
-        ['2', '0', '1', '0', '0'],
+        ['2', '0', '0', '1', '0', '0'],
       );
       assert.strictEqual(
         document.querySelectorAll('.shortcuts-tool.empty').length,
-        3,
+        4,
       );
       assert.deepStrictEqual(headingsOf(document), ['Viewing and comparing']);
       await press('ArrowDown');

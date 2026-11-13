@@ -373,6 +373,16 @@ export const strings = {
     undo: 'Undo the last change',
     redo: 'Redo the change undone last',
     newLine: 'Start a new line, indented as the one before',
+    indent: 'Indent the lines selected, or less',
+    toggleComment: 'Comment the lines selected out, or back in',
+    moveLines: 'Move the lines selected up or down',
+    goToLine: 'Go to a line by its number',
+    addCursor: 'Add a cursor where clicked',
+    columnSelection: 'Select a column, a cursor on each line',
+    nextOccurrence: 'Select the next occurrence of the selection too',
+    cursorRows: 'Add a cursor on the line above or below',
+    singleCursor: 'Leave one cursor, and let Tab then move the focus on',
+    replaceInFile: 'Replace in the file',
     dialogButton: 'Move between the buttons of a dialog',
     newFolder: 'Make a folder in the folder of the side',
     newFile: 'Edit a new file in the folder of the side, made once saved',
@@ -444,6 +454,7 @@ export const strings = {
     noMatches: 'No shortcut here has all of these words.',
     tools: 'Tools',
     viewer: 'File viewer',
+    editor: 'Editor',
     everywhere: 'Every tab',
     groups: {
       Tabs: 'Tabs',
@@ -466,6 +477,8 @@ export const strings = {
       Diff: 'Diff',
       Clipboard: 'Clipboard',
       Kept: 'Kept from the shell',
+      Editing: 'Editing',
+      Cursors: 'Cursors and selections',
     },
   },
   keys: {
@@ -1195,6 +1208,17 @@ export const strings = {
     readAgain: 'Read Again',
     askedInTab: (file: string) =>
       sentence`${named(file)} isn't saved: its tab asks what to do.`,
+    position: (line: number, column: number) => `Ln ${line}, Col ${column}`,
+    cursors: (cursors: number) => `${cursors} cursors`,
+    selected: (lines: number, characters: number) =>
+      lines > 1
+        ? `${lines} lines, ${characters} characters selected`
+        : `${characters} ${characters === 1 ? 'character' : 'characters'} selected`,
+    between: ' · ',
+    goToLineTitle: 'Go to Line',
+    lineNumber: (lines: number) => `Line, 1 to ${lines}`,
+    goToLine: 'Go',
+    noSuchLine: (lines: number) => `Type a line from 1 to ${lines}.`,
     reopenIn: 'Reopen in',
     saveIn: 'Save in',
     encodingTitle: 'Encoding',
