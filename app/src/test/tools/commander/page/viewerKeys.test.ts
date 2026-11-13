@@ -46,6 +46,14 @@ suite('Viewer keys', () => {
     }
   });
 
+  test('edits the file on F4, whatever it shows', () => {
+    for (const shown of [text, hex, image]) {
+      assert.deepStrictEqual(viewerKey(keyPress('F4'), shown), {
+        kind: 'edit',
+      });
+    }
+  });
+
   test('shows an image at its real size on F only while an image is shown, leaving other keys alone', () => {
     assert.deepStrictEqual(viewerKey(keyPress('f'), image), {
       kind: 'realSize',

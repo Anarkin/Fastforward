@@ -15,7 +15,7 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/shell';
-import type { Store } from '../../../shell/main/storage';
+import { sameRoot, type Store } from '../../../shell/main/storage';
 import { SavedSides } from './savedSides';
 import {
   isSide,
@@ -715,22 +715,26 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private removeCopy(viewed: string): void {
+  private copyOf(viewed: string): string | undefined {
     const { viewedCopies } = this.access;
     if (viewedCopies === undefined) {
-      return;
+      return undefined;
     }
     const inside = path.relative(viewedCopies, viewed);
     const [entry] = inside.split(path.sep);
-    if (
-      entry === undefined ||
+    return entry === undefined ||
       inside === '' ||
       entry === '..' ||
       path.isAbsolute(inside)
-    ) {
+      ? undefined
+      : path.join(viewedCopies, entry);
+  }
+
+  private removeCopy(viewed: string): void {
+    const copy = this.copyOf(viewed);
+    if (copy === undefined) {
       return;
     }
-    const copy = path.join(viewedCopies, entry);
     const stillViewed = this.shell
       .tabs()
       .some(
@@ -790,6 +794,8 @@ export class CommanderTool implements Tool<'commander'> {
         return this.newFolder(page, message);
       case 'newFile':
         return this.newFile(page, message);
+      case 'editViewed':
+        return this.editViewed(page, message);
       case 'rename':
         return this.rename(page, message);
       case 'pack':
@@ -2578,6 +2584,51 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     await this.shell.openEdit(page, 'commander', file);
+  }
+
+  private async editViewed(
+    page: Page,
+    { tab, at, encoding }: Extract<CommanderToHost, { type: 'editViewed' }>,
+  ): Promise<void> {
+    const viewed = this.shell
+      .tabs()
+      .find((each) => each.id === tab && each.tool === 'commander');
+    const file = viewed?.view === true ? viewed.root : undefined;
+    if (
+      file === undefined ||
+      this.shown.get(page)?.tab !== tab ||
+      !Number.isSafeInteger(at) ||
+      at < 0 ||
+      (encoding !== undefined && !isTextEncoding(encoding))
+    ) {
+      return;
+    }
+    const refusal =
+      this.copyOf(file) === undefined
+        ? await this.editing.refusal(file)
+        : strings.editor.viewedCopy(path.basename(file));
+    if (refusal !== undefined) {
+      this.shell.notice(page, { level: 'error', message: refusal });
+      return;
+    }
+    const edited = this.shell
+      .tabs()
+      .some(
+        (each) =>
+          each.tool === 'commander' &&
+          each.edit === true &&
+          each.root !== undefined &&
+          sameRoot(each.root, file),
+      );
+    if (edited) {
+      await this.shell.openEdit(page, 'commander', file);
+      return;
+    }
+    this.editing.startAt(tab, {
+      byte: at,
+      ...(encoding !== undefined && { encoding }),
+    });
+    await this.shell.editViewed(page, tab);
   }
 
   private async newFolder(

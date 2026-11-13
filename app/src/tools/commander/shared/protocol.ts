@@ -295,6 +295,12 @@ export type CommanderToHost =
       readonly name: string;
     }
   | {
+      readonly type: 'editViewed';
+      readonly tab: string;
+      readonly at: number;
+      readonly encoding?: TextEncoding;
+    }
+  | {
       readonly type: 'testArchives';
       readonly tab: string;
       readonly side: Side;
@@ -521,6 +527,7 @@ export type CommanderToWebview =
       readonly shown: TextShown;
       readonly state?: unknown;
       readonly reloaded?: true;
+      readonly at?: number;
     }
   | {
       readonly type: 'textChanged';

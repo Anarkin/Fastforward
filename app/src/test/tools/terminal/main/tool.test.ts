@@ -140,6 +140,7 @@ function terminal(
     },
     openView: () => Promise.resolve(),
     openEdit: () => Promise.resolve(),
+    editViewed: () => Promise.resolve(),
     openCompare: () => Promise.resolve(),
     openFolders: () => Promise.resolve(),
     setRoot: (tab, root) => moved.push([tab, root]),

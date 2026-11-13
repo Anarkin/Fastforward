@@ -26,7 +26,7 @@
 | Settings files | Edit the settings of the app | — | Advanced | ✅ Yes | The two settings items of the app menu open the user settings and, read-only, the defaults; problems are told in notices as the settings are saved, not on their lines |
 | Files in archives | Edit a file inside an archive and put it back | — | Advanced | ❌ No | Refused, saying so; Enter opens a copy in its app to change |
 | Files read as administrator | Edit a file in a folder only an administrator may read | — | Advanced | ❌ No | Refused, saying so |
-| From the viewer | Switch a file viewed to editing it | — | Common | ❌ No | F4 works in the commander only |
+| From the viewer | Switch a file viewed to editing it | — | Common | ✅ Yes | F4 in a viewer tab turns it into an editor tab, the cursor on the line at the top of the viewer, read in the encoding chosen there, or goes to the tab editing it already; a copy taken out of an archive or a commit to view it refused, saying so |
 
 ## Text and encodings
 

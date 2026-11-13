@@ -100,7 +100,7 @@ export function Viewer() {
     },
   );
   const tab = useCommander((state) => state.view.tab);
-  const { placeOf, keepPlace } = useCommanderActions();
+  const { placeOf, keepPlace, editViewed } = useCommanderActions();
   const place = useRef(tab === undefined ? 0 : placeOf(tab));
   const onPlace = useCallback(
     (byte: number) => {
@@ -176,6 +176,17 @@ export function Viewer() {
         switch (pressed.kind) {
           case 'find':
             openFind();
+            return;
+          case 'edit':
+            if (tab !== undefined) {
+              editViewed(
+                tab,
+                place.current,
+                encoding === 'auto' || encoding === 'bytes'
+                  ? undefined
+                  : encoding,
+              );
+            }
             return;
           case 'viewAs':
             choose(pressed.mode);

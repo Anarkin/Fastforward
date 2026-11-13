@@ -613,6 +613,8 @@ function commander(
   const pages: CommanderPage[] = [page];
   let focused: CommanderPage = page;
   const viewed: string[] = [];
+  const edited: string[] = [];
+  const turned: string[] = [];
   const compared: (Compared & { readonly tool: string })[] = [];
   const tabs: Tab[] = [];
   tool.attach({
@@ -627,7 +629,14 @@ function commander(
       viewed.push(viewedFile);
       return Promise.resolve();
     },
-    openEdit: () => Promise.resolve(),
+    openEdit: (_page, _tool, editedFile) => {
+      edited.push(editedFile);
+      return Promise.resolve();
+    },
+    editViewed: (_page, turnedTab) => {
+      turned.push(turnedTab);
+      return Promise.resolve();
+    },
     openCompare: (_page, toolOpened, files) => {
       compared.push({ ...files, tool: toolOpened });
       return Promise.resolve();
@@ -723,6 +732,8 @@ function commander(
     changeTree,
     iconsLoaded,
     viewed,
+    edited,
+    turned,
     compared,
     tabs,
     menus,
@@ -7341,6 +7352,96 @@ suite('Commander tool in several windows', () => {
       assert.deepStrictEqual(
         page.of('rows').map((answer) => answer.rows.map((row) => row.text)),
         [['one', 'two']],
+      );
+    });
+
+    test('turns the tab of a file viewed into one editing it, starting at the line the viewer showed, or goes to the tab editing it already', async () => {
+      const notes = path.join(opened, 'notes.txt');
+      fs.writeFileSync(notes, 'one\ntwo\n');
+      const { tool, page, send, tabs, turned, edited } = commander({
+        [root]: [],
+      });
+      const viewing: Tab = {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      };
+      tabs.push(viewing);
+      await tool.show(page, viewing);
+      await send({ type: 'editViewed', tab: '3', at: 4 });
+      assert.deepStrictEqual(turned, ['3']);
+      const editing: Tab = {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        edit: true,
+      };
+      tabs.splice(0, 1, editing);
+      await tool.show(page, editing);
+      await send({ type: 'readEdited', tab: '3' });
+      assert.strictEqual(page.of('editedText').at(-1)?.at, 4);
+
+      const again: Tab = {
+        id: '4',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      };
+      tabs.push(again);
+      await tool.show(page, again);
+      await send({ type: 'editViewed', tab: '4', at: 0 });
+      assert.deepStrictEqual(turned, ['3']);
+      assert.deepStrictEqual(edited, [notes]);
+    });
+
+    test('turns no tab it does not show, nor one at a place that is no byte, as the page is not trusted', async () => {
+      const notes = path.join(opened, 'notes.txt');
+      fs.writeFileSync(notes, 'one\n');
+      const { tool, page, send, tabs, turned } = commander({ [root]: [] });
+      const viewing: Tab = {
+        id: '3',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      };
+      tabs.push(viewing, {
+        id: '5',
+        tool: 'commander',
+        root: notes,
+        view: true,
+      });
+      await tool.show(page, viewing);
+      await send({ type: 'editViewed', tab: '5', at: 0 });
+      await send(forged('{"type":"editViewed","tab":"3","at":-1}'));
+      await send(forged('{"type":"editViewed","tab":"3","at":"0"}'));
+      await send(
+        forged('{"type":"editViewed","tab":"3","at":0,"encoding":"klingon"}'),
+      );
+      assert.deepStrictEqual(turned, []);
+    });
+
+    test('edits no copy taken out of an archive or a commit to view it, saying why', async () => {
+      const { tool, page, send, tabs, turned, notices, copies } = commander({
+        [root]: [],
+      });
+      copies.folder = opened;
+      const copy = path.join(opened, 'viewed', 'ab12', 'notes.txt');
+      fs.mkdirSync(path.dirname(copy), { recursive: true });
+      fs.writeFileSync(copy, 'one\n');
+      const viewing: Tab = {
+        id: '3',
+        tool: 'commander',
+        root: copy,
+        view: true,
+      };
+      tabs.push(viewing);
+      await tool.show(page, viewing);
+      await send({ type: 'editViewed', tab: '3', at: 0 });
+      assert.deepStrictEqual(turned, []);
+      assert.deepStrictEqual(
+        notices.map((notice) => plainOf(notice.message)),
+        [plainOf(strings.editor.viewedCopy('notes.txt'))],
       );
     });
   });

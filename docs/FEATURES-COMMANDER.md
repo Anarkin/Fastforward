@@ -70,7 +70,7 @@
 | Move | Move files to the other side | F6 | Core | ✅ Yes | As Copy; renamed on the same drive, whole folders at once, and across drives copied and deleted file by file, each original only once its copy is made; out of an archive too, deleted from it once moved |
 | Rename | Rename a file in place | Shift+F6 | Core | ✅ Yes | The file or folder selected, in a dialog rather than in place, the name before its extension selected, saying what is wrong with a name as it is typed, as F7 does; a name of another item refused rather than replaced, a change of case alone allowed; selected once renamed; in flat view in its own folder; inside an archive too, 7-Zip writing it anew in the dialog of copies, a name the folder of the archive has refused; not yet in a folder read as administrator |
 | New folder | Make a folder | F7 | Core | ✅ Yes | In the folder of the side, named in a dialog that says what is wrong with a name as it is typed, one the side lists already or one Windows refuses, and selected once made; one folder, not a path of them; inside an archive too, 7-Zip writing it anew in the dialog of copies; not yet in a folder read as administrator |
-| New file | Make an empty file | Shift+F4 | Common | ❌ No |  |
+| New file | Make an empty file | Shift+F4 | Common | ✅ Yes | Named in a dialog that says what is wrong with a name as it is typed, and edited in an editor tab, made only once saved; FEATURES-EDITOR says more |
 | Delete | Move files to the Recycle Bin or Trash, or delete them | F8, Delete | Core | ✅ Yes | F8 and Delete to the Recycle Bin or Trash, Shift+F8 and Shift+Delete permanently, asking first; F8 and Delete permanently too on a drive whose Recycle Bin is turned off, by its setting or a policy, the question saying so, and inside an archive, from the archive; not yet in a folder read as administrator |
 | Clipboard | Cut, copy and paste files | Ctrl+X, Ctrl+C, Ctrl+V | Core | 🟡 Partial | Mod+C puts the marked items, or the selected one, on the clipboard as files, which file managers, chat apps and browsers paste; Mod+V copies the files on the clipboard into the folder of the side, those cut in another app too, leaving them where they are; no cut |
 | Drag and drop | Drag files between the sides and other apps | — | Core | ✅ Yes | Out to other apps and the other side as files of the system, the marked ones when a marked one is dragged, the one dragged alone otherwise; files dropped on a side, from it or another app, go into the folder dropped on or that of the side, copied or moved as the menu shown at the pointer is answered; another app dropped into copies, as Electron offers it no move, and is told a drop was copied, so it never deletes what was moved |
@@ -85,7 +85,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| View a file | Show a file without its app | F3 | Common | ✅ Yes | In a viewer tab of its own, named and iconed after the file, keeping the text, hex or preview, the encoding, the language chosen and where it was in the text, the bytes or a PDF while it is open, a Markdown preview or an image at its real size from the top again; Escape closes it |
+| View a file | Show a file without its app | F3 | Common | ✅ Yes | In a viewer tab of its own, named and iconed after the file, keeping the text, hex or preview, the encoding, the language chosen and where it was in the text, the bytes or a PDF while it is open, a Markdown preview or an image at its real size from the top again; Escape closes it, F4 turns it into an editor tab |
 | Quick view | Show the selected file on the other side as it is selected | Ctrl+Q | Common | ❌ No |  |
 | Text | Show a file as text, of any size | — | Core | ✅ Yes | Read by byte position a screen at a time, so a gigabyte opens as fast as a kilobyte, each line of up to 64 KiB whole, as the diff shows it, a longer one in rows of 4 KiB; 2 |
 | Hex | Show a file as bytes | — | Common | ✅ Yes | 1: its offset, 16 bytes a row and their printable characters |
@@ -98,7 +98,7 @@
 | PDF | Preview PDFs | — | Common | ✅ Yes | 3: `pdfjs-dist`, read by ranges, searched with Mod+F, zoomed with Mod and the wheel, opened again where it was left; none locked with a password |
 | Media | Play audio and video | — | Common | ❌ No |  |
 | Other documents | Preview office documents and others | — | Advanced | ❌ No |  |
-| Edit | Edit a file | F4 | Core | ❌ No |  |
+| Edit | Edit a file | F4 | Core | ✅ Yes | In an editor tab of its own, drawn as the viewer draws text; FEATURES-EDITOR says what it does |
 | Compare files | Diff two files | — | Common | ✅ Yes | Shift+F3, the two files marked on a side or the file of each side, in a git tab of their own that follows their changes, two images side by side; a notice says how to pick them when none are |
 
 ## Archives

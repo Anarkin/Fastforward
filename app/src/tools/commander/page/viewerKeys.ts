@@ -3,6 +3,7 @@ import { viewerKeymap, type ViewMode } from '../shared/keymap';
 
 export type ViewerAct =
   | { readonly kind: 'find' }
+  | { readonly kind: 'edit' }
   | { readonly kind: 'viewAs'; readonly mode: ViewMode }
   | { readonly kind: 'encoding' }
   | { readonly kind: 'language' }
@@ -22,6 +23,9 @@ export function viewerKey(
 ): ViewerAct | undefined {
   if (keyPressed(viewerKeymap.find, event) !== undefined) {
     return { kind: 'find' };
+  }
+  if (keyPressed(viewerKeymap.edit, event) !== undefined) {
+    return { kind: 'edit' };
   }
   const wanted = keyPressed(viewerKeymap.viewAs, event);
   if (wanted !== undefined) {

@@ -53,6 +53,21 @@ suite('App editor', () => {
     await content().locator('.cm-line').last().click();
     await page.keyboard.press('End');
   };
+  const activeIndex = () =>
+    page
+      .locator('.tabs [role="tab"]')
+      .evaluateAll((tabs) =>
+        tabs.findIndex((tab) => tab.classList.contains('active')),
+      );
+  const topLine = () =>
+    page.locator('.editor .cm-scroller').evaluate((scroller) => {
+      const top = scroller.getBoundingClientRect().top;
+      return (
+        Array.from(scroller.querySelectorAll('.cm-line')).find(
+          (line) => line.getBoundingClientRect().bottom > top + 1,
+        )?.textContent ?? ''
+      );
+    });
   const notices = () => page.locator('.notice').allTextContents();
   const closeNotices = async () => {
     const close = page.locator('.notice-close').first();
@@ -467,6 +482,36 @@ suite('App editor', () => {
     await page.keyboard.press('ControlOrMeta+S');
     await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
     assert.strictEqual(fs.readFileSync(file, 'latin1'), 'one\r\ntwo');
+  });
+
+  test('turns the tab of a file viewed into one editing it on F4, in its place among the tabs, the cursor on the line the viewer showed at its top', async () => {
+    const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
+    fs.writeFileSync(path.join(opened, 'long.txt'), `${lines.join('\n')}\n`);
+    await backToCommander();
+    await select('long.txt');
+    await page.keyboard.press('F3');
+    const rows = page.locator('.viewer .viewer-rows .viewer-row');
+    await rows.first().waitFor();
+    const tabs = await page.locator('.tabs [role="tab"]').count();
+    const viewerTab = await activeIndex();
+    await page.keyboard.press('End');
+    await rows.filter({ hasText: 'line 400' }).waitFor();
+    const top = /line (\d+)/.exec((await rows.first().textContent()) ?? '');
+    assert.ok(top !== null);
+    await page.keyboard.press('F4');
+    await content().waitFor();
+    await waitFor(
+      async () =>
+        (await page.locator('.editor .column-status-text').textContent()) ===
+        `Ln ${top[1]}, Col 1`,
+      'the cursor on the line the viewer showed',
+    );
+    assert.strictEqual(await page.locator('.tabs [role="tab"]').count(), tabs);
+    assert.strictEqual(await activeIndex(), viewerTab);
+    await waitFor(
+      async () => (await topLine()) === `line ${top[1]}`,
+      'the line at the top of the editor',
+    );
   });
 
   test('says why it opens no editor for a folder or a file of binary data', async () => {

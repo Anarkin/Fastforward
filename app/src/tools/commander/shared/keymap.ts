@@ -248,6 +248,7 @@ export const viewerKeymap = {
   ),
   zoomPdf: bind('Showing', strings.actions.zoomPdf, { 'Mod+Wheel': true }),
   realSize: bind('Showing', strings.actions.realSize, { F: true }),
+  edit: bind('Showing', strings.actions.editViewed, { F4: true }),
   closeViewer: bind('Showing', strings.actions.closeViewer, { Escape: true }),
 };
 

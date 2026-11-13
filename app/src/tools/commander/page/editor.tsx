@@ -430,6 +430,14 @@ export function Editor() {
           ),
           scrollIntoView: true,
         });
+      } else if (message.at !== undefined) {
+        const start = shown.state.doc.lineAt(
+          Math.min(message.at, shown.state.doc.length),
+        ).from;
+        shown.dispatch({
+          selection: EditorSelection.cursor(start),
+          effects: EditorView.scrollIntoView(start, { y: 'start', yMargin: 0 }),
+        });
       }
       keepEditor(tab, { state: shown.state, version });
       setEndingsShown(endingsShownOf(shown.state));

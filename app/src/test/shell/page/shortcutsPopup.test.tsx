@@ -367,6 +367,7 @@ suite('Shortcuts popup', () => {
           'View the file as hex, text or a preview',
           'Zoom a PDF in or out',
           'Show an image at its real size, or fit it to the viewer',
+          'Edit the file being viewed in this tab',
           'Close the file being viewed',
         ],
       ],

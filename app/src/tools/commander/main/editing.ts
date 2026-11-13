@@ -73,6 +73,12 @@ interface Read {
   readonly stamp: string | undefined;
   readonly indent?: string;
   readonly fallbackIndent?: string;
+  readonly startAt?: number;
+}
+
+export interface ViewedStart {
+  readonly byte: number;
+  readonly encoding?: TextEncoding;
 }
 
 const indentsOf = (defaults: TextDefaults | undefined) => ({
@@ -105,6 +111,7 @@ const noWatching = () => {};
 export class Editing {
   private readonly opened = new Map<string, Opened>();
   private readonly opening = new Map<string, Promise<Opened>>();
+  private readonly starts = new Map<string, ViewedStart>();
 
   constructor(
     private readonly access: EditingAccess,
@@ -126,6 +133,10 @@ export class Editing {
     return looksBinary(start) && textEncodingOf(start) === undefined
       ? strings.editor.binary(file)
       : undefined;
+  }
+
+  startAt(tab: string, start: ViewedStart): void {
+    this.starts.set(tab, start);
   }
 
   async show(page: Page, tab: string, file: string): Promise<void> {
@@ -161,15 +172,19 @@ export class Editing {
     if (pending !== undefined) {
       return pending;
     }
-    const loading = this.load(file, 0).then((read): Opened => ({
-      file,
-      readOnly: this.access.readOnly(file),
-      read,
-      changed: false,
-      outside: false,
-      saving: false,
-      stop: noWatching,
-    }));
+    const start = this.starts.get(tab);
+    this.starts.delete(tab);
+    const loading = this.load(file, 0, start?.encoding, start?.byte).then(
+      (read): Opened => ({
+        file,
+        readOnly: this.access.readOnly(file),
+        read,
+        changed: false,
+        outside: false,
+        saving: false,
+        stop: noWatching,
+      }),
+    );
     this.opening.set(tab, loading);
     try {
       const opened = await loading;
@@ -192,6 +207,7 @@ export class Editing {
     file: string,
     version: number,
     chosen?: TextEncoding,
+    startByte?: number,
   ): Promise<Read> {
     const stamp = await this.access.stampOf(file);
     let bytes: Buffer;
@@ -237,15 +253,18 @@ export class Editing {
       marked ??
       (isUtf8(bytes) ? 'utf-8' : await this.access.codePage());
     const defaults = await this.access.textDefaults?.(file, false);
+    const decoded = decodedText(bytes, encoding);
     return {
-      text: new EditedText(
-        decodedText(bytes, encoding),
-        defaults?.ending ?? 'lf',
-        version,
-      ),
+      text: new EditedText(decoded, defaults?.ending ?? 'lf', version),
       made: false,
       stamp,
       ...indentsOf(defaults),
+      ...(startByte !== undefined && {
+        startAt: Math.min(
+          decodedText(bytes.subarray(0, startByte), encoding).text.length,
+          decoded.text.length,
+        ),
+      }),
     };
   }
 
@@ -394,8 +413,9 @@ export class Editing {
           fallbackIndent: read.fallbackIndent,
         }),
       },
-      ...(kept !== undefined &&
-        kept.version === text.version && { state: kept.state }),
+      ...(kept !== undefined && kept.version === text.version
+        ? { state: kept.state }
+        : read.startAt !== undefined && { at: read.startAt }),
     });
   }
 
@@ -525,6 +545,7 @@ export class Editing {
   }
 
   closed(tab: string): void {
+    this.starts.delete(tab);
     this.opened.get(tab)?.stop();
     this.opened.delete(tab);
     this.opening.delete(tab);

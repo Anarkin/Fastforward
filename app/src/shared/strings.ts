@@ -416,6 +416,7 @@ export const strings = {
       'Show the extended menu of Windows for the marked items, the one clicked, or the folder of the side',
     compareFiles:
       'Compare the marked files, or the selected file of each side, in a git tab',
+    editViewed: 'Edit the file being viewed in this tab',
     closeViewer: 'Close the file being viewed',
     closeCompare: 'Close the files being compared',
     viewAs: 'View the file as hex, text or a preview',
@@ -1187,6 +1188,8 @@ export const strings = {
       sentence`${named(name)} is inside an archive, where files can't be edited yet.`,
     asAdministrator: (name: string) =>
       sentence`${named(name)} is in a folder read as administrator, where files can't be edited yet.`,
+    viewedCopy: (name: string) =>
+      sentence`${named(name)} is a copy taken out of an archive or a commit to view it, so it can't be edited.`,
     couldNotSave: (file: string, reason: Sentence) =>
       sentence`Couldn't save ${named(file)}. ${reason}`,
     noRoom: (file: string) =>

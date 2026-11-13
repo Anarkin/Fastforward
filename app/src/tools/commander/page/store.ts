@@ -220,6 +220,11 @@ interface CommanderActions {
     overwrite?: { readonly readOnly?: boolean; readonly changed?: boolean },
   ) => void;
   readonly reloadEdited: (tab: string) => void;
+  readonly editViewed: (
+    tab: string,
+    at: number,
+    encoding: TextEncoding | undefined,
+  ) => void;
   readonly saveIn: (tab: string, encoding: TextEncoding, bom: boolean) => void;
   readonly reopenIn: (tab: string, encoding: TextEncoding | 'auto') => void;
   readonly keptEditor: (tab: string) => KeptEditor | undefined;
@@ -1059,6 +1064,13 @@ export function createCommanderStore(
           ...(overwrite?.changed === true && { overwriteChanged: true }),
         }),
       reloadEdited: (tab) => post({ type: 'reloadEdited', tab }),
+      editViewed: (tab, at, encoding) =>
+        post({
+          type: 'editViewed',
+          tab,
+          at,
+          ...(encoding !== undefined && { encoding }),
+        }),
       saveIn: (tab, encoding, bom) =>
         post({ type: 'saveIn', tab, encoding, bom }),
       reopenIn: (tab, encoding) => post({ type: 'reopenIn', tab, encoding }),

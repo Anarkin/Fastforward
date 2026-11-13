@@ -79,6 +79,7 @@ export interface ShellAccess {
   ): Promise<void>;
   openView(page: Page, tool: ToolId, file: string): Promise<void>;
   openEdit(page: Page, tool: ToolId, file: string): Promise<void>;
+  editViewed(page: Page, tab: string): Promise<void>;
   openCompare(page: Page, tool: ToolId, compare: Compared): Promise<void>;
   openFolders(
     page: Page,
@@ -200,6 +201,7 @@ export const unattachedShell: ShellAccess = {
   open: () => Promise.resolve(),
   openView: () => Promise.resolve(),
   openEdit: () => Promise.resolve(),
+  editViewed: () => Promise.resolve(),
   openCompare: () => Promise.resolve(),
   openFolders: () => Promise.resolve(),
   setRoot: () => undefined,
@@ -307,6 +309,7 @@ export class Shell {
         this.open(page, tool, [file], false, { view: true }),
       openEdit: (page, tool, file) =>
         this.open(page, tool, [file], true, { edit: true }),
+      editViewed: (page, tab) => this.editViewed(page, tab),
       openCompare: (page, tool, compare) =>
         this.open(page, tool, [undefined], false, { compare }),
       openFolders: (page, tool, folders) =>
@@ -936,6 +939,28 @@ export class Shell {
       return;
     }
     await this.show(there, last);
+  }
+
+  private async editViewed(page: Page, id: string): Promise<void> {
+    const { storage } = this;
+    const viewed = this.windowOf(page).tabs.find(
+      (tab) => tab.id === id && tab.view === true,
+    );
+    if (viewed?.root === undefined) {
+      return;
+    }
+    this.tools[viewed.tool].closed(page, viewed);
+    this.save(
+      storage.setLayout(
+        withChanged(storage.layout, {
+          id,
+          tool: viewed.tool,
+          root: viewed.root,
+          edit: true,
+        }),
+      ),
+    );
+    await this.show(page, id);
   }
 
   private setRoot(id: string, root: string): void {

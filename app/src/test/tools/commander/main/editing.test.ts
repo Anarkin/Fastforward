@@ -455,6 +455,40 @@ suite('Editing a file', () => {
     assert.strictEqual(edits.unsaved('1'), false);
   });
 
+  test('starts a file the viewer showed at the text of the byte it showed, in the encoding it was read in there, once only', async () => {
+    const { edits } = editing({ 'a.txt': 'one\r\ntwo\r\ncaf\xc3\xa9\r\n' });
+    const page = new EditorPage();
+    edits.startAt('1', { byte: 10, encoding: 'windows-1252' });
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editedText')?.at, 8);
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'windows-1252');
+    assert.strictEqual(
+      page.last('editedText')?.shown.text,
+      'one\ntwo\ncaf\xc3\xa9\n',
+    );
+    await edits.receive(page, {
+      type: 'editState',
+      tab: '1',
+      version: 0,
+      state: { selection: { ranges: [{ anchor: 2, head: 2 }], main: 0 } },
+    });
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editedText')?.at, undefined);
+
+    edits.startAt('2', { byte: 1000 });
+    await edits.show(page, '2', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '2' });
+    assert.strictEqual(page.last('editedText')?.at, 13);
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'utf-8');
+
+    edits.startAt('3', { byte: 5 });
+    edits.closed('3');
+    await edits.show(page, '3', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '3' });
+    assert.strictEqual(page.last('editedText')?.at, undefined);
+  });
+
   test('reads the file again in the encoding asked for, and in the one found once asked for Auto', async () => {
     const { edits, showing } = editing({
       'a.txt': Uint8Array.of(0x63, 0x61, 0x66, 0xe9, 0x0a),
