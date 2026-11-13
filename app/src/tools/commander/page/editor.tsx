@@ -18,6 +18,7 @@ import { appTextLook } from '../../../ui/editorText';
 import { WordWrapIcon } from '../../../ui/icons';
 import { Words } from '../../../ui/name';
 import { languageOf } from '../../../ui/languages';
+import { keyPressed } from '../../../ui/shortcuts';
 import { colorer, startColorer } from '../../../ui/syntax';
 import {
   cellWidthsOf,
@@ -26,6 +27,22 @@ import {
   type CellTable,
 } from '../../../ui/textWidths';
 import { StatusLine } from '../../../ui/statusLine';
+import {
+  FindActions,
+  FindField,
+  SearchButton,
+  SearchRow,
+} from '../../../ui/search';
+import {
+  countOf,
+  editorFind,
+  find,
+  findNearest,
+  replace,
+  replaceAll,
+  step,
+  type FindQuery,
+} from './editorFind';
 import { PromptPopup } from '../../../shell/page/promptPopup';
 import {
   commentsOf,
@@ -111,6 +128,7 @@ function extensionsOf({
     lineNumbers(),
     history(),
     endingsUndone,
+    editorFind,
     wrapping.of(wordWrap ? EditorView.lineWrapping : []),
     EditorState.readOnly.of(readOnly),
     EditorView.contentAttributes.of({
@@ -211,6 +229,23 @@ function charactersIn(text: string): number {
     : [...graphemes.segment(text)].length;
 }
 
+interface FindAsk {
+  readonly replace: boolean;
+  readonly selected: string;
+  readonly at: number;
+}
+
+const findAskOf =
+  (withReplace: boolean, state: EditorState | undefined) =>
+  (was: FindAsk | undefined): FindAsk => ({
+    replace: withReplace,
+    selected:
+      state === undefined
+        ? ''
+        : state.sliceDoc(state.selection.main.from, state.selection.main.to),
+    at: (was?.at ?? 0) + 1,
+  });
+
 function statusOf(state: EditorState, table: CellTable): string {
   const { main, ranges } = state.selection;
   const line = state.doc.lineAt(main.head);
@@ -275,6 +310,19 @@ export function Editor() {
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
   const [reopening, setReopening] = useState<TextEncoding | 'auto'>();
   const [status, setStatus] = useState<string>();
+  const [finding, setFinding] = useState(false);
+  const [replacing, setReplacing] = useState(false);
+  const [query, setQuery] = useState<FindQuery>({
+    text: '',
+    caseSensitive: false,
+    wholeWord: false,
+    regex: false,
+  });
+  const [replacement, setReplacement] = useState('');
+  const [findCount, setFindCount] = useState<ReturnType<typeof countOf>>();
+  const [focusAsks, setFocusAsks] = useState(0);
+  const findInput = useRef<HTMLInputElement>(null);
+  const [findAsk, setFindAsk] = useState<FindAsk>();
   const [goingToLine, setGoingToLine] = useState(false);
   const [lineCount, setLineCount] = useState(0);
   const table = useCellTable();
@@ -317,8 +365,8 @@ export function Editor() {
       colors: colorsFirst(),
       keys: {
         save: () => saveText(tab),
-        find: () => {},
-        replace: () => {},
+        find: () => setFindAsk(findAskOf(false, shown.state)),
+        replace: () => setFindAsk(findAskOf(true, shown.state)),
         goToLine: () => {
           setLineCount(shown.state.doc.lines);
           setGoingToLine(true);
@@ -341,6 +389,7 @@ export function Editor() {
           keepState(update.state);
           setStatus(statusOf(update.state, table));
         }
+        setFindCount(countOf(update.state));
       },
     });
     const kept = keptEditor(tab);
@@ -478,6 +527,72 @@ export function Editor() {
         ];
   const convert = (ending: LineEnding) =>
     view.current?.dispatch(convertedTo(ending));
+  useEffect(() => {
+    if (findAsk === undefined) {
+      return;
+    }
+    const { selected } = findAsk;
+    if (selected !== '' && !selected.includes(lineBreak)) {
+      setQuery((was) => ({ ...was, text: selected }));
+    }
+    setFinding(true);
+    setReplacing((was) => was || findAsk.replace);
+    setFocusAsks((asks) => asks + 1);
+  }, [findAsk]);
+  useEffect(() => {
+    if (view.current !== undefined) {
+      find(view.current, finding ? query : undefined);
+      if (finding) {
+        findNearest(view.current);
+      }
+    }
+  }, [finding, query]);
+  useEffect(() => {
+    if (focusAsks > 0) {
+      findInput.current?.focus();
+      findInput.current?.select();
+    }
+  }, [focusAsks]);
+  const search = (asked: FindQuery) => setQuery(asked);
+  const closeFind = () => {
+    setFinding(false);
+    setReplacing(false);
+    view.current?.focus();
+  };
+  const findStep = (direction: 1 | -1) => {
+    if (view.current !== undefined) {
+      step(view.current, direction);
+    }
+  };
+  const countShown =
+    query.text === '' || findCount === undefined
+      ? ''
+      : findCount.invalid
+        ? strings.editor.badPattern
+        : findCount.matches === 0
+          ? strings.find.noResults
+          : strings.find.count(
+              findCount.current,
+              findCount.matches,
+              findCount.capped,
+            );
+  const toggles = [
+    {
+      key: 'caseSensitive',
+      title: strings.editor.matchCase,
+      glyph: strings.editor.caseGlyph,
+    },
+    {
+      key: 'wholeWord',
+      title: strings.editor.wholeWord,
+      glyph: strings.editor.wordGlyph,
+    },
+    {
+      key: 'regex',
+      title: strings.editor.regexTitle,
+      glyph: strings.editor.regexGlyph,
+    },
+  ] as const;
 
   const mark = edited?.readOnly
     ? strings.editor.readOnlyMark
@@ -489,65 +604,155 @@ export function Editor() {
 
   return (
     <section className="column viewer editor">
-      <header className="column-title">
-        <div className="column-start nav-buttons viewer-actions">
-          {encodingLabel !== undefined && !readOnly && (
-            <div className="viewer-encoding">
-              <MenuButton
-                title={strings.editor.encodingTitle}
-                label={
-                  edited?.readAs === undefined
-                    ? encodingLabel
-                    : strings.editor.savedAs(
-                        encodingName(edited.readAs),
-                        encodingLabel,
-                      )
-                }
-                filter={strings.common.findEncoding}
-                items={encodingItems}
-                onChosen={() => view.current?.focus()}
-              />
+      {finding ? (
+        <header
+          className="column-title searching"
+          onKeyDown={(event) => {
+            if (keyPressed(editorKeymap.replace, event) !== undefined) {
+              event.preventDefault();
+              setReplacing(true);
+            }
+          }}
+        >
+          <SearchRow onClose={closeFind}>
+            <FindField
+              query={query.text}
+              count={countShown}
+              input={findInput}
+              keys={editorKeymap}
+              onQuery={(text) => search({ ...query, text })}
+              onStep={findStep}
+              onClose={closeFind}
+            />
+            <div className="nav-buttons">
+              {toggles.map(({ key, title, glyph }) => (
+                <button
+                  key={key}
+                  className={`nav-button toggle ${query[key] ? 'active' : ''}`}
+                  title={title}
+                  aria-pressed={query[key]}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => search({ ...query, [key]: !query[key] })}
+                >
+                  {glyph}
+                </button>
+              ))}
             </div>
-          )}
-          {endingsShown !== undefined && !readOnly && (
-            <div className="viewer-encoding">
-              <MenuButton
-                title={endingsTitle(endingsShown)}
-                label={endingsLabel(endingsShown)}
-                items={(['lf', 'crlf'] as const).map((ending) => ({
-                  label: strings.editor.convertTo(
-                    strings.editor.endingNames[ending],
-                  ),
-                  checked:
-                    endingsLabel(endingsShown) ===
-                    strings.editor.endingNames[ending],
-                  onClick: () => convert(ending),
-                }))}
-                onChosen={() => view.current?.focus()}
-              />
+            <FindActions matches={findCount?.matches ?? 0} onStep={findStep} />
+          </SearchRow>
+        </header>
+      ) : (
+        <header className="column-title">
+          <div className="column-start nav-buttons viewer-actions">
+            {encodingLabel !== undefined && !readOnly && (
+              <div className="viewer-encoding">
+                <MenuButton
+                  title={strings.editor.encodingTitle}
+                  label={
+                    edited?.readAs === undefined
+                      ? encodingLabel
+                      : strings.editor.savedAs(
+                          encodingName(edited.readAs),
+                          encodingLabel,
+                        )
+                  }
+                  filter={strings.common.findEncoding}
+                  items={encodingItems}
+                  onChosen={() => view.current?.focus()}
+                />
+              </div>
+            )}
+            {endingsShown !== undefined && !readOnly && (
+              <div className="viewer-encoding">
+                <MenuButton
+                  title={endingsTitle(endingsShown)}
+                  label={endingsLabel(endingsShown)}
+                  items={(['lf', 'crlf'] as const).map((ending) => ({
+                    label: strings.editor.convertTo(
+                      strings.editor.endingNames[ending],
+                    ),
+                    checked:
+                      endingsLabel(endingsShown) ===
+                      strings.editor.endingNames[ending],
+                    onClick: () => convert(ending),
+                  }))}
+                  onChosen={() => view.current?.focus()}
+                />
+              </div>
+            )}
+            <LanguageButton
+              choice={languageChoice}
+              detected={detectedLanguage}
+              single
+              choose={chooseLanguage}
+              onChosen={() => view.current?.focus()}
+            />
+            <span className="nav-button-space" />
+            <div className="viewer-toggles">
+              <button
+                className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
+                title={strings.common.wrap}
+                aria-pressed={wordWrap}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => changeTextView({ wordWrap: !wordWrap })}
+              >
+                <WordWrapIcon />
+              </button>
             </div>
-          )}
-          <LanguageButton
-            choice={languageChoice}
-            detected={detectedLanguage}
-            single
-            choose={chooseLanguage}
-            onChosen={() => view.current?.focus()}
-          />
-          <span className="nav-button-space" />
-          <div className="viewer-toggles">
-            <button
-              className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-              title={strings.common.wrap}
-              aria-pressed={wordWrap}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => changeTextView({ wordWrap: !wordWrap })}
-            >
-              <WordWrapIcon />
-            </button>
           </div>
+          <div className="column-actions">
+            <SearchButton
+              title={strings.commander.findInFile}
+              onClick={() => setFindAsk(findAskOf(false, view.current?.state))}
+            />
+          </div>
+        </header>
+      )}
+      {finding && replacing && (
+        <div className="editor-replace">
+          <input
+            className="find-field-input editor-replace-input"
+            placeholder={strings.editor.replacePlaceholder}
+            spellCheck={false}
+            value={replacement}
+            onChange={(event) => setReplacement(event.target.value)}
+            onKeyDown={(event) => {
+              if (keyPressed(editorKeymap.match, event) !== undefined) {
+                event.preventDefault();
+                if (view.current !== undefined) {
+                  replace(view.current, replacement);
+                }
+              } else if (keyPressed(editorKeymap.stopFinding, event)) {
+                event.preventDefault();
+                closeFind();
+              }
+            }}
+          />
+          <button
+            className="confirm-button"
+            disabled={(findCount?.matches ?? 0) === 0}
+            onClick={() => {
+              if (view.current !== undefined) {
+                replace(view.current, replacement);
+              }
+            }}
+          >
+            {strings.editor.replaceOne}
+          </button>
+          <button
+            className="confirm-button"
+            disabled={(findCount?.matches ?? 0) === 0}
+            onClick={() => {
+              if (view.current !== undefined) {
+                replaceAll(view.current, replacement);
+                view.current.focus();
+              }
+            }}
+          >
+            {strings.editor.replaceAll}
+          </button>
         </div>
-      </header>
+      )}
       <div className="viewer-path editor-path">
         <PathTitle path={file} hidden={[]} color={fileColor} />
         {mark !== undefined && (

@@ -398,6 +398,53 @@ suite('App editor', () => {
     );
   });
 
+  test('finds the text typed on Ctrl+F, going to the next match on Enter, and replaces every match on Ctrl+H', async () => {
+    fs.writeFileSync(path.join(opened, 'find.txt'), 'one two one\nthree one\n');
+    await backToCommander();
+    await waitFor(
+      async () =>
+        (await right().locator('.commander-row', { hasText: 'find' }).count()) >
+        0,
+      'the file listed',
+    );
+    await edit('find.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('one'),
+      'the text',
+    );
+    await toStart();
+    await page.keyboard.press('ControlOrMeta+F');
+    const field = page.locator('.editor .find-field .find-field-input');
+    await field.waitFor();
+    await field.fill('one');
+    const count = page.locator('.editor .find-field-count');
+    await waitFor(
+      async () => (await count.textContent()) === '1 of 3',
+      'the first match',
+    );
+    await field.press('Enter');
+    await waitFor(
+      async () => (await count.textContent()) === '2 of 3',
+      'the next match',
+    );
+    assert.strictEqual(await content().locator('.find-match').count(), 3);
+    await field.press('Control+H');
+    const replacing = page.locator('.editor-replace-input');
+    await replacing.waitFor();
+    await replacing.fill('ONE');
+    await page
+      .locator('.editor-replace .confirm-button', { hasText: 'Replace All' })
+      .click();
+    await waitFor(
+      async () => (await editedText()) === 'ONE two ONE\nthree ONE\n',
+      'every match replaced',
+    );
+    await field.press('Escape');
+    await page
+      .locator('.editor .find-field .find-field-input')
+      .waitFor({ state: 'detached' });
+  });
+
   test('says why it opens no editor for a folder or a file of binary data', async () => {
     await backToCommander();
     const tabs = await page.locator('.tabs [role="tab"]').count();
