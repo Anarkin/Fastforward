@@ -207,8 +207,7 @@ export const strings = {
     foldersLeftOut: '…',
     ascending: '▴',
     descending: '▾',
-    unsaved: '●',
-    unsavedPath: '*',
+    unsaved: '*',
   },
   about: {
     title: 'About',

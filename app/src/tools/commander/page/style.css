@@ -427,6 +427,7 @@
 }
 
 .editor-mark.unsaved {
+  margin-left: -8px;
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
   color: var(--foreground);

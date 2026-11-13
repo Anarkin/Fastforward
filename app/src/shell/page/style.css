@@ -1011,7 +1011,7 @@ body {
 
 .tabs .tab-unsaved {
   flex: none;
-  margin-left: 4px;
+  margin-left: -4px;
   color: var(--muted-foreground);
 }
 

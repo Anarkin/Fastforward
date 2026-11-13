@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ElectronApplication, Page } from 'playwright-core';
+import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appFixtures';
 import { waitFor } from './fixtures';
@@ -12,6 +12,8 @@ function lastTextOf(part: Element): {
   readonly top: number;
   readonly height: number;
   readonly font: string;
+  readonly left: number;
+  readonly right: number;
 } {
   const walker = document.createTreeWalker(part, NodeFilter.SHOW_TEXT);
   let last: Node | null = null;
@@ -30,7 +32,23 @@ function lastTextOf(part: Element): {
       last?.parentElement === null || last?.parentElement === undefined
         ? ''
         : getComputedStyle(last.parentElement).fontFamily,
+    left: rect.left,
+    right: Math.min(rect.right, part.getBoundingClientRect().right),
   };
+}
+
+async function starredAfter(name: Locator, star: Locator): Promise<void> {
+  assert.strictEqual(await star.textContent(), '*');
+  const named = await name.evaluate(lastTextOf);
+  const starred = await star.evaluate(lastTextOf);
+  assert.deepStrictEqual(
+    { top: starred.top, height: starred.height, font: starred.font },
+    { top: named.top, height: named.height, font: named.font },
+  );
+  assert.ok(
+    Math.abs(starred.left - named.right) < 0.5,
+    `${starred.left} right after ${named.right}`,
+  );
 }
 
 suite('App editor', () => {
@@ -720,7 +738,7 @@ suite('App editor', () => {
     assert.strictEqual(unfocused, wanted);
   });
 
-  test('marks a file changed with a star in the font of its path, on the line of its name', async () => {
+  test('marks a file changed with a star right after its name, in its path and on its tab, in the font of each and on the line of the name', async () => {
     fs.writeFileSync(path.join(opened, 'starred.txt'), 'one\n');
     await backToCommander();
     await edit('starred.txt');
@@ -728,12 +746,11 @@ suite('App editor', () => {
     await page.keyboard.type('!');
     const mark = page.locator('.editor .editor-mark.unsaved');
     await mark.waitFor();
-    assert.strictEqual(await mark.textContent(), '*');
-    const name = await page
-      .locator('.editor .editor-path .path-title')
-      .evaluate(lastTextOf);
-    const marked = await mark.evaluate(lastTextOf);
-    assert.deepStrictEqual(marked, name);
+    await starredAfter(page.locator('.editor .editor-path .path-title'), mark);
+    await starredAfter(
+      activeTab().locator('.tab-name'),
+      activeTab().locator('.tab-unsaved'),
+    );
   });
 
   test('marks the bracket matching the one beside the cursor, and one matching none', async () => {
