@@ -453,13 +453,14 @@
   font-size: var(--monospace-font-size);
   width: max-content;
   min-width: 100%;
-  padding: 0 calc(var(--scrollbar-size) + 8px) 0 8px;
+  --viewer-inset: 8px;
+  padding: 0 calc(var(--scrollbar-size) + 8px) 0 var(--viewer-inset);
   box-sizing: border-box;
 }
 
 .viewer-rows.numbered,
 .commander-viewer-probe.numbered {
-  padding-left: calc(var(--line-number-width) + var(--line-number-gap));
+  --viewer-inset: calc(var(--line-number-width) + var(--line-number-gap));
 }
 
 .viewer-rows.wrapped {
@@ -504,7 +505,8 @@
 .commander-viewer-probe {
   position: absolute;
   width: max-content;
-  padding: 0 calc(var(--scrollbar-size) + 8px) 0 8px;
+  --viewer-inset: 8px;
+  padding: 0 calc(var(--scrollbar-size) + 8px) 0 var(--viewer-inset);
   visibility: hidden;
   pointer-events: none;
 }

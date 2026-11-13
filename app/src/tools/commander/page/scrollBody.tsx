@@ -387,7 +387,7 @@ export function ScrollBody({
               width === undefined
                 ? undefined
                 : {
-                    minWidth: `calc(${width} * var(--commander-advance) + 16px + var(--scrollbar-size))`,
+                    minWidth: `calc(${width} * var(--commander-advance) + var(--viewer-inset) + 8px + var(--scrollbar-size))`,
                   }
             }
           >
