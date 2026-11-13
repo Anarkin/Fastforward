@@ -211,3 +211,13 @@ export function entryNamed(
   }
   return named.get(name);
 }
+
+export function listedIn(
+  pane: Pane | undefined,
+  name: unknown,
+): Entry | undefined {
+  if (pane?.flat === undefined) {
+    return entryNamed(pane?.entries, name);
+  }
+  return typeof name === 'string' ? pane.flat.tree.file(name) : undefined;
+}

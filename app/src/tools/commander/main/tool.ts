@@ -51,19 +51,7 @@ import {
 import { typedPath } from './typedPaths';
 import type { WatchFolder, WatchTree } from './watch';
 import type { ContentReader } from './duplicates';
-import {
-  fillsThumbnail,
-  heldBox,
-  imageType,
-  isThumbnailBox,
-  type ThumbnailBox,
-  isWebp,
-  madeThumbnailHeader,
-  maxImageSize,
-  maxThumbnailBytes,
-  thumbnailBoxOf,
-} from '../../../shared/images';
-import { thumbnailKey } from './thumbnailStore';
+import { heldBox } from '../../../shared/images';
 import { archiveJob, archiveTests } from './packing';
 import { copiedBetween } from './betweenArchives';
 import {
@@ -74,11 +62,8 @@ import {
   packPasswordProblem,
   smallestVolume,
 } from '../shared/packing';
-import { ArchiveImages } from './archiveImages';
-import { fileVersion, viewedFileOf } from '../shared/files';
+import { fileVersion } from '../shared/files';
 import { firstBytes } from './textRows';
-import { fileResponse } from './fileRanges';
-import { isPdf, pdfType } from '../../../shared/pdf';
 import {
   itemsAt,
   type ArchiveAccess,
@@ -99,16 +84,9 @@ import { Icons } from './icons';
 import { codeOf, reasonOf } from './reasons';
 import { Transfers, type ConnectTransfer, type TransferAsk } from './transfers';
 import { nameProblem } from '../shared/names';
-import { onSameVolume, repositoriesIn } from './repositories';
+import { repositoriesIn } from './repositories';
 import type { SizeWalker } from './folderSizes';
-import {
-  iconSourceOf,
-  iconTicketOf,
-  maxDroppedIcons,
-  thumbnailSourceOf,
-  viewerIconUrl,
-  viewerOfIcon,
-} from '../shared/icons';
+import { maxDroppedIcons, viewerIconUrl } from '../shared/icons';
 import {
   type Pane,
   newPane,
@@ -118,10 +96,12 @@ import {
   post,
   type Listing,
   sizedEntry,
-  entryNamed,
+  listedIn,
 } from './sides';
+import { archiveItems } from './archiveItems';
 import { type PdfPlaceStore, Viewers } from './viewers';
 import { SideScans } from './sideScans';
+import { type Thumbnails, Serving } from './serving';
 
 export interface CommanderAccess {
   readonly pdfPlaces: PdfPlaceStore;
@@ -134,12 +114,7 @@ export interface CommanderAccess {
   readonly saveSorts: (sorts: Sorts) => Promise<void>;
   readonly saveBookmarks: (bookmarks: readonly string[]) => Promise<void>;
   readonly store: Store;
-  readonly thumbnails: {
-    readonly read: (key: string) => Promise<Uint8Array | undefined>;
-    readonly has: (key: string) => Promise<boolean>;
-    readonly full: () => Promise<boolean>;
-    readonly write: (key: string, bytes: Uint8Array) => Promise<void>;
-  };
+  readonly thumbnails: Thumbnails;
   readonly streamed?: (file: string) => boolean | Promise<boolean>;
   readonly isRepository: (folder: string) => Promise<boolean>;
   readonly inRepository?: (folder: string) => Promise<boolean>;
@@ -191,9 +166,6 @@ export interface CommanderAccess {
   readonly contentReader?: ContentReader;
 }
 
-const storedStatus = 204;
-const onlineStatus = 409;
-const fullStatus = 507;
 const maxHistory = 100;
 export function childToward(folder: string, from: string): string | undefined {
   const relative = path.relative(folder, from);
@@ -301,18 +273,12 @@ function nameShared(
   return undefined;
 }
 
-function listedIn(pane: Pane | undefined, name: unknown): Entry | undefined {
-  if (pane?.flat === undefined) {
-    return entryNamed(pane?.entries, name);
-  }
-  return typeof name === 'string' ? pane.flat.tree.file(name) : undefined;
-}
-
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
   private readonly sides = new Sides();
   private readonly viewers: Viewers;
   private readonly scans: SideScans;
+  private readonly serving: Serving;
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
   private elevated: ElevatedFileSystem | undefined;
@@ -340,7 +306,6 @@ export class CommanderTool implements Tool<'commander'> {
       readonly name: string;
     }
   >();
-  private archiveImages: ArchiveImages | undefined;
   private readonly passwordsAsked = new Map<
     number,
     {
@@ -367,6 +332,9 @@ export class CommanderTool implements Tool<'commander'> {
       list: (page, tab, side, folder, how) =>
         this.list(page, tab, side, folder, how),
     });
+    this.serving = new Serving(access, this.sides, this.icons, () =>
+      this.shell.tabs(),
+    );
     this.editing = new Editing(
       {
         readFile: (file) => fs.promises.readFile(file),
@@ -769,30 +737,8 @@ export class CommanderTool implements Tool<'commander'> {
           this.postSettings(page);
         }
         return undefined;
-      case 'saveThumbnail': {
-        const listed = this.listedImage(
-          message.tab,
-          message.side,
-          message.folder,
-          message.name,
-        );
-        if (
-          listed !== undefined &&
-          !this.encryptedInArchive(listed) &&
-          isThumbnailBox(message.box, message.pixelRatio) &&
-          message.bytes instanceof Uint8Array &&
-          message.bytes.length <= maxThumbnailBytes &&
-          isWebp(message.bytes)
-        ) {
-          await this.access.thumbnails
-            .write(
-              this.thumbnailKeyOf(listed, message.box, message.pixelRatio),
-              message.bytes,
-            )
-            .catch(() => undefined);
-        }
-        return undefined;
-      }
+      case 'saveThumbnail':
+        return this.serving.saveThumbnail(message);
       case 'dropIcons':
         if (
           Array.isArray(message.tickets) &&
@@ -969,258 +915,16 @@ export class CommanderTool implements Tool<'commander'> {
     this.elevated?.close();
   }
 
-  async file(url: URL, range: string | null): Promise<Response> {
-    const asked = viewedFileOf(url);
-    if (asked !== undefined && isPdf(asked.file)) {
-      const viewer = this.shell
-        .tabs()
-        .some(
-          (tab) =>
-            tab.id === asked.tab &&
-            tab.view === true &&
-            tab.root === asked.file,
-        );
-      return viewer
-        ? fileResponse(asked.file, pdfType, range).catch(
-            () => new Response(null, { status: 404 }),
-          )
-        : new Response(null, { status: 404 });
-    }
-    const viewer =
-      asked &&
-      this.shell
-        .tabs()
-        .find((tab) => tab.id === asked.tab && tab.view === true);
-    const type = asked && imageType(asked.file);
-    if (
-      !asked ||
-      viewer?.root === undefined ||
-      !type ||
-      !path.isAbsolute(asked.file) ||
-      !onSameVolume(asked.file, viewer.root)
-    ) {
-      return new Response(null, { status: 404 });
-    }
-    try {
-      const stats = await fs.promises.stat(asked.file);
-      if (!stats.isFile()) {
-        return new Response(null, { status: 404 });
-      }
-      if (stats.size > maxImageSize) {
-        return new Response(null, { status: 413 });
-      }
-      const body = await fs.promises.readFile(asked.file);
-      return new Response(new Uint8Array(body), {
-        headers: { 'content-type': type, 'cache-control': 'no-store' },
-      });
-    } catch {
-      return new Response(null, { status: 404 });
-    }
+  file(url: URL, range: string | null): Promise<Response> {
+    return this.serving.file(url, range);
   }
 
-  async icon(url: URL): Promise<Response> {
-    const viewer = viewerOfIcon(url);
-    if (viewer !== undefined) {
-      const tab = this.shell
-        .tabs()
-        .find(
-          (each) =>
-            each.id === viewer.tab &&
-            (each.view === true || each.edit === true) &&
-            each.root === viewer.file,
-        );
-      return tab?.root === undefined
-        ? new Response(null, { status: 404 })
-        : this.iconResponse(tab.root);
-    }
-    const source = iconSourceOf(url);
-    const pane = source && this.sides.panes.get(source.tab)?.[source.side];
-    const entry = listedIn(pane, source?.name);
-    if (
-      source === undefined ||
-      pane === undefined ||
-      pane.folder !== source.folder ||
-      entry === undefined ||
-      entry.folder
-    ) {
-      return new Response(null, { status: 404 });
-    }
-    return this.iconResponse(
-      path.join(pane.folder, source.name),
-      iconTicketOf(url),
-    );
+  icon(url: URL): Promise<Response> {
+    return this.serving.icon(url);
   }
 
-  private encryptedInArchive(listed: {
-    readonly pane: Pane;
-    readonly name: string;
-  }): boolean {
-    return (
-      listed.pane.archive !== undefined &&
-      this.archiveItems(listed.pane, [listed.name])?.encrypted === true
-    );
-  }
-
-  private listedImage(
-    tab: unknown,
-    side: unknown,
-    folder: unknown,
-    name: unknown,
-  ):
-    | {
-        readonly file: string;
-        readonly entry: Entry;
-        readonly type: string;
-        readonly pane: Pane;
-        readonly name: string;
-      }
-    | undefined {
-    const pane =
-      typeof tab === 'string' && isSide(side)
-        ? this.sides.panes.get(tab)?.[side]
-        : undefined;
-    const entry =
-      pane !== undefined && pane.folder === folder
-        ? listedIn(pane, name)
-        : undefined;
-    const type = entry && imageType(entry.name);
-    return pane === undefined ||
-      entry === undefined ||
-      typeof name !== 'string' ||
-      entry.folder ||
-      type === undefined
-      ? undefined
-      : { file: path.join(pane.folder, name), entry, type, pane, name };
-  }
-
-  private thumbnailKeyOf(
-    { file, entry }: { readonly file: string; readonly entry: Entry },
-    box: number,
-    pixelRatio: number,
-  ): string {
-    return thumbnailKey(
-      file,
-      entry.size ?? 0,
-      entry.modified ?? 0,
-      box,
-      pixelRatio,
-    );
-  }
-
-  async thumbnail(url: URL): Promise<Response> {
-    const source = thumbnailSourceOf(url);
-    const listed =
-      source &&
-      this.listedImage(source.tab, source.side, source.folder, source.name);
-    const archived =
-      listed?.pane.archive === undefined
-        ? undefined
-        : this.archiveItems(listed.pane, [listed.name]);
-    const encrypted = archived?.encrypted === true;
-    if (
-      listed === undefined ||
-      (listed.pane.archive !== undefined && archived === undefined) ||
-      (encrypted && !archived.archives.hasPassword(archived.archive.file))
-    ) {
-      return new Response(null, { status: 404 });
-    }
-    const boxed = thumbnailBoxOf(url);
-    if (fillsThumbnail(url)) {
-      const skipped =
-        boxed &&
-        (await this.notFilled(
-          listed,
-          boxed,
-          archived?.archive.source ?? listed.file,
-          encrypted,
-        ));
-      if (boxed === undefined || skipped !== undefined) {
-        return new Response(null, { status: skipped ?? 404 });
-      }
-    }
-    const made =
-      boxed === undefined || encrypted
-        ? undefined
-        : await this.access.thumbnails.read(
-            this.thumbnailKeyOf(listed, boxed.box, boxed.pixelRatio),
-          );
-    if (made !== undefined) {
-      return new Response(new Uint8Array(made), {
-        headers: { 'content-type': 'image/webp', [madeThumbnailHeader]: '1' },
-      });
-    }
-    if ((listed.entry.size ?? 0) > maxImageSize) {
-      return new Response(null, { status: 413 });
-    }
-    if (archived !== undefined) {
-      return this.archivedImage(archived, listed.type);
-    }
-    return fileResponse(listed.file, listed.type, null).catch(
-      () => new Response(null, { status: 404 }),
-    );
-  }
-
-  private async archivedImage(
-    {
-      archives,
-      archive,
-      paths: [item],
-      encrypted,
-    }: {
-      readonly archives: ArchiveAccess;
-      readonly archive: OpenedArchive;
-      readonly paths: readonly string[];
-      readonly encrypted: boolean;
-    },
-    type: string,
-  ): Promise<Response> {
-    if (
-      item === undefined ||
-      (encrypted && !archives.hasPassword(archive.file))
-    ) {
-      return new Response(null, { status: 404 });
-    }
-    this.archiveImages ??= new ArchiveImages(archives);
-    const bytes = await this.archiveImages.read(archive, item);
-    return bytes === undefined
-      ? new Response(null, { status: 404 })
-      : new Response(new Uint8Array(bytes), {
-          headers: { 'content-type': type },
-        });
-  }
-
-  private async notFilled(
-    listed: { readonly file: string; readonly entry: Entry },
-    { box, pixelRatio }: ThumbnailBox,
-    read: string,
-    encrypted: boolean,
-  ): Promise<number | undefined> {
-    if (
-      !encrypted &&
-      (await this.access.thumbnails.has(
-        this.thumbnailKeyOf(listed, box, pixelRatio),
-      ))
-    ) {
-      return storedStatus;
-    }
-    if (
-      listed.entry.online === true ||
-      (await this.access.streamed?.(read)) === true
-    ) {
-      return onlineStatus;
-    }
-    return (await this.access.thumbnails.full()) ? fullStatus : undefined;
-  }
-
-  private async iconResponse(file: string, ticket?: string): Promise<Response> {
-    try {
-      const png = await this.icons.of(file, ticket);
-      return new Response(Buffer.from(png), {
-        headers: { 'content-type': 'image/png' },
-      });
-    } catch {
-      return new Response(null, { status: 404 });
-    }
+  thumbnail(url: URL): Promise<Response> {
+    return this.serving.thumbnail(url);
   }
 
   private async start(tab: Tab): Promise<Panes> {
@@ -1308,55 +1012,13 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  private archiveItems(
-    pane: Pane,
-    names: readonly string[],
-  ):
-    | {
-        readonly archives: ArchiveAccess;
-        readonly archive: OpenedArchive;
-        readonly inner: readonly string[];
-        readonly paths: readonly string[];
-        readonly withoutFolders: boolean;
-        readonly files: number;
-        readonly bytes: number;
-        readonly encrypted: boolean;
-      }
-    | undefined {
-    const { archives } = this.access;
-    const inside = archives?.within(pane.folder);
-    if (archives === undefined || inside === undefined) {
-      return undefined;
-    }
-    const items = names.flatMap((name) => {
-      const parts = name.split(path.sep);
-      const last = parts.at(-1) ?? name;
-      const inner = [...inside.inner, ...parts.slice(0, -1)];
-      const item = inside.archive.tree.item(inner, last);
-      return item === undefined ? [] : [{ name, inner, last, ...item }];
-    });
-    if (items.length !== names.length) {
-      return undefined;
-    }
-    return {
-      archives,
-      archive: inside.archive,
-      inner: inside.inner,
-      paths: items.map((item) => item.path),
-      withoutFolders: pane.flat !== undefined,
-      ...inside.archive.tree.totals(
-        items.map((item) => ({ inner: item.inner, name: item.last })),
-      ),
-    };
-  }
-
   private async copiesIn(
     page: Page,
     pane: Pane,
     names: readonly string[],
     into?: string,
   ): Promise<string[] | undefined> {
-    const found = this.archiveItems(pane, names);
+    const found = archiveItems(this.access.archives, pane, names);
     if (found === undefined) {
       return undefined;
     }
@@ -1660,7 +1322,7 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
-    const found = this.archiveItems(pane, names);
+    const found = archiveItems(this.access.archives, pane, names);
     if (found === undefined) {
       return;
     }
@@ -1928,7 +1590,7 @@ export class CommanderTool implements Tool<'commander'> {
     ) {
       return;
     }
-    const found = this.archiveItems(pane, [name]);
+    const found = archiveItems(this.access.archives, pane, [name]);
     const [from] = found?.paths ?? [];
     if (found === undefined || from === undefined) {
       return;
@@ -2200,7 +1862,7 @@ export class CommanderTool implements Tool<'commander'> {
       existing === 'skip'
         ? names.filter((name) => !clashing.includes(name))
         : names;
-    const found = this.archiveItems(shown.pane, kept);
+    const found = archiveItems(this.access.archives, shown.pane, kept);
     if (kept.length === 0 || found === undefined) {
       return;
     }
@@ -2267,7 +1929,7 @@ export class CommanderTool implements Tool<'commander'> {
     names: readonly string[],
     move: boolean,
   ): Promise<void> {
-    const found = this.archiveItems(pane, names);
+    const found = archiveItems(this.access.archives, pane, names);
     if (
       found === undefined ||
       (move && !this.changeable(page, found.archive))
