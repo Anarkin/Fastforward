@@ -18,14 +18,9 @@ import {
   findCommit,
   findCommits,
   headCommit,
-  extendedHistory,
-  listHistory,
-  listRecentHistory,
   logCommits,
-  recentTips,
   searchCommits,
 } from './cli/history';
-import type { Commits } from './history/commits';
 import {
   fetchRemote,
   hasGitFolder,
@@ -47,12 +42,7 @@ import {
   type Changed,
   type Watcher,
 } from './cli/watch';
-import {
-  uncommittedCount,
-  UntrackedPatches,
-  workingTreeFiles,
-  type WorkingTree,
-} from './cli/workingTree';
+import { UntrackedPatches } from './cli/workingTree';
 import {
   listWorktrees,
   locateRepository,
@@ -78,8 +68,8 @@ import {
   type Pushed,
   type Notify,
 } from './operations';
-import { defaultBookmarks, fingerprint, remoteTagRefs, sameTags } from './refs';
-import { comparedOf, workingTreeSide } from '../shared/comparisons';
+import { defaultBookmarks, remoteTagRefs, sameTags } from './refs';
+import { comparedOf } from '../shared/comparisons';
 import { isFullHash, shortHash } from '../shared/hashes';
 import { bookmarkedCommits, hasRef } from '../shared/refNames';
 import { imageSourceOf, imageType } from '../shared/images';
@@ -116,29 +106,21 @@ import {
 } from '../../../shell/main/storage';
 import { isBookmark, type GitStorage } from './storage';
 import {
-  commitsMessage,
   expandMerges,
-  firstPage,
   forgetHistory,
   hiddenSides,
   historyLoaded,
   keep,
   keepSubjects,
-  layOutHistory,
-  loadHistory,
   mergesHidingCommit,
   navigationEntry,
   nearestSteps,
   newTabState,
   parentOf,
   pickable,
-  refsKeepHistory,
   replayOf,
   select,
-  stashesKeepHistory,
   stillThere,
-  takeRefs,
-  tipsInGitOrder,
   toggleMerges,
   unselect,
   type TabState,
@@ -151,19 +133,18 @@ import {
   type Session,
   type Comparing,
   type Fetching,
-  type Refresh,
   type Fetchable,
   type Context,
   notInHistory,
   uniqueTexts,
-  shownCommit,
+  nothing,
+  allSettled,
 } from './tabContext';
 import { Diffs } from './diffs';
+import { Refreshes } from './refreshes';
 
 const maxKeptUntrackedChars = 32_000_000;
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
-const everything: Changed = { refs: true, workingTree: true };
-const nothing: Changed = { refs: false, workingTree: false };
 const refsAlone: Changed = { refs: true, workingTree: false };
 
 export type FolderPurpose = 'init' | 'clone';
@@ -179,21 +160,6 @@ export interface GitHost {
 }
 
 const silent = () => undefined;
-
-function toAll(contexts: readonly Context[]): Context | undefined {
-  const [first] = contexts;
-  if (!first || contexts.length === 1) {
-    return first;
-  }
-  return {
-    ...first,
-    post: (message) => {
-      for (const context of contexts) {
-        context.post(message);
-      }
-    },
-  };
-}
 
 const maxBookmarks = 1000;
 
@@ -233,6 +199,7 @@ export class GitTool implements Tool<'git'> {
   private soloDefault: boolean;
   private initAsked: string | undefined;
   private readonly diffs: Diffs;
+  private readonly refreshes: Refreshes;
 
   constructor(
     private readonly log: Log,
@@ -249,6 +216,15 @@ export class GitTool implements Tool<'git'> {
     this.collapseMerges = storage.collapseMerges;
     this.soloDefault = storage.soloDefault;
     this.diffs = new Diffs(storage, () => this.shell);
+    this.refreshes = new Refreshes(log, storage, () => this.shell, this.diffs, {
+      live: (session) => this.live(session),
+      refsOf: (context) => this.refsOf(context),
+      sendRepository: (context, refs) => this.sendRepository(context, refs),
+      rememberSelection: (context) => this.rememberSelection(context),
+      bookmarkedOf: (repository) => this.bookmarkedOf(repository),
+      sendNavigation: (context, current) =>
+        this.sendNavigation(context, current),
+    });
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
       () => fetchOrder(this.repositoryTabs, this.shownRepositories()),
@@ -400,7 +376,7 @@ export class GitTool implements Tool<'git'> {
       async () => {
         const context = await this.context(session);
         if (context) {
-          await this.refresh(context);
+          await this.refreshes.refresh(context);
         }
       },
       this.activeWorktreeIn(session),
@@ -710,7 +686,7 @@ export class GitTool implements Tool<'git'> {
       const context = await this.context(shownIn, root);
       if (context) {
         await tab.loadingHistory;
-        await this.sendShownHistory(context, {
+        await this.refreshes.sendShownHistory(context, {
           keepPlace: true,
           layOut: false,
         });
@@ -859,7 +835,7 @@ export class GitTool implements Tool<'git'> {
         }
         const context = await this.context(session);
         if (context) {
-          await this.sendShownHistory(context);
+          await this.refreshes.sendShownHistory(context);
         }
         return;
       }
@@ -909,8 +885,8 @@ export class GitTool implements Tool<'git'> {
           forgetHistory(context.tab);
           context.tab.readingHistory?.abort();
           if (this.isActiveIn(session, root)) {
-            await this.refresh(context, () =>
-              this.sendCommits(context, this.refsOf(context), true),
+            await this.refreshes.refresh(context, () =>
+              this.refreshes.sendCommits(context, this.refsOf(context), true),
             );
           }
         } finally {
@@ -992,7 +968,7 @@ export class GitTool implements Tool<'git'> {
     }
     switch (message.type) {
       case 'loadCommits':
-        await this.sendCommitPage(
+        await this.refreshes.sendCommitPage(
           context,
           message.generation,
           message.start,
@@ -1002,7 +978,9 @@ export class GitTool implements Tool<'git'> {
       case 'toggleMerge':
         if (context.tab.fullHistory.isMerge(message.hash)) {
           toggleMerges(context.tab, [message.hash]);
-          await this.sendShownHistory(context, { scrollTo: message.hash });
+          await this.refreshes.sendShownHistory(context, {
+            scrollTo: message.hash,
+          });
         }
         break;
       case 'checkout':
@@ -1475,7 +1453,7 @@ export class GitTool implements Tool<'git'> {
     if (!firstOpen && context.tab.shown.commits) {
       this.log.info(strings.log.tabShownAsLeft(context.root));
       await this.addDefaultBookmarks(context);
-      await this.refresh(context);
+      await this.refreshes.refresh(context);
       return;
     }
     await this.loadTab(context);
@@ -1503,18 +1481,20 @@ export class GitTool implements Tool<'git'> {
     const refs = this.refsOf(context);
     await allSettled([
       this.addDefaultBookmarks(context, refs),
-      this.refresh(context, () => {
+      this.refreshes.refresh(context, () => {
         context.tab.indexPaths = undefined;
         return allSettled([
           (async () => {
             if (!historyLoaded(context.tab)) {
-              await this.sendCommits(context, refs);
+              await this.refreshes.sendCommits(context, refs);
             } else if (context.tab.shownStale) {
-              await this.sendShownHistory(context, { keepPlace: true });
+              await this.refreshes.sendShownHistory(context, {
+                keepPlace: true,
+              });
             }
             await this.diffs.sendCommit(context);
           })(),
-          this.sendWorkingTree(context),
+          this.refreshes.sendWorkingTree(context),
         ]);
       }),
       this.sendRepository(context, refs),
@@ -1780,7 +1760,7 @@ export class GitTool implements Tool<'git'> {
       void this.run(
         strings.log.refreshingFailed,
         session,
-        () => this.refresh(context),
+        () => this.refreshes.refresh(context),
         context.root,
       );
     }
@@ -1971,7 +1951,7 @@ export class GitTool implements Tool<'git'> {
         void this.run(
           strings.log.refreshingFailed,
           session,
-          () => this.refresh(context, undefined, change),
+          () => this.refreshes.refresh(context, undefined, change),
           context.root,
         ),
       onWorktreesChange: () =>
@@ -2005,7 +1985,7 @@ export class GitTool implements Tool<'git'> {
     ) {
       return;
     }
-    await this.refresh(context);
+    await this.refreshes.refresh(context);
     await context.tab.loadingHistory;
     await this.showHead(context, picked);
   }
@@ -2050,7 +2030,7 @@ export class GitTool implements Tool<'git'> {
     fetched: Fetched,
   ): Promise<void> {
     if (fetched.failed || fetched.changed) {
-      await this.refresh(context, undefined, refsAlone);
+      await this.refreshes.refresh(context, undefined, refsAlone);
     }
   }
 
@@ -2077,7 +2057,7 @@ export class GitTool implements Tool<'git'> {
       context.post({ type: 'pulling', running: false });
     }
     if (pulled) {
-      await this.refresh(context);
+      await this.refreshes.refresh(context);
       await context.tab.loadingHistory;
       await this.showHead(context, picked);
     } else if (fetched) {
@@ -2127,7 +2107,7 @@ export class GitTool implements Tool<'git'> {
       context.post({ type: 'pushing', running: false });
     }
     if (pushed === 'pushed') {
-      await this.refresh(context, undefined, refsAlone);
+      await this.refreshes.refresh(context, undefined, refsAlone);
     } else if (pushed === 'rejected') {
       await this.fetch(context);
     }
@@ -2211,11 +2191,11 @@ export class GitTool implements Tool<'git'> {
       return false;
     }
     if (checkedOut) {
-      await this.refresh(context);
+      await this.refreshes.refresh(context);
       await context.tab.loadingHistory;
       await this.showHead(context, picked);
     } else {
-      await this.refresh(context, undefined, refsAlone);
+      await this.refreshes.refresh(context, undefined, refsAlone);
     }
     return true;
   }
@@ -2250,7 +2230,7 @@ export class GitTool implements Tool<'git'> {
       ),
     );
     if (pushed === 'pushed') {
-      await this.refresh(context, undefined, refsAlone);
+      await this.refreshes.refresh(context, undefined, refsAlone);
     } else if (pushed === 'rejected') {
       await this.fetch(context);
     }
@@ -2307,7 +2287,7 @@ export class GitTool implements Tool<'git'> {
       pushedTo,
       new Map([...known, [name, tag.commit]]),
     );
-    await this.refresh(context, undefined, refsAlone);
+    await this.refreshes.refresh(context, undefined, refsAlone);
   }
 
   private async runningOn<T>(
@@ -2482,7 +2462,7 @@ export class GitTool implements Tool<'git'> {
       await this.run(
         strings.log.refreshingFailed,
         page,
-        () => this.refresh(shown, undefined, refsAlone),
+        () => this.refreshes.refresh(shown, undefined, refsAlone),
         root,
       );
     }
@@ -2769,7 +2749,7 @@ export class GitTool implements Tool<'git'> {
     );
     if (merges.size > 0) {
       expandMerges(tab, [...merges], this.storage.collapseMerges);
-      await this.sendShownHistory(context, { scrollTo: hash });
+      await this.refreshes.sendShownHistory(context, { scrollTo: hash });
       if (tab.selection !== picked) {
         return;
       }
@@ -2824,438 +2804,6 @@ export class GitTool implements Tool<'git'> {
     if (head) {
       await this.showCommit(context, head, picked);
     }
-  }
-
-  private async refresh(
-    context: Context,
-    load?: () => Promise<void>,
-    change: Changed = everything,
-  ): Promise<void> {
-    const { tab } = context;
-    try {
-      await this.queueRefresh(context, load, change);
-    } catch (error) {
-      tab.refreshError = gitErrorText(error);
-      throw error;
-    }
-    if (tab.refreshError !== undefined) {
-      context.post({ type: 'clearError', message: tab.refreshError });
-      tab.refreshError = undefined;
-    }
-  }
-
-  private queueRefresh(
-    context: Context,
-    load: (() => Promise<void>) | undefined,
-    change: Changed,
-  ): Promise<void> {
-    const { tab } = context;
-    const run = load ?? (() => this.refreshOnce(context, change));
-    if (!tab.refreshing) {
-      const done = Promise.withResolvers<void>();
-      tab.refreshing = true;
-      void this.runRefreshes(tab, { run, done });
-      return done.promise;
-    }
-    if (load) {
-      const done = Promise.withResolvers<void>();
-      tab.loadsAgain.push({ run, done });
-      return done.promise;
-    }
-    tab.refreshAgain.set(context.session, context);
-    tab.changedAgain = {
-      refs: tab.changedAgain.refs || change.refs,
-      workingTree: tab.changedAgain.workingTree || change.workingTree,
-    };
-    tab.refreshedAgain ??= Promise.withResolvers();
-    return tab.refreshedAgain.promise;
-  }
-
-  private async runRefreshes(tab: TabWork, first: Refresh): Promise<void> {
-    let next: Refresh | undefined = first;
-    while (next) {
-      try {
-        await next.run();
-        next.done.resolve();
-      } catch (error) {
-        next.done.reject(error);
-      }
-      next = tab.loadsAgain.shift() ?? this.queuedRefresh(tab);
-    }
-    tab.refreshing = false;
-  }
-
-  private queuedRefresh(tab: TabWork): Refresh | undefined {
-    const pages = new Map<Session | undefined, Context>();
-    for (const [session, context] of tab.refreshAgain) {
-      const page =
-        session === undefined ? undefined : (this.live(session) ?? session);
-      pages.set(page, pages.get(page) ?? context);
-    }
-    const again = toAll([...pages.values()]);
-    const done = tab.refreshedAgain;
-    if (!again || !done) {
-      return undefined;
-    }
-    const change = tab.changedAgain;
-    tab.refreshAgain.clear();
-    tab.changedAgain = nothing;
-    tab.refreshedAgain = undefined;
-    return { run: () => this.refreshOnce(again, change), done };
-  }
-
-  private async refreshOnce(
-    context: Context,
-    { refs, workingTree }: Changed,
-  ): Promise<void> {
-    if (refs) {
-      context.tab.indexPaths = undefined;
-    }
-    await allSettled([
-      workingTree ? this.refreshWorkingTree(context) : Promise.resolve(),
-      refs || context.tab.shownStale
-        ? this.refreshHistory(context)
-        : Promise.resolve(),
-    ]);
-  }
-
-  private async refreshWorkingTree(context: Context): Promise<void> {
-    const measured = context.tab.hash === workingTreeHash;
-    const workingTree = await this.sendWorkingTree(context, measured);
-    const { hash } = context.tab;
-    const unmeasured = hash === workingTreeHash && !measured;
-    if (hash !== undefined && workingTreeSide(hash) && !unmeasured) {
-      await this.diffs.sendCommit(context, workingTree);
-      if (
-        context.tab.shown.tree?.hash === hash &&
-        shownCommit(hash) === undefined
-      ) {
-        await this.diffs.sendTree(context, hash, workingTree);
-      }
-    }
-  }
-
-  private async refreshHistory(context: Context): Promise<void> {
-    const refs = await this.refsOf(context);
-    const { tab } = context;
-    const { head, refs: listed, stashes, dates, shallow } = refs;
-    if (shallow !== tab.shallow) {
-      forgetHistory(tab);
-    }
-    if (fingerprint(head, listed, stashes) === tab.fingerprint) {
-      if (tab.shownStale) {
-        await this.sendShownHistory(context, { keepPlace: true });
-      }
-      return;
-    }
-    const known = Promise.resolve(refs);
-    const solo = this.storage.soloOf(context.root);
-    if (refsKeepHistory(tab, head, listed, solo, stashes, dates)) {
-      this.log.info(strings.log.refsKept);
-      const layOut = tab.shownStale || tab.headCommit !== head?.commit;
-      takeRefs(tab, head, listed, stashes, dates);
-      await Promise.all([
-        this.sendRepository(context, known),
-        this.sendShownHistory(context, { keepPlace: true, layOut }),
-      ]);
-      return;
-    }
-    const extended = historyLoaded(tab)
-      ? await this.extendedHistory(context, refs, solo)
-      : undefined;
-    if (extended && this.storage.soloOf(context.root) === solo) {
-      this.log.info(
-        strings.log.refsExtended(extended.length - tab.fullHistory.length),
-      );
-      loadHistory(tab, extended, head, listed, stashes, dates);
-      await Promise.all([
-        this.sendRepository(context, known),
-        this.sendShownHistory(context, { keepPlace: true }),
-      ]);
-      return;
-    }
-    this.log.info(strings.log.refsReloaded);
-    await Promise.all([
-      this.sendRepository(context, known),
-      this.sendCommits(context, known, true),
-    ]);
-  }
-
-  private async extendedHistory(
-    context: Context,
-    { head, refs, stashes, dates }: Refs,
-    solo: boolean,
-  ): Promise<Commits | undefined> {
-    const { tab, gitPath, root } = context;
-    if (!stashesKeepHistory(tab, stashes, solo)) {
-      return undefined;
-    }
-    const older = tab.fullHistory;
-    const extended = await extendedHistory(
-      gitPath,
-      root,
-      older,
-      tab.heads,
-      tipsInGitOrder(head, refs, solo, stashes, dates),
-      solo ? [] : stashes.map((stash) => stash.commit),
-      dates,
-      { signal: tab.closed.signal },
-    ).catch((error: unknown) => {
-      if (tab.closed.signal.aborted) {
-        return undefined;
-      }
-      throw error;
-    });
-    return tab.fullHistory === older ? extended : undefined;
-  }
-
-  private async sendWorkingTree(
-    context: Context,
-    measured = false,
-  ): Promise<WorkingTree> {
-    const workingTree = await workingTreeFiles(
-      context.gitPath,
-      context.root,
-      undefined,
-      undefined,
-      undefined,
-      measured,
-    );
-    context.post({ type: 'workingTree', files: uncommittedCount(workingTree) });
-    return workingTree;
-  }
-
-  private async sendCommits(
-    context: Context,
-    refs: Promise<Refs>,
-    keepPlace = false,
-  ): Promise<void> {
-    const read = await refs;
-    const { head, refs: listed, stashes } = read;
-    const { tab } = context;
-    const early = tab.shown.commits === undefined;
-    const loading = new AbortController();
-    const loaded = Promise.withResolvers<void>();
-    if (early) {
-      tab.loadingHistory = loaded.promise;
-      if (read.commitGraph) {
-        void this.shell.track(
-          this.sendRecentHistory(context, read, loading.signal),
-        );
-      }
-    }
-    const reading = new AbortController();
-    tab.readingHistory = reading;
-    try {
-      const solo = this.storage.soloOf(context.root);
-      const fullHistory = await this.listFullHistory(
-        context,
-        solo,
-        stashes.map((stash) => stash.commit),
-        tipsInGitOrder(head, listed, solo, stashes),
-        AbortSignal.any([tab.closed.signal, reading.signal]),
-      ).catch((error: unknown) => {
-        if (tab.closed.signal.aborted || reading.signal.aborted) {
-          return undefined;
-        }
-        throw error;
-      });
-      if (fullHistory === undefined) {
-        return;
-      }
-      loading.abort();
-      loadHistory(tab, fullHistory, head, listed, stashes, read.dates);
-      tab.shallow = read.shallow;
-      if (this.storage.soloOf(context.root) !== solo) {
-        forgetHistory(tab);
-      }
-      if (tab.hash !== undefined && !stillThere(tab)(tab.hash)) {
-        unselect(tab);
-        this.rememberSelection(context);
-        context.post({ type: 'unselect', selection: tab.selection });
-      }
-      await this.sendShownHistory(context, { keepPlace: keepPlace || early });
-    } finally {
-      if (tab.readingHistory === reading) {
-        tab.readingHistory = undefined;
-      }
-      loading.abort();
-      loaded.resolve();
-      if (tab.loadingHistory === loaded.promise) {
-        tab.loadingHistory = undefined;
-      }
-    }
-    const { back, forward } = tab.navigation;
-    if (back.length + forward.length > 0) {
-      await this.sendNavigation(context);
-    }
-  }
-
-  private listFullHistory(
-    context: Context,
-    solo: boolean,
-    stashes: readonly string[],
-    tips: Iterable<string>,
-    signal: AbortSignal,
-  ): Promise<Commits> {
-    return listHistory(
-      context.gitPath,
-      context.root,
-      solo,
-      stashes,
-      signal,
-      tips,
-    );
-  }
-
-  private async listRecentHistory(
-    context: Context,
-    tips: readonly string[],
-    stashes: readonly string[],
-    signal: AbortSignal,
-    count?: number,
-  ): Promise<Commits | undefined> {
-    const { history, whole } = await listRecentHistory(
-      context.gitPath,
-      context.root,
-      tips,
-      stashes,
-      count,
-      signal,
-    );
-    return whole ? undefined : history;
-  }
-
-  private async sendRecentHistory(
-    context: Context,
-    { head, refs, stashes, dates }: Refs,
-    signal: AbortSignal,
-  ): Promise<void> {
-    const solo = this.storage.soloOf(context.root);
-    try {
-      const recent = await this.listRecentHistory(
-        context,
-        solo ? [] : recentTips(dates),
-        solo ? [] : stashes.map((stash) => stash.commit),
-        signal,
-      );
-      if (recent === undefined || signal.aborted) {
-        return;
-      }
-      loadHistory(context.tab, recent, head, refs, stashes, dates, true);
-      await this.sendShownHistory(context);
-    } catch (error) {
-      if (!signal.aborted) {
-        this.log.error(strings.log.recentHistoryFailed);
-        this.log.error(error);
-      }
-    }
-  }
-
-  private async sendShownHistory(
-    context: Context,
-    {
-      scrollTo,
-      keepPlace = false,
-      layOut = true,
-    }: { scrollTo?: string; keepPlace?: boolean; layOut?: boolean } = {},
-  ): Promise<void> {
-    const { tab } = context;
-    const generation = layOut ? this.layOut(tab) : ++tab.generation;
-    const page = firstPage(tab, keepPlace, scrollTo);
-    const { graph } = tab;
-    const [commits] = await Promise.all([
-      logCommits(
-        context.gitPath,
-        context.root,
-        tab.history.hashes(page.start, page.start + 2 * commitPageSize),
-      ).catch((error: unknown) => {
-        if (tab.generation === generation) {
-          tab.shownStale = true;
-        }
-        throw error;
-      }),
-      graph.walkTo(page.start, () => tab.graph === graph),
-    ]);
-    keepSubjects(tab, commits);
-    if (tab.generation !== generation) {
-      return;
-    }
-    context.post(
-      commitsMessage(tab, page, commits, this.bookmarkedOf(context.repository)),
-    );
-  }
-
-  private layOut(tab: TabWork): number {
-    const started = performance.now();
-    const generation = layOutHistory(
-      tab,
-      this.storage.collapseMerges,
-      tab.headCommit,
-    );
-    this.log.info(
-      strings.log.laidOut(
-        tab.history.length,
-        tab.fullHistory.length,
-        Math.round(performance.now() - started),
-      ),
-    );
-    const { graph } = tab;
-    void this.shell.track(
-      graph.walkAhead(() => tab.graph === graph && !tab.closed.signal.aborted),
-    );
-    return generation;
-  }
-
-  private async sendCommitPage(
-    context: Context,
-    generation: number,
-    start: number,
-    count: number,
-  ): Promise<void> {
-    const { tab } = context;
-    const replaced = () => tab.generation !== generation;
-    if (replaced()) {
-      if (tab.shownStale) {
-        await this.sendShownHistory(context, { keepPlace: true });
-      }
-      return;
-    }
-    const { history, graph } = tab;
-    if (start >= history.length) {
-      return;
-    }
-    const walked = graph.walkTo(start, () => tab.graph === graph);
-    const commits = await logCommits(
-      context.gitPath,
-      context.root,
-      history.hashes(start, start + count),
-    ).catch((error: unknown) => {
-      if (!replaced()) {
-        context.post({
-          type: 'commitPage',
-          generation,
-          start,
-          count,
-          commits: [],
-          graph: [],
-        });
-      }
-      throw error;
-    });
-    keepSubjects(tab, commits);
-    await walked;
-    if (replaced()) {
-      return;
-    }
-    context.post({
-      type: 'commitPage',
-      generation,
-      start,
-      count,
-      commits,
-      graph: graph.rows(start, commits.length),
-    });
   }
 }
 
@@ -3475,17 +3023,6 @@ function wellFormedInTab(message: TabMessage): boolean {
       );
     default:
       return false;
-  }
-}
-
-async function allSettled(
-  promises: readonly Promise<unknown>[],
-): Promise<void> {
-  const failed = (await Promise.allSettled(promises)).find(
-    (result) => result.status === 'rejected',
-  );
-  if (failed) {
-    throw failed.reason;
   }
 }
 

@@ -632,7 +632,7 @@ export function stubMethod(
   );
 }
 
-function holderOf(view: GitTool, name: string): object {
+export function holderOf(view: GitTool, name: string): object {
   if (typeof Reflect.get(view, name) === 'function') {
     return view;
   }

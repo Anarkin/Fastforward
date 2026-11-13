@@ -119,23 +119,23 @@
       }
     },
     {
-      "files": ["src/tools/git/main/tool.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 3700
-          }
-        ]
-      }
-    },
-    {
       "files": ["src/tools/git/page/diffView.tsx"],
       "rules": {
         "max-lines": [
           "warn",
           {
             "max": 3400
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/tools/git/main/tool.ts"],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 3300
           }
         ]
       }

@@ -36,6 +36,7 @@ import {
   openView,
   reopen,
   restoreRepository,
+  holderOf,
   stubMethod,
   takeErrorsLogged,
   viewRepositories,
@@ -492,7 +493,8 @@ suite('Git tool refreshing one repository', () => {
       let started = 0;
       let waiting: { from: number; most: number } | undefined;
       const heldBack = Promise.withResolvers<void>();
-      const refresh: unknown = Reflect.get(fastforward, 'refresh');
+      const refreshing = holderOf(fastforward, 'refresh');
+      const refresh: unknown = Reflect.get(refreshing, 'refresh');
       assert.ok(typeof refresh === 'function');
       stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
         started++;
@@ -502,9 +504,7 @@ suite('Git tool refreshing one repository', () => {
         }
         await original(...args);
         if (refilling) {
-          const queued: unknown = Reflect.apply(refresh, fastforward, [
-            args[0],
-          ]);
+          const queued: unknown = Reflect.apply(refresh, refreshing, [args[0]]);
           void Promise.resolve(queued).catch(() => undefined);
         }
       });

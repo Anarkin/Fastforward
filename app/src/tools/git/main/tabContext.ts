@@ -1,7 +1,7 @@
 import type { ReadPatch } from './cli/diff';
 import type { Refs } from './cli/repository';
 import type { Changed, Watcher } from './cli/watch';
-import type { UntrackedPatches } from './cli/workingTree';
+import { UntrackedPatches } from './cli/workingTree';
 import type { Fetched, RepositoryAt } from './operations';
 import {
   type GitToWebview,
@@ -117,4 +117,17 @@ export function uniqueTexts(requests: readonly TextRequest[]): TextRequest[] {
 export function shownCommit(hash: string): string | undefined {
   const shown = shownSide(hash);
   return shown === workingTreeHash ? undefined : shown;
+}
+
+export const nothing: Changed = { refs: false, workingTree: false };
+
+export async function allSettled(
+  promises: readonly Promise<unknown>[],
+): Promise<void> {
+  const failed = (await Promise.allSettled(promises)).find(
+    (result) => result.status === 'rejected',
+  );
+  if (failed) {
+    throw failed.reason;
+  }
 }
