@@ -36,6 +36,7 @@ interface Item {
   readonly readOnly?: true;
   readonly unreadable?: true;
   readonly flaggedHidden?: true;
+  readonly config?: Readonly<Record<string, string>>;
 }
 
 interface FilesPlan {
@@ -236,7 +237,7 @@ suite('Playground of files on disk', () => {
     }
   });
 
-  test('makes a git repository inside, while the rest is in none', () => {
+  test('makes git repositories inside, with the config the plan gives them, while the rest is in none', () => {
     for (const item of ofKind('repository')) {
       assert.strictEqual(
         fs.realpathSync.native(
@@ -250,6 +251,12 @@ suite('Playground of files on disk', () => {
         ),
         fs.realpathSync.native(at(item.path)),
       );
+      for (const [key, value] of Object.entries(item.config ?? {})) {
+        assert.strictEqual(
+          output('git', '-C', at(item.path), 'config', '--get', key).trim(),
+          value,
+        );
+      }
     }
     assert.throws(() =>
       execFileSync('git', ['-C', at('colors'), 'rev-parse', '--git-dir'], {

@@ -217,6 +217,9 @@ function make() {
   for (const item of ofKind('repository')) {
     const cwd = at(item.path);
     quietly('git', ['init', '--quiet', '--initial-branch=main'], cwd);
+    for (const [key, value] of Object.entries(item.config ?? {})) {
+      quietly('git', ['config', key, value], cwd);
+    }
     quietly('git', ['add', '--all'], cwd);
     quietly(
       'git',

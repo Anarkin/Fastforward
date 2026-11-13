@@ -5,6 +5,7 @@ import { beforeAll, suite, test } from 'vitest';
 import { imageType, maxImageSize } from '../shared/images';
 import { maxMatches } from '../shared/textMatches';
 import { rowBytes } from '../tools/commander/main/textRows';
+import { decodedText } from '../tools/commander/main/textCodec';
 import {
   encodingMenu,
   type EncodingChoice,
@@ -245,6 +246,99 @@ suite('Playground of files', () => {
       );
       assert.ok(/\P{ASCII}/u.test(text.slice(encoding.length)), where);
     }
+  });
+
+  test('holds files of every line ending, mixed ones and ones without any, and folders where the .editorconfig, the attributes or the config of git, or the settings give the new lines of a file with no line break their ending, and one trimming as it saves', () => {
+    const made = planFor('win32');
+    const endingsOf = (where: string) =>
+      decodedText(contentOf(itemAt(made, where)), 'utf-8').endings;
+    const none = { lf: 0, crlf: 0, cr: 0 };
+    assert.deepStrictEqual(endingsOf('line-endings/lf.txt'), {
+      ...none,
+      lf: 3,
+    });
+    assert.deepStrictEqual(endingsOf('line-endings/crlf.txt'), {
+      ...none,
+      crlf: 3,
+    });
+    assert.deepStrictEqual(endingsOf('line-endings/cr.txt'), {
+      ...none,
+      cr: 3,
+    });
+    assert.deepStrictEqual(endingsOf('line-endings/mixed-mostly-lf.txt'), {
+      lf: 3,
+      crlf: 1,
+      cr: 1,
+    });
+    assert.deepStrictEqual(endingsOf('line-endings/mixed-mostly-crlf.txt'), {
+      lf: 1,
+      crlf: 3,
+      cr: 0,
+    });
+    assert.deepStrictEqual(endingsOf('line-endings/mixed-tie.txt'), {
+      lf: 2,
+      crlf: 2,
+      cr: 0,
+    });
+    assert.strictEqual(
+      decodedText(
+        contentOf(itemAt(made, 'line-endings/mixed-tie.txt')),
+        'utf-8',
+      ).ending,
+      'crlf',
+    );
+    assert.deepStrictEqual(endingsOf('line-endings/no-final-newline.txt'), {
+      ...none,
+      lf: 2,
+    });
+    for (const where of [
+      'line-endings/no-line-break.txt',
+      'line-endings/empty.txt',
+      'line-endings/from-editorconfig/one-line.txt',
+      'line-endings/from-git-attributes/one-line.txt',
+      'line-endings/from-git-config/one-line.txt',
+      'line-endings/from-settings/run.cmd',
+      'line-endings/from-settings/one-line.html',
+    ]) {
+      assert.deepStrictEqual(endingsOf(where), none, where);
+    }
+    const textOf = (where: string) => contentOf(itemAt(made, where)).toString();
+    assert.match(
+      textOf('line-endings/from-editorconfig/.editorconfig'),
+      /end_of_line = crlf/,
+    );
+    assert.match(
+      textOf('line-endings/from-git-attributes/.gitattributes'),
+      /eol=crlf/,
+    );
+    assert.deepStrictEqual(
+      made.items.filter(
+        (item) =>
+          item.kind === 'repository' && item.path.startsWith('line-endings/'),
+      ),
+      [
+        { kind: 'repository', path: 'line-endings/from-git-attributes' },
+        {
+          kind: 'repository',
+          path: 'line-endings/from-git-config',
+          config: { 'core.autocrlf': 'true' },
+        },
+      ],
+    );
+    assert.ok(
+      defaultSettings().editor.files.some(
+        ({ extensions, endOfLine }) =>
+          extensions.includes('cmd') && endOfLine === 'crlf',
+      ),
+    );
+    assert.match(
+      textOf('line-endings/trim-on-save/.editorconfig'),
+      /trim_trailing_whitespace = true[\s\S]*insert_final_newline = true/,
+    );
+    assert.match(
+      textOf('line-endings/trim-on-save/trailing-spaces.txt'),
+      / +\n/,
+    );
   });
 
   test('crosses every limit of the viewer, knowing each as the app does: the size it colors, the length of a line it shows whole, the rows it breaks longer ones into, the size of Markdown it previews and of an image, and the matches it counts', () => {

@@ -96,6 +96,7 @@ export interface HardLinkItem extends Placed {
 
 export interface RepositoryItem extends Placed {
   readonly kind: 'repository';
+  readonly config?: Readonly<Record<string, string>>;
 }
 
 export type Item =
@@ -417,6 +418,9 @@ function* largePdfPages(count: number): Iterable<PdfPage> {
   }
 }
 
+const oneLine = (from: string) =>
+  `One line with no line break, so new lines end as ${from} says.`;
+
 export function plan({
   platform,
   large = false,
@@ -636,7 +640,7 @@ export function plan({
 
   section(
     'text',
-    'Text for the viewer: lines just under and over the 64 KiB it shows whole, the longer ones in rows of 4 KiB, and of 1 and 10 MiB; LF, CRLF, CR and mixed line endings; a Markdown table padded as prettier pads it, with lines of more than a thousand spaces, which once made the viewer slow; emoji and Chinese, Japanese and Korean characters in a grid whose bars line up where widths are counted right; every byte value and a NUL byte for the hex view, 1; and more matches than it counts and a log with one NEEDLE near its end, to find with Mod+F. Show whitespace with `.`.',
+    'Text for the viewer: lines just under and over the 64 KiB it shows whole, the longer ones in rows of 4 KiB, and of 1 and 10 MiB; a Markdown table padded as prettier pads it, with lines of more than a thousand spaces, which once made the viewer slow; emoji and Chinese, Japanese and Korean characters in a grid whose bars line up where widths are counted right; every byte value and a NUL byte for the hex view, 1; and more matches than it counts and a log with one NEEDLE near its end, to find with Mod+F. Show whitespace with `.`.',
   );
   for (const [name, length] of [
     ['long-line-just-under-64-kib.txt', limits.wholeLineBytes - 1],
@@ -686,13 +690,68 @@ export function plan({
   });
 
   const three = ['one', 'two', 'three'];
-  file('text/line-endings-lf.txt', `${three.join('\n')}\n`);
-  file('text/line-endings-crlf.txt', `${three.join('\r\n')}\r\n`);
-  file('text/line-endings-cr.txt', `${three.join('\r')}\r`);
-  file('text/line-endings-mixed.txt', 'lf\ncrlf\r\ncr\rlf again\n');
-  file('text/line-endings-no-final-newline.txt', 'no final newline');
-  file('text/line-endings-empty.txt', '');
-  file('text/line-endings-only-newlines.txt', '\n'.repeat(50));
+  section(
+    'line-endings',
+    'Line endings, as the button above a file edited with F4 shows them, Mixed while there is more than one, and its menu converts them: LF, CRLF and CR, files mixing them with most of one or as many of two, the first then taking new lines, and files with no line break, no final one or nothing but line breaks. Each from-folder holds a file with no line break, whose new lines take their ending from where the folder says, as the menu of the button lists; a file made there with Shift+F4 takes it the same way. trim-on-save trims the lines edited and ends the file with a line break once saved with Ctrl+S, leaving the lines not edited as they were.',
+  );
+  file('line-endings/lf.txt', `${three.join('\n')}\n`);
+  file('line-endings/crlf.txt', `${three.join('\r\n')}\r\n`);
+  file('line-endings/cr.txt', `${three.join('\r')}\r`);
+  file(
+    'line-endings/mixed-mostly-lf.txt',
+    'lf\ncrlf\r\nlf again\ncr\rlf once more\n',
+  );
+  file(
+    'line-endings/mixed-mostly-crlf.txt',
+    'crlf\r\nlf\ncrlf again\r\ncrlf once more\r\n',
+  );
+  file('line-endings/mixed-tie.txt', 'crlf first\r\nlf\ncrlf\r\nlf\n');
+  file('line-endings/no-final-newline.txt', three.join('\n'));
+  file('line-endings/no-line-break.txt', 'one line, no line break');
+  file('line-endings/empty.txt', '');
+  file('line-endings/only-newlines.txt', '\n'.repeat(50));
+  file(
+    'line-endings/from-editorconfig/.editorconfig',
+    'root = true\n\n[*]\nend_of_line = crlf\n',
+  );
+  file(
+    'line-endings/from-editorconfig/one-line.txt',
+    oneLine('the .editorconfig beside it'),
+  );
+  file(
+    'line-endings/from-git-attributes/.gitattributes',
+    '*.txt text eol=crlf\n',
+  );
+  file(
+    'line-endings/from-git-attributes/one-line.txt',
+    oneLine('the eol attribute of git'),
+  );
+  items.push({ kind: 'repository', path: 'line-endings/from-git-attributes' });
+  file(
+    'line-endings/from-git-config/one-line.txt',
+    oneLine('core.autocrlf of git'),
+  );
+  items.push({
+    kind: 'repository',
+    path: 'line-endings/from-git-config',
+    config: { 'core.autocrlf': 'true' },
+  });
+  file(
+    'line-endings/from-settings/run.cmd',
+    '@echo One line with no line break, so new lines end as editor.files of the settings says for .cmd.',
+  );
+  file(
+    'line-endings/from-settings/one-line.html',
+    oneLine('editor.endOfLine of the settings'),
+  );
+  file(
+    'line-endings/trim-on-save/.editorconfig',
+    'root = true\n\n[*]\ntrim_trailing_whitespace = true\ninsert_final_newline = true\n',
+  );
+  file(
+    'line-endings/trim-on-save/trailing-spaces.txt',
+    'edit this line, its spaces go as it is saved   \nthis line keeps its spaces   \nand this last line gets a line break once edited',
+  );
 
   file('text/whitespace-padded-table.md', paddedTable(1));
   file(
