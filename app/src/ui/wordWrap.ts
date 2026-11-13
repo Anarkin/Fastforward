@@ -91,12 +91,16 @@ const longestMarkedLine = 64 * 1024;
 
 const breaksMarked = (text: string) => text.length <= longestMarkedLine;
 
-export function breakOffsets(text: string): number[] {
+export function breakOffsets(
+  text: string,
+  from = 1,
+  to = text.length - 1,
+): number[] {
   const offsets: number[] = [];
   if (!breaksMarked(text)) {
     return offsets;
   }
-  for (let at = 1; at < text.length; at++) {
+  for (let at = Math.max(1, from); at <= Math.min(to, text.length - 1); at++) {
     if (breaksAt(text, at)) {
       offsets.push(at);
     }

@@ -143,20 +143,22 @@ class Colors implements PluginValue {
   private build(view: EditorView): DecorationSet {
     const { doc } = view.state;
     const marks: Range<Decoration>[] = [];
-    let last = 0;
     for (const { from, to } of view.visibleRanges) {
       for (let at = from; at <= to;) {
         const line = doc.lineAt(at);
         at = line.to + 1;
-        if (line.number <= last) {
-          continue;
-        }
-        last = line.number;
-        for (const { start, end, kind } of this.lines[line.number - 1] ?? []) {
-          const markEnd = Math.min(end, line.length);
-          if (start < markEnd) {
+        const windowFrom = Math.max(from, line.from) - line.from;
+        const windowTo = Math.min(to, line.to) - line.from;
+        for (const { start, end, kind } of tokensIn(
+          this.lines[line.number - 1] ?? [],
+          windowFrom,
+          windowTo,
+        )) {
+          const markFrom = Math.max(start, windowFrom);
+          const markTo = Math.min(end, windowTo, line.length);
+          if (markFrom < markTo) {
             marks.push(
-              markOf(kind).range(line.from + start, line.from + markEnd),
+              markOf(kind).range(line.from + markFrom, line.from + markTo),
             );
           }
         }
@@ -164,6 +166,32 @@ class Colors implements PluginValue {
     }
     return Decoration.set(marks, true);
   }
+}
+
+export function tokensIn<Token extends { start: number; end: number }>(
+  tokens: readonly Token[],
+  from: number,
+  to: number,
+): Token[] {
+  let low = 0;
+  let high = tokens.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if ((tokens[middle]?.end ?? 0) <= from) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  const found: Token[] = [];
+  for (let index = low; index < tokens.length; index++) {
+    const token = tokens[index];
+    if (token === undefined || token.start >= to) {
+      break;
+    }
+    found.push(token);
+  }
+  return found;
 }
 
 export function syntaxColors(

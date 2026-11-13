@@ -34,6 +34,39 @@ suite('Parts of a line of the editor', () => {
     ]);
   });
 
+  test('works out only the part of a long line in view, looking a few characters past it, and gives that part as the whole line would, breaks only on a line of up to 64 KiB as the diff', () => {
+    for (const [repeats, at, broken] of [
+      [20_000, 120_000, false],
+      [4_000, 24_000, true],
+    ] as const) {
+      const text = `  ${'a.中😀 b(c), '.repeat(repeats)}`;
+      let asked = 0;
+      const counting: TextWidths = {
+        ...boxing,
+        boxed: (cluster) => {
+          asked += 1;
+          return boxing.boxed?.(cluster);
+        },
+      };
+      const window = { from: at, to: at + 400 };
+      const parts = lineParts(text, 2, counting, window);
+      assert.ok(asked < 400, `${asked} characters measured`);
+      assert.deepStrictEqual(
+        parts,
+        lineParts(text, 2, boxing).filter(
+          (part) =>
+            part.kind === 'lead' ||
+            (part.from >= window.from && part.to <= window.to),
+        ),
+      );
+      assert.ok(parts.some((part) => part.kind === 'cell'));
+      assert.strictEqual(
+        parts.some((part) => part.kind === 'break'),
+        broken,
+      );
+    }
+  });
+
   test('marks the breaks and boxes of a wrapped line in order, a box between two breaks too', () => {
     assert.deepStrictEqual(lineParts('  a.中.b', 2, boxing), [
       { kind: 'lead', from: 0, to: 2 },

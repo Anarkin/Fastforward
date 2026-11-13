@@ -1,13 +1,33 @@
 import * as assert from 'node:assert';
 import { EditorState, type TransactionSpec } from '@codemirror/state';
 import { suite, test } from 'vitest';
-import { lineEdit } from '../../ui/editorColors';
+import { lineEdit, tokensIn } from '../../ui/editorColors';
 
 function editOf(text: string, spec: TransactionSpec) {
   const startState = EditorState.create({ doc: text });
   const { changes, state } = startState.update(spec);
   return lineEdit({ changes, startState, state });
 }
+
+suite('Colors of the part of a line in view', () => {
+  test('takes the tokens that reach into the part in view, those cut by its edges too, and none past them', () => {
+    const tokens = Array.from({ length: 100_000 }, (_, at) => ({
+      start: at * 5,
+      end: at * 5 + 5,
+      kind: 'keyword',
+    }));
+    assert.deepStrictEqual(
+      tokensIn(tokens, 1003, 1012).map(({ start }) => start),
+      [1000, 1005, 1010],
+    );
+    assert.deepStrictEqual(
+      tokensIn(tokens, 1000, 1005).map(({ start }) => start),
+      [1000],
+    );
+    assert.deepStrictEqual(tokensIn(tokens, 600_000, 600_010), []);
+    assert.deepStrictEqual(tokensIn([], 0, 10), []);
+  });
+});
 
 suite('Lines of the editor to color again', () => {
   test('colors again the line typed in, the lines an edit splits it into and the line deleting a line break joins', () => {

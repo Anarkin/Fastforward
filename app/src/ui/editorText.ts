@@ -58,19 +58,34 @@ function boxesIn(text: string, widths: TextWidths | undefined): LinePart[] {
   return boxes;
 }
 
+interface LineWindow {
+  readonly from: number;
+  readonly to: number;
+}
+
+const windowMargin = 64;
+
 export function lineParts(
   text: string,
   indent: number | undefined,
   widths: TextWidths | undefined,
+  window: LineWindow = { from: 0, to: text.length },
 ): LinePart[] {
-  const boxes = boxesIn(text, widths);
+  const from = Math.max(0, window.from - windowMargin);
+  const to = Math.min(text.length, window.to + windowMargin);
+  const looked = from === 0 && to === text.length ? text : text.slice(from, to);
+  const within = (part: LinePart) =>
+    part.from >= window.from && part.to <= window.to;
+  const boxes = boxesIn(looked, widths)
+    .map((part) => ({ ...part, from: part.from + from, to: part.to + from }))
+    .filter(within);
   if (indent === undefined) {
     return boxes;
   }
   const lead = indent > 0 ? leadLength(text) : 0;
-  const breaks = breakOffsets(text)
-    .filter((at) => at >= lead)
-    .map((at): LinePart => ({ kind: 'break', from: at, to: at }));
+  const breaks = breakOffsets(text, Math.max(lead, window.from), window.to).map(
+    (at): LinePart => ({ kind: 'break', from: at, to: at }),
+  );
   return [
     ...(lead > 0 ? [{ kind: 'lead', from: 0, to: lead } as const] : []),
     ...[...breaks, ...boxes].toSorted((a, b) => a.from - b.from),
@@ -216,23 +231,27 @@ class LineLook implements PluginValue {
       for (let at = from; at <= to;) {
         const line = state.doc.lineAt(at);
         at = line.to + 1;
-        if (line.number <= last) {
-          continue;
-        }
+        const first = line.number > last;
         last = line.number;
+        const window = {
+          from: Math.max(from, line.from) - line.from,
+          to: Math.min(to, line.to) - line.from,
+        };
         const indent =
           this.wrapping && this.columns !== undefined
             ? wrapIndent(line.text, this.columns)
             : undefined;
-        if (indent) {
+        if (indent && first) {
           lines.push(hangingLine(indent).range(line.from));
         }
         const boxed = new Set<number>();
-        for (const part of lineParts(line.text, indent, this.widths)) {
+        for (const part of lineParts(line.text, indent, this.widths, window)) {
           const partFrom = line.from + part.from;
           const partTo = line.from + part.to;
           if (part.kind === 'lead') {
-            lines.push(leadMark.range(partFrom, partTo));
+            if (first) {
+              lines.push(leadMark.range(partFrom, partTo));
+            }
           } else if (part.kind === 'break') {
             lines.push(breakChance.range(partFrom));
           } else {
@@ -253,12 +272,14 @@ class LineLook implements PluginValue {
           }
         }
         if (showsBlanks) {
-          for (const found of line.text.matchAll(spacesBlanksAndText)) {
+          const shown = line.text.slice(window.from, window.to);
+          for (const found of shown.matchAll(spacesBlanksAndText)) {
             const [part] = found;
-            const partFrom = line.from + found.index;
+            const index = window.from + found.index;
+            const partFrom = line.from + index;
             if (part.startsWith(' ')) {
               blanks.push(spacesMark.range(partFrom, partFrom + part.length));
-            } else if (blank.test(part) && !boxed.has(found.index)) {
+            } else if (blank.test(part) && !boxed.has(index)) {
               blanks.push(
                 signMark(blankSignOf(part)).range(
                   partFrom,
