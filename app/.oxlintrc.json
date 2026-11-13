@@ -14,7 +14,13 @@
     "react/exhaustive-deps": "error",
     "react/react-in-jsx-scope": "off",
     "react/incompatible-library": "off",
-    "react/set-state-in-effect": "off"
+    "react/set-state-in-effect": "off",
+    "max-lines": [
+      "warn",
+      {
+        "max": 1000
+      }
+    ]
   },
   "overrides": [
     {
@@ -102,6 +108,194 @@
           "error",
           {
             "allow": ["_willUpdate"]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/shared/strings.ts"],
+      "rules": {
+        "max-lines": "off"
+      }
+    },
+    {
+      "files": ["src/test/appCommander.electron.test.ts"],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 5900
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/test/shell/page/style.test.ts"],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 4800
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/tools/git/main/tool.ts"],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 4400
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/test/tools/git/page/diffView.test.tsx",
+        "src/tools/git/page/diffView.tsx"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 3400
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/test/tools/git/page/syntax.test.ts"],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 2400
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/test/tools/commander/main/tool.test.ts"],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 2000
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/test/tools/commander/page/store.test.ts",
+        "src/test/tools/git/page/commitList.test.tsx"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1800
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/tools/commander/page/store.ts"],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1700
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "scripts/playground/filesPlan.mts",
+        "scripts/playground/git.mts",
+        "src/test/tools/git/main/tool/oneRepository.git.test.ts"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1600
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/shell/main/shell.ts",
+        "src/test/tools/git/main/cli/workingTree.git.test.ts",
+        "src/tools/commander/main/tool.ts"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1500
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/main/main.ts",
+        "src/test/appLaunches.electron.test.ts",
+        "src/test/shell/main/shell.test.ts",
+        "src/test/tools/git/main/tool/diffs.git.test.ts",
+        "src/test/tools/git/main/tool/refreshing.git.test.ts",
+        "src/tools/commander/page/pane.tsx"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1400
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/test/tools/commander/main/archiveCopies.test.ts",
+        "src/test/tools/commander/main/archiveRoundTrips.7zip.test.ts",
+        "src/test/tools/git/main/tool/otherRepositories.git.test.ts",
+        "src/test/tools/git/page/locations.test.tsx",
+        "src/tools/git/page/commitList.tsx"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1300
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/shell/page/tabBar.tsx",
+        "src/test/appEditor.electron.test.ts",
+        "src/test/appWrapping.electron.test.ts",
+        "src/test/tools/commander/page/view.test.ts",
+        "src/test/tools/git/main/cli/watch.test.ts",
+        "src/test/tools/git/page/store.test.ts",
+        "src/tools/commander/main/archives.ts",
+        "src/tools/commander/page/editor.tsx",
+        "src/tools/git/main/cli/watch.ts",
+        "src/tools/git/page/locations.tsx",
+        "src/ui/syntaxEngine.ts"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1200
           }
         ]
       }
