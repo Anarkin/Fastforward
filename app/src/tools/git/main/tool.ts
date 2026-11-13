@@ -14,13 +14,7 @@ import {
 } from './cli/compare';
 import { watchFiles } from './compareWatch';
 import { readImage, viewedFile } from './cli/files';
-import {
-  findCommit,
-  findCommits,
-  headCommit,
-  logCommits,
-  searchCommits,
-} from './cli/history';
+import { findCommit } from './cli/history';
 import {
   fetchRemote,
   hasGitFolder,
@@ -49,7 +43,7 @@ import {
   type Location,
   type Worktree,
 } from './cli/worktrees';
-import { maxSteps, step, visit } from './history/navigation';
+import { maxSteps } from './history/navigation';
 import { ImageReads } from './imageReads';
 import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
@@ -69,7 +63,6 @@ import {
   type Notify,
 } from './operations';
 import { defaultBookmarks, remoteTagRefs, sameTags } from './refs';
-import { comparedOf } from '../shared/comparisons';
 import { isFullHash, shortHash } from '../shared/hashes';
 import { bookmarkedCommits, hasRef } from '../shared/refNames';
 import { imageSourceOf, imageType } from '../shared/images';
@@ -77,11 +70,7 @@ import {
   commitPageSize,
   commitPagesAsked,
   diffLayouts,
-  workingTreeHash,
   type CheckoutTarget,
-  type CommitResults,
-  type CommitSearch,
-  type Direction,
   type RepositoryInfo,
   type TabMessage,
   type TextRequest,
@@ -106,15 +95,10 @@ import {
 } from '../../../shell/main/storage';
 import { isBookmark, type GitStorage } from './storage';
 import {
-  expandMerges,
   forgetHistory,
   hiddenSides,
   historyLoaded,
   keep,
-  keepSubjects,
-  mergesHidingCommit,
-  navigationEntry,
-  nearestSteps,
   newTabState,
   parentOf,
   pickable,
@@ -139,9 +123,11 @@ import {
   uniqueTexts,
   nothing,
   allSettled,
+  type GitCore,
 } from './tabContext';
 import { Diffs } from './diffs';
 import { Refreshes } from './refreshes';
+import { Navigation } from './navigation';
 
 const maxKeptUntrackedChars = 32_000_000;
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
@@ -187,8 +173,6 @@ export class GitTool implements Tool<'git'> {
   private readonly fetches = new Map<string, Fetching>();
   private readonly pushes = new Map<string, Promise<unknown>>();
   private readonly fetchFailures = new Set<string>();
-  private readonly commitSearches = new Map<string, AbortController>();
-  private readonly hashLookups = new Map<string, number>();
   private readonly imageReads = new ImageReads();
   private readonly comparisons = new Map<string, Comparing>();
   private readonly autoFetch: AutoFetch;
@@ -198,8 +182,10 @@ export class GitTool implements Tool<'git'> {
   private collapseMerges: boolean;
   private soloDefault: boolean;
   private initAsked: string | undefined;
+  private readonly core: GitCore;
   private readonly diffs: Diffs;
   private readonly refreshes: Refreshes;
+  private readonly navigation: Navigation;
 
   constructor(
     private readonly log: Log,
@@ -215,6 +201,24 @@ export class GitTool implements Tool<'git'> {
   ) {
     this.collapseMerges = storage.collapseMerges;
     this.soloDefault = storage.soloDefault;
+    this.core = {
+      context: (session, root, live) => this.context(session, root, live),
+      run: (failed, session, action, root) =>
+        this.run(failed, session, action, root),
+      live: (session) => this.live(session),
+      page: () => this.page,
+      sessionShowing: (root) => this.sessionShowing(root),
+      sessionShowingRepository: (repository) =>
+        this.sessionShowingRepository(repository),
+      isActiveIn: (session, root) => this.isActiveIn(session, root),
+      hasRepository: (root) => this.hasRepository(root),
+      notify: (context) => this.notify(context),
+      noticesOf: (session, repository) => this.noticesOf(session, repository),
+      refsOf: (context) => this.refsOf(context),
+      sendRepository: (context, refs) => this.sendRepository(context, refs),
+      rememberSelection: (context) => this.rememberSelection(context),
+      save: (saving) => this.save(saving),
+    };
     this.diffs = new Diffs(storage, () => this.shell);
     this.refreshes = new Refreshes(log, storage, () => this.shell, this.diffs, {
       live: (session) => this.live(session),
@@ -223,8 +227,16 @@ export class GitTool implements Tool<'git'> {
       rememberSelection: (context) => this.rememberSelection(context),
       bookmarkedOf: (repository) => this.bookmarkedOf(repository),
       sendNavigation: (context, current) =>
-        this.sendNavigation(context, current),
+        this.navigation.sendNavigation(context, current),
     });
+    this.navigation = new Navigation(
+      log,
+      storage,
+      () => this.shell,
+      this.diffs,
+      this.refreshes,
+      this.core,
+    );
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
       () => fetchOrder(this.repositoryTabs, this.shownRepositories()),
@@ -927,14 +939,16 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'searchCommits':
-        await this.searchCommits(
+        await this.navigation.searchCommits(
           session,
           this.knownRoot(message.root),
           message.query,
         );
         return;
       case 'stopCommitSearch':
-        this.commitSearches.get(this.knownRoot(message.root))?.abort();
+        this.navigation.commitSearches
+          .get(this.knownRoot(message.root))
+          ?.abort();
         return;
       default:
         if (this.isActiveIn(session, message.root)) {
@@ -1011,7 +1025,11 @@ export class GitTool implements Tool<'git'> {
         break;
       case 'jump': {
         if (isFullHash(message.hash)) {
-          await this.showCommit(context, message.hash.toLowerCase(), picked);
+          await this.navigation.showCommit(
+            context,
+            message.hash.toLowerCase(),
+            picked,
+          );
           break;
         }
         const found = await findCommit(
@@ -1020,7 +1038,7 @@ export class GitTool implements Tool<'git'> {
           message.hash,
         );
         if (found.kind === 'found') {
-          await this.showCommit(context, found.hash, picked);
+          await this.navigation.showCommit(context, found.hash, picked);
         } else {
           this.notify(context)(
             'error',
@@ -1032,20 +1050,25 @@ export class GitTool implements Tool<'git'> {
         break;
       }
       case 'showUpstream':
-        await this.showUpstream(context, picked);
+        await this.navigation.showUpstream(context, picked);
         break;
       case 'showParent': {
         const parent = parentOf(context.tab);
         if (parent !== undefined) {
-          await this.showCommit(context, parent, picked);
+          await this.navigation.showCommit(context, parent, picked);
         }
         break;
       }
       case 'navigate':
-        await this.navigate(context, message.direction, message.steps, picked);
+        await this.navigation.navigate(
+          context,
+          message.direction,
+          message.steps,
+          picked,
+        );
         break;
       case 'lookupHash':
-        await this.lookupHash(context, message.query);
+        await this.navigation.lookupHash(context, message.query);
         break;
       case 'selectCommit':
         context.tab.prefetching?.controller.abort();
@@ -1059,7 +1082,7 @@ export class GitTool implements Tool<'git'> {
           notInHistory(context, message.hash);
           break;
         }
-        this.visit(context, message.hash, message.replace);
+        this.navigation.visit(context, message.hash, message.replace);
         select(context.tab, message.hash);
         this.rememberSelection(context);
         await this.diffs.sendCommit(context);
@@ -1401,7 +1424,7 @@ export class GitTool implements Tool<'git'> {
     tab.closed.abort();
     tab.loadingFiles.abort();
     tab.loadingDiff.abort();
-    this.commitSearches.get(root)?.abort();
+    this.navigation.commitSearches.get(root)?.abort();
   }
 
   private async listedWorktrees(
@@ -1987,7 +2010,7 @@ export class GitTool implements Tool<'git'> {
     }
     await this.refreshes.refresh(context);
     await context.tab.loadingHistory;
-    await this.showHead(context, picked);
+    await this.navigation.showHead(context, picked);
   }
 
   private async checkable(
@@ -2059,7 +2082,7 @@ export class GitTool implements Tool<'git'> {
     if (pulled) {
       await this.refreshes.refresh(context);
       await context.tab.loadingHistory;
-      await this.showHead(context, picked);
+      await this.navigation.showHead(context, picked);
     } else if (fetched) {
       await this.refreshFetched(context, fetched);
     }
@@ -2193,7 +2216,7 @@ export class GitTool implements Tool<'git'> {
     if (checkedOut) {
       await this.refreshes.refresh(context);
       await context.tab.loadingHistory;
-      await this.showHead(context, picked);
+      await this.navigation.showHead(context, picked);
     } else {
       await this.refreshes.refresh(context, undefined, refsAlone);
     }
@@ -2568,242 +2591,6 @@ export class GitTool implements Tool<'git'> {
       return;
     }
     this.live(session)?.post(message);
-  }
-
-  private visit(context: Context, hash: string, replace = false): void {
-    const { tab } = context;
-    const next = visit(tab.navigation, tab.hash, hash, replace);
-    if (next !== tab.navigation) {
-      tab.navigation = next;
-      void this.shell.track(
-        this.sendNavigation(context, hash).catch((error: unknown) => {
-          this.log.error(strings.log.navigationFailed);
-          this.log.error(error);
-        }),
-      );
-    }
-  }
-
-  private async sendNavigation(
-    context: Context,
-    current = context.tab.hash,
-  ): Promise<void> {
-    const { tab } = context;
-    const { navigation } = tab;
-    const { back, forward } = nearestSteps(tab, current);
-    const unknown = [...new Set([...back, ...forward])].filter(
-      (hash) =>
-        hash !== workingTreeHash &&
-        !comparedOf(hash) &&
-        !tab.subjects.has(hash),
-    );
-    if (unknown.length > 0) {
-      keepSubjects(
-        tab,
-        await logCommits(context.gitPath, context.root, unknown),
-      );
-      if (tab.navigation !== navigation) {
-        return;
-      }
-    }
-    context.post({
-      type: 'navigation',
-      back: back.map((hash) => navigationEntry(tab, hash)),
-      forward: forward.map((hash) => navigationEntry(tab, hash)),
-    });
-  }
-
-  private async searchCommits(
-    session: Session,
-    root: string,
-    query: string,
-  ): Promise<void> {
-    this.commitSearches.get(root)?.abort();
-    const search = new AbortController();
-    this.commitSearches.set(root, search);
-    try {
-      const context = this.isActiveIn(session, root)
-        ? await this.context(session)
-        : undefined;
-      await context?.tab.loadingHistory;
-      if (!context || search.signal.aborted) {
-        return;
-      }
-      const result = await this.commitsMatching(
-        context,
-        query,
-        search.signal,
-      ).catch((error: unknown) => {
-        if (!search.signal.aborted) {
-          context.post({
-            type: 'commitSearch',
-            query,
-            result: { commits: [], capped: false },
-          });
-        }
-        throw error;
-      });
-      if (!search.signal.aborted) {
-        context.post({ type: 'commitSearch', query, result });
-      }
-    } catch (error) {
-      if (!search.signal.aborted) {
-        throw error;
-      }
-    } finally {
-      if (this.commitSearches.get(root) === search) {
-        this.commitSearches.delete(root);
-      }
-    }
-  }
-
-  private commitsMatching(
-    context: Context,
-    query: string,
-    signal: AbortSignal,
-  ): Promise<CommitSearch> {
-    return searchCommits(
-      context.gitPath,
-      context.root,
-      query,
-      this.storage.soloOf(context.root),
-      [...context.tab.stashes.keys()],
-      signal,
-    );
-  }
-
-  private async lookupHash(context: Context, query: string): Promise<void> {
-    const lookup = (this.hashLookups.get(context.root) ?? 0) + 1;
-    this.hashLookups.set(context.root, lookup);
-    const answer = (result: CommitResults) => {
-      if (this.hashLookups.get(context.root) === lookup) {
-        context.post({ type: 'hashLookup', query, result });
-      }
-    };
-    answer(
-      await this.commitsStartingWith(context, query).catch((error: unknown) => {
-        answer({ commits: [], more: 0 });
-        throw error;
-      }),
-    );
-  }
-
-  private commitsStartingWith(
-    context: Context,
-    query: string,
-  ): ReturnType<typeof findCommits> {
-    return findCommits(context.gitPath, context.root, query);
-  }
-
-  private navigate(
-    context: Context,
-    direction: Direction,
-    steps: number,
-    picked: number | undefined,
-  ): Promise<void> {
-    const { tab } = context;
-    const navigating = tab.navigating.then(() =>
-      this.navigateNow(context, direction, steps, picked),
-    );
-    tab.navigating = navigating.catch(() => undefined);
-    return navigating;
-  }
-
-  private async navigateNow(
-    context: Context,
-    direction: Direction,
-    steps: number,
-    picked: number | undefined,
-  ): Promise<void> {
-    const { tab } = context;
-    if (tab.selection !== picked) {
-      return;
-    }
-    const result = step(
-      tab.navigation,
-      tab.hash,
-      direction,
-      steps,
-      stillThere(tab),
-    );
-    if (!result) {
-      return;
-    }
-    tab.navigation = result.navigation;
-    await this.showCommit(context, result.target, picked, false);
-    await this.sendNavigation(context);
-  }
-
-  private async showCommit(
-    context: Context,
-    hash: string,
-    picked: number | undefined,
-    record = true,
-  ): Promise<void> {
-    const { tab } = context;
-    if (tab.selection !== picked) {
-      return;
-    }
-    const merges = new Set(
-      hiddenSides(tab, hash).flatMap((side) => mergesHidingCommit(tab, side)),
-    );
-    if (merges.size > 0) {
-      expandMerges(tab, [...merges], this.storage.collapseMerges);
-      await this.refreshes.sendShownHistory(context, { scrollTo: hash });
-      if (tab.selection !== picked) {
-        return;
-      }
-    }
-    if (hiddenSides(tab, hash).length > 0) {
-      this.notify(context)('error', strings.commits.notInHistory(hash));
-      return;
-    }
-    if (record) {
-      this.visit(context, hash);
-    }
-    select(tab, hash);
-    this.rememberSelection(context);
-    if (tab.index !== undefined) {
-      context.post({
-        type: 'reveal',
-        hash,
-        index: tab.index,
-        selection: picked,
-      });
-    }
-    await this.diffs.sendCommit(context);
-  }
-
-  private async showUpstream(
-    context: Context,
-    picked: number | undefined,
-  ): Promise<void> {
-    const notify = this.notify(context);
-    const upstream = foundUpstream(
-      notify,
-      await readUpstream(context.gitPath, context.root),
-    );
-    if (!upstream) {
-      return;
-    }
-    if (
-      this.storage.soloOf(context.root) &&
-      !stillThere(context.tab)(upstream.commit)
-    ) {
-      notify('info', strings.messages.upstreamHidden(upstream.name));
-      return;
-    }
-    await this.showCommit(context, upstream.commit, picked);
-  }
-
-  private async showHead(
-    context: Context,
-    picked: number | undefined,
-  ): Promise<void> {
-    const head = await headCommit(context.gitPath, context.root);
-    if (head) {
-      await this.showCommit(context, head, picked);
-    }
   }
 }
 

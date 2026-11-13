@@ -2,7 +2,7 @@ import type { ReadPatch } from './cli/diff';
 import type { Refs } from './cli/repository';
 import type { Changed, Watcher } from './cli/watch';
 import { UntrackedPatches } from './cli/workingTree';
-import type { Fetched, RepositoryAt } from './operations';
+import type { Fetched, RepositoryAt, Notify } from './operations';
 import {
   type GitToWebview,
   workingTreeHash,
@@ -130,4 +130,35 @@ export async function allSettled(
   if (failed) {
     throw failed.reason;
   }
+}
+
+export interface GitCore {
+  readonly context: (
+    session: Session,
+    root?: string,
+    live?: boolean,
+  ) => Promise<Context | undefined>;
+  readonly run: (
+    failed: string,
+    session: Session,
+    action: () => Promise<void>,
+    root?: string,
+  ) => Promise<void>;
+  readonly live: (session: Session) => Session | undefined;
+  readonly page: () => Session | undefined;
+  readonly sessionShowing: (root: string) => Session | undefined;
+  readonly sessionShowingRepository: (
+    repository: string,
+  ) => Session | undefined;
+  readonly isActiveIn: (session: Session, root: string) => boolean;
+  readonly hasRepository: (root: string) => boolean;
+  readonly notify: (context: Context) => Notify;
+  readonly noticesOf: (session: Session, repository: string) => Notify;
+  readonly refsOf: (context: Context) => Promise<ReadRefs>;
+  readonly sendRepository: (
+    context: Context,
+    refs: Promise<ReadRefs>,
+  ) => Promise<void>;
+  readonly rememberSelection: (context: Context) => void;
+  readonly save: (saving: Promise<void>) => void;
 }
