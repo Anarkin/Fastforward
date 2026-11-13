@@ -17,7 +17,7 @@ export interface TextRow {
   readonly cut?: true;
 }
 
-const textEncodings = [
+export const textEncodings = [
   'utf-8',
   'utf-16le',
   'utf-16be',
