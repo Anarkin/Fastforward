@@ -1,7 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../../tools/git/page/diff';
-import { glideAt, glideBy, glideEnded } from '../../../../../lib/page/glide';
+import { glideAt, glideEnded } from '../../../../../lib/page/glide';
+import { glideBy } from '../../../../../tools/git/page/diffSideways';
 import { noModifiers } from '../../../../helpers/fixtures';
 import {
   diffRows,

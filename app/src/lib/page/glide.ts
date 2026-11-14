@@ -23,20 +23,3 @@ export function glideAt(glide: Glide, now: number): number {
 export function glideEnded(glide: Glide, now: number): boolean {
   return progressOf(glide, now) === 1;
 }
-
-export function glideBy(
-  glide: Glide | undefined,
-  scrolled: number,
-  now: number,
-  delta: number,
-  duration: number,
-  widest: number,
-): Glide {
-  const within = (at: number) => Math.max(0, Math.min(widest, at));
-  return {
-    from: within(glide ? glideAt(glide, now) : scrolled),
-    to: within((glide?.to ?? scrolled) + delta),
-    start: now,
-    duration,
-  };
-}

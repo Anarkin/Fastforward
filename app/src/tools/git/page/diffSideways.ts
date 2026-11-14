@@ -6,12 +6,7 @@ import {
   type RefObject,
 } from 'react';
 import { afterPaint } from '../../../lib/page/afterPaint';
-import {
-  glideAt,
-  glideBy,
-  glideEnded,
-  type Glide,
-} from '../../../lib/page/glide';
+import { glideAt, glideEnded, type Glide } from '../../../lib/page/glide';
 import { elementMetrics } from '../../../lib/page/scrollerMetrics';
 import {
   setSidewaysScroller,
@@ -21,6 +16,23 @@ import { sidewaysMetrics, sidewaysScroll } from './sidewaysMetrics';
 import { sideRoom, wheelSideways } from './diffScrolling';
 import type { Sideways } from './overflow';
 import { readSideways, sameSideways } from './textLayout';
+
+export function glideBy(
+  glide: Glide | undefined,
+  scrolled: number,
+  now: number,
+  delta: number,
+  duration: number,
+  widest: number,
+): Glide {
+  const within = (at: number) => Math.max(0, Math.min(widest, at));
+  return {
+    from: within(glide ? glideAt(glide, now) : scrolled),
+    to: within((glide?.to ?? scrolled) + delta),
+    start: now,
+    duration,
+  };
+}
 
 export function useSideways(
   listRef: RefObject<HTMLDivElement | null>,
