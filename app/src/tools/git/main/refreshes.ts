@@ -47,6 +47,7 @@ import {
   allSettled,
 } from './tabContext';
 import type { Diffs } from './diffs';
+import type { TreePaths } from './treePaths';
 
 export interface RefreshesHost {
   readonly live: (session: Session) => Session | undefined;
@@ -86,6 +87,7 @@ export class Refreshes {
     private readonly storage: GitStorage,
     private readonly shell: () => ShellAccess,
     private readonly diffs: Diffs,
+    private readonly treePaths: TreePaths,
     private readonly host: RefreshesHost,
   ) {}
 
@@ -195,7 +197,7 @@ export class Refreshes {
         context.tab.shown.tree?.hash === hash &&
         shownCommit(hash) === undefined
       ) {
-        await this.diffs.sendTree(context, hash, workingTree);
+        await this.treePaths.sendTree(context, hash, workingTree);
       }
     }
   }

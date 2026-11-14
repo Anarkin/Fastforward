@@ -17,8 +17,7 @@ import {
   whitespaceOnlyChanges,
   withoutFilesInside,
 } from './patchText';
-import { BlobTexts } from './blobTexts';
-import { listIndex, listTree, readBlobs, readFile, uniquePaths } from './files';
+import { readFile } from './files';
 import { stashFiles, stashPatch } from './stashes';
 import {
   stagedPatch,
@@ -35,8 +34,6 @@ import {
   workingTreeHash,
   type FileChange,
   type LeftOut,
-  type TabMessage,
-  type TextRequest,
   type ChangeArea,
 } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/toolContract';
@@ -47,15 +44,14 @@ import {
   type Context,
   notInHistory,
   shownCommit,
-  uniqueTexts,
 } from './tabContext';
+import type { TreePaths } from './treePaths';
 
 export class Diffs {
-  private readonly blobTexts = new BlobTexts();
-
   constructor(
     private readonly storage: GitStorage,
     private readonly shell: () => ShellAccess,
+    private readonly treePaths: TreePaths,
   ) {}
 
   async sendCommit(
@@ -298,46 +294,6 @@ export class Diffs {
     );
   }
 
-  async sendTexts(
-    context: Context,
-    { hash, diff, texts: asked }: Extract<TabMessage, { type: 'loadTexts' }>,
-  ): Promise<void> {
-    const { gitPath, root } = context;
-    const texts = uniqueTexts(asked);
-    const fromDisk = (request: TextRequest) =>
-      context.tab.area !== 'staged' && request.side === workingTreeSide(hash);
-    const blobs = await this.blobTexts.read(
-      texts
-        .filter((request) => !fromDisk(request) && isFullHash(request.blob))
-        .map(({ blob }) => blob),
-      (ids) => readBlobs(gitPath, root, ids),
-    );
-    const read = await Promise.all(
-      texts.map(async (request) => {
-        if (!fromDisk(request)) {
-          return {
-            ...request,
-            text: isFullHash(request.blob)
-              ? blobs.get(request.blob)
-              : undefined,
-          };
-        }
-        const onDisk =
-          (request.side === 'old'
-            ? changesOf(context.tab).get(request.path)?.oldPath
-            : undefined) ?? request.path;
-        if (!(await this.inWorkingTree(context, onDisk))) {
-          return { ...request, text: undefined };
-        }
-        const file = await readFile(gitPath, root, undefined, onDisk);
-        return { ...request, text: file.binary ? undefined : file.content };
-      }),
-    );
-    if (context.tab.hash === hash) {
-      context.post({ type: 'texts', hash, diff, texts: read });
-    }
-  }
-
   async prefetchDiff(context: Context, hash: string): Promise<void> {
     const { tab } = context;
     if (
@@ -366,30 +322,6 @@ export class Diffs {
     void this.shell().track(read.exited);
     if (!signal.aborted) {
       context.post({ type: 'prefetchedDiff', hash, patch: read.patch });
-    }
-  }
-
-  async prefetchTexts(
-    context: Context,
-    hash: string,
-    asked: readonly TextRequest[],
-  ): Promise<void> {
-    const { gitPath, root } = context;
-    const texts = uniqueTexts(asked).filter(({ blob }) => isFullHash(blob));
-    const blobs = await this.blobTexts.read(
-      texts.map(({ blob }) => blob),
-      (ids) => readBlobs(gitPath, root, ids),
-    );
-    const { prefetching } = context.tab;
-    if (prefetching?.hash === hash && !prefetching.controller.signal.aborted) {
-      context.post({
-        type: 'prefetchedTexts',
-        hash,
-        texts: texts.map((request) => ({
-          ...request,
-          text: blobs.get(request.blob),
-        })),
-      });
     }
   }
 
@@ -424,53 +356,6 @@ export class Diffs {
       context.tab.untrackedPatches,
       signal,
     );
-  }
-
-  private async inWorkingTree(
-    context: Context,
-    file: string,
-  ): Promise<boolean> {
-    const { tab } = context;
-    if (
-      [tab.changedFiles, tab.stagedFiles].some((changes) =>
-        [...changes.values()].some(
-          (change) => change.path === file || change.oldPath === file,
-        ),
-      ) ||
-      tab.workingTree?.untracked.includes(file)
-    ) {
-      return true;
-    }
-    tab.indexPaths ??= await listIndex(context.gitPath, context.root);
-    return tab.indexPaths.includes(file);
-  }
-
-  async sendTree(
-    context: Context,
-    hash: string,
-    refreshed?: WorkingTree,
-  ): Promise<void> {
-    const { gitPath, root } = context;
-    const commit = shownCommit(hash);
-    let paths: string[];
-    if (refreshed === undefined || commit !== undefined) {
-      paths = await listTree(gitPath, root, commit);
-    } else {
-      context.tab.indexPaths ??= await listIndex(gitPath, root);
-      paths = uniquePaths(refreshed.untracked, context.tab.indexPaths);
-    }
-    if (context.tab.hash !== hash) {
-      return;
-    }
-    const shown = context.tab.shown.tree;
-    const unchanged =
-      refreshed !== undefined &&
-      shown?.hash === hash &&
-      shown.paths.length === paths.length &&
-      shown.paths.every((file, index) => file === paths[index]);
-    if (!unchanged) {
-      context.post({ type: 'tree', hash, paths });
-    }
   }
 
   async sendDiff(
@@ -510,7 +395,8 @@ export class Diffs {
     if (file !== undefined && !change) {
       const commit = shownCommit(hash);
       const { content, binary, id, link } =
-        commit === undefined && !(await this.inWorkingTree(context, file))
+        commit === undefined &&
+        !(await this.treePaths.inWorkingTree(context, file))
           ? { content: '', binary: false, id: undefined, link: undefined }
           : await readFile(context.gitPath, context.root, commit, file);
       const shownDiff = context.tab.shown.diff;

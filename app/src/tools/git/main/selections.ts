@@ -1,9 +1,11 @@
 import type { TabMessage } from '../shared/protocol';
 import type { CommitNavigation } from './commitNavigation';
 import type { Diffs } from './diffs';
+import type { DiffTexts } from './diffTexts';
 import type { GitStorage } from './storage';
 import { notInHistory, type Context } from './tabContext';
 import { pickable, select, stillThere, unselect } from './tabState';
+import type { TreePaths } from './treePaths';
 
 export type SelectionMessage = Extract<
   TabMessage,
@@ -23,6 +25,8 @@ export class Selections {
   constructor(
     private readonly storage: GitStorage,
     private readonly diffs: Diffs,
+    private readonly diffTexts: DiffTexts,
+    private readonly treePaths: TreePaths,
     private readonly commitNavigation: () => CommitNavigation,
     private readonly save: (saving: Promise<void>) => void,
   ) {}
@@ -56,12 +60,12 @@ export class Selections {
         return;
       case 'loadTree':
         if (this.isSelected(context, message.hash)) {
-          await this.diffs.sendTree(context, message.hash);
+          await this.treePaths.sendTree(context, message.hash);
         }
         return;
       case 'loadTexts':
         if (this.isSelected(context, message.hash)) {
-          await this.diffs.sendTexts(context, message);
+          await this.diffTexts.sendTexts(context, message);
         }
         return;
       case 'prefetchDiff':
@@ -69,7 +73,11 @@ export class Selections {
         return;
       case 'prefetchTexts':
         if (context.tab.prefetching?.hash === message.hash) {
-          await this.diffs.prefetchTexts(context, message.hash, message.texts);
+          await this.diffTexts.prefetchTexts(
+            context,
+            message.hash,
+            message.texts,
+          );
         }
         return;
       case 'loadFileDiff':

@@ -28,6 +28,8 @@ import {
   OpeningFailed,
 } from './tabContext';
 import { Diffs } from './diffs';
+import { DiffTexts } from './diffTexts';
+import { TreePaths } from './treePaths';
 import { Refreshes } from './refreshes';
 import { CommitNavigation } from './commitNavigation';
 import { CommitSearch } from './commitSearch';
@@ -77,6 +79,7 @@ export class GitTool implements Tool<'git'> {
   private readonly choices: RepositoryChoices;
   private readonly core: GitCore;
   private readonly diffs: Diffs;
+  private readonly treePaths = new TreePaths();
   private readonly refreshes: Refreshes;
   private readonly commitNavigation: CommitNavigation;
   private readonly commitSearch: CommitSearch;
@@ -140,23 +143,32 @@ export class GitTool implements Tool<'git'> {
       rememberSelection: (context) => this.selections.remember(context),
       save,
     };
-    this.diffs = new Diffs(storage, () => this.shell);
+    this.diffs = new Diffs(storage, () => this.shell, this.treePaths);
     this.selections = new Selections(
       storage,
       this.diffs,
+      new DiffTexts(this.treePaths),
+      this.treePaths,
       () => this.commitNavigation,
       save,
     );
-    this.refreshes = new Refreshes(log, storage, () => this.shell, this.diffs, {
-      live: (session) => this.sessions.live(session),
-      refsOf: (context) => this.contexts.refsOf(context),
-      sendRepository: (context, refs) =>
-        this.posts.sendRepository(context, refs),
-      rememberSelection: (context) => this.selections.remember(context),
-      bookmarkedOf: (repository) => this.choices.bookmarkedOf(repository),
-      sendNavigation: (context, current) =>
-        this.commitNavigation.sendNavigation(context, current),
-    });
+    this.refreshes = new Refreshes(
+      log,
+      storage,
+      () => this.shell,
+      this.diffs,
+      this.treePaths,
+      {
+        live: (session) => this.sessions.live(session),
+        refsOf: (context) => this.contexts.refsOf(context),
+        sendRepository: (context, refs) =>
+          this.posts.sendRepository(context, refs),
+        rememberSelection: (context) => this.selections.remember(context),
+        bookmarkedOf: (repository) => this.choices.bookmarkedOf(repository),
+        sendNavigation: (context, current) =>
+          this.commitNavigation.sendNavigation(context, current),
+      },
+    );
     this.choices = new RepositoryChoices(
       storage,
       this.tabStates,
