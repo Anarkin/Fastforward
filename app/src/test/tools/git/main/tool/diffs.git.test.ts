@@ -545,16 +545,16 @@ suite('Git tool showing diffs', () => {
     });
   });
 
-  test('wraps long lines and highlights syntax by default, leaving whitespace hidden, for the diff and the viewer alike, and remembers what is chosen in either, telling the page', async () => {
+  test('wraps long lines, highlights syntax and shows whitespace by default, for the diff and the viewer alike, and remembers what is chosen in either, telling the page', async () => {
     await withView(log, [], async (view) => {
       assert.deepStrictEqual(view.page.last('textView')?.view, {
         wordWrap: true,
-        showWhitespace: false,
+        showWhitespace: true,
         highlightSyntax: true,
       });
       const chosen = {
         wordWrap: false,
-        showWhitespace: true,
+        showWhitespace: false,
         highlightSyntax: false,
       };
       await view.connection.receive({ type: 'setTextView', view: chosen });
