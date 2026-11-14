@@ -89,7 +89,8 @@ import {
 } from './profile';
 import { ThumbnailStore } from '../tools/commander/main/thumbnailStore';
 import { QuitGuard } from './quitGuard';
-import { exitOnFailure, flushBeforeQuit, whileWindowOpen } from './quit';
+import { exitOnFailure, flushBeforeQuit } from './quit';
+import { whileWindowOpen } from './whileWindowOpen';
 import { reloadOnRebuild } from './rebuild';
 import { withLoginShellEnv } from './shellPath';
 import {
