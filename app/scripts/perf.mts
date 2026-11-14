@@ -6,7 +6,7 @@ import {
   isSaved,
   resultSuffix,
   type SavedResult,
-} from '../src/test/perfTrace.ts';
+} from '../src/test/perf/perfTrace.ts';
 import {
   parseRunArgs,
   runOrder,

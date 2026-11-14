@@ -79,6 +79,15 @@ function partOf(file: string): string | undefined {
   return /^(?:boot|shell|tools\/[^/]+)/.exec(file)?.[0];
 }
 
+function doorsOf(tool: string): boolean[] {
+  return [
+    sourceFiles.includes(`tools/${tool}/main/tool.ts`) &&
+      importsOf('boot/main.ts').includes(`tools/${tool}/main/tool`),
+    sourceFiles.includes(`tools/${tool}/page/tool.tsx`) &&
+      importsOf('shell/page/tools.tsx').includes(`tools/${tool}/page/tool`),
+  ];
+}
+
 const registries = ['shell/shared/tools.ts', 'shell/page/tools.tsx'];
 
 suite('Architecture', () => {
@@ -88,6 +97,13 @@ suite('Architecture', () => {
     assert.deepStrictEqual(
       sourceFiles.filter((file) => !placed.test(file)),
       [],
+    );
+  });
+
+  test('gives each tool two doors, main/tool.ts, which boot builds, and page/tool.tsx, which the registry of the page shows', () => {
+    assert.deepStrictEqual(
+      Object.fromEntries(tools.map((tool) => [tool, doorsOf(tool)])),
+      Object.fromEntries(tools.map((tool) => [tool, [true, true]])),
     );
   });
 

@@ -1,4 +1,4 @@
-import type { ScenarioResult } from '../src/test/perfTrace.ts';
+import type { ScenarioResult } from '../src/test/perf/perfTrace.ts';
 
 export interface RunArgs {
   readonly runs: number;
