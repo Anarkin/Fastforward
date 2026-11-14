@@ -220,8 +220,8 @@ suite('Architecture', () => {
     );
   });
 
-  test('keeps the tests of src/<path> in test/<path> and those of scripts/<path> in test/scripts/<path>, the tests of the running app, the build and the performance, and the helpers they share, each in a folder of their own, app, build, perf and support', () => {
-    const grouped = ['app', 'build', 'perf', 'support'];
+  test('keeps the tests of <path> of the app in test/<path>, of src and of scripts, and the tests of the build, of the app end to end and of its performance, and the helpers they share, each in a folder of their own, build, e2e, perf and support', () => {
+    const grouped = ['build', 'e2e', 'perf', 'support'];
     assert.deepStrictEqual(
       testFiles.filter((file) => {
         const folder = path.posix.dirname(file);
@@ -230,9 +230,7 @@ suite('Architecture', () => {
           ? !['architecture.test.ts', 'setup.ts'].includes(file)
           : grouped.includes(top)
             ? folder !== top
-            : top === 'scripts'
-              ? !mirrored(folder, appFolder)
-              : !mirrored(folder, source);
+            : !['src', 'scripts'].includes(top) || !mirrored(folder, appFolder);
       }),
       [],
     );

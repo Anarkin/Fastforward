@@ -1,0 +1,555 @@
+import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
+import { act, isValidElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { suite, test } from 'vitest';
+import {
+  accessKeyOf,
+  claimsMenuKey,
+  listenForDismiss,
+  MenuItems,
+  nextMenuItem,
+  onMenuKeyDown,
+  openedSubmenu,
+  submenuPlacement,
+} from '../../../../lib/page/contextMenu';
+import { SubmenuIcon } from '../../../../lib/page/icons';
+import {
+  keyPress,
+  noModifiers,
+  noop,
+  renderedBy,
+  tagsWith,
+} from '../../../support/fixtures';
+
+function keyDown(key: string): Event {
+  return Object.assign(new Event('keydown', { cancelable: true }), {
+    key,
+    code: '',
+    ...noModifiers,
+  });
+}
+
+function pointerDown(target: object | null): Event {
+  const event = new Event('pointerdown');
+  Object.defineProperty(event, 'target', { value: target });
+  return event;
+}
+
+function element(className: string) {
+  const node = {
+    nodeType: 1,
+    className,
+    contains: (other: unknown) => other === node,
+    closest: (selector: string) => (selector === `.${className}` ? node : null),
+  };
+  return node;
+}
+
+function open(
+  window: EventTarget,
+  options: Parameters<typeof listenForDismiss>[3] = {},
+) {
+  const menu = { closed: 0, element: element('menu') };
+  const stop = listenForDismiss(
+    window,
+    { current: menu.element },
+    () => menu.closed++,
+    options,
+  );
+  return { menu, stop };
+}
+
+suite('Dismissing menus and popups', () => {
+  test('sets an item whose label is a name, as a folder or a drive, apart as a name, and the others in the words of the menu', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'C:\\', name: true },
+          { label: 'Open', onClick: () => undefined },
+        ]}
+        onClose={() => undefined}
+      />,
+    );
+    assert.deepStrictEqual(
+      [...html.matchAll(/<code class="name">(.*?)<\/code>/g)].map(([, inner]) =>
+        inner.replaceAll(/<[^>]*>/g, ''),
+      ),
+      ['C:\\'],
+    );
+    assert.match(html, />Open</);
+  });
+
+  test('closes only the top one on Escape, keeping it from anything else', () => {
+    const window = new EventTarget();
+    const popup = open(window);
+    const menu = open(window);
+    try {
+      window.dispatchEvent(keyDown('Enter'));
+      assert.strictEqual(menu.menu.closed, 0);
+      assert.strictEqual(popup.menu.closed, 0);
+
+      const escape = keyDown('Escape');
+      window.dispatchEvent(escape);
+      assert.strictEqual(menu.menu.closed, 1);
+      assert.strictEqual(popup.menu.closed, 0);
+      assert.strictEqual(escape.cancelBubble, true);
+
+      menu.stop();
+      window.dispatchEvent(keyDown('Escape'));
+      assert.strictEqual(popup.menu.closed, 1);
+      assert.strictEqual(menu.menu.closed, 1);
+    } finally {
+      menu.stop();
+      popup.stop();
+    }
+  });
+
+  test('closes on a click outside, but not in what it ignores or on a scrollbar', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window, { ignore: '.context-menu' });
+    try {
+      window.dispatchEvent(pointerDown(menu.element));
+      window.dispatchEvent(pointerDown(element('context-menu')));
+      window.dispatchEvent(pointerDown(element('overlay-scrollbar')));
+      assert.strictEqual(menu.closed, 0);
+      window.dispatchEvent(pointerDown(element('elsewhere')));
+      assert.strictEqual(menu.closed, 1);
+      window.dispatchEvent(pointerDown(null));
+      assert.strictEqual(menu.closed, 2);
+    } finally {
+      stop();
+    }
+  });
+
+  test('closes only on Escape when asked, staying open on a click outside or the window losing focus', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window, { byKeyOnly: true });
+    try {
+      window.dispatchEvent(pointerDown(element('elsewhere')));
+      window.dispatchEvent(new Event('blur'));
+      assert.strictEqual(menu.closed, 0);
+      window.dispatchEvent(keyDown('Escape'));
+      assert.strictEqual(menu.closed, 1);
+    } finally {
+      stop();
+    }
+  });
+
+  test('closes when the window loses focus, and on scrolling when asked', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window);
+    const scrolled = open(window, { onScroll: true });
+    try {
+      window.dispatchEvent(new Event('wheel'));
+      assert.strictEqual(menu.closed, 0);
+      assert.strictEqual(scrolled.menu.closed, 1);
+      window.dispatchEvent(new Event('blur'));
+      assert.strictEqual(menu.closed, 1);
+    } finally {
+      scrolled.stop();
+      stop();
+    }
+  });
+
+  test('stays open on scrolling inside it, so a long menu scrolls', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window, { onScroll: true });
+    try {
+      const inside = new Event('wheel');
+      Object.defineProperty(inside, 'target', { value: menu.element });
+      window.dispatchEvent(inside);
+      assert.strictEqual(menu.closed, 0);
+    } finally {
+      stop();
+    }
+  });
+
+  test('closes nothing once stopped', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window, { onScroll: true });
+    stop();
+    window.dispatchEvent(keyDown('Escape'));
+    window.dispatchEvent(new Event('blur'));
+    window.dispatchEvent(new Event('wheel'));
+    window.dispatchEvent(pointerDown(element('elsewhere')));
+    assert.strictEqual(menu.closed, 0);
+  });
+});
+
+suite('Menu keys', () => {
+  test('moves through the items with the arrows, wrapping around, and to either end with Home and End', () => {
+    assert.strictEqual(nextMenuItem('next', 0, 3), 1);
+    assert.strictEqual(nextMenuItem('next', 2, 3), 0);
+    assert.strictEqual(nextMenuItem('previous', 0, 3), 2);
+    assert.strictEqual(nextMenuItem('previous', -1, 3), 2);
+    assert.strictEqual(nextMenuItem('next', -1, 3), 0);
+    assert.strictEqual(nextMenuItem('first', 2, 3), 0);
+    assert.strictEqual(nextMenuItem('last', 0, 3), 2);
+    assert.strictEqual(nextMenuItem('next', -1, 0), undefined);
+  });
+
+  test('keeps every arrow and Tab to itself, so none moves between the columns behind it', () => {
+    for (const key of [
+      'ArrowRight',
+      'ArrowLeft',
+      'ArrowUp',
+      'ArrowDown',
+      'Tab',
+    ]) {
+      assert.ok(claimsMenuKey(keyPress(key)), key);
+    }
+    for (const key of ['Enter', 'a', 'Escape']) {
+      assert.ok(!claimsMenuKey(keyPress(key)), key);
+    }
+  });
+});
+
+suite('Submenu placement', () => {
+  const window = { width: 800, height: 600 };
+
+  test('opens to the right and down from its entry when it fits', () => {
+    assert.deepStrictEqual(
+      submenuPlacement({ top: 100, right: 700, bottom: 500 }, window),
+      { flipped: false, up: 0 },
+    );
+  });
+
+  test('opens to the left when it would run off the right of the window', () => {
+    assert.deepStrictEqual(
+      submenuPlacement({ top: 100, right: 801, bottom: 500 }, window),
+      { flipped: true, up: 0 },
+    );
+  });
+
+  test('moves up to end at the bottom of the window when it would run off it', () => {
+    assert.deepStrictEqual(
+      submenuPlacement({ top: 400, right: 700, bottom: 750 }, window),
+      { flipped: false, up: 150 },
+    );
+  });
+
+  test('moves up no further than the top of the window when taller than it', () => {
+    assert.deepStrictEqual(
+      submenuPlacement({ top: 400, right: 700, bottom: 1100 }, window),
+      { flipped: false, up: 400 },
+    );
+  });
+});
+
+suite('Menu items', () => {
+  test('keys items apart that have the same label', () => {
+    const items = renderedBy(MenuItems, {
+      items: [
+        { label: 'v1', onClick: noop },
+        { separator: true },
+        { label: 'v1', onClick: noop },
+      ],
+      onClose: noop,
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const keys = items.props.children.map((item) => item.key);
+    assert.strictEqual(new Set(keys).size, 3);
+  });
+
+  test('runs a plain item and closes the menu, but keeps it open on a submenu', () => {
+    const log: string[] = [];
+    const items = renderedBy(MenuItems, {
+      items: [
+        { label: 'a', onClick: () => log.push('a') },
+        { label: 'sub', submenu: [{ label: 'x', onClick: noop }] },
+      ],
+      onClose: () => log.push('close'),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const [plain, sub] = items.props.children.map((entry) => {
+      assert.ok(isValidElement<{ children: React.ReactNode[] }>(entry));
+      const button = entry.props.children[0];
+      assert.ok(
+        isValidElement<{ onClick: (event: { detail: number }) => void }>(
+          button,
+        ),
+      );
+      return button;
+    });
+    plain.props.onClick({ detail: 1 });
+    assert.deepStrictEqual(log, ['close', 'a']);
+    sub.props.onClick({ detail: 1 });
+    assert.deepStrictEqual(log, ['close', 'a']);
+  });
+
+  test("points to a submenu with the icon set's chevron, as the other icons are drawn, rather than a character of the font", () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[{ label: 'sub', submenu: [{ label: 'x', onClick: noop }] }]}
+        onClose={noop}
+      />,
+    );
+    assert.ok(
+      html.includes(
+        `<span class="submenu-arrow">${renderToStaticMarkup(<SubmenuIcon />)}</span>`,
+      ),
+    );
+  });
+
+  test('takes a letter or digit alone, of either case, as an access key', () => {
+    assert.strictEqual(accessKeyOf(keyPress('d')), 'D');
+    assert.strictEqual(accessKeyOf(keyPress('X')), 'X');
+    assert.strictEqual(accessKeyOf(keyPress('7')), '7');
+    assert.strictEqual(
+      accessKeyOf(keyPress('d', { ctrlKey: true })),
+      undefined,
+    );
+    assert.strictEqual(accessKeyOf(keyPress('d', { altKey: true })), undefined);
+    assert.strictEqual(
+      accessKeyOf(keyPress('d', { metaKey: true })),
+      undefined,
+    );
+    assert.strictEqual(accessKeyOf(keyPress('Enter')), undefined);
+    assert.strictEqual(accessKeyOf(keyPress('-')), undefined);
+  });
+
+  test('runs the item of the access key pressed, as the drive of its letter, closing the menu', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      Element: dom.window.Element,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const log: string[] = [];
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      await act(async () => {
+        root.render(
+          <div className="menu" onKeyDown={(event) => onMenuKeyDown(event)}>
+            <MenuItems
+              items={[
+                { label: 'C:', accessKey: 'C', onClick: () => log.push('C') },
+                { label: 'D:', accessKey: 'D', onClick: () => log.push('D') },
+              ]}
+              onClose={() => log.push('close')}
+            />
+          </div>,
+        );
+      });
+      const [first] = main.querySelectorAll('.menu-item');
+      assert.ok(first);
+      await act(async () => {
+        first.dispatchEvent(
+          new dom.window.KeyboardEvent('keydown', { key: 'd', bubbles: true }),
+        );
+        first.dispatchEvent(
+          new dom.window.KeyboardEvent('keydown', { key: 'z', bubbles: true }),
+        );
+      });
+      assert.deepStrictEqual(log, ['close', 'D']);
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
+  test('keeps the item whose submenu is open marked while the focus is in the submenu, as Windows menus do', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      await act(async () => {
+        root.render(
+          <MenuItems
+            items={[
+              { label: 'plain', onClick: noop },
+              { label: 'sub', submenu: [{ label: 'x', onClick: noop }] },
+            ]}
+            onClose={noop}
+          />,
+        );
+      });
+      const [plain, parent] = main.querySelectorAll('.menu-item');
+      assert.ok(plain && parent);
+      assert.strictEqual(plain.getAttribute('aria-expanded'), null);
+      assert.strictEqual(parent.getAttribute('aria-expanded'), 'false');
+      await act(async () => {
+        parent.dispatchEvent(
+          new dom.window.MouseEvent('click', { bubbles: true, detail: 0 }),
+        );
+      });
+      const opened = main.querySelector('.submenu .menu-item');
+      assert.strictEqual(dom.window.document.activeElement, opened);
+      assert.strictEqual(parent.getAttribute('aria-expanded'), 'true');
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
+  test('removes an item by its X or the Delete key, without running it or closing the menu, and keeps the focus in the menu', () => {
+    const log: string[] = [];
+    const items = renderedBy(MenuItems, {
+      items: [
+        {
+          label: 'a',
+          onClick: () => log.push('a'),
+          onRemove: () => log.push('remove'),
+          removeTitle: 'Remove a',
+        },
+      ],
+      onClose: () => log.push('close'),
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const [entry] = items.props.children;
+    assert.ok(isValidElement<{ children: React.ReactNode[] }>(entry));
+    const [button, remove] = entry.props.children;
+    assert.ok(
+      isValidElement<{
+        onClick: (event: { stopPropagation: () => void }) => void;
+        onMouseDown: (event: { preventDefault: () => void }) => void;
+        title: string;
+      }>(remove),
+    );
+    assert.strictEqual(remove.props.title, 'Remove a');
+    remove.props.onMouseDown({ preventDefault: () => log.push('kept focus') });
+    remove.props.onClick({ stopPropagation: () => log.push('kept to itself') });
+    assert.ok(
+      isValidElement<{
+        onKeyDown: (
+          event: ReturnType<typeof keyPress> & { preventDefault: () => void },
+        ) => void;
+      }>(button),
+    );
+    button.props.onKeyDown({ ...keyPress('Delete'), preventDefault: noop });
+    button.props.onKeyDown({ ...keyPress('a'), preventDefault: noop });
+    assert.deepStrictEqual(log, [
+      'kept focus',
+      'kept to itself',
+      'remove',
+      'remove',
+    ]);
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <MenuItems items={[{ label: 'b', onClick: noop }]} onClose={noop} />,
+      ),
+      /menu-remove/,
+    );
+  });
+
+  test('opens a submenu in place of running it, focusing its first item only on a click from the keyboard', () => {
+    const submenu = [{ label: 'x', onClick: noop }];
+    assert.deepStrictEqual(openedSubmenu({ submenu }, 0), {
+      focusFirst: true,
+    });
+    assert.deepStrictEqual(openedSubmenu({ submenu }, 1), {
+      focusFirst: false,
+    });
+    assert.strictEqual(openedSubmenu({}, 0), undefined);
+  });
+
+  test('marks the items that are on with a check', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'main', checked: true, onClick: noop },
+          { label: 'Collapse', checked: false, onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /role="menuitemcheckbox" aria-checked="true"><span class="menu-check">✓<\/span>main/,
+    );
+    assert.match(
+      html,
+      /role="menuitemcheckbox" aria-checked="false"><span class="menu-check"><\/span>Collapse/,
+    );
+  });
+
+  test('shows the access key of an item before its label when asked, telling assistive technology it as the key of the item rather than reading it with the label, and hides it otherwise, as a drive letter is in its label already, leaving its room empty in a menu showing keys so the labels line up', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          {
+            label: 'C:\\Code',
+            accessKey: '1',
+            showAccessKey: true,
+            checked: true,
+            onClick: noop,
+          },
+          { label: 'D:\\', accessKey: 'D', onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /aria-keyshortcuts="1"[^>]*><span class="menu-check">✓<\/span><span class="menu-access-key" aria-hidden="true">1<\/span>C:\\Code<\/button>/,
+    );
+    assert.match(
+      html,
+      /data-access-key="D"><span class="menu-check"><\/span><span class="menu-access-key" aria-hidden="true"><\/span>D:\\<\/button>/,
+    );
+    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 2);
+  });
+
+  test('leaves room for a check before every item, whether it can be checked or not, so the labels of every menu line up alike', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'Open', onClick: noop },
+          { separator: true },
+          { label: 'Collapse', checked: true, onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /role="menuitem"><span class="menu-check"><\/span>Open<\/button>/,
+    );
+    assert.strictEqual(tagsWith(html, 'menu-check').length, 2);
+    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 0);
+  });
+
+  test('separates groups and greys out what cannot run', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        items={[
+          { label: 'Copy', onClick: noop },
+          { separator: true },
+          { label: 'Checkout', disabled: true, onClick: noop },
+        ]}
+        onClose={noop}
+      />,
+    );
+    assert.strictEqual(tagsWith(html, 'menu-separator').length, 1);
+    assert.match(
+      html,
+      /role="menuitem"[^>]*disabled=""[^>]*><span class="menu-check"><\/span>Checkout/,
+    );
+  });
+});

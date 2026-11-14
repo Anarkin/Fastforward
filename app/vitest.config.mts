@@ -82,7 +82,7 @@ export default defineConfig({
         test: {
           name: 'electron',
           include: [electron],
-          setupFiles: ['src/test/app/electronSetup.ts'],
+          setupFiles: ['src/test/e2e/electronSetup.ts'],
           fileParallelism: false,
           testTimeout: 60_000,
           hookTimeout: 60_000,
@@ -93,7 +93,7 @@ export default defineConfig({
         test: {
           name: 'perf',
           include: [perf],
-          setupFiles: ['src/test/app/electronSetup.ts'],
+          setupFiles: ['src/test/e2e/electronSetup.ts'],
           globalSetup: ['src/test/perf/perfSetup.ts'],
           fileParallelism: false,
           testTimeout: 120_000,

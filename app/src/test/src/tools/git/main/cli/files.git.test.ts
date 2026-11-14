@@ -1,0 +1,837 @@
+import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { afterAll, beforeAll, suite, test } from 'vitest';
+import { showPatch } from '../../../../../../tools/git/main/cli/diff';
+import {
+  blobSizes,
+  listIndex,
+  listTree,
+  maxFileSize,
+  readBlobs,
+  readFile,
+  readImage,
+  untrackedListing,
+  viewedFile,
+} from '../../../../../../tools/git/main/cli/files';
+import {
+  keepGitRunningWhile,
+  keptGits,
+} from '../../../../../../tools/git/main/cli/run';
+import { parsePatch } from '../../../../../../tools/git/page/diff';
+import { replaceBuiltin } from '../../../../../support/builtins';
+import { submoduleRepository } from '../../../../../support/gitFixtures';
+import {
+  gitsStarted,
+  removeFolder,
+  symlinkOrSkip,
+  tempFolder,
+  tempRepository,
+  type TempRepository,
+} from '../../../../../support/repositories';
+
+suite('Repository files', () => {
+  let parent: string;
+  let gitPath: string;
+  let repository: TempRepository;
+  let cwd: string;
+
+  beforeAll(async () => {
+    parent = tempFolder('files');
+    repository = await tempRepository(path.join(parent, 'repository'));
+    gitPath = repository.gitPath;
+    cwd = repository.root;
+    await repository.commit('initial', { 'src/tracked.txt': 'one\n' });
+    fs.writeFileSync(path.join(cwd, 'src', 'tracked.txt'), 'two\n');
+    fs.writeFileSync(path.join(cwd, 'untracked.txt'), 'new\n');
+  });
+
+  afterAll(() => removeFolder(parent));
+
+  test('lists the files at a commit and in the working tree', async () => {
+    assert.deepStrictEqual(await listTree(gitPath, cwd, 'HEAD'), [
+      'src/tracked.txt',
+    ]);
+    assert.deepStrictEqual(
+      (await listTree(gitPath, cwd, undefined)).toSorted(),
+      ['src/tracked.txt', 'untracked.txt'],
+    );
+  });
+
+  test('lists the untracked files of the working tree as the uncommitted changes list them, through git status with its cache of folders on Windows, as ls-files read each folder anew', async () => {
+    const childProcess = process.getBuiltinModule('node:child_process');
+    const { spawn } = childProcess;
+    const started: string[][] = [];
+    replaceBuiltin(
+      childProcess,
+      'spawn',
+      (command: string, args: readonly string[], options: object) => {
+        started.push([...args]);
+        return spawn(command, args, options);
+      },
+    );
+    try {
+      assert.deepStrictEqual(
+        (await listTree(gitPath, cwd, undefined)).toSorted(),
+        ['src/tracked.txt', 'untracked.txt'],
+      );
+    } finally {
+      replaceBuiltin(childProcess, 'spawn', spawn);
+    }
+    const listing = untrackedListing().args.join(' ');
+    assert.ok(
+      started.some((args) => args.join(' ').endsWith(listing)),
+      JSON.stringify(started),
+    );
+  });
+
+  test('lists in the working tree only the files a sparse checkout put there, though the index has them all, and all at a commit', async () => {
+    const sparse = await tempRepository(path.join(parent, 'sparse'));
+    await sparse.commit('initial', {
+      'in/a.txt': 'a\n',
+      'out/b.txt': 'b\n',
+      'top.txt': 'top\n',
+    });
+    await sparse.git('sparse-checkout', 'set', 'in');
+    fs.writeFileSync(path.join(sparse.root, 'new.txt'), 'new\n');
+    assert.deepStrictEqual(
+      (await listTree(gitPath, sparse.root, undefined)).toSorted(),
+      ['in/a.txt', 'new.txt', 'top.txt'],
+    );
+    assert.deepStrictEqual((await listIndex(gitPath, sparse.root)).toSorted(), [
+      'in/a.txt',
+      'top.txt',
+    ]);
+    assert.deepStrictEqual(
+      (await listTree(gitPath, sparse.root, 'HEAD')).toSorted(),
+      ['in/a.txt', 'out/b.txt', 'top.txt'],
+    );
+  });
+
+  test('shows a file with a NUL byte as binary, unless it comes late', async () => {
+    fs.writeFileSync(
+      path.join(cwd, 'bin.dat'),
+      Buffer.from([0x89, 0x50, 0, 1]),
+    );
+    fs.writeFileSync(path.join(cwd, 'late.txt'), `${'x'.repeat(9000)}\0`);
+    await repository.git('add', 'bin.dat', 'late.txt');
+    await repository.git('commit', '-m', 'binary');
+    try {
+      const [object] = await repository.resolve('HEAD:bin.dat');
+      assert.deepStrictEqual(await readFile(gitPath, cwd, 'HEAD', 'bin.dat'), {
+        content: '',
+        binary: true,
+        id: object,
+      });
+      const { size, mtimeMs } = fs.statSync(path.join(cwd, 'bin.dat'));
+      assert.deepStrictEqual(
+        await readFile(gitPath, cwd, undefined, 'bin.dat'),
+        {
+          content: '',
+          binary: true,
+          id: `${size}-${mtimeMs}`,
+        },
+      );
+      for (const hash of ['HEAD', undefined]) {
+        assert.strictEqual(
+          (await readFile(gitPath, cwd, hash, 'late.txt')).binary,
+          false,
+        );
+      }
+    } finally {
+      await repository.git('reset', 'HEAD~1');
+      fs.rmSync(path.join(cwd, 'bin.dat'));
+      fs.rmSync(path.join(cwd, 'late.txt'));
+    }
+  });
+
+  test('reads a file at a commit and in the working tree', async () => {
+    const committed = await readFile(gitPath, cwd, 'HEAD', 'src/tracked.txt');
+    assert.deepStrictEqual(committed, { content: 'one\n', binary: false });
+    const current = await readFile(gitPath, cwd, undefined, 'src/tracked.txt');
+    assert.strictEqual(current.content, 'two\n');
+    await assert.rejects(
+      readFile(gitPath, cwd, 'HEAD', 'missing.txt'),
+      /missing.txt is not in HEAD/,
+    );
+  });
+
+  test('reads the file at a commit whose name ends in a carriage return or holds a newline, not the one named without them', async () => {
+    const odd = await tempRepository(tempFolder('odd-names'));
+    try {
+      await odd.commit('plain', { 'a.txt': 'plain\n' });
+      const named = [
+        ['a.txt\r', 'with a carriage return\n'],
+        ['a.txt\nb', 'with a newline\n'],
+      ];
+      const contents = named.map((_, index) => `content-${index}`);
+      named.forEach(([, content], index) =>
+        fs.writeFileSync(path.join(odd.root, contents[index]), content),
+      );
+      const blobs = (await odd.git('hash-object', '-w', ...contents)).split(
+        '\n',
+      );
+      await odd.git(
+        '-c',
+        'core.protectNTFS=false',
+        'update-index',
+        '--add',
+        ...named.flatMap(([name], index) => [
+          '--cacheinfo',
+          `100644,${blobs[index]},${name}`,
+        ]),
+      );
+      await odd.git('commit', '-q', '-m', 'odd');
+      const [hash] = await odd.resolve('HEAD');
+      for (const [name, content] of [...named, ['a.txt', 'plain\n']]) {
+        assert.strictEqual(
+          (await readFile(gitPath, odd.root, hash, name)).content,
+          content,
+        );
+      }
+    } finally {
+      removeFolder(odd.root);
+    }
+  });
+
+  test('gives a file to view from the working tree where it is, and from a commit as a copy kept by its blob, written once', async () => {
+    const copies = path.join(parent, 'viewed');
+    const blob = (
+      await repository.git('rev-parse', 'HEAD:src/tracked.txt')
+    ).trim();
+
+    assert.deepStrictEqual(
+      await viewedFile(gitPath, cwd, 'src/tracked.txt', undefined, copies),
+      { kind: 'file', file: path.join(cwd, 'src', 'tracked.txt') },
+    );
+    const committed = await viewedFile(
+      gitPath,
+      cwd,
+      'src/tracked.txt',
+      blob,
+      copies,
+    );
+    assert.deepStrictEqual(committed, {
+      kind: 'file',
+      file: path.join(copies, blob, 'tracked.txt'),
+    });
+    assert.strictEqual(
+      fs.readFileSync(path.join(copies, blob, 'tracked.txt'), 'utf8'),
+      'one\n',
+    );
+    fs.writeFileSync(path.join(copies, blob, 'tracked.txt'), 'kept');
+    await viewedFile(gitPath, cwd, 'src/tracked.txt', blob, copies);
+    assert.strictEqual(
+      fs.readFileSync(path.join(copies, blob, 'tracked.txt'), 'utf8'),
+      'kept',
+    );
+  });
+
+  test('gives a copy of a blob asked for many times at once, as two copies at once clashed on one file', async () => {
+    const copies = path.join(parent, 'viewed-at-once');
+    const blob = (
+      await repository.git('rev-parse', 'HEAD:src/tracked.txt')
+    ).trim();
+    const viewed = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        viewedFile(gitPath, cwd, 'src/tracked.txt', blob, copies),
+      ),
+    );
+    for (const each of viewed) {
+      assert.deepStrictEqual(each, {
+        kind: 'file',
+        file: path.join(copies, blob, 'tracked.txt'),
+      });
+    }
+    assert.deepStrictEqual(fs.readdirSync(path.join(copies, blob)), [
+      'tracked.txt',
+    ]);
+  });
+
+  test('gives a copy of a blob whose name Windows takes no file by, as a file another system named so could not be viewed', async () => {
+    const copies = path.join(parent, 'viewed-named');
+    const blob = (
+      await repository.git('rev-parse', 'HEAD:src/tracked.txt')
+    ).trim();
+    const viewed = await viewedFile(
+      gitPath,
+      cwd,
+      'src/what?.txt',
+      blob,
+      copies,
+    );
+    assert.ok(viewed.kind === 'file');
+    assert.strictEqual(
+      path.basename(viewed.file),
+      process.platform === 'win32' ? 'what_.txt' : 'what?.txt',
+    );
+    assert.strictEqual(fs.readFileSync(viewed.file, 'utf8'), 'one\n');
+  });
+
+  test('gives a copy of a blob whose name Windows keeps for a device or ends in a dot or a space, under a name Windows takes, keeping its extension', async () => {
+    const copies = path.join(parent, 'viewed-reserved');
+    const blob = (
+      await repository.git('rev-parse', 'HEAD:src/tracked.txt')
+    ).trim();
+    const names = ['aux.c', 'CON', 'com1.txt', 'lpt9', 'notes ', 'ends.'];
+    const viewed = await Promise.all(
+      names.map((name) =>
+        viewedFile(gitPath, cwd, `src/${name}`, blob, copies),
+      ),
+    );
+    assert.deepStrictEqual(
+      viewed.map((each) =>
+        each.kind === 'file' ? path.basename(each.file) : each.kind,
+      ),
+      process.platform === 'win32'
+        ? ['_aux.c', '_CON', '_com1.txt', '_lpt9', 'notes_', 'ends_']
+        : names,
+    );
+    for (const each of viewed) {
+      assert.ok(each.kind === 'file');
+      assert.strictEqual(fs.readFileSync(each.file, 'utf8'), 'one\n');
+    }
+  });
+
+  test('gives no file to view outside the repository, missing from the working tree, or of a blob it does not have', async () => {
+    const copies = path.join(parent, 'viewed');
+    await assert.rejects(
+      viewedFile(gitPath, cwd, '../outside.txt', undefined, copies),
+    );
+    assert.deepStrictEqual(
+      await viewedFile(gitPath, cwd, 'src/missing.txt', undefined, copies),
+      { kind: 'missing' },
+    );
+    assert.deepStrictEqual(
+      await viewedFile(gitPath, cwd, 'src/tracked.txt', '1'.repeat(40), copies),
+      { kind: 'missing' },
+    );
+    assert.deepStrictEqual(
+      await viewedFile(gitPath, cwd, 'src/tracked.txt', 'not-a-hash', copies),
+      { kind: 'missing' },
+    );
+    assert.ok(!fs.existsSync(path.join(copies, '1'.repeat(40))));
+  });
+
+  test('reads a named pipe in the working tree as empty, rather than waiting on it', async (context) => {
+    if (process.platform === 'win32') {
+      context.skip();
+    }
+    const fifo = path.join(cwd, 'pipe');
+    const { execFileSync } = process.getBuiltinModule('node:child_process');
+    execFileSync('mkfifo', [fifo]);
+    try {
+      assert.deepStrictEqual(await readFile(gitPath, cwd, undefined, 'pipe'), {
+        content: '',
+        binary: false,
+      });
+    } finally {
+      fs.rmSync(fifo);
+    }
+  });
+
+  test('reads files and objects through one git kept running once that is turned on, starting no other git for later reads, with what a git started for each read gives', async () => {
+    const folder = tempFolder('kept-blobs');
+    keepGitRunningWhile(() => true);
+    try {
+      const kept = await tempRepository(folder);
+      await kept.commit('first', {
+        'a.ts': 'one\n',
+        'image.png': Buffer.from([0, 1, 2]).toString('latin1'),
+        'large.txt': 'x'.repeat(maxFileSize + 1),
+      });
+      await kept.commit('second', { 'a.ts': 'two\n' });
+      const [head = '', oldA = '', newA = '', image = '', large = ''] =
+        await kept.resolve(
+          'HEAD',
+          'HEAD~1:a.ts',
+          'HEAD:a.ts',
+          'HEAD:image.png',
+          'HEAD:large.txt',
+        );
+      const ids = [oldA, newA, image, large, 'f'.repeat(40)];
+
+      const first = await gitsStarted(() =>
+        readBlobs(kept.gitPath, kept.root, ids),
+      );
+      const again = await gitsStarted(async () => ({
+        texts: await readBlobs(kept.gitPath, kept.root, ids),
+        file: await readFile(kept.gitPath, kept.root, head, 'a.ts'),
+        sizes: await blobSizes(kept.gitPath, kept.root, [
+          newA,
+          large,
+          'f'.repeat(40),
+        ]),
+      }));
+
+      assert.deepStrictEqual(
+        [...first.result],
+        [
+          [oldA, 'one\n'],
+          [newA, 'two\n'],
+        ],
+      );
+      assert.ok(first.gits <= 2, String(first.gits));
+      assert.deepStrictEqual([...again.result.texts], [...first.result]);
+      assert.deepStrictEqual(again.result.file, {
+        content: 'two\n',
+        binary: false,
+      });
+      assert.deepStrictEqual(
+        [...again.result.sizes],
+        [
+          [newA, 4],
+          [large, maxFileSize + 1],
+        ],
+      );
+      assert.strictEqual(again.gits, 0);
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
+  test('reads a large file through a git started for it rather than the one kept, so the diffs and files of the folder do not wait behind it', async () => {
+    const folder = tempFolder('kept-large-blob');
+    keepGitRunningWhile(() => true);
+    try {
+      const kept = await tempRepository(folder);
+      const size = Math.floor(maxFileSize * 0.75);
+      await kept.commit('first', {
+        'small.txt': 'small\n',
+        'large.txt': 'x'.repeat(size),
+      });
+      const [small = '', large = ''] = await kept.resolve(
+        'HEAD:small.txt',
+        'HEAD:large.txt',
+      );
+      await readBlobs(kept.gitPath, kept.root, [small]);
+
+      const read = await gitsStarted(async () => ({
+        large: await readBlobs(kept.gitPath, kept.root, [large]),
+        small: await readBlobs(kept.gitPath, kept.root, [small]),
+      }));
+
+      assert.strictEqual(read.result.large.get(large)?.length, size);
+      assert.strictEqual(read.result.small.get(small), 'small\n');
+      assert.strictEqual(read.gits, 1);
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
+  test('reads a name no object id fixes, such as a path in the index, through a git started for it rather than the one kept, as a git kept running reads the index once and would answer for it as it was', async () => {
+    const folder = tempFolder('kept-index');
+    keepGitRunningWhile(() => true);
+    try {
+      const kept = await tempRepository(folder);
+      await kept.commit('first', { 'a.txt': 'one\n' });
+      const [first = ''] = await kept.resolve(':0:a.txt');
+      const before = await blobSizes(kept.gitPath, kept.root, [':0:a.txt']);
+      fs.writeFileSync(path.join(kept.root, 'a.txt'), 'three\n');
+      await kept.git('add', 'a.txt');
+      const [staged = ''] = await kept.resolve(':0:a.txt');
+
+      const after = await blobSizes(kept.gitPath, kept.root, [':0:a.txt']);
+
+      assert.deepStrictEqual([...before], [[first, 4]]);
+      assert.deepStrictEqual([...after], [[staged, 6]]);
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
+  test('sends the git kept running no name holding a NUL or a newline, as it would take the rest for a request of its own and answer every later one out of step', async () => {
+    const folder = tempFolder('kept-split-name');
+    keepGitRunningWhile(() => true);
+    try {
+      const kept = await tempRepository(folder);
+      await kept.commit('first', { 'a.txt': 'one\n', 'b.txt': 'two\n' });
+      const [head = ''] = await kept.resolve('HEAD');
+      const read = (name: string) =>
+        readFile(kept.gitPath, kept.root, head, name).then(
+          (file) => file.content,
+          () => undefined,
+        );
+      assert.strictEqual(await read('a.txt'), 'one\n');
+      for (const name of [
+        `a.txt\0info ${head}:b.txt`,
+        `a.txt\ncontents ${head}:b.txt`,
+      ]) {
+        assert.notStrictEqual(await read(name), 'two\n');
+        assert.strictEqual(await read('b.txt'), 'two\n');
+        assert.strictEqual(await read('a.txt'), 'one\n');
+      }
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
+  test('reads a file at a commit with one git', async () => {
+    assert.deepStrictEqual(
+      await gitsStarted(() =>
+        readFile(gitPath, cwd, 'HEAD', 'src/tracked.txt'),
+      ),
+      { result: { content: 'one\n', binary: false }, gits: 1 },
+    );
+  });
+
+  test('reads a file deleted since it was listed as empty', async () => {
+    assert.deepStrictEqual(
+      await readFile(gitPath, cwd, undefined, 'gone.txt'),
+      {
+        content: '',
+        binary: false,
+      },
+    );
+  });
+
+  test('reads no file outside the repository', async () => {
+    const outside = path.join(parent, 'outside.txt');
+    fs.writeFileSync(outside, 'secret\n');
+    try {
+      await assert.rejects(
+        readFile(gitPath, cwd, undefined, '../outside.txt'),
+        /outside the repository/,
+      );
+      await assert.rejects(
+        readFile(gitPath, cwd, undefined, outside),
+        /outside the repository/,
+      );
+    } finally {
+      fs.rmSync(outside);
+    }
+    const dots = path.join(cwd, '..dots.txt');
+    fs.writeFileSync(dots, 'inside\n');
+    try {
+      assert.strictEqual(
+        (await readFile(gitPath, cwd, undefined, '..dots.txt')).content,
+        'inside\n',
+      );
+    } finally {
+      fs.rmSync(dots);
+    }
+  });
+
+  test('reads a file whose folder became a file as empty', async () => {
+    const folder = path.join(cwd, 'gone-dir');
+    fs.writeFileSync(folder, '');
+    try {
+      assert.deepStrictEqual(
+        await readFile(gitPath, cwd, undefined, 'gone-dir/f.txt'),
+        { content: '', binary: false },
+      );
+    } finally {
+      fs.rmSync(folder);
+    }
+  });
+
+  test('reads a symlink in the working tree by its target, as git does, marking it a link', async (context) => {
+    const link = path.join(cwd, 'link');
+    symlinkOrSkip(context, 'src/tracked.txt', link);
+    try {
+      assert.deepStrictEqual(await readFile(gitPath, cwd, undefined, 'link'), {
+        content: 'src/tracked.txt',
+        binary: false,
+        link: true,
+      });
+    } finally {
+      fs.rmSync(link);
+    }
+  });
+
+  test('reads a symbolic link at a commit by its target, marking it a link, and in the working tree too where git checks it out as a plain file, as it makes no links there', async () => {
+    const links = await tempRepository(path.join(parent, 'links'));
+    await links.git('config', 'core.symlinks', 'false');
+    await links.commit('files', {
+      README: 'read me\n',
+      'one-line.txt': 'README',
+    });
+    const content = path.join(parent, 'link-content');
+    fs.writeFileSync(content, 'README');
+    const [blob] = (await links.git('hash-object', '-w', content)).split('\n');
+    await links.git(
+      'update-index',
+      '--add',
+      '--cacheinfo',
+      `120000,${blob},AGENTS.md`,
+    );
+    await links.git('commit', '-q', '-m', 'link');
+    await links.git('checkout', '--', 'AGENTS.md');
+    assert.ok(fs.lstatSync(path.join(links.root, 'AGENTS.md')).isFile());
+    for (const hash of ['HEAD', undefined]) {
+      assert.deepStrictEqual(
+        await readFile(gitPath, links.root, hash, 'AGENTS.md'),
+        { content: 'README', binary: false, link: true },
+      );
+      assert.deepStrictEqual(
+        await readFile(gitPath, links.root, hash, 'one-line.txt'),
+        { content: 'README', binary: false },
+      );
+    }
+  });
+
+  test('tells a link git checked out as a file of one line through the git kept running, starting none for each file read, and anew once the index changes, as a git started for each such file took a fraction of a second on Windows', async () => {
+    const folder = tempFolder('kept-links');
+    keepGitRunningWhile(() => true);
+    try {
+      const links = await tempRepository(folder);
+      await links.git('config', 'core.symlinks', 'false');
+      await links.commit('files', {
+        README: 'read me\n',
+        'a.txt': 'README',
+        'b.txt': 'README',
+      });
+      const read = (file: string) =>
+        readFile(links.gitPath, links.root, undefined, file);
+      const file = { content: 'README', binary: false };
+      await read('a.txt');
+      assert.deepStrictEqual(
+        await gitsStarted(async () => [
+          await read('a.txt'),
+          await read('b.txt'),
+        ]),
+        { result: [file, file], gits: 0 },
+      );
+      const [blob = ''] = await links.resolve('HEAD:a.txt');
+      await links.git('update-index', '--cacheinfo', `120000,${blob},b.txt`);
+      assert.deepStrictEqual(await read('b.txt'), { ...file, link: true });
+      assert.deepStrictEqual(await read('a.txt'), file);
+    } finally {
+      keepGitRunningWhile(() => false);
+      keptGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
+  test('reads no file or image through a linked folder, as git sees none there, so a link leads nowhere outside the repository', async () => {
+    const outside = path.join(parent, 'linked');
+    fs.mkdirSync(outside);
+    fs.writeFileSync(path.join(outside, 'secret.png'), 'secret\n');
+    const link = path.join(cwd, 'assets');
+    fs.symlinkSync(outside, link, 'junction');
+    try {
+      assert.deepStrictEqual(
+        await readFile(gitPath, cwd, undefined, 'assets/secret.png'),
+        { content: '', binary: false },
+      );
+      assert.deepStrictEqual(
+        await readImage(gitPath, cwd, {
+          path: 'assets/secret.png',
+          id: 'any',
+          disk: true,
+        }),
+        { kind: 'missing' },
+      );
+    } finally {
+      fs.rmSync(link);
+      fs.rmSync(outside, { recursive: true });
+    }
+  });
+});
+
+suite('Large files and submodules', () => {
+  let repository: TempRepository;
+  let gitPath: string;
+  let cwd: string;
+  let inner: string;
+
+  beforeAll(async () => {
+    ({ repository, inner } = await submoduleRepository('large', {
+      'large.txt': 'x'.repeat(2 * 1024 * 1024 + 1),
+      'exact.txt': 'x'.repeat(2 * 1024 * 1024),
+    }));
+    gitPath = repository.gitPath;
+    cwd = repository.root;
+  });
+
+  afterAll(() => removeFolder(cwd));
+
+  test('shows a file over 2 MB as binary, by its object id at a commit, and one of exactly 2 MB as text', async () => {
+    const [object] = await repository.resolve('HEAD:large.txt');
+    const { size, mtimeMs } = fs.statSync(path.join(cwd, 'large.txt'));
+    for (const [hash, id] of [
+      ['HEAD', object],
+      [undefined, `${size}-${mtimeMs}`],
+    ]) {
+      assert.deepStrictEqual(await readFile(gitPath, cwd, hash, 'large.txt'), {
+        content: '',
+        binary: true,
+        id,
+      });
+      const exact = await readFile(gitPath, cwd, hash, 'exact.txt');
+      assert.strictEqual(exact.binary, false);
+      assert.strictEqual(exact.content.length, 2 * 1024 * 1024);
+    }
+  });
+
+  test('shows a submodule by its commit', async () => {
+    const submodule = {
+      content: `Subproject commit ${inner}\n`,
+      binary: false,
+    };
+    assert.deepStrictEqual(
+      await readFile(gitPath, cwd, 'HEAD', 'sub'),
+      submodule,
+    );
+    assert.deepStrictEqual(
+      await readFile(gitPath, cwd, undefined, 'sub'),
+      submodule,
+    );
+  });
+
+  test('shows a submodule that is not checked out as empty', async () => {
+    fs.mkdirSync(path.join(cwd, 'unchecked'));
+    try {
+      assert.deepStrictEqual(
+        await readFile(gitPath, cwd, undefined, 'unchecked'),
+        { content: '', binary: false },
+      );
+    } finally {
+      fs.rmSync(path.join(cwd, 'unchecked'), { recursive: true });
+    }
+  });
+});
+
+suite('Blobs', () => {
+  test('reads both sides of the files a patch changes by their full ids, leaving out what is missing, binary or too large', async () => {
+    const folder = tempFolder('blobs');
+    try {
+      const repository = await tempRepository(folder);
+      const { gitPath, root } = repository;
+      await repository.commit('first', {
+        'a.ts': 'one\n',
+        'image.png': Buffer.from([0, 1, 2]).toString('latin1'),
+        'large.txt': 'x'.repeat(maxFileSize + 1),
+      });
+      await repository.commit('second', {
+        'a.ts': 'two\n',
+        'image.png': Buffer.from([0, 3]).toString('latin1'),
+        'large.txt': 'y'.repeat(maxFileSize + 1),
+      });
+      const files = parsePatch(await showPatch(gitPath, root, 'HEAD'));
+      const [a, image, large] = files.map((file) => file.blobs);
+      const texts = await readBlobs(gitPath, root, [
+        a?.old ?? '',
+        a?.new ?? '',
+        image?.new ?? '',
+        large?.new ?? '',
+        'f'.repeat(40),
+      ]);
+      assert.deepStrictEqual([...texts.values()], ['one\n', 'two\n']);
+      assert.strictEqual(texts.get(a?.new ?? ''), 'two\n');
+      assert.deepStrictEqual(await readBlobs(gitPath, root, []), new Map());
+      const { gits } = await gitsStarted(() =>
+        readBlobs(gitPath, root, [a?.new ?? '', large?.new ?? '']),
+      );
+      assert.strictEqual(gits, 1);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+});
+
+suite('Images', () => {
+  let folder: string;
+  let repository: TempRepository;
+  let gitPath: string;
+  let cwd: string;
+  const pixel = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2]);
+
+  beforeAll(async () => {
+    folder = tempFolder('images');
+    repository = await tempRepository(folder);
+    gitPath = repository.gitPath;
+    cwd = repository.root;
+    fs.writeFileSync(path.join(cwd, 'pixel.png'), pixel);
+    fs.writeFileSync(
+      path.join(cwd, 'huge.png'),
+      Buffer.alloc(pixel.length + 1),
+    );
+    await repository.git('add', 'pixel.png', 'huge.png');
+    await repository.git('commit', '-m', 'images');
+  });
+
+  afterAll(() => removeFolder(folder));
+
+  const image = async (id: string, disk: boolean, file = 'pixel.png') =>
+    readImage(gitPath, cwd, { path: file, id, disk }, pixel.length);
+
+  test('reads an image by its object id, or from the working tree', async () => {
+    const [object] = await repository.resolve('HEAD:pixel.png');
+    assert.deepStrictEqual(await image(object, false), {
+      kind: 'image',
+      bytes: pixel,
+    });
+    fs.writeFileSync(path.join(cwd, 'pixel.png'), Buffer.from([0, 9]));
+    try {
+      assert.deepStrictEqual(await image('any', true), {
+        kind: 'image',
+        bytes: Buffer.from([0, 9]),
+      });
+    } finally {
+      fs.writeFileSync(path.join(cwd, 'pixel.png'), pixel);
+    }
+  });
+
+  test('reads no image that is missing or too large to preview', async () => {
+    const [huge] = await repository.resolve('HEAD:huge.png');
+    assert.deepStrictEqual(await image(huge, false), { kind: 'tooLarge' });
+    assert.deepStrictEqual(await image('any', true, 'huge.png'), {
+      kind: 'tooLarge',
+    });
+    const [tree] = await repository.resolve('HEAD^{tree}');
+    for (const id of ['f'.repeat(40), tree]) {
+      assert.deepStrictEqual(await image(id, false), { kind: 'missing' });
+    }
+    fs.mkdirSync(path.join(cwd, 'folder.png'));
+    try {
+      for (const file of ['gone.png', 'folder.png']) {
+        assert.deepStrictEqual(await image('any', true, file), {
+          kind: 'missing',
+        });
+      }
+    } finally {
+      fs.rmdirSync(path.join(cwd, 'folder.png'));
+    }
+  });
+
+  test('reads an image with one git, by its object id', async () => {
+    const [object] = await repository.resolve('HEAD:pixel.png');
+    for (const source of [{ path: 'pixel.png', id: object, disk: false }]) {
+      const { gits } = await gitsStarted(() =>
+        readImage(gitPath, cwd, source, pixel.length),
+      );
+      assert.strictEqual(gits, 1, JSON.stringify(source));
+    }
+  });
+
+  test('reads no image outside the repository', async () => {
+    await assert.rejects(
+      image('any', true, '../outside.png'),
+      /outside the repository/,
+    );
+  });
+
+  test('reads no image in the working tree that is itself a symlink, as git sees no image there, so a link leads nowhere outside the repository', async (context) => {
+    const outside = tempFolder('outside-image');
+    fs.writeFileSync(path.join(outside, 'secret.png'), pixel);
+    const link = path.join(cwd, 'link.png');
+    try {
+      symlinkOrSkip(context, path.join(outside, 'secret.png'), link);
+      assert.deepStrictEqual(await image('any', true, 'link.png'), {
+        kind: 'missing',
+      });
+    } finally {
+      fs.rmSync(link, { force: true });
+      removeFolder(outside);
+    }
+  });
+});

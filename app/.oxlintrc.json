@@ -118,7 +118,7 @@
       }
     },
     {
-      "files": ["src/test/tools/git/page/syntax.test.ts"],
+      "files": ["src/test/src/tools/git/page/syntax.test.ts"],
       "rules": {
         "max-lines": [
           "warn",
@@ -129,7 +129,7 @@
       }
     },
     {
-      "files": ["src/test/tools/commander/main/tool.test.ts"],
+      "files": ["src/test/src/tools/commander/main/tool.test.ts"],
       "rules": {
         "max-lines": [
           "warn",
@@ -141,8 +141,8 @@
     },
     {
       "files": [
-        "src/test/tools/commander/page/store.test.ts",
-        "src/test/tools/git/page/commitList.test.tsx"
+        "src/test/src/tools/commander/page/store.test.ts",
+        "src/test/src/tools/git/page/commitList.test.tsx"
       ],
       "rules": {
         "max-lines": [
@@ -171,7 +171,7 @@
       "files": [
         "scripts/playground/filesPlan.mts",
         "scripts/playground/git.mts",
-        "src/test/tools/git/main/tool/oneRepository.git.test.ts"
+        "src/test/src/tools/git/main/tool/oneRepository.git.test.ts"
       ],
       "rules": {
         "max-lines": [
@@ -185,7 +185,7 @@
     {
       "files": [
         "src/shell/main/shell.ts",
-        "src/test/tools/git/main/cli/workingTree.git.test.ts",
+        "src/test/src/tools/git/main/cli/workingTree.git.test.ts",
         "src/tools/commander/main/tool.ts"
       ],
       "rules": {
@@ -200,10 +200,10 @@
     {
       "files": [
         "src/boot/main.ts",
-        "src/test/app/appLaunches.electron.test.ts",
-        "src/test/shell/main/shell.test.ts",
-        "src/test/tools/git/main/tool/diffs.git.test.ts",
-        "src/test/tools/git/main/tool/refreshing.git.test.ts",
+        "src/test/e2e/appLaunches.electron.test.ts",
+        "src/test/src/shell/main/shell.test.ts",
+        "src/test/src/tools/git/main/tool/diffs.git.test.ts",
+        "src/test/src/tools/git/main/tool/refreshing.git.test.ts",
         "src/tools/commander/page/pane.tsx",
         "src/tools/git/page/diffView.tsx"
       ],
@@ -218,10 +218,10 @@
     },
     {
       "files": [
-        "src/test/tools/commander/main/archiveCopies.test.ts",
-        "src/test/tools/commander/main/archiveRoundTrips.7zip.test.ts",
-        "src/test/tools/git/main/tool/otherRepositories.git.test.ts",
-        "src/test/tools/git/page/locations.test.tsx",
+        "src/test/src/tools/commander/main/archiveCopies.test.ts",
+        "src/test/src/tools/commander/main/archiveRoundTrips.7zip.test.ts",
+        "src/test/src/tools/git/main/tool/otherRepositories.git.test.ts",
+        "src/test/src/tools/git/page/locations.test.tsx",
         "src/tools/git/page/commitList.tsx"
       ],
       "rules": {
@@ -236,11 +236,11 @@
     {
       "files": [
         "src/shell/page/tabBar.tsx",
-        "src/test/app/appEditor.electron.test.ts",
-        "src/test/app/appWrapping.electron.test.ts",
-        "src/test/tools/commander/page/view.test.ts",
-        "src/test/tools/git/main/cli/watch.test.ts",
-        "src/test/tools/git/page/store.test.ts",
+        "src/test/e2e/appEditor.electron.test.ts",
+        "src/test/e2e/appWrapping.electron.test.ts",
+        "src/test/src/tools/commander/page/view.test.ts",
+        "src/test/src/tools/git/main/cli/watch.test.ts",
+        "src/test/src/tools/git/page/store.test.ts",
         "src/tools/commander/main/archives.ts",
         "src/tools/commander/page/editor.tsx",
         "src/tools/git/main/cli/watch.ts",
