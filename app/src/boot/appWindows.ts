@@ -1,49 +1,18 @@
-import * as path from 'node:path';
-import {
-  app,
-  BrowserWindow,
-  ipcMain,
-  nativeTheme,
-  screen,
-  shell,
-} from 'electron';
+import { app, type BrowserWindow, ipcMain, screen } from 'electron';
 import type { Log } from '../shell/main/log';
-import { appNameSwitch, titleBarHeight } from '../shell/shared/titleBar';
-import { shellKeymap } from '../shell/shared/keymap';
-import { pressed, pressOfInput } from '../lib/shared/keymap';
 import type { ToHost, ToWebview } from '../shell/shared/protocol';
-import { brand, strings } from '../lib/shared/strings';
+import { strings } from '../lib/shared/strings';
 import type { Settings } from '../shell/main/settings';
 import type { JsonFileStore } from '../shell/main/stateFile';
 import type { Storage } from '../shell/main/storage';
 import type { Connection, Shell } from '../shell/main/shell';
 import type { DragEvent } from '../shell/main/dragEvents';
 import { spareWindowIds } from '../shell/main/windows';
-import {
-  appOrigin,
-  isAppUrl,
-  lockDown,
-  opensExternally,
-  startsAppPage,
-} from './files';
-import {
-  cascaded,
-  firstWindowSize,
-  keptBounds,
-  minimumHeight,
-  minimumWidth,
-  restoresMaximized,
-  showAgain,
-  visibleBounds,
-} from './windowPlacement';
+import { appOrigin, isAppUrl, startsAppPage } from './files';
+import { cascaded, showAgain } from './windowPlacement';
 import { tellMaximized } from './maximized';
-import {
-  TabDrag,
-  tearsOffTabs,
-  type DragHost,
-  type DragWindow,
-} from './tabDrag';
-import type { Strip } from '../shell/main/dragEvents';
+import { WindowDrag } from './windowDrag';
+import { createWindow } from './browserWindow';
 import {
   boundsKey,
   maximizedKey,
@@ -80,51 +49,24 @@ export interface AppWindowsDeps {
 export class AppWindows {
   private readonly opened = new Map<string, OpenedWindow>();
   private focused: string | undefined;
-  private readonly strips = new Map<string, Strip>();
   private frontToBack: string[] = [];
-  private drag: TabDrag | undefined;
   private spare:
     { readonly id: string; readonly entry: OpenedWindow } | undefined;
   private readonly spareId: () => string;
-  private readonly dragHost: DragHost;
+  private readonly windowDrag: WindowDrag;
   readonly everyWindow;
 
   constructor(private readonly deps: AppWindowsDeps) {
     this.spareId = spareWindowIds(deps.storage.layout);
-    this.dragHost = {
-      windows: () =>
-        this.frontToBack.flatMap((id) => this.dragWindowOf(id) ?? []),
-      tearOff: (tab, from) => {
-        const source = this.opened.get(from);
-        const asking = deps.asking();
-        if (source === undefined || asking === undefined) {
-          return undefined;
-        }
-        this.keepSpare();
-        const taken = this.spare;
-        if (taken === undefined) {
-          return undefined;
-        }
-        this.spare = undefined;
-        this.opened.set(taken.id, taken.entry);
-        this.frontToBack = [taken.id, ...this.frontToBack];
-        const size = source.window.getNormalBounds();
-        taken.entry.window.setSize(size.width, size.height);
-        void asking.tearOff(tab, taken.id);
-        return this.dragWindowOf(taken.id);
-      },
-      visit: (window, visit) => deps.asking()?.visit(window, visit),
-      move: (tab, into, index) => void deps.asking()?.moveTab(tab, into, index),
-      close: (window) => this.close(window),
-      focus: (window) => {
-        const entry = this.opened.get(window);
-        if (entry !== undefined && !entry.window.isDestroyed()) {
-          entry.window.setAlwaysOnTop(false);
-          entry.window.setOpacity(1);
-          showAgain(entry.window);
-        }
-      },
-    };
+    this.windowDrag = new WindowDrag({
+      frontToBack: () => this.frontToBack,
+      windowOf: (id) => this.opened.get(id)?.window,
+      windowCount: () => this.opened.size,
+      takeSpare: (source) => this.takeSpare(source),
+      keepSpare: () => this.keepSpare(),
+      close: (id) => this.close(id),
+      asking: () => deps.asking(),
+    });
     this.everyWindow = {
       isDestroyed: () => this.opened.size === 0,
       once: (_event: 'closed', listener: () => void) =>
@@ -251,45 +193,7 @@ export class AppWindows {
   }
 
   dragged(window: string, event: DragEvent): void {
-    switch (event.kind) {
-      case 'strip':
-        this.strips.set(window, event.strip);
-        return;
-      case 'start': {
-        const source = this.dragWindowOf(window);
-        if (
-          this.drag === undefined &&
-          source !== undefined &&
-          tearsOffTabs(process.platform, process.env) &&
-          (!event.alone || this.opened.size > 1)
-        ) {
-          this.drag = TabDrag.start(this.dragHost, source, event);
-        }
-        return;
-      }
-      case 'move':
-        if (this.drag?.source.id === window) {
-          this.drag.move(event.at);
-        }
-        return;
-      case 'index':
-        this.drag?.index(window, event.index);
-        return;
-      case 'drop':
-      case 'cancel': {
-        const ended = this.drag;
-        if (ended?.source.id !== window) {
-          return;
-        }
-        this.drag = undefined;
-        if (event.kind === 'drop') {
-          ended.drop();
-        } else {
-          ended.cancel();
-        }
-        this.keepSpare();
-      }
-    }
+    this.windowDrag.dragged(window, event);
   }
 
   private windowIds(): string[] {
@@ -392,7 +296,7 @@ export class AppWindows {
     window.on('closed', () => {
       quitGuard.forget(id);
       disconnect();
-      this.strips.delete(id);
+      this.windowDrag.forget(id);
       this.frontToBack = this.frontToBack.filter((other) => other !== id);
       if (this.spare?.entry === entry) {
         this.spare = undefined;
@@ -438,133 +342,17 @@ export class AppWindows {
     }
   }
 
-  private dragWindowOf(id: string): DragWindow | undefined {
-    const entry = this.opened.get(id);
-    if (entry === undefined || entry.window.isDestroyed()) {
+  private takeSpare(source: BrowserWindow): string | undefined {
+    this.keepSpare();
+    const taken = this.spare;
+    if (taken === undefined) {
       return undefined;
     }
-    const { window } = entry;
-    return {
-      id,
-      bounds: () => window.getBounds(),
-      contentBounds: () => window.getContentBounds(),
-      strip: () => this.strips.get(id),
-      shown: () =>
-        !window.isDestroyed() &&
-        window.isVisible() &&
-        !window.isMinimized() &&
-        window.getOpacity() > 0,
-      moveTo: (x, y) => {
-        if (!window.isDestroyed()) {
-          window.setPosition(x, y);
-        }
-      },
-      hide: (hidden) => {
-        if (window.isDestroyed()) {
-          return;
-        }
-        window.setOpacity(hidden ? 0 : 1);
-        if (hidden) {
-          return;
-        }
-        if (!window.isVisible()) {
-          window.showInactive();
-        }
-        window.setAlwaysOnTop(true);
-      },
-    };
+    this.spare = undefined;
+    this.opened.set(taken.id, taken.entry);
+    this.frontToBack = [taken.id, ...this.frontToBack];
+    const size = source.getNormalBounds();
+    taken.entry.window.setSize(size.width, size.height);
+    return taken.id;
   }
-}
-
-function createWindow(
-  saved: SavedPlace,
-  settings: Settings,
-  shown: Promise<boolean>,
-  dist: string,
-  development: boolean,
-): { readonly window: BrowserWindow; readonly place: () => Place } {
-  const workAreas = screen.getAllDisplays().map((display) => display.workArea);
-  const size = firstWindowSize(screen.getPrimaryDisplay().workArea);
-  const bounds = visibleBounds(saved.bounds, workAreas);
-  const window = new BrowserWindow({
-    ...(bounds ?? size),
-    minWidth: minimumWidth(workAreas),
-    minHeight: minimumHeight(workAreas),
-    title: brand,
-    show: false,
-    backgroundColor: (nativeTheme.shouldUseDarkColors
-      ? settings.colors.dark
-      : settings.colors.light
-    ).background,
-    icon:
-      process.platform === 'darwin' ? undefined : path.join(dist, 'icon.png'),
-    titleBarStyle: 'hidden',
-    titleBarOverlay:
-      process.platform === 'darwin'
-        ? undefined
-        : { color: '#00000000', height: titleBarHeight },
-    trafficLightPosition: { x: 12, y: (titleBarHeight - 12) / 2 },
-    webPreferences: {
-      preload: path.join(dist, 'preload.js'),
-      additionalArguments: [
-        appNameSwitch + strings.app.name(app.getVersion(), development),
-      ],
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-      spellcheck: false,
-    },
-  });
-  const { maximized } = saved;
-  window.once(
-    'ready-to-show',
-    () =>
-      void shown.then((show) => {
-        if (show) {
-          if (maximized) {
-            window.maximize();
-          }
-          window.show();
-        }
-      }),
-  );
-  const restores = restoresMaximized(window, maximized);
-  window.on('maximize', restores);
-  window.on('unmaximize', restores);
-  window.on('resize', restores);
-  const kept = keptBounds(
-    window,
-    bounds ?? { ...window.getNormalBounds(), ...size },
-  );
-  window.on('resized', kept.resized);
-  window.on('moved', kept.moved);
-  const reportsUserMoves = process.platform !== 'linux';
-  window.webContents.setWindowOpenHandler(({ url }) => {
-    if (opensExternally(url)) {
-      void shell.openExternal(url);
-    }
-    return { action: 'deny' };
-  });
-  window.webContents.on('will-navigate', (event, url) => {
-    if (!isAppUrl(url)) {
-      event.preventDefault();
-    }
-  });
-  lockDown(window.webContents.session);
-  window.webContents.on('before-input-event', (event, input) => {
-    if (
-      input.type === 'keyDown' &&
-      pressed(shellKeymap.devTools, pressOfInput(input), false)
-    ) {
-      window.webContents.toggleDevTools();
-      event.preventDefault();
-    }
-  });
-  return {
-    window,
-    place: () => ({
-      bounds: reportsUserMoves ? kept.bounds() : window.getNormalBounds(),
-      maximized: restores(),
-    }),
-  };
 }
