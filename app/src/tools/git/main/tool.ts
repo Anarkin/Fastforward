@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { AutoFetch, fetchOrder, type Timer } from './autoFetch';
-import { readUpstream, remoteDefaultBranches } from './cli/branches';
+import { remoteDefaultBranches } from './cli/branches';
 import { gitErrorText } from './cli/errorText';
 import { keptGits } from './cli/run';
 import {
@@ -16,26 +16,15 @@ import { watchFiles } from './compareWatch';
 import { readImage, viewedFile } from './cli/files';
 import { findCommit } from './cli/history';
 import {
-  fetchRemote,
   hasGitFolder,
   initRepository,
   isFolder,
-  listRemoteTags,
-  listRemotes,
-  readHead,
   readRefs,
-  remotesNotFetched,
   repositoryRoot,
   spellingOf,
-  type Head,
   type Refs,
 } from './cli/repository';
-import {
-  isWatchFailure,
-  watchRepository,
-  type Changed,
-  type Watcher,
-} from './cli/watch';
+import { isWatchFailure, watchRepository, type Watcher } from './cli/watch';
 import { UntrackedPatches } from './cli/workingTree';
 import {
   listWorktrees,
@@ -47,30 +36,15 @@ import { maxSteps } from './history/navigation';
 import { ImageReads } from './imageReads';
 import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
-import {
-  canPull,
-  checkout,
-  fastForwardToUpstream,
-  fetchAll,
-  foundUpstream,
-  pickTagRemote,
-  pushTag,
-  pushToUpstream,
-  tagRemoteOf,
-  reportFetched,
-  type Fetched,
-  type Pushed,
-  type Notify,
-} from './operations';
-import { defaultBookmarks, remoteTagRefs, sameTags } from './refs';
+import { tagRemoteOf, type Notify } from './operations';
+import { defaultBookmarks, remoteTagRefs } from './refs';
 import { isFullHash, shortHash } from '../shared/hashes';
-import { bookmarkedCommits, hasRef } from '../shared/refNames';
+import { bookmarkedCommits } from '../shared/refNames';
 import { imageSourceOf, imageType } from '../shared/images';
 import {
   commitPageSize,
   commitPagesAsked,
   diffLayouts,
-  type CheckoutTarget,
   type RepositoryInfo,
   type TabMessage,
   type TextRequest,
@@ -110,14 +84,11 @@ import {
   type TabState,
 } from './tabState';
 import {
-  type RunningOn,
   type TabWork,
   type ReadRefs,
   type GitPost,
   type Session,
   type Comparing,
-  type Fetching,
-  type Fetchable,
   type Context,
   notInHistory,
   uniqueTexts,
@@ -128,11 +99,10 @@ import {
 import { Diffs } from './diffs';
 import { Refreshes } from './refreshes';
 import { Navigation } from './navigation';
+import { Remotes } from './remotes';
 
 const maxKeptUntrackedChars = 32_000_000;
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
-const refsAlone: Changed = { refs: true, workingTree: false };
-
 export type FolderPurpose = 'init' | 'clone';
 
 export interface GitHost {
@@ -144,8 +114,6 @@ export interface GitHost {
   ): Promise<string | undefined>;
   clipboardText(): Promise<string>;
 }
-
-const silent = () => undefined;
 
 const maxBookmarks = 1000;
 
@@ -170,15 +138,11 @@ export class GitTool implements Tool<'git'> {
   private readonly repositories = new Map<string, string>();
   private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
   private readonly worktreeListings = new Map<string, number>();
-  private readonly fetches = new Map<string, Fetching>();
-  private readonly pushes = new Map<string, Promise<unknown>>();
-  private readonly fetchFailures = new Set<string>();
   private readonly imageReads = new ImageReads();
   private readonly comparisons = new Map<string, Comparing>();
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
   private readonly clones: Clones;
-  private tagsRecorded = 0;
   private collapseMerges: boolean;
   private soloDefault: boolean;
   private initAsked: string | undefined;
@@ -186,6 +150,7 @@ export class GitTool implements Tool<'git'> {
   private readonly diffs: Diffs;
   private readonly refreshes: Refreshes;
   private readonly navigation: Navigation;
+  private readonly remotes: Remotes;
 
   constructor(
     private readonly log: Log,
@@ -237,10 +202,21 @@ export class GitTool implements Tool<'git'> {
       this.refreshes,
       this.core,
     );
+    this.remotes = new Remotes(
+      log,
+      gitPath,
+      storage,
+      () => this.shell,
+      this.refreshes,
+      this.navigation,
+      this.core,
+      this.quitting,
+      this.repositories,
+    );
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
       () => fetchOrder(this.repositoryTabs, this.shownRepositories()),
-      (root) => this.shell.track(this.fetchInBackground(root)),
+      (root) => this.shell.track(this.remotes.fetchInBackground(root)),
       timer,
     );
     this.autoFetch.update();
@@ -998,25 +974,25 @@ export class GitTool implements Tool<'git'> {
         }
         break;
       case 'checkout':
-        await this.checkout(context, message.target, picked);
+        await this.remotes.checkout(context, message.target, picked);
         break;
       case 'fetch':
-        await this.fetch(context);
+        await this.remotes.fetch(context);
         break;
       case 'pull':
-        await this.pull(context, picked);
+        await this.remotes.pull(context, picked);
         break;
       case 'push':
-        await this.push(context);
+        await this.remotes.push(context);
         break;
       case 'pushTag':
-        await this.pushTag(context, message.name);
+        await this.remotes.pushTag(context, message.name);
         break;
       case 'pullBranch':
-        await this.pullBranch(context, message.name, picked);
+        await this.remotes.pullBranch(context, message.name, picked);
         break;
       case 'pushBranch':
-        await this.pushBranch(context, message.name);
+        await this.remotes.pushBranch(context, message.name);
         break;
       case 'loadTree':
         if (this.isSelected(context, message.hash)) {
@@ -1600,7 +1576,7 @@ export class GitTool implements Tool<'git'> {
       type: 'solo',
       solo: worktree !== undefined && storage.soloOf(worktree),
     });
-    this.postLastFetch(session, active);
+    this.remotes.postLastFetch(session, active);
   }
 
   private sendTabs(session: Session): void {
@@ -1985,572 +1961,6 @@ export class GitTool implements Tool<'git'> {
       },
       onStopped: (error) => this.couldNotWatch(context, error),
     });
-  }
-
-  private checkout(
-    context: Context,
-    target: CheckoutTarget,
-    picked: number | undefined,
-  ): Promise<void> {
-    return this.queueHeadMove(context, () =>
-      this.checkoutNow(context, target, picked),
-    );
-  }
-
-  private async checkoutNow(
-    context: Context,
-    target: CheckoutTarget,
-    picked: number | undefined,
-  ): Promise<void> {
-    if (
-      !(await this.checkable(context, target)) ||
-      !(await checkout(this.log, this.notify(context), context, target))
-    ) {
-      return;
-    }
-    await this.refreshes.refresh(context);
-    await context.tab.loadingHistory;
-    await this.navigation.showHead(context, picked);
-  }
-
-  private async checkable(
-    context: Context,
-    target: CheckoutTarget,
-  ): Promise<boolean> {
-    if (target.kind === 'commit') {
-      if (isFullHash(target.hash) && context.tab.fullHistory.has(target.hash)) {
-        return true;
-      }
-      notInHistory(context, target.hash);
-      return false;
-    }
-    const { refs } = await readRefs(context.gitPath, context.root);
-    if (hasRef(refs, target)) {
-      return true;
-    }
-    this.notify(context)(
-      'error',
-      strings.messages.noRefToCheckOut(target.name),
-    );
-    return false;
-  }
-
-  private async fetch(context: Context): Promise<void> {
-    await this.refreshFetched(context, await this.fetchShown(context));
-  }
-
-  private async fetchShown(context: Context): Promise<Fetched> {
-    context.post({ type: 'fetching', running: true });
-    try {
-      return await this.fetchRemotes(context, this.log, this.notify(context));
-    } finally {
-      context.post({ type: 'fetching', running: false });
-    }
-  }
-
-  private async refreshFetched(
-    context: Context,
-    fetched: Fetched,
-  ): Promise<void> {
-    if (fetched.failed || fetched.changed) {
-      await this.refreshes.refresh(context, undefined, refsAlone);
-    }
-  }
-
-  private pull(context: Context, picked: number | undefined): Promise<void> {
-    return this.queueHeadMove(context, () => this.pullNow(context, picked));
-  }
-
-  private async pullNow(
-    context: Context,
-    picked: number | undefined,
-  ): Promise<void> {
-    const notify = this.notify(context);
-    context.post({ type: 'pulling', running: true });
-    let fetched: Fetched | undefined;
-    let pulled = false;
-    try {
-      if (await canPull(this.log, notify, context)) {
-        fetched = await this.fetchShown(context);
-        pulled =
-          (await this.fetchedForPull(context, fetched)) &&
-          (await fastForwardToUpstream(this.log, notify, context));
-      }
-    } finally {
-      context.post({ type: 'pulling', running: false });
-    }
-    if (pulled) {
-      await this.refreshes.refresh(context);
-      await context.tab.loadingHistory;
-      await this.navigation.showHead(context, picked);
-    } else if (fetched) {
-      await this.refreshFetched(context, fetched);
-    }
-  }
-
-  private async fetchedForPull(
-    context: Context,
-    fetched: Fetched,
-    branch?: string,
-  ): Promise<boolean> {
-    if (!fetched.failed) {
-      return true;
-    }
-    const upstream = await readUpstream(
-      context.gitPath,
-      context.root,
-      branch,
-    ).catch(() => undefined);
-    if (upstream?.kind !== 'found') {
-      return false;
-    }
-    return (
-      upstream.remote === '.' ||
-      this.afterRemoteWork(context.repository, () =>
-        fetchRemote(context.gitPath, context.root, upstream.remote, {
-          stop: this.quitting.signal,
-        }),
-      ).then(
-        () => true,
-        () => false,
-      )
-    );
-  }
-
-  private async push(context: Context): Promise<void> {
-    await context.tab.movingHead;
-    const head = await readHead(context.gitPath, context.root).catch(
-      () => undefined,
-    );
-    context.post({ type: 'pushing', running: true });
-    let pushed: Pushed;
-    try {
-      pushed = await this.pushAfterRemoteWork(context, head);
-    } finally {
-      context.post({ type: 'pushing', running: false });
-    }
-    if (pushed === 'pushed') {
-      await this.refreshes.refresh(context, undefined, refsAlone);
-    } else if (pushed === 'rejected') {
-      await this.fetch(context);
-    }
-  }
-
-  private async pushAfterRemoteWork(
-    context: Context,
-    head: Head | undefined,
-  ): Promise<Pushed> {
-    if (head !== undefined && head.name === undefined) {
-      foundUpstream(this.notify(context), { kind: 'detached' });
-      return 'unchanged';
-    }
-    return this.afterRemoteWork(context.repository, () =>
-      pushToUpstream(
-        this.log,
-        this.notify(context),
-        context,
-        this.quitting.signal,
-        head?.name,
-      ),
-    );
-  }
-
-  private async pullBranch(
-    context: Context,
-    name: string,
-    picked: number | undefined,
-  ): Promise<void> {
-    const notify = this.notify(context);
-    let fetched: Fetched | undefined;
-    let moved = false;
-    await this.runningOn(context, 'pullingBranch', name, async () => {
-      const { refs, head } = await this.refsOf(context);
-      if (!refs.some((ref) => ref.kind === 'branch' && ref.name === name)) {
-        return;
-      }
-      if (head?.name === name) {
-        await this.pull(context, picked);
-        return;
-      }
-      const worktrees = await listWorktrees(context.gitPath, context.root);
-      if (
-        worktrees.some(
-          (worktree) =>
-            worktree.branch === name && !sameRoot(worktree.path, context.root),
-        )
-      ) {
-        notify('info', strings.messages.checkedOutElsewhere(name));
-        return;
-      }
-      if (await canPull(this.log, notify, context, name)) {
-        fetched = await this.fetchShown(context);
-        moved =
-          (await this.fetchedForPull(context, fetched, name)) &&
-          (await this.queueHeadMove(context, () =>
-            this.moveToUpstream(context, name, picked),
-          ));
-      }
-    });
-    if (!moved && fetched) {
-      await this.refreshFetched(context, fetched);
-    }
-  }
-
-  private async moveToUpstream(
-    context: Context,
-    name: string,
-    picked: number | undefined,
-  ): Promise<boolean> {
-    const { head } = await readRefs(context.gitPath, context.root);
-    const checkedOut = head?.name === name;
-    if (
-      !(await fastForwardToUpstream(
-        this.log,
-        this.notify(context),
-        context,
-        checkedOut ? undefined : name,
-      ))
-    ) {
-      return false;
-    }
-    if (checkedOut) {
-      await this.refreshes.refresh(context);
-      await context.tab.loadingHistory;
-      await this.navigation.showHead(context, picked);
-    } else {
-      await this.refreshes.refresh(context, undefined, refsAlone);
-    }
-    return true;
-  }
-
-  private queueHeadMove<T>(
-    context: Context,
-    work: () => Promise<T>,
-  ): Promise<T> {
-    const { tab } = context;
-    const moving = tab.movingHead.then(work);
-    tab.movingHead = moving.then(
-      () => undefined,
-      () => undefined,
-    );
-    return moving;
-  }
-
-  private async pushBranch(context: Context, name: string): Promise<void> {
-    const { refs } = await this.refsOf(context);
-    if (!refs.some((ref) => ref.kind === 'branch' && ref.name === name)) {
-      return;
-    }
-    const pushed = await this.runningOn(context, 'pushingBranch', name, () =>
-      this.afterRemoteWork(context.repository, () =>
-        pushToUpstream(
-          this.log,
-          this.notify(context),
-          context,
-          this.quitting.signal,
-          name,
-        ),
-      ),
-    );
-    if (pushed === 'pushed') {
-      await this.refreshes.refresh(context, undefined, refsAlone);
-    } else if (pushed === 'rejected') {
-      await this.fetch(context);
-    }
-  }
-
-  private async pushTag(context: Context, name: string): Promise<void> {
-    const { refs, remotes } = await this.refsOf(context);
-    const tag = refs.find((ref) => ref.kind === 'tag' && ref.name === name);
-    if (!tag) {
-      return;
-    }
-    const remote = await pickTagRemote(
-      this.log,
-      this.notify(context),
-      context,
-      name,
-      remotes,
-    );
-    if (remote === undefined) {
-      return;
-    }
-    if (
-      this.storage.remoteTagsOf(context.repository).get(remote)?.get(name) ===
-      tag.commit
-    ) {
-      this.notify(context)(
-        'info',
-        strings.messages.tagAlreadyOnRemote(name, remote),
-      );
-      return;
-    }
-    const pushedTo = await this.runningOn(context, 'pushingTag', name, () =>
-      this.afterRemoteWork(context.repository, () =>
-        pushTag(
-          this.log,
-          this.notify(context),
-          context,
-          name,
-          remote,
-          this.quitting.signal,
-        ),
-      ),
-    );
-    const known =
-      pushedTo === undefined
-        ? undefined
-        : this.storage.remoteTagsOf(context.repository).get(pushedTo);
-    if (pushedTo === undefined || known === undefined) {
-      return;
-    }
-    this.tagsRecorded++;
-    await this.storage.setRemoteTags(
-      context.repository,
-      pushedTo,
-      new Map([...known, [name, tag.commit]]),
-    );
-    await this.refreshes.refresh(context, undefined, refsAlone);
-  }
-
-  private async runningOn<T>(
-    context: Context,
-    type: RunningOn,
-    name: string,
-    work: () => Promise<T>,
-  ): Promise<T> {
-    const names = context.tab.runningOn[type];
-    names.add(name);
-    context.post({ type, names: [...names] });
-    try {
-      return await work();
-    } finally {
-      names.delete(name);
-      context.post({ type, names: [...names] });
-    }
-  }
-
-  private async afterRemoteWork<T>(
-    repository: string,
-    work: () => Promise<T>,
-  ): Promise<T> {
-    const { pushes } = this;
-    const pushing = (this.remoteWork(repository) ?? Promise.resolve()).then(
-      work,
-    );
-    pushes.set(repository, pushing);
-    try {
-      return await pushing;
-    } finally {
-      if (pushes.get(repository) === pushing) {
-        pushes.delete(repository);
-      }
-    }
-  }
-
-  private remoteWork(repository: string): Promise<unknown> | undefined {
-    const running = [
-      this.fetches.get(repository)?.fetched,
-      this.pushes.get(repository),
-    ].filter((work) => work !== undefined);
-    return running.length === 0 ? undefined : Promise.allSettled(running);
-  }
-
-  private async fetchRemotes(
-    at: Fetchable,
-    log: Log,
-    notify: Notify,
-    interactive = true,
-  ): Promise<Fetched> {
-    const { repository } = at;
-    const { fetches } = this;
-    const running = fetches.get(repository);
-    const joined =
-      running !== undefined && (!interactive || running.interactive);
-    const fetching = joined ? running : this.startFetch(at, interactive);
-    const result = await fetching.fetched;
-    if (this.quitting.signal.aborted) {
-      return result;
-    }
-    const latest = fetches.get(repository);
-    if (!interactive && latest?.interactive) {
-      return latest.fetched;
-    }
-    if (joined) {
-      return result;
-    }
-    const fetched = reportFetched(log, notify, result);
-    if (fetched) {
-      this.fetchFailures.delete(repository);
-    } else {
-      this.fetchFailures.add(repository);
-    }
-    this.save(this.storage.recordFetch(repository, !fetched, Date.now()));
-    const shownIn = this.sessionShowingRepository(repository);
-    const live = shownIn && this.live(shownIn);
-    if (live !== undefined) {
-      this.postLastFetch(live, repository);
-    }
-    const notFetched = result.failed
-      ? remotesNotFetched(gitErrorText(result.error))
-      : [];
-    if (fetched || notFetched.length > 0) {
-      void this.shell.track(
-        this.listTagsOfRemotes(at, interactive, notFetched),
-      );
-    }
-    return result;
-  }
-
-  private async listTagsOfRemotes(
-    { gitPath, root, repository }: Fetchable,
-    interactive: boolean,
-    notFetched: readonly string[] = [],
-  ): Promise<void> {
-    let remotes: string[];
-    try {
-      remotes = await listRemotes(gitPath, root);
-      await this.storage.keepRemoteTags(repository, remotes);
-    } catch (error) {
-      this.log.warn(strings.log.listingRemoteTagsFailed(gitErrorText(error)));
-      return;
-    }
-    let changed = false;
-    let newlyKnown = false;
-    for (const remote of remotes.filter((name) => !notFetched.includes(name))) {
-      try {
-        const recorded = this.tagsRecorded;
-        const tags = await this.tagsOfRemote(
-          gitPath,
-          root,
-          remote,
-          interactive,
-        );
-        if (this.tagsRecorded !== recorded) {
-          continue;
-        }
-        const known = this.storage.remoteTagsOf(repository).get(remote);
-        if (!sameTags(known, tags)) {
-          await this.storage.setRemoteTags(repository, remote, tags);
-          changed ||= !sameTags(known ?? new Map(), tags);
-          newlyKnown ||= known === undefined;
-        }
-      } catch (error) {
-        if (this.quitting.signal.aborted) {
-          return;
-        }
-        this.log.warn(
-          strings.log.listingTagsOfRemoteFailed(remote, gitErrorText(error)),
-        );
-      }
-    }
-    if (changed) {
-      await this.refreshRefsShown(repository);
-    } else if (newlyKnown) {
-      await this.resendRepositoryShown(repository);
-    }
-  }
-
-  private tagsOfRemote(
-    gitPath: string,
-    root: string,
-    remote: string,
-    interactive: boolean,
-  ): Promise<Map<string, string>> {
-    return listRemoteTags(gitPath, root, remote, {
-      interactive,
-      stop: this.quitting.signal,
-    });
-  }
-
-  private async resendRepositoryShown(repository: string): Promise<void> {
-    const root = this.storage.worktreeOf(repository);
-    const page = this.sessionShowing(root);
-    const shown = page && (await this.context(page, root));
-    if (page && shown) {
-      await this.run(
-        strings.log.refreshingFailed,
-        page,
-        () => this.sendRepository(shown, this.refsOf(shown)),
-        root,
-      );
-    }
-  }
-
-  private async refreshRefsShown(repository: string): Promise<void> {
-    const root = this.storage.worktreeOf(repository);
-    const page = this.sessionShowing(root);
-    const shown = page && (await this.context(page, root));
-    if (page && shown) {
-      await this.run(
-        strings.log.refreshingFailed,
-        page,
-        () => this.refreshes.refresh(shown, undefined, refsAlone),
-        root,
-      );
-    }
-  }
-
-  private postLastFetch(
-    session: Session,
-    repository: string | undefined,
-  ): void {
-    session.post({
-      type: 'lastFetch',
-      ...(repository !== undefined && this.storage.lastFetchOf(repository)),
-    });
-  }
-
-  private startFetch(at: Fetchable, interactive: boolean): Fetching {
-    const { repository } = at;
-    const { fetches } = this;
-    const running = this.remoteWork(repository);
-    const started: Fetching = {
-      fetched: (running
-        ? running.then(() => fetchAll(at, interactive, this.quitting.signal))
-        : fetchAll(at, interactive, this.quitting.signal)
-      ).finally(() => {
-        if (fetches.get(repository) === started) {
-          fetches.delete(repository);
-        }
-      }),
-      interactive,
-    };
-    fetches.set(repository, started);
-    return started;
-  }
-
-  private async fetchInBackground(repository: string): Promise<void> {
-    const session = this.page;
-    const worktree = this.storage.worktreeOf(repository);
-    const root = (await isFolder(worktree)) ? worktree : repository;
-    if (
-      !session ||
-      !this.hasRepository(repository) ||
-      !(await isFolder(root))
-    ) {
-      return;
-    }
-    const reported = !this.fetchFailures.has(repository);
-    const log: Log = {
-      info: silent,
-      warn: reported ? (message) => this.log.warn(message) : silent,
-      error: reported ? (error) => this.log.error(error) : silent,
-    };
-    const notify: Notify = reported
-      ? this.noticesOf(session, repository)
-      : silent;
-    const fetched = await this.fetchRemotes(
-      { gitPath: this.gitPath, root, repository },
-      log,
-      notify,
-      false,
-    );
-    if (fetched.failed || !fetched.changed) {
-      return;
-    }
-    this.repositories.set(this.storage.worktreeOf(repository), repository);
-    await this.refreshRefsShown(repository);
   }
 
   private notify(context: Context): Notify {

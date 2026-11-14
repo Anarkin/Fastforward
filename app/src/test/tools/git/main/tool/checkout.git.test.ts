@@ -20,6 +20,7 @@ import {
   gate,
   openView,
   restoreRepository,
+  holderOf,
   stubMethod,
   takeErrorsLogged,
   viewRepositories,
@@ -85,9 +86,10 @@ suite('Git tool checking out', () => {
       return refs;
     });
     try {
+      const resending = holderOf(fastforward, 'resendRepositoryShown');
       const resent: Promise<void> = Reflect.apply(
-        Reflect.get(fastforward, 'resendRepositoryShown'),
-        fastforward,
+        Reflect.get(resending, 'resendRepositoryShown'),
+        resending,
         [repository.root],
       );
       await waitFor(() => read, 'the refs to be read');

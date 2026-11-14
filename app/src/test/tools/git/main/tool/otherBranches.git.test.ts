@@ -18,6 +18,7 @@ import {
   type FakePage,
   gate,
   openView,
+  holderOf,
   stubMethod,
   takeErrorsLogged,
   withNotices,
@@ -225,7 +226,7 @@ suite('Git tool pulling and pushing other branches', () => {
     await moveOnRemote('meanwhile');
     const tree = path.join(folder, 'meanwhile');
     await repository.git('config', 'fetch.prune', 'true');
-    const restore = Reflect.get(view, 'fetchRemotes');
+    const restore = Reflect.get(holderOf(view, 'fetchRemotes'), 'fetchRemotes');
     stubMethod(view, 'fetchRemotes', async (original, ...args) => {
       const fetched = await original(...args);
       await repository.git('worktree', 'add', tree, 'meanwhile');
@@ -237,7 +238,7 @@ suite('Git tool pulling and pushing other branches', () => {
       ]);
       assert.deepStrictEqual(await repository.resolve('meanwhile'), [start]);
     } finally {
-      Reflect.set(view, 'fetchRemotes', restore);
+      Reflect.set(holderOf(view, 'fetchRemotes'), 'fetchRemotes', restore);
       await repository.git('config', '--unset', 'fetch.prune');
       await repository.git('worktree', 'remove', '--force', tree);
     }
@@ -263,7 +264,7 @@ suite('Git tool pulling and pushing other branches', () => {
     const pushed = await moveOnRemote('next');
     const held = gate();
     let checkingOut = false;
-    const restore = Reflect.get(view, 'checkoutNow');
+    const restore = Reflect.get(holderOf(view, 'checkoutNow'), 'checkoutNow');
     stubMethod(view, 'checkoutNow', async (original, ...args) => {
       checkingOut = true;
       await held.opened;
@@ -294,7 +295,7 @@ suite('Git tool pulling and pushing other branches', () => {
       await checkedOut;
       assert.deepStrictEqual(await pulled, []);
     } finally {
-      Reflect.set(view, 'checkoutNow', restore);
+      Reflect.set(holderOf(view, 'checkoutNow'), 'checkoutNow', restore);
     }
     assert.deepStrictEqual(await repository.resolve('HEAD'), [pushed]);
     assert.ok(fs.existsSync(path.join(repository.root, 'next.txt')));
@@ -306,7 +307,7 @@ suite('Git tool pulling and pushing other branches', () => {
     await repository.git('branch', 'elsewhere', 'main');
     const held = gate();
     let fetching = false;
-    const restore = Reflect.get(view, 'fetchRemotes');
+    const restore = Reflect.get(holderOf(view, 'fetchRemotes'), 'fetchRemotes');
     stubMethod(view, 'fetchRemotes', async (original, ...args) => {
       fetching = true;
       await held.opened;
@@ -329,7 +330,7 @@ suite('Git tool pulling and pushing other branches', () => {
       held.open();
       assert.deepStrictEqual(await pulled, []);
     } finally {
-      Reflect.set(view, 'fetchRemotes', restore);
+      Reflect.set(holderOf(view, 'fetchRemotes'), 'fetchRemotes', restore);
     }
     assert.deepStrictEqual(await repository.resolve('fetching'), [pushed]);
   });
@@ -371,7 +372,10 @@ suite('Git tool pulling and pushing other branches', () => {
     await repository.git('branch', 'second', 'main');
     const held = gate();
     let calls = 0;
-    const restore = Reflect.get(view, 'afterRemoteWork');
+    const restore = Reflect.get(
+      holderOf(view, 'afterRemoteWork'),
+      'afterRemoteWork',
+    );
     stubMethod(view, 'afterRemoteWork', async (original, ...args) => {
       calls += 1;
       if (calls === 1) {
@@ -387,7 +391,11 @@ suite('Git tool pulling and pushing other branches', () => {
       held.open();
       await first;
     } finally {
-      Reflect.set(view, 'afterRemoteWork', restore);
+      Reflect.set(
+        holderOf(view, 'afterRemoteWork'),
+        'afterRemoteWork',
+        restore,
+      );
     }
     assert.deepStrictEqual(page.messages.flatMap(running), [
       'pushingBranch first',
@@ -403,15 +411,22 @@ suite('Git tool pulling and pushing other branches', () => {
     await repository.git('branch', 'behind', 'main');
     await remote.git('branch', 'fetched', a);
     const held = gate();
-    const afterRemoteWork: unknown = Reflect.get(view, 'afterRemoteWork');
+    const afterRemoteWork: unknown = Reflect.get(
+      holderOf(view, 'afterRemoteWork'),
+      'afterRemoteWork',
+    );
     assert.ok(typeof afterRemoteWork === 'function');
-    const failing: unknown = Reflect.apply(afterRemoteWork, view, [
-      repository.root,
-      async () => {
-        await held.opened;
-        throw new Error('the remote work before failed');
-      },
-    ]);
+    const failing: unknown = Reflect.apply(
+      afterRemoteWork,
+      holderOf(view, 'afterRemoteWork'),
+      [
+        repository.root,
+        async () => {
+          await held.opened;
+          throw new Error('the remote work before failed');
+        },
+      ],
+    );
     const failed = Promise.resolve(failing).catch((error: unknown) => error);
     page.clear();
     const pushing = connection.receive({

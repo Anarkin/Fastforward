@@ -130,18 +130,10 @@
       }
     },
     {
-      "files": ["src/tools/git/main/tool.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 3000
-          }
-        ]
-      }
-    },
-    {
-      "files": ["src/test/tools/git/page/syntax.test.ts"],
+      "files": [
+        "src/test/tools/git/page/syntax.test.ts",
+        "src/tools/git/main/tool.ts"
+      ],
       "rules": {
         "max-lines": [
           "warn",

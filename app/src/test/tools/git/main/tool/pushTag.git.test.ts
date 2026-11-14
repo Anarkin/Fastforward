@@ -19,6 +19,7 @@ import {
   gate,
   holdFetches,
   openView,
+  holderOf,
   stubMethod,
   withNotices,
   type PageMessage,
@@ -130,7 +131,10 @@ suite('Git tool pushing tags', () => {
     await connection.refresh();
     const held = gate();
     let calls = 0;
-    const restore = Reflect.get(view, 'afterRemoteWork');
+    const restore = Reflect.get(
+      holderOf(view, 'afterRemoteWork'),
+      'afterRemoteWork',
+    );
     stubMethod(view, 'afterRemoteWork', async (original, ...args) => {
       calls += 1;
       if (calls === 1) {
@@ -146,7 +150,11 @@ suite('Git tool pushing tags', () => {
       held.open();
       await first;
     } finally {
-      Reflect.set(view, 'afterRemoteWork', restore);
+      Reflect.set(
+        holderOf(view, 'afterRemoteWork'),
+        'afterRemoteWork',
+        restore,
+      );
     }
     assert.deepStrictEqual(page.messages.flatMap(pushingTag), [
       'v6',
@@ -163,7 +171,7 @@ suite('Git tool pushing tags', () => {
     await connection.refresh();
     const held = gate();
     let listed = false;
-    const restore = Reflect.get(view, 'tagsOfRemote');
+    const restore = Reflect.get(holderOf(view, 'tagsOfRemote'), 'tagsOfRemote');
     stubMethod(view, 'tagsOfRemote', async (original, ...args) => {
       const tags = await original(...args);
       listed = true;
@@ -173,14 +181,14 @@ suite('Git tool pushing tags', () => {
     try {
       await connection.receive({ type: 'fetch', root: repository.root });
       await waitFor(() => listed, 'the tags of origin to be listed');
-      Reflect.set(view, 'tagsOfRemote', restore);
+      Reflect.set(holderOf(view, 'tagsOfRemote'), 'tagsOfRemote', restore);
       assert.deepStrictEqual(await pushedWith('info', 'v8'), [
         'Pushed tag "v8" to "origin"',
       ]);
       held.open();
       await view.idle();
     } finally {
-      Reflect.set(view, 'tagsOfRemote', restore);
+      Reflect.set(holderOf(view, 'tagsOfRemote'), 'tagsOfRemote', restore);
       held.open();
     }
     await connection.refresh();
