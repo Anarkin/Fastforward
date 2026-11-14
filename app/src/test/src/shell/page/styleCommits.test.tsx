@@ -9,7 +9,6 @@ import {
   ColumnShown,
   CommitColumn,
   CommitRowShown,
-  GraphBesideCommit,
   MessagePanelShown,
   NavButtonsShown,
   WorkingTreeRowShown,
@@ -28,6 +27,20 @@ import {
   commitRowHeight,
   workingTreeRowHeight,
 } from '../../../../tools/git/page/commitListRows';
+
+function GraphBesideCommit({ selected }: { readonly selected?: string }) {
+  return (
+    <div className="virtual-row">
+      <GraphCell
+        row={{ lane: 0, color: 0, lines: [] }}
+        height={commitRowHeight}
+        line={bubbleLineHeight}
+        onToggleMerge={noop}
+      />
+      <CommitRowShown selected={selected} />
+    </div>
+  );
+}
 
 suite('Style', () => {
   test("keeps the commit column's title clear of its buttons and the gaps between them", () => {

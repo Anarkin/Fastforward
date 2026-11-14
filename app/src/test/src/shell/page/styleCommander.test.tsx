@@ -10,9 +10,33 @@ import {
   type MarkupElement,
 } from '../../../helpers/cascade';
 import { defaultSettings } from '../../../helpers/fixtures';
-import { CommanderItem, PathTitleShown } from '../../../helpers/styleFixtures';
-import { css, bodyVariable, compact, looks, after } from './stylesheetFixtures';
+import { PathTitleShown } from '../../../helpers/styleFixtures';
+import {
+  css,
+  bodyVariable,
+  compact,
+  looks,
+  after,
+  noop,
+} from './stylesheetFixtures';
 import { createElement } from 'react';
+import { MarkBox } from '../../../../tools/commander/page/paneCells';
+
+function CommanderItem({
+  className,
+  paneClassName = '',
+}: {
+  readonly className: string;
+  readonly paneClassName?: string;
+}) {
+  return (
+    <div className={`commander ${paneClassName}`}>
+      <div className={`row commander-row ${className}`}>
+        <MarkBox onToggle={noop} />
+      </div>
+    </div>
+  );
+}
 
 function checkBox(checked: boolean): MarkupElement {
   return rendered(

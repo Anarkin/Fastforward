@@ -9,13 +9,47 @@ import {
 } from '../../../helpers/cascade';
 import {
   DiffViewShown,
-  HangingSpacesLine,
   IndentedLine,
+  DiffRow,
 } from '../../../helpers/styleFixtures';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { compact, looks, noop } from './stylesheetFixtures';
 import { TerminalTool } from '../../../../tools/terminal/page/tool';
 import { createElement } from 'react';
+import { Code } from '../../../../tools/git/page/codeMarks';
+import { BreakMarks } from '../../../../tools/git/page/wrapMarks';
+
+function HangingSpacesLine() {
+  return (
+    <DiffRow>
+      <div className="diff-line text-line added">
+        <span className="number">1</span>
+        <span className="number">1</span>
+        <Code
+          text="a   b"
+          syntax={[]}
+          words={[]}
+          wordClass="word-added"
+          finds={[]}
+          current={undefined}
+          whitespace={false}
+        />
+        <span className="wrap-marks">
+          <BreakMarks
+            breaks={[
+              {
+                end: 4,
+                blanks: [1, 2, 3].map((column) => ({ column, tab: false })),
+              },
+            ]}
+            numbers={2}
+            lineHeight={18}
+          />
+        </span>
+      </div>
+    </DiffRow>
+  );
+}
 
 function cell(row: MarkupElement, className: string): MarkupElement {
   return withClass(

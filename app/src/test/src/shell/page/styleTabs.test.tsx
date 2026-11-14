@@ -15,7 +15,6 @@ import {
   MenuButtonShown,
   TabBarIn,
   TabBarShown,
-  TabRow,
   WorktreeBarShown,
 } from '../../../helpers/styleFixtures';
 import { worktree } from '../../../helpers/styleMarkup';
@@ -34,6 +33,30 @@ import {
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { tabsStore } from '../../../helpers/componentFixtures';
 import { createElement } from 'react';
+
+function TabRow({
+  count,
+  active,
+}: {
+  readonly count: number;
+  readonly active: string;
+}) {
+  return (
+    <ShellStore
+      value={tabsStore(
+        ['a', 'b', 'c'].slice(0, count).map((name) => ({
+          id: `/${name}`,
+          tool: 'git' as const,
+          root: `/${name}`,
+          name,
+        })),
+        active,
+      )}
+    >
+      <TabBar />
+    </ShellStore>
+  );
+}
 
 function appIconSpacing(tabBar: React.ReactElement) {
   const bar = rendered(tabBar);

@@ -19,7 +19,6 @@ import {
   NoticesShown,
   SearchButtonShown,
   ShortcutsPopupShown,
-  SoloButtonShown,
   TabBarIn,
   TabBarShown,
 } from '../../../helpers/styleFixtures';
@@ -34,6 +33,28 @@ import {
   hovered,
 } from './stylesheetFixtures';
 import { FileHeader } from '../../../../tools/git/page/diffRowParts';
+import { emptyTabView } from '../../../../tools/git/page/tabView';
+import { SoloButton } from '../../../../tools/git/page/commitList';
+import { createGitStore, GitStore } from '../../../../tools/git/page/store';
+
+function SoloButtonShown({
+  solo,
+  applying,
+}: {
+  readonly solo: boolean;
+  readonly applying: boolean;
+}) {
+  return (
+    <GitStore
+      value={createGitStore(noop, {
+        solo,
+        tab: { ...emptyTabView, applyingSolo: applying },
+      })}
+    >
+      <SoloButton />
+    </GitStore>
+  );
+}
 
 suite('Style', () => {
   test('sizes every round button and spaces every group of them by one size and one gap, each a whole number of screen pixels, so no gap is drawn wider than another at 125%', () => {

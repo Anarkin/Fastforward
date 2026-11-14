@@ -9,11 +9,7 @@ import { emptyTabView } from '../../tools/git/page/tabView';
 import type { ColumnName } from '../../tools/git/page/activeColumn';
 import { ChangesTreeItem } from '../../tools/git/page/changesTree';
 import { Column } from '../../tools/git/page/column';
-import {
-  CommitRow,
-  SoloButton,
-  WorkingTreeRow,
-} from '../../tools/git/page/commitList';
+import { CommitRow, WorkingTreeRow } from '../../tools/git/page/commitList';
 import { ContextMenu } from '../../shell/page/contextMenu';
 import {
   gitStore,
@@ -45,19 +41,12 @@ import { WorktreeBar } from '../../tools/git/page/worktreeBar';
 import { commitInfo } from './fixtures';
 import { createShellStore, ShellStore } from '../../shell/page/store';
 import { Code, MarkedCode } from '../../tools/git/page/codeMarks';
-import { BreakMarks } from '../../tools/git/page/wrapMarks';
 import { diffRowClass } from '../../tools/git/page/diffRowClasses';
 import { DiffView } from '../../tools/git/page/diffView';
 import { repository } from './styleMarkup';
 import { AboutPopup } from '../../shell/page/aboutPopup';
 import { ShortcutsPopup } from '../../shell/page/shortcutsPopup';
-import { GraphCell } from '../../tools/git/page/graph';
-import {
-  bubbleLineHeight,
-  commitRowHeight,
-} from '../../tools/git/page/commitListRows';
 import { FileHeader } from '../../tools/git/page/diffRowParts';
-import { MarkBox } from '../../tools/commander/page/paneCells';
 import { PathTitle } from '../../tools/commander/page/pathTitle';
 
 const noop = () => undefined;
@@ -159,30 +148,6 @@ export function TabBarIn({
   );
 }
 
-export function TabRow({
-  count,
-  active,
-}: {
-  readonly count: number;
-  readonly active: string;
-}) {
-  return (
-    <ShellStore
-      value={tabsStore(
-        ['a', 'b', 'c'].slice(0, count).map((name) => ({
-          id: `/${name}`,
-          tool: 'git' as const,
-          root: `/${name}`,
-          name,
-        })),
-        active,
-      )}
-    >
-      <TabBar />
-    </ShellStore>
-  );
-}
-
 export function WorktreeBarShown({
   worktrees,
   active,
@@ -270,43 +235,6 @@ export function MessagePanelShown({
         }}
       />
     </MessagePanel>
-  );
-}
-
-export function GraphBesideCommit({
-  selected,
-}: {
-  readonly selected?: string;
-}) {
-  return (
-    <div className="virtual-row">
-      <GraphCell
-        row={{ lane: 0, color: 0, lines: [] }}
-        height={commitRowHeight}
-        line={bubbleLineHeight}
-        onToggleMerge={noop}
-      />
-      <CommitRowShown selected={selected} />
-    </div>
-  );
-}
-
-export function SoloButtonShown({
-  solo,
-  applying,
-}: {
-  readonly solo: boolean;
-  readonly applying: boolean;
-}) {
-  return (
-    <GitStore
-      value={createGitStore(noop, {
-        solo,
-        tab: { ...emptyTabView, applyingSolo: applying },
-      })}
-    >
-      <SoloButton />
-    </GitStore>
   );
 }
 
@@ -634,38 +562,6 @@ export function IndentedLine() {
   );
 }
 
-export function HangingSpacesLine() {
-  return (
-    <DiffRow>
-      <div className="diff-line text-line added">
-        <span className="number">1</span>
-        <span className="number">1</span>
-        <Code
-          text="a   b"
-          syntax={[]}
-          words={[]}
-          wordClass="word-added"
-          finds={[]}
-          current={undefined}
-          whitespace={false}
-        />
-        <span className="wrap-marks">
-          <BreakMarks
-            breaks={[
-              {
-                end: 4,
-                blanks: [1, 2, 3].map((column) => ({ column, tab: false })),
-              },
-            ]}
-            numbers={2}
-            lineHeight={18}
-          />
-        </span>
-      </div>
-    </DiffRow>
-  );
-}
-
 export function SplitLine({
   left,
   right,
@@ -723,22 +619,6 @@ export function DiffViewShown({
       jump={0}
       firstChange={undefined}
     />,
-  );
-}
-
-export function CommanderItem({
-  className,
-  paneClassName = '',
-}: {
-  readonly className: string;
-  readonly paneClassName?: string;
-}) {
-  return (
-    <div className={`commander ${paneClassName}`}>
-      <div className={`row commander-row ${className}`}>
-        <MarkBox onToggle={noop} />
-      </div>
-    </div>
   );
 }
 
