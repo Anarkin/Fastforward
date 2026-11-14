@@ -12,13 +12,12 @@ import {
   glideEnded,
   type Glide,
 } from '../../../lib/page/glide';
+import { elementMetrics } from '../../../lib/page/scrollerMetrics';
 import {
-  elementMetrics,
   setSidewaysScroller,
-  sidewaysMetrics,
-  sidewaysScroll,
   sidewaysScrollEvent,
-} from '../../../lib/page/overlayScrollbars';
+} from '../../../lib/page/scrollbarLinks';
+import { sidewaysMetrics, sidewaysScroll } from './sidewaysMetrics';
 import { sideRoom, wheelSideways } from './diffScrolling';
 import type { Sideways } from './overflow';
 import { readSideways, sameSideways } from './textLayout';

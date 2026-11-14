@@ -22,9 +22,6 @@ import {
   installOverlayScrollbars,
   overlayScrollbarClass,
   scrolledScroller,
-  trackOf,
-  sidewaysMetrics,
-  sidewaysScroll,
 } from '../../../../lib/page/overlayScrollbars';
 
 const none = () => null;
@@ -417,21 +414,6 @@ suite('Overlay scrollbars', () => {
     );
   });
 
-  test('takes the track of an area from the corners its radius rounds and the ends its scroll padding covers, whichever reaches further', () => {
-    assert.deepStrictEqual(
-      trackOf({
-        scrollPaddingTop: '40px',
-        scrollPaddingBottom: 'auto',
-        scrollPaddingLeft: '0px',
-        scrollPaddingRight: '0px',
-        borderTopRightRadius: '6px',
-        borderBottomRightRadius: '6px',
-        borderBottomLeftRadius: '4px',
-      }),
-      { top: 40, bottom: 6, left: 4, right: 6 },
-    );
-  });
-
   test('places no thumb along an axis that fits', () => {
     assert.strictEqual(
       thumbBox('horizontal', { ...scroller, scrollWidth: 400 }, 25),
@@ -451,35 +433,6 @@ suite('Overlay scrollbars', () => {
       draggedScroll('horizontal', horizontal, { clientX: 290, clientY: 999 }),
       200 - 10 * 2,
     );
-  });
-
-  test('measures the two sides of a side by side diff, scrolled together, as one area scrolled across the whole width', () => {
-    const sides = sidewaysMetrics(
-      { ...scroller, clientWidth: 1000, scrollWidth: 1000, scrollLeft: 0 },
-      400,
-      400,
-      200,
-    );
-    assert.strictEqual(sides.scrollWidth, 2000);
-    assert.strictEqual(sides.scrollLeft, 500);
-    assert.deepStrictEqual(thumbOf(sides.scrollWidth, sides.clientWidth, 500), {
-      offset: 250,
-      length: 500,
-    });
-    assert.strictEqual(sidewaysScroll(500, 1000, 400), 200);
-  });
-
-  test('measures two sides that fit, or have no width, as not scrolling', () => {
-    const fitting = { ...scroller, clientWidth: 1000, scrollWidth: 1000 };
-    for (const [side, widest] of [
-      [400, 0],
-      [0, 400],
-    ]) {
-      const sides = sidewaysMetrics(fitting, side, widest, 0);
-      assert.strictEqual(thumbBox('horizontal', sides, 25), undefined);
-    }
-    assert.strictEqual(sidewaysScroll(500, 1000, 0), 0);
-    assert.strictEqual(sidewaysScroll(500, 0, 400), 0);
   });
 
   test('places the track a thumb runs along over the right edge, or the bottom, between the ends it keeps off, and none along an axis that fits', () => {

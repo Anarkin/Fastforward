@@ -1,7 +1,7 @@
 import { pressedAlone } from '../shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
 import { glideAt, glideEnded, type Glide } from './glide';
-import { setRowScroller } from './overlayScrollbars';
+import { setRowScroller } from './scrollbarLinks';
 
 const onRow = 0.01;
 const lineMode = 1;

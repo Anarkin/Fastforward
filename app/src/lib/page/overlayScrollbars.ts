@@ -1,17 +1,21 @@
 import { clicked } from '../shared/keymap';
 import { keymap } from './keymap';
-import { scrollbarDrags, type ScrollbarDrag } from './scrollbarLinks';
+import {
+  rowScrollerOf,
+  scrollbarDrags,
+  sidewaysScrollEvent,
+  sidewaysScrollerOf,
+  type ScrollbarDrag,
+} from './scrollbarLinks';
 import { followDrag } from './followDrag';
 import { afterPaint, inNextFrame } from './afterPaint';
+import { elementMetrics } from './scrollerMetrics';
+import { frameOf } from './scrollbarFrames';
 
 import {
   hideAfter,
-  Track,
   Axis,
   ScrollerMetrics,
-  Frame,
-  paintedFrame,
-  sharesEdge,
   framedMetrics,
   clipPathOf,
   thumbBox,
@@ -26,57 +30,6 @@ export const ownScrollbarAttribute = 'data-own-vertical-scrollbar';
 
 export function drawsOverlay(axis: Axis, ownsVertical: boolean): boolean {
   return axis === 'horizontal' || !ownsVertical;
-}
-
-const pixels = (value: string) => parseFloat(value) || 0;
-
-export function trackOf(
-  style: Pick<
-    CSSStyleDeclaration,
-    | 'scrollPaddingTop'
-    | 'scrollPaddingBottom'
-    | 'scrollPaddingLeft'
-    | 'scrollPaddingRight'
-    | 'borderTopRightRadius'
-    | 'borderBottomRightRadius'
-    | 'borderBottomLeftRadius'
-  >,
-): Track {
-  return {
-    top: Math.max(
-      pixels(style.scrollPaddingTop),
-      pixels(style.borderTopRightRadius),
-    ),
-    bottom: Math.max(
-      pixels(style.scrollPaddingBottom),
-      pixels(style.borderBottomRightRadius),
-    ),
-    left: Math.max(
-      pixels(style.scrollPaddingLeft),
-      pixels(style.borderBottomLeftRadius),
-    ),
-    right: Math.max(
-      pixels(style.scrollPaddingRight),
-      pixels(style.borderBottomRightRadius),
-    ),
-  };
-}
-
-function paddingOf(
-  style: Pick<
-    CSSStyleDeclaration,
-    | 'scrollPaddingTop'
-    | 'scrollPaddingBottom'
-    | 'scrollPaddingLeft'
-    | 'scrollPaddingRight'
-  >,
-): Track {
-  return {
-    top: pixels(style.scrollPaddingTop),
-    bottom: pixels(style.scrollPaddingBottom),
-    left: pixels(style.scrollPaddingLeft),
-    right: pixels(style.scrollPaddingRight),
-  };
 }
 
 export function followedScroller<T>(
@@ -110,65 +63,10 @@ function scrollsAlong(element: Element, axis: Axis): boolean {
     : element.scrollWidth > element.clientWidth + 1;
 }
 
-export interface SidewaysScroller {
-  readonly metrics: () => ScrollerMetrics;
-  readonly scrollTo: (scrollLeft: number) => void;
-}
-
-const sidewaysScrollers = new WeakMap<Element, SidewaysScroller>();
-
-export const sidewaysScrollEvent = 'sidewaysscroll';
-
-export function setSidewaysScroller(
-  element: Element,
-  scroller: SidewaysScroller | undefined,
-): void {
-  if (scroller) {
-    sidewaysScrollers.set(element, scroller);
-  } else {
-    sidewaysScrollers.delete(element);
-  }
-}
-
-const rowScrollers = new WeakMap<Element, (scrollTop: number) => void>();
-
-export function setRowScroller(
-  element: Element,
-  dragTo: ((scrollTop: number) => void) | undefined,
-): void {
-  if (dragTo) {
-    rowScrollers.set(element, dragTo);
-  } else {
-    rowScrollers.delete(element);
-  }
-}
-
-export function sidewaysMetrics(
-  area: ScrollerMetrics,
-  side: number,
-  widest: number,
-  scrolled: number,
-): ScrollerMetrics {
-  const scale = side > 0 ? area.clientWidth / side : 0;
-  return {
-    ...area,
-    scrollWidth: area.clientWidth + widest * scale,
-    scrollLeft: scrolled * scale,
-  };
-}
-
-export function sidewaysScroll(
-  scrollLeft: number,
-  clientWidth: number,
-  side: number,
-): number {
-  return clientWidth > 0 ? (scrollLeft * side) / clientWidth : 0;
-}
-
 function scrollerOf(target: EventTarget | null, axis: Axis): Element | null {
   let element = target instanceof Element ? target : null;
   while (element && element !== document.documentElement) {
-    const sideways = axis === 'horizontal' && sidewaysScrollers.get(element);
+    const sideways = axis === 'horizontal' && sidewaysScrollerOf(element);
     if (sideways) {
       const metrics = sideways.metrics();
       return metrics.scrollWidth > metrics.clientWidth + 1 ? element : null;
@@ -183,123 +81,10 @@ function scrollerOf(target: EventTarget | null, axis: Axis): Element | null {
   return null;
 }
 
-function radiusOf(style: CSSStyleDeclaration): number {
-  return Math.max(
-    pixels(style.borderTopLeftRadius),
-    pixels(style.borderTopRightRadius),
-    pixels(style.borderBottomRightRadius),
-    pixels(style.borderBottomLeftRadius),
-  );
-}
-
-interface Framing {
-  readonly lined: readonly Element[];
-  readonly rounded: readonly Element[];
-}
-
-const framings = new WeakMap<Element, Framing>();
-
-function lineOf(element: Element): number {
-  return pixels(
-    getComputedStyle(element, '::after').getPropertyValue('--frame-line'),
-  );
-}
-
-function framingOf(scroller: Element): Framing {
-  const known = framings.get(scroller);
-  if (
-    known !== undefined &&
-    [...known.lined, ...known.rounded].every((element) => element.isConnected)
-  ) {
-    return known;
-  }
-  const lined: Element[] = [];
-  const rounded: Element[] = [];
-  for (
-    let element = scroller.parentElement;
-    element !== null && element !== document.body;
-    element = element.parentElement
-  ) {
-    if (lineOf(element) > 0) {
-      lined.push(element);
-    } else if (radiusOf(getComputedStyle(element)) > 0) {
-      rounded.push(element);
-    }
-  }
-  const framing = { lined, rounded };
-  framings.set(scroller, framing);
-  return framing;
-}
-
-function frameFrom(element: Element, line: number): Frame {
-  const { left, top, right, bottom } = element.getBoundingClientRect();
-  return paintedFrame(
-    {
-      left,
-      top,
-      right,
-      bottom,
-      line,
-      radius: radiusOf(getComputedStyle(element)),
-    },
-    window.devicePixelRatio,
-  );
-}
-
-function borderOf(element: Element): number {
-  return pixels(getComputedStyle(element).borderRightWidth);
-}
-
-function frameOf(
-  scroller: Element,
-  metrics: ScrollerMetrics,
-): Frame | undefined {
-  const { lined, rounded } = framingOf(scroller);
-  const shared = [
-    ...lined.map((element) => frameFrom(element, lineOf(element))),
-    ...rounded.map((element) => frameFrom(element, borderOf(element))),
-  ].find((frame) => sharesEdge(metrics, frame));
-  if (shared !== undefined) {
-    return shared;
-  }
-  return radiusOf(getComputedStyle(scroller)) > 0
-    ? frameFrom(scroller, borderOf(scroller))
-    : undefined;
-}
-
 function metricsOf(scroller: Element, axis: Axis): ScrollerMetrics {
-  const sideways = axis === 'horizontal' && sidewaysScrollers.get(scroller);
+  const sideways = axis === 'horizontal' && sidewaysScrollerOf(scroller);
   const metrics = sideways ? sideways.metrics() : elementMetrics(scroller);
   return framedMetrics(metrics, frameOf(scroller, metrics));
-}
-
-function refined(whole: number, measured: number): number {
-  return measured > 0 && Math.abs(measured - whole) < 1 ? measured : whole;
-}
-
-export function elementMetrics(scroller: Element): ScrollerMetrics {
-  const { left, top, width, height } = scroller.getBoundingClientRect();
-  const style = getComputedStyle(scroller);
-  return {
-    left,
-    top,
-    clientLeft: scroller.clientLeft,
-    clientTop: scroller.clientTop,
-    clientWidth: refined(
-      scroller.clientWidth,
-      width - scroller.clientLeft - pixels(style.borderRightWidth),
-    ),
-    clientHeight: refined(
-      scroller.clientHeight,
-      height - scroller.clientTop - pixels(style.borderBottomWidth),
-    ),
-    scrollWidth: scroller.scrollWidth,
-    scrollHeight: scroller.scrollHeight,
-    scrollLeft: scroller.scrollLeft,
-    scrollTop: scroller.scrollTop,
-    track: trackOf(style),
-    padding: paddingOf(style),
-  };
 }
 
 function barSize(): number {
@@ -431,8 +216,8 @@ class Bar {
   }
 
   private scroll(scroller: Element, scroll: number): void {
-    const sideways = sidewaysScrollers.get(scroller);
-    const rows = rowScrollers.get(scroller);
+    const sideways = sidewaysScrollerOf(scroller);
+    const rows = rowScrollerOf(scroller);
     if (this.axis === 'vertical' && rows) {
       rows(scroll);
     } else if (this.axis === 'vertical') {
