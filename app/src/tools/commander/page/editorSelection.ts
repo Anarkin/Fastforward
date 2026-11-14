@@ -110,6 +110,7 @@ interface CursorCell {
 interface Character {
   readonly left: number;
   readonly right: number;
+  readonly middle: number;
   readonly glyph: Box;
   readonly text: string;
   readonly font: string;
@@ -141,6 +142,7 @@ function characterAt(
   return {
     left: cell.left,
     right: cell.right,
+    middle: (cell.top + cell.bottom) / 2,
     glyph: {
       left: rect.left,
       top: rect.top,
@@ -159,18 +161,16 @@ function cellAt(view: EditorView, range: SelectionRange): CursorCell | null {
     return null;
   }
   const rowHeight = parseFloat(getComputedStyle(view.contentDOM).lineHeight);
-  const lineTop = view.documentTop + view.lineBlockAt(head).top;
   const middle = (at.top + at.bottom) / 2;
-  const row = Math.floor((middle - lineTop) / rowHeight);
-  const top = lineTop + Math.max(0, row) * rowHeight;
   const advance = view.defaultCharacterWidth;
-  const of = (left: number, width: number, under: Character | null) => ({
-    cell: { left, top, width, height: rowHeight },
-    text: under?.text ?? '',
-    font: under?.font,
-    glyphBox: under?.glyph,
-  });
   const under = characterAt(view, head, middle, rowHeight);
+  const top = (under?.middle ?? middle) - rowHeight / 2;
+  const of = (left: number, width: number, shown: Character | null) => ({
+    cell: { left, top, width, height: rowHeight },
+    text: shown?.text ?? '',
+    font: shown?.font,
+    glyphBox: shown?.glyph,
+  });
   const left = under?.left ?? at.left;
   const width = under === null ? advance : under.right - under.left;
   const edge = rowEdge(view);

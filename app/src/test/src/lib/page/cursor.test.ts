@@ -107,6 +107,16 @@ suite('Cursor', () => {
     );
   });
 
+  test('rounds an edge on half a device pixel up, as the browser snaps the 64ths of a device pixel it lays out in, though its CSS pixels fall a float short of the half', () => {
+    const left = 348.3999938964844;
+    const top = 588.3999938964844;
+    assert.ok(left * 1.25 < 435.5 && top * 1.25 < 735.5);
+    assert.deepStrictEqual(
+      pixelBox({ left, top, width: 7.200000762939453, height: 17.6 }, 1.25),
+      { left: 436, top: 736, width: 9, height: 22 },
+    );
+  });
+
   test('places a box of device pixels in CSS pixels from the origin of the element holding it', () => {
     assert.deepStrictEqual(
       placedBox({ left: 90, top: 35, width: 10, height: 25 }, 1.25, {

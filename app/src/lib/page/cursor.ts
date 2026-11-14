@@ -83,14 +83,19 @@ export function cursorBox(
   }
 }
 
+const layoutUnits = 64;
+
+const snapped = (device: number) =>
+  Math.round(Math.round(device * layoutUnits) / layoutUnits);
+
 export function pixelBox(box: Box, ratio: number): Box {
-  const left = Math.round(box.left * ratio);
-  const top = Math.round(box.top * ratio);
+  const left = snapped(box.left * ratio);
+  const top = snapped(box.top * ratio);
   return {
     left,
     top,
-    width: Math.round((box.left + box.width) * ratio) - left,
-    height: Math.round((box.top + box.height) * ratio) - top,
+    width: snapped((box.left + box.width) * ratio) - left,
+    height: snapped((box.top + box.height) * ratio) - top,
   };
 }
 

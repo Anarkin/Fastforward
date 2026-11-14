@@ -8,7 +8,13 @@ import type * as commanderKeymapModule from '../../tools/commander/page/keymap';
 import type * as editorSelectionModule from '../../tools/commander/page/editorSelection';
 import type * as editorTextModule from '../../tools/commander/page/editorText';
 import type * as textWidthsModule from '../../lib/page/textWidths';
-import { diffLineNumbered, gridLines, page, sharedApp } from './appFixtures';
+import {
+  app as electronApp,
+  diffLineNumbered,
+  gridLines,
+  page,
+  sharedApp,
+} from './appFixtures';
 import { waitFor } from '../helpers/fixtures';
 
 const editorLines = [
@@ -478,6 +484,101 @@ async function select(
 const nearPixel = (a: number | undefined, b: number) =>
   a !== undefined && Math.abs(a - b) < 1;
 
+async function zoomTo(ratio: number | undefined): Promise<void> {
+  const wanted = await electronApp.evaluate(
+    ({ BrowserWindow, screen }, asked) => {
+      let shown = 1;
+      for (const window of BrowserWindow.getAllWindows()) {
+        const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
+        shown = asked ?? scale;
+        window.webContents.setZoomFactor(shown / scale);
+      }
+      return shown;
+    },
+    ratio,
+  );
+  await waitFor(
+    () =>
+      page.evaluate(
+        (shown) =>
+          devicePixelRatio === shown &&
+          Math.abs(
+            parseFloat(
+              getComputedStyle(document.documentElement).getPropertyValue(
+                '--device-pixel',
+              ),
+            ) -
+              1 / shown,
+          ) < 1e-6,
+        wanted,
+      ),
+    `the window at ${wanted * 100}%`,
+  );
+}
+
+const longWrappedLine = Array.from(
+  { length: 2000 },
+  (_, index) =>
+    `{"row":${index},"words":"a sentence of some words, with commas and dots."},`,
+).join('');
+
+interface OnCharacter {
+  readonly cursorLeft: number;
+  readonly cursorMiddle: number;
+  readonly cursorHeight: number;
+  readonly characterLeft: number;
+  readonly characterMiddle: number;
+  readonly rowHeight: number;
+}
+
+async function cursorOnCharacter(
+  editor: JSHandle<PageEditor>,
+  head: number,
+): Promise<OnCharacter> {
+  await editor.evaluate((app, at) => {
+    const dom = document.querySelector('.editor-probe .cm-editor');
+    const view =
+      dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
+    view?.focus();
+    view?.dispatch({ selection: { anchor: at }, scrollIntoView: true });
+  }, head);
+  let last = '';
+  let found: OnCharacter | undefined;
+  await waitFor(async () => {
+    found = await editor.evaluate(async (app, at) => {
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+      const dom = document.querySelector('.editor-probe .cm-editor');
+      const view =
+        dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
+      const cursor = view?.dom
+        .querySelector('.cm-cursor-primary')
+        ?.getBoundingClientRect();
+      const character = view?.coordsForChar(at);
+      if (!view || !cursor || !character) {
+        throw new Error('No cursor or character in the editor');
+      }
+      return {
+        cursorLeft: cursor.left,
+        cursorMiddle: (cursor.top + cursor.bottom) / 2,
+        cursorHeight: cursor.height,
+        characterLeft: character.left,
+        characterMiddle: (character.top + character.bottom) / 2,
+        rowHeight: parseFloat(getComputedStyle(view.contentDOM).lineHeight),
+      };
+    }, head);
+    const now = JSON.stringify(found);
+    const settled = now === last;
+    last = now;
+    return settled;
+  }, `the cursor at ${head} to settle`);
+  if (found === undefined) {
+    throw new Error(`No cursor at ${head}`);
+  }
+  return found;
+}
+
 async function openLines(): Promise<Locator> {
   await page.locator('.commit', { hasText: 'first' }).click();
   await page.locator('.row.file', { hasText: 'lines.txt' }).click();
@@ -648,4 +749,38 @@ suite('App', () => {
     await page.keyboard.press('End');
     assert.strictEqual((await drawnSelection(editor)).head, paddedRows.length);
   });
+
+  for (const ratio of [1, 1.25, 1.5, 1.75]) {
+    test(`draws the cursor on the character it stands on far into a wrapped line of ${longWrappedLine.length.toLocaleString('en')} characters at ${ratio * 100}%, on the row of the character past the stretches of the line the editor leaves undrawn, as tall as the row, within half a device pixel`, async () => {
+      await zoomTo(ratio);
+      try {
+        const editor = await editorInPage();
+        await mountEditor(editor, longWrappedLine, 600, true);
+        await page.locator('.editor-probe').evaluate((box) => {
+          if (box instanceof HTMLElement) {
+            box.style.height = '300px';
+          }
+          const editorBox = box.querySelector('.cm-editor');
+          if (editorBox instanceof HTMLElement) {
+            editorBox.style.height = '100%';
+          }
+        });
+        const halfPixel = 0.5 / ratio + 1e-3;
+        const wrong: string[] = [];
+        for (const head of [60, 30_000, 60_000, 90_000, 120_000]) {
+          const found = await cursorOnCharacter(editor, head);
+          if (
+            Math.abs(found.cursorLeft - found.characterLeft) > halfPixel ||
+            Math.abs(found.cursorMiddle - found.characterMiddle) > halfPixel ||
+            Math.abs(found.cursorHeight - found.rowHeight) > 1e-3
+          ) {
+            wrong.push(`${head}: ${JSON.stringify(found)}`);
+          }
+        }
+        assert.deepStrictEqual(wrong, []);
+      } finally {
+        await zoomTo(undefined);
+      }
+    });
+  }
 });
