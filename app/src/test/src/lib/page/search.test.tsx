@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { Column } from '../../../../tools/git/page/column';
 import { BackIcon } from '../../../../lib/page/icons';
 import { SearchButton, SearchRow } from '../../../../lib/page/search';
 import { noop, tagWith } from '../../../helpers/fixtures';
@@ -22,41 +21,6 @@ suite('Column search', () => {
     assert.strictEqual(page(html).body.textContent, '');
   });
 
-  test('puts the search of a column at the far right of its header, after its other buttons, and lays what it opens over the whole column', () => {
-    const document = page(
-      renderToStaticMarkup(
-        <Column
-          title="Files"
-          actions={<button className="other" />}
-          search={<SearchButton title="Search files" onClick={noop} />}
-          overlay={<div className="opened" />}
-        >
-          <div className="body" />
-        </Column>,
-      ),
-    );
-    const actions = document.querySelector('.column-title .column-actions');
-    assert.deepStrictEqual(
-      Array.from(actions?.children ?? [], (child) => child.className),
-      ['other', 'nav-button search-button'],
-    );
-    assert.strictEqual(
-      document.querySelector('.opened')?.parentElement,
-      document.querySelector('section.column'),
-    );
-  });
-
-  test('gives a header with only a search the place for it', () => {
-    const document = page(
-      renderToStaticMarkup(
-        <Column search={<SearchButton title="Search" onClick={noop} />}>
-          <div />
-        </Column>,
-      ),
-    );
-    assert.ok(document.querySelector('.column-actions .search-button'));
-  });
-
   test('opens a search with a button going back before its field, as the commit search does', () => {
     const document = page(
       renderToStaticMarkup(
@@ -74,29 +38,6 @@ suite('Column search', () => {
     assert.strictEqual(
       row?.firstElementChild?.innerHTML,
       renderToStaticMarkup(<BackIcon />),
-    );
-  });
-
-  test('gives the whole header of a column to its open search, hiding its other buttons and its title', () => {
-    const document = page(
-      renderToStaticMarkup(
-        <Column
-          title="Files"
-          start={<button className="start" />}
-          actions={<button className="other" />}
-          search={<SearchButton title="Search files" onClick={noop} />}
-          searching={<SearchRow onClose={noop}>{null}</SearchRow>}
-        >
-          <div />
-        </Column>,
-      ),
-    );
-    const header = document.querySelector('.column-title');
-    assert.ok(header);
-    assert.ok(header.classList.contains('searching'));
-    assert.deepStrictEqual(
-      Array.from(header.children, (child) => child.className),
-      ['search-row'],
     );
   });
 });

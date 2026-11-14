@@ -7,11 +7,18 @@ import {
   type KeyPress,
 } from '../../../../../lib/shared/keymap';
 import { gitKeymap } from '../../../../../tools/git/page/keymap';
+import { keyPressed } from '../../../../../lib/page/shortcuts';
 import {
+  element,
   keyPress,
   noModifiers,
   withMacKeys,
 } from '../../../../helpers/fixtures';
+
+type KeyEvent = Parameters<typeof keyPressed>[1];
+
+const showsWhitespace = (extra: Partial<KeyEvent> = {}) =>
+  keyPressed(gitKeymap.showWhitespace, keyPress('.', extra)) === true;
 
 const altNavigate = (key: string, inField = false) =>
   pressed(gitKeymap.navigate, keyPress(key, { altKey: true }), inField);
@@ -135,5 +142,32 @@ suite('Keymap of git', () => {
       pressed(gitKeymap.pin, keyPress('Click', { altKey: true }), false),
       undefined,
     );
+  });
+
+  test('shows whitespace on ., the dot it draws for a space, outside a field', () => {
+    assert.ok(showsWhitespace());
+    assert.ok(!showsWhitespace({ target: element('INPUT') }));
+    assert.ok(!showsWhitespace({ ctrlKey: true }));
+    assert.ok(!showsWhitespace({ altKey: true }));
+    assert.ok(!showsWhitespace({ repeat: true }));
+    assert.ok(
+      keyPressed(gitKeymap.showWhitespace, keyPress(',')) === undefined,
+    );
+  });
+
+  test('opens find in the diff on Ctrl+F, or Cmd+F on macOS, whatever the keyboard layout', () => {
+    const key = keyPress('f', { code: 'KeyF', ctrlKey: true });
+    const isFindShortcut = (event: typeof key) =>
+      keyPressed(gitKeymap.find, event) === true;
+    assert.ok(isFindShortcut(key));
+    assert.ok(
+      withMacKeys(() =>
+        isFindShortcut({ ...key, ctrlKey: false, metaKey: true }),
+      ),
+    );
+    assert.ok(isFindShortcut({ ...key, key: 'ф' }));
+    assert.ok(!isFindShortcut({ ...key, ctrlKey: false }));
+    assert.ok(!isFindShortcut({ ...key, shiftKey: true }));
+    assert.ok(!isFindShortcut({ ...key, key: 'g', code: 'KeyG' }));
   });
 });

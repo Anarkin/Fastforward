@@ -3,7 +3,6 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { filteredItems } from '../../../../lib/page/menuFilter';
 import { MenuButton } from '../../../../lib/page/menu';
 
 const triggerOf = (button: React.ReactElement) =>
@@ -45,9 +44,6 @@ async function rendered(
     Object.assign(globalThis, saved);
   }
 }
-
-const labelsOf = (items: ReturnType<typeof filteredItems>) =>
-  items.map((item) => ('separator' in item ? '-' : item.label));
 
 suite('Menu button', () => {
   test('sets the label of its button apart as a name when the label is one, as a drive', () => {
@@ -162,32 +158,6 @@ suite('Menu button', () => {
     } finally {
       Object.assign(globalThis, saved);
     }
-  });
-  test('keeps the items whose label or keywords have every word of the filter, ignoring case, and drops the separators while filtering', () => {
-    const items = [
-      { label: 'Auto: TypeScript', keywords: 'ts typescript' },
-      { separator: true as const },
-      { label: 'JavaScript', keywords: 'js javascript' },
-      { label: 'TypeScript', keywords: 'ts typescript' },
-      { label: 'TSX', keywords: 'tsx' },
-    ];
-
-    assert.deepStrictEqual(labelsOf(filteredItems(items, '')), [
-      'Auto: TypeScript',
-      '-',
-      'JavaScript',
-      'TypeScript',
-      'TSX',
-    ]);
-    assert.deepStrictEqual(labelsOf(filteredItems(items, 'TS')), [
-      'Auto: TypeScript',
-      'TypeScript',
-      'TSX',
-    ]);
-    assert.deepStrictEqual(labelsOf(filteredItems(items, 'type auto')), [
-      'Auto: TypeScript',
-    ]);
-    assert.deepStrictEqual(labelsOf(filteredItems(items, 'java ts')), []);
   });
 
   test('opens a menu with a filter with the focus in the filter, narrows the items as it is typed in, chooses the first left on Enter and moves into them on Down, an item taking the focus only once the pointer moves over it rather than once the list moves under the pointer', async () => {

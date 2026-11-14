@@ -1,8 +1,22 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { shellKeymap } from '../../../../shell/shared/keymap';
+import { keyPressed } from '../../../../lib/page/shortcuts';
 import { clicked, pressed, type Binding } from '../../../../lib/shared/keymap';
-import { keyPress, noModifiers, withMacKeys } from '../../../helpers/fixtures';
+import {
+  element,
+  keyPress,
+  noModifiers,
+  withMacKeys,
+} from '../../../helpers/fixtures';
+
+type KeyEvent = Parameters<typeof keyPressed>[1];
+
+const shortcuts = (key: string, extra: Partial<KeyEvent> = {}) =>
+  keyPressed(shellKeymap.shortcuts, keyPress(key, extra)) === true;
+
+const about = (extra: Partial<KeyEvent> = {}) =>
+  keyPressed(shellKeymap.about, keyPress('F1', extra)) === true;
 
 function shifted(key: string) {
   return keyPress(key, { shiftKey: true });
@@ -136,5 +150,25 @@ suite('Keymap of the shell', () => {
       inField(shellKeymap.shortcutsGroup, 'ArrowDown', { repeat: true }),
       1,
     );
+  });
+
+  test('shows the shortcuts on F1, even in a field, or on ? outside one', () => {
+    assert.ok(shortcuts('F1'));
+    assert.ok(shortcuts('F1', { target: element('INPUT') }));
+    assert.ok(shortcuts('?', { shiftKey: true }));
+    assert.ok(!shortcuts('?', { shiftKey: true, target: element('INPUT') }));
+    assert.ok(!shortcuts('F1', { ctrlKey: true }));
+    assert.ok(!shortcuts('F1', { shiftKey: true }));
+    assert.ok(!shortcuts('?', { altKey: true }));
+    assert.ok(!shortcuts('F1', { repeat: true }));
+    assert.ok(!shortcuts('F2'));
+  });
+
+  test('shows About on Shift+F1, even in a field, but not on F1 alone, which shows the shortcuts', () => {
+    assert.ok(about({ shiftKey: true }));
+    assert.ok(about({ shiftKey: true, target: element('INPUT') }));
+    assert.ok(!about());
+    assert.ok(!about({ shiftKey: true, ctrlKey: true }));
+    assert.ok(!about({ shiftKey: true, repeat: true }));
   });
 });
