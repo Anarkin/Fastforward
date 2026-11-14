@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../lib/shared/strings';
-import type { CommandInstall, CommandState } from '../shell/main/hostTypes';
+import type { CommandInstall, CommandState } from '../shell/main/commandOffer';
 import { isMissing } from '../tools/git/main/files';
 
 const command = 'ff';

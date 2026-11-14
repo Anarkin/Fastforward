@@ -1,9 +1,21 @@
 import * as path from 'node:path';
 import type { Log } from './log';
-import type { CommandInstall, CommandState } from './hostTypes';
 import { strings } from '../../lib/shared/strings';
 import type { Storage } from './storage';
 import type { Notice, Page, ShellHost } from './shell';
+
+export type CommandState = 'installed' | 'missing' | 'outdated' | 'taken';
+
+export type CommandInstall =
+  | {
+      readonly kind: 'installed';
+      readonly path: string;
+      readonly onPath: boolean;
+    }
+  | { readonly kind: 'alreadyInstalled'; readonly path: string }
+  | { readonly kind: 'taken'; readonly path: string }
+  | { readonly kind: 'notMoved' }
+  | { readonly kind: 'cancelled' };
 
 function commandNotice(installed: CommandInstall): Notice | undefined {
   switch (installed.kind) {

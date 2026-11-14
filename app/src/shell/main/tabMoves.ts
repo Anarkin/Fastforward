@@ -1,5 +1,5 @@
 import type { ToHost } from '../shared/protocol';
-import type { Point, Strip, Visit } from './hostTypes';
+import type { Point, Strip, Visit } from './dragEvents';
 import type { Pages } from './pages';
 import type { Page, ShellHost } from './shell';
 import type { Storage } from './storage';

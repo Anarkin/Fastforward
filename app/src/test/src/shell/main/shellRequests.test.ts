@@ -8,7 +8,7 @@ import {
   type Sentence,
 } from '../../../../lib/shared/strings';
 import { recordingLog } from '../../../helpers/stub';
-import type { CommandInstall } from '../../../../shell/main/hostTypes';
+import type { CommandInstall } from '../../../../shell/main/commandOffer';
 import {
   closeViews,
   failOnErrorsLogged,

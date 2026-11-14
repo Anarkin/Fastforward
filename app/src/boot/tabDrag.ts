@@ -1,5 +1,5 @@
 import type { Bounds } from './files';
-import type { DragStart, Point, Strip, Visit } from '../shell/main/hostTypes';
+import type { DragStart, Point, Strip, Visit } from '../shell/main/dragEvents';
 import { tabMagnetism } from '../shell/shared/titleBar';
 
 export interface DragWindow {

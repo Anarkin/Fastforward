@@ -1,16 +1,3 @@
-export type CommandState = 'installed' | 'missing' | 'outdated' | 'taken';
-
-export type CommandInstall =
-  | {
-      readonly kind: 'installed';
-      readonly path: string;
-      readonly onPath: boolean;
-    }
-  | { readonly kind: 'alreadyInstalled'; readonly path: string }
-  | { readonly kind: 'taken'; readonly path: string }
-  | { readonly kind: 'notMoved' }
-  | { readonly kind: 'cancelled' };
-
 export interface Point {
   readonly x: number;
   readonly y: number;
@@ -38,3 +25,11 @@ export interface DragStart {
   readonly at: Point;
   readonly alone: boolean;
 }
+
+export type DragEvent =
+  | ({ readonly kind: 'start' } & DragStart)
+  | { readonly kind: 'move'; readonly at: Point }
+  | { readonly kind: 'drop' }
+  | { readonly kind: 'cancel' }
+  | { readonly kind: 'strip'; readonly strip: Strip }
+  | { readonly kind: 'index'; readonly index: number };

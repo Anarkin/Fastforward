@@ -1,13 +1,6 @@
 import type { Log } from './log';
 import { isImageView, isTextView } from '../shared/views';
-import type {
-  CommandInstall,
-  CommandState,
-  DragStart,
-  Point,
-  Strip,
-  Visit,
-} from './hostTypes';
+import type { DragEvent, Visit } from './dragEvents';
 import { InFlight } from '../../lib/main/inFlight';
 import type {
   AboutInfo,
@@ -40,7 +33,11 @@ import {
   withOpened,
 } from './windows';
 import { ToolChoosing } from './toolChoosing';
-import { CommandOffer } from './commandOffer';
+import {
+  CommandOffer,
+  type CommandInstall,
+  type CommandState,
+} from './commandOffer';
 import { Pages } from './pages';
 import { TabMoves } from './tabMoves';
 import { Closing } from './closing';
@@ -143,14 +140,6 @@ export interface ShellHost {
   tearsOff(): boolean;
   drag(window: string, event: DragEvent): void;
 }
-
-export type DragEvent =
-  | ({ readonly kind: 'start' } & DragStart)
-  | { readonly kind: 'move'; readonly at: Point }
-  | { readonly kind: 'drop' }
-  | { readonly kind: 'cancel' }
-  | { readonly kind: 'strip'; readonly strip: Strip }
-  | { readonly kind: 'index'; readonly index: number };
 
 export interface Connection {
   receive(message: ToHost): Promise<void>;

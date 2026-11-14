@@ -33,8 +33,12 @@ import {
   type GitHost,
 } from '../../tools/git/main/tool';
 import type { Log } from '../../shell/main/log';
-import type { CommandInstall, CommandState } from '../../shell/main/hostTypes';
-import { Shell, type DragEvent, type ShellHost } from '../../shell/main/shell';
+import type {
+  CommandInstall,
+  CommandState,
+} from '../../shell/main/commandOffer';
+import type { DragEvent } from '../../shell/main/dragEvents';
+import { Shell, type ShellHost } from '../../shell/main/shell';
 import {
   activeTabKey,
   sameRoot,

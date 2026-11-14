@@ -15,7 +15,8 @@ import type { ToHost, ToWebview } from '../shell/shared/protocol';
 import { brand, strings } from '../lib/shared/strings';
 import type { Settings } from '../shell/main/settings';
 import type { JsonFileStore, Storage } from '../shell/main/storage';
-import type { Connection, DragEvent, Shell } from '../shell/main/shell';
+import type { Connection, Shell } from '../shell/main/shell';
+import type { DragEvent } from '../shell/main/dragEvents';
 import { spareWindowIds } from '../shell/main/windows';
 import {
   appOrigin,
@@ -35,7 +36,7 @@ import {
 } from './files';
 import { tellMaximized } from './maximized';
 import { TabDrag, type DragHost, type DragWindow } from './tabDrag';
-import type { Strip } from '../shell/main/hostTypes';
+import type { Strip } from '../shell/main/dragEvents';
 import {
   boundsKey,
   maximizedKey,
