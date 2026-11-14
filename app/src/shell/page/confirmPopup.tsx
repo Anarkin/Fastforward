@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
-import { strings, type Line } from '../../lib/shared/strings';
+import { strings } from '../../lib/shared/strings';
+import type { Line } from '../../lib/shared/sentences';
 import { useDismiss } from '../../lib/page/menuControls';
 import { CloseIcon } from '../../lib/page/icons';
 import { moveBetweenButtons } from '../../lib/page/dialogButtons';

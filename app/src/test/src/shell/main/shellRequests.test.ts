@@ -2,7 +2,8 @@ import * as assert from 'node:assert';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
-import { plainOf, strings } from '../../../../lib/shared/strings';
+import { plainOf } from '../../../../lib/shared/sentences';
+import { strings } from '../../../../lib/shared/strings';
 import { recordingLog } from '../../../helpers/stub';
 import {
   closeViews,

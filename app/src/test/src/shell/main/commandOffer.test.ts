@@ -2,7 +2,8 @@ import * as assert from 'node:assert';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
-import { strings, type Sentence } from '../../../../lib/shared/strings';
+import { strings } from '../../../../lib/shared/strings';
+import type { Sentence } from '../../../../lib/shared/sentences';
 import { recordingLog } from '../../../helpers/stub';
 import type { CommandInstall } from '../../../../shell/main/commandOffer';
 import {

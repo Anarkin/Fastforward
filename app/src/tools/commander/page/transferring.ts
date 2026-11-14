@@ -1,9 +1,5 @@
-import {
-  strings,
-  type Line,
-  type Sentence,
-  type Value,
-} from '../../../lib/shared/strings';
+import { strings } from '../../../lib/shared/strings';
+import type { Line, Sentence, Value } from '../../../lib/shared/sentences';
 import type { TransferProgress, TransferView } from '../shared/transfers';
 
 export function whatOf(items: number, name: string | undefined): Value {

@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { app, clipboard } from 'electron';
 import type { ShellHost } from '../shell/main/shell';
 import type { UserSettings } from '../shell/main/userSettings';
-import type { Sentence } from '../lib/shared/strings';
+import type { Sentence } from '../lib/shared/sentences';
 import { writeReadOnly } from '../lib/main/textFiles';
 import type { AppWindows } from './appWindows';
 import type { QuitGuard } from './quitGuard';

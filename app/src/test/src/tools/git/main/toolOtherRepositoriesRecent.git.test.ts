@@ -2,7 +2,8 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { plainOf, strings } from '../../../../../lib/shared/strings';
+import { plainOf } from '../../../../../lib/shared/sentences';
+import { strings } from '../../../../../lib/shared/strings';
 import { sameRoot } from '../../../../../lib/main/paths';
 import { recentKey } from '../../../../../tools/git/main/storage';
 import {

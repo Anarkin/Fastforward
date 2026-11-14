@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import type { Line, Sentence } from '../shared/strings';
+import type { Line, Sentence } from '../shared/sentences';
 
 const piecesOf = (name: string) => name.split(/(?<=[\\/])/);
 

@@ -1,6 +1,7 @@
 import type { DiffLine } from './diff';
 import type { FindRange } from './find';
-import { strings, type Sentence } from '../../../lib/shared/strings';
+import { strings } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
 import { PreviewIcon } from '../../../lib/page/icons';
 import { SkeletonRows } from './skeleton';

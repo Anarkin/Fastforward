@@ -1,4 +1,4 @@
-import type { Sentence } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import type { CloneAsk, CloneView } from './clone';
 
 export const workingTreeHash = 'working-tree';

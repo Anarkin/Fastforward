@@ -6,7 +6,8 @@ import {
   type ThemeColors,
   type ToolSettings,
 } from '../shared/tools';
-import { strings, type Sentence } from '../../lib/shared/strings';
+import { strings } from '../../lib/shared/strings';
+import type { Sentence } from '../../lib/shared/sentences';
 import {
   editorCharsets,
   editorEndings,

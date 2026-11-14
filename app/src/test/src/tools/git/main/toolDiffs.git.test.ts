@@ -4,7 +4,8 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { tabsKey } from '../../../../../shell/main/storage';
-import { plainOf, strings } from '../../../../../lib/shared/strings';
+import { plainOf } from '../../../../../lib/shared/sentences';
+import { strings } from '../../../../../lib/shared/strings';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import { waitFor } from '../../../../helpers/fixtures';
 import {

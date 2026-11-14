@@ -8,7 +8,8 @@ import type {
   ToWebview,
   UpdateStatus,
 } from '../shared/protocol';
-import { strings, type Sentence } from '../../lib/shared/strings';
+import { strings } from '../../lib/shared/strings';
+import type { Sentence } from '../../lib/shared/sentences';
 import {
   isTool,
   tools as toolIds,

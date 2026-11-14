@@ -3,7 +3,8 @@ import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { plainOf, strings } from '../../../../../lib/shared/strings';
+import { plainOf } from '../../../../../lib/shared/sentences';
+import { strings } from '../../../../../lib/shared/strings';
 import { worktreesKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {

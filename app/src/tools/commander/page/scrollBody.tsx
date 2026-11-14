@@ -1,4 +1,4 @@
-import type { Sentence } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import {

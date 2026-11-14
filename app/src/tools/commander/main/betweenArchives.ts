@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { sentencesOf, strings } from '../../../lib/shared/strings';
+import { sentencesOf } from '../../../lib/shared/sentences';
+import { strings } from '../../../lib/shared/strings';
 import { movedOut, presentIn } from './unpacking';
 import { itemsAt } from './archiveFiles';
 import type {

@@ -1,9 +1,6 @@
 import * as path from 'node:path';
-import {
-  sentencesOf,
-  strings,
-  type Sentence,
-} from '../../../lib/shared/strings';
+import { sentencesOf, type Sentence } from '../../../lib/shared/sentences';
+import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import {
   otherSide,

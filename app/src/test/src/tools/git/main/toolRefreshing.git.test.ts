@@ -9,7 +9,7 @@ import {
   suite,
   test,
 } from 'vitest';
-import { plainOf } from '../../../../../lib/shared/strings';
+import { plainOf } from '../../../../../lib/shared/sentences';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { waitFor } from '../../../../helpers/fixtures';
 import {

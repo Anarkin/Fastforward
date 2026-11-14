@@ -2,7 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import type { CloneProgress } from '../shared/clone';
-import { strings, type Sentence } from '../../../lib/shared/strings';
+import { strings } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { isFolder, quietFor, remoteTimeout } from './repository';
 import { runGit } from './run';
 

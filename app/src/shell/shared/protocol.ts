@@ -1,4 +1,4 @@
-import type { Sentence } from '../../lib/shared/strings';
+import type { Sentence } from '../../lib/shared/sentences';
 import type { ImageView, TextView } from './views';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 

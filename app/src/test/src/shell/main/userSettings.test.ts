@@ -3,7 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { UserSettings } from '../../../../shell/main/userSettings';
-import { plainOf, strings } from '../../../../lib/shared/strings';
+import { plainOf } from '../../../../lib/shared/sentences';
+import { strings } from '../../../../lib/shared/strings';
 import { defaultSettings } from '../../../helpers/fixtures';
 import {
   removeFolder,

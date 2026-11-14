@@ -2,10 +2,10 @@ import * as path from 'node:path';
 import type { Notice } from '../../../shell/main/toolContract';
 import {
   sentencesOf,
-  strings,
   type Sentence,
   type Value,
-} from '../../../lib/shared/strings';
+} from '../../../lib/shared/sentences';
+import { strings } from '../../../lib/shared/strings';
 import {
   isClashAnswer,
   type ArchiveJob,

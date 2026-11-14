@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { plainOf, strings } from '../../../lib/shared/strings';
+import { plainOf } from '../../../lib/shared/sentences';
+import { strings } from '../../../lib/shared/strings';
 import { useDismiss } from '../../../lib/page/menuControls';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';

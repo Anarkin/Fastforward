@@ -12,7 +12,8 @@ import type { TransferEvent } from '../../../../../tools/commander/main/transfer
 import { unpackingFirst } from '../../../../../tools/commander/main/unpacking';
 import { copiedBetween } from '../../../../../tools/commander/main/betweenArchives';
 import type { PackFormat } from '../../../../../tools/commander/shared/packing';
-import { plainOf, strings } from '../../../../../lib/shared/strings';
+import { plainOf } from '../../../../../lib/shared/sentences';
+import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   reader,

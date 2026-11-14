@@ -34,7 +34,8 @@ import {
   WordWrapIcon,
 } from '../../../lib/page/icons';
 import { gitKeymap } from './keymap';
-import { strings, type Sentence } from '../../../lib/shared/strings';
+import { strings } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
 import {
   FindActions,

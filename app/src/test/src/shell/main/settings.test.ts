@@ -1,7 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { mergeSettings, overridesOf } from '../../../../shell/main/settings';
-import { plainOf, strings } from '../../../../lib/shared/strings';
+import { plainOf } from '../../../../lib/shared/sentences';
+import { strings } from '../../../../lib/shared/strings';
 import { defaultSettings } from '../../../helpers/fixtures';
 
 const defaults = defaultSettings();

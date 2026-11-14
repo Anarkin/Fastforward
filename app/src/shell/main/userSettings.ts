@@ -1,5 +1,6 @@
 import { toolSettingProblems } from '../shared/tools';
-import { strings, type Sentence } from '../../lib/shared/strings';
+import { strings } from '../../lib/shared/strings';
+import type { Sentence } from '../../lib/shared/sentences';
 import { type ImageView, type TextView } from '../shared/views';
 import { isObject, type Json } from '../../lib/main/json';
 import { readText, writeAtomically } from '../../lib/main/textFiles';

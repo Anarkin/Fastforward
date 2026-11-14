@@ -1,5 +1,6 @@
 import type { ContextMenuItem } from '../../lib/page/menuControls';
-import { strings, type Line } from '../../lib/shared/strings';
+import { strings } from '../../lib/shared/strings';
+import type { Line } from '../../lib/shared/sentences';
 import { tools, type ToolId } from '../shared/tools';
 import { type Confirming } from './store';
 

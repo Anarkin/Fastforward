@@ -11,7 +11,7 @@ import {
 } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import { plainOf } from '../../../../../lib/shared/strings';
+import { plainOf } from '../../../../../lib/shared/sentences';
 import { runGit } from '../../../../../tools/git/main/run';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import {

@@ -2,7 +2,8 @@ import { comparedOf, comparisonLabel } from '../shared/comparisons';
 import { shortHash } from '../shared/hashes';
 import { workingTreeHash, type FileChange } from '../shared/protocol';
 import { listedFilesRows, treeRowOf, type FilesRow } from './changesRows';
-import { strings, type Sentence } from '../../../lib/shared/strings';
+import { strings } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { type ListedRows } from '../../../lib/page/listRows';
 
 export interface MovedCursor {

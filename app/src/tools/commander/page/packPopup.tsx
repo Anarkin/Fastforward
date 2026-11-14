@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { strings, type Sentence } from '../../../lib/shared/strings';
+import { strings } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { useDismiss } from '../../../lib/page/menuControls';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';

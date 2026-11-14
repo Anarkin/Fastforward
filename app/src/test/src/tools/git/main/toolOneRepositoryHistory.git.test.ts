@@ -15,7 +15,7 @@ import {
   type Bookmark,
   type BookmarkRef,
 } from '../../../../../tools/git/shared/protocol';
-import { plainOf } from '../../../../../lib/shared/strings';
+import { plainOf } from '../../../../../lib/shared/sentences';
 import { bookmarksKey, soloKey } from '../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { FakeStore } from '../../../../helpers/fakeStore';

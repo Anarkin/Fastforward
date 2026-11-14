@@ -1,4 +1,4 @@
-import type { Sentence } from '../../../../lib/shared/strings';
+import type { Sentence } from '../../../../lib/shared/sentences';
 import type { Log } from '../../../../shell/main/log';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
 import {

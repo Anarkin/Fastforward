@@ -1,4 +1,4 @@
-import { plainOf, type Sentence } from '../../lib/shared/strings';
+import { plainOf, type Sentence } from '../../lib/shared/sentences';
 
 export interface Notice {
   readonly id: number;

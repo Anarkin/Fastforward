@@ -9,7 +9,7 @@ import {
   type PackPlan,
 } from '../../../../../tools/commander/main/archives';
 import type { PackFormat } from '../../../../../tools/commander/shared/packing';
-import { plainOf } from '../../../../../lib/shared/strings';
+import { plainOf } from '../../../../../lib/shared/sentences';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   reader,

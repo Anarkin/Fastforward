@@ -1,4 +1,4 @@
-import { plainOf, type Sentence } from '../../../lib/shared/strings';
+import { plainOf, type Sentence } from '../../../lib/shared/sentences';
 import { shownSide, workingTreeSide } from '../shared/comparisons';
 import type {
   ChangeArea,

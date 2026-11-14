@@ -1,4 +1,4 @@
-import type { Sentence } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import type { PdfPlace } from './pdf';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';

@@ -1,4 +1,4 @@
-import type { Sentence } from '../../lib/shared/strings';
+import type { Sentence } from '../../lib/shared/sentences';
 import {
   diffLayouts,
   type GitToHost,

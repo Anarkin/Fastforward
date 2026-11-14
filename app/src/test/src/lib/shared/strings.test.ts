@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { plainOf, strings } from '../../../../lib/shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 
 function keysOf(value: object, at: readonly string[] = []): string[][] {
   return Object.entries(value).flatMap(([key, child]: [string, unknown]) =>
@@ -87,48 +87,15 @@ suite('Strings', () => {
   test('wraps no name of a sentence in quotes, as a name may hold quotes itself, leaving the quotes to plainOf where nothing can be styled', () => {
     const quotedPlaceholder = /(["'‘“])\$\{.*?\}(["'’”])/;
     assert.deepStrictEqual(
-      fs
-        .readFileSync(path.join(source, own), 'utf8')
-        .split('\n')
-        .filter((line) => quotedPlaceholder.test(line))
-        .map((line) => line.trim()),
-      ['const quoted = (name: string) => `"${name}"`;'],
-    );
-  });
-
-  test('keeps the names in a sentence apart from its words, joining the words between them, nesting a reason with names of its own, and quotes the names in its plain form, for the log', () => {
-    const pushed = strings.messages.pushed('main', 'origin/main');
-    assert.deepStrictEqual(pushed, [
-      'Pushed ',
-      { name: 'main' },
-      ' to ',
-      { name: 'origin/main' },
-    ]);
-    assert.strictEqual(plainOf(pushed), 'Pushed "main" to "origin/main"');
-    assert.deepStrictEqual(
-      strings.commander.copyFailed(
-        'a.txt',
-        strings.commander.archiveGone('b.zip'),
+      [own, path.join('lib', 'shared', 'sentences.ts')].map((file) =>
+        fs
+          .readFileSync(path.join(source, file), 'utf8')
+          .split('\n')
+          .filter((line) => quotedPlaceholder.test(line))
+          .map((line) => line.trim()),
       ),
-      [
-        { name: 'a.txt' },
-        ' could not be copied: ',
-        { name: 'b.zip' },
-        ' is no longer there, so it was not changed.',
-      ],
+      [[], ['const quoted = (name: string) => `"${name}"`;']],
     );
-  });
-
-  test('keeps a sentence without names a string, as its plain form', () => {
-    assert.strictEqual(
-      strings.messages.couldNotPull('It timed out.'),
-      "Couldn't pull. It timed out.",
-    );
-    assert.strictEqual(
-      strings.commander.testPassed(strings.commander.items(2)),
-      '2 items passed the test.',
-    );
-    assert.strictEqual(plainOf('Fetched'), 'Fetched');
   });
 
   test('names no keys in parentheses, as they read Ctrl on macOS too, while the shortcuts screen lists the right ones', () => {

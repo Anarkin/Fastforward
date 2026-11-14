@@ -3,7 +3,8 @@ import { readingKey } from './commanderReceived';
 import { useCommander, useCommanderActions } from './store';
 import { FlatViewIcon } from '../../../lib/page/icons';
 import { StatusLine } from './statusLine';
-import { sentencesOf, strings } from '../../../lib/shared/strings';
+import { sentencesOf } from '../../../lib/shared/sentences';
+import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 
 export function FlatButton({ side }: { side: Side }) {

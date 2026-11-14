@@ -2,7 +2,7 @@ import type { EditorState } from '@codemirror/state';
 import type { IconSource } from '../shared/icons';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
 import type { PdfPlace } from '../shared/pdf';
-import type { Sentence } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import type {
   ByteRange,
   CommanderToHost,

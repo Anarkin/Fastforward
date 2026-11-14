@@ -1,4 +1,4 @@
-import type { Sentence } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import type { Clash, TransferProgress } from '../shared/transfers';
 import type { ClashReply, TransferPlan } from './transfer';
 

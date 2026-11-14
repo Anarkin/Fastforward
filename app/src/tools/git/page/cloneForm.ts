@@ -1,5 +1,5 @@
 import { nameProblem, urlProblem } from '../shared/clone';
-import { type Sentence } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 
 export interface ChosenFolder {
   readonly folder: string;

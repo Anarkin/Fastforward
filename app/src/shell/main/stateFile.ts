@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import { isObject } from '../../lib/main/json';
 import { readText, writeAtomically } from '../../lib/main/textFiles';
-import { strings, type Sentence } from '../../lib/shared/strings';
+import { strings } from '../../lib/shared/strings';
+import type { Sentence } from '../../lib/shared/sentences';
 
 export interface Store {
   get(key: string): unknown;
