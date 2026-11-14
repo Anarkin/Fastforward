@@ -118,17 +118,6 @@
       }
     },
     {
-      "files": ["src/tools/git/main/tool.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1700
-          }
-        ]
-      }
-    },
-    {
       "files": ["scripts/playground/git.mts"],
       "rules": {
         "max-lines": [
@@ -140,7 +129,7 @@
       }
     },
     {
-      "files": ["src/boot/main.ts", "src/tools/git/page/diffView.tsx"],
+      "files": ["src/tools/git/page/diffView.tsx"],
       "rules": {
         "max-lines": [
           "warn",
