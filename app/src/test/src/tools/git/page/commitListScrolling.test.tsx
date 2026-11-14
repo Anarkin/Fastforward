@@ -9,24 +9,26 @@ import {
   type ScrollTarget,
 } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
+import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
+import { commitInfo } from '../../../../helpers/fixtures';
+import { laidOutElement } from '../../../../helpers/elementFixtures';
+import { noop, loaded } from './commitListFixtures';
 import {
   keptPlace,
   ReportedPlaces,
   trailing,
   useScrollReports,
   atMostEvery,
+  movingPlaces,
+  workingTreeShift,
+} from '../../../../../tools/git/page/commitListScrolling';
+import {
   bubbleLineHeight,
   commitRowHeight,
-  Commits,
   listTop,
-  movingPlaces,
   workingTreeRowHeight,
-  workingTreeShift,
-} from '../../../../../tools/git/page/commitList';
-import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
-import { commitInfo } from '../../../../helpers/fixtures';
-import { laidOutElement } from '../../../../helpers/elementFixtures';
-import { noop, loaded } from './commitListFixtures';
+} from '../../../../../tools/git/page/commitListRows';
+import { Commits } from '../../../../../tools/git/page/commitList';
 
 const unchangingMedia = (window: JSDOM['window']) => (): MediaQueryList =>
   Object.assign(new window.EventTarget(), {

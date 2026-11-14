@@ -170,17 +170,6 @@
           }
         ]
       }
-    },
-    {
-      "files": ["src/tools/git/page/commitList.tsx"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1300
-          }
-        ]
-      }
     }
   ],
   "ignorePatterns": ["dist", "release", "perf-results", "perf-build"]

@@ -8,11 +8,6 @@ import { GraphCell } from '../../../../tools/git/page/graph';
 import { Column } from '../../../../tools/git/page/column';
 import { columnsClass } from '../../../../tools/git/page/columns';
 import {
-  bubbleLineHeight,
-  commitRowHeight,
-  workingTreeRowHeight,
-} from '../../../../tools/git/page/commitList';
-import {
   allWithClass,
   cascaded,
   rendered,
@@ -59,6 +54,11 @@ import {
   branchBubble,
   tagHoleReach,
 } from './stylesheetFixtures';
+import {
+  bubbleLineHeight,
+  commitRowHeight,
+  workingTreeRowHeight,
+} from '../../../../tools/git/page/commitListRows';
 
 suite('Style', () => {
   test("keeps the commit column's title clear of its buttons and the gaps between them", () => {

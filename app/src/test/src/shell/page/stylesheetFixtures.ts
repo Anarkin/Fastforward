@@ -4,11 +4,6 @@ import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../tools/git/page/tabView';
 import { GraphCell } from '../../../../tools/git/page/graph';
 import { columnsClass } from '../../../../tools/git/page/columns';
-import {
-  bubbleLineHeight,
-  commitRowHeight,
-  SoloButton,
-} from '../../../../tools/git/page/commitList';
 import { AboutPopup } from '../../../../shell/page/aboutPopup';
 import { TabBar } from '../../../../shell/page/tabBar';
 import { overlayScrollbarClass } from '../../../../lib/page/overlayScrollbars';
@@ -45,6 +40,11 @@ import {
   FileHeader,
   HunkDivider,
 } from '../../../../tools/git/page/diffRowParts';
+import {
+  bubbleLineHeight,
+  commitRowHeight,
+} from '../../../../tools/git/page/commitListRows';
+import { SoloButton } from '../../../../tools/git/page/commitList';
 
 export const css = stylesheet();
 

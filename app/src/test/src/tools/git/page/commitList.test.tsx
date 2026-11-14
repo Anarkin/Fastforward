@@ -10,23 +10,6 @@ import {
   type RefInfo,
 } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
-import {
-  keyboardMenuTarget,
-  withoutWorkingTreeLink,
-  bubbleLineHeight,
-  commitRowHeight,
-  CommitBubbles,
-  commitOption,
-  drawnRows,
-  estimatedRowHeight,
-  fixedRowHeight,
-  listScroll,
-  rowKeyOf,
-  rowSizes,
-  WorkingTreeRow,
-  workingTreeRowHeight,
-  workingTreeShift,
-} from '../../../../../tools/git/page/commitList';
 import { GitStore } from '../../../../../tools/git/page/store';
 import { gitStore, type ShownGit } from '../../../../helpers/componentFixtures';
 import { commitInfo, withMacKeys } from '../../../../helpers/fixtures';
@@ -35,6 +18,29 @@ import {
   laidOutRow,
 } from '../../../../helpers/elementFixtures';
 import { renderToStaticMarkup, noop, plainClick } from './commitListFixtures';
+import {
+  keyboardMenuTarget,
+  withoutWorkingTreeLink,
+} from '../../../../../tools/git/page/commitListKeys';
+import {
+  bubbleLineHeight,
+  commitRowHeight,
+  drawnRows,
+  estimatedRowHeight,
+  fixedRowHeight,
+  rowKeyOf,
+  rowSizes,
+  workingTreeRowHeight,
+} from '../../../../../tools/git/page/commitListRows';
+import {
+  CommitBubbles,
+  commitOption,
+  WorkingTreeRow,
+} from '../../../../../tools/git/page/commitList';
+import {
+  listScroll,
+  workingTreeShift,
+} from '../../../../../tools/git/page/commitListScrolling';
 
 const tracking = { upstream: 'origin/main', ahead: 0, behind: 0 };
 

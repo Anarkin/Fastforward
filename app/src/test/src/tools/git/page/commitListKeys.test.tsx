@@ -7,16 +7,16 @@ import {
   workingTreeIndex,
 } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
+import { settling } from '../../../../../tools/git/page/outbox';
+import { commitInfo, keyPress } from '../../../../helpers/fixtures';
+import { loaded } from './commitListFixtures';
 import {
   listKeyPosition,
   keySelection,
   pendingSelection,
-  commitMoveOf,
   mergeToToggle,
-} from '../../../../../tools/git/page/commitList';
-import { settling } from '../../../../../tools/git/page/outbox';
-import { commitInfo, keyPress } from '../../../../helpers/fixtures';
-import { loaded } from './commitListFixtures';
+} from '../../../../../tools/git/page/commitListKeys';
+import { commitMoveOf } from '../../../../../tools/git/page/commitList';
 
 const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
 
