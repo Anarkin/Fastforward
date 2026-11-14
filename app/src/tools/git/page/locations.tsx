@@ -17,7 +17,7 @@ import { useOpenMenu, refMenuTarget } from './menus';
 import { noRefs } from './commitListItems';
 import { CommitRow } from './commitList';
 import { detachedHead, searchQueryOf, useGit, useGitActions } from './store';
-import { Highlight } from '../../../lib/page/highlight';
+import { Highlight } from './highlight';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import {

@@ -35,7 +35,7 @@ import { useShell } from '../../../shell/page/store';
 import { MenuButton } from '../../../lib/page/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
 import { useSkeleton } from './skeletonDelay';
-import { Highlight } from '../../../lib/page/highlight';
+import { Highlight } from './highlight';
 import { menuFromKeyboard, type Click } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';

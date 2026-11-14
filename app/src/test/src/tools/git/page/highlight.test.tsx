@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { Highlight } from '../../../../lib/page/highlight';
+import { Highlight } from '../../../../../tools/git/page/highlight';
 
 suite('Highlight', () => {
   test('marks the search where it is, also after letters that lowercase longer', () => {

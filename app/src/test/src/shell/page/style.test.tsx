@@ -4,7 +4,7 @@ import { Column } from '../../../../tools/git/page/column';
 import { columnsClass } from '../../../../tools/git/page/columns';
 import { TabBar } from '../../../../shell/page/tabBar';
 import { MenuButton } from '../../../../lib/page/menu';
-import { Highlight } from '../../../../lib/page/highlight';
+import { Highlight } from '../../../../tools/git/page/highlight';
 import { KeyCombo } from '../../../../lib/page/keyCombo';
 import {
   allWithClass,
