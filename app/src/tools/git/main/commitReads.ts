@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { strings } from '../../../lib/shared/strings';
 import { Commits } from './commits';
-import { rememberHeads } from './merges';
+import { rememberHeads } from './heads';
 import {
   serveCommitReads,
   type FromReader,

@@ -3,7 +3,6 @@ import { suite, test } from 'vitest';
 import type { HistoryEntry } from '../../../../../tools/git/main/history';
 import { Commits } from '../../../../../tools/git/main/commits';
 import {
-  headsOf,
   mergesHiding,
   showHistory,
   type ShownEntry,
@@ -213,15 +212,6 @@ suite('Positions shown', () => {
     );
     assert.ok(positions.has('c'));
     assert.ok(!positions.has('b2'));
-  });
-});
-
-suite('Branch heads', () => {
-  test('finds unmerged tips, not the tips of merged branches', () => {
-    const heads = headsOf(
-      Commits.of([{ hash: 'u', parents: ['c'] }, ...history]),
-    );
-    assert.deepStrictEqual([...heads].toSorted(), ['m', 'u']);
   });
 });
 

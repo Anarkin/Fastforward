@@ -9,7 +9,7 @@ import {
   type CommitReads,
   type ReadOptions,
 } from '../../../../../tools/git/main/commitReads';
-import { headsOf } from '../../../../../tools/git/main/merges';
+import { headsOf } from '../../../../../tools/git/main/heads';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { entriesOf } from './historyFixtures';
 

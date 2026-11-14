@@ -4,8 +4,8 @@ import type { WorkingTree } from './workingTree';
 import { Commits } from './commits';
 import { keepsTiedOrder, ranksOf } from './extend';
 import { Graph } from './graph';
+import { headsOf } from './heads';
 import {
-  headsOf,
   mergeExpanded,
   mergesHiding,
   showHistory,

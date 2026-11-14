@@ -8,7 +8,7 @@ import {
 } from '../../../../../tools/git/main/history';
 import { readRefs } from '../../../../../tools/git/main/repository';
 import { runGit } from '../../../../../tools/git/main/run';
-import { headsOf } from '../../../../../tools/git/main/merges';
+import { headsOf } from '../../../../../tools/git/main/heads';
 import { tipsInGitOrder } from '../../../../../tools/git/main/tabState';
 import {
   commitAtTime,
