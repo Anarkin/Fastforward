@@ -5,16 +5,16 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/toolContract';
 import {
   thumbnailUrl,
-  iconUrl,
-  viewerIconUrl,
-} from '../../../../../tools/commander/shared/icons';
-import {
   boxedThumbnailUrl,
   filledThumbnailUrl,
   madeThumbnailHeader,
-  maxImageSize,
   maxThumbnailBytes,
-} from '../../../../../lib/shared/images';
+} from '../../../../../tools/commander/shared/thumbnails';
+import {
+  iconUrl,
+  viewerIconUrl,
+} from '../../../../../tools/commander/shared/icons';
+import { maxImageSize } from '../../../../../lib/shared/images';
 import { thumbnailKey } from '../../../../../tools/commander/main/thumbnailStore';
 import { viewedFileUrl } from '../../../../../tools/commander/shared/files';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';

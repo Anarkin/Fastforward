@@ -2,8 +2,6 @@ import { isSide, type Side } from './protocol';
 
 export const iconRoute = '/commander-icon';
 
-export const thumbnailRoute = '/commander-thumbnail';
-
 export interface IconSource {
   readonly tab: string;
   readonly side: Side;
@@ -36,7 +34,7 @@ export function viewerOfIcon(
   return url.pathname === iconRoute && tab && file ? { tab, file } : undefined;
 }
 
-function paneFileOf(url: URL, route: string): IconSource | undefined {
+export function paneFileOf(url: URL, route: string): IconSource | undefined {
   const query = url.searchParams;
   const tab = query.get('tab');
   const side = query.get('side');
@@ -49,15 +47,4 @@ function paneFileOf(url: URL, route: string): IconSource | undefined {
 
 export function iconSourceOf(url: URL): IconSource | undefined {
   return paneFileOf(url, iconRoute);
-}
-
-export function thumbnailUrl(
-  { tab, side, folder, name }: IconSource,
-  version: string,
-): string {
-  return `${thumbnailRoute}?${new URLSearchParams({ tab, side, folder, name, version })}`;
-}
-
-export function thumbnailSourceOf(url: URL): IconSource | undefined {
-  return paneFileOf(url, thumbnailRoute);
 }

@@ -4,15 +4,15 @@ import type { Tab } from '../../../shell/main/toolContract';
 import { isSide, type CommanderToHost, type Entry } from '../shared/protocol';
 import {
   fillsThumbnail,
-  imageType,
   isThumbnailBox,
   type ThumbnailBox,
   isWebp,
   madeThumbnailHeader,
-  maxImageSize,
   maxThumbnailBytes,
   thumbnailBoxOf,
-} from '../../../lib/shared/images';
+  thumbnailSourceOf,
+} from '../shared/thumbnails';
+import { imageType, maxImageSize } from '../../../lib/shared/images';
 import { thumbnailKey } from './thumbnailStore';
 import { ArchiveImages } from './archiveImages';
 import { viewedFileOf } from '../shared/files';
@@ -21,12 +21,7 @@ import { isPdf, pdfType } from '../shared/pdf';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { Icons } from './icons';
 import { onSameVolume } from './repositories';
-import {
-  iconSourceOf,
-  iconTicketOf,
-  thumbnailSourceOf,
-  viewerOfIcon,
-} from '../shared/icons';
+import { iconSourceOf, iconTicketOf, viewerOfIcon } from '../shared/icons';
 import { type Pane, type Sides, listedIn } from './sides';
 import { archiveItems } from './archiveItems';
 

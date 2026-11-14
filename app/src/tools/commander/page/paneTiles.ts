@@ -1,4 +1,5 @@
-import { thumbnailUrl, type IconSource } from '../shared/icons';
+import { thumbnailUrl } from '../shared/thumbnails';
+import type { IconSource } from '../shared/icons';
 import {
   imageType,
   maxImageSize,

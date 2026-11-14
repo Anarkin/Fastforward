@@ -2,7 +2,7 @@ import {
   boxedThumbnailUrl,
   filledThumbnailUrl,
   madeThumbnailHeader,
-} from '../../../lib/shared/images';
+} from '../shared/thumbnails';
 import {
   bitmapResizing,
   halvings,

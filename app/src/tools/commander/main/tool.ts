@@ -19,7 +19,7 @@ import {
   withoutBookmark,
   type BookmarkSystem,
 } from './bookmarks';
-import { heldBox } from '../../../lib/shared/images';
+import { heldBox } from '../shared/thumbnails';
 import { fileVersion } from '../shared/files';
 import { firstBytes } from './textRows';
 import { Editing } from './editing';

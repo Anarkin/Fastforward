@@ -2,12 +2,12 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import { thumbnailUrl } from '../../../../../tools/commander/shared/icons';
-import { strings } from '../../../../../lib/shared/strings';
 import {
+  thumbnailUrl,
   boxedThumbnailUrl,
   filledThumbnailUrl,
-} from '../../../../../lib/shared/images';
+} from '../../../../../tools/commander/shared/thumbnails';
+import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
 import { thumbnailKey } from '../../../../../tools/commander/main/thumbnailStore';
