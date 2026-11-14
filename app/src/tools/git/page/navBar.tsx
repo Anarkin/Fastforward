@@ -18,7 +18,7 @@ import { LocationsPopup } from './locations';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../shared/strings';
 import { useBinding } from '../../../ui/shortcuts';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 
 const holdDelay = 400;
 

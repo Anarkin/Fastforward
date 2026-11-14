@@ -16,7 +16,7 @@ import {
   type KeyPress,
   type Modifiers,
 } from '../../../shell/shared/keymap';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import type { CommitInfo } from '../shared/protocol';
 import { strings } from '../../../shared/strings';
 import { listenForDismiss } from '../../../ui/contextMenu';

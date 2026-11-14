@@ -22,7 +22,7 @@ import {
 } from './componentFixtures';
 import { DiffOptions } from '../tools/git/page/diffColumn';
 import { FindField, SearchButton } from '../ui/search';
-import { gitKeymap } from '../tools/git/shared/keymap';
+import { gitKeymap } from '../tools/git/page/keymap';
 import type { FindRange } from '../shared/textMatches';
 import { LocationsPopup } from '../tools/git/page/locations';
 import { createGitStore, GitStore } from '../tools/git/page/store';

@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test, vi } from 'vitest';
-import { viewerKeymap } from '../../tools/commander/shared/keymap';
+import { viewerKeymap } from '../../tools/commander/page/keymap';
 import type { PdfEvents, PdfFound, ShownPdf } from '../../ui/pdfDocument';
 import { PdfPane } from '../../ui/pdfView';
 import { noop, waitFor } from '../fixtures';

@@ -11,13 +11,13 @@ import {
   setKeyPlatform,
   type Binding,
 } from '../../../shell/shared/keymap';
-import { compareKeymap, gitKeymap } from '../../../tools/git/shared/keymap';
+import { compareKeymap, gitKeymap } from '../../../tools/git/page/keymap';
 import {
   commanderKeymap,
   editorKeymap,
   viewerKeymap,
-} from '../../../tools/commander/shared/keymap';
-import { terminalKeymap } from '../../../tools/terminal/shared/keymap';
+} from '../../../tools/commander/page/keymap';
+import { terminalKeymap } from '../../../tools/terminal/page/keymap';
 import {
   entryFor,
   groupsInView,

@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
 import { FindActions, FindField } from '../../../../ui/search';
-import { gitKeymap } from '../../../../tools/git/shared/keymap';
+import { gitKeymap } from '../../../../tools/git/page/keymap';
 import { strings } from '../../../../shared/strings';
 import {
   findMatches,

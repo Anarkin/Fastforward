@@ -20,7 +20,7 @@ import { LanguageButton, languageChoiceOf } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
 import { useBinding } from '../../../ui/shortcuts';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
-import { filterWords, matchesFilter } from '../../../shared/fileFilter';
+import { filterWords, matchesFilter } from '../../../ui/fileFilter';
 import { findMatches, unsearchedFiles } from './find';
 import { matchCount, stepMatch } from '../../../shared/textMatches';
 import {
@@ -38,7 +38,7 @@ import {
   SideBySideIcon,
   WordWrapIcon,
 } from '../../../ui/icons';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import { strings, type Sentence } from '../../../shared/strings';
 import { Words } from '../../../ui/name';
 import {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type WorktreeInfo } from '../shared/protocol';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import { strings } from '../../../shared/strings';
 import { useBinding } from '../../../ui/shortcuts';
 import { useGit, useGitActions } from './store';

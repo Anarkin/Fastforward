@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { keymap } from '../../shell/shared/keymap';
-import { gitKeymap } from '../../tools/git/shared/keymap';
+import { gitKeymap } from '../../tools/git/page/keymap';
 import { appKeyPressed, keyPressed } from '../../ui/shortcuts';
 import { element, keyPress, withMacKeys } from '../fixtures';
 

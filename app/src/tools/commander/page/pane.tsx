@@ -15,7 +15,7 @@ import {
   useThumbnailFill,
   type FillItem,
 } from '../../../ui/thumbnails';
-import { commanderKeymap } from '../shared/keymap';
+import { commanderKeymap } from './keymap';
 import { clicked } from '../../../shell/shared/keymap';
 import { parentFolder, type Entry, type Side } from '../shared/protocol';
 import { fileMenuItems, menuTargetOf } from './fileMenu';
@@ -23,7 +23,7 @@ import { copiedText, type Copied } from './naming';
 import { formatSize } from './format';
 import { goesInto, opens, pointedKeys, rangeKeys, type Row } from './listing';
 import { filterStep, PaneFilter } from './paneFilter';
-import { filterWords } from '../../../shared/fileFilter';
+import { filterWords } from '../../../ui/fileFilter';
 import { HighlightWords } from '../../../ui/highlight';
 import { SearchButton, SearchRow } from '../../../ui/search';
 import { columnFocusOf } from '../../../ui/columnFocus';

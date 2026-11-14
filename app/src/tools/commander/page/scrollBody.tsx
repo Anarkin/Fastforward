@@ -13,7 +13,7 @@ import {
 import type { ByteRange } from '../shared/protocol';
 import { keyPressed } from '../../../ui/shortcuts';
 import { wheeled } from '../../../shell/shared/keymap';
-import { viewerKeymap } from '../shared/keymap';
+import { viewerKeymap } from './keymap';
 import { followDrag } from '../../../ui/followDrag';
 import { sidewaysColumns, wheelTurn } from '../../../ui/rowScroll';
 import { useShell } from '../../../shell/page/store';

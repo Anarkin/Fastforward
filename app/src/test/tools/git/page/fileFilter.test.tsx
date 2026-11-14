@@ -5,7 +5,7 @@ import {
   filterRanges,
   filterWords,
   matchesFilter,
-} from '../../../../shared/fileFilter';
+} from '../../../../ui/fileFilter';
 import { HighlightWords } from '../../../../ui/highlight';
 import { filteredDiffFiles } from '../../../../tools/git/page/diffColumn';
 import type { DiffFile } from '../../../../tools/git/page/diff';

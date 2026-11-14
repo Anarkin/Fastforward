@@ -11,7 +11,7 @@ import {
   type ShortcutEntryId,
 } from './tools';
 import { strings } from '../../shared/strings';
-import { filterWords } from '../../shared/fileFilter';
+import { filterWords } from '../../ui/fileFilter';
 import { folded, matchesIn } from '../../shared/textMatches';
 import { useDismiss } from '../../ui/contextMenu';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../ui/icons';

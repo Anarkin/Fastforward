@@ -4,7 +4,7 @@ import type * as viewModule from '@codemirror/view';
 import * as esbuild from 'esbuild';
 import type { JSHandle, Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
-import type * as commanderKeymapModule from '../tools/commander/shared/keymap';
+import type * as commanderKeymapModule from '../tools/commander/page/keymap';
 import type * as editorSelectionModule from '../ui/editorSelection';
 import type * as editorTextModule from '../ui/editorText';
 import type * as textWidthsModule from '../ui/textWidths';
@@ -47,7 +47,7 @@ async function editorInPage(): Promise<JSHandle<PageEditor>> {
         "export { EditorView, lineNumbers } from '@codemirror/view';",
         "export { appTextLook, blanksShown } from './editorText';",
         "export { appSelection } from './editorSelection';",
-        "export { editorKeymap } from '../tools/commander/shared/keymap';",
+        "export { editorKeymap } from '../tools/commander/page/keymap';",
         "export { terminalCells } from './textWidths';",
       ].join('\n'),
       resolveDir: path.join(__dirname, '..', 'ui'),

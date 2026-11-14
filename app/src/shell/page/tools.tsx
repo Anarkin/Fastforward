@@ -3,7 +3,7 @@ import {
   diffGroups,
   gitGroups,
   gitKeymap,
-} from '../../tools/git/shared/keymap';
+} from '../../tools/git/page/keymap';
 import {
   everywhereGroups,
   keymap,
@@ -20,12 +20,12 @@ import {
   viewerGroups,
   viewerKeymap,
   commanderKeymap,
-} from '../../tools/commander/shared/keymap';
+} from '../../tools/commander/page/keymap';
 import { TerminalTool } from '../../tools/terminal/page/tool';
 import {
   terminalGroups,
   terminalKeymap,
-} from '../../tools/terminal/shared/keymap';
+} from '../../tools/terminal/page/keymap';
 import { GitTool } from '../../tools/git/page/tool';
 import { activeTabOf, useShell, useShellActions } from './store';
 

@@ -1,4 +1,4 @@
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../ui/shortcuts';
 
 export type ColumnName = 'commits' | 'files' | 'diff';

@@ -25,7 +25,7 @@ import type {
   SizedColumn,
   SortColumn,
 } from '../shared/settings';
-import { filterWords } from '../../../shared/fileFilter';
+import { filterWords } from '../../../ui/fileFilter';
 import { filesToCompare } from './comparing';
 import {
   duplicateRows,

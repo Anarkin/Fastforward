@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { clicked } from '../../../shell/shared/keymap';
 import './style.css';
-import { commanderKeymap, viewerKeymap } from '../shared/keymap';
+import { commanderKeymap, viewerKeymap } from './keymap';
 import {
   sides,
   type CommanderDrop,

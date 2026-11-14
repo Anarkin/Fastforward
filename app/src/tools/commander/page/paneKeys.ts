@@ -10,7 +10,7 @@ import {
   type VisibleRows,
 } from '../../../ui/listMoves';
 import { keyPressed } from '../../../ui/shortcuts';
-import { commanderKeymap } from '../shared/keymap';
+import { commanderKeymap } from './keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import {
   chosenKeys,

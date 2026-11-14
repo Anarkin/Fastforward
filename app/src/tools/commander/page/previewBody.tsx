@@ -7,7 +7,7 @@ import { documentImagePath, ImagePane } from '../../../ui/images';
 import { imageType, vectorType } from '../../../shared/images';
 import { MarkdownPane } from '../../../ui/markdownView';
 import { PdfPane } from '../../../ui/pdfView';
-import { viewerKeymap } from '../shared/keymap';
+import { viewerKeymap } from './keymap';
 import { useWholeText } from './textBody';
 import { keyPressed } from '../../../ui/shortcuts';
 import { imageScrolled, previewUrl, type Preview } from './previews';

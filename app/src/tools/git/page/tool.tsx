@@ -1,4 +1,4 @@
-import { compareKeymap, gitKeymap } from '../shared/keymap';
+import { compareKeymap, gitKeymap } from './keymap';
 import { CompareView } from './compareView';
 import {
   comparingOf,

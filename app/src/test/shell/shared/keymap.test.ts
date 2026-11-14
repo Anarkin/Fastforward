@@ -23,7 +23,7 @@ import {
   type KeyPress,
 } from '../../../shell/shared/keymap';
 import { strings } from '../../../shared/strings';
-import { gitKeymap } from '../../../tools/git/shared/keymap';
+import { gitKeymap } from '../../../tools/git/page/keymap';
 import { keyPress, noModifiers, withMacKeys } from '../../fixtures';
 
 const altNavigate = (key: string, inField = false) =>

@@ -1,7 +1,7 @@
 import type { FindMatch } from './find';
 import { rowPlace } from '../../../ui/rowPlace';
 import { wheeled, type Modifiers } from '../../../shell/shared/keymap';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import type { ListMove } from '../../../ui/listMoves';
 import { sidewaysColumns } from '../../../ui/rowScroll';
 import { inlineArea, revealFound, sideArea, type Sideways } from './overflow';

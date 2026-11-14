@@ -1,4 +1,4 @@
-import { filterRanges } from '../shared/fileFilter';
+import { filterRanges } from './fileFilter';
 import { matchesIn } from '../shared/textMatches';
 
 export function HighlightWords({

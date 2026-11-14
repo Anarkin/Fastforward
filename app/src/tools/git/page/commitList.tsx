@@ -50,7 +50,7 @@ import {
   menuFromKeyboard,
   type Click,
 } from '../../../shell/shared/keymap';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../ui/shortcuts';
 import { withoutRemote } from '../shared/refNames';
 import { strings } from '../../../shared/strings';

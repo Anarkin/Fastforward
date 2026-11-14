@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { commanderKeymap } from '../shared/keymap';
+import { commanderKeymap } from './keymap';
 import { strings } from '../../../shared/strings';
 import { keyPressed } from '../../../ui/shortcuts';
 import { letterTyped } from '../../../shell/shared/keymap';

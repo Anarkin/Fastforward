@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CommanderToWebviewOf, TextEncoding } from '../shared/protocol';
-import { viewerKeymap, type ViewMode } from '../shared/keymap';
+import { viewerKeymap, type ViewMode } from './keymap';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import {
   FindActions,

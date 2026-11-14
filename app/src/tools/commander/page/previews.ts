@@ -2,7 +2,7 @@ import { imageType } from '../../../shared/images';
 import { isPdf } from '../../../shared/pdf';
 import { languageOf } from '../../../ui/languages';
 import { viewedFileUrl } from '../shared/files';
-import type { ViewMode } from '../shared/keymap';
+import type { ViewMode } from './keymap';
 import type { Viewing } from './viewer';
 
 export type Preview = 'image' | 'markdown' | 'pdf';

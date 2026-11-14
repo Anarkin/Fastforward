@@ -21,7 +21,7 @@ import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { shortcutsEntryAttribute, keyPressed } from '../../../ui/shortcuts';
 import { useSyntax, useTextsToLoad } from './syntax';
 import { wordRanges, type LineWords } from './wordDiff';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import { glideAt, glideBy, glideEnded, type Glide } from '../../../ui/glide';
 import { strings } from '../../../shared/strings';
 import { Words } from '../../../ui/name';

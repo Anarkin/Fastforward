@@ -26,7 +26,7 @@ import {
 } from '@codemirror/view';
 import { clicked } from '../../../shell/shared/keymap';
 import { keyPressed } from '../../../ui/shortcuts';
-import { editorKeymap } from '../shared/keymap';
+import { editorKeymap } from './keymap';
 
 interface CommentTokens {
   readonly line?: string;

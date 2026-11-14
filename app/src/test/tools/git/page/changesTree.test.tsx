@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { gitKeymap } from '../../../../tools/git/shared/keymap';
+import { gitKeymap } from '../../../../tools/git/page/keymap';
 import {
   ancestorRows,
   changesTree,

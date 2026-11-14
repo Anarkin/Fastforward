@@ -1,5 +1,5 @@
 import { keyPressed } from '../../../ui/shortcuts';
-import { viewerKeymap, type ViewMode } from '../shared/keymap';
+import { viewerKeymap, type ViewMode } from './keymap';
 
 export type ViewerAct =
   | { readonly kind: 'find' }

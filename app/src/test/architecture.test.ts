@@ -30,6 +30,29 @@ function toolOf(file: string): string | undefined {
   return /^tools\/([^/]+)\//.exec(file)?.[1];
 }
 
+function sourceFilesOf(target: string): string[] {
+  return [target, `${target}.ts`, `${target}.tsx`].filter((file) =>
+    sourceFiles.includes(file),
+  );
+}
+
+function reachedFrom(roots: readonly string[]): ReadonlySet<string> {
+  const reached = new Set<string>();
+  const visit = (file: string): void => {
+    if (reached.has(file)) {
+      return;
+    }
+    reached.add(file);
+    for (const target of importsOf(file).flatMap(sourceFilesOf)) {
+      visit(target);
+    }
+  };
+  for (const root of roots) {
+    visit(root);
+  }
+  return reached;
+}
+
 const registries = ['shell/shared/tools.ts', 'shell/page/tools.tsx'];
 
 suite('Architecture', () => {
@@ -73,6 +96,20 @@ suite('Architecture', () => {
             .filter((target) => toolOf(target) !== undefined)
             .map((target) => `${file} -> ${target}`),
         ),
+      [],
+    );
+  });
+
+  test('keeps in shared only what the main process imports, directly or through other shared code, as what only the page imports belongs in ui or the page of its feature', () => {
+    const reached = reachedFrom(
+      sourceFiles.filter((file) =>
+        /^(?:shell\/|tools\/[^/]+\/)?main\//.test(file),
+      ),
+    );
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) => /^(?:shell\/|tools\/[^/]+\/)?shared\//.test(file))
+        .filter((file) => !reached.has(file)),
       [],
     );
   });

@@ -13,7 +13,7 @@ import {
   type Sort,
   type Sorts,
 } from '../shared/settings';
-import type { ViewMode } from '../shared/keymap';
+import type { ViewMode } from './keymap';
 import type { EncodingChoice } from './encodings';
 import {
   filteredSelection,

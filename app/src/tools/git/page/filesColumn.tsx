@@ -25,7 +25,7 @@ import {
 } from './changesTree';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
-import { filterWords, matchesFilter } from '../../../shared/fileFilter';
+import { filterWords, matchesFilter } from '../../../ui/fileFilter';
 import { SearchButton, SearchRow } from '../../../ui/search';
 import { useSettled } from '../../../ui/settled';
 import {
@@ -34,7 +34,7 @@ import {
   ExpandAllIcon,
 } from '../../../ui/icons';
 import { SkeletonRows, useSkeleton } from '../../../ui/skeleton';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import { strings, type Sentence } from '../../../shared/strings';
 import { listMoveOf, type VisibleRows } from '../../../ui/listMoves';
 import { keyPressed, useBinding } from '../../../ui/shortcuts';

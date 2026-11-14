@@ -1,4 +1,4 @@
-import { filterWords, matchesFilter } from '../../../shared/fileFilter';
+import { filterWords, matchesFilter } from '../../../ui/fileFilter';
 import type { Entry } from '../shared/protocol';
 import { sameGrouping } from './fileColors';
 import type {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBinding } from '../../../ui/shortcuts';
-import { gitKeymap } from '../shared/keymap';
+import { gitKeymap } from './keymap';
 import type {
   CompareView as Compared,
   FileChange,
