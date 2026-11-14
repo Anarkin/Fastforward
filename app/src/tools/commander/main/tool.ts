@@ -21,7 +21,9 @@ import { maxDroppedIcons, viewerIconUrl } from '../shared/icons';
 import { newPane, type Panes, Sides } from './sides';
 import { post } from './post';
 import { Viewers } from './viewers';
-import { SideScans } from './sideScans';
+import { SideFlat } from './sideFlat';
+import { SideSizes } from './sideSizes';
+import { SideDuplicates } from './sideDuplicates';
 import { Serving } from './serving';
 import { ThumbnailServing } from './thumbnailServing';
 import { ArchiveCopies } from './archiveCopies';
@@ -44,7 +46,9 @@ export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
   private readonly sides = new Sides();
   private readonly viewers: Viewers;
-  private readonly scans: SideScans;
+  private readonly flat: SideFlat;
+  private readonly sizes: SideSizes;
+  private readonly duplicates: SideDuplicates;
   private readonly serving: Serving;
   private readonly thumbnailServing: ThumbnailServing;
   private readonly passwords: ArchivePasswords;
@@ -72,12 +76,21 @@ export class CommanderTool implements Tool<'commander'> {
     this.viewers = new Viewers(access, this.sides, (file) =>
       this.listings.hiddenParts(file),
     );
-    this.scans = new SideScans(access, this.sides, {
+    this.flat = new SideFlat(access, this.sides, {
       listed: (folder) => this.listings.listed(folder),
       postListing: (page, tab, side, pane, selected) =>
         this.listings.postListing(page, tab, side, pane, selected),
       list: (page, tab, side, folder, how) =>
         this.listings.list(page, tab, side, folder, how),
+      endSizing: (pane) => this.sizes.endSizing(pane),
+      flatRead: (pane) => this.duplicates.feedDuplicates(pane),
+    });
+    this.sizes = new SideSizes(access, this.sides, {
+      listed: (folder) => this.listings.listed(folder),
+    });
+    this.duplicates = new SideDuplicates(access, this.sides, {
+      postListing: (page, tab, side, pane, selected) =>
+        this.listings.postListing(page, tab, side, pane, selected),
     });
     this.serving = new Serving(this.sides, this.icons, () => this.shell.tabs());
     this.thumbnailServing = new ThumbnailServing(access, this.sides);
@@ -185,7 +198,9 @@ export class CommanderTool implements Tool<'commander'> {
       this.sides,
       {
         archiveListing: this.archiveListing,
-        scans: this.scans,
+        flat: this.flat,
+        sizes: this.sizes,
+        duplicates: this.duplicates,
         copies: this.copies,
         savedSides: this.savedSides,
         repositories: new SideRepositories(access, this.sides),
@@ -294,9 +309,9 @@ export class CommanderTool implements Tool<'commander'> {
     const panes = this.sides.panes.get(tab.id);
     if (panes !== undefined) {
       for (const side of sides) {
-        this.scans.endFlat(panes[side]);
-        this.scans.endSizing(panes[side]);
-        this.scans.endDuplicates(panes[side]);
+        this.flat.endFlat(panes[side]);
+        this.sizes.endSizing(panes[side]);
+        this.duplicates.endDuplicates(panes[side]);
       }
     }
     this.sides.panes.delete(tab.id);
@@ -434,12 +449,12 @@ export class CommanderTool implements Tool<'commander'> {
       case 'reread':
         return this.listings.reread(page, message);
       case 'flat':
-        return this.scans.turnFlat(page, message);
+        return this.flat.turnFlat(page, message);
       case 'stopReading':
         this.listings.stopReading(page, message);
         return undefined;
       case 'countSizes':
-        this.scans.countSizes(page, message);
+        this.sizes.countSizes(page, message);
         return undefined;
       case 'openOnSide':
         return this.archiveListing.openOnSide(page, message);
@@ -491,7 +506,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'goTo':
         return this.navigation.goTo(page, message);
       case 'duplicates':
-        this.scans.turnDuplicates(page, message);
+        this.duplicates.turnDuplicates(page, message);
         return undefined;
       default:
         return message satisfies never;
@@ -581,7 +596,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
     this.copies.copiesWatched.clear();
     for (const pane of this.sides.allPanes()) {
-      this.scans.endFlat(pane);
+      this.flat.endFlat(pane);
     }
     for (const page of this.sides.shown.keys()) {
       this.sides.stopShowing(page);

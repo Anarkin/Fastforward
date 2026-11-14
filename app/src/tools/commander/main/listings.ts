@@ -15,7 +15,9 @@ import { codeOf, reasonOf } from './reasons';
 import { type Pane, Sides, type Listing, sizedEntry } from './sides';
 import { post } from './post';
 import { childToward, parentOf } from './folderPaths';
-import { SideScans } from './sideScans';
+import type { SideFlat } from './sideFlat';
+import type { SideSizes } from './sideSizes';
+import type { SideDuplicates } from './sideDuplicates';
 import { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './commanderAccess';
 import { isFolder } from './fileStats';
@@ -53,7 +55,9 @@ function entriesShown({ entries = [], sizing }: Pane): readonly Entry[] {
 
 export interface ListingParts {
   readonly archiveListing: ArchiveListing;
-  readonly scans: SideScans;
+  readonly flat: SideFlat;
+  readonly sizes: SideSizes;
+  readonly duplicates: SideDuplicates;
   readonly copies: ArchiveCopies;
   readonly savedSides: SavedSides;
   readonly repositories: SideRepositories;
@@ -137,8 +141,8 @@ export class Listings {
       (how === 'show' || how === 'refresh')
     ) {
       this.postListing(page, tab, side, pane, undefined);
-      this.parts.scans.flushFlat(tab, side, pane.flat);
-      this.parts.scans.flushDuplicates(tab, side, pane.duplicates);
+      this.parts.flat.flushFlat(tab, side, pane.flat);
+      this.parts.duplicates.flushDuplicates(tab, side, pane.duplicates);
       return;
     }
     if (how === 'refresh' && pane.reading !== undefined) {
@@ -238,9 +242,9 @@ export class Listings {
     }
     if (pane.folder !== folder) {
       pane.repositories = new Set();
-      this.parts.scans.endFlat(pane);
-      this.parts.scans.endSizing(pane);
-      this.parts.scans.endDuplicates(pane);
+      this.parts.flat.endFlat(pane);
+      this.parts.sizes.endSizing(pane);
+      this.parts.duplicates.endDuplicates(pane);
     }
     if (how === 'visit' || typeof how === 'object' || pane.denied === folder) {
       pane.denied = undefined;
@@ -262,7 +266,7 @@ export class Listings {
     if (!listedAsBefore) {
       this.postListing(page, tab, side, pane, selected);
     }
-    this.parts.scans.feedDuplicates(pane);
+    this.parts.duplicates.feedDuplicates(pane);
     this.watch(page, tab, side, folder, stamp);
     if (listing.archive === undefined) {
       void this.host
@@ -285,11 +289,11 @@ export class Listings {
   ): Promise<void> | undefined {
     const shown = this.sides.shownPane(page, message.tab, message.side);
     if (shown !== undefined) {
-      this.parts.scans.endSizing(shown.pane);
-      this.parts.scans.forgetDuplicates(shown.pane);
+      this.parts.sizes.endSizing(shown.pane);
+      this.parts.duplicates.forgetDuplicates(shown.pane);
     }
     if (shown?.pane.flat !== undefined) {
-      this.parts.scans.startFlat(page, shown);
+      this.parts.flat.startFlat(page, shown);
       return undefined;
     }
     return shown === undefined
@@ -304,7 +308,9 @@ export class Listings {
     const shown = this.sides.shownPane(page, message.tab, message.side);
     if (shown !== undefined) {
       shown.pane.opening?.abort();
-      this.parts.scans.stopScans(shown.pane);
+      this.parts.flat.stopFlat(shown.pane);
+      this.parts.sizes.stopSizing(shown.pane);
+      this.parts.duplicates.stopDuplicates(shown.pane);
     }
   }
 
