@@ -14,6 +14,7 @@ app/src/
 ```
 
 - The rules of these folders, and of the tests, are the tests of `app/src/test/architecture.test.ts`, with the lint rules and the tsconfigs keeping each side from importing the other
+- A file holds one concept: split it along its concepts once it takes a second
 
 ## Decisions
 
