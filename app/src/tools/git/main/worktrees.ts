@@ -25,7 +25,7 @@ import {
   type GitCore,
   OpeningFailed,
 } from './tabContext';
-import type { CommitNavigation } from './commitNavigation';
+import type { CommitSearch } from './commitSearch';
 import { tabName } from './tabNames';
 import type { Watching } from './watching';
 
@@ -68,7 +68,7 @@ export class Worktrees {
     private readonly shell: () => ShellAccess,
     private readonly core: GitCore,
     private readonly watching: Watching,
-    private readonly commitNavigation: CommitNavigation,
+    private readonly commitSearch: CommitSearch,
     private readonly tabStates: Map<string, TabWork>,
     private readonly repositories: Map<string, string>,
     private readonly worktreeLists: Map<string, readonly WorktreeInfo[]>,
@@ -301,7 +301,7 @@ export class Worktrees {
     tab.closed.abort();
     tab.loadingFiles.abort();
     tab.loadingDiff.abort();
-    this.commitNavigation.commitSearches.get(root)?.abort();
+    this.commitSearch.commitSearches.get(root)?.abort();
   }
 
   private async listedWorktrees(

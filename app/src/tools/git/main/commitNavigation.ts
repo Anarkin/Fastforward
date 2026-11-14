@@ -1,11 +1,5 @@
 import { readUpstream } from './branches';
-import {
-  findCommit,
-  findCommits,
-  headCommit,
-  logCommits,
-  searchCommits,
-} from './history';
+import { findCommit, headCommit, logCommits } from './history';
 import { step, visit } from './navigation';
 import type { Log } from '../../../shell/main/log';
 import { foundUpstream } from './operations';
@@ -13,8 +7,6 @@ import { comparedOf } from '../shared/comparisons';
 import { isFullHash } from '../shared/hashes';
 import {
   workingTreeHash,
-  type CommitResults,
-  type CommitSearch,
   type Direction,
   type TabMessage,
 } from '../shared/protocol';
@@ -32,22 +24,18 @@ import {
   select,
   stillThere,
 } from './tabState';
-import type { Session, Context, GitCore } from './tabContext';
+import type { Context, GitCore } from './tabContext';
 import type { Diffs } from './diffs';
 import type { Refreshes } from './refreshes';
 
 export type NavigationMessage = Extract<
   TabMessage,
   {
-    readonly type:
-      'jump' | 'showUpstream' | 'showParent' | 'navigate' | 'lookupHash';
+    readonly type: 'jump' | 'showUpstream' | 'showParent' | 'navigate';
   }
 >;
 
 export class CommitNavigation {
-  readonly commitSearches = new Map<string, AbortController>();
-  private readonly hashLookups = new Map<string, number>();
-
   constructor(
     private readonly log: Log,
     private readonly storage: GitStorage,
@@ -98,9 +86,6 @@ export class CommitNavigation {
       case 'navigate':
         await this.navigate(context, message.direction, message.steps, picked);
         return;
-      case 'lookupHash':
-        await this.lookupHash(context, message.query);
-        return;
       default:
         return message satisfies never;
     }
@@ -147,88 +132,6 @@ export class CommitNavigation {
       back: back.map((hash) => navigationEntry(tab, hash)),
       forward: forward.map((hash) => navigationEntry(tab, hash)),
     });
-  }
-
-  async searchCommits(
-    session: Session,
-    root: string,
-    query: string,
-  ): Promise<void> {
-    this.commitSearches.get(root)?.abort();
-    const search = new AbortController();
-    this.commitSearches.set(root, search);
-    try {
-      const context = this.core.isActiveIn(session, root)
-        ? await this.core.context(session)
-        : undefined;
-      await context?.tab.loadingHistory;
-      if (!context || search.signal.aborted) {
-        return;
-      }
-      const result = await this.commitsMatching(
-        context,
-        query,
-        search.signal,
-      ).catch((error: unknown) => {
-        if (!search.signal.aborted) {
-          context.post({
-            type: 'commitSearch',
-            query,
-            result: { commits: [], capped: false },
-          });
-        }
-        throw error;
-      });
-      if (!search.signal.aborted) {
-        context.post({ type: 'commitSearch', query, result });
-      }
-    } catch (error) {
-      if (!search.signal.aborted) {
-        throw error;
-      }
-    } finally {
-      if (this.commitSearches.get(root) === search) {
-        this.commitSearches.delete(root);
-      }
-    }
-  }
-
-  private commitsMatching(
-    context: Context,
-    query: string,
-    signal: AbortSignal,
-  ): Promise<CommitSearch> {
-    return searchCommits(
-      context.gitPath,
-      context.root,
-      query,
-      this.storage.soloOf(context.root),
-      [...context.tab.stashes.keys()],
-      signal,
-    );
-  }
-
-  async lookupHash(context: Context, query: string): Promise<void> {
-    const lookup = (this.hashLookups.get(context.root) ?? 0) + 1;
-    this.hashLookups.set(context.root, lookup);
-    const answer = (result: CommitResults) => {
-      if (this.hashLookups.get(context.root) === lookup) {
-        context.post({ type: 'hashLookup', query, result });
-      }
-    };
-    answer(
-      await this.commitsStartingWith(context, query).catch((error: unknown) => {
-        answer({ commits: [], more: 0 });
-        throw error;
-      }),
-    );
-  }
-
-  private commitsStartingWith(
-    context: Context,
-    query: string,
-  ): ReturnType<typeof findCommits> {
-    return findCommits(context.gitPath, context.root, query);
   }
 
   navigate(

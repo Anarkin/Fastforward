@@ -30,6 +30,7 @@ import {
 import { Diffs } from './diffs';
 import { Refreshes } from './refreshes';
 import { CommitNavigation } from './commitNavigation';
+import { CommitSearch } from './commitSearch';
 import { Remotes } from './remotes';
 import { Watching } from './watching';
 import { CompareTabs } from './compareTabs';
@@ -78,6 +79,7 @@ export class GitTool implements Tool<'git'> {
   private readonly diffs: Diffs;
   private readonly refreshes: Refreshes;
   private readonly commitNavigation: CommitNavigation;
+  private readonly commitSearch: CommitSearch;
   private readonly remotes: Remotes;
   private readonly watching: Watching;
   private readonly compareTabs: CompareTabs;
@@ -171,6 +173,7 @@ export class GitTool implements Tool<'git'> {
       this.refreshes,
       this.core,
     );
+    this.commitSearch = new CommitSearch(storage, this.core);
     this.remotes = new Remotes(
       log,
       gitPath,
@@ -202,7 +205,7 @@ export class GitTool implements Tool<'git'> {
       () => this.shell,
       this.core,
       this.watching,
-      this.commitNavigation,
+      this.commitSearch,
       this.tabStates,
       this.repositories,
       this.worktreeLists,
@@ -593,14 +596,14 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'searchCommits':
-        await this.commitNavigation.searchCommits(
+        await this.commitSearch.searchCommits(
           session,
           sessions.knownRoot(message.root),
           message.query,
         );
         return;
       case 'stopCommitSearch':
-        this.commitNavigation.commitSearches
+        this.commitSearch.commitSearches
           .get(sessions.knownRoot(message.root))
           ?.abort();
         return;
@@ -664,8 +667,10 @@ export class GitTool implements Tool<'git'> {
       case 'showUpstream':
       case 'showParent':
       case 'navigate':
-      case 'lookupHash':
         await this.commitNavigation.receive(context, message, picked);
+        break;
+      case 'lookupHash':
+        await this.commitSearch.lookupHash(context, message.query);
         break;
       case 'selectCommit':
       case 'selectFile':
