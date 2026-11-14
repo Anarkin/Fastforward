@@ -4,14 +4,16 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import type { TabInfo } from '../../../../shell/shared/protocol';
+import type { ToolId } from '../../../../shell/shared/tools';
 import { strings } from '../../../../lib/shared/strings';
 import { AddIcon } from '../../../../lib/page/icons';
 import { rested, tabsStore } from '../../../helpers/componentFixtures';
-import { noModifiers, renderedBy } from '../../../helpers/fixtures';
+import { noModifiers, noop, renderedBy } from '../../../helpers/fixtures';
 import { ShellStore, createShellStore } from '../../../../shell/page/store';
 import {
   adjacentTab,
   Cycle,
+  newTabItems,
   resting,
   revealingScroll,
   sidewaysDelta,
@@ -177,6 +179,22 @@ suite('Tab bar', () => {
     assert.ok(closed);
     assert.ok(!closed.classList.contains('open'));
     assert.strictEqual(closed.getAttribute('aria-expanded'), 'false');
+  });
+
+  test('offers every tool in the + menu by name, with its icon, as a submenu where the tool gives one, or opening a new tab of it', () => {
+    const opened: ToolId[] = [];
+    const recent = [{ label: 'main', onClick: noop }];
+    const items = newTabItems({ git: recent }, (tool) => opened.push(tool));
+    assert.deepStrictEqual(
+      items.map((item) => ('label' in item ? item.label : undefined)),
+      [strings.tools.terminal, strings.tools.commander, strings.tools.git],
+    );
+    const [, files, git] = items;
+    assert.ok(git && 'label' in git && files && 'label' in files);
+    assert.strictEqual(git.submenu, recent);
+    assert.ok(git.icon !== undefined && files.icon !== undefined);
+    files.onClick?.();
+    assert.deepStrictEqual(opened, ['commander']);
   });
 
   test('keeps the focus where it is when a tab is pressed, and stops the middle button from autoscrolling, as pressing the open terminal tab left the keys with nothing, and so a middle click closes the tab', () => {

@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { errorText } from '../../lib/page/errors';
 import type { ToWebview } from '../shared/protocol';
-import { confirmation } from './appItems';
+import { confirmation } from './confirming';
 import { ConfirmPopup } from './confirmPopup';
 import { TitleBar } from './titleBar';
 import { strings } from '../../lib/shared/strings';

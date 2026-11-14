@@ -17,13 +17,12 @@ import {
   ShellStore,
   useShell,
   useShellActions,
-  type Confirming,
 } from './store';
-import { newTabTrigger } from './tabStrip';
+import { newTabItems, newTabTrigger } from './tabStrip';
 import { TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './windowTitle';
 import { ToolViews } from './tools';
-import { confirmation, newTabItems } from './appItems';
+import { confirmation, type Confirming } from './confirming';
 
 export function EmptyStateView({ noTab }: { readonly noTab: boolean }) {
   return noTab ? <div className="empty-state">{strings.app.noTab}</div> : null;

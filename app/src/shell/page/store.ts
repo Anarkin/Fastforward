@@ -30,6 +30,7 @@ import {
 } from '../shared/tools';
 import type { Notice } from './noticeFading';
 import { movedTab } from './tabDrag';
+import { closingOf, type Confirming } from './confirming';
 
 export type Popup = 'shortcuts' | 'about' | 'openWith' | 'confirm';
 
@@ -70,41 +71,6 @@ function deliver<K extends ToolId>(
 export interface ScreenPoint {
   readonly x: number;
   readonly y: number;
-}
-
-export type Confirming =
-  | { readonly kind: 'tab'; readonly tab: TabInfo }
-  | { readonly kind: 'unsavedTab'; readonly tab: TabInfo }
-  | { readonly kind: 'window'; readonly unsaved?: readonly string[] }
-  | {
-      readonly kind: 'quit';
-      readonly note?: string;
-      readonly unsaved?: readonly string[];
-    };
-
-function closingOf(confirming: Confirming, save: boolean): ToHost {
-  switch (confirming.kind) {
-    case 'tab':
-      return { type: 'closeTab', tab: confirming.tab.id };
-    case 'unsavedTab':
-      return {
-        type: 'closeTab',
-        tab: confirming.tab.id,
-        ...(save && { save: true }),
-      };
-    case 'window':
-      return {
-        type: 'closeWindow',
-        ...(save && confirming.unsaved !== undefined && { save: true }),
-      };
-    case 'quit':
-      return {
-        type: 'quit',
-        ...(save && confirming.unsaved !== undefined && { save: true }),
-      };
-    default:
-      return confirming satisfies never;
-  }
 }
 
 export interface TabMenu {

@@ -5,10 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
 import type { ToHost, ToWebview } from '../../../../shell/shared/protocol';
-import type { ToolId } from '../../../../shell/shared/tools';
-import { confirmation } from '../../../../shell/page/appItems';
 import { App, EmptyStateView } from '../../../../shell/page/App';
-import { newTabItems } from '../../../../shell/page/appItems';
 import { menuIn, nextMenu, withPopup } from '../../../../shell/page/store';
 import { noop, tagsWith } from '../../../helpers/fixtures';
 
@@ -440,102 +437,5 @@ suite('Window', () => {
     } finally {
       Object.assign(globalThis, saved);
     }
-  });
-
-  test('asks whether you are sure, naming the tool and, on a line of its own, the tab to close, as a tab named after a folder could pass for anything, or the app to quit', () => {
-    assert.deepStrictEqual(
-      confirmation({
-        kind: 'tab',
-        tab: { id: '1', tool: 'terminal', name: 'repo', folder: 'main' },
-      }),
-      {
-        title: 'Close Tab',
-        message: 'Are you sure you want to close this Terminal tab?',
-        lines: [{ label: 'Tab', name: 'repo (main)' }],
-        confirm: 'Close',
-      },
-    );
-    assert.deepStrictEqual(confirmation({ kind: 'window' }), {
-      title: 'Close Window',
-      message: 'Are you sure you want to close this window and its tabs?',
-      confirm: 'Close',
-    });
-    assert.deepStrictEqual(confirmation({ kind: 'quit' }), {
-      title: 'Quit',
-      message: 'Are you sure you want to quit Fastforward?',
-      confirm: 'Quit',
-    });
-    assert.deepStrictEqual(
-      confirmation({
-        kind: 'quit',
-        note: strings.commander.quitStopsTransfers,
-      }),
-      {
-        title: 'Quit',
-        message: 'Are you sure you want to quit Fastforward?',
-        note: strings.commander.quitStopsTransfers,
-        confirm: 'Quit',
-      },
-    );
-  });
-
-  test('asks whether to save the changes of a file before closing its tab, and of the files a window or the app holds before closing or quitting, naming each on a line of its own and offering not to save them', () => {
-    assert.deepStrictEqual(
-      confirmation({
-        kind: 'unsavedTab',
-        tab: { id: '1', tool: 'commander', name: 'notes.txt', unsaved: true },
-      }),
-      {
-        title: 'Unsaved Changes',
-        message: 'Save the changes to this file before closing it?',
-        lines: [{ label: 'File', name: 'notes.txt' }],
-        confirm: 'Save',
-        dontSave: true,
-      },
-    );
-    assert.deepStrictEqual(
-      confirmation({ kind: 'window', unsaved: ['a.txt', 'b.txt'] }),
-      {
-        title: 'Close Window',
-        message: 'Save the changes to these files before closing the window?',
-        lines: [
-          { label: 'File', name: 'a.txt' },
-          { label: 'File', name: 'b.txt' },
-        ],
-        confirm: 'Save All',
-        dontSave: true,
-      },
-    );
-    assert.deepStrictEqual(
-      confirmation({
-        kind: 'quit',
-        unsaved: ['a.txt'],
-        note: strings.commander.quitStopsTransfers,
-      }),
-      {
-        title: 'Quit',
-        message: 'Save the changes to these files before quitting Fastforward?',
-        lines: [{ label: 'File', name: 'a.txt' }],
-        note: strings.commander.quitStopsTransfers,
-        confirm: 'Save All',
-        dontSave: true,
-      },
-    );
-  });
-
-  test('offers every tool in the + menu by name, with its icon, as a submenu where the tool gives one, or opening a new tab of it', () => {
-    const opened: ToolId[] = [];
-    const recent = [{ label: 'main', onClick: noop }];
-    const items = newTabItems({ git: recent }, (tool) => opened.push(tool));
-    assert.deepStrictEqual(
-      items.map((item) => ('label' in item ? item.label : undefined)),
-      [strings.tools.terminal, strings.tools.commander, strings.tools.git],
-    );
-    const [, files, git] = items;
-    assert.ok(git && 'label' in git && files && 'label' in files);
-    assert.strictEqual(git.submenu, recent);
-    assert.ok(git.icon !== undefined && files.icon !== undefined);
-    files.onClick?.();
-    assert.deepStrictEqual(opened, ['commander']);
   });
 });

@@ -1,8 +1,41 @@
-import type { ContextMenuItem } from '../../lib/page/menuControls';
 import { strings } from '../../lib/shared/strings';
 import type { Line } from '../../lib/shared/sentences';
-import { tools, type ToolId } from '../shared/tools';
-import { type Confirming } from './store';
+import type { TabInfo, ToHost } from '../shared/protocol';
+
+export type Confirming =
+  | { readonly kind: 'tab'; readonly tab: TabInfo }
+  | { readonly kind: 'unsavedTab'; readonly tab: TabInfo }
+  | { readonly kind: 'window'; readonly unsaved?: readonly string[] }
+  | {
+      readonly kind: 'quit';
+      readonly note?: string;
+      readonly unsaved?: readonly string[];
+    };
+
+export function closingOf(confirming: Confirming, save: boolean): ToHost {
+  switch (confirming.kind) {
+    case 'tab':
+      return { type: 'closeTab', tab: confirming.tab.id };
+    case 'unsavedTab':
+      return {
+        type: 'closeTab',
+        tab: confirming.tab.id,
+        ...(save && { save: true }),
+      };
+    case 'window':
+      return {
+        type: 'closeWindow',
+        ...(save && confirming.unsaved !== undefined && { save: true }),
+      };
+    case 'quit':
+      return {
+        type: 'quit',
+        ...(save && confirming.unsaved !== undefined && { save: true }),
+      };
+    default:
+      return confirming satisfies never;
+  }
+}
 
 export function confirmation(confirming: Confirming): {
   title: string;
@@ -64,18 +97,4 @@ export function confirmation(confirming: Confirming): {
     default:
       return confirming satisfies never;
   }
-}
-
-export function newTabItems(
-  items: Partial<Record<ToolId, readonly ContextMenuItem[]>>,
-  onNewTab: (tool: ToolId) => void,
-): ContextMenuItem[] {
-  return tools.map((tool) => {
-    const label = strings.tools[tool];
-    const icon = tool;
-    const submenu = items[tool];
-    return submenu === undefined
-      ? { label, icon, onClick: () => onNewTab(tool) }
-      : { label, icon, submenu };
-  });
 }

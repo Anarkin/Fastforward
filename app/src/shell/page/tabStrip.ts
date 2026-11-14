@@ -1,6 +1,7 @@
 import { type WindowInfo } from '../shared/protocol';
 import type { ContextMenuItem } from '../../lib/page/menuControls';
 import { strings } from '../../lib/shared/strings';
+import { tools, type ToolId } from '../shared/tools';
 
 export function adjacentTab(
   tabs: readonly { readonly id: string }[],
@@ -129,3 +130,17 @@ export function resting(delay: number): {
 }
 
 export const newTabTrigger = '.tab-add';
+
+export function newTabItems(
+  items: Partial<Record<ToolId, readonly ContextMenuItem[]>>,
+  onNewTab: (tool: ToolId) => void,
+): ContextMenuItem[] {
+  return tools.map((tool) => {
+    const label = strings.tools[tool];
+    const icon = tool;
+    const submenu = items[tool];
+    return submenu === undefined
+      ? { label, icon, onClick: () => onNewTab(tool) }
+      : { label, icon, submenu };
+  });
+}
