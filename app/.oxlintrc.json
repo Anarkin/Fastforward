@@ -201,10 +201,7 @@
       }
     },
     {
-      "files": [
-        "src/lib/page/overlayScrollbars.ts",
-        "src/tools/git/page/store.ts"
-      ],
+      "files": ["src/lib/page/overlayScrollbars.ts"],
       "rules": {
         "max-lines": [
           "warn",
