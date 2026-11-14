@@ -260,6 +260,20 @@ function characterAt(
   };
 }
 
+function rightOfCharacterBefore(
+  view: EditorView,
+  pos: number,
+  middle: number,
+  rowHeight: number,
+): number | undefined {
+  const line = view.state.doc.lineAt(pos);
+  if (pos <= line.from) {
+    return undefined;
+  }
+  const from = line.from + findClusterBreak(line.text, pos - line.from, false);
+  return characterAt(view, from, middle, rowHeight, false)?.right;
+}
+
 function cellAt(view: EditorView, range: SelectionRange): CursorCell | null {
   const { head } = range;
   const at = view.coordsAtPos(head, range.assoc || 1);
@@ -277,7 +291,10 @@ function cellAt(view: EditorView, range: SelectionRange): CursorCell | null {
     font: shown?.font,
     glyphBox: shown?.glyph,
   });
-  const left = under?.left ?? at.left;
+  const left =
+    under?.left ??
+    rightOfCharacterBefore(view, head, middle, rowHeight) ??
+    at.left;
   const width = under === null ? advance : under.right - under.left;
   const edge = rowEdge(view);
   if (edge === undefined || left + width <= edge + 0.5) {

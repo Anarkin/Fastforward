@@ -38,6 +38,8 @@ import {
   selectedBeside,
   elementBox,
   fitWindow,
+  windowOfPage,
+  focusColor,
 } from './cursorPixels';
 
 const shell =
@@ -47,8 +49,8 @@ const shell =
 
 const clearScreen =
   process.platform === 'win32'
-    ? 'Set-PSReadLineOption -PredictionSource None; Clear-Host'
-    : 'clear';
+    ? "Set-PSReadLineOption -PredictionSource None; function global:prompt { '> ' }; Clear-Host"
+    : "PS1='> '; clear";
 
 const ratios = [1, 1.25, 1.5, 1.75];
 
@@ -110,23 +112,6 @@ async function partsInPage(): Promise<JSHandle<PageParts>> {
 
 let windowId: number;
 
-async function windowOfPage(): Promise<number> {
-  await page.evaluate(() => {
-    window.name = 'cursor-test';
-  });
-  return app.evaluate(async ({ BrowserWindow }) => {
-    for (const each of BrowserWindow.getAllWindows()) {
-      if (
-        (await each.webContents.executeJavaScript('window.name')) ===
-        'cursor-test'
-      ) {
-        return each.id;
-      }
-    }
-    throw new Error('No window of the page');
-  });
-}
-
 async function shot(): Promise<Shot> {
   const taken = await app.evaluate(async ({ BrowserWindow, screen }, id) => {
     const window = BrowserWindow.fromId(id);
@@ -141,21 +126,6 @@ async function shot(): Promise<Shot> {
     };
   }, windowId);
   return { width: taken.width, pixels: Buffer.from(taken.pixels, 'base64') };
-}
-
-async function focusColor(): Promise<number[]> {
-  const color = await page.evaluate(() => {
-    const probe = document.createElement('span');
-    probe.style.color = 'var(--color-focus)';
-    document.body.append(probe);
-    const resolved = getComputedStyle(probe).color;
-    probe.remove();
-    return resolved;
-  });
-  return (color.match(/\d+/g) ?? [])
-    .slice(0, 3)
-    .map(Number)
-    .toSorted((a, b) => a - b);
 }
 
 async function useStyle(style: CursorStyle, blink = false): Promise<void> {
@@ -280,17 +250,14 @@ async function promptAtTop(): Promise<Box> {
   const [left, top] = await screenLeftTop();
   await page.locator('.terminal-screen').click();
   await page.keyboard.press(clearLine);
-  const prompt = await settledCell(
+  await settledCell(
     (cell) => cell.width > 0 && cell.left > left,
     'the prompt of the shell',
   );
   await typeInTerminal(clearScreen);
   await page.keyboard.press('Enter');
   return settledCell(
-    (cell) =>
-      cell.width > 0 &&
-      cell.top === top &&
-      cell.left - left === prompt.left - left,
+    (cell) => cell.width > 0 && cell.top === top && cell.left > left,
     'the prompt at the top of the terminal',
   );
 }
@@ -312,7 +279,7 @@ async function mountEditorAndField(
       const box = document.createElement('div');
       box.className = 'cursor-probe editor-probe';
       box.style.cssText =
-        'position: fixed; left: 40px; top: 300px; width: 300px; z-index: 10; background: var(--color-panel-background)';
+        'position: fixed; left: 40px; top: 160px; width: 300px; z-index: 10; background: var(--color-panel-background)';
       document.body.append(box);
       const view = new inPage.EditorView({
         doc: shown.text,
@@ -330,7 +297,7 @@ async function mountEditorAndField(
       const fieldBox = document.createElement('div');
       fieldBox.className = 'cursor-probe field-probe';
       fieldBox.style.cssText =
-        'position: fixed; left: 40px; top: 400px; width: 300px; z-index: 10; display: flex; flex-direction: column';
+        'position: fixed; left: 40px; top: 220px; width: 300px; z-index: 10; display: flex; flex-direction: column';
       const field = document.createElement('input');
       field.className = 'prompt-input';
       field.value = shown.text;
@@ -431,12 +398,14 @@ async function moveField(by: number): Promise<void> {
 
 const fieldCursor = () => page.locator('.field-probe .text-cursor');
 
+const spaceAt = (start: number, cell: number) => Math.floor(start + 2.5 * cell);
+
 async function selectedAlike(
-  cursorIn: (taken: Shot) => Box,
-  cell: number,
+  drawn: Box,
+  space: number,
   what: string,
 ): Promise<void> {
-  const seen = (taken: Shot) => selectedBeside(taken, cursorIn(taken), cell, 3);
+  const seen = (taken: Shot) => selectedBeside(taken, drawn, space);
   const same = (taken: Shot) => {
     const { selected, cursor } = seen(taken);
     return JSON.stringify(selected) === JSON.stringify(cursor);
@@ -474,7 +443,7 @@ suite('Cursor', () => {
           `The terminal shows no canvas of its WebGL renderer, which these tests compare the editor and text boxes with: ${String(error)}`,
         );
       });
-    windowId = await windowOfPage();
+    windowId = await windowOfPage(app, page);
     await fitWindow(app, windowId);
   });
 
@@ -589,7 +558,7 @@ suite('Cursor', () => {
           );
           assert.deepStrictEqual(
             sortedColor(terminalColor),
-            await focusColor(),
+            await focusColor(page),
             'the color of the cursor, by default the focus color',
           );
 
@@ -707,8 +676,8 @@ suite('Cursor', () => {
         );
         await page.mouse.up();
         await selectedAlike(
-          () => inTerminal,
-          prompt.width,
+          inTerminal,
+          spaceAt(prompt.left, prompt.width),
           `the terminal, ${text}`,
         );
 
@@ -728,9 +697,16 @@ suite('Cursor', () => {
           page.locator('.editor-probe .cm-cursor-primary'),
           ratio,
         );
+        const second = await editorCell(text, 1);
+        const lineStart = second.left - second.width;
+        assert.strictEqual(
+          inEditor.left - lineStart,
+          cells * second.width,
+          `the cursor of the editor, ${cells} cells into ${text}`,
+        );
         await selectedAlike(
-          () => inEditor,
-          inEditor.width,
+          inEditor,
+          spaceAt(lineStart, second.width),
           `the editor, ${text}`,
         );
 
@@ -741,9 +717,19 @@ suite('Cursor', () => {
           }
         }, text.length);
         const inField = await elementBox(fieldCursor(), ratio);
+        const fieldStart = await page
+          .locator('.field-probe input')
+          .evaluate((field) => {
+            const style = getComputedStyle(field);
+            return (
+              field.getBoundingClientRect().left +
+              parseFloat(style.borderLeftWidth) +
+              parseFloat(style.paddingLeft)
+            );
+          });
         await selectedAlike(
-          () => inField,
-          inEditor.width,
+          inField,
+          spaceAt(fieldStart * ratio, second.width),
           `the text box, ${text}`,
         );
       }
