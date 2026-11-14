@@ -159,7 +159,6 @@
     {
       "files": [
         "src/boot/main.ts",
-        "src/test/e2e/appLaunches.electron.test.ts",
         "src/tools/commander/page/pane.tsx",
         "src/tools/git/page/diffView.tsx"
       ],
@@ -173,10 +172,7 @@
       }
     },
     {
-      "files": [
-        "src/test/src/tools/commander/main/archiveRoundTrips.7zip.test.ts",
-        "src/tools/git/page/commitList.tsx"
-      ],
+      "files": ["src/tools/git/page/commitList.tsx"],
       "rules": {
         "max-lines": [
           "warn",
@@ -190,8 +186,6 @@
       "files": [
         "src/lib/page/syntaxEngine.ts",
         "src/shell/page/tabBar.tsx",
-        "src/test/e2e/appEditor.electron.test.ts",
-        "src/test/e2e/appWrapping.electron.test.ts",
         "src/tools/commander/main/archives.ts",
         "src/tools/commander/page/editor.tsx",
         "src/tools/git/main/cli/watch.ts",
@@ -208,22 +202,7 @@
     },
     {
       "files": [
-        "src/test/e2e/appCursor.electron.test.ts",
-        "src/test/e2e/appViewer.electron.test.ts"
-      ],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1100
-          }
-        ]
-      }
-    },
-    {
-      "files": [
         "src/lib/page/overlayScrollbars.ts",
-        "src/test/e2e/appViewerModes.electron.test.ts",
         "src/tools/commander/main/transferCommands.ts",
         "src/tools/git/page/store.ts"
       ],
