@@ -100,7 +100,8 @@ import {
   installCommand,
   linkAsAdmin,
 } from './terminalCommand';
-import { runsAsAppImage, updateMode, Updates } from './updates';
+import { Updates } from './updates';
+import { runsAsAppImage, updateMode } from './installation';
 import { editorConfigOf } from '../tools/commander/main/editorConfig';
 import { saveFile } from '../tools/commander/main/fileSaving';
 import { gitEndingOf } from '../tools/commander/main/gitEnding';
