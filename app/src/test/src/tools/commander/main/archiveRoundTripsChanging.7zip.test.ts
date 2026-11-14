@@ -2,12 +2,6 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import {
-  Archives,
-  itemsAt,
-  type OpenedArchive,
-  type PackPlan,
-} from '../../../../../tools/commander/main/archives';
 import type { PackFormat } from '../../../../../tools/commander/shared/packing';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
@@ -22,6 +16,12 @@ import {
   writable,
   withoutDates,
 } from './roundTripFixtures';
+import {
+  Archives,
+  type OpenedArchive,
+  type PackPlan,
+} from '../../../../../tools/commander/main/archives';
+import { itemsAt } from '../../../../../tools/commander/main/archiveFiles';
 
 suite('Archives packed, changed and taken out again', () => {
   let folder: string;

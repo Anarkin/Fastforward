@@ -2,15 +2,15 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
+import { waitFor } from '../../../../helpers/fixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { item, notPacked, readerOf } from './archivesFixtures';
+import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
 import {
-  ArchiveTree,
   Archives,
   type ArchiveListing,
   type ArchiveReader,
 } from '../../../../../tools/commander/main/archives';
-import { waitFor } from '../../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
-import { item, notPacked, readerOf } from './archivesFixtures';
 
 suite('ArchiveTree', () => {
   test('lists each folder of an archive, making the folders that have no item of their own from the paths of what is inside them', () => {

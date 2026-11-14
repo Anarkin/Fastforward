@@ -6,19 +6,19 @@ import type { Page, ShellAccess } from '../../../shell/main/shell';
 import { folderKey } from '../shared/paths';
 import type { WatchFolder } from './watch';
 import { archiveJob } from './packing';
-import {
-  itemsAt,
-  type ArchiveAccess,
-  type OpenedArchive,
-  type PackOptions,
-  type Packing,
-} from './archives';
 import type { ArchiveJob } from '../shared/transfers';
 import type { Editing } from './editing';
 import type { Transfers } from './transfers';
 import { nameProblem } from '../shared/names';
 import { type Pane, type ShownPane, type Sides, post, listedIn } from './sides';
 import { archiveItems } from './archiveItems';
+import { itemsAt } from './archiveFiles';
+import type {
+  ArchiveAccess,
+  OpenedArchive,
+  PackOptions,
+  Packing,
+} from './archives';
 
 export interface ArchiveCopiesAccess {
   readonly archives?: ArchiveAccess;

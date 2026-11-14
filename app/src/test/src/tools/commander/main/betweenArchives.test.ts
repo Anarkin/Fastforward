@@ -2,17 +2,17 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import {
-  ArchiveTree,
-  type ArchiveAccess,
-  type ArchiveItem,
-  type Extracting,
-  type OpenedArchive,
-  type Packing,
-} from '../../../../../tools/commander/main/archives';
 import { copiedBetween } from '../../../../../tools/commander/main/betweenArchives';
 import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
+import type {
+  ArchiveAccess,
+  ArchiveItem,
+  Extracting,
+  OpenedArchive,
+  Packing,
+} from '../../../../../tools/commander/main/archives';
 
 const openedAt = (file: string): OpenedArchive => ({
   file,

@@ -2,14 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import { folderKey } from '../shared/paths';
-import {
-  itemsAt,
-  type ArchiveAccess,
-  type ArchiveBranch,
-  type OpenedArchive,
-} from './archives';
 import type { TransferEvent } from './transferProtocol';
 import type { ConnectTransfer } from './transfers';
+import { itemsAt } from './archiveFiles';
+import type { ArchiveAccess, OpenedArchive } from './archives';
+import type { ArchiveBranch } from './archiveTree';
 
 interface Moving {
   readonly roots: readonly ArchiveBranch[];

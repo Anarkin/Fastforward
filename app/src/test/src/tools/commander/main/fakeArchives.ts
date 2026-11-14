@@ -1,14 +1,14 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import {
-  ArchiveTree,
-  type ArchiveAccess,
-  type ArchiveItem,
-  type OpenedArchive,
-  type PackPlan,
-} from '../../../../../tools/commander/main/archives';
 import { strings } from '../../../../../lib/shared/strings';
+import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
+import type {
+  ArchiveAccess,
+  ArchiveItem,
+  OpenedArchive,
+  PackPlan,
+} from '../../../../../tools/commander/main/archives';
 
 export function fakeArchives() {
   const archived = new Map<string, readonly ArchiveItem[] | string>();

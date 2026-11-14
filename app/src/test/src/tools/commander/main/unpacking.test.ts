@@ -2,16 +2,6 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import {
-  ArchiveTree,
-  type ArchiveAccess,
-  type ArchiveItem,
-  type Extracting,
-  type ExtractProgress,
-  type OpenedArchive,
-  type Packing,
-  type PackOptions,
-} from '../../../../../tools/commander/main/archives';
 import { strings } from '../../../../../lib/shared/strings';
 import type { TransferPlan } from '../../../../../tools/commander/main/transfer';
 import type {
@@ -22,6 +12,16 @@ import type { TransferListener } from '../../../../../tools/commander/main/trans
 import { unpackingFirst } from '../../../../../tools/commander/main/unpacking';
 import { waitFor } from '../../../../helpers/fixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
+import type {
+  ArchiveAccess,
+  ArchiveItem,
+  Extracting,
+  ExtractProgress,
+  OpenedArchive,
+  Packing,
+  PackOptions,
+} from '../../../../../tools/commander/main/archives';
 
 const archive: OpenedArchive = {
   file: path.join('C:', 'Downloads', 'a.zip'),

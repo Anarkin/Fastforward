@@ -3,11 +3,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
-  Archives,
-  filesUnder,
-  type PackPlan,
-} from '../../../../../tools/commander/main/archives';
-import {
   sevenZipAt,
   sevenZipProgram,
   sevenZipReader,
@@ -15,6 +10,11 @@ import {
 import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { storedZip } from '../../../../helpers/zips';
+import {
+  Archives,
+  type PackPlan,
+} from '../../../../../tools/commander/main/archives';
+import { filesUnder } from '../../../../../tools/commander/main/archiveFiles';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..', '..');
 

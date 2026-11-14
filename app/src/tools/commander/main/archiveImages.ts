@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { entryParts, type ArchiveAccess, type OpenedArchive } from './archives';
+import { entryParts } from './archiveTree';
+import type { ArchiveAccess, OpenedArchive } from './archives';
 
 type Answer = (bytes: Buffer | undefined) => void;
 

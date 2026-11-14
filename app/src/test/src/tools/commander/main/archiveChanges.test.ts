@@ -2,16 +2,16 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import {
-  Archives,
-  workFolders,
-  type ArchiveReader,
-  type Packing,
-} from '../../../../../tools/commander/main/archives';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { item, notPacked, readerOf } from './archivesFixtures';
+import {
+  Archives,
+  type ArchiveReader,
+  type Packing,
+} from '../../../../../tools/commander/main/archives';
+import { workFolders } from '../../../../../tools/commander/main/archiveFiles';
 
 suite('Archives', () => {
   let folder: string;

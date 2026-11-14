@@ -16,7 +16,6 @@ import {
 import { folderKey } from '../shared/paths';
 import { archiveJob } from './packing';
 import { copiedBetween } from './betweenArchives';
-import type { ArchiveAccess, ArchiveBranch, OpenedArchive } from './archives';
 import { unpackingFirst } from './unpacking';
 import { reasonOf } from './reasons';
 import type { ConnectTransfer, TransferAsk, Transfers } from './transfers';
@@ -31,6 +30,8 @@ import {
 } from './sides';
 import { archiveItems } from './archiveItems';
 import type { ArchiveCopies } from './archiveCopies';
+import type { ArchiveAccess, OpenedArchive } from './archives';
+import type { ArchiveBranch } from './archiveTree';
 
 export interface TransferCommandsAccess {
   readonly archives?: ArchiveAccess;

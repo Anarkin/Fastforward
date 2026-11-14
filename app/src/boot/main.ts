@@ -67,7 +67,6 @@ import {
   watchTree,
 } from '../tools/commander/main/watch';
 import { isFolder } from '../tools/git/main/cli/repository';
-import { Archives, workFolders } from '../tools/commander/main/archives';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
 import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
@@ -156,6 +155,8 @@ import {
   type TextDefaultSources,
 } from '../tools/commander/main/textDefaults';
 import { removeUnviewedCopies } from './viewedFiles';
+import { Archives } from '../tools/commander/main/archives';
+import { workFolders } from '../tools/commander/main/archiveFiles';
 
 const dist = __dirname;
 const development = !app.isPackaged;

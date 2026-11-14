@@ -1,15 +1,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { sentencesOf, strings } from '../../../lib/shared/strings';
-import {
-  itemsAt,
-  type ArchiveAccess,
-  type ArchiveBranch,
-  type OpenedArchive,
-  type Packing,
-  type PackOptions,
-} from './archives';
 import { movedOut, presentIn } from './unpacking';
+import { itemsAt } from './archiveFiles';
+import type {
+  ArchiveAccess,
+  OpenedArchive,
+  Packing,
+  PackOptions,
+} from './archives';
+import type { ArchiveBranch } from './archiveTree';
 
 export interface ItemsOfArchive {
   readonly archive: OpenedArchive;
