@@ -7,7 +7,7 @@ import { fileVersion } from '../shared/files';
 import { folderKey } from '../shared/paths';
 
 import { ArchiveTree } from './archiveTree';
-import { removed, tarName, filesUnder } from './archiveFiles';
+import { removed, filesUnder } from './archiveFiles';
 import type {
   ArchiveReader,
   ExtractOptions,
@@ -80,6 +80,8 @@ export interface ArchiveAccess {
   ): Promise<Packing>;
   test(file: string, options?: PackOptions): Promise<Packing>;
 }
+
+const tarName = /\.tar$/i;
 
 function reasonOfError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

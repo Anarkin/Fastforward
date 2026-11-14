@@ -50,7 +50,7 @@ import { commandPlaceOf } from './terminalCommand';
 import { Updates } from './updates';
 import { runsAsAppImage, updateMode } from './installation';
 import { removeUnviewedCopies } from './viewedFiles';
-import { workFolders } from '../tools/commander/main/archiveFiles';
+import { workFolders } from '../tools/commander/main/workFolders';
 import type { CommanderTool } from '../tools/commander/main/tool';
 import { reportMissingGit, searchGit } from './gitSearch';
 import { terminalToolOf } from './terminalHost';
