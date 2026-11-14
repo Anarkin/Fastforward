@@ -183,10 +183,7 @@
       }
     },
     {
-      "files": [
-        "src/shell/page/tabBar.tsx",
-        "src/tools/commander/page/editor.tsx"
-      ],
+      "files": ["src/tools/commander/page/editor.tsx"],
       "rules": {
         "max-lines": [
           "warn",

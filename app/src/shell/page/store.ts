@@ -29,7 +29,7 @@ import {
   type ToWebviewOfTool,
 } from '../shared/tools';
 import type { Notice } from './notices';
-import { movedTab } from './tabBar';
+import { movedTab } from './tabDrag';
 
 export type Popup = 'shortcuts' | 'about' | 'openWith' | 'confirm';
 

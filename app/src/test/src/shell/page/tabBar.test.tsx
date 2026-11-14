@@ -5,28 +5,28 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import type { TabInfo } from '../../../../shell/shared/protocol';
 import { strings } from '../../../../lib/shared/strings';
+import { AddIcon } from '../../../../lib/page/icons';
+import { rested, tabsStore } from '../../../helpers/componentFixtures';
+import { noModifiers, renderedBy } from '../../../helpers/fixtures';
+import { ShellStore, createShellStore } from '../../../../shell/page/store';
 import {
   adjacentTab,
   Cycle,
-  movedTab,
-  nearestSlot,
   resting,
   revealingScroll,
   sidewaysDelta,
-  slotLefts,
   stripOverflows,
   tabMenuItems,
   tabsWidth,
-  tornOut,
   TabBar,
-  visitedSlot,
 } from '../../../../shell/page/tabBar';
-import { AddIcon } from '../../../../lib/page/icons';
-import { rested } from '../../../helpers/componentFixtures';
-import { noModifiers, renderedBy } from '../../../helpers/fixtures';
-import { tabsStore } from '../../../helpers/componentFixtures';
-import { ShellStore } from '../../../../shell/page/store';
-import { createShellStore } from '../../../../shell/page/store';
+import {
+  movedTab,
+  nearestSlot,
+  slotLefts,
+  tornOut,
+  visitedSlot,
+} from '../../../../shell/page/tabDrag';
 
 function tabsShell(
   tabs: readonly TabInfo[],
