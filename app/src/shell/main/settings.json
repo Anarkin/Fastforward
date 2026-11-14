@@ -10,7 +10,7 @@
   },
   "cursor": {
     "style": "block",
-    "barWidth": 2,
+    "width": 2,
     "blink": false
   },
   "text": {

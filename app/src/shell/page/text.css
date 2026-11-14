@@ -198,6 +198,10 @@ input {
   caret-color: transparent;
 }
 
+[data-text-cursor]::selection {
+  background-color: transparent;
+}
+
 .text-cursor {
   z-index: 2147483647;
 }

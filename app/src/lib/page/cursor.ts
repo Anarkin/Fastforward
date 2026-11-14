@@ -5,7 +5,7 @@ import {
   type CursorLook,
 } from '../shared/cursorSettings';
 
-export type CursorShape = CursorStyle | 'outline';
+export type CursorShape = CursorStyle;
 
 export function pageCursorLook(): CursorLook {
   const view = document.defaultView;
@@ -43,24 +43,27 @@ export interface CursorBox extends Box {
 
 const fromStart = (thickness: number) => Math.ceil(thickness - 0.5);
 
-export function barPixels(barWidth: number, ratio: number): number {
-  return Math.max(1, fromStart(barWidth * ratio));
+export function thicknessPixels(thickness: number, ratio: number): number {
+  return Math.max(1, fromStart(thickness * ratio));
 }
-const fromEnd = (thickness: number) => Math.floor(thickness + 0.5);
 
 export function cursorBox(
   cell: Box,
   shape: CursorShape,
-  barWidth: number,
+  thickness: number,
   ratio: number,
 ): CursorBox {
   switch (shape) {
     case 'block':
       return { ...cell, edges: undefined };
     case 'bar':
-      return { ...cell, width: barPixels(barWidth, ratio), edges: undefined };
+      return {
+        ...cell,
+        width: thicknessPixels(thickness, ratio),
+        edges: undefined,
+      };
     case 'underline': {
-      const height = fromStart(ratio);
+      const height = thicknessPixels(thickness, ratio);
       return {
         ...cell,
         top: cell.top + cell.height - height,
@@ -68,16 +71,15 @@ export function cursorBox(
         edges: undefined,
       };
     }
-    case 'outline':
+    case 'outline': {
+      const edge = thicknessPixels(thickness, ratio);
+      const across = Math.min(edge, Math.floor(cell.height / 2));
+      const along = Math.min(edge, Math.floor(cell.width / 2));
       return {
         ...cell,
-        edges: {
-          top: fromEnd(ratio),
-          right: fromEnd(ratio),
-          bottom: fromStart(ratio),
-          left: fromStart(ratio),
-        },
+        edges: { top: across, right: along, bottom: across, left: along },
       };
+    }
     default:
       return shape satisfies never;
   }
@@ -130,7 +132,7 @@ export function drawnCursor({
   cell,
   text,
   shape,
-  barWidth,
+  thickness,
   ratio,
   origin,
   font,
@@ -141,11 +143,11 @@ export function drawnCursor({
   readonly font?: string;
   readonly glyphBox?: Box;
   readonly shape: CursorShape;
-  readonly barWidth: number;
+  readonly thickness: number;
   readonly ratio: number;
   readonly origin: { readonly left: number; readonly top: number };
 }): DrawnCursor {
-  const device = cursorBox(pixelBox(cell, ratio), shape, barWidth, ratio);
+  const device = cursorBox(pixelBox(cell, ratio), shape, thickness, ratio);
   const { edges } = device;
   return {
     box: placedBox(device, ratio, origin),

@@ -168,7 +168,7 @@ async function mountEditor(
           app.appTextLook(table),
           app.appSelection(app.editorKeymap.rowEnd, {
             style: 'block',
-            barWidth: 2,
+            width: 2,
             blink: false,
           }),
           shown.wrapping ? app.EditorView.lineWrapping : [],

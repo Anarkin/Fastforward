@@ -16,6 +16,22 @@ function posingAsXterm(fake: object): Xterm {
   return fake as unknown as Xterm;
 }
 
+const quiet = () => ({ dispose: noop });
+
+class QuietTerminal {
+  readonly parser = {
+    registerCsiHandler: quiet,
+    registerEscHandler: quiet,
+  };
+  readonly buffer = {
+    active: { cursorX: 0, cursorY: 0, baseY: 0, viewportY: 0, getLine: noop },
+  };
+  onRender = quiet;
+  onCursorMove = quiet;
+  onScroll = quiet;
+  refresh = quiet;
+}
+
 function withPage(run: (screen: HTMLElement) => void): void {
   const dom = new JSDOM('<!doctype html><main><div></div></main>');
   dom.window.matchMedia = () =>
@@ -63,7 +79,7 @@ suite('Terminal view', () => {
       const done: string[] = [];
       let lose = noop;
       const xterm = posingAsXterm({
-        Terminal: class {
+        Terminal: class extends QuietTerminal {
           readonly cols = 80;
           readonly rows = 24;
           get options() {
@@ -117,7 +133,7 @@ suite('Terminal view', () => {
     withPage((screen) => {
       const fitted = { cols: 80, rows: 24 };
       const xterm = posingAsXterm({
-        Terminal: class {
+        Terminal: class extends QuietTerminal {
           get cols() {
             return fitted.cols;
           }
@@ -170,11 +186,12 @@ suite('Terminal view', () => {
     withPage((screen) => {
       let given: { linkHandler?: { activate(...args: unknown[]): void } } = {};
       const xterm = posingAsXterm({
-        Terminal: class {
+        Terminal: class extends QuietTerminal {
           readonly cols = 80;
           readonly rows = 24;
           readonly options = {};
           constructor(options: typeof given) {
+            super();
             given = options;
           }
           loadAddon() {}
@@ -222,22 +239,34 @@ suite('Terminal view', () => {
     });
   });
 
-  test('hands xterm.js the style, the width of the bar in whole CSS pixels and the blinking of the setting, and an outline for a terminal without the focus', () => {
+  test('hands xterm.js the style, the width of the bar in whole CSS pixels and the blinking of the setting, keeping a block or a bar as it is without the focus, and leaves the underline and the outline to the page', () => {
     assert.deepStrictEqual(cursorOptions(defaultCursorLook), {
       cursorStyle: 'block',
       cursorWidth: 2,
       cursorBlink: false,
-      cursorInactiveStyle: 'outline',
+      cursorInactiveStyle: 'block',
     });
     assert.deepStrictEqual(
-      cursorOptions({ style: 'bar', barWidth: 3, blink: true }),
+      cursorOptions({ style: 'bar', width: 3, blink: true }),
       {
         cursorStyle: 'bar',
         cursorWidth: 3,
         cursorBlink: true,
-        cursorInactiveStyle: 'outline',
+        cursorInactiveStyle: 'bar',
       },
     );
+    for (const style of ['underline', 'outline'] as const) {
+      const { cursorStyle, cursorInactiveStyle } = cursorOptions({
+        style,
+        width: 2,
+        blink: false,
+      });
+      assert.deepStrictEqual(
+        [cursorStyle, cursorInactiveStyle],
+        ['underline', 'none'],
+        style,
+      );
+    }
   });
 
   test('moves the terminal onto whole device pixels by its margin rather than a transform, which would make the compositor resample its canvas, blurring it', () => {

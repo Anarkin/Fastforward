@@ -262,21 +262,21 @@ suite('Settings', () => {
     );
   });
 
-  test('takes a block, a bar or an underline as the style of the cursor, keeping a steady block of a bar two pixels wide by default', () => {
+  test('takes a block, a bar, an underline or an outline as the style of the cursor, keeping a steady block of a bar two pixels wide by default', () => {
     assert.deepStrictEqual(defaults.cursor, {
       style: 'block',
-      barWidth: 2,
+      width: 2,
       blink: false,
     });
     const { settings, problems } = mergeSettings(defaults, {
-      cursor: { style: 'beam', barWidth: 3 },
+      cursor: { style: 'beam', width: 3 },
     });
     assert.deepStrictEqual(settings.cursor, {
       ...defaults.cursor,
-      barWidth: 3,
+      width: 3,
     });
     assert.deepStrictEqual(problems.map(plainOf), [
-      '"cursor.style" should be "block" or "bar" or "underline"',
+      '"cursor.style" should be "block" or "bar" or "underline" or "outline"',
     ]);
     assert.strictEqual(
       mergeSettings(defaults, { cursor: { style: 'bar' } }).settings.cursor

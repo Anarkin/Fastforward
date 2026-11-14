@@ -34,7 +34,10 @@ import {
   inkRuns,
   placedAfterInk,
   blockShown,
-  barWidth,
+  cursorWidth,
+  selectedBeside,
+  elementBox,
+  fitWindow,
 } from './cursorPixels';
 
 const shell =
@@ -74,7 +77,7 @@ function writeSettings(style: CursorStyle, blink = false): void {
     settingsFile,
     JSON.stringify({
       theme: 'light',
-      cursor: { style, barWidth, blink },
+      cursor: { style, width: cursorWidth, blink },
       tools: { terminal: { ...shell, renderer: 'webgl' } },
     }),
   );
@@ -426,6 +429,24 @@ async function moveField(by: number): Promise<void> {
   }, by);
 }
 
+const fieldCursor = () => page.locator('.field-probe .text-cursor');
+
+async function selectedAlike(
+  cursorIn: (taken: Shot) => Box,
+  cell: number,
+  what: string,
+): Promise<void> {
+  const seen = (taken: Shot) => selectedBeside(taken, cursorIn(taken), cell, 3);
+  const same = (taken: Shot) => {
+    const { selected, cursor } = seen(taken);
+    return JSON.stringify(selected) === JSON.stringify(cursor);
+  };
+  const { selected, cursor } = seen(
+    await settledShot(same, `the selection of ${what}`).catch(() => shot()),
+  );
+  assert.deepStrictEqual(selected, cursor, what);
+}
+
 suite('Cursor', () => {
   beforeAll(async () => {
     folder = tempFolder('cursor');
@@ -454,19 +475,7 @@ suite('Cursor', () => {
         );
       });
     windowId = await windowOfPage();
-    await app.evaluate(({ BrowserWindow }, id) => {
-      const window = BrowserWindow.fromId(id);
-      window?.setContentSize(1360, 800);
-      window?.focus();
-    }, windowId);
-    await waitFor(
-      () =>
-        app.evaluate(({ BrowserWindow }, id) => {
-          const bounds = BrowserWindow.fromId(id)?.getContentBounds();
-          return bounds?.width === 1360 && bounds.height === 800;
-        }, windowId),
-      'the window to take a size of whole device pixels',
-    );
+    await fitWindow(app, windowId);
   });
 
   afterAll(async () => {
@@ -493,9 +502,9 @@ suite('Cursor', () => {
     removeFolder(folder);
   });
 
-  for (const style of ['block', 'bar', 'underline'] as const) {
+  for (const style of ['block', 'bar', 'underline', 'outline'] as const) {
     for (const ratio of ratios) {
-      test(`draws a ${style} of the setting alike to the device pixel at ${ratio * 100}% in the terminal and the editor, as the WebGL renderer of xterm.js fills it, and in a text box as in the editor from the character before it, with no pixel of another color around it, and an outline in the terminal and the editor once they lose the focus`, async () => {
+      test(`draws a ${style} of the setting alike to the device pixel at ${ratio * 100}% in the terminal and the editor, as the WebGL renderer of xterm.js fills it, and in a text box as in the editor from the character before it, with no pixel of another color around it, drawing it as it is in the terminal and the editor once they lose the focus`, async () => {
         await useStyle(style);
         await zoomTo(ratio);
         const parts = await partsInPage();
@@ -599,22 +608,22 @@ suite('Cursor', () => {
           );
         }
 
-        const outlinedShot = await shotShowing(
+        const unfocusedShot = await shotShowing(
           around(inEditor),
-          expectedBox(inEditor, 'outline', ratio),
-          `the outline of the editor at ${ratio}`,
+          expectedBox(inEditor, style, ratio),
+          `the ${style} of the editor without the focus at ${ratio}`,
         );
         assertDrawn(
-          outlinedShot,
+          unfocusedShot,
           around(inTerminal),
-          expectedBox(inTerminal, 'outline', ratio),
-          'the outline of the terminal',
+          expectedBox(inTerminal, style, ratio),
+          'the terminal without the focus',
         );
         assertDrawn(
-          outlinedShot,
+          unfocusedShot,
           around(inEditor),
-          expectedBox(inEditor, 'outline', ratio),
-          'the outline of the editor',
+          expectedBox(inEditor, style, ratio),
+          'the editor without the focus',
         );
       });
     }
@@ -643,13 +652,12 @@ suite('Cursor', () => {
       assert.ok(editorGlyph.box !== undefined);
 
       await focusField(1);
-      const area = await fieldArea();
+      const placed = await elementBox(fieldCursor(), ratio);
       const fieldShot = await settledShot(
-        (taken) => inkRuns(taken, area).length === 2,
-        'the block of the text box on a character',
+        (taken) => blockShown(taken, placed),
+        `the block of the text box on a character at ${JSON.stringify(placed)}`,
       );
-      const block = inkRuns(fieldShot, area).at(-1);
-      assert.ok(block !== undefined);
+      const block = drawnBox(fieldShot, around(placed), placed).box ?? placed;
       assert.deepStrictEqual(
         [block.width, block.height],
         [cell.width, cell.height],
@@ -672,10 +680,81 @@ suite('Cursor', () => {
     });
   }
 
-  test('blinks the cursor of the editor and of a text box alike once the setting asks for it, shown and hidden for the 600 ms each the WebGL renderer of xterm.js shows and hides its own, and keeps the outline of the editor steady once it loses the focus', async () => {
+  for (const ratio of ratios) {
+    test(`selects text over the very rows of device pixels the cursor fills at ${ratio * 100}%, ending on the pixel the cursor starts on, after a wide character boxed in two cells too, in the terminal, the editor and a text box alike`, async () => {
+      await useStyle('block');
+      await zoomTo(ratio);
+      const parts = await partsInPage();
+      for (const [text, cells] of [
+        ['xx yy', 5],
+        ['xx 中', 5],
+      ] as const) {
+        const prompt = await promptAtTop();
+        await typeInTerminal(text);
+        const inTerminal = await settledCell(
+          (cell) =>
+            cell.top === prompt.top &&
+            cell.left === prompt.left + prompt.width * cells,
+          'the cursor of the terminal after what was typed',
+        );
+        const middle = (prompt.top + prompt.height / 2) / ratio;
+        await page.mouse.move((prompt.left + prompt.width / 4) / ratio, middle);
+        await page.mouse.down();
+        await page.mouse.move(
+          (prompt.left + prompt.width * (cells - 0.25)) / ratio,
+          middle,
+          { steps: 5 },
+        );
+        await page.mouse.up();
+        await selectedAlike(
+          () => inTerminal,
+          prompt.width,
+          `the terminal, ${text}`,
+        );
+
+        await mountEditorAndField(parts, text, text.length);
+        await parts.evaluate((inPage, length) => {
+          const dom = document.querySelector('.editor-probe .cm-editor');
+          const view =
+            dom instanceof HTMLElement
+              ? inPage.EditorView.findFromDOM(dom)
+              : null;
+          view?.focus();
+          view?.dispatch({
+            selection: inPage.EditorSelection.range(0, length),
+          });
+        }, text.length);
+        const inEditor = await elementBox(
+          page.locator('.editor-probe .cm-cursor-primary'),
+          ratio,
+        );
+        await selectedAlike(
+          () => inEditor,
+          inEditor.width,
+          `the editor, ${text}`,
+        );
+
+        await page.locator('.field-probe input').evaluate((field, length) => {
+          if (field instanceof HTMLInputElement) {
+            field.focus();
+            field.setSelectionRange(0, length);
+          }
+        }, text.length);
+        const inField = await elementBox(fieldCursor(), ratio);
+        await selectedAlike(
+          () => inField,
+          inEditor.width,
+          `the text box, ${text}`,
+        );
+      }
+    });
+  }
+
+  test('blinks the cursor of the editor and of a text box alike once the setting asks for it, shown and hidden for the 600 ms each the WebGL renderer of xterm.js shows and hides its own, and keeps the editor and the terminal blinking once they lose the focus', async () => {
     await useStyle('block', true);
     await zoomTo(ratios[0]);
     const parts = await partsInPage();
+    const inTerminal = await promptAtTop();
     await mountEditorAndField(parts, 'x', 1);
     const animationOf = (selector: string) =>
       page.locator(selector).evaluate((element) => {
@@ -705,11 +784,15 @@ suite('Cursor', () => {
       await animationOf('.field-probe .text-cursor'),
       blinking,
     );
-    const steady = JSON.stringify(['none', '0s', 'ease', '1']);
-    await waitFor(
-      async () =>
-        (await animationOf('.editor-probe .cm-cursorLayer')) === steady,
-      'the steady outline of the editor once it loses the focus',
+    assert.strictEqual(
+      await animationOf('.editor-probe .cm-cursorLayer'),
+      blinking,
+      'the editor without the focus',
     );
+    const seen = new Set<boolean>();
+    await waitFor(async () => {
+      seen.add(blockShown(await shot(), inTerminal));
+      return seen.size === 2;
+    }, 'the block of the terminal shown and hidden without the focus');
   });
 });

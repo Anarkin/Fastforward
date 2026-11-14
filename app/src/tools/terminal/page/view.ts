@@ -13,6 +13,7 @@ import {
 } from '../../../lib/page/rowScroll';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
 import {
+  withHiddenCursor,
   fontVariables,
   letterSpacingFor,
   lineHeightFor,
@@ -29,6 +30,7 @@ import type { Renderer } from '../shared/settings';
 import type { WindowsPty } from '../shared/protocol';
 import type { FromScreen } from './store';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
+import { drawnByPage, PageCursor } from './pageCursor';
 
 const resizeDelay = 50;
 
@@ -78,17 +80,22 @@ export function wheelLines(
 
 const glideOf = (smooth: boolean) => (smooth ? rowGlide : 0);
 
+type XtermStyle = 'block' | 'bar' | 'underline';
+
+const inactiveStyleOf = (style: CursorLook['style']) =>
+  style === 'block' || style === 'bar' ? style : 'none';
+
 export function cursorOptions(look: CursorLook): {
-  readonly cursorStyle: CursorLook['style'];
+  readonly cursorStyle: XtermStyle;
   readonly cursorWidth: number;
   readonly cursorBlink: boolean;
-  readonly cursorInactiveStyle: 'outline';
+  readonly cursorInactiveStyle: 'block' | 'bar' | 'none';
 } {
   return {
-    cursorStyle: look.style,
-    cursorWidth: look.barWidth,
+    cursorStyle: drawnByPage(look.style) ? 'underline' : look.style,
+    cursorWidth: look.width,
     cursorBlink: look.blink,
-    cursorInactiveStyle: 'outline',
+    cursorInactiveStyle: inactiveStyleOf(look.style),
   };
 }
 
@@ -107,6 +114,7 @@ export interface TerminalViewOptions {
 export class TerminalView {
   private readonly terminal: Terminal;
   private readonly fit: FitAddon;
+  private readonly cursor: PageCursor;
   private readonly probe = document.createElement('span');
   private readonly observer = new ResizeObserver(() => this.layOut());
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
@@ -142,6 +150,7 @@ export class TerminalView {
     this.terminal.onData((data) => this.typed(data));
     this.terminal.onResize(() => this.resized());
     this.terminal.open(element);
+    this.cursor = new PageCursor(this.terminal, options.cursor, this.restyle);
     element.addEventListener('wheel', this.wheel, {
       capture: true,
       passive: false,
@@ -192,6 +201,7 @@ export class TerminalView {
       case 'screen':
         if (message.tab === tab) {
           this.terminal.reset();
+          this.cursor.reset();
           this.terminal.write(message.data);
           this.exited = message.exited;
         }
@@ -221,6 +231,7 @@ export class TerminalView {
     this.element.removeEventListener('wheel', this.wheel, { capture: true });
     this.stopWatching();
     removeEventListener('resize', this.snapToPixels);
+    this.cursor.dispose();
     this.terminal.dispose();
     this.probe.remove();
   }
@@ -311,6 +322,7 @@ export class TerminalView {
     ) {
       this.terminal.resize(within.columns, within.rows);
     }
+    this.cursor.draw();
   }
 
   private readonly snapToPixels = () => {
@@ -365,11 +377,18 @@ export class TerminalView {
     };
   }
 
+  private readonly restyle = () => {
+    this.terminal.options.theme = this.theme();
+  };
+
   private theme() {
-    return terminalTheme((color) => {
+    const theme = terminalTheme((color) => {
       this.probe.style.color = color;
       return getComputedStyle(this.probe).color;
     });
+    return drawnByPage(this.cursor?.style ?? this.options.cursor.style)
+      ? withHiddenCursor(theme)
+      : theme;
   }
 
   private font(): TerminalFont {

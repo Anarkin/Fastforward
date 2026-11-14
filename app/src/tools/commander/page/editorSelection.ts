@@ -17,6 +17,8 @@ import {
   blinkAnimation,
   drawnCursor,
   paintCursor,
+  pixelBox,
+  placedBox,
   sameDrawing,
   type Box,
   type DrawnCursor,
@@ -52,18 +54,121 @@ function rowEdge(view: EditorView): number | undefined {
   return view.contentDOM.getBoundingClientRect().right - padding;
 }
 
+export function nearestRowEdge(
+  y: number,
+  middle: number,
+  rowHeight: number,
+): number {
+  const top = middle - rowHeight / 2;
+  const bottom = middle + rowHeight / 2;
+  return Math.abs(y - top) <= Math.abs(y - bottom) ? top : bottom;
+}
+
+function rowMiddleAt(
+  view: EditorView,
+  x: number,
+  y: number,
+  rowHeight: number,
+): number | undefined {
+  const pos = view.posAtCoords({ x, y }, false);
+  const under = characterAt(view, pos, y, rowHeight, false);
+  if (under !== null) {
+    return under.middle;
+  }
+  for (const side of [1, -1] as const) {
+    const at = view.coordsAtPos(pos, side);
+    if (at !== null && Math.abs((at.top + at.bottom) / 2 - y) < rowHeight / 2) {
+      return (at.top + at.bottom) / 2;
+    }
+  }
+  return undefined;
+}
+
+function onRowEdge(
+  view: EditorView,
+  x: number,
+  y: number,
+  inward: number,
+  rowHeight: number,
+): number {
+  const middle = rowMiddleAt(view, x, y + inward / 2, rowHeight);
+  return middle === undefined ? y : nearestRowEdge(y, middle, rowHeight);
+}
+
+interface Measures {
+  readonly origin: { readonly left: number; readonly top: number };
+  readonly edge: number | undefined;
+  readonly rowHeight: number;
+  readonly ratio: number;
+}
+
+function measuresOf(view: EditorView): Measures {
+  const origin = layerOrigin(view);
+  const right = rowEdge(view);
+  return {
+    origin,
+    edge: right === undefined ? undefined : right - origin.left,
+    rowHeight: parseFloat(getComputedStyle(view.contentDOM).lineHeight),
+    ratio: devicePixelRatio,
+  };
+}
+
+function cellSide(x: number, y: number, side: 'left' | 'right') {
+  const cell = document
+    .elementsFromPoint(x, y)
+    .find((element) => element.classList.contains('cell'));
+  return cell?.getBoundingClientRect()[side];
+}
+
 function clampedMarkers(
   view: EditorView,
   className: string,
   range: SelectionRange,
+  { origin, edge, rowHeight, ratio }: Measures,
 ): RectangleMarker[] {
-  const right = rowEdge(view);
-  const edge = right === undefined ? undefined : right - layerOrigin(view).left;
   return RectangleMarker.forRange(view, className, range).map((marker) => {
     const { left, width } = clampedToEdge(marker, edge);
-    return left === marker.left && width === marker.width
-      ? marker
-      : new RectangleMarker(className, left, marker.top, width, marker.height);
+    const x = origin.left + left + Math.min(1, (width ?? 0) / 2);
+    const top = onRowEdge(view, x, origin.top + marker.top, 1, rowHeight);
+    const bottom = onRowEdge(
+      view,
+      x,
+      origin.top + marker.top + marker.height,
+      -1,
+      rowHeight,
+    );
+    const from = origin.left + left;
+    const to = from + (width ?? 0);
+    const snapped =
+      width === null || width <= 0
+        ? { from, to }
+        : {
+            from: cellSide(from + 0.5, top + rowHeight / 2, 'left') ?? from,
+            to: Math.min(
+              cellSide(to - 0.5, bottom - rowHeight / 2, 'right') ?? to,
+              edge === undefined ? Infinity : origin.left + edge,
+            ),
+          };
+    const placed = placedBox(
+      pixelBox(
+        {
+          left: snapped.from,
+          top,
+          width: Math.max(0, snapped.to - snapped.from),
+          height: Math.max(0, bottom - top),
+        },
+        ratio,
+      ),
+      ratio,
+      origin,
+    );
+    return new RectangleMarker(
+      className,
+      placed.left,
+      placed.top,
+      width === null ? null : placed.width,
+      placed.height,
+    );
   });
 }
 
@@ -121,6 +226,7 @@ function characterAt(
   pos: number,
   middle: number,
   rowHeight: number,
+  withFont = true,
 ): Character | null {
   const line = view.state.doc.lineAt(pos);
   if (pos >= line.to) {
@@ -150,7 +256,7 @@ function characterAt(
       height: rect.bottom - rect.top,
     },
     text,
-    font: holder === null ? '' : getComputedStyle(holder).font,
+    font: holder === null || !withFont ? '' : getComputedStyle(holder).font,
   };
 }
 
@@ -194,7 +300,6 @@ export function layerOrigin(view: EditorView): { left: number; top: number } {
 
 function cursorMarkers(view: EditorView, look: CursorLook): LayerMarker[] {
   const origin = layerOrigin(view);
-  const shape = view.hasFocus ? look.style : 'outline';
   const { selection } = view.state;
   return selection.ranges.flatMap((range) => {
     const found = cellAt(view, range);
@@ -207,8 +312,8 @@ function cursorMarkers(view: EditorView, look: CursorLook): LayerMarker[] {
               : 'cm-cursor cm-cursor-secondary',
             drawnCursor({
               ...found,
-              shape,
-              barWidth: look.barWidth,
+              shape: look.style,
+              thickness: look.width,
               ratio: devicePixelRatio,
               origin,
             }),
@@ -217,8 +322,8 @@ function cursorMarkers(view: EditorView, look: CursorLook): LayerMarker[] {
   });
 }
 
-function blinking(look: CursorLook, view: EditorView, again: boolean): string {
-  return look.blink && view.hasFocus ? blinkAnimation(again) : 'none';
+function blinking(look: CursorLook, again: boolean): string {
+  return look.blink ? blinkAnimation(again) : 'none';
 }
 
 function cursorLayer(look: CursorLook): Extension {
@@ -226,21 +331,17 @@ function cursorLayer(look: CursorLook): Extension {
     above: true,
     class: 'cm-cursorLayer',
     markers: (view) => cursorMarkers(view, look),
-    mount(dom, view) {
-      dom.style.animation = blinking(look, view, false);
+    mount(dom) {
+      dom.style.animation = blinking(look, false);
     },
     update(update, dom) {
-      if (
-        update.focusChanged ||
-        update.transactions.some((transaction) => transaction.selection)
-      ) {
+      if (update.transactions.some((transaction) => transaction.selection)) {
         dom.style.animation = blinking(
           look,
-          update.view,
           dom.style.animationName === 'cursor-blink',
         );
       }
-      return update.docChanged || update.selectionSet || update.focusChanged;
+      return update.docChanged || update.selectionSet;
     },
   });
 }
@@ -248,12 +349,14 @@ function cursorLayer(look: CursorLook): Extension {
 const selectionLayer = layer({
   above: false,
   class: 'cm-selectionLayer',
-  markers: (view) =>
-    view.state.selection.ranges
+  markers: (view) => {
+    const measures = measuresOf(view);
+    return view.state.selection.ranges
       .filter((range) => !range.empty)
       .flatMap((range) =>
-        clampedMarkers(view, 'cm-selectionBackground', range),
-      ),
+        clampedMarkers(view, 'cm-selectionBackground', range, measures),
+      );
+  },
   update: (update) =>
     update.docChanged || update.selectionSet || update.viewportChanged,
 });

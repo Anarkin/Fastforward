@@ -30,6 +30,10 @@ export function terminalTheme(resolve: (color: string) => string): ITheme {
   );
 }
 
+export function withHiddenCursor(theme: ITheme): ITheme {
+  return { ...theme, cursor: theme.background };
+}
+
 export interface TerminalFont {
   readonly fontFamily: string;
   readonly fontSize: number;

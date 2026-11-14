@@ -5,12 +5,16 @@ import {
   drawnCursor,
   pageCursorLook,
   paintCursor,
+  pixelBox,
+  placedBox,
   sameDrawing,
   type Box,
   type DrawnCursor,
 } from '../../lib/page/cursor';
 
 const textCursorClass = 'text-cursor';
+
+const selectingAttribute = 'data-text-cursor';
 
 const textTypes = new Set(['text', 'search', 'url', 'tel', 'password']);
 
@@ -56,6 +60,56 @@ export interface FieldMetrics {
   readonly before: number;
   readonly through: number | undefined;
   readonly emptyCell: number;
+}
+
+export function fieldSelection(
+  {
+    content,
+    lineHeight,
+    scrolled,
+  }: Pick<FieldMetrics, 'content' | 'lineHeight' | 'scrolled'>,
+  from: number,
+  to: number,
+): Box | undefined {
+  const left = Math.max(content.left, content.left + from - scrolled);
+  const right = Math.min(
+    content.left + content.width,
+    content.left + to - scrolled,
+  );
+  return right > left
+    ? {
+        left,
+        top: content.top + (content.height - lineHeight) / 2,
+        width: right - left,
+        height: lineHeight,
+      }
+    : undefined;
+}
+
+const selectionLayer =
+  'linear-gradient(var(--selection-background), var(--selection-background))';
+
+const selectionStyles = [
+  'backgroundImage',
+  'backgroundRepeat',
+  'backgroundPosition',
+  'backgroundSize',
+] as const;
+
+function paintSelection(field: HTMLElement, placed: readonly Box[]): void {
+  if (placed.length === 0) {
+    for (const name of selectionStyles) {
+      field.style[name] = '';
+    }
+    return;
+  }
+  const layers = (layer: (box: Box) => string) => placed.map(layer).join(', ');
+  Object.assign(field.style, {
+    backgroundImage: layers(() => selectionLayer),
+    backgroundRepeat: layers(() => 'no-repeat'),
+    backgroundPosition: layers((box) => `${box.left}px ${box.top}px`),
+    backgroundSize: layers((box) => `${box.width}px ${box.height}px`),
+  });
 }
 
 export function fieldCell(metrics: FieldMetrics): Box {
@@ -118,6 +172,7 @@ class TextCursor {
       this.leave();
       this.field = field;
       field.style.setProperty('anchor-name', anchorName);
+      field.setAttribute(selectingAttribute, '');
       this.watched.observe(field);
       if (field.parentElement !== null) {
         this.moved.observe(field.parentElement, { childList: true });
@@ -128,6 +183,10 @@ class TextCursor {
 
   leave(): void {
     this.field?.style.removeProperty('anchor-name');
+    this.field?.removeAttribute(selectingAttribute);
+    if (this.field !== undefined) {
+      paintSelection(this.field, []);
+    }
     this.field = undefined;
     this.last = undefined;
     this.font = '';
@@ -153,12 +212,11 @@ class TextCursor {
       this.leave();
       return;
     }
-    if (
-      field === undefined ||
-      document.activeElement !== field ||
-      !document.hasFocus()
-    ) {
+    if (field === undefined || document.activeElement !== field) {
       this.element.remove();
+      if (field !== undefined) {
+        paintSelection(field, []);
+      }
       this.last = undefined;
       this.place = '';
       return;
@@ -174,6 +232,8 @@ class TextCursor {
     const key = JSON.stringify([
       text,
       head,
+      field.selectionStart,
+      field.selectionEnd,
       look,
       devicePixelRatio,
       field.scrollLeft,
@@ -184,10 +244,18 @@ class TextCursor {
       rect.height,
     ]);
     if (this.last?.key !== key) {
-      const drawn = this.drawing(field, style, rect, text, head, look);
+      const { drawn, selection } = this.drawing(
+        field,
+        style,
+        rect,
+        text,
+        head,
+        look,
+      );
       if (this.last === undefined || !sameDrawing(this.last.drawn, drawn)) {
         paintCursor(this.element, drawn, anchorName);
       }
+      paintSelection(field, selection);
       this.last = { key, drawn };
     }
     const place = JSON.stringify([field.value, head]);
@@ -206,7 +274,7 @@ class TextCursor {
     text: string,
     head: number,
     look: ReturnType<typeof pageCursorLook>,
-  ): DrawnCursor {
+  ): { readonly drawn: DrawnCursor; readonly selection: readonly Box[] } {
     const end = head < text.length ? findClusterBreak(text, head) : head;
     this.prepare(style, text);
     const origin = this.measure.getBoundingClientRect().left;
@@ -215,46 +283,67 @@ class TextCursor {
       this.range.setEnd(this.textNode, to);
       return this.range.getBoundingClientRect();
     };
+    const offsetOf = (index: number) =>
+      index === 0 ? 0 : at(0, index).right - origin;
     const under = end > head ? at(head, end) : undefined;
-    const before =
-      under === undefined
-        ? head === 0
-          ? 0
-          : at(0, head).right - origin
-        : under.left - origin;
-    const left =
-      rect.left + pixels(style.borderLeftWidth) + pixels(style.paddingLeft);
-    const top =
-      rect.top + pixels(style.borderTopWidth) + pixels(style.paddingTop);
-    return drawnCursor({
-      cell: fieldCell({
-        content: {
+    const before = under === undefined ? offsetOf(head) : under.left - origin;
+    const padding = {
+      left: rect.left + pixels(style.borderLeftWidth),
+      top: rect.top + pixels(style.borderTopWidth),
+    };
+    const left = padding.left + pixels(style.paddingLeft);
+    const top = padding.top + pixels(style.paddingTop);
+    const line = {
+      content: {
+        left,
+        top,
+        width:
+          rect.right -
+          pixels(style.borderRightWidth) -
+          pixels(style.paddingRight) -
           left,
+        height:
+          rect.bottom -
+          pixels(style.borderBottomWidth) -
+          pixels(style.paddingBottom) -
           top,
-          width:
-            rect.right -
-            pixels(style.borderRightWidth) -
-            pixels(style.paddingRight) -
-            left,
-          height:
-            rect.bottom -
-            pixels(style.borderBottomWidth) -
-            pixels(style.paddingBottom) -
-            top,
-        },
-        lineHeight: this.lineHeightOf(style),
-        scrolled: field.scrollLeft,
-        before,
-        through: under === undefined ? undefined : under.right - origin,
-        emptyCell: this.digit.getBoundingClientRect().width,
-      }),
-      text: text.slice(head, end),
-      shape: look.style,
-      barWidth: look.barWidth,
-      ratio: devicePixelRatio,
-      origin: { left: rect.left, top: rect.top },
-      font: style.font,
+      },
+      lineHeight: this.lineHeightOf(style),
+      scrolled: field.scrollLeft,
+    };
+    const ratio = devicePixelRatio;
+    const from = Math.min(field.selectionStart ?? 0, field.selectionEnd ?? 0);
+    const to = Math.max(field.selectionStart ?? 0, field.selectionEnd ?? 0);
+    this.range.setStart(this.textNode, from);
+    this.range.setEnd(this.textNode, to);
+    const pieces = to > from ? [...this.range.getClientRects()] : [];
+    const selected = pieces.flatMap((piece) => {
+      const box = fieldSelection(
+        line,
+        piece.left - origin,
+        piece.right - origin,
+      );
+      return box === undefined ? [] : [box];
     });
+    return {
+      drawn: drawnCursor({
+        cell: fieldCell({
+          ...line,
+          before,
+          through: under === undefined ? undefined : under.right - origin,
+          emptyCell: this.digit.getBoundingClientRect().width,
+        }),
+        text: text.slice(head, end),
+        shape: look.style,
+        thickness: look.width,
+        ratio,
+        origin: { left: rect.left, top: rect.top },
+        font: style.font,
+      }),
+      selection: selected.map((box) =>
+        placedBox(pixelBox(box, ratio), ratio, padding),
+      ),
+    };
   }
 
   private prepare(style: CSSStyleDeclaration, text: string): void {

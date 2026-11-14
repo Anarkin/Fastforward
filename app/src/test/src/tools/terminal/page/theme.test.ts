@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   terminalFont,
   terminalTheme,
+  withHiddenCursor,
 } from '../../../../../tools/terminal/page/theme';
 
 suite('Terminal theme', () => {
@@ -26,5 +27,16 @@ suite('Terminal theme', () => {
       fontSize: 13,
     });
     assert.strictEqual(terminalFont('monospace', 'large').fontSize, 12);
+  });
+
+  test('hides the cursor of xterm.js behind the one the page draws by the color of the background, an opaque one, as xterm.js reads a see-through cursor as white', () => {
+    assert.deepStrictEqual(
+      withHiddenCursor({
+        background: '#111',
+        foreground: '#ccc',
+        cursor: '#06c',
+      }),
+      { background: '#111', foreground: '#ccc', cursor: '#111' },
+    );
   });
 });

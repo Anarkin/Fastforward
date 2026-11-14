@@ -1,27 +1,27 @@
-export const cursorStyles = ['block', 'bar', 'underline'] as const;
+export const cursorStyles = ['block', 'bar', 'underline', 'outline'] as const;
 
 export type CursorStyle = (typeof cursorStyles)[number];
 
 export interface CursorLook {
   readonly style: CursorStyle;
-  readonly barWidth: number;
+  readonly width: number;
   readonly blink: boolean;
 }
 
 export const defaultCursorLook: CursorLook = {
   style: 'block',
-  barWidth: 2,
+  width: 2,
   blink: false,
 };
 
 export const cursorVariables = {
   style: '--cursor-style',
-  barWidth: '--cursor-bar-width',
+  width: '--cursor-width',
   blink: '--cursor-blink',
 } as const;
 
-const narrowestBar = 1;
-const widestBar = 10;
+const thinnest = 1;
+const thickest = 10;
 
 function isCursorStyle(value: string): value is CursorStyle {
   return cursorStyles.some((style) => style === value);
@@ -29,12 +29,12 @@ function isCursorStyle(value: string): value is CursorStyle {
 
 export function cursorLookOf(read: (name: string) => string): CursorLook {
   const style = read(cursorVariables.style).trim();
-  const barWidth = Number.parseFloat(read(cursorVariables.barWidth));
+  const width = Number.parseFloat(read(cursorVariables.width));
   return {
     style: isCursorStyle(style) ? style : defaultCursorLook.style,
-    barWidth: Number.isFinite(barWidth)
-      ? Math.min(widestBar, Math.max(narrowestBar, Math.round(barWidth)))
-      : defaultCursorLook.barWidth,
+    width: Number.isFinite(width)
+      ? Math.min(thickest, Math.max(thinnest, Math.round(width)))
+      : defaultCursorLook.width,
     blink: read(cursorVariables.blink).trim() === 'on',
   };
 }

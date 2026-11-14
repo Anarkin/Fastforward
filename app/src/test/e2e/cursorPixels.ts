@@ -1,12 +1,15 @@
 import * as assert from 'node:assert';
+import type { ElectronApplication, Locator } from 'playwright-core';
 import {
   cursorBox,
+  pixelBox,
   type Box,
   type CursorBox,
   type CursorShape,
 } from '../../lib/page/cursor';
+import { waitFor } from '../helpers/fixtures';
 
-export const barWidth = 2;
+export const cursorWidth = 2;
 
 export interface Shot {
   readonly width: number;
@@ -127,7 +130,7 @@ export function around(cell: Box): Box {
 }
 
 export function expectedBox(cell: Box, shape: CursorShape, ratio: number) {
-  return cursorBox(cell, shape, barWidth, ratio);
+  return cursorBox(cell, shape, cursorWidth, ratio);
 }
 
 export function assertDrawn(
@@ -279,3 +282,115 @@ export function placedAfterInk(taken: Shot, area: Box): Placed | undefined {
 export const blockShown = (taken: Shot, block: Box) =>
   isDark(taken, block.left, block.top) &&
   isDark(taken, block.left + block.width - 1, block.top + block.height - 1);
+
+interface Run {
+  readonly start: number;
+  readonly length: number;
+}
+
+function runAlong(
+  taken: Shot,
+  x: number,
+  y: number,
+  [dx, dy]: readonly [number, number],
+): Run {
+  const color = pixelAt(taken, x, y);
+  const same = (at: number) =>
+    sameColor(pixelAt(taken, x + at * dx, y + at * dy), color);
+  let before = 0;
+  while (same(before - 1)) {
+    before--;
+  }
+  let after = 0;
+  while (same(after + 1)) {
+    after++;
+  }
+  return {
+    start: (dx === 0 ? y : x) + before,
+    length: after - before + 1,
+  };
+}
+
+export function selectedBeside(
+  taken: Shot,
+  cursor: Box,
+  cell: number,
+  back: number,
+): { readonly selected: unknown; readonly cursor: unknown } {
+  const middle = cursor.top + Math.floor(cursor.height / 2);
+  const selected = cursor.left - back * cell + Math.floor(cell / 2);
+  const cursorRows = runAlong(
+    taken,
+    cursor.left + Math.floor(cursor.width / 2),
+    middle,
+    [0, 1],
+  );
+  const selectionRows = runAlong(taken, selected, middle, [0, 1]);
+  const along = runAlong(taken, selected, selectionRows.start, [1, 0]);
+  return {
+    selected: { rows: selectionRows, endsAt: along.start + along.length },
+    cursor: {
+      rows: cursorRows,
+      endsAt: runAlong(taken, cursor.left, cursorRows.start, [1, 0]).start,
+    },
+  };
+}
+
+export async function elementBox(
+  locator: Locator,
+  ratio: number,
+): Promise<Box> {
+  const rect = await locator.evaluate((element) => {
+    const { left, top, width, height } = element.getBoundingClientRect();
+    return { left, top, width, height };
+  });
+  return pixelBox(rect, ratio);
+}
+
+export async function fitWindow(
+  app: ElectronApplication,
+  id: number,
+): Promise<void> {
+  const most = { width: 1360, height: 800 };
+  const wanted = await app.evaluate(
+    ({ BrowserWindow, screen }, [window, largest]) => {
+      const shown = BrowserWindow.fromId(window);
+      if (shown === null) {
+        throw new Error('The window of the page is gone.');
+      }
+      const outer = shown.getBounds();
+      const inner = shown.getContentBounds();
+      const { workArea } = screen.getDisplayMatching(outer);
+      const room = {
+        width: workArea.width - outer.width + inner.width,
+        height: workArea.height - outer.height + inner.height,
+      };
+      const size = {
+        width: Math.min(largest.width, Math.floor(room.width / 8) * 8),
+        height: Math.min(largest.height, Math.floor(room.height / 8) * 8),
+      };
+      shown.setPosition(workArea.x, workArea.y);
+      shown.setContentSize(size.width, size.height);
+      shown.focus();
+      return size;
+    },
+    [id, most] as const,
+  );
+  const seen = () =>
+    app.evaluate(({ BrowserWindow, screen }, window) => {
+      const shown = BrowserWindow.fromId(window);
+      return {
+        content: shown?.getContentBounds(),
+        workArea:
+          shown && screen.getDisplayMatching(shown.getBounds()).workArea,
+      };
+    }, id);
+  await waitFor(async () => {
+    const { content } = await seen();
+    return content?.width === wanted.width && content.height === wanted.height;
+  }, `the window to take ${wanted.width} by ${wanted.height}, a size of whole device pixels`).catch(
+    async (error: unknown) => {
+      throw new Error(`${String(error)}: ${JSON.stringify(await seen())}`);
+    },
+  );
+}

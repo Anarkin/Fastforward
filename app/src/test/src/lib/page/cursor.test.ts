@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
-  barPixels,
+  thicknessPixels,
   blinkAnimation,
   cursorBlinkInterval,
   cursorBox,
@@ -18,15 +18,12 @@ const cell = { left: 90, top: 36, width: 9, height: 23 };
 const coveredBy = (start: number, end: number) =>
   Math.ceil(end - 0.5) - Math.ceil(start - 0.5);
 
-const coveredDown = (start: number, end: number) =>
-  Math.floor(end - 0.5) - Math.floor(start - 0.5);
-
 const drawn = (shape: 'bar' | 'underline' | 'outline') =>
   drawnCursor({
     cell: { left: 80, top: 40, width: 8, height: 20 },
     text: 'x',
     shape,
-    barWidth: 2,
+    thickness: 2,
     ratio: 2,
     origin: { left: 0, top: 0 },
   });
@@ -55,45 +52,52 @@ suite('Cursor', () => {
     for (const ratio of [1, 1.25, 1.5, 1.75, 2, 2.5, 3]) {
       for (const width of [1, 2, 3, 4]) {
         assert.strictEqual(
-          barPixels(width, ratio),
+          thicknessPixels(width, ratio),
           Math.max(1, coveredBy(cell.left, cell.left + width * ratio)),
           `${width} at ${ratio}`,
         );
       }
     }
-    assert.strictEqual(barPixels(1, 0.5), 1);
+    assert.strictEqual(thicknessPixels(1, 0.5), 1);
   });
 
-  test('draws the underline and the outline as thick as the WebGL renderer of xterm.js, which fills the device pixels whose centers its rectangles of a CSS pixel cover, a center on an edge filled at the left and the bottom, as GL counts up from the bottom', () => {
+  test('draws the underline and every edge of an outline as thick as a bar of the width of the setting, the underline at the bottom of the cell, the edges of an outline no thicker than half the cell, so it stays a frame', () => {
     for (const ratio of [1, 1.25, 1.5, 1.75, 2, 2.5, 3]) {
-      const bottom = cell.top + cell.height;
-      const right = cell.left + cell.width;
-      const underline = cursorBox(cell, 'underline', 2, ratio);
-      assert.deepStrictEqual(
-        underline,
-        {
-          left: cell.left,
-          top: bottom - coveredDown(bottom - ratio, bottom),
-          width: cell.width,
-          height: coveredDown(bottom - ratio, bottom),
-          edges: undefined,
-        },
-        `underline at ${ratio}`,
-      );
-      assert.deepStrictEqual(
-        cursorBox(cell, 'outline', 2, ratio),
-        {
-          ...cell,
-          edges: {
-            top: coveredDown(cell.top, cell.top + ratio),
-            right: coveredBy(right - ratio, right),
-            bottom: coveredDown(bottom - ratio, bottom),
-            left: coveredBy(cell.left, cell.left + ratio),
+      for (const width of [1, 2, 3]) {
+        const thickness = thicknessPixels(width, ratio);
+        assert.deepStrictEqual(
+          cursorBox(cell, 'underline', width, ratio),
+          {
+            left: cell.left,
+            top: cell.top + cell.height - thickness,
+            width: cell.width,
+            height: thickness,
+            edges: undefined,
           },
-        },
-        `outline at ${ratio}`,
-      );
+          `underline ${width} at ${ratio}`,
+        );
+        const roomy = { ...cell, width: 30 };
+        assert.deepStrictEqual(
+          cursorBox(roomy, 'outline', width, ratio),
+          {
+            ...roomy,
+            edges: {
+              top: thickness,
+              right: thickness,
+              bottom: thickness,
+              left: thickness,
+            },
+          },
+          `outline ${width} at ${ratio}`,
+        );
+      }
     }
+    assert.deepStrictEqual(cursorBox(cell, 'outline', 10, 1).edges, {
+      top: 10,
+      right: 4,
+      bottom: 10,
+      left: 4,
+    });
   });
 
   test('puts a box given in CSS pixels on whole device pixels, its right and bottom edges rounded on their own', () => {
@@ -157,7 +161,7 @@ suite('Cursor', () => {
         cell: { left: 72.1, top: 28.1, width: 8, height: 20 },
         text: 'x',
         shape: 'block',
-        barWidth: 2,
+        thickness: 2,
         ratio: 1.25,
         origin: { left: 10, top: 20 },
         font: '12px Mono',
@@ -185,15 +189,15 @@ suite('Cursor', () => {
     });
     assert.deepStrictEqual(drawn('underline').box, {
       left: 80,
-      top: 59,
+      top: 58,
       width: 8,
-      height: 1,
+      height: 2,
     });
     assert.deepStrictEqual(drawn('outline').edges, {
-      top: 1,
-      right: 1,
-      bottom: 1,
-      left: 1,
+      top: 2,
+      right: 2,
+      bottom: 2,
+      left: 2,
     });
     for (const shape of ['bar', 'underline', 'outline'] as const) {
       assert.strictEqual(drawn(shape).glyph, undefined, shape);
