@@ -118,17 +118,6 @@
       }
     },
     {
-      "files": ["src/test/src/tools/commander/main/tool.test.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 2000
-          }
-        ]
-      }
-    },
-    {
       "files": [
         "src/test/src/tools/commander/page/store.test.ts",
         "src/test/src/tools/git/page/commitList.test.tsx"
