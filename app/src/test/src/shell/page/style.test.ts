@@ -5,6 +5,8 @@ import { Column } from '../../../../tools/git/page/column';
 import { columnsClass } from '../../../../tools/git/page/columns';
 import { TabBar } from '../../../../shell/page/tabBar';
 import { MenuButton } from '../../../../lib/page/menu';
+import { Highlight } from '../../../../lib/page/highlight';
+import { KeyCombo } from '../../../../lib/page/keyCombo';
 import {
   allWithClass,
   cascaded,
@@ -55,6 +57,22 @@ import {
   FileHeader,
   HunkDivider,
 } from '../../../../tools/git/page/diffRowParts';
+
+const inside = (classes: string, child: React.ReactNode) =>
+  rendered(createElement('div', { className: classes }, child));
+
+const found = (classes: string, current: boolean) =>
+  withClass(
+    inside(
+      classes,
+      createElement(
+        'span',
+        { className: current ? 'find-match current' : 'find-match' },
+        'x',
+      ),
+    ),
+    'find-match',
+  );
 
 suite('Style', () => {
   test('colors the icon of each tool with its own color from the settings, so tabs of different tools for one folder tell apart at a glance', () => {
@@ -496,6 +514,143 @@ suite('Style', () => {
     assert.deepStrictEqual(
       allWithClass(rendered(menuButton()), 'menu-mark'),
       [],
+    );
+  });
+
+  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, outlining the current one, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and outlines a bracket as a plain rectangle too', () => {
+    const match = {
+      color: 'var(--color-search-match-foreground)',
+      background: 'var(--color-search-match)',
+      'border-radius': undefined,
+    };
+    const outline =
+      '0 0 0 var(--hairline) var(--color-search-match-foreground)';
+    for (const classes of [
+      'cm-editor editor-text',
+      'viewer-row',
+      'diff-line',
+    ]) {
+      looks(found(classes, false), { ...match, 'box-shadow': undefined });
+      looks(found(classes, true), { ...match, 'box-shadow': outline });
+    }
+    for (const classes of [
+      'row commander-row',
+      'commit',
+      'row tree-row',
+      'locations-list',
+      'shortcuts-popup',
+    ]) {
+      looks(
+        withClass(
+          inside(classes, createElement(Highlight, { text: 'x', query: 'x' })),
+          'match',
+        ),
+        match,
+      );
+    }
+    looks(
+      withClass(
+        inside(
+          'shortcuts-popup',
+          createElement(KeyCombo, { keys: 'F1', matched: new Set(['f1']) }),
+        ),
+        'match',
+      ),
+      match,
+    );
+    for (const classes of [
+      'highlight',
+      'highlight begin',
+      'highlight end',
+      'highlight selected',
+    ]) {
+      looks(
+        withClass(
+          inside(
+            'pdf-pane',
+            createElement(
+              'div',
+              { className: 'textLayer' },
+              createElement('span', { className: classes }, 'x'),
+            ),
+          ),
+          ...classes.split(' '),
+        ),
+        {
+          '--highlight-bg-color': 'var(--color-search-match)',
+          'border-radius': '0',
+        },
+      );
+    }
+    for (const bracket of ['cm-matchingBracket', 'cm-nonmatchingBracket']) {
+      looks(
+        withClass(
+          inside(
+            'cm-editor editor-text cm-focused',
+            createElement('span', { className: bracket }, '('),
+          ),
+          bracket,
+        ),
+        { background: 'none', 'border-radius': undefined },
+      );
+    }
+  });
+
+  test('selects text in the color of a selected row everywhere, in the text boxes, the viewer, the diff, Markdown and any other text as the editor does, and see-through in that color over the page of a PDF, which shows through', () => {
+    const selected = { pseudoElement: '::selection' };
+    const text = createElement('span', { className: 'text' }, 'x');
+    for (const element of [
+      rendered(createElement('input', { className: 'prompt-input' })),
+      rendered(createElement('textarea', { className: 'field' })),
+      withClass(inside('viewer-row', text), 'text'),
+      withClass(inside('diff-line', text), 'text'),
+      withClass(inside('markdown', text), 'text'),
+      withClass(inside('notice', text), 'text'),
+    ]) {
+      looks(
+        element,
+        { 'background-color': 'var(--selection-background)' },
+        selected,
+      );
+    }
+    const editor = rendered(
+      createElement(
+        'div',
+        { className: 'cm-editor editor-text editor-selection' },
+        createElement(
+          'div',
+          { className: 'cm-scroller' },
+          createElement('div', { className: 'cm-line' }, 'x'),
+          createElement(
+            'div',
+            { className: 'cm-selectionLayer' },
+            createElement('div', { className: 'cm-selectionBackground' }),
+          ),
+        ),
+      ),
+    );
+    looks(
+      withClass(editor, 'cm-line'),
+      { 'background-color': 'transparent' },
+      selected,
+    );
+    looks(withClass(editor, 'cm-selectionBackground'), {
+      background: 'var(--selection-background)',
+    });
+    looks(
+      withClass(
+        inside(
+          'pdf-pane',
+          createElement('div', { className: 'textLayer' }, text),
+        ),
+        'text',
+      ),
+      { 'background-color': 'var(--selection-tint)' },
+      selected,
+    );
+    assert.strictEqual(
+      bodyVariable('selection-tint'),
+      'color-mix( in srgb, var(--color-focus) var(--color-focus-selected), transparent )',
     );
   });
 });

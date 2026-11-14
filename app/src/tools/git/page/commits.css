@@ -150,16 +150,6 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   width: calc(4px + 3 * var(--button-size) + 2 * var(--button-gap));
 }
 
-.diff-line .find-match {
-  color: var(--color-search-match-foreground);
-  background: var(--color-search-match);
-  border-radius: 2px;
-}
-
-.diff-line .find-match.current {
-  box-shadow: 0 0 0 var(--hairline) var(--color-search-match-foreground);
-}
-
 .nav-button-space {
   flex: none;
   width: var(--button-size);

@@ -17,11 +17,6 @@
     var(--color-foreground) var(--color-marked-file),
     var(--color-panel-background)
   );
-  --selection-tint: color-mix(
-    in srgb,
-    var(--color-focus) var(--color-focus-selected),
-    transparent
-  );
   --text-advance: var(--commander-advance);
 }
 

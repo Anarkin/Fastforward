@@ -30,6 +30,23 @@ const theme = themeCss(defaultSettings());
 const dark = theme.slice(theme.indexOf('@media (prefers-color-scheme: dark)'));
 const light = theme.slice(0, theme.indexOf('@media'));
 
+function channelsOf(hex: string | undefined): readonly number[] {
+  const digits = (hex ?? '').slice(1);
+  const long = digits.length <= 4 ? digits.replaceAll(/./g, '$&$&') : digits;
+  const [red = '', green = '', blue = '', alpha = 'ff'] =
+    long.match(/../g) ?? [];
+  return [red, green, blue, alpha].map((pair) => parseInt(pair, 16) / 255);
+}
+
+const mixed = (
+  top: readonly number[],
+  share: number,
+  under: readonly number[],
+): number[] =>
+  [0, 1, 2].map((at) =>
+    Math.round(255 * ((top[at] ?? 0) * share + (under[at] ?? 0) * (1 - share))),
+  );
+
 function definitions(block: string): string[] {
   return [...block.matchAll(/^\s*(--[\w-]+):/gm)].map((match) => match[1]);
 }
@@ -182,5 +199,23 @@ suite('Theme', () => {
         '',
       ].join('\n'),
     );
+  });
+
+  test('selects text in the terminal in the color the rest of the app selects text in, by default, in the light and the dark theme', () => {
+    const settings = defaultSettings();
+    for (const scheme of ['light', 'dark'] as const) {
+      const app = settings.colors[scheme];
+      const terminal = settings.tools.terminal.colors[scheme];
+      const selection = channelsOf(terminal.selection);
+      assert.deepStrictEqual(
+        mixed(selection, selection[3] ?? 1, channelsOf(terminal.background)),
+        mixed(
+          channelsOf(app.focus),
+          parseFloat(app['focus-selected'] ?? '') / 100,
+          channelsOf(app['panel-background']),
+        ),
+        scheme,
+      );
+    }
   });
 });

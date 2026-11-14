@@ -11,6 +11,7 @@ import {
 import { defaultSettings } from '../../../helpers/fixtures';
 import {
   css,
+  bodyVariable,
   compact,
   looks,
   checkBox,
@@ -194,7 +195,7 @@ suite('Style', () => {
       'color-mix(in srgb, var(--color-foreground) var(--color-marked-file), var(--color-panel-background))',
     );
     assert.strictEqual(
-      compact(cascaded(commander, '--selection-tint')),
+      compact(bodyVariable('selection-tint')),
       'color-mix(in srgb, var(--color-focus) var(--color-focus-selected), transparent)',
     );
     for (const layout of ['commander-line', 'commander-tile']) {

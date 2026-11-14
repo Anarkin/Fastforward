@@ -82,6 +82,11 @@ body {
     var(--color-focus) var(--color-focus-selected),
     var(--color-panel-background)
   );
+  --selection-tint: color-mix(
+    in srgb,
+    var(--color-focus) var(--color-focus-selected),
+    transparent
+  );
   --scrollbar-background: color-mix(
     in srgb,
     var(--color-scrollbar) var(--color-scrollbar-rest),
@@ -718,12 +723,6 @@ body {
 .shortcuts-empty {
   padding: 12px 0;
   color: var(--muted-foreground);
-}
-
-.shortcuts-popup .match {
-  color: var(--color-search-match-foreground);
-  background: var(--color-search-match);
-  border-radius: 2px;
 }
 
 .shortcuts-note {

@@ -212,7 +212,15 @@
 .pdf-pane .textLayer .highlight {
   --highlight-bg-color: var(--color-search-match);
   --highlight-selected-bg-color: var(--highlight-bg-color);
-  border-radius: 2px;
+  border-radius: 0;
+}
+
+.pdf-pane .textLayer *::selection {
+  background-color: var(--selection-tint);
+}
+
+.pdf-pane .textLayer br::selection {
+  background-color: transparent;
 }
 
 .pdf-pane .textLayer .highlight.selected {

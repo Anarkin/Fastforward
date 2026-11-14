@@ -66,13 +66,6 @@
   background: var(--selection-background);
 }
 
-.locations-list .match,
-.tree-row .match {
-  color: var(--color-search-match-foreground);
-  background: var(--color-search-match);
-  border-radius: 2px;
-}
-
 .locations-empty {
   padding: 0 8px;
   line-height: var(--row-line-height);
