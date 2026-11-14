@@ -3,7 +3,11 @@ import { isDeepStrictEqual } from 'node:util';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
-import { type Entry, type Side } from '../shared/protocol';
+import {
+  type CommanderToHost,
+  type Entry,
+  type Side,
+} from '../shared/protocol';
 import type { LocalFileSystem } from './fileSystem';
 import { pathParts } from '../shared/paths';
 import type { ElevatedFileSystem } from './elevated';
@@ -272,6 +276,35 @@ export class Listings {
             how === 'refresh',
           ),
         );
+    }
+  }
+
+  reread(
+    page: Page,
+    message: Extract<CommanderToHost, { type: 'reread' }>,
+  ): Promise<void> | undefined {
+    const shown = this.sides.shownPane(page, message.tab, message.side);
+    if (shown !== undefined) {
+      this.parts.scans.endSizing(shown.pane);
+      this.parts.scans.forgetDuplicates(shown.pane);
+    }
+    if (shown?.pane.flat !== undefined) {
+      this.parts.scans.startFlat(page, shown);
+      return undefined;
+    }
+    return shown === undefined
+      ? undefined
+      : this.list(page, shown.tab, shown.side, shown.pane.folder, 'show');
+  }
+
+  stopReading(
+    page: Page,
+    message: Extract<CommanderToHost, { type: 'stopReading' }>,
+  ): void {
+    const shown = this.sides.shownPane(page, message.tab, message.side);
+    if (shown !== undefined) {
+      shown.pane.opening?.abort();
+      this.parts.scans.stopScans(shown.pane);
     }
   }
 

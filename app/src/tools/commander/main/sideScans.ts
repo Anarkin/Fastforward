@@ -276,6 +276,16 @@ export class SideScans {
     duplicates.duplicates.look(compared);
   }
 
+  forgetDuplicates(pane: Pane): void {
+    pane.duplicates?.duplicates.forget();
+  }
+
+  stopScans(pane: Pane): void {
+    pane.flat?.tree.stop();
+    pane.sizing?.sizes.stop();
+    pane.duplicates?.duplicates.stop();
+  }
+
   endDuplicates(pane: Pane): void {
     const { duplicates } = pane;
     if (duplicates !== undefined) {

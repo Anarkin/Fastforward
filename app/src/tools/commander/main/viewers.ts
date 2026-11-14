@@ -352,6 +352,22 @@ export class Viewers {
     });
   }
 
+  stopFind(
+    page: Page,
+    message: Extract<CommanderToHost, { type: 'stopFind' }>,
+  ): void {
+    const showing = this.sides.shown.get(page);
+    if (
+      showing?.findingRequest !== undefined &&
+      message.request === showing.findingRequest &&
+      message.tab === showing.viewing?.tab
+    ) {
+      showing.finding?.abort();
+      showing.finding = undefined;
+      showing.findingRequest = undefined;
+    }
+  }
+
   async readRows(
     page: Page,
     message: Extract<CommanderToHost, { type: 'readRows' }>,

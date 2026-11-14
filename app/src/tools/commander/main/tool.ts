@@ -1,4 +1,3 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
@@ -11,22 +10,12 @@ import {
   type Tool,
 } from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
-import { isSide, sides, type CommanderToHost } from '../shared/protocol';
-import { heldColumns, isColumnWidths, isSort } from '../shared/settings';
+import { sides, type CommanderToHost } from '../shared/protocol';
 import type { LocalFileSystem } from './fileSystem';
-import {
-  shownBookmarks,
-  withBookmark,
-  withoutBookmark,
-  type BookmarkSystem,
-} from './bookmarks';
-import { heldBox } from '../shared/thumbnails';
-import { fileVersion } from '../shared/files';
-import { firstBytes } from './encodingDetection';
 import { Editing } from './editing';
-import { saveFile } from './fileSaving';
+import { editingFiles } from './editingFiles';
+import { CommanderSettings } from './commanderSettings';
 import { Icons } from './icons';
-import { codeOf } from './reasons';
 import { Transfers } from './transfers';
 import { maxDroppedIcons, viewerIconUrl } from '../shared/icons';
 import { newPane, type Panes, Sides } from './sides';
@@ -76,6 +65,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly listings: Listings;
   private readonly navigation: Navigation;
   private readonly elevation: Elevation;
+  private readonly settings: CommanderSettings;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
@@ -92,54 +82,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.serving = new Serving(this.sides, this.icons, () => this.shell.tabs());
     this.thumbnailServing = new ThumbnailServing(access, this.sides);
     this.editing = new Editing(
-      {
-        readFile: (file) => fs.promises.readFile(file),
-        readStart: firstBytes,
-        statFile: async (file) => {
-          try {
-            const stat = await fs.promises.stat(file);
-            return { folder: stat.isDirectory(), size: stat.size };
-          } catch (error) {
-            if (codeOf(error) === 'ENOENT') {
-              return undefined;
-            }
-            throw error;
-          }
-        },
-        stampOf: async (file) => {
-          try {
-            return fileVersion(await fs.promises.stat(file));
-          } catch (error) {
-            if (codeOf(error) === 'ENOENT') {
-              return undefined;
-            }
-            throw error;
-          }
-        },
-        watch: (file, onChange) => access.watch(file, onChange),
-        saveFile: async (file, bytes, overwriteReadOnly) => {
-          const saved = await (
-            access.saveEdited ??
-            ((edited, written, overwriting) =>
-              saveFile(edited, written, {
-                overwriteReadOnly: overwriting,
-              }))
-          )(file, bytes, overwriteReadOnly);
-          this.copies.editedCopySaved(file);
-          return saved;
-        },
-        codePage: () => access.codePage(),
-        readOnly: (file) =>
-          access.readOnlyFile?.(file) === true ||
-          (this.copies.copyOf(file) !== undefined &&
-            !this.copies.editedCopies.has(file)),
-        ...(access.editorSources !== undefined && {
-          endingSources: access.editorSources,
-        }),
-        ...(access.editorDefaults !== undefined && {
-          textDefaults: access.editorDefaults,
-        }),
-      },
+      editingFiles(access, () => this.copies),
       {
         post: (page, message) => post(page, message),
         notice: (page, notice) => this.shell.notice(page, notice),
@@ -261,6 +204,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.elevation = new Elevation(access, this.sides, this.listings, {
       shell: () => this.shell,
     });
+    this.settings = new CommanderSettings(access, this.sides);
   }
 
   attach(shell: ShellAccess): void {
@@ -276,7 +220,7 @@ export class CommanderTool implements Tool<'commander'> {
         pane.flat.told = undefined;
       }
     }
-    this.postSettings(page);
+    this.settings.post(page);
     this.transfers.resend();
     const open = new Set(
       this.shell
@@ -478,55 +422,22 @@ export class CommanderTool implements Tool<'commander'> {
         return this.viewers.readText(page, message);
       case 'findText':
         return this.viewers.findText(page, message);
-      case 'stopFind': {
-        const showing = this.sides.shown.get(page);
-        if (
-          showing?.findingRequest !== undefined &&
-          message.request === showing.findingRequest &&
-          message.tab === showing.viewing?.tab
-        ) {
-          showing.finding?.abort();
-          showing.finding = undefined;
-          showing.findingRequest = undefined;
-        }
-        return;
-      }
+      case 'stopFind':
+        this.viewers.stopFind(page, message);
+        return undefined;
       case 'readPdfPlace':
         return this.viewers.readPdfPlace(page, message);
       case 'savePdfPlace':
         return this.viewers.savePdfPlace(page, message);
       case 'readBytes':
         return this.viewers.readBytes(page, message);
-      case 'reread': {
-        const shown = this.sides.shownPane(page, message.tab, message.side);
-        if (shown !== undefined) {
-          this.scans.endSizing(shown.pane);
-          shown.pane.duplicates?.duplicates.forget();
-        }
-        if (shown?.pane.flat !== undefined) {
-          this.scans.startFlat(page, shown);
-          return undefined;
-        }
-        return shown === undefined
-          ? undefined
-          : this.listings.list(
-              page,
-              shown.tab,
-              shown.side,
-              shown.pane.folder,
-              'show',
-            );
-      }
+      case 'reread':
+        return this.listings.reread(page, message);
       case 'flat':
         return this.scans.turnFlat(page, message);
-      case 'stopReading': {
-        const shown = this.sides.shownPane(page, message.tab, message.side);
-        shown?.pane.opening?.abort();
-        shown?.pane.flat?.tree.stop();
-        shown?.pane.sizing?.sizes.stop();
-        shown?.pane.duplicates?.duplicates.stop();
+      case 'stopReading':
+        this.listings.stopReading(page, message);
         return undefined;
-      }
       case 'countSizes':
         this.scans.countSizes(page, message);
         return undefined;
@@ -555,22 +466,9 @@ export class CommanderTool implements Tool<'commander'> {
         return undefined;
       }
       case 'columns':
-        if (isColumnWidths(message.columns)) {
-          const { extension, size, date } = message.columns;
-          await this.access.saveColumns({ extension, size, date });
-          this.postSettings(page);
-        }
-        return undefined;
+        return this.settings.columns(page, message);
       case 'sort':
-        if (isSide(message.side) && isSort(message.sort)) {
-          const { column, descending, groupByColor } = message.sort;
-          await this.access.saveSorts({
-            ...this.access.settings().sort,
-            [message.side]: { column, descending, groupByColor },
-          });
-          this.postSettings(page);
-        }
-        return undefined;
+        return this.settings.sort(page, message);
       case 'saveThumbnail':
         return this.thumbnailServing.saveThumbnail(message);
       case 'dropIcons':
@@ -583,32 +481,11 @@ export class CommanderTool implements Tool<'commander'> {
         }
         return undefined;
       case 'showHidden':
-        if (typeof message.shown === 'boolean') {
-          await this.access.saveShowHidden(message.shown);
-          this.postSettings(page);
-        }
-        return undefined;
-      case 'addBookmark': {
-        const shown = this.sides.diskPane(
-          page,
-          message.tab,
-          message.side,
-          message.folder,
-        );
-        return shown === undefined
-          ? undefined
-          : this.saveBookmarks(page, (stored, system) =>
-              withBookmark(stored, shown.pane.folder, system),
-            );
-      }
-      case 'removeBookmark': {
-        const { folder } = message;
-        return typeof folder === 'string'
-          ? this.saveBookmarks(page, (stored, system) =>
-              withoutBookmark(stored, folder, system),
-            )
-          : undefined;
-      }
+        return this.settings.showHidden(page, message);
+      case 'addBookmark':
+        return this.settings.addBookmark(page, message);
+      case 'removeBookmark':
+        return this.settings.removeBookmark(page, message);
       case 'goToBookmark':
         return this.navigation.goToBookmark(page, message);
       case 'goTo':
@@ -673,7 +550,7 @@ export class CommanderTool implements Tool<'commander'> {
 
   reloadSettings(): void {
     for (const page of this.shell.pages()) {
-      this.postSettings(page);
+      this.settings.post(page);
     }
   }
 
@@ -747,25 +624,6 @@ export class CommanderTool implements Tool<'commander'> {
     this.shell.notice(page, { level: 'error', message });
   }
 
-  private get bookmarkSystem(): BookmarkSystem {
-    return { paths: path, platform: this.access.platform };
-  }
-
-  private async saveBookmarks(
-    page: Page,
-    change: (
-      stored: readonly string[],
-      system: BookmarkSystem,
-    ) => readonly string[],
-  ): Promise<void> {
-    const stored = this.access.settings().bookmarks;
-    const changed = change(stored, this.bookmarkSystem);
-    if (changed !== stored) {
-      await this.access.saveBookmarks(changed);
-      this.postSettings(page);
-    }
-  }
-
   private files(): Promise<LocalFileSystem> {
     this.fileSystem ??= this.access.fileSystem();
     return this.fileSystem;
@@ -775,24 +633,6 @@ export class CommanderTool implements Tool<'commander'> {
     post(page, {
       type: 'drives',
       drives: await (await this.files()).drives(),
-    });
-  }
-
-  private postSettings(page: Page): void {
-    const { showHidden, sort, columns, thumbnailSize, fileColors, bookmarks } =
-      this.access.settings();
-    post(page, {
-      type: 'settings',
-      showHidden,
-      sort,
-      columns: heldColumns(columns),
-      defaultColumns: this.access.defaultColumns(),
-      canElevate: this.access.elevate !== undefined,
-      platform: this.access.platform,
-      thumbnailSize: heldBox(thumbnailSize),
-      fileColors,
-      bookmarks: shownBookmarks(bookmarks, this.bookmarkSystem),
-      ...(this.access.closesBrackets?.() === true && { closeBrackets: true }),
     });
   }
 }
