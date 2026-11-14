@@ -3,7 +3,11 @@ import { isDeepStrictEqual } from 'node:util';
 import { strings } from '../../../lib/shared/strings';
 import { type Page, type ShellAccess } from '../../../shell/main/shell';
 import { SavedSides } from './savedSides';
-import { type Entry, type Side } from '../shared/protocol';
+import {
+  type CommanderToHost,
+  type Entry,
+  type Side,
+} from '../shared/protocol';
 import type { LocalFileSystem } from './fileSystem';
 import { pathParts } from '../shared/paths';
 import type { ElevatedFileSystem } from './elevated';
@@ -20,7 +24,9 @@ import {
 import { SideScans } from './sideScans';
 import { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './commanderAccess';
-import { isFolder } from './fileStats';
+import { isFile, isFolder } from './fileStats';
+import { shownBookmarks, type BookmarkSystem } from './bookmarks';
+import { typedPath } from './typedPaths';
 import { ReadingStopped, type Opener, ArchiveListing } from './archiveListing';
 
 const maxHistory = 100;
@@ -445,6 +451,86 @@ export class Listings {
       return (await this.access.binOff?.(folder)) === true;
     } catch {
       return false;
+    }
+  }
+
+  private get bookmarkSystem(): BookmarkSystem {
+    return { paths: path, platform: this.access.platform };
+  }
+
+  step(page: Page, tab: unknown, side: unknown, step: unknown): Promise<void> {
+    const shown = this.sides.shownPane(page, tab, side);
+    if (shown === undefined || (step !== -1 && step !== 1)) {
+      return Promise.resolve();
+    }
+    const at = shown.pane.at + step;
+    const folder = shown.pane.history.at(at);
+    return at < 0 || folder === undefined
+      ? Promise.resolve()
+      : this.list(page, shown.tab, shown.side, folder, { at });
+  }
+
+  async goToBookmark(
+    page: Page,
+    { tab, side, folder }: Extract<CommanderToHost, { type: 'goToBookmark' }>,
+  ): Promise<void> {
+    const shown = this.sides.shownPane(page, tab, side);
+    const bookmarked = shownBookmarks(
+      this.access.settings().bookmarks,
+      this.bookmarkSystem,
+    ).find((bookmark) => bookmark === folder);
+    if (shown !== undefined && bookmarked !== undefined) {
+      await this.list(page, shown.tab, shown.side, bookmarked, 'visit');
+    }
+  }
+
+  async goTo(
+    page: Page,
+    { tab, side, folder, to }: Extract<CommanderToHost, { type: 'goTo' }>,
+  ): Promise<void> {
+    const shown = this.sides.namingPane(page, tab, side, folder);
+    const { home, variable, knownFolder } = this.access;
+    const target =
+      shown === undefined || typeof to !== 'string'
+        ? undefined
+        : await typedPath(to, shown.pane.folder, {
+            ...this.bookmarkSystem,
+            home,
+            variable: variable ?? (() => undefined),
+            knownFolder,
+          });
+    if (shown === undefined || target === undefined) {
+      return;
+    }
+    if (await isFile(target)) {
+      await this.list(
+        page,
+        shown.tab,
+        shown.side,
+        path.dirname(target),
+        'visit',
+        undefined,
+        path.basename(target),
+      );
+      return;
+    }
+    await this.list(page, shown.tab, shown.side, target, 'visit');
+  }
+
+  async drive(
+    page: Page,
+    tab: unknown,
+    side: unknown,
+    drive: unknown,
+  ): Promise<void> {
+    const shown = this.sides.shownPane(page, tab, side);
+    if (shown === undefined) {
+      return;
+    }
+    const drives = await (await this.host.files()).drives();
+    const chosen = drives.find((each) => each === drive);
+    if (chosen !== undefined) {
+      await this.list(page, shown.tab, shown.side, chosen, 'visit');
     }
   }
 }

@@ -163,17 +163,6 @@
           }
         ]
       }
-    },
-    {
-      "files": ["src/tools/commander/main/tool.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1100
-          }
-        ]
-      }
     }
   ],
   "ignorePatterns": ["dist", "release", "perf-results", "perf-build"]

@@ -19,11 +19,9 @@ import {
   withoutBookmark,
   type BookmarkSystem,
 } from './bookmarks';
-import { typedPath } from './typedPaths';
 import { heldBox } from '../../../lib/shared/images';
 import { fileVersion } from '../shared/files';
 import { firstBytes } from './textRows';
-import type { ElevatedFileSystem } from './elevated';
 import { Editing } from './editing';
 import { saveFile } from './fileSaving';
 import { Icons } from './icons';
@@ -38,10 +36,11 @@ import { ArchiveCopies } from './archiveCopies';
 import { TransferCommands } from './transferCommands';
 import { PackCommands } from './packCommands';
 import type { CommanderAccess } from './commanderAccess';
-import { isFolder, isFile } from './fileStats';
+import { isFolder } from './fileStats';
 import { FileCommands } from './fileCommands';
 import { ArchiveListing } from './archiveListing';
 import { Listings } from './listings';
+import { Elevation } from './elevation';
 
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
@@ -56,13 +55,12 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly archiveListing: ArchiveListing;
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
-  private elevated: ElevatedFileSystem | undefined;
-  private elevating: Promise<ElevatedFileSystem | undefined> | undefined;
   private transferPage: Page | undefined;
   private readonly transfers: Transfers;
   private readonly savedSides: SavedSides;
   private readonly editing: Editing;
   private readonly listings: Listings;
+  private readonly elevation: Elevation;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
@@ -213,11 +211,14 @@ export class CommanderTool implements Tool<'commander'> {
       },
       {
         shell: () => this.shell,
-        elevated: () => this.elevated,
+        elevated: () => this.elevation.current,
         files: () => this.files(),
         saveQuietly: (saving) => this.saveQuietly(saving),
       },
     );
+    this.elevation = new Elevation(access, this.sides, this.listings, {
+      shell: () => this.shell,
+    });
   }
 
   attach(shell: ShellAccess): void {
@@ -362,11 +363,21 @@ export class CommanderTool implements Tool<'commander'> {
           message.name,
         );
       case 'drive':
-        return this.drive(page, message.tab, message.side, message.drive);
+        return this.listings.drive(
+          page,
+          message.tab,
+          message.side,
+          message.drive,
+        );
       case 'listDrives':
         return this.postDrives(page);
       case 'step':
-        return this.step(page, message.tab, message.side, message.step);
+        return this.listings.step(
+          page,
+          message.tab,
+          message.side,
+          message.step,
+        );
       case 'view':
         return this.fileCommands.view(
           page,
@@ -492,7 +503,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'folderCommand':
         return this.fileCommands.folderCommand(page, message);
       case 'elevate':
-        return this.elevate(page, message.tab, message.side);
+        return this.elevation.elevate(page, message.tab, message.side);
       case 'activate': {
         const shown = this.sides.shownPane(page, message.tab, message.side);
         const panes = shown && this.sides.panes.get(shown.tab);
@@ -557,9 +568,9 @@ export class CommanderTool implements Tool<'commander'> {
           : undefined;
       }
       case 'goToBookmark':
-        return this.goToBookmark(page, message);
+        return this.listings.goToBookmark(page, message);
       case 'goTo':
-        return this.goTo(page, message);
+        return this.listings.goTo(page, message);
       case 'duplicates':
         this.scans.turnDuplicates(page, message);
         return undefined;
@@ -656,7 +667,7 @@ export class CommanderTool implements Tool<'commander'> {
     for (const page of this.sides.shown.keys()) {
       this.sides.stopShowing(page);
     }
-    this.elevated?.close();
+    this.elevation.close();
   }
 
   file(url: URL, range: string | null): Promise<Response> {
@@ -694,82 +705,6 @@ export class CommanderTool implements Tool<'commander'> {
     this.shell.notice(page, { level: 'error', message });
   }
 
-  private async elevate(
-    page: Page,
-    tab: unknown,
-    side: unknown,
-  ): Promise<void> {
-    const shown = this.sides.shownPane(page, tab, side);
-    const folder = shown?.pane.denied;
-    const { elevate } = this.access;
-    if (shown === undefined || folder === undefined || elevate === undefined) {
-      return;
-    }
-    if (this.elevated !== undefined) {
-      await this.listings.list(page, shown.tab, shown.side, folder, 'visit');
-      return;
-    }
-    this.elevating ??= elevate().then(
-      (elevated) => {
-        this.elevating = undefined;
-        if (elevated !== undefined) {
-          this.elevated = elevated;
-          void elevated.closed.then(() => {
-            if (this.elevated === elevated) {
-              this.elevated = undefined;
-              this.helperStopped();
-            }
-          });
-        }
-        return elevated;
-      },
-      () => {
-        this.elevating = undefined;
-        this.shell.notice(page, {
-          level: 'error',
-          message: strings.commander.helperFailed,
-        });
-        return undefined;
-      },
-    );
-    if ((await this.elevating) !== undefined) {
-      await this.listings.list(page, shown.tab, shown.side, folder, 'visit');
-    }
-  }
-
-  private helperStopped(): void {
-    const page = this.shell.page();
-    let readAsAdministrator = false;
-    for (const [tab, panes] of this.sides.panes) {
-      for (const side of sides) {
-        const pane = panes[side];
-        if (pane.elevated !== true) {
-          continue;
-        }
-        readAsAdministrator = true;
-        pane.elevated = false;
-        pane.entries = undefined;
-        pane.denied = pane.folder;
-        const shownIn = this.sides.pageShowing(tab);
-        if (shownIn !== undefined) {
-          this.listings.postListing(shownIn, tab, side, pane, undefined);
-          post(shownIn, {
-            type: 'noAccess',
-            side,
-            folder: pane.folder,
-            asAdministrator: true,
-          });
-        }
-      }
-    }
-    if (readAsAdministrator) {
-      this.shell.notice(page, {
-        level: 'error',
-        message: strings.commander.helperStopped,
-      });
-    }
-  }
-
   private openRepository(
     page: Page,
     {
@@ -789,23 +724,6 @@ export class CommanderTool implements Tool<'commander'> {
         ]);
   }
 
-  private step(
-    page: Page,
-    tab: unknown,
-    side: unknown,
-    step: unknown,
-  ): Promise<void> {
-    const shown = this.sides.shownPane(page, tab, side);
-    if (shown === undefined || (step !== -1 && step !== 1)) {
-      return Promise.resolve();
-    }
-    const at = shown.pane.at + step;
-    const folder = shown.pane.history.at(at);
-    return at < 0 || folder === undefined
-      ? Promise.resolve()
-      : this.listings.list(page, shown.tab, shown.side, folder, { at });
-  }
-
   private get bookmarkSystem(): BookmarkSystem {
     return { paths: path, platform: this.access.platform };
   }
@@ -822,76 +740,6 @@ export class CommanderTool implements Tool<'commander'> {
     if (changed !== stored) {
       await this.access.saveBookmarks(changed);
       this.postSettings(page);
-    }
-  }
-
-  private async goToBookmark(
-    page: Page,
-    { tab, side, folder }: Extract<CommanderToHost, { type: 'goToBookmark' }>,
-  ): Promise<void> {
-    const shown = this.sides.shownPane(page, tab, side);
-    const bookmarked = shownBookmarks(
-      this.access.settings().bookmarks,
-      this.bookmarkSystem,
-    ).find((bookmark) => bookmark === folder);
-    if (shown !== undefined && bookmarked !== undefined) {
-      await this.listings.list(
-        page,
-        shown.tab,
-        shown.side,
-        bookmarked,
-        'visit',
-      );
-    }
-  }
-
-  private async goTo(
-    page: Page,
-    { tab, side, folder, to }: Extract<CommanderToHost, { type: 'goTo' }>,
-  ): Promise<void> {
-    const shown = this.sides.namingPane(page, tab, side, folder);
-    const { home, variable, knownFolder } = this.access;
-    const target =
-      shown === undefined || typeof to !== 'string'
-        ? undefined
-        : await typedPath(to, shown.pane.folder, {
-            ...this.bookmarkSystem,
-            home,
-            variable: variable ?? (() => undefined),
-            knownFolder,
-          });
-    if (shown === undefined || target === undefined) {
-      return;
-    }
-    if (await isFile(target)) {
-      await this.listings.list(
-        page,
-        shown.tab,
-        shown.side,
-        path.dirname(target),
-        'visit',
-        undefined,
-        path.basename(target),
-      );
-      return;
-    }
-    await this.listings.list(page, shown.tab, shown.side, target, 'visit');
-  }
-
-  private async drive(
-    page: Page,
-    tab: unknown,
-    side: unknown,
-    drive: unknown,
-  ): Promise<void> {
-    const shown = this.sides.shownPane(page, tab, side);
-    if (shown === undefined) {
-      return;
-    }
-    const drives = await (await this.files()).drives();
-    const chosen = drives.find((each) => each === drive);
-    if (chosen !== undefined) {
-      await this.listings.list(page, shown.tab, shown.side, chosen, 'visit');
     }
   }
 
