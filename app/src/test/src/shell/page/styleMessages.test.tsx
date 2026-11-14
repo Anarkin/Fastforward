@@ -19,6 +19,7 @@ import {
   keyOf,
   shownScrollbar,
   popupOf,
+  bodyVariable,
 } from './stylesheetFixtures';
 
 suite('Style', () => {
@@ -193,5 +194,96 @@ suite('Style', () => {
     ]) {
       assert.ok(layer(above) > message, above.classes.join(' '));
     }
+  });
+
+  test("pops a commit's row out over itself like the other popups, ringed with their edge over the row's tint, letting the pointer through to the rows under it", () => {
+    const panel = rendered(<MessagePanelShown />);
+    looks(panel, {
+      position: 'fixed',
+      'box-sizing': 'border-box',
+      'margin-right': 'var(--gutter-width)',
+      background: 'var(--color-panel-background)',
+      'border-radius': 'var(--card-radius)',
+      'pointer-events': 'none',
+    });
+    const [edge] = (bodyVariable('popup-shadow') ?? '').split(',');
+    assert.match(edge, /^inset /);
+    looks(
+      panel,
+      {
+        position: 'absolute',
+        inset: '0',
+        'border-radius': 'inherit',
+        'box-shadow': edge,
+      },
+      after,
+    );
+  });
+
+  test("casts the shadow of a popped-out row from behind its text rather than from the row, as a shadow on the text's own layer turns its subpixel antialiasing off, blurring it next to the rows, cutting a long message off inside the row instead, as cutting the popup off would cut its shadow off too", () => {
+    const panel = rendered(<MessagePanelShown />);
+    looks(panel, { overflow: undefined, 'box-shadow': undefined });
+    looks(
+      panel,
+      {
+        content: "''",
+        position: 'absolute',
+        inset: '0',
+        'z-index': '-1',
+        'border-radius': 'inherit',
+        'box-shadow': 'var(--popup-shadow)',
+      },
+      { pseudoElement: '::before' },
+    );
+    looks(withClass(panel, 'commit'), {
+      'box-sizing': 'border-box',
+      'max-height': 'inherit',
+      overflow: 'hidden',
+      'border-radius': 'inherit',
+    });
+  });
+
+  test("extends the popped-out row: as white as the other popups, though its row is under the pointer or selected, or the pointer is on it pinned, its subject wrapped in lines as tall as the row's, its author and date as wide as the row, then the rest of the message with its line breaks", () => {
+    const panel = rendered(<MessagePanelShown />);
+    const row = withClass(panel, 'commit');
+    looks(row, { 'border-bottom': undefined, background: 'none' });
+    looks(row, { background: 'none' }, hovered);
+    looks(withClass(rendered(<MessagePanelShown selected="a" />), 'commit'), {
+      background: 'none',
+    });
+    const rowLine = cascaded(
+      withClass(rendered(<CommitRowShown />), 'commit-line'),
+      'height',
+    );
+    assert.ok(rowLine);
+    looks(withClass(panel, 'commit-line'), { height: 'auto' });
+    looks(withClass(panel, 'subject'), {
+      'line-height': rowLine,
+      'white-space': 'normal',
+      'overflow-wrap': 'anywhere',
+    });
+    looks(withClass(panel, 'commit-line', 'secondary'), {
+      height: rowLine,
+      width: 'var(--peek-row-width)',
+    });
+    looks(withClass(panel, 'message-body'), {
+      'line-height': rowLine,
+      'white-space': 'pre-wrap',
+      'overflow-wrap': 'anywhere',
+    });
+  });
+
+  test("pads the bottom of a pinned commit's message, so its last line keeps clear of the popup's edge as its first line does", () => {
+    looks(
+      withClass(
+        rendered(
+          <div className="message-peek pinned">
+            <div className="commit" />
+          </div>,
+        ),
+        'commit',
+      ),
+      { 'padding-bottom': '4px' },
+    );
   });
 });

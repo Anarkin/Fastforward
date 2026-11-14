@@ -38,6 +38,7 @@ import {
   focused,
   after,
   halved,
+  columnVisibility,
 } from './stylesheetFixtures';
 
 suite('Style', () => {
@@ -278,5 +279,23 @@ suite('Style', () => {
     looks(rendered(<body className="resizing" />), {
       cursor: 'col-resize',
     });
+  });
+
+  test('hides every column but the commits while no commit is selected', () => {
+    assert.deepStrictEqual(
+      columnVisibility(<Columns className={columnsClass(true, undefined)} />),
+      [undefined, 'hidden', 'hidden'],
+    );
+    assert.deepStrictEqual(
+      columnVisibility(<Columns className={columnsClass(true, 'a')} />),
+      [undefined, undefined, undefined],
+    );
+  });
+
+  test('hides the diff while the commit selected has no change to show, keeping its place', () => {
+    assert.deepStrictEqual(
+      columnVisibility(<Columns className={columnsClass(true, 'a', false)} />),
+      [undefined, undefined, 'hidden'],
+    );
   });
 });
