@@ -2,11 +2,10 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ChangeSet } from '@codemirror/state';
-import { afterEach, beforeEach, suite, test } from 'vitest';
+import { suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/toolContract';
 import type { Side } from '../../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   CommanderPage,
@@ -15,6 +14,8 @@ import {
   file,
   commander,
   tab,
+  withCopiesFolder,
+  commanderInArchive,
 } from './commanderFixtures';
 import { archiveItem, zipped } from './fakeArchives';
 
@@ -22,33 +23,11 @@ suite('Commander tool in archives', () => {
   suite('reading its files', () => {
     let copiesFolder: string;
 
-    beforeEach(() => {
-      copiesFolder = tempFolder('archive-copies');
+    withCopiesFolder((made) => {
+      copiesFolder = made;
     });
 
-    afterEach(() => {
-      for (const copy of fs.readdirSync(copiesFolder, {
-        recursive: true,
-        encoding: 'utf8',
-      })) {
-        fs.chmodSync(path.join(copiesFolder, copy), 0o777);
-      }
-      removeFolder(copiesFolder);
-    });
-
-    const inArchive = async () => {
-      const made = commander({ [root]: [file('a.zip'), file('notes.txt')] });
-      made.archived.set(at('a.zip'), zipped);
-      made.copies.folder = copiesFolder;
-      await made.tool.show(made.page, tab);
-      await made.send({
-        type: 'enterArchive',
-        tab: '1',
-        side: 'right',
-        name: 'a.zip',
-      });
-      return made;
-    };
+    const inArchive = () => commanderInArchive(copiesFolder);
 
     test('removes the copy a viewer tab showed once the tab is closed, unless another open tab still shows it, and nothing outside the copies of viewed files', async () => {
       const { tool, page, tabs, settled } = await inArchive();
