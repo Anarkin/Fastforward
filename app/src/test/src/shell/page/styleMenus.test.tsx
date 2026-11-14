@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
-import { ContextMenu } from '../../../../lib/page/contextMenu';
+import { ContextMenu } from '../../../../shell/page/contextMenu';
 import { MenuButton } from '../../../../lib/page/menu';
 import { Name } from '../../../../lib/page/name';
 import { ConfirmPopup } from '../../../../shell/page/confirmPopup';

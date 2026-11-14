@@ -14,7 +14,7 @@ import {
   SoloButton,
   WorkingTreeRow,
 } from '../../tools/git/page/commitList';
-import { ContextMenu } from '../../lib/page/contextMenu';
+import { ContextMenu } from '../../shell/page/contextMenu';
 import {
   gitStore,
   inStores,

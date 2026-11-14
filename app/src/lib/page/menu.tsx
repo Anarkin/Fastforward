@@ -7,7 +7,7 @@ import {
   type ContextMenuItem,
 } from './menuControls';
 import { useDismiss } from './dismiss';
-import { MenuItems } from './contextMenu';
+import { MenuItems } from './menuItems';
 import { DropdownIcon, MoreIcon } from './icons';
 import { Name } from './name';
 import { keyPressed } from './shortcuts';

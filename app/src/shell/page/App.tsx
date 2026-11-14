@@ -6,7 +6,7 @@ import { type ToolId } from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
 import { ConfirmPopup } from './confirmPopup';
 import { AppMenu } from './appMenu';
-import { ContextMenu } from '../../lib/page/contextMenu';
+import { ContextMenu } from './contextMenu';
 import { Notices } from './notices';
 import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../lib/page/shortcuts';

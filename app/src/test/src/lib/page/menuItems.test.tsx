@@ -4,7 +4,7 @@ import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { onMenuKeyDown } from '../../../../lib/page/menuControls';
-import { MenuItems } from '../../../../lib/page/contextMenu';
+import { MenuItems } from '../../../../lib/page/menuItems';
 import { SubmenuIcon } from '../../../../lib/page/icons';
 import {
   keyPress,
