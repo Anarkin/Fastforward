@@ -260,43 +260,6 @@
   color: var(--color-focus);
 }
 
-.error-message {
-  padding: 8px;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-  color: var(--color-error-foreground);
-}
-
-.column-body:has(> .diff-view) {
-  overflow: hidden;
-}
-
-.column-body:has(> .error-message) {
-  display: flex;
-  flex-direction: column;
-}
-
-.column-body > .error-message + .virtual-rows {
-  flex: 1;
-  min-height: 0;
-}
-
-.column-body:has(> .row.empty) {
-  display: flex;
-  flex-direction: column;
-}
-
-.column-body > .row.empty {
-  order: -1;
-  flex-shrink: 0;
-  color: var(--muted-foreground);
-}
-
-.column-body:has(> .row.empty) > .virtual-rows {
-  flex: 1;
-  min-height: 0;
-}
-
 @keyframes bob {
   from {
     transform: translateY(-1.5px);
@@ -304,10 +267,4 @@
   to {
     transform: translateY(1.5px);
   }
-}
-
-.virtual-row > .commit {
-  box-sizing: border-box;
-  height: 100%;
-  overflow: hidden;
 }

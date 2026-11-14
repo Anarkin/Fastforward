@@ -1,0 +1,68 @@
+.notices {
+  position: fixed;
+  top: anchor(--notices bottom, 0px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: safe flex-end;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 20px 32px 16px;
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.notice {
+  box-sizing: border-box;
+  max-width: 480px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  color: var(--color-foreground);
+  background: var(--color-notice-background);
+  border-radius: var(--card-radius);
+  box-shadow: var(--popup-shadow);
+  pointer-events: auto;
+}
+
+.notice-message {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0 6px 12px;
+  max-height: 50vh;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.notice .error-icon {
+  flex: none;
+  margin: 8px -4px 0 12px;
+  color: var(--color-error-foreground);
+}
+
+.notice-close {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 4px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  opacity: var(--muted-opacity);
+}
+
+.notice-close:hover {
+  opacity: 1;
+  background: var(--hover-background);
+}

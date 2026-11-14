@@ -1,0 +1,80 @@
+.menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 21;
+  min-width: 160px;
+  width: max-content;
+  padding: 4px;
+  color: var(--color-foreground);
+  background: var(--color-panel-background);
+  border-radius: var(--card-radius);
+  box-shadow: var(--popup-shadow);
+}
+
+.menu.filtered-menu {
+  --menu-filter-height: 34px;
+  box-sizing: border-box;
+  max-height: min(480px, 70vh);
+  padding-top: 0;
+  overflow-y: auto;
+  scroll-padding-top: calc(var(--menu-filter-height) + 4px);
+}
+
+.menu-filter {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--menu-filter-height);
+  margin: 0 0 4px;
+  padding: 2px 10px 0;
+  color: var(--color-foreground);
+  background: var(--color-panel-background);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: inset 0 var(--hairline) 0 var(--color-border);
+  outline: none;
+}
+
+.menu-filter::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  padding: 4px 10px;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  outline: none;
+}
+
+.menu-item:hover:not(:disabled),
+.menu-item:focus:not(:disabled),
+.menu-item[aria-expanded='true'] {
+  color: var(--color-foreground);
+  background: var(--selection-background);
+}
+
+.menu-check {
+  display: inline-block;
+  width: 24px;
+}
+
+.menu-access-key {
+  display: inline-block;
+  width: 1.6em;
+  color: var(--muted-foreground);
+}
+
+.menu-check:has(> .icon) {
+  vertical-align: -3px;
+}

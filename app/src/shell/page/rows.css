@@ -1,0 +1,75 @@
+.row {
+  box-sizing: border-box;
+  height: var(--row-line-height);
+  padding: 0 8px;
+  line-height: var(--row-line-height);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row:hover,
+.commit:hover {
+  background: var(--hover-background);
+}
+
+.row.selected,
+.commit.selected {
+  color: var(--color-foreground);
+  background: var(--selection-background);
+}
+
+.row.group {
+  font-weight: 600;
+}
+
+.commit {
+  padding: 0 8px;
+}
+
+.date {
+  flex: none;
+}
+
+.row .path.deleted {
+  text-decoration: line-through;
+}
+
+.row .change-icon {
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.change-icon.added {
+  color: var(--color-change-added);
+}
+
+.change-icon.modified {
+  color: var(--color-change-modified);
+}
+
+.change-icon.deleted {
+  color: var(--color-change-deleted);
+}
+
+.change-icon.renamed {
+  color: var(--color-change-renamed);
+}
+
+.row .link-icon {
+  margin-left: 4px;
+  flex-shrink: 0;
+  opacity: var(--muted-opacity);
+}
+
+.row .path.unchanged,
+.row.folder.dimmed .twisty,
+.row.folder.dimmed .path {
+  opacity: var(--muted-opacity);
+}
+
+.virtual-row > .commit {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: hidden;
+}
