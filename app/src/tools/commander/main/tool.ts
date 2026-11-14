@@ -212,8 +212,7 @@ export class CommanderTool implements Tool<'commander'> {
       this.editing,
       {
         shell: () => this.shell,
-        list: (page, tab, side, folder, how, fallback, selecting) =>
-          this.listings.list(page, tab, side, folder, how, fallback, selecting),
+        list: (...listed) => this.listings.list(...listed),
       },
     );
     this.itemChanges = new ItemChanges(
@@ -222,8 +221,7 @@ export class CommanderTool implements Tool<'commander'> {
       this.archiveCommands,
       {
         shell: () => this.shell,
-        list: (page, tab, side, folder, how, fallback, selecting) =>
-          this.listings.list(page, tab, side, folder, how, fallback, selecting),
+        list: (...listed) => this.listings.list(...listed),
       },
     );
     this.systemCommands = new SystemCommands(access, this.sides, this.copies, {
@@ -257,8 +255,7 @@ export class CommanderTool implements Tool<'commander'> {
       },
     );
     this.navigation = new Navigation(access, this.sides, {
-      list: (page, tab, side, folder, how, fallback, selecting) =>
-        this.listings.list(page, tab, side, folder, how, fallback, selecting),
+      list: (...listed) => this.listings.list(...listed),
       files: () => this.files(),
     });
     this.elevation = new Elevation(access, this.sides, this.listings, {
@@ -544,7 +541,7 @@ export class CommanderTool implements Tool<'commander'> {
         this.copies.answerUpdate(message.ask, message.update);
         return undefined;
       case 'openRepository':
-        return this.openRepository(page, message);
+        return this.fileCommands.openRepository(page, message);
       case 'folderCommand':
         return this.fileCommands.folderCommand(page, message);
       case 'elevate':
@@ -748,25 +745,6 @@ export class CommanderTool implements Tool<'commander'> {
 
   private refuse(page: Page, message: Sentence): void {
     this.shell.notice(page, { level: 'error', message });
-  }
-
-  private openRepository(
-    page: Page,
-    {
-      tab,
-      side,
-      folder,
-      name,
-    }: Extract<CommanderToHost, { type: 'openRepository' }>,
-  ): Promise<void> {
-    const shown = this.sides.diskPane(page, tab, side, folder);
-    return shown === undefined ||
-      typeof name !== 'string' ||
-      !shown.pane.repositories.has(name)
-      ? Promise.resolve()
-      : this.shell.openFolders(page, 'git', [
-          path.join(shown.pane.folder, name),
-        ]);
   }
 
   private get bookmarkSystem(): BookmarkSystem {

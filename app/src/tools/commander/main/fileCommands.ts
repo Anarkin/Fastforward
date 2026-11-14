@@ -301,6 +301,25 @@ export class FileCommands {
     }
   }
 
+  openRepository(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      name,
+    }: Extract<CommanderToHost, { type: 'openRepository' }>,
+  ): Promise<void> {
+    const shown = this.sides.diskPane(page, tab, side, folder);
+    return shown === undefined ||
+      typeof name !== 'string' ||
+      !shown.pane.repositories.has(name)
+      ? Promise.resolve()
+      : this.host
+          .shell()
+          .openFolders(page, 'git', [path.join(shown.pane.folder, name)]);
+  }
+
   compare(page: Page, tab: unknown, files: unknown): Promise<void> {
     if (Array.isArray(files) && files.length === 0) {
       this.host.shell().notice(page, {
