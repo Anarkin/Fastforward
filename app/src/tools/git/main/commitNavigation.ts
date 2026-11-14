@@ -32,7 +32,7 @@ import type { Session, Context, GitCore } from './tabContext';
 import type { Diffs } from './diffs';
 import type { Refreshes } from './refreshes';
 
-export class Navigation {
+export class CommitNavigation {
   readonly commitSearches = new Map<string, AbortController>();
   private readonly hashLookups = new Map<string, number>();
 

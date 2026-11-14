@@ -15,7 +15,7 @@ import {
   type PatchScope,
   type ReadPatch,
 } from './cli/diff';
-import { BlobTexts } from './cli/blobTexts';
+import { BlobTexts } from './blobTexts';
 import {
   listIndex,
   listTree,

@@ -63,7 +63,7 @@ import {
 } from './tabContext';
 import { Diffs } from './diffs';
 import { Refreshes } from './refreshes';
-import { Navigation } from './navigation';
+import { CommitNavigation } from './commitNavigation';
 import { Remotes } from './remotes';
 import { Watching } from './watching';
 import { CompareTabs } from './compareTabs';
@@ -102,7 +102,7 @@ export class GitTool implements Tool<'git'> {
   private readonly core: GitCore;
   private readonly diffs: Diffs;
   private readonly refreshes: Refreshes;
-  private readonly navigation: Navigation;
+  private readonly commitNavigation: CommitNavigation;
   private readonly remotes: Remotes;
   private readonly watching: Watching;
   private readonly compareTabs: CompareTabs;
@@ -148,9 +148,9 @@ export class GitTool implements Tool<'git'> {
       rememberSelection: (context) => this.rememberSelection(context),
       bookmarkedOf: (repository) => this.bookmarkedOf(repository),
       sendNavigation: (context, current) =>
-        this.navigation.sendNavigation(context, current),
+        this.commitNavigation.sendNavigation(context, current),
     });
-    this.navigation = new Navigation(
+    this.commitNavigation = new CommitNavigation(
       log,
       storage,
       () => this.shell,
@@ -164,7 +164,7 @@ export class GitTool implements Tool<'git'> {
       storage,
       () => this.shell,
       this.refreshes,
-      this.navigation,
+      this.commitNavigation,
       this.core,
       this.quitting,
       this.repositories,
@@ -189,7 +189,7 @@ export class GitTool implements Tool<'git'> {
       () => this.shell,
       this.core,
       this.watching,
-      this.navigation,
+      this.commitNavigation,
       this.tabStates,
       this.repositories,
       this.worktreeLists,
@@ -910,14 +910,14 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'searchCommits':
-        await this.navigation.searchCommits(
+        await this.commitNavigation.searchCommits(
           session,
           this.knownRoot(message.root),
           message.query,
         );
         return;
       case 'stopCommitSearch':
-        this.navigation.commitSearches
+        this.commitNavigation.commitSearches
           .get(this.knownRoot(message.root))
           ?.abort();
         return;
@@ -996,7 +996,7 @@ export class GitTool implements Tool<'git'> {
         break;
       case 'jump': {
         if (isFullHash(message.hash)) {
-          await this.navigation.showCommit(
+          await this.commitNavigation.showCommit(
             context,
             message.hash.toLowerCase(),
             picked,
@@ -1009,7 +1009,7 @@ export class GitTool implements Tool<'git'> {
           message.hash,
         );
         if (found.kind === 'found') {
-          await this.navigation.showCommit(context, found.hash, picked);
+          await this.commitNavigation.showCommit(context, found.hash, picked);
         } else {
           this.notify(context)(
             'error',
@@ -1021,17 +1021,17 @@ export class GitTool implements Tool<'git'> {
         break;
       }
       case 'showUpstream':
-        await this.navigation.showUpstream(context, picked);
+        await this.commitNavigation.showUpstream(context, picked);
         break;
       case 'showParent': {
         const parent = parentOf(context.tab);
         if (parent !== undefined) {
-          await this.navigation.showCommit(context, parent, picked);
+          await this.commitNavigation.showCommit(context, parent, picked);
         }
         break;
       }
       case 'navigate':
-        await this.navigation.navigate(
+        await this.commitNavigation.navigate(
           context,
           message.direction,
           message.steps,
@@ -1039,7 +1039,7 @@ export class GitTool implements Tool<'git'> {
         );
         break;
       case 'lookupHash':
-        await this.navigation.lookupHash(context, message.query);
+        await this.commitNavigation.lookupHash(context, message.query);
         break;
       case 'selectCommit':
         context.tab.prefetching?.controller.abort();
@@ -1053,7 +1053,7 @@ export class GitTool implements Tool<'git'> {
           notInHistory(context, message.hash);
           break;
         }
-        this.navigation.visit(context, message.hash, message.replace);
+        this.commitNavigation.visit(context, message.hash, message.replace);
         select(context.tab, message.hash);
         this.rememberSelection(context);
         await this.diffs.sendCommit(context);

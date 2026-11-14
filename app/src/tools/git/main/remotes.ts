@@ -45,7 +45,7 @@ import {
   type GitCore,
 } from './tabContext';
 import type { Refreshes } from './refreshes';
-import type { Navigation } from './navigation';
+import type { CommitNavigation } from './commitNavigation';
 
 const refsAlone: Changed = { refs: true, workingTree: false };
 
@@ -63,7 +63,7 @@ export class Remotes {
     private readonly storage: GitStorage,
     private readonly shell: () => ShellAccess,
     private readonly refreshes: Refreshes,
-    private readonly navigation: Navigation,
+    private readonly commitNavigation: CommitNavigation,
     private readonly core: GitCore,
     private readonly quitting: AbortController,
     private readonly repositories: Map<string, string>,
@@ -92,7 +92,7 @@ export class Remotes {
     }
     await this.refreshes.refresh(context);
     await context.tab.loadingHistory;
-    await this.navigation.showHead(context, picked);
+    await this.commitNavigation.showHead(context, picked);
   }
 
   private async checkable(
@@ -168,7 +168,7 @@ export class Remotes {
     if (pulled) {
       await this.refreshes.refresh(context);
       await context.tab.loadingHistory;
-      await this.navigation.showHead(context, picked);
+      await this.commitNavigation.showHead(context, picked);
     } else if (fetched) {
       await this.refreshFetched(context, fetched);
     }
@@ -302,7 +302,7 @@ export class Remotes {
     if (checkedOut) {
       await this.refreshes.refresh(context);
       await context.tab.loadingHistory;
-      await this.navigation.showHead(context, picked);
+      await this.commitNavigation.showHead(context, picked);
     } else {
       await this.refreshes.refresh(context, undefined, refsAlone);
     }

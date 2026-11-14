@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { BlobTexts } from '../../../../../../tools/git/main/cli/blobTexts';
+import { BlobTexts } from '../../../../../tools/git/main/blobTexts';
 
 function reader(texts: Readonly<Record<string, string>>) {
   const asked: string[][] = [];
