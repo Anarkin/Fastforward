@@ -4,15 +4,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { strings } from '../../../../lib/shared/strings';
-import {
-  barsOffGrid,
-  closeOrKill,
-  gridLines,
-  launchApp,
-} from '../../../e2e/appFixtures';
-import { waitFor } from '../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../helpers/repositories';
+import { strings } from '../../lib/shared/strings';
+import { barsOffGrid, closeOrKill, gridLines, launchApp } from './appFixtures';
+import { waitFor } from '../helpers/fixtures';
+import { removeFolder, tempFolder } from '../helpers/repositories';
 
 const hundredLines =
   process.platform === 'win32'
