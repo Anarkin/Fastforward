@@ -1,5 +1,7 @@
 # ARCHITECTURE
 
+- Only what nothing else can express is recorded here: a rule a test, a lint rule or a tsconfig can check belongs there instead
+
 ## Folders
 
 ```
