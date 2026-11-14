@@ -477,7 +477,7 @@ suite('App editor', () => {
     }, 'the last rows whole');
   });
 
-  test('keeps the text still as it is typed into the top or the bottom row shown, scrolled down by whole rows, and scrolls by one whole row once the cursor moves onto the row above or below them', async () => {
+  test('keeps the text still as it is typed into the top or the bottom row shown, scrolled down by whole rows, and shows the row the cursor moves onto above or below them whole, scrolled by whole rows', async () => {
     const lines = Array.from({ length: 300 }, (_, at) => `line ${at + 1}`);
     fs.writeFileSync(path.join(opened, 'typed.txt'), `${lines.join('\n')}\n`);
     await backToCommander();
@@ -561,11 +561,36 @@ suite('App editor', () => {
       'scrolls typing into the bottom row',
     );
 
+    const shownWhole = async (number: number) => {
+      const rows = await settled();
+      const whole = await scroller.evaluate((element, wanted) => {
+        const line = Array.from(element.querySelectorAll('.cm-line')).find(
+          (each) => (each.textContent ?? '').startsWith(`line ${wanted}`),
+        );
+        const rect = line?.getBoundingClientRect();
+        const top = element.getBoundingClientRect().top + element.clientTop;
+        return (
+          rect !== undefined &&
+          rect.top >= top - 0.5 &&
+          rect.bottom <= top + element.clientHeight + 0.5
+        );
+      }, number);
+      return { rows: Number.isInteger(rows), whole };
+    };
     await page.keyboard.press('ArrowDown');
-    assert.strictEqual(await settled(), shown / 2 + 1, 'moved below the rows');
-    await onRow(topRow + 1);
+    assert.deepStrictEqual(
+      await shownWhole(bottomRow + 1),
+      { rows: true, whole: true },
+      'moved below the rows',
+    );
+    const rowsNow = await settled();
+    await onRow(rowsNow + 1);
     await page.keyboard.press('ArrowUp');
-    assert.strictEqual(await settled(), shown / 2, 'moved above the rows');
+    assert.deepStrictEqual(
+      await shownWhole(rowsNow),
+      { rows: true, whole: true },
+      'moved above the rows',
+    );
     await page.keyboard.press('Control+s');
   });
 
