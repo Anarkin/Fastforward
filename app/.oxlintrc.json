@@ -181,7 +181,6 @@
     },
     {
       "files": [
-        "src/test/src/tools/commander/main/archiveCopies.test.ts",
         "src/test/src/tools/commander/main/archiveRoundTrips.7zip.test.ts",
         "src/test/src/tools/git/main/tool/otherRepositories.git.test.ts",
         "src/tools/git/page/commitList.tsx"
