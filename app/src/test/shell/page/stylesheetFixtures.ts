@@ -9,7 +9,6 @@ import {
   commitRowHeight,
   SoloButton,
 } from '../../../tools/git/page/commitList';
-import { FileHeader, HunkDivider } from '../../../tools/git/page/diffView';
 import { AboutPopup } from '../../../shell/page/aboutPopup';
 import { TabBar } from '../../../shell/page/tabBar';
 import { overlayScrollbarClass } from '../../../ui/overlayScrollbars';
@@ -42,6 +41,7 @@ import {
   tabBar,
 } from '../../styleFixtures';
 import { createShellStore, ShellStore } from '../../../shell/page/store';
+import { FileHeader, HunkDivider } from '../../../tools/git/page/diffView';
 
 export const css = stylesheet();
 

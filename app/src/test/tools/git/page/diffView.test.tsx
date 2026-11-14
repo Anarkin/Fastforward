@@ -3,17 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
 import { collapseThreshold } from '../../../../tools/git/shared/protocol';
-import {
-  diffRows,
-  DiffView,
-  gapWidth,
-  rowHeight,
-  scrollOnToggle,
-  showsSideBySide,
-  stuckHeader,
-  splitPairs,
-  type DiffRow,
-} from '../../../../tools/git/page/diffView';
 import { ImageDiff, imagePanes } from '../../../../tools/git/page/imagePreview';
 import { sideBySideWords } from '../../../../tools/git/page/pairing';
 import { wordRanges } from '../../../../tools/git/page/wordDiff';
@@ -22,6 +11,19 @@ import { noop } from '../../../fixtures';
 import { withStores } from '../../../componentFixtures';
 import { createGitStore } from '../../../../tools/git/page/store';
 import { patch, kinds } from './diffViewFixtures';
+import {
+  diffRows,
+  showsSideBySide,
+  splitPairs,
+  type DiffRow,
+} from '../../../../tools/git/page/diffRows';
+import {
+  DiffView,
+  gapWidth,
+  rowHeight,
+  scrollOnToggle,
+  stuckHeader,
+} from '../../../../tools/git/page/diffView';
 
 const binaryOf = (path: string) =>
   parsePatch(

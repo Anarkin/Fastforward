@@ -1,4 +1,4 @@
-import { diffRows } from '../../../../tools/git/page/diffView';
+import { diffRows } from '../../../../tools/git/page/diffRows';
 
 export function patch(path: string, added: number): string {
   return [

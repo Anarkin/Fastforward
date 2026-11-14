@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { TextRequest } from '../shared/protocol';
 import { parsePatch, textKey, type DiffFile, type LoadedText } from './diff';
-import type { WholeFile } from './diffView';
 import { lineKey, wholeLines } from './find';
 import { languageOf } from '../../../ui/languages';
 import type { SyntaxRange, SyntaxSource } from '../../../ui/syntaxEngine';
 import { colorer } from '../../../ui/syntax';
 import { partLine, type CodePart } from '../../../ui/syntaxParts';
+import type { WholeFile } from './diffRows';
 
 export type { SyntaxRange } from '../../../ui/syntaxEngine';
 export { languageOf } from '../../../ui/languages';

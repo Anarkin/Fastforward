@@ -3,11 +3,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { sidewaysColumns } from '../../../../ui/rowScroll';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../tools/git/page/diff';
+import type { TextWidths } from '../../../../ui/textWidths';
+import { kinds } from './diffViewFixtures';
 import {
   changeMargin,
   changeScrollTop,
   changeStarts,
-  diffRows,
   diffScrollLeft,
   diffScrollTop,
   firstChangeTop,
@@ -16,10 +17,8 @@ import {
   foundScroll,
   HunkDivider,
   keyedScrollTop,
-  type DiffRow,
 } from '../../../../tools/git/page/diffView';
-import type { TextWidths } from '../../../../ui/textWidths';
-import { kinds } from './diffViewFixtures';
+import { diffRows, type DiffRow } from '../../../../tools/git/page/diffRows';
 
 suite('Diff keys', () => {
   test('scrolls back left with the left arrow while scrolled right, as many columns of the text a press as the viewer does, leaving it to move between the columns only then', () => {

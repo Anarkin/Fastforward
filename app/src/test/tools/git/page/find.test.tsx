@@ -7,12 +7,6 @@ import { FindActions, FindField } from '../../../../ui/search';
 import { gitKeymap } from '../../../../tools/git/shared/keymap';
 import { strings } from '../../../../shared/strings';
 import {
-  diffMinimapMarks,
-  diffRows,
-  findRangesByLine,
-  lineKeys,
-} from '../../../../tools/git/page/diffView';
-import {
   findMatches,
   jumpStep,
   unsearchedFiles,
@@ -24,6 +18,11 @@ import {
   stepMatch,
 } from '../../../../shared/textMatches';
 import { keyPress } from '../../../fixtures';
+import {
+  diffMinimapMarks,
+  findRangesByLine,
+} from '../../../../tools/git/page/diffView';
+import { diffRows, lineKeys } from '../../../../tools/git/page/diffRows';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',

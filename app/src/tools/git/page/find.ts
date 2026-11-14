@@ -1,10 +1,10 @@
 import type { DiffFile } from './diff';
-import type { WholeFile } from './diffView';
 import {
   maxMatches,
   matchesIn,
   type FindRange,
 } from '../../../shared/textMatches';
+import type { WholeFile } from './diffRows';
 
 export type { FindRange };
 

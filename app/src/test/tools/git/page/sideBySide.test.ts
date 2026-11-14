@@ -1,20 +1,22 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../tools/git/page/diff';
+import { glideAt, glideBy, glideEnded } from '../../../../ui/glide';
+import { noModifiers } from '../../../fixtures';
 import {
   changeStarts,
-  diffRows,
-  lineKeys,
   minimapRows,
   sideScroll,
-  splitRows,
   splitSideClass,
   wheelGlide,
   wheelSideways,
-  type DiffRow,
 } from '../../../../tools/git/page/diffView';
-import { glideAt, glideBy, glideEnded } from '../../../../ui/glide';
-import { noModifiers } from '../../../fixtures';
+import {
+  diffRows,
+  lineKeys,
+  splitRows,
+  type DiffRow,
+} from '../../../../tools/git/page/diffRows';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',

@@ -1,10 +1,5 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  minimapRows,
-  uniformHeight as row,
-  type DiffRow,
-} from '../../tools/git/page/diffView';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   grabPointer,
@@ -15,6 +10,11 @@ import {
   pointerFraction,
 } from '../../ui/minimap';
 import { noModifiers } from '../fixtures';
+import {
+  minimapRows,
+  uniformHeight as row,
+} from '../../tools/git/page/diffView';
+import type { DiffRow } from '../../tools/git/page/diffRows';
 
 const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
   kind: 'line',

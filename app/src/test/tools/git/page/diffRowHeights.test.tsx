@@ -4,11 +4,16 @@ import { suite, test } from 'vitest';
 import { strings } from '../../../../shared/strings';
 import { parsePatch } from '../../../../tools/git/page/diff';
 import { collapseThreshold } from '../../../../tools/git/shared/protocol';
+import type { TextWidths } from '../../../../ui/textWidths';
+import { patch } from './diffViewFixtures';
 import {
   diffRowKey,
-  diffRowPlace,
   diffRows,
   lineKeys,
+  type DiffRow,
+} from '../../../../tools/git/page/diffRows';
+import {
+  diffRowPlace,
   rowHeight,
   rowMeasures,
   knownBreaks,
@@ -19,10 +24,7 @@ import {
   rowAnchors,
   scrollAnchor,
   widestColumns,
-  type DiffRow,
 } from '../../../../tools/git/page/diffView';
-import type { TextWidths } from '../../../../ui/textWidths';
-import { patch } from './diffViewFixtures';
 
 const wideColumnsIn = (row: string) => (index: number) =>
   row.slice(0, index).length + row.slice(0, index).split('界').length - 1;

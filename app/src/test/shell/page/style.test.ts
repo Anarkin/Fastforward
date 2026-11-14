@@ -6,7 +6,6 @@ import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { listedFilesRows } from '../../../tools/git/page/changesTree';
 import { Column } from '../../../tools/git/page/column';
 import { columnsClass } from '../../../tools/git/page/columns';
-import { FileHeader, HunkDivider } from '../../../tools/git/page/diffView';
 import { TabBar } from '../../../shell/page/tabBar';
 import { MenuButton } from '../../../ui/menu';
 import { Crash } from '../../../shell/page/errorBoundary';
@@ -70,6 +69,7 @@ import {
   soloButton,
   fileHeader,
 } from './stylesheetFixtures';
+import { FileHeader, HunkDivider } from '../../../tools/git/page/diffView';
 
 suite('Style', () => {
   test('colors the icon of each tool with its own color from the settings, so tabs of different tools for one folder tell apart at a glance', () => {

@@ -6,11 +6,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  type ChangeArea,
-  type FileChange,
-  type LeftOut,
-  type TextRequest,
+import type {
+  ChangeArea,
+  FileChange,
+  LeftOut,
+  TextRequest,
 } from '../shared/protocol';
 import { columnFocusOf } from '../../../ui/columnFocus';
 import { Column } from './column';
@@ -20,7 +20,6 @@ import { LanguageButton, languageChoiceOf } from '../../../ui/languageChoice';
 import { languageOf } from '../../../ui/languages';
 import { useBinding } from '../../../ui/shortcuts';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
-import { DiffView, type WholeFile } from './diffView';
 import { filterWords, matchesFilter } from '../../../shared/fileFilter';
 import { findMatches, unsearchedFiles } from './find';
 import { matchCount, stepMatch } from '../../../shared/textMatches';
@@ -48,6 +47,8 @@ import {
   SearchButton,
   SearchRow,
 } from '../../../ui/search';
+import { DiffView } from './diffView';
+import type { WholeFile } from './diffRows';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],

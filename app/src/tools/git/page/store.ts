@@ -29,7 +29,6 @@ import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import type { ChosenFolder, CloneTarget } from './clonePopup';
 import { resetWidth, shownSelection, widthsToLoad } from './columns';
 import { parsePatch, textKey, type LoadedText } from './diff';
-import type { CodeSnap, TextMeasures, WrapColumns } from './diffView';
 import { foldersOf } from './fileTree';
 import type { ViewedSource } from './images';
 import type { MenuTarget } from './menus';
@@ -54,6 +53,7 @@ import {
   type TabAction,
   type TabView,
 } from './tabView';
+import type { CodeSnap, TextMeasures, WrapColumns } from './diffView';
 
 interface ComparedTexts {
   readonly tab: string | undefined;

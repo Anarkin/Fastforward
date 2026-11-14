@@ -2,13 +2,6 @@ import * as assert from 'node:assert';
 import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { columnsClass } from '../../../tools/git/page/columns';
-import {
-  FileNote,
-  diffRowClass,
-  FileHeader,
-  HunkDivider,
-  layoutVariables,
-} from '../../../tools/git/page/diffView';
 import { ImageDiff } from '../../../tools/git/page/imagePreview';
 import { Crash } from '../../../shell/page/errorBoundary';
 import {
@@ -50,6 +43,13 @@ import {
   hunkDots,
   fileHeader,
 } from './stylesheetFixtures';
+import {
+  FileNote,
+  diffRowClass,
+  FileHeader,
+  HunkDivider,
+  layoutVariables,
+} from '../../../tools/git/page/diffView';
 
 suite('Style', () => {
   test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {

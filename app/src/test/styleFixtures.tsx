@@ -18,17 +18,11 @@ import {
   optionStores,
   type ShownGit,
   type ShownOptions,
+  tabsStore,
 } from './componentFixtures';
 import { DiffOptions } from '../tools/git/page/diffColumn';
-import { FindField } from '../ui/search';
+import { FindField, SearchButton } from '../ui/search';
 import { gitKeymap } from '../tools/git/shared/keymap';
-import {
-  BreakMarks,
-  Code,
-  diffRowClass,
-  DiffView,
-  marked,
-} from '../tools/git/page/diffView';
 import type { FindRange } from '../shared/textMatches';
 import { LocationsPopup } from '../tools/git/page/locations';
 import { createGitStore, GitStore } from '../tools/git/page/store';
@@ -39,7 +33,6 @@ import {
 } from '../tools/git/page/messagePeek';
 import { Minimap } from '../ui/minimap';
 import { HistoryMenu, NavButtons } from '../tools/git/page/navBar';
-import { SearchButton } from '../ui/search';
 import { Notices } from '../shell/page/notices';
 import { MenuButton } from '../ui/menu';
 import { AppMenu } from '../shell/page/appMenu';
@@ -54,7 +47,13 @@ import {
 } from './cascade';
 import { commitInfo, renderedBy } from './fixtures';
 import { createShellStore, ShellStore } from '../shell/page/store';
-import { tabsStore } from './componentFixtures';
+import {
+  BreakMarks,
+  Code,
+  diffRowClass,
+  DiffView,
+  marked,
+} from '../tools/git/page/diffView';
 
 const noop = () => undefined;
 

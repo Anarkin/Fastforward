@@ -5,18 +5,17 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { plainOf, strings } from '../../../../shared/strings';
 import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
+import { tagsWith } from '../../../fixtures';
+import { kinds } from './diffViewFixtures';
+import { diffRows, sideChange } from '../../../../tools/git/page/diffRows';
 import {
-  diffRows,
   FileNote,
-  sideChange,
   FileHeader,
   rowHeight,
   rowMeasures,
   DiffSkeleton,
   TextProbe,
 } from '../../../../tools/git/page/diffView';
-import { tagsWith } from '../../../fixtures';
-import { kinds } from './diffViewFixtures';
 
 const binaryOfIndex = (index: string) =>
   parsePatch(

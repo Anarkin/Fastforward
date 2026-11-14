@@ -3,6 +3,8 @@ import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../shared/strings';
+import type { LineWords } from '../../../../tools/git/page/wordDiff';
+import { countingReads } from '../../../fixtures';
 import {
   Code,
   codeProps,
@@ -13,10 +15,8 @@ import {
   sameRowInput,
   selectionSide,
   wholeChangeClass,
-  type DiffRow,
 } from '../../../../tools/git/page/diffView';
-import type { LineWords } from '../../../../tools/git/page/wordDiff';
-import { countingReads } from '../../../fixtures';
+import type { DiffRow } from '../../../../tools/git/page/diffRows';
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;

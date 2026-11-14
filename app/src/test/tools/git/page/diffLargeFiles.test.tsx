@@ -19,13 +19,10 @@ import {
   shownFiles,
   withLargeFiles,
 } from '../../../../tools/git/page/diffColumn';
-import {
-  diffRows,
-  largeDiffText,
-  largeFilesToLoad,
-} from '../../../../tools/git/page/diffView';
 import { fileChange } from '../../../fixtures';
 import { patch, kinds } from './diffViewFixtures';
+import { diffRows, largeDiffText } from '../../../../tools/git/page/diffRows';
+import { largeFilesToLoad } from '../../../../tools/git/page/diffView';
 
 const filesChanging = (...counts: readonly number[]) =>
   counts.map((insertions, index) =>

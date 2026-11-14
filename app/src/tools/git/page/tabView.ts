@@ -17,7 +17,7 @@ import {
   type DiffFile,
   type LoadedText,
 } from './diff';
-import type { WholeFile } from './diffView';
+import type { WholeFile } from './diffRows';
 
 export interface TabView {
   readonly root: string | undefined;
