@@ -14,7 +14,7 @@ import {
 } from '@codemirror/view';
 import type { Colorer, EditedColors } from '../../../lib/page/syntax';
 import { partLines } from '../../../lib/page/syntaxParts';
-import { replacedIn } from '../../../lib/page/editedColors';
+import { replacedIn } from '../../../lib/page/replacedIn';
 import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
 
 const recolored = StateEffect.define();

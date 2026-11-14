@@ -10,15 +10,7 @@ import {
   loadLanguages,
   sliceTime,
 } from './syntaxEngine';
-
-export function replacedIn<T>(
-  all: readonly T[],
-  from: number,
-  removed: number,
-  items: readonly T[],
-): T[] {
-  return all.slice(0, from).concat(items, all.slice(from + removed));
-}
+import { replacedIn } from './replacedIn';
 
 export interface EditedColoring {
   edit(from: number, removed: number, lines: readonly string[]): void;
