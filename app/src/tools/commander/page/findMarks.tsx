@@ -1,4 +1,4 @@
-import type { CodeSegment } from '../../../lib/page/syntax';
+import type { CodeSegment } from './codeSegments';
 import { DrawnText } from '../../../lib/page/blanks';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { type FindMark, markPieces } from './markPieces';

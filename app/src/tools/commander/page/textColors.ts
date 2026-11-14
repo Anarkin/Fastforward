@@ -1,5 +1,5 @@
 import type { TextEncoding, TextRow } from '../shared/protocol';
-import type { CodeSegment } from '../../../lib/page/syntax';
+import type { CodeSegment } from './codeSegments';
 import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
 import {
   partHasRanges,

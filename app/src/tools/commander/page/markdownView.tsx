@@ -10,7 +10,8 @@ import {
 import { mermaidDrawer, showDiagrams } from './diagrams';
 import { markdownRenderer, type Render } from './markdownRender';
 import { onceMade } from '../../../lib/page/onceMade';
-import { codeSegments, colorCode } from '../../../lib/page/syntax';
+import { colorCode } from '../../../lib/page/syntax';
+import { codeSegments } from './codeSegments';
 import {
   elementWidths,
   useCellTable,

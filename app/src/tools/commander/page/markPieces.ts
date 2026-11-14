@@ -1,5 +1,5 @@
 import type { ByteRange, TextEncoding, TextRow } from '../shared/protocol';
-import type { CodeSegment } from '../../../lib/page/syntax';
+import type { CodeSegment } from './codeSegments';
 import { matchesIn } from '../../../lib/shared/textMatches';
 import { wholeClusters } from '../../../lib/page/textWidths';
 import { bytesOf } from './screenRows';
