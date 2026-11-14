@@ -47,9 +47,9 @@ import {
 import type { ToViewer, Viewing } from './viewer';
 import type { EditorState } from '@codemirror/state';
 import type { EditorPlace } from './editorPlace';
-import type { EditedTab, ToEditor } from './editor';
 import { ScrollPlaces } from './scrollPlaces';
 import { FlatLists, type FlatTiming, type FlatWorker } from './flatLists';
+import type { EditedTab, ToEditor } from './editorState';
 
 type ViewerRequest = Extract<
   CommanderToHost,

@@ -181,17 +181,6 @@
           }
         ]
       }
-    },
-    {
-      "files": ["src/tools/commander/page/editor.tsx"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1200
-          }
-        ]
-      }
     }
   ],
   "ignorePatterns": ["dist", "release", "perf-results", "perf-build"]
