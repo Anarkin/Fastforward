@@ -1,6 +1,5 @@
 import * as path from 'node:path';
-import type { Notice, Page, Tab } from '../../../../../shell/main/toolContract';
-import type { Compared } from '../../../../../shell/main/savedTabs';
+import type { Page, Tab } from '../../../../../shell/main/toolContract';
 import type { Store } from '../../../../../shell/main/stateFile';
 import type { ToWebview } from '../../../../../shell/shared/protocol';
 import type { LocalFileSystem } from '../../../../../tools/commander/main/fileSystem';
@@ -17,11 +16,11 @@ import type {
 } from '../../../../../tools/commander/shared/settings';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import type { SizeWalker } from '../../../../../tools/commander/main/folderSizes';
-import type { ArchiveItem } from '../../../../../tools/commander/main/archiveReader';
 import { pathParts } from '../../../../../tools/commander/shared/paths';
 import type { PdfPlace } from '../../../../../tools/commander/shared/pdf';
 import { FakeStore } from '../../../../helpers/fakeStore';
 import { fakeArchives } from './fakeArchives';
+import { fakeShell } from './fakeShell';
 import type { TransferCommand } from '../../../../../tools/commander/main/transferProtocol';
 import type { TransferListener } from '../../../../../tools/commander/main/transfers';
 import type { TransferPlan } from '../../../../../tools/commander/main/transfer';
@@ -106,7 +105,6 @@ export function commander(
   elevate?: () => Promise<ElevatedFileSystem | undefined>,
   state: Store = new FakeStore(),
 ) {
-  const notices: Notice[] = [];
   const saved: unknown[] = [];
   const watching: {
     folder: string;
@@ -159,8 +157,6 @@ export function commander(
   const deletesHeld: { until: Promise<unknown> | undefined } = {
     until: undefined,
   };
-  const tracking: Promise<unknown>[] = [];
-  const openedIn: { readonly tool: string; readonly folders: string[] }[] = [];
   const transfers: {
     readonly commands: TransferCommand[];
     readonly listener: TransferListener;
@@ -384,57 +380,20 @@ export function commander(
     },
   });
   const page = new CommanderPage();
-  const pages: CommanderPage[] = [page];
-  let focused: CommanderPage = page;
-  const viewed: string[] = [];
-  const edited: string[] = [];
-  const turned: string[] = [];
-  const compared: (Compared & { readonly tool: string })[] = [];
-  const tabs: Tab[] = [];
-  tool.attach({
-    page: () => focused,
-    pages: () => pages,
-    current: (shownIn) => shownIn,
-    tabs: () => tabs,
-    active: () => undefined,
-    shown: () => [],
-    open: () => Promise.resolve(),
-    openView: (_page, _tool, viewedFile) => {
-      viewed.push(viewedFile);
-      return Promise.resolve();
-    },
-    openEdit: (_page, _tool, editedFile) => {
-      edited.push(editedFile);
-      return Promise.resolve();
-    },
-    editViewed: (_page, turnedTab) => {
-      turned.push(turnedTab);
-      return Promise.resolve();
-    },
-    openCompare: (_page, toolOpened, files) => {
-      compared.push({ ...files, tool: toolOpened });
-      return Promise.resolve();
-    },
-    openFolders: (_page, toolOpened, folders) => {
-      openedIn.push({ tool: toolOpened, folders: [...folders] });
-      return Promise.resolve();
-    },
-    setRoot: () => {},
-    visited: () => {},
-    recentFolders: () => 10,
-    postTabs: () => {},
-    notice: (_page, notice) => notices.push(notice),
-    track: (tracked) => {
-      tracking.push(tracked);
-      return tracked;
-    },
-    idle: () => Promise.resolve(),
-  });
-  const settled = async () => {
-    while (tracking.length > 0) {
-      await Promise.all(tracking.splice(0));
-    }
-  };
+  const {
+    shell,
+    pages,
+    focus,
+    notices,
+    viewed,
+    edited,
+    turned,
+    compared,
+    tabs,
+    openedIn,
+    settled,
+  } = fakeShell(page);
+  tool.attach(shell);
   const folderShown = (tab: string, side: Side) =>
     page
       .of('listing')
@@ -494,9 +453,7 @@ export function commander(
     tool,
     page,
     pages,
-    focus: (to: CommanderPage) => {
-      focused = to;
-    },
+    focus,
     send,
     notices,
     saved,
@@ -586,19 +543,3 @@ export const defaultSorts: Sorts = {
 };
 
 export const forged = (json: string): CommanderToHost => JSON.parse(json);
-
-export const archiveItem = (itemPath: string): ArchiveItem => ({
-  path: itemPath,
-  folder: false,
-  size: 1,
-  modified: 0,
-  hiddenAttribute: false,
-  link: false,
-  encrypted: false,
-});
-
-export const zipped = [
-  archiveItem('docs/readme.md'),
-  archiveItem('docs/deep/notes.md'),
-  archiveItem('top.txt'),
-];

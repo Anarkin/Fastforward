@@ -11,9 +11,8 @@ import {
   commander,
   tab,
   lastFolder,
-  archiveItem,
-  zipped,
 } from './commanderFixtures';
+import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {
   test('enters an archive the page asks to, listing it as a folder by a path through the archive, going into its folders and out again with .., selecting where it came from', async () => {

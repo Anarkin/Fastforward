@@ -18,9 +18,8 @@ import {
   file,
   commander,
   tab,
-  archiveItem,
-  zipped,
 } from './commanderFixtures';
+import { archiveItem, zipped } from './fakeArchives';
 
 const keyOf = (name: string) =>
   thumbnailKey(path.join(at('a.zip'), name), 1, 0, 144, 1.5);

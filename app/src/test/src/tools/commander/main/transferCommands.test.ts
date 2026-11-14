@@ -15,8 +15,8 @@ import {
   plansOf,
   tab,
   forged,
-  zipped,
 } from './commanderFixtures';
+import { zipped } from './fakeArchives';
 
 suite('Commander tool', () => {
   test('copies or moves the items asked for into the folder of the other side, only when every one is listed in the folder named, never its parent, and the other side still shows the folder named as the target', async () => {

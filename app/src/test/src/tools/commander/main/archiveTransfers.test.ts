@@ -15,9 +15,8 @@ import {
   commander,
   plansOf,
   tab,
-  archiveItem,
-  zipped,
 } from './commanderFixtures';
+import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {
   suite('reading its files', () => {

@@ -7,16 +7,8 @@ import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  root,
-  at,
-  file,
-  commander,
-  tab,
-  forged,
-  archiveItem,
-  zipped,
-} from './commanderFixtures';
+import { root, at, file, commander, tab, forged } from './commanderFixtures';
+import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {
   test('does nothing inside an archive it cannot do there, nor drags out of it', async () => {
