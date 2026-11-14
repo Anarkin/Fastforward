@@ -282,6 +282,51 @@ function blanksOf(element: Element): readonly string[] {
   return marked;
 }
 
+function editorBlanksOf(element: Element): readonly string[] {
+  const svg = element.closest('.cm-editor')?.querySelector('.space-dots svg');
+  const origin = svg?.getBoundingClientRect() ?? { left: 0, top: 0 };
+  const dots = [
+    ...(svg?.querySelector('path')?.getAttribute('d') ?? '').matchAll(
+      /M(-?[\d.]+) (-?[\d.]+)h(-?[\d.]+)/g,
+    ),
+  ].map(([, x, y, size]) => ({
+    x: origin.left + Number(x) + Number(size) / 2,
+    y: origin.top + Number(y) + Number(size) / 2,
+  }));
+  const range = document.createRange();
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const marked: string[] = [];
+  let at = 0;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const mark = node.parentElement?.closest('.blank');
+    const length = node.textContent?.length ?? 0;
+    for (let index = 0; index < length; index++) {
+      if (mark !== null && mark !== undefined && element.contains(mark)) {
+        marked.push(
+          `${at + index} ${mark.getAttribute('data-glyph') ?? ''} ${mark.className}`,
+        );
+        continue;
+      }
+      range.setStart(node, index);
+      range.setEnd(node, index + 1);
+      const rect = range.getBoundingClientRect();
+      if (
+        dots.some(
+          (dot) =>
+            dot.x >= rect.left &&
+            dot.x < rect.right &&
+            dot.y >= rect.top &&
+            dot.y < rect.bottom,
+        )
+      ) {
+        marked.push(`${at + index} spaces`);
+      }
+    }
+    at += length;
+  }
+  return marked;
+}
+
 interface Numbered {
   readonly numberEnds: number;
   readonly textStarts: number;
@@ -477,7 +522,7 @@ suite('App', () => {
       );
       const inEditor = await page
         .locator('.editor-probe .cm-line')
-        .evaluate(blanksOf);
+        .evaluate(editorBlanksOf);
       const moved = misplaced(number + 1, laidOut, shown);
       if (moved !== undefined) {
         wrong.push(JSON.stringify(moved));

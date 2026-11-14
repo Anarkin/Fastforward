@@ -695,7 +695,7 @@ suite('App editor', () => {
       'the text',
     );
     const toggle = page.locator('.editor button[title="Show Whitespace"]');
-    await content().locator('.spaces').first().waitFor();
+    await page.locator('.editor .space-dots path').waitFor();
     assert.strictEqual(
       await content().locator('.blank[data-glyph="→"]').count(),
       1,
@@ -708,12 +708,14 @@ suite('App editor', () => {
     assert.deepStrictEqual(signed, [true, false, true, false]);
     await toggle.click();
     try {
-      await content().locator('.spaces').first().waitFor({ state: 'detached' });
+      await page
+        .locator('.editor .space-dots path')
+        .waitFor({ state: 'detached' });
       assert.strictEqual(await content().locator('.ending-sign').count(), 0);
     } finally {
       await toggle.click();
     }
-    await content().locator('.spaces').first().waitFor();
+    await page.locator('.editor .space-dots path').waitFor();
   });
 
   test('closes the brackets and quotes typed once the settings say so, and types them alone otherwise', async () => {

@@ -238,6 +238,24 @@ input {
   background-repeat: repeat-x;
 }
 
+.cm-editor.editor-text .space-dot-layer {
+  pointer-events: none;
+}
+
+.cm-editor.editor-text .space-dots {
+  left: 0;
+  top: 0;
+}
+
+.cm-editor.editor-text .space-dots svg {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  shape-rendering: crispEdges;
+  fill: var(--muted-foreground);
+}
+
 .diff-minimap {
   position: absolute;
   top: 0;

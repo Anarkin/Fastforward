@@ -184,7 +184,7 @@ function cellAt(view: EditorView, range: SelectionRange): CursorCell | null {
     : of(edge - advance, advance, null);
 }
 
-function layerOrigin(view: EditorView): { left: number; top: number } {
+export function layerOrigin(view: EditorView): { left: number; top: number } {
   const rect = view.scrollDOM.getBoundingClientRect();
   return {
     left: rect.left - view.scrollDOM.scrollLeft * view.scaleX,

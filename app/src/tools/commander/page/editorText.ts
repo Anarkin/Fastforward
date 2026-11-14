@@ -26,6 +26,7 @@ import {
   blankSignOf,
   spacesBlanksAndText,
 } from '../../../lib/page/blanks';
+import { spaceDots } from './editorSpaces';
 
 type LinePart =
   | {
@@ -133,8 +134,6 @@ function boxMark(cells: number, sign?: string): Decoration {
   }
   return mark;
 }
-
-const spacesMark = Decoration.mark({ class: 'spaces' });
 
 const signMarks = new Map<string, Decoration>();
 
@@ -286,9 +285,11 @@ class LineLook implements PluginValue {
             const [part] = found;
             const index = window.from + found.index;
             const partFrom = line.from + index;
-            if (part.startsWith(' ')) {
-              blanks.push(spacesMark.range(partFrom, partFrom + part.length));
-            } else if (blank.test(part) && !boxed.has(index)) {
+            if (
+              !part.startsWith(' ') &&
+              blank.test(part) &&
+              !boxed.has(index)
+            ) {
               blanks.push(
                 signMark(blankSignOf(part)).range(
                   partFrom,
@@ -312,6 +313,7 @@ class LineLook implements PluginValue {
 export function appTextLook(table: CellTable): Extension {
   return [
     EditorView.editorAttributes.of({ class: 'editor-text' }),
+    spaceDots((state) => state.facet(blanksShown)),
     ViewPlugin.define((view) => new LineLook(view, table), {
       provide: (plugin) => [
         EditorView.decorations.of(
