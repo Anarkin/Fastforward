@@ -6,7 +6,7 @@ import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { strings } from '../../../lib/shared/strings';
 import { listMoveOf, type ListMove } from '../../../lib/page/listMoves';
-import { activeDescendant, rowId } from '../../../lib/page/listRows';
+import { activeDescendant, rowId } from '../../../lib/page/rowIds';
 
 export const noRefs: readonly RefInfo[] = [];
 

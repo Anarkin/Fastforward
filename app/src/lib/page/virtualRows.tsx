@@ -21,18 +21,17 @@ import {
 } from './rowScroll';
 
 import {
-  activeDescendant,
   endCovered,
   estimatedRowHeight,
-  pinnedRows,
   revealAgain,
   revealOffset,
-  rowId,
   scrollTarget,
   type ListedRows,
   type Reveal,
   type TreeItem,
 } from './listRows';
+import { activeDescendant, rowId } from './rowIds';
+import { pinnedRows } from './pinnedRows';
 
 const exactHeight = (element: Element) =>
   element.getBoundingClientRect().height;
