@@ -162,6 +162,13 @@ suite('App editor, long lines and places shown again', () => {
     await right().locator('.commander-row', { hasText: name }).first().click();
     await page.keyboard.press('F4');
     await content().waitFor();
+    await waitFor(
+      async () =>
+        (await scroller().evaluate(
+          (element) => getComputedStyle(element).opacity,
+        )) === '1',
+      'the editor shown',
+    );
   };
   const statusIs = (wanted: RegExp) =>
     waitFor(
@@ -280,7 +287,7 @@ suite('App editor, long lines and places shown again', () => {
       async () => ((await content().textContent()) ?? '') !== '',
       'the text',
     );
-    await page.keyboard.press('Control+F');
+    await page.keyboard.press('ControlOrMeta+F');
     await waitFor(
       () =>
         page.evaluate(

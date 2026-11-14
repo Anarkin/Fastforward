@@ -66,6 +66,7 @@ function backTo(
 
 const settleChecks = 30;
 const settleTries = 3;
+const userInputs = ['wheel', 'keydown', 'pointerdown'] as const;
 
 export function samePlace(one: EditorPlace, other: EditorPlace): boolean {
   return one.from === other.from && Math.abs(one.offset - other.offset) < 1;
@@ -86,8 +87,18 @@ function shownWhenBack(
   const stop = () => {
     cancelAnimationFrame(frame);
     channel.port1.close();
+    for (const input of userInputs) {
+      view.dom.removeEventListener(input, interrupted, true);
+    }
     scroller.style.opacity = '';
   };
+  const interrupted = () => {
+    stop();
+    onShown();
+  };
+  for (const input of userInputs) {
+    view.dom.addEventListener(input, interrupted, true);
+  }
   const next = () => {
     frame = requestAnimationFrame(() => channel.port2.postMessage(undefined));
   };
@@ -98,8 +109,7 @@ function shownWhenBack(
     const settled = seen === last;
     last = seen;
     if ((settled && samePlace(now, wanted)) || checks > settleChecks) {
-      stop();
-      onShown();
+      interrupted();
       return;
     }
     if (settled && tries < settleTries) {
