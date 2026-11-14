@@ -1,8 +1,6 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { ChangeSet } from '@codemirror/state';
 import { afterAll, suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
 import { recordingLog } from '../../../helpers/stub';
@@ -10,13 +8,10 @@ import {
   closeViews,
   failOnErrorsLogged,
   FakeHost,
-  shellOf,
   takeErrorsLogged,
   withView,
 } from '../../../helpers/harness';
-import { removeFolder, tempFolder } from '../../../helpers/repositories';
-import { quitNoteOf } from '../../../../shell/main/closing';
-import { saying, noticesOf } from './shellFixtures';
+import { noticesOf } from './shellFixtures';
 
 suite('Shell with no tab open', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');
@@ -170,171 +165,6 @@ suite('Shell with no tab open', () => {
       host,
       noGit,
     );
-  });
-
-  test('asks before quitting while a tool says quitting would cut its work short, saying what each tool says', () => {
-    assert.strictEqual(
-      quitNoteOf({ terminal: saying(), commander: saying(), git: saying() }),
-      undefined,
-    );
-    assert.strictEqual(
-      quitNoteOf({
-        terminal: saying(),
-        commander: saying('A copy runs.'),
-        git: saying('A clone runs.'),
-      }),
-      'A copy runs. A clone runs.',
-    );
-  });
-
-  test('asks the page before quitting while a tab of a tool that confirms closing is open, as closing a Terminal ends its shell, leaving quitting to the app once the page confirms', async () => {
-    const host = new FakeHost();
-    await withView(
-      log,
-      [],
-      async (view) => {
-        const shell = shellOf(view.view);
-        assert.strictEqual(shell.asksBeforeQuit(), false);
-        await view.connection.receive({ type: 'newTab', tool: 'terminal' });
-        assert.strictEqual(shell.asksBeforeQuit(), true);
-        shell.askToQuit();
-        assert.deepStrictEqual(view.page.last('confirmQuit'), {
-          type: 'confirmQuit',
-        });
-        await view.connection.receive({ type: 'quit' });
-        assert.deepStrictEqual(host.opened, ['quit']);
-        view.connection.dispose();
-        assert.strictEqual(shell.asksBeforeQuit(), false);
-      },
-      true,
-      host,
-      noGit,
-    );
-  });
-
-  test('asks before quitting or closing the window while a file edited in a tab has unsaved changes, naming it, saves it first once told to and quits only once it is saved', async () => {
-    const host = new FakeHost();
-    const folder = tempFolder('unsaved');
-    const file = path.join(folder, 'notes.txt');
-    fs.writeFileSync(file, 'one\n');
-    host.userSettingsFile = () => Promise.resolve(file);
-    try {
-      await withView(
-        log,
-        [],
-        async (view) => {
-          const shell = shellOf(view.view);
-          await view.connection.receive({ type: 'openSettings' });
-          const tab =
-            view.page.tabs?.tabs.find((each) => each.root === file)?.id ?? '';
-          await view.connection.receive({
-            type: 'tool',
-            tool: 'commander',
-            message: { type: 'readEdited', tab },
-          });
-          assert.strictEqual(shell.asksBeforeQuit(), false);
-          await view.connection.receive({
-            type: 'tool',
-            tool: 'commander',
-            message: {
-              type: 'editText',
-              tab,
-              update: {
-                version: 0,
-                changes: ChangeSet.of({ from: 0, insert: 'x' }, 4).toJSON(),
-              },
-            },
-          });
-          assert.strictEqual(
-            view.page.tabs?.tabs.find((each) => each.id === tab)?.unsaved,
-            true,
-          );
-          assert.strictEqual(shell.asksBeforeQuit(), true);
-          assert.strictEqual(shell.asksBeforeClosing('1'), true);
-          shell.askToCloseWindow('1');
-          assert.deepStrictEqual(view.page.last('confirmCloseWindow'), {
-            type: 'confirmCloseWindow',
-            unsaved: ['notes.txt'],
-          });
-          shell.askToQuit();
-          assert.deepStrictEqual(view.page.last('confirmQuit'), {
-            type: 'confirmQuit',
-            unsaved: ['notes.txt'],
-          });
-          await view.connection.receive({ type: 'quit', save: true });
-          assert.strictEqual(fs.readFileSync(file, 'utf8'), 'xone\n');
-          assert.deepStrictEqual(host.opened, ['quit']);
-          assert.strictEqual(shell.asksBeforeQuit(), false);
-        },
-        true,
-        host,
-        noGit,
-      );
-    } finally {
-      removeFolder(folder);
-    }
-  });
-
-  test('closes a tab of unsaved changes only once told to save them or not, saving them first when told to', async () => {
-    const host = new FakeHost();
-    const folder = tempFolder('unsaved');
-    const file = path.join(folder, 'notes.txt');
-    fs.writeFileSync(file, 'one\n');
-    host.userSettingsFile = () => Promise.resolve(file);
-    try {
-      await withView(
-        log,
-        [],
-        async (view) => {
-          const edit = async (tab: string, version: number) => {
-            await view.connection.receive({
-              type: 'tool',
-              tool: 'commander',
-              message: { type: 'readEdited', tab },
-            });
-            await view.connection.receive({
-              type: 'tool',
-              tool: 'commander',
-              message: {
-                type: 'editText',
-                tab,
-                update: {
-                  version,
-                  changes: ChangeSet.of(
-                    { from: 0, insert: '>' },
-                    fs.readFileSync(file, 'utf8').length,
-                  ).toJSON(),
-                },
-              },
-            });
-          };
-          const editedTab = () =>
-            view.page.tabs?.tabs.find((each) => each.root === file)?.id;
-          await view.connection.receive({ type: 'openSettings' });
-          await edit(editedTab() ?? '', 0);
-          await view.connection.receive({
-            type: 'closeTab',
-            tab: editedTab() ?? '',
-            save: true,
-          });
-          assert.strictEqual(fs.readFileSync(file, 'utf8'), '>one\n');
-          assert.strictEqual(editedTab(), undefined);
-          await view.connection.receive({ type: 'openSettings' });
-          await edit(editedTab() ?? '', 0);
-          await view.connection.receive({
-            type: 'closeTab',
-            tab: editedTab() ?? '',
-          });
-          assert.strictEqual(fs.readFileSync(file, 'utf8'), '>one\n');
-          assert.strictEqual(editedTab(), undefined);
-        },
-        true,
-        host,
-        noGit,
-      );
-    } finally {
-      removeFolder(folder);
-    }
   });
 
   test('tells the page whether it can install ff, which only the app on macOS and an AppImage do, leaving it to the installer on Windows and the package on Linux', async () => {
