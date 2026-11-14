@@ -3,10 +3,10 @@ import {
   fastForward,
   moveBranch,
   onNoRef,
-  readPushTarget,
   readUpstream,
   type Upstream,
 } from './branches';
+import { readPushTarget } from './pushTarget';
 import { gitErrorText } from './errorText';
 import {
   checkoutNewBranch,

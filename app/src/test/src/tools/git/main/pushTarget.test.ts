@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import {
   pushDestination,
   type PushSettings,
-} from '../../../../../tools/git/main/branches';
+} from '../../../../../tools/git/main/pushTarget';
 
 suite('Git branches', () => {
   test('pushes a branch where git push would for each push.default, and nowhere where git push would refuse', () => {
