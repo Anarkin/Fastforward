@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { Column } from '../../../../tools/git/page/column';
 import { columnsClass } from '../../../../tools/git/page/columns';
@@ -16,27 +15,31 @@ import {
 import { fileChange, renderedBy } from '../../../helpers/fixtures';
 import { tabsStore } from '../../../helpers/componentFixtures';
 import {
-  searchButton,
-  columns,
-  commitRow,
-  contextMenu,
-  diffOptions,
-  diffRow,
-  diffView,
-  fileRow,
-  folderRow,
-  locationsPopup,
-  messagePanel,
-  minimap,
-  menuButton,
-  navButtons,
-  notices,
-  tabBar,
-  workingTreeRow,
-  worktree,
-  worktreeBar,
+  AboutPopupShown,
+  Columns,
+  CommitRowShown,
+  ContextMenuShown,
+  DiffOptionsShown,
+  DiffRow,
+  DiffViewShown,
+  FileHeaderRow,
+  FileRowShown,
+  FolderRowShown,
+  LocationsPopupShown,
+  MenuButtonShown,
+  MessagePanelShown,
+  MinimapShown,
+  NavButtonsShown,
+  NoticesShown,
+  SearchButtonShown,
+  ShortcutsPopupShown,
+  SoloButtonShown,
+  TabBarIn,
+  TabBarShown,
+  WorkingTreeRowShown,
+  WorktreeBarShown,
 } from '../../../helpers/styleFixtures';
-import { ShellStore } from '../../../../shell/page/store';
+import { diffView, worktree } from '../../../helpers/styleMarkup';
 import {
   noop,
   activeEdge,
@@ -46,30 +49,25 @@ import {
   halved,
   deviceRounded,
   hovered,
-  aboutPopup,
-  tabBarIn,
-  shortcutsPopup,
   overlayScrollbar,
-  soloButton,
-  fileHeader,
+  popupOf,
 } from './stylesheetFixtures';
+import { ShellStore } from '../../../../shell/page/store';
 import {
   FileHeader,
   HunkDivider,
 } from '../../../../tools/git/page/diffRowParts';
 
 const inside = (classes: string, child: React.ReactNode) =>
-  rendered(createElement('div', { className: classes }, child));
+  rendered(<div className={classes}>{child}</div>);
 
 const found = (classes: string, current: boolean) =>
   withClass(
     inside(
       classes,
-      createElement(
-        'span',
-        { className: current ? 'find-match current' : 'find-match' },
-        'x',
-      ),
+      <span className={current ? 'find-match current' : 'find-match'}>
+        {'x'}
+      </span>,
     ),
     'find-match',
   );
@@ -77,20 +75,18 @@ const found = (classes: string, current: boolean) =>
 suite('Style', () => {
   test('colors the icon of each tool with its own color from the settings, so tabs of different tools for one folder tell apart at a glance', () => {
     const bar = rendered(
-      createElement(
-        ShellStore,
-        {
-          value: tabsStore(
-            [
-              { id: '1', tool: 'git', root: '/a', name: 'a' },
-              { id: '2', tool: 'commander', root: '/a', name: 'a' },
-              { id: '3', tool: 'terminal', root: '/a', name: 'a' },
-            ],
-            '1',
-          ),
-        },
-        createElement(TabBar, {}),
-      ),
+      <ShellStore
+        value={tabsStore(
+          [
+            { id: '1', tool: 'git', root: '/a', name: 'a' },
+            { id: '2', tool: 'commander', root: '/a', name: 'a' },
+            { id: '3', tool: 'terminal', root: '/a', name: 'a' },
+          ],
+          '1',
+        )}
+      >
+        <TabBar />
+      </ShellStore>,
     );
     assert.deepStrictEqual(
       allWithClass(bar, 'tool-icon').map((icon) => cascaded(icon, 'color')),
@@ -104,13 +100,7 @@ suite('Style', () => {
 
   test('writes the choice shown on a dropdown button in the font size of the settings, as the text around it', () => {
     const button = withClass(
-      rendered(
-        createElement(MenuButton, {
-          title: 'Encoding',
-          label: 'UTF-8',
-          items: [],
-        }),
-      ),
+      rendered(<MenuButton title="Encoding" label="UTF-8" items={[]} />),
       'menu-button-trigger',
     );
     assert.strictEqual(cascaded(button, 'font'), 'inherit');
@@ -124,8 +114,8 @@ suite('Style', () => {
     assert.strictEqual(deviceRounded('button-size'), 26);
     assert.strictEqual(deviceRounded('button-gap'), 2);
     assert.strictEqual(deviceRounded('arrowed-button-width'), 44);
-    const nav = rendered(navButtons({ autoFetch: true, autoFetchMinutes: 5 }));
-    const options = rendered(diffOptions());
+    const nav = rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} />);
+    const options = rendered(<DiffOptionsShown />);
     for (const group of [
       withClass(nav, 'nav-buttons'),
       withClass(nav, 'pin-pair'),
@@ -134,7 +124,7 @@ suite('Style', () => {
       withClass(
         rendered(
           renderedBy(Column, {
-            actions: createElement('span'),
+            actions: <span />,
             children: null,
           }),
         ),
@@ -154,7 +144,7 @@ suite('Style', () => {
         height: 'var(--button-size)',
       });
     }
-    looks(withClass(searchButton(), 'search-button'), {
+    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       width: 'var(--search-height)',
     });
     assert.strictEqual(
@@ -167,12 +157,10 @@ suite('Style', () => {
   });
 
   test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
-    const pinned = rendered(
-      navButtons({ autoFetch: true, autoFetchMinutes: 5 }),
-    );
+    const pinned = rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} />);
     const enabled = [
       pinned,
-      rendered(diffOptions({ ignoreWhitespace: false })),
+      rendered(<DiffOptionsShown ignoreWhitespace={false} />),
     ].flatMap((root) =>
       allWithClass(root, 'nav-button').filter(
         (button) => !button.attributes.has('disabled'),
@@ -203,12 +191,17 @@ suite('Style', () => {
   });
 
   test('fills the search button in the border color, as the search fields are until used, and draws the strip between hunks in it', () => {
-    looks(withClass(searchButton(), 'search-button'), {
+    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       background: 'var(--color-border)',
     });
     looks(
       withClass(
-        diffView({}, diffRow(createElement(HunkDivider))),
+        diffView(
+          <DiffViewShown />,
+          <DiffRow>
+            <HunkDivider />
+          </DiffRow>,
+        ),
         'hunk-divider',
       ),
       { background: 'var(--color-border)' },
@@ -221,41 +214,44 @@ suite('Style', () => {
       'var(--color-border)',
     );
     for (const bar of [
-      withClass(tabBar(), 'tabs'),
-      withClass(shortcutsPopup(), 'shortcuts-title'),
-      withClass(aboutPopup(), 'shortcuts-title'),
+      withClass(rendered(<TabBarShown />), 'tabs'),
+      withClass(popupOf(<ShortcutsPopupShown />), 'shortcuts-title'),
+      withClass(popupOf(<AboutPopupShown />), 'shortcuts-title'),
     ]) {
       looks(bar, {
         background: 'var(--color-background)',
         '--button-background': 'var(--color-background)',
       });
     }
-    looks(withClass(diffView({}, fileHeader), 'file-header'), {
-      background: 'var(--color-border)',
-      '--button-background': 'var(--color-panel-background)',
-    });
-    const diff = rendered(diffOptions());
+    looks(
+      withClass(diffView(<DiffViewShown />, <FileHeaderRow />), 'file-header'),
+      {
+        background: 'var(--color-border)',
+        '--button-background': 'var(--color-panel-background)',
+      },
+    );
+    const diff = rendered(<DiffOptionsShown />);
     const laidOut = allWithClass(withClass(diff, 'segmented'), 'nav-button');
     for (const button of [
-      ...allWithClass(rendered(navButtons()), 'nav-button'),
+      ...allWithClass(rendered(<NavButtonsShown />), 'nav-button'),
       ...allWithClass(diff, 'nav-button').filter(
         (option) => !laidOut.includes(option),
       ),
-      withClass(rendered(menuButton()), 'nav-button'),
-      withClass(shortcutsPopup(), 'nav-button'),
+      withClass(rendered(<MenuButtonShown />), 'nav-button'),
+      withClass(popupOf(<ShortcutsPopupShown />), 'nav-button'),
       withClass(
         diffView(
-          {},
-          diffRow(
-            createElement(FileHeader, {
-              path: 'v.svg',
-              open: true,
-              whole: false,
-              collapsible: true,
-              onClick: noop,
-              onView: noop,
-            }),
-          ),
+          <DiffViewShown />,
+          <DiffRow>
+            <FileHeader
+              path="v.svg"
+              open
+              whole={false}
+              collapsible
+              onClick={noop}
+              onView={noop}
+            />
+          </DiffRow>,
         ),
         'file-header-button',
       ),
@@ -264,12 +260,8 @@ suite('Style', () => {
       looks(button, { background: 'var(--button-background)' });
     }
     for (const open of [
-      rendered(
-        createElement('button', {
-          className: 'nav-button menu-button-trigger open',
-        }),
-      ),
-      withClass(tabBarIn(false, true), 'tab-add'),
+      rendered(<button className="nav-button menu-button-trigger open" />),
+      withClass(rendered(<TabBarIn maximized={false} adding />), 'tab-add'),
     ]) {
       looks(open, {
         background:
@@ -278,7 +270,7 @@ suite('Style', () => {
     }
     assert.match(
       cascaded(
-        withClass(rendered(menuButton({ marked: true })), 'menu-mark'),
+        withClass(rendered(<MenuButtonShown marked />), 'menu-mark'),
         'box-shadow',
       ) ?? '',
       /^0 0 0 \S+ var\(--button-background\)$/,
@@ -286,29 +278,33 @@ suite('Style', () => {
   });
 
   test('rings a button or link the keyboard reached in the focus color, in whole pixels inside its edge like the active column, so nothing around it clips it, but not a menu item, which it tints instead, nor a popup taking the keyboard', () => {
-    const edge = activeEdge();
+    const edge = activeEdge(
+      <Columns className={columnsClass(true, 'a')} active="commits" />,
+    );
     assert.match(edge, /^\d+px$/);
     const ring = {
       outline: `${edge} solid var(--color-focus)`,
       'outline-offset': `-${edge}`,
     };
-    const about = aboutPopup();
+    const about = popupOf(<AboutPopupShown />);
     for (const control of [
-      withClass(tabBar(), 'tab-add'),
-      withClass(tabBar(), 'tab-close'),
-      withClass(notices(), 'notice-close'),
-      withClass(rendered(navButtons()), 'nav-button'),
+      withClass(rendered(<TabBarShown />), 'tab-add'),
+      withClass(rendered(<TabBarShown />), 'tab-close'),
+      withClass(rendered(<NoticesShown />), 'notice-close'),
+      withClass(rendered(<NavButtonsShown />), 'nav-button'),
       withClass(about, 'about-copy'),
       withClass(about, 'nav-button'),
       about.children[1]?.children.find((child) => child.tag === 'a'),
     ]) {
       looks(control, ring, { focus: control });
     }
-    looks(withClass(tabBar(), 'tab-add'), { outline: undefined });
-    const item = withClass(contextMenu(), 'menu-item');
+    looks(withClass(rendered(<TabBarShown />), 'tab-add'), {
+      outline: undefined,
+    });
+    const item = withClass(rendered(<ContextMenuShown />), 'menu-item');
     looks(item, { outline: 'none' }, { focus: item });
     looks(about, { outline: 'none' }, { focus: about });
-    const pinned = messagePanel({}, true);
+    const pinned = rendered(<MessagePanelShown pinned />);
     const close = withClass(pinned, 'message-close');
     looks(close, ring, { focus: close });
     const description = withClass(pinned, 'message-body');
@@ -322,13 +318,13 @@ suite('Style', () => {
       'color-mix( in srgb, var(--color-focus) var(--color-focus-hover), transparent )',
     );
     for (const row of [
-      allWithClass(tabBar(), 'tab').find(
+      allWithClass(rendered(<TabBarShown />), 'tab').find(
         (tab) => !tab.classes.includes('active'),
       ),
-      fileRow(fileChange('src/a.ts')),
-      folderRow(),
-      rendered(commitRow()),
-      workingTreeRow(1),
+      rendered(<FileRowShown change={fileChange('src/a.ts')} />),
+      rendered(<FolderRowShown />),
+      rendered(<CommitRowShown />),
+      rendered(<WorkingTreeRowShown count={1} />),
     ]) {
       looks(row, { background: 'var(--hover-background)' }, hovered);
     }
@@ -340,27 +336,34 @@ suite('Style', () => {
       'color-mix( in srgb, var(--color-focus) var(--color-focus-selected), transparent )',
     );
     for (const button of [
-      withClass(tabBar(), 'tab-close'),
-      withClass(notices(), 'notice-close'),
+      withClass(rendered(<TabBarShown />), 'tab-close'),
+      withClass(rendered(<NoticesShown />), 'notice-close'),
     ]) {
       looks(button, { background: 'var(--hover-background)' }, hovered);
     }
-    looks(soloButton(true, false), {
+    looks(rendered(<SoloButtonShown solo applying={false} />), {
       background: 'var(--toggle-on-background)',
     });
   });
 
   test('fills the search fields, the search button and the worktree chips alike, and tints them alike when hovered, the edges of the fields included', () => {
-    const fields = [withClass(locationsPopup(''), 'locations-search')];
+    const fields = [
+      withClass(rendered(<LocationsPopupShown query="" />), 'locations-search'),
+    ];
     const chip = allWithClass(
-      worktreeBar([worktree('a'), worktree('b')], '/a'),
+      rendered(
+        <WorktreeBarShown
+          worktrees={[worktree('a'), worktree('b')]}
+          active="/a"
+        />,
+      ),
       'tab',
     ).find((tab) => !tab.classes.includes('active'));
     const tinted =
       'linear-gradient(var(--hover-background), var(--hover-background)), var(--color-border)';
     for (const field of [
       ...fields,
-      withClass(searchButton(), 'search-button'),
+      withClass(rendered(<SearchButtonShown />), 'search-button'),
       chip,
     ]) {
       looks(field, { background: 'var(--color-border)' });
@@ -389,17 +392,16 @@ suite('Style', () => {
     looks(overlayScrollbar('shown'), resting);
     looks(overlayScrollbar('shown'), hover, hovered);
     looks(overlayScrollbar('shown dragging'), drag);
-    const viewport = withClass(minimap(), 'minimap-viewport');
+    const minimap = rendered(<MinimapShown />);
+    const viewport = withClass(minimap, 'minimap-viewport');
     looks(viewport, resting);
-    looks(viewport, hover, { hover: minimap() });
+    looks(viewport, hover, { hover: minimap });
     looks(
       withClass(
         rendered(
-          createElement(
-            'div',
-            { className: 'diff-minimap shown dragging' },
-            createElement('div', { className: 'minimap-viewport' }),
-          ),
+          <div className="diff-minimap shown dragging">
+            <div className="minimap-viewport" />
+          </div>,
         ),
         'minimap-viewport',
       ),
@@ -409,7 +411,9 @@ suite('Style', () => {
 
   test('draws a thumb across the whole of its box, as wide as the scrollbar size, with no border keeping it off the edges it runs along', () => {
     looks(overlayScrollbar('shown'), { border: undefined });
-    looks(withClass(minimap(), 'minimap-viewport'), { border: undefined });
+    looks(withClass(rendered(<MinimapShown />), 'minimap-viewport'), {
+      border: undefined,
+    });
   });
 
   test('tints a selected row and the active search result alike, with the focus color', () => {
@@ -418,9 +422,14 @@ suite('Style', () => {
       'color-mix( in srgb, var(--color-focus) var(--color-focus-selected), var(--color-panel-background) )',
     );
     for (const row of [
-      fileRow(fileChange('src/a.ts'), true),
-      rendered(commitRow({ selected: 'a' })),
-      withClass(locationsPopup('m'), 'row', 'result', 'active'),
+      rendered(<FileRowShown change={fileChange('src/a.ts')} chosen />),
+      rendered(<CommitRowShown selected="a" />),
+      withClass(
+        rendered(<LocationsPopupShown query="m" />),
+        'row',
+        'result',
+        'active',
+      ),
     ]) {
       for (const states of [{}, hovered]) {
         looks(row, { background: 'var(--selection-background)' }, states);
@@ -430,19 +439,18 @@ suite('Style', () => {
 
   test('paints the color of the panel behind every list and preview that scrolls in a column, so the text in it keeps ClearType where Chromium composites a scrolling area, from 150% on', () => {
     for (const scroller of [
-      rendered(createElement('div', { className: 'virtual-rows' })),
-      rendered(
-        createElement('div', {
-          className: 'column-body viewer-body viewer-preview',
-        }),
-      ),
+      rendered(<div className="virtual-rows" />),
+      rendered(<div className="column-body viewer-body viewer-preview" />),
     ]) {
       looks(scroller, { background: 'var(--color-panel-background)' });
     }
   });
 
   test('grabs a column edge over the gap between the columns without painting it, even while dragging', () => {
-    const resizer = withClass(columns(columnsClass(true, 'a')), 'resizer');
+    const resizer = withClass(
+      rendered(<Columns className={columnsClass(true, 'a')} />),
+      'resizer',
+    );
     looks(resizer, {
       width: '6px',
       right: `calc(-${halved(cascaded(resizer, 'width'))} - var(--gutter-width) / 2)`,
@@ -455,35 +463,38 @@ suite('Style', () => {
         states,
       );
     }
-    looks(rendered(createElement('body', { className: 'resizing' })), {
+    looks(rendered(<body className="resizing" />), {
       cursor: 'col-resize',
     });
   });
 
   test('spins the icon of a running button', () => {
     for (const icon of [
-      withClass(rendered(navButtons({ fetching: true })), 'spin-icon'),
-      withClass(soloButton(false, true), 'spin-icon'),
+      withClass(rendered(<NavButtonsShown fetching />), 'spin-icon'),
+      withClass(
+        rendered(<SoloButtonShown solo={false} applying />),
+        'spin-icon',
+      ),
     ]) {
       assert.match(
         cascaded(icon, 'animation') ?? '',
         /^spin \S+ linear infinite$/,
       );
     }
-    looks(withClass(rendered(navButtons()), 'spin-icon'), {
+    looks(withClass(rendered(<NavButtonsShown />), 'spin-icon'), {
       animation: undefined,
     });
   });
 
   test('marks the fetch button in the warning color while stale and the error color when failed, as a dot outside the spinning icon', () => {
     const stale = rendered(
-      navButtons({
-        lastFetch: { succeeded: 0 },
-        autoFetch: true,
-        autoFetchMinutes: 1,
-      }),
+      <NavButtonsShown
+        lastFetch={{ succeeded: 0 }}
+        autoFetch
+        autoFetchMinutes={1}
+      />,
     );
-    const failed = rendered(navButtons({ lastFetch: { failed: 0 } }));
+    const failed = rendered(<NavButtonsShown lastFetch={{ failed: 0 }} />);
     for (const [root, color] of [
       [stale, 'warning'],
       [failed, 'error'],
@@ -500,9 +511,9 @@ suite('Style', () => {
   });
 
   test('marks the menu button in the focus color while an update waits, as a dot like the one on the fetch button', () => {
-    const mark = withClass(rendered(menuButton({ marked: true })), 'menu-mark');
+    const mark = withClass(rendered(<MenuButtonShown marked />), 'menu-mark');
     const fetchMark = withClass(
-      rendered(navButtons({ lastFetch: { failed: 0 } })),
+      rendered(<NavButtonsShown lastFetch={{ failed: 0 }} />),
       'fetch-mark',
     );
     looks(mark, {
@@ -512,7 +523,7 @@ suite('Style', () => {
     });
     looks(mark?.parent, { position: 'relative' });
     assert.deepStrictEqual(
-      allWithClass(rendered(menuButton()), 'menu-mark'),
+      allWithClass(rendered(<MenuButtonShown />), 'menu-mark'),
       [],
     );
   });
@@ -541,10 +552,7 @@ suite('Style', () => {
       'shortcuts-popup',
     ]) {
       looks(
-        withClass(
-          inside(classes, createElement(Highlight, { text: 'x', query: 'x' })),
-          'match',
-        ),
+        withClass(inside(classes, <Highlight text="x" query="x" />), 'match'),
         match,
       );
     }
@@ -552,7 +560,7 @@ suite('Style', () => {
       withClass(
         inside(
           'shortcuts-popup',
-          createElement(KeyCombo, { keys: 'F1', matched: new Set(['f1']) }),
+          <KeyCombo keys="F1" matched={new Set(['f1'])} />,
         ),
         'match',
       ),
@@ -568,11 +576,9 @@ suite('Style', () => {
         withClass(
           inside(
             'pdf-pane',
-            createElement(
-              'div',
-              { className: 'textLayer' },
-              createElement('span', { className: classes }, 'x'),
-            ),
+            <div className="textLayer">
+              <span className={classes}>x</span>
+            </div>,
           ),
           ...classes.split(' '),
         ),
@@ -587,7 +593,7 @@ suite('Style', () => {
         withClass(
           inside(
             'cm-editor editor-text cm-focused',
-            createElement('span', { className: bracket }, '('),
+            <span className={bracket}>(</span>,
           ),
           bracket,
         ),
@@ -598,10 +604,10 @@ suite('Style', () => {
 
   test('selects text in the color of a selected row everywhere, in the text boxes, the viewer, the diff, Markdown and any other text as the editor does, and see-through in that color over the page of a PDF, which shows through', () => {
     const selected = { pseudoElement: '::selection' };
-    const text = createElement('span', { className: 'text' }, 'x');
+    const text = <span className="text">x</span>;
     for (const element of [
-      rendered(createElement('input', { className: 'prompt-input' })),
-      rendered(createElement('textarea', { className: 'field' })),
+      rendered(<input className="prompt-input" />),
+      rendered(<textarea className="field" />),
       withClass(inside('viewer-row', text), 'text'),
       withClass(inside('diff-line', text), 'text'),
       withClass(inside('markdown', text), 'text'),
@@ -614,20 +620,14 @@ suite('Style', () => {
       );
     }
     const editor = rendered(
-      createElement(
-        'div',
-        { className: 'cm-editor editor-text editor-selection' },
-        createElement(
-          'div',
-          { className: 'cm-scroller' },
-          createElement('div', { className: 'cm-line' }, 'x'),
-          createElement(
-            'div',
-            { className: 'cm-selectionLayer' },
-            createElement('div', { className: 'cm-selectionBackground' }),
-          ),
-        ),
-      ),
+      <div className="cm-editor editor-text editor-selection">
+        <div className="cm-scroller">
+          <div className="cm-line">x</div>
+          <div className="cm-selectionLayer">
+            <div className="cm-selectionBackground" />
+          </div>
+        </div>
+      </div>,
     );
     looks(
       withClass(editor, 'cm-line'),
@@ -639,10 +639,7 @@ suite('Style', () => {
     });
     looks(
       withClass(
-        inside(
-          'pdf-pane',
-          createElement('div', { className: 'textLayer' }, text),
-        ),
+        inside('pdf-pane', <div className="textLayer">{text}</div>),
         'text',
       ),
       { 'background-color': 'var(--selection-tint)' },

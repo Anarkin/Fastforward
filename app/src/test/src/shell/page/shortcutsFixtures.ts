@@ -6,7 +6,6 @@ import type { TabInfo } from '../../../../shell/shared/protocol';
 import type { ToolId } from '../../../../shell/shared/tools';
 import { setKeyPlatform } from '../../../../lib/shared/keymap';
 import { shownEntries } from '../../../../shell/page/shortcutsList';
-import { ShortcutsPopup } from '../../../../shell/page/shortcutsPopup';
 import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { createShellStore } from '../../../../shell/page/store';
 import { withStores } from '../../../helpers/componentFixtures';
@@ -25,11 +24,12 @@ export function shortcutsStore(
 }
 
 export function shortcutsMarkup(
+  popup: React.ReactElement,
   tool?: ToolId,
   kind?: Pick<TabInfo, 'view' | 'edit' | 'compare'>,
 ): string {
   return renderToStaticMarkup(
-    withStores(<ShortcutsPopup />, { shell: shortcutsStore(tool, kind) }),
+    withStores(popup, { shell: shortcutsStore(tool, kind) }),
   );
 }
 
@@ -80,6 +80,7 @@ export interface Held {
 }
 
 export async function inPopup(
+  popup: React.ReactElement,
   tool: ToolId,
   check: (page: {
     readonly document: Document;
@@ -107,9 +108,7 @@ export async function inPopup(
     prepare(document);
     const root = createRoot(main);
     await act(async () => {
-      root.render(
-        withStores(<ShortcutsPopup />, { shell: shortcutsStore(tool) }),
-      );
+      root.render(withStores(popup, { shell: shortcutsStore(tool) }));
     });
     const value = Object.getOwnPropertyDescriptor(
       dom.window.HTMLInputElement.prototype,

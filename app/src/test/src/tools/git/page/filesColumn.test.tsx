@@ -42,8 +42,9 @@ import {
 import type { VisibleRows } from '../../../../../lib/page/listMoves';
 import type { Folders } from '../../../../../tools/git/page/viewFolders';
 import { revealAgain, type ListedRows } from '../../../../../lib/page/listRows';
+import { FileRow } from '../../../../../tools/git/page/tree';
 import {
-  clickFile,
+  clickRow,
   renderIn,
   type RowProps,
 } from '../../../../helpers/componentFixtures';
@@ -467,7 +468,7 @@ suite('Files column', () => {
     assert.strictEqual(header(4), 'Unstaged');
     rows[0].props.onClick();
     rows[1].props.onClick();
-    clickFile(rows[5]);
+    clickRow(rows[5], FileRow);
     assert.deepStrictEqual(picked, [
       [undefined, undefined],
       [undefined, 'staged'],
@@ -493,8 +494,8 @@ suite('Files column', () => {
     );
     assert.strictEqual(selectedKey, 'file:a.ts');
     assert.deepStrictEqual(keys, ['changes', 'file:a.ts', 'file:b.ts']);
-    clickFile(rows[1]);
-    clickFile(rows[2]);
+    clickRow(rows[1], FileRow);
+    clickRow(rows[2], FileRow);
     assert.deepStrictEqual(picked, [undefined, 'b.ts']);
   });
 

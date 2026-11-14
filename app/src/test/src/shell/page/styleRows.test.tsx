@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { listedFilesRows } from '../../../../tools/git/page/changesRows';
 import { Column } from '../../../../tools/git/page/column';
@@ -18,19 +17,20 @@ import {
   stylesheet,
 } from '../../../helpers/fixtures';
 import {
-  searchButton,
-  commitRow,
-  contextMenu,
-  diffFind,
-  diffView,
-  fileRow,
-  folderRow,
-  locationsPopup,
-  navButtons,
-  notices,
-  tabBar,
+  CommitRowShown,
+  ContextMenuShown,
+  DiffFindShown,
+  DiffViewShown,
+  FileHeaderRow,
+  FileRowShown,
+  FolderRowShown,
+  LocationsPopupShown,
+  NavButtonsShown,
+  NoticesShown,
+  SearchButtonShown,
+  TabBarShown,
 } from '../../../helpers/styleFixtures';
-import { defaultScrolling } from '../../../../lib/page/rowScroll';
+import { diffView } from '../../../helpers/styleMarkup';
 import {
   css,
   noop,
@@ -38,13 +38,13 @@ import {
   body,
   bodyVariable,
   hovered,
-  skeletonRow,
-  fileHeader,
 } from './stylesheetFixtures';
+import { SkeletonRows } from '../../../../tools/git/page/skeleton';
+import { defaultScrolling } from '../../../../lib/page/rowScroll';
 
 suite('Style', () => {
   test('draws the rows of the lists as tall as one line of the line height of the settings, the size of the font rounded to the device pixel, with nothing above or below the text', () => {
-    looks(rendered(createElement('div', { className: 'row' })), {
+    looks(rendered(<div className="row" />), {
       height: 'var(--row-line-height)',
       'line-height': 'var(--row-line-height)',
       padding: '0 8px',
@@ -56,7 +56,10 @@ suite('Style', () => {
   });
 
   test('gives a row of the files column one line of the line height of the settings, its icons in the middle of it, as tall as a line of the diff at the default sizes, so the columns line up', () => {
-    for (const row of [fileRow(fileChange('src/a.ts')), folderRow()]) {
+    for (const row of [
+      rendered(<FileRowShown change={fileChange('src/a.ts')} />),
+      rendered(<FolderRowShown />),
+    ]) {
       looks(row, {
         'box-sizing': 'border-box',
         height: 'var(--row-line-height)',
@@ -73,10 +76,12 @@ suite('Style', () => {
 
   test('cuts off every long name in a row with an ellipsis', () => {
     for (const row of [
-      fileRow(fileChange('src/a.ts')),
-      fileRow(fileChange('src/a.ts', { status: 'D' })),
-      fileRow(undefined),
-      folderRow(),
+      rendered(<FileRowShown change={fileChange('src/a.ts')} />),
+      rendered(
+        <FileRowShown change={fileChange('src/a.ts', { status: 'D' })} />,
+      ),
+      rendered(<FileRowShown />),
+      rendered(<FolderRowShown />),
     ]) {
       looks(withClass(row, 'path'), {
         overflow: 'hidden',
@@ -87,15 +92,22 @@ suite('Style', () => {
   });
 
   test("lines a folder's name up with the names of the files beside it, leaving no gap after its twisty", () => {
-    looks(folderRow(), { gap: undefined });
+    looks(rendered(<FolderRowShown />), { gap: undefined });
   });
 
   test('highlights no loading placeholder on hover', () => {
     for (const placeholder of [
-      skeletonRow(),
-      skeletonRow('diff-line'),
-      rendered(createElement('div', { className: 'commit placeholder' })),
-      withClass(locationsPopup('abcd'), 'hash-suggestion', 'empty'),
+      withClass(rendered(<SkeletonRows count={1} />), 'skeleton-row'),
+      withClass(
+        rendered(<SkeletonRows count={1} className="diff-line" />),
+        'skeleton-row',
+      ),
+      rendered(<div className="commit placeholder" />),
+      withClass(
+        rendered(<LocationsPopupShown query="abcd" />),
+        'hash-suggestion',
+        'empty',
+      ),
     ]) {
       looks(placeholder, { background: 'none' }, hovered);
     }
@@ -105,14 +117,14 @@ suite('Style', () => {
     const column = rendered(
       renderedBy(Column, {
         children: [
-          createElement(VirtualRows, {
-            key: 'rows',
-            rows: listedFilesRows([]),
-            renderRow: noop,
-            selectedKey: undefined,
-            scrolling: defaultScrolling,
-          }),
-          createElement('div', { key: 'empty', className: 'row empty' }),
+          <VirtualRows
+            key="rows"
+            rows={listedFilesRows([])}
+            renderRow={noop}
+            selectedKey={undefined}
+            scrolling={defaultScrolling}
+          />,
+          <div key="empty" className="row empty" />,
         ],
       }),
     );
@@ -120,7 +132,7 @@ suite('Style', () => {
       display: 'flex',
       'flex-direction': 'column',
     });
-    const row = fileRow(fileChange('src/a.ts'));
+    const row = rendered(<FileRowShown change={fileChange('src/a.ts')} />);
     looks(withClass(column, 'empty'), {
       order: '-1',
       'flex-shrink': '0',
@@ -136,19 +148,19 @@ suite('Style', () => {
 
   test('lets only the diff, errors and notices be selected, not the controls around them', () => {
     looks(body, { 'user-select': 'none' });
-    const view = diffView({}, fileHeader);
+    const view = diffView(<DiffViewShown />, <FileHeaderRow />);
     for (const selectable of [
       view,
-      withClass(notices(), 'notice-message'),
+      withClass(rendered(<NoticesShown />), 'notice-message'),
       withClass(
         rendered(
-          createElement(Crash, {
-            title: 'Fastforward',
-            error: new Error('boom'),
-            onReload: noop,
-            listen: () => noop,
-            onQuit: noop,
-          }),
+          <Crash
+            title="Fastforward"
+            error={new Error('boom')}
+            onReload={noop}
+            listen={() => noop}
+            onQuit={noop}
+          />,
         ),
         'error-message',
       ),
@@ -159,10 +171,18 @@ suite('Style', () => {
   });
 
   test('strikes a deleted file through, in the text color like the other changes', () => {
-    looks(withClass(fileRow(fileChange('src/a.ts', { status: 'D' })), 'path'), {
-      'text-decoration': 'line-through',
-      color: undefined,
-    });
+    looks(
+      withClass(
+        rendered(
+          <FileRowShown change={fileChange('src/a.ts', { status: 'D' })} />,
+        ),
+        'path',
+      ),
+      {
+        'text-decoration': 'line-through',
+        color: undefined,
+      },
+    );
   });
 
   test('starts a changed file with its icon, spaced from its name, in the theme color of its kind', () => {
@@ -173,7 +193,7 @@ suite('Style', () => {
       ['R', 'renamed'],
     ] as const) {
       const icon = withClass(
-        fileRow(fileChange('src/a.ts', { status })),
+        rendered(<FileRowShown change={fileChange('src/a.ts', { status })} />),
         'change-icon',
         kind,
       );
@@ -194,13 +214,13 @@ suite('Style', () => {
       assert.match(scaled, /^calc\(var\(--font-size\) \* [\d.]+\)$/);
     }
     const controls = [
-      tabBar(),
-      contextMenu(),
-      locationsPopup(''),
-      diffFind(),
-      notices(),
-      searchButton(),
-      rendered(navButtons()),
+      rendered(<TabBarShown />),
+      rendered(<ContextMenuShown />),
+      rendered(<LocationsPopupShown query="" />),
+      rendered(<DiffFindShown />),
+      rendered(<NoticesShown />),
+      rendered(<SearchButtonShown />),
+      rendered(<NavButtonsShown />),
     ].flatMap((root) =>
       allWithClass(root).filter((element) =>
         ['button', 'input'].includes(element.tag),
@@ -232,19 +252,19 @@ suite('Style', () => {
       bodyVariable('muted-foreground'),
       'color-mix( in srgb, var(--color-foreground) var(--color-foreground-muted), transparent )',
     );
-    looks(withClass(rendered(commitRow()), 'commit-line', 'secondary'), {
+    looks(withClass(rendered(<CommitRowShown />), 'commit-line', 'secondary'), {
       color: 'var(--muted-foreground)',
     });
   });
 
   test('dims close buttons, disabled controls and a gone bubble like muted text, keeping its own fade only for the loading placeholder', () => {
     for (const dimmed of [
-      withClass(notices(), 'notice-close'),
-      withClass(locationsPopup(''), 'badge', 'missing'),
-      allWithClass(contextMenu(), 'menu-item').find((item) =>
+      withClass(rendered(<NoticesShown />), 'notice-close'),
+      withClass(rendered(<LocationsPopupShown query="" />), 'badge', 'missing'),
+      allWithClass(rendered(<ContextMenuShown />), 'menu-item').find((item) =>
         item.attributes.has('disabled'),
       ),
-      allWithClass(rendered(navButtons()), 'nav-button').find((button) =>
+      allWithClass(rendered(<NavButtonsShown />), 'nav-button').find((button) =>
         button.attributes.has('disabled'),
       ),
     ]) {
@@ -254,6 +274,12 @@ suite('Style', () => {
       (match) => match[1],
     );
     assert.strictEqual(fades.length, 1);
-    looks(withClass(skeletonRow(), 'bar'), { opacity: fades[0] });
+    looks(
+      withClass(
+        withClass(rendered(<SkeletonRows count={1} />), 'skeleton-row'),
+        'bar',
+      ),
+      { opacity: fades[0] },
+    );
   });
 });

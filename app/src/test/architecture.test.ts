@@ -43,10 +43,21 @@ function toolOf(file: string): string | undefined {
   return /^tools\/([^/]+)\//.exec(file)?.[1];
 }
 
-function sourceFilesOf(target: string): string[] {
+const sourceAndHelperFiles = [
+  ...sourceFiles,
+  ...testFiles
+    .filter((file) => !/\.test\.tsx?$/.test(file))
+    .map((file) => `test/${file}`),
+];
+
+function filesAmong(files: readonly string[], target: string): string[] {
   return [target, `${target}.ts`, `${target}.tsx`].filter((file) =>
-    sourceFiles.includes(file),
+    files.includes(file),
   );
+}
+
+function sourceFilesOf(target: string): string[] {
+  return filesAmong(sourceFiles, target);
 }
 
 function reachedFrom(roots: readonly string[]): ReadonlySet<string> {
@@ -398,7 +409,7 @@ suite('Architecture', () => {
 
   test('writes a .tsx only for what renders, each holding JSX', () => {
     assert.deepStrictEqual(
-      sourceFiles.filter(
+      sourceAndHelperFiles.filter(
         (file) =>
           file.endsWith('.tsx') && !/<\/[A-Za-z]|\/>|<>/.test(read(file)),
       ),
@@ -409,7 +420,7 @@ suite('Architecture', () => {
   test('exports from a .tsx only its components and the types of their props, keeping functions, constants, hooks and other classes in a .ts, where they are tested without React, and a helper only its component uses beside it unexported, so what builds elements is a component and what decides is data', () => {
     assert.deepStrictEqual(
       countedOver(
-        sourceFiles.filter((file) => file.endsWith('.tsx')),
+        sourceAndHelperFiles.filter((file) => file.endsWith('.tsx')),
         exportsOtherThanComponents,
       ),
       {},
@@ -419,10 +430,10 @@ suite('Architecture', () => {
   test('lets a .ts import nothing from a .tsx, its types included, so the logic of the page never depends on a component', () => {
     assert.deepStrictEqual(
       countedOver(
-        sourceFiles.filter((file) => file.endsWith('.ts')),
+        sourceAndHelperFiles.filter((file) => file.endsWith('.ts')),
         (file) =>
           importsOf(file)
-            .flatMap(sourceFilesOf)
+            .flatMap((target) => filesAmong(sourceAndHelperFiles, target))
             .filter((target) => target.endsWith('.tsx')).length,
       ),
       {},

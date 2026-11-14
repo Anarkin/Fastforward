@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { CopyButton } from '../../../../shell/page/aboutPopup';
 import { shownEntries } from '../../../../shell/page/shortcutsList';
@@ -13,10 +12,14 @@ import {
   withClass,
 } from '../../../helpers/cascade';
 import {
-  contextMenu,
-  historyMenu,
-  notices,
+  AboutPopupShown,
+  CommitColumn,
+  ContextMenuShown,
+  HistoryMenuShown,
+  NoticesShown,
+  ShortcutsPopupShown,
 } from '../../../helpers/styleFixtures';
+import { columnTitle } from '../../../helpers/styleMarkup';
 import {
   noop,
   looks,
@@ -26,17 +29,18 @@ import {
   layer,
   hovered,
   after,
-  commitColumnTitle,
-  aboutPopup,
-  shortcutsPopup,
   overlayScrollbar,
   keyOf,
   widthCap,
+  popupOf,
 } from './stylesheetFixtures';
 
 suite('Style', () => {
   test('places the shortcuts and the About by layout rather than a transform, which would place their edges between device pixels, a third of the room left above them and two thirds below, as a popup centered looks low, drawing the About like the shortcuts but narrower', () => {
-    for (const popup of [shortcutsPopup(), aboutPopup()]) {
+    for (const popup of [
+      popupOf(<ShortcutsPopupShown />),
+      popupOf(<AboutPopupShown />),
+    ]) {
       const dialog = withClass(popup, 'shortcuts-popup');
       looks(dialog, {
         transform: undefined,
@@ -61,14 +65,21 @@ suite('Style', () => {
         2 * Number(cascaded(backdrop, 'flex-grow', before)),
       );
     }
-    const shortcuts = widthCap(withClass(shortcutsPopup(), 'shortcuts-popup'));
-    const about = widthCap(withClass(aboutPopup(), 'about-popup'));
+    const shortcuts = widthCap(
+      withClass(popupOf(<ShortcutsPopupShown />), 'shortcuts-popup'),
+    );
+    const about = widthCap(
+      withClass(popupOf(<AboutPopupShown />), 'about-popup'),
+    );
     assert.strictEqual(about.room, shortcuts.room);
     assert.ok(about.cap < shortcuts.cap);
   });
 
   test('dims the whole window behind the shortcuts and the About with a backdrop that takes the pointer from the app, under them', () => {
-    for (const popup of [shortcutsPopup(), aboutPopup()]) {
+    for (const popup of [
+      popupOf(<ShortcutsPopupShown />),
+      popupOf(<AboutPopupShown />),
+    ]) {
       const backdrop = popup.parent;
       assert.ok(backdrop?.classes.includes('backdrop'));
       looks(backdrop, {
@@ -82,7 +93,10 @@ suite('Style', () => {
   });
 
   test('keeps the shortcuts and the About from dragging the window when moved over the tab row, which does', () => {
-    for (const popup of [shortcutsPopup(), aboutPopup()]) {
+    for (const popup of [
+      popupOf(<ShortcutsPopupShown />),
+      popupOf(<AboutPopupShown />),
+    ]) {
       looks(withClass(popup, 'shortcuts-popup'), {
         '-webkit-app-region': 'no-drag',
       });
@@ -90,10 +104,16 @@ suite('Style', () => {
   });
 
   test("heads the shortcuts and the About with a band in the window's grey, holding their title in line with the filter below it and their close button as far in from the side as from the top, rounded with the popup's top corners, the About's body padded at the sides as the filter is", () => {
-    const filter = withClass(shortcutsPopup(), 'shortcuts-filter');
+    const filter = withClass(
+      popupOf(<ShortcutsPopupShown />),
+      'shortcuts-filter',
+    );
     looks(filter, { padding: '8px 16px' });
     const inside = paddingOf(filter);
-    for (const popup of [shortcutsPopup(), aboutPopup()]) {
+    for (const popup of [
+      popupOf(<ShortcutsPopupShown />),
+      popupOf(<AboutPopupShown />),
+    ]) {
       const header = withClass(popup, 'shortcuts-title');
       looks(header, {
         background: 'var(--color-background)',
@@ -107,7 +127,9 @@ suite('Style', () => {
       );
       assert.ok(withClass(header, 'nav-button'));
     }
-    const aboutBody = paddingOf(withClass(aboutPopup(), 'about-body'));
+    const aboutBody = paddingOf(
+      withClass(popupOf(<AboutPopupShown />), 'about-body'),
+    );
     assert.deepStrictEqual(
       [aboutBody.left, aboutBody.right],
       [inside.left, inside.right],
@@ -115,7 +137,7 @@ suite('Style', () => {
   });
 
   test('lays the tools out in a column beside the shortcuts, each scrolling on its own, in a popup of a set height, so it keeps its size from tool to tool, and the filter, set apart above them, in the field the files column uses', () => {
-    const popup = shortcutsPopup();
+    const popup = popupOf(<ShortcutsPopupShown />);
     assert.match(
       cascaded(withClass(popup, 'shortcuts-window'), 'height') ?? '',
       /^\d+px$/,
@@ -149,10 +171,13 @@ suite('Style', () => {
   });
 
   test("keeps the heading of the group scrolled under it at the top of the pane, over the shortcuts passing beneath it, a hairline short of the popup's edge, whose line the popup's inset shadow draws under it", () => {
-    looks(withClass(shortcutsPopup(), 'shortcuts-main'), {
+    looks(withClass(popupOf(<ShortcutsPopupShown />), 'shortcuts-main'), {
       'margin-right': 'var(--hairline)',
     });
-    const heading = withClass(shortcutsPopup(), 'shortcuts-heading');
+    const heading = withClass(
+      popupOf(<ShortcutsPopupShown />),
+      'shortcuts-heading',
+    );
     looks(heading, {
       position: 'sticky',
       top: '0',
@@ -160,7 +185,9 @@ suite('Style', () => {
       'font-weight': '700',
     });
     const reach = sidesOf(heading, 'margin');
-    const room = paddingOf(withClass(shortcutsPopup(), 'shortcuts-pane'));
+    const room = paddingOf(
+      withClass(popupOf(<ShortcutsPopupShown />), 'shortcuts-pane'),
+    );
     assert.deepStrictEqual(
       [reach.left, reach.right],
       [`-${room.left}`, `-${room.right}`],
@@ -168,7 +195,7 @@ suite('Style', () => {
   });
 
   test('leaves as much room under the last shortcut of a group as over the heading of the next, the line between them halfway', () => {
-    const popup = shortcutsPopup();
+    const popup = popupOf(<ShortcutsPopupShown />);
     const under =
       Number.parseFloat(paddingOf(withClass(popup, 'shortcuts-group')).bottom) +
       Number.parseFloat(paddingOf(withClass(popup, 'shortcut-row')).bottom);
@@ -179,7 +206,7 @@ suite('Style', () => {
   });
 
   test('fills the tool open as the selected row of a list, the others tinted under the pointer, and marks the group in view by a line in the color of focus beside its name, the others muted, dimming what has no match', () => {
-    const popup = shortcutsPopup();
+    const popup = popupOf(<ShortcutsPopupShown />);
     looks(withClass(popup, 'shortcuts-tool', 'open'), {
       background: 'var(--selection-background)',
     });
@@ -204,11 +231,9 @@ suite('Style', () => {
     for (const className of ['shortcuts-tool empty', 'shortcuts-group-link']) {
       const dimmed = withClass(
         rendered(
-          createElement(
-            'div',
-            { className: 'shortcuts-popup' },
-            createElement('button', { className, disabled: true }),
-          ),
+          <div className="shortcuts-popup">
+            <button className={className} disabled />
+          </div>,
         ),
         className.split(' ')[0] ?? '',
       );
@@ -217,7 +242,7 @@ suite('Style', () => {
   });
 
   test('draws a shortcut as one key cap holding its keys, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted', () => {
-    const popup = shortcutsPopup();
+    const popup = popupOf(<ShortcutsPopupShown />);
     const combo = withClass(popup, 'shortcut-combo');
     looks(combo, {
       display: 'inline-flex',
@@ -249,11 +274,9 @@ suite('Style', () => {
     );
     assert.ok(commander);
     const list = rendered(
-      createElement(
-        'div',
-        { className: 'shortcuts-popup' },
-        createElement(ShortcutsList, { entry: commander }),
-      ),
+      <div className="shortcuts-popup">
+        <ShortcutsList entry={commander} />
+      </div>,
     );
     for (const found of allWithClass(list, 'match')) {
       looks(found, {
@@ -268,7 +291,7 @@ suite('Style', () => {
   });
 
   test("paints the About's copy button as the default button of a dialog, in the color of focus hovered, pressed or once it copied, and tinted inside the outline of focus while focused from the keyboard", () => {
-    const copy = withClass(aboutPopup(), 'about-copy');
+    const copy = withClass(popupOf(<AboutPopupShown />), 'about-copy');
     const filled = {
       color: 'var(--color-focus-foreground)',
       background: 'var(--color-focus)',
@@ -277,7 +300,7 @@ suite('Style', () => {
     looks(copy, filled, hovered);
     looks(copy, filled, { active: true });
     const copied = withClass(
-      rendered(createElement(CopyButton, { copied: true, onClick: noop })),
+      rendered(<CopyButton copied onClick={noop} />),
       'about-copy',
     );
     looks(copied, filled);
@@ -291,7 +314,7 @@ suite('Style', () => {
   });
 
   test('keeps the notices within the window, scrolling a long message within its notice, so a checkout listing hundreds of files leaves its close button in reach', () => {
-    const shown = notices();
+    const shown = rendered(<NoticesShown />);
     looks(withClass(shown, 'notices'), {
       'box-sizing': 'border-box',
       bottom: '0',
@@ -303,9 +326,9 @@ suite('Style', () => {
   });
 
   test('draws a notice like a context menu, but on a background of its own, so it stands apart from the panels it floats over, and with twice the room around its message, as it is read rather than scanned', () => {
-    const menu = contextMenu();
+    const menu = rendered(<ContextMenuShown />);
     for (const level of ['info', 'error']) {
-      const shown = notices(level);
+      const shown = rendered(<NoticesShown level={level} />);
       looks(
         withClass(shown, 'notice'),
         Object.fromEntries(
@@ -328,7 +351,7 @@ suite('Style', () => {
   });
 
   test("sets a notice's close button in as far as the message's first line, as it is shorter than the message's padding and line", () => {
-    const shown = notices();
+    const shown = rendered(<NoticesShown />);
     const message = withClass(shown, 'notice-message');
     const close = withClass(shown, 'notice-close');
     assert.ok(message && close);
@@ -341,7 +364,7 @@ suite('Style', () => {
   });
 
   test('puts the notices in the bottom right corner, below the column titles or the text saying no repository is open, so they hide nothing being worked on in the middle', () => {
-    looks(withClass(notices(), 'notices'), {
+    looks(withClass(rendered(<NoticesShown />), 'notices'), {
       position: 'fixed',
       top: 'anchor(--notices bottom, 0px)',
       left: '0',
@@ -350,11 +373,15 @@ suite('Style', () => {
       'justify-content': 'safe flex-end',
       'align-items': 'flex-end',
     });
-    looks(withClass(notices(), 'notice'), { 'box-sizing': 'border-box' });
-    assert.ok(cascaded(withClass(notices(), 'notice'), 'max-width'));
+    looks(withClass(rendered(<NoticesShown />), 'notice'), {
+      'box-sizing': 'border-box',
+    });
+    assert.ok(
+      cascaded(withClass(rendered(<NoticesShown />), 'notice'), 'max-width'),
+    );
     for (const anchor of [
-      commitColumnTitle(0),
-      rendered(createElement('div', { className: 'empty-state' })),
+      columnTitle(<CommitColumn autoFetchMinutes={0} />),
+      rendered(<div className="empty-state" />),
     ]) {
       looks(anchor, { 'anchor-name': '--notices' });
     }
@@ -367,7 +394,7 @@ suite('Style', () => {
       ),
     ].map(([, y, blur]) => ({ y: Number(y), blur: Number(blur) }));
     assert.ok(shadows.length > 0);
-    const container = withClass(notices(), 'notices');
+    const container = withClass(rendered(<NoticesShown />), 'notices');
     assert.ok(container);
     const padding = paddingOf(container);
     assert.ok(
@@ -384,35 +411,44 @@ suite('Style', () => {
 
   test('draws an error notice like any other notice but for an icon of an error in the error color before its message, the message in the color of any text, as red text on the background of a notice was hard to read', () => {
     assert.deepStrictEqual(
-      matchingRules(withClass(notices(), 'notice')).map(
+      matchingRules(withClass(rendered(<NoticesShown />), 'notice')).map(
         (rule) => rule.selector,
       ),
       ['.notice'],
     );
     for (const level of ['info', 'error']) {
-      looks(withClass(notices(level), 'notice-message'), { color: undefined });
+      looks(
+        withClass(rendered(<NoticesShown level={level} />), 'notice-message'),
+        { color: undefined },
+      );
     }
-    looks(withClass(notices(), 'error-icon'), {
+    looks(withClass(rendered(<NoticesShown />), 'error-icon'), {
       flex: 'none',
       color: 'var(--color-error-foreground)',
     });
-    assert.deepStrictEqual(allWithClass(notices('info'), 'error-icon'), []);
+    assert.deepStrictEqual(
+      allWithClass(rendered(<NoticesShown level="info" />), 'error-icon'),
+      [],
+    );
   });
 
   test('lines the actions of every shortcut up after a column of keys of one width, wrapping a long list of keys', () => {
-    const rows = allWithClass(shortcutsPopup(), 'shortcut-row');
+    const rows = allWithClass(popupOf(<ShortcutsPopupShown />), 'shortcut-row');
     const share = cascaded(rows[0], 'grid-template-columns');
     assert.match(share ?? '', /^minmax\(\d+px, [\d.]+%\) minmax\(0, 1fr\)$/);
     for (const row of rows) {
       looks(row, { 'grid-template-columns': share });
     }
-    for (const keys of allWithClass(shortcutsPopup(), 'shortcut-keys')) {
+    for (const keys of allWithClass(
+      popupOf(<ShortcutsPopupShown />),
+      'shortcut-keys',
+    )) {
       looks(keys, { 'flex-wrap': 'wrap' });
     }
   });
 
   test('sets the note about moving through the shortcuts by keys apart under them, muted, kept in view as they scroll', () => {
-    looks(withClass(shortcutsPopup(), 'shortcuts-note'), {
+    looks(withClass(popupOf(<ShortcutsPopupShown />), 'shortcuts-note'), {
       flex: 'none',
       color: 'var(--muted-foreground)',
       'border-top': '1px solid var(--color-border)',
@@ -420,10 +456,14 @@ suite('Style', () => {
   });
 
   test('draws the shortcuts over the notices and menus, but under the overlay scrollbars', () => {
-    const backdrop = shortcutsPopup().parent;
+    const backdrop = popupOf(<ShortcutsPopupShown />).parent;
     assert.ok(backdrop);
     const shortcuts = layer(backdrop);
-    for (const below of [contextMenu(), historyMenu(), notices()]) {
+    for (const below of [
+      rendered(<ContextMenuShown />),
+      rendered(<HistoryMenuShown />),
+      rendered(<NoticesShown />),
+    ]) {
       assert.ok(shortcuts > layer(below), below.classes.join(' '));
     }
     assert.ok(layer(overlayScrollbar()) > shortcuts);

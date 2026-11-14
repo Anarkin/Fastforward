@@ -1,15 +1,6 @@
 import * as assert from 'node:assert';
 import { createElement } from 'react';
-import { createGitStore, GitStore } from '../../../../tools/git/page/store';
-import { emptyTabView } from '../../../../tools/git/page/tabView';
-import { GraphCell } from '../../../../tools/git/page/graph';
-import { columnsClass } from '../../../../tools/git/page/columns';
-import { AboutPopup } from '../../../../shell/page/aboutPopup';
-import { TabBar } from '../../../../shell/page/tabBar';
 import { overlayScrollbarClass } from '../../../../lib/page/overlayScrollbars';
-import { ShortcutsPopup } from '../../../../shell/page/shortcutsPopup';
-import { SkeletonRows } from '../../../../tools/git/page/skeleton';
-import { PathTitle } from '../../../../tools/commander/page/pathTitle';
 import {
   allWithClass,
   cascaded,
@@ -20,31 +11,7 @@ import {
   type States,
 } from '../../../helpers/cascade';
 import { stylesheet } from '../../../helpers/fixtures';
-import { tabsStore } from '../../../helpers/componentFixtures';
-import {
-  bubbles,
-  columns,
-  columnTitle,
-  commitRow,
-  diffRow,
-  diffView,
-  hangingSpacesLine,
-  indentedLine,
-  navButtons,
-  shownRow,
-  tabBar,
-} from '../../../helpers/styleFixtures';
-import { createShellStore, ShellStore } from '../../../../shell/page/store';
-import {
-  FileHeader,
-  HunkDivider,
-} from '../../../../tools/git/page/diffRowParts';
-import {
-  bubbleLineHeight,
-  commitRowHeight,
-} from '../../../../tools/git/page/commitListRows';
-import { SoloButton } from '../../../../tools/git/page/commitList';
-import { MarkBox } from '../../../../tools/commander/page/paneCells';
+import { bubbles, columnTitle } from '../../../helpers/styleMarkup';
 
 export const css = stylesheet();
 
@@ -57,10 +24,12 @@ export function keyframe(name: string, at: string): string | undefined {
 export const noop = () => undefined;
 
 export function buttonsWidth(
+  column: React.ReactElement,
+  bare: React.ReactElement,
   count: number,
   side: 'left' | 'right' = 'left',
 ): number {
-  const title = columnTitle(navButtons());
+  const title = columnTitle(column);
   const actions = rendered(
     createElement('div', { className: 'column-actions' }),
   );
@@ -72,7 +41,7 @@ export function buttonsWidth(
         ]
       : [cascaded(actions, 'right'), cascaded(actions, 'gap')];
   const button = cascaded(withClass(title, 'nav-button'), 'width');
-  const clearance = paddingOf(columnTitle(null))[side];
+  const clearance = paddingOf(columnTitle(bare))[side];
   return (
     parseFloat(edge ?? '') +
     count * parseFloat(button ?? '') +
@@ -81,8 +50,8 @@ export function buttonsWidth(
   );
 }
 
-export function activeEdge(): string {
-  const edge = withClass(columns(columnsClass(true, 'a'), 'commits'), 'column');
+export function activeEdge(columns: React.ReactElement): string {
+  const edge = withClass(rendered(columns), 'column');
   assert.strictEqual(
     cascaded(edge, 'box-shadow', after),
     'inset 0 0 0 var(--frame-line) var(--color-focus)',
@@ -97,15 +66,11 @@ export function activeEdge(): string {
   );
 }
 
-export function indented(wordWrap: boolean): MarkupElement {
-  return shownRow(diffView({ wordWrap }, indentedLine()));
-}
-
-export function cell(className: string): MarkupElement {
+export function cell(row: MarkupElement, className: string): MarkupElement {
   return withClass(
     rendered(
       createElement('span', { className }, '😀'),
-      withClass(indented(true), 'code'),
+      withClass(row, 'code'),
     ),
     'cell',
   );
@@ -125,13 +90,6 @@ export const spaceDotSize =
 
 export const spaceDotStart =
   'round(down, (var(--text-advance) - var(--space-dot)) / 2, var(--device-pixel, 1px))';
-
-export function hanging(showWhitespace: boolean): MarkupElement {
-  return withClass(
-    shownRow(diffView({ wordWrap: true, showWhitespace }, hangingSpacesLine())),
-    'wrap-spaces',
-  );
-}
 
 export function pixels(value: string | undefined): number {
   const match = /^calc\((.*)\)$/.exec(value ?? '');
@@ -194,22 +152,6 @@ export function checkBox(checked: boolean): MarkupElement {
   );
 }
 
-export function graphBesideCommit(selected?: string): MarkupElement {
-  return rendered(
-    createElement(
-      'div',
-      { className: 'virtual-row' },
-      createElement(GraphCell, {
-        row: { lane: 0, color: 0, lines: [] },
-        height: commitRowHeight,
-        line: bubbleLineHeight,
-        onToggleMerge: noop,
-      }),
-      commitRow({ selected }),
-    ),
-  );
-}
-
 export function bodyVariable(name: string): string | undefined {
   return cascaded(body, `--${name}`);
 }
@@ -254,8 +196,8 @@ export function lengthOf(value: string | undefined): number {
     .reduce((total, term) => total + term, 0);
 }
 
-export function appIconSpacing() {
-  const bar = tabBar();
+export function appIconSpacing(tabBar: React.ReactElement) {
+  const bar = rendered(tabBar);
   const menu = withClass(bar, 'menu-button');
   const button = withClass(menu, 'nav-button');
   const icon = withClass(menu, 'title-bar-icon');
@@ -295,30 +237,8 @@ export const hovered = { hover: true } as const;
 export const focused = { focus: true } as const;
 export const after = { pseudoElement: '::after' };
 
-export function commitColumnTitle(autoFetchMinutes: number): MarkupElement {
-  return columnTitle(navButtons({ autoFetchMinutes }));
-}
-
-export function aboutPopup(): MarkupElement {
-  return withClass(
-    rendered(
-      createElement(
-        ShellStore,
-        {
-          value: createShellStore(noop, {
-            about: {
-              version: '1.0.0',
-              development: false,
-              git: '2.52.0',
-              system: 'Linux 6.8.0, x64',
-            },
-          }),
-        },
-        createElement(AboutPopup),
-      ),
-    ),
-    'shortcuts-popup',
-  );
+export function popupOf(popup: React.ReactElement): MarkupElement {
+  return withClass(rendered(popup), 'shortcuts-popup');
 }
 
 export function tabStrip(
@@ -343,66 +263,8 @@ export function tabStrip(
   );
 }
 
-export function tabBarIn(maximized: boolean, adding = false): MarkupElement {
-  return rendered(
-    createElement(
-      'div',
-      maximized ? { 'data-maximized': '' } : {},
-      createElement(
-        ShellStore,
-        {
-          value: tabsStore(
-            [
-              { id: '/a', tool: 'git', root: '/a', name: 'a' },
-              { id: '/b', tool: 'git', root: '/b', name: 'b' },
-            ],
-            '/a',
-            adding,
-          ),
-        },
-        createElement(TabBar, {}),
-      ),
-    ),
-  );
-}
-
-export function tabRow(count: number, active: string): MarkupElement {
-  return rendered(
-    createElement(
-      ShellStore,
-      {
-        value: tabsStore(
-          ['a', 'b', 'c'].slice(0, count).map((name) => ({
-            id: `/${name}`,
-            tool: 'git' as const,
-            root: `/${name}`,
-            name,
-          })),
-          active,
-        ),
-      },
-      createElement(TabBar, {}),
-    ),
-  );
-}
-
 export function divider(tab: MarkupElement): MarkupElement {
   return withClass(tab, 'tab-divider');
-}
-
-export function shortcutsPopup(): MarkupElement {
-  return withClass(
-    rendered(
-      createElement(
-        ShellStore,
-        {
-          value: tabsStore([{ id: '1', tool: 'git', name: 'repo' }], '1'),
-        },
-        createElement(ShortcutsPopup),
-      ),
-    ),
-    'shortcuts-popup',
-  );
 }
 
 export function overlayScrollbar(classes = ''): MarkupElement {
@@ -435,59 +297,16 @@ export function shownScrollbar(message?: string): MarkupElement {
   );
 }
 
-export function skeletonRow(className?: string): MarkupElement {
-  return withClass(
-    rendered(createElement(SkeletonRows, { count: 1, className })),
-    'skeleton-row',
-  );
-}
-
-export function soloButton(solo: boolean, applying: boolean): MarkupElement {
-  return rendered(
-    createElement(
-      GitStore,
-      {
-        value: createGitStore(noop, {
-          solo,
-          tab: { ...emptyTabView, applyingSolo: applying },
-        }),
-      },
-      createElement(SoloButton),
-    ),
-  );
-}
-
 export function badgeRules(node: React.ReactNode): string[] {
   return matchingRules(withClass(rendered(node), 'badge')).map(
     (rule) => rule.selector,
   );
 }
 
-export function hunkDots(sideBySide: boolean): MarkupElement {
-  return withClass(
-    diffView({ sideBySide }, diffRow(createElement(HunkDivider))),
-    'hunk-dots',
+export function columnVisibility(columns: React.ReactElement) {
+  return allWithClass(rendered(columns), 'column').map((column) =>
+    cascaded(column, 'visibility'),
   );
-}
-
-export const fileHeader = diffRow(
-  createElement(FileHeader, {
-    path: 'a',
-    open: true,
-    whole: false,
-    collapsible: true,
-    onClick: noop,
-  }),
-);
-
-export function columnVisibility(
-  selected: string | undefined,
-  diffShown = true,
-) {
-  return allWithClass(
-    columns(columnsClass(true, selected, diffShown)),
-    'column',
-  ).map((column) => cascaded(column, 'visibility'));
 }
 
 export function unwrapped(value: string | undefined): string {
@@ -499,8 +318,8 @@ export function unwrapped(value: string | undefined): string {
 
 export const bubbleLook = ['color', 'background', 'box-shadow', 'border'];
 
-export function branchBubble(): MarkupElement {
-  const branch = bubbles().find(
+export function branchBubble(sources: React.ReactElement): MarkupElement {
+  const branch = bubbles(sources).find(
     (bubble) =>
       bubble.classes.includes('branch') &&
       !bubble.classes.includes('checked-out'),
@@ -546,33 +365,10 @@ export function commanderRowColor(className: string): string | undefined {
   );
 }
 
-export function commanderItem(
-  className: string,
-  paneClassName = '',
-): MarkupElement {
-  return withClass(
-    rendered(
-      createElement(
-        'div',
-        { className: `commander ${paneClassName}` },
-        createElement(
-          'div',
-          { className: `row commander-row ${className}` },
-          createElement(MarkBox, { onToggle: noop }),
-        ),
-      ),
-    ),
-    'commander-row',
-  );
-}
-
 export function pathColors(
-  hidden: readonly boolean[],
-  color?: string,
+  pathTitle: React.ReactElement,
 ): (string | undefined)[] {
-  const title = rendered(
-    createElement(PathTitle, { path: 'C:/cache/notes.txt', hidden, color }),
-  );
+  const title = rendered(pathTitle);
   return [
     cascaded(title, 'color'),
     ...allWithClass(title, 'path-part').map((part) => cascaded(part, 'color')),

@@ -3,14 +3,17 @@ import type {
   FileChange,
   GitToWebviewOf,
   RefInfo,
-  RepositoryState,
   WorktreeInfo,
 } from '../../tools/git/shared/protocol';
 import { emptyTabView } from '../../tools/git/page/tabView';
 import type { ColumnName } from '../../tools/git/page/activeColumn';
 import { ChangesTreeItem } from '../../tools/git/page/changesTree';
 import { Column } from '../../tools/git/page/column';
-import { CommitRow, WorkingTreeRow } from '../../tools/git/page/commitList';
+import {
+  CommitRow,
+  SoloButton,
+  WorkingTreeRow,
+} from '../../tools/git/page/commitList';
 import { ContextMenu } from '../../lib/page/contextMenu';
 import {
   gitStore,
@@ -39,57 +42,52 @@ import { AppMenu } from '../../shell/page/appMenu';
 import { TabBar } from '../../shell/page/tabBar';
 import { FileRow } from '../../tools/git/page/tree';
 import { WorktreeBar } from '../../tools/git/page/worktreeBar';
-import {
-  allWithClass,
-  rendered,
-  withClass,
-  type MarkupElement,
-} from './cascade';
-import { commitInfo, renderedBy } from './fixtures';
+import { commitInfo } from './fixtures';
 import { createShellStore, ShellStore } from '../../shell/page/store';
 import { Code, MarkedCode } from '../../tools/git/page/codeMarks';
 import { BreakMarks } from '../../tools/git/page/wrapMarks';
 import { diffRowClass } from '../../tools/git/page/diffRowClasses';
 import { DiffView } from '../../tools/git/page/diffView';
+import { repository } from './styleMarkup';
+import { AboutPopup } from '../../shell/page/aboutPopup';
+import { ShortcutsPopup } from '../../shell/page/shortcutsPopup';
+import { GraphCell } from '../../tools/git/page/graph';
+import {
+  bubbleLineHeight,
+  commitRowHeight,
+} from '../../tools/git/page/commitListRows';
+import { FileHeader } from '../../tools/git/page/diffRowParts';
+import { MarkBox } from '../../tools/commander/page/paneCells';
+import { PathTitle } from '../../tools/commander/page/pathTitle';
 
 const noop = () => undefined;
 
-function memoized<T>(make: (key: string) => T): (key?: string) => T {
-  const made = new Map<string, T>();
-  return (key = '') => {
-    const known = made.get(key);
-    if (known !== undefined) {
-      return known;
-    }
-    const value = make(key);
-    made.set(key, value);
-    return value;
-  };
+export function ColumnShown({ start }: { readonly start: React.ReactNode }) {
+  return <Column start={start}>{null}</Column>;
 }
 
-export function columnTitle(start: React.ReactNode): MarkupElement {
-  return withClass(
-    rendered(renderedBy(Column, { start, children: null })),
-    'column-title',
-  );
-}
-
-export function columns(className: string, active?: ColumnName) {
-  return rendered(
+export function Columns({
+  className,
+  active,
+}: {
+  readonly className: string;
+  readonly active?: ColumnName;
+}) {
+  return (
     <div className={className} data-active-column={active}>
       {[0, 1, 2].map((index) => (
         <Column key={index} index={index < 2 ? index : undefined}>
           {null}
         </Column>
       ))}
-    </div>,
+    </div>
   );
 }
 
-export function navButtons({
+export function NavButtonsShown({
   fetching = false,
   ...shown
-}: ShownGit & { readonly fetching?: boolean } = {}): React.ReactElement {
+}: ShownGit & { readonly fetching?: boolean }) {
   return (
     <GitStore value={gitStore({ ...shown, tab: { fetching } })}>
       <NavButtons />
@@ -97,18 +95,30 @@ export function navButtons({
   );
 }
 
-export function diffOptions(shown: ShownOptions = {}): React.ReactElement {
+export function CommitColumn({
+  autoFetchMinutes,
+}: {
+  readonly autoFetchMinutes?: number;
+}) {
+  return (
+    <ColumnShown
+      start={<NavButtonsShown autoFetchMinutes={autoFetchMinutes} />}
+    />
+  );
+}
+
+export function DiffOptionsShown(shown: ShownOptions) {
   return inStores(optionStores(shown), <DiffOptions language={undefined} />);
 }
 
-export function menuButton(
-  props: Partial<React.ComponentProps<typeof MenuButton>> = {},
+export function MenuButtonShown(
+  props: Partial<React.ComponentProps<typeof MenuButton>>,
 ) {
   return <MenuButton title="" items={[]} {...props} />;
 }
 
-export const tabBar = memoized(() =>
-  rendered(
+export function TabBarShown() {
+  return (
     <ShellStore
       value={tabsStore(
         [
@@ -120,23 +130,67 @@ export const tabBar = memoized(() =>
       )}
     >
       <TabBar menu={<AppMenu />} />
-    </ShellStore>,
-  ),
-);
+    </ShellStore>
+  );
+}
 
-export const worktree = (name: string): WorktreeInfo => ({
-  root: `/${name}`,
-  name,
-  folder: name,
-  main: false,
-  missing: false,
-});
+export function TabBarIn({
+  maximized,
+  adding = false,
+}: {
+  readonly maximized: boolean;
+  readonly adding?: boolean;
+}) {
+  return (
+    <div {...(maximized ? { 'data-maximized': '' } : {})}>
+      <ShellStore
+        value={tabsStore(
+          [
+            { id: '/a', tool: 'git', root: '/a', name: 'a' },
+            { id: '/b', tool: 'git', root: '/b', name: 'b' },
+          ],
+          '/a',
+          adding,
+        )}
+      >
+        <TabBar />
+      </ShellStore>
+    </div>
+  );
+}
 
-export function worktreeBar(
-  worktrees: readonly WorktreeInfo[] | undefined,
-  active?: string,
-) {
-  return rendered(
+export function TabRow({
+  count,
+  active,
+}: {
+  readonly count: number;
+  readonly active: string;
+}) {
+  return (
+    <ShellStore
+      value={tabsStore(
+        ['a', 'b', 'c'].slice(0, count).map((name) => ({
+          id: `/${name}`,
+          tool: 'git' as const,
+          root: `/${name}`,
+          name,
+        })),
+        active,
+      )}
+    >
+      <TabBar />
+    </ShellStore>
+  );
+}
+
+export function WorktreeBarShown({
+  worktrees,
+  active,
+}: {
+  readonly worktrees?: readonly WorktreeInfo[];
+  readonly active?: string;
+}) {
+  return (
     <GitStore
       value={gitStore({
         ...(worktrees && { worktrees }),
@@ -144,7 +198,7 @@ export function worktreeBar(
       })}
     >
       <WorktreeBar />
-    </GitStore>,
+    </GitStore>
   );
 }
 
@@ -157,7 +211,7 @@ interface RowShown extends Partial<Parameters<typeof CommitRow>[0]> {
   readonly hideDimmed?: boolean;
 }
 
-export function commitRow({
+export function CommitRowShown({
   refs = [],
   stash = false,
   detached = false,
@@ -165,7 +219,7 @@ export function commitRow({
   headCommit,
   hideDimmed = false,
   ...props
-}: RowShown = {}): React.ReactElement {
+}: RowShown) {
   const commit = props.commit ?? commitInfo('a');
   return (
     <GitStore
@@ -192,11 +246,11 @@ export function commitRow({
   );
 }
 
-export function messagePanel(
-  props: RowShown = {},
+export function MessagePanelShown({
   pinned = false,
-): MarkupElement {
-  return rendered(
+  ...props
+}: RowShown & { readonly pinned?: boolean }) {
+  return (
     <MessagePanel
       anchor={{
         left: 0,
@@ -207,32 +261,74 @@ export function messagePanel(
       indent={8}
       onUnpin={pinned ? noop : undefined}
     >
-      {commitRow({
-        indent: 8,
-        corner: <MessageCorner onUnpin={pinned ? noop : undefined} />,
-        children: <MessageBody text="Body" />,
-        ...props,
-      })}
-    </MessagePanel>,
+      <CommitRowShown
+        {...{
+          indent: 8,
+          corner: <MessageCorner onUnpin={pinned ? noop : undefined} />,
+          children: <MessageBody text="Body" />,
+          ...props,
+        }}
+      />
+    </MessagePanel>
   );
 }
 
-export function workingTreeRow(count: number): MarkupElement {
-  return rendered(
+export function GraphBesideCommit({
+  selected,
+}: {
+  readonly selected?: string;
+}) {
+  return (
+    <div className="virtual-row">
+      <GraphCell
+        row={{ lane: 0, color: 0, lines: [] }}
+        height={commitRowHeight}
+        line={bubbleLineHeight}
+        onToggleMerge={noop}
+      />
+      <CommitRowShown selected={selected} />
+    </div>
+  );
+}
+
+export function SoloButtonShown({
+  solo,
+  applying,
+}: {
+  readonly solo: boolean;
+  readonly applying: boolean;
+}) {
+  return (
+    <GitStore
+      value={createGitStore(noop, {
+        solo,
+        tab: { ...emptyTabView, applyingSolo: applying },
+      })}
+    >
+      <SoloButton />
+    </GitStore>
+  );
+}
+
+export function WorkingTreeRowShown({ count }: { readonly count: number }) {
+  return (
     <WorkingTreeRow
       count={count}
       selection={undefined}
       indent={0}
       onSelect={noop}
-    />,
+    />
   );
 }
 
-export function fileRow(
-  change: FileChange | undefined,
+export function FileRowShown({
+  change,
   chosen = false,
-): MarkupElement {
-  return rendered(
+}: {
+  readonly change?: FileChange;
+  readonly chosen?: boolean;
+}) {
+  return (
     <FileRow
       path="src/a.ts"
       name="a.ts"
@@ -241,12 +337,12 @@ export function fileRow(
       selected={undefined}
       marked={chosen}
       onSelect={noop}
-    />,
+    />
   );
 }
 
-export function folderRow(): MarkupElement {
-  return rendered(
+export function FolderRowShown() {
+  return (
     <ChangesTreeItem
       row={{
         kind: 'folder',
@@ -263,12 +359,12 @@ export function folderRow(): MarkupElement {
         onSelect: noop,
         cursor: undefined,
       }}
-    />,
+    />
   );
 }
 
-export const contextMenu = memoized(() =>
-  rendered(
+export function ContextMenuShown() {
+  return (
     <ContextMenu
       menu={{
         x: 0,
@@ -280,23 +376,23 @@ export const contextMenu = memoized(() =>
         ],
       }}
       onClose={noop}
-    />,
-  ),
-);
+    />
+  );
+}
 
-export const historyMenu = memoized(() =>
-  rendered(
+export function HistoryMenuShown() {
+  return (
     <HistoryMenu
       container={{ current: null }}
       entries={[{ hash: 'a', subject: 'a' }]}
       onPick={noop}
       onClose={noop}
-    />,
-  ),
-);
+    />
+  );
+}
 
-export const notices = memoized((level) =>
-  rendered(
+export function NoticesShown({ level }: { readonly level?: string }) {
+  return (
     <ShellStore
       value={createShellStore(noop, {
         notices: [
@@ -310,32 +406,51 @@ export const notices = memoized((level) =>
       })}
     >
       <Notices />
-    </ShellStore>,
-  ),
-);
+    </ShellStore>
+  );
+}
 
-export const repository: RepositoryState = {
-  head: 'main',
-  headCommit: 'a',
-  refs: [
-    { kind: 'branch', name: 'main', commit: 'a' },
-    { kind: 'remote', name: 'origin/main', commit: 'a' },
-    { kind: 'tag', name: 'v1', commit: 'a' },
-    { kind: 'remote-tag', name: 'origin/v1', commit: 'a', remote: 'origin' },
-  ],
-  stashes: [{ name: 'stash@{0}', commit: 'b', message: 'WIP on main' }],
-};
+export function AboutPopupShown() {
+  return (
+    <ShellStore
+      value={createShellStore(noop, {
+        about: {
+          version: '1.0.0',
+          development: false,
+          git: '2.52.0',
+          system: 'Linux 6.8.0, x64',
+        },
+      })}
+    >
+      <AboutPopup />
+    </ShellStore>
+  );
+}
+
+export function ShortcutsPopupShown() {
+  return (
+    <ShellStore
+      value={tabsStore([{ id: '1', tool: 'git', name: 'repo' }], '1')}
+    >
+      <ShortcutsPopup />
+    </ShellStore>
+  );
+}
 
 const bookmarks: readonly Bookmark[] = [
   { kind: 'commit', name: 'abcdef1' },
   { kind: 'branch', name: 'gone' },
 ];
 
-function locationsPopupElement(
-  query: string,
-  commitSearch?: GitToWebviewOf<'commitSearch'>,
-  head: string | undefined = repository.head,
-): React.ReactElement {
+export function LocationsPopupShown({
+  query,
+  commitSearch,
+  head = repository.head,
+}: {
+  readonly query: string;
+  readonly commitSearch?: GitToWebviewOf<'commitSearch'>;
+  readonly head?: string;
+}) {
   return (
     <GitStore
       value={createGitStore(noop, {
@@ -355,32 +470,64 @@ function locationsPopupElement(
   );
 }
 
-export const locationsPopup = memoized((query) =>
-  rendered(locationsPopupElement(query)),
-);
+export function CommitsFoundShown({ query }: { readonly query: string }) {
+  return (
+    <LocationsPopupShown
+      query={query}
+      commitSearch={{
+        type: 'commitSearch',
+        query,
+        result: {
+          commits: [
+            commitInfo('a', { subject: `${query} a` }),
+            commitInfo('b', { subject: `${query} b` }),
+          ],
+          capped: false,
+        },
+      }}
+    />
+  );
+}
 
-export const commitsFound = memoized((query) =>
-  rendered(
-    locationsPopupElement(query, {
-      type: 'commitSearch',
-      query,
-      result: {
-        commits: [
-          commitInfo('a', { subject: `${query} a` }),
-          commitInfo('b', { subject: `${query} b` }),
-        ],
-        capped: false,
-      },
-    }),
-  ),
-);
+export function BubbleSources({
+  checkedOut,
+}: {
+  readonly checkedOut?: string;
+}) {
+  const store = () =>
+    gitStore(checkedOut === undefined ? {} : { head: checkedOut });
+  return (
+    <>
+      <GitStore value={store()}>
+        <CommitRowShown
+          refs={repository.refs}
+          stash
+          selected="a"
+          head={checkedOut}
+        />
+      </GitStore>
+      <GitStore value={store()}>
+        <CommitRowShown refs={repository.refs} detached />
+      </GitStore>
+      <GitStore value={store()}>
+        <LocationsPopupShown query="" head={checkedOut} />
+      </GitStore>
+      <GitStore value={store()}>
+        <LocationsPopupShown query="m" head={checkedOut} />
+      </GitStore>
+      <GitStore value={store()}>
+        <LocationsPopupShown query="stash" head={checkedOut} />
+      </GitStore>
+    </>
+  );
+}
 
-export const searchButton = memoized(() =>
-  rendered(<SearchButton title="Search" onClick={noop} />),
-);
+export function SearchButtonShown() {
+  return <SearchButton title="Search" onClick={noop} />;
+}
 
-export const diffFind = memoized((query) =>
-  rendered(
+export function DiffFindShown({ query = '' }: { readonly query?: string }) {
+  return (
     <FindField
       query={query}
       count=""
@@ -388,12 +535,12 @@ export const diffFind = memoized((query) =>
       onQuery={noop}
       onStep={noop}
       onClose={noop}
-    />,
-  ),
-);
+    />
+  );
+}
 
-export const minimap = memoized(() =>
-  rendered(
+export function MinimapShown() {
+  return (
     <Minimap
       marks={[
         { kind: 'added', top: 0, height: 0.1 },
@@ -404,181 +551,203 @@ export const minimap = memoized(() =>
       viewport={10}
       total={100}
       onScroll={noop}
-    />,
-  ),
-);
+    />
+  );
+}
 
-export function diffRow(
-  node: React.ReactNode,
+export function DiffRow({
   split = false,
-): React.ReactElement {
-  return <div className={diffRowClass(split ? 'split' : 'line')}>{node}</div>;
+  children,
+}: {
+  readonly split?: boolean;
+  readonly children: React.ReactNode;
+}) {
+  return (
+    <div className={diffRowClass(split ? 'split' : 'line')}>{children}</div>
+  );
 }
 
-export function inlineLine(
-  kind: 'context' | 'added' | 'removed',
-  {
-    words = [],
-    finds = [],
-    current,
-    marker = false,
-    whole = false,
-  }: {
-    words?: readonly FindRange[];
-    finds?: readonly FindRange[];
-    current?: FindRange;
-    marker?: boolean;
-    whole?: boolean;
-  } = {},
-): React.ReactElement {
-  return diffRow(
-    <div
-      className={`diff-line text-line ${kind} ${whole ? 'whole-change' : ''}`}
-    >
-      <span className="number">1</span>
-      <span className="number">1</span>
-      <span className="code">
-        <MarkedCode
-          text={'a b c'}
+export function FileHeaderRow() {
+  return (
+    <DiffRow>
+      <FileHeader path="a" open whole={false} collapsible onClick={noop} />
+    </DiffRow>
+  );
+}
+
+export function InlineLine({
+  kind,
+  words = [],
+  finds = [],
+  current,
+  marker = false,
+  whole = false,
+}: {
+  readonly kind: 'context' | 'added' | 'removed';
+  readonly words?: readonly FindRange[];
+  readonly finds?: readonly FindRange[];
+  readonly current?: FindRange;
+  readonly marker?: boolean;
+  readonly whole?: boolean;
+}) {
+  return (
+    <DiffRow>
+      <div
+        className={`diff-line text-line ${kind} ${whole ? 'whole-change' : ''}`}
+      >
+        <span className="number">1</span>
+        <span className="number">1</span>
+        <span className="code">
+          <MarkedCode
+            text={'a b c'}
+            syntax={[]}
+            words={words}
+            wordClass={kind === 'removed' ? 'word-removed' : 'word-added'}
+            found={finds}
+            foundNow={current}
+          />
+        </span>
+        {marker && <button className={`hidden-change left ${kind}`} />}
+      </div>
+    </DiffRow>
+  );
+}
+
+export function IndentedLine() {
+  return (
+    <DiffRow>
+      <div className="diff-line text-line added">
+        <span className="number">1</span>
+        <span className="number">1</span>
+        <Code
+          text="  a"
           syntax={[]}
-          words={words}
-          wordClass={kind === 'removed' ? 'word-removed' : 'word-added'}
-          found={finds}
-          foundNow={current}
+          words={[]}
+          wordClass="word-added"
+          finds={[]}
+          current={undefined}
+          whitespace
+          indent={2}
         />
-      </span>
-      {marker && <button className={`hidden-change left ${kind}`} />}
-    </div>,
+      </div>
+    </DiffRow>
   );
 }
 
-export function indentedLine(): React.ReactElement {
-  return diffRow(
-    <div className="diff-line text-line added">
-      <span className="number">1</span>
-      <span className="number">1</span>
-      <Code
-        text="  a"
-        syntax={[]}
-        words={[]}
-        wordClass="word-added"
-        finds={[]}
-        current={undefined}
-        whitespace
-        indent={2}
-      />
-    </div>,
-  );
-}
-
-export function hangingSpacesLine(): React.ReactElement {
-  return diffRow(
-    <div className="diff-line text-line added">
-      <span className="number">1</span>
-      <span className="number">1</span>
-      <Code
-        text="a   b"
-        syntax={[]}
-        words={[]}
-        wordClass="word-added"
-        finds={[]}
-        current={undefined}
-        whitespace={false}
-      />
-      <span className="wrap-marks">
-        <BreakMarks
-          breaks={[
-            {
-              end: 4,
-              blanks: [1, 2, 3].map((column) => ({ column, tab: false })),
-            },
-          ]}
-          numbers={2}
-          lineHeight={18}
+export function HangingSpacesLine() {
+  return (
+    <DiffRow>
+      <div className="diff-line text-line added">
+        <span className="number">1</span>
+        <span className="number">1</span>
+        <Code
+          text="a   b"
+          syntax={[]}
+          words={[]}
+          wordClass="word-added"
+          finds={[]}
+          current={undefined}
+          whitespace={false}
         />
-      </span>
-    </div>,
+        <span className="wrap-marks">
+          <BreakMarks
+            breaks={[
+              {
+                end: 4,
+                blanks: [1, 2, 3].map((column) => ({ column, tab: false })),
+              },
+            ]}
+            numbers={2}
+            lineHeight={18}
+          />
+        </span>
+      </div>
+    </DiffRow>
   );
 }
 
-export function splitLine(left: string, right: string): React.ReactElement {
-  return diffRow(
-    <div className="split-line">
-      {[left, right].map((change, side) => (
-        <div key={side} className={`diff-line text-line split-side ${change}`}>
-          <span className="number">1</span>
-          <span className="split-code">
-            {change !== 'filler' && <span className="code">a</span>}
-          </span>
-        </div>
-      ))}
-    </div>,
-    true,
+export function SplitLine({
+  left,
+  right,
+}: {
+  readonly left: string;
+  readonly right: string;
+}) {
+  return (
+    <DiffRow split>
+      <div className="split-line">
+        {[left, right].map((change, side) => (
+          <div
+            key={side}
+            className={`diff-line text-line split-side ${change}`}
+          >
+            <span className="number">1</span>
+            <span className="split-code">
+              {change !== 'filler' && <span className="code">a</span>}
+            </span>
+          </div>
+        ))}
+      </div>
+    </DiffRow>
   );
 }
 
-export function diffView(
-  { sideBySide = false, wordWrap = false, showWhitespace = false } = {},
-  ...rows: React.ReactElement[]
-): MarkupElement {
-  const view = rendered(
-    inStores(
-      optionStores({
-        layout: sideBySide ? 'sideBySide' : 'inline',
-        wordWrap,
-        showWhitespace,
-      }),
-      <DiffView
-        error={null}
-        files={[]}
-        whole={undefined}
-        origin={undefined}
-        loading={false}
-        diff={1}
-        onLoad={noop}
-        texts={new Map()}
-        onLoadTexts={noop}
-        changeMarks
-        matches={[]}
-        current={0}
-        jump={0}
-        firstChange={undefined}
-      />,
-    ),
-  );
-  const spacer = withClass(view, 'virtual-spacer');
-  for (const row of rows) {
-    rendered(row, spacer);
-  }
-  return view;
-}
-
-export function shownRow(view: MarkupElement): MarkupElement {
-  return withClass(view, 'virtual-row', 'diff-row');
-}
-
-export function bubbles(checkedOut?: string): MarkupElement[] {
-  return [
-    commitRow({
-      refs: repository.refs,
-      stash: true,
-      selected: 'a',
-      head: checkedOut,
+export function DiffViewShown({
+  sideBySide = false,
+  wordWrap = false,
+  showWhitespace = false,
+}: {
+  readonly sideBySide?: boolean;
+  readonly wordWrap?: boolean;
+  readonly showWhitespace?: boolean;
+}) {
+  return inStores(
+    optionStores({
+      layout: sideBySide ? 'sideBySide' : 'inline',
+      wordWrap,
+      showWhitespace,
     }),
-    commitRow({ refs: repository.refs, detached: true }),
-    locationsPopupElement('', undefined, checkedOut),
-    locationsPopupElement('m', undefined, checkedOut),
-    locationsPopupElement('stash', undefined, checkedOut),
-  ].flatMap((node) =>
-    allWithClass(
-      rendered(
-        <GitStore
-          value={gitStore(checkedOut === undefined ? {} : { head: checkedOut })}
-        >
-          {node}
-        </GitStore>,
-      ),
-      'badge',
-    ),
+    <DiffView
+      error={null}
+      files={[]}
+      whole={undefined}
+      origin={undefined}
+      loading={false}
+      diff={1}
+      onLoad={noop}
+      texts={new Map()}
+      onLoadTexts={noop}
+      changeMarks
+      matches={[]}
+      current={0}
+      jump={0}
+      firstChange={undefined}
+    />,
   );
+}
+
+export function CommanderItem({
+  className,
+  paneClassName = '',
+}: {
+  readonly className: string;
+  readonly paneClassName?: string;
+}) {
+  return (
+    <div className={`commander ${paneClassName}`}>
+      <div className={`row commander-row ${className}`}>
+        <MarkBox onToggle={noop} />
+      </div>
+    </div>
+  );
+}
+
+export function PathTitleShown({
+  hidden,
+  color,
+}: {
+  readonly hidden: readonly boolean[];
+  readonly color?: string;
+}) {
+  return <PathTitle path="C:/cache/notes.txt" hidden={hidden} color={color} />;
 }

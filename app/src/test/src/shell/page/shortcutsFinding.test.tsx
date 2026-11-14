@@ -46,7 +46,7 @@ suite('Shortcuts popup', () => {
   });
 
   test('lists every tool beside the shortcuts, the one of the tab open with its groups under it, the first marked as in view, and only its shortcuts in the pane', () => {
-    const html = shortcutsMarkup('commander');
+    const html = shortcutsMarkup(<ShortcutsPopup />, 'commander');
     assert.deepStrictEqual(textsOf(html, 'shortcuts-tool-name'), [
       'Commander',
       'Viewer',
@@ -74,26 +74,30 @@ suite('Shortcuts popup', () => {
   test('opens on the groups of the viewer for a file viewed, of the editor for a file edited, and of the diff for two files compared', () => {
     assert.deepStrictEqual(
       textsOf(
-        shortcutsMarkup('commander', { view: true }),
+        shortcutsMarkup(<ShortcutsPopup />, 'commander', { view: true }),
         'shortcuts-heading',
       ),
       ['Scrolling', 'Showing the file', 'Text', 'Searching'],
     );
     assert.deepStrictEqual(
       textsOf(
-        shortcutsMarkup('commander', { edit: true }),
+        shortcutsMarkup(<ShortcutsPopup />, 'commander', { edit: true }),
         'shortcuts-heading',
       ),
       entry('editor').groups.map((group) => group.title),
     );
     assert.deepStrictEqual(
-      textsOf(shortcutsMarkup('git', { compare: true }), 'shortcuts-heading'),
+      textsOf(
+        shortcutsMarkup(<ShortcutsPopup />, 'git', { compare: true }),
+        'shortcuts-heading',
+      ),
       entry('diff').groups.map((group) => group.title),
     );
   });
 
   test('opens on the diff in a git tab while a diff has the focus, rather than on Git', async () => {
     await inPopup(
+      <ShortcutsPopup />,
       'git',
       ({ document }) => {
         assert.strictEqual(openTool(document), 'Diff');
@@ -107,14 +111,14 @@ suite('Shortcuts popup', () => {
         diff.focus();
       },
     );
-    await inPopup('git', ({ document }) => {
+    await inPopup(<ShortcutsPopup />, 'git', ({ document }) => {
       assert.strictEqual(openTool(document), 'Git');
       return Promise.resolve();
     });
   });
 
   test('offers a filter above the tools and the shortcuts, telling what it takes', () => {
-    const html = shortcutsMarkup('git');
+    const html = shortcutsMarkup(<ShortcutsPopup />, 'git');
     const [field] = tagsWith(html, 'search-input');
     assert.ok(field);
     assert.match(field, /placeholder="Filter by words or keys"/);
@@ -297,46 +301,50 @@ suite('Shortcuts popup', () => {
   });
 
   test('takes the keyboard in its filter, going to the next and previous tool on Ctrl+Tab and Ctrl+Shift+Tab, and on ↓ and ↑ too once the pane can scroll no further, as the filter narrows the shortcuts to what is typed', async () => {
-    await inPopup('commander', async ({ document, press, type }) => {
-      const field = document.querySelector('.shortcuts-filter input');
-      assert.ok(field);
-      assert.strictEqual(document.activeElement, field);
-      assert.strictEqual(openTool(document), 'Commander');
-      await press('Tab', { ctrlKey: true });
-      assert.strictEqual(openTool(document), 'Viewer');
-      assert.deepStrictEqual(headingsOf(document), [
-        'Scrolling',
-        'Showing the file',
-        'Text',
-        'Searching',
-      ]);
-      await press('Tab', { ctrlKey: true, shiftKey: true });
-      assert.strictEqual(openTool(document), 'Commander');
-      await press('ArrowDown');
-      assert.strictEqual(openTool(document), 'Viewer');
-      await press('ArrowUp');
-      assert.strictEqual(openTool(document), 'Commander');
-      await type('f3');
-      assert.deepStrictEqual(
-        [...document.querySelectorAll('.shortcuts-tool .shortcuts-count')].map(
-          (count) => count.textContent,
-        ),
-        ['2', '0', '0', '0', '1', '0', '0'],
-      );
-      assert.strictEqual(
-        document.querySelectorAll('.shortcuts-tool.empty').length,
-        5,
-      );
-      assert.deepStrictEqual(headingsOf(document), ['Viewing and comparing']);
-      await press('ArrowDown');
-      assert.strictEqual(openTool(document), 'Git');
-      assert.deepStrictEqual(headingsOf(document), ['Files']);
-      assert.strictEqual(document.activeElement, field);
-    });
+    await inPopup(
+      <ShortcutsPopup />,
+      'commander',
+      async ({ document, press, type }) => {
+        const field = document.querySelector('.shortcuts-filter input');
+        assert.ok(field);
+        assert.strictEqual(document.activeElement, field);
+        assert.strictEqual(openTool(document), 'Commander');
+        await press('Tab', { ctrlKey: true });
+        assert.strictEqual(openTool(document), 'Viewer');
+        assert.deepStrictEqual(headingsOf(document), [
+          'Scrolling',
+          'Showing the file',
+          'Text',
+          'Searching',
+        ]);
+        await press('Tab', { ctrlKey: true, shiftKey: true });
+        assert.strictEqual(openTool(document), 'Commander');
+        await press('ArrowDown');
+        assert.strictEqual(openTool(document), 'Viewer');
+        await press('ArrowUp');
+        assert.strictEqual(openTool(document), 'Commander');
+        await type('f3');
+        assert.deepStrictEqual(
+          [
+            ...document.querySelectorAll('.shortcuts-tool .shortcuts-count'),
+          ].map((count) => count.textContent),
+          ['2', '0', '0', '0', '1', '0', '0'],
+        );
+        assert.strictEqual(
+          document.querySelectorAll('.shortcuts-tool.empty').length,
+          5,
+        );
+        assert.deepStrictEqual(headingsOf(document), ['Viewing and comparing']);
+        await press('ArrowDown');
+        assert.strictEqual(openTool(document), 'Git');
+        assert.deepStrictEqual(headingsOf(document), ['Files']);
+        assert.strictEqual(document.activeElement, field);
+      },
+    );
   });
 
   test('opens a tool clicked, leaving the keyboard in the filter, a group clicked too', async () => {
-    await inPopup('git', async ({ document }) => {
+    await inPopup(<ShortcutsPopup />, 'git', async ({ document }) => {
       const click = (selector: string, text: string) =>
         act(async () => {
           const target = [
@@ -364,7 +372,7 @@ suite('Shortcuts popup', () => {
   });
 
   test('says under the shortcuts how to reach the other tools and groups from the keyboard', () => {
-    const html = shortcutsMarkup('git');
+    const html = shortcutsMarkup(<ShortcutsPopup />, 'git');
     assert.strictEqual(tagsWith(html, 'shortcuts-note').length, 1);
     assert.match(
       html,
@@ -373,24 +381,24 @@ suite('Shortcuts popup', () => {
   });
 
   test('takes its title from the menu entry that opens it, so both name it alike', () => {
-    const html = shortcutsMarkup('git');
+    const html = shortcutsMarkup(<ShortcutsPopup />, 'git');
     assert.match(html, /aria-label="Shortcuts"/);
     assert.match(html, /<span>Shortcuts<\/span>/);
     assert.match(html, /role="dialog"/);
   });
 
   test('draws each shortcut as one key cap holding its keys, joined by a line between them, and marks a part done with the mouse by a mouse', () => {
-    const html = shortcutsMarkup(undefined);
+    const html = shortcutsMarkup(<ShortcutsPopup />, undefined);
     assert.match(
       html,
       /<span class="shortcut-combo"><kbd>Ctrl<\/kbd><span class="shortcut-joiner">\+<\/span><kbd>T<\/kbd><\/span>/,
     );
     assert.match(
-      onMac(() => shortcutsMarkup(undefined)),
+      onMac(() => shortcutsMarkup(<ShortcutsPopup />, undefined)),
       /<kbd>⌘<\/kbd><span class="shortcut-joiner">\+<\/span><kbd>T<\/kbd>/,
     );
     assert.match(
-      shortcutsMarkup('git'),
+      shortcutsMarkup(<ShortcutsPopup />, 'git'),
       /<kbd>Ctrl<\/kbd><span class="shortcut-joiner">\+<\/span><kbd class="pointer"><svg class="icon mouse-icon"[^>]*>.*?<\/svg>Click<\/kbd>/,
     );
     const caps = entry('everywhere')

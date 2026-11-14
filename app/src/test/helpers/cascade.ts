@@ -347,10 +347,10 @@ export function cascaded(
     ?.declarations.get(property);
 }
 
-export function rendered(
+export function renderedApart(
   node: React.ReactNode,
   within?: MarkupElement,
-): MarkupElement {
+): MarkupElement[] {
   const top: MarkupElement[] = [];
   const open: MarkupElement[] = within ? [within] : [];
   for (const [, closing, tag, attributes, selfClosing] of renderToStaticMarkup(
@@ -381,6 +381,14 @@ export function rendered(
       open.push(element);
     }
   }
+  return top;
+}
+
+export function rendered(
+  node: React.ReactNode,
+  within?: MarkupElement,
+): MarkupElement {
+  const top = renderedApart(node, within);
   assert.strictEqual(top.length, 1);
   return top[0];
 }

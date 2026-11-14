@@ -12,7 +12,6 @@ import {
 } from '../../tools/commander/page/store';
 import { defaultTextView } from '../../shell/page/textView';
 import { emptyTabView, type TabView } from '../../tools/git/page/tabView';
-import { FileRow } from '../../tools/git/page/tree';
 import type {
   Bookmark,
   DiffLayout,
@@ -28,10 +27,13 @@ export interface RowProps {
   onClick: () => void;
 }
 
-export function clickFile(row: React.ReactElement) {
-  assert.strictEqual(row.type, FileRow);
-  assert.ok(isValidElement<Parameters<typeof FileRow>[0]>(row));
-  const drawn = FileRow(row.props);
+export function clickRow(
+  row: React.ReactElement,
+  Row: (props: never) => React.ReactNode,
+) {
+  assert.strictEqual(row.type, Row);
+  assert.ok(isValidElement<Parameters<typeof Row>[0]>(row));
+  const drawn = Row(row.props);
   assert.ok(isValidElement<RowProps>(drawn));
   drawn.props.onClick();
 }

@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
@@ -13,19 +12,21 @@ import {
 } from '../../../helpers/cascade';
 import { renderedBy } from '../../../helpers/fixtures';
 import {
-  searchButton,
-  columns,
-  columnTitle,
-  contextMenu,
-  diffFind,
-  diffOptions,
-  diffView,
-  historyMenu,
-  inlineLine,
-  locationsPopup,
-  navButtons,
-  notices,
+  Columns,
+  ColumnShown,
+  CommitColumn,
+  ContextMenuShown,
+  DiffFindShown,
+  DiffOptionsShown,
+  DiffViewShown,
+  HistoryMenuShown,
+  InlineLine,
+  LocationsPopupShown,
+  NavButtonsShown,
+  NoticesShown,
+  SearchButtonShown,
 } from '../../../helpers/styleFixtures';
+import { columnTitle, diffView } from '../../../helpers/styleMarkup';
 import {
   buttonsWidth,
   activeEdge,
@@ -40,7 +41,10 @@ import {
 
 suite('Style', () => {
   test('highlights what a search matched in the search match colors', () => {
-    const matches = allWithClass(locationsPopup('m'), 'match');
+    const matches = allWithClass(
+      rendered(<LocationsPopupShown query="m" />),
+      'match',
+    );
     assert.ok(matches.length > 1);
     for (const match of matches) {
       looks(match, {
@@ -51,12 +55,18 @@ suite('Style', () => {
   });
 
   test('draws the find field like the resting search field, edged in the focus color while typing in it', () => {
-    const resting = withClass(locationsPopup(''), 'locations-search');
-    looks(diffFind(), {
+    const resting = withClass(
+      rendered(<LocationsPopupShown query="" />),
+      'locations-search',
+    );
+    looks(rendered(<DiffFindShown />), {
       background: cascaded(resting, 'background'),
       border: cascaded(resting, 'border'),
     });
-    for (const field of [diffFind(), diffFind('a')]) {
+    for (const field of [
+      rendered(<DiffFindShown />),
+      rendered(<DiffFindShown query="a" />),
+    ]) {
       looks(
         field,
         { 'border-color': 'var(--color-focus)' },
@@ -67,22 +77,24 @@ suite('Style', () => {
 
   test('keeps the title of the Files column clear of its three buttons on the left, spaces the buttons of the Diff column alike, and never squeezes the search field out', () => {
     const files = columnTitle(
-      createElement('div', { className: 'nav-buttons all-files' }),
+      <ColumnShown start={<div className="nav-buttons all-files" />} />,
     );
     assert.strictEqual(
       pixels(cascaded(files, 'padding-left')),
-      buttonsWidth(3),
+      buttonsWidth(<CommitColumn />, <ColumnShown start={null} />, 3),
     );
     const gap = cascaded(withClass(files, 'nav-buttons'), 'gap');
     assert.ok(gap);
-    const diff = columnTitle(diffOptions());
+    const diff = columnTitle(<ColumnShown start={<DiffOptionsShown />} />);
     for (const group of [
       withClass(diff, 'nav-buttons'),
       withClass(diff, 'segmented'),
     ]) {
       looks(group, { gap, border: undefined, padding: undefined });
     }
-    assert.ok(parseFloat(cascaded(diffFind(), 'min-width') ?? '') > 0);
+    assert.ok(
+      parseFloat(cascaded(rendered(<DiffFindShown />), 'min-width') ?? '') > 0,
+    );
   });
 
   test('keeps the title of the Files column on one line after its buttons, centered while it fits beside the room they take mirrored on the right, then cut off with an ellipsis', () => {
@@ -90,7 +102,7 @@ suite('Style', () => {
       rendered(
         renderedBy(Column, {
           title: '0123456 → 89abcde',
-          start: createElement('div', { className: 'nav-buttons all-files' }),
+          start: <div className="nav-buttons all-files" />,
           children: null,
         }),
       ),
@@ -112,9 +124,7 @@ suite('Style', () => {
 
   test('fills a pinned pair as one undimmed switched-on toggle, its buttons unfilled, and fills the layout buttons as one pill, lifting the chosen and the hovered one onto the panel inside it', () => {
     const fetching = withClass(
-      rendered(
-        navButtons({ autoFetch: true, autoFetchMinutes: 5, fetching: true }),
-      ),
+      rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} fetching />),
       'pin-pair',
     );
     assert.ok(fetching.classes.includes('pinned'));
@@ -125,7 +135,7 @@ suite('Style', () => {
     for (const button of [fetch, pin]) {
       looks(button, { background: 'none', color: 'var(--color-foreground)' });
     }
-    const options = rendered(diffOptions());
+    const options = rendered(<DiffOptionsShown />);
     looks(withClass(options, 'segmented'), {
       background: 'var(--button-background)',
       'box-shadow': undefined,
@@ -150,7 +160,11 @@ suite('Style', () => {
       assert.ok(match, name);
       return Number(match[1]);
     };
-    const edge = parseFloat(activeEdge());
+    const edge = parseFloat(
+      activeEdge(
+        <Columns className={columnsClass(true, 'a')} active="commits" />,
+      ),
+    );
     const line = parseFloat(
       cascaded(withClass(column, 'column-title'), 'border-bottom') ?? '',
     );
@@ -162,12 +176,12 @@ suite('Style', () => {
       (px('title-height') - line - deviceRounded('button-size')) / 2;
     assert.ok(above - edge >= 2, String(above));
     for (const field of [
-      diffFind(),
-      withClass(locationsPopup(''), 'locations-search'),
+      rendered(<DiffFindShown />),
+      withClass(rendered(<LocationsPopupShown query="" />), 'locations-search'),
     ]) {
       looks(field, { height: 'var(--search-height)' });
     }
-    looks(withClass(searchButton(), 'search-button'), {
+    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       width: 'var(--search-height)',
       height: 'var(--search-height)',
       'border-radius': 'calc(var(--search-height) / 2)',
@@ -176,11 +190,20 @@ suite('Style', () => {
 
   test('draws the active column edge over the search popup that covers the column, but under menus and notices', () => {
     const edge = layer(
-      withClass(columns(columnsClass(true, 'a'), 'commits'), 'column'),
+      withClass(
+        rendered(
+          <Columns className={columnsClass(true, 'a')} active="commits" />,
+        ),
+        'column',
+      ),
       after,
     );
-    assert.ok(edge > layer(locationsPopup('')));
-    for (const above of [contextMenu(), historyMenu(), notices()]) {
+    assert.ok(edge > layer(rendered(<LocationsPopupShown query="" />)));
+    for (const above of [
+      rendered(<ContextMenuShown />),
+      rendered(<HistoryMenuShown />),
+      rendered(<NoticesShown />),
+    ]) {
       assert.ok(layer(above) > edge, above.classes.join(' '));
     }
   });
@@ -189,7 +212,9 @@ suite('Style', () => {
     const names: readonly ColumnName[] = ['commits', 'files', 'diff'];
     for (const active of names) {
       const edges = allWithClass(
-        columns(columnsClass(true, 'a'), active),
+        rendered(
+          <Columns className={columnsClass(true, 'a')} active={active} />,
+        ),
         'column',
       );
       for (const [index, name] of names.entries()) {
@@ -209,20 +234,20 @@ suite('Style', () => {
         );
       }
     }
-    const focusable = allWithClass(diffView({}, inlineLine('added'))).filter(
-      (element) => element.attributes.has(columnFocusAttribute),
-    );
+    const focusable = allWithClass(
+      diffView(<DiffViewShown />, <InlineLine kind="added" />),
+    ).filter((element) => element.attributes.has(columnFocusAttribute));
     assert.strictEqual(focusable.length, 1);
     looks(focusable[0], { outline: 'none' }, focused);
   });
 
   test('mutes the search placeholders and the magnifier of the search button like other muted text', () => {
-    looks(withClass(searchButton(), 'search-button'), {
+    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       color: 'var(--muted-foreground)',
     });
     for (const field of [
-      withClass(locationsPopup(''), 'locations-search'),
-      withClass(diffFind(), 'find-field-input'),
+      withClass(rendered(<LocationsPopupShown query="" />), 'locations-search'),
+      withClass(rendered(<DiffFindShown />), 'find-field-input'),
     ]) {
       looks(
         field,

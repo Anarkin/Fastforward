@@ -1,0 +1,57 @@
+import type {
+  RepositoryState,
+  WorktreeInfo,
+} from '../../tools/git/shared/protocol';
+import {
+  allWithClass,
+  rendered,
+  renderedApart,
+  withClass,
+  type MarkupElement,
+} from './cascade';
+
+export const worktree = (name: string): WorktreeInfo => ({
+  root: `/${name}`,
+  name,
+  folder: name,
+  main: false,
+  missing: false,
+});
+
+export const repository: RepositoryState = {
+  head: 'main',
+  headCommit: 'a',
+  refs: [
+    { kind: 'branch', name: 'main', commit: 'a' },
+    { kind: 'remote', name: 'origin/main', commit: 'a' },
+    { kind: 'tag', name: 'v1', commit: 'a' },
+    { kind: 'remote-tag', name: 'origin/v1', commit: 'a', remote: 'origin' },
+  ],
+  stashes: [{ name: 'stash@{0}', commit: 'b', message: 'WIP on main' }],
+};
+
+export function columnTitle(column: React.ReactElement): MarkupElement {
+  return withClass(rendered(column), 'column-title');
+}
+
+export function diffView(
+  view: React.ReactElement,
+  ...rows: React.ReactElement[]
+): MarkupElement {
+  const shown = rendered(view);
+  const spacer = withClass(shown, 'virtual-spacer');
+  for (const row of rows) {
+    rendered(row, spacer);
+  }
+  return shown;
+}
+
+export function shownRow(view: MarkupElement): MarkupElement {
+  return withClass(view, 'virtual-row', 'diff-row');
+}
+
+export function bubbles(sources: React.ReactElement): MarkupElement[] {
+  return renderedApart(sources).flatMap((source) =>
+    allWithClass(source, 'badge'),
+  );
+}

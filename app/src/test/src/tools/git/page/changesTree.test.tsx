@@ -20,7 +20,8 @@ import { ChangesTreeItem } from '../../../../../tools/git/page/changesTree';
 import { listMoveOf } from '../../../../../lib/page/listMoves';
 import { keyPressed } from '../../../../../lib/page/shortcuts';
 import { fileRowKey } from '../../../../../tools/git/page/treeLayout';
-import { clickFile } from '../../../../helpers/componentFixtures';
+import { FileRow } from '../../../../../tools/git/page/tree';
+import { clickRow } from '../../../../helpers/componentFixtures';
 import {
   classesOf,
   countingReads,
@@ -481,7 +482,7 @@ suite('Changes tree rows', () => {
     tagWith(html, 'title="src"', 'row', 'folder', 'selected');
     const a = tagWith(html, 'title="Modified: src/a.ts"', 'row', 'file');
     assert.ok(!classesOf(a).has('selected'));
-    clickFile(elements[1]);
+    clickRow(elements[1], FileRow);
     assert.deepStrictEqual(picked, [undefined]);
   });
 

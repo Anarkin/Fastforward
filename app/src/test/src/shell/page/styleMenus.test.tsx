@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { ContextMenu } from '../../../../lib/page/contextMenu';
@@ -15,11 +14,12 @@ import {
   withClass,
 } from '../../../helpers/cascade';
 import {
-  contextMenu,
-  historyMenu,
-  locationsPopup,
-  notices,
-  tabBar,
+  ContextMenuShown,
+  HistoryMenuShown,
+  LocationsPopupShown,
+  NoticesShown,
+  ShortcutsPopupShown,
+  TabBarShown,
 } from '../../../helpers/styleFixtures';
 import {
   noop,
@@ -29,24 +29,20 @@ import {
   layer,
   hovered,
   focused,
-  shortcutsPopup,
   overlayScrollbar,
+  popupOf,
 } from './stylesheetFixtures';
 
 suite('Style', () => {
   test('draws the button of a dialog the keyboard moved the focus to as the tool chooser draws its tool, tinted inside the outline of focus, the default button then plain, as Enter presses the one focused', () => {
     const row = rendered(
-      createElement(
-        'div',
-        { className: 'confirm-buttons' },
-        createElement('button', { className: 'confirm-button' }, 'Cancel'),
-        createElement('button', { className: 'confirm-button default' }, 'OK'),
-      ),
+      <div className="confirm-buttons">
+        <button className="confirm-button">Cancel</button>
+        <button className="confirm-button default">OK</button>
+      </div>,
     );
     const [cancel, ok] = allWithClass(row, 'confirm-button');
-    const tool = rendered(
-      createElement('button', { className: 'open-with-tool' }, 'Terminal'),
-    );
+    const tool = rendered(<button className="open-with-tool">Terminal</button>);
     const asTool = {
       color: 'inherit',
       background: cascaded(tool, 'background', { focus: tool }),
@@ -70,13 +66,13 @@ suite('Style', () => {
 
   test('paints the default button of a confirmation in the color of focus, hovered or not, so it shows what Enter does', () => {
     const popup = rendered(
-      createElement(ConfirmPopup, {
-        title: 'Close Tab',
-        message: 'Are you sure?',
-        confirm: 'Close',
-        onConfirm: noop,
-        onCancel: noop,
-      }),
+      <ConfirmPopup
+        title="Close Tab"
+        message="Are you sure?"
+        confirm="Close"
+        onConfirm={noop}
+        onCancel={noop}
+      />,
     );
     const blue = {
       color: 'var(--color-focus-foreground)',
@@ -90,8 +86,8 @@ suite('Style', () => {
 
   test('starts the labels of every menu alike, leaving the same room before each for an icon, a check or nothing, as an item without an icon started further left than those with one', () => {
     const menu = rendered(
-      createElement(ContextMenu, {
-        menu: {
+      <ContextMenu
+        menu={{
           x: 0,
           y: 0,
           items: [
@@ -106,13 +102,13 @@ suite('Style', () => {
             { label: '...', onClick: noop },
             { label: 'Git', submenu: [{ label: 'Open...', onClick: noop }] },
           ],
-        },
-        onClose: noop,
-      }),
+        }}
+        onClose={noop}
+      />,
     );
     const widths = [
       ...allWithClass(menu, 'menu-check'),
-      ...allWithClass(historyMenu(), 'menu-check'),
+      ...allWithClass(rendered(<HistoryMenuShown />), 'menu-check'),
     ].map((check) => cascaded(check, 'width'));
 
     assert.strictEqual(widths.length, 6);
@@ -121,16 +117,16 @@ suite('Style', () => {
 
   test('starts the label of an item with a submenu where the others start, keeping its gap only before the arrow', () => {
     const menu = rendered(
-      createElement(ContextMenu, {
-        menu: {
+      <ContextMenu
+        menu={{
           x: 0,
           y: 0,
           items: [
             { label: 'Checkout', submenu: [{ label: 'main', onClick: noop }] },
           ],
-        },
-        onClose: noop,
-      }),
+        }}
+        onClose={noop}
+      />,
     );
     looks(withClass(menu, 'menu-item', 'has-submenu'), { gap: undefined });
     const arrow = withClass(menu, 'submenu-arrow');
@@ -140,8 +136,8 @@ suite('Style', () => {
 
   test('draws the line between groups of a menu as a border, which Chromium keeps a whole number of screen pixels thick wherever it falls, as a box a pixel tall came out one or two thick at 125%', () => {
     const menu = rendered(
-      createElement(ContextMenu, {
-        menu: {
+      <ContextMenu
+        menu={{
           x: 0,
           y: 0,
           items: [
@@ -149,9 +145,9 @@ suite('Style', () => {
             { separator: true },
             { label: 'app', onClick: noop },
           ],
-        },
-        onClose: noop,
-      }),
+        }}
+        onClose={noop}
+      />,
     );
     looks(withClass(menu, 'menu-separator'), {
       height: '0',
@@ -162,18 +158,18 @@ suite('Style', () => {
 
   test("puts a removable item's X at the right end of its entry, drawn like a tab's X and shown only on hovering or reaching the entry, keeping the label clear of it", () => {
     const menu = rendered(
-      createElement(ContextMenu, {
-        menu: {
+      <ContextMenu
+        menu={{
           x: 0,
           y: 0,
           items: [{ label: 'app', onRemove: noop, removeTitle: 'Remove app' }],
-        },
-        onClose: noop,
-      }),
+        }}
+        onClose={noop}
+      />,
     );
     const entry = withClass(menu, 'menu-entry');
     const remove = withClass(menu, 'menu-remove');
-    const tabClose = withClass(tabBar(), 'tab-close');
+    const tabClose = withClass(rendered(<TabBarShown />), 'tab-close');
     looks(
       remove,
       Object.fromEntries(
@@ -201,7 +197,10 @@ suite('Style', () => {
   });
 
   test("fills and edges the popup's search box in the border color like the other search fields until it is focused or holds a query, then in the panel's", () => {
-    const empty = withClass(locationsPopup(''), 'locations-search');
+    const empty = withClass(
+      rendered(<LocationsPopupShown query="" />),
+      'locations-search',
+    );
     looks(empty, {
       background: 'var(--color-border)',
       border: '1px solid var(--color-border)',
@@ -214,7 +213,10 @@ suite('Style', () => {
       },
       focused,
     );
-    const searched = withClass(locationsPopup('main'), 'locations-search');
+    const searched = withClass(
+      rendered(<LocationsPopupShown query="main" />),
+      'locations-search',
+    );
     for (const states of [{}, hovered]) {
       looks(
         searched,
@@ -228,18 +230,21 @@ suite('Style', () => {
   });
 
   test('draws a menu like the other popups, its separators in the border color and the item under the pointer like a selected row', () => {
-    for (const menu of [contextMenu(), historyMenu()]) {
+    for (const menu of [
+      rendered(<ContextMenuShown />),
+      rendered(<HistoryMenuShown />),
+    ]) {
       looks(menu, {
         background: 'var(--color-panel-background)',
         'box-shadow': 'var(--popup-shadow)',
         border: undefined,
       });
     }
-    looks(withClass(contextMenu(), 'menu-separator'), {
+    looks(withClass(rendered(<ContextMenuShown />), 'menu-separator'), {
       'border-top': '1px solid var(--color-border)',
     });
     looks(
-      withClass(contextMenu(), 'menu-item'),
+      withClass(rendered(<ContextMenuShown />), 'menu-item'),
       { background: 'var(--selection-background)' },
       hovered,
     );
@@ -255,18 +260,20 @@ suite('Style', () => {
       },
     });
     const clone = rendered(
-      createElement(GitStore, { value: store }, createElement(ClonePopup)),
+      <GitStore value={store}>
+        <ClonePopup />
+      </GitStore>,
     );
     const prompt = rendered(
-      createElement(PromptPopup, {
-        title: 'New Folder',
-        message: 'Make a folder',
-        label: 'Name',
-        confirm: 'Make',
-        problemOf: () => undefined,
-        onConfirm: noop,
-        onCancel: noop,
-      }),
+      <PromptPopup
+        title="New Folder"
+        message="Make a folder"
+        label="Name"
+        confirm="Make"
+        problemOf={() => undefined}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
     );
     const fields = [
       withClass(prompt, 'prompt-input'),
@@ -283,16 +290,16 @@ suite('Style', () => {
 
   test('sets a name apart in a dialog in the monospace font of the settings on a faint tint of the text, the same on a line of its own as in a sentence, each piece of a path kept whole on a line unless it alone is wider, and the labels of the lines muted', () => {
     const popup = rendered(
-      createElement(ConfirmPopup, {
-        title: 'Copy',
-        lines: [
+      <ConfirmPopup
+        title="Copy"
+        lines={[
           { label: 'Copy', text: '3 items' },
           { label: 'To', name: 'D:\\photos' },
-        ],
-        confirm: 'Copy',
-        onConfirm: noop,
-        onCancel: noop,
-      }),
+        ]}
+        confirm="Copy"
+        onConfirm={noop}
+        onCancel={noop}
+      />,
     );
     const name = withClass(popup, 'name');
     looks(name, {
@@ -318,7 +325,7 @@ suite('Style', () => {
   });
 
   test("draws the line of a filtered menu's edge along the top of its filter, which stays atop the menu as it scrolls and would cover that line", () => {
-    looks(rendered(createElement('input', { className: 'menu-filter' })), {
+    looks(rendered(<input className="menu-filter" />), {
       'box-shadow': 'inset 0 var(--hairline) 0 var(--color-border)',
     });
   });
@@ -326,11 +333,9 @@ suite('Style', () => {
   test('lines the check boxes of a dialog up with its labels, without the margin the browser gives them', () => {
     for (const className of ['pack-check', 'transfer-all']) {
       const label = rendered(
-        createElement(
-          'label',
-          { className },
-          createElement('input', { type: 'checkbox' }),
-        ),
+        <label className={className}>
+          <input type="checkbox" />
+        </label>,
       );
       const [box] = label.children;
       looks(box, { margin: '0' });
@@ -339,14 +344,7 @@ suite('Style', () => {
 
   test('sets a name on a button apart only in the monospace font, as the button frames it as its tint would', () => {
     const name = withClass(
-      rendered(
-        createElement(MenuButton, {
-          title: 'Drive',
-          label: 'C:',
-          named: true,
-          items: [],
-        }),
-      ),
+      rendered(<MenuButton title="Drive" label="C:" named items={[]} />),
       'name',
     );
     looks(name, {
@@ -357,10 +355,7 @@ suite('Style', () => {
   });
 
   test('keeps the spaces of a name that follow a separator, which a piece of a path kept whole would drop at its start, as in the characters a name cannot hold', () => {
-    const name = withClass(
-      rendered(createElement(Name, null, '\\ / : * ?')),
-      'name',
-    );
+    const name = withClass(rendered(<Name>{'\\ / : * ?'}</Name>), 'name');
     assert.strictEqual(name.children.length, 3);
     for (const piece of name.children) {
       looks(piece, { 'white-space': 'pre-wrap' });
@@ -368,7 +363,7 @@ suite('Style', () => {
   });
 
   test('scrolls a submenu taller than the window, which lists every ref at a commit', () => {
-    looks(rendered(createElement('div', { className: 'menu submenu' })), {
+    looks(rendered(<div className="menu submenu" />), {
       'box-sizing': 'border-box',
       'max-height': '100vh',
       'overflow-y': 'auto',
@@ -376,9 +371,7 @@ suite('Style', () => {
   });
 
   test('lines the first item of a submenu up with the item that opens it', () => {
-    const submenu = rendered(
-      createElement('div', { className: 'menu submenu' }),
-    );
+    const submenu = rendered(<div className="menu submenu" />);
     assert.strictEqual(cascaded(submenu, 'border'), undefined);
     const padding = cascaded(submenu, 'padding');
     assert.match(padding ?? '', /^\d+px$/);
@@ -386,7 +379,10 @@ suite('Style', () => {
   });
 
   test('highlights no disabled menu item on hover, whose text would vanish in the selection color', () => {
-    const [enabled, disabled] = allWithClass(contextMenu(), 'menu-item');
+    const [enabled, disabled] = allWithClass(
+      rendered(<ContextMenuShown />),
+      'menu-item',
+    );
     assert.ok(disabled.attributes.has('disabled'));
     looks(enabled, { color: 'var(--color-foreground)' }, hovered);
     for (const states of [hovered, focused]) {
@@ -395,7 +391,7 @@ suite('Style', () => {
   });
 
   test('highlights the menu item the keys are on like the one under the pointer, without an outline', () => {
-    const [item] = allWithClass(contextMenu(), 'menu-item');
+    const [item] = allWithClass(rendered(<ContextMenuShown />), 'menu-item');
     looksAlike(item, ['color', 'background'], focused, hovered);
     assert.notStrictEqual(
       cascaded(item, 'background', focused),
@@ -416,17 +412,21 @@ suite('Style', () => {
       /^inset 0 0 0 var\(--hairline\) var\(--color-border\),/,
     );
     for (const popup of [
-      contextMenu(),
-      historyMenu(),
-      shortcutsPopup(),
-      withClass(notices(), 'notice'),
+      rendered(<ContextMenuShown />),
+      rendered(<HistoryMenuShown />),
+      popupOf(<ShortcutsPopupShown />),
+      withClass(rendered(<NoticesShown />), 'notice'),
     ]) {
       looks(popup, { 'box-shadow': 'var(--popup-shadow)', border: undefined });
     }
   });
 
   test("lays a sticky location row's see-through hover color over its solid background, so rows under it stay hidden", () => {
-    const sticky = withClass(locationsPopup(''), 'tree-row', 'sticky');
+    const sticky = withClass(
+      rendered(<LocationsPopupShown query="" />),
+      'tree-row',
+      'sticky',
+    );
     looks(sticky, { background: 'var(--popup-background)' });
     looks(
       sticky,
@@ -439,7 +439,7 @@ suite('Style', () => {
   });
 
   test('keeps a context menu within the window, scrolling one taller than it, as the repositories may be, unless it opens submenus, which scrolling would cut off', () => {
-    looks(withClass(contextMenu(), 'context-menu'), {
+    looks(withClass(rendered(<ContextMenuShown />), 'context-menu'), {
       'box-sizing': 'border-box',
       'max-height': '100vh',
       'overflow-y': 'auto',
@@ -447,14 +447,14 @@ suite('Style', () => {
     looks(
       withClass(
         rendered(
-          createElement(ContextMenu, {
-            menu: {
+          <ContextMenu
+            menu={{
               x: 0,
               y: 0,
               items: [{ label: 'Bookmark', submenu: [{ label: 'main' }] }],
-            },
-            onClose: noop,
-          }),
+            }}
+            onClose={noop}
+          />,
         ),
         'context-menu',
       ),
@@ -463,11 +463,22 @@ suite('Style', () => {
   });
 
   test('draws a menu, a context menu and so their submenus over the notices, which take the pointer only on a notice, and both under the overlay scrollbars', () => {
-    assert.strictEqual(cascaded(contextMenu(), 'position'), 'fixed');
-    assert.ok(layer(contextMenu()) > layer(notices()));
-    assert.ok(layer(historyMenu()) > layer(notices()));
-    assert.ok(layer(overlayScrollbar()) > layer(contextMenu()));
-    looks(notices(), { 'pointer-events': 'none' });
-    looks(withClass(notices(), 'notice'), { 'pointer-events': 'auto' });
+    assert.strictEqual(
+      cascaded(rendered(<ContextMenuShown />), 'position'),
+      'fixed',
+    );
+    assert.ok(
+      layer(rendered(<ContextMenuShown />)) > layer(rendered(<NoticesShown />)),
+    );
+    assert.ok(
+      layer(rendered(<HistoryMenuShown />)) > layer(rendered(<NoticesShown />)),
+    );
+    assert.ok(
+      layer(overlayScrollbar()) > layer(rendered(<ContextMenuShown />)),
+    );
+    looks(rendered(<NoticesShown />), { 'pointer-events': 'none' });
+    looks(withClass(rendered(<NoticesShown />), 'notice'), {
+      'pointer-events': 'auto',
+    });
   });
 });
