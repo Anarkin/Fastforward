@@ -29,7 +29,7 @@ import {
   type ColumnName,
 } from './activeColumn';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
-import { clicked } from '../../../shell/shared/keymap';
+import { clicked } from '../../../lib/shared/keymap';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { startColorer } from '../../../lib/page/syntax';
 import { listsNothing } from './filesColumn';

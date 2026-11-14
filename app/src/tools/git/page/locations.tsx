@@ -27,7 +27,7 @@ import { CommitRow, noRefs } from './commitList';
 import { detachedHead, searchQueryOf, useGit, useGitActions } from './store';
 import { Highlight } from '../../../lib/page/highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
-import { keymap } from '../../../shell/shared/keymap';
+import { keymap } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import { keyPressed } from '../../../lib/page/shortcuts';

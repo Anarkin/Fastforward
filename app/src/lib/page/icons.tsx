@@ -1,5 +1,3 @@
-import type { ToolId } from '../../shell/shared/tools';
-
 function Icon({
   children,
   className,
@@ -76,7 +74,7 @@ export function CloseIcon() {
   );
 }
 
-const toolSigns: Record<ToolId, React.ReactNode> = {
+const toolSigns = {
   terminal: (
     <path
       d="M3.5 2.5h9a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2ZM5.495 6.005 7.99 8.5 5.495 10.995A.7.7 0 0 1 4.505 10.005L6.01 8.5 4.505 6.995A.7.7 0 0 1 5.495 6.005ZM8.5 9.8h2.5a.7.7 0 0 1 0 1.4h-2.5a.7.7 0 0 1 0-1.4Z"
@@ -158,7 +156,7 @@ export function ImageIcon() {
   );
 }
 
-export function ToolIcon({ tool }: { tool: ToolId }) {
+export function ToolIcon({ tool }: { tool: keyof typeof toolSigns }) {
   return <Icon className={`tool-icon tool-${tool}`}>{toolSigns[tool]}</Icon>;
 }
 

@@ -1,6 +1,6 @@
 import type { FindMatch } from './find';
 import { rowPlace } from '../../../lib/page/rowPlace';
-import { wheeled, type Modifiers } from '../../../shell/shared/keymap';
+import { wheeled, type Modifiers } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import type { ListMove } from '../../../lib/page/listMoves';
 import { sidewaysColumns } from '../../../lib/page/rowScroll';

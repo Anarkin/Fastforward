@@ -114,10 +114,23 @@ suite('Architecture', () => {
     );
   });
 
-  test('lets the library and the shell reach the tools only through the registries of the shell, as the app starts them', () => {
+  test('lets the library import nothing from boot, the shell or the tools, as every one of them builds on it', () => {
     assert.deepStrictEqual(
       sourceFiles
-        .filter((file) => /^(?:lib|shell)\//.test(file))
+        .filter((file) => file.startsWith('lib/'))
+        .flatMap((file) =>
+          importsOf(file)
+            .filter((target) => !target.startsWith('lib/'))
+            .map((target) => `${file} -> ${target}`),
+        ),
+      [],
+    );
+  });
+
+  test('lets the shell reach the tools only through its registries, as the app starts them', () => {
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) => file.startsWith('shell/'))
         .filter((file) => !registries.includes(file))
         .flatMap((file) =>
           importsOf(file)

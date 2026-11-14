@@ -18,7 +18,8 @@ import type { ContextMenuItem } from '../../lib/page/contextMenu';
 import type { ToolId } from '../shared/tools';
 import { AddIcon, CloseIcon, ToolIcon } from '../../lib/page/icons';
 import { tabMagnetism, titleBarHeight } from '../shared/titleBar';
-import { clicked, keymap, released } from '../shared/keymap';
+import { shellKeymap } from '../shared/keymap';
+import { clicked, keymap, released } from '../../lib/shared/keymap';
 import { strings } from '../../lib/shared/strings';
 import { keyPressed, useBinding } from '../../lib/page/shortcuts';
 import { useShell, useShellActions, type ScreenPoint } from './store';
@@ -505,7 +506,7 @@ function useTabDrag(
       ? {
           onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
             if (
-              !clicked(keymap.moveTab, event) ||
+              !clicked(shellKeymap.moveTab, event) ||
               (event.target instanceof Element &&
                 event.target.closest('.tab-close'))
             ) {
@@ -931,10 +932,10 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
   useEffect(() => rest.cancel, [rest]);
 
   const add = useRef<HTMLButtonElement>(null);
-  useBinding(keymap.newTab, () => add.current?.click());
+  useBinding(shellKeymap.newTab, () => add.current?.click());
   const [cycle] = useState(() => new Cycle());
   useEffect(() => cycle.seen(active), [cycle, active]);
-  useBinding(keymap.tab, (step) => {
+  useBinding(shellKeymap.tab, (step) => {
     const id = cycle.next(active, (from) => adjacentTab(tabs, from, step));
     if (id !== undefined) {
       onSelect(id);
@@ -994,7 +995,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
                 onPointerLeave={rest.cancel}
                 onMouseDown={(event) => event.preventDefault()}
                 onAuxClick={(event) =>
-                  clicked(keymap.closeTab, event) && onClose(tab.id)
+                  clicked(shellKeymap.closeTab, event) && onClose(tab.id)
                 }
                 onContextMenu={(event) => {
                   event.preventDefault();

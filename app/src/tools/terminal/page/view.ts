@@ -11,7 +11,7 @@ import {
   type ScrollSettings,
   type Wheel,
 } from '../../../lib/page/rowScroll';
-import { pressedAlone, type Modifiers } from '../../../shell/shared/keymap';
+import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
 import {
   fontVariables,
   letterSpacingFor,
@@ -28,7 +28,7 @@ import {
 import type { Renderer } from '../shared/settings';
 import type { WindowsPty } from '../shared/protocol';
 import type { FromScreen } from './store';
-import type { CursorLook } from '../../../shell/shared/cursorSettings';
+import type { CursorLook } from '../../../lib/shared/cursorSettings';
 
 const resizeDelay = 50;
 

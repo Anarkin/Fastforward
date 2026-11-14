@@ -1,4 +1,4 @@
-import { pressedAlone } from '../../shell/shared/keymap';
+import { pressedAlone } from '../shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
 import { glideAt, glideEnded, type Glide } from './glide';
 import { setRowScroller } from './overlayScrollbars';

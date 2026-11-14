@@ -24,7 +24,7 @@ import {
   rectangularSelection,
   type Command,
 } from '@codemirror/view';
-import { clicked } from '../../../shell/shared/keymap';
+import { clicked } from '../../../lib/shared/keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { editorKeymap } from './keymap';
 

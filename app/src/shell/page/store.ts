@@ -12,9 +12,7 @@ import { defaultTextView } from '../../lib/page/textView';
 import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,
-  ImageView,
   TabInfo,
-  TextView,
   ToHost,
   ToWebview,
   ToWebviewOf,
@@ -23,6 +21,7 @@ import type {
   UpdateStatus,
   WindowInfo,
 } from '../shared/protocol';
+import type { ImageView, TextView } from '../../lib/shared/views';
 import {
   confirmsClose,
   type ToHostOf,

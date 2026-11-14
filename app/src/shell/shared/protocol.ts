@@ -1,4 +1,5 @@
 import type { Sentence } from '../../lib/shared/strings';
+import type { ImageView, TextView } from '../../lib/shared/views';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
 export const maxNotices = 4;
@@ -46,38 +47,6 @@ export interface AboutInfo {
   readonly development: boolean;
   readonly git: string;
   readonly system: string;
-}
-
-export interface TextView {
-  readonly wordWrap: boolean;
-  readonly showWhitespace: boolean;
-  readonly highlightSyntax: boolean;
-}
-
-export function isTextView(value: unknown): value is TextView {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'wordWrap' in value &&
-    typeof value.wordWrap === 'boolean' &&
-    'showWhitespace' in value &&
-    typeof value.showWhitespace === 'boolean' &&
-    'highlightSyntax' in value &&
-    typeof value.highlightSyntax === 'boolean'
-  );
-}
-
-export interface ImageView {
-  readonly realSize: boolean;
-}
-
-export function isImageView(value: unknown): value is ImageView {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'realSize' in value &&
-    typeof value.realSize === 'boolean'
-  );
 }
 
 export type UpdateStatus =

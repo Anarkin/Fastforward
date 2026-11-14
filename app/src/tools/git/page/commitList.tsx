@@ -49,7 +49,7 @@ import {
   clicked,
   menuFromKeyboard,
   type Click,
-} from '../../../shell/shared/keymap';
+} from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { withoutRemote } from '../shared/refNames';

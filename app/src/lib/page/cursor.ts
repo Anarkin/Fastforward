@@ -3,7 +3,7 @@ import {
   defaultCursorLook,
   type CursorStyle,
   type CursorLook,
-} from '../../shell/shared/cursorSettings';
+} from '../shared/cursorSettings';
 
 export type CursorShape = CursorStyle | 'outline';
 

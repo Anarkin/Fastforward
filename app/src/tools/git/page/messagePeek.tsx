@@ -15,7 +15,7 @@ import {
   shortcutOf,
   type KeyPress,
   type Modifiers,
-} from '../../../shell/shared/keymap';
+} from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import type { CommitInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';

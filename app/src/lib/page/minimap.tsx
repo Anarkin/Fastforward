@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
   type RefObject,
 } from 'react';
-import { clicked, keymap, type Modifiers } from '../../shell/shared/keymap';
+import { clicked, keymap, type Modifiers } from '../shared/keymap';
 import { hideAfter } from './overlayScrollbars';
 
 export interface MinimapMark {

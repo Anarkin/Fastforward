@@ -1,4 +1,4 @@
-import { pressed, type KeyPress } from '../../../shell/shared/keymap';
+import { pressed, type KeyPress } from '../../../lib/shared/keymap';
 import { terminalKeymap } from './keymap';
 
 export type TerminalKey = 'copy' | 'paste' | 'app' | 'shell';

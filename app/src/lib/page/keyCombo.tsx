@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { keyParts } from '../../shell/shared/keymap';
+import { keyParts } from '../shared/keymap';
 import { strings } from '../shared/strings';
 import { folded } from '../shared/textMatches';
 import { MouseIcon } from './icons';

@@ -9,7 +9,7 @@ import {
   type Xterm,
 } from '../../../../tools/terminal/page/view';
 import { noop } from '../../../fixtures';
-import { defaultCursorLook } from '../../../../shell/shared/cursorSettings';
+import { defaultCursorLook } from '../../../../lib/shared/cursorSettings';
 
 function posingAsXterm(fake: object): Xterm {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

@@ -6,7 +6,7 @@ import { themeCss } from '../../../shell/main/theme';
 import {
   cursorLookOf,
   cursorVariables,
-} from '../../../shell/shared/cursorSettings';
+} from '../../../lib/shared/cursorSettings';
 import { defaultSettings } from '../../fixtures';
 
 const source = join(__dirname, '../../../../src');

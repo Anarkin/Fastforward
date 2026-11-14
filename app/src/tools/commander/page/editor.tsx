@@ -110,7 +110,7 @@ import {
   type EditorPlace,
 } from './editorPlace';
 import { useCommander, useCommanderActions } from './store';
-import type { CursorLook } from '../../../shell/shared/cursorSettings';
+import type { CursorLook } from '../../../lib/shared/cursorSettings';
 import { pageCursorLook } from '../../../lib/page/cursor';
 
 export interface EditedTab {

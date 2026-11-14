@@ -1,4 +1,4 @@
-import { released } from '../../shell/shared/keymap';
+import { released } from '../shared/keymap';
 
 export interface DragTarget<E> {
   addEventListener(type: string, listener: (event: E) => void): void;

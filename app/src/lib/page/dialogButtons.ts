@@ -1,4 +1,4 @@
-import { keymap } from '../../shell/shared/keymap';
+import { keymap } from '../shared/keymap';
 import { nextMenuItem } from './contextMenu';
 import { keyPressed } from './shortcuts';
 

@@ -4,7 +4,7 @@ import {
   pressedAlone,
   type Binding,
   type KeyPress,
-} from '../../shell/shared/keymap';
+} from '../shared/keymap';
 
 type KeyEvent = KeyPress & { readonly target: EventTarget | null };
 

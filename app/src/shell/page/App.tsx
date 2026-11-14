@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { keymap } from '../shared/keymap';
+import { shellKeymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { strings, type Line } from '../../lib/shared/strings';
 import { tools, type ToolId } from '../shared/tools';
@@ -209,7 +209,7 @@ function NoticeKey() {
   const newest = useShell((state) => state.notices.at(-1)?.id);
   const { dismissNotice } = useShellActions();
   useBinding(
-    keymap.dismissNotice,
+    shellKeymap.dismissNotice,
     () => {
       if (newest !== undefined) {
         dismissNotice(newest);
@@ -230,11 +230,11 @@ export function App({ name, post, listen, dropFiles }: Props) {
     return stop;
   }, [listen, store, ready]);
 
-  useBinding(keymap.shortcuts, () => togglePopup('shortcuts'));
-  useBinding(keymap.about, () => togglePopup('about'));
-  useBinding(keymap.openIn, openIn);
-  useBinding(keymap.newWindow, newWindow);
-  useBinding(keymap.closeTab, () => {
+  useBinding(shellKeymap.shortcuts, () => togglePopup('shortcuts'));
+  useBinding(shellKeymap.about, () => togglePopup('about'));
+  useBinding(shellKeymap.openIn, openIn);
+  useBinding(shellKeymap.newWindow, newWindow);
+  useBinding(shellKeymap.closeTab, () => {
     const { active } = store.getState();
     if (active !== undefined) {
       closeTab(active);

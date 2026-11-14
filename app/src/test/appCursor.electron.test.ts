@@ -6,7 +6,7 @@ import type * as viewModule from '@codemirror/view';
 import * as esbuild from 'esbuild';
 import type { ElectronApplication, JSHandle, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import type { CursorStyle } from '../shell/shared/cursorSettings';
+import type { CursorStyle } from '../lib/shared/cursorSettings';
 import type * as commanderKeymapModule from '../tools/commander/page/keymap';
 import {
   cursorBlinkInterval,

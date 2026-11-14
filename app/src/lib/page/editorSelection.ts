@@ -11,8 +11,8 @@ import {
   RectangleMarker,
   type LayerMarker,
 } from '@codemirror/view';
-import type { CursorLook } from '../../shell/shared/cursorSettings';
-import type { Binding } from '../../shell/shared/keymap';
+import type { CursorLook } from '../shared/cursorSettings';
+import type { Binding } from '../shared/keymap';
 import {
   blinkAnimation,
   drawnCursor,

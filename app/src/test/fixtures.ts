@@ -9,7 +9,7 @@ import {
   setKeyPlatform,
   type KeyPress,
   type Modifiers,
-} from '../shell/shared/keymap';
+} from '../lib/shared/keymap';
 import type { CommitInfo, FileChange } from '../tools/git/shared/protocol';
 import type { Sentence } from '../lib/shared/strings';
 

@@ -1,7 +1,7 @@
 import './style.css';
 import { createRoot } from 'react-dom/client';
 import type { Bridge } from '../shared/bridge';
-import { setKeyPlatform } from '../shared/keymap';
+import { setKeyPlatform } from '../../lib/shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
 import { ErrorBoundary } from './errorBoundary';

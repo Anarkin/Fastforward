@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import type { Binding } from '../../shell/shared/keymap';
+import type { Binding } from '../shared/keymap';
 import { strings } from '../shared/strings';
 import { BackIcon, NextIcon, PreviousIcon, SearchIcon } from './icons';
 import { keyPressed } from './shortcuts';

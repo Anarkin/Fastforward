@@ -1,4 +1,4 @@
-import { bind } from '../../../shell/shared/keymap';
+import { bind } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 
 export const gitGroups = [

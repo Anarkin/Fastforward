@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { keymap } from '../shared/keymap';
+import { shellKeymap } from '../shared/keymap';
 import type { UpdateStatus } from '../shared/protocol';
 import { strings } from '../../lib/shared/strings';
 import { MenuButton } from '../../lib/page/menu';
@@ -45,7 +45,7 @@ export function AppMenu() {
   const onInstallCommand = installsCommand ? installTerminalCommand : undefined;
   const installs = update.kind === 'ready' || update.kind === 'available';
   const trigger = useRef<HTMLButtonElement>(null);
-  useBinding(keymap.mainMenu, () => trigger.current?.click());
+  useBinding(shellKeymap.mainMenu, () => trigger.current?.click());
   return (
     <MenuButton
       trigger={trigger}

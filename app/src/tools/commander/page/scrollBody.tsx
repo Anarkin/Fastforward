@@ -12,7 +12,7 @@ import {
 } from 'react';
 import type { ByteRange } from '../shared/protocol';
 import { keyPressed } from '../../../lib/page/shortcuts';
-import { wheeled } from '../../../shell/shared/keymap';
+import { wheeled } from '../../../lib/shared/keymap';
 import { viewerKeymap } from './keymap';
 import { followDrag } from '../../../lib/page/followDrag';
 import { sidewaysColumns, wheelTurn } from '../../../lib/page/rowScroll';

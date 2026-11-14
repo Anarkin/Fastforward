@@ -1,4 +1,4 @@
-import type { TextView } from '../../shell/shared/protocol';
+import type { TextView } from '../shared/views';
 
 export const defaultTextView: TextView = {
   wordWrap: true,

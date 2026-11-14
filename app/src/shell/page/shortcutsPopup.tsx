@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { keyLabels, keymap, type Binding } from '../shared/keymap';
+import { shellKeymap } from '../shared/keymap';
+import { keyLabels, type Binding } from '../../lib/shared/keymap';
 import type { TabInfo } from '../shared/protocol';
 import type { ToolId } from '../shared/tools';
 import { KeyCombo } from '../../lib/page/keyCombo';
@@ -425,9 +426,9 @@ export function ShortcutsPopup() {
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     dialog.onKeyDown(event);
-    const toolStep = keyPressed(keymap.shortcutsTool, event);
-    const groupStep = keyPressed(keymap.shortcutsGroup, event);
-    const pageStep = keyPressed(keymap.shortcutsPage, event);
+    const toolStep = keyPressed(shellKeymap.shortcutsTool, event);
+    const groupStep = keyPressed(shellKeymap.shortcutsGroup, event);
+    const pageStep = keyPressed(shellKeymap.shortcutsPage, event);
     if (toolStep !== undefined) {
       event.preventDefault();
       openEntry(steppedEntry(open, toolStep));

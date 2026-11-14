@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { wheeled, type Binding } from '../../shell/shared/keymap';
+import { wheeled, type Binding } from '../shared/keymap';
 import type { PdfPlace } from '../shared/pdf';
 import type { PdfFound, ShownPdf } from './pdfDocument';
 

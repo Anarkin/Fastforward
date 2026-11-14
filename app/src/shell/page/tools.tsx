@@ -6,10 +6,11 @@ import {
 } from '../../tools/git/page/keymap';
 import {
   everywhereGroups,
-  keymap,
+  shellKeymap,
   shortcutGroupsOf,
   type ShortcutGroup,
 } from '../shared/keymap';
+import { keymap } from '../../lib/shared/keymap';
 import { strings } from '../../lib/shared/strings';
 import type { ToolId } from '../shared/tools';
 import { CommanderTool } from '../../tools/commander/page/tool';
@@ -74,7 +75,10 @@ export const shortcutEntries: readonly ShortcutEntry[] = [
   {
     id: 'everywhere',
     title: strings.shortcuts.everywhere,
-    groups: shortcutGroupsOf(everywhereGroups, titles, keymap),
+    groups: shortcutGroupsOf(everywhereGroups, titles, {
+      ...shellKeymap,
+      ...keymap,
+    }),
   },
 ];
 

@@ -4,7 +4,7 @@ import {
   cursorLookOf,
   cursorVariables,
   defaultCursorLook,
-} from '../../../shell/shared/cursorSettings';
+} from '../../../lib/shared/cursorSettings';
 
 const barOf = (width: string) =>
   cursorLookOf((name) => (name === cursorVariables.barWidth ? width : ''))

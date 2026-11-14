@@ -35,12 +35,8 @@ import { imageRoute } from '../tools/git/shared/images';
 import { iconRoute, thumbnailRoute } from '../tools/commander/shared/icons';
 import { viewedFileRoute } from '../tools/commander/shared/files';
 import { appNameSwitch, titleBarHeight } from '../shell/shared/titleBar';
-import {
-  keymap,
-  pressed,
-  pressOfInput,
-  setKeyPlatform,
-} from '../shell/shared/keymap';
+import { shellKeymap } from '../shell/shared/keymap';
+import { pressed, pressOfInput, setKeyPlatform } from '../lib/shared/keymap';
 import type { Theme, ToHost, ToWebview } from '../shell/shared/protocol';
 import { brand, plainOf, strings } from '../lib/shared/strings';
 import {
@@ -1233,7 +1229,7 @@ function createWindow(
   window.webContents.on('before-input-event', (event, input) => {
     if (
       input.type === 'keyDown' &&
-      pressed(keymap.devTools, pressOfInput(input), false)
+      pressed(shellKeymap.devTools, pressOfInput(input), false)
     ) {
       window.webContents.toggleDevTools();
       event.preventDefault();

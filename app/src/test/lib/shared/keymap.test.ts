@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
+import { shellKeymap } from '../../../shell/shared/keymap';
 import {
   clicked,
   hovered,
@@ -21,7 +22,7 @@ import {
   wheeled,
   type Binding,
   type KeyPress,
-} from '../../../shell/shared/keymap';
+} from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 import { gitKeymap } from '../../../tools/git/page/keymap';
 import { keyPress, noModifiers, withMacKeys } from '../../fixtures';
@@ -87,23 +88,23 @@ suite('Keymap', () => {
 
   test('opens the main menu with Alt+F, or Option+F though it types ƒ, but not with F alone, nor in a text field', () => {
     assert.strictEqual(
-      pressed(keymap.mainMenu, keyPress('f', { altKey: true }), false),
+      pressed(shellKeymap.mainMenu, keyPress('f', { altKey: true }), false),
       true,
     );
     assert.strictEqual(
       pressed(
-        keymap.mainMenu,
+        shellKeymap.mainMenu,
         keyPress('ƒ', { code: 'KeyF', altKey: true }),
         false,
       ),
       true,
     );
     assert.strictEqual(
-      pressed(keymap.mainMenu, keyPress('f'), false),
+      pressed(shellKeymap.mainMenu, keyPress('f'), false),
       undefined,
     );
     assert.strictEqual(
-      pressed(keymap.mainMenu, keyPress('f', { altKey: true }), true),
+      pressed(shellKeymap.mainMenu, keyPress('f', { altKey: true }), true),
       undefined,
     );
   });
@@ -142,7 +143,7 @@ suite('Keymap', () => {
     );
     assert.strictEqual(
       pressed(
-        keymap.newTab,
+        shellKeymap.newTab,
         keyPress('е', { code: 'KeyT', ctrlKey: true }),
         false,
       ),
@@ -158,11 +159,11 @@ suite('Keymap', () => {
       true,
     );
     assert.strictEqual(
-      pressed(keymap.newTab, { ...dvorak, key: 'y', code: 'KeyT' }, false),
+      pressed(shellKeymap.newTab, { ...dvorak, key: 'y', code: 'KeyT' }, false),
       undefined,
     );
     assert.strictEqual(
-      pressed(keymap.newTab, { ...dvorak, key: 't', code: 'KeyK' }, false),
+      pressed(shellKeymap.newTab, { ...dvorak, key: 't', code: 'KeyK' }, false),
       true,
     );
     assert.strictEqual(
@@ -188,20 +189,20 @@ suite('Keymap', () => {
     try {
       setKeyPlatform('linux');
       assert.strictEqual(
-        pressed(keymap.newTab, { ...t, ctrlKey: true }, false),
+        pressed(shellKeymap.newTab, { ...t, ctrlKey: true }, false),
         true,
       );
       assert.strictEqual(
-        pressed(keymap.newTab, { ...t, metaKey: true }, false),
+        pressed(shellKeymap.newTab, { ...t, metaKey: true }, false),
         undefined,
       );
       setKeyPlatform('darwin');
       assert.strictEqual(
-        pressed(keymap.newTab, { ...t, metaKey: true }, false),
+        pressed(shellKeymap.newTab, { ...t, metaKey: true }, false),
         true,
       );
       assert.strictEqual(
-        pressed(keymap.newTab, { ...t, ctrlKey: true }, true),
+        pressed(shellKeymap.newTab, { ...t, ctrlKey: true }, true),
         undefined,
       );
       assert.strictEqual(
@@ -215,15 +216,19 @@ suite('Keymap', () => {
     } finally {
       setKeyPlatform('linux');
     }
-    assert.strictEqual(pressed(keymap.newTab, t, false), undefined);
+    assert.strictEqual(pressed(shellKeymap.newTab, t, false), undefined);
     const tab = keyPress('Tab', { ctrlKey: true });
-    assert.strictEqual(pressed(keymap.tab, tab, false), 1);
+    assert.strictEqual(pressed(shellKeymap.tab, tab, false), 1);
     assert.strictEqual(
-      pressed(keymap.tab, { ...tab, shiftKey: true }, false),
+      pressed(shellKeymap.tab, { ...tab, shiftKey: true }, false),
       -1,
     );
     assert.strictEqual(
-      pressed(keymap.tab, { ...tab, ctrlKey: false, metaKey: true }, false),
+      pressed(
+        shellKeymap.tab,
+        { ...tab, ctrlKey: false, metaKey: true },
+        false,
+      ),
       undefined,
     );
   });
@@ -238,11 +243,11 @@ suite('Keymap', () => {
       undefined,
     );
     assert.strictEqual(
-      pressed(keymap.shortcuts, keyPress('?', { shiftKey: true }), false),
+      pressed(shellKeymap.shortcuts, keyPress('?', { shiftKey: true }), false),
       true,
     );
     assert.strictEqual(
-      pressed(keymap.shortcuts, keyPress('F1', { shiftKey: true }), false),
+      pressed(shellKeymap.shortcuts, keyPress('F1', { shiftKey: true }), false),
       undefined,
     );
   });
@@ -346,10 +351,13 @@ suite('Keymap', () => {
   test('leaves the keys that type or move the caret to a text field, but for those of fields', () => {
     assert.strictEqual(pressed(gitKeymap.head, keyPress('h'), true), undefined);
     assert.strictEqual(
-      pressed(keymap.shortcuts, keyPress('?'), true),
+      pressed(shellKeymap.shortcuts, keyPress('?'), true),
       undefined,
     );
-    assert.strictEqual(pressed(keymap.shortcuts, keyPress('F1'), true), true);
+    assert.strictEqual(
+      pressed(shellKeymap.shortcuts, keyPress('F1'), true),
+      true,
+    );
     assert.strictEqual(
       pressed(gitKeymap.column, keyPress('ArrowLeft'), true),
       undefined,
@@ -397,16 +405,19 @@ suite('Keymap', () => {
       undefined,
     );
     assert.strictEqual(clicked(keymap.drag, click), true);
-    assert.strictEqual(clicked(keymap.moveTab, click), true);
+    assert.strictEqual(clicked(shellKeymap.moveTab, click), true);
     assert.strictEqual(
-      clicked(keymap.moveTab, { ...click, ctrlKey: true }),
+      clicked(shellKeymap.moveTab, { ...click, ctrlKey: true }),
       undefined,
     );
     assert.strictEqual(
-      clicked(keymap.moveTab, { ...click, button: 1 }),
+      clicked(shellKeymap.moveTab, { ...click, button: 1 }),
       undefined,
     );
-    assert.strictEqual(clicked(keymap.closeTab, { ...click, button: 1 }), true);
+    assert.strictEqual(
+      clicked(shellKeymap.closeTab, { ...click, button: 1 }),
+      true,
+    );
     assert.strictEqual(
       clicked(gitKeymap.navigate, { ...click, button: 3 }),
       'back',
@@ -469,77 +480,80 @@ suite('Keymap', () => {
 
   test('closes the repository on Ctrl+W, or Cmd+W on macOS, as on a middle click on its tab', () => {
     assert.strictEqual(
-      pressed(keymap.closeTab, keyPress('w', { ctrlKey: true }), false),
+      pressed(shellKeymap.closeTab, keyPress('w', { ctrlKey: true }), false),
       true,
     );
     assert.strictEqual(
       withMacKeys(() =>
-        pressed(keymap.closeTab, keyPress('w', { metaKey: true }), false),
+        pressed(shellKeymap.closeTab, keyPress('w', { metaKey: true }), false),
       ),
       true,
     );
     assert.strictEqual(
-      clicked(keymap.closeTab, { button: 1, ...noModifiers }),
+      clicked(shellKeymap.closeTab, { button: 1, ...noModifiers }),
       true,
     );
     assert.strictEqual(
-      pressed(keymap.closeTab, keyPress('w'), false),
+      pressed(shellKeymap.closeTab, keyPress('w'), false),
       undefined,
     );
   });
 
   test('opens and closes tabs on Ctrl+Shift+T and Ctrl+Shift+W too, or Cmd+Shift on macOS, even in a field, as a terminal leaves Ctrl+T and Ctrl+W to its shell', () => {
     assert.strictEqual(
-      pressed(keymap.newTab, { ...shifted('T'), ctrlKey: true }, true),
+      pressed(shellKeymap.newTab, { ...shifted('T'), ctrlKey: true }, true),
       true,
     );
     assert.strictEqual(
-      pressed(keymap.closeTab, { ...shifted('W'), ctrlKey: true }, true),
+      pressed(shellKeymap.closeTab, { ...shifted('W'), ctrlKey: true }, true),
       true,
     );
     assert.strictEqual(
       withMacKeys(() =>
-        pressed(keymap.closeTab, { ...shifted('W'), metaKey: true }, true),
+        pressed(shellKeymap.closeTab, { ...shifted('W'), metaKey: true }, true),
       ),
       true,
     );
-    assert.strictEqual(pressed(keymap.newTab, shifted('T'), false), undefined);
+    assert.strictEqual(
+      pressed(shellKeymap.newTab, shifted('T'), false),
+      undefined,
+    );
   });
 
   test('opens a new window on Ctrl+N and Ctrl+Shift+N, or Cmd on macOS, as a terminal leaves Ctrl+N to its shell', () => {
     assert.strictEqual(
-      pressed(keymap.newWindow, keyPress('n', { ctrlKey: true }), false),
+      pressed(shellKeymap.newWindow, keyPress('n', { ctrlKey: true }), false),
       true,
     );
     assert.strictEqual(
-      pressed(keymap.newWindow, { ...shifted('N'), ctrlKey: true }, false),
+      pressed(shellKeymap.newWindow, { ...shifted('N'), ctrlKey: true }, false),
       true,
     );
     assert.strictEqual(
       withMacKeys(() =>
-        pressed(keymap.newWindow, keyPress('n', { metaKey: true }), false),
+        pressed(shellKeymap.newWindow, keyPress('n', { metaKey: true }), false),
       ),
       true,
     );
     assert.strictEqual(
-      pressed(keymap.newWindow, keyPress('n'), false),
+      pressed(shellKeymap.newWindow, keyPress('n'), false),
       undefined,
     );
   });
 
   test('opens the folder of the tab in another tool on Ctrl+Shift+O, or Cmd+Shift+O on macOS, but not on Ctrl+O, which a shell takes', () => {
     assert.strictEqual(
-      pressed(keymap.openIn, { ...shifted('O'), ctrlKey: true }, false),
+      pressed(shellKeymap.openIn, { ...shifted('O'), ctrlKey: true }, false),
       true,
     );
     assert.strictEqual(
       withMacKeys(() =>
-        pressed(keymap.openIn, { ...shifted('O'), metaKey: true }, false),
+        pressed(shellKeymap.openIn, { ...shifted('O'), metaKey: true }, false),
       ),
       true,
     );
     assert.strictEqual(
-      pressed(keymap.openIn, keyPress('o', { ctrlKey: true }), false),
+      pressed(shellKeymap.openIn, keyPress('o', { ctrlKey: true }), false),
       undefined,
     );
   });
@@ -622,13 +636,13 @@ suite('Keymap', () => {
       isAutoRepeat: false,
     };
     assert.strictEqual(
-      pressed(keymap.devTools, pressOfInput(input), false),
+      pressed(shellKeymap.devTools, pressOfInput(input), false),
       true,
     );
     assert.strictEqual(
       withMacKeys(() =>
         pressed(
-          keymap.devTools,
+          shellKeymap.devTools,
           pressOfInput({ ...input, control: false, meta: true }),
           false,
         ),
@@ -636,7 +650,11 @@ suite('Keymap', () => {
       true,
     );
     assert.strictEqual(
-      pressed(keymap.devTools, pressOfInput({ ...input, shift: false }), false),
+      pressed(
+        shellKeymap.devTools,
+        pressOfInput({ ...input, shift: false }),
+        false,
+      ),
       undefined,
     );
   });
@@ -680,27 +698,34 @@ suite('Keymap', () => {
 
   test('moves through the shortcuts screen from its filter: Ctrl+Tab and Ctrl+Shift+Tab to the next and previous tool, ↑ and ↓ through the groups, and PgUp and PgDn a page, held down too', () => {
     assert.strictEqual(
-      inField(keymap.shortcutsTool, 'Tab', { ctrlKey: true }),
+      inField(shellKeymap.shortcutsTool, 'Tab', { ctrlKey: true }),
       1,
     );
     assert.strictEqual(
-      inField(keymap.shortcutsTool, 'Tab', { ctrlKey: true, shiftKey: true }),
+      inField(shellKeymap.shortcutsTool, 'Tab', {
+        ctrlKey: true,
+        shiftKey: true,
+      }),
       -1,
     );
-    assert.strictEqual(inField(keymap.shortcutsTool, 'Tab'), undefined);
-    assert.strictEqual(inField(keymap.shortcutsGroup, 'ArrowDown'), 1);
-    assert.strictEqual(inField(keymap.shortcutsGroup, 'ArrowUp'), -1);
-    assert.strictEqual(inField(keymap.shortcutsPage, 'PageDown'), 1);
-    assert.strictEqual(inField(keymap.shortcutsPage, 'PageUp'), -1);
+    assert.strictEqual(inField(shellKeymap.shortcutsTool, 'Tab'), undefined);
+    assert.strictEqual(inField(shellKeymap.shortcutsGroup, 'ArrowDown'), 1);
+    assert.strictEqual(inField(shellKeymap.shortcutsGroup, 'ArrowUp'), -1);
+    assert.strictEqual(inField(shellKeymap.shortcutsPage, 'PageDown'), 1);
+    assert.strictEqual(inField(shellKeymap.shortcutsPage, 'PageUp'), -1);
     assert.strictEqual(
-      inField(keymap.shortcutsGroup, 'ArrowDown', { repeat: true }),
+      inField(shellKeymap.shortcutsGroup, 'ArrowDown', { repeat: true }),
       1,
     );
   });
 
   test('names every key a binding uses from the dictionary, but letters, symbols and F keys, which name themselves, so a translation reaches the shortcuts screen whole', () => {
     const named: Readonly<Record<string, string>> = strings.keys;
-    const unnamed = [...Object.values(keymap), ...Object.values(gitKeymap)]
+    const unnamed = [
+      ...Object.values(keymap),
+      ...Object.values(shellKeymap),
+      ...Object.values(gitKeymap),
+    ]
       .flatMap((binding) => Object.keys(binding.keys))
       .map((keys) => keys.split('+').at(-1) ?? keys)
       .filter(
@@ -711,9 +736,9 @@ suite('Keymap', () => {
   });
 
   test('leaves telling keys, modifiers and buttons apart to itself, so the shortcuts screen lists every one', () => {
-    const source = path.join(__dirname, '../../../../src');
+    const source = path.join(__dirname, '../../..');
     const own = [
-      path.join(source, 'shell', 'shared', 'keymap.ts'),
+      path.join(source, 'lib', 'shared', 'keymap.ts'),
       path.join(source, 'lib', 'shared', 'strings.ts'),
     ];
     const reads =

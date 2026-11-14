@@ -15,13 +15,9 @@ import {
   indentStyles,
   type EditorSettings,
 } from './editorSettings';
-import {
-  themes,
-  type ImageView,
-  type TextView,
-  type Theme,
-} from '../shared/protocol';
-import { cursorStyles, type CursorLook } from '../shared/cursorSettings';
+import { themes, type Theme } from '../shared/protocol';
+import { type ImageView, type TextView } from '../../lib/shared/views';
+import { cursorStyles, type CursorLook } from '../../lib/shared/cursorSettings';
 
 export interface Settings {
   readonly tabs: {

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { keymap, pressedAlone, type KeyPress } from '../../shell/shared/keymap';
+import { keymap, pressedAlone, type KeyPress } from '../shared/keymap';
 import { CloseIcon, SubmenuIcon } from './icons';
 import { Name, Words } from './name';
 import { isKeyPress, keyPressed } from './shortcuts';

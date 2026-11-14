@@ -1,3 +1,3 @@
-import type { ImageView } from '../../shell/shared/protocol';
+import type { ImageView } from '../shared/views';
 
 export const defaultImageView: ImageView = { realSize: false };

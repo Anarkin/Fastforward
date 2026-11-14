@@ -5,12 +5,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type { TabInfo } from '../../../shell/shared/protocol';
 import type { ToolId } from '../../../shell/shared/tools';
+import { shellKeymap } from '../../../shell/shared/keymap';
 import {
   keyParts,
   keymap,
   setKeyPlatform,
   type Binding,
-} from '../../../shell/shared/keymap';
+} from '../../../lib/shared/keymap';
 import { compareKeymap, gitKeymap } from '../../../tools/git/page/keymap';
 import {
   commanderKeymap,
@@ -226,7 +227,7 @@ suite('Shortcuts popup', () => {
 
   test("lists every binding with a group once, under the tool whose keymap has it, git's keys of the diff under Diff alone with the comparison's, and none without one", () => {
     const keymaps: [string, Readonly<Record<string, Binding<unknown>>>][] = [
-      ['everywhere', keymap],
+      ['everywhere', { ...shellKeymap, ...keymap }],
       ['commander', commanderKeymap],
       ['viewer', viewerKeymap],
       ['editor', editorKeymap],
@@ -265,14 +266,14 @@ suite('Shortcuts popup', () => {
       each.groups.flatMap((group) => group.bindings),
     );
     for (const binding of [
-      keymap.devTools,
-      keymap.shortcutsTool,
-      keymap.shortcutsGroup,
-      keymap.shortcutsPage,
+      shellKeymap.devTools,
+      shellKeymap.shortcutsTool,
+      shellKeymap.shortcutsGroup,
+      shellKeymap.shortcutsPage,
     ]) {
       assert.ok(!listed.includes(binding), binding.action);
     }
-    assert.deepStrictEqual(keymap.devTools.keys, { 'Mod+Shift+I': true });
+    assert.deepStrictEqual(shellKeymap.devTools.keys, { 'Mod+Shift+I': true });
   });
 
   test("puts the commander's keys for moving around, the list, the filter, marking, the files, viewing and archives each in a group of its own", () => {
@@ -628,7 +629,7 @@ suite('Shortcuts popup', () => {
       .map((row) => row.binding);
     assert.ok(found.includes(commanderKeymap.renameItem));
     assert.ok(found.includes(commanderKeymap.compare));
-    assert.ok(found.includes(keymap.about));
+    assert.ok(found.includes(shellKeymap.about));
     assert.ok(!found.includes(commanderKeymap.view));
   });
 

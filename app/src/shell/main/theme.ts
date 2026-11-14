@@ -1,6 +1,6 @@
 import type { Settings } from './settings';
 import { tools as toolIds } from '../shared/tools';
-import { cursorVariables } from '../shared/cursorSettings';
+import { cursorVariables } from '../../lib/shared/cursorSettings';
 
 function declarations(
   values: Readonly<Record<string, string>>,

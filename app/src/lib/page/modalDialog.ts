@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { clicked, keymap, released } from '../../shell/shared/keymap';
+import { clicked, keymap, released } from '../shared/keymap';
 import { keyPressed } from './shortcuts';
 
 const dragEnds = ['pointerup', 'pointercancel'];

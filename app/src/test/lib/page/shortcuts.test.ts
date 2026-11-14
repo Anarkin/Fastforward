@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { keymap } from '../../../shell/shared/keymap';
+import { shellKeymap } from '../../../shell/shared/keymap';
 import { gitKeymap } from '../../../tools/git/page/keymap';
 import { appKeyPressed, keyPressed } from '../../../lib/page/shortcuts';
 import { element, keyPress, withMacKeys } from '../../fixtures';
@@ -8,10 +8,10 @@ import { element, keyPress, withMacKeys } from '../../fixtures';
 type KeyEvent = Parameters<typeof keyPressed>[1];
 
 const shortcuts = (key: string, extra: Partial<KeyEvent> = {}) =>
-  keyPressed(keymap.shortcuts, keyPress(key, extra)) === true;
+  keyPressed(shellKeymap.shortcuts, keyPress(key, extra)) === true;
 
 const about = (extra: Partial<KeyEvent> = {}) =>
-  keyPressed(keymap.about, keyPress('F1', extra)) === true;
+  keyPressed(shellKeymap.about, keyPress('F1', extra)) === true;
 
 const showsWhitespace = (extra: Partial<KeyEvent> = {}) =>
   keyPressed(gitKeymap.showWhitespace, keyPress('.', extra)) === true;
@@ -70,7 +70,10 @@ suite('Keyboard shortcuts', () => {
       undefined,
     );
     assert.strictEqual(
-      appKeyPressed(keymap.shortcuts, keyPress('F1', { target: within(true) })),
+      appKeyPressed(
+        shellKeymap.shortcuts,
+        keyPress('F1', { target: within(true) }),
+      ),
       undefined,
     );
     assert.strictEqual(
@@ -113,11 +116,14 @@ suite('Keyboard shortcuts', () => {
         selector === "[aria-modal='true']" ? element('DIV') : null,
     });
     assert.strictEqual(
-      appKeyPressed(keymap.shortcuts, keyPress('F1', { target: inDialog })),
+      appKeyPressed(
+        shellKeymap.shortcuts,
+        keyPress('F1', { target: inDialog }),
+      ),
       true,
     );
     assert.strictEqual(
-      appKeyPressed(keymap.shortcuts, keyPress('?', { target: inDialog })),
+      appKeyPressed(shellKeymap.shortcuts, keyPress('?', { target: inDialog })),
       true,
     );
   });

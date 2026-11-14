@@ -13,7 +13,7 @@ app/src/
 
 - Each owner, the library, the shell and each tool, keeps its code in three folders by where it runs: `main` in the main process, `page` in the page, and `shared` in both, holding only what both sides import, as the protocol between them
 - What one side alone imports lives in the `main` or the `page` folder of its owner, what one owner alone uses in the folders of that owner, and what several use in the library
-- Nothing imports `boot`, no tool imports another, and the library and the shell reach the tools only through the registries of the shell
+- Each folder builds on the ones below it, `boot` on the tools, the tools on the shell and the shell on the library: nothing imports `boot`, the library imports nothing from the others, no tool imports another, and the shell reaches the tools only through its registries
 - `architecture.test.ts` checks these rules, and the lint rules and the tsconfigs keep each side from importing the other
 
 ## Decisions
