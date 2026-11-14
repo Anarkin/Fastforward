@@ -16,16 +16,24 @@ import {
 import type { TextRequest } from '../shared/protocol';
 import type { DiffFile, DiffLine, LoadedText } from './diff';
 import { jumpStep, lineKey, type FindMatch } from './find';
-import { Minimap } from '../../../ui/minimap';
-import { columnFocusAttribute } from '../../../ui/columnFocus';
-import { shortcutsEntryAttribute, keyPressed } from '../../../ui/shortcuts';
+import { Minimap } from '../../../lib/page/minimap';
+import { columnFocusAttribute } from '../../../lib/page/columnFocus';
+import {
+  shortcutsEntryAttribute,
+  keyPressed,
+} from '../../../lib/page/shortcuts';
 import { useSyntax, useTextsToLoad } from './syntax';
 import { wordRanges, type LineWords } from './wordDiff';
 import { gitKeymap } from './keymap';
-import { glideAt, glideBy, glideEnded, type Glide } from '../../../ui/glide';
-import { strings } from '../../../shared/strings';
-import { Words } from '../../../ui/name';
-import { listMoveOf } from '../../../ui/listMoves';
+import {
+  glideAt,
+  glideBy,
+  glideEnded,
+  type Glide,
+} from '../../../lib/page/glide';
+import { strings } from '../../../lib/shared/strings';
+import { Words } from '../../../lib/page/name';
+import { listMoveOf } from '../../../lib/page/listMoves';
 import {
   elementMetrics,
   ownScrollbarAttribute,
@@ -33,20 +41,20 @@ import {
   sidewaysMetrics,
   sidewaysScroll,
   sidewaysScrollEvent,
-} from '../../../ui/overlayScrollbars';
+} from '../../../lib/page/overlayScrollbars';
 import { ImageDiff, imagePanes } from './imagePreview';
-import { WholeImage } from '../../../ui/images';
+import { WholeImage } from '../../../lib/page/images';
 import { wholeImageUrl, type ImageOrigin } from './images';
-import { useSkeleton } from '../../../ui/skeleton';
-import { type ColumnsIn, wrapIndent } from '../../../ui/wordWrap';
-import { snapOffset } from '../../../ui/devicePixels';
-import { afterPaint } from '../../../ui/afterPaint';
+import { useSkeleton } from '../../../lib/page/skeleton';
+import { type ColumnsIn, wrapIndent } from '../../../lib/page/wordWrap';
+import { snapOffset } from '../../../lib/page/devicePixels';
+import { afterPaint } from '../../../lib/page/afterPaint';
 import {
   followRows,
   rowPadding,
   snappedTop,
   type RowFollower,
-} from '../../../ui/rowScroll';
+} from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
 import { pickedFor, useGit, useGitActions } from './store';
 import {
@@ -66,7 +74,7 @@ import {
   plainCells,
   textWidths,
   useCellTable,
-} from '../../../ui/textWidths';
+} from '../../../lib/page/textWidths';
 import {
   type WholeFile,
   showsSideBySide,

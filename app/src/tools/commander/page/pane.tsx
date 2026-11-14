@@ -9,12 +9,16 @@ import {
 } from 'react';
 import { tileColumns, tileWidthOf } from './tiles';
 import { iconUrl, thumbnailUrl, type IconSource } from '../shared/icons';
-import { imageType, maxImageSize, vectorType } from '../../../shared/images';
+import {
+  imageType,
+  maxImageSize,
+  vectorType,
+} from '../../../lib/shared/images';
 import {
   ThumbnailImage,
   useThumbnailFill,
   type FillItem,
-} from '../../../ui/thumbnails';
+} from '../../../lib/page/thumbnails';
 import { commanderKeymap } from './keymap';
 import { clicked } from '../../../shell/shared/keymap';
 import { parentFolder, type Entry, type Side } from '../shared/protocol';
@@ -23,11 +27,11 @@ import { copiedText, type Copied } from './naming';
 import { formatSize } from './format';
 import { goesInto, opens, pointedKeys, rangeKeys, type Row } from './listing';
 import { filterStep, PaneFilter } from './paneFilter';
-import { filterWords } from '../../../ui/fileFilter';
-import { HighlightWords } from '../../../ui/highlight';
-import { SearchButton, SearchRow } from '../../../ui/search';
-import { columnFocusOf } from '../../../ui/columnFocus';
-import { clickPairs } from '../../../ui/clickPairs';
+import { filterWords } from '../../../lib/page/fileFilter';
+import { HighlightWords } from '../../../lib/page/highlight';
+import { SearchButton, SearchRow } from '../../../lib/page/search';
+import { columnFocusOf } from '../../../lib/page/columnFocus';
+import { clickPairs } from '../../../lib/page/clickPairs';
 import { ColumnHeader } from './columnHeader';
 import { layouts, type Layout } from '../shared/settings';
 import {
@@ -38,7 +42,7 @@ import {
   useCommander,
   useCommanderActions,
 } from './store';
-import { formatDate } from '../../../ui/dates';
+import { formatDate } from '../../../lib/page/dates';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { dropTargetOf } from './dropping';
 import { whatOf } from './transferring';
@@ -52,13 +56,13 @@ import {
   ForwardIcon,
   ShieldIcon,
   ToolIcon,
-} from '../../../ui/icons';
-import { StatusLine } from '../../../ui/statusLine';
-import { MenuButton } from '../../../ui/menu';
-import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { estimatedRowHeight, VirtualRows } from '../../../ui/virtualRows';
-import { sentencesOf, strings } from '../../../shared/strings';
-import { Words } from '../../../ui/name';
+} from '../../../lib/page/icons';
+import { StatusLine } from '../../../lib/page/statusLine';
+import { MenuButton } from '../../../lib/page/menu';
+import type { ContextMenuItem } from '../../../lib/page/contextMenu';
+import { estimatedRowHeight, VirtualRows } from '../../../lib/page/virtualRows';
+import { sentencesOf, strings } from '../../../lib/shared/strings';
+import { Words } from '../../../lib/page/name';
 import { fileColorOf, type FileColors } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 import { pathParts } from '../shared/paths';

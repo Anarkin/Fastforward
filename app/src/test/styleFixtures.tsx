@@ -11,7 +11,7 @@ import type { ColumnName } from '../tools/git/page/activeColumn';
 import { changesTreeElement } from '../tools/git/page/changesTree';
 import { Column } from '../tools/git/page/column';
 import { CommitRow, WorkingTreeRow } from '../tools/git/page/commitList';
-import { ContextMenu } from '../ui/contextMenu';
+import { ContextMenu } from '../lib/page/contextMenu';
 import {
   gitStore,
   inStores,
@@ -21,9 +21,9 @@ import {
   tabsStore,
 } from './componentFixtures';
 import { DiffOptions } from '../tools/git/page/diffColumn';
-import { FindField, SearchButton } from '../ui/search';
+import { FindField, SearchButton } from '../lib/page/search';
 import { gitKeymap } from '../tools/git/page/keymap';
-import type { FindRange } from '../shared/textMatches';
+import type { FindRange } from '../lib/shared/textMatches';
 import { LocationsPopup } from '../tools/git/page/locations';
 import { createGitStore, GitStore } from '../tools/git/page/store';
 import {
@@ -31,10 +31,10 @@ import {
   MessageCorner,
   MessagePanel,
 } from '../tools/git/page/messagePeek';
-import { Minimap } from '../ui/minimap';
+import { Minimap } from '../lib/page/minimap';
 import { HistoryMenu, NavButtons } from '../tools/git/page/navBar';
 import { Notices } from '../shell/page/notices';
-import { MenuButton } from '../ui/menu';
+import { MenuButton } from '../lib/page/menu';
 import { AppMenu } from '../shell/page/appMenu';
 import { TabBar } from '../shell/page/tabBar';
 import { FileRow } from '../tools/git/page/tree';

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../lib/shared/strings';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
 import { packInto } from './packing';
 import { fileVersion } from '../shared/files';

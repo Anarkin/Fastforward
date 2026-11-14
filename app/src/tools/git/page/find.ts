@@ -3,7 +3,7 @@ import {
   maxMatches,
   matchesIn,
   type FindRange,
-} from '../../../shared/textMatches';
+} from '../../../lib/shared/textMatches';
 import type { WholeFile } from './diffRows';
 
 export type { FindRange };

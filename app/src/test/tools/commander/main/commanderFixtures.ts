@@ -25,9 +25,9 @@ import {
   type OpenedArchive,
   type PackPlan,
 } from '../../../../tools/commander/main/archives';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { pathParts } from '../../../../tools/commander/shared/paths';
-import type { PdfPlace } from '../../../../shared/pdf';
+import type { PdfPlace } from '../../../../lib/shared/pdf';
 import { FakeStore } from '../../../fakeStore';
 import type { TransferCommand } from '../../../../tools/commander/main/transferProtocol';
 import type { TransferListener } from '../../../../tools/commander/main/transfers';

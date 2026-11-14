@@ -5,7 +5,7 @@ import {
   strings,
   type Sentence,
   type Value,
-} from '../../../shared/strings';
+} from '../../../lib/shared/strings';
 import {
   isClashAnswer,
   type ArchiveJob,

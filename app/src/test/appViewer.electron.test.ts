@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 import { waitFor } from './fixtures';
 import { pdfOf } from './pdfs';
 import {

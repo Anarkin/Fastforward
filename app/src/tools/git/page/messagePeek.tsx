@@ -18,11 +18,11 @@ import {
 } from '../../../shell/shared/keymap';
 import { gitKeymap } from './keymap';
 import type { CommitInfo } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
-import { listenForDismiss } from '../../../ui/contextMenu';
-import { CloseIcon, PinIcon } from '../../../ui/icons';
-import { useBinding } from '../../../ui/shortcuts';
-import { KeyCombo } from '../../../ui/keyCombo';
+import { strings } from '../../../lib/shared/strings';
+import { listenForDismiss } from '../../../lib/page/contextMenu';
+import { CloseIcon, PinIcon } from '../../../lib/page/icons';
+import { useBinding } from '../../../lib/page/shortcuts';
+import { KeyCombo } from '../../../lib/page/keyCombo';
 
 export type Holding = 'none' | 'held' | 'spoiled';
 

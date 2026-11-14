@@ -11,7 +11,7 @@ import {
   type ArchiveReader,
   type Packing,
 } from '../../../../tools/commander/main/archives';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { waitFor } from '../../../fixtures';
 import { removeFolder, tempFolder } from '../../../repositories';
 

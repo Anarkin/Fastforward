@@ -19,7 +19,7 @@ import {
   type TerminalToHost,
   type TerminalToWebview,
 } from '../../../../tools/terminal/shared/protocol';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { fakePtys, until } from '../../../fakePty';
 import { fakeTimer } from '../../../fakeTimer';
 

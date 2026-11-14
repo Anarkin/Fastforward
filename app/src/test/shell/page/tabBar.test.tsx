@@ -4,7 +4,7 @@ import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import type { TabInfo } from '../../../shell/shared/protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import {
   adjacentTab,
   Cycle,
@@ -21,7 +21,7 @@ import {
   TabBar,
   visitedSlot,
 } from '../../../shell/page/tabBar';
-import { AddIcon } from '../../../ui/icons';
+import { AddIcon } from '../../../lib/page/icons';
 import { rested } from '../../componentFixtures';
 import { noModifiers, renderedBy } from '../../fixtures';
 import { tabsStore } from '../../componentFixtures';

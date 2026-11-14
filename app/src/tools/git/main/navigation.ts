@@ -16,7 +16,7 @@ import {
   type Direction,
 } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/shell';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import type { GitStorage } from './storage';
 import {
   expandMerges,

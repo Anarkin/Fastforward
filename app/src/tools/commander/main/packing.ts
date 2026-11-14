@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ArchiveReader, PackOptions, PackPlan, Packing } from './archives';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { encrypts } from '../shared/packing';
 import { reasonOf } from './reasons';
 import type { TransferEvent } from './transferProtocol';

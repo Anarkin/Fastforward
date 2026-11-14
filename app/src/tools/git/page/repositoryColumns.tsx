@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { useShell } from '../../../shell/page/store';
-import { useBinding } from '../../../ui/shortcuts';
+import { useBinding } from '../../../lib/page/shortcuts';
 import { gitKeymap } from './keymap';
 import { Diff, DiffLanguage, DiffOptions, diffSelection } from './diffColumn';
 import { Commits } from './commitList';

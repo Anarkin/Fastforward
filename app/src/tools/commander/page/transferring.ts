@@ -3,7 +3,7 @@ import {
   type Line,
   type Sentence,
   type Value,
-} from '../../../shared/strings';
+} from '../../../lib/shared/strings';
 import type { TransferProgress, TransferView } from '../shared/transfers';
 
 export function whatOf(items: number, name: string | undefined): Value {

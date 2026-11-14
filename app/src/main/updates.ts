@@ -4,7 +4,7 @@ import { realTimer, type Timer } from '../tools/git/main/autoFetch';
 import type { Log } from '../shell/main/log';
 import type { Notice } from '../shell/main/shell';
 import type { ToWebview, UpdateStatus } from '../shell/shared/protocol';
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 
 export type UpdateMode = 'install' | 'notify' | 'off';
 

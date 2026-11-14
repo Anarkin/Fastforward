@@ -5,19 +5,19 @@ import {
   onMenuKeyDown,
   useDismiss,
   useMenuFocus,
-} from '../../../ui/contextMenu';
+} from '../../../lib/page/contextMenu';
 import {
   BackIcon,
   ForwardIcon,
   HomeIcon,
   PinIcon,
   RefreshIcon,
-} from '../../../ui/icons';
+} from '../../../lib/page/icons';
 import { fetchStatus } from './fetchStatus';
 import { LocationsPopup } from './locations';
 import { useGit, useGitActions } from './store';
-import { strings } from '../../../shared/strings';
-import { useBinding } from '../../../ui/shortcuts';
+import { strings } from '../../../lib/shared/strings';
+import { useBinding } from '../../../lib/page/shortcuts';
 import { gitKeymap } from './keymap';
 
 const holdDelay = 400;

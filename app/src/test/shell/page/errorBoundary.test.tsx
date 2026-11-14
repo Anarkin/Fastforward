@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import type { ToWebview } from '../../../shell/shared/protocol';
 import { Crash, ErrorBoundary } from '../../../shell/page/errorBoundary';
 import { renderedBy } from '../../fixtures';

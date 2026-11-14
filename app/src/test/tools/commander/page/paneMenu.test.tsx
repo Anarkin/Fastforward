@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test, vi } from 'vitest';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { createShellStore } from '../../../../shell/page/store';
 import { Pane } from '../../../../tools/commander/page/pane';
 import { rowsOf } from '../../../../tools/commander/page/listing';
@@ -17,12 +17,14 @@ import type { Layout } from '../../../../tools/commander/shared/settings';
 import { withStores } from '../../../componentFixtures';
 import { noop } from '../../../fixtures';
 
-vi.mock('../../../../ui/virtualRows', async (importOriginal) => {
+vi.mock('../../../../lib/page/virtualRows', async (importOriginal) => {
   const { createElement, Fragment } = await import('react');
   const { columnFocusAttribute } =
-    await import('../../../../ui/columnFocus.js');
+    await import('../../../../lib/page/columnFocus.js');
   return {
-    ...(await importOriginal<typeof import('../../../../ui/virtualRows')>()),
+    ...(await importOriginal<
+      typeof import('../../../../lib/page/virtualRows')
+    >()),
     VirtualRows: ({
       rows,
       renderRow,

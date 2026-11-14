@@ -289,7 +289,7 @@ const unicodeText =
   'English: Hello, world!\nMagyar: Árvíztűrő tükörfúrógép\nΕλληνικά: Γειά σου κόσμε\nРусский: Привет, мир\n日本語: こんにちは世界\n中文: 你好，世界\n한국어: 안녕하세요 세계\nעברית: שלום עולם\nالعربية: مرحبا بالعالم\nEmoji: 👋🌍🎉 👩‍💻 🏳️‍🌈\nCombining: é ä ñ\nZero width: a\u200Bb\u200Cc\u200Dd\n';
 
 const realSources = [
-  'src/shared/strings.ts',
+  'src/lib/shared/strings.ts',
   'src/tools/commander/page/listing.ts',
   'src/tools/commander/page/pane.tsx',
   'src/tools/commander/main/tool.ts',

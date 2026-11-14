@@ -5,10 +5,10 @@ import { isDeepStrictEqual } from 'node:util';
 import * as esbuild from 'esbuild';
 import type { JSHandle, Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
-import type * as lineBreaksModule from '../ui/lineBreaks';
-import type * as textWidthsModule from '../ui/textWidths';
-import type * as wordWrapModule from '../ui/wordWrap';
-import { wrapColumns, wrappedLines, wrapStarts } from '../ui/wordWrap';
+import type * as lineBreaksModule from '../lib/page/lineBreaks';
+import type * as textWidthsModule from '../lib/page/textWidths';
+import type * as wordWrapModule from '../lib/page/wordWrap';
+import { wrapColumns, wrappedLines, wrapStarts } from '../lib/page/wordWrap';
 import {
   barsOffGrid,
   baseSettings,
@@ -153,7 +153,7 @@ async function wrappingInPage(): Promise<JSHandle<PageWrapping>> {
         "export { cellWidthsOf, terminalCells } from './textWidths';",
         "export { wrapIndent, wrapStarts } from './wordWrap';",
       ].join('\n'),
-      resolveDir: path.join(__dirname, '..', 'ui'),
+      resolveDir: path.join(__dirname, '..', 'lib', 'page'),
       loader: 'ts',
     },
     bundle: true,

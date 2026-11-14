@@ -5,12 +5,12 @@ import {
   matchMarks,
   minimapMarks,
   type MinimapMark,
-} from '../../../ui/minimap';
+} from '../../../lib/page/minimap';
 import type { SyntaxRange } from './syntax';
 import type { WordRanges } from './wordDiff';
-import { drawnText } from '../../../ui/blanks';
-import { breakOffsets, leadLength } from '../../../ui/wordWrap';
-import { wholeClusters, type TextWidths } from '../../../ui/textWidths';
+import { drawnText } from '../../../lib/page/blanks';
+import { breakOffsets, leadLength } from '../../../lib/page/wordWrap';
+import { wholeClusters, type TextWidths } from '../../../lib/page/textWidths';
 import type { WholeFile, DiffRow } from './diffRows';
 import { beyondAscii, minimapRows } from './rowMeasures';
 

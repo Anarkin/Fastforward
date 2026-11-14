@@ -15,7 +15,7 @@ import {
   textColumn,
   visibleColumns,
 } from '../../../../tools/git/page/overflow';
-import type { TextWidths } from '../../../../ui/textWidths';
+import type { TextWidths } from '../../../../lib/page/textWidths';
 
 const monospace = (char: number): TextWidths => ({
   char,

@@ -11,9 +11,9 @@ import {
 } from '../../../tools/git/page/commitList';
 import { AboutPopup } from '../../../shell/page/aboutPopup';
 import { TabBar } from '../../../shell/page/tabBar';
-import { overlayScrollbarClass } from '../../../ui/overlayScrollbars';
+import { overlayScrollbarClass } from '../../../lib/page/overlayScrollbars';
 import { ShortcutsPopup } from '../../../shell/page/shortcutsPopup';
-import { SkeletonRows } from '../../../ui/skeleton';
+import { SkeletonRows } from '../../../lib/page/skeleton';
 import { PathTitle } from '../../../tools/commander/page/pathTitle';
 import { MarkBox } from '../../../tools/commander/page/pane';
 import {

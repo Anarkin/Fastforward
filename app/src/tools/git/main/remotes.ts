@@ -32,7 +32,7 @@ import { isFullHash } from '../shared/hashes';
 import { hasRef } from '../shared/refNames';
 import type { CheckoutTarget } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/shell';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../shell/main/storage';
 import type { GitStorage } from './storage';
 import {

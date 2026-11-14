@@ -39,38 +39,42 @@ import {
   useGitActions,
 } from './store';
 import { listError } from './columns';
-import { formatDate } from '../../../ui/dates';
+import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
-import { MenuButton } from '../../../ui/menu';
+import { MenuButton } from '../../../lib/page/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
-import { useSkeleton } from '../../../ui/skeleton';
-import { Highlight } from '../../../ui/highlight';
+import { useSkeleton } from '../../../lib/page/skeleton';
+import { Highlight } from '../../../lib/page/highlight';
 import {
   clicked,
   menuFromKeyboard,
   type Click,
 } from '../../../shell/shared/keymap';
 import { gitKeymap } from './keymap';
-import { keyPressed } from '../../../ui/shortcuts';
+import { keyPressed } from '../../../lib/page/shortcuts';
 import { withoutRemote } from '../shared/refNames';
-import { strings } from '../../../shared/strings';
-import { Words } from '../../../ui/name';
-import { columnFocusAttribute } from '../../../ui/columnFocus';
+import { strings } from '../../../lib/shared/strings';
+import { Words } from '../../../lib/page/name';
+import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import {
   fullyVisible,
   listMoveOf,
   moveInList,
   type ListMove,
   type VisibleRows,
-} from '../../../ui/listMoves';
-import { SoloIcon } from '../../../ui/icons';
-import { useCappedScroll } from '../../../ui/cappedVirtualizer';
-import { SearchButton } from '../../../ui/search';
-import { realHeight } from '../../../ui/cappedScroll';
-import { rowPlace } from '../../../ui/rowPlace';
-import { watchDevicePixels } from '../../../ui/devicePixels';
-import { activeDescendant, endCovered, rowId } from '../../../ui/virtualRows';
-import { measureInLines, useLineHeight } from '../../../ui/lineHeight';
+} from '../../../lib/page/listMoves';
+import { SoloIcon } from '../../../lib/page/icons';
+import { useCappedScroll } from '../../../lib/page/cappedVirtualizer';
+import { SearchButton } from '../../../lib/page/search';
+import { realHeight } from '../../../lib/page/cappedScroll';
+import { rowPlace } from '../../../lib/page/rowPlace';
+import { watchDevicePixels } from '../../../lib/page/devicePixels';
+import {
+  activeDescendant,
+  endCovered,
+  rowId,
+} from '../../../lib/page/virtualRows';
+import { measureInLines, useLineHeight } from '../../../lib/page/lineHeight';
 
 const defaultRowLineHeight = 18;
 export const commitRowHeight = 2 * defaultRowLineHeight;

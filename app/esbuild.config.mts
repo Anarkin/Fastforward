@@ -33,8 +33,8 @@ export function webviewOptions(production: boolean): BuildOptions {
     ...sharedOptions(production),
     entryPoints: {
       webview: 'src/shell/page/main.tsx',
-      syntaxWorker: 'src/ui/syntaxWorker.ts',
-      thumbnailWorker: 'src/ui/thumbnailWorker.ts',
+      syntaxWorker: 'src/lib/page/syntaxWorker.ts',
+      thumbnailWorker: 'src/lib/page/thumbnailWorker.ts',
       flatWorker: 'src/tools/commander/page/flatWorker.ts',
       pdfWorker: 'node_modules/pdfjs-dist/build/pdf.worker.mjs',
     },

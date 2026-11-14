@@ -11,7 +11,7 @@ import {
   type Packing,
 } from '../../../../tools/commander/main/archives';
 import { copiedBetween } from '../../../../tools/commander/main/betweenArchives';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 const openedAt = (file: string): OpenedArchive => ({

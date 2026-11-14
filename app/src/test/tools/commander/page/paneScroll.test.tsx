@@ -17,10 +17,12 @@ import { noop } from '../../../fixtures';
 
 const started = vi.hoisted((): (number | undefined)[] => []);
 
-vi.mock('../../../../ui/virtualRows', async (importOriginal) => {
+vi.mock('../../../../lib/page/virtualRows', async (importOriginal) => {
   const { useState } = await import('react');
   return {
-    ...(await importOriginal<typeof import('../../../../ui/virtualRows')>()),
+    ...(await importOriginal<
+      typeof import('../../../../lib/page/virtualRows')
+    >()),
     VirtualRows: ({ initialOffset }: { initialOffset?: number }) => {
       useState(() => started.push(initialOffset));
       return null;

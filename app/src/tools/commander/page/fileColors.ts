@@ -1,4 +1,4 @@
-import { languageOf } from '../../../ui/languages';
+import { languageOf } from '../../../lib/page/languages';
 import type { Entry } from '../shared/protocol';
 import {
   executablesGroup,

@@ -1,6 +1,6 @@
 import { memo, useCallback, useRef } from 'react';
-import { tabSize, wrapColumns } from '../../../ui/wordWrap';
-import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
+import { tabSize, wrapColumns } from '../../../lib/page/wordWrap';
+import { snapOffset, watchDevicePixels } from '../../../lib/page/devicePixels';
 import {
   codePadding,
   markerWidth,
@@ -8,7 +8,11 @@ import {
   textColumn,
   type Sideways,
 } from './overflow';
-import { fontOf, spacingOf, type TextWidths } from '../../../ui/textWidths';
+import {
+  fontOf,
+  spacingOf,
+  type TextWidths,
+} from '../../../lib/page/textWidths';
 import type { DiffRow } from './diffRows';
 import { uniformHeight, type WrapColumns } from './rowMeasures';
 import { sideRoom, type Edges } from './diffScrolling';

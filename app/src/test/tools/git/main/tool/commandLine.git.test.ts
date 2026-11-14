@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { strings } from '../../../../../shared/strings';
+import { strings } from '../../../../../lib/shared/strings';
 import { sameRoot, toolState } from '../../../../../shell/main/storage';
 import { visitsIn } from '../../../../../tools/terminal/main/folderRanks';
 import {

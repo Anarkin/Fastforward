@@ -4,6 +4,6 @@
     "types": [],
     "noEmit": true
   },
-  "include": ["src/**/page", "src/ui", "src/**/shared"],
+  "include": ["src/**/page", "src/**/shared"],
   "exclude": ["src/test"]
 }

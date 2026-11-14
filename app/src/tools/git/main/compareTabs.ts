@@ -10,7 +10,7 @@ import {
 import { watchFiles } from './compareWatch';
 import type { Log } from '../../../shell/main/log';
 import type { TextRequest } from '../shared/protocol';
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../lib/shared/strings';
 import type { Compared } from '../../../shell/main/storage';
 import type { GitStorage } from './storage';
 import { type Session, type Comparing, uniqueTexts } from './tabContext';

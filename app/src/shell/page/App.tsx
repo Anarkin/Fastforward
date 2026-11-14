@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { keymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
-import { strings, type Line } from '../../shared/strings';
+import { strings, type Line } from '../../lib/shared/strings';
 import { tools, type ToolId } from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
 import { ConfirmPopup } from './confirmPopup';
 import { AppMenu } from './appMenu';
-import { ContextMenu, type ContextMenuItem } from '../../ui/contextMenu';
-import { ToolIcon } from '../../ui/icons';
+import { ContextMenu, type ContextMenuItem } from '../../lib/page/contextMenu';
+import { ToolIcon } from '../../lib/page/icons';
 import { Notices } from './notices';
 import { OpenWithPopup } from './openWithPopup';
-import { useBinding } from '../../ui/shortcuts';
+import { useBinding } from '../../lib/page/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
 import {
   activeTabOf,

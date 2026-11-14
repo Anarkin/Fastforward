@@ -12,7 +12,7 @@ import { defaultSettings } from '../../fixtures';
 const source = join(__dirname, '../../../../src');
 const pageFolders = [
   'shell/page',
-  'ui',
+  'lib/page',
   'tools/git/page',
   'tools/commander/page',
   'tools/terminal/page',
@@ -80,7 +80,7 @@ suite('Theme', () => {
         'rgba(0, 0, 0, 0.16)',
         'rgba(0, 0, 0, 0.2)',
       ],
-      'ui/syntaxEngine.ts': ['#000000', '#ffffff'],
+      'lib/page/syntaxEngine.ts': ['#000000', '#ffffff'],
       'shell/page/titleBar.tsx': [
         '#FFFFFF',
         '#4285F4',

@@ -5,9 +5,9 @@ import {
   bookmarkMenu,
   bookmarkOf,
 } from '../../../../tools/commander/page/bookmarks';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { noop } from '../../../fixtures';
-import type { ContextMenuItem } from '../../../../ui/contextMenu';
+import type { ContextMenuItem } from '../../../../lib/page/contextMenu';
 
 const shown = (items: readonly ContextMenuItem[]) =>
   items.map((item) =>

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useBinding } from '../../../ui/shortcuts';
+import { useBinding } from '../../../lib/page/shortcuts';
 import { gitKeymap } from './keymap';
 import type {
   CompareView as Compared,
   FileChange,
   LeftOut,
 } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import type { DiffFile, LoadedText } from './diff';
 import { Diff, DiffLanguage, DiffOptions } from './diffColumn';
 import { compareLanguageKey, useGit, useGitActions } from './store';

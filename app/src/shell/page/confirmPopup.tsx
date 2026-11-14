@@ -1,10 +1,10 @@
 import { useLayoutEffect, useRef } from 'react';
-import { strings, type Line } from '../../shared/strings';
-import { useDismiss } from '../../ui/contextMenu';
-import { CloseIcon } from '../../ui/icons';
-import { moveBetweenButtons } from '../../ui/dialogButtons';
-import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
-import { NameLines } from '../../ui/name';
+import { strings, type Line } from '../../lib/shared/strings';
+import { useDismiss } from '../../lib/page/contextMenu';
+import { CloseIcon } from '../../lib/page/icons';
+import { moveBetweenButtons } from '../../lib/page/dialogButtons';
+import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
+import { NameLines } from '../../lib/page/name';
 
 export function ConfirmPopup({
   title,

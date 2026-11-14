@@ -25,7 +25,7 @@ import {
   type Command,
 } from '@codemirror/view';
 import { clicked } from '../../../shell/shared/keymap';
-import { keyPressed } from '../../../ui/shortcuts';
+import { keyPressed } from '../../../lib/page/shortcuts';
 import { editorKeymap } from './keymap';
 
 interface CommentTokens {

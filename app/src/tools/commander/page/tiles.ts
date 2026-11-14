@@ -1,4 +1,4 @@
-import type { ListMove, VisibleRows } from '../../../ui/listMoves';
+import type { ListMove, VisibleRows } from '../../../lib/page/listMoves';
 
 export type GridMove = ListMove | 'left' | 'right';
 

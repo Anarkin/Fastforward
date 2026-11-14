@@ -12,7 +12,7 @@ import {
 } from '../../shared/protocol';
 import { isFullHash } from '../../shared/hashes';
 import { blobSizes, keptFirstParent } from './files';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { StoppedReading, type GitOutput } from './keptGit';
 import { keptGits, runGit, runGitBytes, splitNul } from './run';
 

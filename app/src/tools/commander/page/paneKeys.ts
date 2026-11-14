@@ -8,8 +8,8 @@ import {
   listMoveOf,
   moveInList,
   type VisibleRows,
-} from '../../../ui/listMoves';
-import { keyPressed } from '../../../ui/shortcuts';
+} from '../../../lib/page/listMoves';
+import { keyPressed } from '../../../lib/page/shortcuts';
 import { commanderKeymap } from './keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import {

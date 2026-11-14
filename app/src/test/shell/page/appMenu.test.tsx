@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import type { UpdateStatus } from '../../../shell/shared/protocol';
 import { AppMenu, updateLabel } from '../../../shell/page/appMenu';
 import { createShellStore } from '../../../shell/page/store';
-import type { ContextMenuItem } from '../../../ui/contextMenu';
+import type { ContextMenuItem } from '../../../lib/page/contextMenu';
 import { allWithClass, cascaded, rendered } from '../../cascade';
 import { renderedBy } from '../../fixtures';
 import { withStores } from '../../componentFixtures';

@@ -16,7 +16,7 @@ import {
   type Bookmark,
   type BookmarkRef,
 } from '../../../../../tools/git/shared/protocol';
-import { plainOf, strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../lib/shared/strings';
 import {
   activeTabKey,
   JsonFileStore,

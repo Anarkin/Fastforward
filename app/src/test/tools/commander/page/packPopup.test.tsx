@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { flatRowOf, parentRow } from '../../../../tools/commander/page/listing';
 import { PackPopup } from '../../../../tools/commander/page/packPopup';
 import {

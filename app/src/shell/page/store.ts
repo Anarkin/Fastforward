@@ -1,11 +1,14 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
-import { strings } from '../../shared/strings';
-import type { ContextMenuItem, OpenMenu } from '../../ui/contextMenu';
-import { defaultDateFormat } from '../../ui/dates';
-import { defaultImageView } from '../../ui/imageView';
-import { defaultScrolling, type ScrollSettings } from '../../ui/rowScroll';
-import { defaultTextView } from '../../ui/textView';
+import { strings } from '../../lib/shared/strings';
+import type { ContextMenuItem, OpenMenu } from '../../lib/page/contextMenu';
+import { defaultDateFormat } from '../../lib/page/dates';
+import { defaultImageView } from '../../lib/page/imageView';
+import {
+  defaultScrolling,
+  type ScrollSettings,
+} from '../../lib/page/rowScroll';
+import { defaultTextView } from '../../lib/page/textView';
 import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,

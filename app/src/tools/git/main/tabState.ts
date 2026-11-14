@@ -29,7 +29,7 @@ import {
   type GitToWebview,
   type GitToWebviewOf,
 } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 export interface TabState {
   hash: string | undefined;

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/shell';
 import { sameRoot } from '../../../shell/main/storage';
 import {

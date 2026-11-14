@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, Fragment } from 'react';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import {
   blankRuns,
   rowBreaksAt,
@@ -7,9 +7,9 @@ import {
   wrapIndent,
   wrapStarts,
   type RowBreak,
-} from '../../../ui/wordWrap';
+} from '../../../lib/page/wordWrap';
 import { numberWidth } from './overflow';
-import type { TextWidths } from '../../../ui/textWidths';
+import type { TextWidths } from '../../../lib/page/textWidths';
 import {
   laidOutRowStarts,
   noBreaks,

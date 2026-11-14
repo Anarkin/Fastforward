@@ -27,7 +27,7 @@ import {
   colorerOf,
   workerPort,
   type SyntaxPort,
-} from '../../../../ui/syntax';
+} from '../../../../lib/page/syntax';
 import {
   colorCode,
   loadLanguages,
@@ -39,13 +39,13 @@ import {
   type FromSyntax,
   type SyntaxRange,
   type ToSyntax,
-} from '../../../../ui/syntaxEngine';
-import { onceMade } from '../../../../ui/onceMade';
+} from '../../../../lib/page/syntaxEngine';
+import { onceMade } from '../../../../lib/page/onceMade';
 import {
   packedPart,
   partLines,
   type CodePart,
-} from '../../../../ui/syntaxParts';
+} from '../../../../lib/page/syntaxParts';
 import { noop, policyOfPage, waitFor } from '../../../fixtures';
 
 type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;

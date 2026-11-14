@@ -1,13 +1,13 @@
 import type { TextEncoding, TextRow } from '../shared/protocol';
-import type { CodeSegment } from '../../../ui/syntax';
+import type { CodeSegment } from '../../../lib/page/syntax';
 import {
   rowBreaksAt,
   wrapIndent,
   wrapStarts,
   type RowBreak,
-} from '../../../ui/wordWrap';
+} from '../../../lib/page/wordWrap';
 import type { FindMark } from './findMarks';
-import { columnsOf, type TextWidths } from '../../../ui/textWidths';
+import { columnsOf, type TextWidths } from '../../../lib/page/textWidths';
 
 export interface ScreenRow {
   readonly start: number;

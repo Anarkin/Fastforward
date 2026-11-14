@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { plainOf, strings } from '../../../../shared/strings';
+import { plainOf, strings } from '../../../../lib/shared/strings';
 import {
   cloneName,
   cloneProblem,

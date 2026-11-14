@@ -9,7 +9,7 @@ import {
 import { lineKey, wholeLines } from './find';
 import { changePairs, pairingBudget, type PairingBudget } from './pairing';
 import type { Pair } from './wordDiff';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { previewsImage, previewsWholeImage } from './images';
 
 export interface WholeFile {

@@ -12,7 +12,7 @@ import type {
   TransferEvent,
 } from '../../../../tools/commander/main/transferProtocol';
 import type { TransferView } from '../../../../tools/commander/shared/transfers';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 
 const root = path.resolve('/');
 const source = path.join(root, 'source');

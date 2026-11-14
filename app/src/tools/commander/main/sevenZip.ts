@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import type { PackLevel } from '../shared/packing';
 import type {
   ArchiveItem,

@@ -14,13 +14,13 @@ import {
   type TabVisit,
   type WindowInfo,
 } from '../shared/protocol';
-import type { ContextMenuItem } from '../../ui/contextMenu';
+import type { ContextMenuItem } from '../../lib/page/contextMenu';
 import type { ToolId } from '../shared/tools';
-import { AddIcon, CloseIcon, ToolIcon } from '../../ui/icons';
+import { AddIcon, CloseIcon, ToolIcon } from '../../lib/page/icons';
 import { tabMagnetism, titleBarHeight } from '../shared/titleBar';
 import { clicked, keymap, released } from '../shared/keymap';
-import { strings } from '../../shared/strings';
-import { keyPressed, useBinding } from '../../ui/shortcuts';
+import { strings } from '../../lib/shared/strings';
+import { keyPressed, useBinding } from '../../lib/page/shortcuts';
 import { useShell, useShellActions, type ScreenPoint } from './store';
 
 export function adjacentTab(

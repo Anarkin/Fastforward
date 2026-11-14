@@ -8,7 +8,7 @@ import {
   renameProblem,
   renamedPart,
 } from '../../../../tools/commander/page/naming';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 
 const entry = (name: string) => ({
   name,

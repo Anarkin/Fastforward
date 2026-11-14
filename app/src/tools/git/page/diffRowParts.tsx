@@ -1,9 +1,9 @@
 import type { DiffLine, NumberedLine } from './diff';
 import type { FindRange } from './find';
-import { strings, type Sentence } from '../../../shared/strings';
-import { Words } from '../../../ui/name';
-import { PreviewIcon } from '../../../ui/icons';
-import { SkeletonRows } from '../../../ui/skeleton';
+import { strings, type Sentence } from '../../../lib/shared/strings';
+import { Words } from '../../../lib/page/name';
+import { PreviewIcon } from '../../../lib/page/icons';
+import { SkeletonRows } from '../../../lib/page/skeleton';
 import { Twisty } from './tree';
 import { renamedPath } from './fileStatus';
 import {
@@ -13,7 +13,7 @@ import {
   type Sideways,
   type TextArea,
 } from './overflow';
-import type { TextWidths } from '../../../ui/textWidths';
+import type { TextWidths } from '../../../lib/page/textWidths';
 import type { DiffRow, Change } from './diffRows';
 
 export function HunkDivider() {

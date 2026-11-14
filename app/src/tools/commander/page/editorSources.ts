@@ -1,5 +1,5 @@
-import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { plainOf, strings, type Sentence } from '../../../shared/strings';
+import type { ContextMenuItem } from '../../../lib/page/contextMenu';
+import { plainOf, strings, type Sentence } from '../../../lib/shared/strings';
 import type {
   EncodingSource,
   EndingSource,

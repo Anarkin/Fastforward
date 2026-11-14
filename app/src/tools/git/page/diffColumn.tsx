@@ -12,17 +12,20 @@ import type {
   LeftOut,
   TextRequest,
 } from '../shared/protocol';
-import { columnFocusOf } from '../../../ui/columnFocus';
+import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { Column } from './column';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { languageKeyOf, pickedFor, useGit, useGitActions } from './store';
-import { LanguageButton, languageChoiceOf } from '../../../ui/languageChoice';
-import { languageOf } from '../../../ui/languages';
-import { useBinding } from '../../../ui/shortcuts';
+import {
+  LanguageButton,
+  languageChoiceOf,
+} from '../../../lib/page/languageChoice';
+import { languageOf } from '../../../lib/page/languages';
+import { useBinding } from '../../../lib/page/shortcuts';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';
-import { filterWords, matchesFilter } from '../../../ui/fileFilter';
+import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
 import { findMatches, unsearchedFiles } from './find';
-import { matchCount, stepMatch } from '../../../shared/textMatches';
+import { matchCount, stepMatch } from '../../../lib/shared/textMatches';
 import {
   viewedSource,
   wholeViewedSource,
@@ -37,16 +40,16 @@ import {
   InlineIcon,
   SideBySideIcon,
   WordWrapIcon,
-} from '../../../ui/icons';
+} from '../../../lib/page/icons';
 import { gitKeymap } from './keymap';
-import { strings, type Sentence } from '../../../shared/strings';
-import { Words } from '../../../ui/name';
+import { strings, type Sentence } from '../../../lib/shared/strings';
+import { Words } from '../../../lib/page/name';
 import {
   FindActions,
   FindField,
   SearchButton,
   SearchRow,
-} from '../../../ui/search';
+} from '../../../lib/page/search';
 import type { WholeFile } from './diffRows';
 import { DiffView } from './diffView';
 

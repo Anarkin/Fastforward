@@ -1,7 +1,7 @@
-import { imageType, vectorType } from '../../../shared/images';
-import { strings } from '../../../shared/strings';
-import type { ContextMenuItem } from '../../../ui/contextMenu';
-import { ImageIcon, SevenZipIcon, ToolIcon } from '../../../ui/icons';
+import { imageType, vectorType } from '../../../lib/shared/images';
+import { strings } from '../../../lib/shared/strings';
+import type { ContextMenuItem } from '../../../lib/page/contextMenu';
+import { ImageIcon, SevenZipIcon, ToolIcon } from '../../../lib/page/icons';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
 import { pointedKeys, type Row } from './listing';
 import type { Copied } from './naming';

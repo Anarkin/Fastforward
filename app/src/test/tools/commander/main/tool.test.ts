@@ -7,7 +7,7 @@ import { childToward, rootFolder } from '../../../../tools/commander/main/tool';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
 import type { Sorts } from '../../../../tools/commander/shared/settings';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
 import {

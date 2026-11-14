@@ -12,7 +12,7 @@ import {
   sevenZipProgram,
   sevenZipReader,
 } from '../../../../tools/commander/main/sevenZip';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { storedZip } from '../../../zips';
 

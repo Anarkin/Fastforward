@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { strings } from '../../../../../shared/strings';
+import { strings } from '../../../../../lib/shared/strings';
 import { tabInfos, tabName } from '../../../../../tools/git/main/tabNames';
 
 function foldersOf(roots: string[], paths = path.posix) {

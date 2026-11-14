@@ -4,7 +4,7 @@ import {
   maxMatches,
   matchesIn,
   type FindRange,
-} from '../../../shared/textMatches';
+} from '../../../lib/shared/textMatches';
 
 const defaultChunk = 1024 * 1024;
 const widestCharacter = 4;

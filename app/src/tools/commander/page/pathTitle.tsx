@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { pathParts } from '../shared/paths';
 
 export function nameOf(path: string): string {

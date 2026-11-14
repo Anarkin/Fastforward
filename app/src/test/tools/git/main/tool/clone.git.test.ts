@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { plainOf, strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../lib/shared/strings';
 import { sameRoot } from '../../../../../shell/main/storage';
 import { cloneFolderKey } from '../../../../../tools/git/main/storage';
 import type { CloneView } from '../../../../../tools/git/shared/clone';

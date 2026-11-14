@@ -1,4 +1,4 @@
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../lib/shared/strings';
 
 export const sortColumns = ['name', 'extension', 'size', 'date'] as const;
 

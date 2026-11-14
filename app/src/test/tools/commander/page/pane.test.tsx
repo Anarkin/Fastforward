@@ -28,7 +28,7 @@ import {
   CommanderStore,
   createCommanderStore,
 } from '../../../../tools/commander/page/store';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { noop } from '../../../fixtures';
 import { shareOf, sideToFocus } from '../../../../tools/commander/page/tool';
 import { JSDOM } from 'jsdom';

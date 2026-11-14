@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import * as path from 'node:path';
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 import { installedOnWindows } from './updates';
 
 export interface RegistryValue {

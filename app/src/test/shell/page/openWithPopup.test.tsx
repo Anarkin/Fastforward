@@ -4,7 +4,7 @@ import { act } from 'react';
 import { suite, test } from 'vitest';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import { OpenWithPopup } from '../../../shell/page/openWithPopup';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { createShellStore, ShellStore } from '../../../shell/page/store';
 import { renderIn } from '../../componentFixtures';
 

@@ -18,20 +18,20 @@ import type {
 } from '../shared/protocol';
 import { findRef } from '../shared/refNames';
 import { searchedBookmarks } from './bookmarks';
-import { BackIcon } from '../../../ui/icons';
-import { columnFocusOf } from '../../../ui/columnFocus';
+import { BackIcon } from '../../../lib/page/icons';
+import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { CommitBubble, HeadBubble, RefBubble, useCheckedOut } from './bubbles';
-import { useDismiss } from '../../../ui/contextMenu';
+import { useDismiss } from '../../../lib/page/contextMenu';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { CommitRow, noRefs } from './commitList';
 import { detachedHead, searchQueryOf, useGit, useGitActions } from './store';
-import { Highlight } from '../../../ui/highlight';
+import { Highlight } from '../../../lib/page/highlight';
 import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../../../shell/shared/keymap';
-import { strings } from '../../../shared/strings';
-import { Words } from '../../../ui/name';
-import { keyPressed } from '../../../ui/shortcuts';
-import { folded } from '../../../shared/textMatches';
+import { strings } from '../../../lib/shared/strings';
+import { Words } from '../../../lib/page/name';
+import { keyPressed } from '../../../lib/page/shortcuts';
+import { folded } from '../../../lib/shared/textMatches';
 import type { RefGroup, TreeNode } from './refIndex';
 
 const maxResults = 200;

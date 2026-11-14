@@ -12,14 +12,16 @@ import {
   CommanderStore,
   createCommanderStore,
 } from '../../../../tools/commander/page/store';
-import { columnFocusAttribute } from '../../../../ui/columnFocus';
+import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { renderIn } from '../../../componentFixtures';
 import { noop } from '../../../fixtures';
 
-vi.mock('../../../../ui/virtualRows', async (importOriginal) => {
+vi.mock('../../../../lib/page/virtualRows', async (importOriginal) => {
   const { createElement } = await import('react');
   return {
-    ...(await importOriginal<typeof import('../../../../ui/virtualRows')>()),
+    ...(await importOriginal<
+      typeof import('../../../../lib/page/virtualRows')
+    >()),
     VirtualRows: () =>
       createElement('div', { tabIndex: 0, 'data-column-focus': '' }),
   };

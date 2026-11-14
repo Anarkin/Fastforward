@@ -16,7 +16,7 @@ import {
   templateOf,
   widthsToLoad,
 } from '../../../../tools/git/page/columns';
-import { followDrag } from '../../../../ui/followDrag';
+import { followDrag } from '../../../../lib/page/followDrag';
 import { minimumWindowSize } from '../../../../main/files';
 import { workingTreeHash } from '../../../../tools/git/shared/protocol';
 import { stylesheetPx } from '../../../fixtures';

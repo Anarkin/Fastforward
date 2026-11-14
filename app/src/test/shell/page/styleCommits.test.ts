@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { createElement } from 'react';
 import { suite, test } from 'vitest';
-import { columnFocusAttribute } from '../../../ui/columnFocus';
+import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { RefBubble } from '../../../tools/git/page/bubbles';
 import { GitStore } from '../../../tools/git/page/store';
 import { GraphCell } from '../../../tools/git/page/graph';

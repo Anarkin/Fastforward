@@ -9,7 +9,7 @@ import {
   forbiddenEnd,
   reservedNames,
 } from '../../shared/windowsNames';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { gitDirOf } from './gitDir';
 import { headCommit } from './history';
 import { keptGits, runGit, runGitBytes, splitNul } from './run';

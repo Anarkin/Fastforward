@@ -5,12 +5,12 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from 'react';
-import { errorText } from '../../ui/errors';
+import { errorText } from '../../lib/page/errors';
 import type { ToWebview } from '../shared/protocol';
 import { confirmation } from './App';
 import { ConfirmPopup } from './confirmPopup';
 import { TitleBar } from './titleBar';
-import { strings } from '../../shared/strings';
+import { strings } from '../../lib/shared/strings';
 
 type Listen = (handler: (message: ToWebview) => void) => () => void;
 

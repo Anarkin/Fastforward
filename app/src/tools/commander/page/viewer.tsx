@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CommanderToWebviewOf, TextEncoding } from '../shared/protocol';
 import { viewerKeymap, type ViewMode } from './keymap';
-import { columnFocusOf } from '../../../ui/columnFocus';
+import { columnFocusOf } from '../../../lib/page/columnFocus';
 import {
   FindActions,
   FindField,
   SearchButton,
   SearchRow,
-} from '../../../ui/search';
+} from '../../../lib/page/search';
 import { useViewerFind } from './viewerFind';
 import { usePdfPreview } from './pdfPreview';
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../lib/shared/strings';
 import {
   HexIcon,
   PreviewIcon,
@@ -18,9 +18,9 @@ import {
   ShowWhitespaceIcon,
   TextIcon,
   WordWrapIcon,
-} from '../../../ui/icons';
+} from '../../../lib/page/icons';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { MenuButton } from '../../../ui/menu';
+import { MenuButton } from '../../../lib/page/menu';
 import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
 import { PreviewBody } from './previewBody';
@@ -30,9 +30,9 @@ import {
   LanguageButton,
   shownLanguage,
   languageChoiceOf,
-} from '../../../ui/languageChoice';
-import { languageOf } from '../../../ui/languages';
-import { startColorer } from '../../../ui/syntax';
+} from '../../../lib/page/languageChoice';
+import { languageOf } from '../../../lib/page/languages';
+import { startColorer } from '../../../lib/page/syntax';
 import { colorOfFileNamed } from './fileColors';
 import { nameOf, PathTitle } from './pathTitle';
 import { useCommander, useCommanderActions } from './store';

@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import type { ShellLaunch } from './hostProtocol';
 import { integrated, type IntegrationSystem } from './shellIntegration';
 import type { TerminalSettings } from '../shared/settings';
-import { brand } from '../../../shared/strings';
+import { brand } from '../../../lib/shared/strings';
 
 export interface ShellSystem extends IntegrationSystem {
   readonly env: NodeJS.ProcessEnv;

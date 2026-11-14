@@ -9,7 +9,7 @@ import {
   markerWidth,
   numberWidth,
 } from '../../../tools/git/page/overflow';
-import { tabSize } from '../../../ui/wordWrap';
+import { tabSize } from '../../../lib/page/wordWrap';
 import { TerminalTool } from '../../../tools/terminal/page/tool';
 import {
   allWithClass,

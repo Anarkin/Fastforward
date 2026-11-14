@@ -5,7 +5,7 @@ import {
   fileColorOf,
   fileColorsOf,
 } from '../../../../tools/commander/page/fileColors';
-import { languageOf } from '../../../../ui/languages';
+import { languageOf } from '../../../../lib/page/languages';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
 import { defaultSettings } from '../../../fixtures';
 

@@ -17,8 +17,8 @@ import { noop } from '../../../fixtures';
 
 const filled = vi.hoisted((): unknown[] => []);
 
-vi.mock('../../../../ui/thumbnails', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../../ui/thumbnails')>()),
+vi.mock('../../../../lib/page/thumbnails', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../lib/page/thumbnails')>()),
   useThumbnailFill: (items: unknown) => {
     filled.push(items);
   },

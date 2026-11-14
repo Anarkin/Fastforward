@@ -1,9 +1,9 @@
 import { useRef } from 'react';
 import { keymap } from '../shared/keymap';
 import type { UpdateStatus } from '../shared/protocol';
-import { strings } from '../../shared/strings';
-import { MenuButton } from '../../ui/menu';
-import { useBinding } from '../../ui/shortcuts';
+import { strings } from '../../lib/shared/strings';
+import { MenuButton } from '../../lib/page/menu';
+import { useBinding } from '../../lib/page/shortcuts';
 import { AppIcon } from './titleBar';
 import { useShell, useShellActions } from './store';
 

@@ -6,10 +6,10 @@ import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
 import { ErrorBoundary } from './errorBoundary';
 import { windowButtonColor } from './titleBar';
-import { errorText } from '../../ui/errors';
-import { installOverlayScrollbars } from '../../ui/overlayScrollbars';
-import { watchDevicePixels } from '../../ui/devicePixels';
-import { installTextCursors } from '../../ui/textCursor';
+import { errorText } from '../../lib/page/errors';
+import { installOverlayScrollbars } from '../../lib/page/overlayScrollbars';
+import { watchDevicePixels } from '../../lib/page/devicePixels';
+import { installTextCursors } from '../../lib/page/textCursor';
 
 declare global {
   interface Window {

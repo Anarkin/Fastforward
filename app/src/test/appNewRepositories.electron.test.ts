@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 import { baseSettings, closeOrKill, launchApp } from './appFixtures';
 import { shownText } from './fixtures';
 import {

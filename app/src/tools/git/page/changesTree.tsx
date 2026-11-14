@@ -1,14 +1,14 @@
 import type { ChangeArea, FileChange } from '../shared/protocol';
 import { buildFileTree, foldersOf, type FolderNode } from './fileTree';
-import { byName } from '../../../ui/byName';
+import { byName } from '../../../lib/page/byName';
 import {
   moveInList,
   type ListMove,
   type VisibleRows,
-} from '../../../ui/listMoves';
-import { HighlightWords } from '../../../ui/highlight';
+} from '../../../lib/page/listMoves';
+import { HighlightWords } from '../../../lib/page/highlight';
 import { FileRow, fileRowKey, FolderRow } from './tree';
-import type { ListedRows, TreeItem } from '../../../ui/virtualRows';
+import type { ListedRows, TreeItem } from '../../../lib/page/virtualRows';
 
 export type ChangesTreeRow =
   | {

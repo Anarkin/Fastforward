@@ -7,7 +7,7 @@ import type {
   ClashSide,
   TransferProgress,
 } from '../shared/transfers';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { fileIdOf } from './fileIds';
 import { reasonOf } from './reasons';
 

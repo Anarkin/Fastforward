@@ -3,7 +3,7 @@ import { maxColoredBytes } from '../tools/commander/shared/protocol';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 import { waitFor } from './fixtures';
 import { waitForFocus } from './appFixtures';
 import {

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PdfPlace } from '../../../shared/pdf';
-import { strings } from '../../../shared/strings';
-import { matchCount } from '../../../shared/textMatches';
-import type { PdfFound, ShownPdf } from '../../../ui/pdfView';
+import type { PdfPlace } from '../../../lib/shared/pdf';
+import { strings } from '../../../lib/shared/strings';
+import { matchCount } from '../../../lib/shared/textMatches';
+import type { PdfFound, ShownPdf } from '../../../lib/page/pdfView';
 import { useCommanderActions } from './store';
 
 export function pdfFindCount(

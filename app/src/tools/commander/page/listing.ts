@@ -1,4 +1,4 @@
-import { matchesFilter } from '../../../ui/fileFilter';
+import { matchesFilter } from '../../../lib/page/fileFilter';
 import { parentFolder, type Entry } from '../shared/protocol';
 import type { Sort, SortColumn } from '../shared/settings';
 import { groupOfEntry, noFileColors, type FileColors } from './fileColors';

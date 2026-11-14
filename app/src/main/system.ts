@@ -1,4 +1,4 @@
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 
 const windows11Build = 22_000;
 

@@ -12,7 +12,7 @@ import {
 import { replaceBuiltin } from '../../../../builtins';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import { plainOf, strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../lib/shared/strings';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import type { Connection } from '../../../../harness';

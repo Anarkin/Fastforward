@@ -1,5 +1,5 @@
 import { bind } from '../../../shell/shared/keymap';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 export const terminalGroups = ['Clipboard', 'Kept'] as const;
 

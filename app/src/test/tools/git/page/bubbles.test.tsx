@@ -12,7 +12,7 @@ import {
 import type { MenuEvent } from '../../../../tools/git/page/menus';
 import { GitStore } from '../../../../tools/git/page/store';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import type {
   BookmarkRef,
   GitToHost,

@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { strings, type Sentence } from '../../../shared/strings';
-import { useDismiss } from '../../../ui/contextMenu';
-import { CloseIcon } from '../../../ui/icons';
-import { moveBetweenButtons } from '../../../ui/dialogButtons';
-import { useDialogDrag, useModalDialog } from '../../../ui/modalDialog';
-import { NameLines, Words } from '../../../ui/name';
+import { strings, type Sentence } from '../../../lib/shared/strings';
+import { useDismiss } from '../../../lib/page/contextMenu';
+import { CloseIcon } from '../../../lib/page/icons';
+import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
+import { useDialogDrag, useModalDialog } from '../../../lib/page/modalDialog';
+import { NameLines, Words } from '../../../lib/page/name';
 import { nameProblem } from '../shared/names';
 import {
   compresses,

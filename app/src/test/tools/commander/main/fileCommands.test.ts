@@ -5,7 +5,7 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Tab } from '../../../../shell/main/shell';
 import type { Side } from '../../../../tools/commander/shared/protocol';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
-import { plainOf, strings } from '../../../../shared/strings';
+import { plainOf, strings } from '../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
 import {

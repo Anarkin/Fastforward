@@ -1,8 +1,8 @@
 import type { ByteRange, TextEncoding, TextRow } from '../shared/protocol';
-import type { CodeSegment } from '../../../ui/syntax';
-import { matchesIn } from '../../../shared/textMatches';
-import { drawnText } from '../../../ui/blanks';
-import { wholeClusters, type TextWidths } from '../../../ui/textWidths';
+import type { CodeSegment } from '../../../lib/page/syntax';
+import { matchesIn } from '../../../lib/shared/textMatches';
+import { drawnText } from '../../../lib/page/blanks';
+import { wholeClusters, type TextWidths } from '../../../lib/page/textWidths';
 import { bytesOf } from './screenRows';
 
 const groupBytes = 8;

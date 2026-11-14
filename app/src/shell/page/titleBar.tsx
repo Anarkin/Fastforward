@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { strings } from '../../shared/strings';
+import { strings } from '../../lib/shared/strings';
 import { titleBarHeight } from '../shared/titleBar';
 
 export function windowTitle(root: string | undefined, app: string): string {

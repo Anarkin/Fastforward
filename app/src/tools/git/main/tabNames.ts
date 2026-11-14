@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import type { RepositoryInfo } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 export function tabInfos(
   roots: readonly string[],

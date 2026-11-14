@@ -1,4 +1,4 @@
-import { plainOf } from '../../../../../shared/strings';
+import { plainOf } from '../../../../../lib/shared/strings';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';

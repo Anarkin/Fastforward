@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { CloseIcon, ErrorIcon } from '../../ui/icons';
-import { Words } from '../../ui/name';
-import { plainOf, strings, type Sentence } from '../../shared/strings';
+import { CloseIcon, ErrorIcon } from '../../lib/page/icons';
+import { Words } from '../../lib/page/name';
+import { plainOf, strings, type Sentence } from '../../lib/shared/strings';
 import { useShell, useShellActions } from './store';
 
 export interface Notice {

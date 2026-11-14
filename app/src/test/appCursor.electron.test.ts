@@ -15,11 +15,11 @@ import {
   type Box,
   type CursorBox,
   type CursorShape,
-} from '../ui/cursor';
-import type * as cursorModule from '../ui/cursor';
-import type * as editorSelectionModule from '../ui/editorSelection';
-import type * as editorTextModule from '../ui/editorText';
-import type * as textWidthsModule from '../ui/textWidths';
+} from '../lib/page/cursor';
+import type * as cursorModule from '../lib/page/cursor';
+import type * as editorSelectionModule from '../lib/page/editorSelection';
+import type * as editorTextModule from '../lib/page/editorText';
+import type * as textWidthsModule from '../lib/page/textWidths';
 import { closeOrKill, launchApp, within } from './appFixtures';
 import { waitFor } from './fixtures';
 import { removeFolder, tempFolder } from './repositories';
@@ -81,7 +81,7 @@ async function partsInPage(): Promise<JSHandle<PageParts>> {
         "export { terminalCells } from './textWidths';",
         "export { pageCursorLook } from './cursor';",
       ].join('\n'),
-      resolveDir: path.join(__dirname, '..', 'ui'),
+      resolveDir: path.join(__dirname, '..', 'lib', 'page'),
       loader: 'ts',
     },
     bundle: true,

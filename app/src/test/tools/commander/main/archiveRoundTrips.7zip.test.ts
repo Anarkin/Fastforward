@@ -21,7 +21,7 @@ import { transferServer } from '../../../../tools/commander/main/transferServer'
 import { unpackingFirst } from '../../../../tools/commander/main/unpacking';
 import { copiedBetween } from '../../../../tools/commander/main/betweenArchives';
 import type { PackFormat } from '../../../../tools/commander/shared/packing';
-import { plainOf, strings } from '../../../../shared/strings';
+import { plainOf, strings } from '../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..');

@@ -6,7 +6,7 @@ import {
 } from 'electron';
 import type { Bridge } from '../shell/shared/bridge';
 import type { ToWebview } from '../shell/shared/protocol';
-import { brand } from '../shared/strings';
+import { brand } from '../lib/shared/strings';
 import { appNameSwitch } from '../shell/shared/titleBar';
 
 contextBridge.exposeInMainWorld('fastforward', {

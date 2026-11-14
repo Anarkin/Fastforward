@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { lstat, readdir, rm } from 'node:fs/promises';
 import { join, win32 } from 'node:path';
 import type { Readable } from 'node:stream';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { withoutCredentials } from './credentials';
 import { commonDirOf, gitDirOf } from './gitDir';
 import { stopTree } from './gitSpawner';

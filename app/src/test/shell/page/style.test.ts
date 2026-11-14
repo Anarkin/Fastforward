@@ -2,14 +2,14 @@ import * as assert from 'node:assert';
 import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../tools/git/page/activeColumn';
-import { columnFocusAttribute } from '../../../ui/columnFocus';
+import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { listedFilesRows } from '../../../tools/git/page/changesTree';
 import { Column } from '../../../tools/git/page/column';
 import { columnsClass } from '../../../tools/git/page/columns';
 import { TabBar } from '../../../shell/page/tabBar';
-import { MenuButton } from '../../../ui/menu';
+import { MenuButton } from '../../../lib/page/menu';
 import { Crash } from '../../../shell/page/errorBoundary';
-import { VirtualRows } from '../../../ui/virtualRows';
+import { VirtualRows } from '../../../lib/page/virtualRows';
 import { allWithClass, cascaded, rendered, withClass } from '../../cascade';
 import {
   defaultSettings,
@@ -43,7 +43,7 @@ import {
   worktree,
   worktreeBar,
 } from '../../styleFixtures';
-import { defaultScrolling } from '../../../ui/rowScroll';
+import { defaultScrolling } from '../../../lib/page/rowScroll';
 import { ShellStore } from '../../../shell/page/store';
 import {
   css,

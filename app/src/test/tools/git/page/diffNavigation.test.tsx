@@ -1,9 +1,9 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { sidewaysColumns } from '../../../../ui/rowScroll';
+import { sidewaysColumns } from '../../../../lib/page/rowScroll';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../tools/git/page/diff';
-import type { TextWidths } from '../../../../ui/textWidths';
+import type { TextWidths } from '../../../../lib/page/textWidths';
 import { kinds } from './diffViewFixtures';
 import { diffRows, type DiffRow } from '../../../../tools/git/page/diffRows';
 import {

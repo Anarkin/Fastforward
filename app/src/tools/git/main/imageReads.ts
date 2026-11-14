@@ -1,6 +1,6 @@
 import type { ImageRead } from './cli/files';
 import { maxImageSize, type ImageSource } from '../shared/images';
-import { Slots } from '../../../shared/slots';
+import { Slots } from './slots';
 
 export const smallImageSize = 8 * 1024 * 1024;
 export const smallImagesReadAtOnce = 8;

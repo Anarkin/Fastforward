@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { fileColorProblems } from '../../../../tools/commander/shared/settings';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 
 const colors = { light: '#000', dark: '#fff' };
 

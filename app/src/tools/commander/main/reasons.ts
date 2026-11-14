@@ -1,4 +1,4 @@
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 export function codeOf(error: unknown): unknown {
   return error instanceof Error && 'code' in error ? error.code : undefined;

@@ -1,4 +1,4 @@
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { firstVolumeOf, packFormats, type PackFormat } from '../shared/packing';
 import { folderKey } from '../shared/paths';
 import type { PaneView } from './view';

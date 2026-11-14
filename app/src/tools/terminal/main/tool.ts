@@ -29,7 +29,7 @@ import {
   scrollbackLines,
   type TerminalSettings,
 } from '../shared/settings';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 export interface HostConnection {
   send(command: HostCommand): void;

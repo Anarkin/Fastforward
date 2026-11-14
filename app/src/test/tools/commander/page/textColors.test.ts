@@ -7,8 +7,8 @@ import {
   withPart,
 } from '../../../../tools/commander/page/textColors';
 import type { TextEncoding } from '../../../../tools/commander/shared/protocol';
-import { packedPart } from '../../../../ui/syntaxParts';
-import type { LineRanges } from '../../../../ui/syntaxEngine';
+import { packedPart } from '../../../../lib/page/syntaxParts';
+import type { LineRanges } from '../../../../lib/page/syntaxEngine';
 
 const row = (start: number, end: number, text: string) => ({
   start,

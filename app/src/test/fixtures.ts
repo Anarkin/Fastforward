@@ -11,7 +11,7 @@ import {
   type Modifiers,
 } from '../shell/shared/keymap';
 import type { CommitInfo, FileChange } from '../tools/git/shared/protocol';
-import type { Sentence } from '../shared/strings';
+import type { Sentence } from '../lib/shared/strings';
 
 export const noModifiers: Modifiers = {
   ctrlKey: false,

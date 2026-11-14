@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ByteRange, TextEncoding } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
-import { matchCount, stepMatch } from '../../../shared/textMatches';
+import { strings } from '../../../lib/shared/strings';
+import { matchCount, stepMatch } from '../../../lib/shared/textMatches';
 import type { Viewing } from './viewer';
 import { useCommanderActions } from './store';
 

@@ -3,7 +3,7 @@ import type { Log } from './log';
 import { isImageView, isTextView } from '../shared/protocol';
 import type { CommandInstall, CommandState } from '../../main/terminalCommand';
 import type { DragStart, Point, Strip, Visit } from '../../main/tabDrag';
-import { InFlight } from '../../shared/inFlight';
+import { InFlight } from '../../lib/main/inFlight';
 import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,
@@ -14,7 +14,7 @@ import type {
   ToWebviewOf,
   UpdateStatus,
 } from '../shared/protocol';
-import { strings, type Sentence } from '../../shared/strings';
+import { strings, type Sentence } from '../../lib/shared/strings';
 import {
   confirmsClose,
   isTool,

@@ -1,5 +1,5 @@
-import { tabSize, tabStop } from '../../../ui/wordWrap';
-import type { TextWidths } from '../../../ui/textWidths';
+import { tabSize, tabStop } from '../../../lib/page/wordWrap';
+import type { TextWidths } from '../../../lib/page/textWidths';
 
 const tab = 9;
 

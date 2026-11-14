@@ -8,13 +8,13 @@ import {
   type ThemeColors,
   type ToolSettings,
 } from '../shared/tools';
-import { strings, type Sentence } from '../../shared/strings';
+import { strings, type Sentence } from '../../lib/shared/strings';
 import {
   editorCharsets,
   editorEndings,
   indentStyles,
   type EditorSettings,
-} from '../shared/editorSettings';
+} from './editorSettings';
 import {
   themes,
   type ImageView,

@@ -1,4 +1,4 @@
-import { keyPressed } from '../../../ui/shortcuts';
+import { keyPressed } from '../../../lib/page/shortcuts';
 import { viewerKeymap, type ViewMode } from './keymap';
 
 export type ViewerAct =

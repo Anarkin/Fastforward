@@ -1,6 +1,6 @@
-import type { Sentence } from '../../../shared/strings';
-import { Words } from '../../../ui/name';
-import { fontOf, spacingOf } from '../../../ui/textWidths';
+import type { Sentence } from '../../../lib/shared/strings';
+import { Words } from '../../../lib/page/name';
+import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import {
   memo,
   useCallback,
@@ -11,18 +11,18 @@ import {
   useState,
 } from 'react';
 import type { ByteRange } from '../shared/protocol';
-import { keyPressed } from '../../../ui/shortcuts';
+import { keyPressed } from '../../../lib/page/shortcuts';
 import { wheeled } from '../../../shell/shared/keymap';
 import { viewerKeymap } from './keymap';
-import { followDrag } from '../../../ui/followDrag';
-import { sidewaysColumns, wheelTurn } from '../../../ui/rowScroll';
+import { followDrag } from '../../../lib/page/followDrag';
+import { sidewaysColumns, wheelTurn } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
 import {
   grabbedAt,
   hideAfter,
   overlayScrollbarClass,
   shareAt,
-} from '../../../ui/overlayScrollbars';
+} from '../../../lib/page/overlayScrollbars';
 
 export interface Thumb {
   readonly start: number;

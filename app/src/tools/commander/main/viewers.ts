@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/shell';
 import {
   isTextEncoding,
@@ -32,7 +32,7 @@ import {
   isPdfFingerprint,
   pdfPlaceOf,
   type PdfPlace,
-} from '../../../shared/pdf';
+} from '../../../lib/shared/pdf';
 import { reasonOf } from './reasons';
 import { type Sides, post } from './sides';
 

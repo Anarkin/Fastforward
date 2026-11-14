@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type WorktreeInfo } from '../shared/protocol';
 import { gitKeymap } from './keymap';
-import { strings } from '../../../shared/strings';
-import { useBinding } from '../../../ui/shortcuts';
+import { strings } from '../../../lib/shared/strings';
+import { useBinding } from '../../../lib/page/shortcuts';
 import { useGit, useGitActions } from './store';
 import {
   adjacentTab,

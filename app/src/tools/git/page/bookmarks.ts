@@ -1,4 +1,4 @@
-import { folded } from '../../../shared/textMatches';
+import { folded } from '../../../lib/shared/textMatches';
 import { shortHash } from '../shared/hashes';
 import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
 import {

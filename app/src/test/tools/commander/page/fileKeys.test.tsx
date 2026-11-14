@@ -9,7 +9,7 @@ import type {
   CommanderToWebview,
 } from '../../../../tools/commander/shared/protocol';
 import type { TransferView } from '../../../../tools/commander/shared/transfers';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { noop } from '../../../fixtures';
 
 const listing = (side: 'left' | 'right'): CommanderToWebview => ({

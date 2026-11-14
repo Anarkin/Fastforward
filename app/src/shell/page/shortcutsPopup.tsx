@@ -2,21 +2,21 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { keyLabels, keymap, type Binding } from '../shared/keymap';
 import type { TabInfo } from '../shared/protocol';
 import type { ToolId } from '../shared/tools';
-import { KeyCombo } from '../../ui/keyCombo';
-import { HighlightWords } from '../../ui/highlight';
+import { KeyCombo } from '../../lib/page/keyCombo';
+import { HighlightWords } from '../../lib/page/highlight';
 import { activeTabOf, useShell, useShellActions } from './store';
 import {
   shortcutEntries,
   type ShortcutEntry,
   type ShortcutEntryId,
 } from './tools';
-import { strings } from '../../shared/strings';
-import { filterWords } from '../../ui/fileFilter';
-import { folded, matchesIn } from '../../shared/textMatches';
-import { useDismiss } from '../../ui/contextMenu';
-import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../ui/icons';
-import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
-import { keyPressed, shortcutsEntryOf } from '../../ui/shortcuts';
+import { strings } from '../../lib/shared/strings';
+import { filterWords } from '../../lib/page/fileFilter';
+import { folded, matchesIn } from '../../lib/shared/textMatches';
+import { useDismiss } from '../../lib/page/contextMenu';
+import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
+import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
+import { keyPressed, shortcutsEntryOf } from '../../lib/page/shortcuts';
 
 interface ShortcutMatch {
   readonly words: readonly string[];

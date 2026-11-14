@@ -1,6 +1,6 @@
 import type { DiffFile } from './diff';
 import { diffImageUrl, type ImageOrigin, type Side } from './images';
-import { ImagePane } from '../../../ui/images';
+import { ImagePane } from '../../../lib/page/images';
 
 interface Pane {
   readonly side: Side;

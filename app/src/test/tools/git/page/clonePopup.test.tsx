@@ -10,7 +10,7 @@ import {
   type CloneTarget,
 } from '../../../../tools/git/page/clonePopup';
 import type { CloneAsk, CloneView } from '../../../../tools/git/shared/clone';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 
 interface Shown {

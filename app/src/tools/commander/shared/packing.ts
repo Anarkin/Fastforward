@@ -1,4 +1,4 @@
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 export const packFormats = ['zip', '7z', 'tar', 'tar.gz', 'tar.xz'] as const;
 

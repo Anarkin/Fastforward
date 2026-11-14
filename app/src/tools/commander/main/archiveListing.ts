@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { plainOf, strings, type Sentence } from '../../../shared/strings';
+import { plainOf, strings, type Sentence } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/shell';
 import {
   isSide,

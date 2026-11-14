@@ -3,14 +3,14 @@ import type { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import type { WebglAddon } from '@xterm/addon-webgl';
 import type { Terminal } from '@xterm/xterm';
 import { terminalKey } from './keys';
-import { snapOffset, watchDevicePixels } from '../../../ui/devicePixels';
-import { dialogHoldsFocus } from '../../../ui/modalDialog';
+import { snapOffset, watchDevicePixels } from '../../../lib/page/devicePixels';
+import { dialogHoldsFocus } from '../../../lib/page/modalDialog';
 import {
   notchesOf,
   rowGlide,
   type ScrollSettings,
   type Wheel,
-} from '../../../ui/rowScroll';
+} from '../../../lib/page/rowScroll';
 import { pressedAlone, type Modifiers } from '../../../shell/shared/keymap';
 import {
   fontVariables,

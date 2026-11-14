@@ -4,7 +4,7 @@ import {
   isPdfFingerprint,
   pdfPlaceOf,
   type PdfPlace,
-} from '../../../shared/pdf';
+} from '../../../lib/shared/pdf';
 
 const keptPlaces = 1000;
 

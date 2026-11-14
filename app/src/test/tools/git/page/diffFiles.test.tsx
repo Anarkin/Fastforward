@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { plainOf, strings } from '../../../../shared/strings';
+import { plainOf, strings } from '../../../../lib/shared/strings';
 import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
 import { tagsWith } from '../../../fixtures';
 import { kinds } from './diffViewFixtures';

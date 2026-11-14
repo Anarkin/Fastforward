@@ -1,6 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { sentencesOf, strings, type Sentence } from '../../../shared/strings';
+import {
+  sentencesOf,
+  strings,
+  type Sentence,
+} from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/shell';
 import {
   otherSide,

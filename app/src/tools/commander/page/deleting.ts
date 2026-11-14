@@ -1,4 +1,4 @@
-import { strings, type Line } from '../../../shared/strings';
+import { strings, type Line } from '../../../lib/shared/strings';
 
 export function deleteQuestion(
   names: readonly string[],

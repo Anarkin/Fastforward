@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import {
   AppIcon,
   TitleBar,

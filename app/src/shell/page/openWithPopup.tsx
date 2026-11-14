@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { strings } from '../../shared/strings';
+import { strings } from '../../lib/shared/strings';
 import type { ToolId } from '../shared/tools';
 import { keymap } from '../shared/keymap';
-import { nextMenuItem, useDismiss } from '../../ui/contextMenu';
-import { keyPressed } from '../../ui/shortcuts';
-import { CloseIcon, ToolIcon } from '../../ui/icons';
-import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
+import { nextMenuItem, useDismiss } from '../../lib/page/contextMenu';
+import { keyPressed } from '../../lib/page/shortcuts';
+import { CloseIcon, ToolIcon } from '../../lib/page/icons';
+import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
 import { useShell, useShellActions } from './store';
-import { Name } from '../../ui/name';
+import { Name } from '../../lib/page/name';
 
 function moveBetweenTools(event: React.KeyboardEvent<HTMLElement>): void {
   const move = keyPressed(keymap.menuItem, event);

@@ -7,7 +7,7 @@ import {
   maxBytesAsked,
   maxColoredBytes,
 } from '../../../../tools/commander/shared/protocol';
-import { plainOf } from '../../../../shared/strings';
+import { plainOf } from '../../../../lib/shared/strings';
 import { readBudgetBytes } from '../../../../tools/commander/main/textRows';
 import {
   fileVersion,

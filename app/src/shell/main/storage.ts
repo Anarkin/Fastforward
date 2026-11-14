@@ -8,7 +8,7 @@ import {
 } from './settings';
 import type { ImageView, TextView } from '../shared/protocol';
 import * as path from 'node:path';
-import { strings, type Sentence } from '../../shared/strings';
+import { strings, type Sentence } from '../../lib/shared/strings';
 import { isTool, type ToolId } from '../shared/tools';
 import type { Layout, TabWindow } from './windows';
 

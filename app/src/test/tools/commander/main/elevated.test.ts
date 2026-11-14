@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import * as net from 'node:net';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { suite, test } from 'vitest';
 import { elevatedFileSystem } from '../../../../tools/commander/main/elevated';
 import type { FileSystem } from '../../../../tools/commander/main/fileSystem';

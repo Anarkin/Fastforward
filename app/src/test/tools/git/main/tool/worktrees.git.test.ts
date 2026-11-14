@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { GitToWebviewOf } from '../../../../../tools/git/shared/protocol';
 import { shortHash } from '../../../../../tools/git/shared/hashes';
-import { plainOf, strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../lib/shared/strings';
 import { recentKey, worktreesKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../fixtures';
 import {

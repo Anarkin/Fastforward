@@ -9,7 +9,7 @@ import {
 import type { HostCommand, HostEvent, ShellLaunch } from './hostProtocol';
 import { createMirror, type Mirror } from './mirror';
 import type { WindowsPty } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 interface Disposable {
   dispose(): void;

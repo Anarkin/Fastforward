@@ -5,9 +5,9 @@ import {
   type ColumnsIn,
   wrappedLines,
   type RowBreak,
-} from '../../../ui/wordWrap';
-import { inLines, measureInLines } from '../../../ui/lineHeight';
-import type { TextWidths } from '../../../ui/textWidths';
+} from '../../../lib/page/wordWrap';
+import { inLines, measureInLines } from '../../../lib/page/lineHeight';
+import type { TextWidths } from '../../../lib/page/textWidths';
 import {
   type DiffRow,
   type CodeRow,
@@ -15,7 +15,7 @@ import {
   diffRowKey,
   changeOf,
 } from './diffRows';
-import type { MinimapRow } from '../../../ui/minimap';
+import type { MinimapRow } from '../../../lib/page/minimap';
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 

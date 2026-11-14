@@ -17,8 +17,8 @@ import {
   treeFolders,
   type ChangesTreeRow,
 } from '../../../../tools/git/page/changesTree';
-import { listMoveOf } from '../../../../ui/listMoves';
-import { keyPressed } from '../../../../ui/shortcuts';
+import { listMoveOf } from '../../../../lib/page/listMoves';
+import { keyPressed } from '../../../../lib/page/shortcuts';
 import { fileRowKey } from '../../../../tools/git/page/tree';
 import { clickFile } from '../../../componentFixtures';
 import {

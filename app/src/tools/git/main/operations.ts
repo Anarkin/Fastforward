@@ -21,7 +21,7 @@ import {
 import type { CheckoutTarget } from '../shared/protocol';
 import { shortHash } from '../shared/hashes';
 import { hasRef, localBranchOf } from '../shared/refNames';
-import { plainOf, strings, type Sentence } from '../../../shared/strings';
+import { plainOf, strings, type Sentence } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';
 import { detachedHead } from './refs';
 

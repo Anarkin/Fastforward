@@ -19,7 +19,7 @@ import { fingerprint } from './refs';
 import { workingTreeSide } from '../shared/comparisons';
 import { commitPageSize, workingTreeHash } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/shell';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import type { GitStorage } from './storage';
 import {
   commitsMessage,

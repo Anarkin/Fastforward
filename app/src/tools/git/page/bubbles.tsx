@@ -1,9 +1,9 @@
 import { shortHash } from '../shared/hashes';
 import type { BookmarkRef, Tracking } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { commitBookmarkTarget, refMenuTarget, useContextMenu } from './menus';
 import { useGit, useGitActions } from './store';
-import { PullIcon, PushIcon } from '../../../ui/icons';
+import { PullIcon, PushIcon } from '../../../lib/page/icons';
 
 export interface BranchActionsOf {
   readonly pulling: boolean;

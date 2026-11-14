@@ -13,7 +13,7 @@ import {
   type Top,
 } from '../history/extend';
 import { isHashPrefix } from '../../shared/hashes';
-import { folded } from '../../../../shared/textMatches';
+import { folded } from '../../../../lib/shared/textMatches';
 import type {
   CommitInfo,
   CommitResults,

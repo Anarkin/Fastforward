@@ -7,11 +7,11 @@ import type { Tab } from '../../../../shell/main/shell';
 import type { Side } from '../../../../tools/commander/shared/protocol';
 import { thumbnailUrl } from '../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import {
   boxedThumbnailUrl,
   filledThumbnailUrl,
-} from '../../../../shared/images';
+} from '../../../../lib/shared/images';
 import { removeFolder, tempFolder } from '../../../repositories';
 import { waitFor } from '../../../fixtures';
 import { thumbnailKey } from '../../../../tools/commander/main/thumbnailStore';

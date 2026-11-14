@@ -6,10 +6,10 @@ import {
   useState,
 } from 'react';
 import type { AboutInfo } from '../shared/protocol';
-import { brand, strings } from '../../shared/strings';
-import { useDismiss } from '../../ui/contextMenu';
-import { CloseIcon } from '../../ui/icons';
-import { useDialogDrag, useModalDialog } from '../../ui/modalDialog';
+import { brand, strings } from '../../lib/shared/strings';
+import { useDismiss } from '../../lib/page/contextMenu';
+import { CloseIcon } from '../../lib/page/icons';
+import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
 import { useShell, useShellActions } from './store';
 
 const copiedFor = 1500;

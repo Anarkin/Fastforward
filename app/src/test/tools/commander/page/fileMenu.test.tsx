@@ -1,10 +1,10 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { suite, test } from 'vitest';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { tools, type ToolId } from '../../../../shell/shared/tools';
-import type { ContextMenuItem } from '../../../../ui/contextMenu';
-import { ToolIcon } from '../../../../ui/icons';
+import type { ContextMenuItem } from '../../../../lib/page/contextMenu';
+import { ToolIcon } from '../../../../lib/page/icons';
 import {
   fileMenuItems,
   menuTargetOf,

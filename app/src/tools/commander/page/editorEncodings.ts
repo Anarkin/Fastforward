@@ -1,5 +1,5 @@
-import { strings } from '../../../shared/strings';
-import type { ContextMenuItem } from '../../../ui/contextMenu';
+import { strings } from '../../../lib/shared/strings';
+import type { ContextMenuItem } from '../../../lib/page/contextMenu';
 import type { TextEncoding } from '../shared/protocol';
 import {
   inGroups,

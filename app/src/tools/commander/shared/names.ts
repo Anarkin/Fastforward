@@ -1,4 +1,4 @@
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../lib/shared/strings';
 
 const keptByWindows = /[<>:"/\\|?*\p{Cc}]/u;
 const devicesOfWindows = /^(?:con|prn|aux|nul|com\d|lpt\d)(?:\..*)?$/i;

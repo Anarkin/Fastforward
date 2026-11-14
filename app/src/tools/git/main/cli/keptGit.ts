@@ -1,5 +1,5 @@
 import type { Readable } from 'node:stream';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import type { GitChild } from './spawnedGit';
 
 export class StoppedReading extends Error {}

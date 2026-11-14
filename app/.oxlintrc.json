@@ -24,7 +24,7 @@
   },
   "overrides": [
     {
-      "files": ["src/shell/page/**", "src/tools/*/page/**", "src/ui/**"],
+      "files": ["src/lib/page/**", "src/shell/page/**", "src/tools/*/page/**"],
       "rules": {
         "react/jsx-no-literals": [
           "error",
@@ -46,7 +46,7 @@
             "patterns": [
               {
                 "group": ["**/main/**", "**/main"],
-                "message": "The page imports only page, ui and shared code, as it runs sandboxed"
+                "message": "The page imports only page and shared code, as it runs sandboxed"
               }
             ]
           }
@@ -55,7 +55,7 @@
     },
     {
       "files": [
-        "src/shared/**",
+        "src/lib/shared/**",
         "src/shell/shared/**",
         "src/tools/*/shared/**"
       ],
@@ -71,13 +71,7 @@
             ],
             "patterns": [
               {
-                "group": [
-                  "**/main/**",
-                  "**/page/**",
-                  "**/ui/**",
-                  "node:*",
-                  "node:*/**"
-                ],
+                "group": ["**/main/**", "**/page/**", "node:*", "node:*/**"],
                 "message": "shared/ runs in both, so it imports only shared/"
               }
             ]
@@ -86,14 +80,19 @@
       }
     },
     {
-      "files": ["src/main/**", "src/shell/main/**", "src/tools/*/main/**"],
+      "files": [
+        "src/main/**",
+        "src/lib/main/**",
+        "src/shell/main/**",
+        "src/tools/*/main/**"
+      ],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["**/page/**", "**/ui/**"],
+                "group": ["**/page/**"],
                 "message": "The main process doesn't import the page's code"
               }
             ]
@@ -113,7 +112,7 @@
       }
     },
     {
-      "files": ["src/shared/strings.ts"],
+      "files": ["src/lib/shared/strings.ts"],
       "rules": {
         "max-lines": "off"
       }
@@ -246,7 +245,7 @@
         "src/tools/commander/page/editor.tsx",
         "src/tools/git/main/cli/watch.ts",
         "src/tools/git/page/locations.tsx",
-        "src/ui/syntaxEngine.ts"
+        "src/lib/page/syntaxEngine.ts"
       ],
       "rules": {
         "max-lines": [

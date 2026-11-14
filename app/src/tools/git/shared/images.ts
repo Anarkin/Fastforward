@@ -1,6 +1,10 @@
 import { isFullHash } from './hashes';
 
-export { imageType, maxImageSize, vectorType } from '../../../shared/images';
+export {
+  imageType,
+  maxImageSize,
+  vectorType,
+} from '../../../lib/shared/images';
 
 export interface ImageSource {
   readonly root: string;

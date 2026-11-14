@@ -1,6 +1,6 @@
 import { utilityProcess } from 'electron';
 import type { Log } from '../../../shell/main/log';
-import { brand, strings } from '../../../shared/strings';
+import { brand, strings } from '../../../lib/shared/strings';
 import type { TransferEvent } from './transferProtocol';
 import type { ConnectTransfer } from './transfers';
 

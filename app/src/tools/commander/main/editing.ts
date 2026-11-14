@@ -1,5 +1,5 @@
 import type { Notice, Page } from '../../../shell/main/shell';
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../lib/shared/strings';
 import {
   isTextEncoding,
   type CommanderToHost,

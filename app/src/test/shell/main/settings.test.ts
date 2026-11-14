@@ -11,7 +11,7 @@ import {
   writeAtomically,
   writeReadOnly,
 } from '../../../shell/main/settings';
-import { plainOf, strings } from '../../../shared/strings';
+import { plainOf, strings } from '../../../lib/shared/strings';
 import { defaultSettings, waitFor } from '../../fixtures';
 import { removeFolder, symlinkOrSkip, tempFolder } from '../../repositories';
 

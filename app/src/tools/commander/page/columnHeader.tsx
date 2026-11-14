@@ -5,8 +5,8 @@ import {
   type Sort,
   type SortColumn,
 } from '../shared/settings';
-import { followDrag } from '../../../ui/followDrag';
-import { strings } from '../../../shared/strings';
+import { followDrag } from '../../../lib/page/followDrag';
+import { strings } from '../../../lib/shared/strings';
 import type { Side } from '../shared/protocol';
 import { shownColumns, useCommander, useCommanderActions } from './store';
 

@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { ChangeSet } from '@codemirror/state';
 import { afterAll, suite, test } from 'vitest';
-import { plainOf, strings, type Sentence } from '../../../shared/strings';
+import { plainOf, strings, type Sentence } from '../../../lib/shared/strings';
 import { recordingLog } from '../../stub';
 import type { CommandInstall } from '../../../main/terminalCommand';
 import {

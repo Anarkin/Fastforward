@@ -56,9 +56,9 @@ function reachedFrom(roots: readonly string[]): ReadonlySet<string> {
 const registries = ['shell/shared/tools.ts', 'shell/page/tools.tsx'];
 
 suite('Architecture', () => {
-  test('keeps each source file in the folder of its feature, the shell or a tool, by where it runs, or in main, ui or shared', () => {
+  test('keeps each source file in the folder of its owner, the library, the shell or a tool, by where it runs, or in main', () => {
     const placed =
-      /^(?:(?:shell|tools\/[^/]+)\/(?:main|page|shared)\/.+|(?:main|ui|shared)\/[^/]+)$/;
+      /^(?:(?:lib|shell|tools\/[^/]+)\/(?:main|page|shared)\/.+|main\/[^/]+)$/;
     assert.deepStrictEqual(
       sourceFiles.filter((file) => !placed.test(file)),
       [],
@@ -69,6 +69,21 @@ suite('Architecture', () => {
     assert.deepStrictEqual(
       fs.readdirSync(path.join(source, 'tools')).toSorted(),
       [...tools].toSorted(),
+    );
+  });
+
+  test('gives the library, the shell and each tool a main, a page and a shared folder, and nothing else', () => {
+    const owners = ['lib', 'shell', ...tools.map((tool) => `tools/${tool}`)];
+    assert.deepStrictEqual(
+      Object.fromEntries(
+        owners.map((owner) => [
+          owner,
+          fs.readdirSync(path.join(source, owner)).toSorted(),
+        ]),
+      ),
+      Object.fromEntries(
+        owners.map((owner) => [owner, ['main', 'page', 'shared']]),
+      ),
     );
   });
 
@@ -86,10 +101,10 @@ suite('Architecture', () => {
     );
   });
 
-  test('lets the shell, ui and shared reach the tools only through the registries of the shell, as the app starts them', () => {
+  test('lets the library and the shell reach the tools only through the registries of the shell, as the app starts them', () => {
     assert.deepStrictEqual(
       sourceFiles
-        .filter((file) => /^(?:shell|ui|shared)\//.test(file))
+        .filter((file) => /^(?:lib|shell)\//.test(file))
         .filter((file) => !registries.includes(file))
         .flatMap((file) =>
           importsOf(file)
@@ -100,24 +115,31 @@ suite('Architecture', () => {
     );
   });
 
-  test('keeps in shared only what the main process imports, directly or through other shared code, as what only the page imports belongs in ui or the page of its feature', () => {
-    const reached = reachedFrom(
-      sourceFiles.filter((file) =>
-        /^(?:shell\/|tools\/[^/]+\/)?main\//.test(file),
-      ),
+  test('keeps in a shared folder only what both the main process and the page import, directly or through other shared code, as what one side alone imports belongs in the main or the page folder of its owner', () => {
+    const sides = {
+      main: /^(?:main|(?:lib|shell|tools\/[^/]+)\/main)\//,
+      page: /^(?:lib|shell|tools\/[^/]+)\/page\//,
+    };
+    const shared = sourceFiles.filter((file) =>
+      /^(?:lib|shell|tools\/[^/]+)\/shared\//.test(file),
     );
     assert.deepStrictEqual(
-      sourceFiles
-        .filter((file) => /^(?:shell\/|tools\/[^/]+\/)?shared\//.test(file))
-        .filter((file) => !reached.has(file)),
-      [],
+      Object.fromEntries(
+        Object.entries(sides).map(([side, pattern]) => {
+          const reached = reachedFrom(
+            sourceFiles.filter((file) => pattern.test(file)),
+          );
+          return [side, shared.filter((file) => !reached.has(file))];
+        }),
+      ),
+      { main: [], page: [] },
     );
   });
 
-  test('keeps the stores out of ui, whose components take only props', () => {
+  test('keeps the stores out of the library, which holds no state', () => {
     assert.deepStrictEqual(
       sourceFiles
-        .filter((file) => file.startsWith('ui/'))
+        .filter((file) => file.startsWith('lib/'))
         .filter(
           (file) =>
             /from 'zustand[/']/.test(read(file)) ||
@@ -127,7 +149,7 @@ suite('Architecture', () => {
     );
   });
 
-  test('makes a context only to hand out the store of the shell or of a tool, so ui makes none, as its components take only props', () => {
+  test('makes a context only to hand out the store of the shell or of a tool, so the library makes none, as it holds no state', () => {
     assert.deepStrictEqual(
       sourceFiles
         .filter((file) => read(file).includes('createContext'))

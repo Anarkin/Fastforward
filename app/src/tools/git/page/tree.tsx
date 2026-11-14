@@ -1,8 +1,8 @@
 import type { FileChange } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
-import { HighlightWords } from '../../../ui/highlight';
-import { ChangeIcon, LinkIcon } from '../../../ui/icons';
+import { HighlightWords } from '../../../lib/page/highlight';
+import { ChangeIcon, LinkIcon } from '../../../lib/page/icons';
 
 const treePadding = 8;
 export const twistyWidth = 10;

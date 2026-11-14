@@ -1,10 +1,10 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { parsePatch } from '../../../../tools/git/page/diff';
 import { collapseThreshold } from '../../../../tools/git/shared/protocol';
-import type { TextWidths } from '../../../../ui/textWidths';
+import type { TextWidths } from '../../../../lib/page/textWidths';
 import { patch } from './diffViewFixtures';
 import {
   diffRowKey,

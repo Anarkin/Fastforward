@@ -16,32 +16,32 @@ import {
   lineNumbers,
   type ViewUpdate,
 } from '@codemirror/view';
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { syntaxColors } from '../../../ui/editorColors';
-import { appSelection } from '../../../ui/editorSelection';
-import { appTextLook, blanksShown } from '../../../ui/editorText';
-import { rowScrolling } from '../../../ui/editorScroll';
-import type { ScrollSettings } from '../../../ui/rowScroll';
-import { ShowWhitespaceIcon, WordWrapIcon } from '../../../ui/icons';
-import { Words } from '../../../ui/name';
-import { languageOf } from '../../../ui/languages';
-import { keyPressed } from '../../../ui/shortcuts';
-import { colorer, startColorer } from '../../../ui/syntax';
+import { syntaxColors } from '../../../lib/page/editorColors';
+import { appSelection } from '../../../lib/page/editorSelection';
+import { appTextLook, blanksShown } from '../../../lib/page/editorText';
+import { rowScrolling } from '../../../lib/page/editorScroll';
+import type { ScrollSettings } from '../../../lib/page/rowScroll';
+import { ShowWhitespaceIcon, WordWrapIcon } from '../../../lib/page/icons';
+import { Words } from '../../../lib/page/name';
+import { languageOf } from '../../../lib/page/languages';
+import { keyPressed } from '../../../lib/page/shortcuts';
+import { colorer, startColorer } from '../../../lib/page/syntax';
 import {
   cellWidthsOf,
   columnsOf,
   useCellTable,
   type CellTable,
-} from '../../../ui/textWidths';
-import { StatusLine } from '../../../ui/statusLine';
+} from '../../../lib/page/textWidths';
+import { StatusLine } from '../../../lib/page/statusLine';
 import {
   FindActions,
   FindField,
   SearchButton,
   SearchRow,
-} from '../../../ui/search';
+} from '../../../lib/page/search';
 import {
   countOf,
   editorFind,
@@ -94,12 +94,12 @@ import {
 import { colorOfFileNamed } from './fileColors';
 import { viewerChoices } from './view';
 import type { LineEnding } from '../shared/textMarks';
-import { MenuButton } from '../../../ui/menu';
+import { MenuButton } from '../../../lib/page/menu';
 import {
   LanguageButton,
   languageChoiceOf,
   shownLanguage,
-} from '../../../ui/languageChoice';
+} from '../../../lib/page/languageChoice';
 import { nameOf, PathTitle } from './pathTitle';
 import { readMenu, savedName, saveMenu, type Encoded } from './editorEncodings';
 import {
@@ -111,7 +111,7 @@ import {
 } from './editorPlace';
 import { useCommander, useCommanderActions } from './store';
 import type { CursorLook } from '../../../shell/shared/cursorSettings';
-import { pageCursorLook } from '../../../ui/cursor';
+import { pageCursorLook } from '../../../lib/page/cursor';
 
 export interface EditedTab {
   readonly tab: string;

@@ -4,7 +4,7 @@ import type {
   EndingSource,
   TextEncoding,
 } from '../shared/protocol';
-import type { EditorSettings } from '../../../shell/shared/editorSettings';
+import type { EditorSettings } from '../../../shell/main/editorSettings';
 import { isLineEnding, type LineEnding } from '../shared/textMarks';
 import type { EditorCharset, EditorConfig } from './editorConfig';
 import type { GitEnding } from './gitEnding';

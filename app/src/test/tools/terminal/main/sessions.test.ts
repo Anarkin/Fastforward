@@ -9,7 +9,7 @@ import type {
   ShellLaunch,
 } from '../../../../tools/terminal/main/hostProtocol';
 import { PtyHost } from '../../../../tools/terminal/main/sessions';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import type { WindowsPty } from '../../../../tools/terminal/shared/protocol';
 import { fakePtys, until } from '../../../fakePty';
 import { fakeTimer } from '../../../fakeTimer';

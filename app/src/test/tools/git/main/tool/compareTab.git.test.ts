@@ -5,7 +5,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { imageUrl } from '../../../../../tools/git/shared/images';
 import type { CompareView } from '../../../../../tools/git/shared/protocol';
 import { parsePatch } from '../../../../../tools/git/page/diff';
-import { strings } from '../../../../../shared/strings';
+import { strings } from '../../../../../lib/shared/strings';
 import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
 import {
   removeFolder,

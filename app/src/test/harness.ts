@@ -1,4 +1,4 @@
-import { plainOf, type Sentence } from '../shared/strings';
+import { plainOf, type Sentence } from '../lib/shared/strings';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';

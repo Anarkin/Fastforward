@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
-import { listMoveOf } from '../../../../ui/listMoves';
+import { listMoveOf } from '../../../../lib/page/listMoves';
 import {
   act,
   isValidElement,
@@ -57,7 +57,7 @@ import {
   workingTreeShift,
 } from '../../../../tools/git/page/commitList';
 import { settling } from '../../../../tools/git/page/outbox';
-import { defaultDateFormat, formatDate } from '../../../../ui/dates';
+import { defaultDateFormat, formatDate } from '../../../../lib/page/dates';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../tools/git/page/tabView';

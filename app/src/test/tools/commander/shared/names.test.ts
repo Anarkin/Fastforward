@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { nameProblem } from '../../../../tools/commander/shared/names';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 
 suite('Commander names', () => {
   test('takes a name of one folder, never one reaching another folder through a separator, nor . or ..', () => {

@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { suite, test } from 'vitest';
 import type { Notice } from '../../shell/main/shell';
 import type { ToWebview, UpdateStatus } from '../../shell/shared/protocol';
-import { plainOf, strings } from '../../shared/strings';
+import { plainOf, strings } from '../../lib/shared/strings';
 import {
   updateMode,
   Updates,

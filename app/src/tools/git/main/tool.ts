@@ -33,7 +33,7 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/shell';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../shell/main/storage';
 import type { GitStorage } from './storage';
 import {

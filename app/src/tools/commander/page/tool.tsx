@@ -12,9 +12,9 @@ import {
 import { Pane } from './pane';
 import { Editor } from './editor';
 import { Viewer } from './viewer';
-import { columnFocusAttribute } from '../../../ui/columnFocus';
-import { followDrag } from '../../../ui/followDrag';
-import { useBinding } from '../../../ui/shortcuts';
+import { columnFocusAttribute } from '../../../lib/page/columnFocus';
+import { followDrag } from '../../../lib/page/followDrag';
+import { useBinding } from '../../../lib/page/shortcuts';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../shell/page/promptPopup';
 import {
@@ -28,7 +28,7 @@ import { deleteQuestion } from './deleting';
 import { transferQuestion } from './transferring';
 import { TransferPopup } from './transferPopup';
 import { PackPopup } from './packPopup';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { useShellActions } from '../../../shell/page/store';
 import {
   CommanderStore,

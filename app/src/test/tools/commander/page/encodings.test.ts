@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { filteredItems } from '../../../../ui/menu';
+import { filteredItems } from '../../../../lib/page/menu';
 import {
   encodingMenu,
   shownEncoding,

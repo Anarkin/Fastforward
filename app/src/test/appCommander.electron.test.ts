@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 import { waitFor } from './fixtures';
 import { waitForFocus } from './appFixtures';
 import { storedZip } from './zips';

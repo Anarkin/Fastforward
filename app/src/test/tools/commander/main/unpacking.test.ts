@@ -12,7 +12,7 @@ import {
   type Packing,
   type PackOptions,
 } from '../../../../tools/commander/main/archives';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import type { TransferPlan } from '../../../../tools/commander/main/transfer';
 import type {
   TransferCommand,

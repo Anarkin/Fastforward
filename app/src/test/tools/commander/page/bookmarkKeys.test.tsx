@@ -8,7 +8,7 @@ import type {
   CommanderToHost,
   CommanderToWebview,
 } from '../../../../tools/commander/shared/protocol';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { noop } from '../../../fixtures';
 
 const listing = (side: 'left' | 'right'): CommanderToWebview => ({

@@ -14,7 +14,7 @@ import {
 } from '../../../../tools/commander/main/packing';
 import type { PackOptions } from '../../../../tools/commander/main/archives';
 import type { TransferEvent } from '../../../../tools/commander/main/transferProtocol';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 suite('packInto', () => {

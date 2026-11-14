@@ -13,7 +13,7 @@ import type {
   Clash,
   TransferProgress,
 } from '../../../../tools/commander/shared/transfers';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../repositories';
 
 let folder: string;

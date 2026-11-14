@@ -22,7 +22,7 @@ import {
   type Binding,
   type KeyPress,
 } from '../../../shell/shared/keymap';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { gitKeymap } from '../../../tools/git/page/keymap';
 import { keyPress, noModifiers, withMacKeys } from '../../fixtures';
 
@@ -714,7 +714,7 @@ suite('Keymap', () => {
     const source = path.join(__dirname, '../../../../src');
     const own = [
       path.join(source, 'shell', 'shared', 'keymap.ts'),
-      path.join(source, 'shared', 'strings.ts'),
+      path.join(source, 'lib', 'shared', 'strings.ts'),
     ];
     const reads =
       /\b(?:e|ev|\w*[eE]vent|input)\.(?:key|code|button|control|meta|alt|shift)\b|\b\w+\.buttons\b|\b(?:ctrlKey|metaKey|altKey|shiftKey|isComposing|keyCode)\b|'(?:Arrow(?:Up|Down|Left|Right)|Page(?:Up|Down)|Home|End|Enter|Escape|Tab|F\d{1,2})'/;

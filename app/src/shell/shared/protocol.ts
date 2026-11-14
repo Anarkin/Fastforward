@@ -1,4 +1,4 @@
-import type { Sentence } from '../../shared/strings';
+import type { Sentence } from '../../lib/shared/strings';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
 export const maxNotices = 4;

@@ -11,7 +11,7 @@ import {
 import type { GitToHost, GitToWebviewOf } from '../shared/protocol';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import type { Log } from '../../../shell/main/log';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { cloneRepository, cloneTargetProblem, removeClone } from './cli/clone';
 import { withoutCredentials } from './cli/credentials';
 import { gitErrorText } from './cli/errorText';

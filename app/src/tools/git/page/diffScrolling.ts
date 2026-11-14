@@ -1,11 +1,11 @@
 import type { FindMatch } from './find';
-import { rowPlace } from '../../../ui/rowPlace';
+import { rowPlace } from '../../../lib/page/rowPlace';
 import { wheeled, type Modifiers } from '../../../shell/shared/keymap';
 import { gitKeymap } from './keymap';
-import type { ListMove } from '../../../ui/listMoves';
-import { sidewaysColumns } from '../../../ui/rowScroll';
+import type { ListMove } from '../../../lib/page/listMoves';
+import { sidewaysColumns } from '../../../lib/page/rowScroll';
 import { inlineArea, revealFound, sideArea, type Sideways } from './overflow';
-import type { TextWidths } from '../../../ui/textWidths';
+import type { TextWidths } from '../../../lib/page/textWidths';
 import { type DiffRow, type FileHeaderRow, isChange } from './diffRows';
 import { uniformHeight, rowLines } from './rowMeasures';
 

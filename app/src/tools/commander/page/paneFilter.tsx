@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import { commanderKeymap } from './keymap';
-import { strings } from '../../../shared/strings';
-import { keyPressed } from '../../../ui/shortcuts';
+import { strings } from '../../../lib/shared/strings';
+import { keyPressed } from '../../../lib/page/shortcuts';
 import { letterTyped } from '../../../shell/shared/keymap';
 
 export type FilterMove = 'up' | 'down' | 'pageUp' | 'pageDown';

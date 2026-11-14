@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { Worker } from 'node:worker_threads';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import type { SizeWalk, SizeWalked, SizeWalker } from './folderSizes';
 
 const workerFile = 'sizeWorker.js';

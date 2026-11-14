@@ -1,4 +1,4 @@
-import { strings } from '../../shared/strings';
+import { strings } from '../../lib/shared/strings';
 
 export const everywhereGroups = ['Tabs', 'App', 'Lists'] as const;
 

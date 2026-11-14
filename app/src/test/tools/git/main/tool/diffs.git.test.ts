@@ -13,7 +13,7 @@ import { maxFileSize } from '../../../../../tools/git/main/cli/files';
 import { imageUrl, maxImageSize } from '../../../../../tools/git/shared/images';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import { tabsKey } from '../../../../../shell/main/storage';
-import { plainOf, strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../lib/shared/strings';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import { waitFor } from '../../../../fixtures';
 import {

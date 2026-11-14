@@ -2,8 +2,8 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { beforeAll, suite, test } from 'vitest';
-import { imageType, maxImageSize } from '../shared/images';
-import { maxMatches } from '../shared/textMatches';
+import { imageType, maxImageSize } from '../lib/shared/images';
+import { maxMatches } from '../lib/shared/textMatches';
 import { rowBytes } from '../tools/commander/main/textRows';
 import { decodedText } from '../tools/commander/main/textCodec';
 import {
@@ -17,7 +17,7 @@ import {
   maxPreviewBytes,
   wholeLineBytes,
 } from '../tools/commander/shared/protocol';
-import { languageIds, languageOf } from '../ui/languages';
+import { languageIds, languageOf } from '../lib/page/languages';
 import { defaultSettings } from './fixtures';
 
 type Platform = 'win32' | 'darwin' | 'linux';

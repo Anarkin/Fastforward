@@ -17,7 +17,7 @@ import {
   type CommandPlace,
   type SyncCommandFiles,
 } from '../../main/terminalCommand';
-import { strings } from '../../shared/strings';
+import { strings } from '../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../repositories';
 
 const script = [

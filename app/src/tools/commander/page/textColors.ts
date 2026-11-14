@@ -1,11 +1,11 @@
 import type { TextEncoding, TextRow } from '../shared/protocol';
-import type { CodeSegment } from '../../../ui/syntax';
-import type { SyntaxRange } from '../../../ui/syntaxEngine';
+import type { CodeSegment } from '../../../lib/page/syntax';
+import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
 import {
   partHasRanges,
   partLine,
   type CodePart,
-} from '../../../ui/syntaxParts';
+} from '../../../lib/page/syntaxParts';
 
 const byteOrderMark = '﻿';
 

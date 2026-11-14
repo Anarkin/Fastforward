@@ -1,6 +1,6 @@
 import { shortHash } from './hashes';
 import { workingTreeHash } from './protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 export interface Comparison {
   readonly from: string;

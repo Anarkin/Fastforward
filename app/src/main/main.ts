@@ -42,7 +42,7 @@ import {
   setKeyPlatform,
 } from '../shell/shared/keymap';
 import type { Theme, ToHost, ToWebview } from '../shell/shared/protocol';
-import { brand, plainOf, strings } from '../shared/strings';
+import { brand, plainOf, strings } from '../lib/shared/strings';
 import {
   readDefaults,
   UserSettings,

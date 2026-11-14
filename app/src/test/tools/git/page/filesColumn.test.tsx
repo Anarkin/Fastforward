@@ -33,9 +33,9 @@ import {
   shownFoldersOf,
 } from '../../../../tools/git/page/store';
 import { emptyTabView, type TabView } from '../../../../tools/git/page/tabView';
-import type { VisibleRows } from '../../../../ui/listMoves';
+import type { VisibleRows } from '../../../../lib/page/listMoves';
 import type { Folders } from '../../../../tools/git/page/viewFolders';
-import { revealAgain, type ListedRows } from '../../../../ui/virtualRows';
+import { revealAgain, type ListedRows } from '../../../../lib/page/virtualRows';
 import { clickFile, renderIn, type RowProps } from '../../../componentFixtures';
 import {
   fileChange as change,

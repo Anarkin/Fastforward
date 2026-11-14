@@ -3,9 +3,9 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
-import { FindActions, FindField } from '../../../../ui/search';
+import { FindActions, FindField } from '../../../../lib/page/search';
 import { gitKeymap } from '../../../../tools/git/page/keymap';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import {
   findMatches,
   jumpStep,
@@ -16,7 +16,7 @@ import {
   matchCount,
   matchesIn,
   stepMatch,
-} from '../../../../shared/textMatches';
+} from '../../../../lib/shared/textMatches';
 import { keyPress } from '../../../fixtures';
 import { diffRows, lineKeys } from '../../../../tools/git/page/diffRows';
 import {

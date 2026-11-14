@@ -1,5 +1,5 @@
-import type { Sentence } from '../../../shared/strings';
-import { followDrag } from '../../../ui/followDrag';
+import type { Sentence } from '../../../lib/shared/strings';
+import { followDrag } from '../../../lib/page/followDrag';
 import { workingTreeHash } from '../shared/protocol';
 
 export const minColumnWidths = [275, 150];

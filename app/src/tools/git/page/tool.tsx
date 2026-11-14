@@ -28,12 +28,12 @@ import {
   shownColumns,
   type ColumnName,
 } from './activeColumn';
-import { columnFocusAttribute } from '../../../ui/columnFocus';
+import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { clicked } from '../../../shell/shared/keymap';
-import { useBinding } from '../../../ui/shortcuts';
-import { startColorer } from '../../../ui/syntax';
+import { useBinding } from '../../../lib/page/shortcuts';
+import { startColorer } from '../../../lib/page/syntax';
 import { listsNothing } from './filesColumn';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { WorktreeBar } from './worktreeBar';
 import { treeOf, treeToLoad } from './tabView';
 import { repositoryMenuItems } from './repositoryMenu';

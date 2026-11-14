@@ -5,7 +5,7 @@ import {
   type GraphLine,
   type GraphRow,
 } from '../shared/protocol';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 const laneWidth = 12;
 const laneLine = 2;

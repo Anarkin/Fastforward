@@ -14,7 +14,7 @@ import {
   madeThumbnailHeader,
   maxImageSize,
   maxThumbnailBytes,
-} from '../../../../shared/images';
+} from '../../../../lib/shared/images';
 import { thumbnailKey } from '../../../../tools/commander/main/thumbnailStore';
 import { viewedFileUrl } from '../../../../tools/commander/shared/files';
 import { removeFolder, tempFolder } from '../../../repositories';

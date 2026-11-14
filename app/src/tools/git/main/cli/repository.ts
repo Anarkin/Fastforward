@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RefInfo, Tracking } from '../../shared/protocol';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { gitErrorText } from './errorText';
 import { runGit, splitNul } from './run';
 import { listStashes, type Stash } from './stashes';

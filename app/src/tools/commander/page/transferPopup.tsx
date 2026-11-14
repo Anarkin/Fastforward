@@ -1,14 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { plainOf, strings } from '../../../shared/strings';
-import { useDismiss } from '../../../ui/contextMenu';
-import { CloseIcon } from '../../../ui/icons';
-import { moveBetweenButtons } from '../../../ui/dialogButtons';
-import { useDialogDrag, useModalDialog } from '../../../ui/modalDialog';
-import { formatDate } from '../../../ui/dates';
+import { plainOf, strings } from '../../../lib/shared/strings';
+import { useDismiss } from '../../../lib/page/contextMenu';
+import { CloseIcon } from '../../../lib/page/icons';
+import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
+import { useDialogDrag, useModalDialog } from '../../../lib/page/modalDialog';
+import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
 import type { ClashSide, TransferView } from '../shared/transfers';
 import { useCommander, useCommanderActions } from './store';
-import { NameLines, Words } from '../../../ui/name';
+import { NameLines, Words } from '../../../lib/page/name';
 import { progressLines, runningLines, shareDone } from './transferring';
 
 type Clash = NonNullable<TransferView['clash']>;

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 import { closeOrKill, launchApp } from './appFixtures';
 import { waitFor } from './fixtures';
 import { removeFolder, tempFolder } from './repositories';

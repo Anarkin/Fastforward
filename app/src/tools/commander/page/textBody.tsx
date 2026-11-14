@@ -23,7 +23,7 @@ import {
   type ColoredText,
   type WholeText,
 } from './textColors';
-import { colorer } from '../../../ui/syntax';
+import { colorer } from '../../../lib/page/syntax';
 import { ScrollBody, type Thumb } from './scrollBody';
 import type { Viewing } from './viewer';
 import type { ViewerFind } from './viewerFind';
@@ -40,15 +40,15 @@ import {
 } from './screenRows';
 import { useShell } from '../../../shell/page/store';
 import { columnAt, columnsOf, shownWithin, widestColumns } from './columns';
-import { strings } from '../../../shared/strings';
-import { blankRuns } from '../../../ui/wordWrap';
+import { strings } from '../../../lib/shared/strings';
+import { blankRuns } from '../../../lib/page/wordWrap';
 import {
   cellWidthsOf,
   plainCells,
   textWidths,
   useCellTable,
   type TextWidths,
-} from '../../../ui/textWidths';
+} from '../../../lib/page/textWidths';
 import { useCommanderActions } from './store';
 
 const rowsAboveMatch = 2;

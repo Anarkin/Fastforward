@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { sentencesOf, strings } from '../../../shared/strings';
+import { sentencesOf, strings } from '../../../lib/shared/strings';
 import {
   itemsAt,
   type ArchiveAccess,

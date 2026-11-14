@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings, type Sentence } from '../../../lib/shared/strings';
 import {
   unattachedShell,
   type Page,
@@ -28,7 +28,7 @@ import {
   type BookmarkSystem,
 } from './bookmarks';
 import { typedPath } from './typedPaths';
-import { heldBox } from '../../../shared/images';
+import { heldBox } from '../../../lib/shared/images';
 import { fileVersion } from '../shared/files';
 import { firstBytes } from './textRows';
 import type { ElevatedFileSystem } from './elevated';

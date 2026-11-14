@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
-import { strings } from '../../../shared/strings';
-import type { ContextMenuItem } from '../../../ui/contextMenu';
+import { strings } from '../../../lib/shared/strings';
+import type { ContextMenuItem } from '../../../lib/page/contextMenu';
 import type { CloneAsk, CloneView } from '../shared/clone';
 import { compareWith } from '../shared/comparisons';
 import type {

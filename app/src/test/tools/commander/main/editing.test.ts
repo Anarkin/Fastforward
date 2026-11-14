@@ -13,7 +13,7 @@ import type {
   CommanderToWebview,
   CommanderToWebviewOf,
 } from '../../../../tools/commander/shared/protocol';
-import { plainOf, type Sentence } from '../../../../shared/strings';
+import { plainOf, type Sentence } from '../../../../lib/shared/strings';
 
 class EditorPage implements Page {
   readonly messages: CommanderToWebview[] = [];

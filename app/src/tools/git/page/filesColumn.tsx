@@ -23,23 +23,23 @@ import {
   treeRowOf,
   type FilesRow,
 } from './changesTree';
-import { columnFocusOf } from '../../../ui/columnFocus';
+import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { Column } from './column';
-import { filterWords, matchesFilter } from '../../../ui/fileFilter';
-import { SearchButton, SearchRow } from '../../../ui/search';
-import { useSettled } from '../../../ui/settled';
+import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
+import { SearchButton, SearchRow } from '../../../lib/page/search';
+import { useSettled } from '../../../lib/page/settled';
 import {
   AllFilesIcon,
   CollapseAllIcon,
   ExpandAllIcon,
-} from '../../../ui/icons';
-import { SkeletonRows, useSkeleton } from '../../../ui/skeleton';
+} from '../../../lib/page/icons';
+import { SkeletonRows, useSkeleton } from '../../../lib/page/skeleton';
 import { gitKeymap } from './keymap';
-import { strings, type Sentence } from '../../../shared/strings';
-import { listMoveOf, type VisibleRows } from '../../../ui/listMoves';
-import { keyPressed, useBinding } from '../../../ui/shortcuts';
+import { strings, type Sentence } from '../../../lib/shared/strings';
+import { listMoveOf, type VisibleRows } from '../../../lib/page/listMoves';
+import { keyPressed, useBinding } from '../../../lib/page/shortcuts';
 import { fileRowKey } from './tree';
-import { VirtualRows, type ListedRows } from '../../../ui/virtualRows';
+import { VirtualRows, type ListedRows } from '../../../lib/page/virtualRows';
 import { useShell } from '../../../shell/page/store';
 import {
   fileFilterOf,

@@ -7,7 +7,7 @@ import { useShell, useShellActions } from '../../../shell/page/store';
 import { useStore } from 'zustand';
 import type { TerminalToHost, TerminalToWebview } from '../shared/protocol';
 import { createTerminalStore } from './store';
-import { pageCursorLook } from '../../../ui/cursor';
+import { pageCursorLook } from '../../../lib/page/cursor';
 
 export function TerminalTool({
   active,

@@ -5,7 +5,7 @@ import type { Entry } from '../../../../tools/commander/shared/protocol';
 import { iconUrl } from '../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../tools/commander/main/elevated';
 import type { SizeWalk } from '../../../../tools/commander/main/folderSizes';
-import { strings } from '../../../../shared/strings';
+import { strings } from '../../../../lib/shared/strings';
 import { waitFor } from '../../../fixtures';
 import {
   CommanderPage,

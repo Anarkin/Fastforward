@@ -12,7 +12,7 @@ import type { Log } from '../../../shell/main/log';
 import { shortHash } from '../shared/hashes';
 import type { WorktreeInfo } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/shell';
-import { strings } from '../../../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { maxRecentItems, sameRoot } from '../../../shell/main/storage';
 import type { GitStorage } from './storage';
 import { replayOf } from './tabState';

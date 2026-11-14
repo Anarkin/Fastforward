@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../builtins';
-import { plainOf, strings } from '../../../../../shared/strings';
+import { plainOf, strings } from '../../../../../lib/shared/strings';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { sameRoot, type Store } from '../../../../../shell/main/storage';
 import {

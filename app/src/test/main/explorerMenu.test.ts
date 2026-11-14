@@ -8,7 +8,7 @@ import {
   explorerMenuOf,
   type RegistryValue,
 } from '../../main/explorerMenu';
-import { strings } from '../../shared/strings';
+import { strings } from '../../lib/shared/strings';
 
 const installed = 'C:\\Users\\me\\AppData\\Local\\Programs\\fastforward';
 const executable = `${installed}\\Fastforward.exe`;

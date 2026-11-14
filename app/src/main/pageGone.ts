@@ -1,5 +1,5 @@
 import type { Log } from '../shell/main/log';
-import { strings } from '../shared/strings';
+import { strings } from '../lib/shared/strings';
 
 interface PageWindow {
   readonly webContents: {

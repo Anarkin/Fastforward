@@ -372,10 +372,10 @@ suite('Finding the scripts that took the most time', () => {
         1,
         (url, line) =>
           url.endsWith('/webview.js') && line >= 10
-            ? 'src/ui/rowScroll.ts'
+            ? 'src/lib/page/rowScroll.ts'
             : undefined,
       ),
-      [{ name: 'animate src/ui/rowScroll.ts', ms: 4 }],
+      [{ name: 'animate src/lib/page/rowScroll.ts', ms: 4 }],
     );
   });
 });
@@ -387,15 +387,15 @@ suite('Finding the source of a line of a bundle', () => {
     'function render() {}',
     '// node_modules/@tanstack/virtual-core/dist/esm/index.js',
     'function measure() {}',
-    '// src/ui/rowScroll.ts',
+    '// src/lib/page/rowScroll.ts',
     'const animate = () => {',
     '  // not a module',
     '};',
   ];
 
   test('takes the module esbuild marked last before the line, counting lines from 1', () => {
-    assert.strictEqual(moduleAt(bundle, 8), 'src/ui/rowScroll.ts');
-    assert.strictEqual(moduleAt(bundle, 7), 'src/ui/rowScroll.ts');
+    assert.strictEqual(moduleAt(bundle, 8), 'src/lib/page/rowScroll.ts');
+    assert.strictEqual(moduleAt(bundle, 7), 'src/lib/page/rowScroll.ts');
   });
 
   test('names a package by its name rather than the file in it, scoped ones too', () => {
