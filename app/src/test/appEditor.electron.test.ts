@@ -686,7 +686,7 @@ suite('App editor', () => {
     );
   });
 
-  test('shows the whitespace once its button is pressed, the spaces dotted, the tabs signed and a sign after each line that ends in CRLF, and hides it again', async () => {
+  test('shows the whitespace, as it does by default, the spaces dotted, the tabs signed and a sign after each line that ends in CRLF, hides it once its button is pressed, and shows it again', async () => {
     fs.writeFileSync(path.join(opened, 'blanks.txt'), 'a  b\r\nc\td\n e\r\n');
     await backToCommander();
     await edit('blanks.txt');
@@ -695,24 +695,25 @@ suite('App editor', () => {
       'the text',
     );
     const toggle = page.locator('.editor button[title="Show Whitespace"]');
+    await content().locator('.spaces').first().waitFor();
+    assert.strictEqual(
+      await content().locator('.blank[data-glyph="→"]').count(),
+      1,
+    );
+    const signed = await content()
+      .locator('.cm-line')
+      .evaluateAll((lines) =>
+        lines.map((line) => line.querySelector('.ending-sign') !== null),
+      );
+    assert.deepStrictEqual(signed, [true, false, true, false]);
     await toggle.click();
     try {
-      await content().locator('.spaces').first().waitFor();
-      assert.strictEqual(
-        await content().locator('.blank[data-glyph="→"]').count(),
-        1,
-      );
-      const signed = await content()
-        .locator('.cm-line')
-        .evaluateAll((lines) =>
-          lines.map((line) => line.querySelector('.ending-sign') !== null),
-        );
-      assert.deepStrictEqual(signed, [true, false, true, false]);
+      await content().locator('.spaces').first().waitFor({ state: 'detached' });
+      assert.strictEqual(await content().locator('.ending-sign').count(), 0);
     } finally {
       await toggle.click();
     }
-    await content().locator('.spaces').first().waitFor({ state: 'detached' });
-    assert.strictEqual(await content().locator('.ending-sign').count(), 0);
+    await content().locator('.spaces').first().waitFor();
   });
 
   test('closes the brackets and quotes typed once the settings say so, and types them alone otherwise', async () => {

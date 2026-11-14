@@ -789,12 +789,15 @@ suite('App', () => {
       }, 'a mark at the end of every row but the last');
       return laidOutCode(line);
     };
-    const hidden = await settled();
+    await page.locator('.diff-view.show-whitespace').waitFor();
+    const shown = await settled();
     await page
       .getByRole('button', { name: 'Show Whitespace', exact: true })
       .click();
-    await page.locator('.diff-view.show-whitespace').waitFor();
-    const shown = await settled();
+    await page
+      .locator('.diff-view.show-whitespace')
+      .waitFor({ state: 'detached' });
+    const hidden = await settled();
     assert.strictEqual(shown.text, paddedLine);
     assert.deepStrictEqual(firsts(shown.rows), firsts(hidden.rows));
     assert.deepStrictEqual(
@@ -806,7 +809,7 @@ suite('App', () => {
       wrappedLines(paddedLine, wrapColumns(shown.width, shown.char)),
     );
     await waitFor(
-      () => wrapsSaved() && whitespaceShownSaved(),
+      () => wrapsSaved() && !whitespaceShownSaved(),
       'the choices to be saved',
     );
   });
@@ -839,9 +842,19 @@ suite('App', () => {
       await code.evaluateAll(barsOffGrid),
       gridLines.slice(1).map(() => 0),
     );
+    const showWhitespace = page.getByRole('button', {
+      name: 'Show Whitespace',
+      exact: true,
+    });
+    await showWhitespace.click();
     await page
-      .getByRole('button', { name: 'Show Whitespace', exact: true })
-      .click();
+      .locator('.diff-view.show-whitespace')
+      .waitFor({ state: 'detached' });
+    assert.deepStrictEqual(
+      await code.evaluateAll(barsOffGrid),
+      gridLines.slice(1).map(() => 0),
+    );
+    await showWhitespace.click();
     await page.locator('.diff-view.show-whitespace').waitFor();
     assert.deepStrictEqual(
       await code.evaluateAll(barsOffGrid),

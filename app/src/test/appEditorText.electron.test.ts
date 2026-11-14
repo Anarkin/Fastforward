@@ -428,46 +428,38 @@ suite('App', () => {
     assert.deepStrictEqual(await misplacedLines(true), []);
   });
 
-  test('marks the whitespace in the editor as the diff marks it once it is shown, every space dotted and every tab and other blank signed in a box like the diff, every character still where the diff draws it', async () => {
+  test('marks the whitespace in the editor as the diff marks it while it is shown, as it is by default, every space dotted and every tab and other blank signed in a box like the diff, every character still where the diff draws it', async () => {
     await openLines();
-    const toggle = page
-      .getByRole('button', { name: 'Show Whitespace' })
-      .first();
-    await toggle.click();
     await page.locator('.diff-view .spaces').first().waitFor();
     const wrapping = (await page.locator('.diff-view.wrap').count()) > 0;
     const editor = await editorInPage();
     const wrong: string[] = [];
-    try {
-      for (const number of editorLines.keys()) {
-        const code = (await diffLineNumbered(number + 1)).locator('.code');
-        const { laidOut, width } = await diffLine(number + 1);
-        const inDiff = await code.evaluate(blanksOf);
-        const shown = await editorLine(
-          editor,
-          laidOut.text,
-          width,
-          wrapping,
-          true,
-        );
-        const inEditor = await page
-          .locator('.editor-probe .cm-line')
-          .evaluate(blanksOf);
-        const moved = misplaced(number + 1, laidOut, shown);
-        if (moved !== undefined) {
-          wrong.push(JSON.stringify(moved));
-        }
-        const unlike = inDiff.findIndex(
-          (mark, index) => inEditor[index] !== mark,
-        );
-        if (unlike !== -1 || inDiff.length !== inEditor.length) {
-          wrong.push(
-            `${number + 1}: ${inDiff[unlike] ?? 'end'} ≠ ${inEditor[unlike] ?? inEditor.at(inDiff.length) ?? 'end'}`,
-          );
-        }
+    for (const number of editorLines.keys()) {
+      const code = (await diffLineNumbered(number + 1)).locator('.code');
+      const { laidOut, width } = await diffLine(number + 1);
+      const inDiff = await code.evaluate(blanksOf);
+      const shown = await editorLine(
+        editor,
+        laidOut.text,
+        width,
+        wrapping,
+        true,
+      );
+      const inEditor = await page
+        .locator('.editor-probe .cm-line')
+        .evaluate(blanksOf);
+      const moved = misplaced(number + 1, laidOut, shown);
+      if (moved !== undefined) {
+        wrong.push(JSON.stringify(moved));
       }
-    } finally {
-      await toggle.click();
+      const unlike = inDiff.findIndex(
+        (mark, index) => inEditor[index] !== mark,
+      );
+      if (unlike !== -1 || inDiff.length !== inEditor.length) {
+        wrong.push(
+          `${number + 1}: ${inDiff[unlike] ?? 'end'} ≠ ${inEditor[unlike] ?? inEditor.at(inDiff.length) ?? 'end'}`,
+        );
+      }
     }
     assert.deepStrictEqual(wrong, []);
   });

@@ -107,7 +107,7 @@
 | Moved lines | Mark lines moved rather than removed and added | `git diff --color-moved` | Advanced | ❌ No |  |
 | Syntax highlighting | Color the code of the diff | — | Common | ✅ Yes | `shiki`, with VS Code's TextMate grammars, in the language the file's name tells; L chooses another for the one file shown, or Plain Text for every file |
 | Ignore whitespace | Leave out changes of whitespace alone | `git diff -w` | Common | ✅ Yes | On by default; files with only whitespace changes are named |
-| Show whitespace | Draw the spaces, tabs and line ends | — | Advanced | ✅ Yes | Off by default; `.` |
+| Show whitespace | Draw the spaces, tabs and line ends | — | Advanced | ✅ Yes | On by default; `.` |
 | Line endings | Show changes of line endings, or ignore them | `git diff --ignore-cr-at-eol` | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it |
 | Encodings | Show files that aren't UTF-8 | `working-tree-encoding` in `.gitattributes` | Advanced | 🟡 Partial | A file opened in a viewer tab is read in the encoding a byte order mark names or, when not UTF-8, the code page of the system, or in one chosen with E; diffs read files as UTF-8; git turns messages into UTF-8 |
 | Context | Show more lines around the changes, or the whole file | `git diff -U<n>` | Common | ✅ Yes | The whole file of the file selected, on one toggle kept for every file and on by default; no expanding a few lines at a time |
