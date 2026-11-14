@@ -24,11 +24,8 @@ import {
   rowAnchors,
   scrollAnchor,
 } from '../../../../tools/git/page/diffScrolling';
-import {
-  BreakMarks,
-  WrapMarks,
-  widestColumns,
-} from '../../../../tools/git/page/diffView';
+import { BreakMarks, WrapMarks } from '../../../../tools/git/page/diffView';
+import { widestColumns } from '../../../../tools/git/page/textProbes';
 
 const wideColumnsIn = (row: string) => (index: number) =>
   row.slice(0, index).length + row.slice(0, index).split('界').length - 1;

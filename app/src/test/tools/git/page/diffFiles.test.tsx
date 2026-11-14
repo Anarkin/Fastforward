@@ -13,8 +13,8 @@ import {
   FileNote,
   FileHeader,
   DiffSkeleton,
-  TextProbe,
 } from '../../../../tools/git/page/diffView';
+import { TextProbe } from '../../../../tools/git/page/textProbes';
 
 const binaryOfIndex = (index: string) =>
   parsePatch(

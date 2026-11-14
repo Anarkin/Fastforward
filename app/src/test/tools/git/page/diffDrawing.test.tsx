@@ -16,11 +16,8 @@ import {
   marked,
   wholeChangeClass,
 } from '../../../../tools/git/page/codeMarks';
-import {
-  gapWidth,
-  wordPadding,
-  selectionSide,
-} from '../../../../tools/git/page/diffView';
+import { gapWidth, wordPadding } from '../../../../tools/git/page/textProbes';
+import { selectionSide } from '../../../../tools/git/page/diffView';
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;

@@ -48,8 +48,8 @@ import {
   diffRowClass,
   FileHeader,
   HunkDivider,
-  layoutVariables,
 } from '../../../tools/git/page/diffView';
+import { layoutVariables } from '../../../tools/git/page/textProbes';
 
 suite('Style', () => {
   test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {

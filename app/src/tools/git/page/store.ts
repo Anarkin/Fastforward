@@ -54,7 +54,7 @@ import {
   type TabView,
 } from './tabView';
 import type { WrapColumns } from './rowMeasures';
-import type { CodeSnap, TextMeasures } from './diffView';
+import type { CodeSnap, TextMeasures } from './textProbes';
 
 interface ComparedTexts {
   readonly tab: string | undefined;
