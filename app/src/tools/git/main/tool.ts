@@ -1,4 +1,3 @@
-import * as path from 'node:path';
 import { AutoFetch, fetchOrder, type Timer } from './autoFetch';
 import { remoteDefaultBranches } from './cli/branches';
 import { gitErrorText } from './cli/errorText';
@@ -12,36 +11,19 @@ import {
   isFolder,
   readRefs,
   repositoryRoot,
-  spellingOf,
   type Refs,
 } from './cli/repository';
 import { UntrackedPatches } from './cli/workingTree';
-import {
-  listWorktrees,
-  locateRepository,
-  type Location,
-  type Worktree,
-} from './cli/worktrees';
-import { maxSteps } from './history/navigation';
+import { locateRepository, type Location } from './cli/worktrees';
 import { ImageReads } from './imageReads';
 import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
 import { tagRemoteOf, type Notify } from './operations';
 import { defaultBookmarks, remoteTagRefs } from './refs';
-import { isFullHash, shortHash } from '../shared/hashes';
+import { isFullHash } from '../shared/hashes';
 import { bookmarkedCommits } from '../shared/refNames';
 import { imageSourceOf, imageType } from '../shared/images';
-import {
-  commitPageSize,
-  commitPagesAsked,
-  diffLayouts,
-  type RepositoryInfo,
-  type TabMessage,
-  type TextRequest,
-  type GitToHost,
-  type WorktreeInfo,
-} from '../shared/protocol';
-import { isColumnWidths } from '../shared/settings';
+import type { TabMessage, GitToHost, WorktreeInfo } from '../shared/protocol';
 import {
   unattachedShell,
   type Page,
@@ -52,17 +34,15 @@ import {
   type Tool,
 } from '../../../shell/main/shell';
 import { strings } from '../../../shared/strings';
-import { maxRecentItems, sameRoot } from '../../../shell/main/storage';
-import { isBookmark, type GitStorage } from './storage';
+import { sameRoot } from '../../../shell/main/storage';
+import type { GitStorage } from './storage';
 import {
   forgetHistory,
-  hiddenSides,
   historyLoaded,
   keep,
   newTabState,
   parentOf,
   pickable,
-  replayOf,
   select,
   stillThere,
   toggleMerges,
@@ -79,6 +59,7 @@ import {
   nothing,
   allSettled,
   type GitCore,
+  OpeningFailed,
 } from './tabContext';
 import { Diffs } from './diffs';
 import { Refreshes } from './refreshes';
@@ -86,6 +67,9 @@ import { Navigation } from './navigation';
 import { Remotes } from './remotes';
 import { Watching } from './watching';
 import { CompareTabs } from './compareTabs';
+import { needsNoWholeHistory, wellFormed } from './messageChecks';
+import { Worktrees } from './worktrees';
+import { tabInfos, tabName } from './tabNames';
 
 const maxKeptUntrackedChars = 32_000_000;
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
@@ -101,21 +85,6 @@ export interface GitHost {
   clipboardText(): Promise<string>;
 }
 
-const maxBookmarks = 1000;
-
-const maxBookmarkName = 4096;
-
-const maxCommitsAsked = commitPagesAsked * commitPageSize;
-
-const maxTextsAsked = 10_000;
-
-class OpeningFailed {
-  constructor(
-    readonly root: string,
-    readonly error: unknown,
-  ) {}
-}
-
 export class GitTool implements Tool<'git'> {
   private shell: ShellAccess = unattachedShell;
   private readonly sessions = new WeakMap<Page, Session>();
@@ -123,7 +92,6 @@ export class GitTool implements Tool<'git'> {
   private readonly tabStates = new Map<string, TabWork>();
   private readonly repositories = new Map<string, string>();
   private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
-  private readonly worktreeListings = new Map<string, number>();
   private readonly imageReads = new ImageReads();
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
@@ -138,6 +106,7 @@ export class GitTool implements Tool<'git'> {
   private readonly remotes: Remotes;
   private readonly watching: Watching;
   private readonly compareTabs: CompareTabs;
+  private readonly worktrees: Worktrees;
 
   constructor(
     private readonly log: Log,
@@ -209,10 +178,32 @@ export class GitTool implements Tool<'git'> {
       this.tabStates,
       {
         loadWorktrees: (session, repository) =>
-          this.loadWorktrees(session, repository),
+          this.worktrees.loadWorktrees(session, repository),
       },
     );
     this.compareTabs = new CompareTabs(log, gitPath, storage, this.watching);
+    this.worktrees = new Worktrees(
+      log,
+      gitPath,
+      storage,
+      () => this.shell,
+      this.core,
+      this.watching,
+      this.navigation,
+      this.tabStates,
+      this.repositories,
+      this.worktreeLists,
+      {
+        repositoryTabs: () => this.repositoryTabs,
+        repositoryOf: (root) => this.repositoryOf(root),
+        isActive: (root) => this.isActive(root),
+        tabState: (root) => this.tabState(root),
+        showTab: (context) => this.showTab(context),
+        postTabs: (session) => this.postTabs(session),
+        sendTabs: (session) => this.sendTabs(session),
+        sendRecentEverywhere: () => this.sendRecentEverywhere(),
+      },
+    );
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
       () => fetchOrder(this.repositoryTabs, this.shownRepositories()),
@@ -229,7 +220,7 @@ export class GitTool implements Tool<'git'> {
           const session = this.cloneSession();
           if (session !== undefined) {
             await this.runNow(strings.log.openingFailed(target), session, () =>
-              this.openRepositories(session, [target]),
+              this.worktrees.openRepositories(session, [target]),
             );
           }
         },
@@ -299,7 +290,7 @@ export class GitTool implements Tool<'git'> {
     await this.run(
       strings.log.showingTabFailed(root),
       session,
-      () => this.openTab(session, root),
+      () => this.worktrees.openTab(session, root),
       this.storage.worktreeOf(root),
     );
   }
@@ -323,7 +314,7 @@ export class GitTool implements Tool<'git'> {
     const session = this.sessionOf(page);
     await this.run(strings.log.preloadingFailed(root), session, () =>
       allSettled([
-        this.loadWorktrees(session, root),
+        this.worktrees.loadWorktrees(session, root),
         this.preloadRoot(session, this.storage.worktreeOf(root), root),
       ]),
     );
@@ -336,10 +327,10 @@ export class GitTool implements Tool<'git'> {
     }
     for (const [root, state] of this.tabStates) {
       if (sameRoot(this.repositoryOf(root), closed)) {
-        this.forgetTab(root, state);
+        this.worktrees.forgetTab(root, state);
       }
     }
-    this.save(this.forgetUnused([closed]));
+    this.save(this.worktrees.forgetUnused([closed]));
     this.sendRecentEverywhere();
   }
 
@@ -422,14 +413,14 @@ export class GitTool implements Tool<'git'> {
   open(page: Page, folders: readonly string[]): Promise<void> {
     const session = this.sessionOf(page);
     return this.run(strings.log.openingAskedFailed, session, () =>
-      this.openRepositories(session, folders),
+      this.worktrees.openRepositories(session, folders),
     );
   }
 
   newTab(page: Page): Promise<void> {
     const session = this.sessionOf(page);
     return this.run(strings.log.openingAskedFailed, session, async () =>
-      this.openRepositories(session, await this.host.chooseFolders()),
+      this.worktrees.openRepositories(session, await this.host.chooseFolders()),
     );
   }
 
@@ -753,7 +744,7 @@ export class GitTool implements Tool<'git'> {
           return;
         }
         this.save(storage.setWorktree(repository, root));
-        await this.openTab(session, repository);
+        await this.worktrees.openTab(session, repository);
         return;
       }
       case 'openRepository': {
@@ -761,12 +752,15 @@ export class GitTool implements Tool<'git'> {
           sameRoot(root, message.root),
         );
         if (recent !== undefined) {
-          await this.openRepositories(session, [recent], true);
+          await this.worktrees.openRepositories(session, [recent], true);
         }
         return;
       }
       case 'browseRepositories':
-        await this.openRepositories(session, await this.host.chooseFolders());
+        await this.worktrees.openRepositories(
+          session,
+          await this.host.chooseFolders(),
+        );
         return;
       case 'initRepository': {
         const folder = await this.host.chooseFolder('init');
@@ -794,7 +788,7 @@ export class GitTool implements Tool<'git'> {
         return;
       case 'forgetRecent':
         await this.storage.removeRecent(message.root);
-        await this.forgetUnused([message.root]);
+        await this.worktrees.forgetUnused([message.root]);
         this.sendRecentEverywhere();
         return;
       case 'preloadWorktree': {
@@ -1113,17 +1107,6 @@ export class GitTool implements Tool<'git'> {
     return this.known(context, hash) && hash === context.tab.hash;
   }
 
-  private async openRepositories(
-    session: Session,
-    folders: readonly string[],
-    reopened = false,
-  ): Promise<void> {
-    const page = () => this.live(session) ?? session;
-    const repositories = await this.addRepositories(session, folders, reopened);
-    this.sendRecentEverywhere();
-    await this.shell.open(page().page, 'git', repositories, true);
-  }
-
   initRepositoryIn(folder: string): Promise<void> {
     const session = this.page;
     return session === undefined
@@ -1157,7 +1140,7 @@ export class GitTool implements Tool<'git'> {
         level: 'info',
         message: strings.messages.alreadyRepository(folder),
       });
-      await this.openRepositories(session, [folder]);
+      await this.worktrees.openRepositories(session, [folder]);
       return;
     }
     this.initAsked = folder;
@@ -1172,7 +1155,7 @@ export class GitTool implements Tool<'git'> {
       return;
     }
     this.log.info(strings.log.initialized(folder));
-    await this.openRepositories(session, [folder]);
+    await this.worktrees.openRepositories(session, [folder]);
   }
 
   private initFailed(session: Session, folder: string, error: unknown): void {
@@ -1184,253 +1167,6 @@ export class GitTool implements Tool<'git'> {
       level: 'error',
       message: strings.messages.couldNotInit(folder, text),
     });
-  }
-
-  private async addRepositories(
-    session: Session,
-    folders: readonly string[],
-    reopened = false,
-  ): Promise<string[]> {
-    const { storage } = this;
-    const page = () => this.live(session) ?? session;
-    const repositories: string[] = [];
-    for (const folder of folders) {
-      let location: Location | undefined;
-      try {
-        location = await locateRepository(this.gitPath, folder);
-      } catch (error) {
-        this.log.error(strings.log.openingFailed(folder));
-        this.log.error(error instanceof Error ? error : String(error));
-        page().post({
-          type: 'notice',
-          level: 'error',
-          message: strings.messages.couldNotOpen(folder, gitErrorText(error)),
-        });
-        continue;
-      }
-      if (!location && !(await isFolder(folder))) {
-        page().post({
-          type: 'notice',
-          level: 'error',
-          message: strings.messages.couldNotOpen(
-            folder,
-            strings.messages.unreachable,
-          ),
-        });
-        continue;
-      }
-      if (!location) {
-        this.save(
-          storage.removeRecent(folder).then(() => this.forgetUnused([folder])),
-        );
-        page().post({
-          type: 'notice',
-          level: 'error',
-          message: strings.messages.notInRepository(folder),
-        });
-        continue;
-      }
-      const repository = await spellingOf(
-        location.repository,
-        this.repositoryTabs,
-      );
-      const usable = this.takeWorktrees(repository, location.worktrees).filter(
-        (worktree) => !worktree.bare && !worktree.missing,
-      );
-      const saved = storage.worktreeOf(repository);
-      const picked =
-        reopened || location.worktree === undefined
-          ? undefined
-          : await spellingOf(
-              location.worktree,
-              usable.map((other) => other.path),
-            );
-      const worktree =
-        picked ??
-        usable.find((other) => sameRoot(other.path, saved))?.path ??
-        usable[0]?.path;
-      if (worktree !== undefined) {
-        this.save(storage.setWorktree(repository, worktree));
-      }
-      repositories.push(repository);
-      this.addRecent(repository);
-      this.shell.visited(worktree ?? repository);
-    }
-    return repositories;
-  }
-
-  private async openTab(session: Session, active: string): Promise<void> {
-    if (session.disposed) {
-      return;
-    }
-    this.postTabs(session);
-    const worktree = this.storage.worktreeOf(active);
-    this.repositories.set(worktree, active);
-    const tab = this.tabState(worktree);
-    try {
-      await allSettled([
-        this.loadWorktrees(session, active),
-        this.openWorktree(session, worktree),
-      ]);
-      tab.refused = false;
-    } catch (error) {
-      tab.refused = true;
-      throw new OpeningFailed(worktree, error);
-    }
-  }
-
-  private async openWorktree(session: Session, root: string): Promise<void> {
-    const tab = this.tabState(root);
-    for (const message of replayOf(tab)) {
-      session.post(message);
-    }
-    await tab.preloading;
-    if (!this.isActiveIn(session, root)) {
-      return;
-    }
-    this.watching.stopWatching(session);
-    const context = await this.context(session);
-    if (
-      !context ||
-      session.disposed ||
-      !this.isActiveIn(session, context.root)
-    ) {
-      return;
-    }
-    this.log.info(strings.log.tabOpen(context.root));
-    this.addRecent(context.repository);
-    await allSettled([
-      this.watching.watch(context, session),
-      this.showTab(context),
-    ]);
-  }
-
-  private addRecent(repository: string): void {
-    const last = this.storage.recent.slice(maxRecentItems - 1);
-    this.save(
-      this.storage.addRecent(repository).then(() => this.forgetUnused(last)),
-    );
-  }
-
-  private async forgetUnused(roots: readonly string[]): Promise<void> {
-    const { recent } = this.storage;
-    for (const root of roots) {
-      if (
-        !recent.some((kept) => sameRoot(kept, root)) &&
-        !this.hasRepository(root)
-      ) {
-        const worktrees = [...this.worktreeLists].find(([repository]) =>
-          sameRoot(repository, root),
-        )?.[1];
-        await this.storage.forget(
-          root,
-          (worktrees ?? []).map((worktree) => worktree.root),
-        );
-      }
-    }
-  }
-
-  private takeWorktrees(
-    repository: string,
-    worktrees: readonly Worktree[],
-  ): Worktree[] {
-    const [first, ...rest] = worktrees;
-    const spelled = first ? [{ ...first, path: repository }, ...rest] : [];
-    for (const worktree of spelled) {
-      this.repositories.set(worktree.path, repository);
-    }
-    this.worktreeLists.set(repository, worktreeInfos(spelled));
-    return spelled;
-  }
-
-  private async loadWorktrees(
-    session: Session,
-    repository: string,
-  ): Promise<void> {
-    const listing = (this.worktreeListings.get(repository) ?? 0) + 1;
-    this.worktreeListings.set(repository, listing);
-    const worktrees = await this.listedWorktrees(repository);
-    if (
-      worktrees === undefined ||
-      this.worktreeListings.get(repository) !== listing
-    ) {
-      return;
-    }
-    const shown = JSON.stringify(this.worktreeLists.get(repository));
-    this.forgetRemovedWorktrees(
-      repository,
-      this.takeWorktrees(repository, worktrees),
-    );
-    const shownIn = this.sessionShowingRepository(repository);
-    if (
-      JSON.stringify(this.worktreeLists.get(repository)) !== shown &&
-      shownIn !== undefined
-    ) {
-      const page = this.live(shownIn);
-      if (page) {
-        this.sendTabs(page);
-      }
-    }
-  }
-
-  private forgetRemovedWorktrees(
-    repository: string,
-    listed: readonly Worktree[],
-  ): void {
-    for (const [root, tab] of this.tabStates) {
-      if (
-        sameRoot(this.repositoryOf(root), repository) &&
-        !listed.some((worktree) => sameRoot(worktree.path, root)) &&
-        !this.isActive(root)
-      ) {
-        this.forgetTab(root, tab);
-      }
-    }
-    for (const [root, owner] of this.repositories) {
-      if (
-        sameRoot(owner, repository) &&
-        !sameRoot(root, repository) &&
-        !listed.some((worktree) => sameRoot(worktree.path, root)) &&
-        !this.isActive(root)
-      ) {
-        this.repositories.delete(root);
-      }
-    }
-  }
-
-  private forgetTab(root: string, tab: TabWork): void {
-    this.tabStates.delete(root);
-    keptGits.stopIn(root);
-    tab.closed.abort();
-    tab.loadingFiles.abort();
-    tab.loadingDiff.abort();
-    this.navigation.commitSearches.get(root)?.abort();
-  }
-
-  private async listedWorktrees(
-    repository: string,
-  ): Promise<Worktree[] | undefined> {
-    const known = [
-      repository,
-      this.storage.worktreeOf(repository),
-      ...(this.worktreeLists.get(repository) ?? []).map(
-        (worktree) => worktree.root,
-      ),
-    ];
-    try {
-      return await this.worktreesOf(repository, known);
-    } catch (error) {
-      this.log.error(strings.log.listingWorktreesFailed(repository));
-      this.log.error(error);
-      return undefined;
-    }
-  }
-
-  private worktreesOf(
-    repository: string,
-    known: readonly string[],
-  ): Promise<Worktree[]> {
-    return listWorktrees(this.gitPath, repository, known);
   }
 
   private staleDiffs(
@@ -1768,299 +1504,4 @@ export class GitTool implements Tool<'git'> {
     }
     this.live(session)?.post(message);
   }
-}
-
-function needsNoWholeHistory(tab: TabState, message: TabMessage): boolean {
-  switch (message.type) {
-    case 'loadCommits':
-    case 'viewFile':
-    case 'fetch':
-    case 'pull':
-    case 'push':
-    case 'pushTag':
-    case 'pullBranch':
-    case 'pushBranch':
-    case 'prefetchDiff':
-    case 'prefetchTexts':
-      return true;
-    case 'checkout':
-      return (
-        message.target.kind !== 'commit' ||
-        tab.fullHistory.has(message.target.hash)
-      );
-    case 'selectCommit':
-      return (
-        message.hash === undefined ||
-        hiddenSides(tab, message.hash).length === 0
-      );
-    case 'selectFile':
-    case 'loadTree':
-    case 'loadTexts':
-    case 'loadFileDiff':
-      return hiddenSides(tab, message.hash).length === 0;
-    default:
-      return false;
-  }
-}
-
-function isPathAsked(value: unknown): value is string {
-  return (
-    typeof value === 'string' && !value.includes('\0') && !value.includes('\n')
-  );
-}
-
-function isTextRequest(value: unknown): value is TextRequest {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'path' in value &&
-    isPathAsked(value.path) &&
-    'blob' in value &&
-    typeof value.blob === 'string' &&
-    'side' in value &&
-    (value.side === 'old' || value.side === 'new')
-  );
-}
-
-function areTextRequests(value: unknown): boolean {
-  return (
-    Array.isArray(value) &&
-    value.length <= maxTextsAsked &&
-    value.every(isTextRequest)
-  );
-}
-
-function isCheckoutTarget(value: unknown): boolean {
-  if (typeof value !== 'object' || value === null || !('kind' in value)) {
-    return false;
-  }
-  return value.kind === 'commit'
-    ? 'hash' in value && typeof value.hash === 'string'
-    : (value.kind === 'branch' ||
-        value.kind === 'remote' ||
-        value.kind === 'tag') &&
-        'name' in value &&
-        typeof value.name === 'string';
-}
-
-function isWhole(value: number, least: number, most: number): boolean {
-  return Number.isInteger(value) && value >= least && value <= most;
-}
-
-function isOptional<T>(
-  value: T | undefined,
-  is: (value: T) => boolean,
-): boolean {
-  return value === undefined || is(value);
-}
-
-const isString = (value: unknown) => typeof value === 'string';
-
-const isBoolean = (value: unknown) => typeof value === 'boolean';
-
-function wellFormed(message: GitToHost): boolean {
-  if (typeof message !== 'object' || message === null) {
-    return false;
-  }
-  switch (message.type) {
-    case 'browseRepositories':
-    case 'initRepository':
-    case 'openClone':
-    case 'closeClone':
-    case 'stopClone':
-      return true;
-    case 'openRepository':
-    case 'forgetRecent':
-    case 'selectWorktree':
-    case 'preloadWorktree':
-      return isString(message.root);
-    case 'initInside':
-    case 'chooseCloneFolder':
-      return isString(message.folder);
-    case 'checkCloneTarget':
-      return isString(message.folder) && isString(message.name);
-    case 'clone':
-      return [message.url, message.folder, message.name].every(isString);
-    case 'setColumnWidths':
-      return isColumnWidths(message.widths);
-    case 'setCollapseMerges':
-      return isBoolean(message.collapse);
-    case 'setShowEntireFile':
-    case 'setShowAllFiles':
-      return isBoolean(message.show);
-    case 'setIgnoreWhitespace':
-      return isBoolean(message.ignore);
-    case 'setAutoFetch':
-      return isBoolean(message.on);
-    case 'setDiffLayout':
-      return diffLayouts.includes(message.layout);
-    case 'loadCompareTexts':
-      return areTextRequests(message.requests);
-    default:
-      return isString(message.root) && wellFormedInTab(message);
-  }
-}
-
-function wellFormedInTab(message: TabMessage): boolean {
-  switch (message.type) {
-    case 'showUpstream':
-    case 'showParent':
-    case 'fetch':
-    case 'pull':
-    case 'push':
-    case 'stopCommitSearch':
-      return true;
-    case 'setBookmarks':
-      return (
-        Array.isArray(message.bookmarks) &&
-        message.bookmarks.length <= maxBookmarks &&
-        message.bookmarks.every(
-          (bookmark) =>
-            isBookmark(bookmark) && bookmark.name.length <= maxBookmarkName,
-        )
-      );
-    case 'setSolo':
-      return isBoolean(message.solo);
-    case 'loadTree':
-    case 'jump':
-    case 'toggleMerge':
-      return isString(message.hash);
-    case 'pushTag':
-    case 'pullBranch':
-    case 'pushBranch':
-      return isString(message.name);
-    case 'lookupHash':
-    case 'searchCommits':
-      return isString(message.query);
-    case 'checkout':
-      return isCheckoutTarget(message.target);
-    case 'viewFile':
-      return isPathAsked(message.path) && isOptional(message.blob, isString);
-    case 'loadFileDiff':
-      return (
-        isString(message.hash) &&
-        isPathAsked(message.path) &&
-        Number.isFinite(message.diff)
-      );
-    case 'loadTexts':
-      return (
-        isString(message.hash) &&
-        Number.isFinite(message.diff) &&
-        areTextRequests(message.texts)
-      );
-    case 'prefetchDiff':
-      return isString(message.hash);
-    case 'prefetchTexts':
-      return isString(message.hash) && areTextRequests(message.texts);
-    case 'navigate':
-      return (
-        (message.direction === 'back' || message.direction === 'forward') &&
-        isWhole(message.steps, 1, maxSteps)
-      );
-    case 'loadCommits':
-      return (
-        Number.isInteger(message.generation) &&
-        isWhole(message.start, 0, Number.MAX_SAFE_INTEGER) &&
-        isWhole(message.count, 1, maxCommitsAsked)
-      );
-    case 'scrolled':
-      return (
-        isString(message.hash) &&
-        Number.isFinite(message.offset) &&
-        Number.isFinite(message.report)
-      );
-    case 'selectCommit':
-      return (
-        isOptional(message.hash, isString) &&
-        isOptional(message.replace, isBoolean) &&
-        isOptional(message.selection, Number.isFinite)
-      );
-    case 'selectFile':
-      return (
-        isString(message.hash) &&
-        isOptional(message.path, isPathAsked) &&
-        isOptional(
-          message.area,
-          (area) => area === 'staged' || area === 'unstaged',
-        )
-      );
-    default:
-      return false;
-  }
-}
-
-export function tabInfos(
-  roots: readonly string[],
-  paths: path.PlatformPath = path,
-): RepositoryInfo[] {
-  const same = (name: string) =>
-    paths.sep === '\\' ? name.toLowerCase() : name;
-  const tabs = roots.map((root) => ({
-    root,
-    name: tabName(root, paths),
-    above: foldersAbove(namedFolder(root, paths), paths),
-  }));
-  return tabs.map(({ root, name, above }) => {
-    const levels = new Set<number>();
-    for (const other of tabs) {
-      if (other.root === root || same(other.name) !== same(name)) {
-        continue;
-      }
-      const level = above.findIndex(
-        (folder, index) =>
-          other.above[index] === undefined ||
-          same(other.above[index]) !== same(folder),
-      );
-      if (level !== -1) {
-        levels.add(level);
-      }
-    }
-    if (levels.size === 0) {
-      return { root, name };
-    }
-    const shown = [...levels].toSorted((a, b) => b - a);
-    const folders = shown.flatMap((level, index) =>
-      index > 0 && shown[index - 1] - level > 1
-        ? [strings.symbols.foldersLeftOut, above[level]]
-        : [above[level]],
-    );
-    return { root, name, folder: paths.join(...folders) };
-  });
-}
-
-function namedFolder(root: string, paths: path.PlatformPath): string {
-  const name = paths.basename(root);
-  return name === '.bare' || name === '.git'
-    ? namedFolder(paths.dirname(root), paths)
-    : root;
-}
-
-function foldersAbove(folder: string, paths: path.PlatformPath): string[] {
-  const parent = paths.dirname(folder);
-  return parent === folder
-    ? []
-    : [paths.basename(parent) || parent, ...foldersAbove(parent, paths)];
-}
-
-export function tabName(root: string, paths: path.PlatformPath = path): string {
-  const folder = namedFolder(root, paths);
-  return paths.basename(folder).replace(/(.)\.git$/, '$1') || folder;
-}
-
-function worktreeInfos(worktrees: readonly Worktree[]): WorktreeInfo[] {
-  const [first] = worktrees;
-  const main = first !== undefined && !first.bare;
-  return worktrees
-    .filter((worktree) => !worktree.bare)
-    .map((worktree, index) => ({
-      root: worktree.path,
-      name:
-        worktree.branch ??
-        (worktree.head === undefined
-          ? tabName(worktree.path)
-          : shortHash(worktree.head)),
-      folder: path.basename(worktree.path),
-      main: main && index === 0,
-      missing: worktree.missing,
-    }));
 }

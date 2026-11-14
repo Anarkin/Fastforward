@@ -162,3 +162,10 @@ export interface GitCore {
   readonly rememberSelection: (context: Context) => void;
   readonly save: (saving: Promise<void>) => void;
 }
+
+export class OpeningFailed {
+  constructor(
+    readonly root: string,
+    readonly error: unknown,
+  ) {}
+}
