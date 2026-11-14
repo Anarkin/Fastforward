@@ -8,7 +8,7 @@ import {
   searchQueryOf,
   shownFoldersOf,
 } from '../../../../../tools/git/page/store';
-import { areaKey } from '../../../../../tools/git/page/changesTree';
+import { areaKey } from '../../../../../tools/git/page/changesRows';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import { checkoutOptions } from '../../../../../tools/git/page/checkout';
 import { bookmarkOptions } from '../../../../../tools/git/page/bookmarks';

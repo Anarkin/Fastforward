@@ -124,7 +124,6 @@ const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'lib/page/images.tsx': 4,
   'lib/page/languageChoice.tsx': 4,
   'lib/page/menu.tsx': 1,
-  'lib/page/virtualRows.tsx': 8,
   'shell/page/aboutPopup.tsx': 1,
   'shell/page/App.tsx': 3,
   'shell/page/appMenu.tsx': 1,
@@ -146,7 +145,7 @@ const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'tools/commander/page/thumbnails.tsx': 5,
   'tools/commander/page/tool.tsx': 2,
   'tools/git/page/bubbles.tsx': 1,
-  'tools/git/page/changesTree.tsx': 15,
+  'tools/git/page/changesTree.tsx': 1,
   'tools/git/page/clonePopup.tsx': 1,
   'tools/git/page/codeMarks.tsx': 8,
   'tools/git/page/commitList.tsx': 6,
@@ -162,7 +161,6 @@ const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'tools/git/page/minimap.tsx': 5,
   'tools/git/page/navBar.tsx': 4,
   'tools/git/page/skeleton.tsx': 1,
-  'tools/git/page/tree.tsx': 3,
   'tools/git/page/worktreeBar.tsx': 1,
   'tools/git/page/wrapMarks.tsx': 1,
 };
@@ -182,7 +180,7 @@ const importsLeftOfComponentFiles: Readonly<Record<string, number>> = {
   'tools/git/page/receivedMessages.ts': 1,
   'tools/git/page/repositoryMenu.ts': 1,
   'tools/git/page/rowMeasures.ts': 1,
-  'tools/git/page/store.ts': 3,
+  'tools/git/page/store.ts': 2,
   'tools/terminal/page/folderMenu.ts': 1,
 };
 

@@ -9,8 +9,8 @@ import {
   revealAgain,
   revealOffset,
   scrollTarget,
-  VirtualRows,
-} from '../../../../lib/page/virtualRows';
+} from '../../../../lib/page/listRows';
+import { VirtualRows } from '../../../../lib/page/virtualRows';
 import { countingReads, noop } from '../../../helpers/fixtures';
 import { defaultScrolling } from '../../../../lib/page/rowScroll';
 

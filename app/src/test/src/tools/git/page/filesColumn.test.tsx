@@ -14,7 +14,7 @@ import {
   changesTree,
   changesTreeRows,
   filesRows,
-} from '../../../../../tools/git/page/changesTree';
+} from '../../../../../tools/git/page/changesRows';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import {
   FileFilterField,
@@ -38,10 +38,7 @@ import {
 } from '../../../../../tools/git/page/tabView';
 import type { VisibleRows } from '../../../../../lib/page/listMoves';
 import type { Folders } from '../../../../../tools/git/page/viewFolders';
-import {
-  revealAgain,
-  type ListedRows,
-} from '../../../../../lib/page/virtualRows';
+import { revealAgain, type ListedRows } from '../../../../../lib/page/listRows';
 import {
   clickFile,
   renderIn,

@@ -9,7 +9,6 @@ import {
 import {
   areaKey,
   changesTree,
-  changesTreeElement,
   changesKey,
   changesTreeRows,
   filesAncestors,
@@ -22,7 +21,8 @@ import {
   treeFolders,
   treeRowOf,
   type FilesRow,
-} from './changesTree';
+} from './changesRows';
+import { changesTreeElement } from './changesTree';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { Column } from './column';
 import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
@@ -38,8 +38,9 @@ import { gitKeymap } from './keymap';
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import { listMoveOf, type VisibleRows } from '../../../lib/page/listMoves';
 import { keyPressed, useBinding } from '../../../lib/page/shortcuts';
-import { fileRowKey } from './tree';
-import { VirtualRows, type ListedRows } from '../../../lib/page/virtualRows';
+import { fileRowKey } from './treeLayout';
+import { type ListedRows } from '../../../lib/page/listRows';
+import { VirtualRows } from '../../../lib/page/virtualRows';
 import { useShell } from '../../../shell/page/store';
 import {
   fileFilterOf,

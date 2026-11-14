@@ -3,15 +3,7 @@ import { strings } from '../../../lib/shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
 import { HighlightWords } from '../../../lib/page/highlight';
 import { ChangeIcon, LinkIcon } from '../../../lib/page/icons';
-
-const treePadding = 8;
-export const twistyWidth = 10;
-
-export function treeIndent(depth: number): number {
-  return treePadding + depth * twistyWidth;
-}
-
-export const fileRowKey = (path: string) => `file:${path}`;
+import { treeIndent, twistyWidth } from './treeLayout';
 
 export function Twisty({ open }: { open: boolean }) {
   return (

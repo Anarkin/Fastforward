@@ -24,7 +24,7 @@ import type {
 import { bookmarkedCommits, hasRef } from '../shared/refNames';
 import type { ColumnName } from './activeColumn';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
-import { areaKey } from './changesTree';
+import { areaKey } from './changesRows';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
 import type { ChosenFolder, CloneTarget } from './clonePopup';
 import { resetWidth, shownSelection } from './columns';

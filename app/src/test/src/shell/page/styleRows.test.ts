@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { createElement } from 'react';
 import { suite, test } from 'vitest';
-import { listedFilesRows } from '../../../../tools/git/page/changesTree';
+import { listedFilesRows } from '../../../../tools/git/page/changesRows';
 import { Column } from '../../../../tools/git/page/column';
 import { Crash } from '../../../../shell/page/errorBoundary';
 import { VirtualRows } from '../../../../lib/page/virtualRows';

@@ -1,6 +1,7 @@
 import type { RefKind, StashInfo } from '../shared/protocol';
 import { useOpenMenu, refMenuTarget } from './menus';
-import { FolderRow, treeIndent, twistyWidth } from './tree';
+import { treeIndent, twistyWidth } from './treeLayout';
+import { FolderRow } from './tree';
 import { strings } from '../../../lib/shared/strings';
 import type { TreeNode } from './refIndex';
 

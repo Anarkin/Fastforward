@@ -6,7 +6,6 @@ import { gitKeymap } from '../../../../../tools/git/page/keymap';
 import {
   ancestorRows,
   changesTree,
-  changesTreeElement,
   changesTreeRows,
   filesAncestors,
   filesKey,
@@ -16,10 +15,11 @@ import {
   listedFilesRows,
   treeFolders,
   type ChangesTreeRow,
-} from '../../../../../tools/git/page/changesTree';
+} from '../../../../../tools/git/page/changesRows';
+import { changesTreeElement } from '../../../../../tools/git/page/changesTree';
 import { listMoveOf } from '../../../../../lib/page/listMoves';
 import { keyPressed } from '../../../../../lib/page/shortcuts';
-import { fileRowKey } from '../../../../../tools/git/page/tree';
+import { fileRowKey } from '../../../../../tools/git/page/treeLayout';
 import { clickFile } from '../../../../helpers/componentFixtures';
 import {
   classesOf,

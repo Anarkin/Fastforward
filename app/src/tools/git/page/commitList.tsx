@@ -61,7 +61,7 @@ import {
   activeDescendant,
   endCovered,
   rowId,
-} from '../../../lib/page/virtualRows';
+} from '../../../lib/page/listRows';
 
 import {
   workingTreeShift,
