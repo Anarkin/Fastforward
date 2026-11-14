@@ -9,10 +9,8 @@ import type {
   Visit,
 } from './hostTypes';
 import { InFlight } from '../../lib/main/inFlight';
-import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,
-  TabInfo,
   ToHost,
   ToWebview,
   ToWebviewOf,
@@ -20,7 +18,6 @@ import type {
 } from '../shared/protocol';
 import { strings, type Sentence } from '../../lib/shared/strings';
 import {
-  confirmsClose,
   isTool,
   tools as toolIds,
   type ToHostOf,
@@ -36,18 +33,17 @@ import { TabHistory } from './tabHistory';
 import {
   activeTabOf,
   nextTabId,
-  nextWindowId,
   windowOf,
   withActive,
   withChanged,
   withClosed,
-  withMoved,
   withOpened,
-  type Emptied,
-  type TabWindow,
 } from './windows';
 import { ToolChoosing } from './toolChoosing';
 import { CommandOffer } from './commandOffer';
+import { Pages } from './pages';
+import { TabMoves } from './tabMoves';
+import { Closing } from './closing';
 
 export interface Page {
   post(message: ToWebview): void;
@@ -127,13 +123,6 @@ export interface Tool<K extends ToolId> {
 
 export type Tools = { readonly [K in ToolId]: Tool<K> };
 
-export function quitNoteOf(
-  tools: Readonly<Record<ToolId, Pick<Tool<ToolId>, 'quitNote'>>>,
-): string | undefined {
-  const notes = toolIds.flatMap((tool) => tools[tool].quitNote?.() ?? []);
-  return notes.length === 0 ? undefined : notes.join(' ');
-}
-
 export interface ShellHost {
   userSettingsFile(): Promise<string>;
   defaultSettingsFile(): Promise<string>;
@@ -162,28 +151,6 @@ export type DragEvent =
   | { readonly kind: 'cancel' }
   | { readonly kind: 'strip'; readonly strip: Strip }
   | { readonly kind: 'index'; readonly index: number };
-
-function stripOf(message: Record<string, unknown>): Strip | undefined {
-  const { left, right, top, bottom, firstTabLeft, tabTop } = message;
-  return typeof left === 'number' &&
-    typeof right === 'number' &&
-    typeof top === 'number' &&
-    typeof bottom === 'number' &&
-    typeof firstTabLeft === 'number' &&
-    typeof tabTop === 'number' &&
-    [left, right, top, bottom, firstTabLeft, tabTop].every(Number.isFinite)
-    ? { left, right, top, bottom, firstTabLeft, tabTop }
-    : undefined;
-}
-
-function pointOf(x: unknown, y: unknown): Point | undefined {
-  return typeof x === 'number' &&
-    typeof y === 'number' &&
-    Number.isFinite(x) &&
-    Number.isFinite(y)
-    ? { x, y }
-    : undefined;
-}
 
 export interface Connection {
   receive(message: ToHost): Promise<void>;
@@ -239,17 +206,15 @@ function reasonOf(error: unknown): string {
 }
 
 export class Shell {
-  private readonly pages = new Map<string, Page>();
-  private readonly windowsOfPages = new WeakMap<Page, string>();
+  private readonly pages: Pages;
   private readonly shownTools = new WeakMap<Page, ToolId>();
-  private readonly windowsSent = new WeakMap<Page, string>();
-  private focusedWindow: string | undefined;
   private lastPageLog: string | undefined;
-  private unsentNotices: readonly ToWebviewOf<'notice'>[] = [];
   private readonly inFlight = new InFlight();
   private readonly history = new TabHistory();
   private readonly choosing: ToolChoosing;
   private readonly command: CommandOffer;
+  private readonly moves: TabMoves;
+  private readonly closing: Closing;
 
   constructor(
     private readonly log: Log,
@@ -257,30 +222,35 @@ export class Shell {
     private readonly host: ShellHost,
     private readonly tools: Tools,
   ) {
+    this.pages = new Pages(storage, tools);
+    this.closing = new Closing(storage, tools, this.pages);
+    this.moves = new TabMoves(storage, host, this.pages, this.history, {
+      show: (page, tab) => this.show(page, tab),
+      save: (saving) => this.save(saving),
+    });
     this.choosing = new ToolChoosing(tools, {
-      activeTab: (page) => this.activeTab(page),
-      notice: (page, notice) => this.notice(page, notice),
+      activeTab: (page) => this.pages.activeTab(page),
+      notice: (page, notice) => this.pages.notice(page, notice),
     });
     this.command = new CommandOffer({
       shellHost: host,
       storage,
       log,
-      notice: (page, notice) => this.notice(page, notice),
+      notice: (page, notice) => this.pages.notice(page, notice),
       save: (saving) => this.save(saving),
     });
     const access: ShellAccess = {
-      page: () => this.focused(),
-      pages: () => [...this.pages.values()].filter((page) => !page.disposed),
-      current: (page) =>
-        page.disposed ? this.livePage(this.windowsOfPages.get(page)) : page,
+      page: () => this.pages.focused(),
+      pages: () => this.pages.all(),
+      current: (page) => this.pages.current(page),
       tabs: () => this.storage.savedTabs,
-      active: (page) => this.activeTab(page),
+      active: (page) => this.pages.activeTab(page),
       shown: () =>
         this.storage.layout.flatMap((window) => {
           const tab = activeTabOf(window);
           return tab === undefined
             ? []
-            : [{ page: this.pages.get(window.id), tab }];
+            : [{ page: this.pages.of(window.id), tab }];
         }),
       open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),
       openView: (page, tool, file) =>
@@ -299,8 +269,8 @@ export class Shell {
         }
       },
       recentFolders: () => this.storage.recentFolders,
-      postTabs: (page) => this.postTabs(page),
-      notice: (page, notice) => this.notice(page, notice),
+      postTabs: (page) => this.pages.postTabs(page),
+      notice: (page, notice) => this.pages.notice(page, notice),
       track: (work) => this.inFlight.track(work),
       idle: () => this.idle(),
     };
@@ -322,7 +292,7 @@ export class Shell {
       },
       disposed: false,
     };
-    this.windowsOfPages.set(page, window);
+    this.pages.connected(page, window);
     return {
       receive: (message) =>
         isMessage(message)
@@ -330,7 +300,10 @@ export class Shell {
               this.handle(message, page).catch((error: unknown) => {
                 this.log.error(strings.log.handlingFailed(message.type));
                 this.log.error(error);
-                this.notice(page, { level: 'error', message: reasonOf(error) });
+                this.pages.notice(page, {
+                  level: 'error',
+                  message: reasonOf(error),
+                });
               }),
             )
           : Promise.resolve(),
@@ -342,12 +315,15 @@ export class Shell {
         return this.inFlight.track(
           receiving.dropped(page, files, message).catch((error: unknown) => {
             this.log.error(error);
-            this.notice(page, { level: 'error', message: reasonOf(error) });
+            this.pages.notice(page, {
+              level: 'error',
+              message: reasonOf(error),
+            });
           }),
         );
       },
       refresh: () => {
-        const tab = this.activeTab(page);
+        const tab = this.pages.activeTab(page);
         return tab === undefined
           ? Promise.resolve()
           : this.inFlight.track(this.tools[tab.tool].refreshShown(page));
@@ -358,9 +334,7 @@ export class Shell {
           this.tools[tool].hide(page);
         }
         this.host.drag(window, { kind: 'drop' });
-        if (this.pages.get(window) === page && !this.laidOut(window)) {
-          this.pages.delete(window);
-        }
+        this.pages.disconnected(page, window);
       },
     };
   }
@@ -368,7 +342,7 @@ export class Shell {
   openFolders(folders: readonly string[]): Promise<void> {
     this.log.info(strings.log.openingAsked(folders.join(', ')));
     this.choosing.asked(folders);
-    const page = this.focused();
+    const page = this.pages.focused();
     if (page === undefined || page.disposed) {
       return Promise.resolve();
     }
@@ -397,72 +371,27 @@ export class Shell {
   }
 
   asksBeforeQuit(): boolean {
-    return (
-      [...this.pages.values()].some((page) => !page.disposed) &&
-      (this.storage.savedTabs.some((tab) => confirmsClose[tab.tool]) ||
-        this.unsavedOf(this.storage.savedTabs).length > 0 ||
-        quitNoteOf(this.tools) !== undefined)
-    );
+    return this.closing.asksBeforeQuit();
   }
 
   askToQuit(): void {
-    const note = quitNoteOf(this.tools);
-    const unsaved = this.namesOf(this.unsavedOf(this.storage.savedTabs));
-    this.shownPage()?.post({
-      type: 'confirmQuit',
-      ...(note !== undefined && { note }),
-      ...(unsaved.length > 0 && { unsaved }),
-    });
-  }
-
-  private unsavedOf(tabs: readonly Tab[]): Tab[] {
-    return tabs.filter((tab) => this.tools[tab.tool].unsaved?.(tab) === true);
-  }
-
-  private namesOf(tabs: readonly Tab[]): string[] {
-    return this.infos(tabs).map((info) => info.name);
-  }
-
-  private tabsOfWindow(window: string): readonly Tab[] {
-    return this.storage.layout.find((each) => each.id === window)?.tabs ?? [];
-  }
-
-  private async savedAll(page: Page, tabs: readonly Tab[]): Promise<boolean> {
-    for (const tab of this.unsavedOf(tabs)) {
-      const holder = windowOf(this.storage.layout, tab.id);
-      const shownIn =
-        (holder === undefined ? undefined : this.livePage(holder.id)) ?? page;
-      if ((await this.tools[tab.tool].saveUnsaved?.(shownIn, tab)) !== true) {
-        return false;
-      }
-    }
-    return true;
+    this.closing.askToQuit();
   }
 
   notify(notice: Notice): void {
-    this.notice(undefined, notice);
+    this.pages.notice(undefined, notice);
   }
 
   focus(window: string): void {
-    this.focusedWindow = window;
+    this.pages.focus(window);
   }
 
   asksBeforeClosing(window: string): boolean {
-    const tabs = this.tabsOfWindow(window);
-    return (
-      tabs.some((tab) => confirmsClose[tab.tool]) ||
-      this.unsavedOf(tabs).length > 0
-    );
+    return this.closing.asksBeforeClosing(window);
   }
 
   askToCloseWindow(window: string): boolean {
-    const page = this.livePage(window);
-    const unsaved = this.namesOf(this.unsavedOf(this.tabsOfWindow(window)));
-    page?.post({
-      type: 'confirmCloseWindow',
-      ...(unsaved.length > 0 && { unsaved }),
-    });
-    return page !== undefined;
+    return this.closing.askToCloseWindow(window);
   }
 
   closeWindow(window: string): void {
@@ -474,48 +403,24 @@ export class Shell {
     this.save(
       storage.setLayout(storage.layout.filter((each) => each !== closing)),
     );
-    const page = this.pages.get(window) ?? closedPage;
+    const page = this.pages.of(window) ?? closedPage;
     for (const tab of closing.tabs) {
       this.history.forget(tab.id);
       this.tools[tab.tool].closed(page, tab);
     }
-    this.postWindows();
+    this.pages.postWindows();
   }
 
-  private shownPage(): Page | undefined {
-    return (
-      this.livePage(this.focusedWindow) ??
-      this.storage.layout
-        .map((window) => this.livePage(window.id))
-        .find((page) => page !== undefined)
-    );
+  tearOff(tab: string, into: string): Promise<boolean> {
+    return this.moves.tearOff(tab, into);
   }
 
-  private focused(): Page | undefined {
-    return this.focusedWindow === undefined
-      ? undefined
-      : this.pages.get(this.focusedWindow);
+  moveTab(tab: string, into: string, index: number): Promise<void> {
+    return this.moves.moveTab(tab, into, index);
   }
 
-  private windowOf(page: Page): TabWindow {
-    const { layout } = this.storage;
-    const id = this.windowsOfPages.get(page) ?? layout[0]?.id ?? '1';
-    return layout.find((window) => window.id === id) ?? { id, tabs: [] };
-  }
-
-  private postToAll(message: ToWebview): void {
-    for (const page of this.pages.values()) {
-      page.post(message);
-    }
-  }
-
-  private livePage(window: string | undefined): Page | undefined {
-    const page = window === undefined ? undefined : this.pages.get(window);
-    return page === undefined || page.disposed ? undefined : page;
-  }
-
-  private activeTab(page: Page): Tab | undefined {
-    return activeTabOf(this.windowOf(page));
+  visit(window: string, visit: Visit | undefined): void {
+    this.moves.visit(window, visit);
   }
 
   private async handle(message: ToHost, page: Page): Promise<void> {
@@ -556,79 +461,33 @@ export class Shell {
       case 'quit':
         if (
           message.save === true &&
-          !(await this.savedAll(page, this.storage.savedTabs))
+          !(await this.closing.savedAll(page, this.storage.savedTabs))
         ) {
           return;
         }
         host.quit();
         return;
-      case 'newWindow': {
-        const window = nextWindowId(storage.layout);
-        this.save(
-          storage.setLayout([...storage.layout, { id: window, tabs: [] }]),
-        );
-        host.openWindow(window, this.windowOf(page).id);
-        this.postWindows();
-        return;
-      }
       case 'closeWindow': {
-        const window = this.windowOf(page);
+        const window = this.pages.windowOf(page);
         if (
           message.save === true &&
-          !(await this.savedAll(page, window.tabs))
+          !(await this.closing.savedAll(page, window.tabs))
         ) {
           return;
         }
         host.closeWindow(window.id);
         return;
       }
+      case 'newWindow':
       case 'moveTabToWindow':
-        await this.moveToWindow(page, message.tab, message.window);
-        return;
-      case 'tearTab': {
-        const window = this.windowOf(page);
-        const index = window.tabs.findIndex((tab) => tab.id === message.tab);
-        const grab = pointOf(message.grabX, message.grabY);
-        const at = pointOf(message.screenX, message.screenY);
-        if (index !== -1 && grab !== undefined && at !== undefined) {
-          host.drag(window.id, {
-            kind: 'start',
-            tab: message.tab,
-            index,
-            grab,
-            at,
-            alone: window.tabs.length === 1,
-          });
-        }
-        return;
-      }
-      case 'dragTabTo': {
-        const at = pointOf(message.screenX, message.screenY);
-        if (at !== undefined) {
-          host.drag(this.windowOf(page).id, { kind: 'move', at });
-        }
-        return;
-      }
+      case 'tearTab':
+      case 'dragTabTo':
       case 'dropTab':
-        host.drag(this.windowOf(page).id, { kind: 'drop' });
-        return;
       case 'cancelTabDrag':
-        host.drag(this.windowOf(page).id, { kind: 'cancel' });
-        return;
-      case 'tabStrip': {
-        const strip = stripOf({ ...message });
-        if (strip !== undefined) {
-          host.drag(this.windowOf(page).id, { kind: 'strip', strip });
-        }
-        return;
-      }
+      case 'tabStrip':
       case 'visitIndex':
-        if (Number.isSafeInteger(message.index) && message.index >= 0) {
-          host.drag(this.windowOf(page).id, {
-            kind: 'index',
-            index: message.index,
-          });
-        }
+      case 'moveTab':
+        await this.moves.receive(page, message);
         return;
       case 'copyText':
         if (typeof message.text === 'string') {
@@ -646,12 +505,12 @@ export class Shell {
         }
         return;
       case 'selectTab': {
-        const window = this.windowOf(page);
+        const window = this.pages.windowOf(page);
         const tab = window.tabs.find((each) => each.id === message.tab);
         if (
           tab === undefined ||
           (tab.id === window.active &&
-            this.pages.get(window.id) === page &&
+            this.pages.of(window.id) === page &&
             this.tools[tab.tool].shows(page, tab))
         ) {
           return;
@@ -663,41 +522,21 @@ export class Shell {
         const closing = storage.savedTabs.filter(
           (tab) => tab.id === message.tab,
         );
-        if (message.save === true && !(await this.savedAll(page, closing))) {
+        if (
+          message.save === true &&
+          !(await this.closing.savedAll(page, closing))
+        ) {
           return;
         }
         await this.close(page, message.tab);
         return;
       }
       case 'preloadTab': {
-        const window = this.windowOf(page);
+        const window = this.pages.windowOf(page);
         const tab = window.tabs.find((each) => each.id === message.tab);
         if (tab !== undefined && tab.id !== window.active) {
           await this.tools[tab.tool].preload(page, tab);
         }
-        return;
-      }
-      case 'moveTab': {
-        const window = this.windowOf(page);
-        if (
-          window.tabs.some((tab) => tab.id === message.tab) &&
-          Number.isInteger(message.index) &&
-          message.index >= 0 &&
-          message.index < window.tabs.length
-        ) {
-          this.save(
-            storage.setLayout(
-              withMoved(
-                storage.layout,
-                message.tab,
-                window.id,
-                message.index,
-                this.history,
-              ),
-            ),
-          );
-        }
-        this.postTabs(page);
         return;
       }
       case 'setTextView':
@@ -705,14 +544,14 @@ export class Shell {
           return;
         }
         this.save(storage.setTextView(message.view));
-        this.postToAll({ type: 'textView', view: storage.textView });
+        this.pages.postToAll({ type: 'textView', view: storage.textView });
         return;
       case 'setImageView':
         if (!isImageView(message.view)) {
           return;
         }
         this.save(storage.setImageView(message.view));
-        this.postToAll({ type: 'imageView', view: storage.imageView });
+        this.pages.postToAll({ type: 'imageView', view: storage.imageView });
         return;
       case 'newTab':
         if (isTool(message.tool)) {
@@ -752,27 +591,20 @@ export class Shell {
       type: 'terminalCommand',
       installable: host.canInstallCommand(),
     });
-    const window = this.windowOf(page);
-    const laidOut = this.laidOut(window.id);
+    const window = this.pages.windowOf(page);
+    const laidOut = this.pages.laidOut(window.id);
     if (laidOut) {
       this.tellProblems(page);
     }
     for (const tool of toolIds) {
       this.tools[tool].ready(page);
     }
-    this.pages.set(window.id, page);
-    if (laidOut) {
-      this.focusedWindow = window.id;
-    }
+    this.pages.showing(window.id, page);
     this.shownTools.delete(page);
     await this.show(page, window.active);
     if (laidOut) {
       await this.choosing.askFolders(page);
     }
-  }
-
-  private laidOut(window: string): boolean {
-    return this.storage.layout.some((each) => each.id === window);
   }
 
   private tellProblems(page: Page): void {
@@ -794,7 +626,7 @@ export class Shell {
 
   private async show(page: Page, id: string | undefined): Promise<void> {
     const { storage } = this;
-    const window = this.windowOf(page);
+    const window = this.pages.windowOf(page);
     const active =
       window.tabs.find((tab) => tab.id === id) ?? window.tabs.at(0);
     this.save(
@@ -806,19 +638,9 @@ export class Shell {
     if (page.disposed) {
       return;
     }
-    this.pages.set(window.id, page);
-    const laidOut = this.laidOut(window.id);
-    if (laidOut) {
-      this.focusedWindow = window.id;
-    }
-    this.postTabs(page);
-    if (laidOut) {
-      const unsent = this.unsentNotices;
-      this.unsentNotices = [];
-      for (const notice of unsent) {
-        page.post(notice);
-      }
-    }
+    this.pages.showing(window.id, page);
+    this.pages.postTabs(page);
+    this.pages.postUnsentNotices(window.id, page);
     const shown = this.shownTools.get(page);
     if (active === undefined) {
       this.shownTools.delete(page);
@@ -835,10 +657,10 @@ export class Shell {
 
   private async close(page: Page, id: string): Promise<void> {
     const { storage } = this;
-    const window = this.windowOf(page);
+    const window = this.pages.windowOf(page);
     const closed = window.tabs.find((tab) => tab.id === id);
     if (closed === undefined) {
-      this.postTabs(page);
+      this.pages.postTabs(page);
       return;
     }
     const activeId = window.active;
@@ -849,11 +671,11 @@ export class Shell {
     this.tools[closed.tool].closed(page, closed);
     if (!layout.some((each) => each.id === window.id)) {
       this.host.closeWindow(window.id);
-      this.postWindows();
+      this.pages.postWindows();
       return;
     }
     if (active === activeId && active !== undefined) {
-      this.postTabs(page);
+      this.pages.postTabs(page);
       return;
     }
     await this.show(page, active);
@@ -867,7 +689,7 @@ export class Shell {
     kind: Pick<Tab, 'view' | 'edit' | 'compare'> = {},
   ): Promise<void> {
     const { storage } = this;
-    const window = this.windowOf(page);
+    const window = this.pages.windowOf(page);
     const tabs = storage.savedTabs;
     const added: Tab[] = [];
     const opened: string[] = [];
@@ -898,10 +720,10 @@ export class Shell {
       opened.push(tab.id);
     }
     this.save(storage.setLayout(withOpened(storage.layout, window.id, added)));
-    const live = page.disposed ? (this.pages.get(window.id) ?? page) : page;
+    const live = page.disposed ? (this.pages.of(window.id) ?? page) : page;
     const last = opened.at(-1);
     if (last === undefined) {
-      this.postTabs(live);
+      this.pages.postTabs(live);
       return;
     }
     const holder = windowOf(storage.layout, last);
@@ -910,10 +732,10 @@ export class Shell {
       return;
     }
     this.host.showWindow(holder.id);
-    const there = this.livePage(holder.id);
+    const there = this.pages.live(holder.id);
     if (there === undefined) {
       this.save(storage.setLayout(withActive(storage.layout, holder.id, last)));
-      this.postTabs(live);
+      this.pages.postTabs(live);
       return;
     }
     await this.show(there, last);
@@ -921,9 +743,9 @@ export class Shell {
 
   private async editViewed(page: Page, id: string): Promise<void> {
     const { storage } = this;
-    const viewed = this.windowOf(page).tabs.find(
-      (tab) => tab.id === id && tab.view === true,
-    );
+    const viewed = this.pages
+      .windowOf(page)
+      .tabs.find((tab) => tab.id === id && tab.view === true);
     if (viewed?.root === undefined) {
       return;
     }
@@ -950,206 +772,10 @@ export class Shell {
       return;
     }
     this.save(storage.setLayout(withChanged(storage.layout, { ...tab, root })));
-    const page = this.livePage(windowOf(storage.layout, id)?.id);
+    const page = this.pages.live(windowOf(storage.layout, id)?.id);
     if (page !== undefined) {
-      this.postTabs(page);
+      this.pages.postTabs(page);
     }
-  }
-
-  private postTabs(page: Page): void {
-    page.post({
-      type: 'tabs',
-      tabs: this.infos(this.windowOf(page).tabs),
-      active: this.activeTab(page)?.id,
-    });
-    this.postWindows();
-  }
-
-  private postWindows(): void {
-    const { layout } = this.storage;
-    const names = new Map(
-      this.infos(this.storage.savedTabs).map((info) => [
-        info.id,
-        strings.tabs.label(info.name, info.folder),
-      ]),
-    );
-    for (const [id, page] of this.pages) {
-      const windows = layout
-        .filter((window) => window.id !== id)
-        .map((window) => {
-          const shown = activeTabOf(window) ?? window.tabs.at(0);
-          return {
-            id: window.id,
-            name:
-              (shown === undefined ? undefined : names.get(shown.id)) ??
-              strings.tabs.noTabWindow,
-          };
-        });
-      const sent = JSON.stringify(windows);
-      if (!page.disposed && this.windowsSent.get(page) !== sent) {
-        this.windowsSent.set(page, sent);
-        page.post({ type: 'windows', windows });
-      }
-    }
-  }
-
-  private async moveToWindow(
-    page: Page,
-    tab: unknown,
-    target: unknown,
-  ): Promise<void> {
-    const { storage } = this;
-    const from = this.windowOf(page);
-    if (
-      typeof tab !== 'string' ||
-      !from.tabs.some((each) => each.id === tab) ||
-      (target === undefined
-        ? from.tabs.length < 2
-        : typeof target !== 'string' ||
-          target === from.id ||
-          !storage.layout.some((window) => window.id === target))
-    ) {
-      this.postTabs(page);
-      return;
-    }
-    if (typeof target === 'string') {
-      this.host.showWindow(target);
-      await this.relocate(
-        tab,
-        from.id,
-        target,
-        storage.layout.find((window) => window.id === target)?.tabs.length ?? 0,
-        false,
-      );
-      return;
-    }
-    const into = nextWindowId(storage.layout);
-    const moving = this.relocate(tab, from.id, into, 0, true);
-    this.host.openWindow(into, from.id);
-    await moving;
-  }
-
-  async tearOff(tab: string, into: string): Promise<boolean> {
-    const { layout } = this.storage;
-    const from = windowOf(layout, tab);
-    if (
-      from === undefined ||
-      from.tabs.length < 2 ||
-      layout.some((window) => window.id === into)
-    ) {
-      return false;
-    }
-    await this.relocate(tab, from.id, into, 0, true);
-    return true;
-  }
-
-  async moveTab(tab: string, into: string, index: number): Promise<void> {
-    const { storage } = this;
-    const from = windowOf(storage.layout, tab);
-    if (
-      from === undefined ||
-      !storage.layout.some((window) => window.id === into)
-    ) {
-      return;
-    }
-    if (from.id !== into) {
-      await this.relocate(tab, from.id, into, index, false, 'kept');
-      return;
-    }
-    this.save(
-      storage.setLayout(
-        withMoved(storage.layout, tab, into, index, this.history),
-      ),
-    );
-    const page = this.livePage(into);
-    if (page !== undefined) {
-      this.postTabs(page);
-    }
-  }
-
-  visit(window: string, visit: Visit | undefined): void {
-    const page = this.livePage(window);
-    const tab =
-      visit === undefined
-        ? undefined
-        : this.storage.savedTabs.find((each) => each.id === visit.tab);
-    const [info] = tab === undefined ? [] : this.infos([tab]);
-    page?.post(
-      visit === undefined || info === undefined
-        ? { type: 'tabVisit' }
-        : {
-            type: 'tabVisit',
-            visit: { tab: info, x: visit.x, grabX: visit.grabX },
-          },
-    );
-  }
-
-  private async relocate(
-    tab: string,
-    from: string,
-    into: string,
-    index: number,
-    added: boolean,
-    emptied: Emptied = 'closed',
-  ): Promise<void> {
-    const { storage } = this;
-    const before = added
-      ? [...storage.layout, { id: into, tabs: [] }]
-      : storage.layout;
-    const layout = withMoved(before, tab, into, index, this.history, emptied);
-    this.save(storage.setLayout(layout));
-    const there = this.livePage(into);
-    const shown = there === undefined ? undefined : this.show(there, tab);
-    const left = layout.find((window) => window.id === from);
-    if (left === undefined) {
-      this.host.closeWindow(from);
-      this.postWindows();
-      await shown;
-      return;
-    }
-    const page = this.livePage(from);
-    await Promise.all([
-      shown,
-      page === undefined ? undefined : this.show(page, left.active),
-    ]);
-  }
-
-  private infos(tabs: readonly Tab[]): TabInfo[] {
-    const names = new Map(
-      toolIds.flatMap((tool) => [
-        ...this.tools[tool].names(tabs.filter((tab) => tab.tool === tool)),
-      ]),
-    );
-    return tabs.map(({ id, tool, root, view, edit, compare }) => {
-      const name = names.get(id);
-      return {
-        id,
-        tool,
-        name: name?.name ?? strings.tools[tool],
-        ...(name?.folder !== undefined && { folder: name.folder }),
-        ...(name?.icon !== undefined && { icon: name.icon }),
-        ...(root !== undefined && { root }),
-        ...(view === true && { view }),
-        ...(edit === true && { edit }),
-        ...(compare !== undefined && { compare: true as const }),
-        ...(name?.unsaved === true && { unsaved: true as const }),
-      };
-    });
-  }
-
-  private notice(page: Page | undefined, notice: Notice): void {
-    const live =
-      page !== undefined && !page.disposed
-        ? page
-        : (this.livePage(
-            page === undefined ? undefined : this.windowsOfPages.get(page),
-          ) ?? this.livePage(this.focusedWindow));
-    const message = { type: 'notice', ...notice } as const;
-    if (live === undefined) {
-      this.unsentNotices = addNotice(this.unsentNotices, message);
-      return;
-    }
-    live.post(message);
   }
 
   private save(saving: Promise<void>): void {

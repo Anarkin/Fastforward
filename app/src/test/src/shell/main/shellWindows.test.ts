@@ -13,6 +13,7 @@ import {
   type FakePage,
 } from '../../../helpers/harness';
 import { removeFolder, tempFolder } from '../../../helpers/repositories';
+import { Pages } from '../../../../shell/main/pages';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
 import { noticesOf } from './shellFixtures';
 
@@ -109,7 +110,9 @@ suite('Shell with several windows', () => {
     second.connection.dispose();
     spare.connection.dispose();
     first.connection.dispose();
-    const pages: unknown = Reflect.get(first.shell, 'pages');
+    const shellPages: unknown = Reflect.get(first.shell, 'pages');
+    assert.ok(shellPages instanceof Pages);
+    const pages: unknown = Reflect.get(shellPages, 'pages');
     assert.ok(pages instanceof Map);
     assert.deepStrictEqual([...pages.keys()], ['1']);
   });

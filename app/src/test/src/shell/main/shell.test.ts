@@ -15,7 +15,7 @@ import {
   withView,
 } from '../../../helpers/harness';
 import { removeFolder, tempFolder } from '../../../helpers/repositories';
-import { quitNoteOf } from '../../../../shell/main/shell';
+import { quitNoteOf } from '../../../../shell/main/closing';
 import { saying, noticesOf } from './shellFixtures';
 
 suite('Shell with no tab open', () => {
