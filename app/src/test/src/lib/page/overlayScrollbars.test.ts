@@ -1,29 +1,31 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test, vi } from 'vitest';
+import { stylesheet } from '../../../helpers/fixtures';
 import {
   clipPathOf,
   dragFrom,
   draggedScroll,
-  drawsOverlay,
-  followedScroller,
   framedMetrics,
   grabbedAt,
-  installOverlayScrollbars,
   jumpedScroll,
-  overlayScrollbarClass,
   paintedFrame,
-  scrolledScroller,
   shareAt,
   thumbBox,
   trackBox,
-  trackOf,
   scrollPerPixel,
+  thumbOf,
+} from '../../../../lib/page/scrollbarGeometry';
+import {
+  drawsOverlay,
+  followedScroller,
+  installOverlayScrollbars,
+  overlayScrollbarClass,
+  scrolledScroller,
+  trackOf,
   sidewaysMetrics,
   sidewaysScroll,
-  thumbOf,
 } from '../../../../lib/page/overlayScrollbars';
-import { stylesheet } from '../../../helpers/fixtures';
 
 const none = () => null;
 

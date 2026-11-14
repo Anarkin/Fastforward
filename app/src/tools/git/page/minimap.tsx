@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from 'react';
 import { clicked, keymap, type Modifiers } from '../../../lib/shared/keymap';
-import { hideAfter } from '../../../lib/page/overlayScrollbars';
+import { hideAfter } from '../../../lib/page/scrollbarGeometry';
 
 export interface MinimapMark {
   readonly kind: 'added' | 'removed' | 'match';

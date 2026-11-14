@@ -20,9 +20,9 @@ import { useShell } from '../../../shell/page/store';
 import {
   grabbedAt,
   hideAfter,
-  overlayScrollbarClass,
   shareAt,
-} from '../../../lib/page/overlayScrollbars';
+} from '../../../lib/page/scrollbarGeometry';
+import { overlayScrollbarClass } from '../../../lib/page/overlayScrollbars';
 
 export interface Thumb {
   readonly start: number;
