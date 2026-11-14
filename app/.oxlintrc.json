@@ -235,7 +235,6 @@
       "files": [
         "src/lib/page/overlayScrollbars.ts",
         "src/test/e2e/appViewerModes.electron.test.ts",
-        "src/test/src/tools/commander/main/commanderFixtures.ts",
         "src/test/src/tools/git/main/cli/files.git.test.ts",
         "src/test/src/tools/git/main/cli/repository.git.test.ts",
         "src/tools/commander/main/transferCommands.ts",
