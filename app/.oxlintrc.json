@@ -132,10 +132,7 @@
       }
     },
     {
-      "files": [
-        "scripts/playground/filesPlan.mts",
-        "scripts/playground/git.mts"
-      ],
+      "files": ["scripts/playground/git.mts"],
       "rules": {
         "max-lines": [
           "warn",
