@@ -206,6 +206,32 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(clonedInto, [at('app')]);
     assert.deepStrictEqual(initedIn, [root]);
   });
+
+  test('opens a repository a side lists in a git tab, and nothing for a folder that isn’t one, a file, .. , a name it doesn’t list or another tab', async () => {
+    const { tool, page, send, repositories, settled, openedIn } = commander({
+      [root]: [folder('app'), folder('docs'), file('notes.txt')],
+    });
+    repositories.add(at('app'));
+    await tool.show(page, tab);
+    await settled();
+    const open = (name: string, on = '1') =>
+      send({ type: 'openRepository', tab: on, side: 'left', name });
+
+    await open('app');
+    await open('docs');
+    await open('notes.txt');
+    await open('..');
+    await open('elsewhere');
+    await open('app', '2');
+    await send(
+      forged(
+        '{ "type": "openRepository", "tab": "1", "side": "up", "name": "app" }',
+      ),
+    );
+
+    assert.deepStrictEqual(openedIn, [{ tool: 'git', folders: [at('app')] }]);
+  });
+
   test('opens a git tab comparing two files the sides list, the first the old side, and nothing for a folder, ..  or a name it doesn’t list', async () => {
     const { tool, page, send, compared } = commander({
       [root]: [folder('Users'), file('notes.txt'), file('other.txt')],

@@ -200,6 +200,24 @@ suite('Commander tool', () => {
     assert.strictEqual(tool.folderOf(tab), root);
   });
 
+  test('names a viewing tab after its file and gives its folder as the folder of the tab, showing it without sides', async () => {
+    const { tool, page } = commander({ [root]: [file('notes.txt')] });
+    const viewing: Tab = {
+      id: '3',
+      tool: 'commander',
+      root: at('notes.txt'),
+      view: true,
+    };
+
+    assert.strictEqual(tool.names([viewing]).get('3')?.name, 'notes.txt');
+    assert.strictEqual(tool.folderOf(viewing), root);
+    await tool.show(page, viewing);
+    assert.deepStrictEqual(page.of('show'), [
+      { type: 'show', tab: '3', file: at('notes.txt') },
+    ]);
+    assert.deepStrictEqual(page.listings(), []);
+  });
+
   test('watches the folders of the tab shown, listing a side again when its folder changes', async () => {
     const listed: Record<string, Listed> = {
       [root]: [folder('Users')],
@@ -553,6 +571,23 @@ suite('Commander tool', () => {
         [root, at('Users'), root],
       );
     });
+
+    test('forgets the folders of a closed tab, starting it at the root again', async () => {
+      const { tool, page, send } = commander({
+        [root]: [folder('Users')],
+        [at('Users')]: [],
+      });
+      await tool.show(page, tab);
+      await send({ type: 'open', tab: '1', side: 'left', name: 'Users' });
+
+      tool.closed(page, tab);
+      await tool.show(page, tab);
+
+      assert.deepStrictEqual(page.listings().slice(3), [
+        `left ${root}: Users`,
+        `right ${root}: Users`,
+      ]);
+    });
   });
 });
 
@@ -639,24 +674,6 @@ suite('Commander tool in several windows', () => {
     });
     assert.ok(page.of('transfer').at(-1)?.view?.clash !== undefined);
     assert.deepStrictEqual(other.of('transfer'), []);
-  });
-
-  test('tells the page to close brackets as they are typed in the editor once the settings say so', () => {
-    const { tool, page, closing } = commander({ [root]: [] });
-    tool.reloadSettings();
-    assert.strictEqual(page.of('settings').at(-1)?.closeBrackets, undefined);
-    closing.now = true;
-    tool.reloadSettings();
-    assert.strictEqual(page.of('settings').at(-1)?.closeBrackets, true);
-  });
-
-  test('tells every window the settings once they change', () => {
-    const { tool, page, pages } = commander({ [root]: [] });
-    const other = new CommanderPage();
-    pages.push(other);
-    tool.reloadSettings();
-    assert.strictEqual(page.of('settings').length, 1);
-    assert.strictEqual(other.of('settings').length, 1);
   });
 
   suite('viewing a file', () => {

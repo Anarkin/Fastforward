@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { Sorts } from '../../../../../tools/commander/shared/settings';
 import {
+  CommanderPage,
   root,
   at,
   folder,
@@ -143,20 +144,65 @@ suite('Commander tool', () => {
     });
   });
 
-  test('forgets the folders of a closed tab, starting it at the root again', async () => {
-    const { tool, page, send } = commander({
-      [root]: [folder('Users')],
-      [at('Users')]: [],
+  test('bookmarks the folder a side shows, saving it after the bookmarks written before, and tells the page the bookmarks it can open, sorted, but none for a folder the side doesn’t show or one bookmarked already', async () => {
+    const work = at('work');
+    const { tool, page, send, saved, settings } = commander({
+      [root]: [folder('work')],
+      [work]: [],
     });
+    settings.bookmarks = [at('zeta'), 'Downloads'];
+    tool.ready(page);
     await tool.show(page, tab);
-    await send({ type: 'open', tab: '1', side: 'left', name: 'Users' });
+    await send({ type: 'open', tab: '1', side: 'right', name: 'work' });
 
-    tool.closed(page, tab);
-    await tool.show(page, tab);
+    await send({ type: 'addBookmark', tab: '1', side: 'right', folder: work });
+    await send({ type: 'addBookmark', tab: '1', side: 'right', folder: work });
+    await send({ type: 'addBookmark', tab: '1', side: 'left', folder: work });
+    await send({ type: 'addBookmark', tab: '2', side: 'right', folder: work });
+    await send(
+      forged(
+        `{ "type": "addBookmark", "tab": "1", "side": "middle", "folder": ${JSON.stringify(work)} }`,
+      ),
+    );
 
-    assert.deepStrictEqual(page.listings().slice(3), [
-      `left ${root}: Users`,
-      `right ${root}: Users`,
-    ]);
+    assert.deepStrictEqual(saved, [[at('zeta'), 'Downloads', work]]);
+    assert.deepStrictEqual(
+      page.of('settings').map((each) => each.bookmarks),
+      [[at('zeta')], [work, at('zeta')]],
+    );
+  });
+
+  test('removes a bookmark however it was written, keeping the others as written, and tells the page, saving nothing for a folder not bookmarked', async () => {
+    const { tool, page, send, saved, settings } = commander({});
+    settings.bookmarks = [at('work'), at('zeta'), 'Downloads'];
+    tool.ready(page);
+
+    await send({ type: 'removeBookmark', folder: at('work') });
+    await send({ type: 'removeBookmark', folder: at('gone') });
+    await send(forged('{ "type": "removeBookmark", "folder": 2 }'));
+
+    assert.deepStrictEqual(saved, [[at('zeta'), 'Downloads']]);
+    assert.deepStrictEqual(
+      page.of('settings').map((each) => each.bookmarks),
+      [[at('work'), at('zeta')], [at('zeta')]],
+    );
+  });
+
+  test('tells the page to close brackets as they are typed in the editor once the settings say so', () => {
+    const { tool, page, closing } = commander({ [root]: [] });
+    tool.reloadSettings();
+    assert.strictEqual(page.of('settings').at(-1)?.closeBrackets, undefined);
+    closing.now = true;
+    tool.reloadSettings();
+    assert.strictEqual(page.of('settings').at(-1)?.closeBrackets, true);
+  });
+
+  test('tells every window the settings once they change', () => {
+    const { tool, page, pages } = commander({ [root]: [] });
+    const other = new CommanderPage();
+    pages.push(other);
+    tool.reloadSettings();
+    assert.strictEqual(page.of('settings').length, 1);
+    assert.strictEqual(other.of('settings').length, 1);
   });
 });
