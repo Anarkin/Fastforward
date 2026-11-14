@@ -15,7 +15,6 @@ import type {
   AboutInfo,
   TabInfo,
   ToHost,
-  ToolChoice,
   ToWebview,
   ToWebviewOf,
   UpdateStatus,
@@ -48,6 +47,7 @@ import {
   type Emptied,
   type TabWindow,
 } from './windows';
+import { ToolChoosing } from './toolChoosing';
 
 export interface Page {
   post(message: ToWebview): void;
@@ -192,11 +192,6 @@ export interface Connection {
   dispose(): void;
 }
 
-interface Asking {
-  readonly question: ToWebviewOf<'chooseTool'>;
-  readonly fitting: ReadonlySet<ToolId>;
-}
-
 export const unattachedShell: ShellAccess = {
   page: () => undefined,
   pages: () => [],
@@ -261,8 +256,6 @@ function commandNotice(installed: CommandInstall): Notice | undefined {
   }
 }
 
-const mostSpecificFirst: readonly ToolId[] = ['git', 'commander', 'terminal'];
-
 function isMessage(message: unknown): message is ToHost {
   return (
     typeof message === 'object' &&
@@ -283,12 +276,10 @@ export class Shell {
   private readonly windowsSent = new WeakMap<Page, string>();
   private focusedWindow: string | undefined;
   private lastPageLog: string | undefined;
-  private askedFolders: readonly string[] = [];
-  private asking: Asking | undefined;
-  private askingFolders: Promise<void> = Promise.resolve();
   private unsentNotices: readonly ToWebviewOf<'notice'>[] = [];
   private readonly inFlight = new InFlight();
   private readonly history = new TabHistory();
+  private readonly choosing: ToolChoosing;
 
   constructor(
     private readonly log: Log,
@@ -296,6 +287,10 @@ export class Shell {
     private readonly host: ShellHost,
     private readonly tools: Tools,
   ) {
+    this.choosing = new ToolChoosing(tools, {
+      activeTab: (page) => this.activeTab(page),
+      notice: (page, notice) => this.notice(page, notice),
+    });
     const access: ShellAccess = {
       page: () => this.focused(),
       pages: () => [...this.pages.values()].filter((page) => !page.disposed),
@@ -395,13 +390,13 @@ export class Shell {
 
   openFolders(folders: readonly string[]): Promise<void> {
     this.log.info(strings.log.openingAsked(folders.join(', ')));
-    this.askedFolders = [...this.askedFolders, ...folders];
+    this.choosing.asked(folders);
     const page = this.focused();
     if (page === undefined || page.disposed) {
       return Promise.resolve();
     }
     return this.inFlight.track(
-      this.askFolders(page).catch((error: unknown) => {
+      this.choosing.askFolders(page).catch((error: unknown) => {
         this.log.error(strings.log.openingAskedFailed);
         this.log.error(error);
       }),
@@ -748,10 +743,10 @@ export class Shell {
         }
         return;
       case 'openWith':
-        await this.openWith(page, message.tool);
+        await this.choosing.openWith(page, message.tool);
         return;
       case 'openIn':
-        await this.openIn(page);
+        await this.choosing.openIn(page);
         return;
       case 'tool':
         if (isTool(message.tool)) {
@@ -795,7 +790,7 @@ export class Shell {
     this.shownTools.delete(page);
     await this.show(page, window.active);
     if (laidOut) {
-      await this.askFolders(page);
+      await this.choosing.askFolders(page);
     }
   }
 
@@ -982,115 +977,6 @@ export class Shell {
     if (page !== undefined) {
       this.postTabs(page);
     }
-  }
-
-  private askFolders(page: Page): Promise<void> {
-    return this.inTurn(() => this.ask(page));
-  }
-
-  private openIn(page: Page): Promise<void> {
-    const tab = this.activeTab(page);
-    if (tab === undefined) {
-      return Promise.resolve();
-    }
-    const folder = this.tools[tab.tool].folderOf(tab);
-    if (folder === undefined) {
-      this.notice(page, {
-        level: 'info',
-        message: strings.messages.noFolder(strings.tools[tab.tool]),
-      });
-      return Promise.resolve();
-    }
-    return this.inTurn(() => this.choose(page, [folder], tab.tool));
-  }
-
-  private inTurn(asking: () => Promise<void>): Promise<void> {
-    this.askingFolders = this.askingFolders.catch(() => undefined).then(asking);
-    return this.askingFolders;
-  }
-
-  private async ask(page: Page): Promise<void> {
-    const folders = [
-      ...(this.asking?.question.folders ?? []),
-      ...this.askedFolders,
-    ].filter(
-      (folder, index, all) =>
-        all.findIndex((other) => sameRoot(other, folder)) === index,
-    );
-    this.askedFolders = [];
-    if (folders.length === 0) {
-      return;
-    }
-    await this.choose(page, folders, undefined);
-  }
-
-  private async choose(
-    page: Page,
-    folders: readonly string[],
-    asker: ToolId | undefined,
-  ): Promise<void> {
-    const fits = await Promise.all(
-      toolIds.map(async (tool) => ({
-        tool,
-        folders: await Promise.all(
-          folders.map(
-            async (folder) =>
-              tool !== asker &&
-              (await this.tools[tool].fits(folder).catch(() => false)),
-          ),
-        ),
-      })),
-    );
-    const opened = folders.filter((_, index) =>
-      fits.some((fit) => fit.folders[index]),
-    );
-    for (const folder of folders) {
-      if (!opened.includes(folder)) {
-        this.notice(page, {
-          level: 'error',
-          message: strings.messages.noToolOpens(folder),
-        });
-      }
-    }
-    if (opened.length === 0) {
-      this.asking = undefined;
-      return;
-    }
-    const choices: ToolChoice[] = fits.map((fit) => ({
-      tool: fit.tool,
-      fits: fit.folders.some(Boolean),
-    }));
-    const specificFirst = mostSpecificFirst.flatMap((tool) =>
-      fits.filter((fit) => fit.tool === tool),
-    );
-    const picked =
-      specificFirst.find((fit) =>
-        opened.every((folder) => fit.folders[folders.indexOf(folder)]),
-      )?.tool ?? specificFirst.find((fit) => fit.folders.some(Boolean))?.tool;
-    this.asking = {
-      question: { type: 'chooseTool', folders: opened, choices, picked },
-      fitting: new Set(
-        choices.filter((choice) => choice.fits).map((choice) => choice.tool),
-      ),
-    };
-    page.post(this.asking.question);
-  }
-
-  private async openWith(page: Page, tool: unknown): Promise<void> {
-    const { asking } = this;
-    if (asking === undefined) {
-      return;
-    }
-    if (tool === undefined) {
-      this.asking = undefined;
-      return;
-    }
-    if (!isTool(tool) || !asking.fitting.has(tool)) {
-      page.post(asking.question);
-      return;
-    }
-    this.asking = undefined;
-    await this.tools[tool].open(page, asking.question.folders);
   }
 
   private postTabs(page: Page): void {

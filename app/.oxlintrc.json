@@ -143,18 +143,11 @@
       }
     },
     {
-      "files": ["src/shell/main/shell.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1500
-          }
-        ]
-      }
-    },
-    {
-      "files": ["src/boot/main.ts", "src/tools/git/page/diffView.tsx"],
+      "files": [
+        "src/boot/main.ts",
+        "src/shell/main/shell.ts",
+        "src/tools/git/page/diffView.tsx"
+      ],
       "rules": {
         "max-lines": [
           "warn",
