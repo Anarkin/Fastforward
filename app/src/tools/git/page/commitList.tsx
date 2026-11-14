@@ -47,7 +47,7 @@ import { fullyVisible } from '../../../lib/page/listMoves';
 import { SoloIcon } from '../../../lib/page/icons';
 import { useCappedScroll } from './cappedVirtualizer';
 import { SearchButton } from '../../../lib/page/search';
-import { realHeight } from '../../../lib/page/cappedScroll';
+import { realHeight } from './cappedScroll';
 import { rowPlace } from '../../../lib/page/rowPlace';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { endCovered } from '../../../lib/page/listRows';

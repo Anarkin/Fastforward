@@ -7,11 +7,11 @@ import {
 import {
   realHeight,
   scrolled,
-  scrollbarDrags,
   scrolledTo,
   type ScrollAnchor,
   type ScrollRange,
-} from '../../../lib/page/cappedScroll';
+} from './cappedScroll';
+import { scrollbarDrags } from '../../../lib/page/scrollbarLinks';
 
 export class CappedScroll {
   anchor: ScrollAnchor = { real: 0, base: 0 };

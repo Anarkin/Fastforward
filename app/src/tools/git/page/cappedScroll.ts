@@ -1,3 +1,5 @@
+import type { ScrollbarDrag } from '../../../lib/page/scrollbarLinks';
+
 export const scrollCap = 8_000_000;
 const edgeZone = 1_000_000;
 
@@ -16,8 +18,6 @@ interface Grab {
   readonly real: number;
   readonly home: number;
 }
-
-export type ScrollbarDrag = 'thumb' | 'track';
 
 export function realHeight(total: number): number {
   return Math.min(total, scrollCap);
@@ -88,8 +88,6 @@ function unstuck(anchor: ScrollAnchor, range: ScrollRange): ScrollAnchor {
     (anchor.real > spans.real - 1 && anchor.base < spans.virtual - spans.real);
   return stuck ? home(anchor.real + anchor.base, range) : anchor;
 }
-
-export const scrollbarDrags = new WeakMap<Element, ScrollbarDrag>();
 
 function grabOf(anchor: ScrollAnchor, range: ScrollRange): Grab {
   return (

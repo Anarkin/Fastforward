@@ -1,7 +1,10 @@
 import * as assert from 'node:assert';
 import { Virtualizer, type VirtualizerOptions } from '@tanstack/react-virtual';
 import { suite, test } from 'vitest';
-import { realHeight, scrollCap } from '../../../../../lib/page/cappedScroll';
+import {
+  realHeight,
+  scrollCap,
+} from '../../../../../tools/git/page/cappedScroll';
 import {
   CappedScroll,
   cappedScrolling,

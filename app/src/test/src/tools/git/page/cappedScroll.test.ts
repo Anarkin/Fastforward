@@ -9,7 +9,7 @@ import {
   scrolledTo,
   type ScrollAnchor,
   type ScrollRange,
-} from '../../../../lib/page/cappedScroll';
+} from '../../../../../tools/git/page/cappedScroll';
 
 const viewport = 500;
 const long: ScrollRange = { total: 1_300_000 * 50, viewport };
