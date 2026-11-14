@@ -13,20 +13,22 @@ import {
   type DiffRow,
 } from '../../../../tools/git/page/diffRows';
 import {
-  diffRowPlace,
-  BreakMarks,
-  WrapMarks,
-  anchoredScrollTop,
-  rowAnchors,
-  scrollAnchor,
-  widestColumns,
-} from '../../../../tools/git/page/diffView';
-import {
   rowHeight,
   rowMeasures,
   knownBreaks,
   rememberBreaks,
 } from '../../../../tools/git/page/rowMeasures';
+import {
+  diffRowPlace,
+  anchoredScrollTop,
+  rowAnchors,
+  scrollAnchor,
+} from '../../../../tools/git/page/diffScrolling';
+import {
+  BreakMarks,
+  WrapMarks,
+  widestColumns,
+} from '../../../../tools/git/page/diffView';
 
 const wideColumnsIn = (row: string) => (index: number) =>
   row.slice(0, index).length + row.slice(0, index).split('界').length - 1;

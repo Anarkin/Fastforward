@@ -17,13 +17,12 @@ import {
   splitPairs,
   type DiffRow,
 } from '../../../../tools/git/page/diffRows';
+import { rowHeight } from '../../../../tools/git/page/rowMeasures';
+import { DiffView, gapWidth } from '../../../../tools/git/page/diffView';
 import {
-  DiffView,
-  gapWidth,
   scrollOnToggle,
   stuckHeader,
-} from '../../../../tools/git/page/diffView';
-import { rowHeight } from '../../../../tools/git/page/rowMeasures';
+} from '../../../../tools/git/page/diffScrolling';
 
 const binaryOf = (path: string) =>
   parsePatch(

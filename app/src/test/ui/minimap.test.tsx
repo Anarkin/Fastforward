@@ -11,8 +11,8 @@ import {
 } from '../../ui/minimap';
 import { noModifiers } from '../fixtures';
 import type { DiffRow } from '../../tools/git/page/diffRows';
-import { minimapRows } from '../../tools/git/page/diffView';
 import { uniformHeight as row } from '../../tools/git/page/rowMeasures';
+import { minimapRows } from '../../tools/git/page/diffView';
 
 const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
   kind: 'line',

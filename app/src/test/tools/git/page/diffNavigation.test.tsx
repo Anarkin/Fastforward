@@ -13,12 +13,11 @@ import {
   diffScrollLeft,
   diffScrollTop,
   firstChangeTop,
-  FileHeader,
   foundMiddle,
   foundScroll,
-  HunkDivider,
   keyedScrollTop,
-} from '../../../../tools/git/page/diffView';
+} from '../../../../tools/git/page/diffScrolling';
+import { FileHeader, HunkDivider } from '../../../../tools/git/page/diffView';
 
 suite('Diff keys', () => {
   test('scrolls back left with the left arrow while scrolled right, as many columns of the text a press as the viewer does, leaving it to move between the columns only then', () => {

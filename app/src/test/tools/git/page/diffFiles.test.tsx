@@ -8,13 +8,13 @@ import { parsePatch, type DiffFile } from '../../../../tools/git/page/diff';
 import { tagsWith } from '../../../fixtures';
 import { kinds } from './diffViewFixtures';
 import { diffRows, sideChange } from '../../../../tools/git/page/diffRows';
+import { rowHeight, rowMeasures } from '../../../../tools/git/page/rowMeasures';
 import {
   FileNote,
   FileHeader,
   DiffSkeleton,
   TextProbe,
 } from '../../../../tools/git/page/diffView';
-import { rowHeight, rowMeasures } from '../../../../tools/git/page/rowMeasures';
 
 const binaryOfIndex = (index: string) =>
   parsePatch(

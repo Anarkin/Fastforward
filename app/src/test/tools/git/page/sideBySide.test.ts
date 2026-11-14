@@ -11,11 +11,13 @@ import {
 } from '../../../../tools/git/page/diffRows';
 import {
   changeStarts,
-  minimapRows,
   sideScroll,
-  splitSideClass,
   wheelGlide,
   wheelSideways,
+} from '../../../../tools/git/page/diffScrolling';
+import {
+  minimapRows,
+  splitSideClass,
 } from '../../../../tools/git/page/diffView';
 
 const patch = [

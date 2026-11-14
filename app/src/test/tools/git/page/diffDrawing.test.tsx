@@ -7,6 +7,10 @@ import type { LineWords } from '../../../../tools/git/page/wordDiff';
 import { countingReads } from '../../../fixtures';
 import type { DiffRow } from '../../../../tools/git/page/diffRows';
 import {
+  rowOverscan,
+  sameRowInput,
+} from '../../../../tools/git/page/rowMeasures';
+import {
   Code,
   codeProps,
   gapWidth,
@@ -15,10 +19,6 @@ import {
   selectionSide,
   wholeChangeClass,
 } from '../../../../tools/git/page/diffView';
-import {
-  rowOverscan,
-  sameRowInput,
-} from '../../../../tools/git/page/rowMeasures';
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
