@@ -9,12 +9,12 @@ import { tagsWith } from '../../../fixtures';
 import { kinds } from './diffViewFixtures';
 import { diffRows, sideChange } from '../../../../tools/git/page/diffRows';
 import { rowHeight, rowMeasures } from '../../../../tools/git/page/rowMeasures';
+import { TextProbe } from '../../../../tools/git/page/textProbes';
 import {
   FileNote,
   FileHeader,
   DiffSkeleton,
-} from '../../../../tools/git/page/diffView';
-import { TextProbe } from '../../../../tools/git/page/textProbes';
+} from '../../../../tools/git/page/diffRowParts';
 
 const binaryOfIndex = (index: string) =>
   parsePatch(

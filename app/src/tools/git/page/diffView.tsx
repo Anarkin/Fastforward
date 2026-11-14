@@ -12,11 +12,10 @@ import {
   useMemo,
   useRef,
   useState,
-  Fragment,
 } from 'react';
 import type { TextRequest } from '../shared/protocol';
-import type { DiffFile, DiffLine, LoadedText, NumberedLine } from './diff';
-import { jumpStep, lineKey, type FindMatch, type FindRange } from './find';
+import type { DiffFile, DiffLine, LoadedText } from './diff';
+import { jumpStep, lineKey, type FindMatch } from './find';
 import { Minimap } from '../../../ui/minimap';
 import { columnFocusAttribute } from '../../../ui/columnFocus';
 import { shortcutsEntryAttribute, keyPressed } from '../../../ui/shortcuts';
@@ -24,7 +23,7 @@ import { useSyntax, useTextsToLoad } from './syntax';
 import { wordRanges, type LineWords } from './wordDiff';
 import { gitKeymap } from '../shared/keymap';
 import { glideAt, glideBy, glideEnded, type Glide } from '../../../ui/glide';
-import { strings, type Sentence } from '../../../shared/strings';
+import { strings } from '../../../shared/strings';
 import { Words } from '../../../ui/name';
 import { listMoveOf } from '../../../ui/listMoves';
 import {
@@ -35,21 +34,11 @@ import {
   sidewaysScroll,
   sidewaysScrollEvent,
 } from '../../../ui/overlayScrollbars';
-import { PreviewIcon } from '../../../ui/icons';
 import { ImageDiff, imagePanes } from './imagePreview';
 import { WholeImage } from '../../../ui/images';
 import { wholeImageUrl, type ImageOrigin } from './images';
-import { SkeletonRows, useSkeleton } from '../../../ui/skeleton';
-import { Twisty } from './tree';
-import { renamedPath } from './fileStatus';
-import {
-  blankRuns,
-  rowBreaksAt,
-  type ColumnsIn,
-  wrapIndent,
-  wrapStarts,
-  type RowBreak,
-} from '../../../ui/wordWrap';
+import { useSkeleton } from '../../../ui/skeleton';
+import { type ColumnsIn, wrapIndent } from '../../../ui/wordWrap';
 import { snapOffset } from '../../../ui/devicePixels';
 import { afterPaint } from '../../../ui/afterPaint';
 import {
@@ -61,14 +50,11 @@ import {
 import { useShell } from '../../../shell/page/store';
 import { pickedFor, useGit, useGitActions } from './store';
 import {
-  areaColumns,
-  hiddenChanges,
   inlineArea,
   lineWidth,
   markerInset,
   markerWidth,
   numberWidth,
-  revealChange,
   shownSideways,
   sideArea,
   type Sideways,
@@ -80,14 +66,12 @@ import {
   plainCells,
   textWidths,
   useCellTable,
-  type TextWidths,
 } from '../../../ui/textWidths';
 import {
   type WholeFile,
   showsSideBySide,
   type DiffRow,
   type FileHeaderRow,
-  type Change,
   sideChange,
   waitingRows,
   diffRows,
@@ -98,12 +82,8 @@ import {
 import {
   uniformHeight,
   rowLines,
-  laidOutRowStarts,
   RowContent,
   rowOverscan,
-  noBreaks,
-  knownBreaks,
-  rememberBreaks,
   rowMeasures,
   rowHeight,
 } from './rowMeasures';
@@ -154,314 +134,16 @@ import {
   layoutVariables,
   widestColumns,
 } from './textProbes';
-
-export function WrapMarks({
-  text,
-  columns,
-  numbers,
-  lineHeight,
-  columnsIn,
-  widths,
-}: {
-  text: string;
-  columns: number | undefined;
-  numbers: number;
-  lineHeight: number;
-  columnsIn?: ColumnsIn;
-  widths?: TextWidths;
-}) {
-  const marks = useRef<HTMLSpanElement>(null);
-  const [breaks, setBreaks] = useState(
-    () =>
-      (columns !== undefined &&
-        knownBreaks(text, columns, lineHeight, columnsIn)) ||
-      noBreaks,
-  );
-  useLayoutEffect(() => {
-    const code = marks.current?.parentElement?.querySelector('.code');
-    if (columns === undefined || !(code instanceof HTMLElement)) {
-      setBreaks(noBreaks);
-      return undefined;
-    }
-    const measure = () => {
-      const indent = wrapIndent(text, columns);
-      const measured = rowBreaksAt(
-        text,
-        laidOutRowStarts(code, lineHeight) ??
-          wrapStarts(text, columns, indent, widths),
-        columns,
-        columnsIn,
-        indent,
-      );
-      if (columnsIn !== undefined) {
-        rememberBreaks(text, columns, lineHeight, columnsIn, measured);
-      }
-      setBreaks(measured);
-    };
-    const known = knownBreaks(text, columns, lineHeight, columnsIn);
-    if (known !== undefined) {
-      setBreaks(known);
-      return undefined;
-    }
-    measure();
-    let observed = false;
-    const observer = new ResizeObserver(() => {
-      if (observed) {
-        measure();
-      }
-      observed = true;
-    });
-    observer.observe(code);
-    return () => observer.disconnect();
-  }, [text, columns, columnsIn, widths, lineHeight]);
-  if (columns === undefined) {
-    return null;
-  }
-  return (
-    <span className="wrap-marks" aria-hidden ref={marks}>
-      <BreakMarks breaks={breaks} numbers={numbers} lineHeight={lineHeight} />
-    </span>
-  );
-}
-
-const blockRows = 64;
-
-function MarksBlock({
-  breaks,
-  top,
-  numbers,
-  lineHeight,
-}: {
-  breaks: readonly RowBreak[];
-  top: number;
-  numbers: number;
-  lineHeight: number;
-}) {
-  const block = useRef<HTMLSpanElement>(null);
-  const [near, setNear] = useState(false);
-  useEffect(() => {
-    const element = block.current;
-    if (element === null) {
-      return undefined;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => setNear(entries.some((entry) => entry.isIntersecting)),
-      { root: element.closest('.virtual-rows'), rootMargin: '100% 0px' },
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <span
-      ref={block}
-      className="wrap-block"
-      style={{ top, height: breaks.length * lineHeight }}
-    >
-      {near && (
-        <BreakMarks breaks={breaks} numbers={numbers} lineHeight={lineHeight} />
-      )}
-    </span>
-  );
-}
-
-export function BreakMarks({
-  breaks,
-  numbers,
-  lineHeight,
-}: {
-  breaks: readonly RowBreak[];
-  numbers: number;
-  lineHeight: number;
-}) {
-  if (breaks.length === 0) {
-    return null;
-  }
-  if (breaks.length > blockRows) {
-    return Array.from(
-      { length: Math.ceil(breaks.length / blockRows) },
-      (_, block) => (
-        <MarksBlock
-          key={block}
-          breaks={breaks.slice(block * blockRows, (block + 1) * blockRows)}
-          top={block * blockRows * lineHeight}
-          numbers={numbers}
-          lineHeight={lineHeight}
-        />
-      ),
-    );
-  }
-  const at = (row: number, column: number) => ({
-    top: row * lineHeight,
-    left: `calc(${numbers * numberWidth}px + var(--diff-code-padding) + ${column} * var(--diff-advance))`,
-  });
-  return (
-    <>
-      {breaks.map(({ end, blanks }, row) => (
-        <Fragment key={row}>
-          {blankRuns(blanks).map(({ column, columns, tab }) =>
-            tab ? (
-              <span key={column} className="wrap-blank" style={at(row, column)}>
-                {strings.symbols.tab}
-              </span>
-            ) : (
-              <span
-                key={column}
-                className="wrap-spaces"
-                style={{
-                  ...at(row, column),
-                  width: `calc(${columns} * var(--diff-advance))`,
-                }}
-              />
-            ),
-          )}
-          <span className="wrap-break" style={at(row, end)}>
-            {strings.symbols.breaks}
-          </span>
-        </Fragment>
-      ))}
-    </>
-  );
-}
-
-export function selectionSide(
-  target: Element | null,
-): 'left' | 'right' | undefined {
-  const side = target?.closest('.split-side');
-  if (!side) {
-    return undefined;
-  }
-  return side.parentElement?.firstElementChild === side ? 'left' : 'right';
-}
-
-export function HunkDivider() {
-  return (
-    <div className="hunk-divider">
-      <span className="hunk-dots">{strings.symbols.hunk}</span>
-    </div>
-  );
-}
-
-export function FileHeader({
-  path,
-  oldPath,
-  open,
-  whole,
-  collapsible,
-  onClick,
-  onView,
-}: {
-  path: string;
-  oldPath?: string;
-  open: boolean;
-  whole: boolean;
-  collapsible: boolean;
-  onClick: () => void;
-  onView?: () => void;
-}) {
-  return (
-    <div className="file-header" onClick={onClick}>
-      {collapsible && <Twisty open={open} />}
-      {oldPath === undefined ? (
-        <span className="path">{path}</span>
-      ) : (
-        <span className="path" title={strings.common.fromTo(oldPath, path)}>
-          {renamedPath(oldPath, path)}
-        </span>
-      )}
-      <span className="file-header-end">
-        {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
-        {onView && (
-          <button
-            className="nav-button file-header-button"
-            title={strings.diff.viewFile}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView();
-            }}
-          >
-            <PreviewIcon />
-          </button>
-        )}
-      </span>
-    </div>
-  );
-}
-
-export function FileNote({
-  text,
-  change,
-  split,
-}: {
-  text: Sentence;
-  change: Change | undefined;
-  split: boolean;
-}) {
-  if (!split) {
-    return (
-      <div className={`file-note ${change ?? ''}`}>
-        <Words>{text}</Words>
-      </div>
-    );
-  }
-  return (
-    <div className="split-line note-line">
-      {(['removed', 'added'] as const).map((side) =>
-        change === undefined || change === side ? (
-          <div key={side} className={`file-note split-side ${change ?? ''}`}>
-            <Words>{text}</Words>
-          </div>
-        ) : (
-          <div key={side} className="file-note split-side filler" />
-        ),
-      )}
-    </div>
-  );
-}
-
-const otherSideOffset = 3;
-
-export function DiffSkeleton({
-  split,
-  rows,
-}: {
-  split: boolean;
-  rows: number;
-}) {
-  if (!split) {
-    return <SkeletonRows count={rows} className="diff-line" />;
-  }
-  return (
-    <div className="split-line">
-      {[0, otherSideOffset].map((offset) => (
-        <div key={offset} className="split-side">
-          <SkeletonRows count={rows} className="diff-line" offset={offset} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function diffRowClass(kind: DiffRow['kind']): string {
-  const extra =
-    kind === 'split'
-      ? 'split-row'
-      : kind === 'image'
-        ? 'preview-row'
-        : kind === 'error'
-          ? 'error-row'
-          : '';
-  return `virtual-row diff-row ${extra}`;
-}
-
-export function splitSideClass(
-  cell: NumberedLine | undefined,
-  change: 'added' | 'removed',
-): string {
-  if (cell === undefined) {
-    return 'filler';
-  }
-  return cell.line.kind === change ? change : '';
-}
+import { WrapMarks, selectionSide } from './wrapMarks';
+import {
+  HunkDivider,
+  FileHeader,
+  FileNote,
+  DiffSkeleton,
+  diffRowClass,
+  splitSideClass,
+  HiddenChangeMarks,
+} from './diffRowParts';
 
 declare module 'react' {
   interface CSSProperties {
@@ -502,52 +184,6 @@ export function largeFilesToLoad(
     }
   }
   return load;
-}
-
-function HiddenChangeMarks({
-  text,
-  words,
-  kind,
-  view,
-  area,
-  widths,
-  place,
-  onReveal,
-}: {
-  text: string;
-  words: readonly FindRange[];
-  kind: DiffLine['kind'];
-  view: Sideways;
-  area: TextArea;
-  widths: TextWidths;
-  place: (edge: 'left' | 'right') => React.CSSProperties;
-  onReveal: (scrolled: number) => void;
-}) {
-  const columns = areaColumns(view, area, widths.char);
-  if (!columns || words.length === 0 || kind === 'context') {
-    return null;
-  }
-  const hidden = hiddenChanges(text, words, columns, widths);
-  return (['left', 'right'] as const).map((edge) => {
-    const word = hidden[edge];
-    return (
-      word && (
-        <button
-          key={edge}
-          className={`hidden-change ${edge} ${kind}`}
-          title={strings.diff.showHiddenChange}
-          tabIndex={-1}
-          style={place(edge)}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => onReveal(revealChange(view, area, text, word, widths))}
-        >
-          {edge === 'left'
-            ? strings.symbols.hiddenLeft
-            : strings.symbols.hiddenRight}
-        </button>
-      )
-    );
-  });
 }
 
 export function DiffView({

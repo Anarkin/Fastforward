@@ -69,7 +69,7 @@ import {
   soloButton,
   fileHeader,
 } from './stylesheetFixtures';
-import { FileHeader, HunkDivider } from '../../../tools/git/page/diffView';
+import { FileHeader, HunkDivider } from '../../../tools/git/page/diffRowParts';
 
 suite('Style', () => {
   test('colors the icon of each tool with its own color from the settings, so tabs of different tools for one folder tell apart at a glance', () => {

@@ -43,13 +43,13 @@ import {
   hunkDots,
   fileHeader,
 } from './stylesheetFixtures';
+import { layoutVariables } from '../../../tools/git/page/textProbes';
 import {
   FileNote,
   diffRowClass,
   FileHeader,
   HunkDivider,
-} from '../../../tools/git/page/diffView';
-import { layoutVariables } from '../../../tools/git/page/textProbes';
+} from '../../../tools/git/page/diffRowParts';
 
 suite('Style', () => {
   test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {

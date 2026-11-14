@@ -41,7 +41,7 @@ import {
   tabBar,
 } from '../../styleFixtures';
 import { createShellStore, ShellStore } from '../../../shell/page/store';
-import { FileHeader, HunkDivider } from '../../../tools/git/page/diffView';
+import { FileHeader, HunkDivider } from '../../../tools/git/page/diffRowParts';
 
 export const css = stylesheet();
 

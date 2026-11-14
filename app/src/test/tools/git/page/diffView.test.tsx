@@ -22,8 +22,8 @@ import {
   scrollOnToggle,
   stuckHeader,
 } from '../../../../tools/git/page/diffScrolling';
-import { DiffView } from '../../../../tools/git/page/diffView';
 import { gapWidth } from '../../../../tools/git/page/textProbes';
+import { DiffView } from '../../../../tools/git/page/diffView';
 
 const binaryOf = (path: string) =>
   parsePatch(

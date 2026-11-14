@@ -48,7 +48,9 @@ import {
 import { commitInfo, renderedBy } from './fixtures';
 import { createShellStore, ShellStore } from '../shell/page/store';
 import { Code, marked } from '../tools/git/page/codeMarks';
-import { BreakMarks, diffRowClass, DiffView } from '../tools/git/page/diffView';
+import { BreakMarks } from '../tools/git/page/wrapMarks';
+import { diffRowClass } from '../tools/git/page/diffRowParts';
+import { DiffView } from '../tools/git/page/diffView';
 
 const noop = () => undefined;
 

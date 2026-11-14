@@ -119,17 +119,6 @@
       }
     },
     {
-      "files": ["src/tools/git/page/diffView.tsx"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 3400
-          }
-        ]
-      }
-    },
-    {
       "files": ["src/test/tools/git/page/syntax.test.ts"],
       "rules": {
         "max-lines": [
@@ -216,7 +205,8 @@
         "src/test/shell/main/shell.test.ts",
         "src/test/tools/git/main/tool/diffs.git.test.ts",
         "src/test/tools/git/main/tool/refreshing.git.test.ts",
-        "src/tools/commander/page/pane.tsx"
+        "src/tools/commander/page/pane.tsx",
+        "src/tools/git/page/diffView.tsx"
       ],
       "rules": {
         "max-lines": [
