@@ -3,16 +3,7 @@ import { AutoFetch, fetchOrder, type Timer } from './autoFetch';
 import { remoteDefaultBranches } from './cli/branches';
 import { gitErrorText } from './cli/errorText';
 import { keptGits } from './cli/run';
-import {
-  CompareTooLarge,
-  compareMaxBytes,
-  comparedFilesPatch,
-  comparedImage,
-  comparedNames,
-  comparedText,
-  filesAlike,
-} from './cli/compare';
-import { watchFiles } from './compareWatch';
+import { comparedImage, comparedNames } from './cli/compare';
 import { readImage, viewedFile } from './cli/files';
 import { findCommit } from './cli/history';
 import {
@@ -24,7 +15,6 @@ import {
   spellingOf,
   type Refs,
 } from './cli/repository';
-import { isWatchFailure, watchRepository, type Watcher } from './cli/watch';
 import { UntrackedPatches } from './cli/workingTree';
 import {
   listWorktrees,
@@ -61,12 +51,8 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/shell';
-import { strings, type Sentence } from '../../../shared/strings';
-import {
-  maxRecentItems,
-  sameRoot,
-  type Compared,
-} from '../../../shell/main/storage';
+import { strings } from '../../../shared/strings';
+import { maxRecentItems, sameRoot } from '../../../shell/main/storage';
 import { isBookmark, type GitStorage } from './storage';
 import {
   forgetHistory,
@@ -88,10 +74,8 @@ import {
   type ReadRefs,
   type GitPost,
   type Session,
-  type Comparing,
   type Context,
   notInHistory,
-  uniqueTexts,
   nothing,
   allSettled,
   type GitCore,
@@ -100,6 +84,8 @@ import { Diffs } from './diffs';
 import { Refreshes } from './refreshes';
 import { Navigation } from './navigation';
 import { Remotes } from './remotes';
+import { Watching } from './watching';
+import { CompareTabs } from './compareTabs';
 
 const maxKeptUntrackedChars = 32_000_000;
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
@@ -139,7 +125,6 @@ export class GitTool implements Tool<'git'> {
   private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
   private readonly worktreeListings = new Map<string, number>();
   private readonly imageReads = new ImageReads();
-  private readonly comparisons = new Map<string, Comparing>();
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
   private readonly clones: Clones;
@@ -151,6 +136,8 @@ export class GitTool implements Tool<'git'> {
   private readonly refreshes: Refreshes;
   private readonly navigation: Navigation;
   private readonly remotes: Remotes;
+  private readonly watching: Watching;
+  private readonly compareTabs: CompareTabs;
 
   constructor(
     private readonly log: Log,
@@ -158,7 +145,7 @@ export class GitTool implements Tool<'git'> {
     private readonly storage: GitStorage,
     private readonly host: GitHost,
     timer?: Timer,
-    private readonly delays: {
+    delays: {
       delay: number;
       maxDelay: number;
       gitDirDelay?: number;
@@ -213,6 +200,19 @@ export class GitTool implements Tool<'git'> {
       this.quitting,
       this.repositories,
     );
+    this.watching = new Watching(
+      log,
+      delays,
+      () => this.shell,
+      this.refreshes,
+      this.core,
+      this.tabStates,
+      {
+        loadWorktrees: (session, repository) =>
+          this.loadWorktrees(session, repository),
+      },
+    );
+    this.compareTabs = new CompareTabs(log, gitPath, storage, this.watching);
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
       () => fetchOrder(this.repositoryTabs, this.shownRepositories()),
@@ -288,10 +288,10 @@ export class GitTool implements Tool<'git'> {
   async show(page: Page, tab: Tab): Promise<void> {
     const session = this.sessionOf(page);
     if (tab.compare !== undefined) {
-      await this.showCompare(session, tab.id, tab.compare);
+      await this.compareTabs.showCompare(session, tab.id, tab.compare);
       return;
     }
-    this.stopComparing(session);
+    this.compareTabs.stopComparing(session);
     const { root } = tab;
     if (root === undefined) {
       return;
@@ -310,8 +310,8 @@ export class GitTool implements Tool<'git'> {
 
   hide(page: Page): void {
     const session = this.sessionOf(page);
-    this.stopComparing(session);
-    this.stopWatching(session);
+    this.compareTabs.stopComparing(session);
+    this.watching.stopWatching(session);
     this.postTabs(session);
   }
 
@@ -587,7 +587,8 @@ export class GitTool implements Tool<'git'> {
     const source = imageSourceOf(url);
     const type = source && imageType(source.path);
     const tab = source && this.tabStates.get(source.root);
-    const compared = source && this.comparisons.get(source.root)?.compared;
+    const compared =
+      source && this.compareTabs.comparisons.get(source.root)?.compared;
     if (
       !source ||
       !type ||
@@ -828,11 +829,11 @@ export class GitTool implements Tool<'git'> {
         return;
       }
       case 'loadCompareTexts':
-        await this.sendCompareTexts(session, message.requests);
+        await this.compareTabs.sendCompareTexts(session, message.requests);
         return;
       case 'setShowEntireFile': {
         this.save(storage.setShowEntireFile(message.show));
-        await this.sendCompare(session);
+        await this.compareTabs.sendCompare(session);
         const context = await this.context(session);
         this.staleDiffs(context, (tab) => tab.path !== undefined);
         if (context?.tab.hash !== undefined && context.tab.path !== undefined) {
@@ -849,7 +850,7 @@ export class GitTool implements Tool<'git'> {
         return;
       case 'setIgnoreWhitespace': {
         this.save(storage.setIgnoreWhitespace(message.ignore));
-        await this.sendCompare(session);
+        await this.compareTabs.sendCompare(session);
         const context = await this.context(session);
         this.staleDiffs(context, () => true);
         if (context?.tab.hash !== undefined) {
@@ -1287,7 +1288,7 @@ export class GitTool implements Tool<'git'> {
     if (!this.isActiveIn(session, root)) {
       return;
     }
-    this.stopWatching(session);
+    this.watching.stopWatching(session);
     const context = await this.context(session);
     if (
       !context ||
@@ -1298,7 +1299,10 @@ export class GitTool implements Tool<'git'> {
     }
     this.log.info(strings.log.tabOpen(context.root));
     this.addRecent(context.repository);
-    await allSettled([this.watch(context, session), this.showTab(context)]);
+    await allSettled([
+      this.watching.watch(context, session),
+      this.showTab(context),
+    ]);
   }
 
   private addRecent(repository: string): void {
@@ -1723,244 +1727,6 @@ export class GitTool implements Tool<'git'> {
         }
       },
     };
-  }
-
-  private async watch(context: Context, session: Session): Promise<void> {
-    this.stopWatching(session);
-    const watching = new AbortController();
-    session.watching = watching;
-    const started = performance.now();
-    let watcher: Watcher;
-    try {
-      watcher = await this.startWatching(context, session, watching.signal);
-    } catch (error) {
-      if (!isWatchFailure(error)) {
-        throw error;
-      }
-      this.couldNotWatch(context, error);
-      return;
-    }
-    if (session.watching === watching) {
-      session.watching = undefined;
-    }
-    if (
-      watching.signal.aborted ||
-      session.disposed ||
-      session.watcher !== undefined ||
-      !this.isActiveIn(session, context.root) ||
-      this.tabStates.get(context.root) !== context.tab
-    ) {
-      void this.shell.track(watcher.dispose());
-      return;
-    }
-    session.watcher = watcher;
-    if (performance.now() - started > this.delays.delay) {
-      void this.shell.track(this.loadWorktrees(session, context.repository));
-      void this.run(
-        strings.log.refreshingFailed,
-        session,
-        () => this.refreshes.refresh(context),
-        context.root,
-      );
-    }
-  }
-
-  private couldNotWatch(context: Context, error: unknown): void {
-    this.log.error(strings.log.watchingFailed(context.root));
-    this.log.error(error);
-    context.post({
-      type: 'notice',
-      level: 'error',
-      message: strings.messages.couldNotWatch(context.root),
-    });
-  }
-
-  private async showCompare(
-    session: Session,
-    tab: string,
-    compared: Compared,
-  ): Promise<void> {
-    this.stopWatching(session);
-    const shown = session.comparing;
-    if (
-      shown?.tab === tab &&
-      shown.compared.old === compared.old &&
-      shown.compared.new === compared.new
-    ) {
-      await this.sendCompare(session);
-      return;
-    }
-    if (shown !== undefined) {
-      this.forgetComparing(shown);
-    }
-    const comparing: Comparing = {
-      tab,
-      compared,
-      running: undefined,
-      version: 0,
-      stop: watchFiles(
-        [compared.old, compared.new],
-        () => {
-          if (session.comparing === comparing) {
-            void this.sendCompare(session);
-          }
-        },
-        (error) => {
-          this.log.error(strings.log.watchingFailed(compared.new));
-          this.log.error(error);
-          session.post({
-            type: 'notice',
-            level: 'error',
-            message: strings.messages.couldNotWatchCompared(
-              compared.old,
-              compared.new,
-            ),
-          });
-        },
-      ),
-    };
-    this.comparisons.set(tab, comparing);
-    session.comparing = comparing;
-    await this.sendCompare(session);
-  }
-
-  private async sendCompareTexts(
-    session: Session,
-    requests: readonly TextRequest[],
-  ): Promise<void> {
-    const { comparing } = session;
-    if (comparing === undefined) {
-      return;
-    }
-    const sides = new Map<TextRequest['side'], Promise<string | undefined>>();
-    const sideText = (side: TextRequest['side']) => {
-      const known = sides.get(side);
-      if (known !== undefined) {
-        return known;
-      }
-      const reading = comparedText(comparing.compared, side);
-      sides.set(side, reading);
-      return reading;
-    };
-    const texts = await Promise.all(
-      uniqueTexts(requests).map(async (request) => ({
-        path: request.path,
-        side: request.side,
-        blob: request.blob,
-        text: await sideText(request.side),
-      })),
-    );
-    if (session.comparing === comparing && texts.length > 0) {
-      session.post({ type: 'compareTexts', tab: comparing.tab, texts });
-    }
-  }
-
-  private stopComparing(session: Session): void {
-    const { comparing } = session;
-    if (comparing !== undefined) {
-      this.forgetComparing(comparing);
-      session.comparing = undefined;
-      session.post({ type: 'compare', compare: undefined });
-    }
-  }
-
-  private forgetComparing(comparing: Comparing): void {
-    comparing.stop();
-    comparing.running?.abort();
-    if (this.comparisons.get(comparing.tab) === comparing) {
-      this.comparisons.delete(comparing.tab);
-    }
-  }
-
-  private async sendCompare(session: Session): Promise<void> {
-    const { comparing } = session;
-    if (comparing === undefined) {
-      return;
-    }
-    const { compared } = comparing;
-    const { showEntireFile: entire, ignoreWhitespace } = this.storage.layout;
-    const version = ++comparing.version;
-    comparing.running?.abort();
-    const running = new AbortController();
-    comparing.running = running;
-    let patch = '';
-    let same: 'identical' | 'whitespace' | undefined;
-    let error: Sentence | undefined;
-    try {
-      patch = await comparedFilesPatch(
-        this.gitPath,
-        compared,
-        { entireFile: entire, ignoreWhitespace },
-        running.signal,
-      );
-      if (patch === '') {
-        same = await filesAlike(compared);
-      }
-    } catch (failure) {
-      if (running.signal.aborted) {
-        return;
-      }
-      error =
-        failure instanceof CompareTooLarge
-          ? strings.messages.compareTooLarge(compareMaxBytes / 1024 / 1024)
-          : strings.messages.couldNotCompare(
-              compared.old,
-              compared.new,
-              gitErrorText(failure),
-            );
-    }
-    if (session.comparing !== comparing || comparing.version !== version) {
-      return;
-    }
-    session.post({
-      type: 'compare',
-      compare: {
-        tab: comparing.tab,
-        name: comparedNames(compared)[1],
-        old: compared.old,
-        new: compared.new,
-        patch,
-        entire,
-        version,
-        ...(same !== undefined && { same }),
-        ...(error !== undefined && { error }),
-      },
-    });
-  }
-
-  private stopWatching(session: Session): void {
-    session.watching?.abort();
-    session.watching = undefined;
-    const { watcher } = session;
-    session.watcher = undefined;
-    if (watcher) {
-      void this.shell.track(watcher.dispose());
-    }
-  }
-
-  private startWatching(
-    context: Context,
-    session: Session,
-    signal: AbortSignal,
-  ): Promise<Watcher> {
-    return watchRepository(context.gitPath, context.root, {
-      ...this.delays,
-      signal,
-      onChange: (change) =>
-        void this.run(
-          strings.log.refreshingFailed,
-          session,
-          () => this.refreshes.refresh(context, undefined, change),
-          context.root,
-        ),
-      onWorktreesChange: () =>
-        void this.shell.track(this.loadWorktrees(session, context.repository)),
-      onError: (error) => {
-        this.log.error(strings.log.watchingFailed(context.root));
-        this.log.error(error);
-      },
-      onStopped: (error) => this.couldNotWatch(context, error),
-    });
   }
 
   private notify(context: Context): Notify {
