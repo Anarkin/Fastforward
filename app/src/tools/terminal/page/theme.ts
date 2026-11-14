@@ -3,8 +3,8 @@ import type { ITheme } from '@xterm/xterm';
 const themeColors = {
   background: 'var(--color-terminal-background)',
   foreground: 'var(--color-terminal-foreground)',
-  cursor: 'var(--color-terminal-foreground)',
-  cursorAccent: 'var(--color-terminal-background)',
+  cursor: 'var(--color-cursor)',
+  cursorAccent: 'var(--color-cursor-text)',
   selectionBackground: 'var(--color-terminal-selection)',
   black: 'var(--color-terminal-black)',
   red: 'var(--color-terminal-red)',

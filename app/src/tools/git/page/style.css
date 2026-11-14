@@ -34,6 +34,11 @@ body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
   height: 28px;
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
+  line-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  letter-spacing: calc(round(1ch, var(--device-pixel, 1px)) - 1ch);
   margin: 0;
   padding: 0 8px;
   color: var(--color-foreground);

@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { clampedToEdge } from '../../ui/editorSelection';
 
 suite('Selection of the editor', () => {
-  test('draws a cursor past the edge of a wrapped row at the edge, and one before it where it is', () => {
+  test('puts a mark without a width past the edge of a wrapped row at that edge, and leaves one before it where it is', () => {
     assert.deepStrictEqual(clampedToEdge({ left: 777, width: null }, 400), {
       left: 400,
       width: null,

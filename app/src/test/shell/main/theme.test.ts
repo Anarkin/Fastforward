@@ -3,6 +3,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { suite, test } from 'vitest';
 import { themeCss } from '../../../shell/main/theme';
+import {
+  cursorLookOf,
+  cursorVariables,
+} from '../../../shell/shared/cursorSettings';
 import { defaultSettings } from '../../fixtures';
 
 const source = join(__dirname, '../../../../src');
@@ -102,6 +106,20 @@ suite('Theme', () => {
     }
   });
 
+  test('writes the look of the cursor out as the variables the page reads it from, a steady cursor as off', () => {
+    const css = themeCss({
+      ...defaultSettings(),
+      cursor: { style: 'underline', barWidth: 4, blink: false },
+    });
+    assert.deepStrictEqual(
+      cursorLookOf(
+        (name) => new RegExp(`^  ${name}: (.*);$`, 'm').exec(css)?.[1] ?? '',
+      ),
+      { style: 'underline', barWidth: 4, blink: false },
+    );
+    assert.match(css, new RegExp(`^  ${cursorVariables.blink}: off;$`, 'm'));
+  });
+
   test("writes the settings out as the page's variables, the colors of each tool named after it, the dark colors for a dark OS", () => {
     const defaults = defaultSettings();
     const css = themeCss({
@@ -129,6 +147,7 @@ suite('Theme', () => {
         monospaceLineHeight: 1.4,
       },
       sizes: { scrollbar: '25px', minimap: '40px' },
+      cursor: { style: 'bar', barWidth: 3, blink: true },
       colors: { light: { foreground: '#000' }, dark: { foreground: '#fff' } },
     });
     assert.strictEqual(
@@ -144,6 +163,9 @@ suite('Theme', () => {
         '  --monospace-line-height: 1.4;',
         '  --scrollbar-size: 25px;',
         '  --minimap-width: 40px;',
+        '  --cursor-style: bar;',
+        '  --cursor-bar-width: 3;',
+        '  --cursor-blink: on;',
         '  --color-foreground: #000;',
         '  --color-terminal-red: #a00;',
         '  --color-git-icon: #c00;',

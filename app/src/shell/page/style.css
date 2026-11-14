@@ -1912,6 +1912,10 @@ body.resizing {
   padding: 0;
 }
 
+.cm-editor.editor-selection .cm-content:not(.cm-lineWrapping) {
+  padding-right: var(--text-advance);
+}
+
 .cm-editor.editor-text .cm-scroller > .cm-gutters {
   padding-right: var(--line-number-gap);
   color: var(--muted-foreground);
@@ -1954,6 +1958,26 @@ body.resizing {
 .cm-editor.editor-selection .cm-scroller .cm-content,
 .cm-editor.editor-selection .cm-scroller .cm-line {
   caret-color: transparent;
+}
+
+input {
+  caret-color: transparent;
+}
+
+.text-cursor {
+  z-index: 2147483647;
+}
+
+@keyframes cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes cursor-blink-again {
+  50% {
+    opacity: 0;
+  }
 }
 
 .spaces,
@@ -2333,6 +2357,11 @@ body.resizing {
   height: 28px;
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
+  line-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  letter-spacing: calc(round(1ch, var(--device-pixel, 1px)) - 1ch);
   margin: 0;
   padding: 0 8px;
   color: var(--color-foreground);

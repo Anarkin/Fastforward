@@ -28,6 +28,7 @@ import {
 import type { Renderer } from '../shared/settings';
 import type { WindowsPty } from '../shared/protocol';
 import type { FromScreen } from './store';
+import type { CursorLook } from '../../../shell/shared/cursorSettings';
 
 const resizeDelay = 50;
 
@@ -77,6 +78,20 @@ export function wheelLines(
 
 const glideOf = (smooth: boolean) => (smooth ? rowGlide : 0);
 
+export function cursorOptions(look: CursorLook): {
+  readonly cursorStyle: CursorLook['style'];
+  readonly cursorWidth: number;
+  readonly cursorBlink: boolean;
+  readonly cursorInactiveStyle: 'outline';
+} {
+  return {
+    cursorStyle: look.style,
+    cursorWidth: look.barWidth,
+    cursorBlink: look.blink,
+    cursorInactiveStyle: 'outline',
+  };
+}
+
 export interface TerminalViewOptions {
   readonly tab: string;
   readonly renderer: Renderer;
@@ -86,6 +101,7 @@ export interface TerminalViewOptions {
   readonly post: (message: FromScreen) => void;
   readonly onCopy: (text: string) => void;
   readonly scrolling: () => ScrollSettings;
+  readonly cursor: CursorLook;
 }
 
 export class TerminalView {
@@ -114,6 +130,7 @@ export class TerminalView {
       scrollback: options.scrollback,
       minimumContrastRatio: options.minimumContrastRatio,
       smoothScrollDuration: glideOf(options.scrolling().smooth),
+      ...cursorOptions(options.cursor),
       ...this.cells(),
       theme: this.theme(),
       linkHandler: { activate: () => undefined },

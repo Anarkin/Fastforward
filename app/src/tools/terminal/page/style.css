@@ -13,3 +13,10 @@
   position: absolute;
   inset: 6px 4px 6px 10px;
 }
+
+.terminal-screen canvas {
+  width: calc(attr(width type(<number>)) * var(--device-pixel, 1px)) !important;
+  height: calc(
+    attr(height type(<number>)) * var(--device-pixel, 1px)
+  ) !important;
+}

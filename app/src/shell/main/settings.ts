@@ -21,6 +21,7 @@ import {
   type TextView,
   type Theme,
 } from '../shared/protocol';
+import { cursorStyles, type CursorLook } from '../shared/cursorSettings';
 
 export interface Settings {
   readonly tabs: {
@@ -32,6 +33,7 @@ export interface Settings {
     readonly wheelRows: number;
     readonly smooth: boolean;
   };
+  readonly cursor: CursorLook;
   readonly text: TextView;
   readonly images: ImageView;
   readonly editor: EditorSettings;
@@ -108,6 +110,7 @@ function sameKind(name: string, fallback: unknown, value: unknown): boolean {
 const choices: ReadonlyMap<string, readonly string[]> = new Map([
   ...toolSettingChoices,
   ['theme', themes],
+  ['cursor.style', cursorStyles],
   ['editor.endOfLine', editorEndings],
   ['editor.charset', editorCharsets],
   ['editor.indentStyle', indentStyles],

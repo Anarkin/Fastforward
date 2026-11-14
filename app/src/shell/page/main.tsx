@@ -9,6 +9,7 @@ import { windowButtonColor } from './titleBar';
 import { errorText } from '../../ui/errors';
 import { installOverlayScrollbars } from '../../ui/overlayScrollbars';
 import { watchDevicePixels } from '../../ui/devicePixels';
+import { installTextCursors } from '../../ui/textCursor';
 
 declare global {
   interface Window {
@@ -53,6 +54,7 @@ window.addEventListener('unhandledrejection', (event) =>
 
 installOverlayScrollbars();
 watchDevicePixels(() => undefined);
+installTextCursors();
 
 const root = document.getElementById('root');
 if (root) {

@@ -72,7 +72,7 @@
 | Cursors above and below | Add a cursor on the line above or below | Ctrl+Alt+Up, Ctrl+Alt+Down | Common | ✅ Yes |  |
 | Next occurrence | Select the next occurrence of the selection too | Ctrl+D | Common | ✅ Yes |  |
 | Column selection | Select a column, a cursor on each line | Shift+Alt+drag | Common | ✅ Yes |  |
-| End of a wrapped row | Go to the end of the row rather than the line | End | Common | ✅ Yes | Past the spaces hanging at the end of the row, the cursor drawn at its edge while in them |
+| End of a wrapped row | Go to the end of the row rather than the line | End | Common | ✅ Yes | Past the spaces hanging at the end of the row, the cursor drawn on its last cell while in them, as a terminal draws one past its last column |
 | Go to a line | Go to a line by its number | Ctrl+G | Common | ✅ Yes |  |
 | Bracket matching | Mark the bracket matching the one at the cursor | — | Common | ✅ Yes | Round, square and curly brackets, by CodeMirror, outlined, one that matches none outlined in the color of errors; brackets in strings and comments counted too, as no grammar tells it where they are |
 
@@ -95,6 +95,7 @@
 | Line numbers | Number the lines | — | Core | ✅ Yes | In the column of the diff, as wide, in its color and font, the text starting as far from the edge, a test comparing them |
 | Wrap | Wrap long lines | Alt+Z | Common | ✅ Yes | By the wrap button, shared with the viewer and the diff |
 | Show whitespace | Draw the spaces, tabs and line ends | — | Common | ✅ Yes | By the whitespace button, shared with the viewer and the diff and marking the same characters as they do, a test checking every one, with a sign after each line that ends in CRLF or CR |
+| Cursor | Draw the cursor as a block, bar or underline, blinking or steady | — | Common | ✅ Yes | By the `cursor` settings, a steady block by default, as the terminal draws it to the device pixel, in the `cursor` color of the theme, the focus color by default, the character under a block in its `cursor-text` color and its own font; an outline once the editor loses the focus; the text boxes of the app draw it alike while they have the focus, and nothing without it |
 | Status line | Show the line, column and selection | — | Common | ✅ Yes | The column counted in cells, as drawn, the characters selected as they are seen, and the cursors |
 | Minimap | Show the whole file in small beside it | — | Common | ❌ No |  |
 | Folding | Fold blocks of code away | Ctrl+Shift+[ | Common | ❌ No |  |

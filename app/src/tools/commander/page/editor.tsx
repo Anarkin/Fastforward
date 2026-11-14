@@ -110,6 +110,8 @@ import {
   type EditorPlace,
 } from './editorPlace';
 import { useCommander, useCommanderActions } from './store';
+import type { CursorLook } from '../../../shell/shared/cursorSettings';
+import { pageCursorLook } from '../../../ui/cursor';
 
 export interface EditedTab {
   readonly tab: string;
@@ -150,6 +152,7 @@ interface EditorParts {
   readonly colors: Extension;
   readonly keys: EditorKeyActions;
   readonly scrolling: () => ScrollSettings;
+  readonly cursor: CursorLook;
   readonly onUpdate: (update: ViewUpdate) => void;
 }
 
@@ -166,12 +169,13 @@ function extensionsOf({
   colors,
   keys,
   scrolling,
+  cursor,
   onUpdate,
 }: EditorParts): Extension {
   return [
     coloring.of(colors),
     appTextLook(table),
-    appSelection(editorKeymap.rowEnd),
+    appSelection(editorKeymap.rowEnd, cursor),
     lineNumbers(),
     bracketMatching(),
     history(),
@@ -441,6 +445,7 @@ export function Editor() {
       closesBrackets: closesFirst(),
       coloring: coloring.current,
       colors: colorsFirst(),
+      cursor: pageCursorLook(),
       keys: {
         save: () => {
           const fixes = savingFixes(shown.state);

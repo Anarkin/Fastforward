@@ -6,14 +6,14 @@ import {
 } from '../../../../tools/terminal/page/theme';
 
 suite('Terminal theme', () => {
-  test('takes the colors of the terminal from the theme, the cursor in the colors of the text', () => {
+  test('takes the colors of the terminal from the theme, the cursor in the cursor colors of the theme', () => {
     const theme = terminalTheme((color) => `resolved ${color}`);
     assert.deepStrictEqual(
       [theme.background, theme.cursor, theme.cursorAccent, theme.brightWhite],
       [
         'resolved var(--color-terminal-background)',
-        'resolved var(--color-terminal-foreground)',
-        'resolved var(--color-terminal-background)',
+        'resolved var(--color-cursor)',
+        'resolved var(--color-cursor-text)',
         'resolved var(--color-terminal-bright-white)',
       ],
     );

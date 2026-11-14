@@ -1,5 +1,6 @@
 import type { Settings } from './settings';
 import { tools as toolIds } from '../shared/tools';
+import { cursorVariables } from '../shared/cursorSettings';
 
 function declarations(
   values: Readonly<Record<string, string>>,
@@ -11,7 +12,13 @@ function declarations(
   );
 }
 
-export function themeCss({ fonts, sizes, colors, tools }: Settings): string {
+export function themeCss({
+  fonts,
+  sizes,
+  cursor,
+  colors,
+  tools,
+}: Settings): string {
   const themed = (theme: 'light' | 'dark', indent: string) => [
     ...declarations(colors[theme], 'color-', indent),
     ...toolIds.flatMap((tool) =>
@@ -29,6 +36,9 @@ export function themeCss({ fonts, sizes, colors, tools }: Settings): string {
     `  --monospace-line-height: ${fonts.monospaceLineHeight};`,
     `  --scrollbar-size: ${sizes.scrollbar};`,
     `  --minimap-width: ${sizes.minimap};`,
+    `  ${cursorVariables.style}: ${cursor.style};`,
+    `  ${cursorVariables.barWidth}: ${cursor.barWidth};`,
+    `  ${cursorVariables.blink}: ${cursor.blink ? 'on' : 'off'};`,
     ...themed('light', '  '),
     '}',
     '',

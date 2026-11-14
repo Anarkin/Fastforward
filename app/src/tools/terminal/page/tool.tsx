@@ -7,6 +7,7 @@ import { useShell, useShellActions } from '../../../shell/page/store';
 import { useStore } from 'zustand';
 import type { TerminalToHost, TerminalToWebview } from '../shared/protocol';
 import { createTerminalStore } from './store';
+import { pageCursorLook } from '../../../ui/cursor';
 
 export function TerminalTool({
   active,
@@ -70,6 +71,7 @@ export function TerminalTool({
           post: send,
           onCopy,
           scrolling: scrollingOf,
+          cursor: pageCursorLook(),
         });
       }
     });

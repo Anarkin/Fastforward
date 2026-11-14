@@ -2,12 +2,14 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
 import {
+  cursorOptions,
   screenMargin,
   TerminalView,
   wheelLines,
   type Xterm,
 } from '../../../../tools/terminal/page/view';
 import { noop } from '../../../fixtures';
+import { defaultCursorLook } from '../../../../shell/shared/cursorSettings';
 
 function posingAsXterm(fake: object): Xterm {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -102,6 +104,7 @@ suite('Terminal view', () => {
         post: noop,
         onCopy: noop,
         scrolling: () => ({ wheelRows: 3, smooth: false }),
+        cursor: defaultCursorLook,
       });
       done.length = 0;
       lose();
@@ -154,6 +157,7 @@ suite('Terminal view', () => {
         post: (message) => posted.push(message),
         onCopy: noop,
         scrolling: () => ({ wheelRows: 3, smooth: false }),
+        cursor: defaultCursorLook,
       });
       assert.deepStrictEqual(posted, [
         { type: 'open', tab: '1', columns: 1000, rows: 1000 },
@@ -208,6 +212,7 @@ suite('Terminal view', () => {
         post: noop,
         onCopy: noop,
         scrolling: () => ({ wheelRows: 3, smooth: false }),
+        cursor: defaultCursorLook,
       });
 
       assert.ok(given.linkHandler !== undefined);
@@ -215,6 +220,24 @@ suite('Terminal view', () => {
       assert.deepStrictEqual(asked, []);
       view.dispose();
     });
+  });
+
+  test('hands xterm.js the style, the width of the bar in whole CSS pixels and the blinking of the setting, and an outline for a terminal without the focus', () => {
+    assert.deepStrictEqual(cursorOptions(defaultCursorLook), {
+      cursorStyle: 'block',
+      cursorWidth: 2,
+      cursorBlink: false,
+      cursorInactiveStyle: 'outline',
+    });
+    assert.deepStrictEqual(
+      cursorOptions({ style: 'bar', barWidth: 3, blink: true }),
+      {
+        cursorStyle: 'bar',
+        cursorWidth: 3,
+        cursorBlink: true,
+        cursorInactiveStyle: 'outline',
+      },
+    );
   });
 
   test('moves the terminal onto whole device pixels by its margin rather than a transform, which would make the compositor resample its canvas, blurring it', () => {

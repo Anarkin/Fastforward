@@ -51,7 +51,7 @@
 
 | Feature | What it does | Sequence | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| GPU rendering | Draw the screen with the GPU | — | Common | ✅ Yes | `xterm.js`'s WebGL renderer, or the DOM one with `tools.terminal.renderer` or once WebGL is lost |
+| GPU rendering | Draw the screen with the GPU | — | Common | ✅ Yes | `xterm.js`'s WebGL renderer, its canvas shown at its own size in device pixels rather than stretched by a fraction of one, or the DOM one with `tools.terminal.renderer` or once WebGL is lost, which draws the cursor its own way |
 | Font | Choose the font, its size and the line height | — | Core | ✅ Yes | The monospace font, size and line height of the settings, as the diff has them, the cells on whole device pixels |
 | Zoom | Make the text larger or smaller for now | — | Common | ❌ No |  |
 | Ligatures | Join characters into the ligatures of the font | — | Advanced | ❌ No |  |
@@ -60,7 +60,7 @@
 | True color | Draw 24-bit colors | SGR 38;2, SGR 48;2 | Core | ✅ Yes | By `xterm.js` |
 | Minimum contrast | Lighten or darken text too close to its background | — | Advanced | ✅ Yes | A ratio of 4.5 by default, `tools.terminal.minimumContrastRatio` |
 | Wide characters | Draw emoji and East Asian characters two cells wide | — | Core | ✅ Yes | The widths of Unicode 15 by grapheme cluster, an emoji joined from several code points two cells, as the viewer, the diff and Markdown code blocks count them |
-| Cursor style | A block, bar or underline, blinking or steady | DECSCUSR | Common | 🟡 Partial | Programs set it, by `xterm.js`; a steady block otherwise, with no setting |
+| Cursor style | A block, bar or underline, blinking or steady | DECSCUSR | Common | ✅ Yes | `cursor.style`, `cursor.barWidth` and `cursor.blink` in the settings, a steady block by default, in the `cursor` and `cursor-text` colors of the theme, the focus colors by default, shared with the editor and the text boxes, which draw it alike to the device pixel; an outline once the terminal loses the focus; programs set it too, by `xterm.js` |
 | Synchronized output | Draw a burst of changes at once rather than as it comes | `CSI ? 2026 h` | Advanced | ✅ Yes | By `xterm.js` |
 | Images | Show images in the terminal | Sixel, iTerm2 images, kitty graphics | Advanced | ❌ No |  |
 | Transparency | Make the background see-through, or an image | — | Common | ❌ No |  |

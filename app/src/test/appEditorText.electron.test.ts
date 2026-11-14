@@ -160,7 +160,11 @@ async function mountEditor(
         doc: shown.text,
         extensions: [
           app.appTextLook(table),
-          app.appSelection(app.editorKeymap.rowEnd),
+          app.appSelection(app.editorKeymap.rowEnd, {
+            style: 'block',
+            barWidth: 2,
+            blink: false,
+          }),
           shown.wrapping ? app.EditorView.lineWrapping : [],
           app.blanksShown.of(shown.blanks),
           shown.numbers ? app.lineNumbers() : [],
@@ -336,7 +340,14 @@ interface Drawn {
   readonly anchor: number;
   readonly head: number;
   readonly edge: number;
-  readonly cursor: { readonly x: number; readonly top: number } | undefined;
+  readonly cursor:
+    | {
+        readonly x: number;
+        readonly right: number;
+        readonly top: number;
+        readonly shown: number;
+      }
+    | undefined;
   readonly placeOfHead: number | undefined;
   readonly selectionRight: number;
   readonly scrollsSideways: boolean;
@@ -360,14 +371,33 @@ function drawnSelection(editor: JSHandle<PageEditor>): Promise<Drawn> {
     const cursor = view.dom
       .querySelector('.cm-cursor-primary')
       ?.getBoundingClientRect();
+    const element = view.dom.querySelector('.cm-cursor-primary');
+    const clip = { left: -Infinity, right: Infinity };
+    for (
+      let holder = element?.parentElement ?? null;
+      holder !== null && holder !== document.body;
+      holder = holder.parentElement
+    ) {
+      if (getComputedStyle(holder).overflowX !== 'visible') {
+        const box = holder.getBoundingClientRect();
+        clip.left = Math.max(clip.left, box.left + holder.clientLeft);
+        clip.right = Math.min(
+          clip.right,
+          box.left + holder.clientLeft + holder.clientWidth,
+        );
+      }
+    }
     const { anchor, head } = view.state.selection.main;
     return {
       anchor,
       head,
       edge,
       cursor: cursor && {
-        x: cursor.left + cursor.width / 2,
+        x: cursor.left,
+        right: cursor.right,
         top: cursor.top,
+        shown:
+          Math.min(cursor.right, clip.right) - Math.max(cursor.left, clip.left),
       },
       placeOfHead: view.coordsAtPos(head)?.left,
       selectionRight: Math.max(
@@ -481,7 +511,7 @@ suite('App', () => {
     assert.deepStrictEqual(inEditor, inDiff);
   });
 
-  test('draws the cursor in a run of spaces hanging past the edge of a wrapped row at that edge rather than out of sight, a selection ending in one no further, and never scrolls a wrapped line sideways', async () => {
+  test('draws the cursor in a run of spaces hanging past the edge of a wrapped row on the last cell of that row, whole, as a terminal draws a cursor past its last column, rather than out of sight, a selection ending in one no further, and never scrolls a wrapped line sideways', async () => {
     const editor = await editorInPage();
     await mountEditor(editor, paddedRows, 400, true);
 
@@ -494,7 +524,14 @@ suite('App', () => {
     for (const head of [60, 108]) {
       const hanging = await select(editor, head);
       assert.ok(
-        nearPixel(hanging.cursor?.x, hanging.edge),
+        nearPixel(hanging.cursor?.right, hanging.edge),
+        JSON.stringify(hanging),
+      );
+      assert.ok(
+        nearPixel(
+          hanging.cursor?.shown,
+          (hanging.cursor?.right ?? 0) - (hanging.cursor?.x ?? 0),
+        ),
         JSON.stringify(hanging),
       );
       assert.ok(nearPixel(hanging.cursor?.top, before.cursor?.top ?? NaN));
@@ -508,7 +545,23 @@ suite('App', () => {
     assert.strictEqual(selected.scrollsSideways, false);
   });
 
-  test('moves the cursor on End to the end of a wrapped row, past the run of spaces hanging at its end, drawn at the edge of that row, staying there when pressed again, and selects up to it on Shift+End', async () => {
+  test('draws the cursor of an unwrapped line whole where it scrolled sideways to, past the first width of the editor', async () => {
+    const editor = await editorInPage();
+    const long = 'word '.repeat(200);
+    await mountEditor(editor, long, 400, false);
+    await select(editor, 2);
+    await page.keyboard.press('End');
+    let ended = await drawnSelection(editor);
+    await waitFor(async () => {
+      ended = await drawnSelection(editor);
+      return ended.head === long.length && ended.scrollsSideways;
+    }, 'the end of the line in sight');
+    const width = (ended.cursor?.right ?? 0) - (ended.cursor?.x ?? 0);
+    assert.ok(width >= 1, JSON.stringify(ended));
+    assert.ok(nearPixel(ended.cursor?.shown, width), JSON.stringify(ended));
+  });
+
+  test('moves the cursor on End to the end of a wrapped row, past the run of spaces hanging at its end, drawn whole on the last cell of that row, staying there when pressed again, and selects up to it on Shift+End', async () => {
     const editor = await editorInPage();
     await mountEditor(editor, paddedRows, 400, true);
     const firstRow = await select(editor, 9);
@@ -518,7 +571,18 @@ suite('App', () => {
     await page.keyboard.press('End');
     const ended = await drawnSelection(editor);
     assert.strictEqual(ended.head, secondRow);
-    assert.ok(nearPixel(ended.cursor?.x, ended.edge), JSON.stringify(ended));
+    assert.ok(
+      nearPixel(ended.cursor?.right, ended.edge),
+      JSON.stringify(ended),
+    );
+    assert.ok(!ended.scrollsSideways, JSON.stringify(ended));
+    assert.ok(
+      nearPixel(
+        ended.cursor?.shown,
+        (ended.cursor?.right ?? 0) - (ended.cursor?.x ?? 0),
+      ),
+      JSON.stringify(ended),
+    );
     assert.ok(nearPixel(ended.cursor?.top, firstRow.cursor?.top ?? NaN));
 
     await page.keyboard.press('End');

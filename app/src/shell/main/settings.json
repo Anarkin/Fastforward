@@ -8,6 +8,11 @@
     "wheelRows": 10,
     "smooth": false
   },
+  "cursor": {
+    "style": "block",
+    "barWidth": 2,
+    "blink": false
+  },
   "text": {
     "wordWrap": true,
     "showWhitespace": true,
@@ -509,6 +514,9 @@
       "focus-hover": "8%",
       "focus-selected": "18%",
 
+      "cursor": "var(--color-focus)",
+      "cursor-text": "var(--color-focus-foreground)",
+
       "search-match": "#fe6",
       "search-match-foreground": "#000",
 
@@ -553,6 +561,9 @@
       "focus-foreground": "#fff",
       "focus-hover": "20%",
       "focus-selected": "35%",
+
+      "cursor": "var(--color-focus)",
+      "cursor-text": "var(--color-focus-foreground)",
 
       "search-match": "#fc0",
       "search-match-foreground": "#000",
