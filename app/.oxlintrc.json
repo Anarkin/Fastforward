@@ -134,8 +134,7 @@
     {
       "files": [
         "scripts/playground/filesPlan.mts",
-        "scripts/playground/git.mts",
-        "src/test/src/tools/git/main/tool/oneRepository.git.test.ts"
+        "scripts/playground/git.mts"
       ],
       "rules": {
         "max-lines": [
