@@ -6,7 +6,8 @@ import { nextMenuItem } from '../../lib/page/menuControls';
 import { useDismiss } from '../../lib/page/dismiss';
 import { keyPressed } from '../../lib/page/shortcuts';
 import { CloseIcon, ToolIcon } from '../../lib/page/icons';
-import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
+import { useModalDialog } from '../../lib/page/modalDialog';
+import { useDialogDrag } from '../../lib/page/dialogDrag';
 import { useShell, useShellActions } from './store';
 import { Name } from '../../lib/page/name';
 

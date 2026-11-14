@@ -8,7 +8,8 @@ import { strings } from '../../lib/shared/strings';
 import { filterWords } from '../../lib/page/fileFilter';
 import { useDismiss } from '../../lib/page/dismiss';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
-import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
+import { useModalDialog } from '../../lib/page/modalDialog';
+import { useDialogDrag } from '../../lib/page/dialogDrag';
 import { keyPressed, shortcutsEntryOf } from '../../lib/page/shortcuts';
 import {
   type ShownEntry,

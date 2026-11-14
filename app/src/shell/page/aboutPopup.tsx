@@ -8,7 +8,8 @@ import {
 import { brand, strings } from '../../lib/shared/strings';
 import { useDismiss } from '../../lib/page/dismiss';
 import { CloseIcon } from '../../lib/page/icons';
-import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
+import { useModalDialog } from '../../lib/page/modalDialog';
+import { useDialogDrag } from '../../lib/page/dialogDrag';
 import { useShell, useShellActions } from './store';
 import { aboutText } from './aboutText';
 

@@ -10,7 +10,8 @@ import { Words } from '../../../lib/page/name';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
-import { useDialogDrag, useModalDialog } from '../../../lib/page/modalDialog';
+import { useModalDialog } from '../../../lib/page/modalDialog';
+import { useDialogDrag } from '../../../lib/page/dialogDrag';
 import { useGit, useGitActions } from './store';
 import { formProblem } from './cloneForm';
 
