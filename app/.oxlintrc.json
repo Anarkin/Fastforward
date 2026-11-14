@@ -146,11 +146,7 @@
       }
     },
     {
-      "files": [
-        "src/shell/main/shell.ts",
-        "src/test/src/tools/git/main/cli/workingTree.git.test.ts",
-        "src/tools/commander/main/tool.ts"
-      ],
+      "files": ["src/shell/main/shell.ts", "src/tools/commander/main/tool.ts"],
       "rules": {
         "max-lines": [
           "warn",
