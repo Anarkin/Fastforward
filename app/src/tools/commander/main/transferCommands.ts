@@ -11,7 +11,7 @@ import {
   type Side,
 } from '../shared/protocol';
 import { folderKey } from '../shared/paths';
-import { archiveJob } from './packing';
+import { archiveJob } from './archiveJobs';
 import { copiedBetween } from './betweenArchives';
 import { unpackingFirst } from './unpacking';
 import { reasonOf } from './reasons';

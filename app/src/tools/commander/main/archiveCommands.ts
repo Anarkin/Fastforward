@@ -3,7 +3,7 @@ import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { folderKey } from '../shared/paths';
-import { archiveJob } from './packing';
+import { archiveJob } from './archiveJobs';
 import type { ArchiveJob } from '../shared/transfers';
 import type { Transfers } from './transfers';
 import { nameProblem } from '../shared/names';

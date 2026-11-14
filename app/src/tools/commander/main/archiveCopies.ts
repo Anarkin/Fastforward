@@ -5,7 +5,7 @@ import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import type { WatchFolder } from './watch';
-import { archiveJob } from './packing';
+import { archiveJob } from './archiveJobs';
 import type { Editing } from './editing';
 import type { Transfers } from './transfers';
 import { type Pane, type ShownPane, type Sides, post, listedIn } from './sides';
