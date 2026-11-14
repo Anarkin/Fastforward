@@ -1,4 +1,3 @@
-import * as path from 'node:path';
 import type { Log } from './log';
 import { isImageView, isTextView } from '../shared/views';
 import type {
@@ -48,6 +47,7 @@ import {
   type TabWindow,
 } from './windows';
 import { ToolChoosing } from './toolChoosing';
+import { CommandOffer } from './commandOffer';
 
 export interface Page {
   post(message: ToWebview): void;
@@ -225,37 +225,6 @@ function receiveIn<K extends ToolId>(
   return all[tool].receive(page, message);
 }
 
-function commandNotice(installed: CommandInstall): Notice | undefined {
-  switch (installed.kind) {
-    case 'installed':
-      return {
-        level: 'info',
-        message: installed.onPath
-          ? strings.messages.commandInstalled(installed.path)
-          : strings.messages.commandOffPath(
-              installed.path,
-              path.posix.dirname(installed.path),
-            ),
-      };
-    case 'alreadyInstalled':
-      return {
-        level: 'info',
-        message: strings.messages.commandAlreadyInstalled(installed.path),
-      };
-    case 'taken':
-      return {
-        level: 'error',
-        message: strings.messages.commandTaken(installed.path),
-      };
-    case 'notMoved':
-      return { level: 'error', message: strings.messages.commandNotMoved };
-    case 'cancelled':
-      return undefined;
-    default:
-      return installed satisfies never;
-  }
-}
-
 function isMessage(message: unknown): message is ToHost {
   return (
     typeof message === 'object' &&
@@ -280,6 +249,7 @@ export class Shell {
   private readonly inFlight = new InFlight();
   private readonly history = new TabHistory();
   private readonly choosing: ToolChoosing;
+  private readonly command: CommandOffer;
 
   constructor(
     private readonly log: Log,
@@ -290,6 +260,13 @@ export class Shell {
     this.choosing = new ToolChoosing(tools, {
       activeTab: (page) => this.activeTab(page),
       notice: (page, notice) => this.notice(page, notice),
+    });
+    this.command = new CommandOffer({
+      shellHost: host,
+      storage,
+      log,
+      notice: (page, notice) => this.notice(page, notice),
+      save: (saving) => this.save(saving),
     });
     const access: ShellAccess = {
       page: () => this.focused(),
@@ -568,7 +545,7 @@ export class Shell {
         );
         return;
       case 'installTerminalCommand':
-        await this.installCommand(page);
+        await this.command.install(page);
         return;
       case 'checkForUpdates':
         host.checkForUpdates();
@@ -801,7 +778,7 @@ export class Shell {
   private tellProblems(page: Page): void {
     const { storage, host } = this;
     if (host.canInstallCommand() && !storage.commandOffered) {
-      void this.inFlight.track(this.offerCommand(page));
+      void this.inFlight.track(this.command.offer(page));
     }
     for (const problem of host.settingsProblems()) {
       page.post({
@@ -1173,47 +1150,6 @@ export class Shell {
       return;
     }
     live.post(message);
-  }
-
-  private async offerCommand(page: Page): Promise<void> {
-    let state: CommandState;
-    try {
-      state = await this.host.commandState();
-    } catch (error) {
-      this.log.error(strings.log.checkingCommandFailed);
-      this.log.error(error instanceof Error ? error : String(error));
-      return;
-    }
-    if (state !== 'missing' || this.storage.commandOffered) {
-      return;
-    }
-    this.save(this.storage.setCommandOffered());
-    this.notice(page, {
-      level: 'info',
-      message: strings.messages.offerCommand,
-    });
-  }
-
-  private async installCommand(page: Page): Promise<void> {
-    if (!this.host.canInstallCommand()) {
-      return;
-    }
-    let installed: CommandInstall;
-    try {
-      installed = await this.host.installCommand();
-    } catch (error) {
-      this.log.error(strings.log.installingCommandFailed);
-      this.log.error(error instanceof Error ? error : String(error));
-      this.notice(page, {
-        level: 'error',
-        message: strings.messages.couldNotInstallCommand(reasonOf(error)),
-      });
-      return;
-    }
-    const notice = commandNotice(installed);
-    if (notice) {
-      this.notice(page, notice);
-    }
   }
 
   private save(saving: Promise<void>): void {
