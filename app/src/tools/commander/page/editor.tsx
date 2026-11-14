@@ -61,7 +61,7 @@ import { nameOf } from './pathNames';
 import { PathTitle } from './pathTitle';
 import { readMenu, savedName, saveMenu } from './editorEncodings';
 import {
-  backTo,
+  editorAt,
   placeIn,
   placeMapped,
   placeOf,
@@ -241,28 +241,48 @@ export function Editor() {
     });
     const kept = keptEditor(tab);
     const reused = kept !== undefined && kept.version === version;
-    const shown = new EditorView({
-      parent: element,
-      state: reused
-        ? kept.state.update({
+    let settling = false;
+    let stopSettling = () => {};
+    const onScroll = () => {
+      if (!settling) {
+        place = placeOf(shown);
+        keepState(shown.state);
+      }
+    };
+    const mounted = (state: EditorState, back?: EditorPlace) => {
+      stopSettling();
+      settling = back !== undefined;
+      const made = editorAt(element, state, back, () => {
+        settling = false;
+      });
+      stopSettling = made.stop;
+      made.view.scrollDOM.addEventListener('scroll', onScroll, {
+        passive: true,
+      });
+      view.current = made.view;
+      return made.view;
+    };
+    const remount = (state: EditorState, back: EditorPlace) => {
+      shown.scrollDOM.removeEventListener('scroll', onScroll);
+      shown.destroy();
+      shown = mounted(state, back);
+    };
+    if (reused) {
+      place = kept.place;
+    }
+    let shown = reused
+      ? mounted(
+          kept.state.update({
             effects: StateEffect.reconfigure.of([extensions, fieldsKept]),
-          }).state
-        : EditorState.create({ extensions: [extensions, fieldsKept] }),
-    });
+          }).state,
+          kept.place,
+        )
+      : mounted(EditorState.create({ extensions: [extensions, fieldsKept] }));
     setStatus(reused ? statusOf(shown.state, table) : undefined);
     setEndingsShown(reused ? endingsShownOf(shown.state) : undefined);
     if (!reused) {
       readEdited(tab);
-    } else if (kept.place !== undefined) {
-      place = kept.place;
-      shown.dispatch({ effects: backTo(shown, kept.place) });
     }
-    const onScroll = () => {
-      place = placeOf(shown);
-      keepState(shown.state);
-    };
-    shown.scrollDOM.addEventListener('scroll', onScroll, { passive: true });
-    view.current = shown;
     const stop = listenEditor((message) => {
       if (message.tab !== tab) {
         return;
@@ -277,8 +297,10 @@ export function Editor() {
       }
       const head = shown.state.selection.main.head;
       version = message.shown.version;
-      shown.setState(stateOf(message.shown, message.state, extensions));
+      const next = stateOf(message.shown, message.state, extensions);
+      const keptPlace = placeIn(message.state);
       if (message.reloaded === true) {
+        shown.setState(next);
         shown.dispatch({
           selection: EditorSelection.cursor(
             Math.min(head, shown.state.doc.length),
@@ -286,22 +308,19 @@ export function Editor() {
           scrollIntoView: true,
         });
       } else if (message.at !== undefined) {
-        const start = shown.state.doc.lineAt(
-          Math.min(message.at, shown.state.doc.length),
+        const start = next.doc.lineAt(
+          Math.min(message.at, next.doc.length),
         ).from;
-        shown.dispatch({
-          selection: EditorSelection.cursor(start),
-          effects: EditorView.scrollIntoView(start, {
-            y: 'start',
-            yMargin: shown.defaultLineHeight / 2,
-          }),
-        });
+        remount(
+          next.update({ selection: EditorSelection.cursor(start) }).state,
+          { from: start, offset: 0 },
+        );
+        keepState(shown.state);
+      } else if (keptPlace !== undefined) {
+        place = keptPlace;
+        remount(next, keptPlace);
       } else {
-        const keptPlace = placeIn(message.state);
-        if (keptPlace !== undefined) {
-          place = keptPlace;
-          shown.dispatch({ effects: backTo(shown, keptPlace) });
-        }
+        shown.setState(next);
       }
       keepEditor(tab, { state: shown.state, version, place });
       setEndingsShown(endingsShownOf(shown.state));
@@ -311,6 +330,7 @@ export function Editor() {
     shown.focus();
     return () => {
       stop();
+      stopSettling();
       clearTimeout(keepTimer);
       shown.scrollDOM.removeEventListener('scroll', onScroll);
       keepEditor(tab, { state: shown.state, version, place });

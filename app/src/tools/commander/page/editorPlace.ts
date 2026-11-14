@@ -1,4 +1,9 @@
-import type { ChangeDesc, StateEffect } from '@codemirror/state';
+import type {
+  ChangeDesc,
+  EditorState,
+  StateEffect,
+  Text,
+} from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
 export interface EditorPlace {
@@ -32,17 +37,95 @@ export function placeMapped(
 }
 
 export function placeOf(view: EditorView): EditorPlace {
-  const height = view.scrollDOM.getBoundingClientRect().top - view.documentTop;
+  const scroller = view.scrollDOM.getBoundingClientRect();
+  const height = scroller.top - view.documentTop;
   const { from, top } = view.lineBlockAtHeight(height);
-  return { from, offset: Math.max(0, height - top) };
+  const offset = Math.max(0, height - top);
+  if (offset < view.defaultLineHeight) {
+    return { from, offset };
+  }
+  const row = view.posAtCoords(
+    {
+      x: view.contentDOM.getBoundingClientRect().left + 1,
+      y: scroller.top + view.defaultLineHeight / 2,
+    },
+    false,
+  );
+  return { from: row, offset: 0 };
 }
 
-export function backTo(
-  view: EditorView,
+function backTo(
+  doc: Text,
   { from, offset }: EditorPlace,
 ): StateEffect<unknown> {
-  return EditorView.scrollIntoView(Math.min(from, view.state.doc.length), {
+  return EditorView.scrollIntoView(Math.min(from, doc.length), {
     y: 'start',
-    yMargin: view.defaultLineHeight / 2 - offset,
+    yMargin: -offset,
   });
+}
+
+const settleChecks = 30;
+const settleTries = 3;
+
+export function samePlace(one: EditorPlace, other: EditorPlace): boolean {
+  return one.from === other.from && Math.abs(one.offset - other.offset) < 1;
+}
+
+function shownWhenBack(
+  view: EditorView,
+  wanted: EditorPlace,
+  onShown: () => void,
+): () => void {
+  const scroller = view.scrollDOM;
+  scroller.style.opacity = '0';
+  const channel = new MessageChannel();
+  let frame = 0;
+  let checks = 0;
+  let tries = 0;
+  let last = '';
+  const stop = () => {
+    cancelAnimationFrame(frame);
+    channel.port1.close();
+    scroller.style.opacity = '';
+  };
+  const next = () => {
+    frame = requestAnimationFrame(() => channel.port2.postMessage(undefined));
+  };
+  channel.port1.addEventListener('message', () => {
+    checks += 1;
+    const now = placeOf(view);
+    const seen = JSON.stringify([scroller.scrollTop, now]);
+    const settled = seen === last;
+    last = seen;
+    if ((settled && samePlace(now, wanted)) || checks > settleChecks) {
+      stop();
+      onShown();
+      return;
+    }
+    if (settled && tries < settleTries) {
+      tries += 1;
+      view.dispatch({ effects: backTo(view.state.doc, wanted) });
+    }
+    next();
+  });
+  channel.port1.start();
+  next();
+  return stop;
+}
+
+export function editorAt(
+  parent: HTMLElement,
+  state: EditorState,
+  back: EditorPlace | undefined,
+  onShown: () => void,
+): { readonly view: EditorView; readonly stop: () => void } {
+  const view = new EditorView({
+    parent,
+    state,
+    scrollTo: back === undefined ? undefined : backTo(state.doc, back),
+  });
+  return {
+    view,
+    stop: back === undefined ? () => {} : shownWhenBack(view, back, onShown),
+  };
 }

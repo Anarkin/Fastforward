@@ -2,6 +2,7 @@ import { assert, test } from 'vitest';
 import {
   placeIn,
   placeMapped,
+  samePlace,
 } from '../../../../../tools/commander/page/editorPlace';
 import { ChangeSet } from '@codemirror/state';
 
@@ -33,5 +34,15 @@ test('moves the place scrolled to with the text typed above it, and keeps it whe
   assert.deepStrictEqual(
     placeMapped(place, ChangeSet.of({ from: 20, insert: 'abc' }, 30)),
     place,
+  );
+});
+
+test('takes the place scrolled to as reached within a pixel of it, and not at another start or a row away', () => {
+  assert.isTrue(
+    samePlace({ from: 120, offset: 0 }, { from: 120, offset: 0.4 }),
+  );
+  assert.isFalse(samePlace({ from: 120, offset: 0 }, { from: 121, offset: 0 }));
+  assert.isFalse(
+    samePlace({ from: 120, offset: 17.6 }, { from: 120, offset: 0 }),
   );
 });

@@ -28,6 +28,27 @@ export function leadingOf(
   };
 }
 
+export function wholeRows(height: number, row: number): number {
+  return row > 0 ? Math.max(row, Math.round(height / row) * row) : height;
+}
+
+function roundGaps(view: EditorView): void {
+  const row = view.defaultLineHeight;
+  for (const gap of view.contentDOM.querySelectorAll('.cm-line > div')) {
+    if (
+      gap instanceof HTMLElement &&
+      gap.style.width === '' &&
+      gap.style.height.endsWith('px')
+    ) {
+      const height = parseFloat(gap.style.height);
+      const whole = wholeRows(height, row);
+      if (whole !== height) {
+        gap.style.height = `${whole}px`;
+      }
+    }
+  }
+}
+
 interface RowSizes {
   readonly padding: number;
   readonly leading: Leading | undefined;
@@ -73,6 +94,10 @@ class RowScrolling implements PluginValue {
       }
     },
   };
+  private readonly gaps = {
+    read: () => undefined,
+    write: (_: undefined, view: EditorView) => roundGaps(view),
+  };
 
   constructor(view: EditorView, scrolling: () => ScrollSettings) {
     const scroller = view.scrollDOM;
@@ -82,12 +107,17 @@ class RowScrolling implements PluginValue {
       smooth: () => scrolling().smooth,
     });
     view.requestMeasure(this.sizes);
+    view.requestMeasure(this.gaps);
   }
 
   update(update: ViewUpdate): void {
     if (update.geometryChanged) {
       update.view.requestMeasure(this.sizes);
     }
+  }
+
+  docViewUpdate(view: EditorView): void {
+    roundGaps(view);
   }
 
   destroy(): void {
