@@ -152,7 +152,6 @@ const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'tools/git/page/commitList.tsx': 6,
   'tools/git/page/diffColumn.tsx': 4,
   'tools/git/page/diffRowParts.tsx': 2,
-  'tools/git/page/diffView.tsx': 1,
   'tools/git/page/filesColumn.tsx': 5,
   'tools/git/page/graph.tsx': 2,
   'tools/git/page/imagePreview.tsx': 1,
@@ -163,7 +162,6 @@ const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'tools/git/page/minimap.tsx': 5,
   'tools/git/page/navBar.tsx': 4,
   'tools/git/page/skeleton.tsx': 1,
-  'tools/git/page/textProbes.tsx': 12,
   'tools/git/page/tree.tsx': 3,
   'tools/git/page/worktreeBar.tsx': 1,
   'tools/git/page/wrapMarks.tsx': 1,
@@ -184,7 +182,7 @@ const importsLeftOfComponentFiles: Readonly<Record<string, number>> = {
   'tools/git/page/receivedMessages.ts': 1,
   'tools/git/page/repositoryMenu.ts': 1,
   'tools/git/page/rowMeasures.ts': 1,
-  'tools/git/page/store.ts': 4,
+  'tools/git/page/store.ts': 3,
   'tools/terminal/page/folderMenu.ts': 1,
 };
 

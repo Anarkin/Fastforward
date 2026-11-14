@@ -17,7 +17,7 @@ import {
   rememberBreaks,
 } from '../../../../../tools/git/page/rowMeasures';
 import { diffRowPlace } from '../../../../../tools/git/page/diffScrolling';
-import { widestColumns } from '../../../../../tools/git/page/textProbes';
+import { widestColumns } from '../../../../../tools/git/page/textLayout';
 import { BreakMarks, WrapMarks } from '../../../../../tools/git/page/wrapMarks';
 import { patch } from './diffViewFixtures';
 

@@ -49,7 +49,7 @@ import {
 } from './viewFolders';
 import { emptyTabView, type TabAction, type TabView } from './tabView';
 import type { WrapColumns } from './rowMeasures';
-import type { CodeSnap, TextMeasures } from './textProbes';
+import type { CodeSnap, TextMeasures } from './textLayout';
 
 import {
   checking,

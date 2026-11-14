@@ -19,7 +19,7 @@ import {
 import {
   gapWidth,
   wordPadding,
-} from '../../../../../tools/git/page/textProbes';
+} from '../../../../../tools/git/page/textLayout';
 import { selectionSide } from '../../../../../tools/git/page/wrapMarks';
 
 function sign(glyph: string, text: string): string {

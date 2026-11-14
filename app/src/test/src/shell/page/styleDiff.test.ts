@@ -43,7 +43,7 @@ import {
   hunkDots,
   fileHeader,
 } from './stylesheetFixtures';
-import { layoutVariables } from '../../../../tools/git/page/textProbes';
+import { layoutVariables } from '../../../../tools/git/page/textLayout';
 import {
   FileNote,
   diffRowClass,

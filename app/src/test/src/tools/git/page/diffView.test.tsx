@@ -25,7 +25,7 @@ import {
   scrollOnToggle,
   stuckHeader,
 } from '../../../../../tools/git/page/diffScrolling';
-import { gapWidth } from '../../../../../tools/git/page/textProbes';
+import { gapWidth } from '../../../../../tools/git/page/textLayout';
 import { DiffView } from '../../../../../tools/git/page/diffView';
 
 const binaryOf = (path: string) =>

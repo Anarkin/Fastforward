@@ -116,17 +116,6 @@
       "rules": {
         "max-lines": "off"
       }
-    },
-    {
-      "files": ["src/tools/git/page/diffView.tsx"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1400
-          }
-        ]
-      }
     }
   ],
   "ignorePatterns": ["dist", "release", "perf-results", "perf-build"]

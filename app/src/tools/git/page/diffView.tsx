@@ -15,7 +15,7 @@ import {
 } from 'react';
 import type { TextRequest } from '../shared/protocol';
 import type { DiffFile, DiffLine, LoadedText } from './diff';
-import { jumpStep, lineKey, type FindMatch } from './find';
+import { lineKey, type FindMatch } from './find';
 import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import {
@@ -25,30 +25,12 @@ import {
 import { useSyntax, useTextsToLoad } from './syntax';
 import { wordRanges, type LineWords } from './wordDiff';
 import { gitKeymap } from './keymap';
-import {
-  glideAt,
-  glideBy,
-  glideEnded,
-  type Glide,
-} from '../../../lib/page/glide';
-import { strings } from '../../../lib/shared/strings';
-import { Words } from '../../../lib/page/name';
 import { listMoveOf } from '../../../lib/page/listMoves';
-import {
-  elementMetrics,
-  ownScrollbarAttribute,
-  setSidewaysScroller,
-  sidewaysMetrics,
-  sidewaysScroll,
-  sidewaysScrollEvent,
-} from '../../../lib/page/overlayScrollbars';
-import { ImageDiff, imagePanes } from './imagePreview';
-import { WholeImage } from '../../../lib/page/images';
-import { wholeImageUrl, type ImageOrigin } from './images';
+import { ownScrollbarAttribute } from '../../../lib/page/overlayScrollbars';
+import { type ImageOrigin } from './images';
 import { useSkeleton } from './skeleton';
 import { type ColumnsIn, wrapIndent } from '../../../lib/page/wordWrap';
 import { snapOffset } from '../../../lib/page/devicePixels';
-import { afterPaint } from '../../../lib/page/afterPaint';
 import {
   followRows,
   rowPadding,
@@ -58,13 +40,8 @@ import {
 import { useShell } from '../../../shell/page/store';
 import { pickedFor, useGit, useGitActions } from './store';
 import {
-  inlineArea,
   lineWidth,
-  markerInset,
-  markerWidth,
-  numberWidth,
   shownSideways,
-  sideArea,
   type Sideways,
   type TextArea,
 } from './overflow';
@@ -80,16 +57,13 @@ import {
   showsSideBySide,
   type DiffRow,
   type FileHeaderRow,
-  sideChange,
   waitingRows,
   diffRows,
-  largeDiffText,
   splitPairs,
   lineKeys,
 } from './diffRows';
 import {
   uniformHeight,
-  rowLines,
   RowContent,
   rowOverscan,
   rowMeasures,
@@ -97,21 +71,15 @@ import {
 } from './rowMeasures';
 import {
   sideScroll,
-  wheelSideways,
   diffScrollLeft,
   changeStarts,
-  changeMargin,
   keyedScrollTop,
-  firstChangeTop,
   scrollOnToggle,
   rowAnchors,
   type ScrollAnchor,
   scrollAnchor,
   anchoredScrollTop,
   stuckHeader,
-  foundScroll,
-  foundMiddle,
-  foundEdges,
   sideRoom,
   diffRowPlace,
   type Edges,
@@ -119,7 +87,6 @@ import {
 import {
   type LineMarks,
   changedWords,
-  wholeChangeClass,
   codeProps,
   Code,
   findRangesByLine,
@@ -129,70 +96,20 @@ import {
 } from './codeMarks';
 import {
   unmeasured,
-  WrapProbe,
   gapWidth,
   unpadded,
-  sideSnaps,
   codeSnapOf,
   codeStarts,
   sameSnap,
-  TextProbe,
-  readSideways,
-  sameSideways,
   layoutVariables,
   widestColumns,
-} from './textProbes';
-import { WrapMarks, selectionSide } from './wrapMarks';
-import {
-  HunkDivider,
-  FileHeader,
-  FileNote,
-  DiffSkeleton,
-  diffRowClass,
-  splitSideClass,
-  HiddenChangeMarks,
-} from './diffRowParts';
-
-declare module 'react' {
-  interface CSSProperties {
-    readonly '--diff-file-height'?: string;
-    readonly '--diff-row-top'?: string;
-    readonly '--diff-tab-size'?: string;
-    readonly '--diff-number-width'?: string;
-    readonly '--diff-code-padding'?: string;
-    readonly '--diff-marker-width'?: string;
-    readonly '--diff-content-width'?: string;
-    readonly '--diff-word-padding-top'?: string;
-    readonly '--diff-gap-width'?: string;
-    readonly '--diff-word-padding-bottom'?: string;
-    readonly '--split-scroll'?: string;
-    readonly '--diff-snap-inline'?: string;
-    readonly '--diff-snap-left'?: string;
-    readonly '--diff-snap-right'?: string;
-    readonly '--diff-side-snap'?: string;
-    readonly '--wrap-indent'?: string;
-    readonly '--visible-left'?: string;
-    readonly '--visible-right'?: string;
-  }
-}
-
-export function largeFilesToLoad(
-  files: readonly DiffFile[],
-  toggled: ReadonlyMap<string, boolean>,
-  diff: number,
-  requested: Map<string, number>,
-): string[] {
-  const load: string[] = [];
-  for (const file of files) {
-    if (!file.placeholder || toggled.get(file.path) !== true) {
-      requested.delete(file.path);
-    } else if (requested.get(file.path) !== diff) {
-      requested.set(file.path, diff);
-      load.push(file.path);
-    }
-  }
-  return load;
-}
+} from './textLayout';
+import { WrapProbe, TextProbe } from './textProbes';
+import { selectionSide } from './wrapMarks';
+import { DiffRowShown, type DiffRowParts } from './diffRowShown';
+import { useSideways } from './diffSideways';
+import { useFoundJumps, useRevealFound } from './diffJumps';
+import { FileHeader, diffRowClass, HiddenChangeMarks } from './diffRowParts';
 
 export function DiffView({
   error,
@@ -236,8 +153,6 @@ export function DiffView({
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const list = useRef<HTMLDivElement>(null);
-  const [sideways, setSideways] = useState(0);
-  const scrolledSideways = useRef(sideways);
   const split = showsSideBySide(sideBySide, whole);
   const scrollsSides = split && !wordWrap;
   const columns = useGit((state) => state.wrapColumns);
@@ -278,7 +193,6 @@ export function DiffView({
       }),
     [measureDiffText],
   );
-  const [measured, setMeasured] = useState<Sideways>();
   const snap = useGit((state) => state.diffSnap);
   const snapCode = useCallback(() => {
     const element = list.current;
@@ -300,102 +214,13 @@ export function DiffView({
     observer.observe(element);
     return () => observer.disconnect();
   }, [snapCode]);
+  const { sideways, setSideways, measured, measureSideways } = useSideways(
+    list,
+    scrollsSides,
+    wordWrap,
+  );
   const view = measured && shownSideways(measured, scrollsSides, sideways);
   const changeColumns = keepWrapColumns;
-  useEffect(() => {
-    const element = list.current;
-    if (!element || !scrollsSides) {
-      return undefined;
-    }
-    let glide: Glide | undefined;
-    let frameWidest: number | undefined;
-    let frame: number | undefined;
-    const scroll = () => {
-      frame = undefined;
-      frameWidest = undefined;
-      if (!glide) {
-        return;
-      }
-      const now = performance.now();
-      setSideways(glideAt(glide, now));
-      if (glideEnded(glide, now)) {
-        glide = undefined;
-      } else {
-        frame = requestAnimationFrame(scroll);
-      }
-    };
-    const onWheel = (event: WheelEvent) => {
-      const { delta, duration } = wheelSideways(event);
-      if (delta === 0) {
-        return;
-      }
-      event.preventDefault();
-      frameWidest ??= sideRoom(element).widest;
-      glide = glideBy(
-        glide,
-        scrolledSideways.current,
-        performance.now(),
-        delta,
-        duration,
-        frameWidest,
-      );
-      frame ??= requestAnimationFrame(scroll);
-    };
-    element.addEventListener('wheel', onWheel, { passive: false });
-    setSidewaysScroller(element, {
-      metrics: () => {
-        const { side, widest } = sideRoom(element);
-        return sidewaysMetrics(
-          elementMetrics(element),
-          side,
-          widest,
-          scrolledSideways.current,
-        );
-      },
-      scrollTo: (scrollLeft) => {
-        const { side, widest } = sideRoom(element);
-        const left = sidewaysScroll(scrollLeft, element.clientWidth, side);
-        setSideways(Math.max(0, Math.min(widest, left)));
-      },
-    });
-    return () => {
-      element.removeEventListener('wheel', onWheel);
-      setSidewaysScroller(element, undefined);
-      if (frame !== undefined) {
-        cancelAnimationFrame(frame);
-      }
-    };
-  }, [scrollsSides]);
-  useEffect(() => {
-    if (scrolledSideways.current !== sideways) {
-      scrolledSideways.current = sideways;
-      list.current?.dispatchEvent(new Event(sidewaysScrollEvent));
-    }
-  }, [sideways]);
-  const measureSideways = useCallback(() => {
-    const element = list.current;
-    if (!element || wordWrap) {
-      setMeasured(undefined);
-      return;
-    }
-    const next = readSideways(element, scrollsSides);
-    setMeasured((last) => (sameSideways(last, next) ? last : next));
-  }, [wordWrap, scrollsSides]);
-  useEffect(() => {
-    const element = list.current;
-    if (!element) {
-      return undefined;
-    }
-    const observer = new ResizeObserver(measureSideways);
-    observer.observe(element);
-    const painted = afterPaint(measureSideways);
-    element.addEventListener('scroll', painted.ask, { passive: true });
-    return () => {
-      observer.disconnect();
-      element.removeEventListener('scroll', painted.ask);
-      painted.cancel();
-    };
-  }, [measureSideways]);
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
     new Map(),
   );
@@ -545,73 +370,22 @@ export function DiffView({
   const rangesByLine = useMemo(() => findRangesByLine(matches), [matches]);
   const found = matches.at(current);
   const foundKey = found && lineKey(found.file, found.line);
-  const jumped = useRef(0);
-  const [revealing, setRevealing] = useState<string>();
-  useEffect(() => {
-    if (jumped.current === jump) {
-      return;
-    }
-    const header =
-      found &&
-      rows.find((row) => row.kind === 'file' && row.file === found.file);
-    const closed = header?.kind === 'file' && !header.open;
-    switch (jumpStep(found !== undefined, loading, !closed)) {
-      case 'wait':
-        return;
-      case 'done':
-        jumped.current = jump;
-        return;
-      case 'open':
-        if (header?.kind === 'file') {
-          setToggled((all) => new Map(all).set(header.path, true));
-        }
-        return;
-      case 'scroll': {
-        const index = keys.findIndex((row) => row.includes(foundKey ?? ''));
-        if (index !== -1) {
-          virtualizer.scrollToIndex(index, { align: 'center' });
-          jumped.current = jump;
-          setRevealing(foundKey);
-        }
-      }
-    }
-  }, [jump, found, foundKey, loading, rows, keys, virtualizer]);
-
-  const changeJumped = useRef<number>(undefined);
-  useEffect(() => {
-    if (
-      firstChange === undefined ||
-      changeJumped.current === firstChange ||
-      loading
-    ) {
-      return;
-    }
-    changeJumped.current = firstChange;
-    if (found !== undefined) {
-      return;
-    }
-    const top = firstChangeTop(
-      changeStarts(rows).map(
-        (index) => virtualizer.measurementsCache[index]?.start ?? 0,
-      ),
-      changeMargin(lineHeight),
-    );
-    if (top !== undefined) {
-      virtualizer.scrollToOffset(top);
-    }
-  }, [firstChange, loading, found, rows, virtualizer, lineHeight]);
-
-  const requested = useRef(new Map<string, number>());
-  useEffect(() => {
-    for (const path of largeFilesToLoad(
-      files,
-      toggled,
-      diff,
-      requested.current,
-    )) {
-      onLoad(path);
-    }
-  }, [files, toggled, diff, onLoad]);
+  const { revealing, setRevealing } = useFoundJumps({
+    jump,
+    found,
+    foundKey,
+    loading,
+    rows,
+    keys,
+    virtualizer,
+    setToggled,
+    firstChange,
+    lineHeight,
+    files,
+    toggled,
+    diff,
+    onLoad,
+  });
 
   const header = (row: FileHeaderRow, stuck = false) => (
     <FileHeader
@@ -663,7 +437,7 @@ export function DiffView({
         list.current.scrollLeft = scrolled;
       }
     },
-    [scrollsSides],
+    [scrollsSides, setSideways],
   );
   const hiddenMarks = (
     key: string | undefined,
@@ -684,223 +458,26 @@ export function DiffView({
       />
     );
 
-  const renderRow = (row: DiffRow, index: number) => {
-    switch (row.kind) {
-      case 'error':
-        return error;
-      case 'file':
-        return header(row);
-      case 'large':
-        return (
-          <div className="large-diff">
-            {largeDiffText(row.lines)}
-            <button onClick={() => toggle(row.path, false)}>
-              {strings.diff.show}
-            </button>
-          </div>
-        );
-      case 'binary':
-        return whole ? (
-          <div className="file-note">{strings.diff.binaryOrLarge}</div>
-        ) : (
-          <FileNote
-            text={strings.diff.binary}
-            change={row.change ?? sideChange(files[row.file])}
-            split={split}
-          />
-        );
-      case 'empty':
-        return (
-          <FileNote
-            text={strings.diff.emptyFile}
-            change={row.change ?? sideChange(files[row.file])}
-            split={split}
-          />
-        );
-      case 'sameContent':
-        return (
-          <FileNote
-            text={
-              files[row.file].copied
-                ? strings.diff.copiedWithoutChanges
-                : strings.diff.renamedWithoutChanges
-            }
-            change={undefined}
-            split={split}
-          />
-        );
-      case 'link': {
-        const text = strings.diff.symbolicLink(
-          (whole ? whole.content : files[row.file].link?.[row.side]) ?? '',
-        );
-        return whole ? (
-          <div className="file-note">
-            <Words>{text}</Words>
-          </div>
-        ) : (
-          <FileNote
-            text={text}
-            change={row.side === 'old' ? 'removed' : 'added'}
-            split={split}
-          />
-        );
-      }
-      case 'mode': {
-        const modes = files[row.file].modeChange;
-        return (
-          modes && (
-            <FileNote
-              text={strings.diff.modeChanged(modes.old, modes.new)}
-              change={undefined}
-              split={split}
-            />
-          )
-        );
-      }
-      case 'whitespace':
-        return (
-          <FileNote
-            text={strings.diff.onlyWhitespace}
-            change={undefined}
-            split={split}
-          />
-        );
-      case 'noNewline':
-        return (
-          <FileNote
-            text={strings.diff.noNewlineAtEnd}
-            change={
-              files[row.file].noNewlineAtEnd === 'old' ? 'removed' : 'added'
-            }
-            split={split}
-          />
-        );
-      case 'image': {
-        if (!origin) {
-          return null;
-        }
-        if (whole) {
-          const url = wholeImageUrl(origin, whole);
-          return url && <WholeImage url={url} />;
-        }
-        return <ImageDiff panes={imagePanes(origin, files[row.file], split)} />;
-      }
-      case 'skeleton':
-        return (
-          <div className="diff-skeleton">
-            <div className="file-header">
-              <span className="bar" style={{ width: '40%' }} />
-            </div>
-            <DiffSkeleton split={split} rows={9} />
-          </div>
-        );
-      case 'skeletonLines':
-        return <DiffSkeleton split={split} rows={4} />;
-      case 'hunk':
-        return <HunkDivider />;
-      case 'line':
-        return (
-          <div
-            className={`diff-line text-line ${row.line.kind} ${wholeChangeClass(words, keys[index].at(0))}`}
-          >
-            <span className="number">{row.line.oldNumber}</span>
-            <span className="number">{row.line.newNumber}</span>
-            {code(
-              keys[index].at(0),
-              row.line.text,
-              row.line.kind,
-              wrapping?.left,
-            )}
-            <WrapMarks
-              text={row.line.text}
-              columns={wrapping?.left}
-              numbers={2}
-              lineHeight={lineHeight}
-              columnsIn={columnsIn}
-              widths={widths}
-            />
-            {hiddenMarks(
-              keys[index].at(0),
-              row.line,
-              (shown) => inlineArea(shown, 2),
-              (edge) =>
-                edge === 'left'
-                  ? { left: `calc(var(--visible-left) + ${markerInset}px)` }
-                  : {
-                      left: `calc(var(--visible-right) - ${markerInset + markerWidth}px)`,
-                    },
-            )}
-          </div>
-        );
-      case 'split':
-        return (
-          <div className="split-line">
-            {[row.left, row.right].map((cell, side) => (
-              <div
-                key={side}
-                className={`diff-line text-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')} ${cell ? wholeChangeClass(words, lineKey(row.file, cell.index)) : ''}`}
-                style={sideSnaps[side]}
-              >
-                <span className="number">
-                  {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}
-                </span>
-                <span className="split-code">
-                  {cell &&
-                    code(
-                      lineKey(row.file, cell.index),
-                      cell.line.text,
-                      cell.line.kind,
-                      side === 0 ? wrapping?.left : wrapping?.right,
-                    )}
-                </span>
-                {cell && (
-                  <WrapMarks
-                    text={cell.line.text}
-                    columns={side === 0 ? wrapping?.left : wrapping?.right}
-                    numbers={1}
-                    lineHeight={lineHeight}
-                    columnsIn={columnsIn}
-                    widths={widths}
-                  />
-                )}
-                {cell &&
-                  hiddenMarks(
-                    lineKey(row.file, cell.index),
-                    cell.line,
-                    (shown) => sideArea(shown, side === 1),
-                    (edge) =>
-                      edge === 'left'
-                        ? { left: numberWidth + markerInset }
-                        : {
-                            right:
-                              side === 1
-                                ? `calc(var(--minimap-width) + ${markerInset}px)`
-                                : markerInset,
-                          },
-                  )}
-              </div>
-            ))}
-          </div>
-        );
-      case 'wholeLine':
-        return (
-          <div className="diff-line text-line">
-            <span className="number">{row.number}</span>
-            {code(keys[index].at(0), row.text, undefined, wrapping?.left)}
-            <WrapMarks
-              text={row.text}
-              columns={wrapping?.left}
-              numbers={1}
-              lineHeight={lineHeight}
-              columnsIn={columnsIn}
-              widths={widths}
-            />
-          </div>
-        );
-      default:
-        return row satisfies never;
-    }
+  const rowParts: DiffRowParts = {
+    error,
+    files,
+    whole,
+    origin,
+    split,
+    words,
+    keys,
+    wrapping,
+    lineHeight,
+    columnsIn,
+    widths,
+    header,
+    toggle,
+    code,
+    hiddenMarks,
   };
+  const renderRow = (row: DiffRow, index: number) => (
+    <DiffRowShown row={row} index={index} parts={rowParts} />
+  );
 
   const rowInputs = [
     error,
@@ -942,60 +519,12 @@ export function DiffView({
         setSideways(within);
       }
     }
-  }, [items, rows, scrollsSides, sideways]);
+  }, [items, rows, scrollsSides, sideways, setSideways]);
   useLayoutEffect(measureSideways, [measureSideways, items, rows]);
-  useLayoutEffect(() => {
-    const element = list.current;
-    if (!revealing || !element) {
-      return;
-    }
-    const index =
-      revealing === foundKey
-        ? keys.findIndex((row) => row.includes(revealing))
-        : -1;
-    if (index !== -1 && !items.some((item) => item.index === index)) {
-      return;
-    }
-    setRevealing(undefined);
-    if (!found || index === -1) {
-      return;
-    }
-    if (wordWrap) {
-      const row = element.querySelector(`.virtual-row[data-index="${index}"]`);
-      const edges = row ? foundEdges(row) : undefined;
-      const start = virtualizer
-        .getVirtualItems()
-        .find((item) => item.index === index)?.start;
-      if (row && edges && start !== undefined) {
-        const box = element.getBoundingClientRect();
-        const middle = foundMiddle(
-          edges,
-          {
-            top: box.top + rowLines.file * lineHeight,
-            bottom: box.top + element.clientHeight,
-          },
-          { top: row.getBoundingClientRect().top, start },
-        );
-        if (middle !== undefined) {
-          virtualizer.scrollToOffset(middle, { align: 'center' });
-        }
-      }
-      return;
-    }
-    if (widths.char === 0) {
-      return;
-    }
-    const shown = shownSideways(
-      readSideways(element, scrollsSides),
-      scrollsSides,
-      sideways,
-    );
-    const scrolled = foundScroll(rows[index], found, shown, widths);
-    if (scrolled !== undefined && scrolled !== shown.scrolled) {
-      reveal(scrolled);
-    }
-  }, [
+  useRevealFound({
+    list,
     revealing,
+    setRevealing,
     found,
     foundKey,
     keys,
@@ -1008,7 +537,7 @@ export function DiffView({
     reveal,
     virtualizer,
     lineHeight,
-  ]);
+  });
   const measurements = virtualizer.measurementsCache;
   const marksInput = useDeferredValue(
     useMemo(
