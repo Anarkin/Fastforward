@@ -45,6 +45,7 @@ import { RepositoryChoices } from './repositoryChoices';
 import { Contexts } from './contexts';
 import { TabPosts } from './tabPosts';
 import { FileViews } from './fileViews';
+import { DiffImages } from './diffImages';
 import { Inits } from './inits';
 import { ViewSettings } from './viewSettings';
 
@@ -73,6 +74,7 @@ export class GitTool implements Tool<'git'> {
   private readonly contexts: Contexts;
   private readonly posts: TabPosts;
   private readonly fileViews: FileViews;
+  private readonly diffImages: DiffImages;
   private readonly inits: Inits;
   private readonly viewSettings: ViewSettings;
   private readonly selections: Selections;
@@ -233,13 +235,17 @@ export class GitTool implements Tool<'git'> {
       },
     );
     this.fileViews = new FileViews(
-      log,
       gitPath,
       host.viewedFiles,
       () => this.shell,
+      this.sessions,
+    );
+    this.diffImages = new DiffImages(
+      log,
+      gitPath,
+      () => this.shell,
       this.tabStates,
       this.compareTabs,
-      this.sessions,
     );
     this.inits = new Inits(log, gitPath, this.worktrees);
     this.autoFetch = new AutoFetch(
@@ -440,7 +446,7 @@ export class GitTool implements Tool<'git'> {
   }
 
   image(url: URL): Promise<Response> {
-    return this.fileViews.image(url);
+    return this.diffImages.image(url);
   }
 
   initRepositoryIn(folder: string): Promise<void> {
