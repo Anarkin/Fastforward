@@ -10,7 +10,6 @@ import { overlayScrollbarClass } from '../../../../lib/page/overlayScrollbars';
 import { ShortcutsPopup } from '../../../../shell/page/shortcutsPopup';
 import { SkeletonRows } from '../../../../tools/git/page/skeleton';
 import { PathTitle } from '../../../../tools/commander/page/pathTitle';
-import { MarkBox } from '../../../../tools/commander/page/pane';
 import {
   allWithClass,
   cascaded,
@@ -45,6 +44,7 @@ import {
   commitRowHeight,
 } from '../../../../tools/git/page/commitListRows';
 import { SoloButton } from '../../../../tools/git/page/commitList';
+import { MarkBox } from '../../../../tools/commander/page/paneCells';
 
 export const css = stylesheet();
 

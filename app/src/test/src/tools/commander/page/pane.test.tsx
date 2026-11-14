@@ -3,15 +3,6 @@ import { suite, test } from 'vitest';
 import { act } from 'react';
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import {
-  driveOf,
-  ExtensionCell,
-  layoutMenu,
-  NameCell,
-  Pane,
-  RowIcon,
-  SizeCell,
-} from '../../../../../tools/commander/page/pane';
-import {
   flatRowOf,
   parentRow,
   rowsOf,
@@ -33,6 +24,16 @@ import { noop } from '../../../../helpers/fixtures';
 import { shareOf, sideToFocus } from '../../../../../tools/commander/page/tool';
 import { JSDOM } from 'jsdom';
 import { withStores } from '../../../../helpers/componentFixtures';
+import {
+  driveOf,
+  ExtensionCell,
+  NameCell,
+  RowIcon,
+  SizeCell,
+} from '../../../../../tools/commander/page/paneCells';
+import { layoutMenu } from '../../../../../tools/commander/page/paneHeader';
+import { Pane } from '../../../../../tools/commander/page/pane';
+
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
 

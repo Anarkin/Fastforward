@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -8,19 +7,13 @@ import {
   type CSSProperties,
 } from 'react';
 import { tileColumns, tileWidthOf } from './tiles';
-import { iconUrl, thumbnailUrl, type IconSource } from '../shared/icons';
-import {
-  imageType,
-  maxImageSize,
-  vectorType,
-} from '../../../lib/shared/images';
-import { ThumbnailImage, useThumbnailFill, type FillItem } from './thumbnails';
+import { type IconSource } from '../shared/icons';
+import { useThumbnailFill } from './thumbnails';
 import { commanderKeymap } from './keymap';
 import { clicked } from '../../../lib/shared/keymap';
-import { parentFolder, type Entry, type Side } from '../shared/protocol';
+import { parentFolder, type Side } from '../shared/protocol';
 import { fileMenuItems, menuTargetOf } from './fileMenu';
 import { copiedText, type Copied } from './naming';
-import { formatSize } from './format';
 import { goesInto, opens, pointedKeys, rangeKeys, type Row } from './listing';
 import { filterStep, PaneFilter } from './paneFilter';
 import { filterWords } from '../../../lib/page/fileFilter';
@@ -29,7 +22,7 @@ import { SearchButton, SearchRow } from '../../../lib/page/search';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { clickPairs } from './clickPairs';
 import { ColumnHeader } from './columnHeader';
-import { layouts, type Layout } from '../shared/settings';
+import { type Layout } from '../shared/settings';
 import {
   filterOf,
   readingKey,
@@ -42,30 +35,36 @@ import { formatDate } from '../../../lib/page/dates';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { dropTargetOf } from './dropping';
 import { whatOf } from './transferring';
-import {
-  BackIcon,
-  BookmarkIcon,
-  CheckBoxIcon,
-  FileIcon,
-  FlatViewIcon,
-  FolderIcon,
-  ForwardIcon,
-  ShieldIcon,
-  ToolIcon,
-} from '../../../lib/page/icons';
-import { StatusLine } from './statusLine';
+import { BackIcon, ForwardIcon, ShieldIcon } from '../../../lib/page/icons';
 import { MenuButton } from '../../../lib/page/menu';
-import type { ContextMenuItem } from '../../../lib/page/contextMenu';
 import { estimatedRowHeight, VirtualRows } from '../../../lib/page/virtualRows';
-import { sentencesOf, strings } from '../../../lib/shared/strings';
-import { Words } from '../../../lib/page/name';
-import { fileColorOf, type FileColors } from './fileColors';
-import { nameOf, PathTitle } from './pathTitle';
-import { pathParts } from '../shared/paths';
-import { bookmarkMenu, bookmarkOf } from './bookmarks';
+import { strings } from '../../../lib/shared/strings';
+import { fileColorOf } from './fileColors';
+import { PathTitle } from './pathTitle';
 import { driveMenu } from './driveMenu';
 import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 
+import {
+  driveOf,
+  RowIcon,
+  ExtensionCell,
+  dropIntoOf,
+  MarkBox,
+  NameCell,
+  SizeCell,
+  fillDelay,
+  TileImage,
+  thumbnailFills,
+  tileRowsOf,
+} from './paneCells';
+import {
+  FlatButton,
+  ReadingStatus,
+  DuplicatesStatus,
+  CountingStatus,
+  FlatStatus,
+} from './paneStatus';
+import { layoutMenu, BookmarkButton, archivePart } from './paneHeader';
 declare module 'react' {
   interface CSSProperties {
     readonly '--commander-extension'?: string;
@@ -73,408 +72,6 @@ declare module 'react' {
     readonly '--commander-date'?: string;
     readonly '--file-color'?: string;
   }
-}
-
-export function driveOf(
-  folder: string,
-  drives: readonly string[],
-): string | undefined {
-  return drives.find((drive) =>
-    folder.toUpperCase().startsWith(drive.toUpperCase()),
-  );
-}
-
-function SystemIcon({
-  source,
-  generic,
-  onDropIcon,
-  onFailed,
-}: {
-  source: IconSource;
-  generic: React.ReactNode;
-  onDropIcon: (ticket: string) => void;
-  onFailed: () => void;
-}) {
-  const ticket = useId();
-  const came = useRef(false);
-  const [shown, setShown] = useState(false);
-  useEffect(
-    () => () => {
-      if (!came.current) {
-        onDropIcon(ticket);
-      }
-    },
-    [ticket, onDropIcon],
-  );
-  return (
-    <>
-      {!shown && generic}
-      <img
-        className={`system-icon${shown ? '' : ' loading'}`}
-        src={iconUrl(source, ticket)}
-        alt=""
-        draggable={false}
-        onLoad={() => {
-          came.current = true;
-          setShown(true);
-        }}
-        onError={() => {
-          came.current = true;
-          onFailed();
-        }}
-      />
-    </>
-  );
-}
-
-export function RowIcon({
-  row,
-  source,
-  onDropIcon,
-}: {
-  row: Row;
-  source: IconSource | undefined;
-  onDropIcon: (ticket: string) => void;
-}) {
-  const [failed, setFailed] = useState<string>();
-  const generic =
-    row.entry === undefined || row.entry.folder ? <FolderIcon /> : <FileIcon />;
-  const url = source === undefined ? undefined : iconUrl(source);
-  if (source !== undefined && url !== failed) {
-    return (
-      <SystemIcon
-        key={url}
-        source={source}
-        generic={generic}
-        onDropIcon={onDropIcon}
-        onFailed={() => setFailed(url)}
-      />
-    );
-  }
-  return generic;
-}
-
-export function ExtensionCell({
-  row,
-  words,
-  onOpenRepository,
-}: {
-  row: Row;
-  words: readonly string[];
-  onOpenRepository: (name: string) => void;
-}) {
-  return (
-    <span className="commander-extension">
-      {row.repository ? (
-        <button
-          className="commander-mark"
-          title={strings.commander.openRepository}
-          tabIndex={-1}
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenRepository(row.key);
-          }}
-        >
-          <ToolIcon tool="git" />
-        </button>
-      ) : (
-        <HighlightWords text={row.extension} words={words} />
-      )}
-    </span>
-  );
-}
-
-function dropIntoOf(target: EventTarget | null): string | null {
-  const row = target instanceof Element ? target.closest('[data-drop]') : null;
-  return row?.getAttribute('data-drop') ?? null;
-}
-
-export function MarkBox({ onToggle }: { onToggle: () => void }) {
-  return (
-    <span
-      className="commander-check"
-      onClick={(event) => {
-        event.stopPropagation();
-        onToggle();
-      }}
-    >
-      <CheckBoxIcon />
-    </span>
-  );
-}
-
-export function NameCell({
-  row,
-  words,
-}: {
-  row: Row;
-  words: readonly string[];
-}) {
-  return (
-    <span className="commander-name">
-      <HighlightWords text={row.base} words={words} />
-    </span>
-  );
-}
-
-function FlatButton({ side }: { side: Side }) {
-  const flat = useCommander(
-    (state) => state.view.panes[side]?.flat !== undefined,
-  );
-  const reading = useCommander(
-    (state) => state.view.panes[side]?.flat?.progress.reading === true,
-  );
-  const { flat: onFlat } = useCommanderActions();
-  return (
-    <button
-      className={`nav-button toggle${flat ? ' active' : ''}${reading ? ' running' : ''}`}
-      title={strings.commander.flatView}
-      aria-pressed={flat}
-      onClick={() => onFlat(side)}
-    >
-      <span className="spin-icon">
-        <FlatViewIcon />
-      </span>
-    </button>
-  );
-}
-
-function ReadingStatus({ side }: { side: Side }) {
-  const reading = useCommander((state) =>
-    state.readingArchives.get(readingKey(state.view.tab, side)),
-  );
-  return reading === undefined ? null : (
-    <StatusLine announced>
-      <Words>
-        {sentencesOf(
-          [
-            strings.commander.readingArchive(reading),
-            strings.commander.escapeStops,
-          ],
-          ' · ',
-        )}
-      </Words>
-    </StatusLine>
-  );
-}
-
-function DuplicatesStatus({ side }: { side: Side }) {
-  const duplicates = useCommander(
-    (state) => state.view.panes[side]?.duplicates,
-  );
-  if (duplicates === undefined) {
-    return null;
-  }
-  if (duplicates.reading) {
-    return (
-      <StatusLine announced>
-        {[
-          strings.commander.findingDuplicates,
-          strings.commander.escapeStops,
-        ].join(' · ')}
-      </StatusLine>
-    );
-  }
-  return duplicates.groups.length === 0 ? (
-    <StatusLine announced>{strings.commander.noDuplicates}</StatusLine>
-  ) : null;
-}
-
-function CountingStatus({ side }: { side: Side }) {
-  const counting = useCommander(
-    (state) => state.view.panes[side]?.counting ?? 0,
-  );
-  return counting === 0 ? null : (
-    <StatusLine announced>
-      {[
-        strings.commander.countingSizes(counting),
-        strings.commander.escapeStops,
-      ].join(' · ')}
-    </StatusLine>
-  );
-}
-
-export function SizeCell({
-  entry,
-  tile = false,
-}: {
-  entry: Entry | undefined;
-  tile?: boolean;
-}) {
-  const className = `${tile ? 'commander-tile-size' : 'commander-size'}${entry?.counting === true ? ' counting' : ''}`;
-  const title =
-    entry?.unreadFolders === undefined
-      ? undefined
-      : strings.commander.unreadUnder(entry.unreadFolders);
-  const Cell = tile ? 'div' : 'span';
-  return (
-    <Cell className={className} title={title}>
-      {formatSize(entry?.size)}
-    </Cell>
-  );
-}
-
-function FlatStatus({
-  side,
-  files,
-  under,
-}: {
-  side: Side;
-  files: number;
-  under: string | undefined;
-}) {
-  const progress = useCommander(
-    (state) => state.view.panes[side]?.flat?.progress,
-  );
-  if (progress === undefined) {
-    return null;
-  }
-  const { reading, stopped, folders, failed } = progress;
-  const read = reading
-    ? strings.commander.flatReading(files, folders)
-    : stopped
-      ? strings.commander.flatStopped(files, folders)
-      : strings.commander.flatRead(files, folders);
-  return (
-    <StatusLine
-      announced
-      tone={stopped ? 'warning' : undefined}
-      end={under === undefined || under === '' ? undefined : under.slice(0, -1)}
-    >
-      {[
-        read,
-        failed > 0 ? strings.commander.flatFailed(failed) : undefined,
-        reading ? strings.commander.escapeStops : undefined,
-      ]
-        .filter((part) => part !== undefined)
-        .join(' · ')}
-    </StatusLine>
-  );
-}
-
-function tileThumbnailUrl(source: IconSource, entry: Entry): string {
-  return thumbnailUrl(source, `${entry.size ?? ''}:${entry.modified ?? ''}`);
-}
-
-const fillDelay = 250;
-
-function TileImage({
-  row,
-  source,
-  box,
-  onMade,
-  onDropIcon,
-}: {
-  row: Row;
-  source: IconSource | undefined;
-  box: number;
-  onMade: (made: Blob, pixelRatio: number) => void;
-  onDropIcon: (ticket: string) => void;
-}) {
-  const icon = (
-    <span className="commander-icon">
-      <RowIcon row={row} source={source} onDropIcon={onDropIcon} />
-    </span>
-  );
-  const type = imageType(row.key);
-  if (source === undefined || row.entry === undefined || type === undefined) {
-    return icon;
-  }
-  return (
-    <ThumbnailImage
-      url={tileThumbnailUrl(source, row.entry)}
-      box={box}
-      vector={type === vectorType}
-      fallback={icon}
-      onMade={onMade}
-    />
-  );
-}
-
-export function layoutMenu({
-  layout,
-  groupByColor,
-  canGroupByColor,
-  onLayout,
-  onGroupByColor,
-}: {
-  readonly layout: Layout;
-  readonly groupByColor: boolean;
-  readonly canGroupByColor: boolean;
-  readonly onLayout: (layout: Layout) => void;
-  readonly onGroupByColor: () => void;
-}): ContextMenuItem[] {
-  return [
-    ...layouts.map((each) => ({
-      label: strings.commander.layouts[each],
-      checked: each === layout,
-      onClick: () => onLayout(each),
-    })),
-    { separator: true },
-    {
-      label: strings.commander.groupByColor,
-      checked: groupByColor && canGroupByColor,
-      disabled: !canGroupByColor,
-      onClick: onGroupByColor,
-    },
-  ];
-}
-
-function BookmarkButton({
-  side,
-  trigger,
-  onChosen,
-}: {
-  side: Side;
-  trigger: React.Ref<HTMLButtonElement>;
-  onChosen: () => void;
-}) {
-  const bookmarks = useCommander((state) => state.view.bookmarks);
-  const bookmark = useCommander((state) =>
-    bookmarkOf(
-      state.view.bookmarks,
-      state.view.panes[side]?.folder,
-      state.view.platform,
-    ),
-  );
-  const { addBookmark, removeBookmark, goToBookmark } = useCommanderActions();
-  return (
-    <MenuButton
-      title={strings.commander.bookmarks}
-      icon={<BookmarkIcon filled={bookmark !== undefined} />}
-      arrow
-      trigger={trigger}
-      onChosen={onChosen}
-      items={bookmarkMenu({
-        bookmarks,
-        bookmark,
-        onAdd: () => addBookmark(side),
-        onRemove: removeBookmark,
-        onGo: (folder) => goToBookmark(side, folder),
-      })}
-    />
-  );
-}
-
-function archivePart(
-  archive: string,
-  fileColors: FileColors,
-): { readonly color?: string; readonly coloredPart: number } {
-  const color = fileColorOf(
-    {
-      name: nameOf(archive),
-      folder: false,
-      link: false,
-      hidden: false,
-      size: undefined,
-      modified: undefined,
-    },
-    fileColors,
-  );
-  return {
-    ...(color !== undefined && { color }),
-    coloredPart: pathParts(archive).length - 1,
-  };
 }
 
 export function Pane({
@@ -667,37 +264,9 @@ export function Pane({
   const shownFolder = pane?.folder;
   const fillItems = useMemo(
     () =>
-      (tiled ? rows : []).flatMap(
-        (
-          row,
-          index,
-        ): (FillItem & {
-          readonly index: number;
-          readonly source: IconSource;
-        })[] => {
-          const type = imageType(row.key);
-          if (
-            tab === undefined ||
-            shownFolder === undefined ||
-            row.entry === undefined ||
-            row.entry.folder ||
-            type === undefined ||
-            type === vectorType ||
-            (row.entry.size ?? 0) > maxImageSize
-          ) {
-            return [];
-          }
-          const source = { tab, side, folder: shownFolder, name: row.key };
-          return [
-            {
-              url: tileThumbnailUrl(source, row.entry),
-              name: row.key,
-              index,
-              source,
-            },
-          ];
-        },
-      ),
+      tiled && tab !== undefined && shownFolder !== undefined
+        ? thumbnailFills(rows, { tab, side, folder: shownFolder })
+        : [],
     [tiled, rows, tab, side, shownFolder],
   );
   useThumbnailFill(
@@ -722,17 +291,7 @@ export function Pane({
       columnFocusOf(body.current)?.focus();
     }
   }, [shownList, active, tab]);
-  const tileRows = useMemo(
-    () => ({
-      count: Math.ceil(rows.length / across),
-      keyOf: (index: number) => rows[index * across].key,
-      indexOf: (key: string) => {
-        const at = rows.findIndex((row) => row.key === key);
-        return at === -1 ? -1 : Math.floor(at / across);
-      },
-    }),
-    [rows, across],
-  );
+  const tileRows = useMemo(() => tileRowsOf(rows, across), [rows, across]);
 
   const fileColor = (row: Row) =>
     row.entry === undefined ? undefined : fileColorOf(row.entry, fileColors);

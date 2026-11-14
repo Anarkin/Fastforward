@@ -157,11 +157,7 @@
       }
     },
     {
-      "files": [
-        "src/boot/main.ts",
-        "src/tools/commander/page/pane.tsx",
-        "src/tools/git/page/diffView.tsx"
-      ],
+      "files": ["src/boot/main.ts", "src/tools/git/page/diffView.tsx"],
       "rules": {
         "max-lines": [
           "warn",
