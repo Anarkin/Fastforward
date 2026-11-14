@@ -1,11 +1,6 @@
-import type {
-  FromSyntax,
-  LineRanges,
-  SyntaxRange,
-  SyntaxSource,
-  ToSyntax,
-} from './syntaxEngine';
 import { partLines, type CodePart } from './syntaxParts';
+import type { FromSyntax, ToSyntax } from './syntaxServing';
+import type { LineRanges, SyntaxRange, SyntaxSource } from './syntaxEngine';
 
 export interface CodeSegment {
   readonly text: string;

@@ -7,15 +7,17 @@ import {
   type LoadedText,
 } from '../../../../../tools/git/page/diff';
 import { syntaxSources } from '../../../../../tools/git/page/syntax';
+import { noop } from '../../../../helpers/fixtures';
 import {
   loadLanguages,
   tokenizing,
   uncachedSources,
-  type FromSyntax,
   type SyntaxRange,
-  type ToSyntax,
 } from '../../../../../lib/page/syntaxEngine';
-import { noop } from '../../../../helpers/fixtures';
+import type {
+  FromSyntax,
+  ToSyntax,
+} from '../../../../../lib/page/syntaxServing';
 
 export type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
 

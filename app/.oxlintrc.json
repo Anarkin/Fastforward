@@ -184,7 +184,6 @@
     },
     {
       "files": [
-        "src/lib/page/syntaxEngine.ts",
         "src/shell/page/tabBar.tsx",
         "src/tools/commander/main/archives.ts",
         "src/tools/commander/page/editor.tsx",

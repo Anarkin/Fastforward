@@ -7,15 +7,6 @@ import {
   workerPort,
   type SyntaxPort,
 } from '../../../../../lib/page/syntax';
-import {
-  colorCode,
-  loadLanguages,
-  sendUncaught,
-  serveColoring,
-  type FromSyntax,
-  type SyntaxRange,
-  type ToSyntax,
-} from '../../../../../lib/page/syntaxEngine';
 import { onceMade } from '../../../../../lib/page/onceMade';
 import { partLines, type CodePart } from '../../../../../lib/page/syntaxParts';
 import { policyOfPage, waitFor } from '../../../../helpers/fixtures';
@@ -26,6 +17,17 @@ import {
   colored,
   warmsUpTheGrammar,
 } from './syntaxFixtures';
+import {
+  colorCode,
+  loadLanguages,
+  type SyntaxRange,
+} from '../../../../../lib/page/syntaxEngine';
+import {
+  sendUncaught,
+  serveColoring,
+  type FromSyntax,
+  type ToSyntax,
+} from '../../../../../lib/page/syntaxServing';
 
 suite('Syntax', () => {
   warmsUpTheGrammar();

@@ -1,11 +1,11 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  colorEdited,
-  type LineRanges,
-  type SyntaxRange,
-} from '../../../../lib/page/syntaxEngine';
 import { partLines, type CodePart } from '../../../../lib/page/syntaxParts';
+import { colorEdited } from '../../../../lib/page/editedColors';
+import type {
+  LineRanges,
+  SyntaxRange,
+} from '../../../../lib/page/syntaxEngine';
 
 interface Coloring {
   readonly parts: CodePart[];

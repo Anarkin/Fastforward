@@ -1,11 +1,11 @@
 import { errorText } from './errors';
+import { makeHighlighter } from './syntaxEngine';
 import {
-  makeHighlighter,
   sendUncaught,
   serveColoring,
   type FromSyntax,
   type ToSyntax,
-} from './syntaxEngine';
+} from './syntaxServing';
 
 interface WorkerScope {
   postMessage(message: FromSyntax): void;
