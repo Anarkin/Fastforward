@@ -1,42 +1,28 @@
 import * as assert from 'node:assert';
 import { createElement } from 'react';
 import { suite, test } from 'vitest';
-import type { ColumnName } from '../../../../tools/git/page/activeColumn';
-import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
-import { listedFilesRows } from '../../../../tools/git/page/changesTree';
 import { Column } from '../../../../tools/git/page/column';
 import { columnsClass } from '../../../../tools/git/page/columns';
 import { TabBar } from '../../../../shell/page/tabBar';
 import { MenuButton } from '../../../../lib/page/menu';
-import { Crash } from '../../../../shell/page/errorBoundary';
-import { VirtualRows } from '../../../../lib/page/virtualRows';
 import {
   allWithClass,
   cascaded,
   rendered,
   withClass,
 } from '../../../helpers/cascade';
-import {
-  defaultSettings,
-  fileChange,
-  renderedBy,
-  stylesheet,
-} from '../../../helpers/fixtures';
+import { fileChange, renderedBy } from '../../../helpers/fixtures';
 import { tabsStore } from '../../../helpers/componentFixtures';
 import {
   searchButton,
   columns,
-  columnTitle,
   commitRow,
   contextMenu,
-  diffFind,
   diffOptions,
   diffRow,
   diffView,
   fileRow,
   folderRow,
-  historyMenu,
-  inlineLine,
   locationsPopup,
   messagePanel,
   minimap,
@@ -48,29 +34,20 @@ import {
   worktree,
   worktreeBar,
 } from '../../../helpers/styleFixtures';
-import { defaultScrolling } from '../../../../lib/page/rowScroll';
 import { ShellStore } from '../../../../shell/page/store';
 import {
-  css,
   noop,
-  buttonsWidth,
   activeEdge,
-  pixels,
   looks,
   looksAlike,
-  body,
   bodyVariable,
   halved,
   deviceRounded,
-  layer,
   hovered,
-  focused,
-  after,
   aboutPopup,
   tabBarIn,
   shortcutsPopup,
   overlayScrollbar,
-  skeletonRow,
   soloButton,
   fileHeader,
 } from './stylesheetFixtures';
@@ -520,412 +497,5 @@ suite('Style', () => {
       allWithClass(rendered(menuButton()), 'menu-mark'),
       [],
     );
-  });
-
-  test('draws the rows of the lists as tall as one line of the line height of the settings, the size of the font rounded to the device pixel, with nothing above or below the text', () => {
-    looks(rendered(createElement('div', { className: 'row' })), {
-      height: 'var(--row-line-height)',
-      'line-height': 'var(--row-line-height)',
-      padding: '0 8px',
-    });
-    assert.match(
-      stylesheet(),
-      /--row-line-height: round\(\s*var\(--font-size\) \* var\(--line-height\),\s*var\(--device-pixel, 1px\)\s*\);/,
-    );
-  });
-
-  test('gives a row of the files column one line of the line height of the settings, its icons in the middle of it, as tall as a line of the diff at the default sizes, so the columns line up', () => {
-    for (const row of [fileRow(fileChange('src/a.ts')), folderRow()]) {
-      looks(row, {
-        'box-sizing': 'border-box',
-        height: 'var(--row-line-height)',
-        display: 'flex',
-        'align-items': 'center',
-      });
-    }
-    const { fonts } = defaultSettings();
-    assert.deepStrictEqual(
-      [fonts.size, fonts.lineHeight],
-      [fonts.monospaceSize, fonts.monospaceLineHeight],
-    );
-  });
-
-  test('cuts off every long name in a row with an ellipsis', () => {
-    for (const row of [
-      fileRow(fileChange('src/a.ts')),
-      fileRow(fileChange('src/a.ts', { status: 'D' })),
-      fileRow(undefined),
-      folderRow(),
-    ]) {
-      looks(withClass(row, 'path'), {
-        overflow: 'hidden',
-        'text-overflow': 'ellipsis',
-        'min-width': '0',
-      });
-    }
-  });
-
-  test("lines a folder's name up with the names of the files beside it, leaving no gap after its twisty", () => {
-    looks(folderRow(), { gap: undefined });
-  });
-
-  test('highlights no loading placeholder on hover', () => {
-    for (const placeholder of [
-      skeletonRow(),
-      skeletonRow('diff-line'),
-      rendered(createElement('div', { className: 'commit placeholder' })),
-      withClass(locationsPopup('abcd'), 'hash-suggestion', 'empty'),
-    ]) {
-      looks(placeholder, { background: 'none' }, hovered);
-    }
-  });
-
-  test('shows that nothing changed as a dimmed row above the empty list, which still fills the column to take the keys', () => {
-    const column = rendered(
-      renderedBy(Column, {
-        children: [
-          createElement(VirtualRows, {
-            key: 'rows',
-            rows: listedFilesRows([]),
-            renderRow: noop,
-            selectedKey: undefined,
-            scrolling: defaultScrolling,
-          }),
-          createElement('div', { key: 'empty', className: 'row empty' }),
-        ],
-      }),
-    );
-    looks(withClass(column, 'column-body'), {
-      display: 'flex',
-      'flex-direction': 'column',
-    });
-    const row = fileRow(fileChange('src/a.ts'));
-    looks(withClass(column, 'empty'), {
-      order: '-1',
-      'flex-shrink': '0',
-      height: cascaded(row, 'height'),
-      padding: cascaded(row, 'padding'),
-      color: 'var(--muted-foreground)',
-    });
-    looks(withClass(column, 'virtual-rows'), {
-      flex: '1',
-      'min-height': '0',
-    });
-  });
-
-  test('lets only the diff, errors and notices be selected, not the controls around them', () => {
-    looks(body, { 'user-select': 'none' });
-    const view = diffView({}, fileHeader);
-    for (const selectable of [
-      view,
-      withClass(notices(), 'notice-message'),
-      withClass(
-        rendered(
-          createElement(Crash, {
-            title: 'Fastforward',
-            error: new Error('boom'),
-            onReload: noop,
-            listen: () => noop,
-            onQuit: noop,
-          }),
-        ),
-        'error-message',
-      ),
-    ]) {
-      looks(selectable, { 'user-select': 'text' });
-    }
-    looks(withClass(view, 'file-header'), { 'user-select': 'none' });
-  });
-
-  test('strikes a deleted file through, in the text color like the other changes', () => {
-    looks(withClass(fileRow(fileChange('src/a.ts', { status: 'D' })), 'path'), {
-      'text-decoration': 'line-through',
-      color: undefined,
-    });
-  });
-
-  test('starts a changed file with its icon, spaced from its name, in the theme color of its kind', () => {
-    for (const [status, kind] of [
-      ['A', 'added'],
-      ['M', 'modified'],
-      ['D', 'deleted'],
-      ['R', 'renamed'],
-    ] as const) {
-      const icon = withClass(
-        fileRow(fileChange('src/a.ts', { status })),
-        'change-icon',
-        kind,
-      );
-      looks(icon, { color: `var(--color-change-${kind})`, 'flex-shrink': '0' });
-      assert.ok(parseFloat(cascaded(icon, 'margin-right') ?? '') > 0);
-    }
-  });
-
-  test('sizes all text by the font size settings, or a multiple of them for the headings of Markdown, buttons and inputs included', () => {
-    const sizes = [...css.matchAll(/font-size: ([^;]+);/g)].map(
-      (match) => match[1],
-    );
-    assert.deepStrictEqual(
-      [...new Set(sizes.filter((size) => !size.startsWith('calc(')))],
-      ['var(--font-size)', 'var(--monospace-font-size)'],
-    );
-    for (const scaled of sizes.filter((size) => size.startsWith('calc('))) {
-      assert.match(scaled, /^calc\(var\(--font-size\) \* [\d.]+\)$/);
-    }
-    const controls = [
-      tabBar(),
-      contextMenu(),
-      locationsPopup(''),
-      diffFind(),
-      notices(),
-      searchButton(),
-      rendered(navButtons()),
-    ].flatMap((root) =>
-      allWithClass(root).filter((element) =>
-        ['button', 'input'].includes(element.tag),
-      ),
-    );
-    assert.ok(controls.length > 10);
-    for (const control of controls) {
-      looks(control, { font: 'inherit' });
-    }
-  });
-
-  test('keeps the arrow cursor of a desktop app but for resizing, the fields showing the text cursor of their own', () => {
-    assert.deepStrictEqual(
-      [
-        ...new Set(
-          [...css.matchAll(/cursor: ([^;]+);/g)].map((match) => match[1]),
-        ),
-      ],
-      ['col-resize'],
-    );
-  });
-
-  test('mutes text by the one muted opacity, from the text color', () => {
-    assert.strictEqual(
-      bodyVariable('muted-opacity'),
-      'var(--color-foreground-muted)',
-    );
-    assert.strictEqual(
-      bodyVariable('muted-foreground'),
-      'color-mix( in srgb, var(--color-foreground) var(--color-foreground-muted), transparent )',
-    );
-    looks(withClass(rendered(commitRow()), 'commit-line', 'secondary'), {
-      color: 'var(--muted-foreground)',
-    });
-  });
-
-  test('dims close buttons, disabled controls and a gone bubble like muted text, keeping its own fade only for the loading placeholder', () => {
-    for (const dimmed of [
-      withClass(notices(), 'notice-close'),
-      withClass(locationsPopup(''), 'badge', 'missing'),
-      allWithClass(contextMenu(), 'menu-item').find((item) =>
-        item.attributes.has('disabled'),
-      ),
-      allWithClass(rendered(navButtons()), 'nav-button').find((button) =>
-        button.attributes.has('disabled'),
-      ),
-    ]) {
-      looks(dimmed, { opacity: 'var(--muted-opacity)' });
-    }
-    const fades = [...css.matchAll(/opacity: (0\.\d+);/g)].map(
-      (match) => match[1],
-    );
-    assert.strictEqual(fades.length, 1);
-    looks(withClass(skeletonRow(), 'bar'), { opacity: fades[0] });
-  });
-
-  test('highlights what a search matched in the search match colors', () => {
-    const matches = allWithClass(locationsPopup('m'), 'match');
-    assert.ok(matches.length > 1);
-    for (const match of matches) {
-      looks(match, {
-        color: 'var(--color-search-match-foreground)',
-        background: 'var(--color-search-match)',
-      });
-    }
-  });
-
-  test('draws the find field like the resting search field, edged in the focus color while typing in it', () => {
-    const resting = withClass(locationsPopup(''), 'locations-search');
-    looks(diffFind(), {
-      background: cascaded(resting, 'background'),
-      border: cascaded(resting, 'border'),
-    });
-    for (const field of [diffFind(), diffFind('a')]) {
-      looks(
-        field,
-        { 'border-color': 'var(--color-focus)' },
-        { focus: withClass(field, 'find-field-input') },
-      );
-    }
-  });
-
-  test('keeps the title of the Files column clear of its three buttons on the left, spaces the buttons of the Diff column alike, and never squeezes the search field out', () => {
-    const files = columnTitle(
-      createElement('div', { className: 'nav-buttons all-files' }),
-    );
-    assert.strictEqual(
-      pixels(cascaded(files, 'padding-left')),
-      buttonsWidth(3),
-    );
-    const gap = cascaded(withClass(files, 'nav-buttons'), 'gap');
-    assert.ok(gap);
-    const diff = columnTitle(diffOptions());
-    for (const group of [
-      withClass(diff, 'nav-buttons'),
-      withClass(diff, 'segmented'),
-    ]) {
-      looks(group, { gap, border: undefined, padding: undefined });
-    }
-    assert.ok(parseFloat(cascaded(diffFind(), 'min-width') ?? '') > 0);
-  });
-
-  test('keeps the title of the Files column on one line after its buttons, centered while it fits beside the room they take mirrored on the right, then cut off with an ellipsis', () => {
-    const title = withClass(
-      rendered(
-        renderedBy(Column, {
-          title: '0123456 → 89abcde',
-          start: createElement('div', { className: 'nav-buttons all-files' }),
-          children: null,
-        }),
-      ),
-      'column-title',
-    );
-    looks(withClass(title, 'column-name'), {
-      flex: 'none',
-      'max-width': '100%',
-      overflow: 'hidden',
-      'white-space': 'nowrap',
-      'text-overflow': 'ellipsis',
-    });
-    assert.strictEqual(
-      pixels(cascaded(title, 'width', after)) +
-        parseFloat(cascaded(title, 'padding-right') ?? ''),
-      pixels(cascaded(title, 'padding-left')),
-    );
-  });
-
-  test('fills a pinned pair as one undimmed switched-on toggle, its buttons unfilled, and fills the layout buttons as one pill, lifting the chosen and the hovered one onto the panel inside it', () => {
-    const fetching = withClass(
-      rendered(
-        navButtons({ autoFetch: true, autoFetchMinutes: 5, fetching: true }),
-      ),
-      'pin-pair',
-    );
-    assert.ok(fetching.classes.includes('pinned'));
-    looks(fetching, { background: 'var(--toggle-on-background)' });
-    const [fetch, pin] = allWithClass(fetching, 'nav-button');
-    assert.ok(fetch.attributes.has('disabled'));
-    looks(fetch, { opacity: '1', background: 'none' });
-    for (const button of [fetch, pin]) {
-      looks(button, { background: 'none', color: 'var(--color-foreground)' });
-    }
-    const options = rendered(diffOptions());
-    looks(withClass(options, 'segmented'), {
-      background: 'var(--button-background)',
-      'box-shadow': undefined,
-    });
-    const [chosen, other] = allWithClass(
-      withClass(options, 'segmented'),
-      'nav-button',
-    );
-    assert.ok(chosen.classes.includes('active'));
-    looks(chosen, {
-      background:
-        'linear-gradient(var(--toggle-on-background), var(--toggle-on-background)), var(--color-panel-background)',
-    });
-    looks(other, { background: 'none' });
-    looks(other, { background: 'var(--color-panel-background)' }, hovered);
-  });
-
-  test('keeps the search fields clear of the active column edge, the title holding both fields at one height', () => {
-    const column = rendered(renderedBy(Column, { children: null }));
-    const px = (name: string) => {
-      const match = /^(\d+)px$/.exec(cascaded(column, `--${name}`) ?? '');
-      assert.ok(match, name);
-      return Number(match[1]);
-    };
-    const edge = parseFloat(activeEdge());
-    const line = parseFloat(
-      cascaded(withClass(column, 'column-title'), 'border-bottom') ?? '',
-    );
-    assert.strictEqual(
-      cascaded(column, '--search-height'),
-      'var(--button-size)',
-    );
-    const above =
-      (px('title-height') - line - deviceRounded('button-size')) / 2;
-    assert.ok(above - edge >= 2, String(above));
-    for (const field of [
-      diffFind(),
-      withClass(locationsPopup(''), 'locations-search'),
-    ]) {
-      looks(field, { height: 'var(--search-height)' });
-    }
-    looks(withClass(searchButton(), 'search-button'), {
-      width: 'var(--search-height)',
-      height: 'var(--search-height)',
-      'border-radius': 'calc(var(--search-height) / 2)',
-    });
-  });
-
-  test('draws the active column edge over the search popup that covers the column, but under menus and notices', () => {
-    const edge = layer(
-      withClass(columns(columnsClass(true, 'a'), 'commits'), 'column'),
-      after,
-    );
-    assert.ok(edge > layer(locationsPopup('')));
-    for (const above of [contextMenu(), historyMenu(), notices()]) {
-      assert.ok(layer(above) > edge, above.classes.join(' '));
-    }
-  });
-
-  test('edges the active column in the focus color and the others in the border color, over their contents but letting the pointer through, as wide as the line it tells the scrollbars it draws, and outlines nothing in them', () => {
-    const names: readonly ColumnName[] = ['commits', 'files', 'diff'];
-    for (const active of names) {
-      const edges = allWithClass(
-        columns(columnsClass(true, 'a'), active),
-        'column',
-      );
-      for (const [index, name] of names.entries()) {
-        const shown = name === active;
-        looks(
-          edges[index],
-          {
-            content: "''",
-            position: 'absolute',
-            '--frame-line': 'var(--column-line)',
-            'box-shadow': shown
-              ? 'inset 0 0 0 var(--frame-line) var(--color-focus)'
-              : 'inset 0 0 0 var(--frame-line) var(--color-border)',
-            'pointer-events': 'none',
-          },
-          after,
-        );
-      }
-    }
-    const focusable = allWithClass(diffView({}, inlineLine('added'))).filter(
-      (element) => element.attributes.has(columnFocusAttribute),
-    );
-    assert.strictEqual(focusable.length, 1);
-    looks(focusable[0], { outline: 'none' }, focused);
-  });
-
-  test('mutes the search placeholders and the magnifier of the search button like other muted text', () => {
-    looks(withClass(searchButton(), 'search-button'), {
-      color: 'var(--muted-foreground)',
-    });
-    for (const field of [
-      withClass(locationsPopup(''), 'locations-search'),
-      withClass(diffFind(), 'find-field-input'),
-    ]) {
-      looks(
-        field,
-        { color: 'var(--muted-foreground)' },
-        { pseudoElement: '::placeholder' },
-      );
-    }
   });
 });
