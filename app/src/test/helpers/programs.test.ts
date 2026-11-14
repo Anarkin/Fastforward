@@ -32,7 +32,7 @@ suite('The real programs a test may start', () => {
     );
     assert.strictEqual(
       realProgramOf(
-        '"C:\\app\\node_modules\\electron\\dist\\electron.exe" "-r" "C:\\app\\loader.js"',
+        `"${path.join(path.sep, 'app', 'node_modules', 'electron', 'dist', 'electron.exe')}" "-r" "${path.join(path.sep, 'app', 'loader.js')}"`,
       ),
       'Electron',
     );
