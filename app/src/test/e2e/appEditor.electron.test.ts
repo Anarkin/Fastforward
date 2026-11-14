@@ -481,6 +481,78 @@ suite('App editor', () => {
       .waitFor({ state: 'detached' });
   });
 
+  test('shows each match whole as Enter goes from match to match, below the rows shown and back to the first, on whole rows, a match ending where a line may break too', async () => {
+    const lines = Array.from({ length: 600 }, (_, at) => `line ${at + 1}`);
+    for (const at of [39, 40, 299, 300, 564, 565]) {
+      lines[at] = `  "cursor": "needle(--color-${at + 1})",`;
+    }
+    fs.writeFileSync(path.join(opened, 'needles.txt'), `${lines.join('\n')}\n`);
+    await backToCommander();
+    await waitFor(
+      async () =>
+        (await right()
+          .locator('.commander-row', { hasText: 'needles' })
+          .count()) > 0,
+      'the file listed',
+    );
+    await edit('needles.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('line 1\n'),
+      'the text',
+    );
+    await toStart();
+    await page.keyboard.press('ControlOrMeta+F');
+    const field = page.locator('.editor .find-field .find-field-input');
+    await field.waitFor();
+    await field.fill('needle');
+    const count = page.locator('.editor .find-field-count');
+    await waitFor(
+      async () => (await count.textContent()) === '1 of 6',
+      'the first match',
+    );
+    const shownWhole = () =>
+      page.locator('.editor .cm-scroller').evaluate((scroller) => {
+        const top = scroller.getBoundingClientRect().top;
+        const bottom = top + scroller.clientHeight;
+        const match = scroller.querySelector('.find-match.current');
+        const rect = match?.getBoundingClientRect();
+        const row = parseFloat(getComputedStyle(scroller).lineHeight);
+        return {
+          match: match?.textContent ?? '',
+          whole:
+            rect !== undefined &&
+            rect.top >= top - 0.5 &&
+            rect.bottom <= bottom + 0.5,
+          onRows:
+            Math.abs(
+              scroller.scrollTop / row - Math.round(scroller.scrollTop / row),
+            ) < 0.01,
+        };
+      });
+    const wrong: string[] = [];
+    for (let press = 1; press <= 8; press++) {
+      await field.press('Enter');
+      await waitFor(
+        async () => (await count.textContent()) === `${(press % 6) + 1} of 6`,
+        `match ${(press % 6) + 1}`,
+      );
+      let last = '';
+      let shown = await shownWhole();
+      await waitFor(async () => {
+        shown = await shownWhole();
+        const now = JSON.stringify(shown);
+        const settled = now === last;
+        last = now;
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return settled;
+      }, 'the text to stop scrolling');
+      if (!shown.whole || !shown.onRows) {
+        wrong.push(`${(press % 6) + 1}: ${JSON.stringify(shown)}`);
+      }
+    }
+    assert.deepStrictEqual(wrong, []);
+  });
+
   test('ends the lines of a new file as the .editorconfig beside it says', async () => {
     fs.writeFileSync(
       path.join(opened, '.editorconfig'),

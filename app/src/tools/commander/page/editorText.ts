@@ -102,6 +102,48 @@ export function lineParts(
   ];
 }
 
+interface Edge {
+  readonly left: number;
+  readonly right: number;
+  readonly top: number;
+  readonly bottom: number;
+}
+
+function textBeside(widget: Node, after: boolean): Edge | null {
+  const line = widget.parentElement?.closest('.cm-line');
+  if (line === null || line === undefined) {
+    return null;
+  }
+  const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+  let found: Text | undefined;
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    if (node instanceof Text && node.length > 0) {
+      const following =
+        (widget.compareDocumentPosition(node) &
+          Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0;
+      if (following) {
+        found = after ? node : found;
+        break;
+      }
+      found = after ? undefined : node;
+    }
+  }
+  if (found === undefined) {
+    return null;
+  }
+  const range = document.createRange();
+  range.setStart(found, after ? 0 : found.length - 1);
+  range.setEnd(found, after ? 1 : found.length);
+  const rects = range.getClientRects();
+  const rect = after ? rects[0] : rects[rects.length - 1];
+  if (rect === undefined) {
+    return null;
+  }
+  const x = after ? rect.left : rect.right;
+  return { left: x, right: x, top: rect.top, bottom: rect.bottom };
+}
+
 class BreakChance extends WidgetType {
   override eq(): boolean {
     return true;
@@ -109,6 +151,10 @@ class BreakChance extends WidgetType {
 
   toDOM(): HTMLElement {
     return document.createElement('wbr');
+  }
+
+  override coordsAt(dom: HTMLElement, _pos: number, side: number): Edge | null {
+    return textBeside(dom, side > 0) ?? textBeside(dom, side <= 0);
   }
 }
 
