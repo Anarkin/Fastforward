@@ -200,7 +200,6 @@
         "src/shell/page/tabBar.tsx",
         "src/test/e2e/appEditor.electron.test.ts",
         "src/test/e2e/appWrapping.electron.test.ts",
-        "src/test/src/tools/git/main/cli/watch.test.ts",
         "src/tools/commander/main/archives.ts",
         "src/tools/commander/page/editor.tsx",
         "src/tools/git/main/cli/watch.ts",
@@ -219,7 +218,6 @@
       "files": [
         "src/test/e2e/appCursor.electron.test.ts",
         "src/test/e2e/appViewer.electron.test.ts",
-        "src/test/src/shell/main/settings.test.ts",
         "src/test/src/shell/page/style.test.ts",
         "src/test/src/tools/commander/main/archives.test.ts",
         "src/test/src/tools/commander/main/sevenZip.test.ts",
