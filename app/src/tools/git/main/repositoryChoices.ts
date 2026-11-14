@@ -1,6 +1,7 @@
 import { bookmarkedCommits } from '../shared/refNames';
 import type { GitToHost } from '../shared/protocol';
 import type { Contexts } from './contexts';
+import type { HistoryPages } from './historyPages';
 import type { Refreshes } from './refreshes';
 import type { GitSessions } from './sessions';
 import type { GitStorage } from './storage';
@@ -19,6 +20,7 @@ export class RepositoryChoices {
     private readonly sessions: GitSessions,
     private readonly contexts: Contexts,
     private readonly refreshes: Refreshes,
+    private readonly historyPages: HistoryPages,
     private readonly save: (saving: Promise<void>) => void,
   ) {}
 
@@ -46,7 +48,7 @@ export class RepositoryChoices {
           context.tab.readingHistory?.abort();
           if (sessions.isActiveIn(session, root)) {
             await this.refreshes.refresh(context, () =>
-              this.refreshes.sendCommits(
+              this.historyPages.sendCommits(
                 context,
                 this.contexts.refsOf(context),
                 true,
@@ -105,7 +107,7 @@ export class RepositoryChoices {
       const context = await this.contexts.context(shownIn, root);
       if (context) {
         await tab.loadingHistory;
-        await this.refreshes.sendShownHistory(context, {
+        await this.historyPages.sendShownHistory(context, {
           keepPlace: true,
           layOut: false,
         });

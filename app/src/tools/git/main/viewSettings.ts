@@ -3,7 +3,7 @@ import type { AutoFetch } from './autoFetch';
 import type { CompareTabs } from './compareTabs';
 import type { Contexts } from './contexts';
 import type { Diffs } from './diffs';
-import type { Refreshes } from './refreshes';
+import type { HistoryPages } from './historyPages';
 import type { GitStorage } from './storage';
 import type { Context, Session, TabWork } from './tabContext';
 import { forgetHistory, type TabState } from './tabState';
@@ -32,7 +32,7 @@ export class ViewSettings {
     private readonly autoFetch: () => AutoFetch,
     private readonly compareTabs: CompareTabs,
     private readonly diffs: Diffs,
-    private readonly refreshes: Refreshes,
+    private readonly historyPages: HistoryPages,
     private readonly contexts: Contexts,
     private readonly save: (saving: Promise<void>) => void,
   ) {
@@ -76,7 +76,7 @@ export class ViewSettings {
         }
         const context = await this.contexts.context(session);
         if (context) {
-          await this.refreshes.sendShownHistory(context);
+          await this.historyPages.sendShownHistory(context);
         }
         return;
       }

@@ -27,7 +27,7 @@ import {
 } from './tabState';
 import type { Context, GitCore } from './tabContext';
 import type { Diffs } from './diffs';
-import type { Refreshes } from './refreshes';
+import type { HistoryPages } from './historyPages';
 
 export type NavigationMessage = Extract<
   TabMessage,
@@ -42,7 +42,7 @@ export class CommitNavigation {
     private readonly storage: GitStorage,
     private readonly shell: () => ShellAccess,
     private readonly diffs: Diffs,
-    private readonly refreshes: Refreshes,
+    private readonly historyPages: HistoryPages,
     private readonly core: GitCore,
   ) {}
 
@@ -189,7 +189,7 @@ export class CommitNavigation {
     );
     if (merges.size > 0) {
       expandMerges(tab, [...merges], this.storage.collapseMerges);
-      await this.refreshes.sendShownHistory(context, { scrollTo: hash });
+      await this.historyPages.sendShownHistory(context, { scrollTo: hash });
       if (tab.selection !== picked) {
         return;
       }

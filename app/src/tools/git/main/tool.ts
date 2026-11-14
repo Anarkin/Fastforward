@@ -30,6 +30,7 @@ import {
 import { Diffs } from './diffs';
 import { DiffTexts } from './diffTexts';
 import { TreePaths } from './treePaths';
+import { HistoryPages } from './historyPages';
 import { Refreshes } from './refreshes';
 import { CommitNavigation } from './commitNavigation';
 import { CommitSearch } from './commitSearch';
@@ -86,6 +87,7 @@ export class GitTool implements Tool<'git'> {
   private readonly core: GitCore;
   private readonly diffs: Diffs;
   private readonly treePaths = new TreePaths();
+  private readonly historyPages: HistoryPages;
   private readonly refreshes: Refreshes;
   private readonly commitNavigation: CommitNavigation;
   private readonly commitSearch: CommitSearch;
@@ -161,22 +163,19 @@ export class GitTool implements Tool<'git'> {
       () => this.commitNavigation,
       save,
     );
+    this.historyPages = new HistoryPages(log, storage, () => this.shell, {
+      rememberSelection: (context) => this.selections.remember(context),
+      bookmarkedOf: (repository) => this.choices.bookmarkedOf(repository),
+      sendNavigation: (context, current) =>
+        this.commitNavigation.sendNavigation(context, current),
+    });
     this.refreshes = new Refreshes(
       log,
       storage,
-      () => this.shell,
       this.diffs,
       this.treePaths,
-      {
-        live: (session) => this.sessions.live(session),
-        refsOf: (context) => this.contexts.refsOf(context),
-        sendRepository: (context, refs) =>
-          this.posts.sendRepository(context, refs),
-        rememberSelection: (context) => this.selections.remember(context),
-        bookmarkedOf: (repository) => this.choices.bookmarkedOf(repository),
-        sendNavigation: (context, current) =>
-          this.commitNavigation.sendNavigation(context, current),
-      },
+      this.historyPages,
+      this.core,
     );
     this.choices = new RepositoryChoices(
       storage,
@@ -184,6 +183,7 @@ export class GitTool implements Tool<'git'> {
       this.sessions,
       this.contexts,
       this.refreshes,
+      this.historyPages,
       save,
     );
     this.commitNavigation = new CommitNavigation(
@@ -191,7 +191,7 @@ export class GitTool implements Tool<'git'> {
       storage,
       () => this.shell,
       this.diffs,
-      this.refreshes,
+      this.historyPages,
       this.core,
     );
     this.commitSearch = new CommitSearch(storage, this.core);
@@ -276,7 +276,7 @@ export class GitTool implements Tool<'git'> {
       () => this.autoFetch,
       this.compareTabs,
       this.diffs,
-      this.refreshes,
+      this.historyPages,
       this.contexts,
       save,
     );
@@ -668,7 +668,7 @@ export class GitTool implements Tool<'git'> {
     }
     switch (message.type) {
       case 'loadCommits':
-        await this.refreshes.sendCommitPage(
+        await this.historyPages.sendCommitPage(
           context,
           message.generation,
           message.start,
@@ -678,7 +678,7 @@ export class GitTool implements Tool<'git'> {
       case 'toggleMerge':
         if (context.tab.fullHistory.isMerge(message.hash)) {
           toggleMerges(context.tab, [message.hash]);
-          await this.refreshes.sendShownHistory(context, {
+          await this.historyPages.sendShownHistory(context, {
             scrollTo: message.hash,
           });
         }
@@ -750,9 +750,9 @@ export class GitTool implements Tool<'git'> {
         return allSettled([
           (async () => {
             if (!historyLoaded(context.tab)) {
-              await this.refreshes.sendCommits(context, refs);
+              await this.historyPages.sendCommits(context, refs);
             } else if (context.tab.shownStale) {
-              await this.refreshes.sendShownHistory(context, {
+              await this.historyPages.sendShownHistory(context, {
                 keepPlace: true,
               });
             }
