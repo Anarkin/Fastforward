@@ -19,7 +19,7 @@ import {
   locationsStore,
   repository,
 } from './locationsFixtures';
-import { leafIndent } from '../../../../../tools/git/page/locationTree';
+import { leafIndent } from '../../../../../tools/git/page/locationRows';
 import { LocationsPopup } from '../../../../../tools/git/page/locations';
 
 const popup = (query: string, result?: Shown['lookup'], shown: Shown = {}) =>

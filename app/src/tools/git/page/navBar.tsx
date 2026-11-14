@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { comparedOf, comparisonLabel, sideLabel } from '../shared/comparisons';
 import type { Direction, LastFetch, NavigationEntry } from '../shared/protocol';
 import {
   onMenuKeyDown,
@@ -19,6 +18,12 @@ import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { gitKeymap } from './keymap';
+import {
+  historyButtonClick,
+  nextHistoryOpen,
+  locationsPopupKey,
+  historyLabel,
+} from './navHistory';
 
 const holdDelay = 400;
 
@@ -110,20 +115,6 @@ export function NavButtons() {
       </span>
     </div>
   );
-}
-
-export function historyButtonClick(
-  held: boolean,
-  open: boolean,
-): 'none' | 'close' | 'step' {
-  if (held) {
-    return 'none';
-  }
-  return open ? 'close' : 'step';
-}
-
-export function nextHistoryOpen(open: boolean, entries: number): boolean {
-  return open && entries > 0;
 }
 
 function HistoryButton({ direction }: { direction: Direction }) {
@@ -231,13 +222,6 @@ export function HistoryMenu({
   );
 }
 
-export function locationsPopupKey(
-  searches: number,
-  root: string | undefined,
-): string {
-  return `${searches}\n${root ?? ''}`;
-}
-
 export function AddressBar() {
   const open = useGit((state) => state.searching);
   const findsHere = useGit((state) => state.activeColumn === 'commits');
@@ -264,9 +248,4 @@ export function AddressBar() {
       )}
     </div>
   );
-}
-
-export function historyLabel(hash: string): string {
-  const compared = comparedOf(hash);
-  return compared ? comparisonLabel(compared) : sideLabel(hash);
 }

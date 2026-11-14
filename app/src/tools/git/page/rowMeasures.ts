@@ -15,7 +15,7 @@ import {
   diffRowKey,
   changeOf,
 } from './diffRows';
-import type { MinimapRow } from './minimap';
+import type { MinimapRow } from './minimapMarks';
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 

@@ -21,7 +21,8 @@ import {
   useShellActions,
   type Confirming,
 } from './store';
-import { newTabTrigger, TabBar } from './tabBar';
+import { newTabTrigger } from './tabStrip';
+import { TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './titleBar';
 import { ToolViews } from './tools';
 

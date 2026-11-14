@@ -3,10 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { parsePatch, type DiffFile } from '../../../../../tools/git/page/diff';
 import { collapseThreshold } from '../../../../../tools/git/shared/protocol';
-import {
-  ImageDiff,
-  imagePanes,
-} from '../../../../../tools/git/page/imagePreview';
+import { imagePanes } from '../../../../../tools/git/page/imagePanes';
+import { ImageDiff } from '../../../../../tools/git/page/imagePreview';
 import { sideBySideWords } from '../../../../../tools/git/page/pairing';
 import { wordRanges } from '../../../../../tools/git/page/wordDiff';
 import { lineKey } from '../../../../../tools/git/page/find';

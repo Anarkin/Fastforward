@@ -1,33 +1,13 @@
 import { memo } from 'react';
-import {
-  graphColors,
-  maxLanes,
-  type GraphLine,
-  type GraphRow,
-} from '../shared/protocol';
+import { maxLanes, type GraphLine, type GraphRow } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
+import { laneWidth, margin, graphWidth, color, rowLanes } from './graphLanes';
 
-const laneWidth = 12;
 const laneLine = 2;
+
 const dotRadius = 4;
+
 const overlap = 1;
-
-const colors = [
-  'var(--color-git-graph-blue)',
-  'var(--color-git-graph-green)',
-  'var(--color-git-graph-orange)',
-  'var(--color-git-graph-purple)',
-  'var(--color-git-graph-red)',
-  'var(--color-git-graph-yellow)',
-  'var(--color-git-graph-cyan)',
-  'var(--color-git-graph-magenta)',
-];
-
-const margin = 3;
-
-export function graphWidth(lanes: number): number {
-  return Math.max(1, Math.min(lanes, maxLanes)) * laneWidth + 2 * margin;
-}
 
 function devicePixelsOfLine(scale: number): number {
   return Math.max(1, Math.round(laneLine * scale - 1e-6));
@@ -45,10 +25,6 @@ function x(lane: number, scale: number): number {
       ? Math.round(middle)
       : Math.floor(middle) + 0.5) / scale
   );
-}
-
-function color(index: number): string {
-  return colors[index % graphColors];
 }
 
 function path(
@@ -177,15 +153,4 @@ function mergeTitle(row: GraphRow): string {
   return hidden > 0
     ? strings.commits.merged(hidden)
     : strings.commits.expandMerge;
-}
-
-export function rowLanes(row: GraphRow | undefined): number {
-  if (!row) {
-    return 1;
-  }
-  let lanes = row.lane + 1;
-  for (const line of row.lines) {
-    lanes = Math.max(lanes, line.from + 1, line.to + 1);
-  }
-  return lanes;
 }

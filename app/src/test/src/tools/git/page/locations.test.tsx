@@ -16,13 +16,13 @@ import {
   shownChildren,
   type Highlighted,
   stuckRowTop,
-} from '../../../../../tools/git/page/locationTree';
+} from '../../../../../tools/git/page/locationRows';
 import {
   enterTarget,
   focusLeaves,
   foundCommits,
   popupKeyAction,
-} from '../../../../../tools/git/page/locations';
+} from '../../../../../tools/git/page/locationKeys';
 import {
   itemKey,
   pinnedResults,
@@ -30,7 +30,7 @@ import {
   searchRefs,
   searchStashes,
   shownStashes,
-} from '../../../../../tools/git/page/locationsSearch';
+} from '../../../../../tools/git/page/locationResults';
 
 const branchNamed = (name: string): RefInfo => ({
   kind: 'branch',

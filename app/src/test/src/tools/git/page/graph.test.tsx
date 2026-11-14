@@ -2,11 +2,8 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type { GraphRow } from '../../../../../tools/git/shared/protocol';
-import {
-  GraphCell,
-  graphWidth,
-  rowLanes,
-} from '../../../../../tools/git/page/graph';
+import { graphWidth, rowLanes } from '../../../../../tools/git/page/graphLanes';
+import { GraphCell } from '../../../../../tools/git/page/graph';
 import { noop } from '../../../../helpers/fixtures';
 
 const cell = (row: GraphRow, height = 30, line = 20, scale = 1) =>

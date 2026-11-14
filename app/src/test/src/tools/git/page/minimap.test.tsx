@@ -4,11 +4,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import {
   grabPointer,
   matchMarks,
-  Minimap,
   minimapMarks,
   minimapScrollTop,
   pointerFraction,
-} from '../../../../../tools/git/page/minimap';
+} from '../../../../../tools/git/page/minimapMarks';
+import { Minimap } from '../../../../../tools/git/page/minimap';
 import { noModifiers } from '../../../../helpers/fixtures';
 import type { DiffRow } from '../../../../../tools/git/page/diffRows';
 import {

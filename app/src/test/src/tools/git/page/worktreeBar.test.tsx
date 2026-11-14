@@ -4,10 +4,8 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import { type WorktreeInfo } from '../../../../../tools/git/shared/protocol';
-import {
-  adjacentWorktree,
-  WorktreeBar,
-} from '../../../../../tools/git/page/worktreeBar';
+import { adjacentWorktree } from '../../../../../tools/git/page/worktreeSteps';
+import { WorktreeBar } from '../../../../../tools/git/page/worktreeBar';
 import { GitStore } from '../../../../../tools/git/page/store';
 import {
   gitStore,

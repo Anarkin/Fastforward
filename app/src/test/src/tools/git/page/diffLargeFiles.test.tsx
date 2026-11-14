@@ -18,7 +18,7 @@ import {
   diffSelection,
   shownFiles,
   withLargeFiles,
-} from '../../../../../tools/git/page/diffColumn';
+} from '../../../../../tools/git/page/diffFiles';
 import { fileChange } from '../../../../helpers/fixtures';
 import { patch, kinds } from './diffViewFixtures';
 import {

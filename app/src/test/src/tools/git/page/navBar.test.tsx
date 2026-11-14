@@ -6,12 +6,14 @@ import { suite, test } from 'vitest';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import {
-  AddressBar,
   historyButtonClick,
   historyLabel,
-  HistoryMenu,
   locationsPopupKey,
   nextHistoryOpen,
+} from '../../../../../tools/git/page/navHistory';
+import {
+  AddressBar,
+  HistoryMenu,
   NavButtons,
 } from '../../../../../tools/git/page/navBar';
 import { GitStore } from '../../../../../tools/git/page/store';

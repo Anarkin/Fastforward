@@ -10,8 +10,8 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { useVirtualizer, type VirtualItem } from '@tanstack/react-virtual';
-import { comparedOf, shownSide, sidesOf } from '../shared/comparisons';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { sidesOf } from '../shared/comparisons';
 import {
   workingTreeHash,
   type CommitInfo,
@@ -20,7 +20,8 @@ import {
 import { CommitBubble, HeadBubble, RefBubble, StashBubble } from './bubbles';
 import { Column } from './column';
 import { commitMenuTarget, useOpenMenu } from './menus';
-import { GraphCell, graphWidth, rowLanes } from './graph';
+import { graphWidth, rowLanes } from './graphLanes';
+import { GraphCell } from './graph';
 import {
   detachedHead,
   layoutSelectionOf,
@@ -33,36 +34,23 @@ import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
 import { MenuButton } from '../../../lib/page/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
-import { useSkeleton } from './skeleton';
+import { useSkeleton } from './skeletonDelay';
 import { Highlight } from '../../../lib/page/highlight';
-import {
-  clicked,
-  menuFromKeyboard,
-  type Click,
-} from '../../../lib/shared/keymap';
+import { menuFromKeyboard, type Click } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { withoutRemote } from '../shared/refNames';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
-import {
-  fullyVisible,
-  listMoveOf,
-  type ListMove,
-} from '../../../lib/page/listMoves';
+import { fullyVisible } from '../../../lib/page/listMoves';
 import { SoloIcon } from '../../../lib/page/icons';
 import { useCappedScroll } from './cappedVirtualizer';
 import { SearchButton } from '../../../lib/page/search';
 import { realHeight } from '../../../lib/page/cappedScroll';
 import { rowPlace } from '../../../lib/page/rowPlace';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
-import {
-  activeDescendant,
-  endCovered,
-  rowId,
-} from '../../../lib/page/listRows';
-
+import { endCovered } from '../../../lib/page/listRows';
 import {
   workingTreeShift,
   ListScrollState,
@@ -89,16 +77,27 @@ import {
   fixedRowHeight,
   listTop,
 } from './commitListRows';
+import {
+  noRefs,
+  commitMoveOf,
+  isCompareClick,
+  selectionClasses,
+  commitOption,
+  commitListbox,
+  commitClass,
+} from './commitListItems';
+
 const loadDelay = 80;
 
 const noHistory = () => () => {};
+
 const noVersion = () => 0;
+
 const noSelect = () => {};
+
 const rowIndent = 8;
 
 const openingRows = 20;
-
-export const noRefs: readonly RefInfo[] = [];
 
 export const CommitBubbles = memo(function CommitBubbles({
   hash,
@@ -155,64 +154,11 @@ function inPairs(refs: readonly RefInfo[]): RefInfo[] {
   ];
 }
 
-export function commitMoveOf(
-  event: Parameters<typeof listMoveOf>[0],
-): ListMove | undefined {
-  return listMoveOf(event) ?? keyPressed(gitKeymap.peekStep, event);
-}
-
-export function isCompareClick(event: Click): boolean {
-  return clicked(gitKeymap.compare, event) !== undefined;
-}
-
 function selectionOfRow(
   hash: string,
   selection: string | undefined,
 ): string | undefined {
   return sidesOf(selection).includes(hash) ? selection : undefined;
-}
-
-function selectionClasses(hash: string, selection: string | undefined) {
-  if (!sidesOf(selection).includes(hash)) {
-    return [];
-  }
-  return comparedOf(selection)?.from === hash
-    ? ['selected', 'compare-from']
-    : ['selected'];
-}
-
-export function commitOption(
-  list: string,
-  key: VirtualItem['key'],
-  index: number,
-  count: number,
-  selection: string | undefined,
-) {
-  return {
-    id: rowId(list, key),
-    role: 'option',
-    'aria-selected':
-      typeof key === 'string' && sidesOf(selection).includes(key),
-    'aria-setsize': count,
-    'aria-posinset': index + 1,
-  };
-}
-
-export function commitListbox(
-  list: string,
-  drawn: readonly { readonly key: VirtualItem['key'] }[],
-  selection: string | undefined,
-) {
-  return {
-    role: 'listbox',
-    'aria-label': strings.commits.list,
-    'aria-multiselectable': comparedOf(selection) !== undefined,
-    'aria-activedescendant': activeDescendant(
-      list,
-      shownSide(selection),
-      drawn,
-    ),
-  };
 }
 
 export function WorkingTreeRow({
@@ -698,18 +644,6 @@ export function SoloButton() {
       </span>
     </button>
   );
-}
-
-export function commitClass(
-  hash: string,
-  selected: string | undefined,
-  headCommit: string | undefined,
-): string {
-  return [
-    'commit',
-    ...selectionClasses(hash, selected),
-    ...(hash === headCommit ? ['checked-out'] : []),
-  ].join(' ');
 }
 
 export function CommitRow({

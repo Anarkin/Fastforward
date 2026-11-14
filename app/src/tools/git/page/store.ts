@@ -26,7 +26,7 @@ import type { ColumnName } from './activeColumn';
 import { bookmarkOptions, toggleBookmark } from './bookmarks';
 import { areaKey } from './changesRows';
 import { checkoutCommit, checkoutOptions, checkoutRef } from './checkout';
-import type { ChosenFolder, CloneTarget } from './clonePopup';
+import type { ChosenFolder, CloneTarget } from './cloneForm';
 import { resetWidth, shownSelection } from './columns';
 import { parsePatch, type LoadedText } from './diff';
 import { foldersOf } from './fileTree';

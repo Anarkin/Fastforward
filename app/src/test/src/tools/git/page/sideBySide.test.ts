@@ -16,7 +16,7 @@ import {
   wheelSideways,
 } from '../../../../../tools/git/page/diffScrolling';
 import { minimapRows } from '../../../../../tools/git/page/rowMeasures';
-import { splitSideClass } from '../../../../../tools/git/page/diffRowParts';
+import { splitSideClass } from '../../../../../tools/git/page/diffRowClasses';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',

@@ -4,11 +4,11 @@ import { act } from 'react';
 import type { Root } from 'react-dom/client';
 import { suite, test, vi } from 'vitest';
 import {
-  ClonePopup,
   formProblem,
   type ChosenFolder,
   type CloneTarget,
-} from '../../../../../tools/git/page/clonePopup';
+} from '../../../../../tools/git/page/cloneForm';
+import { ClonePopup } from '../../../../../tools/git/page/clonePopup';
 import type {
   CloneAsk,
   CloneView,

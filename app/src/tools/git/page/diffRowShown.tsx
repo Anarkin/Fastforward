@@ -4,14 +4,10 @@ import { Words } from '../../../lib/page/name';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { ColumnsIn } from '../../../lib/page/wordWrap';
 import { strings } from '../../../lib/shared/strings';
-import { wholeChangeClass } from './codeMarks';
+import { wholeChangeClass } from './lineMarks';
 import type { DiffFile, DiffLine } from './diff';
-import {
-  DiffSkeleton,
-  FileNote,
-  HunkDivider,
-  splitSideClass,
-} from './diffRowParts';
+import { splitSideClass } from './diffRowClasses';
+import { DiffSkeleton, FileNote, HunkDivider } from './diffRowParts';
 import {
   largeDiffText,
   sideChange,
@@ -20,7 +16,8 @@ import {
   type WholeFile,
 } from './diffRows';
 import { lineKey } from './find';
-import { ImageDiff, imagePanes } from './imagePreview';
+import { imagePanes } from './imagePanes';
+import { ImageDiff } from './imagePreview';
 import { wholeImageUrl, type ImageOrigin } from './images';
 import {
   inlineArea,

@@ -44,9 +44,9 @@ import {
   fileHeader,
 } from './stylesheetFixtures';
 import { layoutVariables } from '../../../../tools/git/page/textLayout';
+import { diffRowClass } from '../../../../tools/git/page/diffRowClasses';
 import {
   FileNote,
-  diffRowClass,
   FileHeader,
   HunkDivider,
 } from '../../../../tools/git/page/diffRowParts';

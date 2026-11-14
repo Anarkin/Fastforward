@@ -18,8 +18,8 @@ import {
   stripOverflows,
   tabMenuItems,
   tabsWidth,
-  TabBar,
-} from '../../../../shell/page/tabBar';
+} from '../../../../shell/page/tabStrip';
+import { TabBar } from '../../../../shell/page/tabBar';
 import {
   movedTab,
   nearestSlot,

@@ -11,16 +11,15 @@ import {
   sameRowInput,
 } from '../../../../../tools/git/page/rowMeasures';
 import {
-  Code,
   codeProps,
-  marked,
   wholeChangeClass,
-} from '../../../../../tools/git/page/codeMarks';
+} from '../../../../../tools/git/page/lineMarks';
+import { Code, marked } from '../../../../../tools/git/page/codeMarks';
 import {
   gapWidth,
   wordPadding,
 } from '../../../../../tools/git/page/textLayout';
-import { selectionSide } from '../../../../../tools/git/page/wrapMarks';
+import { selectionSide } from '../../../../../tools/git/page/selectionSide';
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;

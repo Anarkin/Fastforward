@@ -1,4 +1,4 @@
-import type { DiffLine, NumberedLine } from './diff';
+import type { DiffLine } from './diff';
 import type { FindRange } from './find';
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
@@ -14,7 +14,7 @@ import {
   type TextArea,
 } from './overflow';
 import type { TextWidths } from '../../../lib/page/textWidths';
-import type { DiffRow, Change } from './diffRows';
+import type { Change } from './diffRows';
 
 export function HunkDivider() {
   return (
@@ -122,28 +122,6 @@ export function DiffSkeleton({
       ))}
     </div>
   );
-}
-
-export function diffRowClass(kind: DiffRow['kind']): string {
-  const extra =
-    kind === 'split'
-      ? 'split-row'
-      : kind === 'image'
-        ? 'preview-row'
-        : kind === 'error'
-          ? 'error-row'
-          : '';
-  return `virtual-row diff-row ${extra}`;
-}
-
-export function splitSideClass(
-  cell: NumberedLine | undefined,
-  change: 'added' | 'removed',
-): string {
-  if (cell === undefined) {
-    return 'filler';
-  }
-  return cell.line.kind === change ? change : '';
 }
 
 export function HiddenChangeMarks({

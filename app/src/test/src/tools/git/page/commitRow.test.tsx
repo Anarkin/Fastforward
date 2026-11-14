@@ -4,11 +4,13 @@ import { isValidElement } from 'react';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import {
-  CommitRow,
   commitClass,
   commitListbox,
   commitOption,
   isCompareClick,
+} from '../../../../../tools/git/page/commitListItems';
+import {
+  CommitRow,
   SoloButton,
 } from '../../../../../tools/git/page/commitList';
 import { defaultDateFormat, formatDate } from '../../../../../lib/page/dates';

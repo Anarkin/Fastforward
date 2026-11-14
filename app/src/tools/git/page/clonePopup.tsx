@@ -3,47 +3,20 @@ import {
   cloneName,
   nameProblem,
   targetPath,
-  urlProblem,
   type CloneView,
 } from '../shared/clone';
-import { strings, type Sentence } from '../../../lib/shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import { useDismiss } from '../../../lib/page/menuControls';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../../lib/page/modalDialog';
 import { useGit, useGitActions } from './store';
-
-export interface ChosenFolder {
-  readonly folder: string;
-}
-
-export interface CloneTarget {
-  readonly folder: string;
-  readonly name: string;
-  readonly problem?: Sentence;
-}
+import { formProblem } from './cloneForm';
 
 type Form = Extract<CloneView, { readonly kind: 'form' }>;
-type Running = Extract<CloneView, { readonly kind: 'running' }>;
 
-export function formProblem(
-  url: string,
-  folder: string,
-  name: string,
-  checked: CloneTarget | undefined,
-): Sentence | undefined {
-  if (url.trim() === '') {
-    return undefined;
-  }
-  return (
-    urlProblem(url) ??
-    nameProblem(name) ??
-    (checked?.folder === folder && checked.name === name
-      ? checked.problem
-      : undefined)
-  );
-}
+type Running = Extract<CloneView, { readonly kind: 'running' }>;
 
 function CloneForm({ form }: { form: Form }) {
   const chosenFolder = useGit((state) => state.clone.folder);

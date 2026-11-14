@@ -1,6 +1,6 @@
 import type { CloneView } from '../shared/clone';
 import type { GitToWebview, GitToWebviewOf } from '../shared/protocol';
-import type { CloneTarget } from './clonePopup';
+import type { CloneTarget } from './cloneForm';
 import { widthsToLoad } from './columns';
 import { textKey } from './diff';
 import { reduceTabView, type TabAction } from './tabView';

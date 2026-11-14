@@ -4,14 +4,7 @@ import { strings } from '../../../lib/shared/strings';
 import { commitBookmarkTarget, refMenuTarget, useContextMenu } from './menus';
 import { useGit, useGitActions } from './store';
 import { PullIcon, PushIcon } from '../../../lib/page/icons';
-
-export interface BranchActionsOf {
-  readonly pulling: boolean;
-  readonly pushing: boolean;
-  readonly onPull: () => void;
-  readonly onPush: () => void;
-  readonly tracking?: Tracking;
-}
+import { type BranchActionsOf, useCheckedOut } from './checkedOut';
 
 interface OtherBranchActionsOf {
   readonly pulling: boolean;
@@ -19,11 +12,6 @@ interface OtherBranchActionsOf {
   readonly elsewhere: boolean;
   readonly onPull: (branch: string) => void;
   readonly onPush: (branch: string) => void;
-}
-
-export function useCheckedOut(ref: BookmarkRef): boolean {
-  const head = useGit((state) => state.tab.repository?.head);
-  return ref.kind === 'branch' && ref.name === head;
 }
 
 export function HeadBubble({ hash }: { hash: string }) {

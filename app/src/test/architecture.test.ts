@@ -128,7 +128,6 @@ const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'shell/page/appMenu.tsx': 1,
   'shell/page/notices.tsx': 2,
   'shell/page/shortcutsPopup.tsx': 5,
-  'shell/page/tabBar.tsx': 10,
   'shell/page/titleBar.tsx': 3,
   'shell/page/tools.tsx': 1,
   'tools/commander/page/columnHeader.tsx': 1,
@@ -143,25 +142,8 @@ const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'tools/commander/page/textBody.tsx': 5,
   'tools/commander/page/thumbnails.tsx': 5,
   'tools/commander/page/tool.tsx': 2,
-  'tools/git/page/bubbles.tsx': 1,
   'tools/git/page/changesTree.tsx': 1,
-  'tools/git/page/clonePopup.tsx': 1,
-  'tools/git/page/codeMarks.tsx': 8,
-  'tools/git/page/commitList.tsx': 6,
-  'tools/git/page/diffColumn.tsx': 4,
-  'tools/git/page/diffRowParts.tsx': 2,
-  'tools/git/page/filesColumn.tsx': 5,
-  'tools/git/page/graph.tsx': 2,
-  'tools/git/page/imagePreview.tsx': 1,
-  'tools/git/page/locations.tsx': 4,
-  'tools/git/page/locationsSearch.tsx': 13,
-  'tools/git/page/locationTree.tsx': 8,
-  'tools/git/page/messagePeek.tsx': 4,
-  'tools/git/page/minimap.tsx': 5,
-  'tools/git/page/navBar.tsx': 4,
-  'tools/git/page/skeleton.tsx': 1,
-  'tools/git/page/worktreeBar.tsx': 1,
-  'tools/git/page/wrapMarks.tsx': 1,
+  'tools/git/page/codeMarks.tsx': 1,
 };
 
 const importsLeftOfComponentFiles: Readonly<Record<string, number>> = {
@@ -170,9 +152,6 @@ const importsLeftOfComponentFiles: Readonly<Record<string, number>> = {
   'tools/commander/page/pdfPreview.ts': 1,
   'tools/commander/page/screenRows.ts': 1,
   'tools/git/page/fileStatus.ts': 1,
-  'tools/git/page/receivedMessages.ts': 1,
-  'tools/git/page/rowMeasures.ts': 1,
-  'tools/git/page/store.ts': 1,
 };
 
 suite('Architecture', () => {

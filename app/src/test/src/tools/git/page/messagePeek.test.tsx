@@ -9,11 +9,13 @@ import {
   holdingAfterKey,
   holdingAfterPointer,
   liftOf,
+  type PeekAnchor,
+} from '../../../../../tools/git/page/messageHolding';
+import {
   MessageBody,
   MessageCorner,
   MessagePanel,
   MessagePeek,
-  type PeekAnchor,
 } from '../../../../../tools/git/page/messagePeek';
 import {
   classesOf,

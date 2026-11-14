@@ -16,7 +16,7 @@ import {
   pendingSelection,
   mergeToToggle,
 } from '../../../../../tools/git/page/commitListKeys';
-import { commitMoveOf } from '../../../../../tools/git/page/commitList';
+import { commitMoveOf } from '../../../../../tools/git/page/commitListItems';
 
 const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
 

@@ -2,8 +2,8 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
+import { type BranchActionsOf } from '../../../../../tools/git/page/checkedOut';
 import {
-  type BranchActionsOf,
   TagPushAction,
   CommitBubble,
   HeadBubble,

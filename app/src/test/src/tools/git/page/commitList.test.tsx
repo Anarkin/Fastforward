@@ -32,9 +32,9 @@ import {
   rowSizes,
   workingTreeRowHeight,
 } from '../../../../../tools/git/page/commitListRows';
+import { commitOption } from '../../../../../tools/git/page/commitListItems';
 import {
   CommitBubbles,
-  commitOption,
   WorkingTreeRow,
 } from '../../../../../tools/git/page/commitList';
 import {

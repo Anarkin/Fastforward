@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { vi } from 'vitest';
 import { createShellStore, ShellStore } from '../../shell/page/store';
 import type { TabInfo, ToHost } from '../../shell/shared/protocol';
-import { newTabTrigger, preloadDelay } from '../../shell/page/tabBar';
+import { newTabTrigger, preloadDelay } from '../../shell/page/tabStrip';
 import { createGitStore, GitStore } from '../../tools/git/page/store';
 import {
   CommanderStore,

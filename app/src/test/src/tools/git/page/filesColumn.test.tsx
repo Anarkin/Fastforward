@@ -17,13 +17,15 @@ import {
 } from '../../../../../tools/git/page/changesRows';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import {
-  FileFilterField,
-  Files,
   filesCursor,
   filesReveal,
   filesTitle,
   listsNothing,
   noChangesText,
+} from '../../../../../tools/git/page/filesColumnState';
+import {
+  FileFilterField,
+  Files,
 } from '../../../../../tools/git/page/filesColumn';
 import {
   createGitStore,

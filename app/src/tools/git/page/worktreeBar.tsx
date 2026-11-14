@@ -1,29 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { type WorktreeInfo } from '../shared/protocol';
 import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { useGit, useGitActions } from './store';
-import {
-  adjacentTab,
-  Cycle,
-  preloadDelay,
-  resting,
-} from '../../../shell/page/tabBar';
-
-export function adjacentWorktree(
-  worktrees: readonly WorktreeInfo[],
-  active: string | undefined,
-  step: 1 | -1,
-): string | undefined {
-  return adjacentTab(
-    worktrees
-      .filter((worktree) => !worktree.missing || worktree.root === active)
-      .map((worktree) => ({ id: worktree.root })),
-    active,
-    step,
-  );
-}
+import { Cycle, preloadDelay, resting } from '../../../shell/page/tabStrip';
+import { adjacentWorktree } from './worktreeSteps';
 
 export function WorktreeBar() {
   const worktrees = useGit((state) => state.worktrees);

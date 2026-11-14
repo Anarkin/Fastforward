@@ -2,7 +2,8 @@ import { memo, useMemo, useState } from 'react';
 import { useShell } from '../../../shell/page/store';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { gitKeymap } from './keymap';
-import { Diff, DiffLanguage, DiffOptions, diffSelection } from './diffColumn';
+import { diffSelection } from './diffFiles';
+import { Diff, DiffLanguage, DiffOptions } from './diffColumn';
 import { Commits } from './commitList';
 import { Files } from './filesColumn';
 import {

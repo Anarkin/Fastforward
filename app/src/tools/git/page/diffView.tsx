@@ -28,7 +28,7 @@ import { gitKeymap } from './keymap';
 import { listMoveOf } from '../../../lib/page/listMoves';
 import { ownScrollbarAttribute } from '../../../lib/page/overlayScrollbars';
 import { type ImageOrigin } from './images';
-import { useSkeleton } from './skeleton';
+import { useSkeleton } from './skeletonDelay';
 import { type ColumnsIn, wrapIndent } from '../../../lib/page/wordWrap';
 import { snapOffset } from '../../../lib/page/devicePixels';
 import {
@@ -88,12 +88,12 @@ import {
   type LineMarks,
   changedWords,
   codeProps,
-  Code,
   findRangesByLine,
   noSyntaxInput,
   noMarksInput,
   diffMinimapMarks,
-} from './codeMarks';
+} from './lineMarks';
+import { Code } from './codeMarks';
 import {
   unmeasured,
   gapWidth,
@@ -105,11 +105,12 @@ import {
   widestColumns,
 } from './textLayout';
 import { WrapProbe, TextProbe } from './textProbes';
-import { selectionSide } from './wrapMarks';
+import { selectionSide } from './selectionSide';
 import { DiffRowShown, type DiffRowParts } from './diffRowShown';
 import { useSideways } from './diffSideways';
 import { useFoundJumps, useRevealFound } from './diffJumps';
-import { FileHeader, diffRowClass, HiddenChangeMarks } from './diffRowParts';
+import { diffRowClass } from './diffRowClasses';
+import { FileHeader, HiddenChangeMarks } from './diffRowParts';
 
 export function DiffView({
   error,
