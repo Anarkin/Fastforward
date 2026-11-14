@@ -122,15 +122,6 @@ function countedOver(
   );
 }
 
-const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
-  'lib/page/blanks.tsx': 4,
-  'tools/git/page/codeMarks.tsx': 1,
-};
-
-const importsLeftOfComponentFiles: Readonly<Record<string, number>> = {
-  'tools/commander/page/editorText.ts': 1,
-};
-
 suite('Architecture', () => {
   test('keeps each source file in the folder of its part, the library, the shell or a tool, by where it runs, or in boot', () => {
     const placed =
@@ -415,17 +406,17 @@ suite('Architecture', () => {
     );
   });
 
-  test('exports from a .tsx only its components and the types of their props, keeping functions, constants, hooks and other classes in a .ts, where they are tested without React, and a helper only its component uses beside it unexported; the files listed have yet to move theirs, each count lowered as it falls', () => {
+  test('exports from a .tsx only its components and the types of their props, keeping functions, constants, hooks and other classes in a .ts, where they are tested without React, and a helper only its component uses beside it unexported, so what builds elements is a component and what decides is data', () => {
     assert.deepStrictEqual(
       countedOver(
         sourceFiles.filter((file) => file.endsWith('.tsx')),
         exportsOtherThanComponents,
       ),
-      exportsLeftInComponentFiles,
+      {},
     );
   });
 
-  test('lets a .ts import nothing from a .tsx, its types included, so the logic of the page never depends on a component; the files listed have yet to, each count lowered as it falls', () => {
+  test('lets a .ts import nothing from a .tsx, its types included, so the logic of the page never depends on a component', () => {
     assert.deepStrictEqual(
       countedOver(
         sourceFiles.filter((file) => file.endsWith('.ts')),
@@ -434,7 +425,7 @@ suite('Architecture', () => {
             .flatMap(sourceFilesOf)
             .filter((target) => target.endsWith('.tsx')).length,
       ),
-      importsLeftOfComponentFiles,
+      {},
     );
   });
 

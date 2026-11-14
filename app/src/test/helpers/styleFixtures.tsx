@@ -47,7 +47,7 @@ import {
 } from './cascade';
 import { commitInfo, renderedBy } from './fixtures';
 import { createShellStore, ShellStore } from '../../shell/page/store';
-import { Code, marked } from '../../tools/git/page/codeMarks';
+import { Code, MarkedCode } from '../../tools/git/page/codeMarks';
 import { BreakMarks } from '../../tools/git/page/wrapMarks';
 import { diffRowClass } from '../../tools/git/page/diffRowClasses';
 import { DiffView } from '../../tools/git/page/diffView';
@@ -438,14 +438,14 @@ export function inlineLine(
       <span className="number">1</span>
       <span className="number">1</span>
       <span className="code">
-        {marked(
-          'a b c',
-          [],
-          words,
-          kind === 'removed' ? 'word-removed' : 'word-added',
-          finds,
-          current,
-        )}
+        <MarkedCode
+          text={'a b c'}
+          syntax={[]}
+          words={words}
+          wordClass={kind === 'removed' ? 'word-removed' : 'word-added'}
+          found={finds}
+          foundNow={current}
+        />
       </span>
       {marker && <button className={`hidden-change left ${kind}`} />}
     </div>,

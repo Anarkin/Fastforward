@@ -1,25 +1,11 @@
 import { memo, Fragment } from 'react';
 import { type FindRange } from './find';
 import type { SyntaxRange } from './syntax';
-import { drawnText } from '../../../lib/page/blanks';
+import { DrawnText } from '../../../lib/page/blanks';
 import { breakOffsets, leadLength } from '../../../lib/page/wordWrap';
-import { wholeClusters, type TextWidths } from '../../../lib/page/textWidths';
+import { type TextWidths } from '../../../lib/page/textWidths';
 import { type CodeProps } from './lineMarks';
-
-function covering<T extends FindRange>(
-  ranges: readonly T[],
-): (start: number, end: number) => T | undefined {
-  let next = 0;
-  return (start, end) => {
-    while (next < ranges.length && ranges[next].end <= start) {
-      next++;
-    }
-    const range = ranges.at(next);
-    return range && range.start <= start && end <= range.end
-      ? range
-      : undefined;
-  };
-}
+import { codePieces } from './codePieces';
 
 function firstFrom(offsets: readonly number[], at: number): number {
   let low = 0;
@@ -81,79 +67,62 @@ function breakable(
   };
 }
 
-export function marked(
-  text: string,
-  syntax: readonly SyntaxRange[],
-  words: readonly FindRange[],
-  wordClass: string,
-  found: readonly FindRange[],
-  foundNow: FindRange | undefined,
+export function MarkedCode({
+  text,
+  syntax,
+  words,
+  wordClass,
+  found,
+  foundNow,
   whitespace = false,
-  indent?: number,
-  widths?: TextWidths,
-): React.ReactNode {
-  const shown = breakable(text, indent, drawnText(whitespace, widths));
-  if (words.length === 0 && syntax.length === 0 && found.length === 0) {
+  indent,
+  widths,
+}: {
+  readonly text: string;
+  readonly syntax: readonly SyntaxRange[];
+  readonly words: readonly FindRange[];
+  readonly wordClass: string;
+  readonly found: readonly FindRange[];
+  readonly foundNow: FindRange | undefined;
+  readonly whitespace?: boolean;
+  readonly indent?: number;
+  readonly widths?: TextWidths;
+}): React.ReactNode {
+  const shown = breakable(text, indent, (piece) => (
+    <DrawnText text={piece} blanks={whitespace} widths={widths} />
+  ));
+  const { pieces, gapAfter } = codePieces(text, syntax, words, found, foundNow);
+  if (pieces === undefined) {
     return shown(text, 0);
   }
-  const finds = wholeClusters(text, found);
-  const [current] =
-    foundNow === undefined ? [] : wholeClusters(text, [foundNow]);
-  const edges = [
-    ...new Set([
-      0,
-      text.length,
-      ...[...syntax, ...words, ...finds].flatMap((range) => [
-        range.start,
-        range.end,
-      ]),
-    ]),
-  ].toSorted((a, b) => a - b);
-  const findAt = covering(finds);
-  const tokenAt = covering(syntax);
-  const wordAt = covering(words);
-  const gaps = new Set(
-    words.flatMap((word) => (word.start === word.end ? [word.start] : [])),
-  );
-  const gap = (at: number) =>
-    gaps.has(at) && <span className={`word-gap ${wordClass}`} />;
-  const pieces = edges.slice(0, -1).map((start, index) => {
-    const end = edges[index + 1];
+  const gap = (has: boolean) =>
+    has && <span className={`word-gap ${wordClass}`} />;
+  const drawn = pieces.map(({ start, end, find, token, word, gapBefore }) => {
     const piece = text.slice(start, end);
-    const find = findAt(start, end);
-    const isCurrent =
-      find !== undefined &&
-      current?.start === find.start &&
-      current.end === find.end;
     let content: React.ReactNode = find ? (
-      <mark className={`find-match ${isCurrent ? 'current' : ''}`}>
+      <mark className={`find-match ${find === 'current' ? 'current' : ''}`}>
         {shown(piece, start)}
       </mark>
     ) : (
       shown(piece, start)
     );
-    const token = tokenAt(start, end);
     if (token) {
-      content = <span className={`syntax-${token.kind}`}>{content}</span>;
+      content = <span className={`syntax-${token}`}>{content}</span>;
     }
     return (
       <Fragment key={start}>
-        {gap(start)}
-        {wordAt(start, end) ? (
-          <span className={wordClass}>{content}</span>
-        ) : (
-          content
-        )}
+        {gap(gapBefore)}
+        {word ? <span className={wordClass}>{content}</span> : content}
       </Fragment>
     );
   });
-  return gaps.has(text.length) ? (
+  return gapAfter ? (
     <>
-      {pieces}
-      {gap(text.length)}
+      {drawn}
+      {gap(true)}
     </>
   ) : (
-    pieces
+    drawn
   );
 }
 
@@ -177,17 +146,17 @@ export const Code = memo(function Code({
           : undefined
       }
     >
-      {marked(
-        text,
-        syntax,
-        words,
-        wordClass,
-        finds,
-        current,
-        whitespace,
-        indent,
-        widths,
-      )}
+      <MarkedCode
+        text={text}
+        syntax={syntax}
+        words={words}
+        wordClass={wordClass}
+        found={finds}
+        foundNow={current}
+        whitespace={whitespace}
+        indent={indent}
+        widths={widths}
+      />
     </span>
   );
 });

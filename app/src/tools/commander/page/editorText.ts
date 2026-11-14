@@ -25,7 +25,7 @@ import {
   blank,
   blankSignOf,
   spacesBlanksAndText,
-} from '../../../lib/page/blanks';
+} from '../../../lib/page/blankSigns';
 import { spaceDots } from './editorSpaces';
 
 type LinePart =

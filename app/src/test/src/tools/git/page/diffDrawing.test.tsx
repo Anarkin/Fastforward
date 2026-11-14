@@ -14,7 +14,8 @@ import {
   codeProps,
   wholeChangeClass,
 } from '../../../../../tools/git/page/lineMarks';
-import { Code, marked } from '../../../../../tools/git/page/codeMarks';
+import { Code, MarkedCode } from '../../../../../tools/git/page/codeMarks';
+import { codePieces } from '../../../../../tools/git/page/codePieces';
 import {
   gapWidth,
   wordPadding,
@@ -32,21 +33,21 @@ function spaces(run: string): string {
 function wrapMarkup(
   text: string,
   indent: number | undefined,
-  syntax: Parameters<typeof marked>[1] = [],
+  syntax: React.ComponentProps<typeof MarkedCode>['syntax'] = [],
   whitespace = false,
 ): string {
   return renderToStaticMarkup(
     <>
-      {marked(
-        text,
-        syntax,
-        [],
-        'word-added',
-        [],
-        undefined,
-        whitespace,
-        indent,
-      )}
+      <MarkedCode
+        text={text}
+        syntax={syntax}
+        words={[]}
+        wordClass={'word-added'}
+        found={[]}
+        foundNow={undefined}
+        whitespace={whitespace}
+        indent={indent}
+      />
     </>,
   );
 }
@@ -183,7 +184,15 @@ suite('Drawing code', () => {
     assert.strictEqual(
       renderToStaticMarkup(
         <>
-          {marked('﻿a b​c　d👍🏽‍\r', [], [], 'word-added', [], undefined, true)}
+          <MarkedCode
+            text={'﻿a b​c　d👍🏽‍\r'}
+            syntax={[]}
+            words={[]}
+            wordClass={'word-added'}
+            found={[]}
+            foundNow={undefined}
+            whitespace={true}
+          />
         </>,
       ),
       [
@@ -205,35 +214,65 @@ suite('Drawing code', () => {
     const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;
     assert.strictEqual(
       renderToStaticMarkup(
-        <>{marked('a b\tc', [], [], 'word-added', [], undefined, true)}</>,
+        <>
+          <MarkedCode
+            text={'a b\tc'}
+            syntax={[]}
+            words={[]}
+            wordClass={'word-added'}
+            found={[]}
+            foundNow={undefined}
+            whitespace={true}
+          />
+        </>,
       ),
       `a${space}b${tab}c`,
     );
     assert.strictEqual(
       renderToStaticMarkup(
-        <>{marked('a   b  \t c', [], [], 'word-added', [], undefined, true)}</>,
+        <>
+          <MarkedCode
+            text={'a   b  \t c'}
+            syntax={[]}
+            words={[]}
+            wordClass={'word-added'}
+            found={[]}
+            foundNow={undefined}
+            whitespace={true}
+          />
+        </>,
       ),
       `a${spaces('   ')}b${spaces('  ')}${tab}${space}c`,
     );
     assert.strictEqual(
       renderToStaticMarkup(
         <>
-          {marked(
-            'let  x',
-            [{ start: 0, end: 4, kind: 'keyword' }],
-            [],
-            'word-added',
-            [{ start: 4, end: 6 }],
-            undefined,
-            true,
-          )}
+          <MarkedCode
+            text={'let  x'}
+            syntax={[{ start: 0, end: 4, kind: 'keyword' }]}
+            words={[]}
+            wordClass={'word-added'}
+            found={[{ start: 4, end: 6 }]}
+            foundNow={undefined}
+            whitespace={true}
+          />
         </>,
       ),
       `<span class="syntax-keyword">let${space}</span><mark class="find-match ">${space}x</mark>`,
     );
     assert.strictEqual(
       renderToStaticMarkup(
-        <>{marked('a b', [], [], 'word-added', [], undefined, false)}</>,
+        <>
+          <MarkedCode
+            text={'a b'}
+            syntax={[]}
+            words={[]}
+            wordClass={'word-added'}
+            found={[]}
+            foundNow={undefined}
+            whitespace={false}
+          />
+        </>,
       ),
       'a b',
     );
@@ -264,17 +303,16 @@ suite('Drawing code', () => {
     const drawn = (text: string, whitespace: boolean) =>
       renderToStaticMarkup(
         <>
-          {marked(
-            text,
-            [],
-            [],
-            'word-added',
-            [],
-            undefined,
-            whitespace,
-            undefined,
-            boxing,
-          )}
+          <MarkedCode
+            text={text}
+            syntax={[]}
+            words={[]}
+            wordClass={'word-added'}
+            found={[]}
+            foundNow={undefined}
+            whitespace={whitespace}
+            widths={boxing}
+          />
         </>,
       );
     assert.strictEqual(
@@ -366,14 +404,14 @@ suite('Drawing code', () => {
   test('draws the changed words inside the line, with search matches over them', () => {
     const html = renderToStaticMarkup(
       <>
-        {marked(
-          'let sum = 1',
-          [],
-          [{ start: 4, end: 7 }],
-          'word-added',
-          [{ start: 5, end: 9 }],
-          { start: 5, end: 9 },
-        )}
+        <MarkedCode
+          text={'let sum = 1'}
+          syntax={[]}
+          words={[{ start: 4, end: 7 }]}
+          wordClass={'word-added'}
+          found={[{ start: 5, end: 9 }]}
+          foundNow={{ start: 5, end: 9 }}
+        />
       </>,
     );
     assert.strictEqual(
@@ -385,17 +423,17 @@ suite('Drawing code', () => {
   test('draws a place words were inserted on the other line as a bar of no width between the characters, at the end too', () => {
     const html = renderToStaticMarkup(
       <>
-        {marked(
-          'abc',
-          [{ start: 0, end: 2, kind: 'keyword' }],
-          [
+        <MarkedCode
+          text={'abc'}
+          syntax={[{ start: 0, end: 2, kind: 'keyword' }]}
+          words={[
             { start: 1, end: 1 },
             { start: 3, end: 3 },
-          ],
-          'word-removed',
-          [],
-          undefined,
-        )}
+          ]}
+          wordClass={'word-removed'}
+          found={[]}
+          foundNow={undefined}
+        />
       </>,
     );
     assert.strictEqual(
@@ -434,22 +472,30 @@ suite('Drawing code', () => {
     const syntax = countingReads(colors);
     const words = countingReads(every(1));
     const matches = countingReads(every(1));
-    const drawn = marked(
+    const { pieces } = codePieces(
       text,
       syntax.counted,
       words.counted,
-      'word-added',
       matches.counted,
       undefined,
     );
     for (const { reads } of [syntax, words, matches]) {
       assert.ok(reads <= 10 * pairs, `${reads} reads of ${pairs} ranges`);
     }
-    assert.ok(Array.isArray(drawn));
-    assert.strictEqual(drawn.length, 2 * pairs);
-    assert.strictEqual(
-      renderToStaticMarkup(<>{drawn.slice(-2)}</>),
-      '<span class="syntax-keyword">a</span><span class="word-added"><mark class="find-match ">b</mark></span>',
+    assert.strictEqual(pieces?.length, 2 * pairs);
+    assert.ok(
+      renderToStaticMarkup(
+        <MarkedCode
+          text={text}
+          syntax={colors}
+          words={every(1)}
+          wordClass={'word-added'}
+          found={every(1)}
+          foundNow={undefined}
+        />,
+      ).endsWith(
+        '<span class="syntax-keyword">a</span><span class="word-added"><mark class="find-match ">b</mark></span>',
+      ),
     );
   });
 
@@ -457,18 +503,18 @@ suite('Drawing code', () => {
     assert.strictEqual(
       renderToStaticMarkup(
         <>
-          {marked(
-            'Café 1️⃣ é',
-            [],
-            [],
-            'word-added',
-            [
+          <MarkedCode
+            text={'Café 1️⃣ é'}
+            syntax={[]}
+            words={[]}
+            wordClass={'word-added'}
+            found={[
               { start: 0, end: 4 },
               { start: 6, end: 7 },
               { start: 10, end: 11 },
-            ],
-            { start: 0, end: 4 },
-          )}
+            ]}
+            foundNow={{ start: 0, end: 4 }}
+          />
         </>,
       ),
       '<mark class="find-match current">Café</mark> ' +
@@ -481,17 +527,17 @@ suite('Drawing code', () => {
     assert.strictEqual(
       renderToStaticMarkup(
         <>
-          {marked(
-            'let sum = 1',
-            [
+          <MarkedCode
+            text={'let sum = 1'}
+            syntax={[
               { start: 0, end: 3, kind: 'keyword' },
               { start: 10, end: 11, kind: 'number' },
-            ],
-            [{ start: 0, end: 7 }],
-            'word-added',
-            [{ start: 2, end: 5 }],
-            undefined,
-          )}
+            ]}
+            words={[{ start: 0, end: 7 }]}
+            wordClass={'word-added'}
+            found={[{ start: 2, end: 5 }]}
+            foundNow={undefined}
+          />
         </>,
       ),
       '<span class="word-added"><span class="syntax-keyword">le</span></span>' +
@@ -504,17 +550,17 @@ suite('Drawing code', () => {
   test('marks the matches in a line, the current one apart', () => {
     const html = renderToStaticMarkup(
       <>
-        {marked(
-          'find a find',
-          [],
-          [],
-          'word-added',
-          [
+        <MarkedCode
+          text={'find a find'}
+          syntax={[]}
+          words={[]}
+          wordClass={'word-added'}
+          found={[
             { start: 0, end: 4 },
             { start: 7, end: 11 },
-          ],
-          { start: 7, end: 11 },
-        )}
+          ]}
+          foundNow={{ start: 7, end: 11 }}
+        />
       </>,
     );
     assert.strictEqual(
@@ -522,7 +568,20 @@ suite('Drawing code', () => {
       '<mark class="find-match ">find</mark> a <mark class="find-match current">find</mark>',
     );
     assert.strictEqual(
-      marked('plain', [], [], 'word-added', [], undefined),
+      codePieces('plain', [], [], [], undefined).pieces,
+      undefined,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedCode
+          text={'plain'}
+          syntax={[]}
+          words={[]}
+          wordClass={'word-added'}
+          found={[]}
+          foundNow={undefined}
+        />,
+      ),
       'plain',
     );
   });

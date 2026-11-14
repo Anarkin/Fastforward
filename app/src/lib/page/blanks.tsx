@@ -1,18 +1,6 @@
 import { Fragment } from 'react';
-import { strings } from '../shared/strings';
 import { cellClass, cellParts, type TextWidths } from './textWidths';
-
-const blankSigns: Readonly<Record<string, string>> = {
-  '\t': strings.symbols.tab,
-  '\r': strings.symbols.carriageReturn,
-  ' ': strings.symbols.nonBreakingSpace,
-  ' ': strings.symbols.nonBreakingSpace,
-};
-
-export const blank = /[ \t\r   -​  ⁠　﻿]/;
-
-export const spacesBlanksAndText =
-  / +|[ \t\r   -​  ⁠　﻿]|[^ \t\r   -​  ⁠　﻿]+/g;
+import { blank, spacesBlanksAndText, blankSignOf } from './blankSigns';
 
 function boxedText(text: string, widths: TextWidths): React.ReactNode {
   const parts = cellParts(text, widths);
@@ -66,25 +54,20 @@ function blankShown(
   );
 }
 
-export const blankSignOf = (character: string): string =>
-  blankSigns[character] ?? strings.symbols.invisible;
-
-const asIs = (text: string): React.ReactNode => text;
-
-export function drawnText(
-  blanks: boolean,
-  widths?: TextWidths,
-): (text: string) => React.ReactNode {
+export function DrawnText({
+  text,
+  blanks,
+  widths,
+}: {
+  readonly text: string;
+  readonly blanks: boolean;
+  readonly widths?: TextWidths;
+}): React.ReactNode {
   const boxing = widths?.boxed === undefined ? undefined : widths;
-  if (!blanks) {
-    return boxing === undefined ? asIs : (text) => boxedText(text, boxing);
+  if (!blanks || !blank.test(text)) {
+    return boxing === undefined ? text : boxedText(text, boxing);
   }
-  return (text) => {
-    if (!blank.test(text)) {
-      return boxing === undefined ? text : boxedText(text, boxing);
-    }
-    return Array.from(text.matchAll(spacesBlanksAndText), ([part], index) =>
-      blankShown(part, index, boxing),
-    );
-  };
+  return Array.from(text.matchAll(spacesBlanksAndText), ([part], index) =>
+    blankShown(part, index, boxing),
+  );
 }

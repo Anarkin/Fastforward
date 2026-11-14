@@ -1,5 +1,5 @@
 import type { CodeSegment } from '../../../lib/page/syntax';
-import { drawnText } from '../../../lib/page/blanks';
+import { DrawnText } from '../../../lib/page/blanks';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { type FindMark, markPieces } from './markPieces';
 
@@ -14,7 +14,9 @@ export function MarkedText({
   blanks?: boolean;
   widths?: TextWidths;
 }) {
-  const drawn = drawnText(blanks, widths);
+  const drawn = (text: string) => (
+    <DrawnText text={text} blanks={blanks} widths={widths} />
+  );
   if (marks.length === 0 && pieces.every((piece) => piece.kind === undefined)) {
     return <>{drawn(pieces.map((piece) => piece.text).join(''))}</>;
   }
