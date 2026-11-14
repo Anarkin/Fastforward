@@ -19,7 +19,7 @@ import {
 } from './rawChanges';
 import { isBinary, maxFileSize } from './files';
 import { listUntracked } from './fileLists';
-import { headCommit } from './history';
+import { headCommit } from './commitLookup';
 import { runGit, splitNul } from './run';
 
 export interface WorkingTreeDiff {

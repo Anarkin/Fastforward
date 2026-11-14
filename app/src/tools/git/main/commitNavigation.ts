@@ -1,5 +1,6 @@
 import { readUpstream } from './branches';
-import { findCommit, headCommit, logCommits } from './history';
+import { logCommits } from './commitLog';
+import { findCommit, headCommit } from './commitLookup';
 import { step, visit } from './navigation';
 import type { Log } from '../../../shell/main/log';
 import { foundUpstream } from './operations';

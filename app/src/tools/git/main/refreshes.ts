@@ -1,9 +1,9 @@
 import { gitErrorText } from './errorText';
+import { logCommits } from './commitLog';
 import {
   extendedHistory,
   listHistory,
   listRecentHistory,
-  logCommits,
   recentTips,
 } from './history';
 import type { Commits } from './commits';

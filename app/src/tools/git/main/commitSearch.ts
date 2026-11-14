@@ -1,4 +1,5 @@
-import { findCommits, searchCommits } from './history';
+import { findCommits } from './commitLookup';
+import { searchCommits } from './commitMatches';
 import type {
   CommitResults,
   CommitSearch as CommitSearchResult,

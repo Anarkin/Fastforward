@@ -5,7 +5,7 @@ import { maxImageSize, type ImageSource } from '../shared/images';
 import { linkMode } from '../shared/protocol';
 import { isMissing } from '../../../lib/main/missing';
 import { strings } from '../../../lib/shared/strings';
-import { headCommit } from './history';
+import { headCommit } from './commitLookup';
 import { blobOf, indexMode, readObjects } from './objects';
 import { runGit, runGitBytes } from './run';
 
