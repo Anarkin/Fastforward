@@ -17,7 +17,7 @@ import {
   widthsToLoad,
 } from '../../../../../tools/git/page/columns';
 import { followDrag } from '../../../../../lib/page/followDrag';
-import { minimumWindowSize } from '../../../../../boot/files';
+import { minimumWindowSize } from '../../../../../boot/windowPlacement';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { stylesheetPx } from '../../../../helpers/fixtures';
 

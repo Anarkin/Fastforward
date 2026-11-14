@@ -1,5 +1,5 @@
 import { isObject } from '../lib/main/json';
-import type { Bounds } from './files';
+import type { Bounds } from './windowPlacement';
 
 export const placesKey = 'windowPlaces';
 export const boundsKey = 'windowBounds';

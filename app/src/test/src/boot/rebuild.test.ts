@@ -1,8 +1,7 @@
 import * as assert from 'node:assert';
 import { setTimeout as delay } from 'node:timers/promises';
 import { suite, test } from 'vitest';
-import { rebuilt } from '../../../boot/files';
-import { reloadOnRebuild } from '../../../boot/rebuild';
+import { rebuilt, reloadOnRebuild } from '../../../boot/rebuild';
 
 suite('Rebuilding while the app runs', () => {
   test('reloads the page for its scripts and its HTML, and the defaults for the settings, as an edit to the syntax worker alone rebuilds only its script', () => {

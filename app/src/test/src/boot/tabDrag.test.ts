@@ -1,7 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { Bounds } from '../../../boot/files';
-import { TabDrag, type DragHost, type DragWindow } from '../../../boot/tabDrag';
+import type { Bounds } from '../../../boot/windowPlacement';
+import {
+  TabDrag,
+  tearsOffTabs,
+  type DragHost,
+  type DragWindow,
+} from '../../../boot/tabDrag';
 import type { DragStart, Strip, Visit } from '../../../shell/main/dragEvents';
 
 const strip: Strip = {
@@ -292,6 +297,21 @@ suite('Dragging a tab between windows', () => {
     assert.strictEqual(
       TabDrag.start(host, source, start({ x: 300, y: 120 })),
       undefined,
+    );
+  });
+});
+
+suite('Tearing tabs off', () => {
+  test('tears tabs off into windows of their own but on Wayland, where a window can neither place itself nor know where the pointer is', () => {
+    assert.strictEqual(tearsOffTabs('win32', {}), true);
+    assert.strictEqual(tearsOffTabs('darwin', {}), true);
+    assert.strictEqual(
+      tearsOffTabs('linux', { XDG_SESSION_TYPE: 'x11' }),
+      true,
+    );
+    assert.strictEqual(
+      tearsOffTabs('linux', { XDG_SESSION_TYPE: 'wayland' }),
+      false,
     );
   });
 });

@@ -21,22 +21,28 @@ import type { DragEvent } from '../shell/main/dragEvents';
 import { spareWindowIds } from '../shell/main/windows';
 import {
   appOrigin,
+  isAppUrl,
+  lockDown,
+  opensExternally,
+  startsAppPage,
+} from './files';
+import {
   cascaded,
   firstWindowSize,
-  isAppUrl,
   keptBounds,
-  lockDown,
   minimumHeight,
   minimumWidth,
-  opensExternally,
   restoresMaximized,
   showAgain,
-  startsAppPage,
-  tearsOffTabs,
   visibleBounds,
-} from './files';
+} from './windowPlacement';
 import { tellMaximized } from './maximized';
-import { TabDrag, type DragHost, type DragWindow } from './tabDrag';
+import {
+  TabDrag,
+  tearsOffTabs,
+  type DragHost,
+  type DragWindow,
+} from './tabDrag';
 import type { Strip } from '../shell/main/dragEvents';
 import {
   boundsKey,

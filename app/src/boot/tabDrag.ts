@@ -1,4 +1,4 @@
-import type { Bounds } from './files';
+import type { Bounds } from './windowPlacement';
 import type { DragStart, Point, Strip, Visit } from '../shell/main/dragEvents';
 import { tabMagnetism } from '../shell/shared/titleBar';
 
@@ -202,4 +202,11 @@ export class TabDrag {
       this.floating.moveTo(x, y);
     }
   }
+}
+
+export function tearsOffTabs(
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+): boolean {
+  return platform !== 'linux' || env.XDG_SESSION_TYPE !== 'wayland';
 }

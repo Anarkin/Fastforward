@@ -1,5 +1,4 @@
 import * as fs from 'node:fs';
-import { rebuilt } from './files';
 
 interface RebuiltWindow {
   on(event: 'closed', listener: () => void): unknown;
@@ -34,4 +33,15 @@ export function reloadOnRebuild(
     clearTimeout(page);
     clearTimeout(defaults);
   });
+}
+
+export function rebuilt(file: string | null): 'page' | 'defaults' | undefined {
+  if (
+    file?.startsWith('webview.') ||
+    file?.startsWith('syntaxWorker.') ||
+    file === 'index.html'
+  ) {
+    return 'page';
+  }
+  return file === 'settings.json' ? 'defaults' : undefined;
 }
