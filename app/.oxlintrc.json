@@ -237,10 +237,8 @@
         "src/test/e2e/appViewerModes.electron.test.ts",
         "src/test/helpers/harness.ts",
         "src/test/src/tools/commander/main/commanderFixtures.ts",
-        "src/test/src/tools/commander/page/listing.test.ts",
         "src/test/src/tools/git/main/cli/files.git.test.ts",
         "src/test/src/tools/git/main/cli/repository.git.test.ts",
-        "src/test/src/tools/git/page/diffRowHeights.test.tsx",
         "src/tools/commander/main/transferCommands.ts",
         "src/tools/git/page/store.ts"
       ],
