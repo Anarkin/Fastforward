@@ -10,7 +10,8 @@ import {
   type Side,
 } from '../shared/protocol';
 import type { OpenedArchive, Opening } from './archives';
-import { type Pane, type Sides, post, type Listing, listedIn } from './sides';
+import { type Pane, type Sides, type Listing, listedIn } from './sides';
+import { post } from './post';
 import type { ArchivePasswords } from './archivePasswords';
 import type { CommanderAccess } from './commanderAccess';
 import { isFile } from './fileStats';

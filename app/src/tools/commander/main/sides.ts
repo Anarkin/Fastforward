@@ -1,9 +1,7 @@
-import * as path from 'node:path';
 import type { Page } from '../../../shell/main/toolContract';
 import {
   isSide,
   sides,
-  type CommanderToWebview,
   type Entry,
   type FlatProgress,
   type Side,
@@ -170,10 +168,6 @@ export class Sides {
   }
 }
 
-export function post(page: Page, message: CommanderToWebview): void {
-  page.post({ type: 'tool', tool: 'commander', message });
-}
-
 export type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
 
 const entriesByName = new WeakMap<
@@ -221,9 +215,4 @@ export function listedIn(
     return entryNamed(pane?.entries, name);
   }
   return typeof name === 'string' ? pane.flat.tree.file(name) : undefined;
-}
-
-export function parentOf(folder: string): string | undefined {
-  const parent = path.dirname(folder);
-  return parent === folder ? undefined : parent;
 }

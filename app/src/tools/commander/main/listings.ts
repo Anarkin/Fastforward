@@ -13,14 +13,9 @@ import { pathParts } from '../shared/paths';
 import type { ElevatedFileSystem } from './elevated';
 import { codeOf, reasonOf } from './reasons';
 import { repositoriesIn } from './repositories';
-import {
-  type Pane,
-  Sides,
-  post,
-  type Listing,
-  sizedEntry,
-  parentOf,
-} from './sides';
+import { type Pane, Sides, type Listing, sizedEntry } from './sides';
+import { post } from './post';
+import { parentOf } from './folderPaths';
 import { SideScans } from './sideScans';
 import { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './commanderAccess';

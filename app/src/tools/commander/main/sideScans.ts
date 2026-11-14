@@ -20,11 +20,11 @@ import {
   type Pane,
   type ShownPane,
   type Sides,
-  post,
   type Listing,
   sizedEntry,
   entryNamed,
 } from './sides';
+import { post } from './post';
 
 export interface SideScansAccess {
   readonly contentReader?: ContentReader;

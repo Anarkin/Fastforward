@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import type { Page } from '../../../shell/main/toolContract';
-import { post } from './sides';
+import { post } from './post';
 import type { CommanderAccess } from './commanderAccess';
 
 export type ArchivePasswordsAccess = Pick<CommanderAccess, 'archives'>;

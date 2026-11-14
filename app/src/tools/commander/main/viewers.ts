@@ -34,7 +34,8 @@ import {
   type PdfPlace,
 } from '../shared/pdf';
 import { reasonOf } from './reasons';
-import { type Sides, post } from './sides';
+import type { Sides } from './sides';
+import { post } from './post';
 
 export interface ViewersAccess {
   readonly codePage: () => Promise<TextEncoding>;

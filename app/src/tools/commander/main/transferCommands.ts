@@ -20,11 +20,11 @@ import {
   type Pane,
   type ShownPane,
   type Sides,
-  post,
   type Listing,
   listedIn,
-  parentOf,
 } from './sides';
+import { post } from './post';
+import { parentOf } from './folderPaths';
 import { archiveItems } from './archiveItems';
 import type { ArchivePasswords } from './archivePasswords';
 import type { ArchiveCommands } from './archiveCommands';

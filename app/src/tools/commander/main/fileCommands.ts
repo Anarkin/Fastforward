@@ -20,8 +20,8 @@ import {
   type Sides,
   type Listing,
   listedIn,
-  parentOf,
 } from './sides';
+import { parentOf } from './folderPaths';
 import type { ArchiveCopies } from './archiveCopies';
 import type { ArchiveCommands } from './archiveCommands';
 import type { CommanderAccess } from './commanderAccess';
