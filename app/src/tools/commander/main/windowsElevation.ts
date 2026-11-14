@@ -1,6 +1,6 @@
 import koffi, { type LibraryHandle } from 'koffi';
 import type { LaunchHelper } from './elevated';
-import { helperArguments, type HelperAddress } from './helper';
+import { helperArguments, type HelperAddress } from './helperProtocol';
 
 const flagNoUi = 0x400;
 const hidden = 0;

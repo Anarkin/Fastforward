@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { elevatedFileSystem } from '../../tools/commander/main/elevated';
-import { helperArguments } from '../../tools/commander/main/helper';
+import { helperArguments } from '../../tools/commander/main/helperProtocol';
 import { appFolder } from './appFixtures';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/repositories';

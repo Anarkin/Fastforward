@@ -9,7 +9,7 @@ import {
   send,
   type HelperAddress,
   type HelperError,
-} from './helper';
+} from './helperProtocol';
 
 export type LaunchHelper = (address: HelperAddress) => Promise<boolean>;
 

@@ -4,7 +4,7 @@ import {
   helperArguments,
   helperOf,
   newHelperAddress,
-} from '../../../../../tools/commander/main/helper';
+} from '../../../../../tools/commander/main/helperProtocol';
 
 suite('The elevated helper of the commander', () => {
   test('finds where to connect and with what in its own arguments only', () => {
