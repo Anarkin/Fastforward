@@ -6,7 +6,7 @@ import { suite, test } from 'vitest';
 import { strings } from '../../../lib/shared/strings';
 import type { ToWebview } from '../../../shell/shared/protocol';
 import { Crash, ErrorBoundary } from '../../../shell/page/errorBoundary';
-import { renderedBy } from '../../fixtures';
+import { renderedBy } from '../../support/fixtures';
 
 const noop = () => {};
 

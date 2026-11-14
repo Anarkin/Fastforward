@@ -21,7 +21,7 @@ import {
   keyPress,
   noModifiers,
   tagsWith,
-} from '../../../fixtures';
+} from '../../../support/fixtures';
 
 const alt = { ...noModifiers, altKey: true };
 const altDown = keyPress('Alt', { altKey: true });

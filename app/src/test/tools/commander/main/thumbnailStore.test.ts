@@ -6,7 +6,7 @@ import {
   thumbnailKey,
   ThumbnailStore,
 } from '../../../../tools/commander/main/thumbnailStore';
-import { removeFolder, tempFolder } from '../../../repositories';
+import { removeFolder, tempFolder } from '../../../support/repositories';
 
 const bytes = (size: number, fill = 1) => new Uint8Array(size).fill(fill);
 

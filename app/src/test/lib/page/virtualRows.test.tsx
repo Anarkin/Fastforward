@@ -11,7 +11,7 @@ import {
   scrollTarget,
   VirtualRows,
 } from '../../../lib/page/virtualRows';
-import { countingReads, noop } from '../../fixtures';
+import { countingReads, noop } from '../../support/fixtures';
 import { defaultScrolling } from '../../../lib/page/rowScroll';
 
 suite('Virtual rows', () => {

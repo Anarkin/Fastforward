@@ -9,7 +9,7 @@ import {
   minimapScrollTop,
   pointerFraction,
 } from '../../../lib/page/minimap';
-import { noModifiers } from '../../fixtures';
+import { noModifiers } from '../../support/fixtures';
 import type { DiffRow } from '../../../tools/git/page/diffRows';
 import {
   uniformHeight as row,

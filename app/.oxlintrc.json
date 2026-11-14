@@ -200,7 +200,7 @@
     {
       "files": [
         "src/boot/main.ts",
-        "src/test/appLaunches.electron.test.ts",
+        "src/test/app/appLaunches.electron.test.ts",
         "src/test/shell/main/shell.test.ts",
         "src/test/tools/git/main/tool/diffs.git.test.ts",
         "src/test/tools/git/main/tool/refreshing.git.test.ts",
@@ -236,8 +236,8 @@
     {
       "files": [
         "src/shell/page/tabBar.tsx",
-        "src/test/appEditor.electron.test.ts",
-        "src/test/appWrapping.electron.test.ts",
+        "src/test/app/appEditor.electron.test.ts",
+        "src/test/app/appWrapping.electron.test.ts",
         "src/test/tools/commander/page/view.test.ts",
         "src/test/tools/git/main/cli/watch.test.ts",
         "src/test/tools/git/page/store.test.ts",

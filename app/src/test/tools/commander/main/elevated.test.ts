@@ -12,11 +12,11 @@ import {
   send,
 } from '../../../../tools/commander/main/helper';
 import type { Entry } from '../../../../tools/commander/shared/protocol';
-import { waitFor } from '../../../fixtures';
+import { waitFor } from '../../../support/fixtures';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { watchFolder } from '../../../../tools/commander/main/watch';
-import { removeFolder, tempFolder } from '../../../repositories';
+import { removeFolder, tempFolder } from '../../../support/repositories';
 
 const notes: Entry = {
   name: 'notes.txt',

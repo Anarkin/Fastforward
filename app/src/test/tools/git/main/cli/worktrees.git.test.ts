@@ -12,7 +12,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
+} from '../../../../support/repositories';
 
 async function submoduleWithLinkedWorktree(where: string) {
   const superproject = await tempRepository(path.join(where, 'super'));

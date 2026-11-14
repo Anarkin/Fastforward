@@ -15,8 +15,8 @@ import {
 } from '../../../../tools/git/main/storage';
 import { comparisonOf } from '../../../../tools/git/shared/comparisons';
 import { workingTreeHash } from '../../../../tools/git/shared/protocol';
-import { FakeStore } from '../../../fakeStore';
-import { defaultSettings } from '../../../fixtures';
+import { FakeStore } from '../../../support/fakeStore';
+import { defaultSettings } from '../../../support/fixtures';
 
 function storageOf(state: Store = new FakeStore()): GitStorage {
   return new GitStorage(new UserSettings(defaultSettings()), state);

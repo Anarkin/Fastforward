@@ -28,7 +28,7 @@ import {
 import { strings } from '../../../../lib/shared/strings';
 import { pathParts } from '../../../../tools/commander/shared/paths';
 import type { PdfPlace } from '../../../../lib/shared/pdf';
-import { FakeStore } from '../../../fakeStore';
+import { FakeStore } from '../../../support/fakeStore';
 import type { TransferCommand } from '../../../../tools/commander/main/transferProtocol';
 import type { TransferListener } from '../../../../tools/commander/main/transfers';
 import type { TransferPlan } from '../../../../tools/commander/main/transfer';

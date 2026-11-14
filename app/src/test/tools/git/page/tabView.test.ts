@@ -13,7 +13,7 @@ import {
   commitPageSize,
   workingTreeHash,
 } from '../../../../tools/git/shared/protocol';
-import { commitInfo, fileChange } from '../../../fixtures';
+import { commitInfo, fileChange } from '../../../support/fixtures';
 
 const openTab = (view: TabView, worktree: string) =>
   reduceTabView(view, {

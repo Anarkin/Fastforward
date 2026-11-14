@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../../builtins';
+import { replaceBuiltin } from '../../../../support/builtins';
 import {
   collapseThreshold,
   patchByteBudget,
@@ -15,14 +15,14 @@ import { soloKey } from '../../../../../tools/git/main/storage';
 import { tabsKey } from '../../../../../shell/main/storage';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
 import type { ToHost } from '../../../../../shell/shared/protocol';
-import { waitFor } from '../../../../fixtures';
+import { waitFor } from '../../../../support/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   FakeHost,
@@ -36,7 +36,7 @@ import {
   tabOf,
   shownTabs,
   gitState,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 const longLines = (text: string) =>
   `${text} ${'x'.repeat(1024)}\n`.repeat(maxFileSize / 1024 + 1);

@@ -7,7 +7,7 @@ import {
   nodeSizeReader,
   windowsSizeReader,
 } from '../../../../tools/commander/main/sizeReaders';
-import { removeFolder, tempFolder } from '../../../repositories';
+import { removeFolder, tempFolder } from '../../../support/repositories';
 
 let folder = '';
 

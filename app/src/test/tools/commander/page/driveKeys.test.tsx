@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import { CommanderTool } from '../../../../tools/commander/page/tool';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import type { CommanderToWebview } from '../../../../tools/commander/shared/protocol';
-import { noop } from '../../../fixtures';
+import { noop } from '../../../support/fixtures';
 
 const listing = (side: 'left' | 'right'): CommanderToWebview => ({
   type: 'listing',

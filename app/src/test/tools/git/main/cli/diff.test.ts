@@ -16,7 +16,7 @@ import {
   patchByteBudget,
   type FileChange,
 } from '../../../../../tools/git/shared/protocol';
-import { fileChange } from '../../../../fixtures';
+import { fileChange } from '../../../../support/fixtures';
 
 function section(path: string, lines: number, oldPath = path): string {
   return [

@@ -9,8 +9,12 @@ import {
   WorktreeBar,
 } from '../../../../tools/git/page/worktreeBar';
 import { GitStore } from '../../../../tools/git/page/store';
-import { gitStore, renderedInGit, rested } from '../../../componentFixtures';
-import { tagsWith } from '../../../fixtures';
+import {
+  gitStore,
+  renderedInGit,
+  rested,
+} from '../../../support/componentFixtures';
+import { tagsWith } from '../../../support/fixtures';
 
 function rowsShown(worktrees: WorktreeInfo[] | undefined): number {
   return tagsWith(

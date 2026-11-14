@@ -9,10 +9,13 @@ import {
   test,
 } from 'vitest';
 import type { GitTool } from '../../../../../tools/git/main/tool';
-import type { Connection } from '../../../../harness';
-import { waitFor } from '../../../../fixtures';
-import { removeFolder, type TempRepository } from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+import type { Connection } from '../../../../support/harness';
+import { waitFor } from '../../../../support/fixtures';
+import {
+  removeFolder,
+  type TempRepository,
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   failOnErrorsLogged,
@@ -26,7 +29,7 @@ import {
   viewRepositories,
   withNotices,
   type ViewRepositories,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 suite('Git tool checking out', () => {
   let folder: string;

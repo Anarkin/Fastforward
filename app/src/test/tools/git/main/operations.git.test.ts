@@ -14,8 +14,8 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../repositories';
-import { recordingLog } from '../../../stub';
+} from '../../../support/repositories';
+import { recordingLog } from '../../../support/stub';
 
 type Notices = (readonly ['info' | 'error', string])[];
 

@@ -7,13 +7,13 @@ import {
   watchRepository,
   type Watcher,
 } from '../../../../../tools/git/main/cli/watch';
-import { waitFor } from '../../../../fixtures';
+import { waitFor } from '../../../../support/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
+} from '../../../../support/repositories';
 
 export let repository: TempRepository;
 export let changes: boolean[];

@@ -22,9 +22,9 @@ import {
   visitedSlot,
 } from '../../../shell/page/tabBar';
 import { AddIcon } from '../../../lib/page/icons';
-import { rested } from '../../componentFixtures';
-import { noModifiers, renderedBy } from '../../fixtures';
-import { tabsStore } from '../../componentFixtures';
+import { rested } from '../../support/componentFixtures';
+import { noModifiers, renderedBy } from '../../support/fixtures';
+import { tabsStore } from '../../support/componentFixtures';
 import { ShellStore } from '../../../shell/page/store';
 import { createShellStore } from '../../../shell/page/store';
 

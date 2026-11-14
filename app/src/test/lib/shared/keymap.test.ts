@@ -25,7 +25,7 @@ import {
 } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 import { gitKeymap } from '../../../tools/git/page/keymap';
-import { keyPress, noModifiers, withMacKeys } from '../../fixtures';
+import { keyPress, noModifiers, withMacKeys } from '../../support/fixtures';
 
 const altNavigate = (key: string, inField = false) =>
   pressed(gitKeymap.navigate, keyPress(key, { altKey: true }), inField);

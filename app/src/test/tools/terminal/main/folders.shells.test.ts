@@ -11,8 +11,8 @@ import {
   isProgram,
   shellLaunch,
 } from '../../../../tools/terminal/main/shellLaunch';
-import { waitFor } from '../../../fixtures';
-import { removeFolder, tempFolder } from '../../../repositories';
+import { waitFor } from '../../../support/fixtures';
+import { removeFolder, tempFolder } from '../../../support/repositories';
 
 const windows = process.platform === 'win32';
 

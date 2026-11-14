@@ -19,7 +19,7 @@ import {
 import { followDrag } from '../../../../lib/page/followDrag';
 import { minimumWindowSize } from '../../../../boot/files';
 import { workingTreeHash } from '../../../../tools/git/shared/protocol';
-import { stylesheetPx } from '../../../fixtures';
+import { stylesheetPx } from '../../../support/fixtures';
 
 type DragListener = (event: { buttons: number }) => void;
 

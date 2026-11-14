@@ -19,7 +19,7 @@
 
 ## Tests
 
-- Run the tests in `app/`; the tests of `src/<path>` are in `src/test/<path>`
+- Run the tests in `app/`; the tests of `src/<path>` are in `src/test/<path>`, and those of `scripts/<path>` in `src/test/scripts/<path>`
 - While working, run only the test files of what changed, by path: `npx vitest run <files>`; a test written for a fix runs first, and fails
 - Commit only once the checks pass, about 40 seconds, chaining the commit to them from the repo root, naming only your own files: `npm --prefix app run verify:fast && npm --prefix app run build && git add <paths> && git commit -m '<message>' -- <paths>`, never through a pipe such as `tail`, `grep`, `head` or `Select-Object`, as a pipe ends with the code of its last command and hides a failure, and their output is short as it is; for most changes nothing else is needed
 - Run a `.git`, `.shells`, `.electron`, `.7zip` or packaging test file only when the change is what it tests, by path, never its whole project; while working on one of its tests, run only that test with `-t '<a distinctive part of its name, without + ? ( ) . *>'`, checking it reports 1 passed rather than all skipped, and the whole file once before committing, as its tests may depend on the ones before them

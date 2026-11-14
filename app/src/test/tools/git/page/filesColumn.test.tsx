@@ -36,14 +36,18 @@ import { emptyTabView, type TabView } from '../../../../tools/git/page/tabView';
 import type { VisibleRows } from '../../../../lib/page/listMoves';
 import type { Folders } from '../../../../tools/git/page/viewFolders';
 import { revealAgain, type ListedRows } from '../../../../lib/page/virtualRows';
-import { clickFile, renderIn, type RowProps } from '../../../componentFixtures';
+import {
+  clickFile,
+  renderIn,
+  type RowProps,
+} from '../../../support/componentFixtures';
 import {
   fileChange as change,
   keyPress,
   noop,
   renderedBy,
   tagWith,
-} from '../../../fixtures';
+} from '../../../support/fixtures';
 
 const commit = '0123456789abcdef0123456789abcdef01234567';
 const otherCommit = 'fedcba9876543210fedcba9876543210fedcba98';

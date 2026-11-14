@@ -8,7 +8,7 @@ import {
   noop,
   stylesheetPx,
   tagWith,
-} from '../../../fixtures';
+} from '../../../support/fixtures';
 
 suite('Tree', () => {
   test('draws the twisty as wide as a level of the tree is indented', () => {

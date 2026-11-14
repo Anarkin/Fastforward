@@ -2,8 +2,13 @@ import * as assert from 'node:assert';
 import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { PathTitle } from '../../../tools/commander/page/pathTitle';
-import { cascaded, rendered, withClass, type States } from '../../cascade';
-import { defaultSettings } from '../../fixtures';
+import {
+  cascaded,
+  rendered,
+  withClass,
+  type States,
+} from '../../support/cascade';
+import { defaultSettings } from '../../support/fixtures';
 import {
   css,
   compact,

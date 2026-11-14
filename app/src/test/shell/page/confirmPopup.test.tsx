@@ -3,7 +3,7 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
-import { noop, renderedBy } from '../../fixtures';
+import { noop, renderedBy } from '../../support/fixtures';
 
 function buttonsIn(node: unknown): { onClick: () => void }[] {
   if (Array.isArray(node)) {

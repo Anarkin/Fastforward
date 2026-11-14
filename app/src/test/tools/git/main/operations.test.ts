@@ -3,7 +3,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { checkout } from '../../../../tools/git/main/operations';
-import { recordingLog } from '../../../stub';
+import { recordingLog } from '../../../support/stub';
 
 suite('Operations', () => {
   test('names a commit it could not check out by its short hash, as the rest of the app does', async () => {

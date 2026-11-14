@@ -4,7 +4,7 @@ import { act } from 'react';
 import { suite, test } from 'vitest';
 import { documentImagePath } from '../../../lib/page/images';
 import { boxCodeBlocks, MarkdownPane } from '../../../lib/page/markdownView';
-import { waitFor } from '../../fixtures';
+import { waitFor } from '../../support/fixtures';
 
 const images = {
   path: (src: string) => documentImagePath('README.md', src),

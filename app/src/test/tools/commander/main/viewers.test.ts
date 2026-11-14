@@ -14,8 +14,8 @@ import {
   viewedFileUrl,
 } from '../../../../tools/commander/shared/files';
 import { pathParts } from '../../../../tools/commander/shared/paths';
-import { removeFolder, tempFolder } from '../../../repositories';
-import { waitFor } from '../../../fixtures';
+import { removeFolder, tempFolder } from '../../../support/repositories';
+import { waitFor } from '../../../support/fixtures';
 import { commander, forged } from './commanderFixtures';
 
 suite('Commander tool viewing a file', () => {

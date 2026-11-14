@@ -20,7 +20,7 @@ import {
 import { listMoveOf } from '../../../../lib/page/listMoves';
 import { keyPressed } from '../../../../lib/page/shortcuts';
 import { fileRowKey } from '../../../../tools/git/page/tree';
-import { clickFile } from '../../../componentFixtures';
+import { clickFile } from '../../../support/componentFixtures';
 import {
   classesOf,
   countingReads,
@@ -29,7 +29,7 @@ import {
   noop,
   tagsWith,
   tagWith,
-} from '../../../fixtures';
+} from '../../../support/fixtures';
 
 const files = [
   '.editorconfig',

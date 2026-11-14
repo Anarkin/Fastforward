@@ -9,7 +9,7 @@ import {
   type ArchiveAccess,
   type OpenedArchive,
 } from '../../../../tools/commander/main/archives';
-import { removeFolder, tempFolder } from '../../../repositories';
+import { removeFolder, tempFolder } from '../../../support/repositories';
 
 const refused = () => Promise.reject(new Error('Nothing is done here.'));
 

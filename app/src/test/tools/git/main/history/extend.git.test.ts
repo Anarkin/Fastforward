@@ -17,7 +17,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
+} from '../../../../support/repositories';
 import { entriesOf } from './historyFixtures';
 
 async function repositoryWithBranches(name: string): Promise<TempRepository> {

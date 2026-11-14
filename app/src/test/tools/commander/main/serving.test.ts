@@ -17,7 +17,7 @@ import {
 } from '../../../../lib/shared/images';
 import { thumbnailKey } from '../../../../tools/commander/main/thumbnailStore';
 import { viewedFileUrl } from '../../../../tools/commander/shared/files';
-import { removeFolder, tempFolder } from '../../../repositories';
+import { removeFolder, tempFolder } from '../../../support/repositories';
 import {
   root,
   at,

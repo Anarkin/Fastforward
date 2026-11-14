@@ -4,7 +4,7 @@ import {
   viewerKey,
   type ViewerKeys,
 } from '../../../../tools/commander/page/viewerKeys';
-import { keyPress } from '../../../fixtures';
+import { keyPress } from '../../../support/fixtures';
 
 const text: ViewerKeys = { mode: 'text', readsText: true, showsImage: false };
 const hex: ViewerKeys = { mode: 'hex', readsText: false, showsImage: false };

@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { terminalKey } from '../../../../tools/terminal/page/keys';
-import { keyPress, withMacKeys } from '../../../fixtures';
+import { keyPress, withMacKeys } from '../../../support/fixtures';
 
 const ctrl = { ctrlKey: true };
 const ctrlShift = { ctrlKey: true, shiftKey: true };

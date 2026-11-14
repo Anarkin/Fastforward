@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { buildFileTree, foldersOf } from '../../../../tools/git/page/fileTree';
-import { fileChange } from '../../../fixtures';
+import { fileChange } from '../../../support/fixtures';
 
 suite('File tree', () => {
   test('nests files in folders and marks the ones with changes', () => {

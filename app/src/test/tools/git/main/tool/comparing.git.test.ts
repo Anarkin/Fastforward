@@ -12,20 +12,20 @@ import {
 } from 'vitest';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
-import type { Connection } from '../../../../harness';
+import type { Connection } from '../../../../support/harness';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   failOnErrorsLogged,
   type FakePage,
   openView,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 suite('Git tool comparing', () => {
   let repository: TempRepository;

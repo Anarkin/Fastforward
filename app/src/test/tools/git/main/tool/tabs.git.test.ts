@@ -10,16 +10,16 @@ import {
   suite,
   test,
 } from 'vitest';
-import { replaceBuiltin } from '../../../../builtins';
+import { replaceBuiltin } from '../../../../support/builtins';
 import { sameRoot, tabsKey } from '../../../../../shell/main/storage';
 import { soloKey } from '../../../../../tools/git/main/storage';
-import { waitFor } from '../../../../fixtures';
+import { waitFor } from '../../../../support/fixtures';
 import {
   removeFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   commitsSent,
@@ -39,7 +39,7 @@ import {
   tabOf,
   shownTabs,
   gitState,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 function savedRoots(view: OpenView): unknown[] {
   const saved = view.store.values.get(tabsKey);

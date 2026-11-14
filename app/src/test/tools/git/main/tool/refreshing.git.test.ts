@@ -9,23 +9,23 @@ import {
   suite,
   test,
 } from 'vitest';
-import { replaceBuiltin } from '../../../../builtins';
+import { replaceBuiltin } from '../../../../support/builtins';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../tools/git/main/tool';
-import type { Connection } from '../../../../harness';
-import type { FakeStore } from '../../../../fakeStore';
-import { waitFor } from '../../../../fixtures';
+import type { Connection } from '../../../../support/harness';
+import type { FakeStore } from '../../../../support/fakeStore';
+import { waitFor } from '../../../../support/fixtures';
 import {
   commitAtTime,
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   attach,
   closeViews,
@@ -44,7 +44,7 @@ import {
   workingTreesSent,
   type ViewRepositories,
   gitState,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 async function letARefreshThatSkippedTheQueueStart(): Promise<void> {
   for (let turn = 0; turn < 3; turn++) {

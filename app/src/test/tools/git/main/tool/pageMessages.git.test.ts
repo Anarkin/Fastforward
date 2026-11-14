@@ -8,8 +8,11 @@ import {
   test,
 } from 'vitest';
 import { soloKey } from '../../../../../tools/git/main/storage';
-import { removeFolder, type TempRepository } from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+import {
+  removeFolder,
+  type TempRepository,
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   commitsSent,
@@ -19,7 +22,7 @@ import {
   viewRepositories,
   type OpenView,
   type ViewRepositories,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 suite('Git tool checking what the page sends', () => {
   let folder: string;

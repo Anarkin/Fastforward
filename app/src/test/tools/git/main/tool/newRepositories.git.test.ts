@@ -8,8 +8,8 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   failOnErrorsLogged,
@@ -18,7 +18,7 @@ import {
   takeErrorsLogged,
   withNotices,
   withView,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 function hostPicking(picked: string | undefined): FakeHost {
   const host = new FakeHost();

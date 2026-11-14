@@ -7,13 +7,13 @@ const shells = 'src/test/**/*.shells.test.ts';
 const sevenZip = 'src/test/**/*.7zip.test.ts';
 const perf = 'src/test/**/*.perf.test.ts';
 const playgrounds = [
-  'src/test/gitPlayground.git.test.ts',
-  'src/test/filesPlayground.git.test.ts',
+  'src/test/scripts/playground/git.git.test.ts',
+  'src/test/scripts/playground/files.git.test.ts',
 ];
 const packaging = [
-  'src/test/build.test.ts',
-  'src/test/ffScripts.test.ts',
-  'src/test/installer.test.ts',
+  'src/test/build/build.test.ts',
+  'src/test/build/ffScripts.test.ts',
+  'src/test/build/installer.test.ts',
 ];
 
 export default defineConfig({
@@ -82,7 +82,7 @@ export default defineConfig({
         test: {
           name: 'electron',
           include: [electron],
-          setupFiles: ['src/test/electronSetup.ts'],
+          setupFiles: ['src/test/app/electronSetup.ts'],
           fileParallelism: false,
           testTimeout: 60_000,
           hookTimeout: 60_000,
@@ -93,8 +93,8 @@ export default defineConfig({
         test: {
           name: 'perf',
           include: [perf],
-          setupFiles: ['src/test/electronSetup.ts'],
-          globalSetup: ['src/test/perfSetup.ts'],
+          setupFiles: ['src/test/app/electronSetup.ts'],
+          globalSetup: ['src/test/perf/perfSetup.ts'],
           fileParallelism: false,
           testTimeout: 120_000,
           hookTimeout: 120_000,

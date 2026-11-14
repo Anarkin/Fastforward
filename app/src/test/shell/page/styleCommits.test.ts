@@ -12,9 +12,14 @@ import {
   commitRowHeight,
   workingTreeRowHeight,
 } from '../../../tools/git/page/commitList';
-import { allWithClass, cascaded, rendered, withClass } from '../../cascade';
-import { renderedBy } from '../../fixtures';
-import { gitStore } from '../../componentFixtures';
+import {
+  allWithClass,
+  cascaded,
+  rendered,
+  withClass,
+} from '../../support/cascade';
+import { renderedBy } from '../../support/fixtures';
+import { gitStore } from '../../support/componentFixtures';
 import {
   bubbles,
   columns,
@@ -29,7 +34,7 @@ import {
   notices,
   repository,
   workingTreeRow,
-} from '../../styleFixtures';
+} from '../../support/styleFixtures';
 import {
   noop,
   buttonsWidth,

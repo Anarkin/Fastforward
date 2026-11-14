@@ -4,16 +4,16 @@ import { createServer } from 'node:http';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { lastFetchesKey } from '../../../../../tools/git/main/storage';
-import type { Connection } from '../../../../harness';
-import { waitFor } from '../../../../fixtures';
+import type { Connection } from '../../../../support/harness';
+import { waitFor } from '../../../../support/fixtures';
 import {
   removeFolder,
   savedEnv,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   failOnErrorsLogged,
@@ -27,7 +27,7 @@ import {
   withNotices,
   tabOf,
   gitState,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 suite('Git tool fetching', () => {
   let folder: string;

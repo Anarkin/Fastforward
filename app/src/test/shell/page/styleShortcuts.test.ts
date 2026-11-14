@@ -13,8 +13,8 @@ import {
   matchingRules,
   rendered,
   withClass,
-} from '../../cascade';
-import { contextMenu, historyMenu, notices } from '../../styleFixtures';
+} from '../../support/cascade';
+import { contextMenu, historyMenu, notices } from '../../support/styleFixtures';
 import {
   noop,
   looks,

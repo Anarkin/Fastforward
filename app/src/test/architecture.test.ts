@@ -3,9 +3,21 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { tools } from '../shell/shared/tools';
-import { defaultSettings } from './fixtures';
+import { defaultSettings } from './support/fixtures';
 
 const source = path.join(__dirname, '..');
+const appFolder = path.join(source, '..');
+
+const testFiles = fs
+  .readdirSync(__dirname, { recursive: true, encoding: 'utf8' })
+  .map((file) => file.replaceAll('\\', '/'))
+  .filter((file) => /\.tsx?$/.test(file));
+
+function mirrored(folder: string, under: string): boolean {
+  return ['', '.ts', '.tsx'].some((extension) =>
+    fs.existsSync(path.join(under, `${folder}${extension}`)),
+  );
+}
 
 const sourceFiles = fs
   .readdirSync(source, { recursive: true, encoding: 'utf8' })
@@ -204,6 +216,24 @@ suite('Architecture', () => {
             "import './style.css';",
           ),
       ),
+      [],
+    );
+  });
+
+  test('keeps the tests of src/<path> in test/<path> and those of scripts/<path> in test/scripts/<path>, the tests of the running app, the build and the performance, and the helpers they share, each in a folder of their own, app, build, perf and support', () => {
+    const grouped = ['app', 'build', 'perf', 'support'];
+    assert.deepStrictEqual(
+      testFiles.filter((file) => {
+        const folder = path.posix.dirname(file);
+        const [top] = folder.split('/');
+        return folder === '.'
+          ? !['architecture.test.ts', 'setup.ts'].includes(file)
+          : grouped.includes(top)
+            ? folder !== top
+            : top === 'scripts'
+              ? !mirrored(folder, appFolder)
+              : !mirrored(folder, source);
+      }),
       [],
     );
   });

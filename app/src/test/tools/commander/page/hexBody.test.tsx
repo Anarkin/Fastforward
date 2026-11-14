@@ -8,8 +8,8 @@ import {
   createCommanderStore,
 } from '../../../../tools/commander/page/store';
 import type { CommanderToHost } from '../../../../tools/commander/shared/protocol';
-import { renderIn } from '../../../componentFixtures';
-import { noop } from '../../../fixtures';
+import { renderIn } from '../../../support/componentFixtures';
+import { noop } from '../../../support/fixtures';
 
 async function showingBytes(
   size: number,

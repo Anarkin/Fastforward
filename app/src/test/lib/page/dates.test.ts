@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { defaultDateFormat, formatDate } from '../../../lib/page/dates';
-import { defaultSettings } from '../../fixtures';
+import { defaultSettings } from '../../support/fixtures';
 
 suite('Dates', () => {
   test('read like 2022-12-14 16:12 by default, in local time, as the settings say too', () => {

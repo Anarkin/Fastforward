@@ -3,7 +3,7 @@ import type { ChildProcess, SpawnOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../../builtins';
+import { replaceBuiltin } from '../../../../support/builtins';
 import { gitErrorText } from '../../../../../tools/git/main/cli/errorText';
 import { showFiles, showPatch } from '../../../../../tools/git/main/cli/diff';
 import {
@@ -19,7 +19,7 @@ import {
 import { readRefs } from '../../../../../tools/git/main/cli/repository';
 import { runGit } from '../../../../../tools/git/main/cli/run';
 import { tipsInGitOrder } from '../../../../../tools/git/main/tabState';
-import { renamingRepository } from '../../../../gitFixtures';
+import { renamingRepository } from '../../../../support/gitFixtures';
 import { entriesOf } from '../history/historyFixtures';
 import {
   commitText,
@@ -28,7 +28,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
+} from '../../../../support/repositories';
 
 const emptyTree = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 

@@ -2,9 +2,9 @@ import * as assert from 'node:assert';
 import fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../builtins';
+import { replaceBuiltin } from '../../support/builtins';
 import { fileLog } from '../../../shell/main/log';
-import { removeFolder, tempFolder } from '../../repositories';
+import { removeFolder, tempFolder } from '../../support/repositories';
 
 const megabyte = 1024 * 1024;
 

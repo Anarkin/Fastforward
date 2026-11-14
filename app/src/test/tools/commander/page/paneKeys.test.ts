@@ -6,7 +6,7 @@ import {
   paneKey,
   type PaneKeys,
 } from '../../../../tools/commander/page/paneKeys';
-import { keyPress } from '../../../fixtures';
+import { keyPress } from '../../../support/fixtures';
 
 const entry = (name: string, folder = false) => ({
   name,

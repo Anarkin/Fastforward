@@ -7,14 +7,14 @@ import type { GitToWebviewOf } from '../../../../../tools/git/shared/protocol';
 import { shortHash } from '../../../../../tools/git/shared/hashes';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
 import { recentKey, worktreesKey } from '../../../../../tools/git/main/storage';
-import { waitFor } from '../../../../fixtures';
+import { waitFor } from '../../../../support/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   commitsSent,
@@ -31,7 +31,7 @@ import {
   tabOf,
   shownTabs,
   gitState,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 function sameRealFolder(a: string | undefined, b: string): boolean {
   return (

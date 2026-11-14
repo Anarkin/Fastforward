@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { GitStorage } from '../../../../../tools/git/main/storage';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import { FakeStore } from '../../../../fakeStore';
+import { FakeStore } from '../../../../support/fakeStore';
 import {
   attach,
   closeViews,
@@ -18,15 +18,15 @@ import {
   stubMethod,
   tabOf,
   takeErrorsLogged,
-} from '../../../../harness';
+} from '../../../../support/harness';
 import {
   installedGit,
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 
 const storageOf = (store: FakeStore) =>
   new GitStorage(settingsForViews(), gitState(store));

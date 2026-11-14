@@ -14,7 +14,7 @@ import {
   type PaneView,
 } from '../../../../tools/commander/page/view';
 import type { CommanderToHost } from '../../../../tools/commander/shared/protocol';
-import { renderIn } from '../../../componentFixtures';
+import { renderIn } from '../../../support/componentFixtures';
 
 const file = (name: string) => ({
   name,

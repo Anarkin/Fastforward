@@ -7,7 +7,7 @@ import {
   cursorLookOf,
   cursorVariables,
 } from '../../../lib/shared/cursorSettings';
-import { defaultSettings } from '../../fixtures';
+import { defaultSettings } from '../../support/fixtures';
 
 const source = join(__dirname, '../../../../src');
 const pageFolders = [

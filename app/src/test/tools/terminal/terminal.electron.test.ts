@@ -10,9 +10,9 @@ import {
   closeOrKill,
   gridLines,
   launchApp,
-} from '../../appFixtures';
-import { waitFor } from '../../fixtures';
-import { removeFolder, tempFolder } from '../../repositories';
+} from '../../app/appFixtures';
+import { waitFor } from '../../support/fixtures';
+import { removeFolder, tempFolder } from '../../support/repositories';
 
 const hundredLines =
   process.platform === 'win32'

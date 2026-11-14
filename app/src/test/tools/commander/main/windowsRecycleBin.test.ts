@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { removeFolder, tempFolder } from '../../../repositories';
+import { removeFolder, tempFolder } from '../../../support/repositories';
 
 suite.skipIf(process.platform !== 'win32')('Files Recycle Bin', () => {
   test('finds the volume of a folder as mountvol names the volume of its drive', async () => {

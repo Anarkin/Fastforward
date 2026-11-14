@@ -24,9 +24,9 @@ import {
   withClass,
   type MarkupElement,
   type States,
-} from '../../cascade';
-import { stylesheet } from '../../fixtures';
-import { tabsStore } from '../../componentFixtures';
+} from '../../support/cascade';
+import { stylesheet } from '../../support/fixtures';
+import { tabsStore } from '../../support/componentFixtures';
 import {
   bubbles,
   columns,
@@ -39,7 +39,7 @@ import {
   navButtons,
   shownRow,
   tabBar,
-} from '../../styleFixtures';
+} from '../../support/styleFixtures';
 import { createShellStore, ShellStore } from '../../../shell/page/store';
 import { FileHeader, HunkDivider } from '../../../tools/git/page/diffRowParts';
 

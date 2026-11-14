@@ -13,8 +13,8 @@ import {
   type CommanderToHost,
   type TextRow,
 } from '../../../../tools/commander/shared/protocol';
-import { renderIn } from '../../../componentFixtures';
-import { noop } from '../../../fixtures';
+import { renderIn } from '../../../support/componentFixtures';
+import { noop } from '../../../support/fixtures';
 
 type ReadRows = Extract<CommanderToHost, { type: 'readRows' }>;
 

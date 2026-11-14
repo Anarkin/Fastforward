@@ -6,7 +6,7 @@ import {
   pageStart,
 } from '../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../tools/git/page/commitHistory';
-import { commitInfo } from '../../../fixtures';
+import { commitInfo } from '../../../support/fixtures';
 
 suite('Commit history', () => {
   test('places pages at their positions', () => {

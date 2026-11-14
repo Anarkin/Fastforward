@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { hashOf } from '../../../../tools/commander/main/contentHash';
 import { hashWorkers } from '../../../../tools/commander/main/hashWorkers';
-import { removeFolder, tempFolder } from '../../../repositories';
+import { removeFolder, tempFolder } from '../../../support/repositories';
 
 let built = '';
 let files = '';

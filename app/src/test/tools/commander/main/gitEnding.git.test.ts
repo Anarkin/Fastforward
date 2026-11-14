@@ -8,7 +8,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../repositories';
+} from '../../../support/repositories';
 
 suite('Line endings git gives a new file', () => {
   let folder: string;

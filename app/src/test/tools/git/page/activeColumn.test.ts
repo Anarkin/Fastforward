@@ -10,7 +10,7 @@ import {
   keyboardDropped,
   shownColumns,
 } from '../../../../tools/git/page/activeColumn';
-import { element, keyPress } from '../../../fixtures';
+import { element, keyPress } from '../../../support/fixtures';
 
 const lost = (isConnected: boolean, disabled = false) => ({
   isConnected,

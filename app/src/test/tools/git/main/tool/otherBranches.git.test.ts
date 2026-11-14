@@ -3,15 +3,15 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { GitTool } from '../../../../../tools/git/main/tool';
-import type { Connection } from '../../../../harness';
-import { waitFor } from '../../../../fixtures';
+import type { Connection } from '../../../../support/harness';
+import { waitFor } from '../../../../support/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   failOnErrorsLogged,
@@ -23,7 +23,7 @@ import {
   takeErrorsLogged,
   withNotices,
   type PageMessage,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 function running(message: PageMessage): string[] {
   return message.type === 'pullingBranch' || message.type === 'pushingBranch'

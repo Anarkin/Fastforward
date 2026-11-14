@@ -2,14 +2,14 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
-import type { Connection } from '../../../../harness';
+import type { Connection } from '../../../../support/harness';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   failOnErrorsLogged,
@@ -18,7 +18,7 @@ import {
   takeErrorsLogged,
   withNotices,
   type PageMessage,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 function runningState(message: PageMessage): string[] {
   return message.type === 'pulling' || message.type === 'fetching'

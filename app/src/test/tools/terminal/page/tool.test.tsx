@@ -3,9 +3,9 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test, vi } from 'vitest';
 import { TerminalTool } from '../../../../tools/terminal/page/tool';
-import { noop } from '../../../fixtures';
+import { noop } from '../../../support/fixtures';
 import type { TerminalToWebview } from '../../../../tools/terminal/shared/protocol';
-import { renderIn } from '../../../componentFixtures';
+import { renderIn } from '../../../support/componentFixtures';
 
 const built = vi.hoisted((): string[] => []);
 

@@ -8,7 +8,7 @@ import {
   wheelLines,
   type Xterm,
 } from '../../../../tools/terminal/page/view';
-import { noop } from '../../../fixtures';
+import { noop } from '../../../support/fixtures';
 import { defaultCursorLook } from '../../../../lib/shared/cursorSettings';
 
 function posingAsXterm(fake: object): Xterm {

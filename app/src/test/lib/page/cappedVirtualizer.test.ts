@@ -6,7 +6,7 @@ import {
   CappedScroll,
   cappedScrolling,
 } from '../../../lib/page/cappedVirtualizer';
-import { posingAsElement } from '../../fixtures';
+import { posingAsElement } from '../../support/fixtures';
 
 const rowHeight = 50;
 const viewport = 500;

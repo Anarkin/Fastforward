@@ -10,14 +10,19 @@ import { TabBar } from '../../../shell/page/tabBar';
 import { MenuButton } from '../../../lib/page/menu';
 import { Crash } from '../../../shell/page/errorBoundary';
 import { VirtualRows } from '../../../lib/page/virtualRows';
-import { allWithClass, cascaded, rendered, withClass } from '../../cascade';
+import {
+  allWithClass,
+  cascaded,
+  rendered,
+  withClass,
+} from '../../support/cascade';
 import {
   defaultSettings,
   fileChange,
   renderedBy,
   stylesheet,
-} from '../../fixtures';
-import { tabsStore } from '../../componentFixtures';
+} from '../../support/fixtures';
+import { tabsStore } from '../../support/componentFixtures';
 import {
   searchButton,
   columns,
@@ -42,7 +47,7 @@ import {
   workingTreeRow,
   worktree,
   worktreeBar,
-} from '../../styleFixtures';
+} from '../../support/styleFixtures';
 import { defaultScrolling } from '../../../lib/page/rowScroll';
 import { ShellStore } from '../../../shell/page/store';
 import {

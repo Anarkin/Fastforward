@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
 import { lineHeightOf, measureInLines } from '../../../lib/page/lineHeight';
-import { laidOutRow } from '../../elementFixtures';
+import { laidOutRow } from '../../support/elementFixtures';
 
 const boxOf = (blockSize: number) =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

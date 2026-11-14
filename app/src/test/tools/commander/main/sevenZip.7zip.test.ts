@@ -13,8 +13,8 @@ import {
   sevenZipReader,
 } from '../../../../tools/commander/main/sevenZip';
 import { strings } from '../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../repositories';
-import { storedZip } from '../../../zips';
+import { removeFolder, tempFolder } from '../../../support/repositories';
+import { storedZip } from '../../../support/zips';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..');
 

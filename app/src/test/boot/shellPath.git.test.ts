@@ -4,7 +4,11 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { realTimer } from '../../tools/git/main/autoFetch';
 import { loginShellEnv } from '../../boot/shellPath';
-import { installedGit, removeFolder, tempFolder } from '../repositories';
+import {
+  installedGit,
+  removeFolder,
+  tempFolder,
+} from '../support/repositories';
 
 function gitShell(gitPath: string): string {
   for (let folder = path.dirname(gitPath); ; folder = path.dirname(folder)) {

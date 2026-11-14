@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { reloadWhenGone } from '../../boot/pageGone';
 import { strings } from '../../lib/shared/strings';
-import { recordingLog } from '../stub';
+import { recordingLog } from '../support/stub';
 
 suite('Page gone', () => {
   test('loads the page again once its process is gone, but not when it goes again within a minute of that, as a page that goes as it loads would go again and again', () => {

@@ -9,7 +9,7 @@ import {
   mergePaths,
   withLoginShellEnv,
 } from '../../boot/shellPath';
-import { fakeTimer } from '../fakeTimer';
+import { fakeTimer } from '../support/fakeTimer';
 
 const envOn = async (platform: NodeJS.Platform) => {
   const env: NodeJS.ProcessEnv = {

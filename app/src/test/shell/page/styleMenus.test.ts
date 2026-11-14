@@ -9,14 +9,19 @@ import { Name } from '../../../lib/page/name';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../shell/page/promptPopup';
 import { ClonePopup } from '../../../tools/git/page/clonePopup';
-import { allWithClass, cascaded, rendered, withClass } from '../../cascade';
+import {
+  allWithClass,
+  cascaded,
+  rendered,
+  withClass,
+} from '../../support/cascade';
 import {
   contextMenu,
   historyMenu,
   locationsPopup,
   notices,
   tabBar,
-} from '../../styleFixtures';
+} from '../../support/styleFixtures';
 import {
   noop,
   looks,

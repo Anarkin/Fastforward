@@ -10,8 +10,8 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
-import { recordingLog } from '../../../../stub';
+} from '../../../../support/repositories';
+import { recordingLog } from '../../../../support/stub';
 import {
   closeViews,
   failOnErrorsLogged,
@@ -20,7 +20,7 @@ import {
   withView,
   type OpenView,
   shownTabs,
-} from '../../../../harness';
+} from '../../../../support/harness';
 
 function sameRealFolder(a: string | undefined, b: string): boolean {
   return (

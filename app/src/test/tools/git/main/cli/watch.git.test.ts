@@ -2,20 +2,20 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../../builtins';
+import { replaceBuiltin } from '../../../../support/builtins';
 import { runGit } from '../../../../../tools/git/main/cli/run';
 import {
   ignoredPaths,
   watchRepository,
   type Changed,
 } from '../../../../../tools/git/main/cli/watch';
-import { waitFor } from '../../../../fixtures';
+import { waitFor } from '../../../../support/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
+} from '../../../../support/repositories';
 import {
   askingGit,
   changes,

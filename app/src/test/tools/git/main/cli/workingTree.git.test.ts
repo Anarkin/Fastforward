@@ -3,7 +3,7 @@ import { execFileSync, type SpawnOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../../builtins';
+import { replaceBuiltin } from '../../../../support/builtins';
 import { listTree } from '../../../../../tools/git/main/cli/files';
 import {
   stagedPatch,
@@ -19,14 +19,14 @@ import {
   leftOutChanges,
 } from '../../../../../tools/git/shared/protocol';
 import { parsePatch } from '../../../../../tools/git/page/diff';
-import { waitFor } from '../../../../fixtures';
+import { waitFor } from '../../../../support/fixtures';
 import {
   removeFolder,
   symlinkOrSkip,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../repositories';
+} from '../../../../support/repositories';
 
 function holdingGit(held: (args: readonly string[]) => boolean): {
   started: (command: string) => boolean;

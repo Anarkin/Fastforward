@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import { Column } from '../../../tools/git/page/column';
 import { BackIcon } from '../../../lib/page/icons';
 import { SearchButton, SearchRow } from '../../../lib/page/search';
-import { noop, tagWith } from '../../fixtures';
+import { noop, tagWith } from '../../support/fixtures';
 
 const page = (html: string) => new JSDOM(html).window.document;
 
