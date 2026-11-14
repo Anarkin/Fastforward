@@ -477,6 +477,98 @@ suite('App editor', () => {
     }, 'the last rows whole');
   });
 
+  test('keeps the text still as it is typed into the top or the bottom row shown, scrolled down by whole rows, and scrolls by one whole row once the cursor moves onto the row above or below them', async () => {
+    const lines = Array.from({ length: 300 }, (_, at) => `line ${at + 1}`);
+    fs.writeFileSync(path.join(opened, 'typed.txt'), `${lines.join('\n')}\n`);
+    await backToCommander();
+    await edit('typed.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('line 1\n'),
+      'the text',
+    );
+    await toStart();
+    const scroller = page.locator('.editor .cm-scroller');
+    const shown = 20;
+    const row = await scroller.evaluate((element, rows) => {
+      const height =
+        element.querySelector('.cm-line')?.getBoundingClientRect().height ?? 1;
+      element.style.flex = 'none';
+      element.style.height = `${rows * height}px`;
+      element.scrollTop = (rows / 2) * height;
+      element.dataset.scrolls = '0';
+      element.addEventListener('scroll', () => {
+        element.dataset.scrolls = String(
+          Number(element.dataset.scrolls ?? '0') + 1,
+        );
+      });
+      return height;
+    }, shown);
+    const scrolledTop = () => scroller.evaluate((element) => element.scrollTop);
+    const settled = async () => {
+      let last = NaN;
+      await waitFor(async () => {
+        await page.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            ),
+        );
+        const now = await scrolledTop();
+        const still = now === last;
+        last = now;
+        return still;
+      }, 'the text to stop scrolling');
+      return Math.round((last / row) * 100) / 100;
+    };
+    const onRow = async (number: number) => {
+      const place = await scroller.evaluate((element, wanted) => {
+        const line = Array.from(element.querySelectorAll('.cm-line')).find(
+          (each) => each.textContent === `line ${wanted}`,
+        );
+        if (line === undefined) {
+          return undefined;
+        }
+        const range = document.createRange();
+        range.selectNodeContents(line);
+        const text = range.getBoundingClientRect();
+        return { x: text.right + 20, y: text.top + text.height / 2 };
+      }, number);
+      assert.ok(place !== undefined, `line ${number} shown`);
+      await page.mouse.click(place.x, place.y);
+      await page.keyboard.press('End');
+      await settled();
+      await scroller.evaluate((element) => {
+        element.dataset.scrolls = '0';
+      });
+    };
+    const scrolls = () =>
+      scroller.evaluate((element) => Number(element.dataset.scrolls));
+    assert.strictEqual(await settled(), shown / 2);
+
+    const topRow = shown / 2 + 1;
+    await onRow(topRow);
+    await page.keyboard.type('xyz');
+    assert.strictEqual(await settled(), shown / 2, 'typed into the top row');
+    assert.strictEqual(await scrolls(), 0, 'scrolls typing into the top row');
+
+    const bottomRow = shown / 2 + shown;
+    await onRow(bottomRow);
+    await page.keyboard.type('xyz');
+    assert.strictEqual(await settled(), shown / 2, 'typed into the bottom row');
+    assert.strictEqual(
+      await scrolls(),
+      0,
+      'scrolls typing into the bottom row',
+    );
+
+    await page.keyboard.press('ArrowDown');
+    assert.strictEqual(await settled(), shown / 2 + 1, 'moved below the rows');
+    await onRow(topRow + 1);
+    await page.keyboard.press('ArrowUp');
+    assert.strictEqual(await settled(), shown / 2, 'moved above the rows');
+    await page.keyboard.press('Control+s');
+  });
+
   test('starts the text of a file viewed where the editor starts it, after an empty column as wide as its line numbers', async () => {
     fs.writeFileSync(path.join(opened, 'columns.txt'), 'first line\nsecond\n');
     await backToCommander();
