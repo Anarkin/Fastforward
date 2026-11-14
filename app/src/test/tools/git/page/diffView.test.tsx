@@ -20,10 +20,10 @@ import {
 import {
   DiffView,
   gapWidth,
-  rowHeight,
   scrollOnToggle,
   stuckHeader,
 } from '../../../../tools/git/page/diffView';
+import { rowHeight } from '../../../../tools/git/page/rowMeasures';
 
 const binaryOf = (path: string) =>
   parsePatch(

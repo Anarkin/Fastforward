@@ -4,6 +4,12 @@ import { parsePatch } from '../../../../tools/git/page/diff';
 import { glideAt, glideBy, glideEnded } from '../../../../ui/glide';
 import { noModifiers } from '../../../fixtures';
 import {
+  diffRows,
+  lineKeys,
+  splitRows,
+  type DiffRow,
+} from '../../../../tools/git/page/diffRows';
+import {
   changeStarts,
   minimapRows,
   sideScroll,
@@ -11,12 +17,6 @@ import {
   wheelGlide,
   wheelSideways,
 } from '../../../../tools/git/page/diffView';
-import {
-  diffRows,
-  lineKeys,
-  splitRows,
-  type DiffRow,
-} from '../../../../tools/git/page/diffRows';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',

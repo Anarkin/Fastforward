@@ -47,8 +47,8 @@ import {
   SearchButton,
   SearchRow,
 } from '../../../ui/search';
-import { DiffView } from './diffView';
 import type { WholeFile } from './diffRows';
+import { DiffView } from './diffView';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],

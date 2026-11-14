@@ -18,11 +18,11 @@ import {
   stepMatch,
 } from '../../../../shared/textMatches';
 import { keyPress } from '../../../fixtures';
+import { diffRows, lineKeys } from '../../../../tools/git/page/diffRows';
 import {
   diffMinimapMarks,
   findRangesByLine,
 } from '../../../../tools/git/page/diffView';
-import { diffRows, lineKeys } from '../../../../tools/git/page/diffRows';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',

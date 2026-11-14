@@ -14,10 +14,6 @@ import {
 } from '../../../../tools/git/page/diffRows';
 import {
   diffRowPlace,
-  rowHeight,
-  rowMeasures,
-  knownBreaks,
-  rememberBreaks,
   BreakMarks,
   WrapMarks,
   anchoredScrollTop,
@@ -25,6 +21,12 @@ import {
   scrollAnchor,
   widestColumns,
 } from '../../../../tools/git/page/diffView';
+import {
+  rowHeight,
+  rowMeasures,
+  knownBreaks,
+  rememberBreaks,
+} from '../../../../tools/git/page/rowMeasures';
 
 const wideColumnsIn = (row: string) => (index: number) =>
   row.slice(0, index).length + row.slice(0, index).split('界').length - 1;

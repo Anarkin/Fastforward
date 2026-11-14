@@ -53,7 +53,8 @@ import {
   type TabAction,
   type TabView,
 } from './tabView';
-import type { CodeSnap, TextMeasures, WrapColumns } from './diffView';
+import type { CodeSnap, TextMeasures } from './diffView';
+import type { WrapColumns } from './rowMeasures';
 
 interface ComparedTexts {
   readonly tab: string | undefined;
