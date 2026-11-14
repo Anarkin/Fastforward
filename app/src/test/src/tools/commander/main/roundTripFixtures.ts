@@ -4,8 +4,8 @@ import * as path from 'node:path';
 import {
   sevenZipAt,
   sevenZipProgram,
-  sevenZipReader,
 } from '../../../../../tools/commander/main/sevenZip';
+import { sevenZipReader } from '../../../../../tools/commander/main/sevenZipReader';
 import type { ClashReply } from '../../../../../tools/commander/main/transfer';
 import type { ConnectTransfer } from '../../../../../tools/commander/main/transfers';
 import { transferServer } from '../../../../../tools/commander/main/transferServer';

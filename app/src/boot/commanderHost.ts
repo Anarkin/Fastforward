@@ -27,10 +27,8 @@ import {
   unpackedKoffi,
 } from '../tools/commander/main/sizeWorkers';
 import { hashWorkers } from '../tools/commander/main/hashWorkers';
-import {
-  sevenZipProgram,
-  sevenZipReaderAt,
-} from '../tools/commander/main/sevenZip';
+import { sevenZipProgram } from '../tools/commander/main/sevenZip';
+import { sevenZipReaderAt } from '../tools/commander/main/sevenZipReader';
 import {
   readClipboardFiles,
   writeClipboardFiles,

@@ -461,9 +461,12 @@ suite('Architecture', () => {
   });
 
   test('lets boot alone import 7-Zip, so the commander reaches archives only through a reader of its own, which another could replace', () => {
+    const sevenZip = /^tools\/commander\/main\/sevenZip/;
     assert.deepStrictEqual(
-      sourceFiles.filter((file) =>
-        importsOf(file).includes('tools/commander/main/sevenZip'),
+      sourceFiles.filter(
+        (file) =>
+          !sevenZip.test(file) &&
+          importsOf(file).some((imported) => sevenZip.test(imported)),
       ),
       ['boot/commanderHost.ts'],
     );

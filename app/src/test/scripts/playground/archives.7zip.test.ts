@@ -9,8 +9,8 @@ import { Archives, type Opening } from '../../../tools/commander/main/archives';
 import {
   sevenZipAt,
   sevenZipProgram,
-  sevenZipReader,
 } from '../../../tools/commander/main/sevenZip';
+import { sevenZipReader } from '../../../tools/commander/main/sevenZipReader';
 import { removeFolder, tempFolder } from '../../helpers/repositories';
 
 interface PlannedFile {
