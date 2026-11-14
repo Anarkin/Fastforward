@@ -19,7 +19,7 @@ import {
   offsetDigits,
   type LoadedBytes,
 } from './hex';
-import type { Viewing } from './viewer';
+import type { Viewing } from './commanderState';
 import { useCommanderActions } from './store';
 
 interface Bytes {

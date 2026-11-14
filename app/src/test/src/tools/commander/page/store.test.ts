@@ -12,10 +12,8 @@ import type {
   FromFlatWorker,
   ToFlatWorker,
 } from '../../../../../tools/commander/page/flatMessages';
-import {
-  createCommanderStore,
-  shownRowsOf,
-} from '../../../../../tools/commander/page/store';
+import { shownRowsOf } from '../../../../../tools/commander/page/shownRows';
+import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { emptyView } from '../../../../../tools/commander/page/view';
 import { left, shown, listing } from './storeFixtures';
 

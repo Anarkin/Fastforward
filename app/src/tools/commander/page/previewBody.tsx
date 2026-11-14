@@ -12,7 +12,7 @@ import { useWholeText } from './textBody';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { imageScrolled, previewUrl, type Preview } from './previews';
 import type { PdfControls } from './pdfPreview';
-import type { Viewing } from './viewer';
+import type { Viewing } from './commanderState';
 
 function MarkdownPreview({
   file,

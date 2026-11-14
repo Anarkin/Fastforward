@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CommanderToWebviewOf, TextEncoding } from '../shared/protocol';
 import { viewerKeymap, type ViewMode } from './keymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import {
@@ -10,7 +9,7 @@ import {
 } from '../../../lib/page/search';
 import { useViewerFind } from './viewerFind';
 import { usePdfPreview } from './pdfPreview';
-import { strings, type Sentence } from '../../../lib/shared/strings';
+import { strings } from '../../../lib/shared/strings';
 import {
   HexIcon,
   PreviewIcon,
@@ -38,20 +37,6 @@ import { nameOf, PathTitle } from './pathTitle';
 import { useCommander, useCommanderActions } from './store';
 import { viewerChoices } from './view';
 import { viewerKey } from './viewerKeys';
-
-export interface Viewing {
-  readonly tab: string;
-  readonly size: number | undefined;
-  readonly version?: string;
-  readonly binary?: boolean;
-  readonly hidden?: readonly boolean[];
-  readonly detected?: TextEncoding;
-  readonly error?: Sentence;
-}
-
-export type ToViewer = CommanderToWebviewOf<
-  'rows' | 'text' | 'bytes' | 'found' | 'pdfPlace'
->;
 
 const modes: readonly {
   readonly mode: ViewMode;

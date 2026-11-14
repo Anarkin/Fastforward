@@ -3,11 +3,11 @@ import { suite, test } from 'vitest';
 import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
 import { maxDroppedIcons } from '../../../../../tools/commander/shared/icons';
 import {
-  createCommanderStore,
   filterOf,
   shownColumns,
   shownRowsOf,
-} from '../../../../../tools/commander/page/store';
+} from '../../../../../tools/commander/page/shownRows';
+import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { nextSort } from '../../../../../tools/commander/page/listing';
 import { emptyView } from '../../../../../tools/commander/page/view';
 import { noop } from '../../../../helpers/fixtures';

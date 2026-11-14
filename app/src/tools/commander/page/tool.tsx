@@ -30,10 +30,10 @@ import { TransferPopup } from './transferPopup';
 import { PackPopup } from './packPopup';
 import { strings } from '../../../lib/shared/strings';
 import { useShellActions } from '../../../shell/page/store';
+import { shownRowsOf } from './shownRows';
 import {
   CommanderStore,
   createCommanderStore,
-  shownRowsOf,
   useCommander,
   useCommanderActions,
 } from './store';

@@ -8,7 +8,8 @@ import {
 import { followDrag } from '../../../lib/page/followDrag';
 import { strings } from '../../../lib/shared/strings';
 import type { Side } from '../shared/protocol';
-import { shownColumns, useCommander, useCommanderActions } from './store';
+import { shownColumns } from './shownRows';
+import { useCommander, useCommanderActions } from './store';
 
 const columnLabels: Readonly<Record<SortColumn, string>> = {
   name: strings.commander.name,

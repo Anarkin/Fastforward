@@ -118,10 +118,7 @@
       }
     },
     {
-      "files": [
-        "src/tools/commander/page/store.ts",
-        "src/tools/git/main/tool.ts"
-      ],
+      "files": ["src/tools/git/main/tool.ts"],
       "rules": {
         "max-lines": [
           "warn",
@@ -149,17 +146,6 @@
           "warn",
           {
             "max": 1400
-          }
-        ]
-      }
-    },
-    {
-      "files": ["src/shell/main/shell.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1300
           }
         ]
       }

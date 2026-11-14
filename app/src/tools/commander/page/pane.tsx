@@ -23,14 +23,9 @@ import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { clickPairs } from './clickPairs';
 import { ColumnHeader } from './columnHeader';
 import { type Layout } from '../shared/settings';
-import {
-  filterOf,
-  readingKey,
-  shownColumns,
-  shownRowsOf,
-  useCommander,
-  useCommanderActions,
-} from './store';
+import { readingKey } from './commanderReceived';
+import { filterOf, shownColumns, shownRowsOf } from './shownRows';
+import { useCommander, useCommanderActions } from './store';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { dropTargetOf } from './dropping';

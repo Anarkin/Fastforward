@@ -1,5 +1,6 @@
 import { type Side } from '../shared/protocol';
-import { readingKey, useCommander, useCommanderActions } from './store';
+import { readingKey } from './commanderReceived';
+import { useCommander, useCommanderActions } from './store';
 import { FlatViewIcon } from '../../../lib/page/icons';
 import { StatusLine } from './statusLine';
 import { sentencesOf, strings } from '../../../lib/shared/strings';

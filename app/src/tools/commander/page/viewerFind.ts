@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ByteRange, TextEncoding } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import { matchCount, stepMatch } from '../../../lib/shared/textMatches';
-import type { Viewing } from './viewer';
+import type { Viewing } from './commanderState';
 import { useCommanderActions } from './store';
 
 export interface ViewerFind {

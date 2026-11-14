@@ -25,7 +25,7 @@ import {
 } from './textColors';
 import { colorer } from '../../../lib/page/syntax';
 import { ScrollBody, type Thumb } from './scrollBody';
-import type { Viewing } from './viewer';
+import type { Viewing } from './commanderState';
 import type { ViewerFind } from './viewerFind';
 import { MarkedText, textMarks, type FindMark } from './findMarks';
 import {

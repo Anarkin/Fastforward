@@ -7,7 +7,7 @@ import {
   CommanderStore,
   createCommanderStore,
 } from '../../../../../tools/commander/page/store';
-import type { Viewing } from '../../../../../tools/commander/page/viewer';
+import type { Viewing } from '../../../../../tools/commander/page/commanderState';
 import {
   maxRowsAsked,
   type CommanderToHost,
