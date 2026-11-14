@@ -3,10 +3,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/shell';
-import {
-  childToward,
-  rootFolder,
-} from '../../../../../tools/commander/main/tool';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
@@ -24,6 +20,10 @@ import {
   hiddenIn,
   forged,
 } from './commanderFixtures';
+import {
+  childToward,
+  rootFolder,
+} from '../../../../../tools/commander/main/listings';
 
 suite('Commander tool', () => {
   test('lists the root on both sides of a tab opened without a folder, and the drives', async () => {

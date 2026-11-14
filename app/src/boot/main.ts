@@ -69,7 +69,6 @@ import {
 import { isFolder } from '../tools/git/main/cli/repository';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
-import { CommanderTool, rootFolder } from '../tools/commander/main/tool';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { transferProcess } from '../tools/commander/main/transferProcess';
 import {
@@ -157,6 +156,8 @@ import {
 import { removeUnviewedCopies } from './viewedFiles';
 import { Archives } from '../tools/commander/main/archives';
 import { workFolders } from '../tools/commander/main/archiveFiles';
+import { CommanderTool } from '../tools/commander/main/tool';
+import { rootFolder } from '../tools/commander/main/listings';
 
 const dist = __dirname;
 const development = !app.isPackaged;
