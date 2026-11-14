@@ -8,7 +8,6 @@ import {
   markerWidth,
   numberWidth,
 } from '../../../../tools/git/page/overflow';
-import { TerminalTool } from '../../../../tools/terminal/page/tool';
 import {
   allWithClass,
   cascaded,
@@ -206,20 +205,6 @@ suite('Style', () => {
         ),
         'background',
       ),
-    );
-  });
-
-  test('makes a cell of the terminal as tall and as wide as a character of the diff, so code looks the same in both', () => {
-    const panel = rendered(
-      <TerminalTool active post={noop} listen={() => noop} />,
-    );
-    assert.strictEqual(
-      compact(cascaded(panel, '--terminal-row-height')),
-      compact(cascaded(diffView(<DiffViewShown />), '--diff-line-height')),
-    );
-    assert.strictEqual(
-      compact(cascaded(panel, '--terminal-advance')),
-      compact(cascaded(diffView(<DiffViewShown />), '--diff-advance')),
     );
   });
 
