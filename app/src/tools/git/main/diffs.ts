@@ -1,20 +1,22 @@
 import {
   compareFiles,
   comparePatch,
-  comparePatchArgs,
-  leftOutOf,
-  newSideUnchanged,
-  pathspecs,
-  readPatch,
   showFiles,
   showPatch,
-  showPatchArgs,
   commitPatch,
+} from './diff';
+import {
+  comparePatchArgs,
+  pathspecs,
+  showPatchArgs,
+  type PatchScope,
+} from './diffArgs';
+import { leftOutOf, readPatch, type ReadPatch } from './patchBudget';
+import {
+  newSideUnchanged,
   whitespaceOnlyChanges,
   withoutFilesInside,
-  type PatchScope,
-  type ReadPatch,
-} from './diff';
+} from './patchText';
 import { BlobTexts } from './blobTexts';
 import { listIndex, listTree, readBlobs, readFile, uniquePaths } from './files';
 import { stashFiles, stashPatch } from './stashes';

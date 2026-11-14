@@ -6,14 +6,18 @@ import {
   commitPatch,
   compareFiles,
   comparePatch,
-  comparePatchArgs,
-  leftOutOf,
-  pathspecs,
-  readPatch,
   showFiles,
   showPatch,
-  showPatchArgs,
 } from '../../../../../tools/git/main/diff';
+import {
+  comparePatchArgs,
+  pathspecs,
+  showPatchArgs,
+} from '../../../../../tools/git/main/diffArgs';
+import {
+  leftOutOf,
+  readPatch,
+} from '../../../../../tools/git/main/patchBudget';
 import { collapseThreshold } from '../../../../../tools/git/shared/protocol';
 import { listTree, readFile } from '../../../../../tools/git/main/files';
 import { runGit } from '../../../../../tools/git/main/run';

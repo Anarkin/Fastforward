@@ -2,11 +2,8 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import {
-  showFiles,
-  commitPatch,
-  type PatchScope,
-} from '../../../../../tools/git/main/diff';
+import { showFiles, commitPatch } from '../../../../../tools/git/main/diff';
+import type { PatchScope } from '../../../../../tools/git/main/diffArgs';
 import { keptFirstParent } from '../../../../../tools/git/main/files';
 import {
   keepGitRunningWhile,

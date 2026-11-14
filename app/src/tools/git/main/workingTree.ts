@@ -6,16 +6,17 @@ import {
   changesArgs,
   diffOptionArgs,
   diffArgs,
-  gitQuoted,
-  isNullId,
   listArgs,
-  parseRawChanges,
   pathspecs,
   type PatchScope,
+} from './diffArgs';
+import { gitQuoted, withoutFilesInside } from './patchText';
+import {
+  isNullId,
+  parseRawChanges,
   type RawChange,
   withBytes,
-  withoutFilesInside,
-} from './diff';
+} from './rawChanges';
 import { isBinary, listUntracked, maxFileSize } from './files';
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';

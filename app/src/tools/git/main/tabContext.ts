@@ -1,4 +1,4 @@
-import type { ReadPatch } from './diff';
+import type { ReadPatch } from './patchBudget';
 import type { Refs } from './repository';
 import { UntrackedPatches } from './workingTree';
 import type { Fetched, RepositoryAt, Notify } from './operations';
