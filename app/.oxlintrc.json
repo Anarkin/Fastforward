@@ -118,17 +118,6 @@
       }
     },
     {
-      "files": ["scripts/playground/git.mts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 1600
-          }
-        ]
-      }
-    },
-    {
       "files": ["src/tools/git/page/diffView.tsx"],
       "rules": {
         "max-lines": [
