@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import type { LineWords } from '../../../../../tools/git/page/wordDiff';
-import { countingReads } from '../../../../support/fixtures';
+import { countingReads } from '../../../../helpers/fixtures';
 import type { DiffRow } from '../../../../../tools/git/page/diffRows';
 import {
   rowOverscan,

@@ -9,7 +9,7 @@ import {
 } from 'playwright-core';
 import { afterAll, beforeAll, inject } from 'vitest';
 import { appFolder, closeOrKill } from '../e2e/appFixtures';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import { perfBuild, type PerfData } from './perfData';
 import {
   frameSummary,
@@ -25,7 +25,7 @@ import {
   type SourceOf,
   type TraceEvent,
 } from './perfTrace';
-import { removeFolder, tempFolder } from '../support/repositories';
+import { removeFolder, tempFolder } from '../helpers/repositories';
 
 export interface PerfApp {
   readonly app: ElectronApplication;

@@ -4,17 +4,17 @@
 
 ```
 app/src/
-├─ boot/                           builds the owners below and wires Electron to them
-├─ lib/{main,page,shared}          the library, code any owner may use, holding no state
+├─ boot/                           builds the parts below and wires Electron to them
+├─ lib/{main,page,shared}          the library, code several parts use, holding no state
 ├─ shell/{main,page,shared}        the frame the tools open in: windows, tabs, settings, storage
 ├─ tools/<id>/{main,page,shared}   a tool each, as the registries of the shell list them
 └─ test/                           the tests
 ```
 
-- Each owner, the library, the shell and each tool, keeps its code in three folders by where it runs: `main` in the main process, `page` in the page, and `shared` in both, holding only what both sides import, as the protocol between them
-- What one side alone imports lives in the `main` or the `page` folder of its owner, what one owner alone uses in the folders of that owner, and what several use in the library
+- Each part, the library, the shell and each tool, keeps its code in three folders by where it runs: `main` in the main process, `page` in the page, and `shared` in both, holding only what both sides import, as the protocol between them
+- What one side alone imports lives in the `main` or the `page` folder of its part, what one part alone uses in the folders of that part, and what several parts use in the library
 - Each folder builds on the ones below it, `boot` on the tools, the tools on the shell and the shell on the library: nothing imports `boot`, the library imports nothing from the others, no tool imports another, and the shell reaches the tools only through its registries
-- The tests of `<path>` of the app live in `test/<path>`, those of `src/<path>` in `test/src/<path>` and those of `scripts/<path>` in `test/scripts/<path>`; the tests of the build, of the app end to end and of its performance, and the helpers the tests share, in `test/build`, `test/e2e`, `test/perf` and `test/support`
+- The tests of `<path>` of the app live in `test/<path>`, those of `src/<path>` in `test/src/<path>` and those of `scripts/<path>` in `test/scripts/<path>`; the tests of the build, of the app end to end and of its performance, and the helpers the tests share, in `test/build`, `test/e2e`, `test/perf` and `test/helpers`
 - `architecture.test.ts` checks these rules, and the lint rules and the tsconfigs keep each side from importing the other
 
 ## Decisions

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { hashOf } from '../../../../../tools/commander/main/contentHash';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 let folder = '';
 const at = (name: string) => path.join(folder, name);

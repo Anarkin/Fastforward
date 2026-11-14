@@ -13,8 +13,8 @@ import {
   gitStore,
   renderedInGit,
   rested,
-} from '../../../../support/componentFixtures';
-import { tagsWith } from '../../../../support/fixtures';
+} from '../../../../helpers/componentFixtures';
+import { tagsWith } from '../../../../helpers/fixtures';
 
 function rowsShown(worktrees: WorktreeInfo[] | undefined): number {
   return tagsWith(

@@ -6,8 +6,8 @@ import type { Tab } from '../../../../../shell/main/shell';
 import type { Side } from '../../../../../tools/commander/shared/protocol';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
-import { waitFor } from '../../../../support/fixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { waitFor } from '../../../../helpers/fixtures';
 import {
   root,
   at,

@@ -29,10 +29,10 @@ import {
   createCommanderStore,
 } from '../../../../../tools/commander/page/store';
 import { strings } from '../../../../../lib/shared/strings';
-import { noop } from '../../../../support/fixtures';
+import { noop } from '../../../../helpers/fixtures';
 import { shareOf, sideToFocus } from '../../../../../tools/commander/page/tool';
 import { JSDOM } from 'jsdom';
-import { withStores } from '../../../../support/componentFixtures';
+import { withStores } from '../../../../helpers/componentFixtures';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
 

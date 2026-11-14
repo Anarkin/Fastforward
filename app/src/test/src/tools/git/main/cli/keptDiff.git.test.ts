@@ -20,7 +20,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 const scopes: PatchScope[] = [
   {},

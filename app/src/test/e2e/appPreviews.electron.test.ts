@@ -12,7 +12,7 @@ import {
   repository,
   sharedApp,
 } from './appFixtures';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 
 const focusColor = () =>
   page.evaluate(() =>

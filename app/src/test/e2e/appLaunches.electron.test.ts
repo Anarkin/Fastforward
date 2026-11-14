@@ -18,12 +18,12 @@ import {
   waitForFocus,
   within,
 } from './appFixtures';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
-} from '../support/repositories';
+} from '../helpers/repositories';
 
 async function scrollsOnWheelOver(
   page: Page,

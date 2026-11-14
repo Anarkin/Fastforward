@@ -11,8 +11,8 @@ import {
   gridLines,
   launchApp,
 } from '../../../e2e/appFixtures';
-import { waitFor } from '../../../support/fixtures';
-import { removeFolder, tempFolder } from '../../../support/repositories';
+import { waitFor } from '../../../helpers/fixtures';
+import { removeFolder, tempFolder } from '../../../helpers/repositories';
 
 const hundredLines =
   process.platform === 'win32'

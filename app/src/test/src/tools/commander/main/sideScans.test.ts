@@ -6,7 +6,7 @@ import { iconUrl } from '../../../../../tools/commander/shared/icons';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import type { SizeWalk } from '../../../../../tools/commander/main/folderSizes';
 import { strings } from '../../../../../lib/shared/strings';
-import { waitFor } from '../../../../support/fixtures';
+import { waitFor } from '../../../../helpers/fixtures';
 import {
   CommanderPage,
   root,

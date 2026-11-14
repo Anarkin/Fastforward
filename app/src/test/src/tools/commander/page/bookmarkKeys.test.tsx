@@ -9,7 +9,7 @@ import type {
   CommanderToWebview,
 } from '../../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../../lib/shared/strings';
-import { noop } from '../../../../support/fixtures';
+import { noop } from '../../../../helpers/fixtures';
 
 const listing = (side: 'left' | 'right'): CommanderToWebview => ({
   type: 'listing',

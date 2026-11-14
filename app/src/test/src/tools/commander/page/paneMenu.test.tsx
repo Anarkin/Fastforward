@@ -14,8 +14,8 @@ import { createCommanderStore } from '../../../../../tools/commander/page/store'
 import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import type { Layout } from '../../../../../tools/commander/shared/settings';
-import { withStores } from '../../../../support/componentFixtures';
-import { noop } from '../../../../support/fixtures';
+import { withStores } from '../../../../helpers/componentFixtures';
+import { noop } from '../../../../helpers/fixtures';
 
 vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
   const { createElement, Fragment } = await import('react');

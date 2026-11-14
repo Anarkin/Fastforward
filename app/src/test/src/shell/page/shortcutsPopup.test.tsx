@@ -30,8 +30,8 @@ import {
 } from '../../../../shell/page/shortcutsPopup';
 import { shortcutEntries } from '../../../../shell/page/tools';
 import { createShellStore } from '../../../../shell/page/store';
-import { withStores } from '../../../support/componentFixtures';
-import { noop, renderedBy, tagsWith } from '../../../support/fixtures';
+import { withStores } from '../../../helpers/componentFixtures';
+import { noop, renderedBy, tagsWith } from '../../../helpers/fixtures';
 
 function shortcutsStore(
   tool?: ToolId,

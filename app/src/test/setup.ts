@@ -1,4 +1,4 @@
 import { afterAll } from 'vitest';
-import { assertNoFoldersLeft } from './support/repositories';
+import { assertNoFoldersLeft } from './helpers/repositories';
 
 afterAll(() => assertNoFoldersLeft(), 10_000);

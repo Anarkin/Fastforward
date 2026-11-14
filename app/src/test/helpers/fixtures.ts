@@ -114,14 +114,14 @@ const stylesheets = [
 
 export function stylesheet(): string {
   return stylesheets
-    .map((file) => readFileSync(join(__dirname, '../../../src', file), 'utf8'))
+    .map((file) => readFileSync(join(__dirname, '../..', file), 'utf8'))
     .join('\n')
     .replaceAll(/^@import [^;]*;$/gm, '');
 }
 
 export function policyOfPage(): Map<string, string[]> {
   const page = readFileSync(
-    join(__dirname, '../../../src/shell/page/index.html'),
+    join(__dirname, '../../shell/page/index.html'),
     'utf8',
   );
   const [, policy = ''] =
@@ -172,7 +172,7 @@ export function renderedBy<P>(
 }
 
 export function defaultSettings(): Settings {
-  return readDefaults(join(__dirname, '../../../src/shell/main/settings.json'));
+  return readDefaults(join(__dirname, '../../shell/main/settings.json'));
 }
 
 export const noop = () => {};

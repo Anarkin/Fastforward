@@ -39,9 +39,9 @@ import {
   stylesheetPx,
   tagsWith,
   tagWith,
-} from '../../../../support/fixtures';
-import { withStores } from '../../../../support/componentFixtures';
-import { renderIn } from '../../../../support/componentFixtures';
+} from '../../../../helpers/fixtures';
+import { withStores } from '../../../../helpers/componentFixtures';
+import { renderIn } from '../../../../helpers/componentFixtures';
 import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import { startAfter } from '../../../../../tools/git/page/startAfter';

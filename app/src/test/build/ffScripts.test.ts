@@ -4,12 +4,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { scriptForAppImage } from '../../boot/terminalCommand';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import {
   installedGit,
   removeFolder,
   tempFolder,
-} from '../support/repositories';
+} from '../helpers/repositories';
 
 const appFolder = path.join(__dirname, '..', '..', '..');
 const posixScript = path.join(appFolder, 'build', 'bin', 'ff');

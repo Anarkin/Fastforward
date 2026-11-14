@@ -11,8 +11,8 @@ import {
   type UpdateMode,
   type Updater,
 } from '../../../boot/updates';
-import { fakeTimer } from '../../support/fakeTimer';
-import { recordingLog } from '../../support/stub';
+import { fakeTimer } from '../../helpers/fakeTimer';
+import { recordingLog } from '../../helpers/stub';
 
 class FakeUpdater extends EventEmitter implements Updater {
   autoDownload = true;

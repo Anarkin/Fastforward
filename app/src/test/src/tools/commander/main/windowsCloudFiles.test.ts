@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 suite.skipIf(process.platform !== 'win32')('Files Google Drive streams', () => {
   test('says a file on this disk does not stream from Google Drive, whether Drive is installed or not, asking twice as the app does for each file', async () => {

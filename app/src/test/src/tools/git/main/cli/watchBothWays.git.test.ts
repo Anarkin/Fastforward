@@ -7,13 +7,13 @@ import {
   watchRepository,
   type Changed,
 } from '../../../../../../tools/git/main/cli/watch';
-import { waitFor } from '../../../../../support/fixtures';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   createsAnewThroughJunctions,
   removeFolder,
   tempFolder,
   tempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 import {
   askingGit,
   changes,

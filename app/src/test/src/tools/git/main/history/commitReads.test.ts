@@ -12,7 +12,7 @@ import {
   type ReadOptions,
 } from '../../../../../../tools/git/main/history/commitReads';
 import { headsOf } from '../../../../../../tools/git/main/history/merges';
-import { removeFolder, tempFolder } from '../../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../../helpers/repositories';
 import { entriesOf } from './historyFixtures';
 
 async function builtReader(folder: string): Promise<void> {

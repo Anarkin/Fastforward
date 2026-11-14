@@ -10,14 +10,14 @@ import {
   withClass,
   type MarkupElement,
   type States,
-} from '../../../support/cascade';
+} from '../../../helpers/cascade';
 import {
   columns,
   menuButton,
   tabBar,
   worktree,
   worktreeBar,
-} from '../../../support/styleFixtures';
+} from '../../../helpers/styleFixtures';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import {
   keyframe,

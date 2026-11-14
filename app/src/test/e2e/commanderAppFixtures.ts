@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { crc32, deflateSync } from 'node:zlib';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll } from 'vitest';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import { clippedCorner, closeOrKill, launchApp } from './appFixtures';
-import { removeFolder, tempFolder } from '../support/repositories';
+import { removeFolder, tempFolder } from '../helpers/repositories';
 
 export let folder: string;
 export let opened: string;

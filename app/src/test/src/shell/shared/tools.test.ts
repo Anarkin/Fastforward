@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { confirmsClose, tools } from '../../../../shell/shared/tools';
-import { defaultSettings } from '../../../support/fixtures';
+import { defaultSettings } from '../../../helpers/fixtures';
 
 suite('Tools', () => {
   test('orders the tools Terminal, Commander, Git, as the + menu, the Open With popup and the settings show them', () => {

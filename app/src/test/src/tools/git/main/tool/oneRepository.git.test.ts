@@ -9,7 +9,7 @@ import {
   suite,
   test,
 } from 'vitest';
-import { replaceBuiltin } from '../../../../../support/builtins';
+import { replaceBuiltin } from '../../../../../helpers/builtins';
 import { comparisonOf } from '../../../../../../tools/git/shared/comparisons';
 import {
   workingTreeHash,
@@ -31,16 +31,16 @@ import {
 } from '../../../../../../tools/git/main/storage';
 import { runGit } from '../../../../../../tools/git/main/cli/run';
 import type { GitTool } from '../../../../../../tools/git/main/tool';
-import { type Connection, gitState } from '../../../../../support/harness';
-import { FakeStore } from '../../../../../support/fakeStore';
-import { waitFor } from '../../../../../support/fixtures';
+import { type Connection, gitState } from '../../../../../helpers/harness';
+import { FakeStore } from '../../../../../helpers/fakeStore';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   installedGit,
   removeFolder,
   tempFolder,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   attach,
   newView,
@@ -61,7 +61,7 @@ import {
   withNotices,
   type OpenView,
   type ViewRepositories,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 import { watchesRecursively } from '../../../../../../tools/git/main/cli/watch';
 
 suite('Git tool of one repository', () => {

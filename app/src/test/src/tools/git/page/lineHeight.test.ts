@@ -5,7 +5,7 @@ import {
   lineHeightOf,
   measureInLines,
 } from '../../../../../tools/git/page/lineHeight';
-import { laidOutRow } from '../../../../support/elementFixtures';
+import { laidOutRow } from '../../../../helpers/elementFixtures';
 
 const boxOf = (blockSize: number) =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion

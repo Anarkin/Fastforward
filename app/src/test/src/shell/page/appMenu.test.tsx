@@ -6,9 +6,9 @@ import type { UpdateStatus } from '../../../../shell/shared/protocol';
 import { AppMenu, updateLabel } from '../../../../shell/page/appMenu';
 import { createShellStore } from '../../../../shell/page/store';
 import type { ContextMenuItem } from '../../../../lib/page/contextMenu';
-import { allWithClass, cascaded, rendered } from '../../../support/cascade';
-import { renderedBy } from '../../../support/fixtures';
-import { withStores } from '../../../support/componentFixtures';
+import { allWithClass, cascaded, rendered } from '../../../helpers/cascade';
+import { renderedBy } from '../../../helpers/fixtures';
+import { withStores } from '../../../helpers/componentFixtures';
 
 function menuOf(
   update: UpdateStatus,

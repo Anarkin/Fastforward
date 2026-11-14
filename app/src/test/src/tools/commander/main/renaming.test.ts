@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import { renameUnlessTaken } from '../../../../../tools/commander/main/renaming';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 suite('renameUnlessTaken', () => {
   let folder: string;

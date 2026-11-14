@@ -6,7 +6,7 @@ import type { ToWebviewOf } from '../../../../shell/shared/protocol';
 import { OpenWithPopup } from '../../../../shell/page/openWithPopup';
 import { strings } from '../../../../lib/shared/strings';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
-import { renderIn } from '../../../support/componentFixtures';
+import { renderIn } from '../../../helpers/componentFixtures';
 
 const noop = () => undefined;
 

@@ -14,14 +14,14 @@ import {
   cascaded,
   rendered,
   withClass,
-} from '../../../support/cascade';
+} from '../../../helpers/cascade';
 import {
   contextMenu,
   historyMenu,
   locationsPopup,
   notices,
   tabBar,
-} from '../../../support/styleFixtures';
+} from '../../../helpers/styleFixtures';
 import {
   noop,
   looks,

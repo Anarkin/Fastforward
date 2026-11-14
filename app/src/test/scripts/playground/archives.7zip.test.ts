@@ -11,7 +11,7 @@ import {
   sevenZipProgram,
   sevenZipReader,
 } from '../../../tools/commander/main/sevenZip';
-import { removeFolder, tempFolder } from '../../support/repositories';
+import { removeFolder, tempFolder } from '../../helpers/repositories';
 
 interface PlannedFile {
   readonly kind: string;

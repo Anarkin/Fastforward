@@ -2,15 +2,15 @@ import * as assert from 'node:assert';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
-import { waitFor } from '../../../../../support/fixtures';
-import { recordingLog } from '../../../../../support/stub';
+import { waitFor } from '../../../../../helpers/fixtures';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   failOnErrorsLogged,
   openView,
   saveTabs,
   stubMethod,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 suite('Git tool fetching by itself', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');

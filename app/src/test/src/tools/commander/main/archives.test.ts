@@ -12,8 +12,8 @@ import {
   type Packing,
 } from '../../../../../tools/commander/main/archives';
 import { strings } from '../../../../../lib/shared/strings';
-import { waitFor } from '../../../../support/fixtures';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { waitFor } from '../../../../helpers/fixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 function item(itemPath: string, more: Partial<ArchiveItem> = {}): ArchiveItem {
   return {

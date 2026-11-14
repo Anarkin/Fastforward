@@ -8,11 +8,11 @@ import {
   readUpstream,
   remoteDefaultBranches,
 } from '../../../../../../tools/git/main/cli/branches';
-import { renamingRepository } from '../../../../../support/gitFixtures';
+import { renamingRepository } from '../../../../../helpers/gitFixtures';
 import {
   removeFolder,
   type TempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 suite('Git branches', () => {
   let gitPath: string;

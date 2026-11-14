@@ -2,12 +2,12 @@ import * as assert from 'node:assert';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
-import { recordingLog } from '../../../../../support/stub';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   failOnErrorsLogged,
   withView,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 suite('Git tool layout with no tab open', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');

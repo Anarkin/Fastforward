@@ -4,15 +4,15 @@ import { isDeepStrictEqual } from 'node:util';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { RefInfo } from '../../../../../../tools/git/shared/protocol';
 import { remoteTagsKey } from '../../../../../../tools/git/main/storage';
-import type { Connection } from '../../../../../support/harness';
-import { waitFor } from '../../../../../support/fixtures';
+import type { Connection } from '../../../../../helpers/harness';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   deleteTags,
@@ -21,7 +21,7 @@ import {
   openView,
   takeErrorsLogged,
   gitState,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 function remoteTag(name: string, tag: string, commit: string): RefInfo {
   return { kind: 'remote-tag', name: `${name}/${tag}`, commit, remote: name };

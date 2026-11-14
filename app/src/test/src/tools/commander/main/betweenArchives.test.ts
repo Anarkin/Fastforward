@@ -12,7 +12,7 @@ import {
 } from '../../../../../tools/commander/main/archives';
 import { copiedBetween } from '../../../../../tools/commander/main/betweenArchives';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 const openedAt = (file: string): OpenedArchive => ({
   file,

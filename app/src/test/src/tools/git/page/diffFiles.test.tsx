@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
 import { parsePatch, type DiffFile } from '../../../../../tools/git/page/diff';
-import { tagsWith } from '../../../../support/fixtures';
+import { tagsWith } from '../../../../helpers/fixtures';
 import { kinds } from './diffViewFixtures';
 import { diffRows, sideChange } from '../../../../../tools/git/page/diffRows';
 import {

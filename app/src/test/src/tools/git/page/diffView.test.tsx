@@ -10,8 +10,8 @@ import {
 import { sideBySideWords } from '../../../../../tools/git/page/pairing';
 import { wordRanges } from '../../../../../tools/git/page/wordDiff';
 import { lineKey } from '../../../../../tools/git/page/find';
-import { noop } from '../../../../support/fixtures';
-import { withStores } from '../../../../support/componentFixtures';
+import { noop } from '../../../../helpers/fixtures';
+import { withStores } from '../../../../helpers/componentFixtures';
 import { createGitStore } from '../../../../../tools/git/page/store';
 import { patch, kinds } from './diffViewFixtures';
 import {

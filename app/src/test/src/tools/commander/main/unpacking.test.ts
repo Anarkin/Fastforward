@@ -20,8 +20,8 @@ import type {
 } from '../../../../../tools/commander/main/transferProtocol';
 import type { TransferListener } from '../../../../../tools/commander/main/transfers';
 import { unpackingFirst } from '../../../../../tools/commander/main/unpacking';
-import { waitFor } from '../../../../support/fixtures';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { waitFor } from '../../../../helpers/fixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 const archive: OpenedArchive = {
   file: path.join('C:', 'Downloads', 'a.zip'),

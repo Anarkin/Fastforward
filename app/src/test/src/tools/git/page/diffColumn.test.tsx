@@ -19,7 +19,7 @@ import {
   inStores,
   optionStores,
   type ShownOptions,
-} from '../../../../support/componentFixtures';
+} from '../../../../helpers/componentFixtures';
 
 const language = <span className="language-slot" />;
 

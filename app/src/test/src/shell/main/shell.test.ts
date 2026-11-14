@@ -9,7 +9,7 @@ import {
   strings,
   type Sentence,
 } from '../../../../lib/shared/strings';
-import { recordingLog } from '../../../support/stub';
+import { recordingLog } from '../../../helpers/stub';
 import type { CommandInstall } from '../../../../shell/main/hostTypes';
 import {
   attach,
@@ -24,8 +24,8 @@ import {
   terminalHostOf,
   withView,
   type FakePage,
-} from '../../../support/harness';
-import { removeFolder, tempFolder } from '../../../support/repositories';
+} from '../../../helpers/harness';
+import { removeFolder, tempFolder } from '../../../helpers/repositories';
 import { quitNoteOf } from '../../../../shell/main/shell';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
 

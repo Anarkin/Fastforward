@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { QuitGuard } from '../../../boot/quitGuard';
-import { fakeTimer } from '../../support/fakeTimer';
+import { fakeTimer } from '../../helpers/fakeTimer';
 
 function guarded(asks = true, timer = fakeTimer().timer) {
   const done: string[] = [];

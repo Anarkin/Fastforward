@@ -17,14 +17,14 @@ import type {
   BookmarkRef,
   GitToHost,
 } from '../../../../../tools/git/shared/protocol';
-import { gitStore, type ShownGit } from '../../../../support/componentFixtures';
+import { gitStore, type ShownGit } from '../../../../helpers/componentFixtures';
 import {
   classesOf,
   noop,
   renderedBy,
   tagWith,
-} from '../../../../support/fixtures';
-import { withStores } from '../../../../support/componentFixtures';
+} from '../../../../helpers/fixtures';
+import { withStores } from '../../../../helpers/componentFixtures';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
 

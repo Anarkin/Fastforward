@@ -7,8 +7,8 @@ import {
   rendered,
   withClass,
   type States,
-} from '../../../support/cascade';
-import { defaultSettings } from '../../../support/fixtures';
+} from '../../../helpers/cascade';
+import { defaultSettings } from '../../../helpers/fixtures';
 import {
   css,
   compact,

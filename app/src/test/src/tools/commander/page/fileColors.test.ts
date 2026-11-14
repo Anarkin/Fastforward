@@ -7,7 +7,7 @@ import {
 } from '../../../../../tools/commander/page/fileColors';
 import { languageOf } from '../../../../../lib/page/languages';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
-import { defaultSettings } from '../../../../support/fixtures';
+import { defaultSettings } from '../../../../helpers/fixtures';
 
 const file = (name: string, extra: Partial<Entry> = {}): Entry => ({
   name,

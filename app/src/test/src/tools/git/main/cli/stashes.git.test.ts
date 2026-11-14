@@ -14,7 +14,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 suite('Git stashes', () => {
   let folder: string;

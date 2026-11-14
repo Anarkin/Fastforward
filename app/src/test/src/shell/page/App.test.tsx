@@ -13,7 +13,7 @@ import {
   newTabItems,
 } from '../../../../shell/page/App';
 import { menuIn, nextMenu, withPopup } from '../../../../shell/page/store';
-import { noop, tagsWith } from '../../../support/fixtures';
+import { noop, tagsWith } from '../../../helpers/fixtures';
 
 suite('Window', () => {
   test('says no tab is open only once the host says which tabs are', () => {

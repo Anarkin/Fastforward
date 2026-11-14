@@ -7,8 +7,8 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { elevatedFileSystem } from '../../tools/commander/main/elevated';
 import { helperArguments } from '../../tools/commander/main/helper';
 import { appFolder } from './appFixtures';
-import { waitFor } from '../support/fixtures';
-import { removeFolder, tempFolder } from '../support/repositories';
+import { waitFor } from '../helpers/fixtures';
+import { removeFolder, tempFolder } from '../helpers/repositories';
 
 const electron: string = createRequire(__filename)('electron');
 

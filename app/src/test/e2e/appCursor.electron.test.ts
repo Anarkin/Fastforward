@@ -21,8 +21,8 @@ import type * as editorSelectionModule from '../../tools/commander/page/editorSe
 import type * as editorTextModule from '../../tools/commander/page/editorText';
 import type * as textWidthsModule from '../../lib/page/textWidths';
 import { closeOrKill, launchApp, within } from './appFixtures';
-import { waitFor } from '../support/fixtures';
-import { removeFolder, tempFolder } from '../support/repositories';
+import { waitFor } from '../helpers/fixtures';
+import { removeFolder, tempFolder } from '../helpers/repositories';
 
 const shell =
   process.platform === 'win32'

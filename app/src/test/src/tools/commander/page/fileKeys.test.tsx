@@ -10,7 +10,7 @@ import type {
 } from '../../../../../tools/commander/shared/protocol';
 import type { TransferView } from '../../../../../tools/commander/shared/transfers';
 import { strings } from '../../../../../lib/shared/strings';
-import { noop } from '../../../../support/fixtures';
+import { noop } from '../../../../helpers/fixtures';
 
 const listing = (side: 'left' | 'right'): CommanderToWebview => ({
   type: 'listing',

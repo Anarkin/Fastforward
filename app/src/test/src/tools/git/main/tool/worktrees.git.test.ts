@@ -10,14 +10,14 @@ import {
   recentKey,
   worktreesKey,
 } from '../../../../../../tools/git/main/storage';
-import { waitFor } from '../../../../../support/fixtures';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   commitsSent,
@@ -34,7 +34,7 @@ import {
   tabOf,
   shownTabs,
   gitState,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 function sameRealFolder(a: string | undefined, b: string): boolean {
   return (

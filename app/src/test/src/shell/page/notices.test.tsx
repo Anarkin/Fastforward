@@ -9,9 +9,9 @@ import {
   shownFor,
   type Notice,
 } from '../../../../shell/page/notices';
-import { noop, renderedBy } from '../../../support/fixtures';
+import { noop, renderedBy } from '../../../helpers/fixtures';
 import { createShellStore } from '../../../../shell/page/store';
-import { withStores } from '../../../support/componentFixtures';
+import { withStores } from '../../../helpers/componentFixtures';
 
 const withNotices = (notices: readonly Notice[]) =>
   withStores(<Notices />, { shell: createShellStore(noop, { notices }) });

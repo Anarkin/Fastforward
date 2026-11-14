@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 suite.skipIf(process.platform !== 'win32')('The menu of the system', () => {
   test('builds the menu Explorer shows for the files and folders chosen together, with the commands it runs, but no Rename, which works in Explorer alone', async () => {

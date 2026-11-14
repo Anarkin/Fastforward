@@ -7,7 +7,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 suite('Git remote tags', () => {
   let folder: string;

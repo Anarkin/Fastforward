@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../../../support/builtins';
+import { replaceBuiltin } from '../../../../../helpers/builtins';
 import {
   collapseThreshold,
   patchByteBudget,
@@ -18,14 +18,14 @@ import { soloKey } from '../../../../../../tools/git/main/storage';
 import { tabsKey } from '../../../../../../shell/main/storage';
 import { plainOf, strings } from '../../../../../../lib/shared/strings';
 import type { ToHost } from '../../../../../../shell/shared/protocol';
-import { waitFor } from '../../../../../support/fixtures';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   FakeHost,
@@ -39,7 +39,7 @@ import {
   tabOf,
   shownTabs,
   gitState,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 const longLines = (text: string) =>
   `${text} ${'x'.repeat(1024)}\n`.repeat(maxFileSize / 1024 + 1);

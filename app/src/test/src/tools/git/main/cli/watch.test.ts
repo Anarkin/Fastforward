@@ -17,8 +17,8 @@ import {
   watchTree,
   type FolderWatcher,
 } from '../../../../../../tools/git/main/cli/watch';
-import { waitFor } from '../../../../../support/fixtures';
-import { removeFolder, tempFolder } from '../../../../../support/repositories';
+import { waitFor } from '../../../../../helpers/fixtures';
+import { removeFolder, tempFolder } from '../../../../../helpers/repositories';
 
 suite('Watching the git folder', () => {
   const modules = new Set([

@@ -24,13 +24,13 @@ import {
   renderedInGit,
   renderIn,
   type ShownGit,
-} from '../../../../support/componentFixtures';
+} from '../../../../helpers/componentFixtures';
 import {
   classesOf,
   noop,
   renderedBy,
   tagWith,
-} from '../../../../support/fixtures';
+} from '../../../../helpers/fixtures';
 
 const at = 'a'.repeat(40);
 

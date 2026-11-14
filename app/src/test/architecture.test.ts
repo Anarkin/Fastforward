@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { tools } from '../shell/shared/tools';
-import { defaultSettings } from './support/fixtures';
+import { defaultSettings } from './helpers/fixtures';
 
 const source = path.join(__dirname, '..');
 const appFolder = path.join(source, '..');
@@ -82,7 +82,7 @@ function partOf(file: string): string | undefined {
 const registries = ['shell/shared/tools.ts', 'shell/page/tools.tsx'];
 
 suite('Architecture', () => {
-  test('keeps each source file in the folder of its owner, the library, the shell or a tool, by where it runs, or in boot', () => {
+  test('keeps each source file in the folder of its part, the library, the shell or a tool, by where it runs, or in boot', () => {
     const placed =
       /^(?:(?:lib|shell|tools\/[^/]+)\/(?:main|page|shared)\/.+|boot\/[^/]+)$/;
     assert.deepStrictEqual(
@@ -91,7 +91,7 @@ suite('Architecture', () => {
     );
   });
 
-  test('lets nothing import boot, which builds every owner', () => {
+  test('lets nothing import boot, which builds every part', () => {
     assert.deepStrictEqual(
       sourceFiles
         .filter((file) => !file.startsWith('boot/'))
@@ -112,16 +112,16 @@ suite('Architecture', () => {
   });
 
   test('gives the library, the shell and each tool a main, a page and a shared folder, and nothing else', () => {
-    const owners = ['lib', 'shell', ...tools.map((tool) => `tools/${tool}`)];
+    const parts = ['lib', 'shell', ...tools.map((tool) => `tools/${tool}`)];
     assert.deepStrictEqual(
       Object.fromEntries(
-        owners.map((owner) => [
-          owner,
-          fs.readdirSync(path.join(source, owner)).toSorted(),
+        parts.map((part) => [
+          part,
+          fs.readdirSync(path.join(source, part)).toSorted(),
         ]),
       ),
       Object.fromEntries(
-        owners.map((owner) => [owner, ['main', 'page', 'shared']]),
+        parts.map((part) => [part, ['main', 'page', 'shared']]),
       ),
     );
   });
@@ -200,7 +200,7 @@ suite('Architecture', () => {
     );
   });
 
-  test('keeps in a shared folder only what both the main process and the page import, directly or through other shared code, as what one side alone imports belongs in the main or the page folder of its owner', () => {
+  test('keeps in a shared folder only what both the main process and the page import, directly or through other shared code, as what one side alone imports belongs in the main or the page folder of its part', () => {
     const sides = {
       main: /^(?:boot|(?:lib|shell|tools\/[^/]+)\/main)\//,
       page: /^(?:lib|shell|tools\/[^/]+)\/page\//,
@@ -267,8 +267,8 @@ suite('Architecture', () => {
     );
   });
 
-  test('keeps the tests of <path> of the app in test/<path>, of src and of scripts, and the tests of the build, of the app end to end and of its performance, and the helpers they share, each in a folder of their own, build, e2e, perf and support', () => {
-    const grouped = ['build', 'e2e', 'perf', 'support'];
+  test('keeps the tests of <path> of the app in test/<path>, of src and of scripts, and the tests of the build, of the app end to end and of its performance, and the helpers they share, each in a folder of their own, build, e2e, perf and helpers', () => {
+    const grouped = ['build', 'e2e', 'perf', 'helpers'];
     assert.deepStrictEqual(
       testFiles.filter((file) => {
         const folder = path.posix.dirname(file);

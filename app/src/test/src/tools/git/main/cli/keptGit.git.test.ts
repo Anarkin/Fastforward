@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { suite, test } from 'vitest';
-import { waitFor } from '../../../../../support/fixtures';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   GitOutput,
   KeptGits,
@@ -10,7 +10,7 @@ import {
 } from '../../../../../../tools/git/main/cli/keptGit';
 import { startGit } from '../../../../../../tools/git/main/cli/run';
 import type { GitChild } from '../../../../../../tools/git/main/cli/spawnedGit';
-import { installedGit } from '../../../../../support/repositories';
+import { installedGit } from '../../../../../helpers/repositories';
 
 const catFile = [
   'cat-file',

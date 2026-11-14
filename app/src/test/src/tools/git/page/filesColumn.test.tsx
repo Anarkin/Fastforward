@@ -46,14 +46,14 @@ import {
   clickFile,
   renderIn,
   type RowProps,
-} from '../../../../support/componentFixtures';
+} from '../../../../helpers/componentFixtures';
 import {
   fileChange as change,
   keyPress,
   noop,
   renderedBy,
   tagWith,
-} from '../../../../support/fixtures';
+} from '../../../../helpers/fixtures';
 
 const commit = '0123456789abcdef0123456789abcdef01234567';
 const otherCommit = 'fedcba9876543210fedcba9876543210fedcba98';

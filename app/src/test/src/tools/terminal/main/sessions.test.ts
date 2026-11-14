@@ -11,8 +11,8 @@ import type {
 import { PtyHost } from '../../../../../tools/terminal/main/sessions';
 import { strings } from '../../../../../lib/shared/strings';
 import type { WindowsPty } from '../../../../../tools/terminal/shared/protocol';
-import { fakePtys, until } from '../../../../support/fakePty';
-import { fakeTimer } from '../../../../support/fakeTimer';
+import { fakePtys, until } from '../../../../helpers/fakePty';
+import { fakeTimer } from '../../../../helpers/fakeTimer';
 
 const launch: ShellLaunch = {
   file: 'zsh',

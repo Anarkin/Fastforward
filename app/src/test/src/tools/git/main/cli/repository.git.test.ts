@@ -12,8 +12,8 @@ import {
   repositoryRoot,
 } from '../../../../../../tools/git/main/cli/repository';
 import { gitErrorText } from '../../../../../../tools/git/main/cli/errorText';
-import { waitFor } from '../../../../../support/fixtures';
-import { renamingRepository } from '../../../../../support/gitFixtures';
+import { waitFor } from '../../../../../helpers/fixtures';
+import { renamingRepository } from '../../../../../helpers/gitFixtures';
 import {
   asIfOwnedByAnother,
   gitsStarted,
@@ -23,7 +23,7 @@ import {
   tempRepository,
   withEnv,
   type TempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 suite('Git repository', () => {
   let gitPath: string;

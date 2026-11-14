@@ -14,7 +14,7 @@ import {
   waitForCount,
   waitForFocus,
 } from './appFixtures';
-import { defaultSettings, waitFor } from '../support/fixtures';
+import { defaultSettings, waitFor } from '../helpers/fixtures';
 
 async function drawnCodeRow(): Promise<number> {
   return page

@@ -20,7 +20,7 @@ import { bookmarkOptions } from '../../../../../tools/git/page/bookmarks';
 import type { ContextMenuItem } from '../../../../../lib/page/contextMenu';
 import { strings } from '../../../../../lib/shared/strings';
 import { compareWith } from '../../../../../tools/git/shared/comparisons';
-import { commitInfo, noop } from '../../../../support/fixtures';
+import { commitInfo, noop } from '../../../../helpers/fixtures';
 
 const at = 'a'.repeat(40);
 

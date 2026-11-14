@@ -5,12 +5,12 @@ import type { ElectronApplication } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp, savedTabs } from './appFixtures';
-import { defaultSettings, waitFor } from '../support/fixtures';
+import { defaultSettings, waitFor } from '../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
-} from '../support/repositories';
+} from '../helpers/repositories';
 
 async function quitWithoutChromium(
   app: ElectronApplication,

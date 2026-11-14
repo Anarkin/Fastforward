@@ -13,9 +13,9 @@ import {
   toolState,
   windowsKey,
 } from '../../../../shell/main/storage';
-import { FakeStore } from '../../../support/fakeStore';
-import { defaultSettings } from '../../../support/fixtures';
-import { removeFolder, tempFolder } from '../../../support/repositories';
+import { FakeStore } from '../../../helpers/fakeStore';
+import { defaultSettings } from '../../../helpers/fixtures';
+import { removeFolder, tempFolder } from '../../../helpers/repositories';
 
 const terminalTab = (id: string) => ({ id, tool: 'terminal' }) as const;
 

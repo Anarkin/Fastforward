@@ -6,7 +6,7 @@ import {
   matchTicks,
   ScrollBody,
 } from '../../../../../tools/commander/page/scrollBody';
-import { withStores } from '../../../../support/componentFixtures';
+import { withStores } from '../../../../helpers/componentFixtures';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
 

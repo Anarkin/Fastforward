@@ -9,7 +9,7 @@ import type * as editorSelectionModule from '../../tools/commander/page/editorSe
 import type * as editorTextModule from '../../tools/commander/page/editorText';
 import type * as textWidthsModule from '../../lib/page/textWidths';
 import { diffLineNumbered, gridLines, page, sharedApp } from './appFixtures';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 
 const editorLines = [
   `    ${'indented line with some words to wrap around the edge '.repeat(6)}`,

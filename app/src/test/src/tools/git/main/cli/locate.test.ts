@@ -9,7 +9,7 @@ import {
   parseVersion,
   versionOutput,
 } from '../../../../../../tools/git/main/cli/locate';
-import { removeFolder, tempFolder } from '../../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../../helpers/repositories';
 
 suite('Finding git', () => {
   let folder: string;

@@ -6,13 +6,13 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { baseSettings, closeOrKill, launchApp } from './appFixtures';
-import { shownText } from '../support/fixtures';
+import { shownText } from '../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../support/repositories';
+} from '../helpers/repositories';
 
 suite('App making new repositories', () => {
   let folder: string;

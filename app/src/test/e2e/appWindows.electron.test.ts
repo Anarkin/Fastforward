@@ -5,8 +5,8 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp } from './appFixtures';
-import { waitFor } from '../support/fixtures';
-import { removeFolder, tempFolder } from '../support/repositories';
+import { waitFor } from '../helpers/fixtures';
+import { removeFolder, tempFolder } from '../helpers/repositories';
 
 interface SavedBounds {
   readonly x: number;

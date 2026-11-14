@@ -2,10 +2,10 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import { floodDone, floodReady } from './perfData';
 import { launchedForPerf, measure, perfData, sleep } from './perfFixtures';
-import { removeFolder, tempFolder } from '../support/repositories';
+import { removeFolder, tempFolder } from '../helpers/repositories';
 
 suite('Frames of the terminal', () => {
   const { flood } = perfData();

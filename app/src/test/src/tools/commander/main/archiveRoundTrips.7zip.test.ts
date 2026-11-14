@@ -22,7 +22,7 @@ import { unpackingFirst } from '../../../../../tools/commander/main/unpacking';
 import { copiedBetween } from '../../../../../tools/commander/main/betweenArchives';
 import type { PackFormat } from '../../../../../tools/commander/shared/packing';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..', '..');
 

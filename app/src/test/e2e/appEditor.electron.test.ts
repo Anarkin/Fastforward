@@ -4,9 +4,9 @@ import * as path from 'node:path';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appFixtures';
-import { defaultSettings, waitFor } from '../support/fixtures';
-import { removeFolder, tempFolder } from '../support/repositories';
-import { storedZip } from '../support/zips';
+import { defaultSettings, waitFor } from '../helpers/fixtures';
+import { removeFolder, tempFolder } from '../helpers/repositories';
+import { storedZip } from '../helpers/zips';
 
 interface TextPlace {
   readonly top: number;

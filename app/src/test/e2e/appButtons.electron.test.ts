@@ -5,12 +5,12 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp } from './appFixtures';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
-} from '../support/repositories';
+} from '../helpers/repositories';
 
 interface ButtonLayout {
   readonly gaps: readonly number[];

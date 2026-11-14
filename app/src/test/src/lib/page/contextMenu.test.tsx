@@ -20,7 +20,7 @@ import {
   noop,
   renderedBy,
   tagsWith,
-} from '../../../support/fixtures';
+} from '../../../helpers/fixtures';
 
 function keyDown(key: string): Event {
   return Object.assign(new Event('keydown', { cancelable: true }), {

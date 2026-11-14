@@ -5,7 +5,7 @@ import {
   changeTitle,
   renamedPath,
 } from '../../../../../tools/git/page/fileStatus';
-import { fileChange as change } from '../../../../support/fixtures';
+import { fileChange as change } from '../../../../helpers/fixtures';
 
 suite('File status', () => {
   test('sorts every status into the four kinds GitHub shows, a copy or an untracked file being new and a type change or an unknown status a modification', () => {

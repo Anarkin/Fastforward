@@ -14,7 +14,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../support/repositories';
+} from '../helpers/repositories';
 
 const script = path.join(__dirname, '..', '..', '..', 'scripts', 'push.mts');
 

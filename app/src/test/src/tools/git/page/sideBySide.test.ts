@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import { glideAt, glideBy, glideEnded } from '../../../../../lib/page/glide';
-import { noModifiers } from '../../../../support/fixtures';
+import { noModifiers } from '../../../../helpers/fixtures';
 import {
   diffRows,
   lineKeys,

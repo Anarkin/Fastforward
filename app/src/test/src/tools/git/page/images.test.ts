@@ -15,7 +15,7 @@ import {
   wholeViewedSource,
 } from '../../../../../tools/git/page/images';
 import { documentImagePath, ImageCache } from '../../../../../lib/page/images';
-import { policyOfPage } from '../../../../support/fixtures';
+import { policyOfPage } from '../../../../helpers/fixtures';
 
 const oldId = '1'.repeat(40);
 const newId = '2'.repeat(40);

@@ -12,8 +12,8 @@ import {
   boxedThumbnailUrl,
   filledThumbnailUrl,
 } from '../../../../../lib/shared/images';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
-import { waitFor } from '../../../../support/fixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { waitFor } from '../../../../helpers/fixtures';
 import { thumbnailKey } from '../../../../../tools/commander/main/thumbnailStore';
 import {
   CommanderPage,

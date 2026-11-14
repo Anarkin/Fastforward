@@ -26,13 +26,13 @@ import { parsePatch } from '../../../../../../tools/git/page/diff';
 import {
   renamingRepository,
   submoduleRepository,
-} from '../../../../../support/gitFixtures';
+} from '../../../../../helpers/gitFixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 function headers(patch: string): string[] {
   return patch.split('\n').filter((line) => line.startsWith('diff --git'));

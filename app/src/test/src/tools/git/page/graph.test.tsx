@@ -7,7 +7,7 @@ import {
   graphWidth,
   rowLanes,
 } from '../../../../../tools/git/page/graph';
-import { noop } from '../../../../support/fixtures';
+import { noop } from '../../../../helpers/fixtures';
 
 const cell = (row: GraphRow, height = 30, line = 20, scale = 1) =>
   renderToStaticMarkup(

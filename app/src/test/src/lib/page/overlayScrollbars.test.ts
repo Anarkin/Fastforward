@@ -23,7 +23,7 @@ import {
   sidewaysScroll,
   thumbOf,
 } from '../../../../lib/page/overlayScrollbars';
-import { stylesheet } from '../../../support/fixtures';
+import { stylesheet } from '../../../helpers/fixtures';
 
 const none = () => null;
 

@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../../../support/builtins';
+import { replaceBuiltin } from '../../../../../helpers/builtins';
 import { gitErrorText } from '../../../../../../tools/git/main/cli/errorText';
 import { fastForward } from '../../../../../../tools/git/main/cli/branches';
 import {
@@ -22,14 +22,14 @@ import {
   workingTreeFiles,
   workingTreePatch,
 } from '../../../../../../tools/git/main/cli/workingTree';
-import { waitFor } from '../../../../../support/fixtures';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   withEnv,
   type TempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 async function printing300MB(run: () => Promise<unknown>): Promise<void> {
   const childProcess = process.getBuiltinModule('node:child_process');

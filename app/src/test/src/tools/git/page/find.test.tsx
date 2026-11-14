@@ -17,7 +17,7 @@ import {
   matchesIn,
   stepMatch,
 } from '../../../../../lib/shared/textMatches';
-import { keyPress } from '../../../../support/fixtures';
+import { keyPress } from '../../../../helpers/fixtures';
 import { diffRows, lineKeys } from '../../../../../tools/git/page/diffRows';
 import {
   diffMinimapMarks,

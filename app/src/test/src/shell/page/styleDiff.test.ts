@@ -17,7 +17,7 @@ import {
   matchingRules,
   rendered,
   withClass,
-} from '../../../support/cascade';
+} from '../../../helpers/cascade';
 import {
   columns,
   diffRow,
@@ -26,7 +26,7 @@ import {
   minimap,
   shownRow,
   splitLine,
-} from '../../../support/styleFixtures';
+} from '../../../helpers/styleFixtures';
 import {
   noop,
   indented,

@@ -7,7 +7,7 @@ import {
   FileHashes,
   LineCounts,
 } from '../../../../../../tools/git/main/cli/workingTree';
-import { removeFolder, tempFolder } from '../../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../../helpers/repositories';
 
 suite('Untracked files', () => {
   test('lists them with git status on Windows, which reads the folders through its cache, keeping only the untracked ones', () => {

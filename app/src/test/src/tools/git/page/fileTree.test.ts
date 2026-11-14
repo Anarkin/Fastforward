@@ -4,7 +4,7 @@ import {
   buildFileTree,
   foldersOf,
 } from '../../../../../tools/git/page/fileTree';
-import { fileChange } from '../../../../support/fixtures';
+import { fileChange } from '../../../../helpers/fixtures';
 
 suite('File tree', () => {
   test('nests files in folders and marks the ones with changes', () => {

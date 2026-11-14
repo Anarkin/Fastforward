@@ -13,7 +13,7 @@ import {
   waitForCount,
   waitForFocus,
 } from './appFixtures';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 
 async function removeWorktree(worktree: string, branch: string): Promise<void> {
   await repository

@@ -4,12 +4,12 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appFixtures';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
-} from '../support/repositories';
+} from '../helpers/repositories';
 
 interface Area {
   readonly left: number;

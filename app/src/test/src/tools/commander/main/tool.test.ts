@@ -11,8 +11,8 @@ import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import type { Sorts } from '../../../../../tools/commander/shared/settings';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
-import { waitFor } from '../../../../support/fixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { waitFor } from '../../../../helpers/fixtures';
 import {
   CommanderPage,
   root,

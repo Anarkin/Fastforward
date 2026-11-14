@@ -61,19 +61,19 @@ import { defaultDateFormat, formatDate } from '../../../../../lib/page/dates';
 import { createShellStore, ShellStore } from '../../../../../shell/page/store';
 import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
-import { gitStore, type ShownGit } from '../../../../support/componentFixtures';
+import { gitStore, type ShownGit } from '../../../../helpers/componentFixtures';
 import {
   commitInfo,
   keyPress,
   noModifiers,
   renderedBy,
   withMacKeys,
-} from '../../../../support/fixtures';
+} from '../../../../helpers/fixtures';
 import {
   laidOutElement,
   laidOutRow,
-} from '../../../../support/elementFixtures';
-import { withStores } from '../../../../support/componentFixtures';
+} from '../../../../helpers/elementFixtures';
+import { withStores } from '../../../../helpers/componentFixtures';
 
 const unchangingMedia = (window: JSDOM['window']) => (): MediaQueryList =>
   Object.assign(new window.EventTarget(), {
@@ -83,7 +83,7 @@ const unchangingMedia = (window: JSDOM['window']) => (): MediaQueryList =>
     addListener: () => undefined,
     removeListener: () => undefined,
   });
-import { renderIn } from '../../../../support/componentFixtures';
+import { renderIn } from '../../../../helpers/componentFixtures';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
 

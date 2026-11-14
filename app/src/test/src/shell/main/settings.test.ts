@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../support/builtins';
+import { replaceBuiltin } from '../../../helpers/builtins';
 import {
   mergeSettings,
   overridesOf,
@@ -12,12 +12,12 @@ import {
   writeReadOnly,
 } from '../../../../shell/main/settings';
 import { plainOf, strings } from '../../../../lib/shared/strings';
-import { defaultSettings, waitFor } from '../../../support/fixtures';
+import { defaultSettings, waitFor } from '../../../helpers/fixtures';
 import {
   removeFolder,
   symlinkOrSkip,
   tempFolder,
-} from '../../../support/repositories';
+} from '../../../helpers/repositories';
 
 const defaults = defaultSettings();
 

@@ -19,8 +19,8 @@ import {
   keptGits,
 } from '../../../../../../tools/git/main/cli/run';
 import { parsePatch } from '../../../../../../tools/git/page/diff';
-import { replaceBuiltin } from '../../../../../support/builtins';
-import { submoduleRepository } from '../../../../../support/gitFixtures';
+import { replaceBuiltin } from '../../../../../helpers/builtins';
+import { submoduleRepository } from '../../../../../helpers/gitFixtures';
 import {
   gitsStarted,
   removeFolder,
@@ -28,7 +28,7 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 suite('Repository files', () => {
   let parent: string;

@@ -9,7 +9,7 @@ import type {
   ShownPdf,
 } from '../../../../../tools/commander/page/pdfDocument';
 import { PdfPane } from '../../../../../tools/commander/page/pdfView';
-import { noop, waitFor } from '../../../../support/fixtures';
+import { noop, waitFor } from '../../../../helpers/fixtures';
 
 interface Opening {
   readonly size: number;

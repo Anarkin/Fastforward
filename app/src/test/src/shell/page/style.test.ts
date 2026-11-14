@@ -15,14 +15,14 @@ import {
   cascaded,
   rendered,
   withClass,
-} from '../../../support/cascade';
+} from '../../../helpers/cascade';
 import {
   defaultSettings,
   fileChange,
   renderedBy,
   stylesheet,
-} from '../../../support/fixtures';
-import { tabsStore } from '../../../support/componentFixtures';
+} from '../../../helpers/fixtures';
+import { tabsStore } from '../../../helpers/componentFixtures';
 import {
   searchButton,
   columns,
@@ -47,7 +47,7 @@ import {
   workingTreeRow,
   worktree,
   worktreeBar,
-} from '../../../support/styleFixtures';
+} from '../../../helpers/styleFixtures';
 import { defaultScrolling } from '../../../../lib/page/rowScroll';
 import { ShellStore } from '../../../../shell/page/store';
 import {

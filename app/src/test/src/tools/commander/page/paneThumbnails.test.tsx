@@ -12,8 +12,8 @@ import {
   CommanderStore,
   createCommanderStore,
 } from '../../../../../tools/commander/page/store';
-import { renderIn } from '../../../../support/componentFixtures';
-import { noop } from '../../../../support/fixtures';
+import { renderIn } from '../../../../helpers/componentFixtures';
+import { noop } from '../../../../helpers/fixtures';
 
 const filled = vi.hoisted((): unknown[] => []);
 

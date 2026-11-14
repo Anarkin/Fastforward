@@ -13,8 +13,8 @@ import {
   createCommanderStore,
 } from '../../../../../tools/commander/page/store';
 import { columnFocusAttribute } from '../../../../../lib/page/columnFocus';
-import { renderIn } from '../../../../support/componentFixtures';
-import { noop } from '../../../../support/fixtures';
+import { renderIn } from '../../../../helpers/componentFixtures';
+import { noop } from '../../../../helpers/fixtures';
 
 vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
   const { createElement } = await import('react');

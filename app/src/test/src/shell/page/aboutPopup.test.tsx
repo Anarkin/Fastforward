@@ -9,8 +9,8 @@ import {
 } from '../../../../shell/page/aboutPopup';
 import type { AboutInfo, ToHost } from '../../../../shell/shared/protocol';
 import { createShellStore } from '../../../../shell/page/store';
-import { withStores } from '../../../support/componentFixtures';
-import { noop, renderedBy, tagWith } from '../../../support/fixtures';
+import { withStores } from '../../../helpers/componentFixtures';
+import { noop, renderedBy, tagWith } from '../../../helpers/fixtures';
 
 const about = {
   version: '16.0.0',

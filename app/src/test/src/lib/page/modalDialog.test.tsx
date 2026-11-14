@@ -6,8 +6,8 @@ import { AboutPopup } from '../../../../shell/page/aboutPopup';
 import { dialogHoldsFocus, draggedTo } from '../../../../lib/page/modalDialog';
 import { ShortcutsPopup } from '../../../../shell/page/shortcutsPopup';
 import { createShellStore } from '../../../../shell/page/store';
-import { withStores } from '../../../support/componentFixtures';
-import { noop } from '../../../support/fixtures';
+import { withStores } from '../../../helpers/componentFixtures';
+import { noop } from '../../../helpers/fixtures';
 
 const about = {
   version: '16.0.0',

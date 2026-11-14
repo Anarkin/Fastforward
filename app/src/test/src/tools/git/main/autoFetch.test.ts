@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { AutoFetch } from '../../../../../tools/git/main/autoFetch';
-import { fakeTimer } from '../../../../support/fakeTimer';
+import { fakeTimer } from '../../../../helpers/fakeTimer';
 
 suite('Auto fetch', () => {
   test('fetches the repositories one after another, the next round the interval after this one started, so the first is fetched every interval however long the others take', async () => {

@@ -49,7 +49,7 @@ import {
   partLines,
   type CodePart,
 } from '../../../../../lib/page/syntaxParts';
-import { noop, policyOfPage, waitFor } from '../../../../support/fixtures';
+import { noop, policyOfPage, waitFor } from '../../../../helpers/fixtures';
 
 type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
 

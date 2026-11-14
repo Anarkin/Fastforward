@@ -4,8 +4,8 @@ import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { PromptPopup } from '../../../../shell/page/promptPopup';
-import { renderIn } from '../../../support/componentFixtures';
-import { noop } from '../../../support/fixtures';
+import { renderIn } from '../../../helpers/componentFixtures';
+import { noop } from '../../../helpers/fixtures';
 
 const prompted = (secret?: boolean) =>
   renderToStaticMarkup(

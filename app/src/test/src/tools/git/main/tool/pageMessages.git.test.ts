@@ -11,8 +11,8 @@ import { soloKey } from '../../../../../../tools/git/main/storage';
 import {
   removeFolder,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   commitsSent,
@@ -22,7 +22,7 @@ import {
   viewRepositories,
   type OpenView,
   type ViewRepositories,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 suite('Git tool checking what the page sends', () => {
   let folder: string;

@@ -14,9 +14,9 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { waitFor } from '../../../../../support/fixtures';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { waitFor } from '../../../../../helpers/fixtures';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   failOnErrorsLogged,
@@ -27,7 +27,7 @@ import {
   withNotices,
   withView,
   type OpenView,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 function views(view: OpenView): (CloneView | undefined)[] {
   return view.page.messages.flatMap((message) =>

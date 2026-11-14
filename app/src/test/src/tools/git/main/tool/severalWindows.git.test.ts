@@ -7,12 +7,12 @@ import {
   windowsKey,
 } from '../../../../../../shell/main/storage';
 import { recentKey } from '../../../../../../tools/git/main/storage';
-import { waitFor } from '../../../../../support/fixtures';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   attach,
   closeViews,
@@ -22,7 +22,7 @@ import {
   openView,
   viewRepositories,
   type FakePage,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 const shownIn = (page: FakePage) => [
   page.tabs?.tabs.map((tab) => tab.id),

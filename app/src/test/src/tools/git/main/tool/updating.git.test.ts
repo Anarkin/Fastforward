@@ -2,16 +2,16 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import type { Connection } from '../../../../../support/harness';
-import { waitFor } from '../../../../../support/fixtures';
+import type { Connection } from '../../../../../helpers/harness';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
   savedEnv,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   failOnErrorsLogged,
@@ -24,7 +24,7 @@ import {
   takeErrorsLogged,
   withNotices,
   tabOf,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 suite('Git tool updating by itself', () => {
   let folder: string;

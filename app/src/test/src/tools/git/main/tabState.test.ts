@@ -28,7 +28,7 @@ import {
   toggleMerges,
 } from '../../../../../tools/git/main/tabState';
 import { Commits } from '../../../../../tools/git/main/history/commits';
-import { commitInfo } from '../../../../support/fixtures';
+import { commitInfo } from '../../../../helpers/fixtures';
 import { rowsOf } from './history/historyFixtures';
 
 const at = (commit: string) => ({

@@ -17,9 +17,9 @@ import {
   cascaded,
   rendered,
   withClass,
-} from '../../../support/cascade';
-import { renderedBy } from '../../../support/fixtures';
-import { gitStore } from '../../../support/componentFixtures';
+} from '../../../helpers/cascade';
+import { renderedBy } from '../../../helpers/fixtures';
+import { gitStore } from '../../../helpers/componentFixtures';
 import {
   bubbles,
   columns,
@@ -34,7 +34,7 @@ import {
   notices,
   repository,
   workingTreeRow,
-} from '../../../support/styleFixtures';
+} from '../../../helpers/styleFixtures';
 import {
   noop,
   buttonsWidth,

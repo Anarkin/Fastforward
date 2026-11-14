@@ -2,9 +2,9 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../../support/builtins';
+import { replaceBuiltin } from '../../../../helpers/builtins';
 import { PdfPlaces } from '../../../../../tools/commander/main/pdfPlaces';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 const third = { page: 3, zoom: 125, left: 0, top: 500 } as const;
 const tenth = { page: 10, zoom: 'page-width', left: -4, top: 80 } as const;

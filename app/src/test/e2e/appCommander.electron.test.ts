@@ -5,9 +5,9 @@ import * as path from 'node:path';
 import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import { waitForFocus } from './appFixtures';
-import { storedZip } from '../support/zips';
+import { storedZip } from '../helpers/zips';
 import {
   folder,
   opened,

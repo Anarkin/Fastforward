@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { shellKeymap } from '../../../../shell/shared/keymap';
 import { gitKeymap } from '../../../../tools/git/page/keymap';
 import { appKeyPressed, keyPressed } from '../../../../lib/page/shortcuts';
-import { element, keyPress, withMacKeys } from '../../../support/fixtures';
+import { element, keyPress, withMacKeys } from '../../../helpers/fixtures';
 
 type KeyEvent = Parameters<typeof keyPressed>[1];
 

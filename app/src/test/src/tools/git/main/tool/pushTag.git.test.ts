@@ -2,15 +2,15 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { GitTool } from '../../../../../../tools/git/main/tool';
-import type { Connection } from '../../../../../support/harness';
-import { waitFor } from '../../../../../support/fixtures';
+import type { Connection } from '../../../../../helpers/harness';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   deleteTags,
@@ -23,7 +23,7 @@ import {
   stubMethod,
   withNotices,
   type PageMessage,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 function pushingTag(message: PageMessage): string[] {
   return message.type === 'pushingTag' ? [message.names.join(' ')] : [];

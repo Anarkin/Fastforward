@@ -13,12 +13,12 @@ import {
 } from '../../../../../../tools/git/main/cli/compare';
 import { runGit } from '../../../../../../tools/git/main/cli/run';
 import { parsePatch } from '../../../../../../tools/git/page/diff';
-import { replaceBuiltin } from '../../../../../support/builtins';
+import { replaceBuiltin } from '../../../../../helpers/builtins';
 import {
   installedGit,
   removeFolder,
   tempFolder,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 suite('Comparing two files outside any repository', () => {
   let gitPath: string;

@@ -19,7 +19,7 @@ import {
   shownFiles,
   withLargeFiles,
 } from '../../../../../tools/git/page/diffColumn';
-import { fileChange } from '../../../../support/fixtures';
+import { fileChange } from '../../../../helpers/fixtures';
 import { patch, kinds } from './diffViewFixtures';
 import {
   diffRows,

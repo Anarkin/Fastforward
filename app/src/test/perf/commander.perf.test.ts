@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 import { codeFile, imagesFolder, logFile, manyFolder } from './perfData';
 import {
   heldKey,

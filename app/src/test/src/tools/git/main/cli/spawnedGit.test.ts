@@ -8,7 +8,7 @@ import {
   threadFor,
   type GitChild,
 } from '../../../../../../tools/git/main/cli/spawnedGit';
-import { removeFolder, tempFolder } from '../../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../../helpers/repositories';
 
 async function ran(
   child: GitChild,

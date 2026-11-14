@@ -10,7 +10,7 @@ import {
   windowButtonColor,
   windowTitle,
 } from '../../../../shell/page/titleBar';
-import { stylesheet } from '../../../support/fixtures';
+import { stylesheet } from '../../../helpers/fixtures';
 
 function drawingOf(svg: string) {
   return {

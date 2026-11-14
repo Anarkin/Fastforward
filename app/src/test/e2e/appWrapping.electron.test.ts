@@ -26,7 +26,7 @@ import {
   whitespaceShownSaved,
   wrapsSaved,
 } from './appFixtures';
-import { waitFor } from '../support/fixtures';
+import { waitFor } from '../helpers/fixtures';
 
 async function drawnCodeRow(): Promise<number> {
   return page

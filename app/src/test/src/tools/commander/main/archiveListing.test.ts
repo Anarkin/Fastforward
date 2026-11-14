@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
-import { waitFor } from '../../../../support/fixtures';
-import { FakeStore } from '../../../../support/fakeStore';
+import { waitFor } from '../../../../helpers/fixtures';
+import { FakeStore } from '../../../../helpers/fakeStore';
 import {
   root,
   at,

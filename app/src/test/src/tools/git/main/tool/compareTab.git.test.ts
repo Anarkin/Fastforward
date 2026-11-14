@@ -12,9 +12,9 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { recordingLog } from '../../../../../support/stub';
-import { waitFor } from '../../../../../support/fixtures';
+} from '../../../../../helpers/repositories';
+import { recordingLog } from '../../../../../helpers/stub';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   attach,
   closeViews,
@@ -22,7 +22,7 @@ import {
   openView,
   stubMethod,
   type OpenView,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 const linesOf = (compare: CompareView | undefined) =>
   parsePatch(compare?.patch ?? '').flatMap((file) =>

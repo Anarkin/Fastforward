@@ -21,7 +21,7 @@ import {
   wholeLineBytes,
 } from '../../../tools/commander/shared/protocol';
 import { languageIds, languageOf } from '../../../lib/page/languages';
-import { defaultSettings } from '../../support/fixtures';
+import { defaultSettings } from '../../helpers/fixtures';
 
 type Platform = 'win32' | 'darwin' | 'linux';
 

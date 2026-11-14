@@ -8,7 +8,7 @@ import {
   installedGit,
   removeFolder,
   tempFolder,
-} from '../../support/repositories';
+} from '../../helpers/repositories';
 
 function gitShell(gitPath: string): string {
   for (let folder = path.dirname(gitPath); ; folder = path.dirname(folder)) {

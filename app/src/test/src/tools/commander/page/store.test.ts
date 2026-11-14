@@ -25,7 +25,7 @@ import {
   emptyView,
   type PaneView,
 } from '../../../../../tools/commander/page/view';
-import { noop } from '../../../../support/fixtures';
+import { noop } from '../../../../helpers/fixtures';
 
 const left: PaneView = {
   folder: 'C:\\code',

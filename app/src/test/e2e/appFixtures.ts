@@ -9,13 +9,13 @@ import {
   type Page,
 } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
-import { defaultSettings, waitFor } from '../support/fixtures';
+import { defaultSettings, waitFor } from '../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../support/repositories';
+} from '../helpers/repositories';
 
 export const appFolder = path.join(__dirname, '..', '..', '..');
 

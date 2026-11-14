@@ -5,7 +5,7 @@ import {
   listMoveOf,
   moveInList,
 } from '../../../../lib/page/listMoves';
-import { keyPress } from '../../../support/fixtures';
+import { keyPress } from '../../../helpers/fixtures';
 
 suite('Moving in a list', () => {
   test('steps, jumps to either end, and pages to the last row in view before a screen further', () => {

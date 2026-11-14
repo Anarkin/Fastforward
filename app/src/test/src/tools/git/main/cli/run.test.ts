@@ -12,12 +12,12 @@ import {
   realGit,
   stopGit,
 } from '../../../../../../tools/git/main/cli/run';
-import { waitFor } from '../../../../../support/fixtures';
+import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
   withEnv,
-} from '../../../../../support/repositories';
+} from '../../../../../helpers/repositories';
 
 suite('Running git', () => {
   test('takes only the exit codes asked for as success', () => {

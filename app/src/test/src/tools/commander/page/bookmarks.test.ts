@@ -6,7 +6,7 @@ import {
   bookmarkOf,
 } from '../../../../../tools/commander/page/bookmarks';
 import { strings } from '../../../../../lib/shared/strings';
-import { noop } from '../../../../support/fixtures';
+import { noop } from '../../../../helpers/fixtures';
 import type { ContextMenuItem } from '../../../../../lib/page/contextMenu';
 
 const shown = (items: readonly ContextMenuItem[]) =>

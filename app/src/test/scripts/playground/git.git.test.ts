@@ -9,7 +9,7 @@ import {
   createsAnewThroughJunctions,
   removeFolder,
   tempFolder,
-} from '../../support/repositories';
+} from '../../helpers/repositories';
 
 const playground = (folder: string, ...flags: string[]): Promise<Ran> =>
   runPlayground('git.mts', folder, ...flags);

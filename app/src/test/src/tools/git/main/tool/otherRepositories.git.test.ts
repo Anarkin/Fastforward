@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
-import { replaceBuiltin } from '../../../../../support/builtins';
+import { replaceBuiltin } from '../../../../../helpers/builtins';
 import { plainOf, strings } from '../../../../../../lib/shared/strings';
 import { workingTreeHash } from '../../../../../../tools/git/shared/protocol';
 import { sameRoot, type Store } from '../../../../../../shell/main/storage';
@@ -19,9 +19,9 @@ import {
   tempFolder,
   tempRepository,
   type TempRepository,
-} from '../../../../../support/repositories';
-import { waitFor } from '../../../../../support/fixtures';
-import { recordingLog } from '../../../../../support/stub';
+} from '../../../../../helpers/repositories';
+import { waitFor } from '../../../../../helpers/fixtures';
+import { recordingLog } from '../../../../../helpers/stub';
 import {
   closeViews,
   commitsSent,
@@ -40,7 +40,7 @@ import {
   tabOf,
   shownTabs,
   gitState,
-} from '../../../../../support/harness';
+} from '../../../../../helpers/harness';
 
 const keptOf = (store: Store) =>
   [bookmarksKey, remoteTagsKey, lastFetchesKey, soloKey].map((key) =>

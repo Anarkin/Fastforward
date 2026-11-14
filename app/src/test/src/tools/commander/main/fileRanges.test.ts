@@ -6,7 +6,7 @@ import {
   byteRange,
   fileResponse,
 } from '../../../../../tools/commander/main/fileRanges';
-import { removeFolder, tempFolder } from '../../../../support/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 
 suite('Ranges of a file served', () => {
   test('reads the one range of bytes asked for, open at either end, and keeps it within the file', () => {

@@ -7,7 +7,7 @@ import {
   boxCodeBlocks,
   MarkdownPane,
 } from '../../../../../tools/commander/page/markdownView';
-import { waitFor } from '../../../../support/fixtures';
+import { waitFor } from '../../../../helpers/fixtures';
 
 const images = {
   path: (src: string) => documentImagePath('README.md', src),
