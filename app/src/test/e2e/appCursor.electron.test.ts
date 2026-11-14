@@ -191,8 +191,19 @@ async function terminalCell(): Promise<Box> {
   return pixelBox(rect, await ratioOfPage());
 }
 
-async function typeInTerminal(keys: string): Promise<void> {
+async function clickTerminal(): Promise<void> {
+  await page.evaluate(() => {
+    for (const probe of document.querySelectorAll('.cursor-probe')) {
+      if (probe instanceof HTMLElement) {
+        probe.style.display = 'none';
+      }
+    }
+  });
   await page.locator('.terminal-screen').click();
+}
+
+async function typeInTerminal(keys: string): Promise<void> {
+  await clickTerminal();
   await page.keyboard.type(keys);
 }
 
@@ -248,7 +259,7 @@ async function settledCell(
 
 async function promptAtTop(): Promise<Box> {
   const [left, top] = await screenLeftTop();
-  await page.locator('.terminal-screen').click();
+  await clickTerminal();
   await page.keyboard.press(clearLine);
   await settledCell(
     (cell) => cell.width > 0 && cell.left > left,
