@@ -29,18 +29,20 @@ import {
   FakeHost,
   gate,
   reopen,
-  restoreRepository,
   savedBookmarks,
   stubMethod,
   takeErrorsLogged,
-  viewRepositories,
   withNotices,
   withView,
-  type ViewRepositories,
   tabOf,
   shownTabs,
   gitState,
 } from '../../../../../helpers/harness';
+import {
+  restoreRepository,
+  viewRepositories,
+  type ViewRepositories,
+} from '../../../../../helpers/gitFixtures';
 
 const keptOf = (store: Store) =>
   [bookmarksKey, remoteTagsKey, lastFetchesKey, soloKey].map((key) =>

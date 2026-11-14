@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { GitTool } from '../../../../../../tools/git/main/tool';
-import type { Connection } from '../../../../../helpers/harness';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
@@ -12,8 +11,8 @@ import {
 } from '../../../../../helpers/repositories';
 import { recordingLog } from '../../../../../helpers/stub';
 import {
+  type Connection,
   closeViews,
-  deleteTags,
   failOnErrorsLogged,
   type FakePage,
   gate,
@@ -24,6 +23,7 @@ import {
   withNotices,
   type PageMessage,
 } from '../../../../../helpers/harness';
+import { deleteTags } from '../../../../../helpers/gitFixtures';
 
 function pushingTag(message: PageMessage): string[] {
   return message.type === 'pushingTag' ? [message.names.join(' ')] : [];

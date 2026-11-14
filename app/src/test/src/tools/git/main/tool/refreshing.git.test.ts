@@ -15,7 +15,6 @@ import { workingTreeHash } from '../../../../../../tools/git/shared/protocol';
 import { plainOf, strings } from '../../../../../../lib/shared/strings';
 import { soloKey } from '../../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../../tools/git/main/tool';
-import type { Connection } from '../../../../../helpers/harness';
 import type { FakeStore } from '../../../../../helpers/fakeStore';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
@@ -27,6 +26,7 @@ import {
 } from '../../../../../helpers/repositories';
 import { recordingLog } from '../../../../../helpers/stub';
 import {
+  type Connection,
   attach,
   closeViews,
   commitsSent,
@@ -35,16 +35,18 @@ import {
   gate,
   openView,
   reopen,
-  restoreRepository,
   holderOf,
   stubMethod,
   takeErrorsLogged,
-  viewRepositories,
   withView,
   workingTreesSent,
-  type ViewRepositories,
   gitState,
 } from '../../../../../helpers/harness';
+import {
+  restoreRepository,
+  viewRepositories,
+  type ViewRepositories,
+} from '../../../../../helpers/gitFixtures';
 
 async function letARefreshThatSkippedTheQueueStart(): Promise<void> {
   for (let turn = 0; turn < 3; turn++) {

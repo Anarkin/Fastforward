@@ -20,9 +20,9 @@ import {
   FakeHost,
   gitState,
   openView,
-  viewRepositories,
   type FakePage,
 } from '../../../../../helpers/harness';
+import { viewRepositories } from '../../../../../helpers/gitFixtures';
 
 const shownIn = (page: FakePage) => [
   page.tabs?.tabs.map((tab) => tab.id),

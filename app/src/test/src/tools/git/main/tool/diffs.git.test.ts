@@ -30,7 +30,6 @@ import {
   closeViews,
   FakeHost,
   failOnErrorsLogged,
-  fortyLines,
   gate,
   numberedLines,
   stubMethod,
@@ -40,6 +39,7 @@ import {
   shownTabs,
   gitState,
 } from '../../../../../helpers/harness';
+import { fortyLines } from '../../../../../helpers/gitFixtures';
 
 const longLines = (text: string) =>
   `${text} ${'x'.repeat(1024)}\n`.repeat(maxFileSize / 1024 + 1);

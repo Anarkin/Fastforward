@@ -9,7 +9,6 @@ import {
   test,
 } from 'vitest';
 import type { GitTool } from '../../../../../../tools/git/main/tool';
-import type { Connection } from '../../../../../helpers/harness';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
@@ -17,19 +16,22 @@ import {
 } from '../../../../../helpers/repositories';
 import { recordingLog } from '../../../../../helpers/stub';
 import {
+  type Connection,
   closeViews,
   failOnErrorsLogged,
   type FakePage,
   gate,
   openView,
-  restoreRepository,
   holderOf,
   stubMethod,
   takeErrorsLogged,
-  viewRepositories,
   withNotices,
-  type ViewRepositories,
 } from '../../../../../helpers/harness';
+import {
+  restoreRepository,
+  viewRepositories,
+  type ViewRepositories,
+} from '../../../../../helpers/gitFixtures';
 
 suite('Git tool checking out', () => {
   let folder: string;

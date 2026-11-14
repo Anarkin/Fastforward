@@ -4,7 +4,6 @@ import { isDeepStrictEqual } from 'node:util';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { RefInfo } from '../../../../../../tools/git/shared/protocol';
 import { remoteTagsKey } from '../../../../../../tools/git/main/storage';
-import type { Connection } from '../../../../../helpers/harness';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
@@ -14,14 +13,15 @@ import {
 } from '../../../../../helpers/repositories';
 import { recordingLog } from '../../../../../helpers/stub';
 import {
+  type Connection,
   closeViews,
-  deleteTags,
   failOnErrorsLogged,
   type FakePage,
   openView,
   takeErrorsLogged,
   gitState,
 } from '../../../../../helpers/harness';
+import { deleteTags } from '../../../../../helpers/gitFixtures';
 
 function remoteTag(name: string, tag: string, commit: string): RefInfo {
   return { kind: 'remote-tag', name: `${name}/${tag}`, commit, remote: name };

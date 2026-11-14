@@ -31,7 +31,6 @@ import {
 } from '../../../../../../tools/git/main/storage';
 import { runGit } from '../../../../../../tools/git/main/cli/run';
 import type { GitTool } from '../../../../../../tools/git/main/tool';
-import { type Connection, gitState } from '../../../../../helpers/harness';
 import { FakeStore } from '../../../../../helpers/fakeStore';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
@@ -41,7 +40,10 @@ import {
   type TempRepository,
 } from '../../../../../helpers/repositories';
 import { recordingLog } from '../../../../../helpers/stub';
+import { watchesRecursively } from '../../../../../../tools/git/main/cli/watch';
 import {
+  type Connection,
+  gitState,
   attach,
   newView,
   saveTabs,
@@ -57,12 +59,13 @@ import {
   settingsForViews,
   stubMethod,
   takeErrorsLogged,
-  viewRepositories,
   withNotices,
   type OpenView,
-  type ViewRepositories,
 } from '../../../../../helpers/harness';
-import { watchesRecursively } from '../../../../../../tools/git/main/cli/watch';
+import {
+  viewRepositories,
+  type ViewRepositories,
+} from '../../../../../helpers/gitFixtures';
 
 suite('Git tool of one repository', () => {
   let folder: string;

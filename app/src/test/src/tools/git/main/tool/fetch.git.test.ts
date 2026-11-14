@@ -4,7 +4,6 @@ import { createServer } from 'node:http';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { lastFetchesKey } from '../../../../../../tools/git/main/storage';
-import type { Connection } from '../../../../../helpers/harness';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
@@ -15,12 +14,12 @@ import {
 } from '../../../../../helpers/repositories';
 import { recordingLog } from '../../../../../helpers/stub';
 import {
+  type Connection,
   closeViews,
   failOnErrorsLogged,
   FakeHost,
   gate,
   type FakePage,
-  lockedRepository,
   openView,
   stubMethod,
   takeErrorsLogged,
@@ -28,6 +27,7 @@ import {
   tabOf,
   gitState,
 } from '../../../../../helpers/harness';
+import { lockedRepository } from '../../../../../helpers/gitFixtures';
 
 suite('Git tool fetching', () => {
   let folder: string;

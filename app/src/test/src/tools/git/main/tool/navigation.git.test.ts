@@ -11,7 +11,6 @@ import {
 } from 'vitest';
 import { workingTreeHash } from '../../../../../../tools/git/shared/protocol';
 import type { GitTool } from '../../../../../../tools/git/main/tool';
-import type { Connection } from '../../../../../helpers/harness';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
   commitText,
@@ -21,6 +20,7 @@ import {
 } from '../../../../../helpers/repositories';
 import { recordingLog } from '../../../../../helpers/stub';
 import {
+  type Connection,
   closeViews,
   failOnErrorsLogged,
   type FakePage,
@@ -28,10 +28,12 @@ import {
   openView,
   stubMethod,
   takeErrorsLogged,
-  viewRepositories,
   withNotices,
-  type ViewRepositories,
 } from '../../../../../helpers/harness';
+import {
+  viewRepositories,
+  type ViewRepositories,
+} from '../../../../../helpers/gitFixtures';
 
 suite('Git tool navigating the history', () => {
   let folder: string;

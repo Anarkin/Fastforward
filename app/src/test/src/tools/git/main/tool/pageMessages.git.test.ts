@@ -19,10 +19,12 @@ import {
   failOnErrorsLogged,
   gitState,
   openView,
-  viewRepositories,
   type OpenView,
-  type ViewRepositories,
 } from '../../../../../helpers/harness';
+import {
+  viewRepositories,
+  type ViewRepositories,
+} from '../../../../../helpers/gitFixtures';
 
 suite('Git tool checking what the page sends', () => {
   let folder: string;

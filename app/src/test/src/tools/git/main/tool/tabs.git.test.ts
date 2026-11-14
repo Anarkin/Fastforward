@@ -32,14 +32,16 @@ import {
   savedBookmarks,
   stubMethod,
   takeErrorsLogged,
-  viewRepositories,
   withView,
   type OpenView,
-  type ViewRepositories,
   tabOf,
   shownTabs,
   gitState,
 } from '../../../../../helpers/harness';
+import {
+  viewRepositories,
+  type ViewRepositories,
+} from '../../../../../helpers/gitFixtures';
 
 function savedRoots(view: OpenView): unknown[] {
   const saved = view.store.values.get(tabsKey);
