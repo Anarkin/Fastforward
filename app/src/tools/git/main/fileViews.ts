@@ -1,6 +1,6 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';
-import type { ShellAccess } from '../../../shell/main/shell';
+import type { ShellAccess } from '../../../shell/main/toolContract';
 import { imageSourceOf, imageType } from '../shared/images';
 import { comparedImage } from './compare';
 import type { CompareTabs } from './compareTabs';

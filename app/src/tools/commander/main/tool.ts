@@ -8,7 +8,7 @@ import {
   type Tab,
   type TabName,
   type Tool,
-} from '../../../shell/main/shell';
+} from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
 import { isSide, sides, type CommanderToHost } from '../shared/protocol';
 import { heldColumns, isColumnWidths, isSort } from '../shared/settings';

@@ -8,7 +8,7 @@ import {
   type TextRequest,
 } from '../shared/protocol';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
-import type { Page } from '../../../shell/main/shell';
+import type { Page } from '../../../shell/main/toolContract';
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import type { Compared } from '../../../shell/main/savedTabs';
 import type { TabState } from './tabState';

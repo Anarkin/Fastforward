@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings, type Sentence } from '../../../lib/shared/strings';
-import type { Page, ShellAccess } from '../../../shell/main/shell';
+import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { folderKey } from '../shared/paths';
 import type { WatchFolder } from './watch';
 import { archiveJob } from './packing';

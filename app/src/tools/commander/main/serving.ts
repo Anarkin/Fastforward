@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Tab } from '../../../shell/main/shell';
+import type { Tab } from '../../../shell/main/toolContract';
 import { isSide, type CommanderToHost, type Entry } from '../shared/protocol';
 import {
   fillsThumbnail,

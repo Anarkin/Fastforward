@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { realTimer, type Timer } from '../tools/git/main/autoFetch';
 import type { Log } from '../shell/main/log';
-import type { Notice } from '../shell/main/shell';
+import type { Notice } from '../shell/main/toolContract';
 import type { ToWebview, UpdateStatus } from '../shell/shared/protocol';
 import { strings } from '../lib/shared/strings';
 

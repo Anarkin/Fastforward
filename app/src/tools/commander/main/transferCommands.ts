@@ -4,7 +4,7 @@ import {
   strings,
   type Sentence,
 } from '../../../lib/shared/strings';
-import type { Page, ShellAccess } from '../../../shell/main/shell';
+import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import {
   otherSide,
   parentFolder,

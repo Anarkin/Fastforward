@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import { strings } from '../../../lib/shared/strings';
-import type { Page } from '../../../shell/main/shell';
+import type { Page } from '../../../shell/main/toolContract';
 import {
   isTextEncoding,
   maxBytesAsked,

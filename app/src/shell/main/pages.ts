@@ -2,7 +2,7 @@ import { strings } from '../../lib/shared/strings';
 import { addNotice } from '../shared/notices';
 import type { TabInfo, ToWebview, ToWebviewOf } from '../shared/protocol';
 import { tools as toolIds } from '../shared/tools';
-import type { Notice, Page, Tab, Tools } from './shell';
+import type { Notice, Page, Tab, Tools } from './toolContract';
 import type { Storage } from './storage';
 import { activeTabOf, type TabWindow } from './windows';
 

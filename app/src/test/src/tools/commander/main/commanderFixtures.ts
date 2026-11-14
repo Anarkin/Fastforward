@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { Notice, Page, Tab } from '../../../../../shell/main/shell';
+import type { Notice, Page, Tab } from '../../../../../shell/main/toolContract';
 import type { Compared } from '../../../../../shell/main/savedTabs';
 import type { Store } from '../../../../../shell/main/stateFile';
 import type { ToWebview } from '../../../../../shell/shared/protocol';

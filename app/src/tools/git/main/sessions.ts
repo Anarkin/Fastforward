@@ -1,5 +1,9 @@
 import { strings } from '../../../lib/shared/strings';
-import type { Page, ShellAccess, ShownTab } from '../../../shell/main/shell';
+import type {
+  Page,
+  ShellAccess,
+  ShownTab,
+} from '../../../shell/main/toolContract';
 import { sameRoot } from '../../../lib/main/paths';
 import type { Notify } from './operations';
 import type { GitStorage } from './storage';

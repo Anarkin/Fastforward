@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import type { RepositoryInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
-import type { Tab, TabName } from '../../../shell/main/shell';
+import type { Tab, TabName } from '../../../shell/main/toolContract';
 import { comparedNames } from './compare';
 
 export function tabInfos(

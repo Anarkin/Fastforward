@@ -17,7 +17,7 @@ import {
   type Tab,
   type TabName,
   type Tool,
-} from '../../../shell/main/shell';
+} from '../../../shell/main/toolContract';
 import {
   sizeWithin,
   maxInputLength,

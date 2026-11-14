@@ -1,4 +1,4 @@
-import type { ShellAccess } from '../../../shell/main/shell';
+import type { ShellAccess } from '../../../shell/main/toolContract';
 import type { WorktreeInfo } from '../shared/protocol';
 import { remoteDefaultBranches } from './branches';
 import type { Contexts } from './contexts';

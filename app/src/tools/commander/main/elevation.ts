@@ -1,5 +1,5 @@
 import { strings } from '../../../lib/shared/strings';
-import { type Page, type ShellAccess } from '../../../shell/main/shell';
+import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { sides as bothSides } from '../shared/protocol';
 import type { ElevatedFileSystem } from './elevated';
 import { type Sides, post } from './sides';

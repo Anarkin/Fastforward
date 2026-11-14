@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { Log } from '../../../../../shell/main/log';
-import type { Page, Tab } from '../../../../../shell/main/shell';
+import type { Page, Tab } from '../../../../../shell/main/toolContract';
 import type { ToWebview } from '../../../../../shell/shared/protocol';
 import { flowLimits } from '../../../../../tools/terminal/main/flowControl';
 import {

@@ -31,7 +31,7 @@ import { sameTags } from './refs';
 import { isFullHash } from '../shared/hashes';
 import { hasRef } from '../shared/refNames';
 import type { CheckoutTarget, TabMessage } from '../shared/protocol';
-import type { ShellAccess } from '../../../shell/main/shell';
+import type { ShellAccess } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../lib/main/paths';
 import type { GitStorage } from './storage';

@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import type { Tab } from '../../../../../shell/main/shell';
+import type { Tab } from '../../../../../shell/main/toolContract';
 import {
   maxBytesAsked,
   maxColoredBytes,

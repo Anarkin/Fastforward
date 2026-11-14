@@ -1,6 +1,6 @@
 import { confirmsClose, tools as toolIds, type ToolId } from '../shared/tools';
 import type { Pages } from './pages';
-import type { Page, Tab, Tool, Tools } from './shell';
+import type { Page, Tab, Tool, Tools } from './toolContract';
 import type { Storage } from './storage';
 import { windowOf } from './windows';
 

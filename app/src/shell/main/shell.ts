@@ -6,7 +6,6 @@ import type {
   AboutInfo,
   ToHost,
   ToWebview,
-  ToWebviewOf,
   UpdateStatus,
 } from '../shared/protocol';
 import { strings, type Sentence } from '../../lib/shared/strings';
@@ -16,19 +15,9 @@ import {
   type ToHostOf,
   type ToolId,
 } from '../shared/tools';
-import type { Compared, SavedTab } from './savedTabs';
-import { sameRoot } from '../../lib/main/paths';
 import type { Storage } from './storage';
 import { TabHistory } from './tabHistory';
-import {
-  activeTabOf,
-  nextTabId,
-  windowOf,
-  withActive,
-  withChanged,
-  withClosed,
-  withOpened,
-} from './windows';
+import { activeTabOf } from './windows';
 import { ToolChoosing } from './toolChoosing';
 import {
   CommandOffer,
@@ -38,84 +27,8 @@ import {
 import { Pages } from './pages';
 import { TabMoves } from './tabMoves';
 import { Closing } from './closing';
-
-export interface Page {
-  post(message: ToWebview): void;
-  readonly disposed: boolean;
-}
-
-export type Tab = SavedTab;
-
-export interface TabName {
-  readonly name: string;
-  readonly folder?: string;
-  readonly icon?: string;
-  readonly unsaved?: true;
-}
-
-export type Notice = Omit<ToWebviewOf<'notice'>, 'type'>;
-
-export interface ShownTab {
-  readonly page: Page | undefined;
-  readonly tab: Tab;
-}
-
-export interface ShellAccess {
-  page(): Page | undefined;
-  pages(): readonly Page[];
-  current(page: Page): Page | undefined;
-  tabs(): readonly Tab[];
-  active(page: Page): Tab | undefined;
-  shown(): readonly ShownTab[];
-  open(
-    page: Page,
-    tool: ToolId,
-    roots: readonly (string | undefined)[],
-    reuse: boolean,
-  ): Promise<void>;
-  openView(page: Page, tool: ToolId, file: string): Promise<void>;
-  openEdit(page: Page, tool: ToolId, file: string): Promise<void>;
-  editViewed(page: Page, tab: string): Promise<void>;
-  openCompare(page: Page, tool: ToolId, compare: Compared): Promise<void>;
-  openFolders(
-    page: Page,
-    tool: ToolId,
-    folders: readonly string[],
-  ): Promise<void>;
-  setRoot(tab: string, root: string): void;
-  visited(folder: string): void;
-  recentFolders(): number;
-  postTabs(page: Page): void;
-  notice(page: Page | undefined, notice: Notice): void;
-  track<T>(work: Promise<T>): Promise<T>;
-  idle(): Promise<void>;
-}
-
-export interface Tool<K extends ToolId> {
-  attach(shell: ShellAccess): void;
-  ready(page: Page): void;
-  show(page: Page, tab: Tab): Promise<void>;
-  shows(page: Page, tab: Tab): boolean;
-  hide(page: Page): void;
-  preload(page: Page, tab: Tab): Promise<void>;
-  closed(page: Page, tab: Tab): void;
-  receive(page: Page, message: ToHostOf<K>): Promise<void>;
-  dropped?(page: Page, files: unknown, message: unknown): Promise<void>;
-  refreshShown(page: Page): Promise<void>;
-  names(tabs: readonly Tab[]): ReadonlyMap<string, TabName>;
-  fits(folder: string): Promise<boolean>;
-  folderOf(tab: Tab): string | undefined;
-  visited(folder: string): void;
-  open(page: Page, folders: readonly string[]): Promise<void>;
-  newTab(page: Page): Promise<void>;
-  reloadSettings(): void;
-  quitNote?(): string | undefined;
-  unsaved?(tab: Tab): boolean;
-  saveUnsaved?(page: Page, tab: Tab): Promise<boolean>;
-  quit(): void;
-}
-
-export type Tools = { readonly [K in ToolId]: Tool<K> };
+import { Tabs } from './tabs';
+import type { Notice, Page, ShellAccess, Tools } from './toolContract';
 
 export interface ShellHost {
   userSettingsFile(): Promise<string>;
@@ -145,28 +58,6 @@ export interface Connection {
   dispose(): void;
 }
 
-export const unattachedShell: ShellAccess = {
-  page: () => undefined,
-  pages: () => [],
-  current: () => undefined,
-  tabs: () => [],
-  active: () => undefined,
-  shown: () => [],
-  open: () => Promise.resolve(),
-  openView: () => Promise.resolve(),
-  openEdit: () => Promise.resolve(),
-  editViewed: () => Promise.resolve(),
-  openCompare: () => Promise.resolve(),
-  openFolders: () => Promise.resolve(),
-  setRoot: () => undefined,
-  visited: () => undefined,
-  recentFolders: () => 0,
-  postTabs: () => undefined,
-  notice: () => undefined,
-  track: (work) => work,
-  idle: () => Promise.resolve(),
-};
-
 const closedPage: Page = { post: () => undefined, disposed: true };
 
 function receiveIn<K extends ToolId>(
@@ -193,7 +84,6 @@ function reasonOf(error: unknown): string {
 
 export class Shell {
   private readonly pages: Pages;
-  private readonly shownTools = new WeakMap<Page, ToolId>();
   private lastPageLog: string | undefined;
   private readonly inFlight = new InFlight();
   private readonly history = new TabHistory();
@@ -201,6 +91,7 @@ export class Shell {
   private readonly command: CommandOffer;
   private readonly moves: TabMoves;
   private readonly closing: Closing;
+  private readonly tabs: Tabs;
 
   constructor(
     private readonly log: Log,
@@ -209,9 +100,14 @@ export class Shell {
     private readonly tools: Tools,
   ) {
     this.pages = new Pages(storage, tools);
+    this.tabs = new Tabs(storage, tools, this.pages, this.history, {
+      showWindow: (window) => host.showWindow(window),
+      closeWindow: (window) => host.closeWindow(window),
+      save: (saving) => this.save(saving),
+    });
     this.closing = new Closing(storage, tools, this.pages);
     this.moves = new TabMoves(storage, host, this.pages, this.history, {
-      show: (page, tab) => this.show(page, tab),
+      show: (page, tab) => this.tabs.show(page, tab),
       save: (saving) => this.save(saving),
     });
     this.choosing = new ToolChoosing(tools, {
@@ -238,17 +134,18 @@ export class Shell {
             ? []
             : [{ page: this.pages.of(window.id), tab }];
         }),
-      open: (page, tool, roots, reuse) => this.open(page, tool, roots, reuse),
+      open: (page, tool, roots, reuse) =>
+        this.tabs.open(page, tool, roots, reuse),
       openView: (page, tool, file) =>
-        this.open(page, tool, [file], false, { view: true }),
+        this.tabs.open(page, tool, [file], false, { view: true }),
       openEdit: (page, tool, file) =>
-        this.open(page, tool, [file], true, { edit: true }),
-      editViewed: (page, tab) => this.editViewed(page, tab),
+        this.tabs.open(page, tool, [file], true, { edit: true }),
+      editViewed: (page, tab) => this.tabs.editViewed(page, tab),
       openCompare: (page, tool, compare) =>
-        this.open(page, tool, [undefined], false, { compare }),
+        this.tabs.open(page, tool, [undefined], false, { compare }),
       openFolders: (page, tool, folders) =>
         this.tools[tool].open(page, folders),
-      setRoot: (tab, root) => this.setRoot(tab, root),
+      setRoot: (tab, root) => this.tabs.setRoot(tab, root),
       visited: (folder) => {
         for (const tool of toolIds) {
           this.tools[tool].visited(folder);
@@ -416,7 +313,7 @@ export class Shell {
         await this.ready(page);
         return;
       case 'openSettings':
-        await this.open(
+        await this.tabs.open(
           page,
           'commander',
           [await host.userSettingsFile()],
@@ -427,7 +324,7 @@ export class Shell {
         );
         return;
       case 'openDefaultSettings':
-        await this.open(
+        await this.tabs.open(
           page,
           'commander',
           [await host.defaultSettingsFile()],
@@ -501,7 +398,7 @@ export class Shell {
         ) {
           return;
         }
-        await this.show(page, tab.id);
+        await this.tabs.show(page, tab.id);
         return;
       }
       case 'closeTab': {
@@ -514,7 +411,7 @@ export class Shell {
         ) {
           return;
         }
-        await this.close(page, message.tab);
+        await this.tabs.close(page, message.tab);
         return;
       }
       case 'preloadTab': {
@@ -586,8 +483,8 @@ export class Shell {
       this.tools[tool].ready(page);
     }
     this.pages.showing(window.id, page);
-    this.shownTools.delete(page);
-    await this.show(page, window.active);
+    this.tabs.forgetShown(page);
+    await this.tabs.show(page, window.active);
     if (laidOut) {
       await this.choosing.askFolders(page);
     }
@@ -607,160 +504,6 @@ export class Shell {
     }
     for (const problem of host.stateProblems()) {
       page.post({ type: 'notice', level: 'error', message: problem });
-    }
-  }
-
-  private async show(page: Page, id: string | undefined): Promise<void> {
-    const { storage } = this;
-    const window = this.pages.windowOf(page);
-    const active =
-      window.tabs.find((tab) => tab.id === id) ?? window.tabs.at(0);
-    this.save(
-      storage.setLayout(withActive(storage.layout, window.id, active?.id)),
-    );
-    if (active !== undefined) {
-      this.history.visit(active.id);
-    }
-    if (page.disposed) {
-      return;
-    }
-    this.pages.showing(window.id, page);
-    this.pages.postTabs(page);
-    this.pages.postUnsentNotices(window.id, page);
-    const shown = this.shownTools.get(page);
-    if (active === undefined) {
-      this.shownTools.delete(page);
-    } else {
-      this.shownTools.set(page, active.tool);
-    }
-    if (shown !== undefined && shown !== active?.tool) {
-      this.tools[shown].hide(page);
-    }
-    if (active !== undefined) {
-      await this.tools[active.tool].show(page, active);
-    }
-  }
-
-  private async close(page: Page, id: string): Promise<void> {
-    const { storage } = this;
-    const window = this.pages.windowOf(page);
-    const closed = window.tabs.find((tab) => tab.id === id);
-    if (closed === undefined) {
-      this.pages.postTabs(page);
-      return;
-    }
-    const activeId = window.active;
-    const layout = withClosed(storage.layout, id, this.history);
-    const active = layout.find((each) => each.id === window.id)?.active;
-    this.history.forget(id);
-    this.save(storage.setLayout(layout));
-    this.tools[closed.tool].closed(page, closed);
-    if (!layout.some((each) => each.id === window.id)) {
-      this.host.closeWindow(window.id);
-      this.pages.postWindows();
-      return;
-    }
-    if (active === activeId && active !== undefined) {
-      this.pages.postTabs(page);
-      return;
-    }
-    await this.show(page, active);
-  }
-
-  private async open(
-    page: Page,
-    tool: ToolId,
-    roots: readonly (string | undefined)[],
-    reuse: boolean,
-    kind: Pick<Tab, 'view' | 'edit' | 'compare'> = {},
-  ): Promise<void> {
-    const { storage } = this;
-    const window = this.pages.windowOf(page);
-    const tabs = storage.savedTabs;
-    const added: Tab[] = [];
-    const opened: string[] = [];
-    let next = Number(nextTabId(storage.layout));
-    for (const root of roots) {
-      const existing = reuse
-        ? [...tabs, ...added].find(
-            (tab) =>
-              tab.tool === tool &&
-              tab.view === kind.view &&
-              tab.edit === kind.edit &&
-              tab.root !== undefined &&
-              root !== undefined &&
-              sameRoot(tab.root, root),
-          )
-        : undefined;
-      if (existing !== undefined) {
-        opened.push(existing.id);
-        continue;
-      }
-      const tab: Tab = {
-        id: String(next++),
-        tool,
-        ...(root !== undefined && { root }),
-        ...kind,
-      };
-      added.push(tab);
-      opened.push(tab.id);
-    }
-    this.save(storage.setLayout(withOpened(storage.layout, window.id, added)));
-    const live = page.disposed ? (this.pages.of(window.id) ?? page) : page;
-    const last = opened.at(-1);
-    if (last === undefined) {
-      this.pages.postTabs(live);
-      return;
-    }
-    const holder = windowOf(storage.layout, last);
-    if (holder === undefined || holder.id === window.id) {
-      await this.show(live, last);
-      return;
-    }
-    this.host.showWindow(holder.id);
-    const there = this.pages.live(holder.id);
-    if (there === undefined) {
-      this.save(storage.setLayout(withActive(storage.layout, holder.id, last)));
-      this.pages.postTabs(live);
-      return;
-    }
-    await this.show(there, last);
-  }
-
-  private async editViewed(page: Page, id: string): Promise<void> {
-    const { storage } = this;
-    const viewed = this.pages
-      .windowOf(page)
-      .tabs.find((tab) => tab.id === id && tab.view === true);
-    if (viewed?.root === undefined) {
-      return;
-    }
-    this.tools[viewed.tool].closed(page, viewed);
-    this.save(
-      storage.setLayout(
-        withChanged(storage.layout, {
-          id,
-          tool: viewed.tool,
-          root: viewed.root,
-          edit: true,
-        }),
-      ),
-    );
-    await this.show(page, id);
-  }
-
-  private setRoot(id: string, root: string): void {
-    const { storage } = this;
-    const tab = storage.savedTabs.find(
-      (each) => each.id === id && each.root !== root,
-    );
-    if (tab === undefined) {
-      return;
-    }
-    this.save(storage.setLayout(withChanged(storage.layout, { ...tab, root })));
-    const page = this.pages.live(windowOf(storage.layout, id)?.id);
-    if (page !== undefined) {
-      this.pages.postTabs(page);
     }
   }
 

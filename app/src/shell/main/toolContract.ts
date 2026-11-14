@@ -1,0 +1,103 @@
+import type { ToWebview, ToWebviewOf } from '../shared/protocol';
+import type { ToHostOf, ToolId } from '../shared/tools';
+import type { Compared, SavedTab } from './savedTabs';
+
+export interface Page {
+  post(message: ToWebview): void;
+  readonly disposed: boolean;
+}
+
+export type Tab = SavedTab;
+
+export interface TabName {
+  readonly name: string;
+  readonly folder?: string;
+  readonly icon?: string;
+  readonly unsaved?: true;
+}
+
+export type Notice = Omit<ToWebviewOf<'notice'>, 'type'>;
+
+export interface ShownTab {
+  readonly page: Page | undefined;
+  readonly tab: Tab;
+}
+
+export interface ShellAccess {
+  page(): Page | undefined;
+  pages(): readonly Page[];
+  current(page: Page): Page | undefined;
+  tabs(): readonly Tab[];
+  active(page: Page): Tab | undefined;
+  shown(): readonly ShownTab[];
+  open(
+    page: Page,
+    tool: ToolId,
+    roots: readonly (string | undefined)[],
+    reuse: boolean,
+  ): Promise<void>;
+  openView(page: Page, tool: ToolId, file: string): Promise<void>;
+  openEdit(page: Page, tool: ToolId, file: string): Promise<void>;
+  editViewed(page: Page, tab: string): Promise<void>;
+  openCompare(page: Page, tool: ToolId, compare: Compared): Promise<void>;
+  openFolders(
+    page: Page,
+    tool: ToolId,
+    folders: readonly string[],
+  ): Promise<void>;
+  setRoot(tab: string, root: string): void;
+  visited(folder: string): void;
+  recentFolders(): number;
+  postTabs(page: Page): void;
+  notice(page: Page | undefined, notice: Notice): void;
+  track<T>(work: Promise<T>): Promise<T>;
+  idle(): Promise<void>;
+}
+
+export interface Tool<K extends ToolId> {
+  attach(shell: ShellAccess): void;
+  ready(page: Page): void;
+  show(page: Page, tab: Tab): Promise<void>;
+  shows(page: Page, tab: Tab): boolean;
+  hide(page: Page): void;
+  preload(page: Page, tab: Tab): Promise<void>;
+  closed(page: Page, tab: Tab): void;
+  receive(page: Page, message: ToHostOf<K>): Promise<void>;
+  dropped?(page: Page, files: unknown, message: unknown): Promise<void>;
+  refreshShown(page: Page): Promise<void>;
+  names(tabs: readonly Tab[]): ReadonlyMap<string, TabName>;
+  fits(folder: string): Promise<boolean>;
+  folderOf(tab: Tab): string | undefined;
+  visited(folder: string): void;
+  open(page: Page, folders: readonly string[]): Promise<void>;
+  newTab(page: Page): Promise<void>;
+  reloadSettings(): void;
+  quitNote?(): string | undefined;
+  unsaved?(tab: Tab): boolean;
+  saveUnsaved?(page: Page, tab: Tab): Promise<boolean>;
+  quit(): void;
+}
+
+export type Tools = { readonly [K in ToolId]: Tool<K> };
+
+export const unattachedShell: ShellAccess = {
+  page: () => undefined,
+  pages: () => [],
+  current: () => undefined,
+  tabs: () => [],
+  active: () => undefined,
+  shown: () => [],
+  open: () => Promise.resolve(),
+  openView: () => Promise.resolve(),
+  openEdit: () => Promise.resolve(),
+  editViewed: () => Promise.resolve(),
+  openCompare: () => Promise.resolve(),
+  openFolders: () => Promise.resolve(),
+  setRoot: () => undefined,
+  visited: () => undefined,
+  recentFolders: () => 0,
+  postTabs: () => undefined,
+  notice: () => undefined,
+  track: (work) => work,
+  idle: () => Promise.resolve(),
+};

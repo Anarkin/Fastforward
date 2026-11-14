@@ -1,4 +1,4 @@
-import type { Notice, Page } from '../../../shell/main/shell';
+import type { Notice, Page } from '../../../shell/main/toolContract';
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import {
   isTextEncoding,

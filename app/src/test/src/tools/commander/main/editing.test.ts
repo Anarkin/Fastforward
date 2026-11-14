@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { ChangeSet } from '@codemirror/state';
 import { suite, test } from 'vitest';
-import type { Page } from '../../../../../shell/main/shell';
+import type { Page } from '../../../../../shell/main/toolContract';
 import type { ToWebview } from '../../../../../shell/shared/protocol';
 import {
   Editing,

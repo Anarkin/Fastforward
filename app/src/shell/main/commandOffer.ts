@@ -2,7 +2,8 @@ import * as path from 'node:path';
 import type { Log } from './log';
 import { strings } from '../../lib/shared/strings';
 import type { Storage } from './storage';
-import type { Notice, Page, ShellHost } from './shell';
+import type { Notice, Page } from './toolContract';
+import type { ShellHost } from './shell';
 
 export type CommandState = 'installed' | 'missing' | 'outdated' | 'taken';
 

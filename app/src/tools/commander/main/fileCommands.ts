@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
-import type { Page, ShellAccess } from '../../../shell/main/shell';
+import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { sameRoot } from '../../../lib/main/paths';
 import {
   isFolderCommand,

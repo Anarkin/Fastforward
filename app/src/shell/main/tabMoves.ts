@@ -1,7 +1,8 @@
 import type { ToHost } from '../shared/protocol';
 import type { Point, Strip, Visit } from './dragEvents';
 import type { Pages } from './pages';
-import type { Page, ShellHost } from './shell';
+import type { Page } from './toolContract';
+import type { ShellHost } from './shell';
 import type { Storage } from './storage';
 import type { TabHistory } from './tabHistory';
 import { nextWindowId, windowOf, withMoved, type Emptied } from './windows';

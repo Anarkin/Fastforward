@@ -37,7 +37,7 @@ import {
   type TextRequest,
   type ChangeArea,
 } from '../shared/protocol';
-import type { ShellAccess } from '../../../shell/main/shell';
+import type { ShellAccess } from '../../../shell/main/toolContract';
 import type { GitStorage } from './storage';
 import { changesOf, pickable, stillThere } from './tabState';
 import {

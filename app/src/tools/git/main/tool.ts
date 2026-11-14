@@ -13,7 +13,7 @@ import {
   type Tab,
   type TabName,
   type Tool,
-} from '../../../shell/main/shell';
+} from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../lib/main/paths';
 import type { GitStorage } from './storage';

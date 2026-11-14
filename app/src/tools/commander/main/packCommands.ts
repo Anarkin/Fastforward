@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
-import type { Page } from '../../../shell/main/shell';
+import type { Page } from '../../../shell/main/toolContract';
 import type { CommanderToHost } from '../shared/protocol';
 import { folderKey } from '../shared/paths';
 import { archiveJob, archiveTests } from './packing';

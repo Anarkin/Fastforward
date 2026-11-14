@@ -3,7 +3,7 @@ import { strings } from '../../lib/shared/strings';
 import { isTool, tools as toolIds, type ToolId } from '../shared/tools';
 import { sameRoot } from '../../lib/main/paths';
 
-import type { Notice, Page, Tab, Tools } from './shell';
+import type { Notice, Page, Tab, Tools } from './toolContract';
 
 interface Asking {
   readonly question: ToWebviewOf<'chooseTool'>;

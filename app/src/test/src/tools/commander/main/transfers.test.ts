@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import type { Notice } from '../../../../../shell/main/shell';
+import type { Notice } from '../../../../../shell/main/toolContract';
 import {
   Transfers,
   type TransferAsk,

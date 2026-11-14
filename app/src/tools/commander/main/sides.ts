@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { Page } from '../../../shell/main/shell';
+import type { Page } from '../../../shell/main/toolContract';
 import {
   isSide,
   sides,

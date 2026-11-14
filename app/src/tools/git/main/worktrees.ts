@@ -11,7 +11,7 @@ import {
 import type { Log } from '../../../shell/main/log';
 import { shortHash } from '../shared/hashes';
 import type { WorktreeInfo } from '../shared/protocol';
-import type { ShellAccess } from '../../../shell/main/shell';
+import type { ShellAccess } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import { maxRecentItems } from '../../../shell/main/storage';
 import { sameRoot } from '../../../lib/main/paths';

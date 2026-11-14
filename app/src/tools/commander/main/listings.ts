@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { strings } from '../../../lib/shared/strings';
-import { type Page, type ShellAccess } from '../../../shell/main/shell';
+import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
 import {
   type CommanderToHost,

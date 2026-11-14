@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ChangeSet } from '@codemirror/state';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import type { Tab } from '../../../../../shell/main/shell';
+import type { Tab } from '../../../../../shell/main/toolContract';
 import type { Side } from '../../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';

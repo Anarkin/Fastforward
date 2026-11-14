@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { Notice } from '../../../shell/main/shell';
+import type { Notice } from '../../../shell/main/toolContract';
 import {
   sentencesOf,
   strings,
