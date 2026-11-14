@@ -47,13 +47,8 @@ import {
 } from './cascade';
 import { commitInfo, renderedBy } from './fixtures';
 import { createShellStore, ShellStore } from '../shell/page/store';
-import {
-  BreakMarks,
-  Code,
-  diffRowClass,
-  DiffView,
-  marked,
-} from '../tools/git/page/diffView';
+import { BreakMarks, diffRowClass, DiffView } from '../tools/git/page/diffView';
+import { Code, marked } from '../tools/git/page/codeMarks';
 
 const noop = () => undefined;
 

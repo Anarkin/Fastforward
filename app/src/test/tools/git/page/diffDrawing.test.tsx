@@ -13,11 +13,13 @@ import {
 import {
   Code,
   codeProps,
+  marked,
+  wholeChangeClass,
+} from '../../../../tools/git/page/codeMarks';
+import {
   gapWidth,
   wordPadding,
-  marked,
   selectionSide,
-  wholeChangeClass,
 } from '../../../../tools/git/page/diffView';
 
 function sign(glyph: string, text: string): string {

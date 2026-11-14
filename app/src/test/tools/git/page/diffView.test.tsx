@@ -18,11 +18,11 @@ import {
   type DiffRow,
 } from '../../../../tools/git/page/diffRows';
 import { rowHeight } from '../../../../tools/git/page/rowMeasures';
-import { DiffView, gapWidth } from '../../../../tools/git/page/diffView';
 import {
   scrollOnToggle,
   stuckHeader,
 } from '../../../../tools/git/page/diffScrolling';
+import { DiffView, gapWidth } from '../../../../tools/git/page/diffView';
 
 const binaryOf = (path: string) =>
   parsePatch(

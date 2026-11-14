@@ -8,7 +8,14 @@ import {
 } from '../../../ui/wordWrap';
 import { inLines, measureInLines } from '../../../ui/lineHeight';
 import type { TextWidths } from '../../../ui/textWidths';
-import { type DiffRow, type CodeRow, isCode, diffRowKey } from './diffRows';
+import {
+  type DiffRow,
+  type CodeRow,
+  isCode,
+  diffRowKey,
+  changeOf,
+} from './diffRows';
+import type { MinimapRow } from '../../../ui/minimap';
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
@@ -445,3 +452,13 @@ export function rowHeight(
 }
 
 export const beyondAscii = /[^\0-\x7f]/;
+
+export function minimapRows(
+  rows: readonly DiffRow[],
+  measured: (index: number) => number | undefined = () => undefined,
+): MinimapRow[] {
+  return rows.map((row, index) => ({
+    height: measured(index) ?? rowHeight(row) ?? 0,
+    change: changeOf(row),
+  }));
+}

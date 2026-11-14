@@ -22,7 +22,7 @@ import { diffRows, lineKeys } from '../../../../tools/git/page/diffRows';
 import {
   diffMinimapMarks,
   findRangesByLine,
-} from '../../../../tools/git/page/diffView';
+} from '../../../../tools/git/page/codeMarks';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',
