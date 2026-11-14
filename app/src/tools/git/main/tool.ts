@@ -1,34 +1,15 @@
 import { AutoFetch, fetchOrder, type Timer } from './autoFetch';
-import { remoteDefaultBranches } from './branches';
 import { gitErrorText } from './errorText';
 import { keptGits } from './run';
-import { comparedImage, comparedNames } from './compare';
-import { readImage, viewedFile } from './files';
-import { findCommit } from './history';
-import {
-  hasGitFolder,
-  initRepository,
-  isFolder,
-  readRefs,
-  repositoryRoot,
-  type Refs,
-} from './repository';
-import { UntrackedPatches } from './workingTree';
-import { locateRepository, type Location } from './repositoryLocation';
-import { ImageReads } from './imageReads';
+import { hasGitFolder, isFolder } from './repository';
+import { locateRepository } from './repositoryLocation';
 import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
-import { tagRemoteOf, type Notify } from './operations';
-import { defaultBookmarks, remoteTagRefs } from './refs';
-import { isFullHash } from '../shared/hashes';
-import { bookmarkedCommits } from '../shared/refNames';
-import { imageSourceOf, imageType } from '../shared/images';
 import type { TabMessage, GitToHost, WorktreeInfo } from '../shared/protocol';
 import {
   unattachedShell,
   type Page,
   type ShellAccess,
-  type ShownTab,
   type Tab,
   type TabName,
   type Tool,
@@ -36,27 +17,11 @@ import {
 import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../shell/main/storage';
 import type { GitStorage } from './storage';
-import {
-  forgetHistory,
-  historyLoaded,
-  keep,
-  newTabState,
-  parentOf,
-  pickable,
-  select,
-  stillThere,
-  toggleMerges,
-  unselect,
-  type TabState,
-} from './tabState';
+import { historyLoaded, newTabState, toggleMerges } from './tabState';
 import {
   type TabWork,
-  type ReadRefs,
-  type GitPost,
   type Session,
   type Context,
-  notInHistory,
-  nothing,
   allSettled,
   type GitCore,
   OpeningFailed,
@@ -69,9 +34,16 @@ import { Watching } from './watching';
 import { CompareTabs } from './compareTabs';
 import { needsNoWholeHistory, wellFormed } from './messageChecks';
 import { Worktrees } from './worktrees';
-import { tabInfos, tabName } from './tabNames';
+import { namesOfTabs } from './tabNames';
+import { GitSessions } from './sessions';
+import { Selections } from './selections';
+import { RepositoryChoices } from './repositoryChoices';
+import { Contexts } from './contexts';
+import { TabPosts } from './tabPosts';
+import { FileViews } from './fileViews';
+import { Inits } from './inits';
+import { ViewSettings } from './viewSettings';
 
-const maxKeptUntrackedChars = 32_000_000;
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 export type FolderPurpose = 'init' | 'clone';
 
@@ -87,18 +59,20 @@ export interface GitHost {
 
 export class GitTool implements Tool<'git'> {
   private shell: ShellAccess = unattachedShell;
-  private readonly sessions = new WeakMap<Page, Session>();
-  private cloningIn: Session | undefined;
   private readonly tabStates = new Map<string, TabWork>();
   private readonly repositories = new Map<string, string>();
   private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
-  private readonly imageReads = new ImageReads();
   private readonly autoFetch: AutoFetch;
   private readonly quitting = new AbortController();
   private readonly clones: Clones;
-  private collapseMerges: boolean;
-  private soloDefault: boolean;
-  private initAsked: string | undefined;
+  private readonly sessions: GitSessions;
+  private readonly contexts: Contexts;
+  private readonly posts: TabPosts;
+  private readonly fileViews: FileViews;
+  private readonly inits: Inits;
+  private readonly viewSettings: ViewSettings;
+  private readonly selections: Selections;
+  private readonly choices: RepositoryChoices;
   private readonly core: GitCore;
   private readonly diffs: Diffs;
   private readonly refreshes: Refreshes;
@@ -120,36 +94,74 @@ export class GitTool implements Tool<'git'> {
       gitDirDelay?: number;
     } = refreshDelays,
   ) {
-    this.collapseMerges = storage.collapseMerges;
-    this.soloDefault = storage.soloDefault;
+    const save = (saving: Promise<void>) => this.save(saving);
+    this.sessions = new GitSessions(
+      () => this.shell,
+      storage,
+      this.tabStates,
+      this.repositories,
+    );
+    this.contexts = new Contexts(
+      gitPath,
+      storage,
+      this.tabStates,
+      this.sessions,
+    );
+    this.posts = new TabPosts(
+      storage,
+      () => this.shell,
+      this.sessions,
+      this.contexts,
+      () => this.remotes,
+      this.worktreeLists,
+      save,
+    );
     this.core = {
-      context: (session, root, live) => this.context(session, root, live),
+      context: (session, root, live) =>
+        this.contexts.context(session, root, live),
       run: (failed, session, action, root) =>
         this.run(failed, session, action, root),
-      live: (session) => this.live(session),
-      page: () => this.page,
-      sessionShowing: (root) => this.sessionShowing(root),
+      live: (session) => this.sessions.live(session),
+      page: () => this.sessions.page,
+      sessionShowing: (root) => this.sessions.sessionShowing(root),
       sessionShowingRepository: (repository) =>
-        this.sessionShowingRepository(repository),
-      isActiveIn: (session, root) => this.isActiveIn(session, root),
-      hasRepository: (root) => this.hasRepository(root),
-      notify: (context) => this.notify(context),
-      noticesOf: (session, repository) => this.noticesOf(session, repository),
-      refsOf: (context) => this.refsOf(context),
-      sendRepository: (context, refs) => this.sendRepository(context, refs),
-      rememberSelection: (context) => this.rememberSelection(context),
-      save: (saving) => this.save(saving),
+        this.sessions.sessionShowingRepository(repository),
+      isActiveIn: (session, root) => this.sessions.isActiveIn(session, root),
+      hasRepository: (root) => this.sessions.hasRepository(root),
+      notify: (context) => this.sessions.notify(context),
+      noticesOf: (session, repository) =>
+        this.sessions.noticesOf(session, repository),
+      refsOf: (context) => this.contexts.refsOf(context),
+      sendRepository: (context, refs) =>
+        this.posts.sendRepository(context, refs),
+      rememberSelection: (context) => this.selections.remember(context),
+      save,
     };
     this.diffs = new Diffs(storage, () => this.shell);
+    this.selections = new Selections(
+      storage,
+      this.diffs,
+      () => this.commitNavigation,
+      save,
+    );
     this.refreshes = new Refreshes(log, storage, () => this.shell, this.diffs, {
-      live: (session) => this.live(session),
-      refsOf: (context) => this.refsOf(context),
-      sendRepository: (context, refs) => this.sendRepository(context, refs),
-      rememberSelection: (context) => this.rememberSelection(context),
-      bookmarkedOf: (repository) => this.bookmarkedOf(repository),
+      live: (session) => this.sessions.live(session),
+      refsOf: (context) => this.contexts.refsOf(context),
+      sendRepository: (context, refs) =>
+        this.posts.sendRepository(context, refs),
+      rememberSelection: (context) => this.selections.remember(context),
+      bookmarkedOf: (repository) => this.choices.bookmarkedOf(repository),
       sendNavigation: (context, current) =>
         this.commitNavigation.sendNavigation(context, current),
     });
+    this.choices = new RepositoryChoices(
+      storage,
+      this.tabStates,
+      this.sessions,
+      this.contexts,
+      this.refreshes,
+      save,
+    );
     this.commitNavigation = new CommitNavigation(
       log,
       storage,
@@ -194,30 +206,54 @@ export class GitTool implements Tool<'git'> {
       this.repositories,
       this.worktreeLists,
       {
-        repositoryTabs: () => this.repositoryTabs,
-        repositoryOf: (root) => this.repositoryOf(root),
-        isActive: (root) => this.isActive(root),
-        tabState: (root) => this.tabState(root),
+        repositoryTabs: () => this.sessions.repositoryTabs,
+        repositoryOf: (root) => this.sessions.repositoryOf(root),
+        isActive: (root) => this.sessions.isActive(root),
+        tabState: (root) => this.contexts.tabState(root),
         showTab: (context) => this.showTab(context),
-        postTabs: (session) => this.postTabs(session),
-        sendTabs: (session) => this.sendTabs(session),
-        sendRecentEverywhere: () => this.sendRecentEverywhere(),
+        postTabs: (session) => this.posts.postTabs(session),
+        sendTabs: (session) => this.posts.sendTabs(session),
+        sendRecentEverywhere: () => this.posts.sendRecentEverywhere(),
       },
     );
+    this.fileViews = new FileViews(
+      log,
+      gitPath,
+      host.viewedFiles,
+      () => this.shell,
+      this.tabStates,
+      this.compareTabs,
+      this.sessions,
+    );
+    this.inits = new Inits(log, gitPath, this.worktrees);
     this.autoFetch = new AutoFetch(
       () => storage.autoFetchMinutes,
-      () => fetchOrder(this.repositoryTabs, this.shownRepositories()),
+      () =>
+        fetchOrder(
+          this.sessions.repositoryTabs,
+          this.sessions.shownRepositories(),
+        ),
       (root) => this.shell.track(this.remotes.fetchInBackground(root)),
       timer,
     );
     this.autoFetch.update();
+    this.viewSettings = new ViewSettings(
+      storage,
+      this.tabStates,
+      () => this.autoFetch,
+      this.compareTabs,
+      this.diffs,
+      this.refreshes,
+      this.contexts,
+      save,
+    );
     this.clones = new Clones(
       log,
       gitPath,
       {
-        post: (message) => this.cloneSession()?.post(message),
+        post: (message) => this.sessions.cloneSession()?.post(message),
         open: async (target) => {
-          const session = this.cloneSession();
+          const session = this.sessions.cloneSession();
           if (session !== undefined) {
             await this.runNow(strings.log.openingFailed(target), session, () =>
               this.worktrees.openRepositories(session, [target]),
@@ -242,22 +278,8 @@ export class GitTool implements Tool<'git'> {
   reloadSettings(): void {
     keptGits.update();
     this.autoFetch.update();
-    const collapseChanged = this.storage.collapseMerges !== this.collapseMerges;
-    const soloChanged = this.storage.soloDefault !== this.soloDefault;
-    this.collapseMerges = this.storage.collapseMerges;
-    this.soloDefault = this.storage.soloDefault;
-    for (const tab of this.tabStates.values()) {
-      if (soloChanged) {
-        forgetHistory(tab);
-      } else {
-        tab.shownStale = true;
-      }
-      tab.opened = false;
-      if (collapseChanged) {
-        tab.toggledMerges.clear();
-      }
-    }
-    this.sendRecentEverywhere();
+    this.viewSettings.reloaded();
+    this.posts.sendRecentEverywhere();
   }
 
   attach(shell: ShellAccess): void {
@@ -265,19 +287,20 @@ export class GitTool implements Tool<'git'> {
   }
 
   ready(page: Page): void {
+    const { cloningIn } = this.sessions;
     if (
-      this.cloningIn === undefined ||
-      this.live(this.cloningIn) === undefined
+      cloningIn === undefined ||
+      this.sessions.live(cloningIn) === undefined
     ) {
       this.clones.pageLoaded();
     }
-    const session = this.sessionOf(page);
+    const session = this.sessions.of(page);
     session.post(this.storage.layout);
-    this.sendRecent(session);
+    this.posts.sendRecent(session);
   }
 
   async show(page: Page, tab: Tab): Promise<void> {
-    const session = this.sessionOf(page);
+    const session = this.sessions.of(page);
     if (tab.compare !== undefined) {
       await this.compareTabs.showCompare(session, tab.id, tab.compare);
       return;
@@ -296,14 +319,14 @@ export class GitTool implements Tool<'git'> {
   }
 
   shows(page: Page): boolean {
-    return this.showsActiveTab(this.sessionOf(page));
+    return this.sessions.showsActiveTab(this.sessions.of(page));
   }
 
   hide(page: Page): void {
-    const session = this.sessionOf(page);
+    const session = this.sessions.of(page);
     this.compareTabs.stopComparing(session);
     this.watching.stopWatching(session);
-    this.postTabs(session);
+    this.posts.postTabs(session);
   }
 
   async preload(page: Page, tab: Tab): Promise<void> {
@@ -311,7 +334,7 @@ export class GitTool implements Tool<'git'> {
     if (root === undefined) {
       return;
     }
-    const session = this.sessionOf(page);
+    const session = this.sessions.of(page);
     await this.run(strings.log.preloadingFailed(root), session, () =>
       allSettled([
         this.worktrees.loadWorktrees(session, root),
@@ -326,19 +349,19 @@ export class GitTool implements Tool<'git'> {
       return;
     }
     for (const [root, state] of this.tabStates) {
-      if (sameRoot(this.repositoryOf(root), closed)) {
+      if (sameRoot(this.sessions.repositoryOf(root), closed)) {
         this.worktrees.forgetTab(root, state);
       }
     }
     this.save(this.worktrees.forgetUnused([closed]));
-    this.sendRecentEverywhere();
+    this.posts.sendRecentEverywhere();
   }
 
   receive(page: Page, message: GitToHost): Promise<void> {
     if (!wellFormed(message)) {
       return Promise.resolve();
     }
-    const session = this.sessionOf(page);
+    const session = this.sessions.of(page);
     return this.run(
       strings.log.handlingFailed(message.type),
       session,
@@ -348,50 +371,22 @@ export class GitTool implements Tool<'git'> {
   }
 
   refreshShown(page: Page): Promise<void> {
-    const session = this.sessionOf(page);
+    const session = this.sessions.of(page);
     return this.run(
       strings.log.refreshingFailed,
       session,
       async () => {
-        const context = await this.context(session);
+        const context = await this.contexts.context(session);
         if (context) {
           await this.refreshes.refresh(context);
         }
       },
-      this.activeWorktreeIn(session),
+      this.sessions.activeWorktreeIn(session),
     );
   }
 
   names(tabs: readonly Tab[]): ReadonlyMap<string, TabName> {
-    const infos = tabInfos(tabs.flatMap((tab) => tab.root ?? []));
-    return new Map(
-      tabs.flatMap((tab): [string, TabName][] => {
-        if (tab.compare !== undefined) {
-          return [
-            [
-              tab.id,
-              {
-                name: strings.messages.compareTab(
-                  ...comparedNames(tab.compare),
-                ),
-              },
-            ],
-          ];
-        }
-        const info = infos.find((other) => other.root === tab.root);
-        return info === undefined
-          ? []
-          : [
-              [
-                tab.id,
-                {
-                  name: info.name,
-                  ...(info.folder !== undefined && { folder: info.folder }),
-                },
-              ],
-            ];
-      }),
-    );
+    return namesOfTabs(tabs);
   }
 
   async fits(folder: string): Promise<boolean> {
@@ -411,14 +406,14 @@ export class GitTool implements Tool<'git'> {
   visited(): void {}
 
   open(page: Page, folders: readonly string[]): Promise<void> {
-    const session = this.sessionOf(page);
+    const session = this.sessions.of(page);
     return this.run(strings.log.openingAskedFailed, session, () =>
       this.worktrees.openRepositories(session, folders),
     );
   }
 
   newTab(page: Page): Promise<void> {
-    const session = this.sessionOf(page);
+    const session = this.sessions.of(page);
     return this.run(strings.log.openingAskedFailed, session, async () =>
       this.worktrees.openRepositories(session, await this.host.chooseFolders()),
     );
@@ -428,250 +423,20 @@ export class GitTool implements Tool<'git'> {
     return this.shell.idle();
   }
 
-  private sessionOf(page: Page): Session {
-    const known = this.sessions.get(page);
-    if (known !== undefined) {
-      return known;
-    }
-    const session: Session = {
-      page,
-      post: (message) => {
-        if (message.type === 'notice') {
-          this.shell.notice(page, {
-            level: message.level,
-            message: message.message,
-          });
-        } else {
-          page.post({ type: 'tool', tool: 'git', message });
-        }
-      },
-      get disposed() {
-        return page.disposed;
-      },
-      watcher: undefined,
-      watching: undefined,
-    };
-    this.sessions.set(page, session);
-    return session;
-  }
-
-  private get page(): Session | undefined {
-    const page = this.shell.page();
-    return page === undefined ? undefined : this.sessionOf(page);
-  }
-
-  private get repositoryTabs(): string[] {
-    return this.shell
-      .tabs()
-      .flatMap((tab) =>
-        tab.tool === 'git' && tab.root !== undefined ? [tab.root] : [],
-      );
-  }
-
-  private activeRepositoryIn(session: Session): string | undefined {
-    const active = this.shell.active(session.page);
-    return active?.tool === 'git' ? active.root : undefined;
-  }
-
-  private activeWorktreeIn(session: Session): string | undefined {
-    const repository = this.activeRepositoryIn(session);
-    return repository === undefined
-      ? undefined
-      : this.storage.worktreeOf(repository);
-  }
-
-  private shownRepositories(): string[] {
-    return this.shell
-      .shown()
-      .flatMap(({ tab }) =>
-        tab.tool === 'git' && tab.root !== undefined ? [tab.root] : [],
-      );
-  }
-
-  private sessionShowingRepository(repository: string): Session | undefined {
-    const shown = this.shell
-      .shown()
-      .find(
-        ({ tab }) =>
-          tab.tool === 'git' &&
-          tab.root !== undefined &&
-          sameRoot(tab.root, repository),
-      );
-    return shown?.page === undefined ? undefined : this.sessionOf(shown.page);
-  }
-
-  private showing(root: string): ShownTab | undefined {
-    return this.shell
-      .shown()
-      .find(
-        ({ tab }) =>
-          tab.tool === 'git' &&
-          tab.root !== undefined &&
-          sameRoot(this.storage.worktreeOf(tab.root), root),
-      );
-  }
-
-  private sessionShowing(root: string): Session | undefined {
-    const shown = this.showing(root);
-    return shown?.page === undefined ? undefined : this.sessionOf(shown.page);
-  }
-
-  private live(session: Session): Session | undefined {
-    const page = this.shell.current(session.page);
-    return page === undefined ? undefined : this.sessionOf(page);
-  }
-
-  private cloneSession(): Session | undefined {
-    const kept =
-      this.cloningIn === undefined ? undefined : this.live(this.cloningIn);
-    return kept ?? this.page;
-  }
-
-  private sendRecentEverywhere(): void {
-    for (const page of this.shell.pages()) {
-      this.sendRecent(this.sessionOf(page));
-    }
-  }
-
-  private hasRepository(root: string): boolean {
-    return this.repositoryTabs.some((open) => sameRoot(open, root));
-  }
-
-  private async viewFile(
-    context: Context,
-    file: string,
-    blob: string | undefined,
-  ): Promise<void> {
-    const page = context.session?.page;
-    if (page === undefined) {
-      return;
-    }
-    const notify = this.notify(context);
-    try {
-      const viewed = await viewedFile(
-        this.gitPath,
-        context.root,
-        file,
-        blob,
-        this.host.viewedFiles,
-      );
-      if (viewed.kind === 'file') {
-        await this.shell.openView(page, 'commander', viewed.file);
-      } else {
-        notify(
-          'error',
-          viewed.kind === 'tooLarge'
-            ? strings.diff.viewTooLarge(file)
-            : strings.diff.viewMissing(file),
-        );
-      }
-    } catch (error) {
-      notify('error', strings.diff.couldNotView(file, gitErrorText(error)));
-    }
-  }
-
   image(url: URL): Promise<Response> {
-    return this.shell.track(this.readImage(url));
+    return this.fileViews.image(url);
   }
 
-  private async readImage(url: URL): Promise<Response> {
-    const source = imageSourceOf(url);
-    const type = source && imageType(source.path);
-    const tab = source && this.tabStates.get(source.root);
-    const compared =
-      source && this.compareTabs.comparisons.get(source.root)?.compared;
-    if (
-      !source ||
-      !type ||
-      (tab?.isRepository !== true && compared === undefined)
-    ) {
-      return new Response(null, { status: 404 });
-    }
-    try {
-      const read = await this.imageReads.read(source, (limit) =>
-        compared === undefined
-          ? readImage(this.gitPath, source.root, source, limit)
-          : comparedImage(compared, source.path, source.id, limit),
-      );
-      if (read.kind !== 'image') {
-        return new Response(null, {
-          status: read.kind === 'tooLarge' ? 413 : 404,
-        });
-      }
-      const { buffer, byteOffset, byteLength } = read.bytes;
-      const body =
-        buffer instanceof ArrayBuffer
-          ? new Uint8Array(buffer, byteOffset, byteLength)
-          : new Uint8Array(read.bytes);
-      return new Response(body, {
-        headers: { 'content-type': type, 'cache-control': 'no-store' },
-      });
-    } catch (error) {
-      this.log.error(strings.log.readingImageFailed(source.path));
-      this.log.error(error instanceof Error ? error : gitErrorText(error));
-      return new Response(null, { status: 500 });
-    }
+  initRepositoryIn(folder: string): Promise<void> {
+    const session = this.sessions.page;
+    return session === undefined
+      ? Promise.resolve()
+      : this.inits.initIn(session, folder);
   }
 
-  private isActive(root: string): boolean {
-    return this.showing(root) !== undefined;
-  }
-
-  private isActiveIn(session: Session, root: string): boolean {
-    const active = this.activeWorktreeIn(session);
-    return active !== undefined && sameRoot(active, root);
-  }
-
-  private showsActiveTab(session: Session): boolean {
-    const active = this.activeWorktreeIn(session);
-    return (
-      !session.disposed &&
-      active !== undefined &&
-      this.tabStates.get(active)?.isRepository !== false &&
-      this.tabStates.get(active)?.refused !== true
-    );
-  }
-
-  private repositoryOf(root: string): string {
-    return this.repositories.get(root) ?? root;
-  }
-
-  private knownRoot(root: string): string {
-    return (
-      [
-        ...this.tabStates.keys(),
-        ...this.repositories.keys(),
-        ...this.repositoryTabs,
-      ].find((known) => sameRoot(known, root)) ?? root
-    );
-  }
-
-  private bookmarkedOf(repository: string): Set<string> {
-    return bookmarkedCommits(this.storage.bookmarksOf(repository) ?? []);
-  }
-
-  private async showBookmarked(
-    session: Session,
-    repository: string,
-  ): Promise<void> {
-    for (const [root, tab] of this.tabStates) {
-      if (this.repositoryOf(root) !== repository || !historyLoaded(tab)) {
-        continue;
-      }
-      const shownIn = this.sessionShowing(root);
-      if (shownIn === undefined) {
-        tab.shownStale = true;
-        continue;
-      }
-      const context = await this.context(shownIn, root);
-      if (context) {
-        await tab.loadingHistory;
-        await this.refreshes.sendShownHistory(context, {
-          keepPlace: true,
-          layOut: false,
-        });
-      }
-    }
+  cloneInto(folder: string): Promise<void> {
+    this.sessions.cloningIn = this.sessions.page;
+    return this.clones.openIn(folder);
   }
 
   private worktreeAsked(message: GitToHost): string | undefined {
@@ -709,7 +474,7 @@ export class GitTool implements Tool<'git'> {
       this.log.error(failed);
       this.log.error(error instanceof Error ? error : text);
       const gone = root !== undefined && (await this.folderGone(root));
-      if (root === undefined || this.isActiveIn(session, root)) {
+      if (root === undefined || this.sessions.isActiveIn(session, root)) {
         session.post({
           type: 'error',
           message: gone ? strings.messages.notRepository(root) : text,
@@ -731,15 +496,16 @@ export class GitTool implements Tool<'git'> {
   }
 
   private async handle(message: GitToHost, session: Session): Promise<void> {
-    const { storage } = this;
+    const { storage, sessions } = this;
     switch (message.type) {
       case 'selectWorktree': {
-        const repository = this.activeRepositoryIn(session);
-        const root = this.knownRoot(message.root);
+        const repository = sessions.activeRepositoryIn(session);
+        const root = sessions.knownRoot(message.root);
         if (
           repository === undefined ||
-          !sameRoot(this.repositoryOf(root), repository) ||
-          (this.isActiveIn(session, root) && this.showsActiveTab(session))
+          !sameRoot(sessions.repositoryOf(root), repository) ||
+          (sessions.isActiveIn(session, root) &&
+            sessions.showsActiveTab(session))
         ) {
           return;
         }
@@ -765,141 +531,57 @@ export class GitTool implements Tool<'git'> {
       case 'initRepository': {
         const folder = await this.host.chooseFolder('init');
         if (folder !== undefined) {
-          await this.initIn(session, folder);
+          await this.inits.initIn(session, folder);
         }
         return;
       }
-      case 'initInside': {
-        const asked = this.initAsked;
-        if (asked !== undefined && sameRoot(asked, message.folder)) {
-          this.initAsked = undefined;
-          await this.initAndOpen(session, asked);
-        }
+      case 'initInside':
+        await this.inits.initInside(session, message.folder);
         return;
-      }
       case 'openClone':
       case 'closeClone':
       case 'chooseCloneFolder':
       case 'checkCloneTarget':
       case 'clone':
       case 'stopClone':
-        this.cloningIn = session;
+        sessions.cloningIn = session;
         await this.clones.receive(message);
         return;
       case 'forgetRecent':
         await this.storage.removeRecent(message.root);
         await this.worktrees.forgetUnused([message.root]);
-        this.sendRecentEverywhere();
+        this.posts.sendRecentEverywhere();
         return;
       case 'preloadWorktree': {
-        const repository = this.activeRepositoryIn(session);
-        const root = this.knownRoot(message.root);
+        const repository = sessions.activeRepositoryIn(session);
+        const root = sessions.knownRoot(message.root);
         if (
           repository !== undefined &&
-          sameRoot(this.repositoryOf(root), repository) &&
-          !this.isActiveIn(session, root)
+          sameRoot(sessions.repositoryOf(root), repository) &&
+          !sessions.isActiveIn(session, root)
         ) {
           await this.preloadRoot(session, root, repository);
         }
         return;
       }
       case 'setColumnWidths':
-        this.save(storage.setColumnWidths(message.widths));
-        return;
       case 'setShowAllFiles':
-        this.save(storage.setShowAllFiles(message.show));
+      case 'setCollapseMerges':
+      case 'setShowEntireFile':
+      case 'setAutoFetch':
+      case 'setDiffLayout':
+      case 'setIgnoreWhitespace':
+        await this.viewSettings.receive(session, message);
         return;
-      case 'setCollapseMerges': {
-        this.save(storage.setCollapseMerges(message.collapse));
-        this.collapseMerges = message.collapse;
-        for (const tab of this.tabStates.values()) {
-          tab.toggledMerges.clear();
-          tab.shownStale = true;
-        }
-        const context = await this.context(session);
-        if (context) {
-          await this.refreshes.sendShownHistory(context);
-        }
-        return;
-      }
       case 'loadCompareTexts':
         await this.compareTabs.sendCompareTexts(session, message.requests);
         return;
-      case 'setShowEntireFile': {
-        this.save(storage.setShowEntireFile(message.show));
-        await this.compareTabs.sendCompare(session);
-        const context = await this.context(session);
-        this.staleDiffs(context, (tab) => tab.path !== undefined);
-        if (context?.tab.hash !== undefined && context.tab.path !== undefined) {
-          await this.diffs.sendDiff(context, context.tab.hash);
-        }
+      case 'setSolo':
+      case 'setBookmarks':
+        await this.choices.receive(session, message);
         return;
-      }
-      case 'setAutoFetch':
-        this.save(storage.setAutoFetch(message.on));
-        this.autoFetch.update(message.on);
-        return;
-      case 'setDiffLayout':
-        this.save(storage.setDiffLayout(message.layout));
-        return;
-      case 'setIgnoreWhitespace': {
-        this.save(storage.setIgnoreWhitespace(message.ignore));
-        await this.compareTabs.sendCompare(session);
-        const context = await this.context(session);
-        this.staleDiffs(context, () => true);
-        if (context?.tab.hash !== undefined) {
-          await this.diffs.sendDiff(context, context.tab.hash);
-        }
-        return;
-      }
-      case 'setSolo': {
-        const root = this.knownRoot(message.root);
-        if (!this.hasRepository(this.repositoryOf(root))) {
-          return;
-        }
-        const context = await this.context(session, root);
-        this.save(storage.setSolo(root, message.solo));
-        if (!context) {
-          return;
-        }
-        context.post({ type: 'solo', solo: message.solo });
-        context.post({ type: 'applyingSolo', running: true });
-        try {
-          forgetHistory(context.tab);
-          context.tab.readingHistory?.abort();
-          if (this.isActiveIn(session, root)) {
-            await this.refreshes.refresh(context, () =>
-              this.refreshes.sendCommits(context, this.refsOf(context), true),
-            );
-          }
-        } finally {
-          context.post({ type: 'applyingSolo', running: false });
-        }
-        return;
-      }
-      case 'setBookmarks': {
-        const repository = this.repositoryOf(this.knownRoot(message.root));
-        if (!this.hasRepository(repository)) {
-          return;
-        }
-        const before = this.bookmarkedOf(repository);
-        this.save(
-          storage.setBookmarks(
-            repository,
-            message.bookmarks.map(({ kind, name }) => ({ kind, name })),
-          ),
-        );
-        const after = this.bookmarkedOf(repository);
-        if (
-          before.size !== after.size ||
-          [...before].some((hash) => !after.has(hash))
-        ) {
-          await this.showBookmarked(session, repository);
-        }
-        return;
-      }
       case 'scrolled': {
-        const tab = this.tabStates.get(this.knownRoot(message.root));
+        const tab = this.tabStates.get(sessions.knownRoot(message.root));
         if (tab) {
           tab.anchor = {
             hash: message.hash,
@@ -912,17 +594,17 @@ export class GitTool implements Tool<'git'> {
       case 'searchCommits':
         await this.commitNavigation.searchCommits(
           session,
-          this.knownRoot(message.root),
+          sessions.knownRoot(message.root),
           message.query,
         );
         return;
       case 'stopCommitSearch':
         this.commitNavigation.commitSearches
-          .get(this.knownRoot(message.root))
+          .get(sessions.knownRoot(message.root))
           ?.abort();
         return;
       default:
-        if (this.isActiveIn(session, message.root)) {
+        if (sessions.isActiveIn(session, message.root)) {
           await this.handleTab(message, session);
         }
     }
@@ -942,7 +624,7 @@ export class GitTool implements Tool<'git'> {
     >,
     session: Session,
   ): Promise<void> {
-    const context = await this.context(session);
+    const context = await this.contexts.context(session);
     if (!context) {
       return;
     }
@@ -969,214 +651,33 @@ export class GitTool implements Tool<'git'> {
         }
         break;
       case 'checkout':
-        await this.remotes.checkout(context, message.target, picked);
-        break;
       case 'fetch':
-        await this.remotes.fetch(context);
-        break;
       case 'pull':
-        await this.remotes.pull(context, picked);
-        break;
       case 'push':
-        await this.remotes.push(context);
-        break;
       case 'pushTag':
-        await this.remotes.pushTag(context, message.name);
-        break;
       case 'pullBranch':
-        await this.remotes.pullBranch(context, message.name, picked);
-        break;
       case 'pushBranch':
-        await this.remotes.pushBranch(context, message.name);
+        await this.remotes.receive(context, message, picked);
         break;
-      case 'loadTree':
-        if (this.isSelected(context, message.hash)) {
-          await this.diffs.sendTree(context, message.hash);
-        }
-        break;
-      case 'jump': {
-        if (isFullHash(message.hash)) {
-          await this.commitNavigation.showCommit(
-            context,
-            message.hash.toLowerCase(),
-            picked,
-          );
-          break;
-        }
-        const found = await findCommit(
-          context.gitPath,
-          context.root,
-          message.hash,
-        );
-        if (found.kind === 'found') {
-          await this.commitNavigation.showCommit(context, found.hash, picked);
-        } else {
-          this.notify(context)(
-            'error',
-            found.kind === 'ambiguous'
-              ? strings.search.commitsStartWith(found.count, message.hash)
-              : strings.search.noCommitStartsWith(message.hash),
-          );
-        }
-        break;
-      }
+      case 'jump':
       case 'showUpstream':
-        await this.commitNavigation.showUpstream(context, picked);
-        break;
-      case 'showParent': {
-        const parent = parentOf(context.tab);
-        if (parent !== undefined) {
-          await this.commitNavigation.showCommit(context, parent, picked);
-        }
-        break;
-      }
+      case 'showParent':
       case 'navigate':
-        await this.commitNavigation.navigate(
-          context,
-          message.direction,
-          message.steps,
-          picked,
-        );
-        break;
       case 'lookupHash':
-        await this.commitNavigation.lookupHash(context, message.query);
+        await this.commitNavigation.receive(context, message, picked);
         break;
       case 'selectCommit':
-        context.tab.prefetching?.controller.abort();
-        context.tab.selection = message.selection;
-        if (message.hash === undefined) {
-          unselect(context.tab);
-          this.rememberSelection(context);
-          break;
-        }
-        if (!pickable(context.tab, message.hash)) {
-          notInHistory(context, message.hash);
-          break;
-        }
-        this.commitNavigation.visit(context, message.hash, message.replace);
-        select(context.tab, message.hash);
-        this.rememberSelection(context);
-        await this.diffs.sendCommit(context);
-        break;
       case 'selectFile':
-        if (this.isSelected(context, message.hash)) {
-          context.tab.path = message.path;
-          context.tab.area = message.area;
-          this.rememberSelection(context);
-          await this.diffs.sendDiff(context, message.hash);
-        }
-        break;
+      case 'loadTree':
       case 'loadTexts':
-        if (this.isSelected(context, message.hash)) {
-          await this.diffs.sendTexts(context, message);
-        }
-        break;
       case 'prefetchDiff':
-        await this.diffs.prefetchDiff(context, message.hash);
-        break;
       case 'prefetchTexts':
-        if (context.tab.prefetching?.hash === message.hash) {
-          await this.diffs.prefetchTexts(context, message.hash, message.texts);
-        }
+      case 'loadFileDiff':
+        await this.selections.receive(context, message);
         break;
       case 'viewFile':
-        await this.viewFile(context, message.path, message.blob);
+        await this.fileViews.viewFile(context, message.path, message.blob);
         break;
-      case 'loadFileDiff':
-        if (this.isSelected(context, message.hash)) {
-          await this.diffs.sendFileDiff(
-            context,
-            message.hash,
-            message.path,
-            message.diff,
-          );
-        }
-        break;
-    }
-  }
-
-  private known(context: Context, hash: string): boolean {
-    if (stillThere(context.tab)(hash)) {
-      return true;
-    }
-    notInHistory(context, hash);
-    return false;
-  }
-
-  private isSelected(context: Context, hash: string): boolean {
-    return this.known(context, hash) && hash === context.tab.hash;
-  }
-
-  initRepositoryIn(folder: string): Promise<void> {
-    const session = this.page;
-    return session === undefined
-      ? Promise.resolve()
-      : this.initIn(session, folder);
-  }
-
-  cloneInto(folder: string): Promise<void> {
-    this.cloningIn = this.page;
-    return this.clones.openIn(folder);
-  }
-
-  private async initIn(session: Session, folder: string): Promise<void> {
-    let location: Location | undefined;
-    try {
-      location = (await isFolder(folder))
-        ? await locateRepository(this.gitPath, folder)
-        : undefined;
-    } catch (error) {
-      this.initFailed(session, folder, error);
-      return;
-    }
-    if (location === undefined) {
-      await this.initAndOpen(session, folder);
-      return;
-    }
-    const { worktree } = location;
-    if (worktree === undefined || sameRoot(worktree, folder)) {
-      session.post({
-        type: 'notice',
-        level: 'info',
-        message: strings.messages.alreadyRepository(folder),
-      });
-      await this.worktrees.openRepositories(session, [folder]);
-      return;
-    }
-    this.initAsked = folder;
-    session.post({ type: 'confirmInit', folder, repository: worktree });
-  }
-
-  private async initAndOpen(session: Session, folder: string): Promise<void> {
-    try {
-      await initRepository(this.gitPath, folder);
-    } catch (error) {
-      this.initFailed(session, folder, error);
-      return;
-    }
-    this.log.info(strings.log.initialized(folder));
-    await this.worktrees.openRepositories(session, [folder]);
-  }
-
-  private initFailed(session: Session, folder: string, error: unknown): void {
-    const text = gitErrorText(error);
-    this.log.error(strings.log.initFailed(folder));
-    this.log.error(error instanceof Error ? error : text);
-    session.post({
-      type: 'notice',
-      level: 'error',
-      message: strings.messages.couldNotInit(folder, text),
-    });
-  }
-
-  private staleDiffs(
-    active: Context | undefined,
-    affected: (tab: TabState) => boolean,
-  ): void {
-    for (const tab of this.tabStates.values()) {
-      if (tab !== active?.tab && tab.hash !== undefined && affected(tab)) {
-        tab.diffStale = true;
-      }
     }
   }
 
@@ -1191,22 +692,11 @@ export class GitTool implements Tool<'git'> {
     context.tab.opened = true;
     if (!firstOpen && context.tab.shown.commits) {
       this.log.info(strings.log.tabShownAsLeft(context.root));
-      await this.addDefaultBookmarks(context);
+      await this.posts.addDefaultBookmarks(context);
       await this.refreshes.refresh(context);
       return;
     }
     await this.loadTab(context);
-  }
-
-  private rememberSelection({ root, tab }: Context): void {
-    this.save(
-      this.storage.setSelection(
-        root,
-        tab.hash === undefined
-          ? undefined
-          : { hash: tab.hash, path: tab.path, area: tab.area },
-      ),
-    );
   }
 
   private save(saving: Promise<void>): void {
@@ -1217,9 +707,9 @@ export class GitTool implements Tool<'git'> {
   }
 
   private async loadTab(context: Context): Promise<void> {
-    const refs = this.refsOf(context);
+    const refs = this.contexts.refsOf(context);
     await allSettled([
-      this.addDefaultBookmarks(context, refs),
+      this.posts.addDefaultBookmarks(context, refs),
       this.refreshes.refresh(context, () => {
         context.tab.indexPaths = undefined;
         return allSettled([
@@ -1236,7 +726,7 @@ export class GitTool implements Tool<'git'> {
           this.refreshes.sendWorkingTree(context),
         ]);
       }),
-      this.sendRepository(context, refs),
+      this.posts.sendRepository(context, refs),
     ]);
   }
 
@@ -1246,14 +736,14 @@ export class GitTool implements Tool<'git'> {
     repository: string,
   ): Promise<void> {
     this.repositories.set(root, repository);
-    const tab = this.tabState(root);
+    const tab = this.contexts.tabState(root);
     if (tab.opened || tab.preloading) {
       return;
     }
     const selected = { hash: tab.hash, path: tab.path, area: tab.area };
     tab.preloading = (async () => {
       try {
-        const context = await this.context(session, root, false);
+        const context = await this.contexts.context(session, root, false);
         if (!context || tab.opened) {
           return;
         }
@@ -1269,239 +759,5 @@ export class GitTool implements Tool<'git'> {
       }
     })();
     await tab.preloading;
-  }
-
-  private async sendRepository(
-    context: Context,
-    refs: Promise<ReadRefs>,
-  ): Promise<void> {
-    const { head, refs: listed, remotes, stashes, read } = await refs;
-    const tagRemote = await tagRemoteOf(
-      context.gitPath,
-      context.root,
-      remotes,
-    ).catch(() => undefined);
-    const { tab } = context;
-    if (read < tab.repositoryShown) {
-      return;
-    }
-    tab.repositoryShown = read;
-    context.post({
-      type: 'repository',
-      head: head?.name,
-      headCommit: head?.commit,
-      refs: listed,
-      ...(tagRemote !== undefined &&
-        this.storage.remoteTagsOf(context.repository).has(tagRemote) && {
-          tagRemote,
-        }),
-      stashes: stashes.map(({ name, commit, message }) => ({
-        name,
-        commit,
-        message,
-      })),
-    });
-  }
-
-  private postTabs(session: Session): void {
-    const { storage } = this;
-    const active = this.activeRepositoryIn(session);
-    const worktree = this.activeWorktreeIn(session);
-    this.sendTabs(session);
-    session.post({
-      type: 'bookmarks',
-      bookmarks: active ? (storage.bookmarksOf(active) ?? []) : [],
-    });
-    session.post({
-      type: 'solo',
-      solo: worktree !== undefined && storage.soloOf(worktree),
-    });
-    this.remotes.postLastFetch(session, active);
-  }
-
-  private sendTabs(session: Session): void {
-    const active = this.activeRepositoryIn(session);
-    session.post({
-      type: 'worktrees',
-      worktree: this.activeWorktreeIn(session),
-      worktrees: active === undefined ? [] : this.worktreeLists.get(active),
-    });
-    this.sendRecent(session);
-  }
-
-  private sendRecent(session: Session): void {
-    session.post({
-      type: 'recent',
-      recent: tabInfos(
-        this.storage.recent
-          .filter(
-            (root) =>
-              !this.hasRepository(root) &&
-              !this.hasRepository(this.repositoryOf(root)),
-          )
-          .slice(0, this.shell.recentFolders()),
-      ),
-    });
-  }
-
-  private async addDefaultBookmarks(
-    context: Context,
-    refs?: Promise<Refs>,
-  ): Promise<void> {
-    const saved = this.storage.bookmarksOf(context.repository);
-    if (saved !== undefined) {
-      context.post({ type: 'bookmarks', bookmarks: saved });
-      return;
-    }
-    const [{ head, refs: listed }, defaults] = await Promise.all([
-      refs ?? this.refsOf(context),
-      remoteDefaultBranches(context.gitPath, context.root),
-    ]);
-    const bookmarks = defaultBookmarks(listed, defaults);
-    if (head?.commit !== undefined) {
-      this.save(this.storage.setBookmarks(context.repository, bookmarks));
-    }
-    context.post({ type: 'bookmarks', bookmarks });
-  }
-
-  private tabState(root: string): TabWork {
-    let tab = this.tabStates.get(root);
-    if (!tab) {
-      const saved = this.storage.selectionOf(root);
-      tab = {
-        ...newTabState(),
-        hash: saved?.hash,
-        path: saved?.path,
-        area: saved?.area,
-        preloading: undefined,
-        loadingHistory: undefined,
-        readingHistory: undefined,
-        refreshing: false,
-        refreshAgain: new Map(),
-        changedAgain: nothing,
-        refreshedAgain: undefined,
-        loadsAgain: [],
-        refreshError: undefined,
-        isRepository: undefined,
-        refused: false,
-        selection: undefined,
-        navigating: Promise.resolve(),
-        movingHead: Promise.resolve(),
-        runningOn: {
-          pushingTag: new Set(),
-          pullingBranch: new Set(),
-          pushingBranch: new Set(),
-        },
-        diffRequest: 0,
-        diffOwed: false,
-        loadingFiles: new AbortController(),
-        loadingDiff: new AbortController(),
-        prefetching: undefined,
-        closed: new AbortController(),
-        untrackedPatches: new UntrackedPatches(maxKeptUntrackedChars),
-        indexPaths: undefined,
-        refsRead: 0,
-        repositoryShown: 0,
-      };
-      this.tabStates.set(root, tab);
-    }
-    return tab;
-  }
-
-  private async refsOf(context: Context): Promise<ReadRefs> {
-    const read = ++context.tab.refsRead;
-    const refs = await readRefs(context.gitPath, context.root);
-    return {
-      ...refs,
-      read,
-      refs: [
-        ...refs.refs,
-        ...remoteTagRefs(
-          this.storage.remoteTagsOf(context.repository),
-          refs.remotes,
-        ),
-      ],
-    };
-  }
-
-  private async context(
-    session: Session,
-    root = this.activeWorktreeIn(session),
-    live = true,
-  ): Promise<Context | undefined> {
-    if (!root) {
-      return undefined;
-    }
-    const tab = this.tabState(root);
-    tab.isRepository ||=
-      (await repositoryRoot(this.gitPath, root)) !== undefined;
-    if (!tab.isRepository) {
-      if (live && this.isActiveIn(session, root)) {
-        tab.refreshError = strings.messages.notRepository(root);
-        session.post({ type: 'error', message: tab.refreshError });
-      }
-      return undefined;
-    }
-    return {
-      gitPath: this.gitPath,
-      root,
-      repository: this.repositoryOf(root),
-      tab,
-      session: live ? session : undefined,
-      post: (message) => {
-        if (message.type !== 'notice') {
-          keep(tab.shown, message);
-        }
-        if (this.tabStates.get(root) !== tab) {
-          return;
-        }
-        const shownIn = this.isActiveIn(session, root)
-          ? session
-          : this.sessionShowing(root);
-        if (shownIn !== undefined) {
-          this.postToPage(shownIn, message);
-        }
-      },
-    };
-  }
-
-  private notify(context: Context): Notify {
-    const elsewhere =
-      context.session && this.noticesOf(context.session, context.repository);
-    return (level, message) => {
-      if (elsewhere && !this.isActive(context.root)) {
-        elsewhere(level, message);
-      } else {
-        context.post({ type: 'notice', level, message });
-      }
-    };
-  }
-
-  private noticesOf(session: Session, repository: string): Notify {
-    return (level, message) =>
-      this.hasRepository(repository) &&
-      this.postToPage(session, {
-        type: 'notice',
-        level,
-        message: strings.messages.inTab(this.tabLabel(repository), message),
-      });
-  }
-
-  private tabLabel(repository: string): string {
-    const tab = tabInfos(this.repositoryTabs).find((info) =>
-      sameRoot(info.root, repository),
-    );
-    return strings.tabs.label(tab?.name ?? tabName(repository), tab?.folder);
-  }
-
-  private postToPage(session: Session, message: GitPost): void {
-    if (message.type === 'notice') {
-      this.shell.notice(session.page, {
-        level: message.level,
-        message: message.message,
-      });
-      return;
-    }
-    this.live(session)?.post(message);
   }
 }

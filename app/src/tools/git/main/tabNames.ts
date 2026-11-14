@@ -1,6 +1,8 @@
 import * as path from 'node:path';
 import type { RepositoryInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
+import type { Tab, TabName } from '../../../shell/main/shell';
+import { comparedNames } from './compare';
 
 export function tabInfos(
   roots: readonly string[],
@@ -58,4 +60,36 @@ function foldersAbove(folder: string, paths: path.PlatformPath): string[] {
 export function tabName(root: string, paths: path.PlatformPath = path): string {
   const folder = namedFolder(root, paths);
   return paths.basename(folder).replace(/(.)\.git$/, '$1') || folder;
+}
+
+export function namesOfTabs(
+  tabs: readonly Tab[],
+): ReadonlyMap<string, TabName> {
+  const infos = tabInfos(tabs.flatMap((tab) => tab.root ?? []));
+  return new Map(
+    tabs.flatMap((tab): [string, TabName][] => {
+      if (tab.compare !== undefined) {
+        return [
+          [
+            tab.id,
+            {
+              name: strings.messages.compareTab(...comparedNames(tab.compare)),
+            },
+          ],
+        ];
+      }
+      const info = infos.find((other) => other.root === tab.root);
+      return info === undefined
+        ? []
+        : [
+            [
+              tab.id,
+              {
+                name: info.name,
+                ...(info.folder !== undefined && { folder: info.folder }),
+              },
+            ],
+          ];
+    }),
+  );
 }

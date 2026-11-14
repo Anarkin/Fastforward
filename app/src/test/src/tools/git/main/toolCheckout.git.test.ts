@@ -83,7 +83,8 @@ suite('Git tool checking out', () => {
   test('keeps the branches of a checkout shown though the repository is sent again from refs read before it, as those were shown last and stayed until the refs changed again', async () => {
     const held = gate();
     let read = false;
-    const restoreRefs = Reflect.get(fastforward, 'refsOf');
+    const refsHolder = holderOf(fastforward, 'refsOf');
+    const restoreRefs: unknown = Reflect.get(refsHolder, 'refsOf');
     stubMethod(fastforward, 'refsOf', async (original, ...args) => {
       const refs = await original(...args);
       read = true;
@@ -98,7 +99,7 @@ suite('Git tool checking out', () => {
         [repository.root],
       );
       await waitFor(() => read, 'the refs to be read');
-      Reflect.set(fastforward, 'refsOf', restoreRefs);
+      Reflect.set(refsHolder, 'refsOf', restoreRefs);
       await connection.receive({
         type: 'checkout',
         root: repository.root,
@@ -111,7 +112,7 @@ suite('Git tool checking out', () => {
       await connection.refresh();
       assert.strictEqual(page.last('repository')?.head, 'feature');
     } finally {
-      Reflect.set(fastforward, 'refsOf', restoreRefs);
+      Reflect.set(refsHolder, 'refsOf', restoreRefs);
       held.open();
       await restore();
     }

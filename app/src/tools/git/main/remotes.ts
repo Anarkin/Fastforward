@@ -30,7 +30,7 @@ import {
 import { sameTags } from './refs';
 import { isFullHash } from '../shared/hashes';
 import { hasRef } from '../shared/refNames';
-import type { CheckoutTarget } from '../shared/protocol';
+import type { CheckoutTarget, TabMessage } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/shell';
 import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../shell/main/storage';
@@ -51,6 +51,20 @@ const refsAlone: Changed = { refs: true, workingTree: false };
 
 const silent = () => undefined;
 
+export type RemoteMessage = Extract<
+  TabMessage,
+  {
+    readonly type:
+      | 'checkout'
+      | 'fetch'
+      | 'pull'
+      | 'push'
+      | 'pushTag'
+      | 'pullBranch'
+      | 'pushBranch';
+  }
+>;
+
 export class Remotes {
   private readonly fetches = new Map<string, Fetching>();
   private readonly pushes = new Map<string, Promise<unknown>>();
@@ -68,6 +82,38 @@ export class Remotes {
     private readonly quitting: AbortController,
     private readonly repositories: Map<string, string>,
   ) {}
+
+  async receive(
+    context: Context,
+    message: RemoteMessage,
+    picked: number | undefined,
+  ): Promise<void> {
+    switch (message.type) {
+      case 'checkout':
+        await this.checkout(context, message.target, picked);
+        return;
+      case 'fetch':
+        await this.fetch(context);
+        return;
+      case 'pull':
+        await this.pull(context, picked);
+        return;
+      case 'push':
+        await this.push(context);
+        return;
+      case 'pushTag':
+        await this.pushTag(context, message.name);
+        return;
+      case 'pullBranch':
+        await this.pullBranch(context, message.name, picked);
+        return;
+      case 'pushBranch':
+        await this.pushBranch(context, message.name);
+        return;
+      default:
+        return message satisfies never;
+    }
+  }
 
   checkout(
     context: Context,

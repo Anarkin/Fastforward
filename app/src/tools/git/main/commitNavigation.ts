@@ -1,14 +1,22 @@
 import { readUpstream } from './branches';
-import { findCommits, headCommit, logCommits, searchCommits } from './history';
+import {
+  findCommit,
+  findCommits,
+  headCommit,
+  logCommits,
+  searchCommits,
+} from './history';
 import { step, visit } from './navigation';
 import type { Log } from '../../../shell/main/log';
 import { foundUpstream } from './operations';
 import { comparedOf } from '../shared/comparisons';
+import { isFullHash } from '../shared/hashes';
 import {
   workingTreeHash,
   type CommitResults,
   type CommitSearch,
   type Direction,
+  type TabMessage,
 } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/shell';
 import { strings } from '../../../lib/shared/strings';
@@ -20,12 +28,21 @@ import {
   mergesHidingCommit,
   navigationEntry,
   nearestSteps,
+  parentOf,
   select,
   stillThere,
 } from './tabState';
 import type { Session, Context, GitCore } from './tabContext';
 import type { Diffs } from './diffs';
 import type { Refreshes } from './refreshes';
+
+export type NavigationMessage = Extract<
+  TabMessage,
+  {
+    readonly type:
+      'jump' | 'showUpstream' | 'showParent' | 'navigate' | 'lookupHash';
+  }
+>;
 
 export class CommitNavigation {
   readonly commitSearches = new Map<string, AbortController>();
@@ -39,6 +56,55 @@ export class CommitNavigation {
     private readonly refreshes: Refreshes,
     private readonly core: GitCore,
   ) {}
+
+  async receive(
+    context: Context,
+    message: NavigationMessage,
+    picked: number | undefined,
+  ): Promise<void> {
+    switch (message.type) {
+      case 'jump': {
+        if (isFullHash(message.hash)) {
+          await this.showCommit(context, message.hash.toLowerCase(), picked);
+          return;
+        }
+        const found = await findCommit(
+          context.gitPath,
+          context.root,
+          message.hash,
+        );
+        if (found.kind === 'found') {
+          await this.showCommit(context, found.hash, picked);
+        } else {
+          this.core.notify(context)(
+            'error',
+            found.kind === 'ambiguous'
+              ? strings.search.commitsStartWith(found.count, message.hash)
+              : strings.search.noCommitStartsWith(message.hash),
+          );
+        }
+        return;
+      }
+      case 'showUpstream':
+        await this.showUpstream(context, picked);
+        return;
+      case 'showParent': {
+        const parent = parentOf(context.tab);
+        if (parent !== undefined) {
+          await this.showCommit(context, parent, picked);
+        }
+        return;
+      }
+      case 'navigate':
+        await this.navigate(context, message.direction, message.steps, picked);
+        return;
+      case 'lookupHash':
+        await this.lookupHash(context, message.query);
+        return;
+      default:
+        return message satisfies never;
+    }
+  }
 
   visit(context: Context, hash: string, replace = false): void {
     const { tab } = context;

@@ -637,6 +637,7 @@ export function holderOf(view: GitTool, name: string): object {
     (part: unknown): part is object =>
       typeof part === 'object' &&
       part !== null &&
+      Object.getPrototypeOf(part) !== Object.prototype &&
       typeof Reflect.get(part, name) === 'function',
   );
   assert.strictEqual(holders.length, 1, name);
