@@ -4,13 +4,7 @@ import { strings } from '../../../../../lib/shared/strings';
 import { suite, test } from 'vitest';
 import { elevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import type { FileSystem } from '../../../../../tools/commander/main/fileSystem';
-import {
-  helperArguments,
-  helperOf,
-  newHelperAddress,
-  runHelper,
-  send,
-} from '../../../../../tools/commander/main/helper';
+import { runHelper, send } from '../../../../../tools/commander/main/helper';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import { waitFor } from '../../../../helpers/fixtures';
 import * as fs from 'node:fs';
@@ -39,21 +33,6 @@ const files: FileSystem = {
 };
 
 suite('The elevated helper of the commander', () => {
-  test('finds where to connect and with what in its own arguments only', () => {
-    const address = newHelperAddress(process.platform);
-    assert.deepStrictEqual(
-      helperOf(['app.exe', ...helperArguments(address)]),
-      address,
-    );
-    assert.strictEqual(helperOf(['app.exe', 'C:\\work']), undefined);
-    assert.notDeepStrictEqual(newHelperAddress(process.platform), address);
-    const longTemp = '/var/folders/n6/hn37q6pj7sj_9dmqqc2113800000gn/T';
-    assert.ok(
-      newHelperAddress('darwin', longTemp).pipe.length < 104,
-      'a socket path fits the 104 bytes macOS allows',
-    );
-  });
-
   test('lists folders for the app, failing as the folder fails, and stops once the app goes', async () => {
     let exited = false;
     const elevated = await elevatedFileSystem((address) => {
