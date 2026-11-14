@@ -1,7 +1,7 @@
 import { strings } from '../../../lib/shared/strings';
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import { gitErrorText } from './errorText';
-import { viewedFile } from './files';
+import { viewedFile } from './viewedFiles';
 import type { GitSessions } from './sessions';
 import type { Context } from './tabContext';
 

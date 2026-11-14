@@ -1,7 +1,7 @@
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { linkMode, type FileChange } from '../shared/protocol';
-import { blobSizes } from './files';
+import { blobSizes } from './objects';
 import { splitNul } from './run';
 
 export interface RawChange {

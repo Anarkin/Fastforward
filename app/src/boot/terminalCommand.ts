@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../lib/shared/strings';
 import type { CommandInstall, CommandState } from '../shell/main/commandOffer';
-import { isMissing } from '../tools/git/main/files';
+import { isMissing } from '../lib/main/missing';
 
 const command = 'ff';
 const appImageLine = /^fastforward_appimage=.*$/m;

@@ -17,7 +17,8 @@ import {
   type RawChange,
   withBytes,
 } from './rawChanges';
-import { isBinary, listUntracked, maxFileSize } from './files';
+import { isBinary, maxFileSize } from './files';
+import { listUntracked } from './fileLists';
 import { headCommit } from './history';
 import { runGit, splitNul } from './run';
 

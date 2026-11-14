@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { FileChange } from '../shared/protocol';
 import { isFullHash } from '../shared/hashes';
-import { keptFirstParent } from './files';
+import { keptFirstParent } from './objects';
 import { strings } from '../../../lib/shared/strings';
 import { StoppedReading, type GitOutput } from './keptGit';
 import { keptGits } from './run';

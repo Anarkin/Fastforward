@@ -1,4 +1,4 @@
-import { listIndex, listTree, uniquePaths } from './files';
+import { listIndex, listTree, uniquePaths } from './fileLists';
 import type { WorkingTree } from './workingTree';
 import { type Context, shownCommit } from './tabContext';
 

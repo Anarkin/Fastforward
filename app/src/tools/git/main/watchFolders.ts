@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { InFlight } from '../../../lib/main/inFlight';
-import { isMissing } from './files';
+import { isMissing } from '../../../lib/main/missing';
 import { runGit, splitNul } from './run';
 
 export interface Watcher {

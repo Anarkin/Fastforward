@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { listTree } from '../../../../../tools/git/main/files';
+import { listTree } from '../../../../../tools/git/main/fileLists';
 import {
   workingTreeFiles,
   workingTreePatch,
