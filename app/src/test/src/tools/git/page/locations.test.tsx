@@ -1,24 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { RefInfo } from '../../../../../tools/git/shared/protocol';
-import {
-  currentActive,
-  enterTarget,
-  focusLeaves,
-  foundCommits,
-  itemKey,
-  leafIndent,
-  nextActive,
-  pinnedResults,
-  popupKeyAction,
-  resultItems,
-  searchRefs,
-  searchStashes,
-  shownChildren,
-  shownStashes,
-  type Highlighted,
-  stuckRowTop,
-} from '../../../../../tools/git/page/locations';
 import { FolderRow } from '../../../../../tools/git/page/tree';
 import { buildTree, indexRefs } from '../../../../../tools/git/page/refIndex';
 import {
@@ -27,6 +9,28 @@ import {
   stylesheetPx,
 } from '../../../../helpers/fixtures';
 import { renderToStaticMarkup, refs } from './locationsFixtures';
+import {
+  currentActive,
+  leafIndent,
+  nextActive,
+  shownChildren,
+  type Highlighted,
+  stuckRowTop,
+} from '../../../../../tools/git/page/locationTree';
+import {
+  enterTarget,
+  focusLeaves,
+  foundCommits,
+  popupKeyAction,
+} from '../../../../../tools/git/page/locations';
+import {
+  itemKey,
+  pinnedResults,
+  resultItems,
+  searchRefs,
+  searchStashes,
+  shownStashes,
+} from '../../../../../tools/git/page/locationsSearch';
 
 const branchNamed = (name: string): RefInfo => ({
   kind: 'branch',

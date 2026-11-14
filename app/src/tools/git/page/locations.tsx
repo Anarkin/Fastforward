@@ -8,300 +8,49 @@ import {
   useState,
 } from 'react';
 import { isHashPrefix } from '../shared/hashes';
-import type {
-  Bookmark,
-  CommitInfo,
-  CommitResults,
-  RefInfo,
-  RefKind,
-  StashInfo,
-} from '../shared/protocol';
-import { findRef } from '../shared/refNames';
+import type { CommitInfo, CommitResults, StashInfo } from '../shared/protocol';
 import { searchedBookmarks } from './bookmarks';
 import { BackIcon } from '../../../lib/page/icons';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
-import { CommitBubble, HeadBubble, RefBubble, useCheckedOut } from './bubbles';
+import { CommitBubble, HeadBubble, RefBubble } from './bubbles';
 import { useDismiss } from '../../../lib/page/contextMenu';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { CommitRow, noRefs } from './commitList';
 import { detachedHead, searchQueryOf, useGit, useGitActions } from './store';
 import { Highlight } from '../../../lib/page/highlight';
-import { FolderRow, treeIndent, twistyWidth } from './tree';
 import { keymap } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import { keyPressed } from '../../../lib/page/shortcuts';
-import { folded } from '../../../lib/shared/textMatches';
-import type { RefGroup, TreeNode } from './refIndex';
 
-const maxResults = 200;
+import {
+  SearchGroup,
+  searchRefs,
+  noStashList,
+  searchStashes,
+  shownStashes,
+  RefLabel,
+  PinnedResult,
+  ResultItem,
+  pinnedResults,
+  resultItems,
+  commitKey,
+  stashKey,
+  refKey,
+  pinnedKey,
+  itemKey,
+} from './locationsSearch';
 
-export interface SearchGroup {
-  readonly kind: RefKind;
-  readonly title: string;
-  readonly refs: readonly RefInfo[];
-  readonly more: number;
-}
-
-export function searchRefs(
-  index: readonly RefGroup[],
-  query: string,
-  limit = maxResults,
-): SearchGroup[] {
-  const needle = folded(query.trim());
-  return index.map(({ kind, title, refs, names }) => {
-    const found: RefInfo[] = [];
-    let more = 0;
-    if (needle) {
-      for (const [i, name] of names.entries()) {
-        if (!name.includes(needle)) {
-          continue;
-        }
-        if (found.length < limit) {
-          found.push(refs[i]);
-        } else {
-          more++;
-        }
-      }
-    }
-    return { kind, title, refs: found, more };
-  });
-}
-
-export interface StashSearch {
-  readonly stashes: readonly StashInfo[];
-  readonly more: number;
-}
-
-const noStashes: StashSearch = { stashes: [], more: 0 };
-
-const noStashList: readonly StashInfo[] = [];
-
-export function searchStashes(
-  stashes: readonly StashInfo[],
-  query: string,
-  limit = maxResults,
-): StashSearch {
-  const needle = folded(query.trim());
-  if (!needle) {
-    return noStashes;
-  }
-  const found = stashes.filter((stash) =>
-    [stash.name, stash.message].some((text) => folded(text).includes(needle)),
-  );
-  return cappedStashes(found, limit);
-}
-
-export function shownStashes(
-  stashes: readonly StashInfo[],
-  query: string,
-  limit = maxResults,
-): StashSearch {
-  return query.trim()
-    ? searchStashes(stashes, query, limit)
-    : cappedStashes(stashes, limit);
-}
-
-function cappedStashes(
-  stashes: readonly StashInfo[],
-  limit: number,
-): StashSearch {
-  return {
-    stashes: stashes.slice(0, limit),
-    more: Math.max(0, stashes.length - limit),
-  };
-}
-
-function RefLabel({
-  info,
-  children,
-}: {
-  info: RefInfo;
-  children: React.ReactNode;
-}) {
-  const { kind } = info;
-  const checkedOut = useCheckedOut(info);
-  return (
-    <span className={`badge ${kind} ${checkedOut ? 'checked-out' : ''}`}>
-      {children}
-    </span>
-  );
-}
-
-export interface PinnedResult {
-  readonly kind: 'pinned';
-  readonly bookmark: Bookmark;
-  readonly commit: string | undefined;
-}
-
-export type ResultItem =
-  | { readonly kind: 'commit'; readonly commit: CommitInfo }
-  | { readonly kind: 'ref'; readonly ref: RefInfo }
-  | { readonly kind: 'stash'; readonly stash: StashInfo }
-  | PinnedResult;
-
-const pinnedCommit = (item: Bookmark, refs: readonly RefInfo[]) =>
-  item.kind === 'commit' ? item.name : findRef(refs, item)?.commit;
-
-export function pinnedResults(
-  bookmarks: readonly Bookmark[],
-  refs: readonly RefInfo[],
-): PinnedResult[] {
-  return bookmarks.map((bookmark) => ({
-    kind: 'pinned' as const,
-    bookmark,
-    commit: pinnedCommit(bookmark, refs),
-  }));
-}
-
-export function resultItems(
-  commits: readonly CommitInfo[],
-  search: readonly SearchGroup[],
-  found: StashSearch = noStashes,
-  pinned: readonly PinnedResult[] = [],
-): ResultItem[] {
-  return [
-    ...pinned,
-    ...search.flatMap((group) =>
-      group.refs.map((ref) => ({ kind: 'ref' as const, ref })),
-    ),
-    ...found.stashes.map((stash) => ({ kind: 'stash' as const, stash })),
-    ...commits.map((commit) => ({ kind: 'commit' as const, commit })),
-  ];
-}
-
-const commitKey = (hash: string) => `commit:${hash}`;
-
-const stashKey = (stash: StashInfo) => `stash:${stash.name}`;
-
-const refKey = (ref: RefInfo) => `${ref.kind}:${ref.name}`;
-
-const pinnedKey = (item: Bookmark) => `pinned:${item.kind}:${item.name}`;
-
-const folderKey = (kind: RefKind, path: string) => `folder:${kind}:${path}`;
-
-export function itemKey(item: ResultItem): string {
-  return item.kind === 'commit'
-    ? commitKey(item.commit.hash)
-    : item.kind === 'stash'
-      ? stashKey(item.stash)
-      : item.kind === 'pinned'
-        ? pinnedKey(item.bookmark)
-        : refKey(item.ref);
-}
-
-type BrowseRow =
-  | {
-      readonly kind: 'jump';
-      readonly key: string;
-      readonly commit: string | undefined;
-    }
-  | { readonly kind: 'folder'; readonly key: string };
-
-function folderOpen(
-  toggled: ReadonlySet<string>,
-  key: string,
-  depth: number,
-  siblings: number,
-): boolean {
-  return (depth === 0 && siblings === 1) !== toggled.has(key);
-}
-
-function treeRows(
-  node: TreeNode,
-  kind: RefKind,
-  toggled: ReadonlySet<string>,
-  depth = 0,
-  prefix = '',
-): BrowseRow[] {
-  return shownChildren(node.children).shown.flatMap((child): BrowseRow[] => {
-    const path = `${prefix}${child.name}`;
-    if (child.children.length === 0) {
-      return child.ref
-        ? [{ kind: 'jump', key: refKey(child.ref), commit: child.ref.commit }]
-        : [];
-    }
-    const key = folderKey(kind, path);
-    return [
-      { kind: 'folder', key },
-      ...(folderOpen(toggled, key, depth, node.children.length)
-        ? treeRows(child, kind, toggled, depth + 1, `${path}/`)
-        : []),
-    ];
-  });
-}
-
-function browseRows(
-  pinned: readonly PinnedResult[],
-  trees: readonly { kind: RefKind; tree: TreeNode }[],
-  toggled: ReadonlySet<string>,
-  stashes: readonly StashInfo[],
-): BrowseRow[] {
-  return [
-    ...pinned.map((item): BrowseRow => ({
-      kind: 'jump',
-      key: itemKey(item),
-      commit: item.commit,
-    })),
-    ...trees.flatMap(({ kind, tree }) => treeRows(tree, kind, toggled)),
-    ...stashes.map((stash): BrowseRow => ({
-      kind: 'jump',
-      key: stashKey(stash),
-      commit: stash.commit,
-    })),
-  ];
-}
-
-interface Rows {
-  readonly tree: boolean;
-  readonly id: (key: string) => string;
-  readonly active: string | undefined;
-  readonly toggled: ReadonlySet<string>;
-  readonly onToggle: (key: string) => void;
-}
-
-function rowProps(
-  rows: Rows,
-  key: string,
-  level: number,
-): React.HTMLAttributes<HTMLDivElement> {
-  return {
-    id: rows.id(key),
-    role: rows.tree ? 'treeitem' : 'option',
-    'aria-selected': key === rows.active,
-    'aria-level': rows.tree ? level : undefined,
-  };
-}
-
-const activeClass = (rows: Rows, key: string | undefined) =>
-  key !== undefined && key === rows.active ? 'active' : '';
-
-export interface Highlighted {
-  readonly query: string;
-  readonly key: string;
-}
-
-export function currentActive(
-  items: readonly ResultItem[],
-  query: string,
-  highlight: Highlighted | undefined,
-): number {
-  if (highlight?.query === query) {
-    const index = items.findIndex((item) => itemKey(item) === highlight.key);
-    if (index >= 0) {
-      return index;
-    }
-  }
-  return 0;
-}
-
-export function nextActive(
-  items: readonly unknown[],
-  active: number,
-  step: 1 | -1,
-): number {
-  return Math.max(0, Math.min(items.length - 1, active + step));
-}
+import {
+  browseRows,
+  Rows,
+  rowProps,
+  activeClass,
+  Highlighted,
+  currentActive,
+  nextActive,
+  RefTree,
+} from './locationTree';
 
 const minSearchLength = 3;
 
@@ -890,162 +639,4 @@ function SearchResults({
       )}
     </>
   );
-}
-
-export function shownChildren(
-  children: readonly TreeNode[],
-  limit = maxResults,
-): { shown: readonly TreeNode[]; more: number } {
-  return {
-    shown: children.slice(0, limit),
-    more: Math.max(0, children.length - limit),
-  };
-}
-
-function RefTree({
-  kind,
-  tree,
-  rows,
-  onSelect,
-}: {
-  kind: RefKind;
-  tree: TreeNode;
-  rows: Rows;
-  onSelect: (commit: string) => void;
-}) {
-  if (tree.children.length === 0) {
-    return <div className="locations-empty">{strings.search.none}</div>;
-  }
-  return (
-    <TreeChildren
-      kind={kind}
-      node={tree}
-      depth={0}
-      prefix=""
-      rows={rows}
-      onSelect={onSelect}
-    />
-  );
-}
-
-function TreeChildren({
-  kind,
-  node,
-  depth,
-  prefix,
-  rows,
-  onSelect,
-}: {
-  kind: RefKind;
-  node: TreeNode;
-  depth: number;
-  prefix: string;
-  rows: Rows;
-  onSelect: (commit: string) => void;
-}) {
-  const openMenu = useOpenMenu();
-  const { children } = node;
-  const withFolders = children.some((child) => child.children.length > 0);
-  const { shown, more } = shownChildren(children);
-  return (
-    <>
-      {shown.map((child) =>
-        child.children.length > 0 ? (
-          <TreeFolder
-            key={child.name}
-            kind={kind}
-            node={child}
-            depth={depth}
-            path={`${prefix}${child.name}`}
-            siblings={children.length}
-            rows={rows}
-            onSelect={onSelect}
-          />
-        ) : (
-          <div
-            key={child.name}
-            {...(child.ref && rowProps(rows, refKey(child.ref), depth + 1))}
-            className={`row tree-row leaf ${activeClass(rows, child.ref && refKey(child.ref))}`}
-            style={{ paddingLeft: leafIndent(depth, withFolders) }}
-            title={child.ref?.name}
-            onClick={() => child.ref && onSelect(child.ref.commit)}
-            onContextMenu={(event) =>
-              child.ref && openMenu(event, refMenuTarget(child.ref))
-            }
-          >
-            {child.ref ? (
-              <RefLabel info={child.ref}>{child.name}</RefLabel>
-            ) : (
-              child.name
-            )}
-          </div>
-        ),
-      )}
-      {more > 0 && (
-        <div
-          className="locations-empty"
-          style={{ paddingLeft: leafIndent(depth, withFolders) }}
-        >
-          {strings.search.moreInFolder(more)}
-        </div>
-      )}
-    </>
-  );
-}
-
-function TreeFolder({
-  kind,
-  node,
-  depth,
-  path,
-  siblings,
-  rows,
-  onSelect,
-}: {
-  kind: RefKind;
-  node: TreeNode;
-  depth: number;
-  path: string;
-  siblings: number;
-  rows: Rows;
-  onSelect: (commit: string) => void;
-}) {
-  const key = folderKey(kind, path);
-  const open = folderOpen(rows.toggled, key, depth, siblings);
-  return (
-    <div className="tree-group">
-      <FolderRow
-        path={node.name}
-        depth={depth}
-        open={open}
-        className={`sticky ${activeClass(rows, key)}`}
-        style={{ top: stuckRowTop(depth), zIndex: 100 - depth }}
-        onToggle={() => rows.onToggle(key)}
-        itemProps={{
-          ...rowProps(rows, key, depth + 1),
-          'aria-expanded': open,
-        }}
-      >
-        {node.name}
-      </FolderRow>
-      {open && (
-        <TreeChildren
-          kind={kind}
-          node={node}
-          depth={depth + 1}
-          prefix={`${path}/`}
-          rows={rows}
-          onSelect={onSelect}
-        />
-      )}
-    </div>
-  );
-}
-
-export function stuckRowTop(depth: number): string {
-  return `calc(${depth} * var(--row-line-height))`;
-}
-
-export function leafIndent(depth: number, withFolders: boolean): number {
-  return treeIndent(depth) + (withFolders ? twistyWidth : 0);
 }

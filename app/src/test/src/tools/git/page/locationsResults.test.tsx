@@ -6,10 +6,6 @@ import type {
   RefInfo,
 } from '../../../../../tools/git/shared/protocol';
 import {
-  leafIndent,
-  LocationsPopup,
-} from '../../../../../tools/git/page/locations';
-import {
   commitInfo,
   renderedBy,
   tagsWith,
@@ -23,6 +19,8 @@ import {
   locationsStore,
   repository,
 } from './locationsFixtures';
+import { leafIndent } from '../../../../../tools/git/page/locationTree';
+import { LocationsPopup } from '../../../../../tools/git/page/locations';
 
 const popup = (query: string, result?: Shown['lookup'], shown: Shown = {}) =>
   renderToStaticMarkup(

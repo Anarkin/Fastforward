@@ -185,8 +185,7 @@
     {
       "files": [
         "src/shell/page/tabBar.tsx",
-        "src/tools/commander/page/editor.tsx",
-        "src/tools/git/page/locations.tsx"
+        "src/tools/commander/page/editor.tsx"
       ],
       "rules": {
         "max-lines": [
