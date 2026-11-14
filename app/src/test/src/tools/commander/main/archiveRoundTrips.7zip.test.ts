@@ -6,8 +6,8 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   Archives,
   type OpenedArchive,
-  type PackPlan,
 } from '../../../../../tools/commander/main/archives';
+import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import type { PackFormat } from '../../../../../tools/commander/shared/packing';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';

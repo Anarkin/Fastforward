@@ -20,8 +20,8 @@ import {
 import {
   Archives,
   type OpenedArchive,
-  type PackPlan,
 } from '../../../../../tools/commander/main/archives';
+import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import { itemsAt } from '../../../../../tools/commander/main/archiveFiles';
 
 suite('Archives packed, changed and taken out again', () => {

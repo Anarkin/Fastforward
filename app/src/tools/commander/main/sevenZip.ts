@@ -15,7 +15,7 @@ import type {
   Packing,
   ListedOptions,
   UpdateOptions,
-} from './archives';
+} from './archiveReader';
 
 export interface SevenZipRun {
   readonly code: number | null;

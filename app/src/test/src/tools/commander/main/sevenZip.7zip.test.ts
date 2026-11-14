@@ -10,10 +10,8 @@ import {
 import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { storedZip } from '../../../../helpers/zips';
-import {
-  Archives,
-  type PackPlan,
-} from '../../../../../tools/commander/main/archives';
+import { Archives } from '../../../../../tools/commander/main/archives';
+import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import { filesUnder } from '../../../../../tools/commander/main/archiveFiles';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..', '..');

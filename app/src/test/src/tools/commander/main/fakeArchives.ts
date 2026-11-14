@@ -5,10 +5,12 @@ import { strings } from '../../../../../lib/shared/strings';
 import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
 import type {
   ArchiveAccess,
-  ArchiveItem,
   OpenedArchive,
-  PackPlan,
 } from '../../../../../tools/commander/main/archives';
+import type {
+  ArchiveItem,
+  PackPlan,
+} from '../../../../../tools/commander/main/archiveReader';
 
 export function fakeArchives() {
   const archived = new Map<string, readonly ArchiveItem[] | string>();

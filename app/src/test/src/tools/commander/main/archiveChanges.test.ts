@@ -6,11 +6,11 @@ import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { item, notPacked, readerOf } from './archivesFixtures';
-import {
-  Archives,
-  type ArchiveReader,
-  type Packing,
-} from '../../../../../tools/commander/main/archives';
+import { Archives } from '../../../../../tools/commander/main/archives';
+import type {
+  ArchiveReader,
+  Packing,
+} from '../../../../../tools/commander/main/archiveReader';
 import { workFolders } from '../../../../../tools/commander/main/archiveFiles';
 
 suite('Archives', () => {

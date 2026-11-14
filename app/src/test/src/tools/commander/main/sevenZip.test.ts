@@ -9,7 +9,7 @@ import {
   sevenZipReader,
   type SevenZipRun,
 } from '../../../../../tools/commander/main/sevenZip';
-import type { PackPlan } from '../../../../../tools/commander/main/archives';
+import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import { ran, type Asked, listedBy } from './sevenZipFixtures';
 
 const listed = `

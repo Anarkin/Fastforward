@@ -17,7 +17,7 @@ import type {
 } from '../../../../../tools/commander/shared/settings';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import type { SizeWalker } from '../../../../../tools/commander/main/folderSizes';
-import type { ArchiveItem } from '../../../../../tools/commander/main/archives';
+import type { ArchiveItem } from '../../../../../tools/commander/main/archiveReader';
 import { pathParts } from '../../../../../tools/commander/shared/paths';
 import type { PdfPlace } from '../../../../../tools/commander/shared/pdf';
 import { FakeStore } from '../../../../helpers/fakeStore';

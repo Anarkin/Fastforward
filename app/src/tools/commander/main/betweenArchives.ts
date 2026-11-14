@@ -4,12 +4,8 @@ import { sentencesOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { movedOut, presentIn } from './unpacking';
 import { itemsAt } from './archiveFiles';
-import type {
-  ArchiveAccess,
-  OpenedArchive,
-  Packing,
-  PackOptions,
-} from './archives';
+import type { ArchiveAccess, OpenedArchive } from './archives';
+import type { Packing, PackOptions } from './archiveReader';
 import type { ArchiveBranch } from './archiveTree';
 
 export interface ItemsOfArchive {

@@ -6,11 +6,11 @@ import { waitFor } from '../../../../helpers/fixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { item, notPacked, readerOf } from './archivesFixtures';
 import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
-import {
-  Archives,
-  type ArchiveListing,
-  type ArchiveReader,
-} from '../../../../../tools/commander/main/archives';
+import { Archives } from '../../../../../tools/commander/main/archives';
+import type {
+  ArchiveListing,
+  ArchiveReader,
+} from '../../../../../tools/commander/main/archiveReader';
 
 suite('ArchiveTree', () => {
   test('lists each folder of an archive, making the folders that have no item of their own from the paths of what is inside them', () => {

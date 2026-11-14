@@ -6,13 +6,13 @@ import type {
   ArchiveReader,
   Packing,
   PackPlan,
-} from '../../../../../tools/commander/main/archives';
+} from '../../../../../tools/commander/main/archiveReader';
 import {
   archiveJob,
   archiveTests,
   packInto,
 } from '../../../../../tools/commander/main/packing';
-import type { PackOptions } from '../../../../../tools/commander/main/archives';
+import type { PackOptions } from '../../../../../tools/commander/main/archiveReader';
 import type { TransferEvent } from '../../../../../tools/commander/main/transferProtocol';
 import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';

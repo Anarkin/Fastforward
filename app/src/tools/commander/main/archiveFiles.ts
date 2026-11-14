@@ -25,8 +25,6 @@ export async function linkedTree(from: string, to: string): Promise<void> {
   }
 }
 
-export const firstVolume = /\.0{2,}1$/;
-
 export async function temporariesOf(file: string): Promise<string[]> {
   const folder = path.dirname(file);
   const name = `${path.basename(file)}.tmp`;

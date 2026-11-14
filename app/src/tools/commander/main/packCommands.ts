@@ -13,7 +13,7 @@ import {
   packPasswordProblem,
   smallestVolume,
 } from '../shared/packing';
-import type { PackPlan } from './archives';
+import type { PackPlan } from './archiveReader';
 import type { Transfers } from './transfers';
 import { nameProblem } from '../shared/names';
 import { type Sides, listedIn } from './sides';

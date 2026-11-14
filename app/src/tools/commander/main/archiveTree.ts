@@ -1,5 +1,5 @@
 import type { Entry } from '../shared/protocol';
-import { ArchiveItem } from './archives';
+import { ArchiveItem } from './archiveReader';
 
 export interface ArchiveNode {
   readonly entry: Entry;

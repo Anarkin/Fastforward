@@ -5,8 +5,8 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   Archives,
   type OpenedArchive,
-  type PackPlan,
 } from '../../../../../tools/commander/main/archives';
+import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import type { ClashReply } from '../../../../../tools/commander/main/transfer';
 import type { TransferEvent } from '../../../../../tools/commander/main/transferProtocol';
 import { unpackingFirst } from '../../../../../tools/commander/main/unpacking';

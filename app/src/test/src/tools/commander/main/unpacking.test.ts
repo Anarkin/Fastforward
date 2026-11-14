@@ -15,13 +15,15 @@ import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
 import type {
   ArchiveAccess,
-  ArchiveItem,
   Extracting,
-  ExtractProgress,
   OpenedArchive,
+} from '../../../../../tools/commander/main/archives';
+import type {
+  ArchiveItem,
+  ExtractProgress,
   Packing,
   PackOptions,
-} from '../../../../../tools/commander/main/archives';
+} from '../../../../../tools/commander/main/archiveReader';
 
 const archive: OpenedArchive = {
   file: path.join('C:', 'Downloads', 'a.zip'),

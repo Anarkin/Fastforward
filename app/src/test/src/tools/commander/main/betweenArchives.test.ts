@@ -8,11 +8,13 @@ import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
 import type {
   ArchiveAccess,
-  ArchiveItem,
   Extracting,
   OpenedArchive,
-  Packing,
 } from '../../../../../tools/commander/main/archives';
+import type {
+  ArchiveItem,
+  Packing,
+} from '../../../../../tools/commander/main/archiveReader';
 
 const openedAt = (file: string): OpenedArchive => ({
   file,

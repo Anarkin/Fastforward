@@ -4,7 +4,7 @@ import type {
   ArchiveItem,
   ArchiveListing,
   ArchiveReader,
-} from '../../../../../tools/commander/main/archives';
+} from '../../../../../tools/commander/main/archiveReader';
 
 export function item(
   itemPath: string,

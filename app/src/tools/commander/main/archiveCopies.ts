@@ -14,12 +14,8 @@ import { nameProblem } from '../shared/names';
 import { type Pane, type ShownPane, type Sides, post, listedIn } from './sides';
 import { archiveItems } from './archiveItems';
 import { itemsAt } from './archiveFiles';
-import type {
-  ArchiveAccess,
-  OpenedArchive,
-  PackOptions,
-  Packing,
-} from './archives';
+import type { ArchiveAccess, OpenedArchive } from './archives';
+import type { PackOptions, Packing } from './archiveReader';
 
 export interface ArchiveCopiesAccess {
   readonly archives?: ArchiveAccess;
