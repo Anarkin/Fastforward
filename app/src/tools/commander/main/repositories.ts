@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { onSameVolume } from './volumes';
 
 const gitFolder = '.git';
 const lookingAtOnce = 16;
@@ -45,15 +46,6 @@ async function isGitDirectory(folder: string): Promise<boolean> {
     kindOf(path.join(folder, 'refs')),
   ]);
   return head && objects === 'folder' && refs === 'folder';
-}
-
-function volumeOf(file: string): string {
-  const { root } = path.parse(path.resolve(file));
-  return process.platform === 'win32' ? root.toLowerCase() : root;
-}
-
-export function onSameVolume(file: string, other: string): boolean {
-  return volumeOf(file) === volumeOf(other);
 }
 
 async function pointsAtGitDirectory(

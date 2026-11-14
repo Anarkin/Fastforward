@@ -20,7 +20,7 @@ import { fileResponse } from './fileRanges';
 import { isPdf, pdfType } from '../shared/pdf';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { Icons } from './icons';
-import { onSameVolume } from './repositories';
+import { onSameVolume } from './volumes';
 import { iconSourceOf, iconTicketOf, viewerOfIcon } from '../shared/icons';
 import { type Pane, type Sides, listedIn } from './sides';
 import { archiveItems } from './archiveItems';
