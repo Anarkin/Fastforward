@@ -6,7 +6,7 @@ import type { Readable } from 'node:stream';
 import { strings } from '../../../lib/shared/strings';
 import { withoutCredentials } from './credentials';
 import { commonDirOf, gitDirOf } from './gitDir';
-import { stopTree } from './gitSpawner';
+import { stopTree } from './processTree';
 import { KeptGits } from './keptGit';
 import { GitChild, spawnGit } from './spawnedGit';
 
