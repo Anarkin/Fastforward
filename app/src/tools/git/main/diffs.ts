@@ -14,23 +14,17 @@ import {
   withoutFilesInside,
   type PatchScope,
   type ReadPatch,
-} from './cli/diff';
+} from './diff';
 import { BlobTexts } from './blobTexts';
-import {
-  listIndex,
-  listTree,
-  readBlobs,
-  readFile,
-  uniquePaths,
-} from './cli/files';
-import { stashFiles, stashPatch } from './cli/stashes';
+import { listIndex, listTree, readBlobs, readFile, uniquePaths } from './files';
+import { stashFiles, stashPatch } from './stashes';
 import {
   stagedPatch,
   workingTreeFiles,
   workingTreePatch,
   type WorkingTree,
   type WorkingTreeDiff,
-} from './cli/workingTree';
+} from './workingTree';
 import { comparedOf, workingTreeSide } from '../shared/comparisons';
 import { isFullHash } from '../shared/hashes';
 import {

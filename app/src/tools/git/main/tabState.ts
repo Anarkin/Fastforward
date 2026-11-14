@@ -1,9 +1,9 @@
-import type { Head } from './cli/repository';
-import type { Stash } from './cli/stashes';
-import type { WorkingTree } from './cli/workingTree';
-import { Commits } from './history/commits';
-import { keepsTiedOrder, ranksOf } from './history/extend';
-import { Graph } from './history/graph';
+import type { Head } from './repository';
+import type { Stash } from './stashes';
+import type { WorkingTree } from './workingTree';
+import { Commits } from './commits';
+import { keepsTiedOrder, ranksOf } from './extend';
+import { Graph } from './graph';
 import {
   headsOf,
   mergeExpanded,
@@ -12,8 +12,8 @@ import {
   type IsExpanded,
   type Positions,
   type Shown as ShownHistory,
-} from './history/merges';
-import { noNavigation, reachable, type Navigation } from './history/navigation';
+} from './merges';
+import { noNavigation, reachable, type Navigation } from './navigation';
 import { decoratedCommits, decorations, fingerprint } from './refs';
 import { shownSide, sidesOf } from '../shared/comparisons';
 import {

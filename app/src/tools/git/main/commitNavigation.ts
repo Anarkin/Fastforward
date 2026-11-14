@@ -1,11 +1,6 @@
-import { readUpstream } from './cli/branches';
-import {
-  findCommits,
-  headCommit,
-  logCommits,
-  searchCommits,
-} from './cli/history';
-import { step, visit } from './history/navigation';
+import { readUpstream } from './branches';
+import { findCommits, headCommit, logCommits, searchCommits } from './history';
+import { step, visit } from './navigation';
 import type { Log } from '../../../shell/main/log';
 import { foundUpstream } from './operations';
 import { comparedOf } from '../shared/comparisons';

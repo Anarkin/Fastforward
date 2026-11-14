@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { ImageRead } from '../../../../../tools/git/main/cli/files';
+import type { ImageRead } from '../../../../../tools/git/main/files';
 import {
   ImageReads,
   smallImageSize,

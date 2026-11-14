@@ -1,10 +1,10 @@
 import { AutoFetch, fetchOrder, type Timer } from './autoFetch';
-import { remoteDefaultBranches } from './cli/branches';
-import { gitErrorText } from './cli/errorText';
-import { keptGits } from './cli/run';
-import { comparedImage, comparedNames } from './cli/compare';
-import { readImage, viewedFile } from './cli/files';
-import { findCommit } from './cli/history';
+import { remoteDefaultBranches } from './branches';
+import { gitErrorText } from './errorText';
+import { keptGits } from './run';
+import { comparedImage, comparedNames } from './compare';
+import { readImage, viewedFile } from './files';
+import { findCommit } from './history';
 import {
   hasGitFolder,
   initRepository,
@@ -12,9 +12,9 @@ import {
   readRefs,
   repositoryRoot,
   type Refs,
-} from './cli/repository';
-import { UntrackedPatches } from './cli/workingTree';
-import { locateRepository, type Location } from './cli/worktrees';
+} from './repository';
+import { UntrackedPatches } from './workingTree';
+import { locateRepository, type Location } from './repositoryLocation';
 import { ImageReads } from './imageReads';
 import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';

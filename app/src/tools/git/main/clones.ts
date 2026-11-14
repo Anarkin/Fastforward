@@ -12,10 +12,10 @@ import type { GitToHost, GitToWebviewOf } from '../shared/protocol';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import type { Log } from '../../../shell/main/log';
 import { strings } from '../../../lib/shared/strings';
-import { cloneRepository, cloneTargetProblem, removeClone } from './cli/clone';
-import { withoutCredentials } from './cli/credentials';
-import { gitErrorText } from './cli/errorText';
-import { isFolder } from './cli/repository';
+import { cloneRepository, cloneTargetProblem, removeClone } from './clone';
+import { withoutCredentials } from './credentials';
+import { gitErrorText } from './errorText';
+import { isFolder } from './repository';
 
 export type CloneMessage = Extract<
   GitToHost,

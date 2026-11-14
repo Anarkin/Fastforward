@@ -1,4 +1,4 @@
-import { maxSteps } from './history/navigation';
+import { maxSteps } from './navigation';
 import {
   diffLayouts,
   type TabMessage,

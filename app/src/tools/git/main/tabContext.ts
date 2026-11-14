@@ -1,6 +1,6 @@
-import type { ReadPatch } from './cli/diff';
-import type { Refs } from './cli/repository';
-import { UntrackedPatches } from './cli/workingTree';
+import type { ReadPatch } from './diff';
+import type { Refs } from './repository';
+import { UntrackedPatches } from './workingTree';
 import type { Fetched, RepositoryAt, Notify } from './operations';
 import {
   type GitToWebview,
@@ -13,8 +13,8 @@ import { strings, type Sentence } from '../../../lib/shared/strings';
 import type { Compared } from '../../../shell/main/storage';
 import type { TabState } from './tabState';
 import { shownSide } from '../shared/comparisons';
-import type { Changed } from './cli/watch';
-import type { Watcher } from './cli/watchFolders';
+import type { Changed } from './watch';
+import type { Watcher } from './watchFolders';
 
 export type RunningOn = 'pushingTag' | 'pullingBranch' | 'pushingBranch';
 

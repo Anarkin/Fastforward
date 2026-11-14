@@ -27,9 +27,9 @@ import {
   tipsInGitOrder,
   toggleMerges,
 } from '../../../../../tools/git/main/tabState';
-import { Commits } from '../../../../../tools/git/main/history/commits';
+import { Commits } from '../../../../../tools/git/main/commits';
 import { commitInfo } from '../../../../helpers/fixtures';
-import { rowsOf } from './history/historyFixtures';
+import { rowsOf } from './historyFixtures';
 
 const at = (commit: string) => ({
   kind: 'branch' as const,

@@ -1,4 +1,4 @@
-import type { ImageRead } from './cli/files';
+import type { ImageRead } from './files';
 import { maxImageSize, type ImageSource } from '../shared/images';
 import { Slots } from './slots';
 

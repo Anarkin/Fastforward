@@ -1,5 +1,5 @@
-import type { Head } from './cli/repository';
-import type { Positions } from './history/merges';
+import type { Head } from './repository';
+import type { Positions } from './merges';
 import type { RefInfo, BookmarkRef, StashInfo } from '../shared/protocol';
 import {
   hasRef,

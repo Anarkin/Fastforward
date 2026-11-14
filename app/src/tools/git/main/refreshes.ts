@@ -1,19 +1,19 @@
-import { gitErrorText } from './cli/errorText';
+import { gitErrorText } from './errorText';
 import {
   extendedHistory,
   listHistory,
   listRecentHistory,
   logCommits,
   recentTips,
-} from './cli/history';
-import type { Commits } from './history/commits';
-import type { Refs } from './cli/repository';
-import type { Changed } from './cli/watch';
+} from './history';
+import type { Commits } from './commits';
+import type { Refs } from './repository';
+import type { Changed } from './watch';
 import {
   uncommittedCount,
   workingTreeFiles,
   type WorkingTree,
-} from './cli/workingTree';
+} from './workingTree';
 import type { Log } from '../../../shell/main/log';
 import { fingerprint } from './refs';
 import { workingTreeSide } from '../shared/comparisons';

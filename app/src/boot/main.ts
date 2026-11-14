@@ -22,14 +22,14 @@ import {
   findGit,
   minimumGitVersion,
   type GitSearch,
-} from '../tools/git/main/cli/locate';
+} from '../tools/git/main/locate';
 import { foldersHandedOff, foldersOf, handOff } from './commandLine';
 import { prettyName, systemOf } from './system';
 import {
   keepGitRunningWhile,
   stopRunningGit,
   writesEnded,
-} from '../tools/git/main/cli/run';
+} from '../tools/git/main/run';
 import { errorLine, fileLog, type Log } from '../shell/main/log';
 import { imageRoute } from '../tools/git/shared/images';
 import { iconRoute, thumbnailRoute } from '../tools/commander/shared/icons';
@@ -66,7 +66,7 @@ import {
   watchFolder,
   watchTree,
 } from '../tools/commander/main/watch';
-import { isFolder } from '../tools/git/main/cli/repository';
+import { isFolder } from '../tools/git/main/repository';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { helperOf, runHelper } from '../tools/commander/main/helper';
 import { hostProcess } from '../tools/terminal/main/hostProcess';

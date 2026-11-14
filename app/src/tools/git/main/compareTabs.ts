@@ -1,4 +1,4 @@
-import { gitErrorText } from './cli/errorText';
+import { gitErrorText } from './errorText';
 import {
   CompareTooLarge,
   compareMaxBytes,
@@ -6,7 +6,7 @@ import {
   comparedNames,
   comparedText,
   filesAlike,
-} from './cli/compare';
+} from './compare';
 import { watchFiles } from './compareWatch';
 import type { Log } from '../../../shell/main/log';
 import type { TextRequest } from '../shared/protocol';

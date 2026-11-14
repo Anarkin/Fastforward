@@ -6,8 +6,8 @@ import {
   readPushTarget,
   readUpstream,
   type Upstream,
-} from './cli/branches';
-import { gitErrorText } from './cli/errorText';
+} from './branches';
+import { gitErrorText } from './errorText';
 import {
   checkoutNewBranch,
   fetchAllRemotes,
@@ -17,7 +17,7 @@ import {
   readRefs,
   switchToBranch,
   switchToCommit,
-} from './cli/repository';
+} from './repository';
 import type { CheckoutTarget } from '../shared/protocol';
 import { shortHash } from '../shared/hashes';
 import { hasRef, localBranchOf } from '../shared/refNames';

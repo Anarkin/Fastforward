@@ -1,5 +1,5 @@
-import { readUpstream } from './cli/branches';
-import { gitErrorText } from './cli/errorText';
+import { readUpstream } from './branches';
+import { gitErrorText } from './errorText';
 import {
   fetchRemote,
   isFolder,
@@ -9,9 +9,9 @@ import {
   readRefs,
   remotesNotFetched,
   type Head,
-} from './cli/repository';
-import type { Changed } from './cli/watch';
-import { listWorktrees } from './cli/worktrees';
+} from './repository';
+import type { Changed } from './watch';
+import { listWorktrees } from './repositoryLocation';
 import type { Log } from '../../../shell/main/log';
 import {
   canPull,

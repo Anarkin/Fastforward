@@ -1,13 +1,13 @@
 import * as path from 'node:path';
-import { gitErrorText } from './cli/errorText';
-import { keptGits } from './cli/run';
-import { isFolder, spellingOf } from './cli/repository';
+import { gitErrorText } from './errorText';
+import { keptGits } from './run';
+import { isFolder, spellingOf } from './repository';
 import {
   listWorktrees,
   locateRepository,
   type Location,
   type Worktree,
-} from './cli/worktrees';
+} from './repositoryLocation';
 import type { Log } from '../../../shell/main/log';
 import { shortHash } from '../shared/hashes';
 import type { WorktreeInfo } from '../shared/protocol';
