@@ -1959,12 +1959,24 @@ body.resizing {
 .spaces,
 .wrap-spaces,
 .viewer-wrap-spaces {
-  background-image: radial-gradient(
-    circle,
-    var(--muted-foreground) 0.08em,
-    transparent 0.1em
+  --space-dot: max(
+    var(--device-pixel, 1px),
+    round(0.16em, var(--device-pixel, 1px))
   );
-  background-size: var(--text-advance) 100%;
+  --space-dot-start: round(
+    down,
+    (var(--text-advance) - var(--space-dot)) / 2,
+    var(--device-pixel, 1px)
+  );
+  background-image: linear-gradient(
+    to right,
+    transparent var(--space-dot-start),
+    var(--muted-foreground) var(--space-dot-start)
+      calc(var(--space-dot-start) + var(--space-dot)),
+    transparent 0
+  );
+  background-size: var(--text-advance) var(--space-dot);
+  background-position: 0 50%;
   background-repeat: repeat-x;
 }
 

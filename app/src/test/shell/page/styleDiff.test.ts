@@ -39,6 +39,9 @@ import {
   indented,
   cell,
   spaceDots,
+  squareDots,
+  spaceDotSize,
+  spaceDotStart,
   hanging,
   compact,
   looks,
@@ -388,14 +391,18 @@ suite('Style', () => {
     });
   });
 
-  test('draws a run of spaces shown as dots in its own background, one in the middle of each advance of the text, with no box over each space, as a box over every space of a padded table slowed scrolling down and let the browser break a run onto rows of its own', () => {
+  test('draws a run of spaces shown as square dots in its own background, each as wide as it is tall in whole device pixels and starting on a whole device pixel in the middle of each advance of the text, with no box over each space, as a box over every space of a padded table slowed scrolling down and let the browser break a run onto rows of its own', () => {
     const run = withClass(indented(true), 'spaces');
     looks(run, {
       position: undefined,
-      'background-size': 'var(--text-advance) 100%',
-      'background-repeat': 'repeat-x',
+      ...squareDots,
     });
     assert.strictEqual(compact(cascaded(run, 'background-image')), spaceDots);
+    assert.strictEqual(compact(cascaded(run, '--space-dot')), spaceDotSize);
+    assert.strictEqual(
+      compact(cascaded(run, '--space-dot-start')),
+      spaceDotStart,
+    );
     looks(run, { content: undefined }, { pseudoElement: '::before' });
   });
 
@@ -410,10 +417,7 @@ suite('Style', () => {
       ),
       'viewer-wrap-spaces',
     );
-    const dotted = {
-      'background-size': 'var(--text-advance) 100%',
-      'background-repeat': 'repeat-x',
-    };
+    const dotted = squareDots;
     looks(hanging(false), {
       position: 'absolute',
       height: 'var(--diff-line-height)',

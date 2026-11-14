@@ -21,7 +21,7 @@ export const dotted = (drawn: Locator) =>
   drawn
     .first()
     .evaluate((element) =>
-      getComputedStyle(element).backgroundImage.startsWith('radial-gradient'),
+      getComputedStyle(element).backgroundImage.startsWith('linear-gradient'),
     );
 
 const pngChunk = (type: string, body: Buffer) => {

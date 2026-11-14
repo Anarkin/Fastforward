@@ -109,7 +109,19 @@ export function cell(className: string): MarkupElement {
 }
 
 export const spaceDots =
-  'radial-gradient(circle, var(--muted-foreground) 0.08em, transparent 0.1em)';
+  'linear-gradient(to right, transparent var(--space-dot-start), var(--muted-foreground) var(--space-dot-start) calc(var(--space-dot-start) + var(--space-dot)), transparent 0)';
+
+export const squareDots = {
+  'background-size': 'var(--text-advance) var(--space-dot)',
+  'background-position': '0 50%',
+  'background-repeat': 'repeat-x',
+};
+
+export const spaceDotSize =
+  'max(var(--device-pixel, 1px), round(0.16em, var(--device-pixel, 1px)))';
+
+export const spaceDotStart =
+  'round(down, (var(--text-advance) - var(--space-dot)) / 2, var(--device-pixel, 1px))';
 
 export function hanging(showWhitespace: boolean): MarkupElement {
   return withClass(
