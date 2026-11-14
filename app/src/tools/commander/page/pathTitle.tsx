@@ -2,10 +2,6 @@ import type { CSSProperties } from 'react';
 import { strings } from '../../../lib/shared/strings';
 import { pathParts } from '../shared/paths';
 
-export function nameOf(path: string): string {
-  return pathParts(path).at(-1)?.name ?? '';
-}
-
 function flatSuffixOf(path: string): string {
   if (/[\\/]$/.test(path)) {
     return '**';

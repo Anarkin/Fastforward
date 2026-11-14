@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { shellKeymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
-import { strings, type Line } from '../../lib/shared/strings';
+import { strings } from '../../lib/shared/strings';
 import { tools, type ToolId } from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
 import { ConfirmPopup } from './confirmPopup';
@@ -23,8 +23,9 @@ import {
 } from './store';
 import { newTabTrigger } from './tabStrip';
 import { TabBar } from './tabBar';
-import { useWindowTitle, windowTitle } from './titleBar';
+import { useWindowTitle, windowTitle } from './windowTitle';
 import { ToolViews } from './tools';
+import { confirmation } from './appItems';
 
 export function emptyState(noTab: boolean): React.ReactNode {
   return noTab ? <div className="empty-state">{strings.app.noTab}</div> : null;
@@ -42,68 +43,6 @@ export function newTabItems(
       ? { label, icon, onClick: () => onNewTab(tool) }
       : { label, icon, submenu };
   });
-}
-
-export function confirmation(confirming: Confirming): {
-  title: string;
-  message: string;
-  lines?: readonly Line[];
-  note?: string;
-  confirm: string;
-  dontSave?: true;
-} {
-  switch (confirming.kind) {
-    case 'unsavedTab':
-      return {
-        title: strings.confirm.saveTitle,
-        message: strings.confirm.saveFile,
-        lines: strings.confirm.filesLines([confirming.tab.name]),
-        confirm: strings.confirm.save,
-        dontSave: true,
-      };
-    case 'tab':
-      return {
-        title: strings.confirm.closeTitle,
-        message: strings.confirm.closeTab(strings.tools[confirming.tab.tool]),
-        lines: strings.confirm.closeTabLines(
-          strings.tabs.label(confirming.tab.name, confirming.tab.folder),
-        ),
-        confirm: strings.confirm.close,
-      };
-    case 'window':
-      return confirming.unsaved === undefined
-        ? {
-            title: strings.confirm.closeWindowTitle,
-            message: strings.confirm.closeWindow,
-            confirm: strings.confirm.close,
-          }
-        : {
-            title: strings.confirm.closeWindowTitle,
-            message: strings.confirm.saveWindowFiles,
-            lines: strings.confirm.filesLines(confirming.unsaved),
-            confirm: strings.confirm.saveAll,
-            dontSave: true,
-          };
-    case 'quit':
-      return {
-        title: strings.confirm.quitTitle,
-        message:
-          confirming.unsaved === undefined
-            ? strings.confirm.quitApp
-            : strings.confirm.saveQuitFiles,
-        ...(confirming.unsaved !== undefined && {
-          lines: strings.confirm.filesLines(confirming.unsaved),
-        }),
-        ...(confirming.note !== undefined && { note: confirming.note }),
-        confirm:
-          confirming.unsaved === undefined
-            ? strings.confirm.quit
-            : strings.confirm.saveAll,
-        ...(confirming.unsaved !== undefined && { dontSave: true as const }),
-      };
-    default:
-      return confirming satisfies never;
-  }
 }
 
 function ShellConfirm({

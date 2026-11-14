@@ -7,7 +7,8 @@ import {
 } from 'react';
 import { RowRequests } from './rowRequests';
 import type { ViewerFind } from './viewerFind';
-import { MarkedText, byteMarks, hexMarks } from './findMarks';
+import { byteMarks, hexMarks } from './markPieces';
+import { MarkedText } from './findMarks';
 
 const rowsAboveMatch = 2;
 import { ScrollBody } from './scrollBody';

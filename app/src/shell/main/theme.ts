@@ -37,7 +37,7 @@ export function themeCss({
     `  --scrollbar-size: ${sizes.scrollbar};`,
     `  --minimap-width: ${sizes.minimap};`,
     `  ${cursorVariables.style}: ${cursor.style};`,
-    `  ${cursorVariables.barWidth}: ${cursor.barWidth};`,
+    `  ${cursorVariables.width}: ${cursor.width};`,
     `  ${cursorVariables.blink}: ${cursor.blink ? 'on' : 'off'};`,
     ...themed('light', '  '),
     '}',

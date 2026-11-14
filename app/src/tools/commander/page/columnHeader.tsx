@@ -1,5 +1,4 @@
 import {
-  maxColumnWidth,
   sizedColumns,
   type SizedColumn,
   type Sort,
@@ -10,6 +9,7 @@ import { strings } from '../../../lib/shared/strings';
 import type { Side } from '../shared/protocol';
 import { shownColumns } from './shownRows';
 import { useCommander, useCommanderActions } from './store';
+import { draggedWidth } from './columnDrag';
 
 const columnLabels: Readonly<Record<SortColumn, string>> = {
   name: strings.commander.name,
@@ -17,17 +17,6 @@ const columnLabels: Readonly<Record<SortColumn, string>> = {
   size: strings.commander.size,
   date: strings.commander.date,
 };
-
-export function draggedWidth(
-  start: number,
-  advance: number,
-  widened: number,
-): number {
-  return Math.min(
-    maxColumnWidth,
-    Math.max(1, Math.round(start + widened / advance)),
-  );
-}
 
 function SortButton({
   column,

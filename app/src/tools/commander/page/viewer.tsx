@@ -26,14 +26,15 @@ import { PreviewBody } from './previewBody';
 import { firstMode, previewOf } from './previews';
 import { encodingMenu, shownEncoding, type EncodingChoice } from './encodings';
 import {
-  LanguageButton,
   shownLanguage,
   languageChoiceOf,
-} from '../../../lib/page/languageChoice';
+} from '../../../lib/page/languageMenu';
+import { LanguageButton } from '../../../lib/page/languageChoice';
 import { languageOf } from '../../../lib/page/languages';
 import { startColorer } from '../../../lib/page/syntax';
 import { colorOfFileNamed } from './fileColors';
-import { nameOf, PathTitle } from './pathTitle';
+import { nameOf } from './pathNames';
+import { PathTitle } from './pathTitle';
 import { useCommander, useCommanderActions } from './store';
 import { viewerChoices } from './view';
 import { viewerKey } from './viewerKeys';

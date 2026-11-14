@@ -21,17 +21,20 @@ import {
 } from '../../../../../tools/commander/page/store';
 import { strings } from '../../../../../lib/shared/strings';
 import { noop } from '../../../../helpers/fixtures';
-import { shareOf, sideToFocus } from '../../../../../tools/commander/page/tool';
+import {
+  shareOf,
+  sideToFocus,
+} from '../../../../../tools/commander/page/sideFocus';
 import { JSDOM } from 'jsdom';
 import { withStores } from '../../../../helpers/componentFixtures';
+import { driveOf } from '../../../../../tools/commander/page/paneTiles';
 import {
-  driveOf,
   ExtensionCell,
   NameCell,
   RowIcon,
   SizeCell,
 } from '../../../../../tools/commander/page/paneCells';
-import { layoutMenu } from '../../../../../tools/commander/page/paneHeader';
+import { layoutMenu } from '../../../../../tools/commander/page/paneLayoutMenu';
 import { Pane } from '../../../../../tools/commander/page/pane';
 
 const renderToStaticMarkup = (node: React.ReactNode) =>

@@ -11,10 +11,8 @@ import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { Column } from './column';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { languageKeyOf, pickedFor, useGit, useGitActions } from './store';
-import {
-  LanguageButton,
-  languageChoiceOf,
-} from '../../../lib/page/languageChoice';
+import { languageChoiceOf } from '../../../lib/page/languageMenu';
+import { LanguageButton } from '../../../lib/page/languageChoice';
 import { languageOf } from '../../../lib/page/languages';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { parsePatch, type DiffFile, type LoadedText } from './diff';

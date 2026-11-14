@@ -6,7 +6,7 @@ import {
   wrapStarts,
   type RowBreak,
 } from '../../../lib/page/wordWrap';
-import type { FindMark } from './findMarks';
+import type { FindMark } from './markPieces';
 import { columnsOf, type TextWidths } from '../../../lib/page/textWidths';
 
 export interface ScreenRow {

@@ -5,10 +5,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { TabInfo } from '../../../../shell/shared/protocol';
 import type { ToolId } from '../../../../shell/shared/tools';
 import { setKeyPlatform } from '../../../../lib/shared/keymap';
-import {
-  ShortcutsPopup,
-  shownEntries,
-} from '../../../../shell/page/shortcutsPopup';
+import { shownEntries } from '../../../../shell/page/shortcutsPopup';
+import { ShortcutsPopup } from '../../../../shell/page/shortcutsPopup';
 import { shortcutEntries } from '../../../../shell/page/tools';
 import { createShellStore } from '../../../../shell/page/store';
 import { withStores } from '../../../helpers/componentFixtures';

@@ -126,13 +126,13 @@ suite('Theme', () => {
   test('writes the look of the cursor out as the variables the page reads it from, a steady cursor as off', () => {
     const css = themeCss({
       ...defaultSettings(),
-      cursor: { style: 'underline', barWidth: 4, blink: false },
+      cursor: { style: 'underline', width: 4, blink: false },
     });
     assert.deepStrictEqual(
       cursorLookOf(
         (name) => new RegExp(`^  ${name}: (.*);$`, 'm').exec(css)?.[1] ?? '',
       ),
-      { style: 'underline', barWidth: 4, blink: false },
+      { style: 'underline', width: 4, blink: false },
     );
     assert.match(css, new RegExp(`^  ${cursorVariables.blink}: off;$`, 'm'));
   });
@@ -164,7 +164,7 @@ suite('Theme', () => {
         monospaceLineHeight: 1.4,
       },
       sizes: { scrollbar: '25px', minimap: '40px' },
-      cursor: { style: 'bar', barWidth: 3, blink: true },
+      cursor: { style: 'bar', width: 3, blink: true },
       colors: { light: { foreground: '#000' }, dark: { foreground: '#fff' } },
     });
     assert.strictEqual(
@@ -181,7 +181,7 @@ suite('Theme', () => {
         '  --scrollbar-size: 25px;',
         '  --minimap-width: 40px;',
         '  --cursor-style: bar;',
-        '  --cursor-bar-width: 3;',
+        '  --cursor-width: 3;',
         '  --cursor-blink: on;',
         '  --color-foreground: #000;',
         '  --color-terminal-red: #a00;',

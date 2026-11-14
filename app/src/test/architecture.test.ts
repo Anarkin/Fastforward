@@ -120,38 +120,16 @@ function countedOver(
 
 const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'lib/page/blanks.tsx': 4,
-  'lib/page/images.tsx': 4,
-  'lib/page/languageChoice.tsx': 4,
-  'lib/page/menu.tsx': 1,
-  'shell/page/aboutPopup.tsx': 1,
-  'shell/page/App.tsx': 3,
-  'shell/page/appMenu.tsx': 1,
-  'shell/page/notices.tsx': 2,
+  'shell/page/App.tsx': 2,
   'shell/page/shortcutsPopup.tsx': 5,
-  'shell/page/titleBar.tsx': 3,
   'shell/page/tools.tsx': 1,
-  'tools/commander/page/columnHeader.tsx': 1,
   'tools/commander/page/fileMenu.tsx': 2,
-  'tools/commander/page/findMarks.tsx': 4,
-  'tools/commander/page/markdownView.tsx': 3,
-  'tools/commander/page/paneCells.tsx': 5,
-  'tools/commander/page/paneFilter.tsx': 1,
-  'tools/commander/page/paneHeader.tsx': 2,
-  'tools/commander/page/pathTitle.tsx': 1,
-  'tools/commander/page/scrollBody.tsx': 2,
-  'tools/commander/page/textBody.tsx': 5,
-  'tools/commander/page/thumbnails.tsx': 5,
-  'tools/commander/page/tool.tsx': 2,
   'tools/git/page/changesTree.tsx': 1,
   'tools/git/page/codeMarks.tsx': 1,
 };
 
 const importsLeftOfComponentFiles: Readonly<Record<string, number>> = {
-  'shell/page/store.ts': 1,
   'tools/commander/page/editorText.ts': 1,
-  'tools/commander/page/pdfPreview.ts': 1,
-  'tools/commander/page/screenRows.ts': 1,
-  'tools/git/page/fileStatus.ts': 1,
 };
 
 suite('Architecture', () => {

@@ -8,10 +8,12 @@ import { commanderKeymap } from '../../../../tools/commander/page/keymap';
 import {
   entryFor,
   groupsInView,
-  ShortcutsList,
-  ShortcutsPopup,
   steppedEntry,
   steppedGroup,
+} from '../../../../shell/page/shortcutsPopup';
+import {
+  ShortcutsList,
+  ShortcutsPopup,
 } from '../../../../shell/page/shortcutsPopup';
 import { shortcutEntries } from '../../../../shell/page/tools';
 import { renderedBy, tagsWith } from '../../../helpers/fixtures';

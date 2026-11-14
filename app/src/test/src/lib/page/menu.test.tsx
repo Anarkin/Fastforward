@@ -3,7 +3,8 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { filteredItems, MenuButton } from '../../../../lib/page/menu';
+import { filteredItems } from '../../../../lib/page/menuFilter';
+import { MenuButton } from '../../../../lib/page/menu';
 
 const triggerOf = (button: React.ReactElement) =>
   new JSDOM(renderToStaticMarkup(button)).window.document.querySelector(

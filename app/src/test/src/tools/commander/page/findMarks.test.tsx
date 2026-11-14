@@ -4,10 +4,10 @@ import { suite, test } from 'vitest';
 import {
   byteMarks,
   hexMarks,
-  MarkedText,
   markPieces,
   textMarks,
-} from '../../../../../tools/commander/page/findMarks';
+} from '../../../../../tools/commander/page/markPieces';
+import { MarkedText } from '../../../../../tools/commander/page/findMarks';
 
 suite('Matches marked in a file viewed', () => {
   test('marks the matches of a row of text ignoring case, the one current among them by the bytes it starts at', () => {

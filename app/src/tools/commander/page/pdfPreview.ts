@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PdfPlace } from '../shared/pdf';
 import { strings } from '../../../lib/shared/strings';
 import { matchCount } from '../../../lib/shared/textMatches';
-import type { PdfFound, ShownPdf } from './pdfView';
+import type { PdfFound, ShownPdf } from './pdfDocument';
 import { useCommanderActions } from './store';
 
 export function pdfFindCount(

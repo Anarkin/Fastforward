@@ -5,8 +5,8 @@ import {
   scrolled,
   textThumb,
   topWithin,
-} from '../../../../../tools/commander/page/textBody';
-import { thumbBox } from '../../../../../tools/commander/page/scrollBody';
+} from '../../../../../tools/commander/page/textScroll';
+import { thumbBox } from '../../../../../tools/commander/page/scrollThumbs';
 
 const rows = (count: number, length = 10) =>
   Array.from({ length: count }, (_, index) => ({

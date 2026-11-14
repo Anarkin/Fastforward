@@ -1,3 +1,5 @@
+import { type ChangeKind } from './iconKinds';
+
 function Icon({
   children,
   className,
@@ -22,8 +24,6 @@ function Icon({
     </svg>
   );
 }
-
-export type ChangeKind = 'added' | 'modified' | 'deleted' | 'renamed';
 
 const changeSigns: Record<ChangeKind, React.ReactNode> = {
   added: (

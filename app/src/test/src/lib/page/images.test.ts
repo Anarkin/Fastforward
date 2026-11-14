@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { realSizeOf } from '../../../../lib/page/images';
+import { realSizeOf } from '../../../../lib/page/imageSizes';
 
 suite('Images', () => {
   test('shows a pixel of an image at its real size on a pixel of the screen however the display is scaled', () => {

@@ -18,10 +18,10 @@ import { noop } from '../../../../helpers/fixtures';
 const filled = vi.hoisted((): unknown[] => []);
 
 vi.mock(
-  '../../../../../tools/commander/page/thumbnails',
+  '../../../../../tools/commander/page/thumbnailFills',
   async (importOriginal) => ({
     ...(await importOriginal<
-      typeof import('../../../../../tools/commander/page/thumbnails')
+      typeof import('../../../../../tools/commander/page/thumbnailFills')
     >()),
     useThumbnailFill: (items: unknown) => {
       filled.push(items);

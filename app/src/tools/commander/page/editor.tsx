@@ -53,11 +53,12 @@ import { viewerChoices } from './view';
 import type { LineEnding } from '../shared/textMarks';
 import { MenuButton } from '../../../lib/page/menu';
 import {
-  LanguageButton,
   languageChoiceOf,
   shownLanguage,
-} from '../../../lib/page/languageChoice';
-import { nameOf, PathTitle } from './pathTitle';
+} from '../../../lib/page/languageMenu';
+import { LanguageButton } from '../../../lib/page/languageChoice';
+import { nameOf } from './pathNames';
+import { PathTitle } from './pathTitle';
 import { readMenu, savedName, saveMenu } from './editorEncodings';
 import {
   backTo,

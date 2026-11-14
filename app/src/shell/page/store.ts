@@ -28,7 +28,7 @@ import {
   type ToolId,
   type ToWebviewOfTool,
 } from '../shared/tools';
-import type { Notice } from './notices';
+import type { Notice } from './noticeFading';
 import { movedTab } from './tabDrag';
 
 export type Popup = 'shortcuts' | 'about' | 'openWith' | 'confirm';

@@ -9,8 +9,6 @@ import { wheeled, type Binding } from '../../../lib/shared/keymap';
 import type { PdfPlace } from '../shared/pdf';
 import type { PdfFound, ShownPdf } from './pdfDocument';
 
-export type { PdfFound, ShownPdf };
-
 export function PdfPane({
   url,
   size,

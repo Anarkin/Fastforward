@@ -3,11 +3,11 @@ import createDOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import markdownIt from 'markdown-it';
 import { afterAll, suite, test } from 'vitest';
-import { documentImagePath } from '../../../../../lib/page/images';
+import { documentImagePath } from '../../../../../lib/page/imageSizes';
 import {
   showBlocks,
   showImages,
-} from '../../../../../tools/commander/page/markdownView';
+} from '../../../../../tools/commander/page/markdownBlocks';
 import { markdownRenderer } from '../../../../../tools/commander/page/markdownRender';
 
 const { window } = new JSDOM('');

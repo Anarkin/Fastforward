@@ -5,29 +5,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { AboutInfo } from '../shared/protocol';
 import { brand, strings } from '../../lib/shared/strings';
 import { useDismiss } from '../../lib/page/menuControls';
 import { CloseIcon } from '../../lib/page/icons';
 import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
 import { useShell, useShellActions } from './store';
+import { aboutText } from './aboutText';
 
 const copiedFor = 1500;
-
-export function aboutText({
-  version,
-  development,
-  git,
-  system,
-}: AboutInfo): string {
-  return [
-    brand,
-    strings.about.version(version, development),
-    strings.about.address,
-    strings.about.git(git),
-    system,
-  ].join('\n');
-}
 
 export function CopyButton({
   copied,

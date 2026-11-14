@@ -2,11 +2,8 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import {
-  AboutPopup,
-  aboutText,
-  CopyButton,
-} from '../../../../shell/page/aboutPopup';
+import { aboutText } from '../../../../shell/page/aboutText';
+import { AboutPopup, CopyButton } from '../../../../shell/page/aboutPopup';
 import type { AboutInfo, ToHost } from '../../../../shell/shared/protocol';
 import { createShellStore } from '../../../../shell/page/store';
 import { withStores } from '../../../helpers/componentFixtures';

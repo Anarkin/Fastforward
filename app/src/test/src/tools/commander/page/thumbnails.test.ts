@@ -7,7 +7,7 @@ import {
   ThumbnailWorkers,
   type Thumbnail,
   type WorkerLike,
-} from '../../../../../tools/commander/page/thumbnails';
+} from '../../../../../tools/commander/page/thumbnailFills';
 import type {
   FromThumbnailWorker,
   ToThumbnailWorker,

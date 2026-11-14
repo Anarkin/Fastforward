@@ -12,7 +12,6 @@ import {
 import { Pane } from './pane';
 import { Editor } from './editor';
 import { Viewer } from './viewer';
-import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { followDrag } from '../../../lib/page/followDrag';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
@@ -38,24 +37,7 @@ import {
   useCommanderActions,
 } from './store';
 import { keysMatching } from './listing';
-
-const minimumShare = 0.15;
-
-export function shareOf(left: number, width: number): number {
-  return width <= 0
-    ? 0.5
-    : Math.min(1 - minimumShare, Math.max(minimumShare, left / width));
-}
-
-export function sideToFocus(
-  column: Element | undefined,
-  focused: Element | null,
-): HTMLElement | undefined {
-  return column === undefined || column.contains(focused)
-    ? undefined
-    : (column.querySelector<HTMLElement>(`[${columnFocusAttribute}]`) ??
-        undefined);
-}
+import { shareOf, sideToFocus } from './sideFocus';
 
 function CommanderPopups() {
   const tab = useCommander((state) => state.view.tab);

@@ -5,11 +5,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
 import {
-  AppIcon,
-  TitleBar,
   windowButtonColor,
   windowTitle,
-} from '../../../../shell/page/titleBar';
+} from '../../../../shell/page/windowTitle';
+import { AppIcon, TitleBar } from '../../../../shell/page/titleBar';
 import { stylesheet } from '../../../helpers/fixtures';
 
 function drawingOf(svg: string) {

@@ -6,12 +6,8 @@ import { suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
 import type { ToHost, ToWebview } from '../../../../shell/shared/protocol';
 import type { ToolId } from '../../../../shell/shared/tools';
-import {
-  App,
-  emptyState,
-  confirmation,
-  newTabItems,
-} from '../../../../shell/page/App';
+import { confirmation } from '../../../../shell/page/appItems';
+import { App, emptyState, newTabItems } from '../../../../shell/page/App';
 import { menuIn, nextMenu, withPopup } from '../../../../shell/page/store';
 import { noop, tagsWith } from '../../../helpers/fixtures';
 

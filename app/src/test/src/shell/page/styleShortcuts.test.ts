@@ -2,10 +2,8 @@ import * as assert from 'node:assert';
 import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { CopyButton } from '../../../../shell/page/aboutPopup';
-import {
-  ShortcutsList,
-  shownEntries,
-} from '../../../../shell/page/shortcutsPopup';
+import { shownEntries } from '../../../../shell/page/shortcutsPopup';
+import { ShortcutsList } from '../../../../shell/page/shortcutsPopup';
 import { shortcutEntries } from '../../../../shell/page/tools';
 import {
   allWithClass,

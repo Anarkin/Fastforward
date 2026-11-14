@@ -5,10 +5,10 @@ import { suite, test } from 'vitest';
 import { addNotice } from '../../../../shell/shared/notices';
 import {
   fading,
-  Notices,
   shownFor,
   type Notice,
-} from '../../../../shell/page/notices';
+} from '../../../../shell/page/noticeFading';
+import { Notices } from '../../../../shell/page/notices';
 import { noop, renderedBy } from '../../../helpers/fixtures';
 import { createShellStore } from '../../../../shell/page/store';
 import { withStores } from '../../../helpers/componentFixtures';

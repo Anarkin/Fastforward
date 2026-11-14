@@ -5,7 +5,7 @@ import { setKeyPlatform } from '../../lib/shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { App } from './App';
 import { ErrorBoundary } from './errorBoundary';
-import { windowButtonColor } from './titleBar';
+import { windowButtonColor } from './windowTitle';
 import { errorText } from '../../lib/page/errors';
 import { installOverlayScrollbars } from '../../lib/page/overlayScrollbars';
 import { watchDevicePixels } from '../../lib/page/devicePixels';

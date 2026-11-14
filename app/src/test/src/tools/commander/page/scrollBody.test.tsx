@@ -2,10 +2,8 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type { ByteRange } from '../../../../../tools/commander/shared/protocol';
-import {
-  matchTicks,
-  ScrollBody,
-} from '../../../../../tools/commander/page/scrollBody';
+import { matchTicks } from '../../../../../tools/commander/page/scrollThumbs';
+import { ScrollBody } from '../../../../../tools/commander/page/scrollBody';
 import { withStores } from '../../../../helpers/componentFixtures';
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));

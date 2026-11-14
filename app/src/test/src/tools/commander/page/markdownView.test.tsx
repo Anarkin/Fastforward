@@ -2,11 +2,9 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
-import { documentImagePath } from '../../../../../lib/page/images';
-import {
-  boxCodeBlocks,
-  MarkdownPane,
-} from '../../../../../tools/commander/page/markdownView';
+import { documentImagePath } from '../../../../../lib/page/imageSizes';
+import { boxCodeBlocks } from '../../../../../tools/commander/page/markdownBlocks';
+import { MarkdownPane } from '../../../../../tools/commander/page/markdownView';
 import { waitFor } from '../../../../helpers/fixtures';
 
 const images = {

@@ -8,14 +8,15 @@ import {
 } from 'react';
 import { tileColumns, tileWidthOf } from './tiles';
 import { type IconSource } from '../shared/icons';
-import { useThumbnailFill } from './thumbnails';
+import { useThumbnailFill } from './thumbnailFills';
 import { commanderKeymap } from './keymap';
 import { clicked } from '../../../lib/shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import { fileMenuItems, menuTargetOf } from './fileMenu';
 import { copiedText, type Copied } from './naming';
 import { goesInto, opens, pointedKeys, rangeKeys, type Row } from './listing';
-import { filterStep, PaneFilter } from './paneFilter';
+import { filterStep } from './filterSteps';
+import { PaneFilter } from './paneFilter';
 import { filterWords } from '../../../lib/page/fileFilter';
 import { HighlightWords } from '../../../lib/page/highlight';
 import { SearchButton, SearchRow } from '../../../lib/page/search';
@@ -42,16 +43,18 @@ import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 
 import {
   driveOf,
+  dropIntoOf,
+  fillDelay,
+  thumbnailFills,
+  tileRowsOf,
+} from './paneTiles';
+import {
   RowIcon,
   ExtensionCell,
-  dropIntoOf,
   MarkBox,
   NameCell,
   SizeCell,
-  fillDelay,
   TileImage,
-  thumbnailFills,
-  tileRowsOf,
 } from './paneCells';
 import {
   FlatButton,
@@ -60,7 +63,8 @@ import {
   CountingStatus,
   FlatStatus,
 } from './paneStatus';
-import { layoutMenu, BookmarkButton, archivePart } from './paneHeader';
+import { layoutMenu, archivePart } from './paneLayoutMenu';
+import { BookmarkButton } from './paneHeader';
 declare module 'react' {
   interface CSSProperties {
     readonly '--commander-extension'?: string;

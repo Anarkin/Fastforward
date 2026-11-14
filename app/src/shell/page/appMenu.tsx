@@ -1,32 +1,11 @@
 import { useRef } from 'react';
 import { shellKeymap } from '../shared/keymap';
-import type { UpdateStatus } from '../shared/protocol';
 import { strings } from '../../lib/shared/strings';
 import { MenuButton } from '../../lib/page/menu';
 import { useBinding } from '../../lib/page/shortcuts';
 import { AppIcon } from './titleBar';
 import { useShell, useShellActions } from './store';
-
-export function updateLabel(status: UpdateStatus): string {
-  switch (status.kind) {
-    case 'idle':
-      return strings.tabs.checkForUpdates;
-    case 'checking':
-      return strings.tabs.checkingForUpdates;
-    case 'upToDate':
-      return strings.tabs.upToDate;
-    case 'downloading':
-      return strings.tabs.downloading(status.version, status.percent);
-    case 'failed':
-      return strings.tabs.checkFailed;
-    case 'ready':
-      return strings.tabs.restartToUpdate(status.version);
-    case 'available':
-      return strings.tabs.download(status.version);
-    default:
-      return status satisfies never;
-  }
-}
+import { updateLabel } from './updateLabel';
 
 export function AppMenu() {
   const update = useShell((state) => state.update);

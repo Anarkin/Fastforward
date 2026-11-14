@@ -1,6 +1,6 @@
 import type { FileChange } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
-import type { ChangeKind } from '../../../lib/page/icons';
+import type { ChangeKind } from '../../../lib/page/iconKinds';
 
 const kinds: Record<FileChange['status'], ChangeKind> = {
   A: 'added',

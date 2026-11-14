@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { draggedWidth } from '../../../../../tools/commander/page/columnHeader';
+import { draggedWidth } from '../../../../../tools/commander/page/columnDrag';
 import { maxColumnWidth } from '../../../../../tools/commander/shared/settings';
 
 suite('Commander column header', () => {
