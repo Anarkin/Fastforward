@@ -3,7 +3,7 @@ import type { FileChange } from '../shared/protocol';
 import { isFullHash } from '../shared/hashes';
 import { keptFirstParent } from './objects';
 import { strings } from '../../../lib/shared/strings';
-import { StoppedReading, type GitOutput } from './keptGit';
+import { StoppedReading, type GitOutput } from './gitOutput';
 import { keptGits } from './run';
 import {
   diffArgs,
