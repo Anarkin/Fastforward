@@ -18,7 +18,7 @@
     "max-lines": [
       "warn",
       {
-        "max": 1000
+        "max": 800
       }
     ]
   },
@@ -235,6 +235,7 @@
     },
     {
       "files": [
+        "src/lib/page/syntaxEngine.ts",
         "src/shell/page/tabBar.tsx",
         "src/test/e2e/appEditor.electron.test.ts",
         "src/test/e2e/appWrapping.electron.test.ts",
@@ -244,14 +245,59 @@
         "src/tools/commander/main/archives.ts",
         "src/tools/commander/page/editor.tsx",
         "src/tools/git/main/cli/watch.ts",
-        "src/tools/git/page/locations.tsx",
-        "src/lib/page/syntaxEngine.ts"
+        "src/tools/git/page/locations.tsx"
       ],
       "rules": {
         "max-lines": [
           "warn",
           {
             "max": 1200
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/test/e2e/appCursor.electron.test.ts",
+        "src/test/e2e/appViewer.electron.test.ts",
+        "src/test/src/shell/main/settings.test.ts",
+        "src/test/src/shell/page/style.test.ts",
+        "src/test/src/tools/commander/main/archives.test.ts",
+        "src/test/src/tools/commander/main/sevenZip.test.ts",
+        "src/test/src/tools/commander/main/sideScans.test.ts",
+        "src/test/src/tools/git/main/cli/run.git.test.ts",
+        "src/test/src/tools/git/main/tool/tabs.git.test.ts",
+        "src/test/src/tools/git/main/tool/worktrees.git.test.ts"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1100
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/lib/page/overlayScrollbars.ts",
+        "src/test/e2e/appViewerModes.electron.test.ts",
+        "src/test/helpers/harness.ts",
+        "src/test/src/shell/page/shortcutsPopup.test.tsx",
+        "src/test/src/tools/commander/main/commanderFixtures.ts",
+        "src/test/src/tools/commander/main/fileCommands.test.ts",
+        "src/test/src/tools/commander/page/listing.test.ts",
+        "src/test/src/tools/git/main/cli/files.git.test.ts",
+        "src/test/src/tools/git/main/cli/repository.git.test.ts",
+        "src/test/src/tools/git/page/diffRowHeights.test.tsx",
+        "src/tools/commander/main/transferCommands.ts",
+        "src/tools/git/page/store.ts"
+      ],
+      "rules": {
+        "max-lines": [
+          "warn",
+          {
+            "max": 1000
           }
         ]
       }
