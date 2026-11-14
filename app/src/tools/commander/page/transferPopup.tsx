@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
-import { useDismiss } from '../../../lib/page/menuControls';
+import { useDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../../lib/page/modalDialog';

@@ -15,12 +15,12 @@ import {
   openedSubmenu,
   shownKey,
   submenuPlacement,
-  useDismiss,
   useMenuFocus,
   type ContextMenuItem,
   type MenuIcon,
   type OpenMenu,
 } from './menuControls';
+import { useDismiss } from './dismiss';
 
 function MenuIconOf({ icon }: { icon: MenuIcon }) {
   switch (icon) {

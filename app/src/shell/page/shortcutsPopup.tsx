@@ -6,7 +6,7 @@ import { activeTabOf, useShell, useShellActions } from './store';
 import { shortcutEntries, type ShortcutEntryId } from './toolShortcuts';
 import { strings } from '../../lib/shared/strings';
 import { filterWords } from '../../lib/page/fileFilter';
-import { useDismiss } from '../../lib/page/menuControls';
+import { useDismiss } from '../../lib/page/dismiss';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
 import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
 import { keyPressed, shortcutsEntryOf } from '../../lib/page/shortcuts';

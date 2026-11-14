@@ -3,10 +3,10 @@ import { keymap } from './keymap';
 import { letterTyped, pressedAlone } from '../shared/keymap';
 import {
   onMenuKeyDown,
-  useDismiss,
   useMenuFocus,
   type ContextMenuItem,
 } from './menuControls';
+import { useDismiss } from './dismiss';
 import { MenuItems } from './contextMenu';
 import { DropdownIcon, MoreIcon } from './icons';
 import { Name } from './name';

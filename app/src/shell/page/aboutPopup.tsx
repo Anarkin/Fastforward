@@ -6,7 +6,7 @@ import {
   useState,
 } from 'react';
 import { brand, strings } from '../../lib/shared/strings';
-import { useDismiss } from '../../lib/page/menuControls';
+import { useDismiss } from '../../lib/page/dismiss';
 import { CloseIcon } from '../../lib/page/icons';
 import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
 import { useShell, useShellActions } from './store';

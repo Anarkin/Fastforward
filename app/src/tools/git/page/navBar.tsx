@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Direction, LastFetch, NavigationEntry } from '../shared/protocol';
-import {
-  onMenuKeyDown,
-  useDismiss,
-  useMenuFocus,
-} from '../../../lib/page/menuControls';
+import { onMenuKeyDown, useMenuFocus } from '../../../lib/page/menuControls';
+import { useDismiss } from '../../../lib/page/dismiss';
 import {
   BackIcon,
   ForwardIcon,

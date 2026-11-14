@@ -12,7 +12,7 @@ import { searchedBookmarks } from './bookmarks';
 import { BackIcon } from '../../../lib/page/icons';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { CommitBubble, HeadBubble, RefBubble } from './bubbles';
-import { useDismiss } from '../../../lib/page/menuControls';
+import { useDismiss } from '../../../lib/page/dismiss';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { noRefs } from './commitListItems';
 import { CommitRow } from './commitList';

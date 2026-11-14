@@ -11,7 +11,7 @@ import { clicked, pressed, shortcutOf } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import type { CommitInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
-import { listenForDismiss } from '../../../lib/page/menuControls';
+import { listenForDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon, PinIcon } from '../../../lib/page/icons';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { KeyCombo } from '../../../lib/page/keyCombo';

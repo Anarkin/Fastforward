@@ -7,7 +7,7 @@ import {
 } from '../shared/clone';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
-import { useDismiss } from '../../../lib/page/menuControls';
+import { useDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../../lib/page/modalDialog';
