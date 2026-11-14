@@ -1,9 +1,10 @@
-import { isWatchFailure, watchRepository, type Watcher } from './cli/watch';
 import type { Log } from '../../../shell/main/log';
 import type { ShellAccess } from '../../../shell/main/shell';
 import { strings } from '../../../lib/shared/strings';
 import type { TabWork, Session, Context, GitCore } from './tabContext';
 import type { Refreshes } from './refreshes';
+import { isWatchFailure, watchRepository } from './cli/watch';
+import type { Watcher } from './cli/watchFolders';
 
 export interface WatchingHost {
   readonly loadWorktrees: (

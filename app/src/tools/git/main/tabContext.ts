@@ -1,6 +1,5 @@
 import type { ReadPatch } from './cli/diff';
 import type { Refs } from './cli/repository';
-import type { Changed, Watcher } from './cli/watch';
 import { UntrackedPatches } from './cli/workingTree';
 import type { Fetched, RepositoryAt, Notify } from './operations';
 import {
@@ -14,6 +13,8 @@ import { strings, type Sentence } from '../../../lib/shared/strings';
 import type { Compared } from '../../../shell/main/storage';
 import type { TabState } from './tabState';
 import { shownSide } from '../shared/comparisons';
+import type { Changed } from './cli/watch';
+import type { Watcher } from './cli/watchFolders';
 
 export type RunningOn = 'pushingTag' | 'pullingBranch' | 'pushingBranch';
 

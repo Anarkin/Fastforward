@@ -16,7 +16,6 @@ import {
   runGitBytes,
   stopRunningGit,
 } from '../../../../../../tools/git/main/cli/run';
-import { ignoredPaths } from '../../../../../../tools/git/main/cli/watch';
 import {
   workingTreeFiles,
   workingTreePatch,
@@ -30,6 +29,7 @@ import {
   type TempRepository,
 } from '../../../../../helpers/repositories';
 import { filteredSlowly } from './runFixtures';
+import { ignoredPaths } from '../../../../../../tools/git/main/cli/watchFolders';
 
 async function printing300MB(run: () => Promise<unknown>): Promise<void> {
   const childProcess = process.getBuiltinModule('node:child_process');

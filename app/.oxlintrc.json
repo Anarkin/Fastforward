@@ -188,7 +188,6 @@
         "src/shell/page/tabBar.tsx",
         "src/tools/commander/main/archives.ts",
         "src/tools/commander/page/editor.tsx",
-        "src/tools/git/main/cli/watch.ts",
         "src/tools/git/page/locations.tsx"
       ],
       "rules": {

@@ -1,12 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
-import {
-  ignoredPaths,
-  watchesRecursively,
-  watchRepository,
-  type Watcher,
-} from '../../../../../../tools/git/main/cli/watch';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
@@ -14,6 +8,14 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../../helpers/repositories';
+import {
+  ignoredPaths,
+  type Watcher,
+} from '../../../../../../tools/git/main/cli/watchFolders';
+import {
+  watchesRecursively,
+  watchRepository,
+} from '../../../../../../tools/git/main/cli/watch';
 
 export let repository: TempRepository;
 export let changes: boolean[];

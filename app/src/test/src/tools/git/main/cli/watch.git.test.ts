@@ -4,11 +4,6 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../../helpers/builtins';
 import { runGit } from '../../../../../../tools/git/main/cli/run';
-import {
-  ignoredPaths,
-  watchRepository,
-  type Changed,
-} from '../../../../../../tools/git/main/cli/watch';
 import { waitFor } from '../../../../../helpers/fixtures';
 import {
   removeFolder,
@@ -28,6 +23,11 @@ import {
   watchingRepositories,
   worktreeInBareRepository,
 } from './watchFixtures';
+import { ignoredPaths } from '../../../../../../tools/git/main/cli/watchFolders';
+import {
+  watchRepository,
+  type Changed,
+} from '../../../../../../tools/git/main/cli/watch';
 
 const start = async (git = askingGit()) => {
   await startWatching({
