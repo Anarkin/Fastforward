@@ -118,10 +118,7 @@
       }
     },
     {
-      "files": [
-        "src/test/src/tools/commander/page/store.test.ts",
-        "src/test/src/tools/git/page/commitList.test.tsx"
-      ],
+      "files": ["src/test/src/tools/git/page/commitList.test.tsx"],
       "rules": {
         "max-lines": [
           "warn",
