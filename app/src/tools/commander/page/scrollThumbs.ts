@@ -46,3 +46,12 @@ export function matchTicks(
   }
   return ticks.map(({ top, bottom }) => ({ top, height: bottom - top }));
 }
+
+export function grabbedAt(
+  pointer: number,
+  thumb: { readonly top: number; readonly height: number },
+): number {
+  return pointer >= thumb.top && pointer <= thumb.top + thumb.height
+    ? pointer - thumb.top
+    : thumb.height / 2;
+}

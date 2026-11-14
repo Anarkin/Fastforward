@@ -17,13 +17,15 @@ import { viewerKeymap } from './keymap';
 import { followDrag } from '../../../lib/page/followDrag';
 import { sidewaysColumns, wheelTurn } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
-import {
-  grabbedAt,
-  hideAfter,
-  shareAt,
-} from '../../../lib/page/scrollbarGeometry';
+import { hideAfter, shareAt } from '../../../lib/page/scrollbarGeometry';
 import { overlayScrollbarClass } from '../../../lib/page/overlayScrollbars';
-import { type Thumb, type RowText, thumbBox, matchTicks } from './scrollThumbs';
+import {
+  type Thumb,
+  type RowText,
+  thumbBox,
+  matchTicks,
+  grabbedAt,
+} from './scrollThumbs';
 
 const minTick = 2;
 

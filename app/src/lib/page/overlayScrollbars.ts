@@ -10,13 +10,12 @@ import {
 import { followDrag } from './followDrag';
 import { afterPaint, inNextFrame } from './afterPaint';
 import { elementMetrics } from './scrollerMetrics';
-import { frameOf } from './scrollbarFrames';
+import { frameOf, framedMetrics } from './scrollbarFrames';
 
 import {
   hideAfter,
   Axis,
   ScrollerMetrics,
-  framedMetrics,
   clipPathOf,
   thumbBox,
   trackBox,
