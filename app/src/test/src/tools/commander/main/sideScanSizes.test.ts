@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
-import type { SizeWalk } from '../../../../../tools/commander/main/folderSizes';
+import type { SizeWalk } from '../../../../../tools/commander/main/sizeWalk';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   CommanderPage,

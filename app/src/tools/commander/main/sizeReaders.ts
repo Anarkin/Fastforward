@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { load } from 'koffi';
-import type { SizeRead } from './folderSizes';
+import type { SizeRead } from './sizeWalk';
 import {
   backupSemantics,
   closeHandleSignature,

@@ -11,7 +11,8 @@ import type { WatchFolder, WatchTree } from './watch';
 import { FlatTree } from './flatTree';
 import { Duplicates, type Compared, type ContentReader } from './duplicates';
 import { hashingHere } from './contentHash';
-import { FolderSizes, listingWalker, type SizeWalker } from './folderSizes';
+import { FolderSizes } from './folderSizes';
+import { listingWalker, type SizeWalker } from './sizeWalk';
 import {
   type Duplicating,
   type Flat,

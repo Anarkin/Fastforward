@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { strings } from '../../../lib/shared/strings';
-import type { SizeWalk, SizeWalked, SizeWalker } from './folderSizes';
+import type { SizeWalk, SizeWalked, SizeWalker } from './sizeWalk';
 
 const workerFile = 'sizeWorker.js';
 const workerCount = 4;

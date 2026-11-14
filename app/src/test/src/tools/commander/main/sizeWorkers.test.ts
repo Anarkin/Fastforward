@@ -4,10 +4,8 @@ import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { build } from 'esbuild';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import {
-  FolderSizes,
-  walkFolders,
-} from '../../../../../tools/commander/main/folderSizes';
+import { FolderSizes } from '../../../../../tools/commander/main/folderSizes';
+import { walkFolders } from '../../../../../tools/commander/main/sizeWalk';
 import {
   sizeWorkers,
   unpacked,

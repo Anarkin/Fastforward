@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { parentPort, workerData } from 'node:worker_threads';
 import type { load } from 'koffi';
-import { walkFolders, type SizeWalk } from './folderSizes';
+import { walkFolders, type SizeWalk } from './sizeWalk';
 import {
   nodeSizeReader,
   windowsSizeReader,
