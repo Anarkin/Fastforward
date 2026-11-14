@@ -27,7 +27,7 @@ import {
 } from '../../../../../tools/commander/main/archives';
 import { strings } from '../../../../../lib/shared/strings';
 import { pathParts } from '../../../../../tools/commander/shared/paths';
-import type { PdfPlace } from '../../../../../lib/shared/pdf';
+import type { PdfPlace } from '../../../../../tools/commander/shared/pdf';
 import { FakeStore } from '../../../../support/fakeStore';
 import type { TransferCommand } from '../../../../../tools/commander/main/transferProtocol';
 import type { TransferListener } from '../../../../../tools/commander/main/transfers';

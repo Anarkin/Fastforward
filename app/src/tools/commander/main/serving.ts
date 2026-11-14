@@ -17,7 +17,7 @@ import { thumbnailKey } from './thumbnailStore';
 import { ArchiveImages } from './archiveImages';
 import { viewedFileOf } from '../shared/files';
 import { fileResponse } from './fileRanges';
-import { isPdf, pdfType } from '../../../lib/shared/pdf';
+import { isPdf, pdfType } from '../shared/pdf';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { Icons } from './icons';
 import { onSameVolume } from './repositories';

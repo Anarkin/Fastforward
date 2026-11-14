@@ -1,11 +1,7 @@
 import { memo, Fragment } from 'react';
 import type { DiffFile, DiffLine, LoadedText } from './diff';
 import { lineKey, type FindMatch, type FindRange } from './find';
-import {
-  matchMarks,
-  minimapMarks,
-  type MinimapMark,
-} from '../../../lib/page/minimap';
+import { matchMarks, minimapMarks, type MinimapMark } from './minimap';
 import type { SyntaxRange } from './syntax';
 import type { WordRanges } from './wordDiff';
 import { drawnText } from '../../../lib/page/blanks';

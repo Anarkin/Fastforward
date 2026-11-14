@@ -5,8 +5,8 @@ import * as esbuild from 'esbuild';
 import type { JSHandle, Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import type * as commanderKeymapModule from '../../tools/commander/page/keymap';
-import type * as editorSelectionModule from '../../lib/page/editorSelection';
-import type * as editorTextModule from '../../lib/page/editorText';
+import type * as editorSelectionModule from '../../tools/commander/page/editorSelection';
+import type * as editorTextModule from '../../tools/commander/page/editorText';
 import type * as textWidthsModule from '../../lib/page/textWidths';
 import { diffLineNumbered, gridLines, page, sharedApp } from './appFixtures';
 import { waitFor } from '../support/fixtures';
@@ -45,8 +45,8 @@ async function editorInPage(): Promise<JSHandle<PageEditor>> {
     stdin: {
       contents: [
         "export { EditorView, lineNumbers } from '@codemirror/view';",
-        "export { appTextLook, blanksShown } from './editorText';",
-        "export { appSelection } from './editorSelection';",
+        "export { appTextLook, blanksShown } from '../../tools/commander/page/editorText';",
+        "export { appSelection } from '../../tools/commander/page/editorSelection';",
         "export { editorKeymap } from '../../tools/commander/page/keymap';",
         "export { terminalCells } from './textWidths';",
       ].join('\n'),

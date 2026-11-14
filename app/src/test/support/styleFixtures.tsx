@@ -31,7 +31,7 @@ import {
   MessageCorner,
   MessagePanel,
 } from '../../tools/git/page/messagePeek';
-import { Minimap } from '../../lib/page/minimap';
+import { Minimap } from '../../tools/git/page/minimap';
 import { HistoryMenu, NavButtons } from '../../tools/git/page/navBar';
 import { Notices } from '../../shell/page/notices';
 import { MenuButton } from '../../lib/page/menu';

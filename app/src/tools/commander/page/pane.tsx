@@ -14,11 +14,7 @@ import {
   maxImageSize,
   vectorType,
 } from '../../../lib/shared/images';
-import {
-  ThumbnailImage,
-  useThumbnailFill,
-  type FillItem,
-} from '../../../lib/page/thumbnails';
+import { ThumbnailImage, useThumbnailFill, type FillItem } from './thumbnails';
 import { commanderKeymap } from './keymap';
 import { clicked } from '../../../lib/shared/keymap';
 import { parentFolder, type Entry, type Side } from '../shared/protocol';
@@ -31,7 +27,7 @@ import { filterWords } from '../../../lib/page/fileFilter';
 import { HighlightWords } from '../../../lib/page/highlight';
 import { SearchButton, SearchRow } from '../../../lib/page/search';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
-import { clickPairs } from '../../../lib/page/clickPairs';
+import { clickPairs } from './clickPairs';
 import { ColumnHeader } from './columnHeader';
 import { layouts, type Layout } from '../shared/settings';
 import {
@@ -57,7 +53,7 @@ import {
   ShieldIcon,
   ToolIcon,
 } from '../../../lib/page/icons';
-import { StatusLine } from '../../../lib/page/statusLine';
+import { StatusLine } from './statusLine';
 import { MenuButton } from '../../../lib/page/menu';
 import type { ContextMenuItem } from '../../../lib/page/contextMenu';
 import { estimatedRowHeight, VirtualRows } from '../../../lib/page/virtualRows';

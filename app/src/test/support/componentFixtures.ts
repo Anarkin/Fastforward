@@ -10,7 +10,7 @@ import {
   CommanderStore,
   createCommanderStore,
 } from '../../tools/commander/page/store';
-import { defaultTextView } from '../../lib/page/textView';
+import { defaultTextView } from '../../shell/page/textView';
 import { emptyTabView, type TabView } from '../../tools/git/page/tabView';
 import { FileRow } from '../../tools/git/page/tree';
 import type {

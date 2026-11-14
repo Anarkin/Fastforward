@@ -65,6 +65,20 @@ function reachedFrom(roots: readonly string[]): ReadonlySet<string> {
   return reached;
 }
 
+function usesOf(file: string): string[] {
+  const workers = [...read(file).matchAll(/new URL\('(\w+)\.js'/g)].flatMap(
+    ([, name]) =>
+      sourceFiles.filter(
+        (worker) => path.posix.basename(worker).replace(/\.tsx?$/, '') === name,
+      ),
+  );
+  return [...importsOf(file).flatMap(sourceFilesOf), ...workers];
+}
+
+function partOf(file: string): string | undefined {
+  return /^(?:boot|shell|tools\/[^/]+)/.exec(file)?.[0];
+}
+
 const registries = ['shell/shared/tools.ts', 'shell/page/tools.tsx'];
 
 suite('Architecture', () => {
@@ -135,6 +149,39 @@ suite('Architecture', () => {
             .filter((target) => !target.startsWith('lib/'))
             .map((target) => `${file} -> ${target}`),
         ),
+      [],
+    );
+  });
+
+  test('keeps in the library only what several parts use, directly or through other library code, as what one part alone uses belongs to it', () => {
+    const parts = new Map<string, Set<string>>();
+    for (const file of sourceFiles) {
+      const part = partOf(file);
+      if (part === undefined) {
+        continue;
+      }
+      const seen = new Set<string>();
+      const pending = usesOf(file).filter((target) =>
+        target.startsWith('lib/'),
+      );
+      for (
+        let target = pending.pop();
+        target !== undefined;
+        target = pending.pop()
+      ) {
+        if (!seen.has(target)) {
+          seen.add(target);
+          parts.set(target, (parts.get(target) ?? new Set()).add(part));
+          pending.push(
+            ...usesOf(target).filter((next) => next.startsWith('lib/')),
+          );
+        }
+      }
+    }
+    assert.deepStrictEqual(
+      sourceFiles.filter(
+        (file) => file.startsWith('lib/') && (parts.get(file)?.size ?? 0) < 2,
+      ),
       [],
     );
   });

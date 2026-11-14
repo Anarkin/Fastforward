@@ -1,7 +1,7 @@
 import { shortHash } from '../shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
 import { findRef, localBranchOf } from '../shared/refNames';
-import { byName } from '../../../lib/page/byName';
+import { byName } from './byName';
 
 export interface CheckoutOption {
   readonly label: string;

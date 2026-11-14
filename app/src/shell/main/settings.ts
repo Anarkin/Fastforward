@@ -16,7 +16,7 @@ import {
   type EditorSettings,
 } from './editorSettings';
 import { themes, type Theme } from '../shared/protocol';
-import { type ImageView, type TextView } from '../../lib/shared/views';
+import { type ImageView, type TextView } from '../shared/views';
 import { cursorStyles, type CursorLook } from '../../lib/shared/cursorSettings';
 
 export interface Settings {

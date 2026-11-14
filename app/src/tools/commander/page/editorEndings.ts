@@ -18,7 +18,7 @@ import {
   type ViewUpdate,
 } from '@codemirror/view';
 import { strings } from '../../../lib/shared/strings';
-import { blanksShown } from '../../../lib/page/editorText';
+import { blanksShown } from './editorText';
 import {
   marksListed,
   movedMarks,

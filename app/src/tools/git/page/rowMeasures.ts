@@ -6,7 +6,7 @@ import {
   wrappedLines,
   type RowBreak,
 } from '../../../lib/page/wordWrap';
-import { inLines, measureInLines } from '../../../lib/page/lineHeight';
+import { inLines, measureInLines } from './lineHeight';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import {
   type DiffRow,
@@ -15,7 +15,7 @@ import {
   diffRowKey,
   changeOf,
 } from './diffRows';
-import type { MinimapRow } from '../../../lib/page/minimap';
+import type { MinimapRow } from './minimap';
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 

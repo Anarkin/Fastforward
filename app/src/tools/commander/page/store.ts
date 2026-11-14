@@ -5,7 +5,7 @@ import { folderKey } from '../shared/paths';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
 import { strings } from '../../../lib/shared/strings';
 import { maxDroppedIcons, type IconSource } from '../shared/icons';
-import type { PdfPlace } from '../../../lib/shared/pdf';
+import type { PdfPlace } from '../shared/pdf';
 import {
   maxFindLength,
   otherSide,

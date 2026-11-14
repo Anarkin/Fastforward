@@ -1,6 +1,6 @@
 import { strings } from '../../../lib/shared/strings';
 import { folded } from '../../../lib/shared/textMatches';
-import { byName } from '../../../lib/page/byName';
+import { byName } from './byName';
 import type { RefInfo, RefKind } from '../shared/protocol';
 
 const groups: readonly { kind: RefKind; title: string }[] = [

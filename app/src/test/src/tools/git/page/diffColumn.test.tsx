@@ -14,7 +14,7 @@ import {
 } from '../../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import { createShellStore } from '../../../../../shell/page/store';
-import { defaultTextView } from '../../../../../lib/page/textView';
+import { defaultTextView } from '../../../../../shell/page/textView';
 import {
   inStores,
   optionStores,

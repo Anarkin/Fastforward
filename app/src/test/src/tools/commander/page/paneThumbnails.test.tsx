@@ -17,14 +17,17 @@ import { noop } from '../../../../support/fixtures';
 
 const filled = vi.hoisted((): unknown[] => []);
 
-vi.mock('../../../../../lib/page/thumbnails', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('../../../../../lib/page/thumbnails')
-  >()),
-  useThumbnailFill: (items: unknown) => {
-    filled.push(items);
-  },
-}));
+vi.mock(
+  '../../../../../tools/commander/page/thumbnails',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('../../../../../tools/commander/page/thumbnails')
+    >()),
+    useThumbnailFill: (items: unknown) => {
+      filled.push(items);
+    },
+  }),
+);
 
 const sort = {
   column: 'name',

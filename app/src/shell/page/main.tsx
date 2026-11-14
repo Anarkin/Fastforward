@@ -9,7 +9,7 @@ import { windowButtonColor } from './titleBar';
 import { errorText } from '../../lib/page/errors';
 import { installOverlayScrollbars } from '../../lib/page/overlayScrollbars';
 import { watchDevicePixels } from '../../lib/page/devicePixels';
-import { installTextCursors } from '../../lib/page/textCursor';
+import { installTextCursors } from './textCursor';
 
 declare global {
   interface Window {

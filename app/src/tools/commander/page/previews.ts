@@ -1,5 +1,5 @@
 import { imageType } from '../../../lib/shared/images';
-import { isPdf } from '../../../lib/shared/pdf';
+import { isPdf } from '../shared/pdf';
 import { languageOf } from '../../../lib/page/languages';
 import { viewedFileUrl } from '../shared/files';
 import type { ViewMode } from './keymap';

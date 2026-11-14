@@ -32,7 +32,7 @@ import {
   isPdfFingerprint,
   pdfPlaceOf,
   type PdfPlace,
-} from '../../../lib/shared/pdf';
+} from '../shared/pdf';
 import { reasonOf } from './reasons';
 import { type Sides, post } from './sides';
 

@@ -6,7 +6,7 @@ import {
   type Settings,
   type UserSettings,
 } from './settings';
-import type { ImageView, TextView } from '../../lib/shared/views';
+import type { ImageView, TextView } from '../shared/views';
 import * as path from 'node:path';
 import { strings, type Sentence } from '../../lib/shared/strings';
 import { isTool, type ToolId } from '../shared/tools';

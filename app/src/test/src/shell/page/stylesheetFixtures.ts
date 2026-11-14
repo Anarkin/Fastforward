@@ -13,7 +13,7 @@ import { AboutPopup } from '../../../../shell/page/aboutPopup';
 import { TabBar } from '../../../../shell/page/tabBar';
 import { overlayScrollbarClass } from '../../../../lib/page/overlayScrollbars';
 import { ShortcutsPopup } from '../../../../shell/page/shortcutsPopup';
-import { SkeletonRows } from '../../../../lib/page/skeleton';
+import { SkeletonRows } from '../../../../tools/git/page/skeleton';
 import { PathTitle } from '../../../../tools/commander/page/pathTitle';
 import { MarkBox } from '../../../../tools/commander/page/pane';
 import {

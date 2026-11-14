@@ -27,13 +27,13 @@ import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { Column } from './column';
 import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
 import { SearchButton, SearchRow } from '../../../lib/page/search';
-import { useSettled } from '../../../lib/page/settled';
+import { useSettled } from './settled';
 import {
   AllFilesIcon,
   CollapseAllIcon,
   ExpandAllIcon,
 } from '../../../lib/page/icons';
-import { SkeletonRows, useSkeleton } from '../../../lib/page/skeleton';
+import { SkeletonRows, useSkeleton } from './skeleton';
 import { gitKeymap } from './keymap';
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import { listMoveOf, type VisibleRows } from '../../../lib/page/listMoves';

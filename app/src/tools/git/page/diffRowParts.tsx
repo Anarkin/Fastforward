@@ -3,7 +3,7 @@ import type { FindRange } from './find';
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import { PreviewIcon } from '../../../lib/page/icons';
-import { SkeletonRows } from '../../../lib/page/skeleton';
+import { SkeletonRows } from './skeleton';
 import { Twisty } from './tree';
 import { renamedPath } from './fileStatus';
 import {

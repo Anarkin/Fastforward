@@ -1,10 +1,6 @@
 import * as fs from 'node:fs';
 import { writeAtomically } from '../../../shell/main/settings';
-import {
-  isPdfFingerprint,
-  pdfPlaceOf,
-  type PdfPlace,
-} from '../../../lib/shared/pdf';
+import { isPdfFingerprint, pdfPlaceOf, type PdfPlace } from '../shared/pdf';
 
 const keptPlaces = 1000;
 

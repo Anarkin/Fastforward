@@ -19,10 +19,10 @@ import {
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { syntaxColors } from '../../../lib/page/editorColors';
-import { appSelection } from '../../../lib/page/editorSelection';
-import { appTextLook, blanksShown } from '../../../lib/page/editorText';
-import { rowScrolling } from '../../../lib/page/editorScroll';
+import { syntaxColors } from './editorColors';
+import { appSelection } from './editorSelection';
+import { appTextLook, blanksShown } from './editorText';
+import { rowScrolling } from './editorScroll';
 import type { ScrollSettings } from '../../../lib/page/rowScroll';
 import { ShowWhitespaceIcon, WordWrapIcon } from '../../../lib/page/icons';
 import { Words } from '../../../lib/page/name';
@@ -35,7 +35,7 @@ import {
   useCellTable,
   type CellTable,
 } from '../../../lib/page/textWidths';
-import { StatusLine } from '../../../lib/page/statusLine';
+import { StatusLine } from './statusLine';
 import {
   FindActions,
   FindField,

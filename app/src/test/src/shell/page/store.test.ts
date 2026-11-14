@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { ToHost, TabInfo } from '../../../../shell/shared/protocol';
 import { createShellStore } from '../../../../shell/page/store';
-import { defaultTextView } from '../../../../lib/page/textView';
+import { defaultTextView } from '../../../../shell/page/textView';
 import { noop } from '../../../support/fixtures';
 
 const terminal: TabInfo = { id: '1', tool: 'terminal', name: 'repo' };

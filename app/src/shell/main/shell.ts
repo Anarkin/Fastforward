@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import type { Log } from './log';
-import { isImageView, isTextView } from '../../lib/shared/views';
+import { isImageView, isTextView } from '../shared/views';
 import type {
   CommandInstall,
   CommandState,

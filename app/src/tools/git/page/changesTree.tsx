@@ -1,6 +1,6 @@
 import type { ChangeArea, FileChange } from '../shared/protocol';
 import { buildFileTree, foldersOf, type FolderNode } from './fileTree';
-import { byName } from '../../../lib/page/byName';
+import { byName } from './byName';
 import {
   moveInList,
   type ListMove,

@@ -16,7 +16,7 @@ import {
 import type { TextRequest } from '../shared/protocol';
 import type { DiffFile, DiffLine, LoadedText } from './diff';
 import { jumpStep, lineKey, type FindMatch } from './find';
-import { Minimap } from '../../../lib/page/minimap';
+import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import {
   shortcutsEntryAttribute,
@@ -45,7 +45,7 @@ import {
 import { ImageDiff, imagePanes } from './imagePreview';
 import { WholeImage } from '../../../lib/page/images';
 import { wholeImageUrl, type ImageOrigin } from './images';
-import { useSkeleton } from '../../../lib/page/skeleton';
+import { useSkeleton } from './skeleton';
 import { type ColumnsIn, wrapIndent } from '../../../lib/page/wordWrap';
 import { snapOffset } from '../../../lib/page/devicePixels';
 import { afterPaint } from '../../../lib/page/afterPaint';

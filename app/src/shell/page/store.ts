@@ -3,12 +3,12 @@ import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../lib/shared/strings';
 import type { ContextMenuItem, OpenMenu } from '../../lib/page/contextMenu';
 import { defaultDateFormat } from '../../lib/page/dates';
-import { defaultImageView } from '../../lib/page/imageView';
+import { defaultImageView } from './imageView';
 import {
   defaultScrolling,
   type ScrollSettings,
 } from '../../lib/page/rowScroll';
-import { defaultTextView } from '../../lib/page/textView';
+import { defaultTextView } from './textView';
 import { addNotice } from '../shared/notices';
 import type {
   AboutInfo,
@@ -21,7 +21,7 @@ import type {
   UpdateStatus,
   WindowInfo,
 } from '../shared/protocol';
-import type { ImageView, TextView } from '../../lib/shared/views';
+import type { ImageView, TextView } from '../shared/views';
 import {
   confirmsClose,
   type ToHostOf,

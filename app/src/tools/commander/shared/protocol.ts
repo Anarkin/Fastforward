@@ -1,5 +1,5 @@
 import type { Sentence } from '../../../lib/shared/strings';
-import type { PdfPlace } from '../../../lib/shared/pdf';
+import type { PdfPlace } from './pdf';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';
 import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';

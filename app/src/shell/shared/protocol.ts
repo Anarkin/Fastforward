@@ -1,5 +1,5 @@
 import type { Sentence } from '../../lib/shared/strings';
-import type { ImageView, TextView } from '../../lib/shared/views';
+import type { ImageView, TextView } from './views';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
 export const maxNotices = 4;
