@@ -48,7 +48,7 @@ import {
   type Store,
 } from '../../shell/main/storage';
 import { GitStorage } from '../../tools/git/main/storage';
-import { UserSettings } from '../../shell/main/settings';
+import { UserSettings } from '../../shell/main/userSettings';
 import { FakeStore } from './fakeStore';
 import { defaultSettings } from './fixtures';
 import { installedGit, type TempRepository } from './repositories';

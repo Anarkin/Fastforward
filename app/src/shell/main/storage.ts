@@ -1,11 +1,8 @@
 import * as fs from 'node:fs';
-import {
-  isObject,
-  readText,
-  writeAtomically,
-  type Settings,
-  type UserSettings,
-} from './settings';
+import { isObject } from '../../lib/main/json';
+import { readText, writeAtomically } from '../../lib/main/textFiles';
+import type { Settings } from './settings';
+import type { UserSettings } from './userSettings';
 import type { ImageView, TextView } from '../shared/views';
 import * as path from 'node:path';
 import { strings, type Sentence } from '../../lib/shared/strings';

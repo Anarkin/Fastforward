@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { isObject } from '../../../shell/main/settings';
+import { isObject } from '../../../lib/main/json';
 import type { Store } from '../../../shell/main/storage';
 import { sides, type Side } from '../shared/protocol';
 

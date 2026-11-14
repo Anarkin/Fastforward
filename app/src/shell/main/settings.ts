@@ -1,9 +1,7 @@
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import {
   toolSettingChoices,
   toolSettingListKinds,
-  toolSettingProblems,
   toolSettingStandIns,
   type ThemeColors,
   type ToolSettings,
@@ -18,6 +16,7 @@ import {
 import { themes, type Theme } from '../shared/protocol';
 import { type ImageView, type TextView } from '../shared/views';
 import { cursorStyles, type CursorLook } from '../../lib/shared/cursorSettings';
+import { isObject, type Json } from '../../lib/main/json';
 
 export interface Settings {
   readonly tabs: {
@@ -47,12 +46,6 @@ export interface Settings {
     readonly minimap: string;
   };
   readonly colors: ThemeColors;
-}
-
-type Json = Record<string, unknown>;
-
-export function isObject(value: unknown): value is Json {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 type JsonKind = 'boolean' | 'number' | 'string' | 'object';
@@ -186,7 +179,7 @@ function listProblems(
     : [wrongKind(name, fallback)];
 }
 
-function merge<T extends object>(
+export function merge<T extends object>(
   defaults: T,
   overrides: Json,
   prefix: string,
@@ -244,14 +237,18 @@ export function mergeSettings<T extends object>(
   return { settings, problems };
 }
 
-function valueAt(json: unknown, keys: readonly string[]): unknown {
+export function valueAt(json: unknown, keys: readonly string[]): unknown {
   return keys.reduce<unknown>(
     (value, key) => (isObject(value) ? value[key] : undefined),
     json,
   );
 }
 
-function withValue(json: Json, keys: readonly string[], value: unknown): Json {
+export function withValue(
+  json: Json,
+  keys: readonly string[],
+  value: unknown,
+): Json {
   const [key, ...rest] = keys;
   if (key === undefined) {
     return json;
@@ -272,7 +269,7 @@ function withValue(json: Json, keys: readonly string[], value: unknown): Json {
   return result;
 }
 
-function same(a: unknown, b: unknown): boolean {
+export function same(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
@@ -300,475 +297,4 @@ export function readDefaults(file: string): Settings {
   }
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return parsed as unknown as Settings;
-}
-
-const gitSettingsOfVersion22 = [
-  'collapseMerges',
-  'showAllFiles',
-  'ignoreWhitespace',
-  'diffLayout',
-  'solo',
-  'autoFetch',
-  'autoFetchMinutes',
-  'hideDimmedButtons',
-  'columnWidths',
-];
-
-const textSettingsOfVersion22 = ['wordWrap', 'showWhitespace'];
-
-const changeColorsOfVersion22 = [
-  'added',
-  'added-line',
-  'added-row',
-  'added-minimap',
-  'deleted',
-  'deleted-line',
-  'deleted-row',
-  'deleted-minimap',
-  'modified',
-  'renamed',
-];
-
-const bubbleColorsOfVersion22 = [
-  'bubble',
-  'bubble-foreground',
-  'bubble-border',
-  'bubble-checked-out',
-  'bubble-checked-out-foreground',
-  'bubble-checked-out-border',
-];
-
-const chartColorOfVersion22 = 'chart-';
-
-type Move = readonly [
-  from: readonly string[],
-  to: readonly string[] | undefined,
-];
-
-function colorMoveOfVersion22(theme: string, name: string): Move | undefined {
-  const from = ['colors', theme, name];
-  if (changeColorsOfVersion22.includes(name)) {
-    return [from, ['colors', theme, `change-${name}`]];
-  }
-  if (bubbleColorsOfVersion22.includes(name)) {
-    return [from, ['tools', 'git', 'colors', theme, name]];
-  }
-  if (name.startsWith(chartColorOfVersion22)) {
-    const color = name.slice(chartColorOfVersion22.length);
-    return [from, ['tools', 'git', 'colors', theme, `graph-${color}`]];
-  }
-  return undefined;
-}
-
-const settingMovesOfVersion22: readonly Move[] = [
-  ...gitSettingsOfVersion22.map((key): Move => [[key], ['tools', 'git', key]]),
-  [['entireFilePinned'], ['tools', 'git', 'showEntireFile']],
-  ...textSettingsOfVersion22.map((key): Move => [[key], ['text', key]]),
-  [['autoSortTabs'], undefined],
-];
-
-function movesOfVersion22(json: Json): Move[] {
-  const colors = isObject(json.colors) ? json.colors : {};
-  return [
-    ...settingMovesOfVersion22,
-    ...Object.entries(colors).flatMap(([theme, named]) =>
-      isObject(named)
-        ? Object.keys(named).flatMap((name) => {
-            const move = colorMoveOfVersion22(theme, name);
-            return move === undefined ? [] : [move];
-          })
-        : [],
-    ),
-  ];
-}
-
-function migratedSettings(json: Json): Json | undefined {
-  const moves = movesOfVersion22(json).filter(
-    ([from]) => valueAt(json, from) !== undefined,
-  );
-  if (moves.length === 0) {
-    return undefined;
-  }
-  return moves.reduce((result, [from, to]) => {
-    const without = withValue(result, from, undefined);
-    return to === undefined || valueAt(result, to) !== undefined
-      ? without
-      : withValue(without, to, valueAt(json, from));
-  }, json);
-}
-
-export class UserSettings {
-  private current: Settings;
-  private inMemory: Json = {};
-  private broken = false;
-  private issues: readonly Sentence[] = [];
-  private writing: Promise<void> = Promise.resolve();
-  private readonly unsaved = new Map<
-    string,
-    {
-      readonly keys: readonly string[];
-      readonly value: unknown;
-      readonly saves: number;
-    }
-  >();
-
-  constructor(
-    private base: Settings,
-    private readonly file?: string,
-  ) {
-    this.current = base;
-    this.read();
-  }
-
-  get defaults(): Settings {
-    return this.base;
-  }
-
-  get settings(): Settings {
-    return this.current;
-  }
-
-  get problems(): readonly Sentence[] {
-    return this.issues;
-  }
-
-  replaceDefaults(defaults: Settings): boolean {
-    const before = JSON.stringify([this.base, this.current, this.issues]);
-    this.base = defaults;
-    this.read();
-    return JSON.stringify([this.base, this.current, this.issues]) !== before;
-  }
-
-  reload(): boolean {
-    const before = JSON.stringify([this.current, this.issues]);
-    this.read();
-    return JSON.stringify([this.current, this.issues]) !== before;
-  }
-
-  private read(): void {
-    if (this.file === undefined) {
-      const { settings, problems } = mergeSettings(this.base, this.inMemory);
-      this.current = settings;
-      this.issues = [...problems, ...toolSettingProblems(settings.tools)];
-      return;
-    }
-    const text = readText(this.file);
-    this.broken = false;
-    if (text instanceof Error) {
-      this.broken = true;
-      this.issues = [strings.settings.unreadable(text.message)];
-      return;
-    }
-    if (text === undefined || text.trim() === '') {
-      this.current = this.withUnsaved(this.base);
-      this.issues = [];
-      return;
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch (error) {
-      this.broken = true;
-      this.issues = [
-        strings.settings.invalid(
-          error instanceof Error ? error.message : String(error),
-        ),
-      ];
-      return;
-    }
-    const migrated = isObject(parsed) ? migratedSettings(parsed) : undefined;
-    if (migrated !== undefined) {
-      parsed = migrated;
-      this.saveMigrated(this.file, migrated);
-    }
-    const { settings, problems } = mergeSettings(this.base, parsed);
-    this.current = this.withUnsaved(settings);
-    this.broken = !isObject(parsed);
-    this.issues = [...problems, ...toolSettingProblems(settings.tools)];
-  }
-
-  private saveMigrated(file: string, migrated: Json): void {
-    this.writing = this.writing
-      .catch(() => undefined)
-      .then(() =>
-        writeAtomically(file, `${JSON.stringify(migrated, undefined, 2)}\n`),
-      );
-  }
-
-  set<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
-    return this.update([key], value);
-  }
-
-  setIn<
-    T extends keyof Settings['tools'],
-    K extends keyof Settings['tools'][T] & string,
-  >(tool: T, key: K, value: Settings['tools'][T][K]): Promise<void> {
-    return this.update(['tools', tool, key], value);
-  }
-
-  setTabs<K extends keyof Settings['tabs']>(
-    key: K,
-    value: Settings['tabs'][K],
-  ): Promise<void> {
-    return this.update(['tabs', key], value);
-  }
-
-  setText<K extends keyof TextView>(key: K, value: TextView[K]): Promise<void> {
-    return this.update(['text', key], value);
-  }
-
-  setImages<K extends keyof ImageView>(
-    key: K,
-    value: ImageView[K],
-  ): Promise<void> {
-    return this.update(['images', key], value);
-  }
-
-  private update(keys: readonly string[], value: unknown): Promise<void> {
-    const written: unknown = JSON.parse(JSON.stringify({ value })).value;
-    const problems: Sentence[] = [];
-    const settings = merge(
-      this.current,
-      withValue({}, keys, written),
-      '',
-      problems,
-    );
-    if (written === undefined || problems.length > 0) {
-      return Promise.resolve();
-    }
-    this.current = settings;
-    const file = this.file;
-    if (file === undefined) {
-      this.inMemory = this.withSetting(this.inMemory, keys, value);
-      return Promise.resolve();
-    }
-    if (this.broken) {
-      return Promise.resolve();
-    }
-    const key = keys.join('.');
-    this.unsaved.set(key, {
-      keys,
-      value,
-      saves: (this.unsaved.get(key)?.saves ?? 0) + 1,
-    });
-    this.writing = this.writing
-      .catch(() => undefined)
-      .then(() => {
-        const latest = writtenIn(file);
-        if (latest === undefined) {
-          return Promise.resolve();
-        }
-        return writeAtomically(
-          file,
-          `${JSON.stringify(this.withSetting(latest, keys, value), undefined, 2)}\n`,
-        );
-      })
-      .finally(() => {
-        const unsaved = this.unsaved.get(key);
-        if (unsaved === undefined || unsaved.saves <= 1) {
-          this.unsaved.delete(key);
-        } else {
-          this.unsaved.set(key, { ...unsaved, saves: unsaved.saves - 1 });
-        }
-      });
-    return this.writing;
-  }
-
-  private withUnsaved(settings: Settings): Settings {
-    let overrides: Json = {};
-    for (const { keys, value } of this.unsaved.values()) {
-      overrides = withValue(overrides, keys, value);
-    }
-    return merge(settings, overrides, '', []);
-  }
-
-  saved(): Promise<void> {
-    return this.writing.catch(() => undefined);
-  }
-
-  private withSetting(
-    written: Json,
-    keys: readonly string[],
-    value: unknown,
-  ): Json {
-    return withValue(
-      written,
-      keys,
-      same(value, valueAt(this.base, keys)) ? undefined : value,
-    );
-  }
-}
-
-function writtenIn(file: string): Json | undefined {
-  const text = readText(file);
-  if (text instanceof Error) {
-    return undefined;
-  }
-  if (text === undefined || text.trim() === '') {
-    return {};
-  }
-  try {
-    const parsed: unknown = JSON.parse(text);
-    return isObject(parsed) ? parsed : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-export function readText(file: string): string | Error | undefined {
-  try {
-    return fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
-  } catch (error) {
-    return isMissing(error)
-      ? undefined
-      : error instanceof Error
-        ? error
-        : new Error(String(error));
-  }
-}
-
-function isMissing(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
-
-export function watchSettings(
-  file: string,
-  onChange: () => void,
-  delay = 200,
-  target = realPath(file),
-  lookEvery = 1000,
-): () => void {
-  let timer: NodeJS.Timeout | undefined;
-  const changed = () => {
-    clearTimeout(timer);
-    timer = setTimeout(onChange, delay);
-  };
-  const files = [...new Set([file, target])];
-  const watchers = files.map((watched) => {
-    const folder = path.dirname(watched);
-    let stamp = stampOf(watched);
-    const watcher = fs.watch(folder, (_event, name) => {
-      if (!fs.existsSync(folder)) {
-        watcher.close();
-        return;
-      }
-      const now = stampOf(watched);
-      if (name === path.basename(watched) || now !== stamp) {
-        stamp = now;
-        changed();
-      }
-    });
-    watcher.on('error', () => watcher.close());
-    return watcher;
-  });
-  const looked = (now: fs.Stats, before: fs.Stats) => {
-    if (now.mtimeMs !== before.mtimeMs || now.size !== before.size) {
-      changed();
-    }
-  };
-  for (const watched of files) {
-    fs.watchFile(watched, { interval: lookEvery, persistent: false }, looked);
-  }
-  timer = setTimeout(onChange, delay);
-  return () => {
-    clearTimeout(timer);
-    for (const watcher of watchers) {
-      watcher.close();
-    }
-    for (const watched of files) {
-      fs.unwatchFile(watched, looked);
-    }
-  };
-}
-
-function stampOf(file: string): string | undefined {
-  try {
-    const stats = fs.statSync(file);
-    return `${stats.size}:${stats.mtimeMs}`;
-  } catch {
-    return undefined;
-  }
-}
-
-function realPath(file: string): string {
-  try {
-    return fs.realpathSync(file);
-  } catch {
-    return file;
-  }
-}
-
-const renameRetryDelays = [10, 20, 40, 80, 160, 320, 640];
-
-export async function writeAtomically(
-  file: string,
-  text: string,
-  retryDelays: readonly number[] = renameRetryDelays,
-): Promise<void> {
-  const target = await linkedFile(file);
-  const temporary = `${target}.tmp`;
-  await fs.promises.mkdir(path.dirname(file), { recursive: true });
-  try {
-    const handle = await fs.promises.open(temporary, 'w');
-    try {
-      await handle.writeFile(text);
-      await handle.sync();
-    } finally {
-      await handle.close();
-    }
-    await renameRetrying(temporary, target, retryDelays);
-  } catch (error) {
-    await fs.promises.rm(temporary, { force: true }).catch(() => undefined);
-    throw error;
-  }
-}
-
-async function linkedFile(file: string): Promise<string> {
-  try {
-    return await fs.promises.realpath(file);
-  } catch (error) {
-    const link = isMissing(error)
-      ? await fs.promises.readlink(file).catch(() => undefined)
-      : undefined;
-    return link === undefined
-      ? file
-      : linkedFile(path.resolve(path.dirname(file), link));
-  }
-}
-
-async function renameRetrying(
-  from: string,
-  to: string,
-  retryDelays: readonly number[],
-): Promise<void> {
-  for (const delay of retryDelays) {
-    try {
-      await fs.promises.rename(from, to);
-      return;
-    } catch (error) {
-      if (!isHeld(error)) {
-        throw error;
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, delay));
-  }
-  await fs.promises.rename(from, to);
-}
-
-function isHeld(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    (error.code === 'EPERM' ||
-      error.code === 'EACCES' ||
-      error.code === 'EBUSY')
-  );
-}
-
-export function writeReadOnly(file: string, text: string): void {
-  if (fs.existsSync(file)) {
-    fs.chmodSync(file, 0o644);
-  }
-  fs.writeFileSync(file, text);
-  fs.chmodSync(file, 0o444);
 }

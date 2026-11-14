@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { writeAtomically } from '../../../shell/main/settings';
+import { writeAtomically } from '../../../lib/main/textFiles';
 import { isPdfFingerprint, pdfPlaceOf, type PdfPlace } from '../shared/pdf';
 
 const keptPlaces = 1000;

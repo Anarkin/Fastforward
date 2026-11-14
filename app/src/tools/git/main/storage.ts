@@ -10,7 +10,8 @@ import {
 import { sidesOf } from '../shared/comparisons';
 import { isFullHash } from '../shared/hashes';
 import type { GitSettings } from '../shared/settings';
-import { isObject, type UserSettings } from '../../../shell/main/settings';
+import { isObject } from '../../../lib/main/json';
+import type { UserSettings } from '../../../shell/main/userSettings';
 import {
   maxRecentItems,
   sameRoot,

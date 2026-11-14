@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { UserSettings } from '../../../../../shell/main/settings';
+import { UserSettings } from '../../../../../shell/main/userSettings';
 import type { Store } from '../../../../../shell/main/storage';
 import {
   bookmarksKey,

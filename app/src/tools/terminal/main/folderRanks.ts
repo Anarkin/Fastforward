@@ -1,4 +1,4 @@
-import { isObject } from '../../../shell/main/settings';
+import { isObject } from '../../../lib/main/json';
 import { sameRoot } from '../../../shell/main/storage';
 
 export interface FolderVisits {

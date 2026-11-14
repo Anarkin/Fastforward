@@ -30,12 +30,10 @@ import { errorLine, fileLog, type Log } from '../shell/main/log';
 import { setKeyPlatform } from '../lib/shared/keymap';
 import type { Theme } from '../shell/shared/protocol';
 import { brand, plainOf, strings } from '../lib/shared/strings';
-import {
-  readDefaults,
-  UserSettings,
-  watchSettings,
-  writeReadOnly,
-} from '../shell/main/settings';
+import { readDefaults } from '../shell/main/settings';
+import { UserSettings } from '../shell/main/userSettings';
+import { watchSettings } from '../shell/main/settingsWatch';
+import { writeReadOnly } from '../lib/main/textFiles';
 import {
   JsonFileStore,
   migratedState,

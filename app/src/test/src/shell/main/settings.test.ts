@@ -1,17 +1,8 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import {
-  mergeSettings,
-  overridesOf,
-  UserSettings,
-  writeAtomically,
-  writeReadOnly,
-} from '../../../../shell/main/settings';
+import { mergeSettings, overridesOf } from '../../../../shell/main/settings';
 import { plainOf, strings } from '../../../../lib/shared/strings';
 import { defaultSettings } from '../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../helpers/repositories';
 
 const defaults = defaultSettings();
 
@@ -307,86 +298,5 @@ suite('Settings', () => {
       }),
       { tools: { git: { solo: true } } },
     );
-  });
-});
-
-suite('Default settings', () => {
-  test('takes new defaults, keeping the user changes over them', async () => {
-    const user = new UserSettings(defaults);
-    await user.setImages('realSize', true);
-    const changed = user.replaceDefaults({
-      ...defaults,
-      images: { ...defaults.images, realSize: false },
-      tools: {
-        ...defaults.tools,
-        git: { ...defaults.tools.git, collapseMerges: false },
-      },
-    });
-    assert.strictEqual(changed, true);
-    assert.strictEqual(user.settings.tools.git.collapseMerges, false);
-    assert.strictEqual(user.settings.images.realSize, true);
-    assert.strictEqual(user.defaults.tools.git.collapseMerges, false);
-    assert.strictEqual(user.replaceDefaults(user.defaults), false);
-  });
-
-  test('takes no value the settings would not, keeping the one in use', async () => {
-    const user = new UserSettings(defaults);
-    await user.setIn('git', 'diffLayout', JSON.parse('"grid"'));
-    assert.strictEqual(user.replaceDefaults(user.defaults), false);
-    assert.deepStrictEqual(user.problems, []);
-    assert.deepStrictEqual(user.settings, defaults);
-  });
-
-  test('writes the reference copy read-only, and can write it again', () => {
-    const folder = tempFolder('copy');
-    const file = path.join(folder, 'settings.defaults.json');
-    try {
-      writeReadOnly(file, 'first');
-      assert.throws(() => fs.writeFileSync(file, 'edited'));
-      writeReadOnly(file, 'second');
-      assert.strictEqual(fs.readFileSync(file, 'utf8'), 'second');
-    } finally {
-      removeFolder(folder);
-    }
-  });
-});
-
-suite('Writing a file whole', () => {
-  test('flushes the new text to the disk before putting it in place, so a crash leaves the old file or the new one, not an empty one', async () => {
-    const folder = tempFolder('flushed');
-    const file = path.join(folder, 'state.json');
-    const nodeFs = process.getBuiltinModule('node:fs');
-    const { open, rename } = nodeFs.promises;
-    const steps: string[] = [];
-    Reflect.set(
-      nodeFs.promises,
-      'open',
-      async (...args: Parameters<typeof open>) => {
-        const handle = await open(...args);
-        const sync = handle.sync.bind(handle);
-        Reflect.set(handle, 'sync', () => {
-          steps.push('sync');
-          return sync();
-        });
-        return handle;
-      },
-    );
-    Reflect.set(
-      nodeFs.promises,
-      'rename',
-      (...args: Parameters<typeof rename>) => {
-        steps.push('rename');
-        return rename(...args);
-      },
-    );
-    try {
-      await writeAtomically(file, '{"a":1}');
-      assert.deepStrictEqual(steps, ['sync', 'rename']);
-      assert.strictEqual(fs.readFileSync(file, 'utf8'), '{"a":1}');
-    } finally {
-      Reflect.set(nodeFs.promises, 'open', open);
-      Reflect.set(nodeFs.promises, 'rename', rename);
-      removeFolder(folder);
-    }
   });
 });

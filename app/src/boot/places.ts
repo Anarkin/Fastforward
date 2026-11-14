@@ -1,4 +1,4 @@
-import { isObject } from '../shell/main/settings';
+import { isObject } from '../lib/main/json';
 import type { Bounds } from './files';
 
 export const placesKey = 'windowPlaces';
