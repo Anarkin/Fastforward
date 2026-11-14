@@ -5,47 +5,7 @@ import {
   type Box,
 } from './lineBreaks';
 import type { TextWidths } from './textWidths';
-
-export const tabSize = 4;
-
-export function tabStop(column: number): number {
-  const next = column + tabSize - (column % tabSize);
-  return next - column < 0.5 ? next + tabSize : next;
-}
-
-interface Blank {
-  readonly column: number;
-  readonly tab: boolean;
-}
-
-export interface RowBreak {
-  readonly end: number;
-  readonly blanks: readonly Blank[];
-}
-
-interface BlankRun {
-  readonly column: number;
-  readonly columns: number;
-  readonly tab: boolean;
-}
-
-export function blankRuns(blanks: readonly Blank[]): BlankRun[] {
-  const runs: BlankRun[] = [];
-  for (const { column, tab } of blanks) {
-    const last = runs.at(-1);
-    if (
-      last !== undefined &&
-      !tab &&
-      !last.tab &&
-      last.column + last.columns === column
-    ) {
-      runs[runs.length - 1] = { ...last, columns: last.columns + 1 };
-    } else {
-      runs.push({ column, columns: 1, tab });
-    }
-  }
-  return runs;
-}
+import { tabSize, tabStop } from './tabStops';
 
 const blankKind = 1;
 const breaksAfter = 2;
@@ -67,7 +27,7 @@ function kindAt(text: string, at: number): number {
   return code < kinds.length ? (kinds[code] ?? 0) : 0;
 }
 
-const isBlank = (character: string | undefined) =>
+export const isBlank = (character: string | undefined) =>
   character === ' ' || character === '\t';
 
 const isBlankAt = (text: string, at: number) =>
@@ -337,130 +297,6 @@ export function wrappedLines(
   widths?: TextWidths,
 ): number {
   return wrapStarts(text, columns, undefined, widths).length;
-}
-
-const maxMarkedRows = 200;
-
-export function markedRowStarts(
-  length: number,
-  rows: number,
-  rowOf: (offset: number) => number,
-): number[] | undefined {
-  return rows > maxMarkedRows ? undefined : rowStarts(length, rows, rowOf);
-}
-
-export function rowStarts(
-  length: number,
-  rows: number,
-  rowOf: (offset: number) => number,
-): number[] {
-  const read = new Map<number, number>();
-  const rowAt = (offset: number) => {
-    let row = read.get(offset);
-    if (row === undefined) {
-      row = rowOf(offset);
-      read.set(offset, row);
-    }
-    return row;
-  };
-  const starts = [0];
-  for (let row = 1; row < rows; row++) {
-    const previous = starts[row - 1];
-    const stride =
-      row > 1 ? previous - starts[row - 2] : Math.ceil(length / rows);
-    starts.push(
-      firstOnRow(
-        row,
-        previous + 1,
-        length,
-        Math.min(previous + Math.max(1, stride), length),
-        rowAt,
-      ),
-    );
-  }
-  return starts;
-}
-
-function firstOnRow(
-  row: number,
-  from: number,
-  to: number,
-  estimate: number,
-  rowAt: (offset: number) => number,
-): number {
-  let low = from;
-  let high = to;
-  if (estimate >= to || rowAt(estimate) >= row) {
-    high = Math.min(estimate, to);
-    for (let gap = 1; high - gap >= from; gap *= 2) {
-      if (rowAt(high - gap) < row) {
-        low = high - gap + 1;
-        break;
-      }
-      high -= gap;
-    }
-  } else {
-    low = estimate + 1;
-    for (let gap = 1; low + gap - 1 < to; gap *= 2) {
-      const probe = low + gap - 1;
-      if (rowAt(probe) >= row) {
-        high = probe;
-        break;
-      }
-      low = probe + 1;
-    }
-  }
-  while (low < high) {
-    const middle = Math.floor((low + high) / 2);
-    if (rowAt(middle) >= row) {
-      high = middle;
-    } else {
-      low = middle + 1;
-    }
-  }
-  return low;
-}
-
-export type ColumnsIn = (row: string) => (index: number) => number;
-
-function countedColumns(row: string): (index: number) => number {
-  let at = 0;
-  let column = 0;
-  return (index) => {
-    while (at < index) {
-      column = row[at] === '\t' ? tabStop(column) : column + 1;
-      at += (row.codePointAt(at) ?? 0) > 0xffff ? 2 : 1;
-    }
-    return column;
-  };
-}
-
-export function rowBreaksAt(
-  text: string,
-  starts: readonly number[],
-  columns: number,
-  columnsIn: ColumnsIn = countedColumns,
-  indent = 0,
-): RowBreak[] {
-  return starts.slice(1).map((next, index) => {
-    const row = text.slice(starts[index], next);
-    const start = index === 0 ? 0 : indent;
-    const columnIn = columnsIn(row);
-    const columnAt = (at: number) => start + columnIn(at);
-    let blanks: Blank[] = [];
-    for (let at = 0; at < row.length; at++) {
-      const character = row[at];
-      if (isBlank(character)) {
-        blanks.push({ column: columnAt(at), tab: character === '\t' });
-      } else {
-        blanks = [];
-      }
-    }
-    return {
-      end: Math.min(columnAt(row.length), columns + 1),
-      blanks: blanks.filter((blank) => blank.column <= columns),
-    };
-  });
 }
 
 export function wrapColumns(width: number, charWidth: number): number {

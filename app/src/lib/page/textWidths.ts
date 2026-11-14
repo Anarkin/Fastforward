@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { IUnicodeVersionProvider, Terminal } from '@xterm/xterm';
-import { tabStop } from './wordWrap';
+import { tabStop } from './tabStops';
 
 export type CellTable = (cluster: string) => number;
 

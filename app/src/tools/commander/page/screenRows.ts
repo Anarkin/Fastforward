@@ -1,11 +1,7 @@
 import type { TextEncoding, TextRow } from '../shared/protocol';
 import type { CodeSegment } from '../../../lib/page/syntax';
-import {
-  rowBreaksAt,
-  wrapIndent,
-  wrapStarts,
-  type RowBreak,
-} from '../../../lib/page/wordWrap';
+import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
+import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
 import type { FindMark } from './markPieces';
 import { columnsOf, type TextWidths } from '../../../lib/page/textWidths';
 

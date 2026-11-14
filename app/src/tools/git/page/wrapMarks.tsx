@@ -4,10 +4,9 @@ import {
   blankRuns,
   rowBreaksAt,
   type ColumnsIn,
-  wrapIndent,
-  wrapStarts,
   type RowBreak,
-} from '../../../lib/page/wordWrap';
+} from '../../../lib/page/rowBreaks';
+import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
 import { numberWidth } from './overflow';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import {

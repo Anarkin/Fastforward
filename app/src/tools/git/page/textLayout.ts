@@ -1,6 +1,6 @@
 import { snapOffset } from '../../../lib/page/devicePixels';
 import type { TextWidths } from '../../../lib/page/textWidths';
-import { tabSize } from '../../../lib/page/wordWrap';
+import { tabSize } from '../../../lib/page/tabStops';
 import type { DiffRow } from './diffRows';
 import { sideRoom, type Edges } from './diffScrolling';
 import {

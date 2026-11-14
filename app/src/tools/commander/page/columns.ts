@@ -1,4 +1,4 @@
-import { tabSize, tabStop } from '../../../lib/page/wordWrap';
+import { tabSize, tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
 
 const tab = 9;

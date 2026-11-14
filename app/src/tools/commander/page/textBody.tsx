@@ -40,7 +40,7 @@ import {
 import { useShell } from '../../../shell/page/store';
 import { columnAt, columnsOf, shownWithin, widestColumns } from './columns';
 import { strings } from '../../../lib/shared/strings';
-import { blankRuns } from '../../../lib/page/wordWrap';
+import { blankRuns } from '../../../lib/page/rowBreaks';
 import {
   cellWidthsOf,
   plainCells,

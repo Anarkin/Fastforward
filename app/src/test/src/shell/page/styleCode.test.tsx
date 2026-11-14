@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { tabSize } from '../../../../lib/page/wordWrap';
+import { tabSize } from '../../../../lib/page/tabStops';
 import {
   allWithClass,
   cascaded,

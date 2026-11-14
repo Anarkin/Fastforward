@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { WholeImage } from '../../../lib/page/images';
 import { Words } from '../../../lib/page/name';
 import type { TextWidths } from '../../../lib/page/textWidths';
-import type { ColumnsIn } from '../../../lib/page/wordWrap';
+import type { ColumnsIn } from '../../../lib/page/rowBreaks';
 import { strings } from '../../../lib/shared/strings';
 import { wholeChangeClass } from './lineMarks';
 import type { DiffFile, DiffLine } from './diff';

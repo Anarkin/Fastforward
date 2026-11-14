@@ -1,11 +1,8 @@
 import { memo } from 'react';
-import {
-  markedRowStarts,
-  tabStop,
-  type ColumnsIn,
-  wrappedLines,
-  type RowBreak,
-} from '../../../lib/page/wordWrap';
+import { markedRowStarts } from './rowStarts';
+import { tabStop } from '../../../lib/page/tabStops';
+import type { ColumnsIn, RowBreak } from '../../../lib/page/rowBreaks';
+import { wrappedLines } from '../../../lib/page/wordWrap';
 import { inLines, measureInLines } from './lineHeight';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import {

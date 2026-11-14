@@ -29,7 +29,8 @@ import { listMoveOf } from '../../../lib/page/listMoves';
 import { ownScrollbarAttribute } from '../../../lib/page/overlayScrollbars';
 import { type ImageOrigin } from './images';
 import { useSkeleton } from './skeletonDelay';
-import { type ColumnsIn, wrapIndent } from '../../../lib/page/wordWrap';
+import type { ColumnsIn } from '../../../lib/page/rowBreaks';
+import { wrapIndent } from '../../../lib/page/wordWrap';
 import { snapOffset } from '../../../lib/page/devicePixels';
 import {
   followRows,
