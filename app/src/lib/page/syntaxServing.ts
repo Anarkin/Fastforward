@@ -1,12 +1,8 @@
 import { errorText } from './errors';
 import { packedPart, type CodePart } from './syntaxParts';
-import {
-  SyntaxRange,
-  SyntaxSource,
-  generationOf,
-  colorCode,
-  startColoring,
-} from './syntaxEngine';
+import { SyntaxRange, generationOf } from './syntaxEngine';
+import { SyntaxSource, startColoring } from './syntaxSources';
+import { colorCode } from './codeColors';
 import { EditedColoring, colorEdited } from './editedColors';
 
 export type ToSyntax =

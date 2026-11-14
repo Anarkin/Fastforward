@@ -1,6 +1,7 @@
 import { partLines, type CodePart } from './syntaxParts';
 import type { FromSyntax, ToSyntax } from './syntaxServing';
-import type { LineRanges, SyntaxRange, SyntaxSource } from './syntaxEngine';
+import type { LineRanges, SyntaxRange } from './syntaxEngine';
+import type { SyntaxSource } from './syntaxSources';
 
 export interface SyntaxPort {
   post(message: ToSyntax): void;

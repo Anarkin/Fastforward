@@ -17,10 +17,10 @@ import {
   warmsUpTheGrammar,
 } from './syntaxFixtures';
 import {
-  colorCode,
   loadLanguages,
   type SyntaxRange,
 } from '../../../../../lib/page/syntaxEngine';
+import { colorCode } from '../../../../../lib/page/codeColors';
 import {
   sendUncaught,
   serveColoring,

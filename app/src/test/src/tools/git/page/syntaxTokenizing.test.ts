@@ -7,11 +7,13 @@ import {
 } from '../../../../../tools/git/page/syntax';
 import {
   loadLanguages,
+  type SyntaxRange,
+} from '../../../../../lib/page/syntaxEngine';
+import {
   startColoring,
   tokenizing,
   uncachedSources,
-  type SyntaxRange,
-} from '../../../../../lib/page/syntaxEngine';
+} from '../../../../../lib/page/syntaxSources';
 import {
   syntaxRanges,
   countingLines,

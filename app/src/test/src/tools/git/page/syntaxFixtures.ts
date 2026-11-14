@@ -10,10 +10,12 @@ import { syntaxSources } from '../../../../../tools/git/page/syntax';
 import { noop } from '../../../../helpers/fixtures';
 import {
   loadLanguages,
-  tokenizing,
-  uncachedSources,
   type SyntaxRange,
 } from '../../../../../lib/page/syntaxEngine';
+import {
+  tokenizing,
+  uncachedSources,
+} from '../../../../../lib/page/syntaxSources';
 import type {
   FromSyntax,
   ToSyntax,
