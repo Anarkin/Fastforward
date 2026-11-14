@@ -1,9 +1,5 @@
-import {
-  buffersOf,
-  Commits,
-  CommitsBuilder,
-  type CommitsParts,
-} from './commits';
+import { buffersOf, Commits, type CommitsParts } from './commits';
+import { CommitsBuilder } from './commitsBuilder';
 import { headsOf } from './merges';
 
 export type ToReader =

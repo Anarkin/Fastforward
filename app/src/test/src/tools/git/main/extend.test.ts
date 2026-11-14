@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { Commits, CommitsBuilder } from '../../../../../tools/git/main/commits';
+import { Commits } from '../../../../../tools/git/main/commits';
+import { CommitsBuilder } from '../../../../../tools/git/main/commitsBuilder';
 import {
   keepsTiedOrder,
   ranksOf,
