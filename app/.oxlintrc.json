@@ -209,9 +209,7 @@
     {
       "files": [
         "src/test/e2e/appCursor.electron.test.ts",
-        "src/test/e2e/appViewer.electron.test.ts",
-        "src/test/src/tools/git/main/cli/run.git.test.ts",
-        "src/test/src/tools/git/main/tool/worktrees.git.test.ts"
+        "src/test/e2e/appViewer.electron.test.ts"
       ],
       "rules": {
         "max-lines": [
