@@ -127,7 +127,7 @@ suite('Style', () => {
         'flex-basis': undefined,
         'flex-shrink': '1',
         'box-sizing': 'border-box',
-        width: '240px',
+        width: '256px',
         'max-width': undefined,
       });
       looks(withClass(tab, 'tab-close'), { 'margin-left': 'auto' });

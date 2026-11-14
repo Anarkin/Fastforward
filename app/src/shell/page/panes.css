@@ -92,10 +92,10 @@
   --sheet: var(--repository-background);
   position: relative;
   box-sizing: border-box;
-  width: 240px;
+  width: 256px;
   flex-shrink: 1;
-  min-width: calc(16px + 2ch + 2 * 4px + 12px + 4px + 2 * 1px);
-  padding: 3px 4px 3px 12px;
+  min-width: calc(16px + 2ch + 2 * 4px + 8px + 4px + 2 * 1px);
+  padding: 3px 4px 3px 8px;
   border-radius: var(--tab-radius);
   transition: transform 0.15s ease-out;
 }
@@ -177,7 +177,7 @@
 }
 
 .tabs .tab.active {
-  min-width: calc(16px + 2ch + 3 * 4px + 20px + 12px + 4px + 2 * 1px);
+  min-width: calc(16px + 2ch + 3 * 4px + 20px + 8px + 4px + 2 * 1px);
 }
 
 .tabs .tab-name,
