@@ -75,7 +75,7 @@ suite('Theme', () => {
 
   test("uses no color from outside the theme but the logo's own, the shadows of popups, the dimming behind them and the colors that only tell syntax apart", () => {
     const allowed: Readonly<Record<string, readonly string[]>> = {
-      'shell/page/style.css': [
+      'shell/page/window.css': [
         'rgba(0, 0, 0, 0.22)',
         'rgba(0, 0, 0, 0.16)',
         'rgba(0, 0, 0, 0.2)',

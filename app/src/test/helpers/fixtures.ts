@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { readDefaults, type Settings } from '../../shell/main/settings';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { withStores } from './componentFixtures';
@@ -114,9 +114,16 @@ const stylesheets = [
 
 export function stylesheet(): string {
   return stylesheets
-    .map((file) => readFileSync(join(__dirname, '../..', file), 'utf8'))
+    .map(withPartials)
     .join('\n')
     .replaceAll(/^@import [^;]*;$/gm, '');
+}
+
+function withPartials(file: string): string {
+  return readFileSync(join(__dirname, '../..', file), 'utf8').replaceAll(
+    /^@import '\.\/([^']+)';$/gm,
+    (_, partial: string) => withPartials(join(dirname(file), partial)),
+  );
 }
 
 export function policyOfPage(): Map<string, string[]> {

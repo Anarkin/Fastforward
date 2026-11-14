@@ -263,13 +263,39 @@ suite('Architecture', () => {
     );
   });
 
-  test("keeps the styles of the shell and of each tool in a sheet of their own, each tool's loaded by its page after the shell's", () => {
+  test("keeps the styles of the shell and of each tool in a sheet of their own, each tool's loaded by its page after the shell's, a long sheet split into partial sheets beside it that it alone imports, in the order of its rules", () => {
+    const sheets = ['shell/page', ...tools.map((tool) => `tools/${tool}/page`)];
+    const partialsOf = (folder: string) =>
+      [
+        ...read(`${folder}/style.css`).matchAll(/^@import '\.\/([^']+)';$/gm),
+      ].map(([, partial]) => `${folder}/${partial}`);
     assert.deepStrictEqual(
       sourceFiles.filter((file) => file.endsWith('.css')).toSorted(),
-      [
-        'shell/page/style.css',
-        ...tools.map((tool) => `tools/${tool}/page/style.css`),
-      ].toSorted(),
+      sheets
+        .flatMap((folder) => [`${folder}/style.css`, ...partialsOf(folder)])
+        .toSorted(),
+    );
+    assert.deepStrictEqual(
+      sheets
+        .filter((folder) => partialsOf(folder).length > 0)
+        .flatMap((folder) =>
+          read(`${folder}/style.css`)
+            .split('\n')
+            .filter(
+              (line) => line.trim() !== '' && !line.startsWith('@import '),
+            ),
+        ),
+      [],
+    );
+    assert.deepStrictEqual(
+      sourceFiles.filter(
+        (file) =>
+          /\.tsx?$/.test(file) &&
+          [...read(file).matchAll(/^import '(\.[^']+\.css)';$/gm)].some(
+            ([, sheet]) => sheet !== './style.css',
+          ),
+      ),
+      [],
     );
     assert.ok(read('shell/page/main.tsx').startsWith("import './style.css';"));
     assert.deepStrictEqual(
@@ -330,6 +356,17 @@ suite('Architecture', () => {
     assert.deepStrictEqual(
       sourceFiles.filter((file) => /['"]node-pty['"]/.test(read(file))),
       ['tools/terminal/main/ptyHost.ts'],
+    );
+  });
+
+  test('keeps every sheet of styles within 800 lines, as the linter holds the code to and reads no styles', () => {
+    assert.deepStrictEqual(
+      sourceFiles.filter(
+        (file) =>
+          file.endsWith('.css') &&
+          read(file).trimEnd().split('\n').length > 800,
+      ),
+      [],
     );
   });
 
