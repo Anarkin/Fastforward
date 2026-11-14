@@ -10,7 +10,8 @@ import { useDismiss } from '../../lib/page/dismiss';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
 import { useModalDialog } from '../../lib/page/modalDialog';
 import { useDialogDrag } from '../../lib/page/dialogDrag';
-import { keyPressed, shortcutsEntryOf } from '../../lib/page/shortcuts';
+import { keyPressed } from '../../lib/page/shortcuts';
+import { shortcutsEntryOf } from '../../lib/page/shortcutsEntry';
 import {
   type ShownEntry,
   type PaneView,

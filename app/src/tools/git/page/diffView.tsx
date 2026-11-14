@@ -18,10 +18,8 @@ import type { DiffFile, DiffLine, LoadedText } from './diff';
 import { lineKey, type FindMatch } from './find';
 import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
-import {
-  shortcutsEntryAttribute,
-  keyPressed,
-} from '../../../lib/page/shortcuts';
+import { keyPressed } from '../../../lib/page/shortcuts';
+import { shortcutsEntryAttribute } from '../../../lib/page/shortcutsEntry';
 import { useSyntax, useTextsToLoad } from './syntax';
 import { wordRanges, type LineWords } from './wordDiff';
 import { gitKeymap } from './keymap';
