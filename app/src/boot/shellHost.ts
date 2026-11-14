@@ -4,7 +4,7 @@ import { app, clipboard } from 'electron';
 import type { ShellHost } from '../shell/main/shell';
 import type { UserSettings } from '../shell/main/userSettings';
 import type { Sentence } from '../lib/shared/sentences';
-import { writeReadOnly } from '../lib/main/textFiles';
+import { writeReadOnly } from './readOnlyFile';
 import type { AppWindows } from './appWindows';
 import type { QuitGuard } from './quitGuard';
 import type { Updates } from './updates';

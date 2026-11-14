@@ -3,7 +3,8 @@ import { strings } from '../../lib/shared/strings';
 import type { Sentence } from '../../lib/shared/sentences';
 import { type ImageView, type TextView } from '../shared/views';
 import { isObject, type Json } from '../../lib/main/json';
-import { readText, writeAtomically } from '../../lib/main/textFiles';
+import { readText } from './readText';
+import { writeAtomically } from '../../lib/main/textFiles';
 import {
   merge,
   mergeSettings,

@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import { writeAtomically, writeReadOnly } from '../../../../lib/main/textFiles';
+import { writeAtomically } from '../../../../lib/main/textFiles';
 import { UserSettings } from '../../../../shell/main/userSettings';
 import { defaultSettings } from '../../../helpers/fixtures';
 import {
@@ -129,20 +129,5 @@ suite('Replacing a file', () => {
     assert.strictEqual(renames, 1);
     assert.match(String(failure), /EISDIR/);
     assert.ok(!fs.existsSync(`${file}.tmp`));
-  });
-});
-
-suite('Writing a file read-only', () => {
-  test('writes the reference copy read-only, and can write it again', () => {
-    const folder = tempFolder('copy');
-    const file = path.join(folder, 'settings.defaults.json');
-    try {
-      writeReadOnly(file, 'first');
-      assert.throws(() => fs.writeFileSync(file, 'edited'));
-      writeReadOnly(file, 'second');
-      assert.strictEqual(fs.readFileSync(file, 'utf8'), 'second');
-    } finally {
-      removeFolder(folder);
-    }
   });
 });

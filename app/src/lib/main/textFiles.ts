@@ -1,18 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-export function readText(file: string): string | Error | undefined {
-  try {
-    return fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
-  } catch (error) {
-    return isMissing(error)
-      ? undefined
-      : error instanceof Error
-        ? error
-        : new Error(String(error));
-  }
-}
-
 function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
@@ -82,12 +70,4 @@ function isHeld(error: unknown): boolean {
       error.code === 'EACCES' ||
       error.code === 'EBUSY')
   );
-}
-
-export function writeReadOnly(file: string, text: string): void {
-  if (fs.existsSync(file)) {
-    fs.chmodSync(file, 0o644);
-  }
-  fs.writeFileSync(file, text);
-  fs.chmodSync(file, 0o444);
 }

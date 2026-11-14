@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import { isObject } from '../../lib/main/json';
-import { readText, writeAtomically } from '../../lib/main/textFiles';
+import { readText } from './readText';
+import { writeAtomically } from '../../lib/main/textFiles';
 import { strings } from '../../lib/shared/strings';
 import type { Sentence } from '../../lib/shared/sentences';
 
