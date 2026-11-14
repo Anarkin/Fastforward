@@ -160,8 +160,6 @@
       "files": [
         "src/boot/main.ts",
         "src/test/e2e/appLaunches.electron.test.ts",
-        "src/test/src/tools/git/main/tool/diffs.git.test.ts",
-        "src/test/src/tools/git/main/tool/refreshing.git.test.ts",
         "src/tools/commander/page/pane.tsx",
         "src/tools/git/page/diffView.tsx"
       ],
