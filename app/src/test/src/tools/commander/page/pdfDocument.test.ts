@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
+import { AnnotationEditorType, AnnotationMode } from 'pdfjs-dist';
 import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import {
@@ -13,6 +14,7 @@ interface Ranges {
 
 interface Task {
   readonly ranges: Ranges;
+  readonly options: Readonly<Record<string, unknown>>;
   readonly opened: PromiseWithResolvers<unknown>;
   destroyed: number;
 }
@@ -20,14 +22,14 @@ interface Task {
 const pdfjs = vi.hoisted(
   (): {
     tasks: Task[];
-    viewers: number;
+    viewers: Readonly<Record<string, unknown>>[];
     received: (readonly [number, number])[];
-  } => ({ tasks: [], viewers: 0, received: [] }),
+  } => ({ tasks: [], viewers: [], received: [] }),
 );
 
 vi.mock('pdfjs-dist', () => ({
-  AnnotationEditorType: { DISABLE: -1 },
-  AnnotationMode: { ENABLE: 1 },
+  AnnotationEditorType: { DISABLE: -1, NONE: 0 },
+  AnnotationMode: { DISABLE: 0, ENABLE: 1, ENABLE_FORMS: 2 },
   GlobalWorkerOptions: { workerSrc: '' },
   InvalidPDFException: class extends Error {},
   PasswordException: class extends Error {},
@@ -36,9 +38,14 @@ vi.mock('pdfjs-dist', () => ({
       pdfjs.received.push([begin, chunk.length]);
     }
   },
-  getDocument: ({ range }: { range: Ranges }) => {
+  getDocument: (options: { readonly range: Ranges }) => {
     const opened = Promise.withResolvers<unknown>();
-    const task: Task = { ranges: range, opened, destroyed: 0 };
+    const task: Task = {
+      ranges: options.range,
+      options,
+      opened,
+      destroyed: 0,
+    };
     pdfjs.tasks.push(task);
     return {
       promise: opened.promise,
@@ -64,8 +71,8 @@ vi.mock('pdfjs-dist/web/pdf_viewer.mjs', () => ({
     setDocument() {}
   },
   PDFViewer: class {
-    constructor() {
-      pdfjs.viewers++;
+    constructor(options: Readonly<Record<string, unknown>>) {
+      pdfjs.viewers.push(options);
     }
     cleanup() {}
     setDocument() {}
@@ -105,7 +112,7 @@ const lastTask = () => {
 suite('PDF documents', () => {
   beforeEach(() => {
     pdfjs.tasks.length = 0;
-    pdfjs.viewers = 0;
+    pdfjs.viewers.length = 0;
     pdfjs.received.length = 0;
     vi.stubGlobal('document', { baseURI: 'app://fastforward/' });
   });
@@ -119,7 +126,28 @@ suite('PDF documents', () => {
 
     assert.strictEqual(await shown, undefined);
     assert.strictEqual(pdfjs.tasks.length, 0);
-    assert.strictEqual(pdfjs.viewers, 0);
+    assert.strictEqual(pdfjs.viewers.length, 0);
+  });
+
+  test('runs no scripts, forms, XFA or editors of a PDF, drawing only its annotations, as a PDF comes from outside the app', async () => {
+    void opening().shown;
+
+    await vi.waitFor(() => assert.strictEqual(pdfjs.viewers.length, 1));
+    const [viewer] = pdfjs.viewers;
+    assert.deepStrictEqual(
+      {
+        annotationMode: viewer?.annotationMode,
+        annotationEditorMode: viewer?.annotationEditorMode,
+        scriptingManager: viewer?.scriptingManager,
+        enableXfa: lastTask().options.enableXfa,
+      },
+      {
+        annotationMode: AnnotationMode.ENABLE,
+        annotationEditorMode: AnnotationEditorType.DISABLE,
+        scriptingManager: undefined,
+        enableXfa: false,
+      },
+    );
   });
 
   test('hands PDF.js a range of the file read whole', async () => {

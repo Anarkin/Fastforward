@@ -299,6 +299,40 @@ suite('Architecture', () => {
     );
   });
 
+  test('makes the stores of the page with zustand only in the store.ts of the page of the shell and of each tool, one in each, so contexts never stack', () => {
+    assert.deepStrictEqual(
+      sourceFiles
+        .map((file) => ({
+          file,
+          stores: [...read(file).matchAll(/\bcreateStore\b(?:<[^>]*>)?\(/g)]
+            .length,
+        }))
+        .filter(({ stores }) => stores > 0)
+        .filter(
+          ({ file, stores }) =>
+            stores > 1 ||
+            !/^(?:shell|tools\/[^/]+)\/page\/store\.ts$/.test(file),
+        ),
+      [],
+    );
+  });
+
+  test('lets boot alone import 7-Zip, so the commander reaches archives only through a reader of its own, which another could replace', () => {
+    assert.deepStrictEqual(
+      sourceFiles.filter((file) =>
+        importsOf(file).includes('tools/commander/main/sevenZip'),
+      ),
+      ['boot/main.ts'],
+    );
+  });
+
+  test('loads node-pty only in ptyHost, the utility process of the shells, so a crash in its native code or a flood of output can neither stop nor slow the window and the other tools', () => {
+    assert.deepStrictEqual(
+      sourceFiles.filter((file) => /['"]node-pty['"]/.test(read(file))),
+      ['tools/terminal/main/ptyHost.ts'],
+    );
+  });
+
   test('keeps the settings of each tool under tools, by its id', () => {
     const settings = defaultSettings();
     assert.deepStrictEqual(
