@@ -11,7 +11,7 @@ import {
 } from '../shared/protocol';
 import type { OpenedArchive, Opening } from './archives';
 import { type Pane, type Sides, post, type Listing, listedIn } from './sides';
-import type { ArchiveCopies } from './archiveCopies';
+import type { ArchivePasswords } from './archivePasswords';
 import type { CommanderAccess } from './commanderAccess';
 import { isFile } from './fileStats';
 
@@ -44,7 +44,7 @@ export class ArchiveListing {
   constructor(
     private readonly access: ArchiveListingAccess,
     private readonly sides: Sides,
-    private readonly copies: ArchiveCopies,
+    private readonly passwords: ArchivePasswords,
     private readonly host: ArchiveListingHost,
   ) {}
 
@@ -178,7 +178,7 @@ export class ArchiveListing {
         stopTelling();
         const passwordOf = opened.passwordOf ?? file;
         if (
-          !(await this.copies.passwordGiven(
+          !(await this.passwords.passwordGiven(
             page,
             passwordOf,
             archives.hasPassword(passwordOf),

@@ -34,6 +34,8 @@ import { Viewers } from './viewers';
 import { SideScans } from './sideScans';
 import { Serving } from './serving';
 import { ArchiveCopies } from './archiveCopies';
+import { ArchivePasswords } from './archivePasswords';
+import { ArchiveCommands } from './archiveCommands';
 import { TransferCommands } from './transferCommands';
 import { PackCommands } from './packCommands';
 import type { CommanderAccess } from './commanderAccess';
@@ -49,7 +51,9 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly viewers: Viewers;
   private readonly scans: SideScans;
   private readonly serving: Serving;
+  private readonly passwords: ArchivePasswords;
   private readonly copies: ArchiveCopies;
+  private readonly archiveCommands: ArchiveCommands;
   private readonly transferCommands: TransferCommands;
   private readonly packCommands: PackCommands;
   private readonly fileCommands: FileCommands;
@@ -152,9 +156,11 @@ export class CommanderTool implements Tool<'commander'> {
       notice: (notice) => this.shell.notice(undefined, notice),
       finished: (ask) => this.transferCommands.transferred(ask),
     });
+    this.passwords = new ArchivePasswords(access);
     this.copies = new ArchiveCopies(
       access,
       this.sides,
+      this.passwords,
       this.editing,
       this.transfers,
       {
@@ -163,10 +169,15 @@ export class CommanderTool implements Tool<'commander'> {
         saveQuietly: (saving) => this.saveQuietly(saving),
       },
     );
+    this.archiveCommands = new ArchiveCommands(access, this.transfers, {
+      shell: () => this.shell,
+      refuse: (page, message) => this.refuse(page, message),
+    });
     this.transferCommands = new TransferCommands(
       access,
       this.sides,
-      this.copies,
+      this.passwords,
+      this.archiveCommands,
       this.transfers,
       {
         shell: () => this.shell,
@@ -178,7 +189,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.packCommands = new PackCommands(
       access,
       this.sides,
-      this.copies,
+      this.passwords,
       this.transfers,
       {
         shell: () => this.shell,
@@ -189,6 +200,7 @@ export class CommanderTool implements Tool<'commander'> {
       access,
       this.sides,
       this.copies,
+      this.archiveCommands,
       this.editing,
       {
         shell: () => this.shell,
@@ -196,11 +208,16 @@ export class CommanderTool implements Tool<'commander'> {
           this.listings.list(page, tab, side, folder, how, fallback, selecting),
       },
     );
-    this.archiveListing = new ArchiveListing(access, this.sides, this.copies, {
-      refuse: (page, message) => this.refuse(page, message),
-      list: (page, tab, side, folder, how, fallback, selecting) =>
-        this.listings.list(page, tab, side, folder, how, fallback, selecting),
-    });
+    this.archiveListing = new ArchiveListing(
+      access,
+      this.sides,
+      this.passwords,
+      {
+        refuse: (page, message) => this.refuse(page, message),
+        list: (page, tab, side, folder, how, fallback, selecting) =>
+          this.listings.list(page, tab, side, folder, how, fallback, selecting),
+      },
+    );
     this.listings = new Listings(
       access,
       this.sides,
@@ -227,7 +244,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   ready(page: Page): void {
-    this.copies.cancelPasswords(page);
+    this.passwords.cancelPasswords(page);
     this.icons.forgetDropped();
     for (const pane of this.sides.allPanes()) {
       if (pane.flat !== undefined) {
@@ -494,7 +511,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'enterArchive':
         return this.archiveListing.enterArchive(page, message);
       case 'password':
-        this.copies.answerPassword(message.ask, message.password);
+        this.passwords.answerPassword(message.ask, message.password);
         return undefined;
       case 'updateArchive':
         this.copies.answerUpdate(message.ask, message.update);

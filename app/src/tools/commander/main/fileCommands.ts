@@ -23,6 +23,7 @@ import {
   parentOf,
 } from './sides';
 import type { ArchiveCopies } from './archiveCopies';
+import type { ArchiveCommands } from './archiveCommands';
 import type { CommanderAccess } from './commanderAccess';
 
 export type FileCommandsAccess = Pick<
@@ -60,6 +61,7 @@ export class FileCommands {
     private readonly access: FileCommandsAccess,
     private readonly sides: Sides,
     private readonly copies: ArchiveCopies,
+    private readonly archiveCommands: ArchiveCommands,
     private readonly editing: Editing,
     private readonly host: FileCommandsHost,
   ) {}
@@ -255,7 +257,7 @@ export class FileCommands {
   ): Promise<void> {
     const inArchive = this.sides.namingPane(page, tab, side, named);
     if (inArchive?.pane.archive !== undefined) {
-      this.copies.deleteInArchive(page, inArchive, names);
+      this.archiveCommands.deleteInArchive(page, inArchive, names);
       return;
     }
     const shown = this.sides.diskPane(page, tab, side, named);
@@ -402,7 +404,7 @@ export class FileCommands {
   ): Promise<void> {
     const inArchive = this.sides.namingPane(page, tab, side, folder);
     if (inArchive?.pane.archive !== undefined) {
-      this.copies.folderInArchive(page, inArchive, name);
+      this.archiveCommands.folderInArchive(page, inArchive, name);
       return;
     }
     const shown = this.sides.diskPane(page, tab, side, folder);
@@ -461,7 +463,7 @@ export class FileCommands {
   ): Promise<void> {
     const inArchive = this.sides.namingPane(page, tab, side, folder);
     if (inArchive?.pane.archive !== undefined) {
-      this.copies.renameInArchive(page, inArchive, name, to);
+      this.archiveCommands.renameInArchive(page, inArchive, name, to);
       return;
     }
     const shown = this.sides.diskPane(page, tab, side, folder);

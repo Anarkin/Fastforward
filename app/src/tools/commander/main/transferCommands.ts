@@ -26,7 +26,8 @@ import {
   parentOf,
 } from './sides';
 import { archiveItems } from './archiveItems';
-import type { ArchiveCopies } from './archiveCopies';
+import type { ArchivePasswords } from './archivePasswords';
+import type { ArchiveCommands } from './archiveCommands';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { ArchiveBranch } from './archiveTree';
 
@@ -90,7 +91,8 @@ export class TransferCommands {
   constructor(
     private readonly access: TransferCommandsAccess,
     private readonly sides: Sides,
-    private readonly copies: ArchiveCopies,
+    private readonly passwords: ArchivePasswords,
+    private readonly archiveCommands: ArchiveCommands,
     private readonly transfers: Transfers,
     private readonly host: TransferCommandsHost,
   ) {}
@@ -247,7 +249,7 @@ export class TransferCommands {
       this.host.refuse(page, strings.commander.intoItself(into));
       return;
     }
-    if (kept.length === 0 || !this.copies.changeable(page, archive)) {
+    if (kept.length === 0 || !this.archiveCommands.changeable(page, archive)) {
       return;
     }
     this.transfers.start(
@@ -367,15 +369,15 @@ export class TransferCommands {
       return;
     }
     if (
-      !this.copies.changeable(page, into.archive) ||
-      (move && !this.copies.changeable(page, archive))
+      !this.archiveCommands.changeable(page, into.archive) ||
+      (move && !this.archiveCommands.changeable(page, archive))
     ) {
       return;
     }
     if (
       encrypted &&
       !archives.hasPassword(archive.file) &&
-      !(await this.copies.passwordGiven(page, archive.file, false))
+      !(await this.passwords.passwordGiven(page, archive.file, false))
     ) {
       return;
     }
@@ -425,7 +427,7 @@ export class TransferCommands {
     const found = archiveItems(this.access.archives, pane, names);
     if (
       found === undefined ||
-      (move && !this.copies.changeable(page, found.archive))
+      (move && !this.archiveCommands.changeable(page, found.archive))
     ) {
       return;
     }
@@ -442,7 +444,7 @@ export class TransferCommands {
     if (
       encrypted &&
       !archives.hasPassword(archive.file) &&
-      !(await this.copies.passwordGiven(page, archive.file, false))
+      !(await this.passwords.passwordGiven(page, archive.file, false))
     ) {
       return;
     }

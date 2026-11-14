@@ -17,7 +17,7 @@ import type { PackPlan } from './archiveReader';
 import type { Transfers } from './transfers';
 import { nameProblem } from '../shared/names';
 import { type Sides, listedIn } from './sides';
-import type { ArchiveCopies } from './archiveCopies';
+import type { ArchivePasswords } from './archivePasswords';
 import type {
   TransferCommandsAccess,
   TransferCommandsHost,
@@ -27,7 +27,7 @@ export class PackCommands {
   constructor(
     private readonly access: TransferCommandsAccess,
     private readonly sides: Sides,
-    private readonly copies: ArchiveCopies,
+    private readonly passwords: ArchivePasswords,
     private readonly transfers: Transfers,
     private readonly host: Pick<TransferCommandsHost, 'shell' | 'refuse'>,
   ) {}
@@ -76,7 +76,7 @@ export class PackCommands {
             return tested;
           }
           if (
-            !(await this.copies.passwordGiven(
+            !(await this.passwords.passwordGiven(
               page,
               file,
               archives.hasPassword(file),
