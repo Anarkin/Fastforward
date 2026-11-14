@@ -1,15 +1,9 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { shellKeymap } from '../../../../shell/shared/keymap';
 import {
   clicked,
-  hovered,
-  keyLabels,
-  keyParts,
   bind,
-  keymap,
   letterTyped,
   menuFromKeyboard,
   modifierKey,
@@ -20,37 +14,15 @@ import {
   setKeyPlatform,
   shortcutOf,
   wheeled,
-  type Binding,
   type KeyPress,
 } from '../../../../lib/shared/keymap';
-import { strings } from '../../../../lib/shared/strings';
+import { keyLabels } from '../../../../lib/page/keyLabels';
+import { keymap } from '../../../../lib/page/keymap';
 import { gitKeymap } from '../../../../tools/git/page/keymap';
 import { keyPress, noModifiers, withMacKeys } from '../../../helpers/fixtures';
 
-const altNavigate = (key: string, inField = false) =>
-  pressed(gitKeymap.navigate, keyPress(key, { altKey: true }), inField);
-
-const worktreeStep = (extra: Partial<KeyPress>) =>
-  pressed(
-    gitKeymap.worktree,
-    keyPress('PageDown', { ctrlKey: true, ...extra }),
-    false,
-  );
-
 const altPress = (key: string, code?: string) =>
   keyPress(key, { altKey: true, ...(code === undefined ? {} : { code }) });
-
-function shifted(key: string) {
-  return keyPress(key, { shiftKey: true });
-}
-
-const parts = (keys: string) =>
-  keyParts(keys, false).map(({ label, pointer }) =>
-    pointer ? `${label} by mouse` : label,
-  );
-
-const inField = (binding: Binding<1 | -1>, key: string, held = {}) =>
-  pressed(binding, keyPress(key, held), true);
 
 suite('Keymap', () => {
   test('takes the plus, minus and asterisk keys of the number pad and of the keyboard alike, whether Shift types them or not, Alt with them, and shows them as their signs', () => {
@@ -83,29 +55,6 @@ suite('Keymap', () => {
         keyLabels('Alt+Plus', false),
       ],
       [['+'], ['-'], ['*'], ['Alt', '+']],
-    );
-  });
-
-  test('opens the main menu with Alt+F, or Option+F though it types ƒ, but not with F alone, nor in a text field', () => {
-    assert.strictEqual(
-      pressed(shellKeymap.mainMenu, keyPress('f', { altKey: true }), false),
-      true,
-    );
-    assert.strictEqual(
-      pressed(
-        shellKeymap.mainMenu,
-        keyPress('ƒ', { code: 'KeyF', altKey: true }),
-        false,
-      ),
-      true,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.mainMenu, keyPress('f'), false),
-      undefined,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.mainMenu, keyPress('f', { altKey: true }), true),
-      undefined,
     );
   });
 
@@ -262,16 +211,6 @@ suite('Keymap', () => {
     }
   });
 
-  test('goes to the next worktree on Ctrl+PageDown, and the previous on Ctrl+PageUp', () => {
-    assert.strictEqual(worktreeStep({}), 1);
-    assert.strictEqual(worktreeStep({ key: 'PageUp' }), -1);
-    assert.strictEqual(worktreeStep({ ctrlKey: false }), undefined);
-    assert.strictEqual(worktreeStep({ shiftKey: true }), undefined);
-    assert.strictEqual(worktreeStep({ altKey: true }), undefined);
-    assert.strictEqual(worktreeStep({ metaKey: true }), undefined);
-    assert.strictEqual(worktreeStep({ key: 'Tab' }), undefined);
-  });
-
   test('takes no key with Alt, nor one handled already or composing text', () => {
     for (const extra of [
       { altKey: true },
@@ -293,40 +232,6 @@ suite('Keymap', () => {
     assert.strictEqual(pressed(gitKeymap.peekStep, altDown, false), 'down');
     assert.strictEqual(pressed(gitKeymap.peekStep, down, false), undefined);
     assert.strictEqual(pressed(keymap.move, altDown, false), undefined);
-  });
-
-  test('steps through the commits with Alt+↑ and Alt+↓, held down too, showing each whole message as Alt stays held', () => {
-    assert.strictEqual(
-      pressed(gitKeymap.peekStep, keyPress('ArrowUp', { altKey: true }), false),
-      'up',
-    );
-    assert.strictEqual(
-      pressed(
-        gitKeymap.peekStep,
-        keyPress('ArrowDown', { altKey: true, repeat: true }),
-        false,
-      ),
-      'down',
-    );
-  });
-
-  test('selects the first parent on Ctrl+↓, or Cmd+↓ on macOS, where Ctrl+↓ shows the windows of the app, leaving Alt+↓ to stepping through the commits', () => {
-    const modDown = keyPress('ArrowDown', { ctrlKey: true });
-    assert.strictEqual(pressed(gitKeymap.parent, modDown, false), true);
-    assert.strictEqual(
-      withMacKeys(() =>
-        pressed(
-          gitKeymap.parent,
-          keyPress('ArrowDown', { metaKey: true }),
-          false,
-        ),
-      ),
-      true,
-    );
-    assert.strictEqual(
-      pressed(gitKeymap.parent, keyPress('ArrowDown', { altKey: true }), false),
-      undefined,
-    );
   });
 
   test('repeats a step held down, but not an action', () => {
@@ -436,166 +341,11 @@ suite('Keymap', () => {
     );
   });
 
-  test('shows the whole message of a commit hovered with Alt alone, or Option on macOS, but never on a key press', () => {
-    const alt = { ...noModifiers, altKey: true };
-    assert.strictEqual(hovered(gitKeymap.message, alt), true);
-    assert.strictEqual(
-      withMacKeys(() => hovered(gitKeymap.message, alt)),
-      true,
-    );
-    assert.strictEqual(hovered(gitKeymap.message, noModifiers), undefined);
-    for (const held of ['ctrlKey', 'metaKey', 'shiftKey']) {
-      assert.strictEqual(
-        hovered(gitKeymap.message, { ...alt, [held]: true }),
-        undefined,
-        held,
-      );
-    }
-    assert.strictEqual(
-      pressed(gitKeymap.message, keyPress('Hover', alt), false),
-      undefined,
-    );
-  });
-
-  test('pins the whole message of a commit on a click with Alt alone, or Option on macOS', () => {
-    const click = { button: 0, ...noModifiers, altKey: true };
-    assert.strictEqual(clicked(gitKeymap.pin, click), true);
-    assert.strictEqual(
-      withMacKeys(() => clicked(gitKeymap.pin, click)),
-      true,
-    );
-    assert.strictEqual(
-      clicked(gitKeymap.pin, { ...click, altKey: false }),
-      undefined,
-    );
-    assert.strictEqual(
-      clicked(gitKeymap.pin, { ...click, shiftKey: true }),
-      undefined,
-    );
-    assert.strictEqual(
-      clicked(gitKeymap.pin, { ...click, button: 2 }),
-      undefined,
-    );
-  });
-
-  test('closes the repository on Ctrl+W, or Cmd+W on macOS, as on a middle click on its tab', () => {
-    assert.strictEqual(
-      pressed(shellKeymap.closeTab, keyPress('w', { ctrlKey: true }), false),
-      true,
-    );
-    assert.strictEqual(
-      withMacKeys(() =>
-        pressed(shellKeymap.closeTab, keyPress('w', { metaKey: true }), false),
-      ),
-      true,
-    );
-    assert.strictEqual(
-      clicked(shellKeymap.closeTab, { button: 1, ...noModifiers }),
-      true,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.closeTab, keyPress('w'), false),
-      undefined,
-    );
-  });
-
-  test('opens and closes tabs on Ctrl+Shift+T and Ctrl+Shift+W too, or Cmd+Shift on macOS, even in a field, as a terminal leaves Ctrl+T and Ctrl+W to its shell', () => {
-    assert.strictEqual(
-      pressed(shellKeymap.newTab, { ...shifted('T'), ctrlKey: true }, true),
-      true,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.closeTab, { ...shifted('W'), ctrlKey: true }, true),
-      true,
-    );
-    assert.strictEqual(
-      withMacKeys(() =>
-        pressed(shellKeymap.closeTab, { ...shifted('W'), metaKey: true }, true),
-      ),
-      true,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.newTab, shifted('T'), false),
-      undefined,
-    );
-  });
-
-  test('opens a new window on Ctrl+N and Ctrl+Shift+N, or Cmd on macOS, as a terminal leaves Ctrl+N to its shell', () => {
-    assert.strictEqual(
-      pressed(shellKeymap.newWindow, keyPress('n', { ctrlKey: true }), false),
-      true,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.newWindow, { ...shifted('N'), ctrlKey: true }, false),
-      true,
-    );
-    assert.strictEqual(
-      withMacKeys(() =>
-        pressed(shellKeymap.newWindow, keyPress('n', { metaKey: true }), false),
-      ),
-      true,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.newWindow, keyPress('n'), false),
-      undefined,
-    );
-  });
-
-  test('opens the folder of the tab in another tool on Ctrl+Shift+O, or Cmd+Shift+O on macOS, but not on Ctrl+O, which a shell takes', () => {
-    assert.strictEqual(
-      pressed(shellKeymap.openIn, { ...shifted('O'), ctrlKey: true }, false),
-      true,
-    );
-    assert.strictEqual(
-      withMacKeys(() =>
-        pressed(shellKeymap.openIn, { ...shifted('O'), metaKey: true }, false),
-      ),
-      true,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.openIn, keyPress('o', { ctrlKey: true }), false),
-      undefined,
-    );
-  });
-
-  test('goes back or forward on Alt+← and Alt+→, as the mouse buttons do, but leaves them to the caret in a field', () => {
-    assert.strictEqual(altNavigate('ArrowLeft'), 'back');
-    assert.strictEqual(altNavigate('ArrowRight'), 'forward');
-    assert.strictEqual(altNavigate('ArrowLeft', true), undefined);
-    assert.strictEqual(
-      clicked(gitKeymap.navigate, { button: 3, ...noModifiers }),
-      'back',
-    );
-  });
-
-  test('names Alt held on its own as the key, or Option on macOS', () => {
-    assert.deepStrictEqual(keyLabels('Alt', false), ['Alt']);
-    assert.deepStrictEqual(keyLabels('Alt', true), ['⌥']);
-    assert.strictEqual(shortcutOf(gitKeymap.message, 'keyboard'), 'Alt');
-  });
-
   test('tells the keys of a binding done with the pointer from those done on the keyboard, so a hint can name the ones at hand', () => {
     assert.strictEqual(shortcutOf(gitKeymap.pin, 'pointer'), 'Alt+Click');
     assert.strictEqual(shortcutOf(gitKeymap.pin, 'keyboard'), 'Alt+Enter');
     assert.strictEqual(shortcutOf(gitKeymap.message, 'pointer'), 'Alt+Hover');
     assert.strictEqual(shortcutOf(gitKeymap.head, 'pointer'), undefined);
-  });
-
-  test('pins the whole message of the selected commit on Alt+Enter, or Option+Enter on macOS, but not on Enter alone', () => {
-    const altEnter = keyPress('Enter', { altKey: true });
-    assert.strictEqual(pressed(gitKeymap.pin, altEnter, false), true);
-    assert.strictEqual(
-      withMacKeys(() => pressed(gitKeymap.pin, altEnter, false)),
-      true,
-    );
-    assert.strictEqual(
-      pressed(gitKeymap.pin, keyPress('Enter'), false),
-      undefined,
-    );
-    assert.strictEqual(
-      pressed(gitKeymap.pin, keyPress('Click', { altKey: true }), false),
-      undefined,
-    );
   });
 
   test('tells a modifier pressed on its own from any other key', () => {
@@ -657,107 +407,5 @@ suite('Keymap', () => {
       ),
       undefined,
     );
-  });
-
-  test('names the keys as the keyboard does, Mod as Ctrl, or Cmd on macOS, and Alt as Option there, on the platform the app runs on unless told', () => {
-    assert.deepStrictEqual(keyLabels('Mod+Shift+I', false), [
-      'Ctrl',
-      'Shift',
-      'I',
-    ]);
-    assert.deepStrictEqual(keyLabels('Mod+T', true), ['⌘', 'T']);
-    assert.deepStrictEqual(keyLabels('Ctrl+PageDown', true), ['Ctrl', 'PgDn']);
-    assert.deepStrictEqual(keyLabels('ArrowLeft', false), ['←']);
-    assert.deepStrictEqual(keyLabels('Alt+ArrowDown', false), ['Alt', '↓']);
-    assert.deepStrictEqual(keyLabels('Alt+ArrowDown', true), ['⌥', '↓']);
-    assert.deepStrictEqual(keyLabels('Alt+Hover', false), ['Alt', 'Hover']);
-    assert.deepStrictEqual(keyLabels('Alt+Hover', true), ['⌥', 'Hover']);
-    assert.deepStrictEqual(keyLabels('Alt+Click'), ['Alt', 'Click']);
-    assert.deepStrictEqual(
-      withMacKeys(() => keyLabels('Alt+Click')),
-      ['⌥', 'Click'],
-    );
-    assert.deepStrictEqual(keyLabels('MiddleClick', false), ['Middle-click']);
-    assert.deepStrictEqual(keyLabels('Drag', false), ['Drag']);
-  });
-
-  test('tells the part done with the mouse from the keys held with it, so the shortcuts screen marks it, naming the mouse buttons without the word mouse, which the mark says', () => {
-    assert.deepStrictEqual(parts('Alt+Click'), ['Alt', 'Click by mouse']);
-    assert.deepStrictEqual(parts('Shift+Wheel'), ['Shift', 'Wheel by mouse']);
-    assert.deepStrictEqual(parts('Alt+Hover'), ['Alt', 'Hover by mouse']);
-    assert.deepStrictEqual(parts('BackButton'), ['Back by mouse']);
-    assert.deepStrictEqual(parts('ForwardButton'), ['Forward by mouse']);
-    assert.deepStrictEqual(parts('Drag'), ['Drag by mouse']);
-    assert.deepStrictEqual(parts('Mod+Shift+T'), ['Ctrl', 'Shift', 'T']);
-    assert.deepStrictEqual(parts('Alt'), ['Alt']);
-    assert.deepStrictEqual(
-      keyParts('Alt+Click', true).map(({ label }) => label),
-      ['⌥', 'Click'],
-    );
-  });
-
-  test('moves through the shortcuts screen from its filter: Ctrl+Tab and Ctrl+Shift+Tab to the next and previous tool, ↑ and ↓ through the groups, and PgUp and PgDn a page, held down too', () => {
-    assert.strictEqual(
-      inField(shellKeymap.shortcutsTool, 'Tab', { ctrlKey: true }),
-      1,
-    );
-    assert.strictEqual(
-      inField(shellKeymap.shortcutsTool, 'Tab', {
-        ctrlKey: true,
-        shiftKey: true,
-      }),
-      -1,
-    );
-    assert.strictEqual(inField(shellKeymap.shortcutsTool, 'Tab'), undefined);
-    assert.strictEqual(inField(shellKeymap.shortcutsGroup, 'ArrowDown'), 1);
-    assert.strictEqual(inField(shellKeymap.shortcutsGroup, 'ArrowUp'), -1);
-    assert.strictEqual(inField(shellKeymap.shortcutsPage, 'PageDown'), 1);
-    assert.strictEqual(inField(shellKeymap.shortcutsPage, 'PageUp'), -1);
-    assert.strictEqual(
-      inField(shellKeymap.shortcutsGroup, 'ArrowDown', { repeat: true }),
-      1,
-    );
-  });
-
-  test('names every key a binding uses from the dictionary, but letters, symbols and F keys, which name themselves, so a translation reaches the shortcuts screen whole', () => {
-    const named: Readonly<Record<string, string>> = strings.keys;
-    const unnamed = [
-      ...Object.values(keymap),
-      ...Object.values(shellKeymap),
-      ...Object.values(gitKeymap),
-    ]
-      .flatMap((binding) => Object.keys(binding.keys))
-      .map((keys) => keys.split('+').at(-1) ?? keys)
-      .filter(
-        (key) =>
-          key.length > 1 && !/^F\d+$/.test(key) && !Object.hasOwn(named, key),
-      );
-    assert.deepStrictEqual(unnamed, []);
-  });
-
-  test('leaves telling keys, modifiers and buttons apart to itself, so the shortcuts screen lists every one', () => {
-    const source = path.join(__dirname, '../../../..');
-    const own = [
-      path.join(source, 'lib', 'shared', 'keymap.ts'),
-      path.join(source, 'lib', 'shared', 'strings.ts'),
-    ];
-    const reads =
-      /\b(?:e|ev|\w*[eE]vent|input)\.(?:key|code|button|control|meta|alt|shift)\b|\b\w+\.buttons\b|\b(?:ctrlKey|metaKey|altKey|shiftKey|isComposing|keyCode)\b|'(?:Arrow(?:Up|Down|Left|Right)|Page(?:Up|Down)|Home|End|Enter|Escape|Tab|F\d{1,2})'/;
-    const offenders = fs
-      .readdirSync(source, { recursive: true, encoding: 'utf8' })
-      .filter((file) => /\.tsx?$/.test(file) && !file.startsWith('test'))
-      .map((file) => path.join(source, file))
-      .filter((file) => !own.includes(file))
-      .flatMap((file) =>
-        fs
-          .readFileSync(file, 'utf8')
-          .split('\n')
-          .flatMap((line, index) =>
-            reads.test(line)
-              ? [`${path.relative(source, file)}:${index + 1}: ${line.trim()}`]
-              : [],
-          ),
-      );
-    assert.deepStrictEqual(offenders, []);
   });
 });

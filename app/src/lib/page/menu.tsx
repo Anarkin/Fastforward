@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { keymap, letterTyped, pressedAlone } from '../shared/keymap';
+import { keymap } from './keymap';
+import { letterTyped, pressedAlone } from '../shared/keymap';
 import {
   onMenuKeyDown,
   useDismiss,

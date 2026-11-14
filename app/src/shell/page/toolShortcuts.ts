@@ -10,7 +10,7 @@ import {
   shortcutGroupsOf,
   type ShortcutGroup,
 } from '../shared/keymap';
-import { keymap } from '../../lib/shared/keymap';
+import { keymap } from '../../lib/page/keymap';
 import { strings } from '../../lib/shared/strings';
 import type { ToolId } from '../shared/tools';
 import {

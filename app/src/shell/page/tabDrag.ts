@@ -3,7 +3,8 @@ import { flushSync } from 'react-dom';
 import { type TabInfo } from '../shared/protocol';
 import { tabMagnetism } from '../shared/titleBar';
 import { shellKeymap } from '../shared/keymap';
-import { clicked, keymap, released } from '../../lib/shared/keymap';
+import { clicked, released } from '../../lib/shared/keymap';
+import { keymap } from '../../lib/page/keymap';
 import { keyPressed } from '../../lib/page/shortcuts';
 import { type ScreenPoint } from './store';
 

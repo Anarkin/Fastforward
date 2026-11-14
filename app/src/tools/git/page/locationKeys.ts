@@ -1,6 +1,6 @@
 import { isHashPrefix } from '../shared/hashes';
 import type { CommitInfo, CommitResults } from '../shared/protocol';
-import { keymap } from '../../../lib/shared/keymap';
+import { keymap } from '../../../lib/page/keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { ResultItem } from './locationResults';
 

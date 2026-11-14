@@ -1,4 +1,5 @@
-import { clicked, keymap, type Modifiers } from '../../../lib/shared/keymap';
+import { clicked, type Modifiers } from '../../../lib/shared/keymap';
+import { keymap } from '../../../lib/page/keymap';
 
 export interface MinimapMark {
   readonly kind: 'added' | 'removed' | 'match';

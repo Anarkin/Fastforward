@@ -1,4 +1,5 @@
-import { clicked, keymap } from '../shared/keymap';
+import { clicked } from '../shared/keymap';
+import { keymap } from './keymap';
 import { scrollbarDrags, type ScrollbarDrag } from './cappedScroll';
 import { followDrag } from './followDrag';
 import { afterPaint, inNextFrame } from './afterPaint';

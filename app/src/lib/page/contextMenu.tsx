@@ -7,7 +7,7 @@ import {
   ToolIcon,
 } from './icons';
 import { Name, Words } from './name';
-import { keymap } from '../shared/keymap';
+import { keymap } from './keymap';
 import { strings } from '../shared/strings';
 import { keyPressed } from './shortcuts';
 import {

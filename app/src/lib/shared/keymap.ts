@@ -1,5 +1,3 @@
-import { strings } from './strings';
-
 export interface Binding<Value> {
   readonly group: string | undefined;
   readonly action: string;
@@ -17,73 +15,6 @@ export function bind<const Value>(
 ): Binding<Value> {
   return { group, action, keys, repeats, fields, dialogs };
 }
-
-export const keymap = {
-  removeItem: bind('Tabs', strings.actions.removeItem, {
-    Delete: true,
-  }),
-  move: bind(
-    'Lists',
-    strings.actions.move,
-    { ArrowUp: 'up', ArrowDown: 'down' },
-    { repeats: true },
-  ),
-  page: bind(
-    'Lists',
-    strings.actions.page,
-    { PageUp: 'pageUp', PageDown: 'pageDown', Home: 'first', End: 'last' },
-    { repeats: true },
-  ),
-  close: bind(
-    'Lists',
-    strings.actions.close,
-    { Escape: true },
-    { fields: true },
-  ),
-  dialogFocus: bind(
-    'Lists',
-    strings.actions.dialogFocus,
-    { Tab: 1, 'Shift+Tab': -1 },
-    { repeats: true, fields: true },
-  ),
-  menuItem: bind(
-    undefined,
-    strings.actions.menuItem,
-    { ArrowDown: 'next', ArrowUp: 'previous', Home: 'first', End: 'last' },
-    { repeats: true },
-  ),
-  dialogButton: bind(
-    undefined,
-    strings.actions.dialogButton,
-    {
-      ArrowLeft: 'previous',
-      ArrowUp: 'previous',
-      ArrowRight: 'next',
-      ArrowDown: 'next',
-      Home: 'first',
-      End: 'last',
-    },
-    { repeats: true, dialogs: true },
-  ),
-  menuFilter: bind(
-    undefined,
-    strings.actions.menuFilter,
-    { ArrowDown: 'items', Enter: 'first' } as const,
-    { fields: true },
-  ),
-  submenu: bind(undefined, strings.actions.submenu, {
-    ArrowRight: 'open',
-    ArrowLeft: 'back',
-  }),
-  result: bind(
-    undefined,
-    strings.actions.result,
-    { ArrowDown: 1, ArrowUp: -1 },
-    { repeats: true, fields: true },
-  ),
-  go: bind(undefined, strings.actions.go, { Enter: true }, { fields: true }),
-  drag: bind(undefined, strings.actions.drag, { Click: true }),
-};
 
 export interface Modifiers {
   readonly ctrlKey: boolean;
@@ -113,7 +44,7 @@ interface Combo {
   readonly shift: boolean;
 }
 
-function comboOf(keys: string): Combo {
+export function comboOf(keys: string): Combo {
   const parts = keys.split('+');
   const key = parts.pop() ?? '';
   return {
@@ -177,6 +108,10 @@ let macKeys = false;
 
 export function setKeyPlatform(platform: string): void {
   macKeys = platform === 'darwin';
+}
+
+export function usesMacKeys(): boolean {
+  return macKeys;
 }
 
 function modifiersMatch(combo: Combo, held: Modifiers): boolean {
@@ -301,6 +236,10 @@ export function shortcutOf(
   });
 }
 
+export function isPointerKey(key: string): boolean {
+  return key in buttons || pointerKeys.has(key);
+}
+
 export function modifierKey(press: KeyPress): boolean {
   return modifierKeys.has(press.key);
 }
@@ -337,31 +276,4 @@ export function pressOfInput(input: {
     shiftKey: input.shift,
     repeat: input.isAutoRepeat,
   };
-}
-
-export function keyLabels(keys: string, mac = macKeys): string[] {
-  const combo = comboOf(keys);
-  const names: Readonly<Record<string, string>> = strings.keys;
-  return [
-    ...(combo.mod ? [mac ? strings.keys.Command : strings.keys.Ctrl] : []),
-    ...(combo.ctrl ? [strings.keys.Ctrl] : []),
-    ...(combo.alt ? [mac ? strings.keys.Option : strings.keys.Alt] : []),
-    ...(combo.shift ? [strings.keys.Shift] : []),
-    names[mac && combo.key === 'Alt' ? 'Option' : combo.key] ?? combo.key,
-  ];
-}
-
-export interface KeyPart {
-  readonly label: string;
-  readonly pointer: boolean;
-}
-
-export function keyParts(keys: string, mac = macKeys): KeyPart[] {
-  const { key } = comboOf(keys);
-  const pointer = key in buttons || pointerKeys.has(key);
-  const labels = keyLabels(keys, mac);
-  return labels.map((label, place) => ({
-    label,
-    pointer: pointer && place === labels.length - 1,
-  }));
 }

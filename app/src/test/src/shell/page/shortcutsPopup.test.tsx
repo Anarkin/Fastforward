@@ -1,7 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { shellKeymap } from '../../../../shell/shared/keymap';
-import { keymap, type Binding } from '../../../../lib/shared/keymap';
+import { keymap } from '../../../../lib/page/keymap';
+import type { Binding } from '../../../../lib/shared/keymap';
 import { compareKeymap, gitKeymap } from '../../../../tools/git/page/keymap';
 import {
   commanderKeymap,

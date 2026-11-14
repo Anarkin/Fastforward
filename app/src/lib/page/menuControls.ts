@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { keymap, pressedAlone, type KeyPress } from '../shared/keymap';
+import { keymap } from './keymap';
+import { pressedAlone, type KeyPress } from '../shared/keymap';
 import type { Sentence } from '../shared/strings';
 import { overlayScrollbarClass } from './overlayScrollbars';
 import { isKeyPress, keyPressed } from './shortcuts';
