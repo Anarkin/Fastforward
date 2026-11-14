@@ -10,6 +10,7 @@ export interface DragWindow {
   shown(): boolean;
   moveTo(x: number, y: number): void;
   hide(hidden: boolean): void;
+  veil(): void;
 }
 
 export interface DragHost {
@@ -19,6 +20,7 @@ export interface DragHost {
   move(tab: string, into: string, index: number): void;
   close(window: string): void;
   focus(window: string): void;
+  soon(run: () => void): void;
 }
 
 interface Target {
@@ -73,6 +75,9 @@ function targetAt(
 export class TabDrag {
   private target: { readonly window: DragWindow; index: number } | undefined;
   private hidden = false;
+  private waiting = 0;
+  private waited = 0;
+  private at: Point;
   private readonly from: Bounds;
 
   private constructor(
@@ -83,6 +88,7 @@ export class TabDrag {
     private readonly layout: Strip,
   ) {
     this.from = floating.bounds();
+    this.at = started.at;
   }
 
   static start(
@@ -101,10 +107,11 @@ export class TabDrag {
       return undefined;
     }
     const drag = new TabDrag(host, source, floating, started, layout);
-    drag.move(started.at);
-    if (!started.alone && !drag.hidden) {
-      floating.hide(false);
+    if (!started.alone) {
+      floating.veil();
+      drag.waitForRow();
     }
+    drag.move(started.at);
     return drag;
   }
 
@@ -113,6 +120,7 @@ export class TabDrag {
   }
 
   move(at: Point): void {
+    this.at = at;
     const found = targetAt(this.host.windows(), at, this.floating);
     const left = this.target;
     if (found !== undefined && !this.hidden) {
@@ -127,6 +135,9 @@ export class TabDrag {
               window: found.window,
               index: stripIndex(found.window.strip(), found.x),
             };
+      if (this.target === undefined && !this.started.alone) {
+        this.waitForRow();
+      }
       this.host.move(
         this.started.tab,
         this.target?.window.id ?? this.floating.id,
@@ -147,6 +158,36 @@ export class TabDrag {
     this.place(at);
     if (this.hidden) {
       this.hidden = false;
+      if (this.waiting === 0) {
+        this.floating.hide(false);
+      }
+    }
+  }
+
+  stripped(window: string): void {
+    if (
+      window === this.floating.id &&
+      this.waiting > 0 &&
+      (this.floating.strip()?.tabs ?? 0) > 0
+    ) {
+      this.shown(this.waiting);
+    }
+  }
+
+  private waitForRow(): void {
+    this.waited += 1;
+    const waiting = this.waited;
+    this.waiting = waiting;
+    this.host.soon(() => this.shown(waiting));
+  }
+
+  private shown(waiting: number): void {
+    if (this.waiting !== waiting) {
+      return;
+    }
+    this.waiting = 0;
+    if (this.target === undefined && !this.hidden) {
+      this.place(this.at);
       this.floating.hide(false);
     }
   }
@@ -162,6 +203,9 @@ export class TabDrag {
   drop(): void {
     const { target } = this;
     if (target === undefined) {
+      if (this.waiting > 0) {
+        this.shown(this.waiting);
+      }
       this.host.focus(this.floating.id);
       return;
     }

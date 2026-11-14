@@ -35,6 +35,7 @@ export interface StripPlace {
   readonly bottom: number;
   readonly firstTabLeft: number;
   readonly tabTop: number;
+  readonly tabs: number;
 }
 
 export interface ToolChoice {

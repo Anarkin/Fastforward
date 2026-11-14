@@ -10,6 +10,7 @@ export interface Strip {
   readonly bottom: number;
   readonly firstTabLeft: number;
   readonly tabTop: number;
+  readonly tabs: number;
 }
 
 export interface Visit {

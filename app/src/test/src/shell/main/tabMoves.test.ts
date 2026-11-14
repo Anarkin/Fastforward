@@ -114,6 +114,7 @@ suite('Moving tabs between windows', () => {
       bottom: 32,
       firstTabLeft: 8,
       tabTop: 4,
+      tabs: 2,
     };
     const grabbed = { grabX: 20, grabY: 10, screenX: 300, screenY: 40 };
     await first.connection.receive({ type: 'tearTab', tab: '2', ...grabbed });
@@ -143,6 +144,8 @@ suite('Moving tabs between windows', () => {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       top: 'top' as unknown as number,
     });
+    await first.connection.receive({ type: 'tabStrip', ...strip, tabs: -1 });
+    await first.connection.receive({ type: 'tabStrip', ...strip, tabs: 1.5 });
     await first.connection.receive({ type: 'tabStrip', ...strip });
     await first.connection.receive({ type: 'dropTab' });
     await first.connection.receive({ type: 'cancelTabDrag' });

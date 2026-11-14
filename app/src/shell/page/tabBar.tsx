@@ -265,6 +265,7 @@ function useStripReport(
           row.getBoundingClientRect().left +
             (parseFloat(getComputedStyle(row).paddingLeft) || 0),
         tabTop: tab?.top ?? nav.top,
+        tabs: row.querySelectorAll('[role="tab"]').length,
       };
       const json = JSON.stringify(place);
       if (json !== told.current) {

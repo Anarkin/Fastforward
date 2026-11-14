@@ -9,6 +9,8 @@ import {
   type DragWindow,
 } from './tabDrag';
 
+const revealDelay = 1000;
+
 export interface WindowDragHost {
   frontToBack(): readonly string[];
   windowOf(id: string): BrowserWindow | undefined;
@@ -44,6 +46,9 @@ export class WindowDrag {
       visit: (window, visit) => host.asking()?.visit(window, visit),
       move: (tab, into, index) => void host.asking()?.moveTab(tab, into, index),
       close: (window) => host.close(window),
+      soon: (run) => {
+        setTimeout(run, revealDelay);
+      },
       focus: (window) => {
         const shown = host.windowOf(window);
         if (shown !== undefined && !shown.isDestroyed()) {
@@ -59,6 +64,7 @@ export class WindowDrag {
     switch (event.kind) {
       case 'strip':
         this.strips.set(window, event.strip);
+        this.drag?.stripped(window);
         return;
       case 'start': {
         const source = this.dragWindowOf(window);
@@ -120,6 +126,16 @@ export class WindowDrag {
         if (!window.isDestroyed()) {
           window.setPosition(x, y);
         }
+      },
+      veil: () => {
+        if (window.isDestroyed()) {
+          return;
+        }
+        window.setOpacity(0);
+        if (!window.isVisible()) {
+          window.showInactive();
+        }
+        window.setAlwaysOnTop(true);
       },
       hide: (hidden) => {
         if (window.isDestroyed()) {

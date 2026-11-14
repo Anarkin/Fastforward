@@ -238,6 +238,7 @@ suite('Shell store', () => {
       bottom: 32,
       firstTabLeft: 8,
       tabTop: 4,
+      tabs: 2,
     };
     store.getState().reportStrip(strip);
     store.getState().tearTab('1', { x: 20, y: 10 }, { x: 300, y: 40 });

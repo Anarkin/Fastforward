@@ -29,15 +29,18 @@ export interface TabMovesHost {
 }
 
 function stripOf(message: Record<string, unknown>): Strip | undefined {
-  const { left, right, top, bottom, firstTabLeft, tabTop } = message;
+  const { left, right, top, bottom, firstTabLeft, tabTop, tabs } = message;
   return typeof left === 'number' &&
     typeof right === 'number' &&
     typeof top === 'number' &&
     typeof bottom === 'number' &&
     typeof firstTabLeft === 'number' &&
     typeof tabTop === 'number' &&
-    [left, right, top, bottom, firstTabLeft, tabTop].every(Number.isFinite)
-    ? { left, right, top, bottom, firstTabLeft, tabTop }
+    typeof tabs === 'number' &&
+    [left, right, top, bottom, firstTabLeft, tabTop].every(Number.isFinite) &&
+    Number.isSafeInteger(tabs) &&
+    tabs >= 0
+    ? { left, right, top, bottom, firstTabLeft, tabTop, tabs }
     : undefined;
 }
 

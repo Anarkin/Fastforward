@@ -16,7 +16,10 @@ const strip: Strip = {
   bottom: 32,
   firstTabLeft: 8,
   tabTop: 4,
+  tabs: 1,
 };
+
+const drawn: Strip = { ...strip, tabTop: 6, tabs: 1 };
 
 class FakeWindow implements DragWindow {
   hidden = false;
@@ -55,6 +58,11 @@ class FakeWindow implements DragWindow {
     this.hidden = hidden;
     this.visible = true;
   }
+
+  veil(): void {
+    this.hidden = true;
+    this.visible = true;
+  }
 }
 
 function hostOf(
@@ -66,6 +74,8 @@ function hostOf(
   const closed: string[] = [];
   const focused: string[] = [];
   const calls: string[] = [];
+  const later: (() => void)[] = [];
+  torn.told = { ...strip, tabs: 0 };
   const host: DragHost = {
     windows: () => windows,
     tearOff: () => {
@@ -82,8 +92,9 @@ function hostOf(
     },
     close: (window) => closed.push(window),
     focus: (window) => focused.push(window),
+    soon: (run) => later.push(run),
   };
-  return { host, visits, moved, closed, focused, calls, torn };
+  return { host, visits, moved, closed, focused, calls, torn, later };
 }
 
 const start = (at: { x: number; y: number }, alone = false): DragStart => ({
@@ -100,10 +111,40 @@ suite('Dragging a tab between windows', () => {
     const { host, torn } = hostOf([source]);
     const drag = TabDrag.start(host, source, start({ x: 300, y: 120 }));
     assert.ok(drag);
-    assert.deepStrictEqual(torn.moves, [[272, 106]]);
+    torn.told = drawn;
+    drag.stripped('9');
+    assert.deepStrictEqual(torn.moves.at(-1), [272, 104]);
     assert.strictEqual(torn.shown(), true);
     drag.move({ x: 1000, y: 700 });
-    assert.deepStrictEqual(torn.moves.at(-1), [972, 686]);
+    assert.deepStrictEqual(torn.moves.at(-1), [972, 684]);
+  });
+
+  test('keeps the window a tab is torn into unseen until its row tells it shows the tab, then places it by that row and shows it, so it never shows before its tab and content are drawn', () => {
+    const source = new FakeWindow('1', { x: 0, y: 0, width: 900, height: 600 });
+    const { host, torn } = hostOf([source]);
+    const drag = TabDrag.start(host, source, start({ x: 300, y: 120 }));
+    assert.ok(drag);
+    assert.strictEqual(torn.shown(), false);
+    drag.move({ x: 320, y: 140 });
+    drag.stripped('1');
+    drag.stripped('9');
+    assert.strictEqual(torn.shown(), false);
+    torn.told = drawn;
+    drag.stripped('9');
+    assert.strictEqual(torn.shown(), true);
+    assert.deepStrictEqual(torn.moves.at(-1), [292, 124]);
+  });
+
+  test('shows the window a tab is torn into anyway once its row has not told it shows the tab for a while', () => {
+    const source = new FakeWindow('1', { x: 0, y: 0, width: 900, height: 600 });
+    const { host, torn, later } = hostOf([source]);
+    const drag = TabDrag.start(host, source, start({ x: 300, y: 120 }));
+    assert.ok(drag);
+    assert.strictEqual(torn.shown(), false);
+    for (const run of later) {
+      run();
+    }
+    assert.strictEqual(torn.shown(), true);
   });
 
   test('moves the tab into the window whose strip is under the pointer, showing it there under the pointer while the window it was torn into hides, and back into that window once the pointer leaves the strip, before the strip stops showing it, so it never shows there at another place', () => {
@@ -125,9 +166,14 @@ suite('Dragging a tab between windows', () => {
       ['2', { tab: '3', x: 300, grabX: 20 }],
       ['2', { tab: '3', x: 310, grabX: 20 }],
     ]);
+    torn.told = { ...strip, tabs: 0 };
+    drag.stripped('9');
     drag.move({ x: 1300, y: 300 });
-    assert.strictEqual(torn.hidden, false);
+    assert.strictEqual(torn.shown(), false);
     assert.deepStrictEqual(calls.slice(-2), ['move 3 9 0', 'visit 2 ends']);
+    torn.told = drawn;
+    drag.stripped('9');
+    assert.strictEqual(torn.shown(), true);
   });
 
   test('takes the strip of the window in front where windows overlap, and none where another window covers it, a pointer a little above or below a strip counting as over it', () => {
