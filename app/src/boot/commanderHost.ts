@@ -46,7 +46,7 @@ import {
 } from '../tools/commander/main/textDefaults';
 import { Archives } from '../tools/commander/main/archives';
 import { CommanderTool } from '../tools/commander/main/tool';
-import { rootFolder } from '../tools/commander/main/listings';
+import { rootFolder } from '../tools/commander/main/folderPaths';
 import { thumbnailFolder } from './profile';
 
 const smallestThumbnailCache = 16;

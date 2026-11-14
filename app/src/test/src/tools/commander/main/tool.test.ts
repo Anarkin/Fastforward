@@ -20,10 +20,6 @@ import {
   hiddenIn,
   forged,
 } from './commanderFixtures';
-import {
-  childToward,
-  rootFolder,
-} from '../../../../../tools/commander/main/listings';
 
 suite('Commander tool', () => {
   test('lists the root on both sides of a tab opened without a folder, and the drives', async () => {
@@ -557,25 +553,6 @@ suite('Commander tool', () => {
         [root, at('Users'), root],
       );
     });
-  });
-});
-
-suite('The folder to select', () => {
-  test('is the child of a folder on the way to the one left, and none for a folder elsewhere', () => {
-    assert.strictEqual(childToward(root, at('Users', 'me')), 'Users');
-    assert.strictEqual(childToward(at('Users'), at('Users', 'me')), 'me');
-    assert.strictEqual(childToward(at('Users'), at('Users')), undefined);
-    assert.strictEqual(childToward(at('Users', 'me'), at('Users')), undefined);
-    assert.strictEqual(childToward(at('Users'), at('Windows')), undefined);
-  });
-});
-
-suite('The root', () => {
-  test('is the system drive on Windows, and / elsewhere', () => {
-    assert.strictEqual(rootFolder('win32', { SystemDrive: 'D:' }), 'D:\\');
-    assert.strictEqual(rootFolder('win32', {}), 'C:\\');
-    assert.strictEqual(rootFolder('darwin', { SystemDrive: 'D:' }), '/');
-    assert.strictEqual(rootFolder('linux', {}), '/');
   });
 });
 

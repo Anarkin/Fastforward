@@ -3,43 +3,22 @@ import { isDeepStrictEqual } from 'node:util';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
-import {
-  type CommanderToHost,
-  type Entry,
-  type Side,
-} from '../shared/protocol';
+import { type Entry, type Side } from '../shared/protocol';
 import type { LocalFileSystem } from './fileSystem';
 import { pathParts } from '../shared/paths';
 import type { ElevatedFileSystem } from './elevated';
 import { codeOf, reasonOf } from './reasons';
-import { repositoriesIn } from './repositories';
 import { type Pane, Sides, type Listing, sizedEntry } from './sides';
 import { post } from './post';
-import { parentOf } from './folderPaths';
+import { childToward, parentOf } from './folderPaths';
 import { SideScans } from './sideScans';
 import { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './commanderAccess';
-import { isFile, isFolder } from './fileStats';
-import { shownBookmarks, type BookmarkSystem } from './bookmarks';
-import { typedPath } from './typedPaths';
+import { isFolder } from './fileStats';
+import type { SideRepositories } from './sideRepositories';
 import { ReadingStopped, type Opener, ArchiveListing } from './archiveListing';
 
 const maxHistory = 100;
-export function childToward(folder: string, from: string): string | undefined {
-  const relative = path.relative(folder, from);
-  return relative === '' ||
-    relative.startsWith('..') ||
-    path.isAbsolute(relative)
-    ? undefined
-    : relative.split(path.sep)[0];
-}
-
-export function rootFolder(
-  platform: NodeJS.Platform,
-  env: NodeJS.ProcessEnv,
-): string {
-  return platform === 'win32' ? `${env.SystemDrive ?? 'C:'}\\` : '/';
-}
 
 function isGone(error: unknown): boolean {
   const code = codeOf(error);
@@ -73,6 +52,7 @@ export interface ListingParts {
   readonly scans: SideScans;
   readonly copies: ArchiveCopies;
   readonly savedSides: SavedSides;
+  readonly repositories: SideRepositories;
 }
 
 export interface ListingsHost {
@@ -132,60 +112,6 @@ export class Listings {
     } catch (error) {
       throw isDenied(error) ? new RefusedAsAdministrator(error) : error;
     }
-  }
-
-  private async findRepositories(
-    page: Page,
-    tab: string,
-    side: Side,
-    pane: Pane,
-    again: boolean,
-  ): Promise<void> {
-    const asked = ++pane.repositoriesAsked;
-    const { folder } = pane;
-    const folders = new Map(
-      (pane.entries ?? [])
-        .filter((entry) => entry.folder)
-        .map((entry) => [entry.name, entry.modified]),
-    );
-    const looked =
-      again && pane.looked?.folder === folder ? pane.looked.folders : undefined;
-    const unchanged = (name: string) =>
-      looked?.has(name) === true && looked.get(name) === folders.get(name);
-    const kept = [...pane.repositories].filter(
-      (name) => folders.has(name) && unchanged(name),
-    );
-    const [names, inside] = await Promise.all([
-      repositoriesIn(
-        folder,
-        [...folders.keys()].filter((name) => !unchanged(name)),
-        this.access.isRepository,
-        () => pane.repositoriesAsked === asked,
-      ),
-      this.inRepository(folder),
-    ]);
-    if (pane.repositoriesAsked !== asked) {
-      return;
-    }
-    pane.looked = { folder, folders };
-    const found = new Set([...kept, ...names]);
-    pane.repositories = found;
-    if (this.sides.shown.get(page)?.tab === tab) {
-      post(page, {
-        type: 'repositories',
-        tab,
-        side,
-        folder,
-        names: [...folders.keys()].filter((name) => found.has(name)),
-        ...(inside && { inRepository: true }),
-      });
-    }
-  }
-
-  private async inRepository(folder: string): Promise<boolean> {
-    return (
-      (await this.access.inRepository?.(folder).catch(() => false)) ?? false
-    );
   }
 
   async list(
@@ -337,7 +263,15 @@ export class Listings {
     if (listing.archive === undefined) {
       void this.host
         .shell()
-        .track(this.findRepositories(page, tab, side, pane, how === 'refresh'));
+        .track(
+          this.parts.repositories.findRepositories(
+            page,
+            tab,
+            side,
+            pane,
+            how === 'refresh',
+          ),
+        );
     }
   }
 
@@ -446,86 +380,6 @@ export class Listings {
       return (await this.access.binOff?.(folder)) === true;
     } catch {
       return false;
-    }
-  }
-
-  private get bookmarkSystem(): BookmarkSystem {
-    return { paths: path, platform: this.access.platform };
-  }
-
-  step(page: Page, tab: unknown, side: unknown, step: unknown): Promise<void> {
-    const shown = this.sides.shownPane(page, tab, side);
-    if (shown === undefined || (step !== -1 && step !== 1)) {
-      return Promise.resolve();
-    }
-    const at = shown.pane.at + step;
-    const folder = shown.pane.history.at(at);
-    return at < 0 || folder === undefined
-      ? Promise.resolve()
-      : this.list(page, shown.tab, shown.side, folder, { at });
-  }
-
-  async goToBookmark(
-    page: Page,
-    { tab, side, folder }: Extract<CommanderToHost, { type: 'goToBookmark' }>,
-  ): Promise<void> {
-    const shown = this.sides.shownPane(page, tab, side);
-    const bookmarked = shownBookmarks(
-      this.access.settings().bookmarks,
-      this.bookmarkSystem,
-    ).find((bookmark) => bookmark === folder);
-    if (shown !== undefined && bookmarked !== undefined) {
-      await this.list(page, shown.tab, shown.side, bookmarked, 'visit');
-    }
-  }
-
-  async goTo(
-    page: Page,
-    { tab, side, folder, to }: Extract<CommanderToHost, { type: 'goTo' }>,
-  ): Promise<void> {
-    const shown = this.sides.namingPane(page, tab, side, folder);
-    const { home, variable, knownFolder } = this.access;
-    const target =
-      shown === undefined || typeof to !== 'string'
-        ? undefined
-        : await typedPath(to, shown.pane.folder, {
-            ...this.bookmarkSystem,
-            home,
-            variable: variable ?? (() => undefined),
-            knownFolder,
-          });
-    if (shown === undefined || target === undefined) {
-      return;
-    }
-    if (await isFile(target)) {
-      await this.list(
-        page,
-        shown.tab,
-        shown.side,
-        path.dirname(target),
-        'visit',
-        undefined,
-        path.basename(target),
-      );
-      return;
-    }
-    await this.list(page, shown.tab, shown.side, target, 'visit');
-  }
-
-  async drive(
-    page: Page,
-    tab: unknown,
-    side: unknown,
-    drive: unknown,
-  ): Promise<void> {
-    const shown = this.sides.shownPane(page, tab, side);
-    if (shown === undefined) {
-      return;
-    }
-    const drives = await (await this.host.files()).drives();
-    const chosen = drives.find((each) => each === drive);
-    if (chosen !== undefined) {
-      await this.list(page, shown.tab, shown.side, chosen, 'visit');
     }
   }
 }

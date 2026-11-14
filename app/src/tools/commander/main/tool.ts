@@ -45,6 +45,8 @@ import { isFolder } from './fileStats';
 import { FileCommands } from './fileCommands';
 import { ArchiveListing } from './archiveListing';
 import { Listings } from './listings';
+import { Navigation } from './navigation';
+import { SideRepositories } from './sideRepositories';
 import { Elevation } from './elevation';
 
 export class CommanderTool implements Tool<'commander'> {
@@ -68,6 +70,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly savedSides: SavedSides;
   private readonly editing: Editing;
   private readonly listings: Listings;
+  private readonly navigation: Navigation;
   private readonly elevation: Elevation;
 
   constructor(private readonly access: CommanderAccess) {
@@ -228,6 +231,7 @@ export class CommanderTool implements Tool<'commander'> {
         scans: this.scans,
         copies: this.copies,
         savedSides: this.savedSides,
+        repositories: new SideRepositories(access, this.sides),
       },
       {
         shell: () => this.shell,
@@ -236,6 +240,11 @@ export class CommanderTool implements Tool<'commander'> {
         saveQuietly: (saving) => this.saveQuietly(saving),
       },
     );
+    this.navigation = new Navigation(access, this.sides, {
+      list: (page, tab, side, folder, how, fallback, selecting) =>
+        this.listings.list(page, tab, side, folder, how, fallback, selecting),
+      files: () => this.files(),
+    });
     this.elevation = new Elevation(access, this.sides, this.listings, {
       shell: () => this.shell,
     });
@@ -383,7 +392,7 @@ export class CommanderTool implements Tool<'commander'> {
           message.name,
         );
       case 'drive':
-        return this.listings.drive(
+        return this.navigation.drive(
           page,
           message.tab,
           message.side,
@@ -392,7 +401,7 @@ export class CommanderTool implements Tool<'commander'> {
       case 'listDrives':
         return this.postDrives(page);
       case 'step':
-        return this.listings.step(
+        return this.navigation.step(
           page,
           message.tab,
           message.side,
@@ -588,9 +597,9 @@ export class CommanderTool implements Tool<'commander'> {
           : undefined;
       }
       case 'goToBookmark':
-        return this.listings.goToBookmark(page, message);
+        return this.navigation.goToBookmark(page, message);
       case 'goTo':
-        return this.listings.goTo(page, message);
+        return this.navigation.goTo(page, message);
       case 'duplicates':
         this.scans.turnDuplicates(page, message);
         return undefined;
