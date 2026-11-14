@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { tools } from '../shell/shared/tools';
 import { defaultSettings } from './helpers/fixtures';
+import { programsOfSuffixes } from './helpers/programs';
 
 const source = path.join(__dirname, '..');
 const appFolder = path.join(source, '..');
@@ -89,6 +90,103 @@ function doorsOf(tool: string): boolean[] {
 }
 
 const registries = ['shell/shared/tools.ts', 'shell/page/tools.tsx'];
+
+function exportsOtherThanComponents(file: string): number {
+  const text = read(file);
+  return [
+    ...text.matchAll(
+      /^export (?:async )?(function|const|let|class|enum) ([A-Za-z_$][\w$]*)/gm,
+    ),
+  ].filter(
+    ([, kind, name = '']) =>
+      !/^[A-Z]/.test(name) ||
+      (kind === 'class' &&
+        !new RegExp(
+          `class ${name}\\b[^{]*\\bextends (?:React\\.)?(?:Pure)?Component\\b`,
+        ).test(text)),
+  ).length;
+}
+
+function countedOver(
+  files: readonly string[],
+  count: (file: string) => number,
+): Record<string, number> {
+  return Object.fromEntries(
+    files
+      .map((file) => [file, count(file)] as const)
+      .filter(([, counted]) => counted > 0),
+  );
+}
+
+const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
+  'lib/page/blanks.tsx': 4,
+  'lib/page/contextMenu.tsx': 9,
+  'lib/page/images.tsx': 4,
+  'lib/page/languageChoice.tsx': 4,
+  'lib/page/menu.tsx': 1,
+  'lib/page/virtualRows.tsx': 8,
+  'shell/page/aboutPopup.tsx': 1,
+  'shell/page/App.tsx': 3,
+  'shell/page/appMenu.tsx': 1,
+  'shell/page/notices.tsx': 2,
+  'shell/page/shortcutsPopup.tsx': 5,
+  'shell/page/tabBar.tsx': 10,
+  'shell/page/titleBar.tsx': 3,
+  'shell/page/tools.tsx': 1,
+  'tools/commander/page/columnHeader.tsx': 1,
+  'tools/commander/page/fileMenu.tsx': 2,
+  'tools/commander/page/findMarks.tsx': 4,
+  'tools/commander/page/markdownView.tsx': 3,
+  'tools/commander/page/paneCells.tsx': 5,
+  'tools/commander/page/paneFilter.tsx': 1,
+  'tools/commander/page/paneHeader.tsx': 2,
+  'tools/commander/page/pathTitle.tsx': 1,
+  'tools/commander/page/scrollBody.tsx': 2,
+  'tools/commander/page/textBody.tsx': 5,
+  'tools/commander/page/thumbnails.tsx': 5,
+  'tools/commander/page/tool.tsx': 2,
+  'tools/git/page/bubbles.tsx': 1,
+  'tools/git/page/changesTree.tsx': 15,
+  'tools/git/page/clonePopup.tsx': 1,
+  'tools/git/page/codeMarks.tsx': 8,
+  'tools/git/page/commitList.tsx': 6,
+  'tools/git/page/diffColumn.tsx': 4,
+  'tools/git/page/diffRowParts.tsx': 2,
+  'tools/git/page/diffView.tsx': 1,
+  'tools/git/page/filesColumn.tsx': 5,
+  'tools/git/page/graph.tsx': 2,
+  'tools/git/page/imagePreview.tsx': 1,
+  'tools/git/page/locations.tsx': 4,
+  'tools/git/page/locationsSearch.tsx': 13,
+  'tools/git/page/locationTree.tsx': 8,
+  'tools/git/page/messagePeek.tsx': 4,
+  'tools/git/page/minimap.tsx': 5,
+  'tools/git/page/navBar.tsx': 4,
+  'tools/git/page/skeleton.tsx': 1,
+  'tools/git/page/textProbes.tsx': 12,
+  'tools/git/page/tree.tsx': 3,
+  'tools/git/page/worktreeBar.tsx': 1,
+  'tools/git/page/wrapMarks.tsx': 1,
+};
+
+const importsLeftOfComponentFiles: Readonly<Record<string, number>> = {
+  'lib/page/dialogButtons.ts': 1,
+  'shell/page/store.ts': 2,
+  'tools/commander/page/bookmarks.ts': 1,
+  'tools/commander/page/driveMenu.ts': 1,
+  'tools/commander/page/editorEncodings.ts': 1,
+  'tools/commander/page/editorSources.ts': 1,
+  'tools/commander/page/editorText.ts': 1,
+  'tools/commander/page/encodings.ts': 1,
+  'tools/commander/page/pdfPreview.ts': 1,
+  'tools/commander/page/screenRows.ts': 1,
+  'tools/git/page/fileStatus.ts': 1,
+  'tools/git/page/receivedMessages.ts': 1,
+  'tools/git/page/repositoryMenu.ts': 1,
+  'tools/git/page/rowMeasures.ts': 1,
+  'tools/git/page/store.ts': 4,
+  'tools/terminal/page/folderMenu.ts': 1,
+};
 
 suite('Architecture', () => {
   test('keeps each source file in the folder of its part, the library, the shell or a tool, by where it runs, or in boot', () => {
@@ -322,6 +420,78 @@ suite('Architecture', () => {
             : !['src', 'scripts'].includes(top) || !mirrored(folder, appFolder);
       }),
       [],
+    );
+  });
+
+  test('names each test file <name>.test.ts, or <name>.<suffix>.test.ts by a suffix the setup knows the real program of, so a misspelt suffix lands in no project unnoticed', () => {
+    const named = new RegExp(
+      `^[^.]+(?:\\.(?:${Object.keys(programsOfSuffixes).join('|')}))?\\.test\\.tsx?$`,
+    );
+    assert.deepStrictEqual(
+      testFiles.filter(
+        (file) =>
+          /\.test\.tsx?$/.test(file) && !named.test(path.posix.basename(file)),
+      ),
+      [],
+    );
+  });
+
+  test('gives each suffix of the tests a project of its own in vitest.config.mts, and names each in AGENTS.md', () => {
+    const suffixes = Object.keys(programsOfSuffixes).toSorted();
+    const config = fs.readFileSync(
+      path.join(appFolder, 'vitest.config.mts'),
+      'utf8',
+    );
+    const agents = fs.readFileSync(
+      path.join(appFolder, '..', 'AGENTS.md'),
+      'utf8',
+    );
+    assert.deepStrictEqual(
+      [
+        ...new Set(
+          [...config.matchAll(/\*\.([^.'/]+)\.test\.ts'/g)].map(
+            ([, suffix]) => suffix,
+          ),
+        ),
+      ].toSorted(),
+      suffixes,
+    );
+    assert.deepStrictEqual(
+      suffixes.filter((suffix) => !agents.includes(`\`.${suffix}\``)),
+      [],
+    );
+  });
+
+  test('writes a .tsx only for what renders, each holding JSX', () => {
+    assert.deepStrictEqual(
+      sourceFiles.filter(
+        (file) =>
+          file.endsWith('.tsx') && !/<\/[A-Za-z]|\/>|<>/.test(read(file)),
+      ),
+      [],
+    );
+  });
+
+  test('exports from a .tsx only its components and the types of their props, keeping functions, constants, hooks and other classes in a .ts, where they are tested without React, and a helper only its component uses beside it unexported; the files listed have yet to move theirs, each count lowered as it falls', () => {
+    assert.deepStrictEqual(
+      countedOver(
+        sourceFiles.filter((file) => file.endsWith('.tsx')),
+        exportsOtherThanComponents,
+      ),
+      exportsLeftInComponentFiles,
+    );
+  });
+
+  test('lets a .ts import nothing from a .tsx, its types included, so the logic of the page never depends on a component; the files listed have yet to, each count lowered as it falls', () => {
+    assert.deepStrictEqual(
+      countedOver(
+        sourceFiles.filter((file) => file.endsWith('.ts')),
+        (file) =>
+          importsOf(file)
+            .flatMap(sourceFilesOf)
+            .filter((target) => target.endsWith('.tsx')).length,
+      ),
+      importsLeftOfComponentFiles,
     );
   });
 

@@ -26,7 +26,6 @@ export default defineConfig({
           name: 'unit',
           include: ['src/test/**/*.test.{ts,tsx}'],
           exclude: [git, electron, shells, sevenZip, perf, packaging],
-          setupFiles: ['src/test/helpers/unitSetup.ts'],
         },
       },
       {
