@@ -10,12 +10,12 @@ import {
   groupsInView,
   steppedEntry,
   steppedGroup,
-} from '../../../../shell/page/shortcutsPopup';
+} from '../../../../shell/page/shortcutsList';
 import {
   ShortcutsList,
   ShortcutsPopup,
 } from '../../../../shell/page/shortcutsPopup';
-import { shortcutEntries } from '../../../../shell/page/tools';
+import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { renderedBy, tagsWith } from '../../../helpers/fixtures';
 import {
   shortcutsStore,

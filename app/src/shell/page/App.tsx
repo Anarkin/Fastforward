@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react';
 import { shellKeymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { strings } from '../../lib/shared/strings';
-import { tools, type ToolId } from '../shared/tools';
+import { type ToolId } from '../shared/tools';
 import { AboutPopup } from './aboutPopup';
 import { ConfirmPopup } from './confirmPopup';
 import { AppMenu } from './appMenu';
-import { type ContextMenuItem } from '../../lib/page/menuControls';
 import { ContextMenu } from '../../lib/page/contextMenu';
-import { ToolIcon } from '../../lib/page/icons';
 import { Notices } from './notices';
 import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../lib/page/shortcuts';
@@ -25,24 +23,10 @@ import { newTabTrigger } from './tabStrip';
 import { TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './windowTitle';
 import { ToolViews } from './tools';
-import { confirmation } from './appItems';
+import { confirmation, newTabItems } from './appItems';
 
-export function emptyState(noTab: boolean): React.ReactNode {
+export function EmptyStateView({ noTab }: { readonly noTab: boolean }) {
   return noTab ? <div className="empty-state">{strings.app.noTab}</div> : null;
-}
-
-export function newTabItems(
-  items: Partial<Record<ToolId, readonly ContextMenuItem[]>>,
-  onNewTab: (tool: ToolId) => void,
-): ContextMenuItem[] {
-  return tools.map((tool) => {
-    const label = strings.tools[tool];
-    const icon = <ToolIcon tool={tool} />;
-    const submenu = items[tool];
-    return submenu === undefined
-      ? { label, icon, onClick: () => onNewTab(tool) }
-      : { label, icon, submenu };
-  });
 }
 
 function ShellConfirm({
@@ -143,7 +127,7 @@ function Popups() {
 
 function EmptyState() {
   const noTab = useShell((state) => state.tabs?.length === 0);
-  return emptyState(noTab);
+  return <EmptyStateView noTab={noTab} />;
 }
 
 function NoticeKey() {

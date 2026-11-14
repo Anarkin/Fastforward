@@ -9,7 +9,7 @@ import {
   viewerKeymap,
 } from '../../../../tools/commander/page/keymap';
 import { terminalKeymap } from '../../../../tools/terminal/page/keymap';
-import { shortcutEntries } from '../../../../shell/page/tools';
+import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { entry, contents } from './shortcutsFixtures';
 
 suite('Shortcuts popup', () => {

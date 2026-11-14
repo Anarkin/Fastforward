@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { ChangesTreeItem } from '../../../../../tools/git/page/changesTree';
 import { JSDOM } from 'jsdom';
 import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -146,7 +147,21 @@ function listOf(column: React.ReactNode) {
   const { rows, renderRow, selectedKey, revealWith, onKeyDown } = list.props;
   return {
     keys: Array.from({ length: rows.count }, (_, index) => rows.keyOf(index)),
-    rows: Array.from({ length: rows.count }, (_, index) => renderRow(index)),
+    rows: Array.from(
+      { length: rows.count },
+      (_, index): React.ReactElement<RowProps> => {
+        const row = renderRow(index);
+        if (row.type !== ChangesTreeItem) {
+          return row;
+        }
+        assert.ok(
+          isValidElement<React.ComponentProps<typeof ChangesTreeItem>>(row),
+        );
+        const inner = ChangesTreeItem(row.props);
+        assert.ok(isValidElement<RowProps>(inner));
+        return inner;
+      },
+    ),
     selectedKey,
     revealWith,
     press: (key: string) =>

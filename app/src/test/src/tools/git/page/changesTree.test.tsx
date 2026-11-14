@@ -16,7 +16,7 @@ import {
   treeFolders,
   type ChangesTreeRow,
 } from '../../../../../tools/git/page/changesRows';
-import { changesTreeElement } from '../../../../../tools/git/page/changesTree';
+import { ChangesTreeItem } from '../../../../../tools/git/page/changesTree';
 import { listMoveOf } from '../../../../../lib/page/listMoves';
 import { keyPressed } from '../../../../../lib/page/shortcuts';
 import { fileRowKey } from '../../../../../tools/git/page/treeLayout';
@@ -414,9 +414,10 @@ suite('Files column keys', () => {
 const changesTreeElements = ({
   rows,
   ...options
-}: { rows: readonly ChangesTreeRow[] } & Parameters<
-  typeof changesTreeElement
->[1]) => rows.map((row) => changesTreeElement(row, options));
+}: { rows: readonly ChangesTreeRow[] } & Omit<
+  React.ComponentProps<typeof ChangesTreeItem>,
+  'row'
+>) => rows.map((row) => ChangesTreeItem({ row, ...options }));
 
 suite('Changes tree rows', () => {
   test('draws folders and files, marking the selected file', () => {

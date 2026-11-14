@@ -8,7 +8,7 @@ import type {
 } from '../../tools/git/shared/protocol';
 import { emptyTabView } from '../../tools/git/page/tabView';
 import type { ColumnName } from '../../tools/git/page/activeColumn';
-import { changesTreeElement } from '../../tools/git/page/changesTree';
+import { ChangesTreeItem } from '../../tools/git/page/changesTree';
 import { Column } from '../../tools/git/page/column';
 import { CommitRow, WorkingTreeRow } from '../../tools/git/page/commitList';
 import { ContextMenu } from '../../lib/page/contextMenu';
@@ -247,23 +247,23 @@ export function fileRow(
 
 export function folderRow(): MarkupElement {
   return rendered(
-    changesTreeElement(
-      {
+    <ChangesTreeItem
+      row={{
         kind: 'folder',
         name: 'src',
         path: 'src',
         depth: 0,
         open: true,
         changed: true,
-      },
-      {
+      }}
+      {...{
         showsAll: false,
         onToggle: noop,
         selected: undefined,
         onSelect: noop,
         cursor: undefined,
-      },
-    ),
+      }}
+    />,
   );
 }
 

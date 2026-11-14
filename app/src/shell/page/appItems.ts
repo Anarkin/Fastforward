@@ -1,4 +1,6 @@
+import type { ContextMenuItem } from '../../lib/page/menuControls';
 import { strings, type Line } from '../../lib/shared/strings';
+import { tools, type ToolId } from '../shared/tools';
 import { type Confirming } from './store';
 
 export function confirmation(confirming: Confirming): {
@@ -61,4 +63,18 @@ export function confirmation(confirming: Confirming): {
     default:
       return confirming satisfies never;
   }
+}
+
+export function newTabItems(
+  items: Partial<Record<ToolId, readonly ContextMenuItem[]>>,
+  onNewTab: (tool: ToolId) => void,
+): ContextMenuItem[] {
+  return tools.map((tool) => {
+    const label = strings.tools[tool];
+    const icon = tool;
+    const submenu = items[tool];
+    return submenu === undefined
+      ? { label, icon, onClick: () => onNewTab(tool) }
+      : { label, icon, submenu };
+  });
 }

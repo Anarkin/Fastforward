@@ -4,12 +4,14 @@ import type { Sentence } from '../shared/strings';
 import { overlayScrollbarClass } from './overlayScrollbars';
 import { isKeyPress, keyPressed } from './shortcuts';
 
+export type MenuIcon = 'sevenZip' | 'image' | 'terminal' | 'commander' | 'git';
+
 export type ContextMenuItem =
   | {
       readonly label: string;
       readonly sentence?: Sentence;
       readonly name?: boolean;
-      readonly icon?: React.ReactNode;
+      readonly icon?: MenuIcon;
       readonly title?: string;
       readonly onClick?: () => void;
       readonly submenu?: readonly ContextMenuItem[];

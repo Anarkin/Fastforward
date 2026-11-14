@@ -1,7 +1,6 @@
 import { imageType, vectorType } from '../../../lib/shared/images';
 import { strings } from '../../../lib/shared/strings';
 import type { ContextMenuItem } from '../../../lib/page/menuControls';
-import { ImageIcon, SevenZipIcon, ToolIcon } from '../../../lib/page/icons';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
 import { pointedKeys, type Row } from './listing';
 import type { Copied } from './naming';
@@ -77,7 +76,7 @@ function ownItems(
 ): ContextMenuItem[] {
   const enterArchive = (name: string): ContextMenuItem => ({
     label: strings.commander.openWithSevenZip,
-    icon: <SevenZipIcon />,
+    icon: 'sevenZip',
     onClick: () => onEnterArchive(name),
   });
   if (inArchive) {
@@ -85,32 +84,31 @@ function ownItems(
   }
   switch (target.kind) {
     case 'folder': {
-      const git = <ToolIcon tool="git" />;
       const run = (command: FolderCommand) => () =>
         onFolder(command, target.name);
       return [
         {
           label: strings.commander.newTerminalHere,
-          icon: <ToolIcon tool="terminal" />,
+          icon: 'terminal',
           onClick: run('newTerminal'),
         },
         ...(target.inRepository
           ? [
               {
                 label: strings.commander.openInGit,
-                icon: git,
+                icon: 'git' as const,
                 onClick: run('openInGit'),
               },
             ]
           : [
               {
                 label: strings.commander.cloneHere,
-                icon: git,
+                icon: 'git' as const,
                 onClick: run('cloneHere'),
               },
               {
                 label: strings.commander.initHere,
-                icon: git,
+                icon: 'git' as const,
                 onClick: run('initHere'),
               },
             ]),
@@ -119,7 +117,7 @@ function ownItems(
     case 'file':
       return [
         ...(target.image
-          ? [{ label: strings.commander.editImage, icon: <ImageIcon /> }]
+          ? [{ label: strings.commander.editImage, icon: 'image' as const }]
           : []),
         enterArchive(target.name),
       ];

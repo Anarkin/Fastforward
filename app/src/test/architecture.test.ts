@@ -89,7 +89,11 @@ function doorsOf(tool: string): boolean[] {
   ];
 }
 
-const registries = ['shell/shared/tools.ts', 'shell/page/tools.tsx'];
+const registries = [
+  'shell/shared/tools.ts',
+  'shell/page/tools.tsx',
+  'shell/page/toolShortcuts.ts',
+];
 
 function exportsOtherThanComponents(file: string): number {
   const text = read(file);
@@ -120,11 +124,6 @@ function countedOver(
 
 const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'lib/page/blanks.tsx': 4,
-  'shell/page/App.tsx': 2,
-  'shell/page/shortcutsPopup.tsx': 5,
-  'shell/page/tools.tsx': 1,
-  'tools/commander/page/fileMenu.tsx': 2,
-  'tools/git/page/changesTree.tsx': 1,
   'tools/git/page/codeMarks.tsx': 1,
 };
 

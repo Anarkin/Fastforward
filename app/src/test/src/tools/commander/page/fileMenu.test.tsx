@@ -1,10 +1,8 @@
 import * as assert from 'node:assert';
-import { isValidElement } from 'react';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { tools, type ToolId } from '../../../../../shell/shared/tools';
 import type { ContextMenuItem } from '../../../../../lib/page/menuControls';
-import { ToolIcon } from '../../../../../lib/page/icons';
 import {
   fileMenuItems,
   menuTargetOf,
@@ -74,13 +72,12 @@ const menuInArchive = (target: MenuTarget) => menuOf(target, false, true);
 const labels = (items: readonly ContextMenuItem[]) =>
   items.map((item) => ('separator' in item ? '-' : item.label));
 
+const isTool = (icon: string | undefined): icon is ToolId =>
+  tools.some((tool) => tool === icon);
+
 const toolsOf = (items: readonly ContextMenuItem[]): ToolId[] =>
   items.flatMap((item) =>
-    'separator' in item ||
-    !isValidElement<{ tool: ToolId }>(item.icon) ||
-    item.icon.type !== ToolIcon
-      ? []
-      : [item.icon.props.tool],
+    'separator' in item || !isTool(item.icon) ? [] : [item.icon],
   );
 
 const folderShown = (inRepository: boolean): MenuTarget => ({

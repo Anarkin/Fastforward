@@ -15,7 +15,7 @@ import {
   treeFolders,
   treeRowOf,
 } from './changesRows';
-import { changesTreeElement } from './changesTree';
+import { ChangesTreeItem } from './changesTree';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { Column } from './column';
 import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
@@ -437,9 +437,11 @@ export function Files() {
         renderRow={(index) => {
           const row = rows[index];
           const treeRow = treeRowOf(row);
-          return treeRow
-            ? changesTreeElement(treeRow, rowOptions(row.area))
-            : header(row.area);
+          return treeRow ? (
+            <ChangesTreeItem row={treeRow} {...rowOptions(row.area)} />
+          ) : (
+            header(row.area)
+          );
         }}
         ancestorsOf={(index) => filesAncestors(rows, index)}
         treeItemOf={(index) => filesTreeItem(rows, index)}

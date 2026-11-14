@@ -3,7 +3,6 @@ import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { ContextMenu } from '../../../../lib/page/contextMenu';
-import { ToolIcon } from '../../../../lib/page/icons';
 import { MenuButton } from '../../../../lib/page/menu';
 import { Name } from '../../../../lib/page/name';
 import { ConfirmPopup } from '../../../../shell/page/confirmPopup';
@@ -98,7 +97,7 @@ suite('Style', () => {
           items: [
             {
               label: 'New',
-              icon: createElement(ToolIcon, { tool: 'terminal' }),
+              icon: 'terminal',
               onClick: noop,
             },
             { label: 'Group by Color', checked: true, onClick: noop },

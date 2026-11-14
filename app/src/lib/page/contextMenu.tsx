@@ -1,5 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { CloseIcon, SubmenuIcon } from './icons';
+import {
+  CloseIcon,
+  ImageIcon,
+  SevenZipIcon,
+  SubmenuIcon,
+  ToolIcon,
+} from './icons';
 import { Name, Words } from './name';
 import { keymap } from '../shared/keymap';
 import { strings } from '../shared/strings';
@@ -12,8 +18,24 @@ import {
   useDismiss,
   useMenuFocus,
   type ContextMenuItem,
+  type MenuIcon,
   type OpenMenu,
 } from './menuControls';
+
+function MenuIconOf({ icon }: { icon: MenuIcon }) {
+  switch (icon) {
+    case 'sevenZip':
+      return <SevenZipIcon />;
+    case 'image':
+      return <ImageIcon />;
+    case 'terminal':
+    case 'commander':
+    case 'git':
+      return <ToolIcon tool={icon} />;
+    default:
+      return icon satisfies never;
+  }
+}
 
 export function ContextMenu({
   menu,
@@ -140,7 +162,15 @@ export function MenuItems({
               }}
             >
               <span className="menu-check">
-                {item.icon ?? (item.checked ? strings.symbols.checked : '')}
+                {item.icon === undefined ? (
+                  item.checked ? (
+                    strings.symbols.checked
+                  ) : (
+                    ''
+                  )
+                ) : (
+                  <MenuIconOf icon={item.icon} />
+                )}
               </span>
               {keyed && (
                 <span className="menu-access-key" aria-hidden="true">

@@ -7,7 +7,8 @@ import { strings } from '../../../../lib/shared/strings';
 import type { ToHost, ToWebview } from '../../../../shell/shared/protocol';
 import type { ToolId } from '../../../../shell/shared/tools';
 import { confirmation } from '../../../../shell/page/appItems';
-import { App, emptyState, newTabItems } from '../../../../shell/page/App';
+import { App, EmptyStateView } from '../../../../shell/page/App';
+import { newTabItems } from '../../../../shell/page/appItems';
 import { menuIn, nextMenu, withPopup } from '../../../../shell/page/store';
 import { noop, tagsWith } from '../../../helpers/fixtures';
 
@@ -18,9 +19,12 @@ suite('Window', () => {
     );
     assert.strictEqual(tagsWith(html, 'tabs').length, 1);
     assert.doesNotMatch(html, /No tab is open/);
-    assert.strictEqual(emptyState(false), null);
     assert.strictEqual(
-      renderToStaticMarkup(<>{emptyState(true)}</>),
+      renderToStaticMarkup(<EmptyStateView noTab={false} />),
+      '',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(<EmptyStateView noTab />),
       '<div class="empty-state">No tab is open. Use + to open one, or click the Fastforward icon at the top left for the menu.</div>',
     );
   });
