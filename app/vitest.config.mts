@@ -6,15 +6,8 @@ const electron = 'src/test/**/*.electron.test.ts';
 const shells = 'src/test/**/*.shells.test.ts';
 const sevenZip = 'src/test/**/*.7zip.test.ts';
 const perf = 'src/test/**/*.perf.test.ts';
-const playgrounds = [
-  'src/test/scripts/playground/git.git.test.ts',
-  'src/test/scripts/playground/files.git.test.ts',
-];
-const packaging = [
-  'src/test/build/build.test.ts',
-  'src/test/build/ffScripts.test.ts',
-  'src/test/build/installer.test.ts',
-];
+const playgrounds = 'src/test/scripts/playground/*.git.test.ts';
+const packaging = 'src/test/build/*.test.ts';
 
 export default defineConfig({
   test: {
@@ -32,7 +25,8 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['src/test/**/*.test.{ts,tsx}'],
-          exclude: [git, electron, shells, sevenZip, perf, ...packaging],
+          exclude: [git, electron, shells, sevenZip, perf, packaging],
+          setupFiles: ['src/test/helpers/unitSetup.ts'],
         },
       },
       {
@@ -55,7 +49,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'packaging',
-          include: packaging,
+          include: [packaging],
         },
       },
       {
@@ -63,7 +57,7 @@ export default defineConfig({
         test: {
           name: 'git',
           include: [git],
-          exclude: playgrounds,
+          exclude: [playgrounds],
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },
@@ -72,7 +66,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'playground',
-          include: playgrounds,
+          include: [playgrounds],
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },
