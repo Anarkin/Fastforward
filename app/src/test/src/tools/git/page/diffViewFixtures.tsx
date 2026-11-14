@@ -12,3 +12,12 @@ export function patch(path: string, added: number): string {
 
 export const kinds = (rows: ReturnType<typeof diffRows>) =>
   rows.map((row) => row.kind);
+
+export function sized(...sizes: number[]) {
+  let start = 0;
+  return sizes.map((size) => {
+    const row = { start, size };
+    start += size;
+    return row;
+  });
+}
