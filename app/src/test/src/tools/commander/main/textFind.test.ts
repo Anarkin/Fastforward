@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { findInFile } from '../../../../../tools/commander/main/textFind';
-import type { ReadBytes } from '../../../../../tools/commander/main/textRows';
+import type { ReadBytes } from '../../../../../tools/commander/main/fileBlocks';
 
 function inMemory(bytes: Buffer): { read: ReadBytes; size: number } {
   return {

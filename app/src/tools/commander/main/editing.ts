@@ -15,7 +15,12 @@ import { NoRoomToSave, ReadOnlyFile, type Saved } from './fileSaving';
 import { reasonOf } from './reasons';
 import type { TextDefaults } from './textDefaults';
 import { decodedText } from './textCodec';
-import { byteOrderMarkOf, isUtf8, looksBinary, utf16Order } from './textRows';
+import {
+  byteOrderMarkOf,
+  isUtf8,
+  looksBinary,
+  utf16Order,
+} from './encodingDetection';
 
 const maxEditedBytes = 50 * 1024 * 1024;
 

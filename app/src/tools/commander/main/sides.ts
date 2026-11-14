@@ -8,7 +8,7 @@ import {
 } from '../shared/protocol';
 import type { FlatTree } from './flatTree';
 import type { Duplicates } from './duplicates';
-import type { BlockCache } from './textRows';
+import type { BlockCache } from './fileBlocks';
 import type { FolderSizes, FolderSize } from './folderSizes';
 
 export interface Duplicating {

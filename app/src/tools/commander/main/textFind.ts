@@ -1,5 +1,6 @@
 import type { TextEncoding } from '../shared/protocol';
-import { codingOf, type ReadBytes } from './textRows';
+import { codingOf } from './textCodings';
+import type { ReadBytes } from './fileBlocks';
 import {
   maxMatches,
   matchesIn,

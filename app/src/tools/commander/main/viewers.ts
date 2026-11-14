@@ -12,20 +12,16 @@ import {
 } from '../shared/protocol';
 import type { WatchFolder } from './watch';
 import { fileVersion } from '../shared/files';
+import { readBudgetBytes, rowsBefore, rowsFrom, rowStartAt } from './textRows';
+import { codingOf } from './textCodings';
 import {
-  blockCache,
   byteOrderMarkOf,
-  codingOf,
   firstBytes,
   isUtf8,
   looksBinary,
   utf16Order,
-  readingFile,
-  readBudgetBytes,
-  rowsBefore,
-  rowsFrom,
-  rowStartAt,
-} from './textRows';
+} from './encodingDetection';
+import { blockCache, readingFile } from './fileBlocks';
 import { findInFile } from './textFind';
 import {
   isPdf,

@@ -22,7 +22,7 @@ import {
 } from './bookmarks';
 import { heldBox } from '../shared/thumbnails';
 import { fileVersion } from '../shared/files';
-import { firstBytes } from './textRows';
+import { firstBytes } from './encodingDetection';
 import { Editing } from './editing';
 import { saveFile } from './fileSaving';
 import { Icons } from './icons';
