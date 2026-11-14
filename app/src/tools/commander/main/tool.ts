@@ -54,6 +54,7 @@ import { SideScans } from './sideScans';
 import { Serving } from './serving';
 import { ArchiveCopies } from './archiveCopies';
 import { TransferCommands } from './transferCommands';
+import { PackCommands } from './packCommands';
 import type { CommanderAccess } from './commanderAccess';
 import { isFolder, isFile } from './fileStats';
 import { FileCommands } from './fileCommands';
@@ -111,6 +112,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly serving: Serving;
   private readonly copies: ArchiveCopies;
   private readonly transferCommands: TransferCommands;
+  private readonly packCommands: PackCommands;
   private readonly fileCommands: FileCommands;
   private readonly archiveListing: ArchiveListing;
   private fileSystem: Promise<LocalFileSystem> | undefined;
@@ -232,6 +234,16 @@ export class CommanderTool implements Tool<'commander'> {
         refuse: (page, message) => this.refuse(page, message),
         list: (page, tab, side, folder, how, fallback, selecting) =>
           this.list(page, tab, side, folder, how, fallback, selecting),
+      },
+    );
+    this.packCommands = new PackCommands(
+      access,
+      this.sides,
+      this.copies,
+      this.transfers,
+      {
+        shell: () => this.shell,
+        refuse: (page, message) => this.refuse(page, message),
       },
     );
     this.fileCommands = new FileCommands(
@@ -425,9 +437,9 @@ export class CommanderTool implements Tool<'commander'> {
       case 'rename':
         return this.fileCommands.rename(page, message);
       case 'pack':
-        return this.transferCommands.pack(page, message);
+        return this.packCommands.pack(page, message);
       case 'testArchives':
-        this.transferCommands.testArchives(page, message);
+        this.packCommands.testArchives(page, message);
         return undefined;
       case 'copyToClipboard':
         return this.fileCommands.copyToClipboard(page, message);

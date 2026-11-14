@@ -203,7 +203,6 @@
     {
       "files": [
         "src/lib/page/overlayScrollbars.ts",
-        "src/tools/commander/main/transferCommands.ts",
         "src/tools/git/page/store.ts"
       ],
       "rules": {
