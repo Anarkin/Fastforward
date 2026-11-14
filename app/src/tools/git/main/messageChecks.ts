@@ -9,7 +9,6 @@ import {
 } from '../shared/protocol';
 import { isColumnWidths } from '../shared/settings';
 import { isBookmark } from './storage';
-import { hiddenSides, type TabState } from './tabState';
 
 const maxBookmarks = 1000;
 
@@ -18,42 +17,6 @@ const maxBookmarkName = 4096;
 const maxCommitsAsked = commitPagesAsked * commitPageSize;
 
 const maxTextsAsked = 10_000;
-
-export function needsNoWholeHistory(
-  tab: TabState,
-  message: TabMessage,
-): boolean {
-  switch (message.type) {
-    case 'loadCommits':
-    case 'viewFile':
-    case 'fetch':
-    case 'pull':
-    case 'push':
-    case 'pushTag':
-    case 'pullBranch':
-    case 'pushBranch':
-    case 'prefetchDiff':
-    case 'prefetchTexts':
-      return true;
-    case 'checkout':
-      return (
-        message.target.kind !== 'commit' ||
-        tab.fullHistory.has(message.target.hash)
-      );
-    case 'selectCommit':
-      return (
-        message.hash === undefined ||
-        hiddenSides(tab, message.hash).length === 0
-      );
-    case 'selectFile':
-    case 'loadTree':
-    case 'loadTexts':
-    case 'loadFileDiff':
-      return hiddenSides(tab, message.hash).length === 0;
-    default:
-      return false;
-  }
-}
 
 function isPathAsked(value: unknown): value is string {
   return (
