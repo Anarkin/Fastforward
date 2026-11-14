@@ -23,9 +23,8 @@ import {
   layer,
   hovered,
   focused,
-  overlayScrollbar,
-  popupOf,
 } from './stylesheetFixtures';
+import { overlayScrollbar, popupOf } from '../../../helpers/styleMarkup';
 
 suite('Style', () => {
   test('starts the labels of every menu alike, leaving the same room before each for an icon, a check or nothing, as an item without an icon started further left than those with one', () => {

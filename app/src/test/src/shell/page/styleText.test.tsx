@@ -1,24 +1,46 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { tabSize } from '../../../../lib/page/tabStops';
-import { cascaded, rendered, withClass } from '../../../helpers/cascade';
+import {
+  cascaded,
+  rendered,
+  withClass,
+  type MarkupElement,
+} from '../../../helpers/cascade';
 import {
   DiffViewShown,
   HangingSpacesLine,
   IndentedLine,
 } from '../../../helpers/styleFixtures';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
-import {
-  cell,
-  spaceDots,
-  squareDots,
-  spaceDotSize,
-  spaceDotStart,
-  compact,
-  looks,
-  noop,
-} from './stylesheetFixtures';
+import { compact, looks, noop } from './stylesheetFixtures';
 import { TerminalTool } from '../../../../tools/terminal/page/tool';
+import { createElement } from 'react';
+
+function cell(row: MarkupElement, className: string): MarkupElement {
+  return withClass(
+    rendered(
+      createElement('span', { className }, '😀'),
+      withClass(row, 'code'),
+    ),
+    'cell',
+  );
+}
+
+const spaceDots =
+  'linear-gradient(to right, transparent var(--space-dot-start), var(--muted-foreground) var(--space-dot-start) calc(var(--space-dot-start) + var(--space-dot)), transparent 0)';
+
+const squareDots = {
+  'background-size': 'var(--text-advance) var(--space-dot)',
+  'background-position': '0 50%',
+  'background-repeat': 'repeat-x',
+};
+
+const spaceDotSize =
+  'max(var(--device-pixel, 1px), round(0.16em, var(--device-pixel, 1px)))';
+
+const spaceDotStart =
+  'round(down, (var(--text-advance) - var(--space-dot)) / 2, var(--device-pixel, 1px))';
 
 suite('Style', () => {
   test('makes a cell of the terminal as tall and as wide as a character of the diff, so code looks the same in both', () => {

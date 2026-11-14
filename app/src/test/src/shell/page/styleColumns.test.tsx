@@ -38,8 +38,13 @@ import {
   focused,
   after,
   halved,
-  columnVisibility,
 } from './stylesheetFixtures';
+
+function columnVisibility(columns: React.ReactElement) {
+  return allWithClass(rendered(columns), 'column').map((column) =>
+    cascaded(column, 'visibility'),
+  );
+}
 
 suite('Style', () => {
   test('highlights what a search matched in the search match colors', () => {

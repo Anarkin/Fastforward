@@ -25,17 +25,53 @@ import {
   looks,
   bodyVariable,
   lengthOf,
-  appIconSpacing,
   paddingOf,
   halved,
   layer,
   hovered,
   after,
-  tabStrip,
-  divider,
 } from './stylesheetFixtures';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { tabsStore } from '../../../helpers/componentFixtures';
+import { createElement } from 'react';
+
+function appIconSpacing(tabBar: React.ReactElement) {
+  const bar = rendered(tabBar);
+  const menu = withClass(bar, 'menu-button');
+  const button = withClass(menu, 'nav-button');
+  const icon = withClass(menu, 'title-bar-icon');
+  const iconWidth = lengthOf(cascaded(icon, 'width'));
+  const inside = (lengthOf(cascaded(button, 'width')) - iconWidth) / 2;
+  const leading = lengthOf(paddingOf(withClass(bar, 'tabs')).left) + inside;
+  const trailing =
+    inside +
+    lengthOf(cascaded(menu, 'margin-right')) +
+    lengthOf(cascaded(withClass(bar, 'tabs'), 'gap'));
+  return { leading, trailing, tabStart: leading + iconWidth + trailing };
+}
+
+function tabStrip(maximized: boolean, overflowing: boolean): MarkupElement {
+  return withClass(
+    rendered(
+      createElement(
+        'div',
+        maximized ? { 'data-maximized': '' } : {},
+        createElement(
+          'nav',
+          { className: 'tabs' },
+          createElement('div', {
+            className: overflowing ? 'tab-strip overflowing' : 'tab-strip',
+          }),
+        ),
+      ),
+    ),
+    'tab-strip',
+  );
+}
+
+function divider(tab: MarkupElement): MarkupElement {
+  return withClass(tab, 'tab-divider');
+}
 
 const shown = (tab: MarkupElement, states?: States) =>
   cascaded(divider(tab), 'visibility', states) !== 'hidden';

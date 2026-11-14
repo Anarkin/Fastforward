@@ -26,14 +26,17 @@ import {
   DiffFindShown,
   FileHeaderRow,
 } from '../../../helpers/styleFixtures';
-import { diffView, worktree } from '../../../helpers/styleMarkup';
+import {
+  diffView,
+  worktree,
+  overlayScrollbar,
+  popupOf,
+} from '../../../helpers/styleMarkup';
 import {
   activeEdge,
   looks,
   bodyVariable,
   hovered,
-  overlayScrollbar,
-  popupOf,
   noop,
   body,
   css,

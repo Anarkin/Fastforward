@@ -6,6 +6,7 @@ import {
   cascaded,
   rendered,
   withClass,
+  matchingRules,
 } from '../../../helpers/cascade';
 import {
   CommitColumn,
@@ -14,7 +15,13 @@ import {
   LocationsPopupShown,
 } from '../../../helpers/styleFixtures';
 import { columnTitle } from '../../../helpers/styleMarkup';
-import { looks, badgeRules, hovered } from './stylesheetFixtures';
+import { looks, hovered } from './stylesheetFixtures';
+
+function badgeRules(node: React.ReactNode): string[] {
+  return matchingRules(withClass(rendered(node), 'badge')).map(
+    (rule) => rule.selector,
+  );
+}
 
 suite('Style', () => {
   test("opens the search over the commit column's title without moving its field or back button", () => {

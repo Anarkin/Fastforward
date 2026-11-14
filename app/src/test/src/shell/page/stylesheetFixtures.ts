@@ -1,17 +1,14 @@
 import * as assert from 'node:assert';
 import { createElement } from 'react';
-import { overlayScrollbarClass } from '../../../../lib/page/overlayScrollbars';
 import {
-  allWithClass,
   cascaded,
-  matchingRules,
   rendered,
   withClass,
   type MarkupElement,
   type States,
 } from '../../../helpers/cascade';
 import { stylesheet } from '../../../helpers/fixtures';
-import { bubbles, columnTitle } from '../../../helpers/styleMarkup';
+import { columnTitle } from '../../../helpers/styleMarkup';
 
 export const css = stylesheet();
 
@@ -65,31 +62,6 @@ export function activeEdge(columns: React.ReactElement): string {
     /^round\((\d+px), var\(--device-pixel, 1px\)\)$/.exec(line)?.[1] ?? line
   );
 }
-
-export function cell(row: MarkupElement, className: string): MarkupElement {
-  return withClass(
-    rendered(
-      createElement('span', { className }, '😀'),
-      withClass(row, 'code'),
-    ),
-    'cell',
-  );
-}
-
-export const spaceDots =
-  'linear-gradient(to right, transparent var(--space-dot-start), var(--muted-foreground) var(--space-dot-start) calc(var(--space-dot-start) + var(--space-dot)), transparent 0)';
-
-export const squareDots = {
-  'background-size': 'var(--text-advance) var(--space-dot)',
-  'background-position': '0 50%',
-  'background-repeat': 'repeat-x',
-};
-
-export const spaceDotSize =
-  'max(var(--device-pixel, 1px), round(0.16em, var(--device-pixel, 1px)))';
-
-export const spaceDotStart =
-  'round(down, (var(--text-advance) - var(--space-dot)) / 2, var(--device-pixel, 1px))';
 
 export function pixels(value: string | undefined): number {
   const match = /^calc\((.*)\)$/.exec(value ?? '');
@@ -146,12 +118,6 @@ export function looksAlike(
 
 export const body = rendered(createElement('body'));
 
-export function checkBox(checked: boolean): MarkupElement {
-  return rendered(
-    createElement('input', { type: 'checkbox', checked, readOnly: true }),
-  );
-}
-
 export function bodyVariable(name: string): string | undefined {
   return cascaded(body, `--${name}`);
 }
@@ -196,21 +162,6 @@ export function lengthOf(value: string | undefined): number {
     .reduce((total, term) => total + term, 0);
 }
 
-export function appIconSpacing(tabBar: React.ReactElement) {
-  const bar = rendered(tabBar);
-  const menu = withClass(bar, 'menu-button');
-  const button = withClass(menu, 'nav-button');
-  const icon = withClass(menu, 'title-bar-icon');
-  const iconWidth = lengthOf(cascaded(icon, 'width'));
-  const inside = (lengthOf(cascaded(button, 'width')) - iconWidth) / 2;
-  const leading = lengthOf(paddingOf(withClass(bar, 'tabs')).left) + inside;
-  const trailing =
-    inside +
-    lengthOf(cascaded(menu, 'margin-right')) +
-    lengthOf(cascaded(withClass(bar, 'tabs'), 'gap'));
-  return { leading, trailing, tabStart: leading + iconWidth + trailing };
-}
-
 export function paddingOf(element: MarkupElement) {
   return sidesOf(element, 'padding');
 }
@@ -237,141 +188,9 @@ export const hovered = { hover: true } as const;
 export const focused = { focus: true } as const;
 export const after = { pseudoElement: '::after' };
 
-export function popupOf(popup: React.ReactElement): MarkupElement {
-  return withClass(rendered(popup), 'shortcuts-popup');
-}
-
-export function tabStrip(
-  maximized: boolean,
-  overflowing: boolean,
-): MarkupElement {
-  return withClass(
-    rendered(
-      createElement(
-        'div',
-        maximized ? { 'data-maximized': '' } : {},
-        createElement(
-          'nav',
-          { className: 'tabs' },
-          createElement('div', {
-            className: overflowing ? 'tab-strip overflowing' : 'tab-strip',
-          }),
-        ),
-      ),
-    ),
-    'tab-strip',
-  );
-}
-
-export function divider(tab: MarkupElement): MarkupElement {
-  return withClass(tab, 'tab-divider');
-}
-
-export function overlayScrollbar(classes = ''): MarkupElement {
-  return rendered(
-    createElement('div', {
-      className: `${overlayScrollbarClass} vertical ${classes}`,
-    }),
-  );
-}
-
-export function keyOf(element: MarkupElement): MarkupElement | undefined {
-  return element.tag === 'kbd'
-    ? element
-    : element.children.map(keyOf).find((key) => key !== undefined);
-}
-
-export function shownScrollbar(message?: string): MarkupElement {
-  return withClass(
-    rendered(
-      createElement(
-        'body',
-        null,
-        message !== undefined && createElement('div', { className: message }),
-        createElement('div', {
-          className: `${overlayScrollbarClass} vertical shown`,
-        }),
-      ),
-    ),
-    overlayScrollbarClass,
-  );
-}
-
-export function badgeRules(node: React.ReactNode): string[] {
-  return matchingRules(withClass(rendered(node), 'badge')).map(
-    (rule) => rule.selector,
-  );
-}
-
-export function columnVisibility(columns: React.ReactElement) {
-  return allWithClass(rendered(columns), 'column').map((column) =>
-    cascaded(column, 'visibility'),
-  );
-}
-
 export function unwrapped(value: string | undefined): string {
   return (value ?? '')
     .replaceAll(/\(\s+/g, '(')
     .replaceAll(/\s+\)/g, ')')
     .replaceAll(/\s+/g, ' ');
-}
-
-export const bubbleLook = ['color', 'background', 'box-shadow', 'border'];
-
-export function branchBubble(sources: React.ReactElement): MarkupElement {
-  const branch = bubbles(sources).find(
-    (bubble) =>
-      bubble.classes.includes('branch') &&
-      !bubble.classes.includes('checked-out'),
-  );
-  assert.ok(branch);
-  return branch;
-}
-
-export function widthCap(popup: MarkupElement): { cap: number; room: string } {
-  const width = /^min\(([\d.]+)px, (.+)\)$/.exec(
-    cascaded(popup, 'width') ?? '',
-  );
-  assert.ok(width);
-  return { cap: Number(width[1]), room: width[2] };
-}
-
-export function tagHoleReach(tag: MarkupElement): number {
-  const hole =
-    /^radial-gradient\(circle at calc\(100% - ([\d.]+)px\) 50%, transparent [\d.]+px, var\(--color-git-bubble\) ([\d.]+)px\)$/.exec(
-      unwrapped(cascaded(tag, 'background')),
-    );
-  assert.ok(hole);
-  return Number(hole[1]) + Number(hole[2]);
-}
-
-export function commanderIconDisplay(className: string): string | undefined {
-  const icon = rendered(
-    createElement(
-      'span',
-      { className: 'commander-icon' },
-      createElement('img', { className }),
-    ),
-  );
-  return cascaded(withClass(icon, 'system-icon'), 'display');
-}
-
-export function commanderRowColor(className: string): string | undefined {
-  return cascaded(
-    rendered(
-      createElement('div', { className: `row commander-row ${className}` }),
-    ),
-    'color',
-  );
-}
-
-export function pathColors(
-  pathTitle: React.ReactElement,
-): (string | undefined)[] {
-  const title = rendered(pathTitle);
-  return [
-    cascaded(title, 'color'),
-    ...allWithClass(title, 'path-part').map((part) => cascaded(part, 'color')),
-    cascaded(withClass(title, 'path-name'), 'color'),
-  ];
 }

@@ -9,6 +9,8 @@ import {
   withClass,
   type MarkupElement,
 } from './cascade';
+import { createElement } from 'react';
+import { overlayScrollbarClass } from '../../lib/page/overlayScrollbars';
 
 export const worktree = (name: string): WorktreeInfo => ({
   root: `/${name}`,
@@ -54,4 +56,22 @@ export function bubbles(sources: React.ReactElement): MarkupElement[] {
   return renderedApart(sources).flatMap((source) =>
     allWithClass(source, 'badge'),
   );
+}
+
+export function popupOf(popup: React.ReactElement): MarkupElement {
+  return withClass(rendered(popup), 'shortcuts-popup');
+}
+
+export function overlayScrollbar(classes = ''): MarkupElement {
+  return rendered(
+    createElement('div', {
+      className: `${overlayScrollbarClass} vertical ${classes}`,
+    }),
+  );
+}
+
+export function keyOf(element: MarkupElement): MarkupElement | undefined {
+  return element.tag === 'kbd'
+    ? element
+    : element.children.map(keyOf).find((key) => key !== undefined);
 }

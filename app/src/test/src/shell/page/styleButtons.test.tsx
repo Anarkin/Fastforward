@@ -23,7 +23,7 @@ import {
   TabBarIn,
   TabBarShown,
 } from '../../../helpers/styleFixtures';
-import { diffView } from '../../../helpers/styleMarkup';
+import { diffView, popupOf } from '../../../helpers/styleMarkup';
 import {
   noop,
   looks,
@@ -32,7 +32,6 @@ import {
   halved,
   deviceRounded,
   hovered,
-  popupOf,
 } from './stylesheetFixtures';
 import { FileHeader } from '../../../../tools/git/page/diffRowParts';
 

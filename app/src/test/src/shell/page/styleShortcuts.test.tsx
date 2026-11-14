@@ -9,6 +9,7 @@ import {
   cascaded,
   rendered,
   withClass,
+  type MarkupElement,
 } from '../../../helpers/cascade';
 import {
   AboutPopupShown,
@@ -26,11 +27,16 @@ import {
   layer,
   hovered,
   after,
-  overlayScrollbar,
-  keyOf,
-  widthCap,
-  popupOf,
 } from './stylesheetFixtures';
+import { overlayScrollbar, keyOf, popupOf } from '../../../helpers/styleMarkup';
+
+function widthCap(popup: MarkupElement): { cap: number; room: string } {
+  const width = /^min\(([\d.]+)px, (.+)\)$/.exec(
+    cascaded(popup, 'width') ?? '',
+  );
+  assert.ok(width);
+  return { cap: Number(width[1]), room: width[2] };
+}
 
 suite('Style', () => {
   test('places the shortcuts and the About by layout rather than a transform, which would place their edges between device pixels, a third of the room left above them and two thirds below, as a popup centered looks low, drawing the About like the shortcuts but narrower', () => {

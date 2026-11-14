@@ -6,20 +6,48 @@ import {
   rendered,
   withClass,
   type States,
+  allWithClass,
+  type MarkupElement,
 } from '../../../helpers/cascade';
 import { defaultSettings } from '../../../helpers/fixtures';
 import { CommanderItem, PathTitleShown } from '../../../helpers/styleFixtures';
-import {
-  css,
-  bodyVariable,
-  compact,
-  looks,
-  checkBox,
-  after,
-  commanderIconDisplay,
-  commanderRowColor,
-  pathColors,
-} from './stylesheetFixtures';
+import { css, bodyVariable, compact, looks, after } from './stylesheetFixtures';
+import { createElement } from 'react';
+
+function checkBox(checked: boolean): MarkupElement {
+  return rendered(
+    createElement('input', { type: 'checkbox', checked, readOnly: true }),
+  );
+}
+
+function commanderIconDisplay(className: string): string | undefined {
+  const icon = rendered(
+    createElement(
+      'span',
+      { className: 'commander-icon' },
+      createElement('img', { className }),
+    ),
+  );
+  return cascaded(withClass(icon, 'system-icon'), 'display');
+}
+
+function commanderRowColor(className: string): string | undefined {
+  return cascaded(
+    rendered(
+      createElement('div', { className: `row commander-row ${className}` }),
+    ),
+    'color',
+  );
+}
+
+function pathColors(pathTitle: React.ReactElement): (string | undefined)[] {
+  const title = rendered(pathTitle);
+  return [
+    cascaded(title, 'color'),
+    ...allWithClass(title, 'path-part').map((part) => cascaded(part, 'color')),
+    cascaded(withClass(title, 'path-name'), 'color'),
+  ];
+}
 
 const parts = (className: string, pointed = false) => {
   const item = withClass(

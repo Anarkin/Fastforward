@@ -7,6 +7,7 @@ import {
   cascaded,
   rendered,
   withClass,
+  type MarkupElement,
 } from '../../../helpers/cascade';
 import { gitStore } from '../../../helpers/componentFixtures';
 import { BubbleSources, CommitRowShown } from '../../../helpers/styleFixtures';
@@ -17,10 +18,28 @@ import {
   sidesOf,
   hovered,
   unwrapped,
-  bubbleLook,
-  branchBubble,
-  tagHoleReach,
 } from './stylesheetFixtures';
+
+const bubbleLook = ['color', 'background', 'box-shadow', 'border'];
+
+function branchBubble(sources: React.ReactElement): MarkupElement {
+  const branch = bubbles(sources).find(
+    (bubble) =>
+      bubble.classes.includes('branch') &&
+      !bubble.classes.includes('checked-out'),
+  );
+  assert.ok(branch);
+  return branch;
+}
+
+function tagHoleReach(tag: MarkupElement): number {
+  const hole =
+    /^radial-gradient\(circle at calc\(100% - ([\d.]+)px\) 50%, transparent [\d.]+px, var\(--color-git-bubble\) ([\d.]+)px\)$/.exec(
+      unwrapped(cascaded(tag, 'background')),
+    );
+  assert.ok(hole);
+  return Number(hole[1]) + Number(hole[2]);
+}
 
 suite('Style', () => {
   test('draws every bubble but the checked-out one and tags alike, in the bubble colors, ringed inside in the bubble border color to stand apart from a selected row', () => {

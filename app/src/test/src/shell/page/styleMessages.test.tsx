@@ -1,7 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { columnsClass } from '../../../../tools/git/page/columns';
-import { cascaded, rendered, withClass } from '../../../helpers/cascade';
+import {
+  cascaded,
+  rendered,
+  withClass,
+  type MarkupElement,
+} from '../../../helpers/cascade';
 import {
   Columns,
   CommitRowShown,
@@ -16,11 +21,27 @@ import {
   layer,
   hovered,
   after,
-  keyOf,
-  shownScrollbar,
-  popupOf,
   bodyVariable,
 } from './stylesheetFixtures';
+import { createElement } from 'react';
+import { overlayScrollbarClass } from '../../../../lib/page/overlayScrollbars';
+import { keyOf, popupOf } from '../../../helpers/styleMarkup';
+
+function shownScrollbar(message?: string): MarkupElement {
+  return withClass(
+    rendered(
+      createElement(
+        'body',
+        null,
+        message !== undefined && createElement('div', { className: message }),
+        createElement('div', {
+          className: `${overlayScrollbarClass} vertical shown`,
+        }),
+      ),
+    ),
+    overlayScrollbarClass,
+  );
+}
 
 suite('Style', () => {
   test("hides the overlay scrollbars while a commit's whole message is peeked at, as they are drawn over everything and would cut through it, but not while one is pinned, which scrolls with them", () => {
