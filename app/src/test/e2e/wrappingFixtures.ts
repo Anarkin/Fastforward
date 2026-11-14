@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import * as esbuild from 'esbuild';
 import type { JSHandle, Locator } from 'playwright-core';
 import type * as lineBreaksModule from '../../lib/page/lineBreaks';
+import type * as cellTableModule from '../../lib/page/cellTable';
 import type * as textWidthsModule from '../../lib/page/textWidths';
 import type * as wordWrapModule from '../../lib/page/wordWrap';
 import { page } from './appFixtures';
@@ -120,7 +121,8 @@ export const breakSentences = [
 ];
 
 export type PageWrapping = Pick<typeof lineBreaksModule, 'lineBreaks'> &
-  Pick<typeof textWidthsModule, 'cellWidthsOf' | 'terminalCells'> &
+  Pick<typeof textWidthsModule, 'cellWidthsOf'> &
+  Pick<typeof cellTableModule, 'terminalCells'> &
   Pick<typeof wordWrapModule, 'wrapIndent' | 'wrapStarts'>;
 
 export async function wrappingInPage(): Promise<JSHandle<PageWrapping>> {
@@ -128,7 +130,8 @@ export async function wrappingInPage(): Promise<JSHandle<PageWrapping>> {
     stdin: {
       contents: [
         "export { lineBreaks } from './lineBreaks';",
-        "export { cellWidthsOf, terminalCells } from './textWidths';",
+        "export { cellWidthsOf } from './textWidths';",
+        "export { terminalCells } from './cellTable';",
         "export { wrapIndent, wrapStarts } from './wordWrap';",
       ].join('\n'),
       resolveDir: path.join(__dirname, '..', '..', 'lib', 'page'),

@@ -17,7 +17,7 @@ import {
 import type * as cursorModule from '../../lib/page/cursor';
 import type * as editorSelectionModule from '../../tools/commander/page/editorSelection';
 import type * as editorTextModule from '../../tools/commander/page/editorText';
-import type * as textWidthsModule from '../../lib/page/textWidths';
+import type * as cellTableModule from '../../lib/page/cellTable';
 import { closeOrKill, launchApp, within } from './appFixtures';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/repositories';
@@ -66,7 +66,7 @@ type PageParts = Pick<typeof viewModule, 'EditorView'> &
   Pick<typeof editorTextModule, 'appTextLook'> &
   Pick<typeof editorSelectionModule, 'appSelection'> &
   Pick<typeof commanderKeymapModule, 'editorKeymap'> &
-  Pick<typeof textWidthsModule, 'terminalCells'> &
+  Pick<typeof cellTableModule, 'terminalCells'> &
   Pick<typeof cursorModule, 'pageCursorLook'>;
 
 let folder: string;
@@ -94,7 +94,7 @@ async function partsInPage(): Promise<JSHandle<PageParts>> {
         "export { appTextLook } from '../../tools/commander/page/editorText';",
         "export { appSelection } from '../../tools/commander/page/editorSelection';",
         "export { editorKeymap } from '../../tools/commander/page/keymap';",
-        "export { terminalCells } from './textWidths';",
+        "export { terminalCells } from './cellTable';",
         "export { pageCursorLook } from './cursor';",
       ].join('\n'),
       resolveDir: path.join(__dirname, '..', '..', 'lib', 'page'),

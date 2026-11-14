@@ -21,11 +21,9 @@ import { appTextLook, blanksShown } from './editorText';
 import { rowScrolling } from './editorScroll';
 import type { ScrollSettings } from '../../../lib/page/rowScroll';
 import { colorer } from '../../../lib/page/syntax';
-import {
-  cellWidthsOf,
-  columnsOf,
-  type CellTable,
-} from '../../../lib/page/textWidths';
+import { cellWidthsOf } from '../../../lib/page/textWidths';
+import { columnsOf } from '../../../lib/page/textColumns';
+import { type CellTable } from '../../../lib/page/cellTable';
 import { editorFind } from './editorFind';
 import {
   commentsOf,

@@ -43,11 +43,10 @@ import { strings } from '../../../lib/shared/strings';
 import { blankRuns } from '../../../lib/page/rowBreaks';
 import {
   cellWidthsOf,
-  plainCells,
   textWidths,
-  useCellTable,
   type TextWidths,
 } from '../../../lib/page/textWidths';
+import { plainCells, useCellTable } from '../../../lib/page/cellTable';
 import { useCommanderActions } from './store';
 import {
   topWithin,

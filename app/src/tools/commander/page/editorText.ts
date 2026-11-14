@@ -12,9 +12,9 @@ import {
   cellClass,
   cellParts,
   elementWidths,
-  type CellTable,
   type TextWidths,
 } from '../../../lib/page/textWidths';
+import { type CellTable } from '../../../lib/page/cellTable';
 import {
   breakOffsets,
   leadLength,

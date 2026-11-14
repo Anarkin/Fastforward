@@ -3,7 +3,8 @@ import type { CodeSegment } from './codeSegments';
 import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
 import type { FindMark } from './markPieces';
-import { columnsOf, type TextWidths } from '../../../lib/page/textWidths';
+import { columnsOf } from '../../../lib/page/textColumns';
+import { type TextWidths } from '../../../lib/page/textWidths';
 
 export interface ScreenRow {
   readonly start: number;

@@ -44,13 +44,9 @@ import {
   type Sideways,
   type TextArea,
 } from './overflow';
-import {
-  cellWidthsOf,
-  columnsOf,
-  plainCells,
-  textWidths,
-  useCellTable,
-} from '../../../lib/page/textWidths';
+import { cellWidthsOf, textWidths } from '../../../lib/page/textWidths';
+import { columnsOf } from '../../../lib/page/textColumns';
+import { plainCells, useCellTable } from '../../../lib/page/cellTable';
 import {
   type WholeFile,
   showsSideBySide,

@@ -12,11 +12,8 @@ import { markdownRenderer, type Render } from './markdownRender';
 import { onceMade } from '../../../lib/page/onceMade';
 import { colorCode } from '../../../lib/page/syntax';
 import { codeSegments } from './codeSegments';
-import {
-  elementWidths,
-  useCellTable,
-  type TextWidths,
-} from '../../../lib/page/textWidths';
+import { elementWidths, type TextWidths } from '../../../lib/page/textWidths';
+import { useCellTable } from '../../../lib/page/cellTable';
 import {
   cellNodes,
   boxCodeBlocks,

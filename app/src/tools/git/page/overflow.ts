@@ -1,5 +1,6 @@
 import type { FindRange } from './find';
-import { columnsOf, type TextWidths } from '../../../lib/page/textWidths';
+import { columnsOf } from '../../../lib/page/textColumns';
+import { type TextWidths } from '../../../lib/page/textWidths';
 
 export interface Columns {
   readonly first: number;

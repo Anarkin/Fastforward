@@ -15,7 +15,7 @@ import { Words } from '../../../lib/page/name';
 import { languageOf } from '../../../lib/page/languages';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { startColorer } from '../../../lib/page/syntax';
-import { useCellTable } from '../../../lib/page/textWidths';
+import { useCellTable } from '../../../lib/page/cellTable';
 import { StatusLine } from './statusLine';
 import {
   FindActions,

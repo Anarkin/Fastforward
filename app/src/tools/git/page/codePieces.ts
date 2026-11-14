@@ -1,4 +1,4 @@
-import { wholeClusters } from '../../../lib/page/textWidths';
+import { wholeClusters } from '../../../lib/page/wholeClusters';
 import type { FindRange } from './find';
 import type { SyntaxRange } from './syntax';
 

@@ -7,7 +7,7 @@ import { suite, test } from 'vitest';
 import type * as commanderKeymapModule from '../../tools/commander/page/keymap';
 import type * as editorSelectionModule from '../../tools/commander/page/editorSelection';
 import type * as editorTextModule from '../../tools/commander/page/editorText';
-import type * as textWidthsModule from '../../lib/page/textWidths';
+import type * as cellTableModule from '../../lib/page/cellTable';
 import {
   app as electronApp,
   diffLineNumbered,
@@ -44,7 +44,7 @@ type PageEditor = Pick<typeof viewModule, 'EditorView' | 'lineNumbers'> &
   Pick<typeof editorTextModule, 'appTextLook' | 'blanksShown'> &
   Pick<typeof editorSelectionModule, 'appSelection'> &
   Pick<typeof commanderKeymapModule, 'editorKeymap'> &
-  Pick<typeof textWidthsModule, 'terminalCells'>;
+  Pick<typeof cellTableModule, 'terminalCells'>;
 
 async function editorInPage(): Promise<JSHandle<PageEditor>> {
   const built = await esbuild.build({
@@ -54,7 +54,7 @@ async function editorInPage(): Promise<JSHandle<PageEditor>> {
         "export { appTextLook, blanksShown } from '../../tools/commander/page/editorText';",
         "export { appSelection } from '../../tools/commander/page/editorSelection';",
         "export { editorKeymap } from '../../tools/commander/page/keymap';",
-        "export { terminalCells } from './textWidths';",
+        "export { terminalCells } from './cellTable';",
       ].join('\n'),
       resolveDir: path.join(__dirname, '..', '..', 'lib', 'page'),
       loader: 'ts',
