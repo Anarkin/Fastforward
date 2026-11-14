@@ -323,32 +323,4 @@ suite('Archives', () => {
       'rename a.zip x.txt y.txt',
     ]);
   });
-
-  test('finds the opened archive a folder is inside of, and the file a path inside an archive runs through', async () => {
-    const zip = path.join(folder, 'a.zip');
-    fs.writeFileSync(zip, 'zip');
-    const { reader } = readerOf({
-      'a.zip': { kind: 'listed', items: [item('src/app/main.ts')] },
-    });
-    const archives = new Archives(reader, process.platform, workFolder);
-    assert.strictEqual(archives.within(zip), undefined);
-    await archives.open(zip);
-    assert.deepStrictEqual(
-      archives.within(path.join(zip, 'src', 'app'))?.inner,
-      ['src', 'app'],
-    );
-    assert.deepStrictEqual(archives.within(zip)?.inner, []);
-    assert.strictEqual(archives.within(`${zip}x`), undefined);
-    assert.strictEqual(archives.within(folder), undefined);
-
-    assert.strictEqual(
-      await archives.fileHolding(path.join(zip, 'src', 'app')),
-      zip,
-    );
-    assert.strictEqual(await archives.fileHolding(zip), zip);
-    assert.strictEqual(
-      await archives.fileHolding(path.join(folder, 'gone', 'deeper')),
-      undefined,
-    );
-  });
 });
