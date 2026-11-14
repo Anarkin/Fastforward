@@ -33,6 +33,7 @@ import { newPane, type Panes, Sides, post } from './sides';
 import { Viewers } from './viewers';
 import { SideScans } from './sideScans';
 import { Serving } from './serving';
+import { ThumbnailServing } from './thumbnailServing';
 import { ArchiveCopies } from './archiveCopies';
 import { ArchivePasswords } from './archivePasswords';
 import { ArchiveCommands } from './archiveCommands';
@@ -51,6 +52,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly viewers: Viewers;
   private readonly scans: SideScans;
   private readonly serving: Serving;
+  private readonly thumbnailServing: ThumbnailServing;
   private readonly passwords: ArchivePasswords;
   private readonly copies: ArchiveCopies;
   private readonly archiveCommands: ArchiveCommands;
@@ -79,9 +81,8 @@ export class CommanderTool implements Tool<'commander'> {
       list: (page, tab, side, folder, how) =>
         this.listings.list(page, tab, side, folder, how),
     });
-    this.serving = new Serving(access, this.sides, this.icons, () =>
-      this.shell.tabs(),
-    );
+    this.serving = new Serving(this.sides, this.icons, () => this.shell.tabs());
+    this.thumbnailServing = new ThumbnailServing(access, this.sides);
     this.editing = new Editing(
       {
         readFile: (file) => fs.promises.readFile(file),
@@ -548,7 +549,7 @@ export class CommanderTool implements Tool<'commander'> {
         }
         return undefined;
       case 'saveThumbnail':
-        return this.serving.saveThumbnail(message);
+        return this.thumbnailServing.saveThumbnail(message);
       case 'dropIcons':
         if (
           Array.isArray(message.tickets) &&
@@ -697,7 +698,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   thumbnail(url: URL): Promise<Response> {
-    return this.serving.thumbnail(url);
+    return this.thumbnailServing.thumbnail(url);
   }
 
   private async start(tab: Tab): Promise<Panes> {
