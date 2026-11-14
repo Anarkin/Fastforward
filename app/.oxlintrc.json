@@ -118,17 +118,6 @@
       }
     },
     {
-      "files": ["src/test/src/tools/git/page/syntax.test.ts"],
-      "rules": {
-        "max-lines": [
-          "warn",
-          {
-            "max": 2400
-          }
-        ]
-      }
-    },
-    {
       "files": ["src/test/src/tools/commander/main/tool.test.ts"],
       "rules": {
         "max-lines": [
