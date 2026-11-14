@@ -94,7 +94,9 @@ function partOf(file: string): string | undefined {
 function doorsOf(tool: string): boolean[] {
   return [
     sourceFiles.includes(`tools/${tool}/main/tool.ts`) &&
-      importsOf('boot/main.ts').includes(`tools/${tool}/main/tool`),
+      sourceFiles
+        .filter((file) => file.startsWith('boot/'))
+        .some((file) => importsOf(file).includes(`tools/${tool}/main/tool`)),
     sourceFiles.includes(`tools/${tool}/page/tool.tsx`) &&
       importsOf('shell/page/tools.tsx').includes(`tools/${tool}/page/tool`),
   ];
@@ -463,7 +465,7 @@ suite('Architecture', () => {
       sourceFiles.filter((file) =>
         importsOf(file).includes('tools/commander/main/sevenZip'),
       ),
-      ['boot/main.ts'],
+      ['boot/commanderHost.ts'],
     );
   });
 
