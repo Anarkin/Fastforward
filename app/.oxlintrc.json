@@ -175,7 +175,6 @@
     {
       "files": [
         "src/test/src/tools/commander/main/archiveRoundTrips.7zip.test.ts",
-        "src/test/src/tools/git/main/tool/otherRepositories.git.test.ts",
         "src/tools/git/page/commitList.tsx"
       ],
       "rules": {
@@ -212,7 +211,6 @@
         "src/test/e2e/appCursor.electron.test.ts",
         "src/test/e2e/appViewer.electron.test.ts",
         "src/test/src/tools/git/main/cli/run.git.test.ts",
-        "src/test/src/tools/git/main/tool/tabs.git.test.ts",
         "src/test/src/tools/git/main/tool/worktrees.git.test.ts"
       ],
       "rules": {
