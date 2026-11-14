@@ -19,9 +19,6 @@ const namesBetween = (names: readonly string[], between: string) =>
 
 const quoted = (name: string) => `"${name}"`;
 
-const plain = (value: Value) =>
-  'name' in value ? quoted(value.name) : value.text;
-
 export const sentencesOf = (
   all: readonly Sentence[],
   between = ' ',
@@ -815,9 +812,9 @@ export const strings = {
     dropCopy: 'Copy Here',
     dropMove: 'Move Here',
     dropCopyTitle: (what: Value, target: string) =>
-      `Copy ${plain(what)} to "${target}"`,
+      sentence`Copy ${what} to ${named(target)}`,
     dropMoveTitle: (what: Value, target: string) =>
-      `Move ${plain(what)} to "${target}"`,
+      sentence`Move ${what} to ${named(target)}`,
     newFolderTitle: 'New Folder',
     newFileTitle: 'New File',
     editNewFile: 'Edit',

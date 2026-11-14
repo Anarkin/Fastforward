@@ -35,7 +35,7 @@ import { BackIcon, ForwardIcon, ShieldIcon } from '../../../lib/page/icons';
 import { MenuButton } from '../../../lib/page/menu';
 import { estimatedRowHeight } from '../../../lib/page/listRows';
 import { VirtualRows } from '../../../lib/page/virtualRows';
-import { strings } from '../../../lib/shared/strings';
+import { plainOf, strings } from '../../../lib/shared/strings';
 import { fileColorOf } from './fileColors';
 import { PathTitle } from './pathTitle';
 import { driveMenu } from './driveMenu';
@@ -721,12 +721,12 @@ export function Pane({
             items: [
               {
                 label: strings.commander.dropCopy,
-                title: strings.commander.dropCopyTitle(what, target),
+                title: plainOf(strings.commander.dropCopyTitle(what, target)),
                 onClick: () => actions.dropOn(side, dropped, into, false),
               },
               {
                 label: strings.commander.dropMove,
-                title: strings.commander.dropMoveTitle(what, target),
+                title: plainOf(strings.commander.dropMoveTitle(what, target)),
                 onClick: () => actions.dropOn(side, dropped, into, true),
               },
             ],

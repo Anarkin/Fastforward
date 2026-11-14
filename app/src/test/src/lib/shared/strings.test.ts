@@ -24,18 +24,36 @@ function textsOf(value: object): string[] {
 
 const escaped = (key: string) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const source = path.join(__dirname, '../../../..');
+const own = path.join('lib', 'shared', 'strings.ts');
+
+const codeFiles = fs
+  .readdirSync(source, { recursive: true, encoding: 'utf8' })
+  .filter(
+    (file) => /\.tsx?$/.test(file) && !file.startsWith('test') && file !== own,
+  )
+  .map((file) => ({
+    file: file.replaceAll('\\', '/'),
+    text: fs.readFileSync(path.join(source, file), 'utf8'),
+  }));
+
+const literalOpens = String.raw`['"\x60]`;
+
+const textsOutsideTheDictionary = [
+  new RegExp(
+    String.raw`\blog\??\.(?:info|warn|error)\(\s*${literalOpens}`,
+    'g',
+  ),
+  new RegExp(
+    String.raw`\bnotice\(\s*(?:(?!'(?:info|error)'\s*,)|'(?:info|error)'\s*,\s*)${literalOpens}`,
+    'g',
+  ),
+  new RegExp(String.raw`\bmessage:\s*${literalOpens}`, 'g'),
+];
+
 suite('Strings', () => {
   test('uses every string, so none is translated for nothing', () => {
-    const source = path.join(__dirname, '../../../..');
-    const own = path.join('lib', 'shared', 'strings.ts');
-    const code = fs
-      .readdirSync(source, { recursive: true, encoding: 'utf8' })
-      .filter(
-        (file) =>
-          /\.tsx?$/.test(file) && !file.startsWith('test') && file !== own,
-      )
-      .map((file) => fs.readFileSync(path.join(source, file), 'utf8'))
-      .join('\n');
+    const code = codeFiles.map(({ text }) => text).join('\n');
     const used = (keys: readonly string[]) =>
       keys.some((_, end) => {
         const at = keys
@@ -49,6 +67,32 @@ suite('Strings', () => {
         .filter((keys) => !used(keys))
         .map((keys) => keys.join('.')),
       [],
+    );
+  });
+
+  test('takes the text of every line of the log and every notice from the dictionary, so none is left out of a translation', () => {
+    assert.deepStrictEqual(
+      codeFiles.flatMap(({ file, text }) =>
+        textsOutsideTheDictionary.flatMap((pattern) =>
+          Array.from(text.matchAll(pattern), (match) => {
+            const line = text.slice(0, match.index).split('\n').length;
+            return `${file}:${line}`;
+          }),
+        ),
+      ),
+      [],
+    );
+  });
+
+  test('wraps no name of a sentence in quotes, as a name may hold quotes itself, leaving the quotes to plainOf where nothing can be styled', () => {
+    const quotedPlaceholder = /(["'‘“])\$\{.*?\}(["'’”])/;
+    assert.deepStrictEqual(
+      fs
+        .readFileSync(path.join(source, own), 'utf8')
+        .split('\n')
+        .filter((line) => quotedPlaceholder.test(line))
+        .map((line) => line.trim()),
+      ['const quoted = (name: string) => `"${name}"`;'],
     );
   });
 
