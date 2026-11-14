@@ -1,4 +1,4 @@
-import { realTimer, type Timer } from '../tools/git/main/autoFetch';
+import { realTimer, type Timer } from '../lib/main/timer';
 
 const systemEndingFor = 10_000;
 

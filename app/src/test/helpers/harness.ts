@@ -18,7 +18,7 @@ import type {
   ToWebview,
   UpdateStatus,
 } from '../../shell/shared/protocol';
-import type { Timer } from '../../tools/git/main/autoFetch';
+import type { Timer } from '../../lib/main/timer';
 import { nodeFileSystem } from '../../tools/commander/main/nodeFileSystem';
 import { isRepository } from '../../tools/commander/main/repositories';
 import { CommanderTool } from '../../tools/commander/main/tool';

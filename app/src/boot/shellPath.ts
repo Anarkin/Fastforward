@@ -6,7 +6,7 @@ import {
   spawn,
 } from 'node:child_process';
 import type { EventEmitter } from 'node:events';
-import { realTimer, type Timer } from '../tools/git/main/autoFetch';
+import { realTimer, type Timer } from '../lib/main/timer';
 
 const marker = '__FASTFORWARD_ENV__';
 

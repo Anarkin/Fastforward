@@ -1,11 +1,5 @@
 import { sameRoot } from '../../../lib/main/paths';
-
-export type Timer = (run: () => void, ms: number) => () => void;
-
-export const realTimer: Timer = (run, ms) => {
-  const timeout = setTimeout(run, ms);
-  return () => clearTimeout(timeout);
-};
+import { realTimer, type Timer } from '../../../lib/main/timer';
 
 export function fetchOrder(
   tabs: readonly string[],

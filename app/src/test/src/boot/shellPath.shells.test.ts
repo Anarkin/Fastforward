@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { realTimer } from '../../../tools/git/main/autoFetch';
+import { realTimer } from '../../../lib/main/timer';
 import { loginShellEnv } from '../../../boot/shellPath';
 import {
   installedGit,

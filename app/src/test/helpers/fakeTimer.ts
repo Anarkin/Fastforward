@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import type { Timer } from '../../tools/git/main/autoFetch';
+import type { Timer } from '../../lib/main/timer';
 
 export function fakeTimer() {
   const pending: { run: () => void; ms: number; cancelled: boolean }[] = [];

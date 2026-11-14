@@ -1,4 +1,4 @@
-import { AutoFetch, fetchOrder, type Timer } from './autoFetch';
+import { AutoFetch, fetchOrder } from './autoFetch';
 import { gitErrorText } from './errorText';
 import { keptGits } from './run';
 import { hasGitFolder, isFolder } from './repository';
@@ -16,6 +16,7 @@ import {
 } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../lib/main/paths';
+import type { Timer } from '../../../lib/main/timer';
 import type { GitStorage } from './storage';
 import { historyLoaded, newTabState, toggleMerges } from './tabState';
 import {
