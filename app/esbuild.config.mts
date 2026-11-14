@@ -12,8 +12,8 @@ export function mainOptions(production: boolean): BuildOptions {
   return {
     ...sharedOptions(production),
     entryPoints: {
-      main: 'src/main/main.ts',
-      preload: 'src/main/preload.ts',
+      main: 'src/boot/main.ts',
+      preload: 'src/boot/preload.ts',
       ptyHost: 'src/tools/terminal/main/ptyHost.ts',
       transferHost: 'src/tools/commander/main/transferHost.ts',
       gitSpawner: 'src/tools/git/main/cli/gitSpawnerWorker.ts',

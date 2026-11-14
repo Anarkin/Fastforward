@@ -16,7 +16,7 @@ import {
   type CommandFiles,
   type CommandPlace,
   type SyncCommandFiles,
-} from '../../main/terminalCommand';
+} from '../../boot/terminalCommand';
 import { strings } from '../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../repositories';
 

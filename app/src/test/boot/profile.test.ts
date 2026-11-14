@@ -6,7 +6,7 @@ import {
   profileFolder,
   thumbnailFolder,
   viewedFilesFolder,
-} from '../../main/profile';
+} from '../../boot/profile';
 
 suite('Profile', () => {
   const appData = path.join('C:', 'Users', 'me', 'AppData', 'Roaming');

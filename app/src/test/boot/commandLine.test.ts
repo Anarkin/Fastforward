@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { suite, test } from 'vitest';
-import { foldersHandedOff, foldersOf, handOff } from '../../main/commandLine';
+import { foldersHandedOff, foldersOf, handOff } from '../../boot/commandLine';
 
 suite('Command line', () => {
   const started = path.resolve('work');

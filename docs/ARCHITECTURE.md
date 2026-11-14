@@ -1,5 +1,21 @@
 # ARCHITECTURE
 
+## Folders
+
+```
+app/src/
+├─ boot/                           builds the owners below and wires Electron to them
+├─ lib/{main,page,shared}          the library, code any owner may use, holding no state
+├─ shell/{main,page,shared}        the frame the tools open in: windows, tabs, settings, storage
+├─ tools/<id>/{main,page,shared}   a tool each, as the registries of the shell list them
+└─ test/                           the tests
+```
+
+- Each owner, the library, the shell and each tool, keeps its code in three folders by where it runs: `main` in the main process, `page` in the page, and `shared` in both, holding only what both sides import, as the protocol between them
+- What one side alone imports lives in the `main` or the `page` folder of its owner, what one owner alone uses in the folders of that owner, and what several use in the library
+- Nothing imports `boot`, no tool imports another, and the library and the shell reach the tools only through the registries of the shell
+- `architecture.test.ts` checks these rules, and the lint rules and the tsconfigs keep each side from importing the other
+
 ## Decisions
 
 - Put all text people read, logs included, in the i18n dictionary, `app/src/lib/shared/strings.ts`, as whole sentences, to support localization and globalization

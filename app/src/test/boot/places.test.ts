@@ -6,7 +6,7 @@ import {
   placesKey,
   savedPlace,
   withPlace,
-} from '../../main/places';
+} from '../../boot/places';
 
 const bounds = { x: 10, y: 20, width: 800, height: 600 };
 const other = { x: 40, y: 50, width: 900, height: 700 };

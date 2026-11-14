@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { tellMaximized } from '../../main/maximized';
+import { tellMaximized } from '../../boot/maximized';
 
 suite('Maximized', () => {
   test('tells the page whether the window fills the screen as it loads and whenever it is maximized, restored or made fullscreen or left', () => {

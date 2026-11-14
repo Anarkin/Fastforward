@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { realTimer } from '../../tools/git/main/autoFetch';
-import { loginShellEnv } from '../../main/shellPath';
+import { loginShellEnv } from '../../boot/shellPath';
 import { installedGit, removeFolder, tempFolder } from '../repositories';
 
 function gitShell(gitPath: string): string {

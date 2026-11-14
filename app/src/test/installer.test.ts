@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeEach, suite, test } from 'vitest';
-import { explorerMenuOf } from '../main/explorerMenu';
+import { explorerMenuOf } from '../boot/explorerMenu';
 
 const appFolder = path.join(__dirname, '..', '..');
 const installer = path.join(appFolder, 'build', 'installer.nsh');

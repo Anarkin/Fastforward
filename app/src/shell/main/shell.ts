@@ -1,8 +1,14 @@
 import * as path from 'node:path';
 import type { Log } from './log';
 import { isImageView, isTextView } from '../shared/protocol';
-import type { CommandInstall, CommandState } from '../../main/terminalCommand';
-import type { DragStart, Point, Strip, Visit } from '../../main/tabDrag';
+import type {
+  CommandInstall,
+  CommandState,
+  DragStart,
+  Point,
+  Strip,
+  Visit,
+} from './hostTypes';
 import { InFlight } from '../../lib/main/inFlight';
 import { addNotice } from '../shared/notices';
 import type {

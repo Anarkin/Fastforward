@@ -16,7 +16,7 @@ import {
   startsAppPage,
   tearsOffTabs,
   visibleBounds,
-} from '../../main/files';
+} from '../../boot/files';
 
 const start = (url: string, isMainFrame = true, isSameDocument = false) =>
   startsAppPage({ url, isMainFrame, isSameDocument });

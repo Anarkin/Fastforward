@@ -117,7 +117,8 @@ import {
   visibleBounds,
 } from './files';
 import { tellMaximized } from './maximized';
-import { TabDrag, type DragHost, type DragWindow, type Strip } from './tabDrag';
+import { TabDrag, type DragHost, type DragWindow } from './tabDrag';
+import type { Strip } from '../shell/main/hostTypes';
 import {
   boundsKey,
   maximizedKey,

@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { QuitGuard } from '../../main/quitGuard';
+import { QuitGuard } from '../../boot/quitGuard';
 import { fakeTimer } from '../fakeTimer';
 
 function guarded(asks = true, timer = fakeTimer().timer) {

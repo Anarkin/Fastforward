@@ -8,7 +8,7 @@ import {
   loginShellOptions,
   mergePaths,
   withLoginShellEnv,
-} from '../../main/shellPath';
+} from '../../boot/shellPath';
 import { fakeTimer } from '../fakeTimer';
 
 const envOn = async (platform: NodeJS.Platform) => {

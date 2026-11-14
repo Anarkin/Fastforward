@@ -81,7 +81,7 @@
     },
     {
       "files": [
-        "src/main/**",
+        "src/boot/**",
         "src/lib/main/**",
         "src/shell/main/**",
         "src/tools/*/main/**"
@@ -199,7 +199,7 @@
     },
     {
       "files": [
-        "src/main/main.ts",
+        "src/boot/main.ts",
         "src/test/appLaunches.electron.test.ts",
         "src/test/shell/main/shell.test.ts",
         "src/test/tools/git/main/tool/diffs.git.test.ts",

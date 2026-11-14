@@ -1,14 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { Bounds } from '../../main/files';
-import {
-  TabDrag,
-  type DragHost,
-  type DragStart,
-  type DragWindow,
-  type Strip,
-  type Visit,
-} from '../../main/tabDrag';
+import type { Bounds } from '../../boot/files';
+import { TabDrag, type DragHost, type DragWindow } from '../../boot/tabDrag';
+import type { DragStart, Strip, Visit } from '../../shell/main/hostTypes';
 
 const strip: Strip = {
   left: 8,

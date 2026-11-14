@@ -10,7 +10,7 @@ import {
   type UpdateCheck,
   type UpdateMode,
   type Updater,
-} from '../../main/updates';
+} from '../../boot/updates';
 import { fakeTimer } from '../fakeTimer';
 import { recordingLog } from '../stub';
 

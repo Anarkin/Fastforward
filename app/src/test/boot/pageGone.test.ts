@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { reloadWhenGone } from '../../main/pageGone';
+import { reloadWhenGone } from '../../boot/pageGone';
 import { strings } from '../../lib/shared/strings';
 import { recordingLog } from '../stub';
 

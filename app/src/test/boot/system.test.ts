@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { prettyName, systemOf } from '../../main/system';
+import { prettyName, systemOf } from '../../boot/system';
 
 suite('System', () => {
   test('names Windows 11 from build 22000 on, and Windows 10 below it, as both report version 10.0', () => {

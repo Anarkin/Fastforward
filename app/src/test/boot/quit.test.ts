@@ -4,7 +4,7 @@ import {
   exitOnFailure,
   flushBeforeQuit,
   whileWindowOpen,
-} from '../../main/quit';
+} from '../../boot/quit';
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 

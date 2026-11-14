@@ -1,19 +1,6 @@
 import type { Bounds } from './files';
+import type { DragStart, Point, Strip, Visit } from '../shell/main/hostTypes';
 import { tabMagnetism } from '../shell/shared/titleBar';
-
-export interface Point {
-  readonly x: number;
-  readonly y: number;
-}
-
-export interface Strip {
-  readonly left: number;
-  readonly right: number;
-  readonly top: number;
-  readonly bottom: number;
-  readonly firstTabLeft: number;
-  readonly tabTop: number;
-}
 
 export interface DragWindow {
   readonly id: string;
@@ -25,12 +12,6 @@ export interface DragWindow {
   hide(hidden: boolean): void;
 }
 
-export interface Visit {
-  readonly tab: string;
-  readonly x: number;
-  readonly grabX: number;
-}
-
 export interface DragHost {
   windows(): readonly DragWindow[];
   tearOff(tab: string, from: string): DragWindow | undefined;
@@ -38,14 +19,6 @@ export interface DragHost {
   move(tab: string, into: string, index: number): void;
   close(window: string): void;
   focus(window: string): void;
-}
-
-export interface DragStart {
-  readonly tab: string;
-  readonly index: number;
-  readonly grab: Point;
-  readonly at: Point;
-  readonly alone: boolean;
 }
 
 interface Target {

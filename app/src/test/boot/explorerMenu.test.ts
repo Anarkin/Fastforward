@@ -2,12 +2,12 @@ import * as assert from 'node:assert';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { afterAll, suite, test } from 'vitest';
-import { foldersOf } from '../../main/commandLine';
+import { foldersOf } from '../../boot/commandLine';
 import {
   addExplorerMenu,
   explorerMenuOf,
   type RegistryValue,
-} from '../../main/explorerMenu';
+} from '../../boot/explorerMenu';
 import { strings } from '../../lib/shared/strings';
 
 const installed = 'C:\\Users\\me\\AppData\\Local\\Programs\\fastforward';

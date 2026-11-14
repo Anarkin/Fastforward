@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../lib/shared/strings';
+import type { CommandInstall, CommandState } from '../shell/main/hostTypes';
 import { isMissing } from '../tools/git/main/cli/files';
 
 const command = 'ff';
@@ -36,19 +37,6 @@ export interface SyncCommandFiles {
   read(file: string): CommandFile;
   write(file: string, text: string): void;
 }
-
-export type CommandState = 'installed' | 'missing' | 'outdated' | 'taken';
-
-export type CommandInstall =
-  | {
-      readonly kind: 'installed';
-      readonly path: string;
-      readonly onPath: boolean;
-    }
-  | { readonly kind: 'alreadyInstalled'; readonly path: string }
-  | { readonly kind: 'taken'; readonly path: string }
-  | { readonly kind: 'notMoved' }
-  | { readonly kind: 'cancelled' };
 
 export type AsAdmin = (
   link: string,

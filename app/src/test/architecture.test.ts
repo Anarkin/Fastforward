@@ -56,11 +56,24 @@ function reachedFrom(roots: readonly string[]): ReadonlySet<string> {
 const registries = ['shell/shared/tools.ts', 'shell/page/tools.tsx'];
 
 suite('Architecture', () => {
-  test('keeps each source file in the folder of its owner, the library, the shell or a tool, by where it runs, or in main', () => {
+  test('keeps each source file in the folder of its owner, the library, the shell or a tool, by where it runs, or in boot', () => {
     const placed =
-      /^(?:(?:lib|shell|tools\/[^/]+)\/(?:main|page|shared)\/.+|main\/[^/]+)$/;
+      /^(?:(?:lib|shell|tools\/[^/]+)\/(?:main|page|shared)\/.+|boot\/[^/]+)$/;
     assert.deepStrictEqual(
       sourceFiles.filter((file) => !placed.test(file)),
+      [],
+    );
+  });
+
+  test('lets nothing import boot, which builds every owner', () => {
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) => !file.startsWith('boot/'))
+        .flatMap((file) =>
+          importsOf(file)
+            .filter((target) => target.startsWith('boot/'))
+            .map((target) => `${file} -> ${target}`),
+        ),
       [],
     );
   });
@@ -117,7 +130,7 @@ suite('Architecture', () => {
 
   test('keeps in a shared folder only what both the main process and the page import, directly or through other shared code, as what one side alone imports belongs in the main or the page folder of its owner', () => {
     const sides = {
-      main: /^(?:main|(?:lib|shell|tools\/[^/]+)\/main)\//,
+      main: /^(?:boot|(?:lib|shell|tools\/[^/]+)\/main)\//,
       page: /^(?:lib|shell|tools\/[^/]+)\/page\//,
     };
     const shared = sourceFiles.filter((file) =>
