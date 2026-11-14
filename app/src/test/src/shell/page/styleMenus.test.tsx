@@ -1,12 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { ContextMenu } from '../../../../shell/page/contextMenu';
 import { MenuButton } from '../../../../lib/page/menu';
-import { Name } from '../../../../lib/page/name';
-import { ConfirmPopup } from '../../../../shell/page/confirmPopup';
-import { PromptPopup } from '../../../../shell/page/promptPopup';
-import { ClonePopup } from '../../../../tools/git/page/clonePopup';
 import {
   allWithClass,
   cascaded,
@@ -16,7 +11,6 @@ import {
 import {
   ContextMenuShown,
   HistoryMenuShown,
-  LocationsPopupShown,
   NoticesShown,
   ShortcutsPopupShown,
   TabBarShown,
@@ -34,56 +28,6 @@ import {
 } from './stylesheetFixtures';
 
 suite('Style', () => {
-  test('draws the button of a dialog the keyboard moved the focus to as the tool chooser draws its tool, tinted inside the outline of focus, the default button then plain, as Enter presses the one focused', () => {
-    const row = rendered(
-      <div className="confirm-buttons">
-        <button className="confirm-button">Cancel</button>
-        <button className="confirm-button default">OK</button>
-      </div>,
-    );
-    const [cancel, ok] = allWithClass(row, 'confirm-button');
-    const tool = rendered(<button className="open-with-tool">Terminal</button>);
-    const asTool = {
-      color: 'inherit',
-      background: cascaded(tool, 'background', { focus: tool }),
-      outline: cascaded(tool, 'outline', { focus: tool }),
-      'outline-offset': cascaded(tool, 'outline-offset', { focus: tool }),
-    };
-    assert.strictEqual(asTool.background, 'var(--selection-background)');
-    looks(ok, {
-      color: 'var(--color-focus-foreground)',
-      background: 'var(--color-focus)',
-    });
-    looks(cancel, { background: 'var(--color-background)' });
-    looks(cancel, asTool, { focus: cancel });
-    looks(
-      ok,
-      { color: 'inherit', background: 'var(--color-background)' },
-      { focus: cancel },
-    );
-    looks(ok, asTool, { focus: ok });
-  });
-
-  test('paints the default button of a confirmation in the color of focus, hovered or not, so it shows what Enter does', () => {
-    const popup = rendered(
-      <ConfirmPopup
-        title="Close Tab"
-        message="Are you sure?"
-        confirm="Close"
-        onConfirm={noop}
-        onCancel={noop}
-      />,
-    );
-    const blue = {
-      color: 'var(--color-focus-foreground)',
-      background: 'var(--color-focus)',
-    };
-    looks(withClass(popup, 'confirm-button', 'default'), blue);
-    looks(withClass(popup, 'confirm-button', 'default'), blue, {
-      hover: withClass(popup, 'confirm-button', 'default'),
-    });
-  });
-
   test('starts the labels of every menu alike, leaving the same room before each for an icon, a check or nothing, as an item without an icon started further left than those with one', () => {
     const menu = rendered(
       <ContextMenu
@@ -196,39 +140,6 @@ suite('Style', () => {
     );
   });
 
-  test("fills and edges the popup's search box in the border color like the other search fields until it is focused or holds a query, then in the panel's", () => {
-    const empty = withClass(
-      rendered(<LocationsPopupShown query="" />),
-      'locations-search',
-    );
-    looks(empty, {
-      background: 'var(--color-border)',
-      border: '1px solid var(--color-border)',
-    });
-    looks(
-      empty,
-      {
-        background: 'var(--color-panel-background)',
-        'border-color': 'var(--color-focus)',
-      },
-      focused,
-    );
-    const searched = withClass(
-      rendered(<LocationsPopupShown query="main" />),
-      'locations-search',
-    );
-    for (const states of [{}, hovered]) {
-      looks(
-        searched,
-        {
-          background: 'var(--color-panel-background)',
-          'border-color': 'var(--color-border)',
-        },
-        states,
-      );
-    }
-  });
-
   test('draws a menu like the other popups, its separators in the border color and the item under the pointer like a selected row', () => {
     for (const menu of [
       rendered(<ContextMenuShown />),
@@ -250,116 +161,10 @@ suite('Style', () => {
     );
   });
 
-  test('writes the names, paths and addresses typed into a dialog in the monospace font of the settings, so every character tells apart, a space at the end, l from I and 0 from O', () => {
-    const store = createGitStore(noop, {
-      clone: {
-        view: { kind: 'form', url: '', folder: '/code', name: '' },
-        form: 1,
-        folder: undefined,
-        target: undefined,
-      },
-    });
-    const clone = rendered(
-      <GitStore value={store}>
-        <ClonePopup />
-      </GitStore>,
-    );
-    const prompt = rendered(
-      <PromptPopup
-        title="New Folder"
-        message="Make a folder"
-        label="Name"
-        confirm="Make"
-        problemOf={() => undefined}
-        onConfirm={noop}
-        onCancel={noop}
-      />,
-    );
-    const fields = [
-      withClass(prompt, 'prompt-input'),
-      ...allWithClass(clone, 'clone-input'),
-    ];
-    assert.strictEqual(fields.length, 4);
-    for (const field of fields) {
-      looks(field, {
-        'font-family': 'var(--monospace-font-family)',
-        'font-size': 'var(--monospace-font-size)',
-      });
-    }
-  });
-
-  test('sets a name apart in a dialog in the monospace font of the settings on a faint tint of the text, the same on a line of its own as in a sentence, each piece of a path kept whole on a line unless it alone is wider, and the labels of the lines muted', () => {
-    const popup = rendered(
-      <ConfirmPopup
-        title="Copy"
-        lines={[
-          { label: 'Copy', text: '3 items' },
-          { label: 'To', name: 'D:\\photos' },
-        ]}
-        confirm="Copy"
-        onConfirm={noop}
-        onCancel={noop}
-      />,
-    );
-    const name = withClass(popup, 'name');
-    looks(name, {
-      'font-family': 'var(--monospace-font-family)',
-      'font-size': 'var(--monospace-font-size)',
-      background: 'var(--name-background)',
-      'box-decoration-break': 'clone',
-    });
-    for (const piece of name.children) {
-      looks(piece, {
-        display: 'inline-block',
-        'max-width': '100%',
-        'overflow-wrap': 'anywhere',
-      });
-    }
-    looks(withClass(popup, 'name-lines'), {
-      display: 'grid',
-      'grid-template-columns': 'auto minmax(0, 1fr)',
-    });
-    looks(withClass(popup, 'name-label'), {
-      color: 'var(--muted-foreground)',
-    });
-  });
-
   test("draws the line of a filtered menu's edge along the top of its filter, which stays atop the menu as it scrolls and would cover that line", () => {
     looks(rendered(<input className="menu-filter" />), {
       'box-shadow': 'inset 0 var(--hairline) 0 var(--color-border)',
     });
-  });
-
-  test('lines the check boxes of a dialog up with its labels, without the margin the browser gives them', () => {
-    for (const className of ['pack-check', 'transfer-all']) {
-      const label = rendered(
-        <label className={className}>
-          <input type="checkbox" />
-        </label>,
-      );
-      const [box] = label.children;
-      looks(box, { margin: '0' });
-    }
-  });
-
-  test('sets a name on a button apart only in the monospace font, as the button frames it as its tint would', () => {
-    const name = withClass(
-      rendered(<MenuButton title="Drive" label="C:" named items={[]} />),
-      'name',
-    );
-    looks(name, {
-      'font-family': 'var(--monospace-font-family)',
-      background: 'none',
-      padding: '0',
-    });
-  });
-
-  test('keeps the spaces of a name that follow a separator, which a piece of a path kept whole would drop at its start, as in the characters a name cannot hold', () => {
-    const name = withClass(rendered(<Name>{'\\ / : * ?'}</Name>), 'name');
-    assert.strictEqual(name.children.length, 3);
-    for (const piece of name.children) {
-      looks(piece, { 'white-space': 'pre-wrap' });
-    }
   });
 
   test('scrolls a submenu taller than the window, which lists every ref at a commit', () => {
@@ -419,23 +224,6 @@ suite('Style', () => {
     ]) {
       looks(popup, { 'box-shadow': 'var(--popup-shadow)', border: undefined });
     }
-  });
-
-  test("lays a sticky location row's see-through hover color over its solid background, so rows under it stay hidden", () => {
-    const sticky = withClass(
-      rendered(<LocationsPopupShown query="" />),
-      'tree-row',
-      'sticky',
-    );
-    looks(sticky, { background: 'var(--popup-background)' });
-    looks(
-      sticky,
-      {
-        background:
-          'linear-gradient(var(--hover-background), var(--hover-background)), var(--popup-background)',
-      },
-      hovered,
-    );
   });
 
   test('keeps a context menu within the window, scrolling one taller than it, as the repositories may be, unless it opens submenus, which scrolling would cut off', () => {

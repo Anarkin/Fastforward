@@ -14,7 +14,7 @@ import {
   LocationsPopupShown,
 } from '../../../helpers/styleFixtures';
 import { columnTitle } from '../../../helpers/styleMarkup';
-import { looks, badgeRules } from './stylesheetFixtures';
+import { looks, badgeRules, hovered } from './stylesheetFixtures';
 
 suite('Style', () => {
   test("opens the search over the commit column's title without moving its field or back button", () => {
@@ -145,6 +145,23 @@ suite('Style', () => {
         'badge',
       ),
       { overflow: 'hidden', 'text-overflow': 'ellipsis' },
+    );
+  });
+
+  test("lays a sticky location row's see-through hover color over its solid background, so rows under it stay hidden", () => {
+    const sticky = withClass(
+      rendered(<LocationsPopupShown query="" />),
+      'tree-row',
+      'sticky',
+    );
+    looks(sticky, { background: 'var(--popup-background)' });
+    looks(
+      sticky,
+      {
+        background:
+          'linear-gradient(var(--hover-background), var(--hover-background)), var(--popup-background)',
+      },
+      hovered,
     );
   });
 });

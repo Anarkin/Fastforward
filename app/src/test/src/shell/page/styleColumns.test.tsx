@@ -77,6 +77,39 @@ suite('Style', () => {
     }
   });
 
+  test("fills and edges the popup's search box in the border color like the other search fields until it is focused or holds a query, then in the panel's", () => {
+    const empty = withClass(
+      rendered(<LocationsPopupShown query="" />),
+      'locations-search',
+    );
+    looks(empty, {
+      background: 'var(--color-border)',
+      border: '1px solid var(--color-border)',
+    });
+    looks(
+      empty,
+      {
+        background: 'var(--color-panel-background)',
+        'border-color': 'var(--color-focus)',
+      },
+      focused,
+    );
+    const searched = withClass(
+      rendered(<LocationsPopupShown query="main" />),
+      'locations-search',
+    );
+    for (const states of [{}, hovered]) {
+      looks(
+        searched,
+        {
+          background: 'var(--color-panel-background)',
+          'border-color': 'var(--color-border)',
+        },
+        states,
+      );
+    }
+  });
+
   test('keeps the title of the Files column clear of its three buttons on the left, spaces the buttons of the Diff column alike, and never squeezes the search field out', () => {
     const files = columnTitle(
       <ColumnShown start={<div className="nav-buttons all-files" />} />,
