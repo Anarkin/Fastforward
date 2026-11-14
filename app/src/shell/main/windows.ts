@@ -1,4 +1,4 @@
-import type { SavedTab } from './storage';
+import type { SavedTab } from './savedTabs';
 
 export interface TabWindow {
   readonly id: string;

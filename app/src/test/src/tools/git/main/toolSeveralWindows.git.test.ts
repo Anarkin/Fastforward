@@ -1,11 +1,8 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import {
-  sameRoot,
-  tabsKey,
-  windowsKey,
-} from '../../../../../shell/main/storage';
+import { sameRoot } from '../../../../../lib/main/paths';
+import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
 import { recentKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {

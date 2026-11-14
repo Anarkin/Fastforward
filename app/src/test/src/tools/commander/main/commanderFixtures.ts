@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { Notice, Page, Tab } from '../../../../../shell/main/shell';
-import type { Compared, Store } from '../../../../../shell/main/storage';
+import type { Compared } from '../../../../../shell/main/savedTabs';
+import type { Store } from '../../../../../shell/main/stateFile';
 import type { ToWebview } from '../../../../../shell/shared/protocol';
 import type { LocalFileSystem } from '../../../../../tools/commander/main/fileSystem';
 import { CommanderTool } from '../../../../../tools/commander/main/tool';

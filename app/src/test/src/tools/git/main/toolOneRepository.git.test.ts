@@ -6,10 +6,10 @@ import { replaceBuiltin } from '../../../../helpers/builtins';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
 import {
   activeTabKey,
-  JsonFileStore,
   tabsKey,
   windowsKey,
 } from '../../../../../shell/main/storage';
+import { JsonFileStore } from '../../../../../shell/main/stateFile';
 import { GitStorage, recentKey } from '../../../../../tools/git/main/storage';
 import { FakeStore } from '../../../../helpers/fakeStore';
 import { waitFor } from '../../../../helpers/fixtures';

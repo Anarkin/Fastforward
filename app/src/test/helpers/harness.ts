@@ -41,12 +41,12 @@ import type { DragEvent } from '../../shell/main/dragEvents';
 import { Shell, type ShellHost } from '../../shell/main/shell';
 import {
   activeTabKey,
-  sameRoot,
   Storage,
   tabsKey,
   toolState,
-  type Store,
 } from '../../shell/main/storage';
+import { sameRoot } from '../../lib/main/paths';
+import type { Store } from '../../shell/main/stateFile';
 import { GitStorage } from '../../tools/git/main/storage';
 import { UserSettings } from '../../shell/main/userSettings';
 import { FakeStore } from './fakeStore';

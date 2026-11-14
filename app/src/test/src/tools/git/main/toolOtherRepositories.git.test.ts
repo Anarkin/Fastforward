@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
-import { sameRoot } from '../../../../../shell/main/storage';
+import { sameRoot } from '../../../../../lib/main/paths';
 import { recentKey } from '../../../../../tools/git/main/storage';
 import {
   removeFolder,

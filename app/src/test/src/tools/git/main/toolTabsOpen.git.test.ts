@@ -8,7 +8,7 @@ import {
   suite,
   test,
 } from 'vitest';
-import { sameRoot } from '../../../../../shell/main/storage';
+import { sameRoot } from '../../../../../lib/main/paths';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {

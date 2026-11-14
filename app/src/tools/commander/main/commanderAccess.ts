@@ -1,4 +1,4 @@
-import type { Store } from '../../../shell/main/storage';
+import type { Store } from '../../../shell/main/stateFile';
 import type { TextEncoding, EndingSource } from '../shared/protocol';
 import type {
   Sorts,

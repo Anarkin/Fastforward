@@ -34,12 +34,9 @@ import { readDefaults } from '../shell/main/settings';
 import { UserSettings } from '../shell/main/userSettings';
 import { watchSettings } from '../shell/main/settingsWatch';
 import { writeReadOnly } from '../lib/main/textFiles';
-import {
-  JsonFileStore,
-  migratedState,
-  Storage,
-  toolState,
-} from '../shell/main/storage';
+import { JsonFileStore } from '../shell/main/stateFile';
+import { migratedState } from '../shell/main/stateMigration';
+import { Storage, toolState } from '../shell/main/storage';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
 import { PdfPlaces } from '../tools/commander/main/pdfPlaces';

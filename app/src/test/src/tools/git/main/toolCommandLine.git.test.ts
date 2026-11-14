@@ -3,7 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
-import { sameRoot, toolState } from '../../../../../shell/main/storage';
+import { sameRoot } from '../../../../../lib/main/paths';
+import { toolState } from '../../../../../shell/main/storage';
 import { visitsIn } from '../../../../../tools/terminal/main/folderRanks';
 import {
   removeFolder,

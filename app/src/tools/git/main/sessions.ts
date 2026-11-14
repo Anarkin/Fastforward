@@ -1,6 +1,6 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess, ShownTab } from '../../../shell/main/shell';
-import { sameRoot } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
 import type { Notify } from './operations';
 import type { GitStorage } from './storage';
 import type { Context, GitPost, Session, TabWork } from './tabContext';

@@ -1,4 +1,4 @@
-import { sameRoot } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
 
 export type Timer = (run: () => void, ms: number) => () => void;
 

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/shell';
-import { sameRoot } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
 import {
   isFolderCommand,
   isTextEncoding,

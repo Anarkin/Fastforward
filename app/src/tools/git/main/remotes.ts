@@ -33,7 +33,7 @@ import { hasRef } from '../shared/refNames';
 import type { CheckoutTarget, TabMessage } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/shell';
 import { strings } from '../../../lib/shared/strings';
-import { sameRoot } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
 import type { GitStorage } from './storage';
 import {
   type RunningOn,

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { plainOf, strings } from '../../../../../lib/shared/strings';
-import { sameRoot } from '../../../../../shell/main/storage';
+import { sameRoot } from '../../../../../lib/main/paths';
 import { recentKey } from '../../../../../tools/git/main/storage';
 import {
   asIfOwnedByAnother,

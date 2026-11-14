@@ -8,7 +8,8 @@ import {
 } from './folderRanks';
 import type { HostCommand, HostEvent, ShellLaunch } from './hostProtocol';
 import type { Log } from '../../../shell/main/log';
-import { sameRoot, type Store } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
+import type { Store } from '../../../shell/main/stateFile';
 import {
   unattachedShell,
   type Page,

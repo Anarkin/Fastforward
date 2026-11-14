@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { SavedTab } from '../../../../shell/main/storage';
+import type { SavedTab } from '../../../../shell/main/savedTabs';
 import { TabHistory } from '../../../../shell/main/tabHistory';
 import {
   nextTabId,

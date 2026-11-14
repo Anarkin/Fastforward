@@ -3,7 +3,8 @@ import { createServer } from 'node:http';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
-import { sameRoot, tabsKey } from '../../../../../shell/main/storage';
+import { sameRoot } from '../../../../../lib/main/paths';
+import { tabsKey } from '../../../../../shell/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   removeFolder,

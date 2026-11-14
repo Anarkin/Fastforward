@@ -10,7 +10,7 @@ import {
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import type { Page } from '../../../shell/main/shell';
 import { strings, type Sentence } from '../../../lib/shared/strings';
-import type { Compared } from '../../../shell/main/storage';
+import type { Compared } from '../../../shell/main/savedTabs';
 import type { TabState } from './tabState';
 import { shownSide } from '../shared/comparisons';
 import type { Changed } from './watch';

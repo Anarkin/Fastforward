@@ -1,4 +1,4 @@
-import type { Store } from '../../../../../shell/main/storage';
+import type { Store } from '../../../../../shell/main/stateFile';
 import {
   bookmarksKey,
   lastFetchesKey,

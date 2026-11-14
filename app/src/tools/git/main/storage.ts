@@ -12,11 +12,9 @@ import { isFullHash } from '../shared/hashes';
 import type { GitSettings } from '../shared/settings';
 import { isObject } from '../../../lib/main/json';
 import type { UserSettings } from '../../../shell/main/userSettings';
-import {
-  maxRecentItems,
-  sameRoot,
-  type Store,
-} from '../../../shell/main/storage';
+import { maxRecentItems } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
+import type { Store } from '../../../shell/main/stateFile';
 
 export const recentKey = 'recentRepositories';
 export const soloKey = 'solo';

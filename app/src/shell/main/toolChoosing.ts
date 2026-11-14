@@ -1,7 +1,7 @@
 import type { ToolChoice, ToWebviewOf } from '../shared/protocol';
 import { strings } from '../../lib/shared/strings';
 import { isTool, tools as toolIds, type ToolId } from '../shared/tools';
-import { sameRoot } from './storage';
+import { sameRoot } from '../../lib/main/paths';
 
 import type { Notice, Page, Tab, Tools } from './shell';
 

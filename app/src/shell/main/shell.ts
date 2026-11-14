@@ -16,12 +16,9 @@ import {
   type ToHostOf,
   type ToolId,
 } from '../shared/tools';
-import {
-  type Compared,
-  sameRoot,
-  type SavedTab,
-  type Storage,
-} from './storage';
+import type { Compared, SavedTab } from './savedTabs';
+import { sameRoot } from '../../lib/main/paths';
+import type { Storage } from './storage';
 import { TabHistory } from './tabHistory';
 import {
   activeTabOf,

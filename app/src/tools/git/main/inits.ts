@@ -1,6 +1,6 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';
-import { sameRoot } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
 import { gitErrorText } from './errorText';
 import { initRepository, isFolder } from './repository';
 import { locateRepository, type Location } from './repositoryLocation';

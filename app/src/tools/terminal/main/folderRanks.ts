@@ -1,5 +1,5 @@
 import { isObject } from '../../../lib/main/json';
-import { sameRoot } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
 
 export interface FolderVisits {
   readonly folder: string;

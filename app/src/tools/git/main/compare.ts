@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname } from 'node:path';
-import type { Compared } from '../../../shell/main/storage';
+import type { Compared } from '../../../shell/main/savedTabs';
 import { maxImageSize } from '../shared/images';
 import { patchByteBudget } from '../shared/protocol';
 import { diffArgs, diffOptionArgs, type PatchScope } from './diff';

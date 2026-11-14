@@ -13,7 +13,8 @@ import { shortHash } from '../shared/hashes';
 import type { WorktreeInfo } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/shell';
 import { strings } from '../../../lib/shared/strings';
-import { maxRecentItems, sameRoot } from '../../../shell/main/storage';
+import { maxRecentItems } from '../../../shell/main/storage';
+import { sameRoot } from '../../../lib/main/paths';
 import type { GitStorage } from './storage';
 import { replayOf } from './tabState';
 import {
