@@ -481,4 +481,16 @@ suite('Style', () => {
       'pointer-events': 'auto',
     });
   });
+
+  test('writes the choice shown on a dropdown button in the font size of the settings, as the text around it', () => {
+    const button = withClass(
+      rendered(<MenuButton title="Encoding" label="UTF-8" items={[]} />),
+      'menu-button-trigger',
+    );
+    assert.strictEqual(cascaded(button, 'font'), 'inherit');
+    assert.strictEqual(
+      cascaded(withClass(button, 'menu-button-label'), 'font-size'),
+      undefined,
+    );
+  });
 });

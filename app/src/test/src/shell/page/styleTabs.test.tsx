@@ -35,6 +35,7 @@ import {
   divider,
 } from './stylesheetFixtures';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
+import { tabsStore } from '../../../helpers/componentFixtures';
 
 const shown = (tab: MarkupElement, states?: States) =>
   cascaded(divider(tab), 'visibility', states) !== 'hidden';
@@ -662,5 +663,30 @@ suite('Style', () => {
         visibility: undefined,
       });
     }
+  });
+
+  test('colors the icon of each tool with its own color from the settings, so tabs of different tools for one folder tell apart at a glance', () => {
+    const bar = rendered(
+      <ShellStore
+        value={tabsStore(
+          [
+            { id: '1', tool: 'git', root: '/a', name: 'a' },
+            { id: '2', tool: 'commander', root: '/a', name: 'a' },
+            { id: '3', tool: 'terminal', root: '/a', name: 'a' },
+          ],
+          '1',
+        )}
+      >
+        <TabBar />
+      </ShellStore>,
+    );
+    assert.deepStrictEqual(
+      allWithClass(bar, 'tool-icon').map((icon) => cascaded(icon, 'color')),
+      [
+        'var(--color-git-icon)',
+        'var(--color-commander-icon)',
+        'var(--color-terminal-icon)',
+      ],
+    );
   });
 });

@@ -37,6 +37,7 @@ import {
   hovered,
   focused,
   after,
+  halved,
 } from './stylesheetFixtures';
 
 suite('Style', () => {
@@ -255,5 +256,27 @@ suite('Style', () => {
         { pseudoElement: '::placeholder' },
       );
     }
+  });
+
+  test('grabs a column edge over the gap between the columns without painting it, even while dragging', () => {
+    const resizer = withClass(
+      rendered(<Columns className={columnsClass(true, 'a')} />),
+      'resizer',
+    );
+    looks(resizer, {
+      width: '6px',
+      right: `calc(-${halved(cascaded(resizer, 'width'))} - var(--gutter-width) / 2)`,
+      cursor: 'col-resize',
+    });
+    for (const states of [{}, hovered]) {
+      looks(
+        resizer,
+        { background: undefined, 'background-color': undefined },
+        states,
+      );
+    }
+    looks(rendered(<body className="resizing" />), {
+      cursor: 'col-resize',
+    });
   });
 });

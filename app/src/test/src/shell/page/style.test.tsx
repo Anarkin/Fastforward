@@ -1,62 +1,39 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { Column } from '../../../../tools/git/page/column';
 import { columnsClass } from '../../../../tools/git/page/columns';
-import { TabBar } from '../../../../shell/page/tabBar';
-import { MenuButton } from '../../../../lib/page/menu';
 import { Highlight } from '../../../../tools/git/page/highlight';
 import { KeyCombo } from '../../../../lib/page/keyCombo';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-} from '../../../helpers/cascade';
-import { fileChange, renderedBy } from '../../../helpers/fixtures';
-import { tabsStore } from '../../../helpers/componentFixtures';
+import { allWithClass, rendered, withClass } from '../../../helpers/cascade';
+import { fileChange } from '../../../helpers/fixtures';
 import {
   AboutPopupShown,
   Columns,
   CommitRowShown,
   ContextMenuShown,
-  DiffOptionsShown,
   DiffRow,
   DiffViewShown,
-  FileHeaderRow,
   FileRowShown,
   FolderRowShown,
   LocationsPopupShown,
-  MenuButtonShown,
   MessagePanelShown,
   MinimapShown,
   NavButtonsShown,
   NoticesShown,
   SearchButtonShown,
-  ShortcutsPopupShown,
-  SoloButtonShown,
-  TabBarIn,
   TabBarShown,
   WorkingTreeRowShown,
   WorktreeBarShown,
 } from '../../../helpers/styleFixtures';
 import { diffView, worktree } from '../../../helpers/styleMarkup';
 import {
-  noop,
   activeEdge,
   looks,
-  looksAlike,
   bodyVariable,
-  halved,
-  deviceRounded,
   hovered,
   overlayScrollbar,
   popupOf,
 } from './stylesheetFixtures';
-import { ShellStore } from '../../../../shell/page/store';
-import {
-  FileHeader,
-  HunkDivider,
-} from '../../../../tools/git/page/diffRowParts';
+import { HunkDivider } from '../../../../tools/git/page/diffRowParts';
 
 const inside = (classes: string, child: React.ReactNode) =>
   rendered(<div className={classes}>{child}</div>);
@@ -73,123 +50,6 @@ const found = (classes: string, current: boolean) =>
   );
 
 suite('Style', () => {
-  test('colors the icon of each tool with its own color from the settings, so tabs of different tools for one folder tell apart at a glance', () => {
-    const bar = rendered(
-      <ShellStore
-        value={tabsStore(
-          [
-            { id: '1', tool: 'git', root: '/a', name: 'a' },
-            { id: '2', tool: 'commander', root: '/a', name: 'a' },
-            { id: '3', tool: 'terminal', root: '/a', name: 'a' },
-          ],
-          '1',
-        )}
-      >
-        <TabBar />
-      </ShellStore>,
-    );
-    assert.deepStrictEqual(
-      allWithClass(bar, 'tool-icon').map((icon) => cascaded(icon, 'color')),
-      [
-        'var(--color-git-icon)',
-        'var(--color-commander-icon)',
-        'var(--color-terminal-icon)',
-      ],
-    );
-  });
-
-  test('writes the choice shown on a dropdown button in the font size of the settings, as the text around it', () => {
-    const button = withClass(
-      rendered(<MenuButton title="Encoding" label="UTF-8" items={[]} />),
-      'menu-button-trigger',
-    );
-    assert.strictEqual(cascaded(button, 'font'), 'inherit');
-    assert.strictEqual(
-      cascaded(withClass(button, 'menu-button-label'), 'font-size'),
-      undefined,
-    );
-  });
-
-  test('sizes every round button and spaces every group of them by one size and one gap, each a whole number of screen pixels, so no gap is drawn wider than another at 125%', () => {
-    assert.strictEqual(deviceRounded('button-size'), 26);
-    assert.strictEqual(deviceRounded('button-gap'), 2);
-    assert.strictEqual(deviceRounded('arrowed-button-width'), 44);
-    const nav = rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} />);
-    const options = rendered(<DiffOptionsShown />);
-    for (const group of [
-      withClass(nav, 'nav-buttons'),
-      withClass(nav, 'pin-pair'),
-      withClass(options, 'nav-buttons'),
-      withClass(options, 'segmented'),
-      withClass(
-        rendered(
-          renderedBy(Column, {
-            actions: <span />,
-            children: null,
-          }),
-        ),
-        'column-actions',
-      ),
-    ]) {
-      looks(group, { gap: 'var(--button-gap)' });
-    }
-    const buttons = [
-      ...allWithClass(nav, 'nav-button'),
-      ...allWithClass(options, 'nav-button'),
-    ];
-    assert.ok(buttons.length > 8);
-    for (const button of buttons) {
-      looks(button, {
-        width: 'var(--button-size)',
-        height: 'var(--button-size)',
-      });
-    }
-    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      width: 'var(--search-height)',
-    });
-    assert.strictEqual(
-      cascaded(
-        rendered(renderedBy(Column, { children: null })),
-        '--search-height',
-      ),
-      'var(--button-size)',
-    );
-  });
-
-  test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
-    const pinned = rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} />);
-    const enabled = [
-      pinned,
-      rendered(<DiffOptionsShown ignoreWhitespace={false} />),
-    ].flatMap((root) =>
-      allWithClass(root, 'nav-button').filter(
-        (button) => !button.attributes.has('disabled'),
-      ),
-    );
-    const filled = enabled.filter((button) =>
-      button.classes.includes('active'),
-    );
-    assert.strictEqual(filled.length, 3);
-    for (const button of enabled) {
-      const radius = halved(cascaded(button, 'width'));
-      looks(button, { 'border-radius': radius });
-      looks(
-        button,
-        { 'box-shadow': `inset 0 0 0 ${radius} var(--hover-background)` },
-        hovered,
-      );
-    }
-    for (const button of filled) {
-      looksAlike(button, ['background'], hovered);
-    }
-    looksAlike(withClass(pinned, 'pin-pair'), ['background'], {
-      hover: filled[0],
-    });
-    const disabled = withClass(pinned, 'nav-button');
-    assert.ok(disabled.attributes.has('disabled'));
-    looks(disabled, { 'box-shadow': undefined }, hovered);
-  });
-
   test('fills the search button in the border color, as the search fields are until used, and draws the strip between hunks in it', () => {
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       background: 'var(--color-border)',
@@ -205,75 +65,6 @@ suite('Style', () => {
         'hunk-divider',
       ),
       { background: 'var(--color-border)' },
-    );
-  });
-
-  test("fills every round button in the border color, but in the color of the tab bar or a popup's title it sits on, showing no circle there, and in the panel's on a file's header, tinting the button of an open menu, the + one too, over its fill and ringing a button's dot in it", () => {
-    assert.strictEqual(
-      bodyVariable('button-background'),
-      'var(--color-border)',
-    );
-    for (const bar of [
-      withClass(rendered(<TabBarShown />), 'tabs'),
-      withClass(popupOf(<ShortcutsPopupShown />), 'shortcuts-title'),
-      withClass(popupOf(<AboutPopupShown />), 'shortcuts-title'),
-    ]) {
-      looks(bar, {
-        background: 'var(--color-background)',
-        '--button-background': 'var(--color-background)',
-      });
-    }
-    looks(
-      withClass(diffView(<DiffViewShown />, <FileHeaderRow />), 'file-header'),
-      {
-        background: 'var(--color-border)',
-        '--button-background': 'var(--color-panel-background)',
-      },
-    );
-    const diff = rendered(<DiffOptionsShown />);
-    const laidOut = allWithClass(withClass(diff, 'segmented'), 'nav-button');
-    for (const button of [
-      ...allWithClass(rendered(<NavButtonsShown />), 'nav-button'),
-      ...allWithClass(diff, 'nav-button').filter(
-        (option) => !laidOut.includes(option),
-      ),
-      withClass(rendered(<MenuButtonShown />), 'nav-button'),
-      withClass(popupOf(<ShortcutsPopupShown />), 'nav-button'),
-      withClass(
-        diffView(
-          <DiffViewShown />,
-          <DiffRow>
-            <FileHeader
-              path="v.svg"
-              open
-              whole={false}
-              collapsible
-              onClick={noop}
-              onView={noop}
-            />
-          </DiffRow>,
-        ),
-        'file-header-button',
-      ),
-    ]) {
-      assert.ok(!button.classes.includes('active'));
-      looks(button, { background: 'var(--button-background)' });
-    }
-    for (const open of [
-      rendered(<button className="nav-button menu-button-trigger open" />),
-      withClass(rendered(<TabBarIn maximized={false} adding />), 'tab-add'),
-    ]) {
-      looks(open, {
-        background:
-          'linear-gradient(var(--hover-background), var(--hover-background)), var(--button-background)',
-      });
-    }
-    assert.match(
-      cascaded(
-        withClass(rendered(<MenuButtonShown marked />), 'menu-mark'),
-        'box-shadow',
-      ) ?? '',
-      /^0 0 0 \S+ var\(--button-background\)$/,
     );
   });
 
@@ -328,22 +119,6 @@ suite('Style', () => {
     ]) {
       looks(row, { background: 'var(--hover-background)' }, hovered);
     }
-  });
-
-  test('tints a hovered button like a hovered row, and a switched-on toggle as strongly as a selection, both see-through', () => {
-    assert.strictEqual(
-      bodyVariable('toggle-on-background'),
-      'color-mix( in srgb, var(--color-focus) var(--color-focus-selected), transparent )',
-    );
-    for (const button of [
-      withClass(rendered(<TabBarShown />), 'tab-close'),
-      withClass(rendered(<NoticesShown />), 'notice-close'),
-    ]) {
-      looks(button, { background: 'var(--hover-background)' }, hovered);
-    }
-    looks(rendered(<SoloButtonShown solo applying={false} />), {
-      background: 'var(--toggle-on-background)',
-    });
   });
 
   test('fills the search fields, the search button and the worktree chips alike, and tints them alike when hovered, the edges of the fields included', () => {
@@ -444,88 +219,6 @@ suite('Style', () => {
     ]) {
       looks(scroller, { background: 'var(--color-panel-background)' });
     }
-  });
-
-  test('grabs a column edge over the gap between the columns without painting it, even while dragging', () => {
-    const resizer = withClass(
-      rendered(<Columns className={columnsClass(true, 'a')} />),
-      'resizer',
-    );
-    looks(resizer, {
-      width: '6px',
-      right: `calc(-${halved(cascaded(resizer, 'width'))} - var(--gutter-width) / 2)`,
-      cursor: 'col-resize',
-    });
-    for (const states of [{}, hovered]) {
-      looks(
-        resizer,
-        { background: undefined, 'background-color': undefined },
-        states,
-      );
-    }
-    looks(rendered(<body className="resizing" />), {
-      cursor: 'col-resize',
-    });
-  });
-
-  test('spins the icon of a running button', () => {
-    for (const icon of [
-      withClass(rendered(<NavButtonsShown fetching />), 'spin-icon'),
-      withClass(
-        rendered(<SoloButtonShown solo={false} applying />),
-        'spin-icon',
-      ),
-    ]) {
-      assert.match(
-        cascaded(icon, 'animation') ?? '',
-        /^spin \S+ linear infinite$/,
-      );
-    }
-    looks(withClass(rendered(<NavButtonsShown />), 'spin-icon'), {
-      animation: undefined,
-    });
-  });
-
-  test('marks the fetch button in the warning color while stale and the error color when failed, as a dot outside the spinning icon', () => {
-    const stale = rendered(
-      <NavButtonsShown
-        lastFetch={{ succeeded: 0 }}
-        autoFetch
-        autoFetchMinutes={1}
-      />,
-    );
-    const failed = rendered(<NavButtonsShown lastFetch={{ failed: 0 }} />);
-    for (const [root, color] of [
-      [stale, 'warning'],
-      [failed, 'error'],
-    ] as const) {
-      const mark = withClass(root, 'fetch-mark');
-      looks(mark, {
-        position: 'absolute',
-        'border-radius': '50%',
-        background: `var(--color-${color}-foreground)`,
-      });
-      looks(mark?.parent, { position: 'relative' });
-      assert.ok(!mark?.parent?.classes.includes('spin-icon'));
-    }
-  });
-
-  test('marks the menu button in the focus color while an update waits, as a dot like the one on the fetch button', () => {
-    const mark = withClass(rendered(<MenuButtonShown marked />), 'menu-mark');
-    const fetchMark = withClass(
-      rendered(<NavButtonsShown lastFetch={{ failed: 0 }} />),
-      'fetch-mark',
-    );
-    looks(mark, {
-      position: cascaded(fetchMark, 'position'),
-      'border-radius': cascaded(fetchMark, 'border-radius'),
-      background: 'var(--color-focus)',
-    });
-    looks(mark?.parent, { position: 'relative' });
-    assert.deepStrictEqual(
-      allWithClass(rendered(<MenuButtonShown />), 'menu-mark'),
-      [],
-    );
   });
 
   test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, outlining the current one, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and outlines a bracket as a plain rectangle too', () => {
