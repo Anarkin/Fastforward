@@ -5,7 +5,7 @@ import {
   onMenuKeyDown,
   useDismiss,
   useMenuFocus,
-} from '../../../lib/page/contextMenu';
+} from '../../../lib/page/menuControls';
 import {
   BackIcon,
   ForwardIcon,

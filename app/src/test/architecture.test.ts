@@ -120,7 +120,6 @@ function countedOver(
 
 const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
   'lib/page/blanks.tsx': 4,
-  'lib/page/contextMenu.tsx': 9,
   'lib/page/images.tsx': 4,
   'lib/page/languageChoice.tsx': 4,
   'lib/page/menu.tsx': 1,
@@ -166,22 +165,14 @@ const exportsLeftInComponentFiles: Readonly<Record<string, number>> = {
 };
 
 const importsLeftOfComponentFiles: Readonly<Record<string, number>> = {
-  'lib/page/dialogButtons.ts': 1,
-  'shell/page/store.ts': 2,
-  'tools/commander/page/bookmarks.ts': 1,
-  'tools/commander/page/driveMenu.ts': 1,
-  'tools/commander/page/editorEncodings.ts': 1,
-  'tools/commander/page/editorSources.ts': 1,
+  'shell/page/store.ts': 1,
   'tools/commander/page/editorText.ts': 1,
-  'tools/commander/page/encodings.ts': 1,
   'tools/commander/page/pdfPreview.ts': 1,
   'tools/commander/page/screenRows.ts': 1,
   'tools/git/page/fileStatus.ts': 1,
   'tools/git/page/receivedMessages.ts': 1,
-  'tools/git/page/repositoryMenu.ts': 1,
   'tools/git/page/rowMeasures.ts': 1,
-  'tools/git/page/store.ts': 2,
-  'tools/terminal/page/folderMenu.ts': 1,
+  'tools/git/page/store.ts': 1,
 };
 
 suite('Architecture', () => {

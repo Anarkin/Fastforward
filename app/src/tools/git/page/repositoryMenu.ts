@@ -1,6 +1,6 @@
 import type { RepositoryInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
-import type { ContextMenuItem } from '../../../lib/page/contextMenu';
+import type { ContextMenuItem } from '../../../lib/page/menuControls';
 
 export interface RepositoryMenuActions {
   readonly onOpen: (root: string) => void;

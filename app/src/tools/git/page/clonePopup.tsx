@@ -8,7 +8,7 @@ import {
 } from '../shared/clone';
 import { strings, type Sentence } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
-import { useDismiss } from '../../../lib/page/contextMenu';
+import { useDismiss } from '../../../lib/page/menuControls';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../../lib/page/modalDialog';

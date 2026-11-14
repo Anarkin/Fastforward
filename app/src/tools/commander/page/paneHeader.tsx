@@ -3,7 +3,7 @@ import { layouts, type Layout } from '../shared/settings';
 import { useCommander, useCommanderActions } from './store';
 import { BookmarkIcon } from '../../../lib/page/icons';
 import { MenuButton } from '../../../lib/page/menu';
-import type { ContextMenuItem } from '../../../lib/page/contextMenu';
+import type { ContextMenuItem } from '../../../lib/page/menuControls';
 import { strings } from '../../../lib/shared/strings';
 import { fileColorOf, type FileColors } from './fileColors';
 import { nameOf } from './pathTitle';

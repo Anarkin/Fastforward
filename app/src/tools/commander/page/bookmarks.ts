@@ -1,5 +1,5 @@
 import { strings } from '../../../lib/shared/strings';
-import type { ContextMenuItem } from '../../../lib/page/contextMenu';
+import type { ContextMenuItem } from '../../../lib/page/menuControls';
 import { folderKey } from '../shared/paths';
 
 const keys = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';

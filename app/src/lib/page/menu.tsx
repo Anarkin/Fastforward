@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { keymap, letterTyped, pressedAlone } from '../shared/keymap';
 import {
-  MenuItems,
   onMenuKeyDown,
   useDismiss,
   useMenuFocus,
   type ContextMenuItem,
-} from './contextMenu';
+} from './menuControls';
+import { MenuItems } from './contextMenu';
 import { DropdownIcon, MoreIcon } from './icons';
 import { Name } from './name';
 import { keyPressed } from './shortcuts';

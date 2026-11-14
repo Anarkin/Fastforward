@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from '../../../lib/page/contextMenu';
+import type { ContextMenuItem } from '../../../lib/page/menuControls';
 
 export function driveMenu(
   drives: readonly string[],

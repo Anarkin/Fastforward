@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { strings } from '../../lib/shared/strings';
 import type { ToolId } from '../shared/tools';
 import { keymap } from '../../lib/shared/keymap';
-import { nextMenuItem, useDismiss } from '../../lib/page/contextMenu';
+import { nextMenuItem, useDismiss } from '../../lib/page/menuControls';
 import { keyPressed } from '../../lib/page/shortcuts';
 import { CloseIcon, ToolIcon } from '../../lib/page/icons';
 import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';

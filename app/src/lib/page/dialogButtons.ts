@@ -1,5 +1,5 @@
 import { keymap } from '../shared/keymap';
-import { nextMenuItem } from './contextMenu';
+import { nextMenuItem } from './menuControls';
 import { keyPressed } from './shortcuts';
 
 export function moveBetweenButtons(

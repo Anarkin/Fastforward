@@ -14,7 +14,7 @@ import {
 import { strings } from '../../lib/shared/strings';
 import { filterWords } from '../../lib/page/fileFilter';
 import { folded, matchesIn } from '../../lib/shared/textMatches';
-import { useDismiss } from '../../lib/page/contextMenu';
+import { useDismiss } from '../../lib/page/menuControls';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
 import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
 import { keyPressed, shortcutsEntryOf } from '../../lib/page/shortcuts';

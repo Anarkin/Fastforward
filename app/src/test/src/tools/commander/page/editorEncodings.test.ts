@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { ContextMenuItem } from '../../../../../lib/page/contextMenu';
+import type { ContextMenuItem } from '../../../../../lib/page/menuControls';
 import { filteredItems } from '../../../../../lib/page/menu';
 import { encodingMenu } from '../../../../../tools/commander/page/encodings';
 import {

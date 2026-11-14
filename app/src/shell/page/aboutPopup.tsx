@@ -7,7 +7,7 @@ import {
 } from 'react';
 import type { AboutInfo } from '../shared/protocol';
 import { brand, strings } from '../../lib/shared/strings';
-import { useDismiss } from '../../lib/page/contextMenu';
+import { useDismiss } from '../../lib/page/menuControls';
 import { CloseIcon } from '../../lib/page/icons';
 import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';
 import { useShell, useShellActions } from './store';

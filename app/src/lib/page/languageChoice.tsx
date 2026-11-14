@@ -1,5 +1,5 @@
 import { strings } from '../shared/strings';
-import type { ContextMenuItem } from './contextMenu';
+import type { ContextMenuItem } from './menuControls';
 import { languages } from './languages';
 import { MenuButton } from './menu';
 

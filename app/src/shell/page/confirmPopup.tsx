@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { strings, type Line } from '../../lib/shared/strings';
-import { useDismiss } from '../../lib/page/contextMenu';
+import { useDismiss } from '../../lib/page/menuControls';
 import { CloseIcon } from '../../lib/page/icons';
 import { moveBetweenButtons } from '../../lib/page/dialogButtons';
 import { useDialogDrag, useModalDialog } from '../../lib/page/modalDialog';

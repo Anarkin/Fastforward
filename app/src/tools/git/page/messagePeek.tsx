@@ -19,7 +19,7 @@ import {
 import { gitKeymap } from './keymap';
 import type { CommitInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
-import { listenForDismiss } from '../../../lib/page/contextMenu';
+import { listenForDismiss } from '../../../lib/page/menuControls';
 import { CloseIcon, PinIcon } from '../../../lib/page/icons';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { KeyCombo } from '../../../lib/page/keyCombo';

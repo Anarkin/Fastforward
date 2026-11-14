@@ -13,7 +13,7 @@ import { searchedBookmarks } from './bookmarks';
 import { BackIcon } from '../../../lib/page/icons';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { CommitBubble, HeadBubble, RefBubble } from './bubbles';
-import { useDismiss } from '../../../lib/page/contextMenu';
+import { useDismiss } from '../../../lib/page/menuControls';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { CommitRow, noRefs } from './commitList';
 import { detachedHead, searchQueryOf, useGit, useGitActions } from './store';

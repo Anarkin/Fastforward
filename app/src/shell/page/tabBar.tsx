@@ -12,7 +12,7 @@ import {
   type TabVisit,
   type WindowInfo,
 } from '../shared/protocol';
-import type { ContextMenuItem } from '../../lib/page/contextMenu';
+import type { ContextMenuItem } from '../../lib/page/menuControls';
 import type { ToolId } from '../shared/tools';
 import { AddIcon, CloseIcon, ToolIcon } from '../../lib/page/icons';
 import { titleBarHeight } from '../shared/titleBar';

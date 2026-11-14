@@ -1,6 +1,6 @@
 import { imageType, vectorType } from '../../../lib/shared/images';
 import { strings } from '../../../lib/shared/strings';
-import type { ContextMenuItem } from '../../../lib/page/contextMenu';
+import type { ContextMenuItem } from '../../../lib/page/menuControls';
 import { ImageIcon, SevenZipIcon, ToolIcon } from '../../../lib/page/icons';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
 import { pointedKeys, type Row } from './listing';

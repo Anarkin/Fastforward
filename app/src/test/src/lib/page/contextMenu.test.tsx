@@ -7,12 +7,12 @@ import {
   accessKeyOf,
   claimsMenuKey,
   listenForDismiss,
-  MenuItems,
   nextMenuItem,
   onMenuKeyDown,
   openedSubmenu,
   submenuPlacement,
-} from '../../../../lib/page/contextMenu';
+} from '../../../../lib/page/menuControls';
+import { MenuItems } from '../../../../lib/page/contextMenu';
 import { SubmenuIcon } from '../../../../lib/page/icons';
 import {
   keyPress,

@@ -3,7 +3,7 @@ import { isValidElement } from 'react';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { tools, type ToolId } from '../../../../../shell/shared/tools';
-import type { ContextMenuItem } from '../../../../../lib/page/contextMenu';
+import type { ContextMenuItem } from '../../../../../lib/page/menuControls';
 import { ToolIcon } from '../../../../../lib/page/icons';
 import {
   fileMenuItems,
