@@ -6,9 +6,8 @@ import {
 } from 'react';
 import { maxImageSize } from '../shared/images';
 import { strings } from '../shared/strings';
+import { type LoadedImage, ImageCache } from './imageCache';
 import {
-  type LoadedImage,
-  ImageCache,
   type Size,
   realSizeOf,
   usePixelRatio,

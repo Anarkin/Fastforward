@@ -3,7 +3,7 @@ import { maxPreviewBytes } from '../shared/protocol';
 import { viewedFileUrl } from '../shared/files';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
-import { documentImagePath } from '../../../lib/page/imageSizes';
+import { documentImagePath } from './documentImages';
 import { ImagePane } from '../../../lib/page/images';
 import { imageType, vectorType } from '../../../lib/shared/images';
 import { MarkdownPane } from './markdownView';

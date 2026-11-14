@@ -3,7 +3,7 @@ import createDOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import markdownIt from 'markdown-it';
 import { afterAll, suite, test } from 'vitest';
-import { documentImagePath } from '../../../../../lib/page/imageSizes';
+import { documentImagePath } from '../../../../../tools/commander/page/documentImages';
 import {
   showBlocks,
   showImages,

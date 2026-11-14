@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
-import { documentImagePath } from '../../../../../lib/page/imageSizes';
+import { documentImagePath } from '../../../../../tools/commander/page/documentImages';
 import { boxCodeBlocks } from '../../../../../tools/commander/page/markdownBlocks';
 import { MarkdownPane } from '../../../../../tools/commander/page/markdownView';
 import { waitFor } from '../../../../helpers/fixtures';
