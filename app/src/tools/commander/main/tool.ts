@@ -43,6 +43,8 @@ import { PackCommands } from './packCommands';
 import type { CommanderAccess } from './commanderAccess';
 import { isFolder } from './fileStats';
 import { FileCommands } from './fileCommands';
+import { ItemChanges } from './itemChanges';
+import { SystemCommands } from './systemCommands';
 import { ArchiveListing } from './archiveListing';
 import { Listings } from './listings';
 import { Navigation } from './navigation';
@@ -62,6 +64,8 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly transferCommands: TransferCommands;
   private readonly packCommands: PackCommands;
   private readonly fileCommands: FileCommands;
+  private readonly itemChanges: ItemChanges;
+  private readonly systemCommands: SystemCommands;
   private readonly archiveListing: ArchiveListing;
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
@@ -205,7 +209,6 @@ export class CommanderTool implements Tool<'commander'> {
       access,
       this.sides,
       this.copies,
-      this.archiveCommands,
       this.editing,
       {
         shell: () => this.shell,
@@ -213,6 +216,19 @@ export class CommanderTool implements Tool<'commander'> {
           this.listings.list(page, tab, side, folder, how, fallback, selecting),
       },
     );
+    this.itemChanges = new ItemChanges(
+      access,
+      this.sides,
+      this.archiveCommands,
+      {
+        shell: () => this.shell,
+        list: (page, tab, side, folder, how, fallback, selecting) =>
+          this.listings.list(page, tab, side, folder, how, fallback, selecting),
+      },
+    );
+    this.systemCommands = new SystemCommands(access, this.sides, this.copies, {
+      shell: () => this.shell,
+    });
     this.archiveListing = new ArchiveListing(
       access,
       this.sides,
@@ -419,28 +435,28 @@ export class CommanderTool implements Tool<'commander'> {
           message.name,
         );
       case 'shellMenu':
-        return this.fileCommands.shellMenu(page, message);
+        return this.systemCommands.shellMenu(page, message);
       case 'delete':
-        return this.fileCommands.delete(page, message);
+        return this.itemChanges.delete(page, message);
       case 'transfer':
         return this.transferCommands.transfer(page, message);
       case 'newFolder':
-        return this.fileCommands.newFolder(page, message);
+        return this.itemChanges.newFolder(page, message);
       case 'newFile':
         return this.fileCommands.newFile(page, message);
       case 'editViewed':
         return this.fileCommands.editViewed(page, message);
       case 'rename':
-        return this.fileCommands.rename(page, message);
+        return this.itemChanges.rename(page, message);
       case 'pack':
         return this.packCommands.pack(page, message);
       case 'testArchives':
         this.packCommands.testArchives(page, message);
         return undefined;
       case 'copyToClipboard':
-        return this.fileCommands.copyToClipboard(page, message);
+        return this.systemCommands.copyToClipboard(page, message);
       case 'drag':
-        return this.fileCommands.drag(page, message);
+        return this.systemCommands.drag(page, message);
       case 'paste':
         return this.transferCommands.paste(page, message);
       case 'answerClash':
