@@ -1,5 +1,5 @@
 import { strings } from '../../../lib/shared/strings';
-import { remoteTagRefs } from './refs';
+import { remoteTagRefs } from './remoteTags';
 import { readRefs, repositoryRoot } from './repository';
 import type { GitSessions } from './sessions';
 import type { GitStorage } from './storage';

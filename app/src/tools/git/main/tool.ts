@@ -33,6 +33,9 @@ import { TreePaths } from './treePaths';
 import { Refreshes } from './refreshes';
 import { CommitNavigation } from './commitNavigation';
 import { CommitSearch } from './commitSearch';
+import { Fetches } from './fetches';
+import { RemoteTags } from './remoteTags';
+import { RemoteWork } from './remoteWork';
 import { Remotes } from './remotes';
 import { Watching } from './watching';
 import { CompareTabs } from './compareTabs';
@@ -86,6 +89,9 @@ export class GitTool implements Tool<'git'> {
   private readonly refreshes: Refreshes;
   private readonly commitNavigation: CommitNavigation;
   private readonly commitSearch: CommitSearch;
+  private readonly remoteWork = new RemoteWork();
+  private readonly remoteTags: RemoteTags;
+  private readonly fetches: Fetches;
   private readonly remotes: Remotes;
   private readonly watching: Watching;
   private readonly compareTabs: CompareTabs;
@@ -121,7 +127,7 @@ export class GitTool implements Tool<'git'> {
       () => this.shell,
       this.sessions,
       this.contexts,
-      () => this.remotes,
+      () => this.fetches,
       this.worktreeLists,
       save,
     );
@@ -189,17 +195,21 @@ export class GitTool implements Tool<'git'> {
       this.core,
     );
     this.commitSearch = new CommitSearch(storage, this.core);
-    this.remotes = new Remotes(
+    const remote = {
       log,
       gitPath,
       storage,
-      () => this.shell,
-      this.refreshes,
-      this.commitNavigation,
-      this.core,
-      this.quitting,
-      this.repositories,
-    );
+      shell: () => this.shell,
+      refreshes: this.refreshes,
+      commitNavigation: this.commitNavigation,
+      core: this.core,
+      quitting: this.quitting,
+      repositories: this.repositories,
+      remoteWork: this.remoteWork,
+    };
+    this.remoteTags = new RemoteTags(remote);
+    this.fetches = new Fetches(remote, this.remoteTags);
+    this.remotes = new Remotes(remote, this.fetches, this.remoteTags);
     this.watching = new Watching(
       log,
       delays,
@@ -256,7 +266,7 @@ export class GitTool implements Tool<'git'> {
           this.sessions.repositoryTabs,
           this.sessions.shownRepositories(),
         ),
-      (root) => this.shell.track(this.remotes.fetchInBackground(root)),
+      (root) => this.shell.track(this.fetches.fetchInBackground(root)),
       timer,
     );
     this.autoFetch.update();

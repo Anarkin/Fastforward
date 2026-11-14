@@ -1,12 +1,6 @@
 import type { Head } from './repository';
 import type { Positions } from './merges';
-import type { RefInfo, BookmarkRef, StashInfo } from '../shared/protocol';
-import {
-  hasRef,
-  localBranchOf,
-  refOf,
-  withoutRemote,
-} from '../shared/refNames';
+import type { RefInfo, StashInfo } from '../shared/protocol';
 
 export function fingerprint(
   head: Head | undefined,
@@ -63,54 +57,4 @@ export function decorations(
     }
   }
   return result;
-}
-
-export function defaultBookmarks(
-  refs: readonly RefInfo[],
-  remoteDefaults: readonly string[],
-): BookmarkRef[] {
-  const exists = (bookmark: BookmarkRef) => hasRef(refs, bookmark);
-  const [main] = remoteDefaults.length
-    ? remoteDefaults.map((name) => localBranchOf(refs, name))
-    : ['main', 'master', 'trunk'].filter((name) =>
-        exists({ kind: 'branch', name }),
-      );
-  if (main === undefined) {
-    return [];
-  }
-  const candidates: BookmarkRef[] = [
-    { kind: 'branch', name: main },
-    ...refs
-      .filter(
-        (ref) =>
-          ref.kind === 'remote' && withoutRemote(ref.name, ref.remote) === main,
-      )
-      .map(refOf),
-  ];
-  return candidates.filter(exists);
-}
-
-export function remoteTagRefs(
-  lists: ReadonlyMap<string, ReadonlyMap<string, string>>,
-  remotes: readonly string[],
-): RefInfo[] {
-  return remotes.flatMap((remote) =>
-    [...(lists.get(remote) ?? [])].map(([tag, commit]): RefInfo => ({
-      kind: 'remote-tag',
-      name: `${remote}/${tag}`,
-      commit,
-      remote,
-    })),
-  );
-}
-
-export function sameTags(
-  a: ReadonlyMap<string, string> | undefined,
-  b: ReadonlyMap<string, string>,
-): boolean {
-  return (
-    a !== undefined &&
-    a.size === b.size &&
-    [...b].every(([tag, commit]) => a.get(tag) === commit)
-  );
 }

@@ -2,9 +2,9 @@ import type { ShellAccess } from '../../../shell/main/toolContract';
 import type { WorktreeInfo } from '../shared/protocol';
 import { remoteDefaultBranches } from './branches';
 import type { Contexts } from './contexts';
-import { tagRemoteOf } from './operations';
-import { defaultBookmarks } from './refs';
-import type { Remotes } from './remotes';
+import { defaultBookmarks } from './bookmarks';
+import type { Fetches } from './fetches';
+import { tagRemoteOf } from './push';
 import type { Refs } from './repository';
 import type { GitSessions } from './sessions';
 import type { GitStorage } from './storage';
@@ -17,7 +17,7 @@ export class TabPosts {
     private readonly shell: () => ShellAccess,
     private readonly sessions: GitSessions,
     private readonly contexts: Contexts,
-    private readonly remotes: () => Remotes,
+    private readonly fetches: () => Fetches,
     private readonly worktreeLists: ReadonlyMap<
       string,
       readonly WorktreeInfo[]
@@ -70,7 +70,7 @@ export class TabPosts {
       type: 'solo',
       solo: worktree !== undefined && storage.soloOf(worktree),
     });
-    this.remotes().postLastFetch(session, active);
+    this.fetches().postLastFetch(session, active);
   }
 
   sendTabs(session: Session): void {

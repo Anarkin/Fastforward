@@ -2,7 +2,7 @@ import { plainOf } from '../../../../../lib/shared/sentences';
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { checkout } from '../../../../../tools/git/main/operations';
+import { checkout } from '../../../../../tools/git/main/checkout';
 import { recordingLog } from '../../../../helpers/stub';
 
 suite('Operations', () => {

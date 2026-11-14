@@ -1,7 +1,8 @@
 import type { ReadPatch } from './patchBudget';
 import type { Refs } from './repository';
 import { UntrackedPatches } from './workingTree';
-import type { Fetched, RepositoryAt, Notify } from './operations';
+import type { Fetched } from './fetches';
+import type { RepositoryAt, Notify } from './operations';
 import {
   type GitToWebview,
   workingTreeHash,
@@ -122,6 +123,8 @@ export function shownCommit(hash: string): string | undefined {
 }
 
 export const nothing: Changed = { refs: false, workingTree: false };
+
+export const refsAlone: Changed = { refs: true, workingTree: false };
 
 export async function allSettled(
   promises: readonly Promise<unknown>[],
