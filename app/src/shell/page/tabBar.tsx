@@ -99,7 +99,10 @@ function revealTab(strip: HTMLElement | null, index: number): void {
   );
 }
 
-type Motion = 'opening' | 'closing';
+type Motion = 'opening' | 'closing' | 'departing';
+
+const leaving = (motion: Motion | undefined) =>
+  motion === 'closing' || motion === 'departing';
 
 interface Placed<T> {
   readonly tab: T;
@@ -109,18 +112,23 @@ interface Placed<T> {
 function placedTabs<T extends { readonly id: string }>(
   before: readonly Placed<T>[],
   tabs: readonly T[],
+  visitor?: string,
+  departed?: string,
 ): Placed<T>[] {
   const staying = new Map(
     before.flatMap((placed) =>
-      placed.motion === 'closing' ? [] : [[placed.tab.id, placed] as const],
+      leaving(placed.motion) ? [] : [[placed.tab.id, placed] as const],
     ),
   );
   const placed: Placed<T>[] = tabs.map((tab) => {
-    const motion = staying.has(tab.id)
-      ? staying.get(tab.id)?.motion
-      : before.length > 0
-        ? 'opening'
-        : undefined;
+    const motion =
+      tab.id === visitor
+        ? undefined
+        : staying.has(tab.id)
+          ? staying.get(tab.id)?.motion
+          : before.length > 0
+            ? 'opening'
+            : undefined;
     return motion ? { tab, motion } : { tab };
   });
   const open = new Set(tabs.map((tab) => tab.id));
@@ -129,7 +137,13 @@ function placedTabs<T extends { readonly id: string }>(
     if (open.has(shown.tab.id)) {
       at = placed.findIndex((item) => item.tab.id === shown.tab.id) + 1;
     } else {
-      placed.splice(at, 0, { tab: shown.tab, motion: 'closing' });
+      placed.splice(at, 0, {
+        tab: shown.tab,
+        motion:
+          shown.tab.id === departed || shown.motion === 'departing'
+            ? 'departing'
+            : 'closing',
+      });
       at += 1;
     }
   }
@@ -143,7 +157,7 @@ function settledTab<T extends { readonly id: string }>(
   return placed.flatMap((item) =>
     item.tab.id !== id || item.motion === undefined
       ? [item]
-      : item.motion === 'closing'
+      : leaving(item.motion)
         ? []
         : [{ tab: item.tab }],
   );
@@ -155,18 +169,25 @@ function sameList<T>(a: readonly T[], b: readonly T[]): boolean {
 
 function usePlacedTabs<T extends { readonly id: string }>(
   tabs: readonly T[],
+  visitor: string | undefined,
 ): {
   placed: readonly Placed<T>[];
   settled: (id: string) => void;
 } {
   const [state, setState] = useState(() => ({
     tabs,
+    visitor,
     placed: placedTabs([], tabs),
   }));
   let placed = state.placed;
-  if (!sameList(state.tabs, tabs)) {
-    placed = placedTabs(state.placed, tabs);
-    setState({ tabs, placed });
+  if (!sameList(state.tabs, tabs) || state.visitor !== visitor) {
+    placed = placedTabs(
+      state.placed,
+      tabs,
+      visitor,
+      state.visitor === visitor ? undefined : state.visitor,
+    );
+    setState({ tabs, visitor, placed });
   }
   const settled = useCallback(
     (id: string) =>
@@ -177,6 +198,42 @@ function usePlacedTabs<T extends { readonly id: string }>(
     [],
   );
   return { placed, settled };
+}
+
+function useVisitorSlides(
+  elements: React.RefObject<Map<string, HTMLElement>>,
+  visitor: string | undefined,
+): void {
+  const places = useRef(
+    new Map<string, { readonly laid: number; readonly drawn: number }>(),
+  );
+  const visited = useRef<string>(undefined);
+  useLayoutEffect(() => {
+    const before = places.current;
+    if (visitor !== undefined) {
+      for (const [id, element] of elements.current) {
+        const was = before.get(id);
+        if (
+          id !== visitor &&
+          id !== visited.current &&
+          was !== undefined &&
+          was.laid !== element.offsetLeft
+        ) {
+          slide(element, was.drawn);
+        }
+      }
+    }
+    visited.current = visitor;
+    places.current = new Map(
+      [...elements.current].map(([id, element]) => [
+        id,
+        {
+          laid: element.offsetLeft,
+          drawn: element.getBoundingClientRect().left,
+        },
+      ]),
+    );
+  });
 }
 
 function useVisit(
@@ -414,7 +471,8 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
   const visitor = visit?.tab.id;
   const dragging = drag.dragged !== undefined;
   const activeIndex = tabs.findIndex((tab) => tab.id === active);
-  const { placed, settled } = usePlacedTabs(shown);
+  const { placed, settled } = usePlacedTabs(shown, visitor);
+  useVisitorSlides(drag.elements, visitor);
   const activeOpening = placed.some(
     ({ tab, motion }) => tab.id === active && motion === 'opening',
   );
@@ -485,10 +543,10 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
           }}
         >
           {placed.map(({ tab, motion }) =>
-            motion === 'closing' ? (
+            leaving(motion) ? (
               <div
                 key={tab.id}
-                className="tab closing"
+                className={`tab closing ${motion === 'departing' ? 'departing' : ''}`}
                 aria-hidden
                 inert
                 onAnimationEnd={(event) =>

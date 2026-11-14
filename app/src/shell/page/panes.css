@@ -116,6 +116,10 @@
   animation: tab-close 0.2s ease-out forwards;
 }
 
+.tabs .tab.departing {
+  visibility: hidden;
+}
+
 @keyframes tab-open {
   from {
     width: 0;
