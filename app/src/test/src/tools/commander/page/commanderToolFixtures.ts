@@ -9,6 +9,7 @@ import type {
   TextRow,
 } from '../../../../../tools/commander/shared/protocol';
 import { noop } from '../../../../helpers/fixtures';
+import { terminalCells } from '../../../../../lib/page/cellTable';
 
 const toolScreen = 10;
 
@@ -196,6 +197,7 @@ export async function inCommanderTool(
   }
   try {
     const { createRoot } = await import('react-dom/client');
+    await terminalCells();
     const { document } = dom.window;
     const main = document.querySelector('main');
     assert.ok(main);
@@ -228,7 +230,7 @@ export async function inCommanderTool(
           message.type === type && !answered.has(message),
       );
     await settle();
-    await run({
+    const running = run({
       window: dom.window,
       document,
       posted,
@@ -325,7 +327,11 @@ export async function inCommanderTool(
       asked: unanswered,
       settle,
     });
-    await act(async () => root.unmount());
+    try {
+      await running;
+    } finally {
+      await act(async () => root.unmount());
+    }
   } finally {
     for (const [name, descriptor] of Object.entries(saved)) {
       if (descriptor === undefined) {
