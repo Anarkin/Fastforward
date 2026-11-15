@@ -7,6 +7,7 @@ import {
   withPart,
 } from '../../../../../tools/commander/page/textColors';
 import type { TextEncoding } from '../../../../../tools/commander/shared/textEncodings';
+import { bytesOf } from '../../../../../tools/commander/page/encodedBytes';
 import { packedPart } from '../../../../../lib/page/syntaxParts';
 import type { LineRanges } from '../../../../../lib/page/syntaxEngine';
 
@@ -89,6 +90,47 @@ suite('Colors of the rows of a file viewed', () => {
       { text: 'let', kind: 'keyword' },
       { text: ' x;' },
     ]);
+  });
+
+  test('starts each line where bytesOf counts it, a surrogate pair four bytes of UTF-8 and a lone surrogate three, in UTF-8, UTF-16 and a code page alike', () => {
+    const lines = ['a😀b', '\ud800x', 'y\udc00', 'é€'];
+    const startsIn = (encoding: TextEncoding) =>
+      lines.map((_, index) =>
+        lines
+          .slice(0, index)
+          .reduce(
+            (at, line) =>
+              at +
+              bytesOf(line, 0, line.length, encoding) +
+              bytesOf('\n', 0, 1, encoding),
+            0,
+          ),
+      );
+
+    assert.deepStrictEqual(startsIn('utf-8'), [0, 7, 12, 17]);
+    assert.deepStrictEqual(startsIn('utf-16le'), [0, 10, 16, 22]);
+    assert.deepStrictEqual(startsIn('windows-1252'), [0, 5, 8, 11]);
+    for (const encoding of ['utf-8', 'utf-16le', 'windows-1252'] as const) {
+      assert.deepStrictEqual(
+        coloredText(lines.join('\n'), encoding, false).lineStarts,
+        startsIn(encoding),
+      );
+    }
+  });
+
+  test('colors a row that starts after a surrogate pair or a lone surrogate of its line, where bytesOf counts it', () => {
+    for (const before of ['x😀', '\ud800', '\udc00x']) {
+      const line = `${before}let a;`;
+      const text = colored(line, [
+        [{ start: before.length, end: before.length + 3, kind: 'keyword' }],
+      ]);
+      const start = bytesOf(line, 0, before.length, 'utf-8');
+
+      assert.deepStrictEqual(
+        rowSegments(text, row(start, start + 6, 'let a;')),
+        [{ text: 'let', kind: 'keyword' }, { text: ' a;' }],
+      );
+    }
   });
 
   test('counts the byte order mark of UTF-8 before the first line, leaving it plain on the first row, which has it', () => {
