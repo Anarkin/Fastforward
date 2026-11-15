@@ -3,7 +3,20 @@ import { suite, test, vi } from 'vitest';
 import { createGitStore } from '../../../../../tools/git/page/store';
 import { detachedHead } from '../../../../../tools/git/page/gitSelectors';
 import { noop } from '../../../../helpers/fixtures';
-import { at, worktree, shown, layout, compare, posting } from './storeFixtures';
+import {
+  at,
+  worktree,
+  shown,
+  layout,
+  compare,
+  posting,
+  labelled,
+} from './storeFixtures';
+import type { GitToHost } from '../../../../../tools/git/shared/protocol';
+import { emptyTabView } from '../../../../../tools/git/page/tabView';
+import { checkoutOptions } from '../../../../../tools/git/page/checkout';
+import { bookmarkOptions } from '../../../../../tools/git/page/bookmarks';
+import { strings } from '../../../../../lib/shared/strings';
 
 const detachedAt = (head: string | undefined) =>
   detachedHead(
@@ -433,6 +446,169 @@ suite('Git store', () => {
       [true, false],
     );
     assert.deepStrictEqual(posted, []);
+  });
+
+  test('offers to check out a commit and to bookmark it or a ref on it, checking out and bookmarking for the worktree shown', () => {
+    const posted: GitToHost[] = [];
+    const refs = [
+      { kind: 'branch', name: 'main', commit: at },
+      { kind: 'branch', name: 'side', commit: at },
+    ] as const;
+    const store = createGitStore((message) => posted.push(message), {
+      tab: {
+        ...emptyTabView,
+        root: '/repo',
+        repository: { head: 'main', headCommit: at, refs, stashes: [] },
+      },
+    });
+    const [checkout, separator, bookmark] = store
+      .getState()
+      .menuItems({ kind: 'commit', hash: at });
+    assert.ok('separator' in separator);
+    assert.ok(!('separator' in checkout) && !('separator' in bookmark));
+    assert.strictEqual(checkout.label, strings.commits.checkout);
+    const options = checkoutOptions(at, refs, 'main', undefined);
+    assert.deepStrictEqual(
+      labelled(checkout.submenu),
+      options.map((option) => option.label),
+    );
+    const side = checkout.submenu?.[1];
+    assert.ok(side !== undefined && !('separator' in side));
+    side.onClick?.();
+    const marks = bookmarkOptions(at, refs);
+    assert.deepStrictEqual(
+      labelled(bookmark.submenu),
+      marks.map((option) => option.label),
+    );
+    const first = bookmark.submenu?.[0];
+    assert.ok(first !== undefined && !('separator' in first));
+    first.onClick?.();
+    assert.deepStrictEqual(store.getState().bookmarks, [marks[0].bookmark]);
+    assert.deepStrictEqual(posted, [
+      { type: 'checkout', target: options[1].target, root: '/repo' },
+      {
+        type: 'setBookmarks',
+        bookmarks: [marks[0].bookmark],
+        root: '/repo',
+      },
+    ]);
+    const onRef = () =>
+      labelled(
+        store
+          .getState()
+          .menuItems({ kind: 'ref', ref: { kind: 'branch', name: 'side' } }),
+      );
+    assert.deepStrictEqual(onRef(), [
+      strings.commits.checkout,
+      '-',
+      strings.commits.addBookmark,
+    ]);
+    store.getState().toggleBookmark({ kind: 'branch', name: 'side' });
+    assert.deepStrictEqual(onRef(), [
+      strings.commits.checkout,
+      '-',
+      strings.commits.removeBookmark,
+    ]);
+  });
+
+  test('asks the main process for the worktree shown to navigate, jump, search, fetch and load the commits, telling where the list of the worktree it was scrolled in stopped', () => {
+    const { posted, store } = posting();
+    store.getState().receive(shown());
+    const actions = store.getState();
+    actions.navigate('back', 2);
+    actions.jump(at);
+    actions.jump(undefined);
+    actions.showUpstream();
+    actions.showParent();
+    vi.useFakeTimers();
+    try {
+      actions.lookupHash('abc');
+      const stop = actions.searchCommits('fix');
+      vi.advanceTimersByTime(250);
+      stop();
+    } finally {
+      vi.useRealTimers();
+    }
+    actions.fetch();
+    actions.toggleMerge(at);
+    actions.scrolled('/other', at, 3, 1);
+    actions.loadCommits(0, 50, 2);
+    actions.viewFile({ path: 'a.txt', blob: 'b1' });
+    const root = '/repo';
+    assert.deepStrictEqual(posted, [
+      { type: 'navigate', direction: 'back', steps: 2, root },
+      { type: 'jump', hash: at, root },
+      { type: 'showUpstream', root },
+      { type: 'showParent', root },
+      { type: 'lookupHash', query: 'abc', root },
+      { type: 'searchCommits', query: 'fix', root },
+      { type: 'stopCommitSearch', root },
+      { type: 'fetch', root },
+      { type: 'toggleMerge', hash: at, root },
+      { type: 'scrolled', hash: at, offset: 3, report: 1, root: '/other' },
+      { type: 'loadCommits', generation: 2, start: 0, count: 50, root },
+      { type: 'viewFile', path: 'a.txt', blob: 'b1', root },
+    ]);
+  });
+
+  test('asks the main process to open, browse, clone and make repositories, and to show or preload a worktree, whatever is shown', () => {
+    const { posted, store } = posting();
+    const actions = store.getState();
+    actions.openRepository('/a');
+    actions.browseRepositories();
+    actions.openClone();
+    actions.initRepository();
+    actions.chooseCloneFolder('/code');
+    actions.startClone({
+      url: 'https://example.com/x.git',
+      folder: '/code',
+      name: 'x',
+    });
+    actions.stopClone();
+    actions.selectWorktree('/b');
+    actions.preloadWorktree('/b');
+    assert.deepStrictEqual(posted, [
+      { type: 'openRepository', root: '/a' },
+      { type: 'browseRepositories' },
+      { type: 'openClone' },
+      { type: 'initRepository' },
+      { type: 'chooseCloneFolder', folder: '/code' },
+      {
+        type: 'clone',
+        url: 'https://example.com/x.git',
+        folder: '/code',
+        name: 'x',
+      },
+      { type: 'stopClone' },
+      { type: 'selectWorktree', root: '/b' },
+      { type: 'preloadWorktree', root: '/b' },
+    ]);
+  });
+
+  test('groups the refs by their commit and knows the commits of the stashes when the repository arrives, keeping them through other messages', () => {
+    const store = createGitStore(noop);
+    const main = { kind: 'branch', name: 'main', commit: at } as const;
+    const tag = { kind: 'tag', name: 'v1', commit: at } as const;
+    store.getState().receive({
+      type: 'repository',
+      head: 'main',
+      headCommit: at,
+      refs: [main, tag],
+      stashes: [{ name: 'stash@{0}', commit: 'c'.repeat(40), message: 'WIP' }],
+    });
+    const { refsByCommit, stashCommits } = store.getState();
+    assert.deepStrictEqual(refsByCommit, new Map([[at, [main, tag]]]));
+    assert.deepStrictEqual(stashCommits, new Set(['c'.repeat(40)]));
+    store.getState().receive({ type: 'pulling', running: true });
+    assert.strictEqual(store.getState().refsByCommit, refsByCommit);
+    assert.strictEqual(store.getState().stashCommits, stashCommits);
+  });
+
+  test('keeps the column that has the keyboard', () => {
+    const store = createGitStore(noop);
+    assert.strictEqual(store.getState().activeColumn, 'commits');
+    store.getState().activateColumn('files');
+    assert.strictEqual(store.getState().activeColumn, 'files');
   });
 });
 
