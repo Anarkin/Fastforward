@@ -3,11 +3,13 @@ import { suite, test } from 'vitest';
 import {
   cellBox,
   cursorCellOf,
+  cursorOptions,
   drawnByPage,
   gridOf,
   programCursor,
   setsCursorMode,
 } from '../../../../../tools/terminal/page/pageCursor';
+import { defaultCursorLook } from '../../../../../lib/shared/cursorSettings';
 
 const buffer = (
   at: { x: number; y: number; base: number; viewport: number },
@@ -103,5 +105,35 @@ suite('Cursor the page draws over the terminal', () => {
     assert.strictEqual(setsCursorMode([1049, 25]), true);
     assert.strictEqual(setsCursorMode([[25]]), true);
     assert.strictEqual(setsCursorMode([1049]), false);
+  });
+
+  test('hands xterm.js the style, the width of the bar in whole CSS pixels and the blinking of the setting, keeping a block or a bar as it is without the focus, and leaves the underline and the outline to the page', () => {
+    assert.deepStrictEqual(cursorOptions(defaultCursorLook), {
+      cursorStyle: 'block',
+      cursorWidth: 2,
+      cursorBlink: false,
+      cursorInactiveStyle: 'block',
+    });
+    assert.deepStrictEqual(
+      cursorOptions({ style: 'bar', width: 3, blink: true }),
+      {
+        cursorStyle: 'bar',
+        cursorWidth: 3,
+        cursorBlink: true,
+        cursorInactiveStyle: 'bar',
+      },
+    );
+    for (const style of ['underline', 'outline'] as const) {
+      const { cursorStyle, cursorInactiveStyle } = cursorOptions({
+        style,
+        width: 2,
+        blink: false,
+      });
+      assert.deepStrictEqual(
+        [cursorStyle, cursorInactiveStyle],
+        ['underline', 'none'],
+        style,
+      );
+    }
   });
 });

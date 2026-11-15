@@ -3,7 +3,7 @@ export interface TerminalFont {
   readonly fontSize: number;
 }
 
-export const fontVariables = {
+const fontVariables = {
   family: 'var(--monospace-font-family)',
   size: 'var(--monospace-font-size)',
   rowHeight: 'var(--terminal-row-height)',
@@ -33,5 +33,49 @@ export function terminalFont(family: string, size: string): TerminalFont {
   return {
     fontFamily: family,
     fontSize: Number.isFinite(pixels) && pixels > 0 ? pixels : 12,
+  };
+}
+
+function fontOf(probe: HTMLElement): TerminalFont {
+  probe.style.fontFamily = fontVariables.family;
+  probe.style.fontSize = fontVariables.size;
+  const style = getComputedStyle(probe);
+  return terminalFont(style.fontFamily, style.fontSize);
+}
+
+export function cellsOf(
+  probe: HTMLElement,
+  webgl: boolean,
+): TerminalFont & {
+  readonly lineHeight: number;
+  readonly letterSpacing: number;
+} {
+  const font = fontOf(probe);
+  probe.style.lineHeight = fontVariables.rowHeight;
+  probe.style.width = fontVariables.advance;
+  const probed = getComputedStyle(probe);
+  const rowHeight = Number.parseFloat(probed.lineHeight);
+  const advance = Number.parseFloat(probed.width);
+  const context = new OffscreenCanvas(1, 1).getContext('2d');
+  if (context === null || !Number.isFinite(rowHeight)) {
+    return {
+      ...font,
+      lineHeight: 1,
+      letterSpacing: 0,
+    };
+  }
+  context.font = `${font.fontSize}px ${font.fontFamily}`;
+  const glyph = context.measureText('W');
+  return {
+    ...font,
+    lineHeight: lineHeightFor(
+      rowHeight,
+      glyph.fontBoundingBoxAscent + glyph.fontBoundingBoxDescent,
+      devicePixelRatio,
+    ),
+    letterSpacing:
+      webgl && Number.isFinite(advance)
+        ? letterSpacingFor(advance, glyph.width, devicePixelRatio)
+        : 0,
   };
 }

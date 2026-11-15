@@ -109,6 +109,25 @@ export type CursorTerminal = Pick<
 export const drawnByPage = (style: string): style is 'underline' | 'outline' =>
   style === 'underline' || style === 'outline';
 
+type XtermStyle = 'block' | 'bar' | 'underline';
+
+const inactiveStyleOf = (style: CursorLook['style']) =>
+  style === 'block' || style === 'bar' ? style : 'none';
+
+export function cursorOptions(look: CursorLook): {
+  readonly cursorStyle: XtermStyle;
+  readonly cursorWidth: number;
+  readonly cursorBlink: boolean;
+  readonly cursorInactiveStyle: 'block' | 'bar' | 'none';
+} {
+  return {
+    cursorStyle: drawnByPage(look.style) ? 'underline' : look.style,
+    cursorWidth: look.width,
+    cursorBlink: look.blink,
+    cursorInactiveStyle: inactiveStyleOf(look.style),
+  };
+}
+
 export type ProgramCursor =
   | 'reset'
   | { readonly style: CursorStyle | undefined; readonly blink: boolean };

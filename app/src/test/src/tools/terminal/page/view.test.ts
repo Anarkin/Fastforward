@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
 import {
-  cursorOptions,
   screenMargin,
   TerminalView,
   wheelLines,
@@ -237,36 +236,6 @@ suite('Terminal view', () => {
       assert.deepStrictEqual(asked, []);
       view.dispose();
     });
-  });
-
-  test('hands xterm.js the style, the width of the bar in whole CSS pixels and the blinking of the setting, keeping a block or a bar as it is without the focus, and leaves the underline and the outline to the page', () => {
-    assert.deepStrictEqual(cursorOptions(defaultCursorLook), {
-      cursorStyle: 'block',
-      cursorWidth: 2,
-      cursorBlink: false,
-      cursorInactiveStyle: 'block',
-    });
-    assert.deepStrictEqual(
-      cursorOptions({ style: 'bar', width: 3, blink: true }),
-      {
-        cursorStyle: 'bar',
-        cursorWidth: 3,
-        cursorBlink: true,
-        cursorInactiveStyle: 'bar',
-      },
-    );
-    for (const style of ['underline', 'outline'] as const) {
-      const { cursorStyle, cursorInactiveStyle } = cursorOptions({
-        style,
-        width: 2,
-        blink: false,
-      });
-      assert.deepStrictEqual(
-        [cursorStyle, cursorInactiveStyle],
-        ['underline', 'none'],
-        style,
-      );
-    }
   });
 
   test('moves the terminal onto whole device pixels by its margin rather than a transform, which would make the compositor resample its canvas, blurring it', () => {

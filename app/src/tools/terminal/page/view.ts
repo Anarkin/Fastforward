@@ -13,13 +13,7 @@ import {
 } from '../../../lib/page/rowScroll';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
 import { withHiddenCursor, terminalTheme } from './theme';
-import {
-  fontVariables,
-  letterSpacingFor,
-  lineHeightFor,
-  terminalFont,
-  type TerminalFont,
-} from './cells';
+import { cellsOf } from './cells';
 import {
   inputChunks,
   sizeWithin,
@@ -29,7 +23,7 @@ import type { Renderer } from '../shared/settings';
 import type { WindowsPty } from '../shared/protocol';
 import type { FromScreen } from './store';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
-import { drawnByPage, PageCursor } from './pageCursor';
+import { cursorOptions, drawnByPage, PageCursor } from './pageCursor';
 
 const resizeDelay = 50;
 
@@ -79,25 +73,6 @@ export function wheelLines(
 
 const glideOf = (smooth: boolean) => (smooth ? rowGlide : 0);
 
-type XtermStyle = 'block' | 'bar' | 'underline';
-
-const inactiveStyleOf = (style: CursorLook['style']) =>
-  style === 'block' || style === 'bar' ? style : 'none';
-
-export function cursorOptions(look: CursorLook): {
-  readonly cursorStyle: XtermStyle;
-  readonly cursorWidth: number;
-  readonly cursorBlink: boolean;
-  readonly cursorInactiveStyle: 'block' | 'bar' | 'none';
-} {
-  return {
-    cursorStyle: drawnByPage(look.style) ? 'underline' : look.style,
-    cursorWidth: look.width,
-    cursorBlink: look.blink,
-    cursorInactiveStyle: inactiveStyleOf(look.style),
-  };
-}
-
 export interface TerminalViewOptions {
   readonly tab: string;
   readonly renderer: Renderer;
@@ -138,7 +113,7 @@ export class TerminalView {
       minimumContrastRatio: options.minimumContrastRatio,
       smoothScrollDuration: glideOf(options.scrolling().smooth),
       ...cursorOptions(options.cursor),
-      ...this.cells(),
+      ...cellsOf(this.probe, this.webgl),
       theme: this.theme(),
       linkHandler: { activate: () => undefined },
       ...(options.windowsPty && { windowsPty: options.windowsPty }),
@@ -157,7 +132,7 @@ export class TerminalView {
     if (options.renderer === 'webgl') {
       this.useWebgl();
     }
-    this.terminal.options = this.cells();
+    this.terminal.options = cellsOf(this.probe, this.webgl);
     this.layOut();
     this.size = this.sizeKey();
     this.observer.observe(element);
@@ -241,7 +216,7 @@ export class TerminalView {
       webgl.onContextLoss(() => {
         webgl.dispose();
         this.webgl = false;
-        this.terminal.options = this.cells();
+        this.terminal.options = cellsOf(this.probe, this.webgl);
         this.layOut();
       });
       this.terminal.loadAddon(webgl);
@@ -306,7 +281,7 @@ export class TerminalView {
   };
 
   private readonly followRatio = () => {
-    this.terminal.options = this.cells();
+    this.terminal.options = cellsOf(this.probe, this.webgl);
     this.layOut();
   };
 
@@ -342,40 +317,6 @@ export class TerminalView {
     }
   };
 
-  private cells(): TerminalFont & {
-    readonly lineHeight: number;
-    readonly letterSpacing: number;
-  } {
-    const font = this.font();
-    this.probe.style.lineHeight = fontVariables.rowHeight;
-    this.probe.style.width = fontVariables.advance;
-    const probed = getComputedStyle(this.probe);
-    const rowHeight = Number.parseFloat(probed.lineHeight);
-    const advance = Number.parseFloat(probed.width);
-    const context = new OffscreenCanvas(1, 1).getContext('2d');
-    if (context === null || !Number.isFinite(rowHeight)) {
-      return {
-        ...font,
-        lineHeight: 1,
-        letterSpacing: 0,
-      };
-    }
-    context.font = `${font.fontSize}px ${font.fontFamily}`;
-    const glyph = context.measureText('W');
-    return {
-      ...font,
-      lineHeight: lineHeightFor(
-        rowHeight,
-        glyph.fontBoundingBoxAscent + glyph.fontBoundingBoxDescent,
-        devicePixelRatio,
-      ),
-      letterSpacing:
-        this.webgl && Number.isFinite(advance)
-          ? letterSpacingFor(advance, glyph.width, devicePixelRatio)
-          : 0,
-    };
-  }
-
   private readonly restyle = () => {
     this.terminal.options.theme = this.theme();
   };
@@ -388,12 +329,5 @@ export class TerminalView {
     return drawnByPage(this.cursor?.style ?? this.options.cursor.style)
       ? withHiddenCursor(theme)
       : theme;
-  }
-
-  private font(): TerminalFont {
-    this.probe.style.fontFamily = fontVariables.family;
-    this.probe.style.fontSize = fontVariables.size;
-    const style = getComputedStyle(this.probe);
-    return terminalFont(style.fontFamily, style.fontSize);
   }
 }
