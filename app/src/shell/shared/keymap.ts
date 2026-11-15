@@ -1,25 +1,7 @@
-import { bind, type Binding } from '../../lib/shared/keymap';
+import { bind } from '../../lib/shared/keymap';
 import { strings } from '../../lib/shared/strings';
 
 export const everywhereGroups = ['Tabs', 'App', 'Lists'] as const;
-
-export interface ShortcutGroup {
-  readonly title: string;
-  readonly bindings: readonly Binding<unknown>[];
-}
-
-export function shortcutGroupsOf<const Group extends string>(
-  groups: readonly Group[],
-  titles: Readonly<Record<Group, string>>,
-  bindings: Readonly<Record<string, Binding<unknown>>>,
-): ShortcutGroup[] {
-  return groups.map((group) => ({
-    title: titles[group],
-    bindings: Object.values(bindings).filter(
-      (binding) => binding.group === group,
-    ),
-  }));
-}
 
 export const shellKeymap = {
   newTab: bind('Tabs', strings.actions.newTab, {

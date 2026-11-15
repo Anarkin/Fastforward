@@ -4,12 +4,8 @@ import {
   gitGroups,
   gitKeymap,
 } from '../../tools/git/page/keymap';
-import {
-  everywhereGroups,
-  shellKeymap,
-  shortcutGroupsOf,
-  type ShortcutGroup,
-} from '../shared/keymap';
+import { everywhereGroups, shellKeymap } from '../shared/keymap';
+import type { Binding } from '../../lib/shared/keymap';
 import { keymap } from '../../lib/page/keymap';
 import { strings } from '../../lib/shared/strings';
 import type { ToolId } from '../shared/tools';
@@ -25,6 +21,24 @@ import {
   terminalGroups,
   terminalKeymap,
 } from '../../tools/terminal/page/keymap';
+
+interface ShortcutGroup {
+  readonly title: string;
+  readonly bindings: readonly Binding<unknown>[];
+}
+
+function shortcutGroupsOf<const Group extends string>(
+  groups: readonly Group[],
+  titles: Readonly<Record<Group, string>>,
+  bindings: Readonly<Record<string, Binding<unknown>>>,
+): ShortcutGroup[] {
+  return groups.map((group) => ({
+    title: titles[group],
+    bindings: Object.values(bindings).filter(
+      (binding) => binding.group === group,
+    ),
+  }));
+}
 
 export type ShortcutEntryId =
   ToolId | 'viewer' | 'diff' | 'editor' | 'everywhere';
