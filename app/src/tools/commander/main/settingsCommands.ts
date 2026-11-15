@@ -2,7 +2,8 @@ import * as path from 'node:path';
 import type { Page } from '../../../shell/main/toolContract';
 import { type CommanderToHost } from '../shared/protocol';
 import { isSide } from '../shared/sides';
-import { heldColumns, isColumnWidths, isSort } from '../shared/settings';
+import { heldColumns, isColumnWidths } from '../shared/columnWidths';
+import { isSort } from '../shared/sorts';
 import {
   shownBookmarks,
   withBookmark,

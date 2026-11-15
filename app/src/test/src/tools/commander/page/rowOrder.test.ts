@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { nextSort } from '../../../../../tools/commander/page/rowOrder';
-import type { Sort } from '../../../../../tools/commander/shared/settings';
+import type { Sort } from '../../../../../tools/commander/shared/sorts';
 import { defaultSort } from './listingFixtures';
 
 suite('Commander row order', () => {

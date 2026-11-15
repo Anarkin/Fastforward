@@ -4,7 +4,7 @@ import { strings } from '../../../lib/shared/strings';
 import { maxDroppedIcons } from '../shared/icons';
 import { type CommanderDrop, type CommanderToHost } from '../shared/protocol';
 import { sides, type Side } from '../shared/sides';
-import type { ColumnWidths } from '../shared/settings';
+import type { ColumnWidths } from '../shared/columnWidths';
 import { filterWords } from '../../../lib/page/fileFilter';
 import {
   commanderDefaults,

@@ -1,9 +1,5 @@
-import {
-  sizedColumns,
-  type SizedColumn,
-  type Sort,
-  type SortColumn,
-} from '../shared/settings';
+import { sizedColumns, type SizedColumn } from '../shared/columnWidths';
+import { type Sort, type SortColumn } from '../shared/sorts';
 import { followDrag } from '../../../lib/page/followDrag';
 import { strings } from '../../../lib/shared/strings';
 import type { Side } from '../shared/sides';

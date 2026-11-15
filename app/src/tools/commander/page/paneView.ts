@@ -3,7 +3,7 @@ import type {
   Entry,
   FlatProgress,
 } from '../shared/protocol';
-import type { Sort } from '../shared/settings';
+import type { Sort } from '../shared/sorts';
 import { rowsOf, type Row } from './listing';
 import { selectionAfter, type Selection } from './rowSelection';
 import type { FileColors } from './fileColors';

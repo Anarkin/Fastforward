@@ -12,10 +12,8 @@ import type {
   Entry,
 } from '../../../../../tools/commander/shared/protocol';
 import type { Side } from '../../../../../tools/commander/shared/sides';
-import type {
-  ColumnWidths,
-  Sorts,
-} from '../../../../../tools/commander/shared/settings';
+import type { ColumnWidths } from '../../../../../tools/commander/shared/columnWidths';
+import type { Sorts } from '../../../../../tools/commander/shared/sorts';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import type { SizeWalker } from '../../../../../tools/commander/main/sizeWalk';
 import { pathParts } from '../../../../../tools/commander/shared/paths';

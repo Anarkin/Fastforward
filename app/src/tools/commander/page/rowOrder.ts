@@ -1,4 +1,4 @@
-import type { Sort, SortColumn } from '../shared/settings';
+import type { Sort, SortColumn } from '../shared/sorts';
 import { groupOfEntry, type FileColors } from './fileColors';
 import type { Row } from './listing';
 

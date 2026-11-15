@@ -5,7 +5,7 @@ import {
   filteredRows,
 } from '../../../../../tools/commander/page/shownRows';
 import { rowsOf } from '../../../../../tools/commander/page/listing';
-import type { Sort } from '../../../../../tools/commander/shared/settings';
+import type { Sort } from '../../../../../tools/commander/shared/sorts';
 import { entry, filterRow } from './listingFixtures';
 
 suite('Filtering the rows of a side', () => {

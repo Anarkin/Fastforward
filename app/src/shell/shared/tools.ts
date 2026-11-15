@@ -9,12 +9,12 @@ import type {
   CommanderToHost,
   CommanderToWebview,
 } from '../../tools/commander/shared/protocol';
+import { type CommanderSettings } from '../../tools/commander/shared/settings';
 import {
   fileColorProblems,
   groupStandIns,
-  sortColumns,
-  type CommanderSettings,
-} from '../../tools/commander/shared/settings';
+} from '../../tools/commander/shared/fileColors';
+import { sortColumns } from '../../tools/commander/shared/sorts';
 import type {
   TerminalToHost,
   TerminalToWebview,

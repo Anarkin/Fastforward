@@ -1,6 +1,6 @@
 import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
 import type { Side } from '../shared/sides';
-import type { ColumnWidths } from '../shared/settings';
+import type { ColumnWidths } from '../shared/columnWidths';
 import type { CommanderSource } from './commanderState';
 import type { Row } from './listing';
 import { filterOf } from './sideFilters';

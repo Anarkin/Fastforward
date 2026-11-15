@@ -5,7 +5,7 @@ import {
   reduceView,
   viewerChoices,
 } from '../../../../../tools/commander/page/view';
-import { defaultLayouts } from '../../../../../tools/commander/shared/settings';
+import { defaultLayouts } from '../../../../../tools/commander/page/layouts';
 import {
   entry,
   listing,

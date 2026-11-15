@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { Sorts } from '../../../../../tools/commander/shared/settings';
+import type { Sorts } from '../../../../../tools/commander/shared/sorts';
 import {
   CommanderPage,
   root,

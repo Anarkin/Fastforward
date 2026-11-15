@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { draggedWidth } from '../../../../../tools/commander/page/columnDrag';
-import { maxColumnWidth } from '../../../../../tools/commander/shared/settings';
+import { maxColumnWidth } from '../../../../../tools/commander/shared/columnWidths';
 
 suite('Commander column drag', () => {
   test('resizes a column by whole characters as it is dragged, never below one or over the most', () => {

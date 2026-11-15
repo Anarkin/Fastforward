@@ -5,7 +5,7 @@ import {
   extensionKey,
   languagesGroup,
   type FileColor,
-} from '../shared/settings';
+} from '../shared/fileColors';
 
 export interface FileColors {
   readonly colors: readonly string[];

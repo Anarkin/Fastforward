@@ -1,4 +1,4 @@
-import { maxColumnWidth } from '../shared/settings';
+import { maxColumnWidth } from '../shared/columnWidths';
 
 export function draggedWidth(
   start: number,

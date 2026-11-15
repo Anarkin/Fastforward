@@ -1,4 +1,4 @@
-import { layouts, type Layout } from '../shared/settings';
+import { layouts, type Layout } from './layouts';
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 import { strings } from '../../../lib/shared/strings';
 

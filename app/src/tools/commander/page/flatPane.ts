@@ -1,5 +1,5 @@
 import type { FlatProgress } from '../shared/protocol';
-import type { Sort } from '../shared/settings';
+import type { Sort } from '../shared/sorts';
 import { parentRow, type Row } from './listing';
 import { filteredSelection, selectionAfter } from './rowSelection';
 import {

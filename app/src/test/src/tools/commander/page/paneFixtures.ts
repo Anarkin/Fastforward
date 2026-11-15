@@ -15,7 +15,7 @@ import type {
   FlatProgress,
 } from '../../../../../tools/commander/shared/protocol';
 import type { ToHost } from '../../../../../shell/shared/protocol';
-import type { Layout } from '../../../../../tools/commander/shared/settings';
+import type { Layout } from '../../../../../tools/commander/page/layouts';
 import { withStores } from '../../../../helpers/componentFixtures';
 import { noop } from '../../../../helpers/fixtures';
 

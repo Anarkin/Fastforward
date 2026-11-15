@@ -12,12 +12,9 @@ import type {
 } from '../shared/protocol';
 import type { Side } from '../shared/sides';
 import type { TextEncoding } from '../shared/textEncodings';
-import type {
-  ColumnWidths,
-  Layout,
-  SizedColumn,
-  SortColumn,
-} from '../shared/settings';
+import type { ColumnWidths, SizedColumn } from '../shared/columnWidths';
+import type { Layout } from './layouts';
+import type { SortColumn } from '../shared/sorts';
 import type { ClashAnswer, TransferView } from '../shared/transfers';
 import type { EditorPlace } from './editorPlace';
 import type { EditedTab, ToEditor } from './editorState';

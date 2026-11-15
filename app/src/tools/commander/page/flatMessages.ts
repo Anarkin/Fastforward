@@ -1,5 +1,5 @@
 import type { Entry } from '../shared/protocol';
-import type { Sort } from '../shared/settings';
+import type { Sort } from '../shared/sorts';
 import type { FileColors } from './fileColors';
 
 export interface FlatChoices {

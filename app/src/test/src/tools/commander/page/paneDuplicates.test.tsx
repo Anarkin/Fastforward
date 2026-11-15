@@ -4,7 +4,7 @@ import { strings } from '../../../../../lib/shared/strings';
 import { rowsOf } from '../../../../../tools/commander/page/listing';
 import { Pane } from '../../../../../tools/commander/page/pane';
 import type { PaneView } from '../../../../../tools/commander/page/paneView';
-import type { Layout } from '../../../../../tools/commander/shared/settings';
+import type { Layout } from '../../../../../tools/commander/page/layouts';
 import { inSide, sort, workPane } from './paneFixtures';
 
 vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {

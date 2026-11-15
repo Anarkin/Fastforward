@@ -1,5 +1,5 @@
 import { type Side } from '../shared/sides';
-import { type Layout } from '../shared/settings';
+import { type Layout } from './layouts';
 import { useCommander, useCommanderActions } from './store';
 import {
   BackIcon,

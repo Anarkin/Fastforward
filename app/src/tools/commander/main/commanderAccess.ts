@@ -1,11 +1,9 @@
 import type { Store } from '../../../shell/main/stateFile';
 import type { EndingSource } from '../shared/protocol';
 import type { TextEncoding } from '../shared/textEncodings';
-import type {
-  Sorts,
-  ColumnWidths,
-  CommanderSettings,
-} from '../shared/settings';
+import type { CommanderSettings } from '../shared/settings';
+import type { Sorts } from '../shared/sorts';
+import type { ColumnWidths } from '../shared/columnWidths';
 import type { LocalFileSystem } from './fileSystem';
 import type { WatchFolder } from './watch';
 import type { WatchTree } from './watchTree';

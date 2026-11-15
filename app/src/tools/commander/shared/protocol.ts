@@ -1,7 +1,9 @@
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { PdfPlace } from './pdf';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
-import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';
+import type { ColumnWidths } from './columnWidths';
+import type { FileColor } from './fileColors';
+import type { Sort, Sorts } from './sorts';
 import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';
 import type { ClashAnswer, TransferView } from './transfers';
 import type { TextEncoding } from './textEncodings';

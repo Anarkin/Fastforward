@@ -1,5 +1,5 @@
 import { parentFolder, type Entry } from '../shared/protocol';
-import type { Sort } from '../shared/settings';
+import type { Sort } from '../shared/sorts';
 import { noFileColors, type FileColors } from './fileColors';
 import { fileGroupOf, mergedRows, sortedRows } from './rowOrder';
 

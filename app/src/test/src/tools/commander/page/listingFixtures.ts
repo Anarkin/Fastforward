@@ -1,5 +1,5 @@
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
-import type { Sort } from '../../../../../tools/commander/shared/settings';
+import type { Sort } from '../../../../../tools/commander/shared/sorts';
 
 export const entry = (name: string, extra: Partial<Entry> = {}): Entry => ({
   name,

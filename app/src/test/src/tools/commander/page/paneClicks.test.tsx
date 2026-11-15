@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
 import { Pane } from '../../../../../tools/commander/page/pane';
 import type { PaneView } from '../../../../../tools/commander/page/paneView';
-import type { Layout } from '../../../../../tools/commander/shared/settings';
+import type { Layout } from '../../../../../tools/commander/page/layouts';
 import { boxOf, inSide, rowNamed, tileNamed } from './paneFixtures';
 
 vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
