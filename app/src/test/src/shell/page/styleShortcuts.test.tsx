@@ -8,7 +8,6 @@ import { cascaded } from '../../../helpers/cascade';
 import {
   AboutPopupShown,
   ContextMenuShown,
-  HistoryMenuShown,
   NoticesShown,
   ShortcutsPopupShown,
 } from '../../../helpers/styleFixtures';
@@ -29,6 +28,7 @@ import {
   withClass,
   type MarkupElement,
 } from '../../../helpers/markup';
+import { HistoryMenuShown } from '../../../helpers/styleHistoryFixtures';
 
 function widthCap(popup: MarkupElement): { cap: number; room: string } {
   const width = /^min\(([\d.]+)px, (.+)\)$/.exec(

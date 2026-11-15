@@ -2,16 +2,16 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { tabSize } from '../../../../lib/page/tabStops';
 import { cascaded } from '../../../helpers/cascade';
+import { diffView, shownRow } from '../../../helpers/styleMarkup';
+import { looks } from './stylesheetFixtures';
+import { layoutVariables } from '../../../../tools/git/page/textLayout';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import {
   DiffViewShown,
   IndentedLine,
   InlineLine,
   SplitLine,
-} from '../../../helpers/styleFixtures';
-import { diffView, shownRow } from '../../../helpers/styleMarkup';
-import { looks } from './stylesheetFixtures';
-import { layoutVariables } from '../../../../tools/git/page/textLayout';
-import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+} from '../../../helpers/styleDiffFixtures';
 
 suite('Style', () => {
   test('wraps long lines of code at spaces, breaking a word only where it would not fit, in rows as tall as their lines', () => {

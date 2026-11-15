@@ -8,15 +8,7 @@ import { cascaded } from '../../../helpers/cascade';
 import {
   Columns,
   ColumnShown,
-  CommitColumn,
   ContextMenuShown,
-  DiffFindShown,
-  DiffOptionsShown,
-  DiffViewShown,
-  HistoryMenuShown,
-  InlineLine,
-  LocationsPopupShown,
-  NavButtonsShown,
   NoticesShown,
   SearchButtonShown,
 } from '../../../helpers/styleFixtures';
@@ -35,6 +27,18 @@ import {
 } from './stylesheetFixtures';
 import { renderedBy } from '../../../helpers/componentFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+import {
+  CommitColumn,
+  HistoryMenuShown,
+  LocationsPopupShown,
+  NavButtonsShown,
+} from '../../../helpers/styleHistoryFixtures';
+import {
+  DiffFindShown,
+  DiffOptionsShown,
+  DiffViewShown,
+  InlineLine,
+} from '../../../helpers/styleDiffFixtures';
 
 function columnVisibility(columns: React.ReactElement) {
   return allWithClass(rendered(columns), 'column').map((column) =>

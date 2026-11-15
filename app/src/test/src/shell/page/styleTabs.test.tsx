@@ -8,7 +8,6 @@ import {
   MenuButtonShown,
   TabBarIn,
   TabBarShown,
-  WorktreeBarShown,
 } from '../../../helpers/styleFixtures';
 import { worktree } from '../../../helpers/styleMarkup';
 import {
@@ -33,6 +32,7 @@ import {
   withClass,
   type MarkupElement,
 } from '../../../helpers/markup';
+import { WorktreeBarShown } from '../../../helpers/styleHistoryFixtures';
 
 function TabRow({
   count,

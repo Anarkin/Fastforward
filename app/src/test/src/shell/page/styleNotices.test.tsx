@@ -1,14 +1,11 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { cascaded, matchingRules } from '../../../helpers/cascade';
-import {
-  CommitColumn,
-  ContextMenuShown,
-  NoticesShown,
-} from '../../../helpers/styleFixtures';
+import { ContextMenuShown, NoticesShown } from '../../../helpers/styleFixtures';
 import { columnTitle } from '../../../helpers/styleMarkup';
 import { looks, bodyVariable, paddingOf } from './stylesheetFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+import { CommitColumn } from '../../../helpers/styleHistoryFixtures';
 
 suite('Style', () => {
   test('keeps the notices within the window, scrolling a long message within its notice, so a checkout listing hundreds of files leaves its close button in reach', () => {

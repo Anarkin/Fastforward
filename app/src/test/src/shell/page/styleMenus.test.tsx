@@ -5,7 +5,6 @@ import { MenuButton } from '../../../../lib/page/menu';
 import { cascaded } from '../../../helpers/cascade';
 import {
   ContextMenuShown,
-  HistoryMenuShown,
   NoticesShown,
   ShortcutsPopupShown,
   TabBarShown,
@@ -21,6 +20,7 @@ import {
 } from './stylesheetFixtures';
 import { overlayScrollbar, popupOf } from '../../../helpers/styleMarkup';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+import { HistoryMenuShown } from '../../../helpers/styleHistoryFixtures';
 
 suite('Style', () => {
   test('starts the labels of every menu alike, leaving the same room before each for an icon, a check or nothing, as an item without an icon started further left than those with one', () => {

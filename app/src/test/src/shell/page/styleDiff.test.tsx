@@ -9,15 +9,7 @@ import {
   numberWidth,
 } from '../../../../tools/git/page/overflow';
 import { cascaded, matchingRules } from '../../../helpers/cascade';
-import {
-  Columns,
-  DiffRow,
-  DiffViewShown,
-  FileHeaderRow,
-  InlineLine,
-  MinimapShown,
-  SplitLine,
-} from '../../../helpers/styleFixtures';
+import { Columns } from '../../../helpers/styleFixtures';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { noop, compact, looks, paddingOf, after } from './stylesheetFixtures';
 import { layoutVariables } from '../../../../tools/git/page/textLayout';
@@ -28,6 +20,14 @@ import {
   HunkDivider,
 } from '../../../../tools/git/page/diffRowParts';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+import {
+  DiffRow,
+  DiffViewShown,
+  FileHeaderRow,
+  InlineLine,
+  MinimapShown,
+  SplitLine,
+} from '../../../helpers/styleDiffFixtures';
 
 suite('Style', () => {
   test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {

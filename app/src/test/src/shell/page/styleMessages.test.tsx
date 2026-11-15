@@ -4,10 +4,7 @@ import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { cascaded } from '../../../helpers/cascade';
 import {
   Columns,
-  CommitRowShown,
   ContextMenuShown,
-  HistoryMenuShown,
-  MessagePanelShown,
   NoticesShown,
   ShortcutsPopupShown,
 } from '../../../helpers/styleFixtures';
@@ -26,6 +23,11 @@ import {
   withClass,
   type MarkupElement,
 } from '../../../helpers/markup';
+import {
+  CommitRowShown,
+  HistoryMenuShown,
+  MessagePanelShown,
+} from '../../../helpers/styleHistoryFixtures';
 
 function shownScrollbar(message?: string): MarkupElement {
   return withClass(

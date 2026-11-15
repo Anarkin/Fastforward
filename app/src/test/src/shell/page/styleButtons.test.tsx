@@ -4,12 +4,7 @@ import { Column } from '../../../../tools/git/page/column';
 import { cascaded } from '../../../helpers/cascade';
 import {
   AboutPopupShown,
-  DiffOptionsShown,
-  DiffRow,
-  DiffViewShown,
-  FileHeaderRow,
   MenuButtonShown,
-  NavButtonsShown,
   NoticesShown,
   SearchButtonShown,
   ShortcutsPopupShown,
@@ -32,6 +27,13 @@ import { SoloButton } from '../../../../tools/git/page/commitList';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { renderedBy } from '../../../helpers/componentFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+import {
+  DiffOptionsShown,
+  DiffRow,
+  DiffViewShown,
+  FileHeaderRow,
+} from '../../../helpers/styleDiffFixtures';
+import { NavButtonsShown } from '../../../helpers/styleHistoryFixtures';
 
 function SoloButtonShown({
   solo,

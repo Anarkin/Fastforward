@@ -4,7 +4,6 @@ import { RefBubble } from '../../../../tools/git/page/bubbles';
 import { GitStore } from '../../../../tools/git/page/store';
 import { cascaded } from '../../../helpers/cascade';
 import { gitStore } from '../../../helpers/componentFixtures';
-import { BubbleSources, CommitRowShown } from '../../../helpers/styleFixtures';
 import { bubbles, repository } from '../../../helpers/styleMarkup';
 import {
   looks,
@@ -19,6 +18,10 @@ import {
   withClass,
   type MarkupElement,
 } from '../../../helpers/markup';
+import {
+  BubbleSources,
+  CommitRowShown,
+} from '../../../helpers/styleHistoryFixtures';
 
 const bubbleLook = ['color', 'background', 'box-shadow', 'border'];
 

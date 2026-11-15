@@ -2,15 +2,15 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { RefBubble } from '../../../../tools/git/page/bubbles';
 import { cascaded, matchingRules } from '../../../helpers/cascade';
+import { columnTitle } from '../../../helpers/styleMarkup';
+import { looks, hovered } from './stylesheetFixtures';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import {
   CommitColumn,
   CommitRowShown,
   CommitsFoundShown,
   LocationsPopupShown,
-} from '../../../helpers/styleFixtures';
-import { columnTitle } from '../../../helpers/styleMarkup';
-import { looks, hovered } from './stylesheetFixtures';
-import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+} from '../../../helpers/styleHistoryFixtures';
 
 function badgeRules(node: React.ReactNode): string[] {
   return matchingRules(withClass(rendered(node), 'badge')).map(

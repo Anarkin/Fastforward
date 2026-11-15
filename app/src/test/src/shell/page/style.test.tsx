@@ -6,23 +6,10 @@ import { KeyCombo } from '../../../../lib/page/keyCombo';
 import {
   AboutPopupShown,
   Columns,
-  CommitRowShown,
   ContextMenuShown,
-  DiffRow,
-  DiffViewShown,
-  FileRowShown,
-  FolderRowShown,
-  LocationsPopupShown,
-  MessagePanelShown,
-  MinimapShown,
-  NavButtonsShown,
   NoticesShown,
   SearchButtonShown,
   TabBarShown,
-  WorkingTreeRowShown,
-  WorktreeBarShown,
-  DiffFindShown,
-  FileHeaderRow,
 } from '../../../helpers/styleFixtures';
 import {
   diffView,
@@ -44,6 +31,23 @@ import { Crash } from '../../../../shell/page/errorBoundary';
 import { SkeletonRows } from '../../../../tools/git/page/skeleton';
 import { fileChange } from '../../../helpers/gitValues';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+import {
+  CommitRowShown,
+  FileRowShown,
+  FolderRowShown,
+  LocationsPopupShown,
+  MessagePanelShown,
+  NavButtonsShown,
+  WorkingTreeRowShown,
+  WorktreeBarShown,
+} from '../../../helpers/styleHistoryFixtures';
+import {
+  DiffRow,
+  DiffViewShown,
+  MinimapShown,
+  DiffFindShown,
+  FileHeaderRow,
+} from '../../../helpers/styleDiffFixtures';
 
 const inside = (classes: string, child: React.ReactNode) =>
   rendered(<div className={classes}>{child}</div>);

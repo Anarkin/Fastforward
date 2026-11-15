@@ -4,14 +4,7 @@ import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { GraphCell } from '../../../../tools/git/page/graph';
 import { Column } from '../../../../tools/git/page/column';
 import { cascaded } from '../../../helpers/cascade';
-import {
-  ColumnShown,
-  CommitColumn,
-  CommitRowShown,
-  MessagePanelShown,
-  NavButtonsShown,
-  WorkingTreeRowShown,
-} from '../../../helpers/styleFixtures';
+import { ColumnShown } from '../../../helpers/styleFixtures';
 import { columnTitle, repository } from '../../../helpers/styleMarkup';
 import {
   noop,
@@ -28,6 +21,13 @@ import {
 } from '../../../../tools/git/page/commitListRows';
 import { renderedBy } from '../../../helpers/componentFixtures';
 import { rendered, withClass } from '../../../helpers/markup';
+import {
+  CommitColumn,
+  CommitRowShown,
+  MessagePanelShown,
+  NavButtonsShown,
+  WorkingTreeRowShown,
+} from '../../../helpers/styleHistoryFixtures';
 
 function GraphBesideCommit({ selected }: { readonly selected?: string }) {
   return (
