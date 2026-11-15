@@ -35,7 +35,7 @@ export function readSideways(
   };
 }
 
-export const sameSideways = (a: Sideways | undefined, b: Sideways) =>
+const sameSideways = (a: Sideways | undefined, b: Sideways) =>
   a?.scrolled === b.scrolled &&
   a.width === b.width &&
   a.room === b.room &&
