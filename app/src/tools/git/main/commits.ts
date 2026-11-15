@@ -1,6 +1,7 @@
 import type { HistoryEntry } from './history';
 import { CommitsBuilder } from './commitsBuilder';
-import { HashTable, sharedInts, type HashTableParts } from './hashTable';
+import { HashTable, type HashTableParts } from './hashTable';
+import { sharedInts } from './sharedArrays';
 
 export interface CommitsParts {
   readonly length: number;

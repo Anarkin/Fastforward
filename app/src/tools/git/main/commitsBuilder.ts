@@ -1,12 +1,12 @@
 import { Commits } from './commits';
+import { HashTable } from './hashTable';
 import {
   grownBytes,
   grownInts,
   grownTimes,
-  HashTable,
   sharedInts,
   sharedTimes,
-} from './hashTable';
+} from './sharedArrays';
 
 const space = 0x20;
 const newline = 0x0a;
