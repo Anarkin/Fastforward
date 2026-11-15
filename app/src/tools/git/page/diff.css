@@ -1,3 +1,14 @@
+.diff-view {
+  --diff-line-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  --diff-advance: round(1ch, var(--device-pixel, 1px));
+  --text-advance: var(--diff-advance);
+  position: relative;
+  height: 100%;
+}
+
 .virtual-row.diff-row {
   min-width: max(100%, var(--diff-content-width, 0px) + var(--minimap-width));
   width: max-content;
