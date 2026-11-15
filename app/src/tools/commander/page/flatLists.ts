@@ -1,4 +1,4 @@
-import type { FlatFolder } from '../shared/protocol';
+import { sides, type FlatFolder, type Side } from '../shared/protocol';
 import { sameGrouping } from './fileColors';
 import type {
   FlatChoices,
@@ -7,6 +7,8 @@ import type {
   ToFlatWorker,
 } from './flatMessages';
 import { flatRowOf, parentRow, type Row } from './listing';
+import { filterKey } from './sideFilters';
+import type { CommanderView, PaneView } from './view';
 
 export interface FlatWorker {
   postMessage(message: ToFlatWorker, transfer?: Transferable[]): void;
@@ -224,4 +226,25 @@ export class FlatLists {
     kept.took = kept.builtAt - started;
     this.onBuilt(pane);
   }
+}
+
+export function flatPanesOf({ tab, panes, kept }: CommanderView): Set<string> {
+  const flat = new Set<string>();
+  const add = (
+    each: string | undefined,
+    sidesOf: Readonly<Record<Side, PaneView | undefined>>,
+  ) => {
+    for (const side of sides) {
+      if (each !== undefined && sidesOf[side]?.flat !== undefined) {
+        flat.add(filterKey(each, side));
+      }
+    }
+  };
+  add(tab, panes);
+  for (const [each, away] of kept) {
+    if (each !== tab) {
+      add(each, away.panes);
+    }
+  }
+  return flat;
 }

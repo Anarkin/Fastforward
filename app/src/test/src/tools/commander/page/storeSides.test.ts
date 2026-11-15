@@ -3,10 +3,10 @@ import { suite, test } from 'vitest';
 import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
 import { maxDroppedIcons } from '../../../../../tools/commander/shared/icons';
 import {
-  filterOf,
   shownColumns,
   shownRowsOf,
 } from '../../../../../tools/commander/page/shownRows';
+import { filterOf } from '../../../../../tools/commander/page/sideFilters';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { nextSort } from '../../../../../tools/commander/page/rowOrder';
 import { emptyView } from '../../../../../tools/commander/page/view';

@@ -31,18 +31,16 @@ import { filesToCompare } from './comparing';
 import { dialogActions } from './dialogActions';
 import { filteredSelection, nearestShown } from './rowSelection';
 import { nextSort } from './rowOrder';
-import {
-  filterKey,
-  filterOf,
-  flatPanesOf,
-  seenFilters,
-  shownColumns,
-  shownRowsOf,
-  withoutTab,
-} from './shownRows';
+import { shownColumns, shownRowsOf } from './shownRows';
+import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
-import { FlatLists, type FlatTiming, type FlatWorker } from './flatLists';
+import {
+  FlatLists,
+  flatPanesOf,
+  type FlatTiming,
+  type FlatWorker,
+} from './flatLists';
 import type { ToEditor } from './editorState';
 
 function startFlatWorker(): FlatWorker {
