@@ -1,13 +1,10 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { shortHash } from '../../../../../tools/git/shared/hashes';
-import { recentKey, worktreesKey } from '../../../../../tools/git/main/storage';
+import { recentKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -16,7 +13,6 @@ import {
   closeViews,
   commitsSent,
   failOnErrorsLogged,
-  FakeHost,
   gate,
   idleOnlyOnceOpened,
   openView,
@@ -29,9 +25,9 @@ import {
   gitState,
 } from '../../../../helpers/harness';
 import {
-  sameRealFolder,
   worktreesOf,
   worktreeRoot,
+  worktreeRepositories,
 } from './toolWorktreesFixtures';
 
 suite('Git tool of worktrees', () => {
@@ -45,22 +41,8 @@ suite('Git tool of worktrees', () => {
   let reviewHead: string;
 
   beforeAll(async () => {
-    folder = tempFolder('worktree-view');
-    repository = await tempRepository(path.join(folder, 'app'));
-    await repository.commit('a');
-    await repository.commit('b');
-    feature = path.join(folder, 'app.worktrees', 'feature');
-    review = path.join(folder, 'app.worktrees', 'review');
-    const gone = path.join(folder, 'app.worktrees', 'gone');
-    await repository.git('worktree', 'add', '-q', '-b', 'feature', feature);
-    await repository.git('-C', feature, 'commit', '--allow-empty', '-m', 'f');
-    await repository.git('worktree', 'add', '-q', '--detach', review, 'HEAD~1');
-    await repository.git('worktree', 'add', '-q', '-b', 'gone', gone);
-    fs.rmSync(gone, { recursive: true, force: true });
-    [reviewHead] = await repository.resolve('main~1');
-    const second = await tempRepository(path.join(folder, 'other'));
-    await second.commit('other');
-    other = second.root;
+    ({ folder, repository, feature, review, other, reviewHead } =
+      await worktreeRepositories());
   });
 
   afterAll(async () => {
@@ -263,81 +245,34 @@ suite('Git tool of worktrees', () => {
     }
   });
 
-  test('opens a folder in a linked worktree in the tab of its repository, listing its worktrees with the main one first', async () => {
-    const host = new FakeHost();
-    const inner = path.join(feature, 'inner');
-    fs.mkdirSync(inner, { recursive: true });
-    host.folders = [inner];
+  test('updates the worktrees when another one switches branch', async () => {
     await withView(
       log,
-      [other],
+      [repository.root],
       async (view) => {
-        await view.connection.receive({ type: 'browseRepositories' });
-        const shown = shownTabs(view.page);
-        assert.deepStrictEqual(
-          shown?.tabs.map((tab) => tab.name),
-          ['other', 'app'],
-        );
-        assert.ok(sameRealFolder(shown.active, repository.root));
-        assert.strictEqual(shown.worktree, feature);
-        assert.deepStrictEqual(
-          shown.worktrees?.map((worktree) => ({
-            name: worktree.name,
-            folder: worktree.folder,
-            main: worktree.main,
-            missing: worktree.missing,
-          })),
-          [
-            { name: 'main', folder: 'app', main: true, missing: false },
-            {
-              name: 'feature',
-              folder: 'feature',
-              main: false,
-              missing: false,
-            },
-            { name: 'gone', folder: 'gone', main: false, missing: true },
-            {
-              name: shortHash(reviewHead),
-              folder: 'review',
-              main: false,
-              missing: false,
-            },
-          ],
-        );
-        assert.strictEqual(view.page.last('repository')?.head, 'feature');
-      },
-      true,
-      host,
-    );
-  });
-
-  test('opens the main worktree of a tab picked by another path to its folder as that main worktree, not a linked one', async () => {
-    const link = path.join(folder, 'app.link');
-    fs.symlinkSync(repository.root, link, 'junction');
-    const host = new FakeHost();
-    host.folders = [link];
-    try {
-      await withView(
-        log,
-        [repository.root, other],
-        async (view) => {
-          await view.connection.receive({ type: 'browseRepositories' });
-          const shown = shownTabs(view.page);
-          assert.deepStrictEqual(
-            shown?.tabs.map((tab) => tab.name),
-            ['app', 'other'],
+        await repository.git('-C', review, 'switch', '-q', '-c', 'reviewing');
+        try {
+          await waitFor(
+            () =>
+              worktreesOf(view).some(
+                (worktree) => worktree.name === 'reviewing',
+              ),
+            'the branch switched to',
           );
-          assert.strictEqual(shown.active, repository.root);
-          assert.strictEqual(shown.worktree, repository.root);
-          assert.strictEqual(shown.worktrees?.[0]?.root, repository.root);
-          assert.deepStrictEqual(gitState(view.store).get(worktreesKey), {});
-        },
-        true,
-        host,
-      );
-    } finally {
-      fs.rmSync(link);
-    }
+        } finally {
+          await repository.git(
+            '-C',
+            review,
+            'switch',
+            '-q',
+            '--detach',
+            reviewHead,
+          );
+          await repository.git('branch', '-D', 'reviewing');
+        }
+      },
+      { watched: true },
+    );
   });
 
   test('switches between the worktrees of a tab, coming back to the one shown last', async () => {

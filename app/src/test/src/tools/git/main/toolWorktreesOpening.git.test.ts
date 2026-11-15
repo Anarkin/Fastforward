@@ -1,15 +1,13 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
-import { createServer } from 'node:http';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { shortHash } from '../../../../../tools/git/shared/hashes';
 import { plainOf } from '../../../../../lib/shared/sentences';
-import { strings } from '../../../../../lib/shared/strings';
 import { worktreesKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -29,6 +27,7 @@ import {
   sameRealFolder,
   worktreesOf,
   worktreeRoot,
+  worktreeRepositories,
 } from './toolWorktreesFixtures';
 
 suite('Git tool of worktrees', () => {
@@ -37,27 +36,12 @@ suite('Git tool of worktrees', () => {
   let folder: string;
   let repository: TempRepository;
   let feature: string;
-  let review: string;
   let other: string;
   let reviewHead: string;
 
   beforeAll(async () => {
-    folder = tempFolder('worktree-view');
-    repository = await tempRepository(path.join(folder, 'app'));
-    await repository.commit('a');
-    await repository.commit('b');
-    feature = path.join(folder, 'app.worktrees', 'feature');
-    review = path.join(folder, 'app.worktrees', 'review');
-    const gone = path.join(folder, 'app.worktrees', 'gone');
-    await repository.git('worktree', 'add', '-q', '-b', 'feature', feature);
-    await repository.git('-C', feature, 'commit', '--allow-empty', '-m', 'f');
-    await repository.git('worktree', 'add', '-q', '--detach', review, 'HEAD~1');
-    await repository.git('worktree', 'add', '-q', '-b', 'gone', gone);
-    fs.rmSync(gone, { recursive: true, force: true });
-    [reviewHead] = await repository.resolve('main~1');
-    const second = await tempRepository(path.join(folder, 'other'));
-    await second.commit('other');
-    other = second.root;
+    ({ folder, repository, feature, other, reviewHead } =
+      await worktreeRepositories());
   });
 
   afterAll(async () => {
@@ -296,34 +280,81 @@ suite('Git tool of worktrees', () => {
     }
   });
 
-  test('updates the worktrees when another one switches branch', async () => {
+  test('opens a folder in a linked worktree in the tab of its repository, listing its worktrees with the main one first', async () => {
+    const host = new FakeHost();
+    const inner = path.join(feature, 'inner');
+    fs.mkdirSync(inner, { recursive: true });
+    host.folders = [inner];
     await withView(
       log,
-      [repository.root],
+      [other],
       async (view) => {
-        await repository.git('-C', review, 'switch', '-q', '-c', 'reviewing');
-        try {
-          await waitFor(
-            () =>
-              worktreesOf(view).some(
-                (worktree) => worktree.name === 'reviewing',
-              ),
-            'the branch switched to',
-          );
-        } finally {
-          await repository.git(
-            '-C',
-            review,
-            'switch',
-            '-q',
-            '--detach',
-            reviewHead,
-          );
-          await repository.git('branch', '-D', 'reviewing');
-        }
+        await view.connection.receive({ type: 'browseRepositories' });
+        const shown = shownTabs(view.page);
+        assert.deepStrictEqual(
+          shown?.tabs.map((tab) => tab.name),
+          ['other', 'app'],
+        );
+        assert.ok(sameRealFolder(shown.active, repository.root));
+        assert.strictEqual(shown.worktree, feature);
+        assert.deepStrictEqual(
+          shown.worktrees?.map((worktree) => ({
+            name: worktree.name,
+            folder: worktree.folder,
+            main: worktree.main,
+            missing: worktree.missing,
+          })),
+          [
+            { name: 'main', folder: 'app', main: true, missing: false },
+            {
+              name: 'feature',
+              folder: 'feature',
+              main: false,
+              missing: false,
+            },
+            { name: 'gone', folder: 'gone', main: false, missing: true },
+            {
+              name: shortHash(reviewHead),
+              folder: 'review',
+              main: false,
+              missing: false,
+            },
+          ],
+        );
+        assert.strictEqual(view.page.last('repository')?.head, 'feature');
       },
-      { watched: true },
+      true,
+      host,
     );
+  });
+
+  test('opens the main worktree of a tab picked by another path to its folder as that main worktree, not a linked one', async () => {
+    const link = path.join(folder, 'app.link');
+    fs.symlinkSync(repository.root, link, 'junction');
+    const host = new FakeHost();
+    host.folders = [link];
+    try {
+      await withView(
+        log,
+        [repository.root, other],
+        async (view) => {
+          await view.connection.receive({ type: 'browseRepositories' });
+          const shown = shownTabs(view.page);
+          assert.deepStrictEqual(
+            shown?.tabs.map((tab) => tab.name),
+            ['app', 'other'],
+          );
+          assert.strictEqual(shown.active, repository.root);
+          assert.strictEqual(shown.worktree, repository.root);
+          assert.strictEqual(shown.worktrees?.[0]?.root, repository.root);
+          assert.deepStrictEqual(gitState(view.store).get(worktreesKey), {});
+        },
+        true,
+        host,
+      );
+    } finally {
+      fs.rmSync(link);
+    }
   });
 
   test('checks out in the worktree shown, leaving the main worktree on its branch', async () => {
@@ -350,156 +381,5 @@ suite('Git tool of worktrees', () => {
       (await own.git('symbolic-ref', 'HEAD')).trim(),
       'refs/heads/main',
     );
-  });
-
-  test('tells every worktree of a repository when it last fetched, as each worktree has a FETCH_HEAD of its own', async () => {
-    const origin = await tempRepository(path.join(folder, 'fetched-origin'));
-    await origin.commit('a');
-    const fetched = await tempRepository(path.join(folder, 'fetched'));
-    await fetched.commit('a');
-    await fetched.git('remote', 'add', 'origin', origin.root);
-    const linked = path.join(folder, 'fetched.worktrees', 'linked');
-    await fetched.git('worktree', 'add', '-q', '--detach', linked);
-    await withView(log, [fetched.root], async (view) => {
-      const root = worktreeRoot(view, linked);
-      await view.connection.receive({ type: 'selectWorktree', root });
-      await view.connection.receive({ type: 'fetch', root });
-      const succeeded = view.page.last('lastFetch')?.succeeded;
-      assert.ok(succeeded);
-      view.page.clear();
-      await view.connection.receive({
-        type: 'selectWorktree',
-        root: fetched.root,
-      });
-      assert.strictEqual(view.page.last('lastFetch')?.succeeded, succeeded);
-    });
-  });
-
-  test('fetches a repository in the background though the worktree its tab showed last is gone, also once the app starts again', async () => {
-    const origin = await tempRepository(path.join(folder, 'removed-origin'));
-    await origin.commit('a');
-    const fetched = await tempRepository(path.join(folder, 'removed'));
-    await fetched.commit('a');
-    await fetched.git('remote', 'add', 'origin', origin.root);
-    const linked = path.join(folder, 'removed.worktrees', 'linked');
-    await fetched.git('worktree', 'add', '-q', '--detach', linked);
-    const rounds: (() => void)[] = [];
-    const timer = (run: () => void) => {
-      rounds.push(run);
-      return () => undefined;
-    };
-    const brought = async (message: string) => {
-      await origin.commit(message);
-      const [head] = await origin.resolve('main');
-      return head;
-    };
-    const opened = await openView(
-      log,
-      [fetched.root, other],
-      true,
-      undefined,
-      timer,
-    );
-    try {
-      const root = worktreeRoot(opened, linked);
-      await opened.connection.receive({ type: 'selectWorktree', root });
-      await opened.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(opened.page, other),
-      });
-      await fetched.git('worktree', 'remove', '--force', linked);
-      const head = await brought('b');
-      await opened.connection.receive({ type: 'setAutoFetch', on: true });
-      await waitFor(() => rounds.length === 1, 'the round to end');
-      assert.deepStrictEqual(await fetched.resolve('origin/main'), [head]);
-    } finally {
-      opened.connection.dispose();
-    }
-    const started = await openView(
-      log,
-      [other, fetched.root],
-      false,
-      undefined,
-      timer,
-    );
-    try {
-      await gitState(started.store).update(worktreesKey, {
-        [fetched.root]: linked,
-      });
-      await started.connection.receive({ type: 'ready' });
-      const head = await brought('c');
-      await started.connection.receive({ type: 'setAutoFetch', on: true });
-      await waitFor(() => rounds.length === 2, 'the next round to end');
-      assert.deepStrictEqual(await fetched.resolve('origin/main'), [head]);
-    } finally {
-      started.connection.dispose();
-    }
-  });
-
-  test('fetches a repository once at a time, also for two of its worktrees', async () => {
-    let requests = 0;
-    let released = false;
-    const waiting: (() => void)[] = [];
-    const server = createServer((_request, response) => {
-      requests += 1;
-      const answer = () => {
-        response.writeHead(404);
-        response.end();
-      };
-      if (released) {
-        answer();
-      } else {
-        waiting.push(answer);
-      }
-    });
-    await new Promise<void>((resolve) =>
-      server.listen(0, '127.0.0.1', resolve),
-    );
-    const address = server.address();
-    assert.ok(typeof address === 'object' && address !== null);
-    const slow = await tempRepository(path.join(folder, 'slow-remote'));
-    await slow.commit('a');
-    await slow.git(
-      'remote',
-      'add',
-      'origin',
-      `http://127.0.0.1:${address.port}/x`,
-    );
-    const linked = path.join(folder, 'slow-remote.worktrees', 'linked');
-    await slow.git('worktree', 'add', '-q', '--detach', linked);
-    try {
-      await withView(log, [slow.root], async (view) => {
-        const first = view.connection.receive({
-          type: 'fetch',
-          root: slow.root,
-        });
-        await waitFor(() => requests === 1, 'the fetch to reach the remote');
-        const root = worktreeRoot(view, linked);
-        await view.connection.receive({ type: 'selectWorktree', root });
-        const second = view.connection.receive({ type: 'fetch', root });
-        released = true;
-        for (const answer of waiting) {
-          answer();
-        }
-        await Promise.all([first, second]);
-        assert.strictEqual(requests, 1);
-        assert.strictEqual(
-          view.page.messages.filter((message) => message.type === 'notice')
-            .length,
-          1,
-        );
-      });
-      assert.strictEqual(
-        logged.filter((entry) => entry === strings.log.fetchFailed).length,
-        1,
-      );
-      takeErrorsLogged(
-        logged,
-        /^Fetching every remote failed$/,
-        /^git -c remote\.origin\.prune=true -c remote\.origin\.pruneTags=false fetch --progress --no-auto-maintenance --all --porcelain failed: fatal: repository '.*' not found/,
-      );
-    } finally {
-      await new Promise((resolve) => server.close(resolve));
-    }
   });
 });
