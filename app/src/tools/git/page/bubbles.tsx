@@ -4,7 +4,7 @@ import { strings } from '../../../lib/shared/strings';
 import { commitBookmarkTarget, refMenuTarget, useContextMenu } from './menus';
 import { useGit, useGitActions } from './store';
 import { PullIcon, PushIcon } from '../../../lib/page/icons';
-import { type BranchActionsOf, useCheckedOut } from './checkedOut';
+import { useCheckedOut } from './checkedOut';
 
 interface OtherBranchActionsOf {
   readonly pulling: boolean;
@@ -143,6 +143,14 @@ function actionButton({
       {count > 0 && <span className="bubble-count">{count}</span>}
     </button>
   );
+}
+
+interface BranchActionsOf {
+  readonly pulling: boolean;
+  readonly pushing: boolean;
+  readonly onPull: () => void;
+  readonly onPush: () => void;
+  readonly tracking?: Tracking;
 }
 
 function branchActionItems({

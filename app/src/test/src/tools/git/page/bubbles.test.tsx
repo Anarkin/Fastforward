@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { type BranchActionsOf } from '../../../../../tools/git/page/checkedOut';
 import {
   TagPushAction,
   CommitBubble,
@@ -16,6 +15,7 @@ import { strings } from '../../../../../lib/shared/strings';
 import type {
   BookmarkRef,
   GitToHost,
+  Tracking,
 } from '../../../../../tools/git/shared/protocol';
 import { gitStore, type ShownGit } from '../../../../helpers/componentFixtures';
 import {
@@ -61,7 +61,7 @@ function tagged(
 
 function otherBranch(
   name: string,
-  tracking: BranchActionsOf['tracking'],
+  tracking: Tracking | undefined,
   {
     hideDimmed = false,
     elsewhere = [] as string[],
@@ -125,7 +125,7 @@ function idleIn(markup: string, title: string): boolean {
 }
 
 function checkedOut(
-  tracking: BranchActionsOf['tracking'],
+  tracking: Tracking | undefined,
   hideDimmed: boolean,
 ): string {
   return shownIn(
@@ -138,7 +138,7 @@ function checkedOut(
   );
 }
 
-function actionsWith(tracking: BranchActionsOf['tracking']): string {
+function actionsWith(tracking: Tracking | undefined): string {
   return checkedOut(tracking, false);
 }
 
