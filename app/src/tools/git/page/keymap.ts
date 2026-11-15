@@ -9,8 +9,6 @@ export const gitGroups = [
   'Searching',
 ] as const;
 
-export const diffGroups = ['Diff', 'Searching'] as const;
-
 export const gitKeymap = {
   worktree: bind(
     'Moving',
@@ -94,17 +92,4 @@ export const gitKeymap = {
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
   language: bind('Diff', strings.actions.chooseLanguage, { L: true }),
-};
-
-export const compareKeymap = {
-  change: gitKeymap.change,
-  sideways: gitKeymap.sideways,
-  wheelSideways: gitKeymap.wheelSideways,
-  wrap: gitKeymap.wrap,
-  showWhitespace: gitKeymap.showWhitespace,
-  language: gitKeymap.language,
-  find: gitKeymap.find,
-  match: gitKeymap.match,
-  stopFinding: gitKeymap.stopFinding,
-  closeCompare: bind('Diff', strings.actions.closeCompare, { Escape: true }),
 };

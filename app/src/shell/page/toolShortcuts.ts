@@ -1,9 +1,5 @@
-import {
-  compareKeymap,
-  diffGroups,
-  gitGroups,
-  gitKeymap,
-} from '../../tools/git/page/keymap';
+import { gitGroups, gitKeymap } from '../../tools/git/page/keymap';
+import { compareKeymap, diffGroups } from '../../tools/git/page/compareKeymap';
 import { everywhereGroups, shellKeymap } from '../shared/keymap';
 import type { Binding } from '../../lib/shared/keymap';
 import { keymap } from '../../lib/page/keymap';

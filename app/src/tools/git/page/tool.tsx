@@ -1,4 +1,5 @@
-import { compareKeymap, gitKeymap } from './keymap';
+import { gitKeymap } from './keymap';
+import { compareKeymap } from './compareKeymap';
 import { CompareView } from './compareView';
 import { comparingOf } from '../../../shell/page/shellSelectors';
 import { useShell, useShellActions } from '../../../shell/page/store';
