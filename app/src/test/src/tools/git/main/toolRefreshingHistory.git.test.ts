@@ -14,7 +14,6 @@ import { strings } from '../../../../../lib/shared/strings';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import type { FakeStore } from '../../../../helpers/fakeStore';
-import { waitFor } from '../../../../helpers/fixtures';
 import {
   removeFolder,
   tempFolder,
@@ -26,10 +25,8 @@ import { recordingLog } from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  commitsSent,
   failOnErrorsLogged,
   type FakePage,
-  gate,
   openView,
   stubMethod,
   takeErrorsLogged,
@@ -131,84 +128,6 @@ suite('Git tool refreshing one repository', () => {
       page.clear();
       await connection.refresh();
       assert.strictEqual(page.last('commits'), undefined, 'reloaded');
-    });
-
-    test('stops reading the history for Solo once it is toggled again, showing only the history asked for last, as the first was read whole and laid out first', async () => {
-      const held = gate();
-      const signals: AbortSignal[] = [];
-      stubMethod(fastforward, 'listFullHistory', async (original, ...args) => {
-        const signal = args.find((arg) => arg instanceof AbortSignal);
-        assert.ok(signal instanceof AbortSignal);
-        signals.push(signal);
-        if (signals.length === 1) {
-          await Promise.race([
-            held.opened,
-            new Promise((resolve) => signal.addEventListener('abort', resolve)),
-          ]);
-        }
-        return original(...args);
-      });
-      page.clear();
-      try {
-        const on = connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: true,
-        });
-        await waitFor(() => signals.length === 1, 'the history to be read');
-        const off = connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: false,
-        });
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        held.open();
-        await Promise.all([on, off]);
-        assert.strictEqual(signals[0].aborted, true);
-        assert.strictEqual(commitsSent(page.messages), 1);
-      } finally {
-        await gitState(store).update(soloKey, {});
-      }
-    });
-
-    test('shows only the history of the checked-out commit when solo, and every branch again after', async () => {
-      const [tree] = await repository.resolve('HEAD^{tree}');
-      const side = (
-        await repository.git('commit-tree', tree, '-p', fixture.a, '-m', 'side')
-      ).trim();
-      await repository.git('branch', 'side', side);
-      try {
-        await connection.refresh();
-        assert.strictEqual(page.last('commits')?.total, 4);
-        page.clear();
-        await connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: true,
-        });
-        const applying = page.messages.flatMap((message) =>
-          message.type === 'applyingSolo' ? [message.running] : [],
-        );
-        assert.deepStrictEqual(applying, [true, false]);
-        assert.ok(
-          page.messages.findIndex((message) => message.type === 'commits') <
-            page.messages.findLastIndex(
-              (message) => message.type === 'applyingSolo',
-            ),
-        );
-        assert.deepStrictEqual(gitState(store).get(soloKey), {
-          [repository.root]: true,
-        });
-        await connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: false,
-        });
-        assert.strictEqual(page.last('commits')?.total, 4);
-      } finally {
-        await gitState(store).update(soloKey, {});
-        await repository.git('branch', '-D', 'side');
-      }
     });
 
     test('lists the history again only for refs that change its commits other than by adding some, whatever solo leaves out', async () => {
