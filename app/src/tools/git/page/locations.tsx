@@ -15,7 +15,7 @@ import { CommitBubble, HeadBubble, RefBubble } from './bubbles';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { noRefs } from './commitListItems';
-import { CommitRow } from './commitList';
+import { CommitRow } from './commitRow';
 import { detachedHead, searchQueryOf, useGit, useGitActions } from './store';
 import { Highlight } from './highlight';
 import { strings } from '../../../lib/shared/strings';

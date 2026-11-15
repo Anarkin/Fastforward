@@ -1,5 +1,4 @@
 import {
-  memo,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -12,34 +11,19 @@ import {
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { sidesOf } from '../shared/comparisons';
-import {
-  workingTreeHash,
-  type CommitInfo,
-  type RefInfo,
-} from '../shared/protocol';
-import { CommitBubble, HeadBubble, RefBubble, StashBubble } from './bubbles';
+import { workingTreeHash } from '../shared/protocol';
 import { Column } from './column';
-import { commitMenuTarget, useOpenMenu } from './menus';
+import { useOpenMenu } from './menus';
 import { graphWidth, rowLanes, withoutWorkingTreeLink } from './graphLanes';
 import { GraphCell } from './graph';
-import {
-  detachedHead,
-  layoutSelectionOf,
-  openingOf,
-  useGit,
-  useGitActions,
-} from './store';
+import { layoutSelectionOf, openingOf, useGit, useGitActions } from './store';
 import { listError } from './columnsShown';
-import { formatDate } from '../../../lib/page/dates';
-import { useShell } from '../../../shell/page/store';
 import { MenuButton } from '../../../lib/page/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
 import { useSkeleton } from './skeletonDelay';
-import { Highlight } from './highlight';
 import { menuFromKeyboard, type Click } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
-import { withoutRemote } from '../shared/refNames';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
@@ -52,13 +36,9 @@ import { rowPlace } from '../../../lib/page/rowPlace';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { endCovered } from '../../../lib/page/listRows';
 import {
-  workingTreeShift,
-  ListScrollState,
-  listScroll,
   ReportedPlaces,
   movingPlaces,
-  useScrollReports,
-  listTop,
+  useListPlace,
 } from './commitListScrolling';
 import { atMostEvery } from './commitPages';
 import {
@@ -78,13 +58,12 @@ import {
   fixedRowHeight,
 } from './commitListRows';
 import {
-  noRefs,
   isCompareClick,
   selectionClasses,
   commitOption,
   commitListbox,
-  commitClass,
 } from './commitListItems';
+import { CommitRow, ListedCommitRow } from './commitRow';
 
 const loadDelay = 80;
 
@@ -97,61 +76,6 @@ const noSelect = () => {};
 const rowIndent = 8;
 
 const openingRows = 20;
-
-export const CommitBubbles = memo(function CommitBubbles({
-  hash,
-}: {
-  hash: string;
-}) {
-  const refs = useGit((state) => state.refsByCommit.get(hash) ?? noRefs);
-  const stash = useGit((state) => state.stashCommits.has(hash));
-  const detached = useGit((state) => detachedHead(state) === hash);
-  const bookmarked = useGit((state) => state.bookmarked.has(hash)) && !detached;
-  if (!detached && refs.length === 0 && !stash && !bookmarked) {
-    return null;
-  }
-  const bubbles = [
-    ...(detached ? [<HeadBubble key="HEAD" hash={hash} />] : []),
-    ...inPairs(refs).map((ref) => (
-      <RefBubble
-        key={`${ref.kind}:${ref.name}`}
-        info={ref}
-        tracking={ref.tracking}
-        actions
-      />
-    )),
-    ...(bookmarked ? [<CommitBubble key="bookmark" hash={hash} />] : []),
-    ...(stash ? [<StashBubble key="stash" />] : []),
-  ];
-  return (
-    <div className="bubble-line">
-      {bubbles.flatMap((bubble, index) =>
-        index === 0 ? [bubble] : [<wbr key={`break:${index}`} />, bubble],
-      )}
-    </div>
-  );
-});
-
-function tagOf(ref: RefInfo): string {
-  return withoutRemote(ref.name, ref.remote);
-}
-
-function inPairs(refs: readonly RefInfo[]): RefInfo[] {
-  const remoteTags = refs.filter((ref) => ref.kind === 'remote-tag');
-  const localTags = new Set(
-    refs.filter((ref) => ref.kind === 'tag').map((ref) => ref.name),
-  );
-  return [
-    ...refs.flatMap((ref) =>
-      ref.kind === 'remote-tag'
-        ? []
-        : ref.kind === 'tag'
-          ? [ref, ...remoteTags.filter((other) => tagOf(other) === ref.name)]
-          : [ref],
-    ),
-    ...remoteTags.filter((ref) => !localTags.has(tagOf(ref))),
-  ];
-}
 
 function selectionOfRow(
   hash: string,
@@ -304,81 +228,19 @@ export function Commits({
   }, [history, first, last, onLoad, asking]);
   useEffect(() => () => asking.cancel(), [asking]);
 
-  const shown = useRef<ListScrollState>({ target: undefined, offset });
-  const placesWorktree = useRef(worktree);
-  useEffect(() => {
-    if (placesWorktree.current !== worktree) {
-      placesWorktree.current = worktree;
-      places.forget();
-      virtualizer.scrollToOffset(0);
-    } else if (!history) {
-      places.forget();
-    }
-  }, [history, worktree, places, virtualizer]);
-  useEffect(() => {
-    const next = { target: history ? scrollTarget : undefined, offset };
-    const previous = shown.current;
-    shown.current = next;
-    const action = listScroll(previous, next);
-    if (action === undefined) {
-      return;
-    }
-    if ('shiftBy' in action) {
-      const element = list.current;
-      if (!element) {
-        return;
-      }
-      const top = scrollTop(element);
-      const shifted = workingTreeShift(top, action.shiftBy, line);
-      if (shifted !== undefined) {
-        places.moved(shifted - top);
-        virtualizer.scrollToOffset(shifted);
-      }
-      return;
-    }
-    const index = offset + action.target.index;
-    if (action.target.offset !== undefined) {
-      const [start] = virtualizer.getOffsetForIndex(index, 'start') ?? [];
-      if (start !== undefined) {
-        virtualizer.scrollToOffset(
-          places.kept(
-            start,
-            action.target.offset,
-            scrollTop(list.current),
-            action.target.report,
-            virtualizer.getTotalSize() - (list.current?.clientHeight ?? 0),
-          ),
-        );
-      }
-      return;
-    }
-    const onScreen = virtualizer
-      .getVirtualItems()
-      .some((row) => row.index === index);
-    virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
-  }, [history, scrollTarget, offset, virtualizer, scrollTop, places, line]);
-
-  const topNow = useCallback(() => {
-    const element = list.current;
-    if (!element || !history) {
-      return undefined;
-    }
-    const scrolled = scrollTop(element);
-    const top = listTop(
-      virtualizer.getVirtualItems(),
-      scrolled,
-      history,
-      offset,
-    );
-    return () => {
-      if (top) {
-        onScrolled(top.hash, top.offset, places.told(scrolled));
-      }
-      return top !== undefined;
-    };
-  }, [history, offset, onScrolled, virtualizer, scrollTop, places]);
-  const reportUntold = useScrollReports(list, topNow);
-  useEffect(reportUntold, [version, reportUntold]);
+  useListPlace({
+    listRef: list,
+    virtualizer,
+    history,
+    offset,
+    line,
+    places,
+    worktree,
+    scrollTarget,
+    scrollTop,
+    onScrolled,
+    version,
+  });
 
   const pending = useRef<PendingKey>(undefined);
   useEffect(() => {
@@ -644,66 +506,3 @@ export function SoloButton() {
     </button>
   );
 }
-
-export function CommitRow({
-  commit,
-  selected,
-  indent,
-  onSelect,
-  onCompare,
-  highlight = '',
-  itemProps,
-  corner,
-  children,
-}: {
-  commit: CommitInfo;
-  selected: string | undefined;
-  indent: number;
-  onSelect: (hash: string) => void;
-  onCompare?: (hash: string) => void;
-  highlight?: string;
-  itemProps?: React.HTMLAttributes<HTMLDivElement>;
-  corner?: React.ReactNode;
-  children?: React.ReactNode;
-}) {
-  const openMenu = useOpenMenu();
-  const dateFormat = useShell((state) => state.dateFormat);
-  const headCommit = useGit((state) => state.tab.repository?.headCommit);
-  const stash = useGit((state) => state.stashCommits.has(commit.hash));
-  return (
-    <div
-      {...itemProps}
-      className={commitClass(commit.hash, selected, headCommit)}
-      style={{ paddingLeft: indent }}
-      onClick={(event: Click) =>
-        onCompare && isCompareClick(event)
-          ? onCompare(commit.hash)
-          : onSelect(commit.hash)
-      }
-      onContextMenu={
-        stash
-          ? undefined
-          : (event) => openMenu(event, commitMenuTarget(commit.hash))
-      }
-    >
-      <div className="commit-line">
-        <span className="subject">
-          <Highlight text={commit.subject} query={highlight} />
-        </span>
-        {corner}
-      </div>
-      <div className="commit-line secondary">
-        <span className="author">
-          <Highlight text={commit.authorName} query={highlight} />
-        </span>
-        <span className="date">
-          {formatDate(commit.commitDate, dateFormat)}
-        </span>
-      </div>
-      <CommitBubbles hash={commit.hash} />
-      {children}
-    </div>
-  );
-}
-
-const ListedCommitRow = memo(CommitRow);

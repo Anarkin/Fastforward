@@ -1,5 +1,14 @@
-import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react';
-import { type VirtualizerOptions } from '@tanstack/react-virtual';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type RefObject,
+} from 'react';
+import {
+  type Virtualizer,
+  type VirtualizerOptions,
+} from '@tanstack/react-virtual';
 import { workingTreeHash, type ScrollTarget } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 
@@ -182,4 +191,115 @@ export function listTop(
   }
   const commit = history?.at(row.index - offset);
   return commit && { hash: commit.hash, offset: scrollTop - row.start };
+}
+
+export function useListPlace({
+  listRef,
+  virtualizer,
+  history,
+  offset,
+  line,
+  places,
+  worktree,
+  scrollTarget,
+  scrollTop,
+  onScrolled,
+  version,
+}: {
+  readonly listRef: RefObject<HTMLDivElement | null>;
+  readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
+  readonly history: CommitHistory | undefined;
+  readonly offset: number;
+  readonly line: number;
+  readonly places: ReportedPlaces;
+  readonly worktree: string | undefined;
+  readonly scrollTarget: ScrollTarget | undefined;
+  readonly scrollTop: (element: Element | null) => number;
+  readonly onScrolled: (top: string, offset: number, report: number) => void;
+  readonly version: number;
+}): void {
+  const shown = useRef<ListScrollState>({ target: undefined, offset });
+  const placesWorktree = useRef(worktree);
+  useEffect(() => {
+    if (placesWorktree.current !== worktree) {
+      placesWorktree.current = worktree;
+      places.forget();
+      virtualizer.scrollToOffset(0);
+    } else if (!history) {
+      places.forget();
+    }
+  }, [history, worktree, places, virtualizer]);
+  useEffect(() => {
+    const next = { target: history ? scrollTarget : undefined, offset };
+    const previous = shown.current;
+    shown.current = next;
+    const action = listScroll(previous, next);
+    if (action === undefined) {
+      return;
+    }
+    if ('shiftBy' in action) {
+      const element = listRef.current;
+      if (!element) {
+        return;
+      }
+      const top = scrollTop(element);
+      const shifted = workingTreeShift(top, action.shiftBy, line);
+      if (shifted !== undefined) {
+        places.moved(shifted - top);
+        virtualizer.scrollToOffset(shifted);
+      }
+      return;
+    }
+    const index = offset + action.target.index;
+    if (action.target.offset !== undefined) {
+      const [start] = virtualizer.getOffsetForIndex(index, 'start') ?? [];
+      if (start !== undefined) {
+        virtualizer.scrollToOffset(
+          places.kept(
+            start,
+            action.target.offset,
+            scrollTop(listRef.current),
+            action.target.report,
+            virtualizer.getTotalSize() - (listRef.current?.clientHeight ?? 0),
+          ),
+        );
+      }
+      return;
+    }
+    const onScreen = virtualizer
+      .getVirtualItems()
+      .some((row) => row.index === index);
+    virtualizer.scrollToIndex(index, { align: onScreen ? 'auto' : 'center' });
+  }, [
+    listRef,
+    history,
+    scrollTarget,
+    offset,
+    virtualizer,
+    scrollTop,
+    places,
+    line,
+  ]);
+
+  const topNow = useCallback(() => {
+    const element = listRef.current;
+    if (!element || !history) {
+      return undefined;
+    }
+    const scrolled = scrollTop(element);
+    const top = listTop(
+      virtualizer.getVirtualItems(),
+      scrolled,
+      history,
+      offset,
+    );
+    return () => {
+      if (top) {
+        onScrolled(top.hash, top.offset, places.told(scrolled));
+      }
+      return top !== undefined;
+    };
+  }, [listRef, history, offset, onScrolled, virtualizer, scrollTop, places]);
+  const reportUntold = useScrollReports(listRef, topNow);
+  useEffect(reportUntold, [version, reportUntold]);
 }

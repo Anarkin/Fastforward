@@ -1,42 +1,17 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { isValidElement } from 'react';
+import type { RefInfo } from '../../../../../tools/git/shared/protocol';
 import {
+  CommitBubbles,
   CommitRow,
-  SoloButton,
-} from '../../../../../tools/git/page/commitList';
+} from '../../../../../tools/git/page/commitRow';
 import { defaultDateFormat, formatDate } from '../../../../../lib/page/dates';
 import { createShellStore, ShellStore } from '../../../../../shell/page/store';
-import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
-import { emptyTabView } from '../../../../../tools/git/page/tabView';
-import { gitStore } from '../../../../helpers/componentFixtures';
+import { GitStore } from '../../../../../tools/git/page/store';
+import { gitStore, type ShownGit } from '../../../../helpers/componentFixtures';
 import { commitInfo, renderedBy } from '../../../../helpers/fixtures';
 import { renderToStaticMarkup, noop, plainClick } from './commitListFixtures';
-
-function soloButton(applying: boolean): string {
-  return renderToStaticMarkup(
-    <GitStore
-      value={createGitStore(noop, {
-        solo: true,
-        tab: { ...emptyTabView, applyingSolo: applying },
-      })}
-    >
-      <SoloButton />
-    </GitStore>,
-  );
-}
-
-suite('Solo button', () => {
-  test('spins its icon and takes no clicks while the history reloads', () => {
-    const idle = soloButton(false);
-    assert.match(idle, /class="nav-button toggle active\s*"/);
-    assert.doesNotMatch(idle, /disabled/);
-    const applying = soloButton(true);
-    assert.match(applying, /class="nav-button toggle active running"/);
-    assert.match(applying, /disabled=""/);
-    assert.match(applying, /<span class="spin-icon"><svg/);
-  });
-});
 
 suite('Commit row', () => {
   test('shows the subject, author, the date it was last committed and bubbles, but no file count', () => {
@@ -171,5 +146,146 @@ suite('Commit row', () => {
     );
     row.props.onClick({ ...plainClick, ctrlKey: true });
     assert.deepStrictEqual([picked, compared], [[], ['a']]);
+  });
+});
+
+const tracking = { upstream: 'origin/main', ahead: 0, behind: 0 };
+
+function bubblesOf(hash: string, shown: ShownGit = {}): string {
+  return renderToStaticMarkup(
+    <GitStore value={gitStore(shown)}>
+      <CommitBubbles hash={hash} />
+    </GitStore>,
+  );
+}
+
+suite('Commit list rows', () => {
+  test("puts a commit's bubbles on one line that can break between them", () => {
+    const html = bubblesOf('a'.repeat(40), {
+      hideDimmed: true,
+      headCommit: 'a'.repeat(40),
+      refs: [
+        { kind: 'branch', name: 'main', commit: 'a'.repeat(40), tracking },
+        { kind: 'remote', name: 'origin/main', commit: 'a'.repeat(40) },
+      ],
+    });
+    assert.strictEqual(html.match(/class="bubble-line"/g)?.length, 1);
+    assert.match(
+      html,
+      /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><wbr\/><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge remote[^>]*>origin\/main<\/span><\/div>$/,
+    );
+  });
+
+  test("offers pull and push on the checked-out branch's bubble in a commit's row", () => {
+    const html = bubblesOf('a'.repeat(40), {
+      head: 'main',
+      refs: [{ kind: 'branch', name: 'main', commit: 'a'.repeat(40) }],
+    });
+    assert.match(html, /class="bubble-action[^"]*" title="Pull:/);
+    assert.match(html, /class="bubble-action[^"]*" title="Push:/);
+  });
+
+  test("puts each remote's tag right after the local tag of its name, and the tags only on a remote after the rest", () => {
+    const at = 'a'.repeat(40);
+    const html = bubblesOf(at, {
+      hideDimmed: true,
+      refs: [
+        { kind: 'branch', name: 'main', commit: at, tracking },
+        { kind: 'tag', name: 'v1', commit: at },
+        { kind: 'tag', name: 'v2', commit: at },
+        {
+          kind: 'remote-tag',
+          name: 'origin/v1',
+          commit: at,
+          remote: 'origin',
+        },
+        {
+          kind: 'remote-tag',
+          name: 'origin/v3',
+          commit: at,
+          remote: 'origin',
+        },
+        {
+          kind: 'remote-tag',
+          name: 'second/v1',
+          commit: at,
+          remote: 'second',
+        },
+      ],
+    });
+    assert.deepStrictEqual(
+      [...html.matchAll(/class="badge [^"]*"[^>]*>([^<]+)</g)].map(
+        ([, name]) => name,
+      ),
+      ['main', 'v1', 'origin/v1', 'second/v1', 'v2', 'origin/v3'],
+    );
+  });
+
+  test('offers pull and push on the bubble of a branch that is not checked out, with the counts of that branch', () => {
+    const html = bubblesOf('a'.repeat(40), {
+      head: 'main',
+      refs: [
+        {
+          kind: 'branch',
+          name: 'side',
+          commit: 'a'.repeat(40),
+          tracking: { upstream: 'origin/side', ahead: 3, behind: 0 },
+        },
+      ],
+    });
+    assert.match(
+      html,
+      /title="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">3<\/span>/,
+    );
+  });
+
+  test('marks a detached HEAD on a commit without refs', () => {
+    assert.match(
+      bubblesOf('a'.repeat(40), { headCommit: 'a'.repeat(40) }),
+      /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
+    );
+  });
+
+  test("marks a bookmarked commit with its hash after its refs and before the stash, as the search's bookmarks show it", () => {
+    const at = 'a'.repeat(40);
+    const bubbles = (refs: RefInfo[], stash: boolean) =>
+      bubblesOf(at, {
+        bookmarks: [{ kind: 'commit', name: at }],
+        hideDimmed: true,
+        refs,
+        stashes: stash ? [{ name: 'stash@{0}', commit: at, message: '' }] : [],
+      });
+    assert.match(
+      bubbles([{ kind: 'branch', name: 'main', commit: at, tracking }], true),
+      /^<div class="bubble-line"><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge hash" title="[^"]*aaaaaaaaaa[^"]*">aaaaaaa<\/span><wbr\/><span class="badge stash">[^<]*<\/span><\/div>$/,
+    );
+    assert.match(
+      bubbles([], false),
+      /^<div class="bubble-line"><span class="badge hash"[^>]*>aaaaaaa<\/span><\/div>$/,
+    );
+  });
+
+  test('leaves the hash of a bookmarked commit to its HEAD bubble when HEAD is detached at it', () => {
+    const at = 'a'.repeat(40);
+    assert.match(
+      bubblesOf(at, {
+        bookmarks: [{ kind: 'commit', name: at }],
+        headCommit: at,
+      }),
+      /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><\/div>$/,
+    );
+  });
+
+  test('marks no commit bookmarked but the ones bookmarked', () => {
+    assert.strictEqual(
+      bubblesOf('a'.repeat(40), {
+        bookmarks: [{ kind: 'commit', name: 'b'.repeat(40) }],
+      }),
+      '',
+    );
+  });
+
+  test('draws no bubble line for a commit without refs', () => {
+    assert.strictEqual(bubblesOf('a'.repeat(40)), '');
   });
 });

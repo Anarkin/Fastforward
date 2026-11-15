@@ -9,7 +9,8 @@ import { emptyTabView } from '../../tools/git/page/tabView';
 import type { ColumnName } from '../../tools/git/page/activeColumn';
 import { ChangesTreeItem } from '../../tools/git/page/changesTree';
 import { Column } from '../../tools/git/page/column';
-import { CommitRow, WorkingTreeRow } from '../../tools/git/page/commitList';
+import { WorkingTreeRow } from '../../tools/git/page/commitList';
+import { CommitRow } from '../../tools/git/page/commitRow';
 import { ContextMenu } from '../../shell/page/contextMenu';
 import {
   gitStore,
