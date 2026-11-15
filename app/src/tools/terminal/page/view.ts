@@ -12,15 +12,14 @@ import {
   type Wheel,
 } from '../../../lib/page/rowScroll';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
+import { withHiddenCursor, terminalTheme } from './theme';
 import {
-  withHiddenCursor,
   fontVariables,
   letterSpacingFor,
   lineHeightFor,
   terminalFont,
-  terminalTheme,
   type TerminalFont,
-} from './theme';
+} from './cells';
 import {
   inputChunks,
   sizeWithin,

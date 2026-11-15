@@ -3,7 +3,8 @@ import { suite, test } from 'vitest';
 import {
   letterSpacingFor,
   lineHeightFor,
-} from '../../../../../tools/terminal/page/theme';
+  terminalFont,
+} from '../../../../../tools/terminal/page/cells';
 
 function xtermRow(lineHeight: number, glyph: number, ratio: number): number {
   return Math.floor(Math.ceil(glyph * ratio) * lineHeight);
@@ -53,5 +54,15 @@ suite('Terminal letter spacing', () => {
         );
       }
     }
+  });
+});
+
+suite('Terminal font', () => {
+  test('takes the monospace font of the theme, falling back to 12 pixels for a size it cannot read', () => {
+    assert.deepStrictEqual(terminalFont('Consolas, monospace', '13px'), {
+      fontFamily: 'Consolas, monospace',
+      fontSize: 13,
+    });
+    assert.strictEqual(terminalFont('monospace', 'large').fontSize, 12);
   });
 });

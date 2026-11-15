@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
-  terminalFont,
   terminalTheme,
   withHiddenCursor,
 } from '../../../../../tools/terminal/page/theme';
@@ -19,14 +18,6 @@ suite('Terminal theme', () => {
       ],
     );
     assert.strictEqual(Object.keys(theme).length, 21);
-  });
-
-  test('takes the monospace font of the theme, falling back to 12 pixels for a size it cannot read', () => {
-    assert.deepStrictEqual(terminalFont('Consolas, monospace', '13px'), {
-      fontFamily: 'Consolas, monospace',
-      fontSize: 13,
-    });
-    assert.strictEqual(terminalFont('monospace', 'large').fontSize, 12);
   });
 
   test('hides the cursor of xterm.js behind the one the page draws by the color of the background, an opaque one, as xterm.js reads a see-through cursor as white', () => {
