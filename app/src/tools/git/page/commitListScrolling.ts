@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, type RefObject } from 'react';
 import { type VirtualizerOptions } from '@tanstack/react-virtual';
-import { type ScrollTarget } from '../shared/protocol';
+import { workingTreeHash, type ScrollTarget } from '../shared/protocol';
+import { CommitHistory } from './commitHistory';
 
 const scrolledDelay = 150;
 
@@ -161,6 +162,26 @@ export function useScrollReports(
       topUnreported.current = !reportTop();
     }
   }, [topNow]);
+}
+
+export function listTop(
+  rows: readonly { index: number; start: number; end: number }[],
+  scrollTop: number,
+  history: CommitHistory | undefined,
+  offset: number,
+): { hash: string; offset: number } | undefined {
+  if (scrollTop === 0) {
+    return { hash: workingTreeHash, offset: 0 };
+  }
+  const row = rows.find((r) => r.end > scrollTop);
+  if (!row) {
+    return undefined;
+  }
+  if (row.index < offset) {
+    return { hash: workingTreeHash, offset: scrollTop - row.start };
+  }
+  const commit = history?.at(row.index - offset);
+  return commit && { hash: commit.hash, offset: scrollTop - row.start };
 }
 
 export function atMostEvery(

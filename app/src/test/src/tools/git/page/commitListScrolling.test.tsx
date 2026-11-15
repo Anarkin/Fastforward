@@ -21,11 +21,11 @@ import {
   atMostEvery,
   movingPlaces,
   workingTreeShift,
+  listTop,
 } from '../../../../../tools/git/page/commitListScrolling';
 import {
   bubbleLineHeight,
   commitRowHeight,
-  listTop,
   workingTreeRowHeight,
 } from '../../../../../tools/git/page/commitListRows';
 import { Commits } from '../../../../../tools/git/page/commitList';

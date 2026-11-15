@@ -11,7 +11,6 @@ import {
   type ListMove,
   type VisibleRows,
 } from '../../../lib/page/listMoves';
-import { startPosition } from './commitListRows';
 
 export function keySelection(
   history: CommitHistory,
@@ -89,6 +88,26 @@ export function pendingSelection(
   return hash === null || hash === undefined
     ? hash
     : { hash, repeat: pending.repeat };
+}
+
+export function startPosition(
+  history: CommitHistory,
+  selection: string | undefined,
+): number | null | undefined {
+  const selected = shownSide(selection);
+  if (selected === workingTreeHash) {
+    return workingTreeIndex;
+  }
+  if (selected === undefined) {
+    return undefined;
+  }
+  const hint = history.selectedIndex;
+  return (
+    history.positionOf(selected) ??
+    (hint !== undefined && history.at(hint) === undefined
+      ? hint
+      : (history.keysFrom ?? null))
+  );
 }
 
 export function listKeyPosition(

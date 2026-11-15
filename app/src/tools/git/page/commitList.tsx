@@ -59,6 +59,7 @@ import {
   movingPlaces,
   useScrollReports,
   atMostEvery,
+  listTop,
 } from './commitListScrolling';
 import {
   keySelection,
@@ -75,7 +76,6 @@ import {
   rowKeyOf,
   drawnRows,
   fixedRowHeight,
-  listTop,
 } from './commitListRows';
 import {
   noRefs,

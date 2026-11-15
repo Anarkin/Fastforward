@@ -1,6 +1,5 @@
 import { type VirtualItem, type Virtualizer } from '@tanstack/react-virtual';
-import { shownSide } from '../shared/comparisons';
-import { workingTreeHash, workingTreeIndex } from '../shared/protocol';
+import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 import { measureInLines, useLineHeight } from './lineHeight';
 import type { RefObject } from 'react';
@@ -89,46 +88,6 @@ export function fixedRowHeight(
   return index < offset || history?.at(index - offset) !== undefined
     ? undefined
     : estimated;
-}
-
-export function listTop(
-  rows: readonly { index: number; start: number; end: number }[],
-  scrollTop: number,
-  history: CommitHistory | undefined,
-  offset: number,
-): { hash: string; offset: number } | undefined {
-  if (scrollTop === 0) {
-    return { hash: workingTreeHash, offset: 0 };
-  }
-  const row = rows.find((r) => r.end > scrollTop);
-  if (!row) {
-    return undefined;
-  }
-  if (row.index < offset) {
-    return { hash: workingTreeHash, offset: scrollTop - row.start };
-  }
-  const commit = history?.at(row.index - offset);
-  return commit && { hash: commit.hash, offset: scrollTop - row.start };
-}
-
-export function startPosition(
-  history: CommitHistory,
-  selection: string | undefined,
-): number | null | undefined {
-  const selected = shownSide(selection);
-  if (selected === workingTreeHash) {
-    return workingTreeIndex;
-  }
-  if (selected === undefined) {
-    return undefined;
-  }
-  const hint = history.selectedIndex;
-  return (
-    history.positionOf(selected) ??
-    (hint !== undefined && history.at(hint) === undefined
-      ? hint
-      : (history.keysFrom ?? null))
-  );
 }
 
 export function useRowLineHeight(
