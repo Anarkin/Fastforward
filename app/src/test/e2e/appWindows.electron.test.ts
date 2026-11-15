@@ -254,6 +254,7 @@ async function grabTab(page: Page, index: number) {
   const at = { x: box.x + 20, y: box.y + box.height / 2 };
   await page.mouse.move(at.x, at.y);
   await page.mouse.down();
+  await page.mouse.move(at.x + 6, at.y);
   await page.mouse.move(at.x, at.y + 80, { steps: 5 });
   return at;
 }
