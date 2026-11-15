@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
@@ -27,6 +28,26 @@ const choose = async (menu: string, item: string) => {
   await page.locator(menu).locator('.menu-button-trigger').click();
   await page.locator(menu).locator(item).first().click();
 };
+
+async function shownThumb(
+  thumb: Locator,
+  pointer: { readonly x: number; readonly y: number },
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  for (let nudge = 0; nudge < 5; nudge++) {
+    await page.mouse.move(pointer.x + nudge, pointer.y);
+    await thumb.waitFor();
+    const [box] = await thumb.evaluateAll((elements) =>
+      elements.map((element) => {
+        const { x, y, width, height } = element.getBoundingClientRect();
+        return { x, y, width, height };
+      }),
+    );
+    if (box !== undefined) {
+      return box;
+    }
+  }
+  return assert.fail('the thumb hid each time before it was measured');
+}
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -176,13 +197,12 @@ suite('App commander', () => {
     const menu = page.locator('.viewer .language-button .menu');
     await menu.waitFor();
     const thumb = page.locator('.overlay-scrollbar.vertical.shown');
-    await menu.hover();
-    await thumb.waitFor();
-    const [menuBox, top] = await Promise.all([
-      menu.boundingBox(),
-      thumb.boundingBox(),
-    ]);
-    assert.ok(menuBox && top);
+    const menuBox = await menu.boundingBox();
+    assert.ok(menuBox);
+    const top = await shownThumb(thumb, {
+      x: menuBox.x + menuBox.width / 2,
+      y: menuBox.y + menuBox.height / 2,
+    });
     const x = top.x + top.width / 2;
     const trackTop = top.y;
     const trackBottom = menuBox.y + menuBox.height - 6;
