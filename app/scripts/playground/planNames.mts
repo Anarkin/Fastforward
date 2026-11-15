@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { gzip, tar, zip } from './archiveFormats.mts';
 import { docx, wav, xlsx } from './formats.mts';
-import { csvFiles, csvRows } from './projectSamples.mts';
+import { csvFiles, csvRows } from './csvSamples.mts';
 import { binary, sentence } from './samples.mts';
 import type { PlanBuilder, PlanOptions } from './filesPlan.mts';
 import { defaultColorGroups } from './appFacts.mts';
