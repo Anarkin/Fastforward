@@ -1,6 +1,11 @@
 import { execFile } from 'node:child_process';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
+import {
+  gitCommand,
+  gitEnv,
+  unnamedBareRefused,
+} from '../../../lib/main/gitCommand';
 import type { LineEnding } from '../shared/textMarks';
 
 const run = promisify(execFile);
@@ -11,7 +16,12 @@ async function output(
   args: readonly string[],
 ): Promise<string | undefined> {
   try {
-    const { stdout } = await run(git, args, { cwd: folder, windowsHide: true });
+    const started = gitCommand(git);
+    const { stdout } = await run(
+      started.command,
+      [...unnamedBareRefused, ...args],
+      { cwd: folder, env: { ...gitEnv(), ...started.env }, windowsHide: true },
+    );
     return stdout;
   } catch {
     return undefined;

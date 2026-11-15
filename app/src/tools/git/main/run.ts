@@ -2,13 +2,12 @@ import type { Readable } from 'node:stream';
 import { strings } from '../../../lib/shared/strings';
 import { withoutCredentials } from './credentials';
 import { monitorArgs } from './fsMonitor';
+import { gitProcessOptions, userCodeEnv } from './gitCommand';
 import {
   gitCommand,
   gitEnv,
-  gitProcessOptions,
   unnamedBareRefused,
-  userCodeEnv,
-} from './gitCommand';
+} from '../../../lib/main/gitCommand';
 import {
   keptRunning,
   stopEveryGit,

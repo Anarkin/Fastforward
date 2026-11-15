@@ -8,6 +8,7 @@ import {
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { withEnv } from '../../../../helpers/env';
 
 suite('Line endings git gives a new file', () => {
   let folder: string;
@@ -77,5 +78,34 @@ suite('Line endings git gives a new file', () => {
     } finally {
       removeFolder(outside);
     }
+  });
+
+  test('reads the repository of the file, though the environment names another', async () => {
+    const other = await tempRepository(path.join(folder, 'other'));
+    await other.git('config', 'core.autocrlf', 'true');
+    await repository.git('config', 'core.autocrlf', 'input');
+    await withEnv(
+      { GIT_DIR: path.join(other.root, '.git'), GIT_WORK_TREE: other.root },
+      async () => {
+        assert.deepStrictEqual(
+          await gitEndingOf(
+            repository.gitPath,
+            path.join(repository.root, 'a.txt'),
+          ),
+          { ending: 'lf', by: 'core.autocrlf' },
+        );
+      },
+    );
+  });
+
+  test('takes no bare repository it was not named, as a folder inside a cloned repository can be one whose config makes git run its commands', async () => {
+    const bare = await tempRepository(path.join(folder, 'bare'), {
+      bare: true,
+    });
+    await bare.git('config', 'core.autocrlf', 'true');
+    assert.strictEqual(
+      await gitEndingOf(repository.gitPath, path.join(bare.root, 'a.txt')),
+      undefined,
+    );
   });
 });

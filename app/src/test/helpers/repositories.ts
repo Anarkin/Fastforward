@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { replaceBuiltin } from './builtins';
 import { removeFolder, tempFolder } from './tempFolders';
 import { findGit, minimumGitVersion } from '../../tools/git/main/locate';
-import { type GitCommand, realGit } from '../../tools/git/main/gitCommand';
+import { type GitCommand, realGit } from '../../lib/main/gitCommand';
 
 const withoutTheUsersGitConfig = { GIT_CONFIG_GLOBAL: '/dev/null' };
 

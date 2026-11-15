@@ -1,9 +1,9 @@
+import { gitProcessOptions } from './gitCommand';
 import {
   gitCommand,
   gitEnv,
-  gitProcessOptions,
   unnamedBareRefused,
-} from './gitCommand';
+} from '../../../lib/main/gitCommand';
 import { spawnGit, type GitChild } from './spawnedGit';
 
 const monitors = new Map<string, Promise<string[]>>();
