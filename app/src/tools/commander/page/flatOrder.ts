@@ -4,7 +4,10 @@ import {
   searchFilter,
   type Filter,
 } from '../../../lib/shared/filter';
-import { plainSearch } from '../../../lib/shared/searchOptions';
+import {
+  sameSearchOptions,
+  type SearchOptions,
+} from '../../../lib/shared/searchOptions';
 import type { Entry } from '../shared/protocol';
 import { sameGrouping } from './fileColors';
 import type { FlatChoices, SlottedFolder } from './flatMessages';
@@ -98,7 +101,7 @@ export class FlatOrder {
     this.added = [];
     this.removed.clear();
     this.sortedFor = choices;
-    const matching = this.matchingOf(choices.query);
+    const matching = this.matchingOf(choices.query, choices.options);
     return {
       order: Uint32Array.from(this.ordered, (row) => row.slot),
       shown:
@@ -112,11 +115,17 @@ export class FlatOrder {
     };
   }
 
-  private matchingOf(query: string): Matching | undefined {
-    const filter = searchFilter(query, plainSearch);
+  private matchingOf(
+    query: string,
+    options: SearchOptions,
+  ): Matching | undefined {
+    const filter = searchFilter(query, options);
     if (!narrows(filter)) {
       this.matching = undefined;
-    } else if (this.matching?.query !== query) {
+    } else if (
+      this.matching?.query !== query ||
+      !sameSearchOptions(this.matching.filter.options, options)
+    ) {
       const rows = new Set<SlotRow>();
       for (const row of this.bySlot.values()) {
         if (matchesFilter(filter, row.entry.name)) {

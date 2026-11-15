@@ -40,7 +40,7 @@ suite('Navigation bar', () => {
       store.setState({ searching: true });
       const field = () =>
         dom.window.document.querySelector<HTMLInputElement>(
-          '.locations-search input, input.locations-search',
+          '.locations-popup .search-box-input',
         );
       let root = createRoot(main);
       await act(async () => {

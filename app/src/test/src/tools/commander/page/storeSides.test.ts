@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
 import { maxDroppedIcons } from '../../../../../tools/commander/shared/icons';
 import {
@@ -26,14 +27,14 @@ suite('Commander store', () => {
       view: { ...emptyView, tab: '1' },
     });
     store.getState().filterSide('left', '');
-    assert.strictEqual(filterOf(store.getState(), 'left'), '');
+    assert.strictEqual(filterOf(store.getState(), 'left')?.query, '');
     store.getState().receive(listing(left.folder));
     assert.strictEqual(filterOf(store.getState(), 'left'), undefined);
   });
 
-  test('keeps the filter of each side of a tab while it shows the folder the filter was typed in, through another tab shown, forgetting it once the side shows another folder or the tab closes', () => {
+  test('keeps the filter of each side of a tab while it shows the folder the filter was typed in, through another tab shown, forgetting it once the side shows another folder or the tab closes, and its toggles with its query', () => {
     const { store } = shown();
-    const filtered = () => filterOf(store.getState(), 'left');
+    const filtered = () => filterOf(store.getState(), 'left')?.query;
     store.getState().filterSide('left', 'png');
     assert.strictEqual(filtered(), 'png');
     assert.strictEqual(filterOf(store.getState(), 'right'), undefined);
@@ -53,6 +54,13 @@ suite('Commander store', () => {
     store.getState().filterSide('left', 'gif');
     store.getState().filterSide('left', undefined);
     assert.strictEqual(filtered(), undefined);
+    const wholeWord = { ...plainSearch, wholeWord: true };
+    store.getState().filterSide('left', 'png', wholeWord);
+    store.getState().filterSide('left', 'pn');
+    assert.deepStrictEqual(
+      filterOf(store.getState(), 'left')?.options,
+      wholeWord,
+    );
   });
 
   test('filters the rows of a side once for each change of its rows or its filter, counting the files shown and listed', () => {

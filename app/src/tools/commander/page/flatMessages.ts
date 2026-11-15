@@ -1,4 +1,5 @@
 import type { Entry } from '../shared/protocol';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { Sort } from '../shared/sorts';
 import type { FileColors } from './fileColors';
 
@@ -7,6 +8,7 @@ export interface FlatChoices {
   readonly showHidden: boolean;
   readonly fileColors: FileColors;
   readonly query: string;
+  readonly options: SearchOptions;
 }
 
 export interface SlottedFolder {

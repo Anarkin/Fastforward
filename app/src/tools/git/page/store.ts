@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
 import { compareWith } from '../shared/comparisons';
@@ -179,13 +180,13 @@ export function createGitStore(
           postTab({ type: 'lookupHash', query });
           return () => undefined;
         }),
-      searchCommits: (query) =>
+      searchCommits: (query, options) =>
         startAfter(commitSearchDelay, () => {
           const { root } = get().tab;
           if (root === undefined) {
             return () => undefined;
           }
-          post({ type: 'searchCommits', query, root });
+          post({ type: 'searchCommits', query, options, root });
           return () => post({ type: 'stopCommitSearch', root });
         }),
       fetch: () => postTab({ type: 'fetch' }),
@@ -231,14 +232,20 @@ export function createGitStore(
       selectWorktree: (root) => post({ type: 'selectWorktree', root }),
       preloadWorktree: (root) => post({ type: 'preloadWorktree', root }),
       activateColumn: (column) => set({ activeColumn: column }),
-      searchFor: (query) =>
+      searchFor: (query, options) =>
         set((state) => {
           const { root } = state.tab;
           return root === undefined
             ? state
-            : { searchQueries: new Map(state.searchQueries).set(root, query) };
+            : {
+                searches: new Map(state.searches).set(root, {
+                  query,
+                  options:
+                    options ?? state.searches.get(root)?.options ?? plainSearch,
+                }),
+              };
         }),
-      filterFiles: (filter) =>
+      filterFiles: (filter, options) =>
         set((state) => {
           const { root } = state.tab;
           if (root === undefined) {
@@ -248,7 +255,10 @@ export function createGitStore(
           if (filter === undefined) {
             fileFilters.delete(root);
           } else {
-            fileFilters.set(root, filter);
+            fileFilters.set(root, {
+              query: filter,
+              options: options ?? fileFilters.get(root)?.options ?? plainSearch,
+            });
           }
           return { fileFilters };
         }),

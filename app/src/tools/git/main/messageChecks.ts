@@ -1,4 +1,5 @@
 import { maxSteps } from './navigation';
+import { isSearchOptions } from '../../../lib/shared/searchOptions';
 import {
   diffLayouts,
   type TabMessage,
@@ -145,8 +146,9 @@ function wellFormedInTab(message: TabMessage): boolean {
     case 'pushBranch':
       return isString(message.name);
     case 'lookupHash':
-    case 'searchCommits':
       return isString(message.query);
+    case 'searchCommits':
+      return isString(message.query) && isSearchOptions(message.options);
     case 'checkout':
       return isCheckoutTarget(message.target);
     case 'viewFile':

@@ -1,4 +1,5 @@
 import { type CommanderToWebviewOf } from '../shared/protocol';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import { sides } from '../shared/sides';
 import type { CommanderActions } from './commanderState';
 import type { StoreParts } from './dialogActions';
@@ -61,7 +62,8 @@ export function flatActions(
         sort: pane.sort,
         showHidden: view.showHidden,
         fileColors: view.fileColors,
-        query: filterOf(state, side) ?? '',
+        query: filterOf(state, side)?.query ?? '',
+        options: filterOf(state, side)?.options ?? plainSearch,
       });
       const built = flats.built(key, flat.walk);
       if (

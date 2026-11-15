@@ -1,6 +1,9 @@
 import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { suite, test } from 'vitest';
+import type { SearchOptions } from '../../../../../lib/shared/searchOptions';
+import { searchOf } from '../../../../../tools/git/page/gitSelectors';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type {
   GitToWebviewOf,
   RefInfo,
@@ -44,6 +47,7 @@ const searched = (query: string): Shown => ({
   commitSearch: {
     type: 'commitSearch',
     query,
+    options: plainSearch,
     result: { commits: [], capped: false },
   },
 });
@@ -177,6 +181,7 @@ suite('Commit results', () => {
       commitSearch: {
         type: 'commitSearch' as const,
         query,
+        options: plainSearch,
         result: {
           commits: [
             commitInfo(first, { subject: 'subject 0' }),
@@ -211,6 +216,7 @@ suite('Commit results', () => {
       commitSearch: {
         type: 'commitSearch',
         query: 'parser',
+        options: plainSearch,
         result: { commits: [], capped: false },
       },
     });
@@ -237,6 +243,7 @@ suite('Commit results', () => {
       commitSearch: {
         type: 'commitSearch',
         query: 'main',
+        options: plainSearch,
         result: {
           commits: [commitInfo(second, { subject: "Merge branch 'main'" })],
           capped: false,
@@ -285,20 +292,45 @@ const refState = repository(
 );
 
 suite('Search', () => {
-  test('offers a way back out beside its field', () => {
+  test('draws the search bar, with a way back out beside its box, counting the highlighted result of all found, and searching anew with its toggles', () => {
     let closed = 0;
+    const store = locationsStore({
+      query: 'ma',
+      repository: refState,
+      onClose: () => closed++,
+    });
     const element = renderedBy(
       LocationsPopup,
       { anchor: { current: null } },
-      { git: locationsStore({ onClose: () => closed++ }) },
+      { git: store },
     );
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(element));
     const row = element.props.children[0];
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(row));
-    const back = row.props.children[0];
-    assert.ok(isValidElement<{ title: string; onClick: () => void }>(back));
-    assert.strictEqual(back.props.title, 'Close');
-    back.props.onClick();
+    assert.ok(isValidElement<{ children: React.ReactElement }>(row));
+    const bar = row.props.children;
+    assert.ok(
+      isValidElement<{
+        query: string;
+        found: { current: number; matches: number };
+        onClose: () => void;
+        onOptions: (options: SearchOptions) => void;
+      }>(bar),
+    );
+    assert.strictEqual(bar.props.query, 'ma');
+    assert.deepStrictEqual(
+      { current: bar.props.found.current, matches: bar.props.found.matches },
+      { current: 0, matches: 2 },
+    );
+    assert.match(
+      popup('ma', undefined, { repository: refState }),
+      /<span class="search-count">1 of 2<\/span>/,
+    );
+    bar.props.onOptions({ ...plainSearch, wholeWord: true });
+    assert.deepStrictEqual(searchOf(store.getState()), {
+      query: 'ma',
+      options: { ...plainSearch, wholeWord: true },
+    });
+    bar.props.onClose();
     assert.strictEqual(closed, 1);
   });
 
@@ -358,16 +390,15 @@ suite('Search', () => {
     assert.strictEqual(tagsWith(html, 'row', 'tree-row', 'leaf').length, 3);
   });
 
-  test('says there are no matches once, when nothing matches', () => {
+  test('says there are no matches once, in its counter, when nothing matches', () => {
     const html = popup('nothing like it', undefined, {
       repository: refState,
       ...searched('nothing like it'),
     });
     assert.deepStrictEqual(counts(html), []);
-    assert.strictEqual(
-      html.match(/<div class="locations-empty">No matches<\/div>/g)?.length,
-      1,
-    );
+    assert.strictEqual(html.match(/No matches/g)?.length, 1);
+    assert.match(html, /<span class="search-count">No matches<\/span>/);
+    assert.doesNotMatch(html, /locations-empty/);
   });
 
   test('marks a match ignoring case, and highlights the first one, skipping groups without any', () => {

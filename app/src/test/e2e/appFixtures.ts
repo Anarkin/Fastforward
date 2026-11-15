@@ -68,9 +68,8 @@ async function resetApp(): Promise<void> {
   await page.locator('.commit', { hasText: 'second' }).waitFor();
   for (const [popup, focused] of [
     ['.context-menu', '.context-menu .menu-item'],
-    ['.locations-popup', '.locations-search'],
+    ['.locations-popup', '.locations-popup .search-box-input'],
     ['.shortcuts-popup', '.shortcuts-popup'],
-    ['.search-row', '.search-row input'],
     ['.column-title .search-bar', '.column-title .search-bar input'],
   ]) {
     if ((await page.locator(popup).count()) > 0) {

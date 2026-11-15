@@ -80,7 +80,29 @@ suite('App', () => {
     assert.ok(shown && header);
     assert.ok(header.x + header.width - (shown.x + shown.width) <= 8);
     await button.click();
-    await waitForFocus(page.locator('.locations-search'), 'the search field');
+    await waitForFocus(
+      page.locator('.locations-popup .search-box-input'),
+      'the search field',
+    );
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+  });
+
+  test('searches the commits in the case of the query while its toggle is pressed, counting what it found in place of a line under its box', async () => {
+    const field = page.locator('.locations-popup .search-box-input');
+    const popup = page.locator('.locations-popup');
+    await page.keyboard.press('ControlOrMeta+F');
+    await waitForFocus(field, 'the search field');
+    await field.fill('SECOND');
+    await popup.locator('.commit', { hasText: 'second' }).waitFor();
+    await popup.locator('.search-count', { hasText: /^1 of \d+$/ }).waitFor();
+    const matchCase = popup.locator('.search-toggle[title="Match Case"]');
+    await matchCase.click();
+    await popup.locator('.search-count', { hasText: 'No matches' }).waitFor();
+    assert.strictEqual(await popup.locator('.commit').count(), 0);
+    await matchCase.click();
+    await popup.locator('.commit', { hasText: 'second' }).waitFor();
+    await waitForFocus(field, 'the search field');
     await page.keyboard.press('Escape');
     await popup.waitFor({ state: 'detached' });
   });
@@ -89,7 +111,10 @@ suite('App', () => {
     const commits = page.locator('.columns > .column').first();
     const popup = page.locator('.locations-popup');
     await page.keyboard.press('ControlOrMeta+F');
-    await waitForFocus(page.locator('.locations-search'), 'the search field');
+    await waitForFocus(
+      page.locator('.locations-popup .search-box-input'),
+      'the search field',
+    );
     const [shown, column] = await Promise.all([
       popup.boundingBox(),
       commits.boundingBox(),
@@ -105,7 +130,7 @@ suite('App', () => {
 
   test('gives the keyboard back to the commit list once the search popup closes on Esc or a jump, by key or click', async () => {
     const list = page.locator('.virtual-rows.list');
-    const field = page.locator('.locations-search');
+    const field = page.locator('.locations-popup .search-box-input');
     const popup = page.locator('.locations-popup');
     await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(field, 'the search field');
@@ -137,7 +162,7 @@ suite('App', () => {
     const worktree = path.join(folder, 'other');
     const worktrees = page.locator('.worktrees .tab');
     const popup = page.locator('.locations-popup');
-    const field = page.locator('.locations-search');
+    const field = page.locator('.locations-popup .search-box-input');
     await repository.git('worktree', 'add', '-q', '-b', 'other', worktree);
     onTestFinished(async () => {
       if ((await popup.count()) > 0) {
@@ -245,7 +270,7 @@ suite('App', () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
     await files.locator('.column-actions > .search-button').click();
-    const field = files.locator('.search-input');
+    const field = files.locator('.search-box-input');
     await waitForFocus(field, 'the files search');
     await field.fill('txt ch');
     await waitFor(
@@ -270,10 +295,13 @@ suite('App', () => {
     await field.waitFor({ state: 'detached' });
     await waitForFocus(files.locator('[data-column-focus]'), 'the files list');
     await page.keyboard.press('ControlOrMeta+F');
-    await waitForFocus(files.locator('.search-input'), 'the files search');
-    assert.strictEqual(await files.locator('.search-input').inputValue(), '');
+    await waitForFocus(files.locator('.search-box-input'), 'the files search');
+    assert.strictEqual(
+      await files.locator('.search-box-input').inputValue(),
+      '',
+    );
     await page.keyboard.press('Escape');
-    await files.locator('.search-input').waitFor({ state: 'detached' });
+    await files.locator('.search-box-input').waitFor({ state: 'detached' });
   });
 
   test('moves between the columns with the arrows and Tab, the keys working in the one active', async () => {

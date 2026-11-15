@@ -8,6 +8,7 @@ import {
   type ShortcutEntryId,
 } from './toolShortcuts';
 import { strings } from '../../lib/shared/strings';
+import type { MatchesFound } from '../../lib/shared/textMatches';
 import {
   narrows,
   foldedForFilter,
@@ -184,4 +185,28 @@ export function steppedGroup(
   return step === 1
     ? keysWithMatches(entries.slice(openAt + 1)).at(0)
     : keysWithMatches(entries.slice(0, openAt)).at(-1);
+}
+
+export function groupsFound(
+  entries: readonly ShownEntry[],
+  current: string | undefined,
+): MatchesFound {
+  const keys = keysWithMatches(entries);
+  return {
+    current: current === undefined ? -1 : keys.indexOf(current),
+    matches: keys.length,
+  };
+}
+
+export function groupAround(
+  entries: readonly ShownEntry[],
+  open: ShortcutEntryId,
+  view: PaneView,
+  step: 1 | -1,
+): string | undefined {
+  const keys = keysWithMatches(entries);
+  return (
+    steppedGroup(entries, open, view, step) ??
+    (step === 1 ? keys.at(0) : keys.at(-1))
+  );
 }

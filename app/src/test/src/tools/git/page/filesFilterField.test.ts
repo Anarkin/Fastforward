@@ -1,41 +1,51 @@
 import * as assert from 'node:assert';
-import { isValidElement } from 'react';
+import { createElement } from 'react';
 import { suite, test } from 'vitest';
 import { FileFilterField } from '../../../../../tools/git/page/filesFilterField';
-import { noop } from '../../../../helpers/fixtures';
-import { keyPress } from '../../../../helpers/keys';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
+import { clicked, mounted, typed } from '../../../../helpers/mounted';
 
 suite('Files search', () => {
-  test('searches as one types, goes to the files on Enter or Down, and closes on Esc', () => {
-    const queries: string[] = [];
-    let left = 0;
-    let closed = 0;
-    const field = FileFilterField({
-      query: 'v',
-      onQuery: (next) => queries.push(next),
-      onLeave: () => left++,
-      onClose: () => closed++,
-    });
-    assert.ok(
-      isValidElement<{
-        children: React.ReactElement<{
-          onChange: (event: { target: { value: string } }) => void;
-          onKeyDown: (
-            event: ReturnType<typeof keyPress> & { preventDefault: () => void },
-          ) => void;
-        }>;
-      }>(field),
+  test('searches as one types, goes to the files on Enter or Down, closes on Esc or by its back button, and steps and toggles by its buttons', async () => {
+    const asked: unknown[] = [];
+    await mounted(
+      createElement(FileFilterField, {
+        query: 'v',
+        options: plainSearch,
+        found: { current: 0, matches: 3 },
+        onQuery: (next) => asked.push({ query: next }),
+        onOptions: (options) => asked.push({ options }),
+        onStep: (step) => asked.push({ step }),
+        onLeave: () => asked.push('left'),
+        onClose: () => asked.push('closed'),
+      }),
+      (main, window) => {
+        const input = main.querySelector('input');
+        assert.ok(input);
+        assert.strictEqual(input.getAttribute('placeholder'), 'Search…');
+        assert.strictEqual(
+          main.querySelector('.search-count')?.textContent,
+          '1 of 3',
+        );
+        typed(input, 'vi');
+        for (const key of ['Enter', 'ArrowDown', 'Escape', 'a']) {
+          input.dispatchEvent(
+            new window.KeyboardEvent('keydown', { key, bubbles: true }),
+          );
+        }
+        clicked(main.querySelectorAll('.search-steps button')[1]);
+        clicked(main.querySelectorAll('.search-toggle')[2]);
+        clicked(main.querySelector('.search-bar > .nav-button'));
+      },
     );
-    const input = field.props.children;
-    input.props.onChange({ target: { value: 'vi' } });
-    assert.deepStrictEqual(queries, ['vi']);
-    for (const key of ['Enter', 'ArrowDown']) {
-      input.props.onKeyDown({ ...keyPress(key), preventDefault: noop });
-    }
-    assert.strictEqual(left, 2);
-    input.props.onKeyDown({ ...keyPress('Escape'), preventDefault: noop });
-    assert.strictEqual(closed, 1);
-    input.props.onKeyDown({ ...keyPress('a'), preventDefault: noop });
-    assert.strictEqual(left + closed, 3);
+    assert.deepStrictEqual(asked, [
+      { query: 'vi' },
+      'left',
+      'left',
+      'closed',
+      { step: 1 },
+      { options: { ...plainSearch, regex: true } },
+      'closed',
+    ]);
   });
 });

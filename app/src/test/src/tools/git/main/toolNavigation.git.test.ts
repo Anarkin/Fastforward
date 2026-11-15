@@ -9,6 +9,7 @@ import {
   suite,
   test,
 } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { waitFor } from '../../../../helpers/fixtures';
@@ -112,11 +113,13 @@ suite('Git tool navigating the history', () => {
         type: 'searchCommits',
         root: repository.root,
         query: 'nothing like it',
+        options: plainSearch,
       }),
       connection.receive({
         type: 'searchCommits',
         root: repository.root,
         query: 'test',
+        options: plainSearch,
       }),
     ]);
     assert.deepStrictEqual(
@@ -191,12 +194,14 @@ suite('Git tool navigating the history', () => {
       type: 'searchCommits',
       root: repository.root,
       query: 'nothing like it',
+      options: plainSearch,
     });
     await waitFor(() => waiting, 'the replaced search');
     await connection.receive({
       type: 'searchCommits',
       root: repository.root,
       query: 'test',
+      options: plainSearch,
     });
     held.open();
     await replaced;
@@ -217,6 +222,7 @@ suite('Git tool navigating the history', () => {
       type: 'searchCommits',
       root: repository.root,
       query: 'test',
+      options: plainSearch,
     });
     await connection.receive({
       type: 'lookupHash',
@@ -257,6 +263,7 @@ suite('Git tool navigating the history', () => {
       type: 'searchCommits',
       root: repository.root,
       query: 'test',
+      options: plainSearch,
     });
     await waitFor(() => searching !== undefined, 'the search');
     await connection.receive({
@@ -282,6 +289,7 @@ suite('Git tool navigating the history', () => {
         type: 'searchCommits',
         root: repository.root,
         query: 'test',
+        options: plainSearch,
       }),
       connection.receive({ type: 'stopCommitSearch', root: repository.root }),
     ]);

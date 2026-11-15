@@ -64,7 +64,7 @@ suite('Style', () => {
   test('draws the find field like the resting search field, edged in the focus color while typing in it', () => {
     const resting = withClass(
       rendered(<LocationsPopupShown query="" />),
-      'locations-search',
+      'search-box',
     );
     looks(withClass(rendered(<DiffFindShown />), 'search-box'), {
       background: cascaded(resting, 'background'),
@@ -83,10 +83,8 @@ suite('Style', () => {
   });
 
   test("fills and edges the popup's search box in the border color like the other search fields until it is focused or holds a query, then in the panel's", () => {
-    const empty = withClass(
-      rendered(<LocationsPopupShown query="" />),
-      'locations-search',
-    );
+    const popup = rendered(<LocationsPopupShown query="" />);
+    const empty = withClass(popup, 'search-box');
     looks(empty, {
       background: 'var(--color-border)',
       border: '1px solid var(--color-border)',
@@ -97,11 +95,11 @@ suite('Style', () => {
         background: 'var(--color-panel-background)',
         'border-color': 'var(--color-focus)',
       },
-      focused,
+      { focus: withClass(popup, 'search-box-input') },
     );
     const searched = withClass(
       rendered(<LocationsPopupShown query="main" />),
-      'locations-search',
+      'search-box',
     );
     for (const states of [{}, hovered]) {
       looks(
@@ -222,7 +220,7 @@ suite('Style', () => {
     assert.ok(above - edge >= 2, String(above));
     for (const field of [
       withClass(rendered(<DiffFindShown />), 'search-box'),
-      withClass(rendered(<LocationsPopupShown query="" />), 'locations-search'),
+      withClass(rendered(<LocationsPopupShown query="" />), 'search-box'),
     ]) {
       looks(field, { height: 'var(--search-height)' });
     }
@@ -291,7 +289,7 @@ suite('Style', () => {
       color: 'var(--muted-foreground)',
     });
     for (const field of [
-      withClass(rendered(<LocationsPopupShown query="" />), 'locations-search'),
+      withClass(rendered(<LocationsPopupShown query="" />), 'search-box-input'),
       withClass(rendered(<DiffFindShown />), 'search-box-input'),
     ]) {
       looks(

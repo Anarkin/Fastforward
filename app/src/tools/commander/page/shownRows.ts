@@ -4,7 +4,11 @@ import {
   searchFilter,
   type Filter,
 } from '../../../lib/shared/filter';
-import { plainSearch } from '../../../lib/shared/searchOptions';
+import {
+  noSearch,
+  sameSearchOptions,
+  type Search,
+} from '../../../lib/shared/searchOptions';
 import type { Side } from '../shared/sides';
 import type { ColumnWidths } from '../shared/columnWidths';
 import type { CommanderSource } from './commanderState';
@@ -79,7 +83,7 @@ const noRows: readonly Row[] = [];
 
 const shownByRows = new WeakMap<
   readonly Row[],
-  { readonly query: string; readonly shown: ShownRows }
+  { readonly search: Search; readonly shown: ShownRows }
 >();
 
 function filesIn(rows: readonly Row[]): number {
@@ -89,15 +93,19 @@ function filesIn(rows: readonly Row[]): number {
   );
 }
 
-function shownRowsIn(all: readonly Row[], query: string): ShownRows {
+function shownRowsIn(all: readonly Row[], search: Search): ShownRows {
   const kept = shownByRows.get(all);
-  if (kept?.query === query) {
+  if (
+    kept !== undefined &&
+    kept.search.query === search.query &&
+    sameSearchOptions(kept.search.options, search.options)
+  ) {
     return kept.shown;
   }
-  const rows = filteredRows(all, searchFilter(query, plainSearch));
+  const rows = filteredRows(all, searchFilter(search.query, search.options));
   const total = filesIn(all);
   const shown = { rows, files: rows === all ? total : filesIn(rows), total };
-  shownByRows.set(all, { query, shown });
+  shownByRows.set(all, { search, shown });
   return shown;
 }
 
@@ -146,13 +154,13 @@ function withDuplicates(
 
 export function shownRowsOf(state: CommanderSource, side: Side): ShownRows {
   const pane = state.view.panes[side];
-  const query = filterOf(state, side) ?? '';
+  const search = filterOf(state, side) ?? noSearch;
   const all =
     pane?.flat === undefined
-      ? shownRowsIn(pane?.rows ?? noRows, query)
+      ? shownRowsIn(pane?.rows ?? noRows, search)
       : flatShownRows(
           pane.rows,
-          narrows(searchFilter(query, plainSearch))
+          narrows(searchFilter(search.query, search.options))
             ? pane.flat.shown?.rows
             : undefined,
         );

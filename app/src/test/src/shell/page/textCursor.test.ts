@@ -244,7 +244,7 @@ suite('Text cursor', () => {
   test('keeps the native selection of a text box hidden behind the one it draws when the page rewrites the class of the box, as React does for a class it owns', async () => {
     await controlled('', async ({ field, frames }) => {
       await frames();
-      field.className = 'locations-search active';
+      field.className = 'search-box-input';
       await frames();
       assert.ok(field.matches('[data-text-cursor]'));
     });

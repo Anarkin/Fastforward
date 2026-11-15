@@ -7,6 +7,7 @@ import {
   suite,
   test,
 } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import type { TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
@@ -204,9 +205,29 @@ suite('Git tool checking what the page sends', () => {
     assert.strictEqual(gitState(opened.store).get(soloKey), undefined);
   });
 
-  test('searches the commits and looks up hashes only for text', async () => {
+  test('searches the commits only for text with well-formed options, and looks up hashes only for text', async () => {
     const sent = await sentAfter(async () => {
-      await untrusted({ type: 'searchCommits', root, query: 5 });
+      await untrusted({
+        type: 'searchCommits',
+        root,
+        query: 5,
+        options: plainSearch,
+      });
+      for (const options of [
+        undefined,
+        null,
+        [false, false, false],
+        { caseSensitive: false, wholeWord: false },
+        { caseSensitive: 'yes', wholeWord: false, regex: false },
+        { caseSensitive: false, wholeWord: false, regex: false, more: true },
+      ]) {
+        await untrusted({
+          type: 'searchCommits',
+          root,
+          query: 'test',
+          options,
+        });
+      }
       await untrusted({ type: 'lookupHash', root, query: ['a'] });
     });
     assert.deepStrictEqual(sent, []);

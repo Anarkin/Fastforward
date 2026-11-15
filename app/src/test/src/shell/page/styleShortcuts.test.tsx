@@ -152,7 +152,7 @@ suite('Style', () => {
       '--search-height': 'var(--button-size)',
       'border-bottom': '1px solid var(--color-border)',
     });
-    looks(withClass(popup, 'search-field'), { flex: '1' });
+    looks(withClass(popup, 'search-bar'), { flex: '1' });
     looks(withClass(popup, 'shortcuts-main'), {
       flex: '1',
       'min-height': '0',

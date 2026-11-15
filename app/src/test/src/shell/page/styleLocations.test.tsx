@@ -38,10 +38,7 @@ suite('Style', () => {
     assert.match(edge ?? '', /^\d+px$/);
     assert.strictEqual(line, '1px');
     looks(
-      withClass(
-        rendered(<LocationsPopupShown query="" />),
-        'locations-search-row',
-      ),
+      withClass(rendered(<LocationsPopupShown query="" />), 'locations-bar'),
       {
         height: 'calc(var(--title-height) - var(--hairline))',
         'box-sizing': 'border-box',

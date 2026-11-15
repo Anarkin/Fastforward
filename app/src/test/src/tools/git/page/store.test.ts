@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { createGitStore } from '../../../../../tools/git/page/store';
 import { detachedHead } from '../../../../../tools/git/page/gitSelectors';
 import { noop } from '../../../../helpers/fixtures';
@@ -523,7 +524,7 @@ suite('Git store', () => {
     vi.useFakeTimers();
     try {
       actions.lookupHash('abc');
-      const stop = actions.searchCommits('fix');
+      const stop = actions.searchCommits('fix', plainSearch);
       vi.advanceTimersByTime(250);
       stop();
     } finally {
@@ -541,7 +542,7 @@ suite('Git store', () => {
       { type: 'showUpstream', root },
       { type: 'showParent', root },
       { type: 'lookupHash', query: 'abc', root },
-      { type: 'searchCommits', query: 'fix', root },
+      { type: 'searchCommits', query: 'fix', options: plainSearch, root },
       { type: 'stopCommitSearch', root },
       { type: 'fetch', root },
       { type: 'toggleMerge', hash: at, root },

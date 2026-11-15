@@ -1,9 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { createGitStore } from '../../../../../tools/git/page/store';
 import {
   fileFilterOf,
-  searchQueryOf,
+  searchOf,
 } from '../../../../../tools/git/page/gitSelectors';
 import { noop } from '../../../../helpers/fixtures';
 import { at, shown, posting } from './storeFixtures';
@@ -51,26 +52,26 @@ suite('Git store', () => {
     const store = createGitStore(noop);
     store.getState().receive(shown());
     store.getState().searchFor('fix');
-    assert.strictEqual(searchQueryOf(store.getState()), 'fix');
+    assert.strictEqual(searchOf(store.getState()).query, 'fix');
     store
       .getState()
       .receive({ type: 'worktrees', worktree: '/other', worktrees: [] });
-    assert.strictEqual(searchQueryOf(store.getState()), '');
+    assert.strictEqual(searchOf(store.getState()).query, '');
     store.getState().receive(shown());
-    assert.strictEqual(searchQueryOf(store.getState()), 'fix');
+    assert.strictEqual(searchOf(store.getState()).query, 'fix');
   });
 
   test('keeps a filter of the files for each worktree, through another worktree shown, until it is cleared', () => {
     const store = createGitStore(noop);
     store.getState().receive(shown());
     store.getState().filterFiles('src');
-    assert.strictEqual(fileFilterOf(store.getState()), 'src');
+    assert.strictEqual(fileFilterOf(store.getState())?.query, 'src');
     store
       .getState()
       .receive({ type: 'worktrees', worktree: '/other', worktrees: [] });
     assert.strictEqual(fileFilterOf(store.getState()), undefined);
     store.getState().receive(shown());
-    assert.strictEqual(fileFilterOf(store.getState()), 'src');
+    assert.strictEqual(fileFilterOf(store.getState())?.query, 'src');
     store.getState().filterFiles(undefined);
     assert.strictEqual(fileFilterOf(store.getState()), undefined);
   });
@@ -80,7 +81,7 @@ suite('Git store', () => {
     store.getState().receive(shown());
     vi.useFakeTimers();
     try {
-      const stop = store.getState().searchCommits('fix');
+      const stop = store.getState().searchCommits('fix', plainSearch);
       vi.advanceTimersByTime(250);
       store
         .getState()
@@ -90,7 +91,12 @@ suite('Git store', () => {
       vi.useRealTimers();
     }
     assert.deepStrictEqual(posted, [
-      { type: 'searchCommits', query: 'fix', root: '/repo' },
+      {
+        type: 'searchCommits',
+        query: 'fix',
+        options: plainSearch,
+        root: '/repo',
+      },
       { type: 'stopCommitSearch', root: '/repo' },
     ]);
   });
@@ -102,21 +108,26 @@ suite('Git store', () => {
     try {
       const { lookupHash, searchCommits } = store.getState();
       lookupHash('ab')();
-      searchCommits('fi')();
+      searchCommits('fi', plainSearch)();
       vi.advanceTimersByTime(250);
       assert.deepStrictEqual(posted, []);
       lookupHash('abc');
       vi.advanceTimersByTime(149);
       assert.deepStrictEqual(posted, []);
       vi.advanceTimersByTime(1);
-      searchCommits('fix');
+      searchCommits('fix', plainSearch);
       vi.advanceTimersByTime(250);
     } finally {
       vi.useRealTimers();
     }
     assert.deepStrictEqual(posted, [
       { type: 'lookupHash', query: 'abc', root: '/repo' },
-      { type: 'searchCommits', query: 'fix', root: '/repo' },
+      {
+        type: 'searchCommits',
+        query: 'fix',
+        options: plainSearch,
+        root: '/repo',
+      },
     ]);
   });
 });

@@ -7,7 +7,8 @@ import { useShell, useShellActions } from './store';
 import { shortcutEntries, type ShortcutEntryId } from './toolShortcuts';
 import { strings } from '../../lib/shared/strings';
 import { narrows, searchFilter } from '../../lib/shared/filter';
-import { plainSearch } from '../../lib/shared/searchOptions';
+import { noSearch, type Search } from '../../lib/shared/searchOptions';
+import { SearchBar } from '../../lib/page/searchBar';
 import { useDismiss } from '../../lib/page/dismiss';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
 import { useModalDialog } from '../../lib/page/modalDialog';
@@ -22,6 +23,8 @@ import {
   groupsInView,
   steppedEntry,
   steppedGroup,
+  groupAround,
+  groupsFound,
 } from './shortcutsList';
 
 export function ShortcutsList({ entry }: { entry: ShownEntry }) {
@@ -195,7 +198,7 @@ export function ShortcutsPopup() {
         : shortcutsEntryOf(document.activeElement),
     ),
   );
-  const [query, setQuery] = useState('');
+  const [{ query, options }, setSearch] = useState(noSearch);
   const [visible, setVisible] = useState<readonly string[]>();
   const popup = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
@@ -207,7 +210,7 @@ export function ShortcutsPopup() {
   useLayoutEffect(() => {
     field.current?.focus();
   }, []);
-  const filter = useMemo(() => searchFilter(query, plainSearch), [query]);
+  const filter = useMemo(() => searchFilter(query, options), [query, options]);
   const entries = useMemo(
     () => shownEntries(shortcutEntries, filter),
     [filter],
@@ -258,8 +261,8 @@ export function ShortcutsPopup() {
       pending.current = key;
     }
   };
-  const onQuery = (value: string) => {
-    setQuery(value);
+  const onSearch = (next: Search) => {
+    setSearch(next);
     pending.current = '';
   };
 
@@ -317,17 +320,26 @@ export function ShortcutsPopup() {
           </button>
         </div>
         <div className="shortcuts-filter">
-          <div className={query ? 'search-field active' : 'search-field'}>
-            <input
-              ref={field}
-              className="search-input"
-              placeholder={strings.shortcuts.filter}
-              aria-label={strings.shortcuts.filter}
-              spellCheck={false}
-              value={query}
-              onChange={(event) => onQuery(event.target.value)}
-            />
-          </div>
+          <SearchBar
+            query={query}
+            options={options}
+            found={groupsFound(entries, marked[0])}
+            placeholder={strings.shortcuts.filter}
+            input={field}
+            onQuery={(next) => onSearch({ query: next, options })}
+            onOptions={(next) => onSearch({ query, options: next })}
+            onStep={(step) => {
+              const key = groupAround(
+                entries,
+                open,
+                pane.current ? paneView(pane.current) : everything,
+                step,
+              );
+              if (key !== undefined) {
+                goTo(key);
+              }
+            }}
+          />
         </div>
         <div className="shortcuts-main">
           <ShortcutsTree

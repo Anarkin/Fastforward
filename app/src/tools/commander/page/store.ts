@@ -27,7 +27,7 @@ import { flatActions, startFlatWorker, type FlatOptions } from './flatActions';
 import { filteredSelection, nearestShown } from './rowSelection';
 import { nextSort } from './rowOrder';
 import { shownColumns, shownRowsOf } from './shownRows';
-import { filterKey, seenFilters, withoutTab } from './sideFilters';
+import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
 import { viewerActions } from './viewerActions';
@@ -335,24 +335,31 @@ export function createCommanderStore(
         saveColumns({ ...columns, [column]: defaultColumns[column] });
       },
       scrollOf: (key) => scrolls.of(key),
-      filterSide: (side, query) => {
+      filterSide: (side, query, options) => {
         set((state) => {
           const { tab, panes } = state.view;
           const folder = panes[side]?.folder;
           if (tab === undefined) {
             return state;
           }
+          const key = filterKey(tab, side);
           const filters = new Map(state.filters);
           if (query === undefined) {
-            filters.delete(filterKey(tab, side));
+            filters.delete(key);
           } else {
-            filters.set(filterKey(tab, side), { folder, query });
+            filters.set(key, {
+              folder,
+              query,
+              options: options ?? filters.get(key)?.options ?? plainSearch,
+            });
           }
           return { filters };
         });
         const selected = get().view.panes[side]?.selected;
+        const shownFilter = filterOf(get(), side);
         const selection =
-          query === undefined || !narrows(searchFilter(query, plainSearch))
+          shownFilter === undefined ||
+          !narrows(searchFilter(shownFilter.query, shownFilter.options))
             ? undefined
             : filteredSelection(shownRowsOf(get(), side).rows, selected);
         if (selection !== undefined && selection !== selected) {

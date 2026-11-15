@@ -1,4 +1,5 @@
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
+import type { Search, SearchOptions } from '../../../lib/shared/searchOptions';
 import type { CloneAsk, CloneView } from '../shared/clone';
 import type {
   Bookmark,
@@ -65,8 +66,8 @@ export interface GitSource {
   readonly pickedLanguage:
     { readonly key: string; readonly language: string } | undefined;
   readonly activeColumn: ColumnName;
-  readonly fileFilters: ReadonlyMap<string, string>;
-  readonly searchQueries: ReadonlyMap<string, string>;
+  readonly fileFilters: ReadonlyMap<string, Search>;
+  readonly searches: ReadonlyMap<string, Search>;
   readonly folders: ViewFolders;
   readonly diffText: TextMeasures | undefined;
   readonly diffSnap: CodeSnap;
@@ -116,7 +117,7 @@ export interface GitActions {
   readonly showUpstream: () => void;
   readonly showParent: () => void;
   readonly lookupHash: (query: string) => () => void;
-  readonly searchCommits: (query: string) => () => void;
+  readonly searchCommits: (query: string, options: SearchOptions) => () => void;
   readonly fetch: () => void;
   readonly toggleMerge: (hash: string) => void;
   readonly scrolled: (
@@ -145,8 +146,11 @@ export interface GitActions {
   readonly selectWorktree: (root: string) => void;
   readonly preloadWorktree: (root: string) => void;
   readonly activateColumn: (column: ColumnName) => void;
-  readonly filterFiles: (filter: string | undefined) => void;
-  readonly searchFor: (query: string) => void;
+  readonly filterFiles: (
+    filter: string | undefined,
+    options?: SearchOptions,
+  ) => void;
+  readonly searchFor: (query: string, options?: SearchOptions) => void;
   readonly toggleFolder: (kind: keyof Folders, folder: string) => void;
   readonly replaceFolders: (folders: Folders) => void;
   readonly toggleCommits: () => void;
@@ -195,7 +199,7 @@ export const gitDefaults: GitSource = {
   pickedLanguage: undefined,
   activeColumn: 'commits',
   fileFilters: new Map(),
-  searchQueries: new Map(),
+  searches: new Map(),
   folders: noFolders,
   diffText: undefined,
   diffSnap: { inline: 0, left: 0, right: 0 },

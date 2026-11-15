@@ -1,4 +1,5 @@
 import { type FlatFolder } from '../shared/protocol';
+import { sameSearchOptions } from '../../../lib/shared/searchOptions';
 import { sides, type Side } from '../shared/sides';
 import { sameGrouping } from './fileColors';
 import type {
@@ -57,6 +58,7 @@ function sameChoices(one: FlatChoices, other: FlatChoices): boolean {
     one.sort.groupByColor === other.sort.groupByColor &&
     one.showHidden === other.showHidden &&
     one.query === other.query &&
+    sameSearchOptions(one.options, other.options) &&
     sameGrouping(one.fileColors, other.fileColors)
   );
 }

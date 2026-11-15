@@ -3,7 +3,9 @@ import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { Column } from '../../../../../tools/git/page/column';
-import { SearchButton, SearchRow } from '../../../../../lib/page/search';
+import { SearchButton } from '../../../../../lib/page/search';
+import { SearchBar } from '../../../../../lib/page/searchBar';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { noop } from '../../../../helpers/fixtures';
 
 const page = (html: string) => new JSDOM(html).window.document;
@@ -52,7 +54,15 @@ suite('Column', () => {
           start={<button className="start" />}
           actions={<button className="other" />}
           search={<SearchButton title="Search files" onClick={noop} />}
-          searching={<SearchRow onClose={noop}>{null}</SearchRow>}
+          searching={
+            <SearchBar
+              query=""
+              options={plainSearch}
+              found={{ current: 0, matches: 0 }}
+              onQuery={noop}
+              onOptions={noop}
+            />
+          }
         >
           <div />
         </Column>,
@@ -63,7 +73,7 @@ suite('Column', () => {
     assert.ok(header.classList.contains('searching'));
     assert.deepStrictEqual(
       Array.from(header.children, (child) => child.className),
-      ['search-row'],
+      ['search-bar'],
     );
   });
 });

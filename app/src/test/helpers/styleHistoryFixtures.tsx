@@ -1,3 +1,4 @@
+import { plainSearch } from '../../lib/shared/searchOptions';
 import type {
   Bookmark,
   FileChange,
@@ -227,7 +228,7 @@ export function LocationsPopupShown({
         },
         bookmarks,
         searching: true,
-        searchQueries: new Map([['/repo', query]]),
+        searches: new Map([['/repo', { query, options: plainSearch }]]),
       })}
     >
       <LocationsPopup anchor={{ current: null }} />
@@ -242,6 +243,7 @@ export function CommitsFoundShown({ query }: { readonly query: string }) {
       commitSearch={{
         type: 'commitSearch',
         query,
+        options: plainSearch,
         result: {
           commits: [
             commitInfo('a', { subject: `${query} a` }),

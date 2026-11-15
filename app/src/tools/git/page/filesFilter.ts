@@ -1,4 +1,5 @@
 import type { Filter } from '../../../lib/shared/filter';
+import type { Search } from '../../../lib/shared/searchOptions';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 
@@ -13,7 +14,7 @@ export function useFilesFilter({
 }: {
   readonly view: string;
   readonly words: Filter;
-  readonly filter: string | undefined;
+  readonly filter: Search | undefined;
   readonly onFilter: (filter: string | undefined) => void;
   readonly filterAsked: number;
 }): {
@@ -46,7 +47,7 @@ export function useFilesFilter({
     onFilter(undefined);
   };
   const openFilter = () => {
-    onFilter(filter ?? '');
+    onFilter(filter?.query ?? '');
     setClicked((count) => count + 1);
   };
   return {

@@ -12,7 +12,7 @@ import { parsePatch, type DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { unsearchedFiles } from './find';
 import { searchFilter } from '../../../lib/shared/filter';
-import { plainSearch } from '../../../lib/shared/searchOptions';
+import { plainSearch, type Search } from '../../../lib/shared/searchOptions';
 import { withUnchangedObjects, type ImageOrigin } from './images';
 import {
   viewedSource,
@@ -74,7 +74,7 @@ export function Diff({
   entire: boolean;
   origin: ImageOrigin | undefined;
   findAsked: number;
-  filter: string | undefined;
+  filter: Search | undefined;
   note?: string;
   onViewFile?: (source: ViewedSource) => void;
   viewAsked?: number;
@@ -87,7 +87,7 @@ export function Diff({
         filteredDiffFiles(
           shownFiles(parsed, path, files, leftOut, largeFiles, whitespaceOnly),
           path,
-          searchFilter(filter ?? '', plainSearch),
+          searchFilter(filter?.query ?? '', filter?.options ?? plainSearch),
         ),
         files,
       ),

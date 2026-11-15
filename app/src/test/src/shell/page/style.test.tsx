@@ -138,7 +138,7 @@ suite('Style', () => {
 
   test('fills the search fields, the search button and the worktree chips alike, and tints them alike when hovered, the edges of the fields included', () => {
     const fields = [
-      withClass(rendered(<LocationsPopupShown query="" />), 'locations-search'),
+      withClass(rendered(<LocationsPopupShown query="" />), 'search-box'),
     ];
     const chip = allWithClass(
       rendered(

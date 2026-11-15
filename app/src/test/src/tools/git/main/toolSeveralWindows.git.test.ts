@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { sameRoot } from '../../../../../lib/main/paths';
 import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
 import { recentKey } from '../../../../../tools/git/main/storage';
@@ -84,6 +85,7 @@ suite('Git tool in several windows', () => {
       type: 'searchCommits',
       root: other,
       query: 'other',
+      options: plainSearch,
     });
     await first.view.idle();
     assert.strictEqual(first.page.last('commitSearch'), undefined);

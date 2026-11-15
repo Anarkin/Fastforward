@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import {
   FlatOrder,
   type FlatChoices,
@@ -25,6 +26,7 @@ const choices: FlatChoices = {
   showHidden: true,
   fileColors: noFileColors,
   query: '',
+  options: plainSearch,
 };
 
 function ordered(choose: Partial<FlatChoices> = {}) {
@@ -169,5 +171,31 @@ suite('The order of the files of a flat view', () => {
 
     order.choose({ ...choices, query: 'owl' });
     assert.deepStrictEqual(result().shown, ['more/owl.jpg']);
+  });
+
+  test('filters with the options of the filter, its case, whole words or a pattern, choosing again when only they change', () => {
+    const { order, put, result } = ordered({ query: 'main' });
+    put({
+      '': [file('Main.ts'), file('main.ts'), file('domain.ts')],
+    });
+    assert.deepStrictEqual(result().shown, ['domain.ts', 'Main.ts', 'main.ts']);
+    order.choose({
+      ...choices,
+      query: 'main',
+      options: { ...plainSearch, caseSensitive: true },
+    });
+    assert.deepStrictEqual(result().shown, ['domain.ts', 'main.ts']);
+    order.choose({
+      ...choices,
+      query: 'main',
+      options: { ...plainSearch, wholeWord: true },
+    });
+    assert.deepStrictEqual(result().shown, ['Main.ts', 'main.ts']);
+    order.choose({
+      ...choices,
+      query: '^m',
+      options: { ...plainSearch, regex: true },
+    });
+    assert.deepStrictEqual(result().shown, ['Main.ts', 'main.ts']);
   });
 });

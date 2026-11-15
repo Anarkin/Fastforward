@@ -1,4 +1,5 @@
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type {
   Bookmark,
   GitToWebviewOf,
@@ -55,7 +56,7 @@ export function locationsStore({
       },
       bookmarks,
       searching: true,
-      searchQueries: new Map([['/repo', query]]),
+      searches: new Map([['/repo', { query, options: plainSearch }]]),
     },
   );
   store.subscribe((state, before) => {

@@ -8,11 +8,11 @@ export function filterKey(tab: string, side: Side): string {
 export function filterOf(
   { view, filters }: CommanderSource,
   side: Side,
-): string | undefined {
+): PaneFilter | undefined {
   const filter =
     view.tab === undefined ? undefined : filters.get(filterKey(view.tab, side));
   return filter !== undefined && filter.folder === view.panes[side]?.folder
-    ? filter.query
+    ? filter
     : undefined;
 }
 

@@ -1,4 +1,5 @@
 import type { ChangeArea } from '../shared/protocol';
+import { stepMatch, type MatchesFound } from '../../../lib/shared/textMatches';
 import { foldersOf } from './fileTree';
 import {
   moveInList,
@@ -164,4 +165,41 @@ export function filesTreeItem(
   const level =
     tree.depth + (rows[index - row.index - 1]?.kind === 'header' ? 2 : 1);
   return tree.kind === 'folder' ? { level, expanded: tree.open } : { level };
+}
+
+function fileRowsOf(rows: readonly FilesRow[]): FileSelection[] {
+  return rows.flatMap((row) => {
+    const tree = treeRowOf(row);
+    return tree?.kind === 'file' ? [{ area: row.area, path: tree.path }] : [];
+  });
+}
+
+const sameFile = (one: FileSelection, other: FileSelection) =>
+  one.area === other.area && one.path === other.path;
+
+export function keptFileRows(
+  rows: readonly FilesRow[],
+  selected: FileSelection,
+): MatchesFound {
+  const files = fileRowsOf(rows);
+  return {
+    current: files.findIndex((file) => sameFile(file, selected)),
+    matches: files.length,
+  };
+}
+
+export function steppedFileRow(
+  rows: readonly FilesRow[],
+  selected: FileSelection,
+  step: 1 | -1,
+): FileSelection | undefined {
+  const files = fileRowsOf(rows);
+  const at = files.findIndex((file) => sameFile(file, selected));
+  return files.at(
+    at === -1
+      ? step === 1
+        ? 0
+        : files.length - 1
+      : stepMatch(at, files.length, step),
+  );
 }

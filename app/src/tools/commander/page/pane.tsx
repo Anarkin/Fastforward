@@ -4,11 +4,10 @@ import { fileMenuItems, menuTargetOf } from './fileMenu';
 import { copiedText, type Copied } from './copiedText';
 import { type Row } from './listing';
 import { goesInto } from './rowKeys';
-import { filterStep } from './filterSteps';
+import { filterStep, keptFiles, steppedFile } from './filterSteps';
 import { PaneFilter } from './paneFilter';
 import { searchFilter } from '../../../lib/shared/filter';
 import { plainSearch } from '../../../lib/shared/searchOptions';
-import { SearchRow } from '../../../lib/page/search';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { clickPairs } from './clickPairs';
 import { ColumnHeader } from './columnHeader';
@@ -72,14 +71,16 @@ export function Pane({
     extended: boolean,
   ) => actions.shellMenu(side, names, at, extended);
   const filter = useCommander((state) => filterOf(state, side));
-  const { rows, files, total } = useCommander((state) =>
-    shownRowsOf(state, side),
-  );
+  const { rows, total } = useCommander((state) => shownRowsOf(state, side));
   const setFilter = (query: string | undefined) =>
     actions.filterSide(side, query);
   const filtering = filter !== undefined;
-  const query = filter ?? '';
-  const matching = useMemo(() => searchFilter(query, plainSearch), [query]);
+  const query = filter?.query ?? '';
+  const options = filter?.options ?? plainSearch;
+  const matching = useMemo(
+    () => searchFilter(query, options),
+    [query, options],
+  );
   const filterInput = useRef<HTMLInputElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
@@ -240,44 +241,49 @@ export function Pane({
     >
       {filtering ? (
         <header className="column-title searching">
-          <SearchRow onClose={closeFilter}>
-            <PaneFilter
-              query={query}
-              shown={files}
-              total={total}
-              input={filterInput}
-              onQuery={filterTo}
-              onMove={(move) => {
-                if (rows.length === 0) {
-                  return;
-                }
-                const rowHeight =
-                  body.current
-                    ?.querySelector('.commander-row')
-                    ?.getBoundingClientRect().height ?? 1;
-                const page = Math.max(
-                  1,
-                  Math.floor((body.current?.clientHeight ?? 0) / rowHeight) - 1,
-                );
-                const next = filterStep(
-                  move,
-                  Math.max(0, selectedIndex),
-                  rows.length,
-                  page,
-                );
-                onSelect(rows[next].key);
-              }}
-              onLeave={() => {
-                const row =
-                  selectedIndex === -1 ? undefined : rows[selectedIndex];
-                focusList();
-                if (row !== undefined && goesInto(row)) {
-                  onOpen(row.key);
-                }
-              }}
-              onClose={closeFilter}
-            />
-          </SearchRow>
+          <PaneFilter
+            query={query}
+            options={options}
+            found={keptFiles(rows, pane?.selected)}
+            input={filterInput}
+            onQuery={filterTo}
+            onOptions={(chosen) => actions.filterSide(side, query, chosen)}
+            onStep={(step) => {
+              const next = steppedFile(rows, pane?.selected, step);
+              if (next !== undefined) {
+                onSelect(next);
+              }
+            }}
+            onMove={(move) => {
+              if (rows.length === 0) {
+                return;
+              }
+              const rowHeight =
+                body.current
+                  ?.querySelector('.commander-row')
+                  ?.getBoundingClientRect().height ?? 1;
+              const page = Math.max(
+                1,
+                Math.floor((body.current?.clientHeight ?? 0) / rowHeight) - 1,
+              );
+              const next = filterStep(
+                move,
+                Math.max(0, selectedIndex),
+                rows.length,
+                page,
+              );
+              onSelect(rows[next].key);
+            }}
+            onLeave={() => {
+              const row =
+                selectedIndex === -1 ? undefined : rows[selectedIndex];
+              focusList();
+              if (row !== undefined && goesInto(row)) {
+                onOpen(row.key);
+              }
+            }}
+            onClose={closeFilter}
+          />
         </header>
       ) : (
         <PaneTitle

@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import {
   FlatLists,
   type FlatWorker,
@@ -28,6 +29,7 @@ const choices: FlatChoices = {
   showHidden: true,
   fileColors: noFileColors,
   query: '',
+  options: plainSearch,
 };
 
 function lists() {

@@ -1,6 +1,6 @@
 import { findCommits } from './commitLookup';
 import { searchCommits } from './commitMatches';
-import { plainSearch } from '../../../lib/shared/searchOptions';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type {
   CommitResults,
   CommitSearch as CommitSearchResult,
@@ -21,6 +21,7 @@ export class CommitSearch {
     session: Session,
     root: string,
     query: string,
+    options: SearchOptions,
   ): Promise<void> {
     this.commitSearches.get(root)?.abort();
     const search = new AbortController();
@@ -36,19 +37,21 @@ export class CommitSearch {
       const result = await this.commitsMatching(
         context,
         query,
+        options,
         search.signal,
       ).catch((error: unknown) => {
         if (!search.signal.aborted) {
           context.post({
             type: 'commitSearch',
             query,
+            options,
             result: { commits: [], capped: false },
           });
         }
         throw error;
       });
       if (!search.signal.aborted) {
-        context.post({ type: 'commitSearch', query, result });
+        context.post({ type: 'commitSearch', query, options, result });
       }
     } catch (error) {
       if (!search.signal.aborted) {
@@ -64,13 +67,14 @@ export class CommitSearch {
   private commitsMatching(
     context: Context,
     query: string,
+    options: SearchOptions,
     signal: AbortSignal,
   ): Promise<CommitSearchResult> {
     return searchCommits(
       context.gitPath,
       context.root,
       query,
-      plainSearch,
+      options,
       this.storage.soloOf(context.root),
       [...context.tab.stashes.keys()],
       signal,

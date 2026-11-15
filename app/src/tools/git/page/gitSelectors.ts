@@ -1,4 +1,5 @@
 import { shownSelection, showsDiff } from './columnsShown';
+import { noSearch, type Search } from '../../../lib/shared/searchOptions';
 import { shownFolders, type Folders } from './viewFolders';
 import { treeOf, type TabView } from './tabView';
 import { listsNothing } from './filesSides';
@@ -44,14 +45,16 @@ export function shownFoldersOf(state: GitSource): Folders {
   return shownFolders(state.folders, folderViewOf(state.tab));
 }
 
-export function searchQueryOf({ tab, searchQueries }: GitSource): string {
-  return tab.root === undefined ? '' : (searchQueries.get(tab.root) ?? '');
+export function searchOf({ tab, searches }: GitSource): Search {
+  return tab.root === undefined
+    ? noSearch
+    : (searches.get(tab.root) ?? noSearch);
 }
 
 export function fileFilterOf({
   tab,
   fileFilters,
-}: GitSource): string | undefined {
+}: GitSource): Search | undefined {
   return tab.root === undefined ? undefined : fileFilters.get(tab.root);
 }
 

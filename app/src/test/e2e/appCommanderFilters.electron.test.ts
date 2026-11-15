@@ -19,6 +19,8 @@ import {
   sharedCommanderApp,
 } from './commanderAppFixtures';
 
+const count = () => right().locator('.search-count').textContent();
+
 suite('App commander', () => {
   sharedCommanderApp();
 
@@ -157,7 +159,7 @@ suite('App commander', () => {
     }
   });
 
-  test('filters the files of a side on Ctrl+F or Alt and a letter by every word anywhere in their names, moving among them with the arrows as one types, and clears the filter on Esc or once a folder opens', async () => {
+  test('filters the files of a side on Ctrl+F or Alt and a letter by every word anywhere in their names, counting the selected of those kept, moving among them with the arrows as one types, matching the case while its toggle is pressed, and clears the filter on Esc or once a folder opens', async () => {
     const names = ['alpha-report.txt', 'beta.txt', 'Report-gamma.md'];
     for (const name of names) {
       fs.writeFileSync(path.join(opened, name), name);
@@ -170,10 +172,7 @@ suite('App commander', () => {
       );
       await select('beta');
       await page.keyboard.press('ControlOrMeta+F');
-      await waitForFocus(
-        right().locator('.commander-filter-input'),
-        'the filter',
-      );
+      await waitForFocus(right().locator('.search-box-input'), 'the filter');
       await page.keyboard.type('rep gam');
       await waitFor(
         async () =>
@@ -196,10 +195,7 @@ suite('App commander', () => {
           ]),
         'the files and the folder with the word',
       );
-      assert.match(
-        (await right().locator('.find-field-count').textContent()) ?? '',
-        /^3 of \d+$/,
-      );
+      assert.strictEqual(await count(), '2 of 3');
       assert.strictEqual(
         await right().locator('.commander-row .match').first().textContent(),
         'report',
@@ -209,14 +205,24 @@ suite('App commander', () => {
         async () => (await selected()).includes('alpha-report'),
         'the next match selected',
       );
+      await waitFor(async () => (await count()) === '3 of 3', 'the count');
+      const matchCase = right().locator('.search-toggle[title="Match Case"]');
+      await matchCase.click();
+      await waitFor(
+        async () =>
+          (await count()) === '2 of 2' &&
+          !(await rowNames()).includes('Report-gamma.md'),
+        'only the names in the case of the query',
+      );
+      await matchCase.click();
+      await waitFor(async () => (await count()) === '3 of 3', 'every match');
+      await waitForFocus(right().locator('.search-box-input'), 'the filter');
 
       await page.keyboard.press('Enter');
       await waitForFocus(right().locator('.virtual-rows'), 'the list');
-      assert.ok(await right().locator('.commander-filter-input').isVisible());
+      assert.ok(await right().locator('.search-box-input').isVisible());
       await page.keyboard.press('Escape');
-      await right()
-        .locator('.commander-filter-input')
-        .waitFor({ state: 'detached' });
+      await right().locator('.search-box-input').waitFor({ state: 'detached' });
       await waitFor(
         async () => (await rowNames()).includes('beta.txt'),
         'every file again',
@@ -241,10 +247,7 @@ suite('App commander', () => {
         right().locator('.virtual-rows'),
         'the list in the folder',
       );
-      assert.strictEqual(
-        await right().locator('.commander-filter-input').count(),
-        0,
-      );
+      assert.strictEqual(await right().locator('.search-box-input').count(), 0);
       await page.keyboard.press('Backspace');
       await waitFor(
         async () => (await rowNames()).includes('beta.txt'),
@@ -253,27 +256,24 @@ suite('App commander', () => {
 
       await page.keyboard.press('Alt+b');
       await waitForFocus(
-        right().locator('.commander-filter-input'),
+        right().locator('.search-box-input'),
         'the filter from Alt and a letter',
       );
       await page.keyboard.press('Alt+e');
       await waitFor(
         async () =>
-          (await right().locator('.commander-filter-input').inputValue()) ===
-            'be' &&
+          (await right().locator('.search-box-input').inputValue()) === 'be' &&
           JSON.stringify((await rowNames()).filter((name) => name !== '..')) ===
             JSON.stringify(['beta.txt']),
         'the files with the letters typed with Alt',
       );
       await page.keyboard.press('Escape');
-      await right()
-        .locator('.commander-filter-input')
-        .waitFor({ state: 'detached' });
+      await right().locator('.search-box-input').waitFor({ state: 'detached' });
     } finally {
-      if (await right().locator('.commander-filter-input').isVisible()) {
-        await right().locator('.commander-filter-input').press('Escape');
+      if (await right().locator('.search-box-input').isVisible()) {
+        await right().locator('.search-box-input').press('Escape');
         await right()
-          .locator('.commander-filter-input')
+          .locator('.search-box-input')
           .waitFor({ state: 'detached' });
       }
       for (const name of names) {

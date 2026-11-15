@@ -13,15 +13,17 @@ import {
   filesKey,
   filesRows,
   filesTreeItem,
+  keptFileRows,
   listedFilesRows,
   shownFileKey,
+  steppedFileRow,
   treeRowOf,
 } from './filesRows';
 import { ChangesTreeItem } from './changesTree';
 import { Column } from './column';
 import { narrows, searchFilter } from '../../../lib/shared/filter';
-import { plainSearch } from '../../../lib/shared/searchOptions';
-import { SearchButton, SearchRow } from '../../../lib/page/search';
+import { noSearch } from '../../../lib/shared/searchOptions';
+import { SearchButton } from '../../../lib/page/search';
 import { useSettled } from './settled';
 import {
   AllFilesIcon,
@@ -98,11 +100,11 @@ export function Files() {
   const skeleton = useSkeleton(loading);
   const allPaths = showAll ? tree : undefined;
   const shownFilter = useSettled(
-    filter ?? '',
+    filter ?? noSearch,
     (allPaths?.length ?? 0) > settlingPaths,
   );
   const words = useMemo(
-    () => searchFilter(shownFilter, plainSearch),
+    () => searchFilter(shownFilter.query, shownFilter.options),
     [shownFilter],
   );
   const filtering = narrows(words);
@@ -305,15 +307,22 @@ export function Files() {
       }
       searching={
         filter !== undefined && (
-          <SearchRow onClose={closeFilter}>
-            <FileFilterField
-              query={filter}
-              input={input}
-              onQuery={onFilter}
-              onLeave={toList}
-              onClose={closeFilter}
-            />
-          </SearchRow>
+          <FileFilterField
+            query={filter.query}
+            options={filter.options}
+            found={keptFileRows(rows, selection)}
+            input={input}
+            onQuery={onFilter}
+            onOptions={(options) => onFilter(filter.query, options)}
+            onStep={(step) => {
+              const next = steppedFileRow(rows, selection, step);
+              if (next !== undefined) {
+                select(next.path, next.area);
+              }
+            }}
+            onLeave={toList}
+            onClose={closeFilter}
+          />
         )
       }
     >

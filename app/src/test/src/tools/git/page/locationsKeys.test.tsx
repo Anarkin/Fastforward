@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type {
   Bookmark,
   RepositoryState,
@@ -223,6 +224,7 @@ suite('Browsing the locations by keyboard', () => {
         commitSearch: {
           type: 'commitSearch',
           query: 'main',
+          options: plainSearch,
           result: {
             commits: [commitInfo(merge, { subject: "Merge branch 'main'" })],
             capped: false,

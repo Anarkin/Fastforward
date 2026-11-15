@@ -1,4 +1,5 @@
 import type { Sentence } from '../../../lib/shared/sentences';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { CloneAsk, CloneView } from './clone';
 
 export const workingTreeHash = 'working-tree';
@@ -252,7 +253,11 @@ export type TabMessage =
   | { readonly type: 'pullBranch'; readonly name: string }
   | { readonly type: 'pushBranch'; readonly name: string }
   | { readonly type: 'lookupHash'; readonly query: string }
-  | { readonly type: 'searchCommits'; readonly query: string }
+  | {
+      readonly type: 'searchCommits';
+      readonly query: string;
+      readonly options: SearchOptions;
+    }
   | { readonly type: 'stopCommitSearch' }
   | {
       readonly type: 'navigate';
@@ -340,6 +345,7 @@ export type GitToWebview =
   | {
       readonly type: 'commitSearch';
       readonly query: string;
+      readonly options: SearchOptions;
       readonly result: CommitSearch;
     }
   | {

@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { FlatSorter } from '../../../../../tools/commander/page/flatSorter';
 import type {
   FlatChoices,
@@ -24,6 +25,7 @@ const choices: FlatChoices = {
   showHidden: true,
   fileColors: noFileColors,
   query: '',
+  options: plainSearch,
 };
 
 const start: ToFlatWorker = {

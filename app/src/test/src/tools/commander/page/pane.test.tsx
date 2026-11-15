@@ -13,6 +13,7 @@ import { JSDOM } from 'jsdom';
 import { withStores } from '../../../../helpers/componentFixtures';
 import { Pane } from '../../../../../tools/commander/page/pane';
 import { flatPane, pane, progress } from './paneFixtures';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
@@ -36,7 +37,11 @@ const paneDocument = (
             filters: new Map([
               [
                 JSON.stringify(['1', 'left']),
-                { folder: 'C:\\Config.Msi', query: filter },
+                {
+                  folder: 'C:\\Config.Msi',
+                  query: filter,
+                  options: plainSearch,
+                },
               ],
             ]),
           }),

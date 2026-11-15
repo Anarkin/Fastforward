@@ -154,6 +154,7 @@ export interface CommanderSource {
 export interface PaneFilter {
   readonly folder: string | undefined;
   readonly query: string;
+  readonly options: SearchOptions;
 }
 
 export interface CommanderActions {
@@ -307,7 +308,11 @@ export interface CommanderActions {
   readonly scrollOf: (key: string) => number;
   readonly placeOf: (tab: string) => number;
   readonly keepPlace: (tab: string, byte: number) => void;
-  readonly filterSide: (side: Side, query: string | undefined) => void;
+  readonly filterSide: (
+    side: Side,
+    query: string | undefined,
+    options?: SearchOptions,
+  ) => void;
   readonly flat: (side: Side) => void;
   readonly duplicates: (side: Side) => void;
   readonly stopReading: (side: Side) => void;

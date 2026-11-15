@@ -490,7 +490,6 @@ export const strings = {
     more: (count: number) => `${count} more; type more to narrow it down`,
     moreCommits: 'More commits match; type more to narrow it down',
     moreInFolder: (count: number) => `${count} more; type to narrow them down`,
-    noMatches: 'No matches',
     none: 'None',
   },
   commits: {
@@ -1022,7 +1021,6 @@ export const strings = {
     encoding: 'Encoding',
     filterFolder: 'Filter the folder',
     filterPlaceholder: 'Filter…',
-    filterCount: (shown: number, total: number) => `${shown} of ${total}`,
     flatView: 'List the files of every folder in it',
     flatReading: (files: number, folders: number) =>
       `Reading ${filesIn(files, folders)}…`,

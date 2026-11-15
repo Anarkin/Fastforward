@@ -5,6 +5,11 @@ import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
+  plainSearch,
+  type Search,
+  type SearchOptions,
+} from '../../../../../lib/shared/searchOptions';
+import {
   type ChangeArea,
   type FileChange,
   type GitToHost,
@@ -51,6 +56,7 @@ interface Shown {
   readonly selected?: string;
   readonly area?: ChangeArea;
   readonly filter?: string;
+  readonly filterOptions?: SearchOptions;
 }
 
 type Store = ReturnType<typeof createGitStore>;
@@ -75,8 +81,18 @@ function filesState(shown: Shown) {
   return {
     tab,
     showAllFiles: shown.showAll ?? false,
-    fileFilters: new Map(
-      shown.filter === undefined ? [] : [['/repo', shown.filter]],
+    fileFilters: new Map<string, Search>(
+      shown.filter === undefined
+        ? []
+        : [
+            [
+              '/repo',
+              {
+                query: shown.filter,
+                options: shown.filterOptions ?? plainSearch,
+              },
+            ],
+          ],
     ),
     folders: {
       view: folderViewOf(tab),
@@ -562,12 +578,72 @@ suite('Files search', () => {
     assert.strictEqual(closed.props.search.props.title, 'Search files');
     assert.ok(!closed.props.searching);
     closed.props.search.props.onClick();
-    assert.strictEqual(fileFilterOf(store.getState()), '');
+    assert.deepStrictEqual(fileFilterOf(store.getState()), {
+      query: '',
+      options: plainSearch,
+    });
     const open = filesOf(filesStore({ filter: 'view' }));
     assert.ok(isValidElement<{ searching: React.ReactNode }>(open));
     const html = renderToStaticMarkup(<>{open.props.searching}</>);
-    assert.match(html, /class="search-row"/);
+    assert.match(html, /class="search-bar"/);
     assert.doesNotMatch(html, /autofocus/i);
     assert.match(html, /<input[^>]*placeholder="Search…"[^>]*value="view"/);
+  });
+
+  test('counts the selected file of the files kept, steps among them around and around, and keeps its toggles with its query, the back button closing it as Esc does', () => {
+    const store = filesStore({
+      filter: 'view',
+      filterOptions: { ...plainSearch, caseSensitive: true },
+      files: found,
+      selected: 'src/leads/LeadsView.tsx',
+    });
+    const open = filesOf(store);
+    assert.ok(
+      isValidElement<{
+        searching: React.ReactElement<{
+          found: { current: number; matches: number };
+          options: SearchOptions;
+          onStep: (step: 1 | -1) => void;
+          onOptions: (options: SearchOptions) => void;
+          onClose: () => void;
+        }>;
+      }>(open),
+    );
+    const bar = open.props.searching;
+    assert.deepStrictEqual(bar.props.found, { current: -1, matches: 0 });
+    const viewedStore = filesStore({
+      filter: 'View',
+      files: found,
+      selected: 'src/leads/LeadsView.tsx',
+    });
+    const viewed = filesOf(viewedStore);
+    assert.ok(
+      isValidElement<{
+        searching: React.ReactElement<{
+          found: { current: number; matches: number };
+          onStep: (step: 1 | -1) => void;
+        }>;
+      }>(viewed),
+    );
+    assert.deepStrictEqual(viewed.props.searching.props.found, {
+      current: 1,
+      matches: 2,
+    });
+    assert.match(
+      renderToStaticMarkup(<>{viewed.props.searching}</>),
+      /<span class="search-count">2 of 2<\/span>/,
+    );
+    viewed.props.searching.props.onStep(1);
+    assert.strictEqual(
+      viewedStore.getState().tab.path,
+      'src/deals/DealsView.tsx',
+    );
+    bar.props.onOptions({ ...plainSearch, wholeWord: true });
+    assert.deepStrictEqual(fileFilterOf(store.getState()), {
+      query: 'view',
+      options: { ...plainSearch, wholeWord: true },
+    });
+    bar.props.onClose();
+    assert.strictEqual(fileFilterOf(store.getState()), undefined);
   });
 });

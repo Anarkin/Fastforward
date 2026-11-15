@@ -7,15 +7,16 @@ import {
   useState,
 } from 'react';
 import { searchedBookmarks } from './bookmarks';
-import { BackIcon } from '../../../lib/page/icons';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { noRefs } from './commitListItems';
-import { searchQueryOf } from './gitSelectors';
+import { searchOf } from './gitSelectors';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
 import { searchFilter } from '../../../lib/shared/filter';
-import { plainSearch } from '../../../lib/shared/searchOptions';
+import { sameSearchOptions } from '../../../lib/shared/searchOptions';
+import { stepMatch } from '../../../lib/shared/textMatches';
+import { SearchBar } from '../../../lib/page/searchBar';
 import {
   searchRefs,
   noStashList,
@@ -49,7 +50,7 @@ export function LocationsPopup({
 }: {
   anchor: React.RefObject<HTMLElement | null>;
 }) {
-  const query = useGit(searchQueryOf);
+  const { query, options } = useGit(searchOf);
   const bookmarks = useGit((state) => state.bookmarks);
   const refs = useGit((state) => state.tab.repository?.refs ?? noRefs);
   const stashes = useGit(
@@ -78,7 +79,7 @@ export function LocationsPopup({
     [anchor],
   );
   const index = useGit((state) => state.refIndex);
-  const filter = useMemo(() => searchFilter(query, plainSearch), [query]);
+  const filter = useMemo(() => searchFilter(query, options), [query, options]);
   const search = useMemo(() => searchRefs(index, filter), [index, filter]);
   const stashSearch = useMemo(
     () => searchStashes(stashes, filter),
@@ -110,23 +111,20 @@ export function LocationsPopup({
     if (!text) {
       return undefined;
     }
-    return onSearchCommits(text);
-  }, [text, onSearchCommits]);
+    return onSearchCommits(text, options);
+  }, [text, options, onSearchCommits]);
   const textFound =
-    text && commitSearch?.query === text ? commitSearch.result : undefined;
+    text &&
+    commitSearch?.query === text &&
+    sameSearchOptions(commitSearch.options, options)
+      ? commitSearch.result
+      : undefined;
   const commits = useMemo(
     () => foundCommits(found?.commits ?? [], textFound?.commits ?? []),
     [found, textFound],
   );
   const lookingUp = hash !== undefined && found === undefined;
   const searching = text !== undefined && textFound === undefined;
-  const nothingFound =
-    commits.length === 0 &&
-    !lookingUp &&
-    !searching &&
-    pinned.length === 0 &&
-    search.every((group) => group.refs.length === 0) &&
-    stashSearch.stashes.length === 0;
   const items = useMemo(
     () => resultItems(commits, search, stashSearch, pinnedItems),
     [commits, search, stashSearch, pinnedItems],
@@ -177,17 +175,18 @@ export function LocationsPopup({
 
   useDismiss(anchor, onClose, { ignore: contextMenus });
 
+  const keys = hasQuery ? items.map(itemKey) : browsed.map((row) => row.key);
+  const stepTo = (at: number) => {
+    const next = keys.at(at);
+    if (next) {
+      setHighlight({ query, key: next });
+    }
+  };
   const onKeyDown = (event: React.KeyboardEvent) => {
     const action = popupKeyAction(event.nativeEvent);
     if (typeof action === 'number') {
       event.preventDefault();
-      const keys = hasQuery
-        ? items.map(itemKey)
-        : browsed.map((row) => row.key);
-      const next = keys.at(nextActive(keys, active, action));
-      if (next) {
-        setHighlight({ query, key: next });
-      }
+      stepTo(nextActive(keys, active, action));
     } else if (action === 'enter') {
       event.preventDefault();
       if (activeRow?.kind === 'folder') {
@@ -217,26 +216,35 @@ export function LocationsPopup({
         }
       }}
     >
-      <div className="locations-search-row">
-        <button
-          className="nav-button"
-          title={strings.common.close}
-          onClick={onClose}
-        >
-          <BackIcon />
-        </button>
-        <input
-          className={`locations-search ${query ? 'active' : ''}`}
+      <div className="locations-bar">
+        <SearchBar
+          query={query}
+          options={options}
+          found={{
+            current: active,
+            matches: keys.length,
+            capped:
+              hasQuery &&
+              (search.some((group) => group.more > 0) ||
+                stashSearch.more > 0 ||
+                (found?.more ?? 0) > 0 ||
+                (textFound?.capped ?? false)),
+            searching: lookingUp || searching,
+          }}
           placeholder={strings.search.placeholder}
-          ref={input}
-          autoFocus
-          role="combobox"
-          aria-expanded
-          aria-autocomplete="list"
-          aria-controls={resultsId}
-          aria-activedescendant={activeId}
-          value={query}
-          onChange={(event) => onQuery(event.target.value)}
+          input={input}
+          combobox={{
+            autoFocus: true,
+            role: 'combobox',
+            'aria-expanded': true,
+            'aria-autocomplete': 'list',
+            'aria-controls': resultsId,
+            'aria-activedescendant': activeId,
+          }}
+          onQuery={(next) => onQuery(next)}
+          onOptions={(next) => onQuery(query, next)}
+          onStep={(step) => stepTo(stepMatch(active, keys.length, step))}
+          onClose={onClose}
         />
       </div>
       <div
@@ -246,9 +254,6 @@ export function LocationsPopup({
         aria-label={strings.search.locations}
       >
         <BookmarksSection pinned={pinnedItems} rows={rows} onJump={jump} />
-        {hasQuery && !hash && nothingFound && (
-          <div className="locations-empty">{strings.search.noMatches}</div>
-        )}
         {search.map((group, i) =>
           hasQuery && group.refs.length === 0 ? null : (
             <section

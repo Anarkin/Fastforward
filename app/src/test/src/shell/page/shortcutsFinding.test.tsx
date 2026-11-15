@@ -34,6 +34,12 @@ import { tagsWith } from '../../../helpers/markup';
 const counts = (query: string) =>
   shown(query).map((each) => [each.id, each.count]);
 
+const clickOn = (button: Element | undefined) =>
+  act(async () => {
+    assert.ok(button instanceof window.HTMLElement);
+    button.click();
+  });
+
 suite('Shortcuts popup', () => {
   test('opens on the tool of the tab shown, the viewer for a file viewed, the editor for a file edited, the diff for two files compared or a diff with the focus, and the shortcuts of every tab with no tab open', () => {
     assert.strictEqual(entryFor('commander'), 'commander');
@@ -120,7 +126,7 @@ suite('Shortcuts popup', () => {
 
   test('offers a filter above the tools and the shortcuts, telling what it takes', () => {
     const html = shortcutsMarkup(<ShortcutsPopup />, 'git');
-    const [field] = tagsWith(html, 'search-input');
+    const [field] = tagsWith(html, 'search-box-input');
     assert.ok(field);
     assert.match(field, /placeholder="Filter by words or keys"/);
     assert.match(field, /aria-label="Filter by words or keys"/);
@@ -422,5 +428,38 @@ suite('Shortcuts popup', () => {
     assert.strictEqual(close.props.title, 'Close');
     close.props.onClick();
     assert.deepStrictEqual(store.getState().popups, []);
+  });
+
+  test('filters with the search bar, counting the groups that match, stepping to the next and back around them across the tools, and matching whole words of what the shortcuts do while its toggle is pressed', async () => {
+    await inPopup(
+      <ShortcutsPopup />,
+      'commander',
+      async ({ document, type }) => {
+        const count = () =>
+          document.querySelector('.shortcuts-filter .search-count')
+            ?.textContent;
+        assert.strictEqual(
+          document.querySelector('.shortcuts-filter .search-bar > .nav-button'),
+          null,
+        );
+        await type('f3');
+        assert.match(count() ?? '', /^\d+ of 2$/);
+        const [, next] = document.querySelectorAll(
+          '.shortcuts-filter .search-steps button',
+        );
+        await clickOn(next);
+        assert.strictEqual(openTool(document), 'Git');
+        await clickOn(next);
+        assert.strictEqual(openTool(document), 'Commander');
+        await type('archiv');
+        assert.notStrictEqual(count(), 'No matches');
+        const wholeWord = document.querySelectorAll(
+          '.shortcuts-filter .search-toggle',
+        )[1];
+        await clickOn(wholeWord);
+        assert.strictEqual(wholeWord?.getAttribute('aria-pressed'), 'true');
+        assert.strictEqual(count(), 'No matches');
+      },
+    );
   });
 });
