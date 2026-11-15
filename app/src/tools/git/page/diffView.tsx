@@ -16,7 +16,8 @@ import {
 import type { TextRequest } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import type { LoadedText } from './sideTexts';
-import { lineKey, type FindMatch } from './find';
+import { type FindMatch } from './find';
+import { lineKey } from './diffLines';
 import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { keyPressed } from '../../../lib/page/shortcuts';

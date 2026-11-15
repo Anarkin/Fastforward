@@ -7,7 +7,7 @@ import { imagePanes } from '../../../../../tools/git/page/imagePanes';
 import { ImageDiff } from '../../../../../tools/git/page/imagePreview';
 import { sideBySideWords } from '../../../../../tools/git/page/pairing';
 import { wordRanges } from '../../../../../tools/git/page/wordDiff';
-import { lineKey } from '../../../../../tools/git/page/find';
+import { lineKey } from '../../../../../tools/git/page/diffLines';
 import { noop } from '../../../../helpers/fixtures';
 import { withStores } from '../../../../helpers/componentFixtures';
 import { createGitStore } from '../../../../../tools/git/page/store';

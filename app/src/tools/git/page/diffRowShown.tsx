@@ -15,7 +15,7 @@ import {
   type FileHeaderRow,
   type WholeFile,
 } from './diffRows';
-import { lineKey } from './find';
+import { lineKey } from './diffLines';
 import { imagePanes } from './imagePanes';
 import { ImageDiff } from './imagePreview';
 import { wholeImageUrl, type ImageOrigin } from './images';

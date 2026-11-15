@@ -4,7 +4,8 @@ import {
   type ChangeBlock,
   type NumberedLine,
 } from './changeBlocks';
-import { keyedLine, type FindRange } from './find';
+import { type FindRange } from './find';
+import { keyedLine } from './diffLines';
 import { changePairs, tokenSteps } from './pairing';
 
 const maxTokens = 1_000_000;

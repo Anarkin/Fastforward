@@ -4,7 +4,11 @@ import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
 import { parsePatch, type DiffFile } from '../../../../../tools/git/page/diff';
 import { kinds } from './diffViewFixtures';
-import { diffRows, sideChange } from '../../../../../tools/git/page/diffRows';
+import {
+  diffRows,
+  lineKeys,
+  sideChange,
+} from '../../../../../tools/git/page/diffRows';
 import { rowHeight } from '../../../../../tools/git/page/rowMeasures';
 
 const binaryOfIndex = (index: string) =>
@@ -393,6 +397,70 @@ suite('Files to view', () => {
       'error',
       'file',
       'wholeLine',
+    ]);
+  });
+});
+
+suite('Find in diff', () => {
+  const patch = [
+    'diff --git a/a.ts b/a.ts',
+    '--- a/a.ts',
+    '+++ b/a.ts',
+    '@@ -1,2 +1,2 @@',
+    ' const Find = 1;',
+    '-const find = 2;',
+    '+const finder = 2;',
+    '@@ -10,1 +10,1 @@',
+    ' find(find);',
+    'diff --git a/b.ts b/b.ts',
+    '--- a/b.ts',
+    '+++ b/b.ts',
+    '@@ -1,1 +1,1 @@',
+    '-nothing',
+    '+FIND',
+    '',
+  ].join('\n');
+
+  const whole = { path: 'c.ts', content: 'find\nnone\n', binary: false };
+
+  test('keys each row by the file and line a match names, and only lines', () => {
+    const files = parsePatch(patch);
+    const rows = diffRows(files, new Map([['b.ts', false]]), undefined);
+    assert.deepStrictEqual(lineKeys(rows), [
+      [],
+      [],
+      ['0:0'],
+      ['0:1'],
+      ['0:2'],
+      [],
+      ['0:3'],
+      [],
+    ]);
+    assert.deepStrictEqual(lineKeys(diffRows([], new Map(), whole)), [
+      [],
+      [],
+      ['0:0'],
+      ['0:1'],
+    ]);
+  });
+
+  test('keys a side-by-side row by both of its lines, an unchanged one once', () => {
+    const files = parsePatch(patch);
+    const rows = diffRows(
+      files,
+      new Map([['b.ts', false]]),
+      undefined,
+      false,
+      true,
+    );
+    assert.deepStrictEqual(lineKeys(rows), [
+      [],
+      [],
+      ['0:0'],
+      ['0:1', '0:2'],
+      [],
+      ['0:3'],
+      [],
     ]);
   });
 });

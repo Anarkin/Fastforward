@@ -1,5 +1,6 @@
 import type { DiffLine } from './diff';
-import { lineKey, type FindMatch, type FindRange } from './find';
+import { type FindMatch, type FindRange } from './find';
+import { lineKey } from './diffLines';
 import type { SyntaxRange } from './syntax';
 import type { WordRanges } from './wordDiff';
 import { type TextWidths } from '../../../lib/page/textWidths';
