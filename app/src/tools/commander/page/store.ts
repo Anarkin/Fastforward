@@ -29,7 +29,8 @@ import {
 } from './commanderReceived';
 import { filesToCompare } from './comparing';
 import { dialogActions } from './dialogActions';
-import { filteredSelection, nearestShown, nextSort } from './listing';
+import { filteredSelection, nearestShown } from './rowSelection';
+import { nextSort } from './rowOrder';
 import {
   filterKey,
   filterOf,

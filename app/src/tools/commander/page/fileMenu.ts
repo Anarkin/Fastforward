@@ -2,7 +2,8 @@ import { imageType, vectorType } from '../../../lib/shared/images';
 import { strings } from '../../../lib/shared/strings';
 import type { ContextMenuItem } from '../../../lib/page/menuControls';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
-import { pointedKeys, type Row } from './listing';
+import type { Row } from './listing';
+import { pointedKeys } from './rowKeys';
 import type { Copied } from './copiedText';
 
 export type MenuTarget =

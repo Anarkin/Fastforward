@@ -1,8 +1,8 @@
-import { filterWords } from '../../../lib/page/fileFilter';
+import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
 import { sides, type Side } from '../shared/protocol';
 import type { ColumnWidths } from '../shared/settings';
 import type { CommanderSource, PaneFilter } from './commanderState';
-import { duplicateRows, filteredRows, type Row } from './listing';
+import type { Row } from './listing';
 import type { CommanderView, PaneView } from './view';
 
 export function shownColumns({ view, resized }: CommanderSource): ColumnWidths {
@@ -66,6 +66,57 @@ export function withoutTab(
     kept.delete(key);
   }
   return kept;
+}
+
+export interface DuplicateRows {
+  readonly rows: readonly Row[];
+  readonly starts: ReadonlySet<string>;
+}
+
+export function duplicateRows(
+  rows: readonly Row[],
+  groups: readonly (readonly string[])[],
+): DuplicateRows {
+  const groupOf = new Map<string, number>();
+  for (const [index, group] of groups.entries()) {
+    for (const key of group) {
+      groupOf.set(key, index);
+    }
+  }
+  const shown = new Map<number, Row[]>();
+  const kept: Row[] = [];
+  for (const row of rows) {
+    const group = groupOf.get(row.key);
+    if (row.entry === undefined) {
+      kept.push(row);
+    } else if (group !== undefined) {
+      const together = shown.get(group);
+      if (together === undefined) {
+        shown.set(group, [row]);
+      } else {
+        together.push(row);
+      }
+    }
+  }
+  const starts = new Set<string>();
+  for (const together of shown.values()) {
+    if (together.length > 1) {
+      starts.add(together[0].key);
+      kept.push(...together);
+    }
+  }
+  return { rows: kept, starts };
+}
+
+export function filteredRows(
+  rows: readonly Row[],
+  words: readonly string[],
+): readonly Row[] {
+  return words.length === 0
+    ? rows
+    : rows.filter(
+        (row) => row.entry === undefined || matchesFilter(words, row.key),
+      );
 }
 
 export interface ShownRows {

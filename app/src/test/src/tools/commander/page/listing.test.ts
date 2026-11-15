@@ -1,28 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { formatSize } from '../../../../../tools/commander/page/format';
-import {
-  nameParts,
-  nextSort,
-  goesInto,
-  opens,
-  rowsOf,
-  selectionAfter,
-  passedKeys,
-  rangeKeys,
-  chosenKeys,
-  pointedKeys,
-} from '../../../../../tools/commander/page/listing';
+import { nameParts, rowsOf } from '../../../../../tools/commander/page/listing';
 import { fileColorsOf } from '../../../../../tools/commander/page/fileColors';
 import type { Sort } from '../../../../../tools/commander/shared/settings';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
-import { entry, folder } from './listingFixtures';
-
-const defaultSort: Sort = {
-  column: 'extension',
-  descending: false,
-  groupByColor: false,
-};
+import { defaultSort, entry, folder } from './listingFixtures';
 
 const keys = (
   entries: readonly Entry[],
@@ -310,127 +292,6 @@ suite('Commander listing', () => {
     );
   });
 
-  test('keeps grouping by color when it sorts by another column or reverses it', () => {
-    const sort: Sort = {
-      column: 'extension',
-      descending: false,
-      groupByColor: true,
-    };
-    assert.deepStrictEqual(nextSort(sort, 'name'), {
-      column: 'name',
-      descending: false,
-      groupByColor: true,
-    });
-    assert.deepStrictEqual(nextSort(sort, 'extension'), {
-      column: 'extension',
-      descending: true,
-      groupByColor: true,
-    });
-  });
-
-  test('sorts by another column ascending, and by the same one again the other way', () => {
-    assert.deepStrictEqual(nextSort(defaultSort, 'name'), {
-      column: 'name',
-      descending: false,
-      groupByColor: false,
-    });
-    assert.deepStrictEqual(nextSort(defaultSort, 'extension'), {
-      column: 'extension',
-      descending: true,
-      groupByColor: false,
-    });
-  });
-
-  test('selects what a listing names, as the folder gone up from, or else the first row of a new folder', () => {
-    const rows = rowsOf(
-      [folder('src'), entry('a.txt')],
-      true,
-      true,
-      defaultSort,
-    );
-    assert.strictEqual(selectionAfter(undefined, '/work', rows, 'src'), 'src');
-    assert.strictEqual(
-      selectionAfter(
-        { folder: '/old', key: 'a.txt', index: 2 },
-        '/work',
-        rows,
-        undefined,
-      ),
-      '..',
-    );
-  });
-
-  test('selects the first row once files come to a side of the same folder that had none, as a root of an empty drive has no parent row, rather than the last', () => {
-    const rows = rowsOf(
-      [entry('a.txt'), entry('b.txt'), entry('c.txt')],
-      false,
-      true,
-      defaultSort,
-    );
-    assert.strictEqual(
-      selectionAfter(
-        { folder: '/', key: undefined, index: -1 },
-        '/',
-        rows,
-        undefined,
-      ),
-      rows[0]?.key,
-    );
-  });
-
-  test('keeps the selected row when its folder is listed again, or the row now in its place when it is gone', () => {
-    const rows = rowsOf(
-      [folder('src'), entry('a.txt')],
-      true,
-      true,
-      defaultSort,
-    );
-    assert.strictEqual(
-      selectionAfter(
-        { folder: '/work', key: 'a.txt', index: 2 },
-        '/work',
-        rows,
-        undefined,
-      ),
-      'a.txt',
-    );
-    assert.strictEqual(
-      selectionAfter(
-        { folder: '/work', key: 'b.txt', index: 1 },
-        '/work',
-        rows,
-        undefined,
-      ),
-      'src',
-    );
-    assert.strictEqual(
-      selectionAfter(
-        { folder: '/work', key: 'z.txt', index: 9 },
-        '/work',
-        rows,
-        undefined,
-      ),
-      'a.txt',
-    );
-  });
-
-  test('opens the parent, folders and files, but goes from the filter only into the parent and folders', () => {
-    const [parent, src, file] = rowsOf(
-      [folder('src'), entry('a.txt')],
-      true,
-      true,
-      defaultSort,
-    );
-    assert.deepStrictEqual(
-      [opens(parent), opens(src), opens(file), opens(undefined)],
-      [true, true, true, false],
-    );
-    assert.deepStrictEqual(
-      [goesInto(parent), goesInto(src), goesInto(file), goesInto(undefined)],
-      [true, true, false, false],
-    );
-  });
-
   test('marks the folders named as repositories, never a file or the parent', () => {
     const rows = rowsOf(
       [folder('app'), folder('docs'), entry('app.txt')],
@@ -466,91 +327,6 @@ suite('Commander listing', () => {
       sorted({ column: 'extension', descending: true, groupByColor: false }),
       ['zeta', 'beta', 'alpha', 'a.txt'],
     );
-  });
-
-  test('writes sizes in bytes with thousands grouped, and none for a folder', () => {
-    assert.strictEqual(formatSize(12_288), '12,288');
-    assert.strictEqual(formatSize(1_007_528), '1,007,528');
-    assert.strictEqual(formatSize(0), '0');
-    assert.strictEqual(formatSize(undefined), '');
-  });
-
-  test('takes the rows passed moving from one row to another, the row moved from among them, the one moved to not', () => {
-    const rows = ['a', 'b', 'c', 'd', 'e'].map((key) => ({
-      key,
-      entry: undefined,
-      base: key,
-      extension: '',
-      repository: false,
-    }));
-    assert.deepStrictEqual(passedKeys(rows, 1, 3), ['b', 'c']);
-    assert.deepStrictEqual(passedKeys(rows, 3, 1), ['d', 'c']);
-    assert.deepStrictEqual(passedKeys(rows, 4, 4), ['e']);
-  });
-
-  test('takes the rows from one row to another, both among them, either way', () => {
-    const rows = ['a', 'b', 'c', 'd'].map((key) => ({
-      key,
-      entry: undefined,
-      base: key,
-      extension: '',
-      repository: false,
-    }));
-    assert.deepStrictEqual(rangeKeys(rows, 1, 3), ['b', 'c', 'd']);
-    assert.deepStrictEqual(rangeKeys(rows, 2, 0), ['a', 'b', 'c']);
-  });
-
-  test('points at every file marked when one marked is clicked or dragged, in the order listed, for its menu of the system or to drag them, at the one alone otherwise, and at none for ..', () => {
-    const rows = [
-      {
-        key: '..',
-        entry: undefined,
-        base: '..',
-        extension: '',
-        repository: false,
-      },
-      ...['a', 'b', 'c', 'd'].map((key) => ({
-        key,
-        entry: entry(key),
-        base: key,
-        extension: '',
-        repository: false,
-      })),
-    ];
-    const marked = new Set(['d', 'b']);
-
-    assert.deepStrictEqual(pointedKeys(rows, 'd', marked), ['b', 'd']);
-    assert.deepStrictEqual(pointedKeys(rows, 'c', marked), ['c']);
-    assert.deepStrictEqual(pointedKeys(rows, 'a', undefined), ['a']);
-    assert.deepStrictEqual(pointedKeys(rows, '..', marked), []);
-    assert.deepStrictEqual(pointedKeys(rows, 'gone', marked), []);
-  });
-
-  test('deletes every file marked, in the order listed, wherever the selection is, and the selected one alone when none is marked, never ..', () => {
-    const rows = [
-      {
-        key: '..',
-        entry: undefined,
-        base: '..',
-        extension: '',
-        repository: false,
-      },
-      ...['a', 'b', 'c', 'd'].map((key) => ({
-        key,
-        entry: entry(key),
-        base: key,
-        extension: '',
-        repository: false,
-      })),
-    ];
-    const marked = new Set(['d', 'b']);
-
-    assert.deepStrictEqual(chosenKeys(rows, 'c', marked), ['b', 'd']);
-    assert.deepStrictEqual(chosenKeys(rows, '..', marked), ['b', 'd']);
-    assert.deepStrictEqual(chosenKeys(rows, 'a', new Set()), ['a']);
-    assert.deepStrictEqual(chosenKeys(rows, 'a', undefined), ['a']);
-    assert.deepStrictEqual(chosenKeys(rows, '..', undefined), []);
-    assert.deepStrictEqual(chosenKeys(rows, undefined, undefined), []);
   });
 
   test('orders the rows of a folder listed again as it would order them afresh, starting from the rows it had, whatever came, went or changed, by every column either way and grouped by color', () => {
@@ -629,20 +405,5 @@ suite('Commander listing', () => {
         }
       }
     }
-  });
-
-  test('deletes the selected file when every file marked is hidden by the filter, as Delete did nothing then', () => {
-    const rows = ['a', 'b'].map((key) => ({
-      key,
-      entry: entry(key),
-      base: key,
-      extension: '',
-      repository: false,
-    }));
-
-    assert.deepStrictEqual(chosenKeys(rows, 'a', new Set(['hidden'])), ['a']);
-    assert.deepStrictEqual(chosenKeys(rows, 'a', new Set(['b', 'hidden'])), [
-      'b',
-    ]);
   });
 });

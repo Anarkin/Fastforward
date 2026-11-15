@@ -37,7 +37,7 @@ import {
   useCommander,
   useCommanderActions,
 } from './store';
-import { keysMatching } from './listing';
+import { keysMatching } from './markPattern';
 import { sideToFocus } from './sideFocus';
 import { shareOf } from './sideShare';
 

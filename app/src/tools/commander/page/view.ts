@@ -15,14 +15,12 @@ import {
 } from '../shared/settings';
 import type { ViewMode } from './viewerKeymap';
 import type { EncodingChoice } from './encodings';
+import { parentRow, rowsOf, type Row } from './listing';
 import {
   filteredSelection,
-  parentRow,
-  rowsOf,
   selectionAfter,
-  type Row,
   type Selection,
-} from './listing';
+} from './rowSelection';
 import {
   fileColorsOf,
   noFileColors,

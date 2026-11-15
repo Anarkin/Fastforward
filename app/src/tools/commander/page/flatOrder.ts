@@ -7,13 +7,8 @@ import type {
   SlottedFolder,
   ToFlatWorker,
 } from './flatMessages';
-import {
-  fileGroupOf,
-  flatRowOf,
-  mergedRows,
-  sortedRows,
-  type Row,
-} from './listing';
+import { flatRowOf, type Row } from './listing';
+import { fileGroupOf, mergedRows, sortedRows } from './rowOrder';
 
 export type { FlatChoices } from './flatMessages';
 

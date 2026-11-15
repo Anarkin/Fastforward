@@ -2,7 +2,7 @@ import { folderKey } from '../shared/paths';
 import { otherSide, type CommanderToHost, type Side } from '../shared/protocol';
 import type { StoreApi } from 'zustand';
 import type { CommanderActions, CommanderState } from './commanderState';
-import { keysMatching } from './listing';
+import { keysMatching } from './markPattern';
 import { baseNameOf } from './naming';
 import { shownRowsOf } from './shownRows';
 

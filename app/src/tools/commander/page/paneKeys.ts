@@ -8,13 +8,9 @@ import {
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { commanderKeymap } from './keymap';
 import { parentFolder, type Side } from '../shared/protocol';
-import {
-  chosenKeys,
-  namesIgnoreCase,
-  opens,
-  passedKeys,
-  type Row,
-} from './listing';
+import { type Row } from './listing';
+import { chosenKeys, opens, passedKeys } from './rowKeys';
+import { namesIgnoreCase } from './markPattern';
 import type { Copied } from './copiedText';
 import { moveInGrid } from './tiles';
 

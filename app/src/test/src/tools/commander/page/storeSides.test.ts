@@ -8,7 +8,7 @@ import {
   shownRowsOf,
 } from '../../../../../tools/commander/page/shownRows';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
-import { nextSort } from '../../../../../tools/commander/page/listing';
+import { nextSort } from '../../../../../tools/commander/page/rowOrder';
 import { emptyView } from '../../../../../tools/commander/page/view';
 import { noop } from '../../../../helpers/fixtures';
 import {
