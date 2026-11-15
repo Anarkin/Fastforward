@@ -19,7 +19,9 @@ import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../lib/main/paths';
 import type { Timer } from '../../../lib/main/timer';
 import type { GitStorage } from './storage';
-import { historyLoaded, newTabState, toggleMerges } from './tabState';
+import { newTabState } from './tabState';
+import { historyLoaded } from './tabHistory';
+import { toggleMerges } from './tabLayout';
 import {
   type TabWork,
   type Session,

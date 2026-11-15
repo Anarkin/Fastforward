@@ -9,7 +9,7 @@ import {
 import { readRefs } from '../../../../../tools/git/main/refReads';
 import { runGit } from '../../../../../tools/git/main/run';
 import { headsOf } from '../../../../../tools/git/main/heads';
-import { tipsInGitOrder } from '../../../../../tools/git/main/tabState';
+import { tipsInGitOrder } from '../../../../../tools/git/main/tabHistory';
 import {
   commitAtTime,
   objectId,

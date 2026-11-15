@@ -7,17 +7,10 @@ import { commitPageSize } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import type { GitStorage } from './storage';
-import {
-  commitsMessage,
-  firstPage,
-  forgetHistory,
-  keepSubjects,
-  layOutHistory,
-  loadHistory,
-  stillThere,
-  tipsInGitOrder,
-  unselect,
-} from './tabState';
+import { stillThere, unselect } from './tabState';
+import { forgetHistory, loadHistory, tipsInGitOrder } from './tabHistory';
+import { commitsMessage, firstPage, layOutHistory } from './tabLayout';
+import { keepSubjects } from './tabSteps';
 import type { TabWork, Context } from './tabContext';
 
 export interface HistoryPagesHost {

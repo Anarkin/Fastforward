@@ -11,7 +11,7 @@ import {
 } from '../../../../../tools/git/main/history';
 import { readRefs } from '../../../../../tools/git/main/refReads';
 import { runGit } from '../../../../../tools/git/main/run';
-import { tipsInGitOrder } from '../../../../../tools/git/main/tabState';
+import { tipsInGitOrder } from '../../../../../tools/git/main/tabHistory';
 import { renamingRepository } from '../../../../helpers/gitFixtures';
 import { entriesOf } from './historyFixtures';
 import {

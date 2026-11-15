@@ -6,7 +6,7 @@ import type { Refreshes } from './refreshes';
 import type { GitSessions } from './sessions';
 import type { GitStorage } from './storage';
 import type { Session, TabWork } from './tabContext';
-import { forgetHistory, historyLoaded } from './tabState';
+import { forgetHistory, historyLoaded } from './tabHistory';
 
 export type RepositoryChoice = Extract<
   GitToHost,

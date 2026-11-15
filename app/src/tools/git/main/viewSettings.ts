@@ -6,7 +6,8 @@ import type { Diffs } from './diffs';
 import type { HistoryPages } from './historyPages';
 import type { GitStorage } from './storage';
 import type { Context, Session, TabWork } from './tabContext';
-import { forgetHistory, type TabState } from './tabState';
+import { type TabState } from './tabState';
+import { forgetHistory } from './tabHistory';
 
 export type ViewSetting = Extract<
   GitToHost,

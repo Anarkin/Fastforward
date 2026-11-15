@@ -11,7 +11,8 @@ import {
   type Session,
   type TabWork,
 } from './tabContext';
-import { keep, newTabState } from './tabState';
+import { newTabState } from './tabState';
+import { keep } from './tabReplay';
 import { UntrackedPatches } from './workingTree';
 
 const maxKeptUntrackedChars = 32_000_000;

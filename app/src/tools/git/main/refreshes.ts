@@ -22,7 +22,7 @@ import {
   stashesKeepHistory,
   takeRefs,
   tipsInGitOrder,
-} from './tabState';
+} from './tabHistory';
 import {
   type TabWork,
   type ReadRefs,

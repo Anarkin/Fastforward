@@ -14,17 +14,9 @@ import {
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import type { GitStorage } from './storage';
-import {
-  expandMerges,
-  hiddenSides,
-  keepSubjects,
-  mergesHidingCommit,
-  navigationEntry,
-  nearestSteps,
-  parentOf,
-  select,
-  stillThere,
-} from './tabState';
+import { hiddenSides, parentOf, select, stillThere } from './tabState';
+import { expandMerges, mergesHidingCommit } from './tabLayout';
+import { keepSubjects, navigationEntry, nearestSteps } from './tabSteps';
 import type { Context, GitCore } from './tabContext';
 import type { Diffs } from './diffs';
 import type { HistoryPages } from './historyPages';

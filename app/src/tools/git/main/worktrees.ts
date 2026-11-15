@@ -16,7 +16,7 @@ import { strings } from '../../../lib/shared/strings';
 import { maxRecentItems } from '../../../shell/main/storage';
 import { sameRoot } from '../../../lib/main/paths';
 import type { GitStorage } from './storage';
-import { replayOf } from './tabState';
+import { replayOf } from './tabReplay';
 import {
   type TabWork,
   type Session,
