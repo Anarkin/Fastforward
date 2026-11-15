@@ -1,13 +1,5 @@
 export const viewedFileRoute = '/commander-file';
 
-export function fileVersion(stats: {
-  readonly ino: number;
-  readonly mtimeMs: number;
-  readonly size: number;
-}): string {
-  return `${stats.ino}:${stats.mtimeMs}:${stats.size}`;
-}
-
 export function viewedFileUrl(
   tab: string,
   file: string,

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import { Editing } from '../../../../../tools/commander/main/editing';
 import { editingFiles } from '../../../../../tools/commander/main/editingFiles';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { waitFor } from '../../../../helpers/fixtures';
 import { EditorPage, editFrom } from './editingFixtures';
 
 interface Sample {
@@ -84,10 +85,14 @@ const editingOnDisk = () => {
   const saved: string[] = [];
   const notices: string[] = [];
   const page = new EditorPage();
+  const watchers: (() => void)[] = [];
   const edits = new Editing(
     editingFiles(
       {
-        watch: () => () => {},
+        watch: (_file, onChange) => {
+          watchers.push(onChange);
+          return () => {};
+        },
         codePage: () => Promise.resolve('windows-1252'),
       },
       () => ({
@@ -115,7 +120,21 @@ const editingOnDisk = () => {
     );
     return shown?.type === 'editedText' ? shown.shown.text : undefined;
   };
-  return { edits, page, saved, notices, textOf };
+  const touched = () => {
+    for (const onChange of watchers) {
+      onChange();
+    }
+  };
+  return { edits, page, saved, notices, textOf, touched };
+};
+
+const sameDate = new Date('2026-01-02T03:04:05Z');
+
+const datedAlike = (file: string) => fs.utimesSync(file, sameDate, sameDate);
+
+const rewrittenAlike = (file: string, bytes: string) => {
+  fs.writeFileSync(file, bytes);
+  datedAlike(file);
 };
 
 suite('Editing files on disk', () => {
@@ -202,6 +221,45 @@ suite('Editing files on disk', () => {
     );
   });
 
+  test('asks before saving over a file whose bytes changed on disk though its size and dates did not, as on a FAT drive or a share whose files have no id, leaving the bytes there as they are', async () => {
+    const file = written('alike.txt', Buffer.from('aaaa\n'));
+    datedAlike(file);
+    const { edits, page, textOf } = editingOnDisk();
+    assert.strictEqual(await textOf('1', file), 'aaaa\n');
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'X' }));
+    rewrittenAlike(file, 'bbbb\n');
+    assert.strictEqual(await edits.save(page, '1'), false);
+    assert.strictEqual(page.last('askChangedOnDisk')?.tab, '1');
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), 'bbbb\n');
+  });
+
+  test('reads a file again once its bytes change on disk though its size and dates do not, while it has no changes here', async () => {
+    const file = written('alike.txt', Buffer.from('aaaa\n'));
+    datedAlike(file);
+    const { page, textOf, touched } = editingOnDisk();
+    assert.strictEqual(await textOf('1', file), 'aaaa\n');
+    rewrittenAlike(file, 'bbbb\n');
+    touched();
+    await waitFor(
+      () => page.last('editedText')?.shown.text === 'bbbb\n',
+      'the file read again',
+    );
+    assert.strictEqual(page.last('editedText')?.reloaded, true);
+  });
+
+  test('takes a file whose dates changed on disk but not its bytes as unchanged, saving the changes made here without asking', async () => {
+    const file = written('touched.txt', Buffer.from('same\n'));
+    const { edits, page, notices, textOf, touched } = editingOnDisk();
+    assert.strictEqual(await textOf('1', file), 'same\n');
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'X' }));
+    datedAlike(file);
+    touched();
+    assert.ok(await edits.save(page, '1'));
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), 'Xsame\n');
+    assert.strictEqual(page.last('askChangedOnDisk'), undefined);
+    assert.deepStrictEqual(notices, []);
+  });
+
   test('asks before saving over a file made on disk since the editor opened it as a new file, leaving the file made as it is', async () => {
     const file = path.join(folder, 'made.txt');
     const { edits, page, textOf } = editingOnDisk();
@@ -211,5 +269,17 @@ suite('Editing files on disk', () => {
     assert.strictEqual(await edits.save(page, '1'), false);
     assert.strictEqual(page.last('askChangedOnDisk')?.tab, '1');
     assert.strictEqual(fs.readFileSync(file, 'utf8'), 'theirs');
+  });
+
+  test('asks before saving over a file it cannot read to tell whether it changed, as one another program holds open while writing it, rather than failing', async () => {
+    const file = written('held.txt', Buffer.from('held\n'));
+    const { edits, page, textOf } = editingOnDisk();
+    assert.strictEqual(await textOf('1', file), 'held\n');
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'X' }));
+    fs.rmSync(file);
+    fs.mkdirSync(file);
+    assert.strictEqual(await edits.save(page, '1'), false);
+    assert.strictEqual(page.last('askChangedOnDisk')?.tab, '1');
+    assert.ok(fs.statSync(file).isDirectory());
   });
 });

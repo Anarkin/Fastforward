@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { packInto } from './packing';
-import { fileVersion } from '../shared/files';
+import { sampledVersion } from './fileVersions';
 import { folderKey } from '../shared/paths';
 
 import { ArchiveTree } from './archiveTree';
@@ -193,20 +193,20 @@ export class Archives implements ArchiveAccess {
         noArchive: true,
       };
     }
-    let stats: fs.Stats;
+    let version: string;
     try {
-      stats = await fs.promises.stat(file);
+      const stats = await fs.promises.stat(file);
+      if (!stats.isFile()) {
+        return {
+          kind: 'refused',
+          reason: strings.commander.notAFile,
+          noArchive: true,
+        };
+      }
+      version = await sampledVersion(file, stats);
     } catch (error) {
       return { kind: 'refused', reason: reasonOfError(error), noArchive: true };
     }
-    if (!stats.isFile()) {
-      return {
-        kind: 'refused',
-        reason: strings.commander.notAFile,
-        noArchive: true,
-      };
-    }
-    const version = fileVersion(stats);
     if (known?.version === version) {
       return { kind: 'opened', archive: known };
     }

@@ -9,7 +9,7 @@ import {
 } from '../shared/protocol';
 import { isTextEncoding, type TextEncoding } from '../shared/textEncodings';
 import type { WatchFolder } from './watch';
-import { fileVersion } from '../shared/files';
+import { sampledVersion } from './fileVersions';
 import { readBudgetBytes, rowsBefore, rowsFrom, rowStartAt } from './textRows';
 import { codingOf } from './textCodings';
 import {
@@ -56,7 +56,7 @@ export class Viewers {
       const stats = await fs.promises.stat(file);
       hidden = await this.hiddenParts(file);
       size = stats.size;
-      version = fileVersion(stats);
+      version = await sampledVersion(file, stats);
       const first = await firstBytes(file);
       binary = looksBinary(first);
       detected =
@@ -84,39 +84,45 @@ export class Viewers {
       binary,
       blocks: blockCache(),
       stop: this.access.watch(file, () => {
-        void fs.promises.stat(file).then(
-          (stats) => {
-            if (
-              showing.viewing === viewing &&
-              this.sides.shown.get(page) === showing
-            ) {
-              viewing.blocks.forget();
-              viewing.size = stats.size;
-              post(page, {
-                type: 'viewing',
-                tab,
-                size: stats.size,
-                version: fileVersion(stats),
-                binary,
-                hidden,
-                ...(detected !== undefined && { detected }),
-              });
-            }
-          },
-          (error: unknown) => {
-            if (
-              showing.viewing === viewing &&
-              this.sides.shown.get(page) === showing
-            ) {
-              post(page, {
-                type: 'viewing',
-                tab,
-                size: undefined,
-                error: strings.commander.couldNotRead(file, reasonOf(error)),
-              });
-            }
-          },
-        );
+        void fs.promises
+          .stat(file)
+          .then(async (stats) => ({
+            stats,
+            changed: await sampledVersion(file, stats),
+          }))
+          .then(
+            ({ stats, changed }) => {
+              if (
+                showing.viewing === viewing &&
+                this.sides.shown.get(page) === showing
+              ) {
+                viewing.blocks.forget();
+                viewing.size = stats.size;
+                post(page, {
+                  type: 'viewing',
+                  tab,
+                  size: stats.size,
+                  version: changed,
+                  binary,
+                  hidden,
+                  ...(detected !== undefined && { detected }),
+                });
+              }
+            },
+            (error: unknown) => {
+              if (
+                showing.viewing === viewing &&
+                this.sides.shown.get(page) === showing
+              ) {
+                post(page, {
+                  type: 'viewing',
+                  tab,
+                  size: undefined,
+                  error: strings.commander.couldNotRead(file, reasonOf(error)),
+                });
+              }
+            },
+          );
       }),
     };
     showing.finding?.abort();

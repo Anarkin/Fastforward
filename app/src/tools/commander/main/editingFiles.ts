@@ -1,8 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
-import { fileVersion } from '../shared/files';
 import { firstBytes } from './encodingDetection';
 import type { EditingAccess } from './editing';
 import { saveFile } from './fileSaving';
+import { bytesVersion } from './fileVersions';
 import { codeOf } from './reasons';
 import type { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './commanderAccess';
@@ -42,12 +43,11 @@ export function editingFiles(
     },
     stampOf: async (file) => {
       try {
-        return fileVersion(await fs.promises.stat(file));
+        return bytesVersion(await fs.promises.readFile(file));
       } catch (error) {
-        if (codeOf(error) === 'ENOENT') {
-          return undefined;
-        }
-        throw error;
+        return codeOf(error) === 'ENOENT'
+          ? undefined
+          : `unreadable:${randomUUID()}`;
       }
     },
     watch: (file, onChange) => access.watch(file, onChange),

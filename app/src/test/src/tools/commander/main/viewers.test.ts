@@ -9,7 +9,7 @@ import {
 } from '../../../../../tools/commander/shared/protocol';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { readBudgetBytes } from '../../../../../tools/commander/main/textRows';
-import { fileVersion } from '../../../../../tools/commander/shared/files';
+import { sampledVersion } from '../../../../../tools/commander/main/fileVersions';
 import { pathParts } from '../../../../../tools/commander/shared/paths';
 import { waitFor } from '../../../../helpers/fixtures';
 import { commander, forged } from './commanderFixtures';
@@ -63,7 +63,7 @@ suite('Commander tool viewing a file', () => {
         type: 'viewing',
         tab: '3',
         size: 19,
-        version: fileVersion(fs.statSync(notes)),
+        version: await sampledVersion(notes, fs.statSync(notes)),
         binary: false,
         hidden: pathParts(notes).map(() => false),
       },
@@ -428,6 +428,35 @@ suite('Commander tool viewing a file', () => {
     const [first, second] = page.of('viewing');
     assert.strictEqual(second?.size, first?.size);
     assert.notStrictEqual(second?.version, first?.version);
-    assert.strictEqual(second?.version, fileVersion(fs.statSync(picture)));
+    assert.strictEqual(
+      second?.version,
+      await sampledVersion(picture, fs.statSync(picture)),
+    );
+  });
+
+  test('tells the page a new version of the file viewed when its bytes change though its size and dates do not, as on a FAT drive or a share whose files have no id', async () => {
+    const picture = path.join(opened, 'alike.png');
+    const sameDate = new Date('2026-01-02T03:04:05Z');
+    fs.writeFileSync(picture, 'one\n');
+    fs.utimesSync(picture, sameDate, sameDate);
+    const { tool, page, change } = commander({});
+    await tool.show(page, {
+      id: '3',
+      tool: 'commander',
+      root: picture,
+      view: true,
+    });
+
+    fs.writeFileSync(picture, 'two\n');
+    fs.utimesSync(picture, sameDate, sameDate);
+    await change(picture);
+    await waitFor(
+      () => page.of('viewing').length === 2,
+      'the change to be told',
+    );
+
+    const [first, second] = page.of('viewing');
+    assert.strictEqual(second?.size, first?.size);
+    assert.notStrictEqual(second?.version, first?.version);
   });
 });
