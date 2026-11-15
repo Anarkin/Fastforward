@@ -12,6 +12,7 @@ import {
   sharedCommanderApp,
 } from './commanderAppFixtures';
 import { findMarks, findCount } from './viewerAppFixtures';
+import { assertFillsRows } from './markRows';
 
 const toggle = (title: string) =>
   page.locator(`.viewer .search-toggle[title="${title}"]`);
@@ -19,7 +20,7 @@ const toggle = (title: string) =>
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('searches a file viewed on Ctrl+F as the diff does, counting the matches, stepping to them with Enter and Shift+Enter, matching the case or a regular expression while their toggles are pressed, and closes the search on Esc, then the viewer', async () => {
+  test('searches a file viewed on Ctrl+F as the diff does, counting the matches, marking each on the very rows of device pixels of its line, stepping to them with Enter and Shift+Enter, matching the case or a regular expression while their toggles are pressed, and closes the search on Esc, then the viewer', async () => {
     const lines = Array.from({ length: 300 }, (_, index) =>
       index % 100 === 50 ? `Needle ${index}` : `row ${index}`,
     );
@@ -54,6 +55,10 @@ suite('App commander', () => {
           JSON.stringify(await findMarks()) ===
           JSON.stringify([['Needle', true]]),
         'the first match marked as current',
+      );
+      await assertFillsRows(
+        page.locator('.viewer-rows .find-match.current'),
+        '.viewer-rows .viewer-row',
       );
       await page.keyboard.press('Enter');
       await waitFor(

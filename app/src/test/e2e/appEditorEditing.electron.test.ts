@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { assertFillsRows } from './markRows';
 import {
   opened,
   profile,
@@ -91,7 +92,7 @@ suite('App editor', () => {
     );
   });
 
-  test('finds the text typed on Ctrl+F, going to the next match on Enter, and replaces every match on Ctrl+H', async () => {
+  test('finds the text typed on Ctrl+F, marking a match on the very rows of device pixels the selection of it fills, going to the next match on Enter, and replaces every match on Ctrl+H', async () => {
     fs.writeFileSync(path.join(opened, 'find.txt'), 'one two one\nthree one\n');
     await backToCommander();
     await waitFor(
@@ -114,6 +115,10 @@ suite('App editor', () => {
     await waitFor(
       async () => (await count.textContent()) === '1 of 3',
       'the first match',
+    );
+    await assertFillsRows(
+      content().locator('.find-match.current'),
+      '.editor .cm-selectionBackground',
     );
     await field.press('Enter');
     await waitFor(

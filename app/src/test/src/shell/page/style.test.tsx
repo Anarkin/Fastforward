@@ -26,6 +26,7 @@ import {
   noop,
   body,
   css,
+  currentMatchOutline,
 } from './stylesheetFixtures';
 import { HunkDivider } from '../../../../tools/git/page/diffRowParts';
 import { Crash } from '../../../../shell/page/errorBoundary';
@@ -242,15 +243,16 @@ suite('Style', () => {
       background: 'var(--color-search-match)',
       'border-radius': undefined,
     };
-    const outline =
-      '0 0 0 var(--hairline) var(--color-search-match-foreground)';
     for (const classes of [
       'cm-editor editor-text',
       'viewer-row',
       'diff-line',
     ]) {
       looks(found(classes, false), { ...match, 'box-shadow': undefined });
-      looks(found(classes, true), { ...match, 'box-shadow': outline });
+      looks(found(classes, true), {
+        ...match,
+        'box-shadow': currentMatchOutline,
+      });
     }
     for (const classes of [
       'row commander-row',

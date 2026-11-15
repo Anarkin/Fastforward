@@ -14,6 +14,7 @@ import { waitForCount, waitForFocus } from './waits';
 import { drawnCodeRow } from './wrappingFixtures';
 import { longLines } from './wrappingSamples';
 import { waitFor } from '../helpers/fixtures';
+import { assertFillsRows } from './markRows';
 
 const commented = (answer: number) =>
   `/* the answer\na\nb\nc\n*/\nexport const answer = ${answer};\n`;
@@ -25,7 +26,7 @@ suite('App', () => {
     'long.txt': `${longLines.join('\n')}\n`,
   });
 
-  test('colors code away from the page, offers every language for a file selected from a button in line with the others, opening rightwards from the button, as it starts the toolbar, but only Auto and Plain Text for many, leaves code plain on Plain Text until Auto, and colors a file in a language chosen for it until another is selected', async () => {
+  test('colors code away from the page, offers every language for a file selected from a button in line with the others, opening rightwards from the button, as it starts the toolbar, marking what its filter found as tall as the item it is on, but only Auto and Plain Text for many, leaves code plain on Plain Text until Auto, and colors a file in a language chosen for it until another is selected', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'code.ts' }).click();
     await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
@@ -62,6 +63,10 @@ suite('App', () => {
       button.locator('.menu-button').boundingBox(),
     ]);
     assert.strictEqual(menuBox?.x, buttonBox?.x);
+    await page.keyboard.type('typescript');
+    const found = button.locator('.menu-item .match').first();
+    await found.waitFor();
+    await assertFillsRows(found, '.menu-item');
     await page.keyboard.press('Escape');
     await button.locator('.menu').waitFor({ state: 'detached' });
 
@@ -144,7 +149,7 @@ suite('App', () => {
     await page.locator('.commit.working-tree.empty').waitFor();
   });
 
-  test('finds in the diff on Ctrl+F in the diff, stepping on Enter and clearing on Esc', async () => {
+  test('finds in the diff on Ctrl+F in the diff, marking a match on the very rows of device pixels of its line, stepping on Enter and clearing on Esc', async () => {
     await openChangedFile();
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
@@ -164,6 +169,10 @@ suite('App', () => {
         .textContent(),
       'two',
     );
+    await assertFillsRows(
+      page.locator('.diff-line .find-match.current'),
+      '.diff-line',
+    );
     await field.press('Enter');
     await page.locator('.search-count', { hasText: '2 of 2' }).waitFor();
     await waitForCount(page.locator('.minimap-mark.match'), 2, 'match marks');
@@ -178,28 +187,29 @@ suite('App', () => {
     await waitForCount(page.locator('.find-match'), 0, 'matches');
   });
 
-  test('opens the diff search from its round button, giving it the header but for going back, its toggles and stepping between matches, matching case while its toggle is pressed, and closes it from the back button', async () => {
+  test('opens the diff search from its round button, giving it the header but for going back, the toggles inside its box and stepping between matches, matching case while its toggle is pressed, and closes it from the back button', async () => {
     await openChangedFile();
     const diff = page.locator('.columns > .column').nth(2);
     await diff.locator('.column-actions > .search-button').click();
     const field = page.locator('.search-box-input');
     await waitForFocus(field, 'the find field');
     assert.strictEqual(await diff.locator('.diff-options').count(), 0);
-    assert.deepStrictEqual(
-      await diff
-        .locator('.column-title .nav-button')
+    const titles = (selector: string) =>
+      diff
+        .locator(selector)
         .evaluateAll((buttons) =>
           buttons.map((button) => button.getAttribute('title')),
-        ),
-      [
-        'Close',
-        'Match Case',
-        'Whole Word',
-        'Use Regular Expression',
-        'Previous Match',
-        'Next Match',
-      ],
-    );
+        );
+    assert.deepStrictEqual(await titles('.column-title .nav-button'), [
+      'Close',
+      'Previous Match',
+      'Next Match',
+    ]);
+    assert.deepStrictEqual(await titles('.search-box .search-toggle'), [
+      'Match Case',
+      'Whole Word',
+      'Use Regular Expression',
+    ]);
     await field.fill('T');
     await page.locator('.diff-line .find-match').first().waitFor();
     const matchCase = diff.locator('.search-toggle[title="Match Case"]');

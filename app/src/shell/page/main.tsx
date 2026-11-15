@@ -10,6 +10,7 @@ import { errorText } from '../../lib/page/errors';
 import { installOverlayScrollbars } from '../../lib/page/overlayScrollbars';
 import { watchDevicePixels } from '../../lib/page/devicePixels';
 import { installTextCursors } from './textCursor';
+import { installTextHeights } from './textHeights';
 
 declare global {
   interface Window {
@@ -54,6 +55,7 @@ window.addEventListener('unhandledrejection', (event) =>
 
 installOverlayScrollbars();
 watchDevicePixels(() => undefined);
+installTextHeights();
 installTextCursors();
 
 const root = document.getElementById('root');

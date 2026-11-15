@@ -6,7 +6,14 @@ import { Crash } from '../../../../shell/page/errorBoundary';
 import { cascaded, matchingRules } from '../../../helpers/cascade';
 import { Columns } from '../../../helpers/styleFixtures';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
-import { noop, compact, looks, paddingOf, after } from './stylesheetFixtures';
+import {
+  noop,
+  compact,
+  looks,
+  paddingOf,
+  after,
+  currentMatchOutline,
+} from './stylesheetFixtures';
 import {
   codePadding,
   layoutVariables,
@@ -568,8 +575,7 @@ suite('Style', () => {
     looks(match, { ...colors, 'box-shadow': undefined });
     looks(current, {
       ...colors,
-      'box-shadow':
-        '0 0 0 var(--hairline) var(--color-search-match-foreground)',
+      'box-shadow': currentMatchOutline,
     });
     assert.ok(current.classes.includes('current'));
     looks(withClass(rendered(<MinimapShown />), 'minimap-mark', 'match'), {

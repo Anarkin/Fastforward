@@ -5,6 +5,7 @@ import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { waitForFocus } from './waits';
+import { assertFillsRows } from './markRows';
 import {
   opened,
   page,
@@ -159,7 +160,7 @@ suite('App commander', () => {
     }
   });
 
-  test('filters the files of a side on Ctrl+F or Alt and a letter by every word anywhere in their names, counting the selected of those kept, moving among them with the arrows as one types, matching the case while its toggle is pressed, and clears the filter on Esc or once a folder opens', async () => {
+  test('filters the files of a side on Ctrl+F or Alt and a letter by every word anywhere in their names, marking what it found as tall as the selected row, counting the selected of those kept, moving among them with the arrows as one types, matching the case while its toggle is pressed, and clears the filter on Esc or once a folder opens', async () => {
     const names = ['alpha-report.txt', 'beta.txt', 'Report-gamma.md'];
     for (const name of names) {
       fs.writeFileSync(path.join(opened, name), name);
@@ -199,6 +200,10 @@ suite('App commander', () => {
       assert.strictEqual(
         await right().locator('.commander-row .match').first().textContent(),
         'report',
+      );
+      await assertFillsRows(
+        right().locator('.commander-row.selected .match').first(),
+        '.commander-row.selected',
       );
       await page.keyboard.press('ArrowDown');
       await waitFor(
