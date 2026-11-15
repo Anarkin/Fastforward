@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { Column } from '../../../../tools/git/page/column';
+import { StatusLine } from '../../../../tools/commander/page/statusLine';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { cascaded } from '../../../helpers/cascade';
 import {
@@ -291,6 +292,26 @@ suite('Style', () => {
     });
     looks(
       withClass(rendered(<LocationsPopupShown query="" />), 'search-box-input'),
+      { 'font-family': undefined, 'font-size': undefined },
+    );
+  });
+
+  test('writes a status line in the monospace font of the code under which it sits, and in the font of the app under what is written in it', () => {
+    looks(
+      withClass(
+        rendered(<StatusLine font="monospace">Col 12</StatusLine>),
+        'column-status',
+      ),
+      {
+        'font-family': 'var(--monospace-font-family)',
+        'font-size': 'var(--monospace-font-size)',
+      },
+    );
+    looks(
+      withClass(
+        rendered(<StatusLine font="proportional">Reading…</StatusLine>),
+        'column-status',
+      ),
       { 'font-family': undefined, 'font-size': undefined },
     );
   });

@@ -383,15 +383,6 @@ suite('Shortcuts popup', () => {
     assert.strictEqual(steppedEntry('commander', -1), 'everywhere');
   });
 
-  test('says under the shortcuts how to reach the other tools and groups from the keyboard', () => {
-    const html = shortcutsMarkup(<ShortcutsPopup />, 'git');
-    assert.strictEqual(tagsWith(html, 'shortcuts-note').length, 1);
-    assert.match(
-      html,
-      />Ctrl\+Tab and Ctrl\+Shift\+Tab show the other tools, and ↑ and ↓ go through the groups\.</,
-    );
-  });
-
   test('takes its title from the menu entry that opens it, so both name it alike', () => {
     const html = shortcutsMarkup(<ShortcutsPopup />, 'git');
     assert.match(html, /aria-label="Shortcuts"/);

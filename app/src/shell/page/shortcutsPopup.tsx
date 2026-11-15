@@ -364,7 +364,6 @@ export function ShortcutsPopup() {
             {entry && <ShortcutsList entry={entry} />}
           </div>
         </div>
-        <div className="shortcuts-note">{strings.shortcuts.note}</div>
       </div>
     </div>
   );

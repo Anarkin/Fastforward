@@ -1,17 +1,21 @@
 export function StatusLine({
   children,
+  font,
   end,
   tone,
   announced = false,
 }: {
   children: React.ReactNode;
+  font: 'monospace' | 'proportional';
   end?: React.ReactNode;
   tone?: 'warning' | 'error';
   announced?: boolean;
 }) {
   return (
     <footer
-      className={tone === undefined ? 'column-status' : `column-status ${tone}`}
+      className={['column-status', font === 'monospace' && 'monospace', tone]
+        .filter(Boolean)
+        .join(' ')}
     >
       <span
         className="column-status-text"

@@ -11,7 +11,7 @@ export function ReadingStatus({ side }: { side: Side }) {
     state.readingArchives.get(readingKey(state.view.tab, side)),
   );
   return reading === undefined ? null : (
-    <StatusLine announced>
+    <StatusLine font="proportional" announced>
       <Words>
         {sentencesOf(
           [
@@ -34,7 +34,7 @@ export function DuplicatesStatus({ side }: { side: Side }) {
   }
   if (duplicates.reading) {
     return (
-      <StatusLine announced>
+      <StatusLine font="proportional" announced>
         {[
           strings.commander.findingDuplicates,
           strings.commander.escapeStops,
@@ -43,7 +43,9 @@ export function DuplicatesStatus({ side }: { side: Side }) {
     );
   }
   return duplicates.groups.length === 0 ? (
-    <StatusLine announced>{strings.commander.noDuplicates}</StatusLine>
+    <StatusLine font="proportional" announced>
+      {strings.commander.noDuplicates}
+    </StatusLine>
   ) : null;
 }
 
@@ -52,7 +54,7 @@ export function CountingStatus({ side }: { side: Side }) {
     (state) => state.view.panes[side]?.counting ?? 0,
   );
   return counting === 0 ? null : (
-    <StatusLine announced>
+    <StatusLine font="proportional" announced>
       {[
         strings.commander.countingSizes(counting),
         strings.commander.escapeStops,
@@ -84,6 +86,7 @@ export function FlatStatus({
       : strings.commander.flatRead(files, folders);
   return (
     <StatusLine
+      font="proportional"
       announced
       tone={stopped ? 'warning' : undefined}
       end={under === undefined || under === '' ? undefined : under.slice(0, -1)}

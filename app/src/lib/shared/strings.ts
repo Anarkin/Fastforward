@@ -389,7 +389,6 @@ export const strings = {
   shortcuts: {
     title: 'Shortcuts',
     joiner: '+',
-    note: 'Ctrl+Tab and Ctrl+Shift+Tab show the other tools, and ↑ and ↓ go through the groups.',
     filter: 'Filter by words or keys',
     noMatches: 'No shortcut here has all of these words.',
     tools: 'Tools',

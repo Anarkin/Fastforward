@@ -102,7 +102,9 @@ export function Editor() {
       {edited?.error === undefined ? (
         <>
           <div className="column-body editor-body" ref={host} />
-          {status !== undefined && <StatusLine>{status}</StatusLine>}
+          {status !== undefined && (
+            <StatusLine font="monospace">{status}</StatusLine>
+          )}
         </>
       ) : (
         <div className="column-body editor-body">

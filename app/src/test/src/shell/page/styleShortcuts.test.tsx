@@ -366,14 +366,6 @@ suite('Style', () => {
     }
   });
 
-  test('sets the note about moving through the shortcuts by keys apart under them, muted, kept in view as they scroll', () => {
-    looks(withClass(popupOf(<ShortcutsPopupShown />), 'shortcuts-note'), {
-      flex: 'none',
-      color: 'var(--muted-foreground)',
-      'border-top': '1px solid var(--color-border)',
-    });
-  });
-
   test('draws the shortcuts over the notices and menus, but under the overlay scrollbars', () => {
     const backdrop = popupOf(<ShortcutsPopupShown />).parent;
     assert.ok(backdrop);

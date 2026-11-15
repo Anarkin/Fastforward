@@ -150,13 +150,6 @@
   color: var(--muted-foreground);
 }
 
-.shortcuts-note {
-  flex: none;
-  padding: 8px 16px;
-  color: var(--muted-foreground);
-  border-top: 1px solid var(--color-border);
-}
-
 .shortcut-combo {
   display: inline-flex;
   box-sizing: border-box;

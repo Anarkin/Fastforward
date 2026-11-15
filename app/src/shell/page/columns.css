@@ -175,6 +175,11 @@ body.resizing {
   border-radius: 0 0 var(--card-radius) var(--card-radius);
 }
 
+.column-status.monospace {
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+}
+
 .column-status-text,
 .column-status-end {
   min-width: 0;
