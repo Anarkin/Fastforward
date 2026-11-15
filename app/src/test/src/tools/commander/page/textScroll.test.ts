@@ -6,7 +6,6 @@ import {
   textThumb,
   topWithin,
 } from '../../../../../tools/commander/page/textScroll';
-import { thumbBox } from '../../../../../tools/commander/page/scrollThumbs';
 
 const rows = (count: number, length = 10) =>
   Array.from({ length: count }, (_, index) => ({
@@ -73,17 +72,6 @@ suite('Commander viewer', () => {
   test('takes the bytes a row has for the rows first read, to size the thumb by', () => {
     assert.strictEqual(bytesPerRow(rows(30, 10)), 10);
     assert.strictEqual(bytesPerRow([]), undefined);
-  });
-
-  test('draws the thumb never smaller than it can be grabbed, in the room the track leaves it', () => {
-    assert.deepStrictEqual(thumbBox({ start: 0.5, length: 0.1 }, 500), {
-      top: 225,
-      height: 50,
-    });
-    assert.deepStrictEqual(thumbBox({ start: 1, length: 1e-9 }, 500), {
-      top: 476,
-      height: 24,
-    });
   });
 
   test('scrolls within the rows loaded at once, asking for more near their edges, and only past them waits for the file', () => {

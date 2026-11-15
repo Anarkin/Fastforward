@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   grabbedAt,
   matchTicks,
+  thumbBox,
 } from '../../../../../tools/commander/page/scrollThumbs';
 
 suite('Scroll thumbs', () => {
@@ -31,5 +32,16 @@ suite('Scroll thumbs', () => {
       ],
     );
     assert.deepStrictEqual(matchTicks([{ start: 0, end: 8 }], 0, 1 / 64), []);
+  });
+
+  test('draws the thumb never smaller than it can be grabbed, in the room the track leaves it', () => {
+    assert.deepStrictEqual(thumbBox({ start: 0.5, length: 0.1 }, 500), {
+      top: 225,
+      height: 50,
+    });
+    assert.deepStrictEqual(thumbBox({ start: 1, length: 1e-9 }, 500), {
+      top: 476,
+      height: 24,
+    });
   });
 });

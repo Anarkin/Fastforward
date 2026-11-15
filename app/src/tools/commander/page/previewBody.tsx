@@ -9,7 +9,7 @@ import { imageType, vectorType } from '../../../lib/shared/images';
 import { MarkdownPane } from './markdownView';
 import { PdfPane } from './pdfView';
 import { viewerKeymap } from './viewerKeymap';
-import { useWholeText } from './textScroll';
+import { useWholeText } from './wholeText';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { imageScrolled, previewUrl, type Preview } from './previews';
 import type { PdfControls } from './pdfPreview';

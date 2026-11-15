@@ -54,8 +54,8 @@ import {
   bytesPerRow,
   lastScreenStart,
   textThumb,
-  useWholeText,
 } from './textScroll';
+import { useWholeText } from './wholeText';
 
 const rowsAboveMatch = 2;
 
