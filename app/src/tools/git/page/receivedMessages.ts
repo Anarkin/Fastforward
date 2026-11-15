@@ -3,7 +3,8 @@ import type { GitToWebview, GitToWebviewOf } from '../shared/protocol';
 import type { CloneTarget } from './cloneForm';
 import { widthsToLoad } from './columns';
 import { textKey } from './sideTexts';
-import { reduceTabView, type TabAction } from './tabView';
+import { reduceTabView, type TabAction, type TabView } from './tabView';
+import { withEntry } from './tabKeyed';
 
 import {
   noComparedTexts,
@@ -38,6 +39,27 @@ function isTarget(
   return target?.folder === folder && target.name === name;
 }
 
+function withFoundCommits(state: GitState, left: TabView): GitState {
+  const { root, commitSearch, hashLookup } = left;
+  if (state.tab === left) {
+    return state;
+  }
+  const foundCommits = withEntry(
+    state.foundCommits,
+    root,
+    commitSearch === undefined && hashLookup === undefined
+      ? undefined
+      : { commitSearch, hashLookup },
+  );
+  const back =
+    state.tab.root === undefined ? undefined : foundCommits.get(state.tab.root);
+  return {
+    ...state,
+    foundCommits,
+    ...(back !== undefined && { tab: { ...state.tab, ...back } }),
+  };
+}
+
 export function checking(clone: Cloning, target: CloneTarget): Cloning {
   return isTarget(clone.target, target) ? clone : { ...clone, target };
 }
@@ -51,7 +73,10 @@ function cloned(clone: Cloning, view: CloneView | undefined): Cloning {
 export function received(state: GitState, message: GitToWebview): GitState {
   switch (message.type) {
     case 'worktrees':
-      return { ...withTab(state, message), worktrees: message.worktrees };
+      return {
+        ...withFoundCommits(withTab(state, message), state.tab),
+        worktrees: message.worktrees,
+      };
     case 'bookmarks':
       return { ...state, bookmarks: message.bookmarks };
     case 'layout':

@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -10,7 +11,7 @@ import { searchedBookmarks } from './bookmarks';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { noRefs } from './commitListItems';
-import { searchOf } from './gitSelectors';
+import { locationsOf, searchOf } from './gitSelectors';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
 import { searchFilter } from '../../../lib/shared/filter';
@@ -30,7 +31,7 @@ import { browseRows, Rows } from './locationRows';
 import { Highlighted, currentActive, nextActive } from './locationHighlight';
 import { RefTree } from './locationTree';
 import {
-  contextMenus,
+  keptOpenBy,
   focusLeaves,
   locationRows,
   popupKeyAction,
@@ -52,6 +53,8 @@ import {
   StashesSection,
 } from './locationGroups';
 
+const noneToggled: ReadonlySet<string> = new Set();
+
 export function LocationsPopup({
   anchor,
 }: {
@@ -71,6 +74,9 @@ export function LocationsPopup({
     jump: onJump,
     search: openSearch,
     searchFor: onQuery,
+    keepLocations,
+    locationsScrollOf,
+    keepLocationsScroll,
   } = useGitActions();
   const onClose = useCallback(() => openSearch(false), [openSearch]);
   const popup = useRef<HTMLDivElement>(null);
@@ -139,8 +145,13 @@ export function LocationsPopup({
     () => resultItems(commits, search, stashSearch, pinnedItems),
     [commits, search, stashSearch, pinnedItems],
   );
-  const [highlight, setHighlight] = useState<Highlighted>();
-  const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
+  const kept = useGit(locationsOf);
+  const highlight = kept?.highlight;
+  const toggled = kept?.toggled ?? noneToggled;
+  const setHighlight = (next: Highlighted) =>
+    keepLocations({ highlight: next, toggled });
+  const setToggled = (next: ReadonlySet<string>) =>
+    keepLocations({ highlight, toggled: next });
   const browsed = hasQuery
     ? []
     : browseRows(pinnedItems, index, toggled, drawnStashes.stashes);
@@ -168,13 +179,43 @@ export function LocationsPopup({
     },
   };
   const activeId = activeKey === undefined ? undefined : rows.id(activeKey);
+  const [scrolledTo] = useState(locationsScrollOf);
+  const restoring = useRef(scrolledTo);
+  const revealed = useRef(scrolledTo === undefined ? undefined : activeId);
+  useLayoutEffect(() => {
+    const element = groups.current;
+    const top = restoring.current;
+    if (
+      element === null ||
+      top === undefined ||
+      element.scrollHeight - element.clientHeight < top
+    ) {
+      return;
+    }
+    restoring.current = undefined;
+    element.scrollTop = top;
+  });
   useEffect(() => {
-    if (activeId !== undefined) {
+    const element = groups.current;
+    if (element === null) {
+      return undefined;
+    }
+    const scrolled = () => {
+      if (restoring.current === undefined) {
+        keepLocationsScroll(element.scrollTop);
+      }
+    };
+    element.addEventListener('scroll', scrolled, { passive: true });
+    return () => element.removeEventListener('scroll', scrolled);
+  }, [keepLocationsScroll]);
+  useEffect(() => {
+    if (activeId !== undefined && activeId !== revealed.current) {
       popup.current?.ownerDocument
         .getElementById(activeId)
         ?.scrollIntoView({ block: 'nearest' });
     }
-  }, [activeId]);
+    revealed.current = undefined;
+  }, [activeId, popup, revealed]);
 
   const jump = (target: string | undefined) => {
     if (target) {
@@ -183,7 +224,7 @@ export function LocationsPopup({
     }
   };
 
-  useDismiss(anchor, onClose, { ignore: contextMenus });
+  useDismiss(anchor, onClose, { ignore: keptOpenBy });
 
   const keys = hasQuery ? items.map(itemKey) : browsed.map((row) => row.key);
   const stepTo = (at: number) => {
@@ -244,6 +285,7 @@ export function LocationsPopup({
           }}
           placeholder={strings.search.placeholder}
           input={input}
+          focusName="commit-search"
           combobox={{
             autoFocus: true,
             role: 'combobox',

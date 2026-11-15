@@ -22,15 +22,31 @@ import type { LoadedText } from './sideTexts';
 import type { ViewedSource } from './viewedSource';
 import type { MenuTarget } from './menus';
 import type { RefGroup } from './refIndex';
-import { noFolders, type Folders, type ViewFolders } from './viewFolders';
+import type { FilterFolds, Folders, ViewFolders } from './viewFolders';
+import type { MovedCursor } from './filesCursor';
 import { emptyTabView, type TabAction, type TabView } from './tabView';
 import type { WrapColumns } from './rowMeasures';
 import type { TextMeasures } from './textLayout';
 import type { CodeSnap } from './codeSnap';
+import type { DiffPlace } from './diffPlace';
+import type { Highlighted } from './locationHighlight';
+import type { KeptFocus } from '../../../lib/page/keptFocus';
 
 export interface ComparedTexts {
   readonly tab: string | undefined;
   readonly texts: ReadonlyMap<string, LoadedText>;
+}
+
+export interface KeptFind {
+  readonly finding: boolean;
+  readonly search: Search;
+}
+
+type FoundCommits = Pick<TabView, 'commitSearch' | 'hashLookup'>;
+
+export interface KeptLocations {
+  readonly highlight: Highlighted | undefined;
+  readonly toggled: ReadonlySet<string>;
 }
 
 export interface Cloning {
@@ -61,14 +77,22 @@ export interface GitSource {
   readonly initAsked: GitToWebviewOf<'confirmInit'> | undefined;
   readonly clone: Cloning;
   readonly lastFetch: LastFetch;
-  readonly commitsShown: boolean;
-  readonly searching: boolean;
-  readonly pickedLanguage:
-    { readonly key: string; readonly language: string } | undefined;
-  readonly activeColumn: ColumnName;
+  readonly commitsHidden: ReadonlySet<string>;
+  readonly searching: ReadonlySet<string>;
+  readonly pickedLanguages: ReadonlyMap<
+    string,
+    { readonly key: string; readonly language: string }
+  >;
+  readonly activeColumns: ReadonlyMap<string, ColumnName>;
   readonly fileFilters: ReadonlyMap<string, Search>;
   readonly searches: ReadonlyMap<string, Search>;
-  readonly folders: ViewFolders;
+  readonly diffFinds: ReadonlyMap<string, KeptFind>;
+  readonly foundCommits: ReadonlyMap<string, FoundCommits>;
+  readonly folders: ReadonlyMap<string, ViewFolders>;
+  readonly fileFolds: ReadonlyMap<string, FilterFolds>;
+  readonly fileCursors: ReadonlyMap<string, MovedCursor>;
+  readonly pinnedMessages: ReadonlyMap<string, string>;
+  readonly locations: ReadonlyMap<string, KeptLocations>;
   readonly diffText: TextMeasures | undefined;
   readonly diffSnap: CodeSnap;
   readonly wrapColumns: WrapColumns | undefined;
@@ -153,6 +177,14 @@ export interface GitActions {
   readonly searchFor: (query: string, options?: SearchOptions) => void;
   readonly toggleFolder: (kind: keyof Folders, folder: string) => void;
   readonly replaceFolders: (folders: Folders) => void;
+  readonly foldFilesWhileFiltering: (folds: FilterFolds) => void;
+  readonly moveFilesCursor: (cursor: MovedCursor | undefined) => void;
+  readonly pinMessage: (hash: string | undefined) => void;
+  readonly keepLocations: (kept: KeptLocations) => void;
+  readonly locationsScrollOf: () => number | undefined;
+  readonly keepLocationsScroll: (offset: number) => void;
+  readonly filesScrollOf: (view: string) => number | undefined;
+  readonly keepFilesScroll: (view: string, offset: number) => void;
   readonly toggleCommits: () => void;
   readonly search: (open: boolean) => void;
   readonly checkout: (target: CheckoutTarget) => void;
@@ -163,6 +195,19 @@ export interface GitActions {
     language: string | undefined,
   ) => void;
   readonly seeLanguageKey: (key: string | undefined) => void;
+  readonly keepDiffFind: (scope: string, find: KeptFind) => void;
+  readonly keptFocusOf: (scope: string) => KeptFocus | undefined;
+  readonly keepFocus: (scope: string, focus: KeptFocus | undefined) => void;
+  readonly closeDiffFind: (scope: string) => void;
+  readonly diffPlaceOf: (
+    scope: string,
+    selection: string,
+  ) => DiffPlace | undefined;
+  readonly keepDiffPlace: (
+    scope: string,
+    selection: string,
+    change: Partial<DiffPlace>,
+  ) => void;
   readonly measureDiffText: (measures: TextMeasures) => void;
   readonly snapDiffCode: (snap: (last: CodeSnap) => CodeSnap) => void;
   readonly keepWrapColumns: (columns: WrapColumns) => void;
@@ -194,13 +239,19 @@ export const gitDefaults: GitSource = {
   initAsked: undefined,
   clone: { view: undefined, form: 0, folder: undefined, target: undefined },
   lastFetch: {},
-  commitsShown: true,
-  searching: false,
-  pickedLanguage: undefined,
-  activeColumn: 'commits',
+  commitsHidden: new Set(),
+  searching: new Set(),
+  pickedLanguages: new Map(),
+  activeColumns: new Map(),
   fileFilters: new Map(),
   searches: new Map(),
-  folders: noFolders,
+  diffFinds: new Map(),
+  foundCommits: new Map(),
+  folders: new Map(),
+  fileFolds: new Map(),
+  fileCursors: new Map(),
+  pinnedMessages: new Map(),
+  locations: new Map(),
   diffText: undefined,
   diffSnap: { inline: 0, left: 0, right: 0 },
   wrapColumns: undefined,

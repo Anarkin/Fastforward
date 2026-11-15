@@ -40,6 +40,8 @@ import { fileRowKey } from './treeLayout';
 import { VirtualRows } from '../../../lib/page/virtualRows';
 import { useShell } from '../../../shell/page/store';
 import {
+  activeColumnOf,
+  fileCursorOf,
   fileFilterOf,
   folderViewOf,
   openingOf,
@@ -55,7 +57,7 @@ import {
   foldersOn,
 } from './filesSides';
 import { filesTitle, noChangesText, headerTitle } from './filesTitles';
-import { type MovedCursor, filesCursor, filesReveal } from './filesCursor';
+import { filesCursor, filesReveal } from './filesCursor';
 import { FileFilterField } from './filesFilterField';
 import { noneClosed, useFilesFilter } from './filesFilter';
 import { ColumnStatus } from './columnStatusLine';
@@ -80,13 +82,16 @@ export function Files() {
   const area = useGit((state) => state.tab.area);
   const view = useGit((state) => folderViewOf(state.tab));
   const filter = useGit(fileFilterOf);
-  const filtersHere = useGit((state) => state.activeColumn === 'files');
+  const filtersHere = useGit((state) => activeColumnOf(state) === 'files');
   const {
     changeShowAllFiles: onShowAll,
     toggleFolder,
     replaceFolders: onReplaceFolders,
     selectFile: onSelect,
     filterFiles: onFilter,
+    moveFilesCursor,
+    filesScrollOf,
+    keepFilesScroll,
   } = useGitActions();
   const [filterAsked, setFilterAsked] = useState(0);
   useBinding(
@@ -177,7 +182,8 @@ export function Files() {
       : listed.indexOf(headerKey) !== -1
         ? headerKey
         : undefined;
-  const [moved, setMoved] = useState<MovedCursor>();
+  const moved = useGit(fileCursorOf);
+  const setMoved = moveFilesCursor;
   const cursor = filesCursor(
     moved,
     selectedKey,
@@ -299,10 +305,13 @@ export function Files() {
     cursor,
     filter: words,
   });
+  const treeAwaited = showAll && tree === undefined;
+  const keptScroll = treeAwaited ? undefined : filesScrollOf(view);
   const nothingFound =
     filtering && !loading && !rows.some((row) => row.kind === 'tree');
   return (
     <Column
+      focusName="files"
       title={title}
       index={1}
       start={start}
@@ -337,6 +346,17 @@ export function Files() {
     >
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
+        key={
+          treeAwaited
+            ? `${view}
+tree`
+            : view
+        }
+        initialOffset={keptScroll ?? 0}
+        onScrolled={
+          treeAwaited ? undefined : (offset) => keepFilesScroll(view, offset)
+        }
+        revealAtStart={keptScroll === undefined}
         scrolling={scrolling}
         wholeRows
         rows={listed}

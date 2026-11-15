@@ -4,10 +4,11 @@ import { useGit, useGitActions } from './store';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { gitKeymap } from './keymap';
 import { locationsPopupKey } from './navHistory';
+import { activeColumnOf, searchingOf } from './gitSelectors';
 
 export function AddressBar() {
-  const open = useGit((state) => state.searching);
-  const findsHere = useGit((state) => state.activeColumn === 'commits');
+  const open = useGit(searchingOf);
+  const findsHere = useGit((state) => activeColumnOf(state) === 'commits');
   const { search } = useGitActions();
   const [asked, setAsked] = useState(0);
   useBinding(

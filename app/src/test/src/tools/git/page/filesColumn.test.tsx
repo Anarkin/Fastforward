@@ -94,11 +94,16 @@ function filesState(shown: Shown) {
             ],
           ],
     ),
-    folders: {
-      view: folderViewOf(tab),
-      open: shown.openedFolders ?? new Set<string>(),
-      closed: shown.closedFolders ?? new Set<string>(),
-    },
+    folders: new Map([
+      [
+        '/repo',
+        {
+          view: folderViewOf(tab),
+          open: shown.openedFolders ?? new Set<string>(),
+          closed: shown.closedFolders ?? new Set<string>(),
+        },
+      ],
+    ]),
   };
 }
 

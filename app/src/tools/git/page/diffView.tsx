@@ -51,7 +51,9 @@ import { showsSideBySide, splitPairs } from './sideBySideRows';
 import { rowMeasures, rowHeight } from './rowMeasures';
 import { RowContent, rowOverscan } from './rowContent';
 import { sideScroll, sideRoom } from './sidewaysScroll';
-import { useScrollAnchor } from './diffScrollAnchor';
+import { rowAnchors, useScrollAnchor } from './diffScrollAnchor';
+import { unplaced, type DiffPlace } from './diffPlace';
+import { useKeptPlace } from './diffKeptPlace';
 import { scrollOnToggle, stuckHeader } from './diffStuckHeader';
 import {
   type LineMarks,
@@ -92,7 +94,11 @@ export function DiffView({
   origin,
   viewOf,
   languageKey,
+  keptPlace,
+  onPlace,
 }: {
+  keptPlace?: DiffPlace;
+  onPlace?: (change: Partial<DiffPlace>) => void;
   error: React.ReactNode;
   files: readonly DiffFile[];
   whole: WholeFile | undefined;
@@ -140,7 +146,7 @@ export function DiffView({
   const view = measured && shownSideways(measured, scrollsSides, sideways);
   const changeColumns = keepWrapColumns;
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
-    new Map(),
+    keptPlace?.toggled ?? unplaced.toggled,
   );
   const skeleton = useSkeleton(loading);
   const rows = useMemo(
@@ -278,6 +284,7 @@ export function DiffView({
     setToggled,
     firstChange,
     lineHeight,
+    placed: keptPlace !== undefined,
   });
   useLargeFileLoads({ files, toggled, diff, onLoad });
 
@@ -446,14 +453,33 @@ export function DiffView({
   const scrollTop = virtualizer.scrollOffset ?? 0;
   const stuck = stuckHeader(rows, items, scrollTop);
 
+  const anchors = useMemo(() => rowAnchors(rows, keys), [rows, keys]);
   useScrollAnchor({
     list,
     virtualizer,
-    rows,
-    keys,
+    shown: anchors,
     split,
     wordWrap,
     columns,
+  });
+  useKeptPlace({
+    list,
+    place: keptPlace,
+    onPlace,
+    settled:
+      !loading &&
+      table !== undefined &&
+      items.length > 0 &&
+      (wordWrap ? columns !== undefined : charWidth > 0) &&
+      !files.some(
+        (file) => file.placeholder && toggled.get(file.path) === true,
+      ),
+    virtualizer,
+    anchors,
+    scrollsSides,
+    sideways,
+    reveal,
+    toggled,
   });
 
   return (

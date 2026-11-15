@@ -26,7 +26,9 @@ export function useFoundJumps({
   setToggled,
   firstChange,
   lineHeight,
+  placed,
 }: {
+  readonly placed: boolean;
   readonly jump: number;
   readonly found: FindMatch | undefined;
   readonly foundKey: string | undefined;
@@ -43,7 +45,7 @@ export function useFoundJumps({
   readonly revealing: string | undefined;
   readonly setRevealing: (revealing: string | undefined) => void;
 } {
-  const jumped = useRef(0);
+  const jumped = useRef(placed ? jump : 0);
   const [revealing, setRevealing] = useState<string>();
   useEffect(() => {
     if (jumped.current === jump) {
@@ -75,7 +77,7 @@ export function useFoundJumps({
     }
   }, [jump, found, foundKey, loading, rows, keys, virtualizer, setToggled]);
 
-  const changeJumped = useRef<number>(undefined);
+  const changeJumped = useRef(placed ? firstChange : undefined);
   useEffect(() => {
     if (
       firstChange === undefined ||

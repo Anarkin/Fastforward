@@ -116,6 +116,34 @@ suite('Clicking in the locations', () => {
       );
     });
   });
+
+  test('stays open when a tab is pressed, as the search of the tab left comes back with it, but closes on a press anywhere else outside it', async () => {
+    let closed = 0;
+    await browsed(
+      { repository: browsedState, onClose: () => closed++ },
+      async ({ document }) => {
+        const view = document.defaultView;
+        assert.ok(view !== null);
+        const strip = document.createElement('div');
+        strip.setAttribute('role', 'tablist');
+        const tab = document.createElement('div');
+        tab.setAttribute('role', 'tab');
+        strip.append(tab);
+        const elsewhere = document.createElement('div');
+        document.body.append(strip, elsewhere);
+        const press = (target: Element) =>
+          act(async () => {
+            target.dispatchEvent(
+              new view.PointerEvent('pointerdown', { bubbles: true }),
+            );
+          });
+        await press(tab);
+        assert.strictEqual(closed, 0);
+        await press(elsewhere);
+        assert.strictEqual(closed, 1);
+      },
+    );
+  });
 });
 
 suite('Browsing the locations by keyboard', () => {

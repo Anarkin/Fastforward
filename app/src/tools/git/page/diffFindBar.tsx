@@ -14,6 +14,7 @@ export function DiffFindBar({
   const { query, options, matches, shown, input, step, closeFind } = find;
   return (
     <SearchBar
+      focusName="diff-find"
       font="monospace"
       query={query}
       options={options}

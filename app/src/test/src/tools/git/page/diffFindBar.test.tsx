@@ -17,9 +17,8 @@ function find(asked: unknown[], matches: number): Find {
     options: { ...plainSearch, regex: true },
     setQuery: (query) => asked.push({ query }),
     setOptions: (options: SearchOptions) => asked.push({ options }),
-    setCurrent: noop,
     jump: 0,
-    setJump: noop,
+    placed: false,
     input: { current: null },
     matches: Array.from({ length: matches }, (_, line) => ({
       file: 0,

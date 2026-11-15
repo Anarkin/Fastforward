@@ -2,7 +2,12 @@ import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { createGitStore } from '../../../../../tools/git/page/store';
-import { detachedHead } from '../../../../../tools/git/page/gitSelectors';
+import {
+  activeColumnOf,
+  commitsShownOf,
+  detachedHead,
+  searchingOf,
+} from '../../../../../tools/git/page/gitSelectors';
 import { noop } from '../../../../helpers/fixtures';
 import {
   at,
@@ -435,15 +440,17 @@ suite('Git store', () => {
 
   test('hides and shows the commit column, and opens and closes the search over it, on the page alone', () => {
     const { posted, store } = posting();
-    assert.strictEqual(store.getState().commitsShown, true);
+    store.getState().receive(shown());
+    posted.length = 0;
+    assert.strictEqual(commitsShownOf(store.getState()), true);
     store.getState().toggleCommits();
-    assert.strictEqual(store.getState().commitsShown, false);
+    assert.strictEqual(commitsShownOf(store.getState()), false);
     store.getState().search(true);
-    assert.strictEqual(store.getState().searching, true);
+    assert.strictEqual(searchingOf(store.getState()), true);
     store.getState().search(false);
     store.getState().toggleCommits();
     assert.deepStrictEqual(
-      [store.getState().commitsShown, store.getState().searching],
+      [commitsShownOf(store.getState()), searchingOf(store.getState())],
       [true, false],
     );
     assert.deepStrictEqual(posted, []);
@@ -607,9 +614,10 @@ suite('Git store', () => {
 
   test('keeps the column that has the keyboard', () => {
     const store = createGitStore(noop);
-    assert.strictEqual(store.getState().activeColumn, 'commits');
+    store.getState().receive(shown());
+    assert.strictEqual(activeColumnOf(store.getState()), 'commits');
     store.getState().activateColumn('files');
-    assert.strictEqual(store.getState().activeColumn, 'files');
+    assert.strictEqual(activeColumnOf(store.getState()), 'files');
   });
 });
 

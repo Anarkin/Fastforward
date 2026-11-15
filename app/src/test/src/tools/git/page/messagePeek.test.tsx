@@ -30,12 +30,18 @@ async function inList(
     readonly select: (row: number) => void;
     readonly type: (key: string, altKey: boolean) => Promise<void>;
   }) => Promise<void>,
+  kept: {
+    readonly pin?: string;
+    readonly pinned?: (hash: string | undefined) => void;
+  } = {},
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>');
   const globals = {
     window: dom.window,
     document: dom.window.document,
     HTMLElement: dom.window.HTMLElement,
+    requestAnimationFrame: (frame: () => void) => setTimeout(frame, 0),
+    cancelAnimationFrame: (frame: number) => clearTimeout(frame),
     IS_REACT_ACT_ENVIRONMENT: true,
   };
   const saved = Object.fromEntries(
@@ -79,6 +85,8 @@ async function inList(
             ))}
           </div>
           <MessagePeek
+            keptPin={kept.pin}
+            onPin={kept.pinned}
             list={list}
             commitAt={(index) => commits[index]}
             indent={8}
@@ -205,7 +213,7 @@ suite('Message peek', () => {
     });
   });
 
-  test('pins the message of a commit clicked with Alt, without selecting it, one at a time, keeping it once Alt is let go while still peeking at others, until Escape, a click on it with Alt, a press outside it, a scroll of the list or the window losing focus', async () => {
+  test('pins the message of a commit clicked with Alt, without selecting it, one at a time, keeping it once Alt is let go while still peeking at others, until Escape, a click on it with Alt, a press outside it or a scroll of the list, but not a press on a tab or the window losing focus, as a tab shown again brings it back', async () => {
     const commits = [
       commitInfo('w', { body: 'Working tree' }),
       commitInfo('a', { subject: 'First', body: 'More of the first' }),
@@ -224,7 +232,9 @@ suite('Message peek', () => {
         scroll,
         blur,
         clicked,
+        list,
       }) => {
+        const document = list.ownerDocument;
         await key('keydown', 'Alt', true);
         await point(2, true);
         await click(2, true);
@@ -281,7 +291,13 @@ suite('Message peek', () => {
         assert.strictEqual(pinned(), null);
         await click(2, true);
         await blur();
-        assert.strictEqual(pinned(), null);
+        const strip = document.createElement('div');
+        strip.setAttribute('role', 'tablist');
+        const tab = document.createElement('div');
+        strip.append(tab);
+        document.body.append(strip);
+        await pressOn(tab);
+        assert.ok(pinned() !== null, 'kept through a tab pressed');
         await click(3, true);
         assert.match(pinned()?.textContent ?? '', /Third/);
         await key('keydown', 'Escape', false);
@@ -291,6 +307,29 @@ suite('Message peek', () => {
         assert.strictEqual(pinned(), null);
         assert.deepStrictEqual(clicked, ['w', 'a']);
       },
+    );
+  });
+
+  test('pins again the message kept pinned for the list once its row is drawn, as a tab shown again brings it back, telling the pins that follow', async () => {
+    const commits = [
+      commitInfo('w', { body: 'Working tree' }),
+      commitInfo('a', { subject: 'First', body: 'More of the first' }),
+      commitInfo('b', { subject: 'Second', body: 'More of the second' }),
+    ];
+    const told: (string | undefined)[] = [];
+    await inList(
+      commits,
+      async ({ pinned, key }) => {
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        });
+        assert.match(pinned()?.textContent ?? '', /More of the second/);
+        assert.deepStrictEqual(told, []);
+        await key('keydown', 'Escape', false);
+        assert.ok(pinned() === null, 'unpinned');
+        assert.deepStrictEqual(told, [undefined]);
+      },
+      { pin: commits[2]?.hash, pinned: (hash) => told.push(hash) },
     );
   });
 

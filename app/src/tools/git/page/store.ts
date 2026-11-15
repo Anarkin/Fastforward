@@ -13,10 +13,12 @@ import { settling } from './outbox';
 import { startAfter } from './startAfter';
 import { textsToLoad } from './textsToLoad';
 import {
+  noFolders,
   openFolders,
   replaceFolders,
   seeView,
   toggleFolder,
+  type ViewFolders,
 } from './viewFolders';
 import { sameTextMeasures } from './textLayout';
 import {
@@ -25,20 +27,51 @@ import {
   type GitSource,
   type GitState,
 } from './gitState';
-import { detachedHead, folderViewOf } from './gitSelectors';
+import {
+  commitsShownOf,
+  detachedHead,
+  diffFindOf,
+  folderViewOf,
+  languageScopeOf,
+} from './gitSelectors';
+import { KeptPlaces } from './keptPlaces';
+import type { KeptFocus } from '../../../lib/page/keptFocus';
+import { diffPlaceKey, unplaced, type DiffPlace } from './diffPlace';
+import { withEntry, withKey } from './tabKeyed';
 import { collected } from './collections';
 import { menuItemsOf } from './commitMenuItems';
 import { checking, received, withTab } from './receivedMessages';
 
+function foldersIn(state: GitState, root: string): ViewFolders {
+  return state.folders.get(root) ?? noFolders;
+}
+
+function withFolders(
+  state: GitState,
+  root: string,
+  folders: ViewFolders,
+): GitState {
+  return folders === foldersIn(state, root)
+    ? state
+    : { ...state, folders: withEntry(state.folders, root, folders) };
+}
+
 function withSeenView(state: GitState): GitState {
-  const folders = seeView(state.folders, folderViewOf(state.tab));
-  return folders === state.folders ? state : { ...state, folders };
+  const { root, hash } = state.tab;
+  return root === undefined || hash === undefined
+    ? state
+    : withFolders(
+        state,
+        root,
+        seeView(foldersIn(state, root), folderViewOf(state.tab)),
+      );
 }
 
 function withSelectedFolders(state: GitState, before: GitState): GitState {
-  const { path, area } = state.tab;
+  const { path, area, root } = state.tab;
   const view = folderViewOf(state.tab);
   if (
+    root === undefined ||
     !state.showAllFiles ||
     path === undefined ||
     (before.showAllFiles &&
@@ -48,12 +81,15 @@ function withSelectedFolders(state: GitState, before: GitState): GitState {
   ) {
     return state;
   }
-  const folders = openFolders(
-    state.folders,
-    view,
-    foldersOf(path).map((folder) => areaKey(area, folder)),
+  return withFolders(
+    state,
+    root,
+    openFolders(
+      foldersIn(state, root),
+      view,
+      foldersOf(path).map((folder) => areaKey(area, folder)),
+    ),
   );
-  return folders === state.folders ? state : { ...state, folders };
 }
 
 const hashLookupDelay = 150;
@@ -69,6 +105,10 @@ export function createGitStore(
   const outbox = settling(postToHost);
   const post = outbox.send;
   let selections = 0;
+  const diffPlaces = new KeptPlaces<DiffPlace>();
+  const focuses = new KeptPlaces<KeptFocus>();
+  const filesScrolls = new KeptPlaces<number>();
+  const locationScrolls = new KeptPlaces<number>();
   return createStore<GitState>()((set, get) => {
     const apply = (next: (state: GitState) => GitState) =>
       set((state) => {
@@ -231,7 +271,10 @@ export function createGitStore(
       stopClone: () => post({ type: 'stopClone' }),
       selectWorktree: (root) => post({ type: 'selectWorktree', root }),
       preloadWorktree: (root) => post({ type: 'preloadWorktree', root }),
-      activateColumn: (column) => set({ activeColumn: column }),
+      activateColumn: (column) =>
+        set((state) => ({
+          activeColumns: withEntry(state.activeColumns, state.tab.root, column),
+        })),
       searchFor: (query, options) =>
         set((state) => {
           const { root } = state.tab;
@@ -263,18 +306,46 @@ export function createGitStore(
           return { fileFilters };
         }),
       toggleFolder: (kind, folder) =>
-        set((state) => ({
-          folders: toggleFolder(
-            state.folders,
-            folderViewOf(state.tab),
-            kind,
-            folder,
-          ),
-        })),
+        set((state) => {
+          const { root } = state.tab;
+          return root === undefined
+            ? state
+            : withFolders(
+                state,
+                root,
+                toggleFolder(
+                  foldersIn(state, root),
+                  folderViewOf(state.tab),
+                  kind,
+                  folder,
+                ),
+              );
+        }),
       replaceFolders: (folders) =>
+        set((state) => {
+          const { root } = state.tab;
+          return root === undefined
+            ? state
+            : withFolders(
+                state,
+                root,
+                replaceFolders(folderViewOf(state.tab), folders),
+              );
+        }),
+      foldFilesWhileFiltering: (folds) =>
         set((state) => ({
-          folders: replaceFolders(folderViewOf(state.tab), folders),
+          fileFolds: withEntry(state.fileFolds, state.tab.root, folds),
         })),
+      moveFilesCursor: (cursor) =>
+        set((state) => ({
+          fileCursors: withEntry(state.fileCursors, state.tab.root, cursor),
+        })),
+      pinMessage: (hash) =>
+        set((state) => ({
+          pinnedMessages: withEntry(state.pinnedMessages, state.tab.root, hash),
+        })),
+      filesScrollOf: (view) => filesScrolls.of(view),
+      keepFilesScroll: (view, offset) => filesScrolls.keep(view, offset),
       pull: () => postTab({ type: 'pull' }),
       push: () => postTab({ type: 'push' }),
       pullBranch: (name) => postTab({ type: 'pullBranch', name }),
@@ -338,8 +409,40 @@ export function createGitStore(
         post({ type: 'closeClone' });
       },
       toggleCommits: () =>
-        set((state) => ({ commitsShown: !state.commitsShown })),
-      search: (open) => set({ searching: open }),
+        set((state) => ({
+          commitsHidden: withKey(
+            state.commitsHidden,
+            state.tab.root,
+            commitsShownOf(state),
+          ),
+        })),
+      search: (open) =>
+        set((state) => {
+          const { root } = state.tab;
+          if (!open && root !== undefined) {
+            locationScrolls.forget(root);
+          }
+          return {
+            searching: withKey(state.searching, root, open),
+            ...(!open && {
+              locations: withEntry(state.locations, root, undefined),
+            }),
+          };
+        }),
+      keepLocations: (kept) =>
+        set((state) => ({
+          locations: withEntry(state.locations, state.tab.root, kept),
+        })),
+      locationsScrollOf: () => {
+        const { root } = get().tab;
+        return root === undefined ? undefined : locationScrolls.of(root);
+      },
+      keepLocationsScroll: (offset) => {
+        const { root } = get().tab;
+        if (root !== undefined) {
+          locationScrolls.keep(root, offset);
+        }
+      },
       checkout: (target) => postTab({ type: 'checkout', target }),
       toggleBookmark: (bookmark) =>
         get().changeBookmarks(toggleBookmark(get().bookmarks, bookmark)),
@@ -356,19 +459,59 @@ export function createGitStore(
           state.toggleBookmark,
         );
       },
+      keepDiffFind: (scope, find) =>
+        set((state) => ({
+          diffFinds: withEntry(state.diffFinds, scope, find),
+        })),
+      closeDiffFind: (scope) =>
+        set((state) => ({
+          diffFinds: withEntry(state.diffFinds, scope, {
+            finding: false,
+            search: {
+              query: '',
+              options: diffFindOf(scope)(state).search.options,
+            },
+          }),
+        })),
+      keptFocusOf: (scope) => focuses.of(scope),
+      keepFocus: (scope, focus) =>
+        focus === undefined
+          ? focuses.forget(scope)
+          : focuses.keep(scope, focus),
+      diffPlaceOf: (scope, selection) =>
+        diffPlaces.of(diffPlaceKey(scope, selection)),
+      keepDiffPlace: (scope, selection, change) => {
+        const key = diffPlaceKey(scope, selection);
+        diffPlaces.keep(key, {
+          ...(diffPlaces.of(key) ?? unplaced),
+          ...change,
+        });
+      },
       seeLanguageKey: (key) =>
-        set((state) =>
-          state.pickedLanguage === undefined || state.pickedLanguage.key === key
+        set((state) => {
+          const scope = key === undefined ? undefined : languageScopeOf(key);
+          const picked =
+            scope === undefined ? undefined : state.pickedLanguages.get(scope);
+          return picked === undefined || picked.key === key
             ? state
-            : { pickedLanguage: undefined },
-        ),
+            : {
+                pickedLanguages: withEntry(
+                  state.pickedLanguages,
+                  scope,
+                  undefined,
+                ),
+              };
+        }),
       pickLanguage: (key, language) =>
-        set({
-          pickedLanguage:
+        set((state) => ({
+          pickedLanguages: withEntry(
+            state.pickedLanguages,
+            key === undefined ? undefined : languageScopeOf(key),
             key === undefined || language === undefined
               ? undefined
               : { key, language },
-        }),
+          ),
+        })),
       measureDiffText: (measures) =>
         set((state) =>
           sameTextMeasures(state.diffText, measures)

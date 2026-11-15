@@ -1,0 +1,87 @@
+import * as assert from 'node:assert';
+import { act, useRef, useState } from 'react';
+import { suite, test } from 'vitest';
+import { focusBack } from '../../../../../lib/page/keptFocus';
+import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
+import { useTabFocus } from '../../../../../tools/git/page/tabFocus';
+import { noop } from '../../../../helpers/fixtures';
+import { mounted } from '../../../../helpers/mounted';
+
+function Tab({ fallen }: { readonly fallen: string[] }) {
+  const [scope, setScope] = useState<string | undefined>('one');
+  const container = useRef<HTMLDivElement>(null);
+  useTabFocus({
+    container,
+    scope,
+    focusPart: (kept) =>
+      container.current !== null && focusBack(container.current, kept),
+    fallback: () => fallen.push(scope ?? ''),
+  });
+  return (
+    <div ref={container}>
+      <div data-focus-name="list" tabIndex={0} />
+      {scope === 'one' && (
+        <input
+          data-focus-name="find"
+          defaultValue="adam"
+          ref={(input) => {
+            if (input !== null && fallen.length > 0) {
+              input.focus();
+              input.setSelectionRange(4, 4);
+            }
+          }}
+        />
+      )}
+      {['one', 'two', undefined].map((shown) => (
+        <button
+          key={shown ?? ''}
+          data-shows={shown ?? ''}
+          onClick={() => setScope(shown)}
+        />
+      ))}
+    </div>
+  );
+}
+
+suite('The focus of a git tab', () => {
+  test('gives the part that had the keyboard in a tab, with its caret, back to it once shown again, through another tab shown, though a box drawn anew takes the keyboard with another caret first, and steals the keyboard for none it had not', async () => {
+    const fallen: string[] = [];
+    await mounted(
+      <GitStore value={createGitStore(noop)}>
+        <Tab fallen={fallen} />
+      </GitStore>,
+      (main, window) => {
+        const show = (scope: string | undefined) =>
+          main
+            .querySelector<HTMLElement>(`[data-shows="${scope ?? ''}"]`)
+            ?.click();
+        const find = () => main.querySelector('input');
+        const list = main.querySelector<HTMLElement>('[data-focus-name]');
+        act(() => find()?.focus());
+        act(() => {
+          find()?.setSelectionRange(1, 3, 'backward');
+          find()?.dispatchEvent(
+            new window.KeyboardEvent('keyup', { bubbles: true }),
+          );
+        });
+        act(() => find()?.blur());
+        fallen.push('drawn');
+        act(() => show('two'));
+        assert.strictEqual(window.document.activeElement, window.document.body);
+        act(() => list?.focus());
+        act(() => list?.blur());
+        act(() => show(undefined));
+        act(() => show('one'));
+        const back = find();
+        assert.strictEqual(window.document.activeElement, back);
+        assert.deepStrictEqual(
+          [back?.selectionStart, back?.selectionEnd, back?.selectionDirection],
+          [1, 3, 'backward'],
+        );
+        act(() => show('two'));
+        assert.strictEqual(window.document.activeElement, list);
+      },
+    );
+    assert.deepStrictEqual(fallen, ['drawn']);
+  });
+});

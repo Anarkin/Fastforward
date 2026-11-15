@@ -62,6 +62,7 @@ export function VirtualRows({
   treeItemOf,
   wholeRows = false,
   initialOffset = 0,
+  revealAtStart = true,
   onScrolled,
   wheelStep,
   notchRows,
@@ -79,6 +80,7 @@ export function VirtualRows({
   treeItemOf?: (index: number) => TreeItem;
   wholeRows?: boolean;
   initialOffset?: number;
+  revealAtStart?: boolean;
   onScrolled?: (offset: number) => void;
   wheelStep?: () => number;
   notchRows?: number;
@@ -194,7 +196,7 @@ export function VirtualRows({
     }
   });
   const reveal = { key: scrollTarget(selectedKey, rows), rows: revealWith };
-  const revealed = useRef<Reveal>(undefined);
+  const revealed = useRef<Reveal>(revealAtStart ? undefined : reveal);
   useEffect(() => {
     if (revealAgain(revealed.current, reveal)) {
       scrollToSelected();

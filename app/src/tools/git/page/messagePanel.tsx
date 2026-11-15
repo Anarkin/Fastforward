@@ -3,6 +3,17 @@ import { clicked, shortcutOf } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import { listenForDismiss } from '../../../lib/page/dismiss';
+import { overlayScrollbarClass } from '../../../lib/page/overlayScrollbars';
+
+const pinKeptBy = `.${overlayScrollbarClass}, [role="tablist"]`;
+
+function isNode(target: EventTarget | null): target is Node {
+  return target !== null && 'nodeType' in target;
+}
+
+function isElement(target: EventTarget | null): target is Element {
+  return isNode(target) && 'closest' in target;
+}
 import { CloseIcon, PinIcon } from '../../../lib/page/icons';
 import { KeyCombo } from '../../../lib/page/keyCombo';
 import { type PeekAnchor, liftOf, hiddenLines } from './messageHolding';
@@ -22,10 +33,28 @@ export function MessagePanel({
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const [lifted, setLifted] = useState(0);
-  useEffect(
-    () => (onUnpin ? listenForDismiss(window, panel, onUnpin) : undefined),
-    [onUnpin],
-  );
+  useEffect(() => {
+    if (!onUnpin) {
+      return undefined;
+    }
+    const pressed = ({ target }: Event) => {
+      if (
+        isNode(target) &&
+        !panel.current?.contains(target) &&
+        !(isElement(target) && target.closest(pinKeptBy) !== null)
+      ) {
+        onUnpin();
+      }
+    };
+    window.addEventListener('pointerdown', pressed, { capture: true });
+    const dismissed = listenForDismiss(window, panel, onUnpin, {
+      byKeyOnly: true,
+    });
+    return () => {
+      window.removeEventListener('pointerdown', pressed, { capture: true });
+      dismissed();
+    };
+  }, [onUnpin]);
   useEffect(() => {
     const element = panel.current;
     if (!takesKeyboard || !element) {

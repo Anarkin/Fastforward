@@ -2,6 +2,8 @@ import type { Filter } from '../../../lib/shared/filter';
 import type { Search } from '../../../lib/shared/searchOptions';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
+import { fileFoldsOf } from './gitSelectors';
+import { useGit, useGitActions } from './store';
 
 export const noneClosed: ReadonlySet<string> = new Set();
 
@@ -26,13 +28,14 @@ export function useFilesFilter({
   readonly openFilter: () => void;
 } {
   const searched = JSON.stringify(words);
-  const [folds, setFolds] = useState({ view, searched, closed: noneClosed });
+  const folds = useGit(fileFoldsOf);
+  const { foldFilesWhileFiltering } = useGitActions();
   const closedWhileFiltering =
-    folds.view === view && folds.searched === searched
+    folds?.view === view && folds.searched === searched
       ? folds.closed
       : noneClosed;
   const foldWhileFiltering = (closed: ReadonlySet<string>) =>
-    setFolds({ view, searched, closed });
+    foldFilesWhileFiltering({ view, searched, closed });
   const input = useRef<HTMLInputElement>(null);
   const [clicked, setClicked] = useState(0);
   useEffect(() => {

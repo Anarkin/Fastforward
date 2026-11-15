@@ -41,7 +41,7 @@ suite('Navigation bar', () => {
       const main = dom.window.document.querySelector('main');
       assert.ok(main);
       const store = gitStore({ tab: { root: '/repo' } });
-      store.setState({ searching: true });
+      store.setState({ searching: new Set(['/repo']) });
       const field = () =>
         dom.window.document.querySelector<HTMLInputElement>(
           '.locations-popup .search-box-input',

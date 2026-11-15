@@ -30,8 +30,11 @@ import { useDiffFind } from './diffFind';
 import { DiffFindBar } from './diffFindBar';
 import { ColumnStatus } from './columnStatusLine';
 import { linesCounted } from './columnStatus';
+import { useGitActions } from './store';
+import type { DiffPlace } from './diffPlace';
 
 export function Diff({
+  scope,
   selection,
   path,
   loading,
@@ -57,6 +60,7 @@ export function Diff({
   viewAsked = 0,
   languageKey,
 }: {
+  scope: string;
   selection: string;
   path: string | undefined;
   loading: boolean;
@@ -137,16 +141,26 @@ export function Diff({
       viewShown();
     }
   }, [viewAsked]);
-  const find = useDiffFind({ diffFiles, fileContent, findAsked });
-  const { setCurrent, jump, setJump, matches, shown, finding, openFind } = find;
+  const find = useDiffFind({
+    scope,
+    selection,
+    diffFiles,
+    fileContent,
+    findAsked,
+  });
+  const { jump, matches, shown, finding, openFind } = find;
+  const { diffPlaceOf, keepDiffPlace } = useGitActions();
+  const keepPlace = useCallback(
+    (change: Partial<DiffPlace>) => keepDiffPlace(scope, selection, change),
+    [keepDiffPlace, scope, selection],
+  );
   const [firstChange, setFirstChange] = useState(0);
   const [entireSeen, setEntireSeen] = useState(entire);
   const [awaitedDiff, setAwaitedDiff] = useState<number>();
-  const [seen, setSeen] = useState(selection);
-  if (seen !== selection) {
-    setSeen(selection);
-    setCurrent(0);
-    setJump((count) => count + 1);
+  const shownAt = JSON.stringify([scope, selection]);
+  const [seen, setSeen] = useState(shownAt);
+  if (seen !== shownAt) {
+    setSeen(shownAt);
     setEntireSeen(entire);
     setAwaitedDiff(undefined);
   } else if (entireSeen !== entire) {
@@ -159,6 +173,7 @@ export function Diff({
 
   return (
     <Column
+      focusName="diff"
       start={options}
       search={<SearchButton title={strings.find.title} onClick={openFind} />}
       status={
@@ -177,7 +192,9 @@ export function Diff({
     >
       <DiffView
         viewOf={viewOf}
-        key={selection}
+        key={shownAt}
+        keptPlace={diffPlaceOf(scope, selection)}
+        onPlace={keepPlace}
         error={errorRow}
         files={diffFiles}
         whole={fileContent}

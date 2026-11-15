@@ -11,7 +11,10 @@ import type { DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { Diff } from './diffColumn';
 import { DiffLanguage, DiffOptions } from './diffOptions';
-import { compareLanguageKey } from './gitSelectors';
+import { compareLanguageKey, tabScopeOf } from './gitSelectors';
+import { useTabFocus } from './tabFocus';
+import { focusBack } from '../../../lib/page/keptFocus';
+import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { useGit, useGitActions } from './store';
 
 const noFiles: readonly FileChange[] = [];
@@ -39,24 +42,45 @@ export function CompareView({ comparing }: { comparing: string }) {
   const texts = useGit((state) =>
     state.compareTexts.tab === comparing ? state.compareTexts.texts : noTexts,
   );
-  const { loadCompareTexts } = useGitActions();
+  const { loadCompareTexts, keptFocusOf } = useGitActions();
   const view = useRef<HTMLDivElement>(null);
+  const scope = tabScopeOf(comparing, undefined);
+  useTabFocus({
+    container: view,
+    scope,
+    focusPart: (kept) => {
+      const container = view.current;
+      if (container === null) {
+        return false;
+      }
+      if (kept.name !== 'diff') {
+        return focusBack(container, kept);
+      }
+      const list = container.querySelector<HTMLElement>(
+        `[${columnFocusAttribute}]`,
+      );
+      list?.focus({ preventScroll: true });
+      return list !== null && list === document.activeElement;
+    },
+    fallback: () => undefined,
+  });
   const tab = compare?.tab;
   const origin = useMemo(
     () => (tab === undefined ? undefined : { root: tab, hash: '' }),
     [tab],
   );
   useEffect(() => {
-    if (tab !== undefined) {
+    if (tab !== undefined && keptFocusOf(scope) === undefined) {
       view.current
-        ?.querySelector<HTMLElement>('[data-column-focus]')
+        ?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`)
         ?.focus({ preventScroll: true });
     }
-  }, [tab]);
+  }, [tab, scope, keptFocusOf]);
   return (
     <div className="repository compare-view" ref={view}>
       <div className="columns compare-columns">
         <Diff
+          scope={scope}
           selection={`${compare?.old}\n${compare?.new}`}
           path={compare?.name}
           note={noteOf(compare)}

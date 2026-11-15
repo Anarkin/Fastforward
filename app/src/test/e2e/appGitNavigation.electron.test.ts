@@ -186,7 +186,7 @@ suite('App', () => {
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
   });
 
-  test('keeps the search popup open in the worktree switched to with it open, its field keeping the keyboard', async () => {
+  test('keeps the search popup open in the worktree it was left open in, its field keeping the keyboard and the caret once that worktree is shown again, while the worktree switched to shows its own search', async () => {
     const worktree = path.join(folder, 'other');
     const worktrees = page.locator('.worktrees .tab');
     const popup = page.locator('.locations-popup');
@@ -207,14 +207,34 @@ suite('App', () => {
     await waitForCount(worktrees, 2, 'worktrees');
     await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(field, 'the search field');
+    await page.keyboard.type('second');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    const typed = () =>
+      field.evaluate((element) =>
+        element instanceof HTMLInputElement
+          ? [element.value, element.selectionStart, element.selectionEnd]
+          : [],
+      );
+    assert.deepStrictEqual(await typed(), ['second', 4, 4]);
     await page.keyboard.press('Control+PageDown');
     await page
       .locator('.commit .badge.branch.checked-out', { hasText: 'other' })
       .waitFor();
-    assert.strictEqual(await popup.count(), 1);
-    assert.ok(
-      await field.evaluate((element) => element === document.activeElement),
+    await popup.waitFor({ state: 'detached' });
+    await page.keyboard.press('Control+PageUp');
+    await page.locator('.worktrees .tab.active', { hasText: 'main' }).waitFor();
+    await waitForFocus(field, 'the search field');
+    await waitFor(
+      async () => JSON.stringify(await typed()) === '["second",4,4]',
+      'the caret where it was left',
     );
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+    await page.keyboard.press('Control+PageDown');
+    await page
+      .locator('.worktrees .tab.active', { hasText: 'other' })
+      .waitFor();
   });
 
   test('keeps the place a worktree was scrolled to when another is shown right after the scroll, rather than its top', async () => {

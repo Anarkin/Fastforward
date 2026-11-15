@@ -227,7 +227,7 @@ export function LocationsPopupShown({
           commitSearch,
         },
         bookmarks,
-        searching: true,
+        searching: new Set(['/repo']),
         searches: new Map([['/repo', { query, options: plainSearch }]]),
       })}
     >

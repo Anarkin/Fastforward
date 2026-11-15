@@ -1,5 +1,5 @@
 import type { Virtualizer } from '@tanstack/react-virtual';
-import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 import type { DiffRow } from './diffRows';
 import type { WrapColumns } from './rowMeasures';
 
@@ -72,22 +72,19 @@ export function anchoredScrollTop(
 export function useScrollAnchor({
   list,
   virtualizer,
-  rows,
-  keys,
+  shown,
   split,
   wordWrap,
   columns,
 }: {
   readonly list: RefObject<HTMLDivElement | null>;
   readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
-  readonly rows: readonly DiffRow[];
-  readonly keys: readonly (readonly string[])[];
+  readonly shown: readonly (readonly string[])[];
   readonly split: boolean;
   readonly wordWrap: boolean;
   readonly columns: WrapColumns | undefined;
 }): void {
   const layoutKey = `${split}:${wordWrap ? `${columns?.left}:${columns?.right}` : ''}`;
-  const shown = useMemo(() => rowAnchors(rows, keys), [rows, keys]);
   const anchor = useRef<{ key: string; at: ScrollAnchor | undefined }>(
     undefined,
   );

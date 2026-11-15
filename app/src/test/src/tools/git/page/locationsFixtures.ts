@@ -9,6 +9,7 @@ import type {
 import { withStores } from '../../../../helpers/componentFixtures';
 import { createGitStore } from '../../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
+import { searchingOf } from '../../../../../tools/git/page/gitSelectors';
 
 export const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
@@ -55,12 +56,12 @@ export function locationsStore({
         commitSearch,
       },
       bookmarks,
-      searching: true,
+      searching: new Set(['/repo']),
       searches: new Map([['/repo', { query, options: plainSearch }]]),
     },
   );
   store.subscribe((state, before) => {
-    if (before.searching && !state.searching) {
+    if (searchingOf(before) && !searchingOf(state)) {
       onClose?.();
     }
   });

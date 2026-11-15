@@ -1,10 +1,12 @@
 import { dragColumn } from './columns';
 import { useGit, useGitActions } from './store';
+import { focusNameAttribute } from '../../../lib/page/keptFocus';
+import { commitsShownOf, searchingOf } from './gitSelectors';
 
 function Resizer({ index }: { index: number }) {
   const widths = useGit((state) => state.columnWidths);
   const commitsHidden = useGit(
-    (state) => !state.commitsShown && !state.searching,
+    (state) => !commitsShownOf(state) && !searchingOf(state),
   );
   const { resizeColumns, resetColumn } = useGitActions();
   return (
@@ -27,8 +29,10 @@ export function Column({
   searching,
   overlay,
   status,
+  focusName,
   children,
 }: {
+  focusName?: string;
   title?: React.ReactNode;
   index?: number;
   start?: React.ReactNode;
@@ -40,7 +44,7 @@ export function Column({
   children: React.ReactNode;
 }) {
   return (
-    <section className="column">
+    <section className="column" {...{ [focusNameAttribute]: focusName }}>
       {searching ? (
         <header className="column-title searching">{searching}</header>
       ) : (

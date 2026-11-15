@@ -85,27 +85,88 @@ function selectedPeek(list: HTMLElement): Peek | undefined {
     : undefined;
 }
 
+function rowOf(
+  list: HTMLElement,
+  commitAt: (index: number) => CommitInfo | undefined,
+  hash: string,
+): Element | undefined {
+  return [...list.querySelectorAll<HTMLElement>('.virtual-row')].find(
+    (row) => commitAt(Number(row.dataset.index))?.hash === hash,
+  );
+}
+
+const keptPinWaits = 2000;
+
 export function MessagePeek({
   list,
   commitAt,
   indent,
   renderRow,
+  keptPin,
+  onPin,
 }: {
   list: RefObject<HTMLElement | null>;
   commitAt: (index: number) => CommitInfo | undefined;
   indent: number;
   renderRow: (commit: CommitInfo, corner: React.ReactNode) => React.ReactNode;
+  keptPin?: string;
+  onPin?: (hash: string | undefined) => void;
 }) {
   const holding = useRef<Holding>('none');
   const pointer = useRef<{ readonly x: number; readonly y: number }>(undefined);
   const byKeys = useRef(false);
   const [peek, setPeek] = useState<Peek>();
-  const [pinned, setPinned] = useState<{
+  const [pinned, setShownPin] = useState<{
     readonly commit: CommitInfo;
     readonly anchor: PeekAnchor;
     readonly byKey?: boolean;
   }>();
-  const unpin = useCallback(() => setPinned(undefined), []);
+  const restoring = useRef(keptPin);
+  const setPinned = useCallback(
+    (next: typeof pinned) => {
+      restoring.current = undefined;
+      setShownPin(next);
+      onPin?.(next?.commit.hash);
+    },
+    [onPin],
+  );
+  const unpin = useCallback(() => {
+    if (restoring.current === undefined) {
+      setPinned(undefined);
+    }
+  }, [setPinned]);
+  useLayoutEffect(() => {
+    const hash = restoring.current;
+    const element = list.current;
+    const row =
+      hash === undefined || !element
+        ? undefined
+        : rowOf(element, commitAt, hash);
+    if (!element || !row) {
+      return undefined;
+    }
+    const frame = requestAnimationFrame(() => {
+      const at = peekOf(element, row);
+      const commit = at && commitAt(at.index);
+      if (at && commit && restoring.current === commit.hash) {
+        restoring.current = undefined;
+        setShownPin({ commit, anchor: at.anchor });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  });
+  useEffect(() => {
+    if (restoring.current === undefined) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      if (restoring.current !== undefined) {
+        restoring.current = undefined;
+        onPin?.(undefined);
+      }
+    }, keptPinWaits);
+    return () => clearTimeout(timer);
+  }, [onPin]);
 
   useBinding(gitKeymap.pin, () => {
     const element = list.current;
@@ -122,8 +183,8 @@ export function MessagePeek({
     if (!at || !commit) {
       return;
     }
-    setPinned((shown) =>
-      shown?.commit.hash === commit.hash
+    setPinned(
+      pinned?.commit.hash === commit.hash
         ? undefined
         : { commit, anchor: at.anchor, byKey: true },
     );

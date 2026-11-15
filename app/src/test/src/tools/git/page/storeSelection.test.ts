@@ -11,27 +11,31 @@ import { noop } from '../../../../helpers/fixtures';
 import { at, shown, posting } from './storeFixtures';
 import { commitInfo } from '../../../../helpers/gitValues';
 
+const one = JSON.stringify(['/repo', at, 'one.py']);
+
+const two = JSON.stringify(['/repo', at, 'two.py']);
+
 suite('Git store', () => {
   test('keeps the language picked for the file it was picked for, and none for another or once picked again', () => {
     const store = createGitStore(noop);
-    store.getState().pickLanguage('one', 'python');
-    assert.strictEqual(pickedFor('one')(store.getState()), 'python');
-    assert.strictEqual(pickedFor('two')(store.getState()), undefined);
+    store.getState().pickLanguage(one, 'python');
+    assert.strictEqual(pickedFor(one)(store.getState()), 'python');
+    assert.strictEqual(pickedFor(two)(store.getState()), undefined);
     assert.strictEqual(pickedFor(undefined)(store.getState()), undefined);
-    store.getState().pickLanguage('one', undefined);
-    assert.strictEqual(pickedFor('one')(store.getState()), undefined);
+    store.getState().pickLanguage(one, undefined);
+    assert.strictEqual(pickedFor(one)(store.getState()), undefined);
     store.getState().pickLanguage(undefined, 'python');
-    assert.strictEqual(store.getState().pickedLanguage, undefined);
+    assert.strictEqual(store.getState().pickedLanguages.size, 0);
   });
 
   test('forgets the language picked for a file once another is shown, so it is chosen anew on coming back, but keeps it while the same file is shown again', () => {
     const store = createGitStore(noop);
-    store.getState().pickLanguage('one', 'python');
-    store.getState().seeLanguageKey('one');
-    assert.strictEqual(pickedFor('one')(store.getState()), 'python');
-    store.getState().seeLanguageKey('two');
-    store.getState().seeLanguageKey('one');
-    assert.strictEqual(pickedFor('one')(store.getState()), undefined);
+    store.getState().pickLanguage(one, 'python');
+    store.getState().seeLanguageKey(one);
+    assert.strictEqual(pickedFor(one)(store.getState()), 'python');
+    store.getState().seeLanguageKey(two);
+    store.getState().seeLanguageKey(one);
+    assert.strictEqual(pickedFor(one)(store.getState()), undefined);
   });
 
   test('selects a commit at once and asks the main process for it, holding the ask while a key repeats, unselecting the one selected again, and comparing another with it', () => {

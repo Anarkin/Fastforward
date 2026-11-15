@@ -7,6 +7,12 @@ export interface ViewFolders extends Folders {
   readonly view: string | undefined;
 }
 
+export interface FilterFolds {
+  readonly view: string;
+  readonly searched: string;
+  readonly closed: ReadonlySet<string>;
+}
+
 export const noFolders: ViewFolders = {
   view: undefined,
   open: new Set(),

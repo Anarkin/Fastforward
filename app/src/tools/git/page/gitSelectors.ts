@@ -1,9 +1,23 @@
 import { shownSelection, showsDiff } from './columnsShown';
 import { noSearch, type Search } from '../../../lib/shared/searchOptions';
-import { shownFolders, type Folders } from './viewFolders';
+import {
+  noFolders,
+  shownFolders,
+  type FilterFolds,
+  type Folders,
+} from './viewFolders';
+import type { MovedCursor } from './filesCursor';
 import { treeOf, type TabView } from './tabView';
 import { listsNothing } from './filesSides';
-import type { GitData, GitSource, GitState } from './gitState';
+import type {
+  GitData,
+  GitSource,
+  GitState,
+  KeptFind,
+  KeptLocations,
+} from './gitState';
+import { plainSearch } from '../../../lib/shared/searchOptions';
+import type { ColumnName } from './activeColumn';
 
 export function languageKeyOf(
   comparing: string | undefined,
@@ -42,7 +56,47 @@ export function folderViewOf({ root, hash }: TabView): string {
 }
 
 export function shownFoldersOf(state: GitSource): Folders {
-  return shownFolders(state.folders, folderViewOf(state.tab));
+  const { root } = state.tab;
+  return shownFolders(
+    (root === undefined ? undefined : state.folders.get(root)) ?? noFolders,
+    folderViewOf(state.tab),
+  );
+}
+
+export function locationsOf({
+  tab,
+  locations,
+}: GitSource): KeptLocations | undefined {
+  return tab.root === undefined ? undefined : locations.get(tab.root);
+}
+
+export function fileFoldsOf({
+  tab,
+  fileFolds,
+}: GitSource): FilterFolds | undefined {
+  return tab.root === undefined ? undefined : fileFolds.get(tab.root);
+}
+
+export function fileCursorOf({
+  tab,
+  fileCursors,
+}: GitSource): MovedCursor | undefined {
+  return tab.root === undefined ? undefined : fileCursors.get(tab.root);
+}
+
+export function commitsShownOf({ tab, commitsHidden }: GitSource): boolean {
+  return tab.root === undefined || !commitsHidden.has(tab.root);
+}
+
+export function searchingOf({ tab, searching }: GitSource): boolean {
+  return tab.root !== undefined && searching.has(tab.root);
+}
+
+export function activeColumnOf({ tab, activeColumns }: GitSource): ColumnName {
+  return (
+    (tab.root === undefined ? undefined : activeColumns.get(tab.root)) ??
+    'commits'
+  );
 }
 
 export function searchOf({ tab, searches }: GitSource): Search {
@@ -58,6 +112,25 @@ export function fileFilterOf({
   return tab.root === undefined ? undefined : fileFilters.get(tab.root);
 }
 
+export function tabScopeOf(
+  comparing: string | undefined,
+  root: string | undefined,
+): string {
+  return comparing !== undefined
+    ? compareLanguageKey(comparing)
+    : JSON.stringify(['worktree', root ?? '']);
+}
+
+const closedFind: KeptFind = {
+  finding: false,
+  search: { query: '', options: plainSearch },
+};
+
+export const diffFindOf =
+  (scope: string) =>
+  ({ diffFinds }: GitSource): KeptFind =>
+    diffFinds.get(scope) ?? closedFind;
+
 export function compareLanguageKey(comparing: string): string {
   return JSON.stringify(['compare', comparing]);
 }
@@ -70,12 +143,20 @@ function fileLanguageKey(
   return JSON.stringify([root, hash, path]);
 }
 
+export function languageScopeOf(key: string): string {
+  const [scope]: unknown[] = JSON.parse(key);
+  return scope === 'compare' || typeof scope !== 'string' ? key : scope;
+}
+
 export const pickedFor =
   (key: string | undefined) =>
-  ({ pickedLanguage }: GitSource): string | undefined =>
-    pickedLanguage !== undefined && pickedLanguage.key === key
-      ? pickedLanguage.language
+  ({ pickedLanguages }: GitSource): string | undefined => {
+    const picked =
+      key === undefined ? undefined : pickedLanguages.get(languageScopeOf(key));
+    return picked !== undefined && picked.key === key
+      ? picked.language
       : undefined;
+  };
 
 export function detachedHead({ tab }: GitData): string | undefined {
   const { repository } = tab;

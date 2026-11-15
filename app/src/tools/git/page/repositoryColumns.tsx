@@ -9,11 +9,15 @@ import { DiffLanguage, DiffOptions } from './diffOptions';
 import { Commits } from './commitList';
 import { Files } from './filesColumn';
 import {
+  activeColumnOf,
+  commitsShownOf,
+  tabScopeOf,
   diffShownOf,
   fileFilterOf,
   languageKeyOf,
   layoutSelectionOf,
   openingOf,
+  searchingOf,
 } from './gitSelectors';
 import { useGit, useGitActions } from './store';
 import { usePrefetchedColors } from './syntax';
@@ -32,6 +36,8 @@ import {
 } from './activeColumn';
 import { NavButtons } from './navBar';
 import { AddressBar } from './addressBar';
+import { focusBack, type KeptFocus } from '../../../lib/page/keptFocus';
+import { useTabFocus } from './tabFocus';
 
 const CommitColumn = memo(Commits);
 
@@ -56,7 +62,7 @@ const RepositoryDiff = memo(function RepositoryDiff() {
   const filter = useGit(fileFilterOf);
   const languageKey = useGit((state) => languageKeyOf(undefined, state.tab));
   const entire = useGit((state) => state.showEntireFile);
-  const findsHere = useGit((state) => state.activeColumn === 'diff');
+  const findsHere = useGit((state) => activeColumnOf(state) === 'diff');
   const prefetchedPatch = useGit((state) => state.tab.prefetched?.patch);
   const prefetchedTexts = useGit((state) => state.tab.prefetched?.texts);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
@@ -84,6 +90,7 @@ const RepositoryDiff = memo(function RepositoryDiff() {
   );
   return (
     <Diff
+      scope={tabScopeOf(undefined, root)}
       selection={diffSelection(root, hash, path, area)}
       path={path}
       loading={loading}
@@ -118,11 +125,15 @@ const commitSearch = <AddressBar />;
 
 export function RepositoryColumns() {
   const columnWidths = useGit((state) => state.columnWidths);
-  const commitsShown = useGit((state) => state.commitsShown);
-  const searching = useGit((state) => state.searching);
-  const activeColumn = useGit((state) => state.activeColumn);
+  const commitsShown = useGit(commitsShownOf);
+  const searching = useGit(searchingOf);
+  const activeColumn = useGit(activeColumnOf);
   const layoutSelection = useGit(layoutSelectionOf);
   const diffShown = useGit(diffShownOf);
+  const root = useGit((state) => state.tab.root);
+  useGit((state) => state.tab.diffs);
+  useGit((state) => state.tab.path);
+  useGit((state) => state.tab.history !== undefined);
   const { activateColumn } = useGitActions();
   const commitColumnShown = commitsShown || searching;
   const columnsContainer = useRef<HTMLDivElement>(null);
@@ -153,13 +164,36 @@ export function RepositoryColumns() {
     document.addEventListener('focusout', onFocusOut);
     return () => document.removeEventListener('focusout', onFocusOut);
   }, [columnsContainer, focusColumn, activeColumn]);
-  const activeShown = shownColumns(
-    commitColumnShown,
-    layoutSelection,
-    diffShown,
-  ).includes(activeColumn);
+  const shown = shownColumns(commitColumnShown, layoutSelection, diffShown);
+  const activeShown = shown.includes(activeColumn);
+  const focusPart = (kept: KeptFocus) => {
+    const container = columnsContainer.current;
+    const column = columnOrder.find((name) => name === kept.name);
+    if (column === undefined) {
+      return container !== null && focusBack(container, kept);
+    }
+    const target = shown.includes(column) ? focusColumn(column) : undefined;
+    return target !== undefined && target === document.activeElement;
+  };
+  const pendingFocus = useTabFocus({
+    container: columnsContainer,
+    scope: root === undefined ? undefined : tabScopeOf(undefined, root),
+    focusPart,
+    fallback: () => {
+      const [first] = shown;
+      if (
+        keyboardAmongColumns(
+          document.activeElement,
+          columnsContainer.current,
+          document.body,
+        )
+      ) {
+        focusColumn(activeShown ? activeColumn : first);
+      }
+    },
+  });
   useEffect(() => {
-    if (!activeShown) {
+    if (!activeShown && pendingFocus.current === undefined) {
       const [first] = shownColumns(
         commitColumnShown,
         layoutSelection,
@@ -176,7 +210,14 @@ export function RepositoryColumns() {
         focusColumn(first);
       }
     }
-  }, [activeShown, commitColumnShown, layoutSelection, diffShown, focusColumn]);
+  }, [
+    activeShown,
+    commitColumnShown,
+    layoutSelection,
+    diffShown,
+    focusColumn,
+    pendingFocus,
+  ]);
   return (
     <div
       className={columnsClass(commitColumnShown, layoutSelection, diffShown)}

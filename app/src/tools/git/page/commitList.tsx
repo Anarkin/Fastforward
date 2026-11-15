@@ -15,7 +15,12 @@ import { Column } from './column';
 import { useOpenMenu } from './menus';
 import { graphWidth, rowLanes, withoutWorkingTreeLink } from './graphLanes';
 import { GraphCell } from './graph';
-import { layoutSelectionOf, openingOf } from './gitSelectors';
+import {
+  layoutSelectionOf,
+  openingOf,
+  searchingOf,
+  tabScopeOf,
+} from './gitSelectors';
 import { useGit, useGitActions } from './store';
 import { listError } from './columnsShown';
 import { MenuButton } from '../../../lib/page/menu';
@@ -101,7 +106,7 @@ export function Commits({
   const selected = useGit((state) => state.tab.hash);
   const collapseMerges = useGit((state) => state.collapseMerges);
   const headCommit = useGit((state) => state.tab.repository?.headCommit);
-  const searching = useGit((state) => state.searching);
+  const searching = useGit(searchingOf);
   const error = useGit((state) =>
     listError(state.tab.error, layoutSelectionOf(state)),
   );
@@ -113,7 +118,12 @@ export function Commits({
     scrolled: reportScrolled,
     loadCommits: onLoad,
     search: openSearch,
+    keptFocusOf,
+    pinMessage,
   } = useGitActions();
+  const keptPin = useGit((state) =>
+    worktree === undefined ? undefined : state.pinnedMessages.get(worktree),
+  );
   const onScrolled = useCallback(
     (top: string, offset: number, report: number) =>
       reportScrolled(worktree, top, offset, report),
@@ -258,7 +268,10 @@ export function Commits({
     }
   });
   const takeKeyboard = useEffectEvent(() => {
-    if (!searching) {
+    if (
+      !searching &&
+      keptFocusOf(tabScopeOf(undefined, worktree)) === undefined
+    ) {
       list.current?.focus({ preventScroll: true });
     }
   });
@@ -382,6 +395,7 @@ export function Commits({
 
   return (
     <Column
+      focusName="commits"
       overlay={search}
       status={
         <ColumnStatus loading={opening} font="proportional">
@@ -475,6 +489,8 @@ export function Commits({
       </div>
       <MessagePeek
         key={worktree}
+        keptPin={keptPin}
+        onPin={pinMessage}
         list={list}
         commitAt={(index) =>
           index < offset ? undefined : history?.at(index - offset)

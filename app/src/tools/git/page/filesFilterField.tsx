@@ -35,6 +35,7 @@ export function FileFilterField({
       found={found}
       placeholder={strings.find.placeholder}
       input={input}
+      focusName="files-filter"
       onQuery={onQuery}
       onOptions={onOptions}
       onStep={onStep}

@@ -1,7 +1,9 @@
 import { keymap } from '../../../lib/page/keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 
-export const contextMenus = '.context-menu';
+const contextMenus = '.context-menu';
+
+export const keptOpenBy = `${contextMenus}, [role="tablist"]`;
 
 export const locationRows =
   '.locations-heading, .locations-empty, .tree-group, .row:not(.sticky), .commit';
