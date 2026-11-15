@@ -20,7 +20,7 @@ export type Fetched =
   | { readonly failed: false; readonly changed: boolean }
   | { readonly failed: true; readonly error: unknown };
 
-export async function fetchAll(
+async function fetchAll(
   { gitPath, root }: RepositoryAt,
   interactive = true,
   stop?: AbortSignal,
@@ -35,11 +35,7 @@ export async function fetchAll(
   }
 }
 
-export function reportFetched(
-  log: Log,
-  notify: Notify,
-  fetched: Fetched,
-): boolean {
+function reportFetched(log: Log, notify: Notify, fetched: Fetched): boolean {
   if (fetched.failed) {
     reportFailure(
       log,

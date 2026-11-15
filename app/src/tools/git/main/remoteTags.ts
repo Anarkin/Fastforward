@@ -21,7 +21,7 @@ export function remoteTagRefs(
   );
 }
 
-export function sameTags(
+function sameTags(
   a: ReadonlyMap<string, string> | undefined,
   b: ReadonlyMap<string, string>,
 ): boolean {
