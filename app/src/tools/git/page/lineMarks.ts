@@ -1,12 +1,9 @@
-import type { DiffFile, DiffLine } from './diff';
-import type { LoadedText } from './sideTexts';
+import type { DiffLine } from './diff';
 import { lineKey, type FindMatch, type FindRange } from './find';
-import { matchMarks, minimapMarks, type MinimapMark } from './minimapMarks';
 import type { SyntaxRange } from './syntax';
 import type { WordRanges } from './wordDiff';
 import { type TextWidths } from '../../../lib/page/textWidths';
-import type { WholeFile, DiffRow } from './diffRows';
-import { beyondAscii, minimapRows } from './rowMeasures';
+import { beyondAscii } from './rowMeasures';
 
 export interface LineMarks {
   readonly syntax: ReadonlyMap<string, readonly SyntaxRange[]>;
@@ -82,53 +79,4 @@ export function findRangesByLine(
     }
   }
   return byLine;
-}
-
-interface SyntaxInput {
-  readonly files: readonly DiffFile[];
-  readonly whole: WholeFile | undefined;
-  readonly texts: ReadonlyMap<string, LoadedText>;
-  readonly open: ReadonlySet<number>;
-}
-
-export const noSyntaxInput: SyntaxInput = {
-  files: [],
-  whole: undefined,
-  texts: new Map(),
-  open: new Set(),
-};
-
-interface MarksInput {
-  readonly rows: readonly DiffRow[];
-  readonly keys: readonly (readonly string[])[];
-  readonly matched: ReadonlyMap<string, unknown>;
-  readonly changeMarks: boolean;
-  readonly measurements: readonly { readonly size: number }[];
-}
-
-export const noMarksInput: MarksInput = {
-  rows: [],
-  keys: [],
-  matched: new Map(),
-  changeMarks: false,
-  measurements: [],
-};
-
-export function diffMinimapMarks(
-  rows: readonly DiffRow[],
-  keys: readonly (readonly string[])[],
-  matchedLines: ReadonlyMap<string, unknown>,
-  changeMarks: boolean,
-  measured?: (index: number) => number | undefined,
-): MinimapMark[] {
-  const heights = minimapRows(rows, measured);
-  const matched = new Set(
-    keys.flatMap((row, index) =>
-      row.some((key) => matchedLines.has(key)) ? [index] : [],
-    ),
-  );
-  return [
-    ...(changeMarks ? minimapMarks(heights) : []),
-    ...matchMarks(heights, matched),
-  ];
 }

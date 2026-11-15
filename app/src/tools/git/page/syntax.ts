@@ -515,6 +515,20 @@ export function startingRanges(
     : carriedRanges(last, files, whole, open);
 }
 
+interface SyntaxInput {
+  readonly files: readonly DiffFile[];
+  readonly whole: WholeFile | undefined;
+  readonly texts: ReadonlyMap<string, LoadedText>;
+  readonly open: ReadonlySet<number>;
+}
+
+export const noSyntaxInput: SyntaxInput = {
+  files: [],
+  whole: undefined,
+  texts: new Map(),
+  open: new Set(),
+};
+
 export function useSyntax(
   files: readonly DiffFile[],
   whole: WholeFile | undefined,

@@ -19,10 +19,6 @@ import {
 } from '../../../../../lib/shared/textMatches';
 import { keyPress } from '../../../../helpers/fixtures';
 import { diffRows, lineKeys } from '../../../../../tools/git/page/diffRows';
-import {
-  diffMinimapMarks,
-  findRangesByLine,
-} from '../../../../../tools/git/page/lineMarks';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',
@@ -284,55 +280,6 @@ suite('Find in diff', () => {
       [],
       ['0:3'],
       [],
-    ]);
-  });
-
-  test('groups the matches by their line, in order, even a great many on one line', () => {
-    const files = parsePatch(patch);
-    const byLine = findRangesByLine(findMatches(files, undefined, 'find'));
-    assert.deepStrictEqual(
-      [...byLine].map(([key, ranges]) => [
-        key,
-        ranges.map((range) => [range.start, range.end]),
-      ]),
-      [
-        ['0:0', [[6, 10]]],
-        ['0:1', [[6, 10]]],
-        ['0:2', [[6, 10]]],
-        [
-          '0:3',
-          [
-            [0, 4],
-            [5, 9],
-          ],
-        ],
-        ['1:1', [[0, 4]]],
-      ],
-    );
-    const many = Array.from({ length: 50_000 }, (_, start) => ({
-      file: 0,
-      line: 0,
-      start,
-      end: start + 1,
-    }));
-    assert.strictEqual(findRangesByLine(many).get('0:0')?.length, 50_000);
-  });
-
-  test('marks the changes on the minimap only when asked, as for a file shown entire, but the matches always', () => {
-    const rows = diffRows(parsePatch(patch), new Map(), undefined);
-    const keys = lineKeys(rows);
-    const matched = new Map([['0:3', []]]);
-    const kinds = (changeMarks: boolean) =>
-      diffMinimapMarks(rows, keys, matched, changeMarks).map(
-        (mark) => mark.kind,
-      );
-    assert.deepStrictEqual(kinds(false), ['match']);
-    assert.deepStrictEqual(kinds(true), [
-      'removed',
-      'added',
-      'removed',
-      'added',
-      'match',
     ]);
   });
 

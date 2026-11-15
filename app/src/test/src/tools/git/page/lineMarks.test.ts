@@ -3,8 +3,30 @@ import { suite, test } from 'vitest';
 import type { LineWords } from '../../../../../tools/git/page/wordDiff';
 import {
   codeProps,
+  findRangesByLine,
   wholeChangeClass,
 } from '../../../../../tools/git/page/lineMarks';
+import { parsePatch } from '../../../../../tools/git/page/diff';
+import { findMatches } from '../../../../../tools/git/page/find';
+
+const patch = [
+  'diff --git a/a.ts b/a.ts',
+  '--- a/a.ts',
+  '+++ b/a.ts',
+  '@@ -1,2 +1,2 @@',
+  ' const Find = 1;',
+  '-const find = 2;',
+  '+const finder = 2;',
+  '@@ -10,1 +10,1 @@',
+  ' find(find);',
+  'diff --git a/b.ts b/b.ts',
+  '--- a/b.ts',
+  '+++ b/b.ts',
+  '@@ -1,1 +1,1 @@',
+  '-nothing',
+  '+FIND',
+  '',
+].join('\n');
 
 suite('Drawing code', () => {
   test('gives a line the same inputs to draw it from while its colors, changed words and matches stay, so it is not drawn again', () => {
@@ -63,5 +85,38 @@ suite('Drawing code', () => {
     assert.strictEqual(wholeChangeClass(words, '0:1'), 'whole-change');
     assert.strictEqual(wholeChangeClass(words, '0:2'), '');
     assert.strictEqual(wholeChangeClass(words, undefined), '');
+  });
+});
+
+suite('Find in diff', () => {
+  test('groups the matches by their line, in order, even a great many on one line', () => {
+    const files = parsePatch(patch);
+    const byLine = findRangesByLine(findMatches(files, undefined, 'find'));
+    assert.deepStrictEqual(
+      [...byLine].map(([key, ranges]) => [
+        key,
+        ranges.map((range) => [range.start, range.end]),
+      ]),
+      [
+        ['0:0', [[6, 10]]],
+        ['0:1', [[6, 10]]],
+        ['0:2', [[6, 10]]],
+        [
+          '0:3',
+          [
+            [0, 4],
+            [5, 9],
+          ],
+        ],
+        ['1:1', [[0, 4]]],
+      ],
+    );
+    const many = Array.from({ length: 50_000 }, (_, start) => ({
+      file: 0,
+      line: 0,
+      start,
+      end: start + 1,
+    }));
+    assert.strictEqual(findRangesByLine(many).get('0:0')?.length, 50_000);
   });
 });

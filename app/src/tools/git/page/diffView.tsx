@@ -21,7 +21,7 @@ import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { shortcutsEntryAttribute } from '../../../lib/page/shortcutsEntry';
-import { useSyntax, useTextsToLoad } from './syntax';
+import { useSyntax, useTextsToLoad, noSyntaxInput } from './syntax';
 import { wordRanges, type LineWords } from './wordDiff';
 import { gitKeymap } from './keymap';
 import { listMoveOf } from '../../../lib/page/listMoves';
@@ -79,10 +79,8 @@ import {
   changedWords,
   codeProps,
   findRangesByLine,
-  noSyntaxInput,
-  noMarksInput,
-  diffMinimapMarks,
 } from './lineMarks';
+import { noMarksInput, diffMinimapMarks } from './diffMinimap';
 import { Code } from './codeMarks';
 import {
   unmeasured,
