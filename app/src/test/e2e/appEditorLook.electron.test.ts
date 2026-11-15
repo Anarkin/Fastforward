@@ -5,17 +5,17 @@ import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import {
+  opened,
   page,
   content,
-  backToCommander,
-  edit,
-  toStart,
-  sharedEditorApp,
-  opened,
   activeTab,
   editedText,
   select,
+  backToCommander,
+  edit,
+  toStart,
   toEnd,
+  sharedEditorApp,
 } from './editorAppFixtures';
 
 interface TextPlace {

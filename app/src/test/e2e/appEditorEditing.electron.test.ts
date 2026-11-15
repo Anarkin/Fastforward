@@ -5,16 +5,16 @@ import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import {
   opened,
+  profile,
   page,
   right,
   content,
+  activeTab,
   editedText,
   backToCommander,
   edit,
   toStart,
   sharedEditorApp,
-  profile,
-  activeTab,
 } from './editorAppFixtures';
 
 const status = () => page.locator('.editor .column-status-text').textContent();

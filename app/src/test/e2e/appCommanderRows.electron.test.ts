@@ -1,22 +1,22 @@
 import * as assert from 'node:assert';
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { waitForFocus } from './waits';
 import {
+  folder,
   opened,
   page,
-  right,
-  rowNames,
-  sharedCommanderApp,
-  folder,
   colorOf,
   hiding,
+  right,
+  rowNames,
   icons,
+  sharedCommanderApp,
 } from './commanderAppFixtures';
-import { execFileSync } from 'node:child_process';
-import type { Locator } from 'playwright-core';
 
 const rowOf = (name: string) =>
   right().locator('.commander-row', { hasText: name });

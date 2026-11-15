@@ -16,8 +16,8 @@ import {
   findCount,
   viewerThumb,
   select,
-  sharedCommanderApp,
   right,
+  sharedCommanderApp,
 } from './commanderAppFixtures';
 
 const count = () => page.locator('.viewer .find-field-count').textContent();

@@ -9,11 +9,11 @@ import {
   right,
   content,
   activeTab,
+  editedText,
   backToCommander,
   edit,
-  sharedEditorApp,
-  editedText,
   toEnd,
+  sharedEditorApp,
 } from './editorAppFixtures';
 
 const trigger = (label: RegExp) =>

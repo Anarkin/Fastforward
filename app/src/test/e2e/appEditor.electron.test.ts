@@ -12,15 +12,15 @@ import {
   content,
   activeTab,
   editedText,
+  select,
   backToCommander,
   edit,
   toStart,
   toEnd,
-  notices,
-  sharedEditorApp,
-  select,
   activeIndex,
   topLine,
+  notices,
+  sharedEditorApp,
 } from './editorAppFixtures';
 
 const tabCount = () => page.locator('.tabs [role="tab"]').count();

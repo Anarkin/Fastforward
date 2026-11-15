@@ -14,9 +14,9 @@ import {
   markedNames,
   markingRow,
   select,
-  sharedCommanderApp,
   markedSorted,
   openFolder,
+  sharedCommanderApp,
 } from './commanderAppFixtures';
 
 const selectedName = () =>

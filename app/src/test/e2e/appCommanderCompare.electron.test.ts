@@ -10,10 +10,10 @@ import {
   grayPng,
   rowNames,
   select,
-  sharedCommanderApp,
   threeLines,
   markedSorted,
   markedNames,
+  sharedCommanderApp,
 } from './commanderAppFixtures';
 
 suite('App commander', () => {

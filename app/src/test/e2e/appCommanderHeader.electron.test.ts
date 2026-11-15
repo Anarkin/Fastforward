@@ -7,12 +7,12 @@ import {
   profile,
   page,
   right,
-  sharedCommanderApp,
   opened,
   select,
   openFolder,
   pathCut,
   pathPlaces,
+  sharedCommanderApp,
 } from './commanderAppFixtures';
 
 const lines = () =>
