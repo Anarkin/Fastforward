@@ -340,9 +340,9 @@ export function createGitStore(
         set((state) => ({
           fileCursors: withEntry(state.fileCursors, state.tab.root, cursor),
         })),
-      pinMessage: (hash) =>
+      pinMessage: (pin) =>
         set((state) => ({
-          pinnedMessages: withEntry(state.pinnedMessages, state.tab.root, hash),
+          pinnedMessages: withEntry(state.pinnedMessages, state.tab.root, pin),
         })),
       filesScrollOf: (view) => filesScrolls.of(view),
       keepFilesScroll: (view, offset) => filesScrolls.keep(view, offset),

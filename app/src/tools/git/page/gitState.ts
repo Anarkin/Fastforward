@@ -49,6 +49,11 @@ export interface KeptLocations {
   readonly toggled: ReadonlySet<string>;
 }
 
+export interface KeptPin {
+  readonly hash: string;
+  readonly byKey: boolean;
+}
+
 export interface Cloning {
   readonly view: CloneView | undefined;
   readonly form: number;
@@ -91,7 +96,7 @@ export interface GitSource {
   readonly folders: ReadonlyMap<string, ViewFolders>;
   readonly fileFolds: ReadonlyMap<string, FilterFolds>;
   readonly fileCursors: ReadonlyMap<string, MovedCursor>;
-  readonly pinnedMessages: ReadonlyMap<string, string>;
+  readonly pinnedMessages: ReadonlyMap<string, KeptPin>;
   readonly locations: ReadonlyMap<string, KeptLocations>;
   readonly diffText: TextMeasures | undefined;
   readonly diffSnap: CodeSnap;
@@ -179,7 +184,7 @@ export interface GitActions {
   readonly replaceFolders: (folders: Folders) => void;
   readonly foldFilesWhileFiltering: (folds: FilterFolds) => void;
   readonly moveFilesCursor: (cursor: MovedCursor | undefined) => void;
-  readonly pinMessage: (hash: string | undefined) => void;
+  readonly pinMessage: (pin: KeptPin | undefined) => void;
   readonly keepLocations: (kept: KeptLocations) => void;
   readonly locationsScrollOf: () => number | undefined;
   readonly keepLocationsScroll: (offset: number) => void;

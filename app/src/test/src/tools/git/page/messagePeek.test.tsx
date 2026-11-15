@@ -5,6 +5,7 @@ import { suite, test } from 'vitest';
 import type { CommitInfo } from '../../../../../tools/git/shared/protocol';
 import { MessagePeek } from '../../../../../tools/git/page/messagePeek';
 import { MessageBody } from '../../../../../tools/git/page/messagePanel';
+import type { KeptPin } from '../../../../../tools/git/page/gitState';
 import { commitInfo } from '../../../../helpers/gitValues';
 
 async function inList(
@@ -31,8 +32,8 @@ async function inList(
     readonly type: (key: string, altKey: boolean) => Promise<void>;
   }) => Promise<void>,
   kept: {
-    readonly pin?: string;
-    readonly pinned?: (hash: string | undefined) => void;
+    readonly pin?: KeptPin;
+    readonly pinned?: (pin: KeptPin | undefined) => void;
   } = {},
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>');
@@ -316,7 +317,7 @@ suite('Message peek', () => {
       commitInfo('a', { subject: 'First', body: 'More of the first' }),
       commitInfo('b', { subject: 'Second', body: 'More of the second' }),
     ];
-    const told: (string | undefined)[] = [];
+    const told: (KeptPin | undefined)[] = [];
     await inList(
       commits,
       async ({ pinned, key }) => {
@@ -329,7 +330,51 @@ suite('Message peek', () => {
         assert.ok(pinned() === null, 'unpinned');
         assert.deepStrictEqual(told, [undefined]);
       },
-      { pin: commits[2]?.hash, pinned: (hash) => told.push(hash) },
+      {
+        pin: { hash: commits[2]?.hash ?? '', byKey: false },
+        pinned: (pin) => told.push(pin),
+      },
+    );
+  });
+
+  test('pins again a message pinned by its keys as pinned by its keys, its corner naming them, leaving the keyboard where the tab gives it back, and tells each pin how it was made', async () => {
+    const commits = [
+      commitInfo('w', { body: 'Working tree' }),
+      commitInfo('a', { subject: 'First', body: 'More of the first' }),
+      commitInfo('b', { subject: 'Second', body: 'More of the second' }),
+    ];
+    const told: (KeptPin | undefined)[] = [];
+    await inList(
+      commits,
+      async ({ pinned, list, select, type }) => {
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        });
+        assert.match(pinned()?.textContent ?? '', /More of the second/);
+        const restored = pinned()?.querySelector('.message-hint')?.textContent;
+        assert.ok(
+          pinned()?.contains(document.activeElement) !== true,
+          'the keyboard left where the tab gives it back',
+        );
+        assert.ok('focus' in list && typeof list.focus === 'function');
+        list.focus();
+        select(2);
+        await type('Enter', true);
+        assert.strictEqual(pinned(), null);
+        await type('Enter', true);
+        assert.strictEqual(
+          pinned()?.querySelector('.message-hint')?.textContent,
+          restored,
+        );
+        assert.deepStrictEqual(told, [
+          undefined,
+          { hash: commits[2]?.hash, byKey: true },
+        ]);
+      },
+      {
+        pin: { hash: commits[2]?.hash ?? '', byKey: true },
+        pinned: (pin) => told.push(pin),
+      },
     );
   });
 

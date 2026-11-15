@@ -18,6 +18,7 @@ import {
   type PeekAnchor,
 } from './messageHolding';
 import { MessageCorner, MessagePanel } from './messagePanel';
+import type { KeptPin } from './gitState';
 
 interface Peek {
   readonly index: number;
@@ -109,8 +110,8 @@ export function MessagePeek({
   commitAt: (index: number) => CommitInfo | undefined;
   indent: number;
   renderRow: (commit: CommitInfo, corner: React.ReactNode) => React.ReactNode;
-  keptPin?: string;
-  onPin?: (hash: string | undefined) => void;
+  keptPin?: KeptPin;
+  onPin?: (pin: KeptPin | undefined) => void;
 }) {
   const holding = useRef<Holding>('none');
   const pointer = useRef<{ readonly x: number; readonly y: number }>(undefined);
@@ -120,13 +121,14 @@ export function MessagePeek({
     readonly commit: CommitInfo;
     readonly anchor: PeekAnchor;
     readonly byKey?: boolean;
+    readonly restored?: boolean;
   }>();
   const restoring = useRef(keptPin);
   const setPinned = useCallback(
     (next: typeof pinned) => {
       restoring.current = undefined;
       setShownPin(next);
-      onPin?.(next?.commit.hash);
+      onPin?.(next && { hash: next.commit.hash, byKey: next.byKey === true });
     },
     [onPin],
   );
@@ -136,21 +138,27 @@ export function MessagePeek({
     }
   }, [setPinned]);
   useLayoutEffect(() => {
-    const hash = restoring.current;
+    const kept = restoring.current;
     const element = list.current;
     const row =
-      hash === undefined || !element
+      kept === undefined || !element
         ? undefined
-        : rowOf(element, commitAt, hash);
+        : rowOf(element, commitAt, kept.hash);
     if (!element || !row) {
       return undefined;
     }
     const frame = requestAnimationFrame(() => {
       const at = peekOf(element, row);
       const commit = at && commitAt(at.index);
-      if (at && commit && restoring.current === commit.hash) {
+      const pin = restoring.current;
+      if (at && commit && pin?.hash === commit.hash) {
         restoring.current = undefined;
-        setShownPin({ commit, anchor: at.anchor });
+        setShownPin({
+          commit,
+          anchor: at.anchor,
+          byKey: pin.byKey,
+          restored: true,
+        });
       }
     });
     return () => cancelAnimationFrame(frame);
@@ -311,7 +319,7 @@ export function MessagePeek({
           anchor={pinned.anchor}
           indent={indent}
           onUnpin={unpin}
-          takesKeyboard={pinned.byKey}
+          takesKeyboard={pinned.byKey === true && pinned.restored !== true}
         >
           {renderRow(
             pinned.commit,
