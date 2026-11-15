@@ -2,13 +2,13 @@ import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { parseRunArgs, runOrder, variantName } from './perfRuns.mts';
+import { summaryTable, type Ran } from './perfSummary.mts';
 import {
   isSaved,
   resultSuffix,
   type SavedResult,
-} from '../src/test/perf/perfTrace.ts';
-import { parseRunArgs, runOrder, variantName } from './perfRuns.mts';
-import { summaryTable, type Ran } from './perfSummary.mts';
+} from '../src/test/perf/perfResults.ts';
 
 const app = path.resolve(import.meta.dirname, '..');
 const builds = path.join(app, 'perf-build');

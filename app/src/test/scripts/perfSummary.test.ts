@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { suite, test } from 'vitest';
-import type { ScenarioResult } from '../perf/perfTrace';
+import type { ScenarioResult } from '../perf/perfResults';
 
 const appFolder = path.join(__dirname, '..', '..', '..');
 

@@ -1,4 +1,4 @@
-import type { ScenarioResult } from '../src/test/perf/perfTrace.ts';
+import type { ScenarioResult } from '../src/test/perf/perfResults.ts';
 
 const fewestRunsForClear = 5;
 

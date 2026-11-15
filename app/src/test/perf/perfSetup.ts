@@ -7,7 +7,7 @@ import {
   resultSuffix,
   resultsTable,
   type SavedResult,
-} from './perfTrace';
+} from './perfResults';
 
 declare module 'vitest' {
   export interface ProvidedContext {

@@ -17,15 +17,17 @@ import {
   inputLatency,
   mainThreadSummary,
   moduleAt,
-  resultSuffix,
   spanBetween,
   topScripts,
-  type SavedResult,
-  type ScenarioResult,
   type SourceOf,
   type TraceEvent,
 } from './perfTrace';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import {
+  resultSuffix,
+  type SavedResult,
+  type ScenarioResult,
+} from './perfResults';
 
 export interface PerfApp {
   readonly app: ElectronApplication;
