@@ -26,12 +26,24 @@ export async function waitFor(
   what: string,
   timeout = 15_000,
 ): Promise<void> {
-  const until = Date.now() + timeout;
+  const deadline = Date.now() + timeout;
   while (!(await condition())) {
-    if (Date.now() > until) {
+    if (Date.now() > deadline) {
       throw new Error(`Timed out waiting for ${what}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+export async function until(
+  condition: () => boolean,
+  tries = 2000,
+): Promise<void> {
+  for (let tried = 0; tried < tries && !condition(); tried++) {
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+  if (!condition()) {
+    throw new Error('The condition never held');
   }
 }
 

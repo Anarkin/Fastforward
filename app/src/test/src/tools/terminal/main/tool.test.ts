@@ -18,8 +18,9 @@ import {
   type TerminalToWebview,
 } from '../../../../../tools/terminal/shared/protocol';
 import { strings } from '../../../../../lib/shared/strings';
-import { fakePtys, until } from '../../../../helpers/fakePty';
+import { fakePtys } from '../../../../helpers/fakePty';
 import { fakeTimer } from '../../../../helpers/fakeTimer';
+import { until } from '../../../../helpers/fixtures';
 
 class TerminalPage implements Page {
   readonly messages: TerminalToWebview[] = [];

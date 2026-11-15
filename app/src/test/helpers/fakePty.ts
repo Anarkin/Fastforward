@@ -82,15 +82,3 @@ export function fakePtys(): {
     },
   };
 }
-
-export async function until(
-  condition: () => boolean,
-  tries = 2000,
-): Promise<void> {
-  for (let tried = 0; tried < tries && !condition(); tried++) {
-    await new Promise((resolve) => setTimeout(resolve, 1));
-  }
-  if (!condition()) {
-    throw new Error('The condition never held');
-  }
-}
