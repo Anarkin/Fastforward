@@ -6,7 +6,8 @@ import { detachedHead } from './gitSelectors';
 import { useGit } from './store';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
-import { Highlight } from './highlight';
+import { HighlightWords } from '../../../lib/page/highlight';
+import { filterWords } from '../../../lib/shared/filter';
 import { type Click } from '../../../lib/shared/keymap';
 import { inPairs } from './bubbleOrder';
 import {
@@ -94,13 +95,19 @@ export function CommitRow({
     >
       <div className="commit-line">
         <span className="subject">
-          <Highlight text={commit.subject} query={highlight} />
+          <HighlightWords
+            text={commit.subject}
+            words={filterWords(highlight)}
+          />
         </span>
         {corner}
       </div>
       <div className="commit-line secondary">
         <span className="author">
-          <Highlight text={commit.authorName} query={highlight} />
+          <HighlightWords
+            text={commit.authorName}
+            words={filterWords(highlight)}
+          />
         </span>
         <span className="date">
           {formatDate(commit.commitDate, dateFormat)}

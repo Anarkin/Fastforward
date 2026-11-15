@@ -6,7 +6,12 @@ import type {
   StashInfo,
 } from '../shared/protocol';
 import { findRef } from '../shared/refNames';
-import { folded } from '../../../lib/shared/textMatches';
+import {
+  filterNeedles,
+  filterWords,
+  matchesFilter,
+  matchesNeedles,
+} from '../../../lib/shared/filter';
 import type { RefGroup } from './refIndex';
 
 export const maxResults = 200;
@@ -23,13 +28,13 @@ export function searchRefs(
   query: string,
   limit = maxResults,
 ): SearchGroup[] {
-  const needle = folded(query.trim());
+  const needles = filterNeedles(filterWords(query));
   return index.map(({ kind, title, refs, names }) => {
     const found: RefInfo[] = [];
     let more = 0;
-    if (needle) {
+    if (needles.length > 0) {
       for (const [i, name] of names.entries()) {
-        if (!name.includes(needle)) {
+        if (!matchesNeedles(needles, name)) {
           continue;
         }
         if (found.length < limit) {
@@ -57,12 +62,12 @@ export function searchStashes(
   query: string,
   limit = maxResults,
 ): StashSearch {
-  const needle = folded(query.trim());
-  if (!needle) {
+  const words = filterWords(query);
+  if (words.length === 0) {
     return noStashes;
   }
   const found = stashes.filter((stash) =>
-    [stash.name, stash.message].some((text) => folded(text).includes(needle)),
+    matchesFilter(words, stash.name, stash.message),
   );
   return cappedStashes(found, limit);
 }

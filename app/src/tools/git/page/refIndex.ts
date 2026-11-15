@@ -1,5 +1,5 @@
 import { strings } from '../../../lib/shared/strings';
-import { folded } from '../../../lib/shared/textMatches';
+import { foldedForFilter } from '../../../lib/shared/filter';
 import { byName } from './byName';
 import type { RefInfo, RefKind } from '../shared/protocol';
 
@@ -31,7 +31,7 @@ export function indexRefs(refs: readonly RefInfo[]): RefGroup[] {
     return {
       ...group,
       refs: sorted,
-      names: sorted.map((ref) => folded(ref.name)),
+      names: sorted.map((ref) => foldedForFilter(ref.name)),
       tree: buildTree(sorted),
     };
   });

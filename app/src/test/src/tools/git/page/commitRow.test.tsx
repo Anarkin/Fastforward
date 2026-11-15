@@ -24,6 +24,30 @@ import { commitInfo } from '../../../../helpers/gitValues';
 import { withMacKeys } from '../../../../helpers/keys';
 
 suite('Commit row', () => {
+  test('marks every word the search found in the subject and the author, wherever and as often as it is there, in the yellow of every filter', () => {
+    const store = gitStore({ head: 'main', headCommit: 'b', refs: [] });
+    const html = renderToStaticMarkup(
+      <GitStore value={store}>
+        <CommitRow
+          commit={commitInfo('a', {
+            subject: 'Fix the cursor, then fix it again',
+            authorName: 'Ann Fixer',
+          })}
+          selected={undefined}
+          indent={0}
+          onSelect={noop}
+          highlight="fix  CURSOR"
+        />
+      </GitStore>,
+    );
+    assert.deepStrictEqual(
+      [...html.matchAll(/<mark class="match">(.*?)<\/mark>/g)].map(
+        ([, marked]) => marked,
+      ),
+      ['Fix', 'cursor', 'fix', 'Fix'],
+    );
+  });
+
   test('shows the subject, author, the date it was last committed and bubbles, but no file count', () => {
     let picked: string | undefined;
     const props = {

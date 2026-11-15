@@ -32,4 +32,11 @@ suite('Menu filter', () => {
     ]);
     assert.deepStrictEqual(labelsOf(filteredItems(items, 'java ts')), []);
   });
+
+  test('folds the labels and the words as every filter of the app does, so a final sigma and letters composed or not match alike', () => {
+    const items = [{ label: 'ΟΔΟΣ' }, { label: 'élan' }, { label: 'Other' }];
+
+    assert.deepStrictEqual(labelsOf(filteredItems(items, 'οδοσ')), ['ΟΔΟΣ']);
+    assert.deepStrictEqual(labelsOf(filteredItems(items, 'ÉLAN')), ['élan']);
+  });
 });

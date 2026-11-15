@@ -6,7 +6,7 @@ import { activeTabOf } from './shellSelectors';
 import { useShell, useShellActions } from './store';
 import { shortcutEntries, type ShortcutEntryId } from './toolShortcuts';
 import { strings } from '../../lib/shared/strings';
-import { filterWords } from '../../lib/page/fileFilter';
+import { filterWords } from '../../lib/shared/filter';
 import { useDismiss } from '../../lib/page/dismiss';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
 import { useModalDialog } from '../../lib/page/modalDialog';

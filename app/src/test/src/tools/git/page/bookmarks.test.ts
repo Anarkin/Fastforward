@@ -173,6 +173,17 @@ suite('Bookmarks of the search', () => {
     { kind: 'branch', name: 'main' },
   ];
 
+  test('finds a bookmark by every word of the search anywhere in its name, as every filter of the app does', () => {
+    const named: Bookmark[] = [
+      { kind: 'branch', name: 'feature/main-menu' },
+      { kind: 'branch', name: 'main' },
+    ];
+    assert.deepStrictEqual(
+      names(searchedBookmarks(named, refs, 'MENU feature')),
+      ['feature/main-menu'],
+    );
+  });
+
   test('lists every bookmark in order, and nothing else, not the checked-out branch', () => {
     assert.deepStrictEqual(names(searchedBookmarks(bookmarks, refs, '')), [
       'main',

@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { keyParts } from './keyLabels';
 import { strings } from '../shared/strings';
-import { folded } from '../shared/textMatches';
+import { foldedForFilter } from '../shared/filter';
 import { MouseIcon } from './icons';
 
 function keyClass(pointer: boolean, matched: boolean): string | undefined {
@@ -24,7 +24,10 @@ export function KeyCombo({
             <span className="shortcut-joiner">{strings.shortcuts.joiner}</span>
           )}
           <kbd
-            className={keyClass(pointer, matched?.has(folded(label)) ?? false)}
+            className={keyClass(
+              pointer,
+              matched?.has(foldedForFilter(label)) ?? false,
+            )}
           >
             {pointer && <MouseIcon />}
             {label}

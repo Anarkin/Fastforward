@@ -6,7 +6,7 @@ import { type Row } from './listing';
 import { goesInto } from './rowKeys';
 import { filterStep } from './filterSteps';
 import { PaneFilter } from './paneFilter';
-import { filterWords } from '../../../lib/page/fileFilter';
+import { filterWords } from '../../../lib/shared/filter';
 import { SearchRow } from '../../../lib/page/search';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { clickPairs } from './clickPairs';

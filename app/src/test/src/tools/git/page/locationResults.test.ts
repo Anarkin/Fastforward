@@ -32,6 +32,28 @@ const refsDrawn = (count: number) => {
 };
 
 suite('Locations search', () => {
+  test('finds a ref by every word of the search anywhere in its name, as every filter of the app does, and a stash by every word in its name or message', () => {
+    assert.deepStrictEqual(
+      names(
+        searchRefs(
+          indexRefs([branchNamed('feature/cursor-fix'), branchNamed('fix')]),
+          'fix CURSOR',
+        ),
+      )[0],
+      ['Local branches', ['feature/cursor-fix']],
+    );
+    const stash = {
+      name: 'stash@{0}',
+      message: 'WIP on main: fix the cursor',
+      commit: 'c',
+      parent: 'p',
+    };
+    assert.deepStrictEqual(searchStashes([stash], 'cursor stash@').stashes, [
+      stash,
+    ]);
+    assert.deepStrictEqual(searchStashes([stash], 'cursor caret').stashes, []);
+  });
+
   test('finds parts of names, ignoring case, in a group per kind', () => {
     assert.deepStrictEqual(names(searchRefs(indexRefs(refs), 'Epmaisa-798')), [
       ['Local branches', ['feat/epmaisa-798-drop']],

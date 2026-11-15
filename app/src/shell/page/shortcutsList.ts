@@ -8,8 +8,11 @@ import {
   type ShortcutEntryId,
 } from './toolShortcuts';
 import { strings } from '../../lib/shared/strings';
-import { filterWords } from '../../lib/page/fileFilter';
-import { folded, matchesIn } from '../../lib/shared/textMatches';
+import {
+  filterWords,
+  foldedForFilter,
+  matchesFilter,
+} from '../../lib/shared/filter';
 
 interface ShortcutMatch {
   readonly words: readonly string[];
@@ -66,12 +69,12 @@ function shortcutMatch(
   const said: string[] = [];
   const keys = new Set<string>();
   for (const word of words) {
-    const inAction = matchesIn(binding.action, word, 1).length > 0;
+    const inAction = matchesFilter([word], binding.action);
     if (inAction) {
       said.push(word);
     }
     const found = Object.keys(binding.keys).flatMap((combo) =>
-      keysFound(keyLabels(combo).map(folded), folded(word)),
+      keysFound(keyLabels(combo).map(foldedForFilter), foldedForFilter(word)),
     );
     for (const label of found) {
       keys.add(label);

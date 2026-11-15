@@ -1,7 +1,7 @@
 import { StringDecoder } from 'node:string_decoder';
 import { logCommits } from './commitLog';
 import { hashLines, historyRefs, parseHistory } from './history';
-import { folded } from '../../../lib/shared/textMatches';
+import { filterWords, matchesFilter } from '../../../lib/shared/filter';
 import type { CommitSearch } from '../shared/protocol';
 import { runGit, runGitBytes } from './run';
 
@@ -56,9 +56,11 @@ export function parseSearchedCommit(record: string): SearchedCommit {
 }
 
 export function matchesCommit(commit: SearchedCommit, query: string): boolean {
-  const needle = folded(query);
-  return [commit.author, commit.committer, commit.message].some((field) =>
-    folded(field).includes(needle),
+  return matchesFilter(
+    filterWords(query),
+    commit.author,
+    commit.committer,
+    commit.message,
   );
 }
 

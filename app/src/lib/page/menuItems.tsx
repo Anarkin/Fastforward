@@ -7,6 +7,7 @@ import {
   ToolIcon,
 } from './icons';
 import { Name, Words } from './name';
+import { HighlightWords } from './highlight';
 import { keymap } from './keymap';
 import { strings } from '../shared/strings';
 import { keyPressed } from './shortcuts';
@@ -34,11 +35,15 @@ function MenuIconOf({ icon }: { icon: MenuIcon }) {
   }
 }
 
+const noWords: readonly string[] = [];
+
 export function MenuItems({
   items,
+  words = noWords,
   onClose,
 }: {
   items: readonly ContextMenuItem[];
+  words?: readonly string[];
   onClose: () => void;
 }) {
   const [openSubmenu, setOpenSubmenu] = useState<number>();
@@ -127,11 +132,11 @@ export function MenuItems({
                 </span>
               )}
               {item.sentence !== undefined ? (
-                <Words>{item.sentence}</Words>
+                <Words words={words}>{item.sentence}</Words>
               ) : item.name ? (
-                <Name>{item.label}</Name>
+                <Name words={words}>{item.label}</Name>
               ) : (
-                item.label
+                <HighlightWords text={item.label} words={words} />
               )}
               {item.submenu && (
                 <span className="submenu-arrow">

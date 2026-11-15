@@ -1,6 +1,6 @@
 import { type ChangeArea, type FileChange } from '../shared/protocol';
 import { areaKey } from './changesRows';
-import { matchesFilter } from '../../../lib/page/fileFilter';
+import { matchesFilter } from '../../../lib/shared/filter';
 
 export function listsNothing({
   files,

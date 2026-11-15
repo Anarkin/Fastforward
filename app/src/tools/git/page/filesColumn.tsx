@@ -19,7 +19,7 @@ import {
 } from './filesRows';
 import { ChangesTreeItem } from './changesTree';
 import { Column } from './column';
-import { filterWords } from '../../../lib/page/fileFilter';
+import { filterWords } from '../../../lib/shared/filter';
 import { SearchButton, SearchRow } from '../../../lib/page/search';
 import { useSettled } from './settled';
 import {

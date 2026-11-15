@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
-import { Highlight } from '../../../../tools/git/page/highlight';
+import { HighlightWords } from '../../../../lib/page/highlight';
 import { KeyCombo } from '../../../../lib/page/keyCombo';
 import {
   AboutPopupShown,
@@ -257,9 +257,13 @@ suite('Style', () => {
       'row tree-row',
       'locations-list',
       'shortcuts-popup',
+      'menu filtered-menu',
     ]) {
       looks(
-        withClass(inside(classes, <Highlight text="x" query="x" />), 'match'),
+        withClass(
+          inside(classes, <HighlightWords text="x" words={['x']} />),
+          'match',
+        ),
         match,
       );
     }

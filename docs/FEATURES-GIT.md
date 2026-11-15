@@ -80,7 +80,7 @@
 | Jumps | Select HEAD, the upstream or the first parent | — | Common | ✅ Yes | H, U, Mod+Down |
 | Back and forward | Retrace the selected commits like a browser | — | Advanced | ✅ Yes | Alt+Left and Alt+Right, the mouse buttons, held for a list |
 | Bookmarks | Keep branches, tags or commits at hand | — | Advanced | ✅ Yes | Kept by the app per repository, not as refs; the main branch is bookmarked on first open |
-| Search messages and people | Find commits by message, author or committer | `git log --grep`, `--author`, `--committer` | Core | ✅ Yes | Runs `git log` and matches in the app, ignoring case |
+| Search messages and people | Find commits by message, author or committer | `git log --grep`, `--author`, `--committer` | Core | ✅ Yes | Runs `git log` and matches in the app every word of the search, each in the message, the author or the committer, ignoring case, as every filter of the app; every word marked in the list |
 | Find a hash | Go to a commit from the start of its hash | `git rev-parse --disambiguate` | Common | ✅ Yes | Lists up to 20 commits it may be |
 | Branches containing a commit | List the branches and tags a commit is on | `git branch --contains`, `git tag --contains` | Advanced | ❌ No |  |
 | Search the content | Find commits that add or remove some text | `git log -S`, `-G` | Advanced | ❌ No |  |
@@ -157,7 +157,7 @@
 | Upstream | Set or unset the branch a branch tracks | `git branch --set-upstream-to`, `--unset-upstream` | Common | 🟡 Partial | Set when checking out a remote branch or publishing; never changed or unset |
 | Ahead and behind | Count the commits to pull and to push | `git rev-list --left-right --count` | Core | ✅ Yes | On the Pull and Push buttons of every local branch with an upstream, since the last fetch, from `git for-each-ref`; Pull and Push say when the upstream is gone |
 | Fast-forward another branch | Move a branch that isn't checked out to its upstream | `git fetch . <upstream>:<branch>` | Advanced | ✅ Yes | Pull on any branch's bubble; knows branches checked out in other worktrees |
-| Find a branch | Search the branches | — | Common | ✅ Yes |  |
+| Find a branch | Search the branches | — | Common | ✅ Yes | Every word must be in its name, as every filter of the app; tags, stashes and bookmarks alike |
 | Branching models | Start and finish features and releases | `git flow` | Advanced | ❌ No |  |
 
 ## Tags

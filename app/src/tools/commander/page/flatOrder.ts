@@ -1,4 +1,4 @@
-import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
+import { filterWords, matchesFilter } from '../../../lib/shared/filter';
 import type { Entry } from '../shared/protocol';
 import { sameGrouping } from './fileColors';
 import type { FlatChoices, SlottedFolder } from './flatMessages';

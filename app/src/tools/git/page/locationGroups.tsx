@@ -4,7 +4,8 @@ import { useOpenMenu, refMenuTarget } from './menus';
 import { CommitRow } from './commitRow';
 import { detachedHead } from './gitSelectors';
 import { useGit } from './store';
-import { Highlight } from './highlight';
+import { HighlightWords } from '../../../lib/page/highlight';
+import { filterWords } from '../../../lib/shared/filter';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import {
@@ -129,10 +130,10 @@ export function StashesSection({
             onClick={() => onJump(stash.commit)}
           >
             <span className="badge stash">
-              <Highlight text={stash.name} query={query} />
+              <HighlightWords text={stash.name} words={filterWords(query)} />
             </span>
             <span className="stash-message">
-              <Highlight text={stash.message} query={query} />
+              <HighlightWords text={stash.message} words={filterWords(query)} />
             </span>
           </div>
         ))}
@@ -228,7 +229,7 @@ export function SearchResults({
           onContextMenu={(event) => openMenu(event, refMenuTarget(ref))}
         >
           <RefLabel info={ref}>
-            <Highlight text={ref.name} query={query} />
+            <HighlightWords text={ref.name} words={filterWords(query)} />
           </RefLabel>
         </div>
       ))}

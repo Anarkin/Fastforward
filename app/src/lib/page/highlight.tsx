@@ -1,4 +1,5 @@
-import { filterRanges } from './fileFilter';
+import { filterRanges } from '../shared/filter';
+import type { FindRange } from '../shared/textMatches';
 
 export function HighlightWords({
   text,
@@ -7,17 +8,36 @@ export function HighlightWords({
   text: string;
   words: readonly string[];
 }) {
+  return <Marked text={text} ranges={filterRanges(text, words)} />;
+}
+
+export function Marked({
+  text,
+  ranges,
+  at = 0,
+}: {
+  text: string;
+  ranges: readonly FindRange[];
+  at?: number;
+}) {
   const pieces: React.ReactNode[] = [];
-  let at = 0;
-  for (const { start, end } of filterRanges(text, words)) {
-    pieces.push(
-      text.slice(at, start),
-      <mark key={start} className="match">
-        {text.slice(start, end)}
-      </mark>,
-    );
-    at = end;
+  let from = 0;
+  for (const range of ranges) {
+    const start = Math.max(range.start - at, from);
+    const end = Math.min(range.end - at, text.length);
+    if (end > start) {
+      pieces.push(
+        text.slice(from, start),
+        <mark key={start} className="match">
+          {text.slice(start, end)}
+        </mark>,
+      );
+      from = end;
+    }
   }
-  pieces.push(text.slice(at));
+  if (pieces.length === 0) {
+    return text;
+  }
+  pieces.push(text.slice(from));
   return <>{pieces}</>;
 }

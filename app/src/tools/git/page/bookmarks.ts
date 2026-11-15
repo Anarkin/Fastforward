@@ -1,4 +1,4 @@
-import { folded } from '../../../lib/shared/textMatches';
+import { filterWords, matchesFilter } from '../../../lib/shared/filter';
 import { shortHash } from '../shared/hashes';
 import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
 import {
@@ -76,9 +76,9 @@ export function searchedBookmarks(
   refs: readonly RefInfo[],
   query: string,
 ): Bookmark[] {
-  const needle = folded(query.trim());
+  const words = filterWords(query);
   return bookmarks
-    .filter((bookmark) => folded(bookmark.name).includes(needle))
+    .filter((bookmark) => matchesFilter(words, bookmark.name))
     .map((bookmark): [Bookmark, SortedBookmark] => [
       bookmark,
       onRemote(bookmark) ? (findRef(refs, bookmark) ?? bookmark) : bookmark,

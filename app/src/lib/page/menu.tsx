@@ -9,6 +9,7 @@ import { DropdownIcon, MoreIcon } from './icons';
 import { Name } from './name';
 import { keyPressed } from './shortcuts';
 import { filteredItems } from './menuFilter';
+import { filterWords } from '../shared/filter';
 
 function thenChosen(
   items: readonly ContextMenuItem[],
@@ -194,7 +195,11 @@ function FilteredDropdown({
           event.stopPropagation();
         }}
       />
-      <MenuItems items={filteredItems(items, query)} onClose={onClose} />
+      <MenuItems
+        items={filteredItems(items, query)}
+        words={filterWords(query)}
+        onClose={onClose}
+      />
     </div>
   );
 }

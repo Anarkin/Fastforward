@@ -1,6 +1,6 @@
 import type { FileChange, LeftOut } from '../shared/protocol';
 import { type DiffFile } from './diff';
-import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
+import { filterWords, matchesFilter } from '../../../lib/shared/filter';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],

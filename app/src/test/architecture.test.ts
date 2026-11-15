@@ -505,6 +505,61 @@ suite('Architecture', () => {
     );
   });
 
+  test('matches what people type only through the two ways the app searches, the filter, which narrows a list to what holds every word anywhere, and the find, which finds a phrase in what is shown, both folding the text alike, so no list or find drifts from the others', () => {
+    const matchers = ['lib/shared/filter.ts', 'lib/shared/textMatches.ts'];
+    const finds = [
+      ...matchers,
+      'tools/git/page/find.ts',
+      'tools/commander/main/textFind.ts',
+      'tools/commander/page/markPieces.ts',
+    ];
+    const code = sourceFiles.filter((file) => /\.tsx?$/.test(file));
+    assert.deepStrictEqual(
+      code.filter(
+        (file) =>
+          !matchers.includes(file) &&
+          (/\bfolded\b/.test(read(file)) ||
+            /toLowerCase\(\)\s*\.\s*(?:includes|indexOf|startsWith)\(/.test(
+              read(file),
+            )),
+      ),
+      [],
+    );
+    assert.deepStrictEqual(
+      code.filter(
+        (file) => !finds.includes(file) && /\bmatchesIn\b/.test(read(file)),
+      ),
+      [],
+    );
+  });
+
+  test('marks what a filter found only through HighlightWords and what a find found only through the marks of the finds, in the colors of the search, so every match looks alike', () => {
+    const code = sourceFiles.filter((file) => /\.tsx?$/.test(file));
+    assert.deepStrictEqual(
+      code.filter((file) => /<mark\b/.test(read(file))),
+      [
+        'lib/page/highlight.tsx',
+        'tools/commander/page/findMarks.tsx',
+        'tools/git/page/codeMarks.tsx',
+      ],
+    );
+    assert.deepStrictEqual(
+      code.filter((file) => /\bfind-match\b/.test(read(file))),
+      [
+        'tools/commander/page/editorFind.ts',
+        'tools/commander/page/findMarks.tsx',
+        'tools/git/page/codeMarks.tsx',
+        'tools/git/page/diffFound.ts',
+      ],
+    );
+    assert.deepStrictEqual(
+      sourceFiles.filter(
+        (file) => file.endsWith('.css') && /\bsearch-match\b/.test(read(file)),
+      ),
+      ['shell/page/minimap.css', 'shell/page/pdf.css', 'shell/page/text.css'],
+    );
+  });
+
   test('leaves telling keys, modifiers and buttons apart to itself, so the shortcuts screen lists every one', () => {
     const own = [
       path.join(source, 'lib', 'shared', 'keymap.ts'),

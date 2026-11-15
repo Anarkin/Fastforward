@@ -1,4 +1,4 @@
-import { matchesIn, type FindRange } from '../shared/textMatches';
+import { folded, matchesIn, type FindRange } from './textMatches';
 
 export function filterWords(query: string): string[] {
   return query.trim().split(/\s+/).filter(Boolean);
@@ -6,13 +6,29 @@ export function filterWords(query: string): string[] {
 
 export function matchesFilter(
   words: readonly string[],
-  path: string,
-  oldPath?: string,
+  ...texts: readonly (string | undefined)[]
 ): boolean {
-  return words.every(
-    (word) =>
-      matchesIn(path, word, 1).length > 0 ||
-      (oldPath !== undefined && matchesIn(oldPath, word, 1).length > 0),
+  return words.every((word) =>
+    texts.some(
+      (text) => text !== undefined && matchesIn(text, word, 1).length > 0,
+    ),
+  );
+}
+
+export function foldedForFilter(text: string): string {
+  return folded(text);
+}
+
+export function filterNeedles(words: readonly string[]): string[] {
+  return words.map(folded);
+}
+
+export function matchesNeedles(
+  needles: readonly string[],
+  ...foldedTexts: readonly string[]
+): boolean {
+  return needles.every((needle) =>
+    foldedTexts.some((text) => text.includes(needle)),
   );
 }
 

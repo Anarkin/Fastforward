@@ -10,8 +10,43 @@ import { noop } from '../../../helpers/fixtures';
 import { keyPress } from '../../../helpers/keys';
 import { renderedBy } from '../../../helpers/componentFixtures';
 import { tagsWith } from '../../../helpers/markup';
+import { named, sentence } from '../../../../lib/shared/sentences';
 
 suite('Menu items', () => {
+  test('marks every word of the filter wherever the label of an item shows it, in a name or a sentence too, in the yellow of every filter, and nothing found only in the keywords of an item', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <MenuItems
+          items={[
+            { label: 'UTF-8' },
+            { label: 'Auto: UTF-8, utf' },
+            { label: 'Latin', keywords: 'utf' },
+            { label: 'C:\\utf-data', name: true },
+            {
+              label: 'UTF-8, from tools.editor.charset in the settings',
+              sentence: sentence`UTF-8, from ${named('tools.editor.charset')} in the settings`,
+            },
+          ]}
+          words={['utf', 'charset']}
+          onClose={noop}
+        />,
+      ),
+    ).window.document;
+
+    assert.deepStrictEqual(
+      [...document.querySelectorAll('.menu-item')].map((item) =>
+        [...item.querySelectorAll('mark.match')].map(
+          (mark) => mark.textContent,
+        ),
+      ),
+      [['UTF'], ['UTF', 'utf'], [], ['utf'], ['UTF', 'charset']],
+    );
+    assert.strictEqual(
+      document.querySelectorAll('.menu-item')[3].textContent,
+      'C:\\utf-data',
+    );
+  });
+
   test('sets an item whose label is a name, as a folder or a drive, apart as a name, and the others in the words of the menu', () => {
     const html = renderToStaticMarkup(
       <MenuItems

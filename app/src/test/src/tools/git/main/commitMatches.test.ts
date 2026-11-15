@@ -28,6 +28,12 @@ suite('Commit search matching', () => {
     assert.strictEqual(matchesCommit(commit, 'nothing'), false);
   });
 
+  test('finds a commit by every word of the search, each in its author, committer or message, as every filter of the app does', () => {
+    assert.strictEqual(matchesCommit(commit, 'body lovelace'), true);
+    assert.strictEqual(matchesCommit(commit, 'ADA subject'), true);
+    assert.strictEqual(matchesCommit(commit, 'body nothing'), false);
+  });
+
   test('folds the text as every find of the page does, so a final sigma and letters composed or not match alike', () => {
     const greek = parseSearchedCommit(
       'bbb\0Ada\0ada@example.com\0Ada\0ada@example.com\0ΟΔΟΣ and élan\n',
