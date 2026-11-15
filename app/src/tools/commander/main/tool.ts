@@ -1,6 +1,5 @@
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
-import type { Sentence } from '../../../lib/shared/sentences';
 import {
   unattachedShell,
   type Page,
@@ -9,49 +8,37 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/toolContract';
-import { SavedSides } from './savedSides';
+import type { SavedSides } from './savedSides';
 import { type CommanderToHost } from '../shared/protocol';
 import { sides } from '../shared/sides';
 import type { LocalFileSystem } from './fileSystem';
-import { Editing } from './editing';
-import { editingFiles } from './editingFiles';
-import { SettingsCommands } from './settingsCommands';
-import { Icons } from './icons';
-import { Transfers } from './transfers';
-import { maxDroppedIcons, viewerIconUrl } from '../shared/icons';
-import { newPane, type Panes, Sides } from './sides';
+import type { Editing } from './editing';
+import type { SettingsCommands } from './settingsCommands';
+import type { Icons } from './icons';
+import type { Transfers } from './transfers';
+import { viewerIconUrl } from '../shared/icons';
+import { newPane, type Panes, type Sides } from './sides';
 import { post } from './post';
-import { Viewers } from './viewers';
-import { ViewerFind } from './viewerFind';
-import { ViewedPdfPlaces } from './viewedPdfPlaces';
-import { SideFlat } from './sideFlat';
-import { SideSizes } from './sideSizes';
-import { SideDuplicates } from './sideDuplicates';
-import { Serving } from './serving';
-import { ThumbnailServing } from './thumbnailServing';
-import { ArchiveCopies } from './archiveCopies';
-import { ArchivePasswords } from './archivePasswords';
-import { ArchiveCommands } from './archiveCommands';
-import { TransferCommands } from './transferCommands';
-import { ArchiveTransferCommands } from './archiveTransferCommands';
-import { PackCommands } from './packCommands';
+import type { Viewers } from './viewers';
+import type { SideFlat } from './sideFlat';
+import type { SideSizes } from './sideSizes';
+import type { SideDuplicates } from './sideDuplicates';
+import type { Serving } from './serving';
+import type { ThumbnailServing } from './thumbnailServing';
+import type { ArchiveCopies } from './archiveCopies';
+import type { ArchivePasswords } from './archivePasswords';
+import type { TransferCommands } from './transferCommands';
 import type { CommanderAccess } from './commanderAccess';
 import { isFolder } from './fileStats';
-import { FileCommands } from './fileCommands';
-import { ItemChanges } from './itemChanges';
-import { SystemCommands } from './systemCommands';
-import { ArchiveListing } from './archiveListing';
-import { Listings } from './listings';
-import { Navigation } from './navigation';
-import { SideRepositories } from './sideRepositories';
-import { Elevation } from './elevation';
+import type { Listings } from './listings';
+import type { Elevation } from './elevation';
+import type { CommanderMessages } from './commanderMessages';
+import { buildParts } from './commanderParts';
 
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
-  private readonly sides = new Sides();
+  private readonly sides: Sides;
   private readonly viewers: Viewers;
-  private readonly viewerFind: ViewerFind;
-  private readonly viewedPdfPlaces: ViewedPdfPlaces;
   private readonly flat: SideFlat;
   private readonly sizes: SideSizes;
   private readonly duplicates: SideDuplicates;
@@ -59,183 +46,43 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly thumbnailServing: ThumbnailServing;
   private readonly passwords: ArchivePasswords;
   private readonly copies: ArchiveCopies;
-  private readonly archiveCommands: ArchiveCommands;
   private readonly transferCommands: TransferCommands;
-  private readonly packCommands: PackCommands;
-  private readonly fileCommands: FileCommands;
-  private readonly itemChanges: ItemChanges;
-  private readonly systemCommands: SystemCommands;
-  private readonly archiveListing: ArchiveListing;
   private fileSystem: Promise<LocalFileSystem> | undefined;
   private readonly icons: Icons;
-  private transferPage: Page | undefined;
   private readonly transfers: Transfers;
   private readonly savedSides: SavedSides;
   private readonly editing: Editing;
   private readonly listings: Listings;
-  private readonly navigation: Navigation;
   private readonly elevation: Elevation;
   private readonly settings: SettingsCommands;
+  private readonly messages: CommanderMessages;
 
   constructor(private readonly access: CommanderAccess) {
-    this.icons = new Icons(access.fileIcon, access.platform);
-    this.viewerFind = new ViewerFind(this.sides);
-    this.viewedPdfPlaces = new ViewedPdfPlaces(access, this.sides);
-    this.viewers = new Viewers(
+    const parts = buildParts(
       access,
-      this.sides,
-      (file) => this.listings.hiddenParts(file),
-      (tab, file) => this.viewedPdfPlaces.viewed(tab, file),
+      () => this.shell,
+      (saving) => this.saveQuietly(saving),
+      () => this.files(),
+      (page) => this.postDrives(page),
     );
-    this.flat = new SideFlat(access, this.sides, {
-      listed: (folder) => this.listings.listed(folder),
-      postListing: (page, tab, side, pane, selected) =>
-        this.listings.postListing(page, tab, side, pane, selected),
-      list: (page, tab, side, folder, how) =>
-        this.listings.list(page, tab, side, folder, how),
-      endSizing: (pane) => this.sizes.endSizing(pane),
-      flatRead: (pane) => this.duplicates.feedDuplicates(pane),
-    });
-    this.sizes = new SideSizes(access, this.sides, {
-      listed: (folder) => this.listings.listed(folder),
-    });
-    this.duplicates = new SideDuplicates(access, this.sides, {
-      postListing: (page, tab, side, pane, selected) =>
-        this.listings.postListing(page, tab, side, pane, selected),
-    });
-    this.serving = new Serving(this.sides, this.icons, () => this.shell.tabs());
-    this.thumbnailServing = new ThumbnailServing(access, this.sides);
-    this.editing = new Editing(
-      editingFiles(access, () => this.copies),
-      {
-        post: (page, message) => post(page, message),
-        notice: (page, notice) => this.shell.notice(page, notice),
-        namesChanged: (page) => this.shell.postTabs(page),
-        pagesShowing: (tab) =>
-          [...this.sides.shown]
-            .filter(([, showing]) => showing.tab === tab)
-            .map(([page]) => page),
-        openEdit: (page, file) => this.shell.openEdit(page, 'commander', file),
-      },
-    );
-    this.savedSides = new SavedSides(access.store);
-    this.transfers = new Transfers(access.connectTransfer, {
-      show: (view) => {
-        const kept = this.transferPage;
-        const page =
-          kept === undefined || kept.disposed ? this.shell.page() : kept;
-        this.transferPage = view === undefined ? undefined : page;
-        if (page !== undefined) {
-          post(page, { type: 'transfer', view });
-        }
-      },
-      notice: (notice) => this.shell.notice(undefined, notice),
-      finished: (ask) => this.transferCommands.transferred(ask),
-    });
-    this.passwords = new ArchivePasswords(access);
-    this.copies = new ArchiveCopies(
-      access,
-      this.sides,
-      this.passwords,
-      this.editing,
-      this.transfers,
-      {
-        shell: () => this.shell,
-        refuse: (page, message) => this.refuse(page, message),
-        saveQuietly: (saving) => this.saveQuietly(saving),
-      },
-    );
-    this.archiveCommands = new ArchiveCommands(access, this.transfers, {
-      shell: () => this.shell,
-      refuse: (page, message) => this.refuse(page, message),
-    });
-    this.transferCommands = new TransferCommands(
-      access,
-      this.sides,
-      new ArchiveTransferCommands(
-        access,
-        this.passwords,
-        this.archiveCommands,
-        this.transfers,
-        { refuse: (page, message) => this.refuse(page, message) },
-      ),
-      this.transfers,
-      {
-        shell: () => this.shell,
-        refuse: (page, message) => this.refuse(page, message),
-        list: (page, tab, side, folder, how, fallback, selecting) =>
-          this.listings.list(page, tab, side, folder, how, fallback, selecting),
-      },
-    );
-    this.packCommands = new PackCommands(
-      access,
-      this.sides,
-      this.passwords,
-      this.transfers,
-      {
-        shell: () => this.shell,
-        refuse: (page, message) => this.refuse(page, message),
-      },
-    );
-    this.fileCommands = new FileCommands(
-      access,
-      this.sides,
-      this.copies,
-      this.editing,
-      {
-        shell: () => this.shell,
-        list: (...listed) => this.listings.list(...listed),
-      },
-    );
-    this.itemChanges = new ItemChanges(
-      access,
-      this.sides,
-      this.archiveCommands,
-      {
-        shell: () => this.shell,
-        list: (...listed) => this.listings.list(...listed),
-      },
-    );
-    this.systemCommands = new SystemCommands(access, this.sides, this.copies, {
-      shell: () => this.shell,
-    });
-    this.archiveListing = new ArchiveListing(
-      access,
-      this.sides,
-      this.passwords,
-      {
-        refuse: (page, message) => this.refuse(page, message),
-        list: (page, tab, side, folder, how, fallback, selecting) =>
-          this.listings.list(page, tab, side, folder, how, fallback, selecting),
-      },
-    );
-    this.listings = new Listings(
-      access,
-      this.sides,
-      {
-        archiveListing: this.archiveListing,
-        flat: this.flat,
-        sizes: this.sizes,
-        duplicates: this.duplicates,
-        copies: this.copies,
-        savedSides: this.savedSides,
-        repositories: new SideRepositories(access, this.sides),
-      },
-      {
-        shell: () => this.shell,
-        elevated: () => this.elevation.current,
-        files: () => this.files(),
-        saveQuietly: (saving) => this.saveQuietly(saving),
-      },
-    );
-    this.navigation = new Navigation(access, this.sides, {
-      list: (...listed) => this.listings.list(...listed),
-      files: () => this.files(),
-    });
-    this.elevation = new Elevation(access, this.sides, this.listings, {
-      shell: () => this.shell,
-    });
-    this.settings = new SettingsCommands(access, this.sides);
+    this.sides = parts.sides;
+    this.viewers = parts.viewers;
+    this.flat = parts.flat;
+    this.sizes = parts.sizes;
+    this.duplicates = parts.duplicates;
+    this.serving = parts.serving;
+    this.thumbnailServing = parts.thumbnailServing;
+    this.passwords = parts.passwords;
+    this.copies = parts.copies;
+    this.transferCommands = parts.transferCommands;
+    this.icons = parts.icons;
+    this.transfers = parts.transfers;
+    this.savedSides = parts.savedSides;
+    this.editing = parts.editing;
+    this.listings = parts.listings;
+    this.elevation = parts.elevation;
+    this.settings = parts.settings;
+    this.messages = parts.messages;
   }
 
   attach(shell: ShellAccess): void {
@@ -346,187 +193,8 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  async receive(page: Page, message: CommanderToHost): Promise<void> {
-    switch (message.type) {
-      case 'editFile':
-        return this.fileCommands.editFile(
-          page,
-          this.sides.namingPane(
-            page,
-            message.tab,
-            message.side,
-            message.folder,
-          ),
-          message.name,
-        );
-      case 'readEdited':
-      case 'editText':
-      case 'editState':
-      case 'saveText':
-      case 'reloadEdited':
-      case 'saveIn':
-      case 'reopenIn':
-      case 'editSource':
-        return this.editing.receive(page, message);
-      case 'open':
-        return this.fileCommands.openEntry(
-          page,
-          this.sides.namingPane(
-            page,
-            message.tab,
-            message.side,
-            message.folder,
-          ),
-          message.name,
-        );
-      case 'drive':
-        return this.navigation.drive(
-          page,
-          message.tab,
-          message.side,
-          message.drive,
-        );
-      case 'listDrives':
-        return this.postDrives(page);
-      case 'step':
-        return this.navigation.step(
-          page,
-          message.tab,
-          message.side,
-          message.step,
-        );
-      case 'view':
-        return this.fileCommands.view(
-          page,
-          this.sides.namingPane(
-            page,
-            message.tab,
-            message.side,
-            message.folder,
-          ),
-          message.name,
-        );
-      case 'shellMenu':
-        return this.systemCommands.shellMenu(page, message);
-      case 'delete':
-        return this.itemChanges.delete(page, message);
-      case 'transfer':
-        return this.transferCommands.transfer(page, message);
-      case 'newFolder':
-        return this.itemChanges.newFolder(page, message);
-      case 'newFile':
-        return this.fileCommands.newFile(page, message);
-      case 'editViewed':
-        return this.fileCommands.editViewed(page, message);
-      case 'rename':
-        return this.itemChanges.rename(page, message);
-      case 'pack':
-        return this.packCommands.pack(page, message);
-      case 'testArchives':
-        this.packCommands.testArchives(page, message);
-        return undefined;
-      case 'copyToClipboard':
-        return this.systemCommands.copyToClipboard(page, message);
-      case 'drag':
-        return this.systemCommands.drag(page, message);
-      case 'paste':
-        return this.transferCommands.paste(page, message);
-      case 'answerClash':
-        this.transfers.answer(
-          message.transfer,
-          message.asked,
-          message.answer,
-          message.all,
-        );
-        return undefined;
-      case 'stopTransfer':
-        this.transfers.stop(message.transfer);
-        return undefined;
-      case 'hideTransfer':
-        this.transfers.hide(message.transfer);
-        return undefined;
-      case 'compare':
-        return this.fileCommands.compare(page, message.tab, message.files);
-      case 'readRows':
-        return this.viewers.readRows(page, message);
-      case 'readText':
-        return this.viewers.readText(page, message);
-      case 'findText':
-        return this.viewerFind.findText(page, message);
-      case 'stopFind':
-        this.viewerFind.stopFind(page, message);
-        return undefined;
-      case 'readPdfPlace':
-        return this.viewedPdfPlaces.readPdfPlace(page, message);
-      case 'savePdfPlace':
-        return this.viewedPdfPlaces.savePdfPlace(page, message);
-      case 'readBytes':
-        return this.viewers.readBytes(page, message);
-      case 'reread':
-        return this.listings.reread(page, message);
-      case 'flat':
-        return this.flat.turnFlat(page, message);
-      case 'stopReading':
-        this.listings.stopReading(page, message);
-        return undefined;
-      case 'countSizes':
-        this.sizes.countSizes(page, message);
-        return undefined;
-      case 'openOnSide':
-        return this.archiveListing.openOnSide(page, message);
-      case 'enterArchive':
-        return this.archiveListing.enterArchive(page, message);
-      case 'password':
-        this.passwords.answerPassword(message.ask, message.password);
-        return undefined;
-      case 'updateArchive':
-        this.copies.answerUpdate(message.ask, message.update);
-        return undefined;
-      case 'openRepository':
-        return this.fileCommands.openRepository(page, message);
-      case 'folderCommand':
-        return this.fileCommands.folderCommand(page, message);
-      case 'elevate':
-        return this.elevation.elevate(page, message.tab, message.side);
-      case 'activate': {
-        const shown = this.sides.shownPane(page, message.tab, message.side);
-        const panes = shown && this.sides.panes.get(shown.tab);
-        if (shown !== undefined && panes !== undefined) {
-          panes.active = shown.side;
-        }
-        return undefined;
-      }
-      case 'columns':
-        return this.settings.columns(page, message);
-      case 'sort':
-        return this.settings.sort(page, message);
-      case 'saveThumbnail':
-        return this.thumbnailServing.saveThumbnail(message);
-      case 'dropIcons':
-        if (
-          Array.isArray(message.tickets) &&
-          message.tickets.length <= maxDroppedIcons &&
-          message.tickets.every((ticket) => typeof ticket === 'string')
-        ) {
-          this.icons.drop(message.tickets);
-        }
-        return undefined;
-      case 'showHidden':
-        return this.settings.showHidden(page, message);
-      case 'addBookmark':
-        return this.settings.addBookmark(page, message);
-      case 'removeBookmark':
-        return this.settings.removeBookmark(page, message);
-      case 'goToBookmark':
-        return this.navigation.goToBookmark(page, message);
-      case 'goTo':
-        return this.navigation.goTo(page, message);
-      case 'duplicates':
-        this.duplicates.turnDuplicates(page, message);
-        return undefined;
-      default:
-        return message satisfies never;
-    }
+  receive(page: Page, message: CommanderToHost): Promise<void> {
+    return this.messages.receive(page, message);
   }
 
   dropped(page: Page, files: unknown, message: unknown): Promise<void> {
@@ -649,10 +317,6 @@ export class CommanderTool implements Tool<'commander'> {
 
   private saveQuietly(saving: Promise<void>): void {
     void this.shell.track(saving.catch(() => undefined));
-  }
-
-  private refuse(page: Page, message: Sentence): void {
-    this.shell.notice(page, { level: 'error', message });
   }
 
   private files(): Promise<LocalFileSystem> {
