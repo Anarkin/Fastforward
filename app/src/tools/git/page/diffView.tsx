@@ -7,7 +7,6 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
-  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -20,24 +19,15 @@ import { type FindMatch } from './find';
 import { lineKey } from './diffLines';
 import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
-import { keyPressed } from '../../../lib/page/shortcuts';
 import { shortcutsEntryAttribute } from '../../../lib/page/shortcutsEntry';
 import { useSyntax, useTextsToLoad, noSyntaxInput } from './syntax';
 import { wordRanges, type LineWords } from './wordDiff';
-import { gitKeymap } from './keymap';
-import { listMoveOf } from '../../../lib/page/listMoves';
 import { ownScrollbarAttribute } from '../../../lib/page/overlayScrollbars';
 import { type ImageOrigin } from './images';
 import { useSkeleton } from './skeletonDelay';
-import type { ColumnsIn } from '../../../lib/page/rowBreaks';
 import { wrapIndent } from '../../../lib/page/wordWrap';
 import { snapOffset } from '../../../lib/page/devicePixels';
-import {
-  followRows,
-  rowPadding,
-  snappedTop,
-  type RowFollower,
-} from '../../../lib/page/rowScroll';
+import { snappedTop, type RowFollower } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
 import { pickedFor, useGit, useGitActions } from './store';
 import {
@@ -46,9 +36,7 @@ import {
   type Sideways,
   type TextArea,
 } from './overflow';
-import { cellWidthsOf, textWidths } from '../../../lib/page/textWidths';
-import { columnsOf } from '../../../lib/page/textColumns';
-import { plainCells, useCellTable } from '../../../lib/page/cellTable';
+import { cellWidthsOf } from '../../../lib/page/textWidths';
 import {
   type WholeFile,
   showsSideBySide,
@@ -59,21 +47,9 @@ import {
   splitPairs,
   lineKeys,
 } from './diffRows';
-import {
-  uniformHeight,
-  RowContent,
-  rowOverscan,
-  rowMeasures,
-  rowHeight,
-} from './rowMeasures';
-import { changeStarts, keyedScrollTop } from './diffScrolling';
-import { sideScroll, diffScrollLeft, sideRoom } from './sidewaysScroll';
-import {
-  rowAnchors,
-  type ScrollAnchor,
-  scrollAnchor,
-  anchoredScrollTop,
-} from './diffScrollAnchor';
+import { RowContent, rowOverscan, rowMeasures, rowHeight } from './rowMeasures';
+import { sideScroll, sideRoom } from './sidewaysScroll';
+import { useScrollAnchor } from './diffScrollAnchor';
 import { scrollOnToggle, stuckHeader } from './diffStuckHeader';
 import {
   type LineMarks,
@@ -81,18 +57,13 @@ import {
   codeProps,
   findRangesByLine,
 } from './lineMarks';
-import { noMarksInput, diffMinimapMarks } from './diffMinimap';
+import { useDiffMinimapMarks } from './diffMinimap';
 import { Code } from './codeMarks';
 import {
   unmeasured,
   gapWidth,
-  unpadded,
-  codeSnapOf,
-  codeStarts,
-  sameSnap,
   layoutVariables,
   widestColumns,
-  type Edges,
 } from './textLayout';
 import { WrapProbe, TextProbe } from './textProbes';
 import { selectionSide } from './selectionSide';
@@ -102,6 +73,9 @@ import { useFoundJumps, useRevealFound } from './diffJumps';
 import { useLargeFileLoads } from './diffLargeFiles';
 import { diffRowClass, diffRowPlace } from './diffRowClasses';
 import { FileHeader, HiddenChangeMarks } from './diffRowParts';
+import { useDiffText } from './diffText';
+import { useDiffFollow } from './diffFollow';
+import { diffKeyDown } from './diffKeys';
 
 export function DiffView({
   error,
@@ -148,64 +122,18 @@ export function DiffView({
   const split = showsSideBySide(sideBySide, whole);
   const scrollsSides = split && !wordWrap;
   const columns = useGit((state) => state.wrapColumns);
-  const measuredText = useGit((state) => state.diffText);
-  const { measureDiffText, snapDiffCode, keepWrapColumns } = useGitActions();
-  const charWidth = measuredText?.charWidth ?? 0;
-  const font = measuredText?.font ?? '';
-  const spacing = measuredText?.spacing ?? 0;
-  const table = useCellTable();
-  const widths = useMemo(
-    () => textWidths(charWidth, font, spacing, table ?? plainCells),
-    [charWidth, font, spacing, table],
-  );
-  const columnsIn = useMemo<ColumnsIn | undefined>(
-    () =>
-      widths.char > 0 ? (row: string) => columnsOf(row, widths) : undefined,
-    [widths],
-  );
-  const padding = measuredText?.padding ?? unpadded;
-  const scale = measuredText?.scale ?? 1;
-  const lineHeight = measuredText?.lineHeight ?? uniformHeight;
-  const measureText = useCallback(
-    (
-      width: number,
-      measuredFont: string,
-      measured: Edges,
-      measuredScale: number,
-      measuredLineHeight: number,
-      measuredSpacing: number,
-    ) =>
-      measureDiffText({
-        charWidth: width,
-        font: measuredFont,
-        spacing: measuredSpacing,
-        scale: measuredScale,
-        lineHeight: measuredLineHeight,
-        padding: measured,
-      }),
-    [measureDiffText],
-  );
-  const snap = useGit((state) => state.diffSnap);
-  const snapCode = useCallback(() => {
-    const element = list.current;
-    if (!element) {
-      return;
-    }
-    snapDiffCode((last) => {
-      const next = codeSnapOf(codeStarts(element), devicePixelRatio, last);
-      return sameSnap(last, next) ? last : next;
-    });
-  }, [snapDiffCode]);
-  useLayoutEffect(snapCode);
-  useEffect(() => {
-    const element = list.current;
-    if (!element) {
-      return undefined;
-    }
-    const observer = new ResizeObserver(snapCode);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [snapCode]);
+  const { keepWrapColumns } = useGitActions();
+  const {
+    table,
+    charWidth,
+    widths,
+    columnsIn,
+    padding,
+    scale,
+    lineHeight,
+    measureText,
+    snap,
+  } = useDiffText(list);
   const { sideways, setSideways, measured, measureSideways } = useSideways(
     list,
     scrollsSides,
@@ -288,35 +216,14 @@ export function DiffView({
     [],
   );
 
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const endPadding = rowPadding(viewportHeight, lineHeight);
-  const lineOf = useEffectEvent(() => lineHeight);
-  const totalOf = useEffectEvent(() => virtualizer.getTotalSize());
-  const perNotch = useEffectEvent(() => scrolling.wheelRows);
-  const smooth = useEffectEvent(() => scrolling.smooth);
-  useEffect(() => {
-    const element = list.current;
-    if (!element) {
-      return undefined;
-    }
-    const viewport = () => element.getBoundingClientRect().height;
-    const following = followRows(element, lineOf, {
-      limit: () => totalOf() + rowPadding(viewport(), lineOf()) - viewport(),
-      perNotch,
-      smooth,
-      onPlace: (top) => offsetSeen.current?.(top),
-    });
-    follower.current = following;
-    const measure = () => setViewportHeight(viewport());
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => {
-      following.stop();
-      follower.current = undefined;
-      observer.disconnect();
-    };
-  }, []);
+  const endPadding = useDiffFollow({
+    list,
+    followerRef: follower,
+    offsetSeen,
+    virtualizer,
+    lineHeight,
+    scrolling,
+  });
 
   const toggle = (path: string, open: boolean) =>
     setToggled((all) => new Map(all).set(path, !open));
@@ -527,62 +434,25 @@ export function DiffView({
     virtualizer,
     lineHeight,
   });
-  const measurements = virtualizer.measurementsCache;
-  const marksInput = useDeferredValue(
-    useMemo(
-      () => ({
-        rows,
-        keys,
-        matched: rangesByLine,
-        changeMarks,
-        measurements,
-      }),
-      [rows, keys, rangesByLine, changeMarks, measurements],
-    ),
-    noMarksInput,
-  );
-  const marks = useMemo(
-    () =>
-      diffMinimapMarks(
-        marksInput.rows,
-        marksInput.keys,
-        marksInput.matched,
-        marksInput.changeMarks,
-        (index) => marksInput.measurements[index]?.size,
-      ),
-    [marksInput],
-  );
+  const marks = useDiffMinimapMarks({
+    rows,
+    keys,
+    rangesByLine,
+    changeMarks,
+    virtualizer,
+  });
 
   const scrollTop = virtualizer.scrollOffset ?? 0;
   const stuck = stuckHeader(rows, items, scrollTop);
 
-  const layoutKey = `${split}:${wordWrap ? `${columns?.left}:${columns?.right}` : ''}`;
-  const shown = useMemo(() => rowAnchors(rows, keys), [rows, keys]);
-  const anchor = useRef<{ key: string; at: ScrollAnchor | undefined }>(
-    undefined,
-  );
-  useLayoutEffect(() => {
-    const last = anchor.current;
-    if (last?.at && last.key !== layoutKey) {
-      anchor.current = { key: layoutKey, at: last.at };
-      const top = anchoredScrollTop(
-        last.at,
-        virtualizer.measurementsCache,
-        shown,
-      );
-      if (top !== undefined) {
-        virtualizer.scrollToOffset(top);
-      }
-      return;
-    }
-    anchor.current = {
-      key: layoutKey,
-      at: scrollAnchor(
-        virtualizer.measurementsCache,
-        shown,
-        list.current?.scrollTop ?? 0,
-      ),
-    };
+  useScrollAnchor({
+    list,
+    virtualizer,
+    rows,
+    keys,
+    split,
+    wordWrap,
+    columns,
   });
 
   return (
@@ -637,60 +507,18 @@ export function DiffView({
           [columnFocusAttribute]: '',
           [shortcutsEntryAttribute]: 'diff',
         }}
-        onKeyDown={(event) => {
-          const side = keyPressed(gitKeymap.sideways, event);
-          const left =
-            side === undefined
-              ? undefined
-              : scrollsSides
-                ? diffScrollLeft(
-                    side,
-                    sideways,
-                    sideRoom(event.currentTarget).widest,
-                    widths.char,
-                  )
-                : diffScrollLeft(
-                    side,
-                    event.currentTarget.scrollLeft,
-                    undefined,
-                    widths.char,
-                  );
-          if (left !== undefined) {
-            event.preventDefault();
-            if (scrollsSides) {
-              setSideways(left);
-            } else {
-              event.currentTarget.scrollLeft = left;
-            }
-            return;
-          }
-          const step = keyPressed(gitKeymap.change, event);
-          const move = listMoveOf(event);
-          const top = keyedScrollTop(
-            step,
-            move,
-            follower.current?.aim() ?? event.currentTarget.scrollTop,
-            event.currentTarget.clientHeight,
-            virtualizer.getTotalSize(),
+        onKeyDown={(event) =>
+          diffKeyDown(event, {
+            scrollsSides,
+            sideways,
+            setSideways,
+            widths,
+            follower,
+            virtualizer,
+            rows,
             lineHeight,
-            () =>
-              changeStarts(rows).map(
-                (index) => virtualizer.measurementsCache[index]?.start ?? 0,
-              ),
-          );
-          if (top === undefined) {
-            return;
-          }
-          event.preventDefault();
-          if (follower.current) {
-            follower.current.scrollTo(
-              top,
-              step === undefined && (move === 'pageUp' || move === 'pageDown'),
-            );
-          } else {
-            virtualizer.scrollToOffset(top);
-          }
-        }}
+          })
+        }
       >
         {stuck && (
           <div className="diff-stuck-header">{header(stuck, true)}</div>

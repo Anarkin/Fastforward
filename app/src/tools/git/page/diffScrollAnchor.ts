@@ -1,4 +1,7 @@
+import type { Virtualizer } from '@tanstack/react-virtual';
+import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
 import type { DiffRow } from './diffRows';
+import type { WrapColumns } from './rowMeasures';
 
 export function rowAnchors(
   rows: readonly DiffRow[],
@@ -64,4 +67,51 @@ export function anchoredScrollTop(
     row &&
     row.start + Math.min(anchor.fraction * row.size, Math.max(0, row.size - 1))
   );
+}
+
+export function useScrollAnchor({
+  list,
+  virtualizer,
+  rows,
+  keys,
+  split,
+  wordWrap,
+  columns,
+}: {
+  readonly list: RefObject<HTMLDivElement | null>;
+  readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
+  readonly rows: readonly DiffRow[];
+  readonly keys: readonly (readonly string[])[];
+  readonly split: boolean;
+  readonly wordWrap: boolean;
+  readonly columns: WrapColumns | undefined;
+}): void {
+  const layoutKey = `${split}:${wordWrap ? `${columns?.left}:${columns?.right}` : ''}`;
+  const shown = useMemo(() => rowAnchors(rows, keys), [rows, keys]);
+  const anchor = useRef<{ key: string; at: ScrollAnchor | undefined }>(
+    undefined,
+  );
+  useLayoutEffect(() => {
+    const last = anchor.current;
+    if (last?.at && last.key !== layoutKey) {
+      anchor.current = { key: layoutKey, at: last.at };
+      const top = anchoredScrollTop(
+        last.at,
+        virtualizer.measurementsCache,
+        shown,
+      );
+      if (top !== undefined) {
+        virtualizer.scrollToOffset(top);
+      }
+      return;
+    }
+    anchor.current = {
+      key: layoutKey,
+      at: scrollAnchor(
+        virtualizer.measurementsCache,
+        shown,
+        list.current?.scrollTop ?? 0,
+      ),
+    };
+  });
 }

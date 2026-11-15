@@ -401,28 +401,28 @@ suite('Files to view', () => {
   });
 });
 
+const patch = [
+  'diff --git a/a.ts b/a.ts',
+  '--- a/a.ts',
+  '+++ b/a.ts',
+  '@@ -1,2 +1,2 @@',
+  ' const Find = 1;',
+  '-const find = 2;',
+  '+const finder = 2;',
+  '@@ -10,1 +10,1 @@',
+  ' find(find);',
+  'diff --git a/b.ts b/b.ts',
+  '--- a/b.ts',
+  '+++ b/b.ts',
+  '@@ -1,1 +1,1 @@',
+  '-nothing',
+  '+FIND',
+  '',
+].join('\n');
+
+const whole = { path: 'c.ts', content: 'find\nnone\n', binary: false };
+
 suite('Find in diff', () => {
-  const patch = [
-    'diff --git a/a.ts b/a.ts',
-    '--- a/a.ts',
-    '+++ b/a.ts',
-    '@@ -1,2 +1,2 @@',
-    ' const Find = 1;',
-    '-const find = 2;',
-    '+const finder = 2;',
-    '@@ -10,1 +10,1 @@',
-    ' find(find);',
-    'diff --git a/b.ts b/b.ts',
-    '--- a/b.ts',
-    '+++ b/b.ts',
-    '@@ -1,1 +1,1 @@',
-    '-nothing',
-    '+FIND',
-    '',
-  ].join('\n');
-
-  const whole = { path: 'c.ts', content: 'find\nnone\n', binary: false };
-
   test('keys each row by the file and line a match names, and only lines', () => {
     const files = parsePatch(patch);
     const rows = diffRows(files, new Map([['b.ts', false]]), undefined);

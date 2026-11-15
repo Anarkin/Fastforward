@@ -1,3 +1,5 @@
+import type { Virtualizer } from '@tanstack/react-virtual';
+import { useDeferredValue, useMemo } from 'react';
 import { matchMarks, minimapMarks, type MinimapMark } from './minimapMarks';
 import type { DiffRow } from './diffRows';
 import { minimapRows } from './rowMeasures';
@@ -10,7 +12,7 @@ interface MarksInput {
   readonly measurements: readonly { readonly size: number }[];
 }
 
-export const noMarksInput: MarksInput = {
+const noMarksInput: MarksInput = {
   rows: [],
   keys: [],
   matched: new Map(),
@@ -35,4 +37,45 @@ export function diffMinimapMarks(
     ...(changeMarks ? minimapMarks(heights) : []),
     ...matchMarks(heights, matched),
   ];
+}
+
+export function useDiffMinimapMarks({
+  rows,
+  keys,
+  rangesByLine,
+  changeMarks,
+  virtualizer,
+}: {
+  readonly rows: readonly DiffRow[];
+  readonly keys: readonly (readonly string[])[];
+  readonly rangesByLine: ReadonlyMap<string, unknown>;
+  readonly changeMarks: boolean;
+  readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
+}): MinimapMark[] {
+  const measurements = virtualizer.measurementsCache;
+  const marksInput = useDeferredValue(
+    useMemo(
+      () => ({
+        rows,
+        keys,
+        matched: rangesByLine,
+        changeMarks,
+        measurements,
+      }),
+      [rows, keys, rangesByLine, changeMarks, measurements],
+    ),
+    noMarksInput,
+  );
+  const marks = useMemo(
+    () =>
+      diffMinimapMarks(
+        marksInput.rows,
+        marksInput.keys,
+        marksInput.matched,
+        marksInput.changeMarks,
+        (index) => marksInput.measurements[index]?.size,
+      ),
+    [marksInput],
+  );
+  return marks;
 }
