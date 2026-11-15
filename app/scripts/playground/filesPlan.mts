@@ -1,6 +1,6 @@
 import type { Content } from './planContents.mts';
 import { planHuge, planViewing } from './planViewing.mts';
-import { planNames } from './planNames.mts';
+import { planColors, planNames } from './planNames.mts';
 import { planArchives } from './planArchives.mts';
 import { planOperations } from './planOperations.mts';
 import { planFolders, planThumbnails } from './planFolders.mts';
@@ -148,6 +148,7 @@ export function plan({
 }): Plan {
   const builder = planBuilder();
   const options = { platform, large };
+  planColors(builder);
   planViewing(builder);
   planNames(builder, options);
   planArchives(builder, options);
