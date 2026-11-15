@@ -89,7 +89,10 @@ export class TerminalTool implements Tool<'terminal'> {
 
   show(page: Page, tab: Tab): Promise<void> {
     const before = this.shown.get(page);
-    if (before !== undefined && before.tab !== tab.id) {
+    if (before?.tab === tab.id) {
+      return Promise.resolve();
+    }
+    if (before !== undefined) {
       this.link.send({ type: 'detach', id: before.tab }, false);
     }
     for (const [other, shown] of this.shown) {

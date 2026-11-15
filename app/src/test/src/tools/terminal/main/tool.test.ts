@@ -709,6 +709,16 @@ suite('Terminal tool in several windows', () => {
     assert.strictEqual(ptys.spawned.length, 2);
   });
 
+  test('keeps a terminal attached in the window that shows it once that window is told to show it again, as a window a background tab left shows its active tab again, which froze the terminal shown there until another tab was shown', async () => {
+    const { tool, ptys, clock, page, open } = terminal();
+    await open(work);
+    await tool.show(page, work);
+    ptys.last().print('still running');
+    await clock.fire();
+    assert.strictEqual(page.output(), 'still running');
+    assert.deepStrictEqual(page.of('show'), [{ type: 'show', tab: '1' }]);
+  });
+
   test('answers where the cursor is for a tab moved to another window until that window shows it, as the shell asked while the window it left was still attached and no one answered', async () => {
     const { tool, ptys, clock, open } = terminal();
     const second = new TerminalPage();
