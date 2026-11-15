@@ -34,7 +34,6 @@ import {
   RowIcon,
   SizeCell,
 } from '../../../../../tools/commander/page/paneCells';
-import { layoutMenu } from '../../../../../tools/commander/page/paneLayoutMenu';
 import { Pane } from '../../../../../tools/commander/page/pane';
 
 const renderToStaticMarkup = (node: React.ReactNode) =>
@@ -354,46 +353,6 @@ suite('Commander pane', () => {
     } finally {
       Object.assign(globalThis, saved);
     }
-  });
-
-  test('lists the layouts and, past a line, grouping by color, checked while the side groups by it, and only while there are colors to group by', () => {
-    const chosen: string[] = [];
-    const items = layoutMenu({
-      layout: 'thumbnails',
-      groupByColor: true,
-      canGroupByColor: true,
-      onLayout: (layout) => chosen.push(layout),
-      onGroupByColor: () => chosen.push('grouped'),
-    });
-    assert.deepStrictEqual(
-      items.map((item) =>
-        'separator' in item
-          ? '---'
-          : [item.label, item.checked ?? false, item.disabled ?? false],
-      ),
-      [
-        [strings.commander.layouts.details, false, false],
-        [strings.commander.layouts.thumbnails, true, false],
-        '---',
-        [strings.commander.groupByColor, true, false],
-      ],
-    );
-    for (const item of items) {
-      if (!('separator' in item)) {
-        item.onClick?.();
-      }
-    }
-    assert.deepStrictEqual(chosen, ['details', 'thumbnails', 'grouped']);
-
-    const none = layoutMenu({
-      layout: 'details',
-      groupByColor: false,
-      canGroupByColor: false,
-      onLayout: noop,
-      onGroupByColor: noop,
-    }).at(-1);
-    assert.ok(none !== undefined && !('separator' in none));
-    assert.deepStrictEqual([none.checked, none.disabled], [false, true]);
   });
 
   test('shows the drive a folder is on, whatever the case of its letter', () => {

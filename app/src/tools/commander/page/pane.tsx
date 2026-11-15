@@ -64,7 +64,8 @@ import {
   CountingStatus,
   FlatStatus,
 } from './paneStatus';
-import { layoutMenu, archivePart } from './paneLayoutMenu';
+import { layoutMenu } from './paneLayoutMenu';
+import { archivePart } from './archivePart';
 import { BookmarkButton } from './paneHeader';
 declare module 'react' {
   interface CSSProperties {
