@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { pdf, pdfParts, png, shade } from './formats.mts';
+import { pdf, png, shade } from './formats.mts';
 import { encoded } from './encodings.mts';
 import { images } from './gitImages.mts';
 import { dotnetFiles } from './dotnetSamples.mts';
@@ -15,7 +15,7 @@ import {
 import { emojiGrid } from './emojiGrid.mts';
 import { decoded, imageKinds, orientedJpeg } from './imageSamples.mts';
 import { paddedTable } from './paddedTable.mts';
-import type { PlanBuilder, PlanOptions } from './filesPlan.mts';
+import type { PlanBuilder } from './filesPlan.mts';
 import { limits, syntaxLineLimit, appRoot, realSources } from './appFacts.mts';
 import {
   kib,
@@ -30,7 +30,6 @@ import {
   encodingTexts,
   unicodeText,
   pages,
-  largePdfPages,
   oneLine,
   three,
 } from './planContents.mts';
@@ -292,25 +291,4 @@ export function planViewing(builder: PlanBuilder): void {
     lines(limits.maxMatches + 1000, (i) => `needle ${i + 1}`),
   );
   chunks('text/find-log-of-20-mib.log', 20 * mib, () => logOfSize(20 * mib));
-}
-
-export function planHuge(builder: PlanBuilder, options: PlanOptions): void {
-  const { items, file, chunks, section } = builder;
-  const { large } = options;
-  if (large) {
-    section(
-      'huge',
-      'A log of 200 MiB with one NEEDLE near its end, a padded table of 10 MiB, one line of 50 MiB and a PDF of 100 MiB.',
-    );
-    chunks('huge/log-of-200-mib.log', 200 * mib, () => logOfSize(200 * mib));
-    file('huge/padded-table-of-10-mib.md', () => paddedTable(1, 7985));
-    chunks('huge/one-line-of-50-mib.txt', 50 * mib, () =>
-      oneLineOfSize(50 * mib),
-    );
-    items.push({
-      kind: 'chunks',
-      path: 'huge/pdf-of-100-mib.pdf',
-      chunks: () => pdfParts(largePdfPages(2300), 2300),
-    });
-  }
 }

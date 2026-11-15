@@ -1,5 +1,6 @@
 import type { Content } from './planContents.mts';
-import { planHuge, planViewing } from './planViewing.mts';
+import { planViewing } from './planViewing.mts';
+import { planHuge } from './planHuge.mts';
 import { planNames } from './planNames.mts';
 import { planColors } from './planColors.mts';
 import { planArchives } from './planArchives.mts';
