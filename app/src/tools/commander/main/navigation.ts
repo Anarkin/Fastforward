@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { Page } from '../../../shell/main/toolContract';
-import type { CommanderToHost, Side } from '../shared/protocol';
+import type { CommanderToHost } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import type { LocalFileSystem } from './fileSystem';
 import type { Listing, Sides } from './sides';
 import type { CommanderAccess } from './commanderAccess';

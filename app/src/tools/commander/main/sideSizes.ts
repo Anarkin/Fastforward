@@ -1,5 +1,6 @@
 import type { Page } from '../../../shell/main/toolContract';
-import type { CommanderToHost, Entry, Side } from '../shared/protocol';
+import type { CommanderToHost, Entry } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import { FolderSizes } from './folderSizes';
 import { listingWalker, type SizeWalker } from './sizeWalk';
 import {

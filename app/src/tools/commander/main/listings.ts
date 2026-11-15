@@ -3,11 +3,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
-import {
-  type CommanderToHost,
-  type Entry,
-  type Side,
-} from '../shared/protocol';
+import { type CommanderToHost, type Entry } from '../shared/protocol';
+import { type Side } from '../shared/sides';
 import type { LocalFileSystem } from './fileSystem';
 import { pathParts } from '../shared/paths';
 import type { ElevatedFileSystem } from './elevated';

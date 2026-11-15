@@ -1,4 +1,5 @@
-import type { TextEncoding, TextRow } from '../shared/protocol';
+import type { TextRow } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import type { CodeSegment } from './codeSegments';
 import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';

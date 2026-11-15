@@ -2,12 +2,8 @@ import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
 import { maxDroppedIcons } from '../shared/icons';
-import {
-  sides,
-  type CommanderDrop,
-  type CommanderToHost,
-  type Side,
-} from '../shared/protocol';
+import { type CommanderDrop, type CommanderToHost } from '../shared/protocol';
+import { sides, type Side } from '../shared/sides';
 import type { ColumnWidths } from '../shared/settings';
 import { filterWords } from '../../../lib/page/fileFilter';
 import {

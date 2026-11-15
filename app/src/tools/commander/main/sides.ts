@@ -1,11 +1,6 @@
 import type { Page } from '../../../shell/main/toolContract';
-import {
-  isSide,
-  sides,
-  type Entry,
-  type FlatProgress,
-  type Side,
-} from '../shared/protocol';
+import { type Entry, type FlatProgress } from '../shared/protocol';
+import { isSide, sides, type Side } from '../shared/sides';
 import type { FlatTree } from './flatTree';
 import type { Duplicates } from './duplicates';
 import type { BlockCache } from './fileBlocks';

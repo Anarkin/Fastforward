@@ -10,8 +10,8 @@ import type {
   CommanderToHost,
   CommanderToWebview,
   Entry,
-  Side,
 } from '../../../../../tools/commander/shared/protocol';
+import type { Side } from '../../../../../tools/commander/shared/sides';
 import type {
   ColumnWidths,
   Sorts,

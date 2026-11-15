@@ -34,11 +34,11 @@ import { editorKeymap } from './editorKeymap';
 import {
   maxColoredBytes,
   type CommanderToWebviewOf,
-  type TextEncoding,
   type TextShown,
   type EncodingSource,
   type EndingSource,
 } from '../shared/protocol';
+import { type TextEncoding } from '../shared/textEncodings';
 import {
   endingsField,
   endingsFrom,

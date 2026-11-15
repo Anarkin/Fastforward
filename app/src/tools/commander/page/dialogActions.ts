@@ -1,5 +1,6 @@
 import { folderKey } from '../shared/paths';
-import { otherSide, type CommanderToHost, type Side } from '../shared/protocol';
+import { type CommanderToHost } from '../shared/protocol';
+import { otherSide, type Side } from '../shared/sides';
 import type { StoreApi } from 'zustand';
 import type { CommanderActions, CommanderState } from './commanderState';
 import { keysMatching } from './markPattern';

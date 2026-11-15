@@ -4,8 +4,8 @@ import type {
   Entry,
   FlatFolder,
   FlatProgress,
-  Side,
 } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import type { WatchFolder } from './watch';
 import type { WatchTree } from './watchTree';
 import { FlatTree } from './flatTree';

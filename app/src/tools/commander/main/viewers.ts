@@ -2,13 +2,12 @@ import * as fs from 'node:fs';
 import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/toolContract';
 import {
-  isTextEncoding,
   maxBytesAsked,
   maxColoredBytes,
   maxRowsAsked,
-  type TextEncoding,
   type CommanderToHost,
 } from '../shared/protocol';
+import { isTextEncoding, type TextEncoding } from '../shared/textEncodings';
 import type { WatchFolder } from './watch';
 import { fileVersion } from '../shared/files';
 import { readBudgetBytes, rowsBefore, rowsFrom, rowStartAt } from './textRows';

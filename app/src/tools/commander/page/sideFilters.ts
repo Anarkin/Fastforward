@@ -1,4 +1,4 @@
-import { sides, type Side } from '../shared/protocol';
+import { sides, type Side } from '../shared/sides';
 import type { CommanderSource, PaneFilter } from './commanderState';
 
 export function filterKey(tab: string, side: Side): string {

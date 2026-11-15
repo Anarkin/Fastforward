@@ -1,9 +1,8 @@
 import {
-  sides,
   type CommanderToWebviewOf,
   type FlatProgress,
-  type Side,
 } from '../shared/protocol';
+import { sides, type Side } from '../shared/sides';
 import {
   defaultLayouts,
   type ColumnWidths,

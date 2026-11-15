@@ -1,6 +1,6 @@
 import { strings } from '../../../lib/shared/strings';
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
-import type { TextEncoding } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import {
   inGroups,
   keywordsOf,

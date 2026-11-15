@@ -1,5 +1,6 @@
 import { ChangeSet, RangeSet, Text } from '@codemirror/state';
-import type { TextEncoding, TextShown } from '../shared/protocol';
+import type { TextShown } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import {
   isLineEnding,
   keptMarks,

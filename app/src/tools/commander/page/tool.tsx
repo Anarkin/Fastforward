@@ -5,11 +5,11 @@ import './style.css';
 import { commanderKeymap } from './keymap';
 import { viewerKeymap } from './viewerKeymap';
 import {
-  sides,
   type CommanderDrop,
   type CommanderToHost,
   type CommanderToWebview,
 } from '../shared/protocol';
+import { sides } from '../shared/sides';
 import { Pane } from './pane';
 import { Editor } from './editor';
 import { Viewer } from './viewer';

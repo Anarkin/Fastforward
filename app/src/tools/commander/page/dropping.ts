@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { parentFolder, type Side } from '../shared/protocol';
+import { parentFolder } from '../shared/protocol';
+import { type Side } from '../shared/sides';
 import { pathParts } from '../shared/paths';
 import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';

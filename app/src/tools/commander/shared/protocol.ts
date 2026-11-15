@@ -4,6 +4,8 @@ import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths, FileColor, Sort, Sorts } from './settings';
 import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';
 import type { ClashAnswer, TransferView } from './transfers';
+import type { TextEncoding } from './textEncodings';
+import { isSide, type Side } from './sides';
 
 export interface ComparedFile {
   readonly side: Side;
@@ -16,46 +18,6 @@ export interface TextRow {
   readonly end: number;
   readonly text: string;
   readonly cut?: true;
-}
-
-export const textEncodings = [
-  'utf-8',
-  'utf-16le',
-  'utf-16be',
-  'windows-1252',
-  'windows-1250',
-  'windows-1251',
-  'windows-1253',
-  'windows-1254',
-  'windows-1255',
-  'windows-1256',
-  'windows-1257',
-  'windows-1258',
-  'windows-874',
-  'iso-8859-2',
-  'iso-8859-3',
-  'iso-8859-4',
-  'iso-8859-5',
-  'iso-8859-6',
-  'iso-8859-7',
-  'iso-8859-8',
-  'iso-8859-8-i',
-  'iso-8859-10',
-  'iso-8859-13',
-  'iso-8859-14',
-  'iso-8859-15',
-  'iso-8859-16',
-  'koi8-r',
-  'koi8-u',
-  'ibm866',
-  'macintosh',
-  'x-mac-cyrillic',
-] as const;
-
-export type TextEncoding = (typeof textEncodings)[number];
-
-export function isTextEncoding(value: unknown): value is TextEncoding {
-  return textEncodings.some((encoding) => encoding === value);
 }
 
 export const maxRowsAsked = 1000;
@@ -94,19 +56,7 @@ export interface FlatProgress {
   readonly failed: number;
 }
 
-export const sides = ['left', 'right'] as const;
-
-export type Side = (typeof sides)[number];
-
 export const parentFolder = '..';
-
-export function isSide(value: unknown): value is Side {
-  return sides.some((side) => side === value);
-}
-
-export function otherSide(side: Side): Side {
-  return side === 'left' ? 'right' : 'left';
-}
 
 const folderCommands = [
   'newTerminal',

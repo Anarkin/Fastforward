@@ -1,4 +1,5 @@
-import type { ComparedFile, Side } from '../shared/protocol';
+import type { ComparedFile } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import type { Row } from './listing';
 import type { PaneView } from './paneView';
 

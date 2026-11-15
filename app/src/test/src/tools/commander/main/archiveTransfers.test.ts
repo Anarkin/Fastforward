@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import type { Side } from '../../../../../tools/commander/shared/protocol';
+import type { Side } from '../../../../../tools/commander/shared/sides';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';

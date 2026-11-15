@@ -7,11 +7,8 @@ import {
   useState,
   useEffectEvent,
 } from 'react';
-import {
-  maxRowsAsked,
-  type TextEncoding,
-  type TextRow,
-} from '../shared/protocol';
+import { maxRowsAsked, type TextRow } from '../shared/protocol';
+import { type TextEncoding } from '../shared/textEncodings';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { CommanderActions, Viewing } from './commanderState';
 import { RowRequests } from './rowRequests';

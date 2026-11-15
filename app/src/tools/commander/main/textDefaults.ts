@@ -1,9 +1,6 @@
 import * as path from 'node:path';
-import type {
-  EncodingSource,
-  EndingSource,
-  TextEncoding,
-} from '../shared/protocol';
+import type { EncodingSource, EndingSource } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import type { EditorSettings } from '../../../shell/main/editorSettings';
 import { isLineEnding, type LineEnding } from '../shared/textMarks';
 import type { EditorCharset, EditorConfig } from './editorConfig';

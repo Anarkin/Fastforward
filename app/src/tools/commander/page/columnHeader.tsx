@@ -6,7 +6,7 @@ import {
 } from '../shared/settings';
 import { followDrag } from '../../../lib/page/followDrag';
 import { strings } from '../../../lib/shared/strings';
-import type { Side } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import { shownColumns } from './shownRows';
 import { useCommander, useCommanderActions } from './store';
 import { draggedWidth } from './columnDrag';

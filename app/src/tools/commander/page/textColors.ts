@@ -1,4 +1,5 @@
-import type { TextEncoding, TextRow } from '../shared/protocol';
+import type { TextRow } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import type { CodeSegment } from './codeSegments';
 import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
 import {

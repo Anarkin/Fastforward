@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { ChangeSet } from '@codemirror/state';
 import { suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/toolContract';
-import type { Side } from '../../../../../tools/commander/shared/protocol';
+import type { Side } from '../../../../../tools/commander/shared/sides';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
 import {

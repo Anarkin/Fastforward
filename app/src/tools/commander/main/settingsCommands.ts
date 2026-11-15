@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { Page } from '../../../shell/main/toolContract';
-import { isSide, type CommanderToHost } from '../shared/protocol';
+import { type CommanderToHost } from '../shared/protocol';
+import { isSide } from '../shared/sides';
 import { heldColumns, isColumnWidths, isSort } from '../shared/settings';
 import {
   shownBookmarks,

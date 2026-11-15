@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ByteRange, TextEncoding } from '../shared/protocol';
+import type { ByteRange } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import { strings } from '../../../lib/shared/strings';
 import { matchCount, stepMatch } from '../../../lib/shared/textMatches';
 import type { Viewing } from './commanderState';

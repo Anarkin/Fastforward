@@ -1,8 +1,5 @@
-import {
-  otherSide,
-  type CommanderToWebview,
-  type Side,
-} from '../shared/protocol';
+import { type CommanderToWebview } from '../shared/protocol';
+import { otherSide, type Side } from '../shared/sides';
 import type {
   CommanderSource,
   Deleting,

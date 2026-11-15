@@ -2,14 +2,8 @@ import * as path from 'node:path';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
-import {
-  otherSide,
-  parentFolder,
-  sides as bothSides,
-  isDrop,
-  type CommanderToHost,
-  type Side,
-} from '../shared/protocol';
+import { parentFolder, isDrop, type CommanderToHost } from '../shared/protocol';
+import { otherSide, sides as bothSides, type Side } from '../shared/sides';
 import { folderKey } from '../shared/paths';
 import type { ConnectTransfer, TransferAsk, Transfers } from './transfers';
 import { type Sides, type Listing, listedIn } from './sides';

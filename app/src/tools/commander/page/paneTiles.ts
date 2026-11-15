@@ -8,7 +8,8 @@ import {
 } from '../../../lib/shared/images';
 import { estimatedRowHeight } from '../../../lib/page/listRows';
 import { useThumbnailFill, type FillItem } from './thumbnailFills';
-import { type Entry, type Side } from '../shared/protocol';
+import { type Entry } from '../shared/protocol';
+import { type Side } from '../shared/sides';
 import { type Row } from './listing';
 import { tileColumns, tileWidthOf } from './tiles';
 import { useCommander, useCommanderActions } from './store';

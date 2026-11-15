@@ -3,12 +3,11 @@ import { plainOf, type Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/toolContract';
 import {
-  isSide,
   parentFolder,
   type CommanderToHost,
   type Entry,
-  type Side,
 } from '../shared/protocol';
+import { isSide, type Side } from '../shared/sides';
 import type { OpenedArchive, Opening } from './archives';
 import { type Pane, type Sides, type Listing, listedIn } from './sides';
 import { post } from './post';

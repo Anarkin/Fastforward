@@ -16,7 +16,7 @@ import {
   type PackLevel,
   type ZipCipher,
 } from '../shared/packing';
-import { sides } from '../shared/protocol';
+import { sides } from '../shared/sides';
 import {
   archiveFor,
   archiveThere,

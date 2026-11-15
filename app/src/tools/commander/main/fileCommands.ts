@@ -6,11 +6,11 @@ import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { sameRoot } from '../../../lib/main/paths';
 import {
   isFolderCommand,
-  isTextEncoding,
   parentFolder,
   type CommanderToHost,
-  type Side,
 } from '../shared/protocol';
+import { isTextEncoding } from '../shared/textEncodings';
+import { type Side } from '../shared/sides';
 import type { Editing } from './editing';
 import { nameProblem } from '../shared/names';
 import {

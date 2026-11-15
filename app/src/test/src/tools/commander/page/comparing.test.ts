@@ -3,10 +3,8 @@ import { suite, test } from 'vitest';
 import { filesToCompare as filesAmong } from '../../../../../tools/commander/page/comparing';
 import type { Row } from '../../../../../tools/commander/page/listing';
 import type { PaneView } from '../../../../../tools/commander/page/paneView';
-import type {
-  Entry,
-  Side,
-} from '../../../../../tools/commander/shared/protocol';
+import type { Entry } from '../../../../../tools/commander/shared/protocol';
+import type { Side } from '../../../../../tools/commander/shared/sides';
 
 const entry = (name: string, folder = false): Entry => ({
   name,

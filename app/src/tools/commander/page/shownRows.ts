@@ -1,5 +1,5 @@
 import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
-import type { Side } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import type { ColumnWidths } from '../shared/settings';
 import type { CommanderSource } from './commanderState';
 import type { Row } from './listing';

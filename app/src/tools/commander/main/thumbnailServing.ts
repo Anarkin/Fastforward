@@ -1,5 +1,6 @@
 import * as path from 'node:path';
-import { isSide, type CommanderToHost, type Entry } from '../shared/protocol';
+import { type CommanderToHost, type Entry } from '../shared/protocol';
+import { isSide } from '../shared/sides';
 import {
   fillsThumbnail,
   isThumbnailBox,

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { type Side } from '../shared/protocol';
+import { type Side } from '../shared/sides';
 import { fileMenuItems, menuTargetOf } from './fileMenu';
 import { copiedText, type Copied } from './copiedText';
 import { type Row } from './listing';

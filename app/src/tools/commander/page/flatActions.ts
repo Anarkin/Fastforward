@@ -1,4 +1,5 @@
-import { sides, type CommanderToWebviewOf } from '../shared/protocol';
+import { type CommanderToWebviewOf } from '../shared/protocol';
+import { sides } from '../shared/sides';
 import type { CommanderActions } from './commanderState';
 import type { StoreParts } from './dialogActions';
 import {

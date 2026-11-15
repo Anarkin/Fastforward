@@ -1,10 +1,7 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/toolContract';
-import {
-  isTextEncoding,
-  maxFindLength,
-  type CommanderToHost,
-} from '../shared/protocol';
+import { maxFindLength, type CommanderToHost } from '../shared/protocol';
+import { isTextEncoding } from '../shared/textEncodings';
 import { readingFile } from './fileBlocks';
 import { findInFile } from './textFind';
 import { reasonOf } from './reasons';

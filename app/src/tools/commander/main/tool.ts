@@ -10,7 +10,8 @@ import {
   type Tool,
 } from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
-import { sides, type CommanderToHost } from '../shared/protocol';
+import { type CommanderToHost } from '../shared/protocol';
+import { sides } from '../shared/sides';
 import type { LocalFileSystem } from './fileSystem';
 import { Editing } from './editing';
 import { editingFiles } from './editingFiles';

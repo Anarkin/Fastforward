@@ -9,9 +9,9 @@ import type {
   CommanderToWebview,
   CommanderToWebviewOf,
   FolderCommand,
-  Side,
-  TextEncoding,
 } from '../shared/protocol';
+import type { Side } from '../shared/sides';
+import type { TextEncoding } from '../shared/textEncodings';
 import type {
   ColumnWidths,
   Layout,

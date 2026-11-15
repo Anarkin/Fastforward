@@ -1,4 +1,4 @@
-import { isSide, type Side } from './protocol';
+import { isSide, type Side } from './sides';
 
 export const iconRoute = '/commander-icon';
 

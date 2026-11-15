@@ -1,4 +1,4 @@
-import type { Side } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import type { CommanderActions } from './commanderState';
 import type { Copied } from './copiedText';
 import type { PaneAct } from './paneKeys';

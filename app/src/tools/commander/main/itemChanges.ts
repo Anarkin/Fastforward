@@ -1,7 +1,8 @@
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
-import type { CommanderToHost, Side } from '../shared/protocol';
+import type { CommanderToHost } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import { codeOf, reasonOf } from './reasons';
 import { nameProblem } from '../shared/names';
 import { type Sides, type Listing, listedIn } from './sides';

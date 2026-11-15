@@ -1,4 +1,4 @@
-import { type Side } from '../shared/protocol';
+import { type Side } from '../shared/sides';
 import { readingKey } from './commanderReceived';
 import { useCommander } from './store';
 import { StatusLine } from './statusLine';

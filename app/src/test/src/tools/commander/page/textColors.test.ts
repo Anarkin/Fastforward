@@ -6,7 +6,7 @@ import {
   wholeText,
   withPart,
 } from '../../../../../tools/commander/page/textColors';
-import type { TextEncoding } from '../../../../../tools/commander/shared/protocol';
+import type { TextEncoding } from '../../../../../tools/commander/shared/textEncodings';
 import { packedPart } from '../../../../../lib/page/syntaxParts';
 import type { LineRanges } from '../../../../../lib/page/syntaxEngine';
 

@@ -1,5 +1,6 @@
 import type { Store } from '../../../shell/main/stateFile';
-import type { TextEncoding, EndingSource } from '../shared/protocol';
+import type { EndingSource } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import type {
   Sorts,
   ColumnWidths,

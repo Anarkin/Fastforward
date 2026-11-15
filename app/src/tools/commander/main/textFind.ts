@@ -1,4 +1,4 @@
-import type { TextEncoding } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import { codingOf } from './textCodings';
 import type { ReadBytes } from './fileBlocks';
 import {

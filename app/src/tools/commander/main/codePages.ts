@@ -1,4 +1,4 @@
-import type { TextEncoding } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 
 const windowsCodePages = new Map<number, TextEncoding>([
   [874, 'windows-874'],

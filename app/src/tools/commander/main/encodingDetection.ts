@@ -1,4 +1,4 @@
-import type { TextEncoding } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import { continuation, high } from './textCodings';
 import { readingFile } from './fileBlocks';
 

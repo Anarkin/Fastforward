@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import type { Page } from '../../../shell/main/toolContract';
-import type { CommanderToHost, Entry, Side } from '../shared/protocol';
+import type { CommanderToHost, Entry } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import { Duplicates, type Compared, type ContentReader } from './duplicates';
 import { hashingHere } from './contentHash';
 import {

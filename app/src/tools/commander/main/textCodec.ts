@@ -1,4 +1,4 @@
-import type { TextEncoding } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import {
   keptPlaceholder,
   type KeptBytes,

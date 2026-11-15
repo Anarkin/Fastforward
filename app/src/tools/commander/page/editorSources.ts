@@ -1,11 +1,8 @@
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 import { plainOf, type Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
-import type {
-  EncodingSource,
-  EndingSource,
-  TextEncoding,
-} from '../shared/protocol';
+import type { EncodingSource, EndingSource } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
 import type { LineEnding } from '../shared/textMarks';
 
 export interface SourceOpening {

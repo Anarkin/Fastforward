@@ -7,7 +7,8 @@ import {
 } from '../../../lib/page/listMoves';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { commanderKeymap } from './keymap';
-import { parentFolder, type Side } from '../shared/protocol';
+import { parentFolder } from '../shared/protocol';
+import { type Side } from '../shared/sides';
 import { type Row } from './listing';
 import { chosenKeys, opens, passedKeys } from './rowKeys';
 import { namesIgnoreCase } from './markPattern';

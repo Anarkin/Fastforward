@@ -2,14 +2,13 @@ import type { Notice, Page } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import {
-  isTextEncoding,
   type CommanderToHost,
   type CommanderToWebview,
   type EncodingSource,
   type EndingSource,
-  type TextEncoding,
   type TextShown,
 } from '../shared/protocol';
+import { isTextEncoding, type TextEncoding } from '../shared/textEncodings';
 import { EditedText } from './editedText';
 import { NoRoomToSave, ReadOnlyFile, type Saved } from './fileSaving';
 import { reasonOf } from './reasons';

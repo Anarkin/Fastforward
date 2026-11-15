@@ -1,5 +1,5 @@
 import type { Page } from '../../../shell/main/toolContract';
-import type { Side } from '../shared/protocol';
+import type { Side } from '../shared/sides';
 import { repositoriesIn } from './repositories';
 import type { Pane, Sides } from './sides';
 import { post } from './post';

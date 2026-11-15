@@ -1,4 +1,5 @@
-import { sides, type FlatFolder, type Side } from '../shared/protocol';
+import { type FlatFolder } from '../shared/protocol';
+import { sides, type Side } from '../shared/sides';
 import { sameGrouping } from './fileColors';
 import type {
   FlatChoices,

@@ -1,4 +1,4 @@
-import { type Side } from '../shared/protocol';
+import { type Side } from '../shared/sides';
 import { type Layout } from '../shared/settings';
 import { useCommander, useCommanderActions } from './store';
 import {

@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { isObject } from '../../../lib/main/json';
 import type { Store } from '../../../shell/main/stateFile';
-import { sides, type Side } from '../shared/protocol';
+import { sides, type Side } from '../shared/sides';
 
 const sidesKey = 'sides';
 
