@@ -20,7 +20,7 @@ import {
 import { CommitBubble, HeadBubble, RefBubble, StashBubble } from './bubbles';
 import { Column } from './column';
 import { commitMenuTarget, useOpenMenu } from './menus';
-import { graphWidth, rowLanes } from './graphLanes';
+import { graphWidth, rowLanes, withoutWorkingTreeLink } from './graphLanes';
 import { GraphCell } from './graph';
 import {
   detachedHead,
@@ -65,7 +65,6 @@ import {
   keySelection,
   mergeToToggle,
   keyboardMenuTarget,
-  withoutWorkingTreeLink,
   PendingKey,
   pendingSelection,
   listKeyPosition,

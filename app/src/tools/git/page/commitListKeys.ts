@@ -1,9 +1,5 @@
 import { shownSide } from '../shared/comparisons';
-import {
-  workingTreeHash,
-  workingTreeIndex,
-  type GraphRow,
-} from '../shared/protocol';
+import { workingTreeHash, workingTreeIndex } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 import { commitMenuTarget, type MenuTarget } from './menus';
 import {
@@ -55,28 +51,6 @@ export function keyboardMenuTarget(
   return hash === undefined || hash === workingTreeHash || stashes.has(hash)
     ? undefined
     : commitMenuTarget(hash);
-}
-
-const unlinkedRows = new WeakMap<GraphRow, GraphRow>();
-
-export function withoutWorkingTreeLink(
-  row: GraphRow,
-  position: number,
-  headPosition: number | undefined,
-): GraphRow {
-  if (headPosition !== undefined && position > headPosition) {
-    return row;
-  }
-  const known = unlinkedRows.get(row);
-  if (known) {
-    return known;
-  }
-  const unlinked = {
-    ...row,
-    lines: row.lines.filter((line) => !(line.dashed && line.from === 0)),
-  };
-  unlinkedRows.set(row, unlinked);
-  return unlinked;
 }
 
 export interface PendingKey {
