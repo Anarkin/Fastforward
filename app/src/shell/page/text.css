@@ -1,6 +1,32 @@
-.icon {
-  display: block;
-  flex: none;
+.name {
+  padding: 0 3px;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  background: var(--name-background);
+  border-radius: 3px;
+  box-decoration-break: clone;
+}
+
+.menu-button-label > .name {
+  padding: 0;
+  background: none;
+}
+
+.name > span {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.name-lines {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+}
+
+.name-label {
+  color: var(--muted-foreground);
 }
 
 .blank {
