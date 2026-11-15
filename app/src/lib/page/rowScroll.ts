@@ -75,6 +75,7 @@ export function followRows(
     perNotch = () => 1,
     smooth = () => false,
     onPlace = () => {},
+    snapTo,
   }: {
     readonly keys?: boolean;
     readonly limit?: () => number;
@@ -82,6 +83,7 @@ export function followRows(
     readonly perNotch?: () => number;
     readonly smooth?: () => boolean;
     readonly onPlace?: (top: number) => void;
+    readonly snapTo?: (top: number, toward: number, max: number) => number;
   } = {},
 ): RowFollower {
   let pending = 0;
@@ -89,6 +91,10 @@ export function followRows(
   let frame: number | undefined;
   let placed: number | undefined;
   const max = () => Math.max(0, limit());
+  const snap = (top: number, toward = 0) =>
+    snapTo === undefined
+      ? snappedTop(top, rowHeight(), max())
+      : snapTo(top, toward, max());
   const place = (top: number) => {
     element.scrollTop = top;
     placed = element.scrollTop;
@@ -121,12 +127,7 @@ export function followRows(
       place(to);
       return;
     }
-    glide = glideRows(
-      glide,
-      element.scrollTop,
-      performance.now(),
-      snappedTop(to, rowHeight(), max()),
-    );
+    glide = glideRows(glide, element.scrollTop, performance.now(), snap(to));
     frame ??= requestAnimationFrame(animate);
   };
   const aim = () => glide?.to ?? element.scrollTop;
@@ -144,7 +145,10 @@ export function followRows(
     });
     pending = turned.pending;
     if (turned.rows !== 0) {
-      scrollTo(snappedTop(aim(), row, max()) + turned.rows * row, true);
+      scrollTo(
+        snap(snap(aim()) + turned.rows * row, Math.sign(turned.rows)),
+        true,
+      );
     }
   };
   const onScroll = () => {
@@ -154,7 +158,7 @@ export function followRows(
       }
       settle();
     }
-    const snapped = snappedTop(element.scrollTop, rowHeight(), max());
+    const snapped = snap(element.scrollTop);
     if (Math.abs(snapped - element.scrollTop) > onRow) {
       element.scrollTop = snapped;
     }
@@ -167,16 +171,12 @@ export function followRows(
     }
     event.preventDefault();
     const page = Math.max(1, Math.floor(element.clientHeight / row) - 1);
-    scrollTo(
-      snappedTop(aim(), row, max()) + moveSteps[move](page) * row,
-      isPage(move),
-    );
+    const rows = moveSteps[move](page);
+    scrollTo(snap(snap(aim()) + rows * row, Math.sign(rows)), isPage(move));
   };
   element.addEventListener('wheel', onWheel, { passive: false });
   element.addEventListener('scroll', onScroll, { passive: true });
-  setRowScroller(element, (top) =>
-    scrollTo(snappedTop(top, rowHeight(), max()), true),
-  );
+  setRowScroller(element, (top) => scrollTo(snap(top), true));
   if (keys) {
     element.addEventListener('keydown', onKeyDown);
   }

@@ -329,6 +329,7 @@ export function Files() {
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         scrolling={scrolling}
+        wholeRows
         rows={listed}
         renderRow={(index) => {
           const row = rows[index];

@@ -293,6 +293,28 @@ suite('App', () => {
   });
 });
 
+async function settledTop(list: Locator): Promise<number | undefined> {
+  return list.evaluate(
+    (element) =>
+      new Promise<number | undefined>((settled) => {
+        const top = element.scrollTop;
+        setTimeout(
+          () => settled(element.scrollTop === top ? top : undefined),
+          250,
+        );
+      }),
+  );
+}
+
+function rowAtTop(list: Locator): Promise<boolean> {
+  return list.evaluate((element) => {
+    const top = element.getBoundingClientRect().top + element.clientTop;
+    return [...element.querySelectorAll('.virtual-row')].some(
+      (row) => Math.abs(row.getBoundingClientRect().top - top) < 0.5,
+    );
+  });
+}
+
 async function scrollsOnWheelOver(
   page: Page,
   list: Locator,
@@ -320,6 +342,9 @@ suite('App with lists longer than their columns', () => {
     folder = tempFolder('long-lists');
     const profile = path.join(folder, 'profile');
     const repository = await tempRepository(path.join(folder, 'repo'));
+    for (let index = 0; index < 60; index++) {
+      await repository.git('commit', '--allow-empty', '-m', `step ${index}`);
+    }
     await repository.commit('first', {
       ...Object.fromEntries(
         Array.from({ length: 60 }, (_, index) => [
@@ -382,6 +407,28 @@ suite('App with lists longer than their columns', () => {
     const view = await page.locator('.diff-view').boundingBox();
     assert.ok(header && view, 'the header or the diff has no box');
     assert.strictEqual(header.x, view.x);
+  });
+
+  test('scrolls the commits and the files on the wheel by whole rows, as the diff and the commander do, each notch coming to rest with a commit or a row starting at the top, down and up alike', async () => {
+    const commits = page.locator('.virtual-rows.list');
+    const files = page.locator('.column').nth(1).locator('.virtual-rows');
+    for (const list of [commits, files]) {
+      await list.evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      const box = await list.boundingBox();
+      assert.ok(box, 'the list has no box');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      for (const delta of [100, 100, -100]) {
+        const before = await list.evaluate((element) => element.scrollTop);
+        await page.mouse.wheel(0, delta);
+        await waitFor(
+          async () =>
+            (await settledTop(list)) !== before && (await rowAtTop(list)),
+          `a row at the top of the list after the wheel turned by ${delta}`,
+        );
+      }
+    }
   });
 
   test('keeps the scrollbar the pointer rests on where it is while another list scrolls, as the diff on the keys', async () => {

@@ -31,7 +31,10 @@ import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { fullyVisible } from '../../../lib/page/listMoves';
 import { useCappedScroll } from './cappedVirtualizer';
 import { SearchButton } from '../../../lib/page/search';
-import { realHeight } from './cappedScroll';
+import { realHeight, scrollCap } from './cappedScroll';
+import { commitEndPadding, snappedToCommit } from './commitSnap';
+import { followRows } from '../../../lib/page/rowScroll';
+import { useShell } from '../../../shell/page/store';
 import { rowPlace } from '../../../lib/page/rowPlace';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { endCovered } from '../../../lib/page/listRows';
@@ -161,6 +164,38 @@ export function Commits({
   });
   const totalSize = virtualizer.getTotalSize();
   useLayoutEffect(resized, [resized, totalSize]);
+  const scrollSettings = useShell((state) => state.scrolling);
+  const [room, setRoom] = useState(0);
+  const capped = totalSize > scrollCap;
+  const startOf = (index: number) =>
+    virtualizer.measurementsCache[index]?.start ?? 0;
+  const endPad = capped ? 0 : commitEndPadding(startOf, count, totalSize, room);
+  const snapTo = useEffectEvent((top: number, toward: number, max: number) =>
+    capped ? top : snappedToCommit(startOf, count, top, toward, max),
+  );
+  const lineStep = useEffectEvent(() => (capped ? 0 : line));
+  const perNotch = useEffectEvent(() => scrollSettings.wheelRows);
+  const smooth = useEffectEvent(() => scrollSettings.smooth);
+  useEffect(() => {
+    const element = list.current;
+    if (!element) {
+      return undefined;
+    }
+    const measure = () =>
+      setRoom(element.getBoundingClientRect().height - endCovered(element));
+    const following = followRows(element, lineStep, {
+      perNotch,
+      smooth,
+      snapTo,
+    });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => {
+      following.stop();
+      observer.disconnect();
+    };
+  }, []);
   useLayoutEffect(() => virtualizer.measure(), [virtualizer, line]);
   const rows = drawnRows(virtualizer, rowKey);
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
@@ -406,7 +441,7 @@ export function Commits({
       >
         <div
           className="virtual-spacer"
-          style={{ height: realHeight(virtualizer.getTotalSize()) }}
+          style={{ height: realHeight(totalSize) + endPad }}
         >
           {rows.map((row) => {
             const height = fixedRowHeight(history, offset, row.index, row.size);

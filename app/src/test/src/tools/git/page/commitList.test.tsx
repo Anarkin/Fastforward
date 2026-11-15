@@ -121,6 +121,10 @@ async function scrollingList(
     window,
     document: window.document,
     HTMLElement: window.HTMLElement,
+    ResizeObserver: class {
+      observe() {}
+      disconnect() {}
+    },
     IS_REACT_ACT_ENVIRONMENT: true,
   };
   const saved = Object.fromEntries(
@@ -198,19 +202,19 @@ suite('Commit list places', () => {
   test('opens the history of another worktree where it was left, or at its top, also when it is drawn straight after the history it replaces, as the page may take both at once while busy', async () => {
     await scrollingList(async ({ show, scroll, top, told }) => {
       await show('a', longHistory('a'));
-      await scroll(10_000);
+      await scroll(278 * commitRowHeight);
       const leftA = told();
       await show('b', undefined);
       await show('b', longHistory('b'));
       assert.strictEqual(top(), 0);
-      await scroll(2_000);
+      await scroll(56 * commitRowHeight);
       const leftB = told();
       const backToA = longHistory('a');
       await show('a', backToA, placeIn(backToA, leftA));
-      assert.strictEqual(top(), 10_000);
+      assert.strictEqual(top(), 278 * commitRowHeight);
       const backToB = longHistory('b');
       await show('b', backToB, placeIn(backToB, leftB));
-      assert.strictEqual(top(), 2_000);
+      assert.strictEqual(top(), 56 * commitRowHeight);
       await show('c', longHistory('c'));
       assert.strictEqual(top(), 0);
     });

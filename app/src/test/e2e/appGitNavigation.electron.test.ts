@@ -197,7 +197,6 @@ suite('App', () => {
       hasText: 'scrolled',
     });
     const list = page.locator('.virtual-rows.list');
-    const scrolledTo = 600;
     await repository.git('worktree', 'add', '-q', '-b', 'scrolled', worktree);
     onTestFinished(async () => {
       if ((await other.count()) > 0) {
@@ -216,13 +215,17 @@ suite('App', () => {
     );
     await waitForCount(worktrees, 2, 'worktrees');
     await page.locator('.commit', { hasText: 'scrolled 39' }).waitFor();
-    await list.evaluate(
+    const scrolledTo = await list.evaluate(
       (element, top) =>
-        new Promise((resolve) => {
-          element.addEventListener('scroll', resolve, { once: true });
+        new Promise<number>((resolve) => {
+          element.addEventListener(
+            'scroll',
+            () => requestAnimationFrame(() => resolve(element.scrollTop)),
+            { once: true },
+          );
           element.scrollTop = top;
         }),
-      scrolledTo,
+      600,
     );
     await page.keyboard.press('Control+PageDown');
     await other.waitFor();
