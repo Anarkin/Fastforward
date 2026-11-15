@@ -6,7 +6,8 @@ import {
   forbiddenEnd,
   reservedNames,
 } from '../shared/windowsNames';
-import { lstatFollowingNoLink, lstatIfThere, repositoryFile } from './files';
+import { repositoryFile } from './files';
+import { lstatFollowingNoLink, lstatIfThere } from './fileStats';
 import { blobOf, readObjects } from './objects';
 
 const maxViewedSize = 256 * 1024 * 1024;
