@@ -1,7 +1,7 @@
 import { shownSelection, showsDiff } from './columnsShown';
 import { shownFolders, type Folders } from './viewFolders';
 import { treeOf, type TabView } from './tabView';
-import { listsNothing } from './filesColumnState';
+import { listsNothing } from './filesSides';
 import type { GitData, GitSource, GitState } from './gitState';
 
 export function languageKeyOf(

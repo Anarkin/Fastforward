@@ -45,18 +45,14 @@ import {
 import { useGit, useGitActions } from './store';
 import { treeOf } from './tabView';
 import {
-  type MovedCursor,
-  filesCursor,
-  filesReveal,
-  filesTitle,
-  noChangesText,
   listsNothing,
   sidesOf,
   filteredSide,
   toggled,
   foldersOn,
-  headerTitle,
-} from './filesColumnState';
+} from './filesSides';
+import { filesTitle, noChangesText, headerTitle } from './filesTitles';
+import { type MovedCursor, filesCursor, filesReveal } from './filesCursor';
 import { FileFilterField } from './filesFilterField';
 import { noneClosed, useFilesFilter } from './filesFilter';
 
