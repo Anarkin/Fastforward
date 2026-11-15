@@ -1,4 +1,5 @@
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
+import type { JSDOM } from 'jsdom';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import { withStores } from '../../../../helpers/componentFixtures';
 import { commitInfo } from '../../../../helpers/gitValues';
@@ -19,3 +20,13 @@ export const loaded = (...hashes: string[]) => {
   );
   return history;
 };
+
+export const unchangingMedia =
+  (window: JSDOM['window']) => (): MediaQueryList =>
+    Object.assign(new window.EventTarget(), {
+      matches: false,
+      media: '',
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+    });
