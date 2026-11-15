@@ -38,12 +38,13 @@ interface NavigatedContents {
   on(event: 'will-redirect', listener: (event: Navigation) => void): unknown;
 }
 
+function keepOn(event: Navigation): void {
+  if (!isAppPage(event.url)) {
+    event.preventDefault();
+  }
+}
+
 export function keepOnAppPage(contents: NavigatedContents): void {
-  const keepOn = (event: Navigation) => {
-    if (!isAppPage(event.url)) {
-      event.preventDefault();
-    }
-  };
   contents.on('will-navigate', keepOn);
   contents.on('will-redirect', keepOn);
 }
