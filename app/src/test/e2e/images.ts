@@ -1,6 +1,6 @@
 import { crc32, deflateSync } from 'node:zlib';
 
-const pngChunk = (type: string, body: Buffer) => {
+export const pngChunk = (type: string, body: Buffer) => {
   const length = Buffer.alloc(4);
   length.writeUInt32BE(body.length);
   const typed = Buffer.concat([Buffer.from(type), body]);

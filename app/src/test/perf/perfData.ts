@@ -2,7 +2,8 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { crc32, deflateSync } from 'node:zlib';
+import { deflateSync } from 'node:zlib';
+import { pngChunk } from '../e2e/images';
 
 const version = 1;
 
@@ -119,15 +120,6 @@ function makeRepository(root: string): void {
   git(root, ['reset', '-q', '--hard', 'main']);
 }
 
-function chunk(type: string, data: Buffer): Buffer {
-  const length = Buffer.alloc(4);
-  length.writeUInt32BE(data.length);
-  const typed = Buffer.concat([Buffer.from(type, 'ascii'), data]);
-  const check = Buffer.alloc(4);
-  check.writeUInt32BE(crc32(typed));
-  return Buffer.concat([length, typed, check]);
-}
-
 function gradientPng(size: number, hue: number): Buffer {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(size, 0);
@@ -146,9 +138,9 @@ function gradientPng(size: number, hue: number): Buffer {
   }
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    chunk('IHDR', header),
-    chunk('IDAT', deflateSync(raw)),
-    chunk('IEND', Buffer.alloc(0)),
+    pngChunk('IHDR', header),
+    pngChunk('IDAT', deflateSync(raw)),
+    pngChunk('IEND', Buffer.alloc(0)),
   ]);
 }
 
