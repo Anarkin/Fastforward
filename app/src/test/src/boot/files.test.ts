@@ -42,6 +42,16 @@ suite('App files', () => {
     );
   });
 
+  test('serves nothing for a path whose percent signs encode no character, rather than throwing', () => {
+    for (const url of [
+      'fastforward://app/%E0%A4%A',
+      'fastforward://app/%zz.js',
+      'fastforward://app/%',
+    ]) {
+      assert.strictEqual(appFile(root, url), undefined, url);
+    }
+  });
+
   test('takes messages and navigation only from its own origin, not one that only starts the same', () => {
     assert.ok(isAppUrl('fastforward://app/index.html'));
     for (const url of [

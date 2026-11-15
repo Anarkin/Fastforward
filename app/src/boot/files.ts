@@ -8,12 +8,24 @@ export function appFile(root: string, url: string): string | undefined {
   if (!fromApp(parsed)) {
     return undefined;
   }
-  const relative = decodeURIComponent(parsed.pathname).replace(/^\/+/, '');
+  const decoded = decodedPath(parsed.pathname);
+  if (decoded === undefined) {
+    return undefined;
+  }
+  const relative = decoded.replace(/^\/+/, '');
   const file = path.resolve(root, relative || 'index.html');
   const inside = path.relative(root, file);
   return inside && !inside.startsWith('..') && !path.isAbsolute(inside)
     ? file
     : undefined;
+}
+
+function decodedPath(pathname: string): string | undefined {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return undefined;
+  }
 }
 
 export function isAppUrl(url: string): boolean {
