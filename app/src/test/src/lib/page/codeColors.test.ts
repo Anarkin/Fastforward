@@ -3,10 +3,8 @@ import { suite, test } from 'vitest';
 import { partLines, type CodePart } from '../../../../lib/page/syntaxParts';
 import { waitFor } from '../../../helpers/fixtures';
 import { codeLines, onTickingClock, warmsUpTheGrammar } from './syntaxFixtures';
-import {
-  loadLanguages,
-  type SyntaxRange,
-} from '../../../../lib/page/syntaxEngine';
+import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
+import type { SyntaxRange } from '../../../../lib/page/syntaxEngine';
 import { colorCode } from '../../../../lib/page/codeColors';
 
 function coloredCode(

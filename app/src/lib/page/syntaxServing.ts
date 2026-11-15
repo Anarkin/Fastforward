@@ -1,6 +1,7 @@
 import { errorText } from './errors';
 import { packedPart, type CodePart } from './syntaxParts';
-import { SyntaxRange, generationOf } from './syntaxEngine';
+import { SyntaxRange } from './syntaxEngine';
+import { generationOf } from './syntaxLanguages';
 import { SyntaxSource, startColoring } from './syntaxSources';
 import { colorCode } from './codeColors';
 import { EditedColoring, colorEdited } from './editedColors';

@@ -3,16 +3,17 @@ import { INITIAL, type StateStack } from 'shiki/textmate';
 import {
   generationOf,
   grammars,
-  lineColorer,
   loadLanguages,
-  publishTime,
   ready,
-  sliceTime,
+} from './syntaxLanguages';
+import {
+  lineColorer,
   type ColoredLine,
   type LineColorer,
   type LineRanges,
   type SyntaxRange,
 } from './syntaxEngine';
+import { publishTime, sliceTime } from './syntaxSlices';
 import {
   cached,
   cachedPrefix,

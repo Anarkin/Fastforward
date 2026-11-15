@@ -1,10 +1,8 @@
 import * as assert from 'node:assert';
 import { beforeAll } from 'vitest';
 import { languageOf } from '../../../../lib/page/languages';
-import {
-  loadLanguages,
-  type SyntaxRange,
-} from '../../../../lib/page/syntaxEngine';
+import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
+import type { SyntaxRange } from '../../../../lib/page/syntaxEngine';
 import {
   tokenizing,
   uncachedSources,

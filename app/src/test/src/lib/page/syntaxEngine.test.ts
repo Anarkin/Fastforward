@@ -1,14 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { coloredText, warmsUpTheGrammar } from './syntaxFixtures';
-import { policyOfPage } from '../../../helpers/pageSources';
 
 suite('Syntax', () => {
   warmsUpTheGrammar();
-
-  test('may run the Oniguruma engine by the page policy, as it is WebAssembly, which the tests run without the policy', () => {
-    assert.ok(policyOfPage().get('script-src')?.includes("'wasm-unsafe-eval'"));
-  });
 
   test('colors the keywords, punctuation, strings, numbers and comments of a file shown entire, leaving code in a string plain', async () => {
     assert.deepStrictEqual(

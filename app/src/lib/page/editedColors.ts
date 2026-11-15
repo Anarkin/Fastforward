@@ -2,14 +2,9 @@ import type { HighlighterCore } from 'shiki/core';
 import { INITIAL, type StateStack } from 'shiki/textmate';
 import { languageIds } from './languages';
 import { packedPart, type CodePart } from './syntaxParts';
-import {
-  SyntaxRange,
-  LineColorer,
-  lineColorer,
-  grammars,
-  loadLanguages,
-  sliceTime,
-} from './syntaxEngine';
+import { SyntaxRange, LineColorer, lineColorer } from './syntaxEngine';
+import { grammars, loadLanguages } from './syntaxLanguages';
+import { sliceTime } from './syntaxSlices';
 import { replacedIn } from './replacedIn';
 
 export interface EditedColoring {

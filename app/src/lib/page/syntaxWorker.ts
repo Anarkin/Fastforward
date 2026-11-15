@@ -1,5 +1,5 @@
 import { errorText } from './errors';
-import { makeHighlighter } from './syntaxEngine';
+import { makeHighlighter } from './syntaxLanguages';
 import {
   sendUncaught,
   serveColoring,

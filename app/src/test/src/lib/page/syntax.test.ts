@@ -8,7 +8,7 @@ import {
 import type { CodePart } from '../../../../lib/page/syntaxParts';
 import { waitFor } from '../../../helpers/fixtures';
 import { codeLines, warmsUpTheGrammar } from './syntaxFixtures';
-import { loadLanguages } from '../../../../lib/page/syntaxEngine';
+import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
 import {
   serveColoring,
   type FromSyntax,

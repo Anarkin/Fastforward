@@ -1,9 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  loadLanguages,
-  type SyntaxRange,
-} from '../../../../lib/page/syntaxEngine';
+import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
+import type { SyntaxRange } from '../../../../lib/page/syntaxEngine';
 import {
   startColoring,
   tokenizing,

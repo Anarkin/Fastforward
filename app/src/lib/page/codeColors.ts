@@ -2,14 +2,9 @@ import type { HighlighterCore } from 'shiki/core';
 import { INITIAL } from 'shiki/textmate';
 import { languageIds } from './languages';
 import { packedPart, type CodePart } from './syntaxParts';
-import {
-  grammars,
-  lineColorer,
-  loadLanguages,
-  publishTime,
-  sliceTime,
-  type SyntaxRange,
-} from './syntaxEngine';
+import { grammars, loadLanguages } from './syntaxLanguages';
+import { lineColorer, type SyntaxRange } from './syntaxEngine';
+import { publishTime, sliceTime } from './syntaxSlices';
 import { cacheable, cached, store } from './syntaxCache';
 
 export function colorCode(

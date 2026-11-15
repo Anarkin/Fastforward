@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { partLines } from '../../../../lib/page/syntaxParts';
 import { waitFor } from '../../../helpers/fixtures';
 import { syntaxRanges, sideKeys, warmsUpTheGrammar } from './syntaxFixtures';
-import { loadLanguages } from '../../../../lib/page/syntaxEngine';
+import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
 import {
   sendUncaught,
   serveColoring,
