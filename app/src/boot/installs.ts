@@ -1,6 +1,6 @@
 import { strings } from '../lib/shared/strings';
 import type { Log } from '../shell/main/log';
-import { addExplorerMenu, explorerMenuOf } from './explorerMenu';
+import { explorerMenuOf, keepExplorerMenuIn } from './explorerMenu';
 import {
   commandFiles,
   pointCommandAt,
@@ -39,7 +39,7 @@ export function keepCommandPointed(
 export function keepExplorerMenu(log: Log): void {
   const explorerMenu = explorerMenuOf(process.platform, process.execPath);
   if (explorerMenu !== undefined) {
-    void addExplorerMenu(explorerMenu).catch((error: unknown) => {
+    void keepExplorerMenuIn(explorerMenu).catch((error: unknown) => {
       log.error(strings.log.addingExplorerMenuFailed);
       log.error(error);
     });

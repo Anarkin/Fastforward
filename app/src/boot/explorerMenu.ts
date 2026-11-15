@@ -53,18 +53,67 @@ export async function addExplorerMenu(
   );
 }
 
-function runReg(args: readonly string[]): Promise<void> {
+export async function keepExplorerMenuIn(
+  menu: readonly RegistryValue[],
+  root = 'HKCU',
+): Promise<readonly RegistryValue[]> {
+  const keys = [...new Set(menu.map((value) => value.key))];
+  const outputs = await Promise.all(
+    keys
+      .filter((key) => !keys.some((other) => key.startsWith(`${other}\\`)))
+      .map((key) => runReg(['query', `${root}\\${key}`, '/s']).catch(() => '')),
+  );
+  const present = valuesInQuery(outputs.join('\n'), keys);
+  const missing = menu.filter(
+    (value) =>
+      !present.some(
+        (each) =>
+          each.key === value.key &&
+          each.name === value.name &&
+          each.data === value.data,
+      ),
+  );
+  await addExplorerMenu(missing, root);
+  return missing;
+}
+
+export function valuesInQuery(
+  output: string,
+  keys: readonly string[],
+): RegistryValue[] {
+  const values: RegistryValue[] = [];
+  let key: string | undefined;
+  for (const line of output.split(/\r?\n/)) {
+    if (line.startsWith('HKEY_')) {
+      key = keys.find((each) => line.endsWith(`\\${each}`));
+      continue;
+    }
+    const [, name = '', data = ''] =
+      /^ {4}(.*?) {4}REG_SZ(?: {4}(.*))?$/.exec(line) ?? [];
+    if (key === undefined || name === '') {
+      continue;
+    }
+    if (name === 'Icon') {
+      values.push({ key, name, data });
+    } else if (name.startsWith('(') && name.endsWith(')')) {
+      values.push({ key, name: undefined, data });
+    }
+  }
+  return values;
+}
+
+function runReg(args: readonly string[]): Promise<string> {
   const reg = path.win32.join(
     process.env.SystemRoot ?? 'C:\\Windows',
     'System32',
     'reg.exe',
   );
   return new Promise((resolve, reject) => {
-    execFile(reg, args, { windowsHide: true }, (error) => {
+    execFile(reg, args, { windowsHide: true }, (error, stdout) => {
       if (error) {
         reject(error);
       } else {
-        resolve();
+        resolve(stdout);
       }
     });
   });

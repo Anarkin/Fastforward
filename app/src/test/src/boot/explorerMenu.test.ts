@@ -6,6 +6,8 @@ import { foldersOf } from '../../../boot/commandLine';
 import {
   addExplorerMenu,
   explorerMenuOf,
+  keepExplorerMenuIn,
+  valuesInQuery,
   type RegistryValue,
 } from '../../../boot/explorerMenu';
 import { strings } from '../../../lib/shared/strings';
@@ -22,6 +24,37 @@ function menuOf(app: string): readonly RegistryValue[] {
 }
 
 suite('Explorer menu', () => {
+  test('reads the values a query of the registry prints under each key of the menu, the default one by its parentheses, as Windows names it in its own language', () => {
+    const folder = 'Software\\Classes\\Directory\\shell\\Fastforward';
+    const inside =
+      'Software\\Classes\\Directory\\Background\\shell\\Fastforward';
+    const command = `"${executable}" -- "%V\\."`;
+    const output = [
+      '',
+      `HKEY_CURRENT_USER\\${folder}`,
+      `    (Standard)    REG_SZ    ${strings.app.explorerMenuEntry}`,
+      `    Icon    REG_SZ    ${executable}`,
+      `    Position    REG_SZ    Top`,
+      '',
+      `HKEY_CURRENT_USER\\${folder}\\command`,
+      `    (Standard)    REG_SZ    ${command}`,
+      '',
+      `HKEY_CURRENT_USER\\${inside}`,
+      `    Icon    REG_SZ    ${executable}`,
+      '',
+    ].join('\r\n');
+
+    assert.deepStrictEqual(
+      valuesInQuery(output, [folder, `${folder}\\command`, inside]),
+      [
+        { key: folder, name: undefined, data: strings.app.explorerMenuEntry },
+        { key: folder, name: 'Icon', data: executable },
+        { key: `${folder}\\command`, name: undefined, data: command },
+        { key: inside, name: 'Icon', data: executable },
+      ],
+    );
+  });
+
   test('is added only by the app installed on Windows, not when run from the source or the unpacked build, as only the uninstaller removes it', () => {
     assert.strictEqual(explorerMenuOf('linux', executable, exists), undefined);
     assert.strictEqual(explorerMenuOf('darwin', executable, exists), undefined);
@@ -126,6 +159,26 @@ suite.skipIf(process.platform !== 'win32')(
       for (const value of menu) {
         assert.strictEqual(read(value), value.data);
       }
+    });
+
+    test('writes the entry whole where it is missing, and nothing once it is there, as every start of the app keeps it', async () => {
+      const fresh = `${root}\\fresh`;
+      const menu = menuOf(executable);
+
+      assert.deepStrictEqual(await keepExplorerMenuIn(menu, fresh), menu);
+      assert.deepStrictEqual(await keepExplorerMenuIn(menu, fresh), []);
+    });
+
+    test('writes only the values another copy of the app left different, as after a move or a reinstall', async () => {
+      const moved = `${root}\\moved`;
+      await addExplorerMenu(menuOf('C:\\Old place\\Fastforward.exe'), moved);
+      const menu = menuOf(executable);
+
+      assert.deepStrictEqual(
+        await keepExplorerMenuIn(menu, moved),
+        menu.filter((value) => value.data !== strings.app.explorerMenuEntry),
+      );
+      assert.deepStrictEqual(await keepExplorerMenuIn(menu, moved), []);
     });
   },
 );
