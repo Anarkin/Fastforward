@@ -13,7 +13,7 @@ import { commanderKeymap } from './keymap';
 import { clicked } from '../../../lib/shared/keymap';
 import { parentFolder, type Side } from '../shared/protocol';
 import { fileMenuItems, menuTargetOf } from './fileMenu';
-import { copiedText, type Copied } from './naming';
+import { copiedText, type Copied } from './copiedText';
 import { goesInto, opens, pointedKeys, rangeKeys, type Row } from './listing';
 import { filterStep } from './filterSteps';
 import { PaneFilter } from './paneFilter';

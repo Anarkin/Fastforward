@@ -1,7 +1,7 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { nameProblem } from '../shared/names';
-import { folderKey, pathParts } from '../shared/paths';
+import { folderKey } from '../shared/paths';
 import type { Entry } from '../shared/protocol';
 
 export function newFolderProblem(
@@ -60,33 +60,4 @@ export function renamedPart(name: string, folder: boolean): number {
 
 export function baseNameOf(key: string, platform: string | undefined): string {
   return key.split(platform === 'win32' ? /[\\/]/ : '/').at(-1) ?? key;
-}
-
-export type Copied = 'paths' | 'names';
-
-function pathIn(
-  folder: string,
-  key: string,
-  platform: string | undefined,
-): string {
-  return /[\\/]$/.test(folder)
-    ? `${folder}${key}`
-    : `${folder}${platform === 'win32' ? '\\' : '/'}${key}`;
-}
-
-export function copiedText(
-  copied: Copied,
-  folder: string,
-  names: readonly string[],
-  platform: string | undefined,
-): string {
-  const lines =
-    names.length === 0
-      ? [copied === 'paths' ? folder : (pathParts(folder).at(-1)?.name ?? '')]
-      : names.map((name) =>
-          copied === 'paths'
-            ? pathIn(folder, name, platform)
-            : baseNameOf(name, platform),
-        );
-  return lines.join(platform === 'win32' ? '\r\n' : '\n');
 }

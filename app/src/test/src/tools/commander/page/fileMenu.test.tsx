@@ -10,7 +10,7 @@ import {
 } from '../../../../../tools/commander/page/fileMenu';
 import { rowsOf } from '../../../../../tools/commander/page/listing';
 import type { FolderCommand } from '../../../../../tools/commander/shared/protocol';
-import type { Copied } from '../../../../../tools/commander/page/naming';
+import type { Copied } from '../../../../../tools/commander/page/copiedText';
 
 const entry = (name: string, folder = false) => ({
   name,

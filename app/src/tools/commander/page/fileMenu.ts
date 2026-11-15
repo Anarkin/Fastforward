@@ -3,7 +3,7 @@ import { strings } from '../../../lib/shared/strings';
 import type { ContextMenuItem } from '../../../lib/page/menuControls';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
 import { pointedKeys, type Row } from './listing';
-import type { Copied } from './naming';
+import type { Copied } from './copiedText';
 
 export type MenuTarget =
   | {

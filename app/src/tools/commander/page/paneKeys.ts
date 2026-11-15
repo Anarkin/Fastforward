@@ -15,7 +15,7 @@ import {
   passedKeys,
   type Row,
 } from './listing';
-import type { Copied } from './naming';
+import type { Copied } from './copiedText';
 import { moveInGrid } from './tiles';
 
 export type PaneAct =
