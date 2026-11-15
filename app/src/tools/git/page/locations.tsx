@@ -23,13 +23,8 @@ import {
   resultItems,
   itemKey,
 } from './locationResults';
-import {
-  browseRows,
-  Rows,
-  Highlighted,
-  currentActive,
-  nextActive,
-} from './locationRows';
+import { browseRows, Rows } from './locationRows';
+import { Highlighted, currentActive, nextActive } from './locationHighlight';
 import { RefTree } from './locationTree';
 import {
   foundCommits,

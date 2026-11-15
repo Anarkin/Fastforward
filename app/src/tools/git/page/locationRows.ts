@@ -4,7 +4,6 @@ import type { TreeNode } from './refIndex';
 import {
   maxResults,
   PinnedResult,
-  ResultItem,
   stashKey,
   refKey,
   folderKey,
@@ -96,33 +95,6 @@ export function rowProps(
 
 export const activeClass = (rows: Rows, key: string | undefined) =>
   key !== undefined && key === rows.active ? 'active' : '';
-
-export interface Highlighted {
-  readonly query: string;
-  readonly key: string;
-}
-
-export function currentActive(
-  items: readonly ResultItem[],
-  query: string,
-  highlight: Highlighted | undefined,
-): number {
-  if (highlight?.query === query) {
-    const index = items.findIndex((item) => itemKey(item) === highlight.key);
-    if (index >= 0) {
-      return index;
-    }
-  }
-  return 0;
-}
-
-export function nextActive(
-  items: readonly unknown[],
-  active: number,
-  step: 1 | -1,
-): number {
-  return Math.max(0, Math.min(items.length - 1, active + step));
-}
 
 export function shownChildren(
   children: readonly TreeNode[],

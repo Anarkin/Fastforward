@@ -1,29 +1,14 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { RefInfo } from '../../../../../tools/git/shared/protocol';
 import { FolderRow } from '../../../../../tools/git/page/tree';
-import { buildTree, indexRefs } from '../../../../../tools/git/page/refIndex';
-import { renderToStaticMarkup } from './locationsFixtures';
+import { buildTree } from '../../../../../tools/git/page/refIndex';
+import { renderToStaticMarkup, branchNamed } from './locationsFixtures';
 import {
-  currentActive,
   leafIndent,
-  nextActive,
   shownChildren,
-  type Highlighted,
   stuckRowTop,
 } from '../../../../../tools/git/page/locationRows';
-import {
-  resultItems,
-  searchRefs,
-} from '../../../../../tools/git/page/locationResults';
-import { commitInfo } from '../../../../helpers/gitValues';
 import { stylesheetPx } from '../../../../helpers/pageSources';
-
-const branchNamed = (name: string): RefInfo => ({
-  kind: 'branch',
-  name,
-  commit: 'a',
-});
 
 const manyBranches = (count: number) =>
   Array.from({ length: count }, (_, index) => branchNamed(`b${index}`));
@@ -34,12 +19,6 @@ const childrenDrawn = (count: number) => {
   );
   return [shown.length, more];
 };
-
-const resultsFor = (commits: string[], branches: string[]) =>
-  resultItems(
-    commits.map((hash) => commitInfo(hash)),
-    searchRefs(indexRefs(branches.map(branchNamed)), 'a'),
-  );
 
 const folderNameStart = (depth: number) => {
   const html = renderToStaticMarkup(
@@ -58,43 +37,6 @@ const folderNameStart = (depth: number) => {
     Number(padding[1]) + stylesheetPx(/^\.twisty \{[^}]*?\swidth: (\d+)px/m)
   );
 };
-
-suite('Locations search', () => {
-  test('moves the highlight one result at a time, stopping at either end', () => {
-    const items = resultItems(
-      [commitInfo('f1')],
-      searchRefs(indexRefs([branchNamed('main')]), 'main'),
-    );
-    assert.strictEqual(nextActive(items, 0, 1), 1);
-    assert.strictEqual(nextActive(items, 1, 1), 1);
-    assert.strictEqual(nextActive(items, 1, -1), 0);
-    assert.strictEqual(nextActive(items, 0, -1), 0);
-  });
-
-  test('keeps the highlight on its result while the results change, and otherwise starts at the first', () => {
-    const highlight: Highlighted = { query: 'a', key: 'branch:feat/x' };
-    assert.strictEqual(
-      currentActive(resultsFor([], ['alpha', 'feat/x']), 'a', highlight),
-      1,
-    );
-    assert.strictEqual(
-      currentActive(
-        resultsFor(['a1'], ['alpha', 'ab', 'feat/x']),
-        'a',
-        highlight,
-      ),
-      2,
-    );
-    assert.strictEqual(
-      currentActive(resultsFor(['a1'], ['main']), 'a', highlight),
-      0,
-    );
-    assert.strictEqual(
-      currentActive(resultsFor([], ['alpha', 'feat/x']), 'al', highlight),
-      0,
-    );
-  });
-});
 
 suite('Locations popup', () => {
   test('draws at most the limit of folders and refs under a folder together, counting the rest', () => {

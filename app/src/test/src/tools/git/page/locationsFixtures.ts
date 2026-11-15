@@ -74,3 +74,9 @@ export const repository = (
   refs: named.map(([kind, name]) => ({ kind, name, commit: 'c'.repeat(40) })),
   stashes: [],
 });
+
+export const branchNamed = (name: string): RefInfo => ({
+  kind: 'branch',
+  name,
+  commit: 'a',
+});
