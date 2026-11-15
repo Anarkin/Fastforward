@@ -2,8 +2,8 @@ import { type Side } from '../shared/sides';
 import { type Row } from './listing';
 import { readingKey } from './commanderReceived';
 import { useCommander } from './store';
-import { StatusLine } from './statusLine';
-import { useShownAfter } from './shownAfter';
+import { StatusLine } from '../../../lib/page/statusLine';
+import { useShownAfter } from '../../../lib/page/shownAfter';
 import { selectedPathOf, goesOn } from './sideStatus';
 import { strings } from '../../../lib/shared/strings';
 

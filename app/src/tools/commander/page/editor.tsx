@@ -4,7 +4,7 @@ import { useShell, useShellActions } from '../../../shell/page/store';
 import { Words } from '../../../lib/page/name';
 import { languageOf } from '../../../lib/page/languages';
 import { startColorer } from '../../../lib/page/syntax';
-import { StatusLine } from './statusLine';
+import { StatusLine } from '../../../lib/page/statusLine';
 import { findAskOf } from './editorFind';
 import { colorOfFileNamed } from './fileColors';
 import { viewerChoices } from './view';

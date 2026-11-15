@@ -28,6 +28,8 @@ import { DiffView } from './diffView';
 import { shownFiles, filteredDiffFiles } from './diffFiles';
 import { useDiffFind } from './diffFind';
 import { DiffFindBar } from './diffFindBar';
+import { ColumnStatus } from './columnStatusLine';
+import { linesCounted } from './columnStatus';
 
 export function Diff({
   selection,
@@ -93,6 +95,13 @@ export function Diff({
       ),
     [parsed, path, files, leftOut, largeFiles, whitespaceOnly, filter],
   );
+  const lines = useMemo(
+    () =>
+      linesCounted(
+        path !== undefined && diffFiles.length === 1 ? diffFiles[0] : undefined,
+      ),
+    [path, diffFiles],
+  );
   const errorRow = useMemo(
     () =>
       error ? (
@@ -155,6 +164,11 @@ export function Diff({
     <Column
       start={options}
       search={<SearchButton title={strings.find.title} onClick={openFind} />}
+      status={
+        <ColumnStatus loading={loading} font="monospace">
+          {lines}
+        </ColumnStatus>
+      }
       searching={
         finding && (
           <DiffFindBar

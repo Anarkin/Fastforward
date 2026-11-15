@@ -11,6 +11,11 @@
   width: var(--minimap-width);
 }
 
+.column-body:has(+ .column-status) .diff-minimap {
+  bottom: 0;
+  border-bottom-right-radius: 0;
+}
+
 .minimap-mark {
   position: absolute;
   left: 2px;

@@ -268,7 +268,23 @@ function noChangesShown(
   return renderToStaticMarkup(<>{column.props.children[2]}</>);
 }
 
+function statusShown(shown: Shown): string | null | undefined {
+  const column = filesOf(filesStore(shown));
+  assert.ok(isValidElement<{ status: React.ReactNode }>(column));
+  return new JSDOM(
+    renderToStaticMarkup(<>{column.props.status}</>),
+  ).window.document.querySelector('.column-status')?.textContent;
+}
+
 suite('Files column', () => {
+  test('counts under it the files changed, or those its filter keeps of them, and nothing while none changed or before they load', () => {
+    const files = [change('src/a.ts'), change('src/b.ts'), change('c.md')];
+    assert.strictEqual(statusShown({ files }), '3 files changed');
+    assert.strictEqual(statusShown({ files, filter: 'src' }), '2 of 3 files');
+    assert.strictEqual(statusShown({ files: [] }), undefined);
+    assert.strictEqual(statusShown({ files, loading: true }), undefined);
+  });
+
   test('titles itself Files, showing all files only while its toggle is on', () => {
     for (const showAll of [false, true]) {
       const store = filesStore({ hash: undefined, showAll });

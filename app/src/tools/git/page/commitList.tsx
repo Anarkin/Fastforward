@@ -63,6 +63,8 @@ import {
 import { commitOption, commitListbox } from './commitListItems';
 import { CommitRow, ListedCommitRow, WorkingTreeRow } from './commitRow';
 import { SoloButton } from './soloButton';
+import { ColumnStatus } from './columnStatusLine';
+import { commitsCounted } from './columnStatus';
 
 const loadDelay = 80;
 
@@ -381,6 +383,11 @@ export function Commits({
   return (
     <Column
       overlay={search}
+      status={
+        <ColumnStatus loading={opening} font="proportional">
+          {commitsCounted(history?.total)}
+        </ColumnStatus>
+      }
       search={
         <SearchButton
           title={strings.actions.search}

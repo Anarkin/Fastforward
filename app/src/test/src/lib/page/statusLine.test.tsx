@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { StatusLine } from '../../../../../tools/commander/page/statusLine';
+import { StatusLine } from '../../../../lib/page/statusLine';
 
 const page = (html: string) => new JSDOM(html).window.document;
 

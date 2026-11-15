@@ -83,7 +83,10 @@ class RowScrolling implements PluginValue {
   leading: Leading = { above: 0, below: 0 };
   private readonly sizes = {
     read: (view: EditorView): RowSizes => ({
-      padding: rowPadding(view.scrollDOM.clientHeight, view.defaultLineHeight),
+      padding: rowPadding(
+        view.scrollDOM.getBoundingClientRect().height,
+        view.defaultLineHeight,
+      ),
       leading: measuredLeading(view),
     }),
     write: ({ padding, leading }: RowSizes, view: EditorView) => {

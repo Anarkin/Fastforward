@@ -1,5 +1,5 @@
 import type { Page } from '../../../shell/main/toolContract';
-import { readingShownAfter } from '../shared/readingDelay';
+import { readingShownAfter } from '../../../lib/shared/readingDelay';
 import type { Side } from '../shared/sides';
 import { post } from './post';
 

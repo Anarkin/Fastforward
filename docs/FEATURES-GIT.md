@@ -64,7 +64,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Commit list | List the commits, newest first | `git log` | Core | ✅ Yes | `git rev-list --date-order`, read whole, so the list knows its size and jumps anywhere; scrolled by whole commits, `scrolling.wheelRows` lines a notch settling on the start of a commit, and the files by whole rows, as the diff and the commander scroll |
+| Commit list | List the commits, newest first | `git log` | Core | ✅ Yes | `git rev-list --date-order`, read whole, so the list knows its size and jumps anywhere; scrolled by whole commits, `scrolling.wheelRows` lines a notch settling on the start of a commit, and the files by whole rows, as the diff and the commander scroll; a line under it counts the commits shown, or says Reading… once the history has been read for half a second |
 | Graph | Draw the lanes of branches and merges | `git log --graph` | Core | ✅ Yes | Up to 12 lanes in 8 colors, folding the rest into the last |
 | All branches or one | Show every ref's history, or HEAD's only | `git log --all`, `git log HEAD` | Common | ✅ Yes | Solo, remembered per worktree |
 | Chosen branches | Show the history of chosen branches only | `git log <ref>...` | Common | ❌ No | Solo shows HEAD's only |
@@ -95,7 +95,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Commit diff | Show the files a commit changed and their patch | `git show` | Core | ✅ Yes | Read with `git diff-tree --stdin`, one kept running per worktree; lists the files without counting their lines |
+| Commit diff | Show the files a commit changed and their patch | `git show` | Core | ✅ Yes | Read with `git diff-tree --stdin`, one kept running per worktree; lists the files without counting their lines; a line under the files counts those changed, and one under the diff the lines added and removed in the file shown, from its patch, in monospace, nothing for a binary file or a large one not loaded; each says Reading… once its read has gone on for half a second |
 | Merge diff | Show what a merge changed | `git show --diff-merges=<format>` | Common | 🟡 Partial | Against the first parent only, no combined diff |
 | Working tree diffs | Diff the unstaged, the staged, or all against HEAD | `git diff`, `git diff --cached`, `git diff HEAD` | Core | ✅ Yes | Untracked files show as added |
 | Compare two commits | Diff any two commits | `git diff <a> <b>` | Common | ✅ Yes | Mod+click the second; the first selected is the old side |
@@ -131,7 +131,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Browse a revision | List every file of a commit | `git ls-tree -r` | Common | ✅ Yes | Show All Files, the unchanged with the changed |
 | A file at a revision | Show a file as a commit has it | `git show <rev>:<path>` | Common | ✅ Yes | Show the Entire File for a changed file, Show All Files for the rest; read with `git cat-file` |
-| Filter the files | Narrow the files to those matching a search | — | Common | ✅ Yes | Every word must be in the path or the old path; Aa matches the case and W whole words of each, .* takes the search as one regular expression; counts the file selected of those kept, ↑ and ↓ stepping among them |
+| Filter the files | Narrow the files to those matching a search | — | Common | ✅ Yes | Every word must be in the path or the old path; Aa matches the case and W whole words of each, .* takes the search as one regular expression; counts the file selected of those kept, ↑ and ↓ stepping among them, and the line under the files how many of the files changed it keeps |
 | File history | List the commits that changed a file | `git log --follow -- <path>` | Core | ❌ No |  |
 | Blame | Show who last changed each line | `git blame` | Core | ❌ No |  |
 | Line history | List the commits that changed some lines | `git log -L` | Advanced | ❌ No |  |

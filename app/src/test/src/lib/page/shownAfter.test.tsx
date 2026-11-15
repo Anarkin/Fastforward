@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { afterEach, suite, test, vi } from 'vitest';
-import { useShownAfter } from '../../../../../tools/commander/page/shownAfter';
+import { useShownAfter } from '../../../../lib/page/shownAfter';
 
 function Shown({ going }: { going: boolean }) {
   return <span>{useShownAfter(going) ? 'shown' : ''}</span>;

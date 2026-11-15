@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { Column } from '../../../../tools/git/page/column';
-import { StatusLine } from '../../../../tools/commander/page/statusLine';
+import { StatusLine } from '../../../../lib/page/statusLine';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { cascaded } from '../../../helpers/cascade';
 import {
@@ -44,6 +44,14 @@ import {
 function columnVisibility(columns: React.ReactElement) {
   return allWithClass(rendered(columns), 'column').map((column) =>
     cascaded(column, 'visibility'),
+  );
+}
+
+function lineOf(font: 'monospace' | 'proportional') {
+  return rendered(
+    <Column status={<StatusLine font={font}>+1 −0</StatusLine>}>
+      <div className="diff-minimap" />
+    </Column>,
   );
 }
 
@@ -325,6 +333,32 @@ suite('Style', () => {
         ),
         { color: 'var(--color-foreground)' },
       );
+    }
+  });
+
+  test('makes a status line exactly one row of its own font tall, as if another row of the list above it, on whole device pixels, its line drawn inside it taking no room, and the minimap of a diff over it ending square against it', () => {
+    looks(withClass(lineOf('proportional'), 'column'), {
+      '--status-height': 'var(--row-line-height)',
+    });
+    assert.strictEqual(
+      cascaded(withClass(lineOf('monospace'), 'column'), '--status-height')
+        ?.replaceAll(/\(\s+/g, '(')
+        .replaceAll(/\s+\)/g, ')'),
+      'round(var(--monospace-font-size) * var(--monospace-line-height), var(--device-pixel, 1px))',
+    );
+    for (const font of ['monospace', 'proportional'] as const) {
+      const column = lineOf(font);
+      looks(withClass(column, 'column-status'), {
+        height: 'var(--status-height)',
+        'line-height': 'var(--status-height)',
+        padding: '0 8px',
+        'border-top': undefined,
+        'box-shadow': 'inset 0 var(--hairline) var(--color-border)',
+      });
+      looks(withClass(column, 'diff-minimap'), {
+        bottom: '0',
+        'border-bottom-right-radius': '0',
+      });
     }
   });
 

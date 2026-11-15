@@ -373,6 +373,68 @@ suite('App', () => {
     await active('diff');
   });
 
+  test('counts under the commit list the commits of the history shown, in the font of the app', async () => {
+    const commits = page.locator('.columns > .column').first();
+    const total = Number(
+      (await repository.git('rev-list', '--count', '--all')).trim(),
+    );
+    await waitFor(
+      async () =>
+        (await commits.locator('.column-status').textContent()) ===
+        `${total.toLocaleString()} commits`,
+      'the commits counted',
+    );
+    assert.strictEqual(
+      await commits.locator('.column-status.monospace').count(),
+      0,
+    );
+  });
+
+  test('counts under the files those a commit changed, and those its filter keeps of them while it narrows them', async () => {
+    const files = page.locator('.columns > .column').nth(1);
+    const status = () => files.locator('.column-status').textContent();
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
+    await waitFor(
+      async () => (await status()) === '2 files changed',
+      'the files changed counted',
+    );
+    await files.locator('.column-actions > .search-button').click();
+    const field = files.locator('.search-box-input');
+    await waitForFocus(field, 'the files search');
+    await field.fill('kept');
+    await waitFor(
+      async () => (await status()) === '1 of 2 files',
+      'the files kept counted',
+    );
+    await page.keyboard.press('Escape');
+    await field.waitFor({ state: 'detached' });
+    await waitFor(
+      async () => (await status()) === '2 files changed',
+      'every file changed counted again',
+    );
+  });
+
+  test('counts under the diff the lines added and removed in the file shown, in monospace, and nothing while every file of the commit is shown', async () => {
+    const diff = page.locator('.columns > .column').nth(2);
+    await page.locator('.commit', { hasText: 'second' }).click();
+    await page.locator('.row.file', { hasText: 'changed.txt' }).click();
+    await waitFor(
+      async () =>
+        (await diff.locator('.column-status.monospace').textContent()) ===
+        '+1 −1',
+      'the lines counted',
+    );
+    await page.locator('.row.group', { hasText: 'All Changes' }).click();
+    await page
+      .locator('.row.group.selected', { hasText: 'All Changes' })
+      .waitFor();
+    await waitFor(
+      async () => (await diff.locator('.column-status').count()) === 0,
+      'no line under the diff of every file',
+    );
+  });
+
   test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {
     await page.locator('.commit', { hasText: 'second' }).click();
     await page.locator('.row.file', { hasText: 'changed.txt' }).waitFor();

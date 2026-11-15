@@ -157,7 +157,7 @@ suite('App', () => {
     assert.strictEqual((await lines()).column, 0);
   });
 
-  test('keeps the scrollbar and the minimap of a diff against the line its column draws on the right and at the bottom, clipped to its rounded corner', async () => {
+  test('keeps the scrollbar and the minimap of a diff against the line its column draws on the right and at the bottom, or the status line under it, clipped to its rounded corner where it has one', async () => {
     await sharedPage.locator('.commit', { hasText: 'first' }).click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
     await sharedPage
@@ -176,14 +176,19 @@ suite('App', () => {
         const style = getComputedStyle(column);
         const line = parseFloat(style.getPropertyValue('--column-line'));
         const edge = column.getBoundingClientRect();
+        const status = column.querySelector('.column-status');
         return {
           right: Math.round(
             edge.right - line - viewport.getBoundingClientRect().right,
           ),
           bottom: Math.round(
-            edge.bottom - line - minimap.getBoundingClientRect().bottom,
+            (status?.getBoundingClientRect().top ?? edge.bottom - line) -
+              minimap.getBoundingClientRect().bottom,
           ),
-          corner: Math.round(parseFloat(style.borderBottomRightRadius) - line),
+          corner:
+            status === null
+              ? Math.round(parseFloat(style.borderBottomRightRadius) - line)
+              : 0,
           clipped: getComputedStyle(minimap).overflow,
           rounded: Math.round(
             parseFloat(getComputedStyle(minimap).borderBottomRightRadius),

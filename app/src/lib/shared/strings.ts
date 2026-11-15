@@ -490,6 +490,8 @@ export const strings = {
     none: 'None',
   },
   commits: {
+    counted: (count: number) =>
+      count === 1 ? '1 commit' : `${count.toLocaleString()} commits`,
     pushTag: (tag: string, remote: string | undefined) =>
       remote === undefined ? `Push ${tag}` : `Push ${tag} to ${remote}`,
     uncommitted: 'Uncommitted changes',
@@ -526,6 +528,12 @@ export const strings = {
   },
   files: {
     title: 'Files',
+    changedCount: (count: number) =>
+      count === 1
+        ? '1 file changed'
+        : `${count.toLocaleString()} files changed`,
+    keptCount: (kept: number, count: number) =>
+      `${kept.toLocaleString()} of ${count.toLocaleString()} ${count === 1 ? 'file' : 'files'}`,
     noChanges: 'No changes',
     noDifferences: 'No differences, both have the same files',
     showAll: 'Show All Files',
@@ -559,6 +567,8 @@ export const strings = {
     change: (status: string, path: string) => `${status}: ${path}`,
   },
   diff: {
+    linesCounted: (added: number, removed: number) =>
+      `+${added.toLocaleString()} −${removed.toLocaleString()}`,
     viewMissing: (file: string) =>
       sentence`${named(file)} isn't there to view.`,
     viewTooLarge: (file: string) =>

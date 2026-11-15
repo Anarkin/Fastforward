@@ -58,6 +58,8 @@ import { filesTitle, noChangesText, headerTitle } from './filesTitles';
 import { type MovedCursor, filesCursor, filesReveal } from './filesCursor';
 import { FileFilterField } from './filesFilterField';
 import { noneClosed, useFilesFilter } from './filesFilter';
+import { ColumnStatus } from './columnStatusLine';
+import { filesCounted } from './columnStatus';
 
 const settlingPaths = 20_000;
 
@@ -70,6 +72,7 @@ export function Files() {
   const showAll = useGit((state) => state.showAllFiles);
   const files = useGit((state) => state.tab.files);
   const staged = useGit((state) => state.tab.staged);
+  const changes = useGit((state) => state.tab.all ?? state.tab.files);
   const loading = useGit((state) => state.tab.filesLoading || openingOf(state));
   const tree = useGit((state) => treeOf(state.tab));
   const { closed: closedFolders, open: openedFolders } = useGit(shownFoldersOf);
@@ -108,6 +111,7 @@ export function Files() {
     [shownFilter],
   );
   const filtering = narrows(words);
+  const counted = useMemo(() => filesCounted(changes, words), [changes, words]);
   const sides = useMemo(
     () =>
       sidesOf(files, staged, allPaths).map((side) => filteredSide(side, words)),
@@ -302,6 +306,11 @@ export function Files() {
       title={title}
       index={1}
       start={start}
+      status={
+        <ColumnStatus loading={loading} font="proportional">
+          {counted}
+        </ColumnStatus>
+      }
       search={
         <SearchButton title={strings.files.search} onClick={openFilter} />
       }
