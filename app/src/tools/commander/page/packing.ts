@@ -1,5 +1,14 @@
 import { strings } from '../../../lib/shared/strings';
-import { firstVolumeOf, packFormats, type PackFormat } from '../shared/packing';
+import type { Sentence } from '../../../lib/shared/sentences';
+import { nameProblem } from '../shared/names';
+import {
+  encrypts,
+  firstVolumeOf,
+  packFormats,
+  packPasswordProblem,
+  smallestVolume,
+  type PackFormat,
+} from '../shared/packing';
 import { folderKey } from '../shared/paths';
 import type { PaneView } from './view';
 
@@ -141,3 +150,55 @@ export const volumeSizes: readonly {
   { size: '4092 MB', label: strings.commander.volumeFat32 },
   { size: '4480 MB', label: strings.commander.volumeDvd },
 ];
+
+const rootedOnWindows = /^(?:[a-zA-Z]:[\\/]|[\\/]{2}[^\\/])/;
+
+function whole(file: string, platform: string | undefined): boolean {
+  const posix = file.startsWith('/');
+  if (platform === 'win32') {
+    return rootedOnWindows.test(file);
+  }
+  return platform === undefined ? posix || rootedOnWindows.test(file) : posix;
+}
+
+export function packProblem({
+  archive,
+  format,
+  password,
+  splitting,
+  volume,
+  platform,
+}: {
+  readonly archive: string;
+  readonly format: PackFormat;
+  readonly password: string;
+  readonly splitting: boolean;
+  readonly volume: string;
+  readonly platform: string | undefined;
+}): Sentence | undefined {
+  if (archive.trim() === '') {
+    return strings.commander.noArchive;
+  }
+  if (!whole(archive.trim(), platform)) {
+    return strings.commander.archiveNotWhole;
+  }
+  const named = nameProblem(lastPart(archive.trim(), platform), platform);
+  if (named !== undefined) {
+    return named;
+  }
+  if (encrypts(format) && password !== '') {
+    const problem = packPasswordProblem(password, format);
+    if (problem !== undefined) {
+      return problem;
+    }
+  }
+  if (!splitting) {
+    return undefined;
+  }
+  const bytes = volumeBytesOf(volume);
+  return bytes === undefined
+    ? strings.commander.volumeUnread
+    : bytes < smallestVolume
+      ? strings.commander.volumeSmall
+      : undefined;
+}

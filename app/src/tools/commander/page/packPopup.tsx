@@ -1,20 +1,16 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { strings } from '../../../lib/shared/strings';
-import type { Sentence } from '../../../lib/shared/sentences';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
 import { useModalDialog } from '../../../lib/page/modalDialog';
 import { useDialogDrag } from '../../../lib/page/dialogDrag';
 import { NameLines, Words } from '../../../lib/page/name';
-import { nameProblem } from '../shared/names';
 import {
   compresses,
   encrypts,
   packFormats,
   packLevels,
-  packPasswordProblem,
-  smallestVolume,
   zipCiphers,
   type PackFormat,
   type PackLevel,
@@ -24,8 +20,8 @@ import { sides } from '../shared/protocol';
 import {
   archiveFor,
   archiveThere,
-  lastPart,
   namedPart,
+  packProblem,
   volumeBytesOf,
   volumeSizes,
   withFormat,
@@ -62,58 +58,6 @@ function Choices<Choice extends string>({
       ))}
     </div>
   );
-}
-
-const rootedOnWindows = /^(?:[a-zA-Z]:[\\/]|[\\/]{2}[^\\/])/;
-
-function whole(file: string, platform: string | undefined): boolean {
-  const posix = file.startsWith('/');
-  if (platform === 'win32') {
-    return rootedOnWindows.test(file);
-  }
-  return platform === undefined ? posix || rootedOnWindows.test(file) : posix;
-}
-
-function packProblem({
-  archive,
-  format,
-  password,
-  splitting,
-  volume,
-  platform,
-}: {
-  readonly archive: string;
-  readonly format: PackFormat;
-  readonly password: string;
-  readonly splitting: boolean;
-  readonly volume: string;
-  readonly platform: string | undefined;
-}): Sentence | undefined {
-  if (archive.trim() === '') {
-    return strings.commander.noArchive;
-  }
-  if (!whole(archive.trim(), platform)) {
-    return strings.commander.archiveNotWhole;
-  }
-  const named = nameProblem(lastPart(archive.trim(), platform), platform);
-  if (named !== undefined) {
-    return named;
-  }
-  if (encrypts(format) && password !== '') {
-    const problem = packPasswordProblem(password, format);
-    if (problem !== undefined) {
-      return problem;
-    }
-  }
-  if (!splitting) {
-    return undefined;
-  }
-  const bytes = volumeBytesOf(volume);
-  return bytes === undefined
-    ? strings.commander.volumeUnread
-    : bytes < smallestVolume
-      ? strings.commander.volumeSmall
-      : undefined;
 }
 
 function PackForm({
