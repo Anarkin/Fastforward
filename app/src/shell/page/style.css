@@ -8,7 +8,9 @@
 @import './columns.css';
 @import './menus.css';
 @import './rows.css';
-@import './documents.css';
+@import './markdown.css';
+@import './images.css';
+@import './pdf.css';
 @import './text.css';
 @import './minimap.css';
 @import './buttons.css';
