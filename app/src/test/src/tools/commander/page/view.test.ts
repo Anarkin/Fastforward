@@ -309,4 +309,19 @@ suite('Commander view', () => {
     view = reduceView(view, listing('/work', files));
     assert.deepStrictEqual(shown(view).selected, 'b.txt');
   });
+
+  test('keeps where the divider of each tab was dragged to while other tabs are shown, a tab never dragged halved, so dragging it in one tab moves it in no other', () => {
+    let view = run({ type: 'show', tab: '1' }, { type: 'share', share: 0.3 });
+    assert.strictEqual(view.share, 0.3);
+    view = reduceView(view, { type: 'show', tab: '2' });
+    assert.strictEqual(view.share, 0.5);
+    view = reduceView(view, { type: 'share', share: 0.7 });
+    view = reduceView(view, { type: 'hide' });
+    view = reduceView(view, { type: 'show', tab: '1' });
+    assert.strictEqual(view.share, 0.3);
+    view = reduceView(view, { type: 'show', tab: '2' });
+    assert.strictEqual(view.share, 0.7);
+    view = reduceView(view, { type: 'show', tab: '3' });
+    assert.strictEqual(view.share, 0.5);
+  });
 });

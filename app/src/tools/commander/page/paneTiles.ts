@@ -67,6 +67,7 @@ export function useTiles(
   body: React.RefObject<HTMLDivElement | null>,
   side: Side,
   rows: readonly Row[],
+  scrollKey: string,
 ) {
   const tab = useCommander((state) => state.view.tab);
   const shownFolder = useCommander((state) => state.view.panes[side]?.folder);
@@ -101,20 +102,35 @@ export function useTiles(
       ? `tiles ${thumbnailSize}`
       : undefined
     : 'details';
-  const [fillFrom, setFillFrom] = useState(0);
+  const [fill, setFill] = useState<{
+    readonly key: string;
+    readonly from: number;
+  }>();
+  const fillFrom = fill?.key === scrollKey ? fill.from : undefined;
   const fillTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(fillTimer.current), []);
+  const fillAt = (offset: number) => {
+    const height =
+      body.current?.querySelector('.virtual-row')?.getBoundingClientRect()
+        .height ?? 0;
+    if (offset === 0 || height > 0) {
+      setFill({
+        key: scrollKey,
+        from: height > 0 ? Math.floor(offset / height + 0.01) * across : 0,
+      });
+    }
+  };
+  useLayoutEffect(() => {
+    if (tiled && shownList !== undefined && fillFrom === undefined) {
+      fillAt(actions.scrollOf(scrollKey));
+    }
+  });
   const fillScrolledTo = (offset: number) => {
     if (!tiled) {
       return;
     }
     clearTimeout(fillTimer.current);
-    fillTimer.current = setTimeout(() => {
-      const height =
-        body.current?.querySelector('.virtual-row')?.getBoundingClientRect()
-          .height ?? 0;
-      setFillFrom(height > 0 ? Math.floor(offset / height + 0.01) * across : 0);
-    }, fillDelay);
+    fillTimer.current = setTimeout(() => fillAt(offset), fillDelay);
   };
   const fillItems = useMemo(
     () =>
@@ -127,10 +143,10 @@ export function useTiles(
     fillItems,
     Math.max(
       0,
-      fillItems.findIndex((item) => item.index >= fillFrom),
+      fillItems.findIndex((item) => item.index >= (fillFrom ?? 0)),
     ),
     thumbnailSize,
-    tiled && shownList !== undefined,
+    tiled && shownList !== undefined && fillFrom !== undefined,
     (item, made, pixelRatio) =>
       void actions.saveThumbnail(item.source, thumbnailSize, pixelRatio, made),
   );

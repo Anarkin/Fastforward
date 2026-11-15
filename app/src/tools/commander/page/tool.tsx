@@ -19,6 +19,7 @@ import { useShellActions } from '../../../shell/page/store';
 import { CommanderPopups } from './commanderPopups';
 import { CommanderStore, createCommanderStore } from './store';
 import { sideToFocus } from './sideFocus';
+import { focusBack } from '../../../lib/page/keptFocus';
 import { shareOf } from './sideShare';
 
 export function CommanderTool({
@@ -45,6 +46,7 @@ export function CommanderTool({
     (state) => state.view.editing !== undefined,
   );
   const activeSide = useStore(store, (state) => state.view.active);
+  const share = useStore(store, (state) => state.view.share);
   const canGroupByColor = useStore(
     store,
     (state) => state.view.fileColors.colors.length > 0,
@@ -60,9 +62,10 @@ export function CommanderTool({
     flat,
     askGoTo,
     duplicates,
+    dispatch,
   } = store.getState();
+  const setShare = (next: number) => dispatch({ type: 'share', share: next });
   const { closeTab: onClose } = useShellActions();
-  const [share, setShare] = useState(0.5);
   const columns = useRef<HTMLDivElement>(null);
   const triggers = {
     left: useRef<HTMLButtonElement>(null),
@@ -79,15 +82,25 @@ export function CommanderTool({
   const viewing = shown && viewsFile;
   const panesShown = shown && !viewsFile && !editsFile;
 
+  const focusedTab = useRef<string>(undefined);
   useEffect(() => {
     if (!panesShown) {
+      focusedTab.current = undefined;
       return;
     }
-    sideToFocus(
-      columns.current?.children[sides.indexOf(activeSide)],
-      document.activeElement,
-    )?.focus();
-  }, [panesShown, activeSide]);
+    const root = columns.current;
+    const column = root?.children[sides.indexOf(activeSide)];
+    if (focusedTab.current === tab) {
+      sideToFocus(column, document.activeElement)?.focus();
+      return;
+    }
+    focusedTab.current = tab;
+    const left =
+      tab === undefined ? undefined : store.getState().view.kept.get(tab);
+    if (root === null || !focusBack(root, left?.focus)) {
+      sideToFocus(column, null)?.focus();
+    }
+  }, [panesShown, activeSide, tab, store]);
 
   useBinding(
     commanderKeymap.history,

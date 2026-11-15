@@ -7,8 +7,12 @@ import { letterTyped } from '../../../lib/shared/keymap';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { MatchesFound } from '../../../lib/shared/textMatches';
 import { type FilterMove } from './filterSteps';
+import type { Side } from '../shared/sides';
+
+const filterFocusOf = (side: Side) => `filter ${side}`;
 
 export function PaneFilter({
+  side,
   query,
   options,
   found,
@@ -20,6 +24,7 @@ export function PaneFilter({
   onLeave,
   onClose,
 }: {
+  side: Side;
   query: string;
   options: SearchOptions;
   found: MatchesFound;
@@ -39,6 +44,7 @@ export function PaneFilter({
       found={found}
       placeholder={strings.commander.filterPlaceholder}
       input={input}
+      focusName={filterFocusOf(side)}
       onQuery={onQuery}
       onOptions={onOptions}
       onStep={onStep}

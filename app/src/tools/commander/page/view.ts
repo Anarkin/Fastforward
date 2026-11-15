@@ -5,6 +5,7 @@ import {
 import { sides, type Side } from '../shared/sides';
 import { defaultLayouts, type Layout, type Layouts } from './layouts';
 import { type ColumnWidths } from '../shared/columnWidths';
+import type { KeptFocus } from '../../../lib/page/keptFocus';
 import { type Sort, type Sorts } from '../shared/sorts';
 import type { ViewMode } from './viewerKeymap';
 import type { EncodingChoice } from './encodings';
@@ -43,6 +44,8 @@ export interface CommanderView {
   readonly fileColors: FileColors;
   readonly bookmarks: readonly string[];
   readonly active: Side;
+  readonly share: number;
+  readonly focus: KeptFocus | undefined;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
   readonly kept: ReadonlyMap<string, KeptTab>;
   readonly viewers: ReadonlyMap<string, ViewerChoices>;
@@ -77,6 +80,8 @@ function without<T>(
 
 interface KeptTab {
   readonly active: Side;
+  readonly share: number;
+  readonly focus: KeptFocus | undefined;
   readonly layouts: Layouts;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
 }
@@ -91,6 +96,8 @@ function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
   }
   return new Map(view.kept).set(view.tab, {
     active: view.active,
+    share: view.share,
+    focus: view.focus,
     layouts: view.layouts,
     panes: view.panes,
   });
@@ -116,6 +123,8 @@ export const emptyView: CommanderView = {
   fileColors: noFileColors,
   bookmarks: [],
   active: 'right',
+  share: 0.5,
+  focus: undefined,
   panes: { left: undefined, right: undefined },
   kept: new Map(),
   viewers: new Map(),
@@ -169,6 +178,8 @@ export type ViewAction =
   | { readonly type: 'sort'; readonly side: Side; readonly sort: Sort }
   | { readonly type: 'layout'; readonly side: Side; readonly layout: Layout }
   | { readonly type: 'activate'; readonly side: Side }
+  | { readonly type: 'share'; readonly share: number }
+  | { readonly type: 'focus'; readonly focus: KeptFocus | undefined }
   | { readonly type: 'switchSide' };
 
 function sameFolders(
@@ -238,6 +249,8 @@ export function reduceView(
         viewing: action.edit === true ? undefined : action.file,
         editing: action.edit === true ? action.file : undefined,
         active: back?.active ?? emptyView.active,
+        share: back?.share ?? emptyView.share,
+        focus: back?.focus,
         layouts: back?.layouts ?? emptyView.layouts,
         panes: back === undefined ? emptyView.panes : settledPanes(view, back),
         kept,
@@ -250,6 +263,8 @@ export function reduceView(
         tab: undefined,
         viewing: undefined,
         editing: undefined,
+        share: emptyView.share,
+        focus: undefined,
         layouts: emptyView.layouts,
         panes: emptyView.panes,
         kept: keptAway(view),
@@ -452,6 +467,17 @@ export function reduceView(
       return view.active === action.side
         ? view
         : { ...view, active: action.side };
+    case 'share':
+      return view.share === action.share
+        ? view
+        : { ...view, share: action.share };
+    case 'focus':
+      return view.tab === undefined ||
+        view.viewing !== undefined ||
+        view.editing !== undefined ||
+        JSON.stringify(view.focus) === JSON.stringify(action.focus)
+        ? view
+        : { ...view, focus: action.focus };
     case 'switchSide':
       return { ...view, active: view.active === 'left' ? 'right' : 'left' };
     default:

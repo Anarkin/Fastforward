@@ -9,6 +9,7 @@ import { PaneFilter } from './paneFilter';
 import { searchFilter } from '../../../lib/shared/filter';
 import { plainSearch } from '../../../lib/shared/searchOptions';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
+import { useFocusKeeper } from '../../../lib/page/keptFocus';
 import { clickPairs } from './clickPairs';
 import { ColumnHeader } from './columnHeader';
 import { readingKey } from './commanderReceived';
@@ -78,6 +79,10 @@ export function Pane({
   );
   const filterInput = useRef<HTMLInputElement>(null);
   const body = useRef<HTMLDivElement>(null);
+  const section = useRef<HTMLElement>(null);
+  useFocusKeeper(section, (focus) =>
+    actions.dispatch({ type: 'focus', focus }),
+  );
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
   const [pairsClick] = useState(clickPairs);
   const { dropInto, onDragOver, onDragLeave, onDrop } = useFileDrop(side);
@@ -157,9 +162,9 @@ export function Pane({
     }
   };
 
-  const { tiled, across, shownList, tileTextRow, fillScrolledTo, tileRows } =
-    useTiles(body, side, rows);
   const scrollKey = `${tab ?? ''} ${side} ${pane?.folder ?? ''} ${layout}`;
+  const { tiled, across, shownList, tileTextRow, fillScrolledTo, tileRows } =
+    useTiles(body, side, rows, scrollKey);
   const scrolledTo = (offset: number) => {
     actions.keepScroll(scrollKey, offset);
     fillScrolledTo(offset);
@@ -224,6 +229,7 @@ export function Pane({
 
   return (
     <section
+      ref={section}
       className={`column commander-pane${active ? '' : ' inactive'}`}
       aria-label={strings.commander.sides[side]}
       onPointerDown={onActivate}
@@ -237,6 +243,7 @@ export function Pane({
       {filtering ? (
         <header className="column-title searching">
           <PaneFilter
+            side={side}
             query={query}
             options={options}
             found={keptFiles(rows, pane?.selected)}
