@@ -248,7 +248,32 @@ suite('App with several windows', () => {
   });
 });
 
+function recordPointer(): void {
+  const pointer: string[] = [];
+  Object.assign(window, { pointer });
+  for (const type of [
+    'pointerdown',
+    'pointermove',
+    'pointerup',
+    'pointercancel',
+    'gotpointercapture',
+    'lostpointercapture',
+  ]) {
+    window.addEventListener(
+      type,
+      (event) => {
+        const line = `${type} ${event.target instanceof Element ? (event.target.getAttribute('class') ?? '').slice(0, 24) : ''}`;
+        if (pointer.length < 40 && pointer.at(-1) !== line) {
+          pointer.push(line);
+        }
+      },
+      true,
+    );
+  }
+}
+
 async function grabTab(page: Page, index: number) {
+  await page.evaluate(recordPointer);
   const box = await page.locator('.tabs [role="tab"]').nth(index).boundingBox();
   assert.ok(box);
   const at = { x: box.x + 20, y: box.y + box.height / 2 };
@@ -340,6 +365,14 @@ suite('App with tabs dragged between windows', () => {
           tabs: await tabsIn(page),
           selected: await page.evaluate(() =>
             'selected' in window ? window.selected : undefined,
+          ),
+          pointer: await page.evaluate(() =>
+            'pointer' in window ? window.pointer : undefined,
+          ),
+          row: await page.evaluate(() =>
+            [...(document.querySelector('.tab-strip')?.children ?? [])].map(
+              (child) => child.className,
+            ),
           ),
         })),
       );
