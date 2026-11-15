@@ -13,7 +13,7 @@ import {
   sidewaysScrollEvent,
 } from '../../../lib/page/scrollbarLinks';
 import { sidewaysMetrics, sidewaysScroll } from './sidewaysMetrics';
-import { sideRoom, wheelSideways } from './diffScrolling';
+import { sideRoom, wheelSideways } from './sidewaysScroll';
 import type { Sideways } from './overflow';
 import { readSideways, sameSideways } from './textLayout';
 

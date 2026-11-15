@@ -10,12 +10,12 @@ import {
   splitRows,
   type DiffRow,
 } from '../../../../../tools/git/page/diffRows';
+import { changeStarts } from '../../../../../tools/git/page/diffScrolling';
 import {
-  changeStarts,
   sideScroll,
   wheelGlide,
   wheelSideways,
-} from '../../../../../tools/git/page/diffScrolling';
+} from '../../../../../tools/git/page/sidewaysScroll';
 import { minimapRows } from '../../../../../tools/git/page/rowMeasures';
 import { splitSideClass } from '../../../../../tools/git/page/diffRowClasses';
 

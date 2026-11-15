@@ -65,21 +65,15 @@ import {
   rowMeasures,
   rowHeight,
 } from './rowMeasures';
+import { changeStarts, keyedScrollTop } from './diffScrolling';
+import { sideScroll, diffScrollLeft, sideRoom } from './sidewaysScroll';
 import {
-  sideScroll,
-  diffScrollLeft,
-  changeStarts,
-  keyedScrollTop,
-  scrollOnToggle,
   rowAnchors,
   type ScrollAnchor,
   scrollAnchor,
   anchoredScrollTop,
-  stuckHeader,
-  sideRoom,
-  diffRowPlace,
-  type Edges,
-} from './diffScrolling';
+} from './diffScrollAnchor';
+import { scrollOnToggle, stuckHeader } from './diffStuckHeader';
 import {
   type LineMarks,
   changedWords,
@@ -99,6 +93,7 @@ import {
   sameSnap,
   layoutVariables,
   widestColumns,
+  type Edges,
 } from './textLayout';
 import { WrapProbe, TextProbe } from './textProbes';
 import { selectionSide } from './selectionSide';
@@ -106,7 +101,7 @@ import { DiffRowShown, type DiffRowParts } from './diffRowShown';
 import { useSideways } from './diffSideways';
 import { useFoundJumps, useRevealFound } from './diffJumps';
 import { useLargeFileLoads } from './diffLargeFiles';
-import { diffRowClass } from './diffRowClasses';
+import { diffRowClass, diffRowPlace } from './diffRowClasses';
 import { FileHeader, HiddenChangeMarks } from './diffRowParts';
 
 export function DiffView({

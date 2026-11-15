@@ -2,9 +2,8 @@ import { memo, useCallback, useRef } from 'react';
 import { wrapColumns } from '../../../lib/page/wordWrap';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
-import type { Edges } from './diffScrolling';
 import { uniformHeight, type WrapColumns } from './rowMeasures';
-import { sideSnaps, wordPadding } from './textLayout';
+import { sideSnaps, wordPadding, type Edges } from './textLayout';
 
 const wrapSample = '0'.repeat(100);
 

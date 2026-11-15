@@ -6,6 +6,7 @@ import {
   FileNote,
   FileHeader,
   DiffSkeleton,
+  HunkDivider,
 } from '../../../../../tools/git/page/diffRowParts';
 
 const binaryMarkup = (
@@ -109,5 +110,36 @@ suite('Renamed files', () => {
     );
     assert.strictEqual(tagsWith(inline, 'split-side').length, 0);
     assert.strictEqual(tagsWith(inline, 'skeleton-row').length, 9);
+  });
+});
+
+suite('Hunk divider', () => {
+  test('marks the lines left out between hunks with dots', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<HunkDivider />),
+      '<div class="hunk-divider"><span class="hunk-dots">⋯</span></div>',
+    );
+  });
+});
+
+const viewHeader = (onView?: () => void) =>
+  renderToStaticMarkup(
+    <FileHeader
+      path="v.svg"
+      open
+      whole={false}
+      collapsible
+      onClick={() => {}}
+      onView={onView}
+    />,
+  );
+
+suite('Files to view', () => {
+  test('offers to view a file in a tab of its own only where the diff can tell where to read it from', () => {
+    assert.doesNotMatch(viewHeader(), /<button/);
+    assert.match(
+      viewHeader(() => {}),
+      /<button class="nav-button file-header-button" title="View the File in a Tab of Its Own">/,
+    );
   });
 });

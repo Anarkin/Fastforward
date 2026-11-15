@@ -8,14 +8,8 @@ import {
 } from 'react';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { DiffRow } from './diffRows';
-import {
-  changeMargin,
-  changeStarts,
-  firstChangeTop,
-  foundEdges,
-  foundMiddle,
-  foundScroll,
-} from './diffScrolling';
+import { changeMargin, changeStarts, firstChangeTop } from './diffScrolling';
+import { foundEdges, foundMiddle, foundScroll } from './diffFound';
 import { jumpStep, type FindMatch } from './find';
 import { shownSideways } from './overflow';
 import { rowLines } from './rowMeasures';

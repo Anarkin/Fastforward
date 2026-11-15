@@ -366,3 +366,33 @@ suite('Renamed files', () => {
     );
   });
 });
+
+suite('Files to view', () => {
+  const svg = parsePatch(
+    [
+      'diff --git a/v.svg b/v.svg',
+      `index ${'1'.repeat(40)}..${'2'.repeat(40)}`,
+      '--- a/v.svg',
+      '+++ b/v.svg',
+      '@@ -1 +1 @@',
+      '-<svg/>',
+      '+<svg />',
+    ].join('\n'),
+  );
+
+  test('shows an SVG by its lines as any text, to be seen drawn in a tab of its own', () => {
+    for (const sideBySide of [false, true]) {
+      const rows = kinds(
+        diffRows(svg, new Map(), undefined, false, sideBySide),
+      );
+      assert.ok(rows.includes(sideBySide ? 'split' : 'line'));
+      assert.ok(!rows.includes('image'));
+    }
+    const whole = { path: 'v.svg', content: '<svg/>\n', binary: false };
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), whole)), [
+      'error',
+      'file',
+      'wholeLine',
+    ]);
+  });
+});

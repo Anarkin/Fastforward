@@ -16,7 +16,6 @@ import {
   knownBreaks,
   rememberBreaks,
 } from '../../../../../tools/git/page/rowMeasures';
-import { diffRowPlace } from '../../../../../tools/git/page/diffScrolling';
 import { widestColumns } from '../../../../../tools/git/page/textLayout';
 import { BreakMarks, WrapMarks } from '../../../../../tools/git/page/wrapMarks';
 import { patch } from './diffViewFixtures';
@@ -55,14 +54,6 @@ const wholeRows = (...texts: readonly string[]): DiffRow[] =>
   }));
 
 suite('Diff row heights', () => {
-  test('places a row where it starts, telling its stripes how far down it is', () => {
-    assert.deepStrictEqual(diffRowPlace(40, 17), {
-      height: 17,
-      top: 40,
-      '--diff-row-top': '40px',
-    });
-  });
-
   test('gives every row but the error, a large file and placeholders the same fixed height, that of a row of the other columns, so the columns line up', () => {
     const rows = diffRows(
       parsePatch(

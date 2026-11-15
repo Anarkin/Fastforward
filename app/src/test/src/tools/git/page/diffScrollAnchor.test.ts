@@ -6,7 +6,7 @@ import {
   anchoredScrollTop,
   rowAnchors,
   scrollAnchor,
-} from '../../../../../tools/git/page/diffScrolling';
+} from '../../../../../tools/git/page/diffScrollAnchor';
 import { patch, sized } from './diffViewFixtures';
 
 suite('Scroll anchoring', () => {
