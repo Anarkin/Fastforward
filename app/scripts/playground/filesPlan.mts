@@ -1,7 +1,9 @@
 import type { Content } from './planContents.mts';
-import { planViewing } from './planViewing.mts';
+import { planHuge, planViewing } from './planViewing.mts';
 import { planNames } from './planNames.mts';
 import { planArchives } from './planArchives.mts';
+import { planOperations } from './planOperations.mts';
+import { planFolders, planThumbnails } from './planFolders.mts';
 
 export { limits } from './appFacts.mts';
 
@@ -149,6 +151,10 @@ export function plan({
   planViewing(builder);
   planNames(builder, options);
   planArchives(builder, options);
+  planThumbnails(builder, options);
+  planOperations(builder, options);
+  planFolders(builder, options);
+  planHuge(builder, options);
   const { items, pairs, encodings, guide } = builder;
   return { items, pairs, encodings, guide };
 }
