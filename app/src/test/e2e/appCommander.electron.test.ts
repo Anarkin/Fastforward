@@ -170,6 +170,48 @@ suite('App commander', () => {
     );
   });
 
+  test('goes to the path typed on Ctrl+Shift+F6, starting from the path of the side selected whole, so a path pasted takes its place, and to the folder of a file with the file selected', async () => {
+    const field = page.locator('.prompt-input');
+    await select('notes');
+
+    await page.keyboard.press('Control+Shift+F6');
+    await field.waitFor();
+    assert.deepStrictEqual(
+      await field.evaluate((input: HTMLInputElement) => [
+        input.value,
+        input.selectionStart,
+        input.selectionEnd,
+      ]),
+      [opened, 0, opened.length],
+    );
+    await page.keyboard.type(path.join(opened, 'src'));
+    await page.keyboard.press('Enter');
+    await field.waitFor({ state: 'detached' });
+    await waitFor(
+      async () =>
+        (await right().locator('.column-name').textContent()) ===
+        path.join(opened, 'src'),
+      'the folder typed to open',
+    );
+    await page.keyboard.press('Control+Shift+F6');
+    await field.waitFor();
+    await page.keyboard.type(`"${path.join(opened, 'notes.txt')}"`);
+    await page.keyboard.press('Enter');
+    await field.waitFor({ state: 'detached' });
+    await waitFor(
+      async () =>
+        (await right().locator('.column-name').textContent()) === opened,
+      'the folder of the file to open',
+    );
+    await waitFor(
+      async () =>
+        (
+          await right().locator('.commander-row.selected').textContent()
+        )?.includes('notes') === true,
+      'the file to be selected',
+    );
+  });
+
   test('bookmarks the folder of the active side from the menu Ctrl+D opens, filling the star of the side and saving it to the user settings, and goes back to it by its key from another folder', async () => {
     const filledStar = right().locator(
       `button[title="${strings.commander.bookmarks}"] .bookmark-icon.filled`,
