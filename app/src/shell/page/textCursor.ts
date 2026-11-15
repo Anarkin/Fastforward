@@ -5,12 +5,10 @@ import {
   drawnCursor,
   pageCursorLook,
   paintCursor,
-  pixelBox,
-  placedBox,
   sameDrawing,
-  type Box,
   type DrawnCursor,
 } from '../../lib/page/cursor';
+import { pixelBox, placedBox, type Box } from '../../lib/page/pixelBoxes';
 
 const textCursorClass = 'text-cursor';
 

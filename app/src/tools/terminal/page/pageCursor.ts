@@ -4,8 +4,8 @@ import {
   cursorBlinkInterval,
   drawnCursor,
   paintCursor,
-  type Box,
 } from '../../../lib/page/cursor';
+import type { Box } from '../../../lib/page/pixelBoxes';
 import type {
   CursorLook,
   CursorStyle,

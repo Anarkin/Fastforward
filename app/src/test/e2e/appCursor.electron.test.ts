@@ -8,12 +8,8 @@ import type { ElectronApplication, JSHandle, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { CursorStyle } from '../../lib/shared/cursorSettings';
 import type * as editorKeymapModule from '../../tools/commander/page/editorKeymap';
-import {
-  cursorBlinkInterval,
-  pixelBox,
-  type Box,
-  type CursorBox,
-} from '../../lib/page/cursor';
+import { cursorBlinkInterval, type CursorBox } from '../../lib/page/cursor';
+import { pixelBox, type Box } from '../../lib/page/pixelBoxes';
 import type * as cursorModule from '../../lib/page/cursor';
 import type * as editorSelectionModule from '../../tools/commander/page/editorSelection';
 import type * as editorTextModule from '../../tools/commander/page/editorText';

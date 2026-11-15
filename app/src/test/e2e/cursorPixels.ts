@@ -2,11 +2,10 @@ import * as assert from 'node:assert';
 import type { Locator } from 'playwright-core';
 import {
   cursorBox,
-  pixelBox,
-  type Box,
   type CursorBox,
   type CursorShape,
 } from '../../lib/page/cursor';
+import { pixelBox, type Box } from '../../lib/page/pixelBoxes';
 
 export const cursorWidth = 2;
 

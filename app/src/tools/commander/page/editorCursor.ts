@@ -10,9 +10,9 @@ import {
   drawnCursor,
   paintCursor,
   sameDrawing,
-  type Box,
   type DrawnCursor,
 } from '../../../lib/page/cursor';
+import type { Box } from '../../../lib/page/pixelBoxes';
 import {
   characterAt,
   layerOrigin,

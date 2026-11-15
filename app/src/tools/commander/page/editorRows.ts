@@ -1,6 +1,6 @@
 import { findClusterBreak } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import type { Box } from '../../../lib/page/cursor';
+import type { Box } from '../../../lib/page/pixelBoxes';
 
 export function rowEdge(view: EditorView): number | undefined {
   if (!view.lineWrapping) {

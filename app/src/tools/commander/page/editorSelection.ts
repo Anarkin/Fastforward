@@ -2,7 +2,7 @@ import type { Extension, SelectionRange } from '@codemirror/state';
 import { EditorView, layer, RectangleMarker } from '@codemirror/view';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
 import type { Binding } from '../../../lib/shared/keymap';
-import { pixelBox, placedBox } from '../../../lib/page/cursor';
+import { pixelBox, placedBox } from '../../../lib/page/pixelBoxes';
 import { cursorLayer } from './editorCursor';
 import { characterAt, layerOrigin, rowEdge } from './editorRows';
 import { rowEndKeys, type RowEnd } from './editorRowEnd';
