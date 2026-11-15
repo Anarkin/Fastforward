@@ -3,22 +3,20 @@ import {
   filledThumbnailUrl,
   madeThumbnailHeader,
 } from '../shared/thumbnails';
-import {
-  bitmapResizing,
-  halvings,
-  jpegScaling,
-  jpegSize,
-  storedSizeOf,
-  targetSide,
-  thumbnailPixels,
-  type PixelSize,
-} from './imageSize';
+import { jpegSize, storedSizeOf, type PixelSize } from './imageSize';
 import type {
   FillOutcome,
   FromThumbnailWorker,
   MadeThumbnail,
   ToThumbnailWorker,
 } from './thumbnailMessages';
+import {
+  bitmapResizing,
+  halvings,
+  jpegScaling,
+  targetSide,
+  thumbnailPixels,
+} from './thumbnailSize';
 
 interface WorkerScope {
   postMessage(message: FromThumbnailWorker): void;
