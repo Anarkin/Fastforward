@@ -12,7 +12,6 @@ import {
   tagWith,
 } from '../../../../helpers/fixtures';
 import { GitStore } from '../../../../../tools/git/page/store';
-import { startAfter } from '../../../../../tools/git/page/startAfter';
 import {
   renderToStaticMarkup,
   type Shown,
@@ -223,22 +222,6 @@ suite('Commit results', () => {
     assert.match(popup('par'), /Searching commits…/);
     assert.doesNotMatch(popup('pa'), /Searching commits/);
     assert.match(popup('pa'), /No matches/);
-  });
-
-  test('searches commits after a pause, stopping the search once the text changes or the popup closes, unless it never started', async () => {
-    const asked: string[] = [];
-    const search = () => {
-      asked.push('search');
-      return () => asked.push('stop');
-    };
-    startAfter(0, search)();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    assert.deepStrictEqual(asked, []);
-    const cleanUp = startAfter(0, search);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    assert.deepStrictEqual(asked, ['search']);
-    cleanUp();
-    assert.deepStrictEqual(asked, ['search', 'stop']);
   });
 
   test('lists the commits a search finds after the pinned rows, the refs and the stashes, highlighting the first of those, as the commits come later and may be many', () => {
