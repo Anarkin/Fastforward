@@ -1,0 +1,140 @@
+.badge {
+  display: inline-block;
+  box-sizing: border-box;
+  height: 16px;
+  line-height: 16px;
+  padding: 0 6px;
+  font-style: normal;
+  white-space: nowrap;
+  color: var(--color-git-bubble-foreground);
+  background: var(--color-git-bubble);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 var(--hairline) var(--color-git-bubble-border);
+}
+
+.badge.checked-out {
+  color: var(--color-git-bubble-checked-out-foreground);
+  background: var(--color-git-bubble-checked-out);
+  box-shadow: inset 0 0 0 var(--hairline)
+    var(--color-git-bubble-checked-out-border);
+}
+
+.bubble-line {
+  --bubble-inset: 6px;
+  min-width: 0;
+  margin-left: calc(-1 * var(--bubble-inset));
+  padding-left: var(--bubble-inset);
+  overflow-x: clip;
+  line-height: var(--row-line-height);
+}
+
+.bubble-line .badge {
+  display: inline-block;
+  max-width: calc(100% + var(--bubble-inset));
+  height: calc(var(--row-line-height) - 2px);
+  margin: 1px calc(4px + var(--bubble-inset)) 0 calc(-1 * var(--bubble-inset));
+  padding: 0 var(--bubble-inset);
+  overflow: hidden;
+  line-height: calc(var(--row-line-height) - 2px);
+  text-overflow: ellipsis;
+  vertical-align: top;
+}
+
+.badge.tag,
+.badge.remote-tag,
+.bubble-line .badge.tag,
+.bubble-line .badge.remote-tag {
+  padding-right: 17px;
+  clip-path: shape(
+    from 0 0,
+    hline to calc(100% - 8px),
+    curve to calc(100% - 6.4px) 0.8px with calc(100% - 7px) 0,
+    line to calc(100% - 0.8px) calc(50% - 1px),
+    curve to calc(100% - 0.8px) calc(50% + 1px) with 100% 50%,
+    line to calc(100% - 6.4px) calc(100% - 0.8px),
+    curve to calc(100% - 8px) 100% with calc(100% - 7px) 100%,
+    hline to 0,
+    close
+  );
+  background: radial-gradient(
+    circle at calc(100% - 9px) 50%,
+    transparent 2px,
+    var(--color-git-bubble) 2.5px
+  );
+}
+
+.bubble-line .badge.with-actions {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0 0 var(--bubble-inset);
+}
+
+.bubble-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bubble-actions {
+  display: flex;
+  flex: none;
+  align-self: stretch;
+  margin-left: var(--bubble-inset);
+}
+
+.bubble-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+.bubble-action:last-child {
+  border-radius: 0 3px 3px 0;
+}
+
+.bubble-action:has(.bubble-count) {
+  width: auto;
+  gap: 1px;
+  padding: 0 4px 0 3px;
+}
+
+.bubble-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.bubble-action.idle {
+  opacity: var(--muted-opacity);
+}
+
+.bubble-line .badge.tag.with-actions {
+  padding-right: 14px;
+}
+
+.badge.tag .bubble-action:last-child {
+  border-radius: 0;
+}
+
+.bubble-action:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.bubble-action .icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 1.6;
+}
+
+.bubble-action.running .icon {
+  animation: bob 0.5s ease-in-out infinite alternate;
+}
+
+.bubble-action.push.running .icon {
+  animation-direction: alternate-reverse;
+}

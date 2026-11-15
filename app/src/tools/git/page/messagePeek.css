@@ -1,0 +1,144 @@
+body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
+  opacity: 0;
+}
+
+.message-peek {
+  position: fixed;
+  z-index: 19;
+  box-sizing: border-box;
+  margin-right: var(--gutter-width);
+  background: var(--color-panel-background);
+  border-radius: var(--card-radius);
+  pointer-events: none;
+}
+
+.message-peek::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: var(--popup-shadow);
+  pointer-events: none;
+}
+
+.message-peek::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 var(--hairline) var(--color-border);
+  pointer-events: none;
+}
+
+.message-peek > .commit {
+  box-sizing: border-box;
+  max-height: inherit;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.message-peek.pinned {
+  pointer-events: auto;
+  user-select: text;
+}
+
+.message-peek,
+.message-body {
+  outline: none;
+}
+
+.message-peek.pinned > .commit {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4px;
+}
+
+.message-peek.pinned > .commit > :not(.message-body) {
+  flex-shrink: 0;
+}
+
+.message-peek.pinned .message-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.message-peek > .commit,
+.message-peek > .commit:hover,
+.message-peek > .commit.selected {
+  background: none;
+}
+
+.message-peek .commit-line:not(.secondary) {
+  height: auto;
+}
+
+.message-peek .subject {
+  line-height: var(--row-line-height);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.message-peek .commit-line.secondary {
+  width: var(--peek-row-width);
+}
+
+.message-corner {
+  flex: none;
+  align-self: flex-start;
+  display: grid;
+  align-items: center;
+  height: var(--row-line-height);
+  color: var(--muted-foreground);
+  font-size: calc(var(--font-size) * 0.85);
+}
+
+.message-hint {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.message-corner.pinned .message-hint,
+.message-corner:not(.pinned) .message-close {
+  visibility: hidden;
+}
+
+.message-more {
+  line-height: var(--row-line-height);
+  color: var(--muted-foreground);
+  font-size: calc(var(--font-size) * 0.85);
+}
+
+.message-close {
+  grid-area: 1 / 1;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--row-line-height);
+  height: var(--row-line-height);
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: 4px;
+}
+
+.message-close:hover {
+  background: var(--hover-background);
+}
+
+.message-body {
+  margin-top: 8px;
+  line-height: var(--row-line-height);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message-peek:not(.pinned) .message-body {
+  max-height: calc(2.5 * var(--row-line-height));
+  overflow: hidden;
+}

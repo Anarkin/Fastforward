@@ -1,0 +1,46 @@
+.columns.commits-hidden {
+  padding-left: 0;
+}
+
+.columns.commits-hidden > .column:first-child {
+  visibility: hidden;
+  overflow: hidden;
+}
+
+.columns.nothing-selected > .column:not(:first-child),
+.columns.no-changes > .column:last-child {
+  visibility: hidden;
+}
+
+.column-title:has(.history-button ~ .pin-pair > :nth-child(2)) {
+  padding-left: calc(
+    4px + 5 * var(--button-size) + 4 * var(--button-gap) + 8px
+  );
+}
+
+.column-title:has(.all-files) {
+  padding-left: calc(
+    4px + 3 * var(--button-size) + 2 * var(--button-gap) + 8px
+  );
+  padding-right: 8px;
+}
+
+.column-title:has(.all-files)::after {
+  content: '';
+  width: calc(4px + 3 * var(--button-size) + 2 * var(--button-gap));
+}
+
+.nav-button-space {
+  flex: none;
+  width: var(--button-size);
+}
+
+.nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--button-gap);
+}
+
+.column-actions .menu-button {
+  padding: 0;
+}
