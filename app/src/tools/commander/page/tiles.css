@@ -1,0 +1,66 @@
+.commander-tiles {
+  display: flex;
+}
+
+.row.commander-tile {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  height: auto;
+  padding: 8px;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  letter-spacing: calc(var(--commander-advance) - 1ch);
+  text-align: center;
+}
+
+.commander-thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.commander-thumbnail .commander-icon .system-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.commander-thumbnail .commander-icon .icon {
+  width: 48px;
+  height: 48px;
+}
+
+.commander-tile-name,
+.commander-tile-size,
+.commander-tile-date {
+  height: var(--commander-row-height);
+  overflow: hidden;
+  line-height: var(--commander-row-height);
+  white-space: pre;
+}
+
+.commander-tile-name {
+  display: flex;
+  justify-content: center;
+}
+
+.commander-tile-base {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commander-tile-extension {
+  flex: none;
+}
+
+.commander-thumbnail .thumbnail-slot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.commander-thumbnail .thumbnail-image {
+  flex: none;
+}

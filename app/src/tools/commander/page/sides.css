@@ -360,3 +360,9 @@
 .commander-pane.inactive .row.commander-row.marked.selected:not(:hover) {
   background: var(--marked-background);
 }
+
+.row.commander-row.drop-target,
+.column-body.drop-target {
+  outline: 1px solid var(--color-focus);
+  outline-offset: -1px;
+}

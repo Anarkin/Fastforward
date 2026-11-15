@@ -1,2 +1,6 @@
 @import './sides.css';
+@import './editor.css';
 @import './viewer.css';
+@import './tiles.css';
+@import './transferPopup.css';
+@import './packPopup.css';
