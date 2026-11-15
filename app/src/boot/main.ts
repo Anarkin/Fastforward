@@ -23,7 +23,6 @@ import { readDefaults, type Theme } from '../shell/main/settings';
 import { UserSettings } from '../shell/main/userSettings';
 import { watchSettings } from '../shell/main/settingsWatch';
 import { JsonFileStore } from '../shell/main/stateFile';
-import { migratedState } from '../shell/main/stateMigration';
 import { Storage } from '../shell/main/storage';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
@@ -144,10 +143,7 @@ async function start(asked: readonly string[]): Promise<void> {
     log.warn(plainOf(problem));
   }
   applyTheme(userSettings.settings.theme);
-  const state = new JsonFileStore(
-    path.join(profile, 'state.json'),
-    migratedState,
-  );
+  const state = new JsonFileStore(path.join(profile, 'state.json'));
   for (const problem of state.problems) {
     log.warn(plainOf(problem));
   }

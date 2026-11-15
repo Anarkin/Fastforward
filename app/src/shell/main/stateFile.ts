@@ -58,20 +58,11 @@ export class JsonFileStore implements Store {
   private writing: Promise<void> = Promise.resolve();
   private waiting = false;
 
-  constructor(
-    private readonly file: string,
-    migrate?: (
-      values: Record<string, unknown>,
-    ) => Record<string, unknown> | undefined,
-  ) {
+  constructor(private readonly file: string) {
     const { values, problem } = readJson(file);
-    const migrated = values === undefined ? undefined : migrate?.(values);
-    this.values = migrated ?? values ?? {};
+    this.values = values ?? {};
     this.unreadable = values === undefined;
     this.problems = problem === undefined ? [] : [problem];
-    if (migrated !== undefined) {
-      void this.save();
-    }
   }
 
   get(key: string): unknown {

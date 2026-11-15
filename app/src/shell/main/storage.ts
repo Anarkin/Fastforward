@@ -10,7 +10,7 @@ import { isSavedTab, savedLayout, sameTab, type SavedTab } from './savedTabs';
 export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
 export const windowsKey = 'windows';
-export const toolsKey = 'tools';
+const toolsKey = 'tools';
 const commandOfferedKey = 'terminalCommandOffered';
 export const maxRecentItems = 50;
 
