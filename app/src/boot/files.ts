@@ -1,7 +1,9 @@
 import * as path from 'node:path';
 
 export const appScheme = 'fastforward';
-export const appOrigin = `${appScheme}://app`;
+const appOrigin = `${appScheme}://app`;
+const appPagePath = '/index.html';
+export const appPage = `${appOrigin}${appPagePath}`;
 
 export function appFile(root: string, url: string): string | undefined {
   const parsed = new URL(url);
@@ -33,13 +35,18 @@ export function isAppUrl(url: string): boolean {
   return parsed !== null && fromApp(parsed);
 }
 
+export function isAppPage(url: string): boolean {
+  const parsed = URL.parse(url);
+  return parsed !== null && fromApp(parsed) && parsed.pathname === appPagePath;
+}
+
 export function startsAppPage(details: {
   readonly url: string;
   readonly isMainFrame: boolean;
   readonly isSameDocument: boolean;
 }): boolean {
   return (
-    details.isMainFrame && !details.isSameDocument && isAppUrl(details.url)
+    details.isMainFrame && !details.isSameDocument && isAppPage(details.url)
   );
 }
 

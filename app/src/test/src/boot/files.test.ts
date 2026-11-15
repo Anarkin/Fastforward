@@ -1,7 +1,12 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { appFile, isAppUrl, startsAppPage } from '../../../boot/files';
+import {
+  appFile,
+  isAppPage,
+  isAppUrl,
+  startsAppPage,
+} from '../../../boot/files';
 
 const start = (url: string, isMainFrame = true, isSameDocument = false) =>
   startsAppPage({ url, isMainFrame, isSameDocument });
@@ -72,5 +77,21 @@ suite('App files', () => {
     assert.ok(!start('https://example.com/'));
     assert.ok(!start('fastforward://app/index.html#top', true, true));
     assert.ok(!start('fastforward://app/index.html', false));
+  });
+
+  test('takes only its own page for the page, not a file it serves beside it, as an SVG shown would run as a page of the app', () => {
+    assert.ok(isAppPage('fastforward://app/index.html'));
+    for (const url of [
+      'fastforward://app/commander-file?tab=1&file=drawing.svg',
+      'fastforward://app/image?path=drawing.svg',
+      'fastforward://app/webview.js',
+      'fastforward://app/',
+      'fastforward://app.evil/index.html',
+      'https://app/index.html',
+      '',
+    ]) {
+      assert.ok(!isAppPage(url), url);
+    }
+    assert.ok(!start('fastforward://app/commander-file?tab=1&file=a.svg'));
   });
 });

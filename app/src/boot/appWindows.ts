@@ -8,7 +8,7 @@ import type { Storage } from '../shell/main/storage';
 import type { Connection, Shell } from '../shell/main/shell';
 import type { DragEvent } from '../shell/main/dragEvents';
 import { spareWindowIds } from '../shell/main/windows';
-import { appOrigin, isAppUrl, startsAppPage } from './files';
+import { appPage, isAppUrl, startsAppPage } from './files';
 import { cascaded } from './windowPlacement';
 import { showAgain } from './showAgain';
 import { tellMaximized } from './maximized';
@@ -312,7 +312,7 @@ export class AppWindows {
         this.spare?.entry.window.destroy();
       }
     });
-    entry.loading = window.loadURL(`${appOrigin}/index.html`);
+    entry.loading = window.loadURL(appPage);
     void entry.loading.catch((error: unknown) => {
       log.error(strings.log.pageNotLoaded);
       log.error(error);

@@ -6,8 +6,7 @@ import { shellKeymap } from '../shell/shared/keymap';
 import { pressed, pressOfInput } from '../lib/shared/keymap';
 import { brand, strings } from '../lib/shared/strings';
 import type { Settings } from '../shell/main/settings';
-import { isAppUrl } from './files';
-import { lockDown, opensExternally } from './lockDown';
+import { keepOnAppPage, lockDown, opensExternally } from './lockDown';
 import {
   firstWindowSize,
   minimumHeight,
@@ -87,11 +86,7 @@ export function createWindow(
     }
     return { action: 'deny' };
   });
-  window.webContents.on('will-navigate', (event, url) => {
-    if (!isAppUrl(url)) {
-      event.preventDefault();
-    }
-  });
+  keepOnAppPage(window.webContents);
   lockDown(window.webContents.session);
   window.webContents.on('before-input-event', (event, input) => {
     if (
