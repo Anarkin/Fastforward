@@ -232,8 +232,8 @@ suite('App commander', () => {
     await page.mouse.up();
     await page.mouse.click(x, trackTop + 2);
     await waitFor(
-      async () => (await thumb.boundingBox())?.y === top.y,
-      'the thumb back at the start of its track',
+      async () => (await menu.evaluate((element) => element.scrollTop)) === 0,
+      'the menu back at its start, where its thumb started',
     );
 
     assert.strictEqual(await menu.count(), 1);

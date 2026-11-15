@@ -234,6 +234,36 @@ suite('Menu items', () => {
     }
   });
 
+  test('takes the focus to the item under the pointer without scrolling the menu, so a menu gliding under a pointer at rest goes on to where it was going', () => {
+    const items = renderedBy(MenuItems, {
+      scrolling: defaultScrolling,
+      items: [{ label: 'a', onClick: noop }],
+      onClose: noop,
+    });
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(items));
+    const [entry] = items.props.children;
+    assert.ok(isValidElement<{ children: React.ReactNode[] }>(entry));
+    const [button] = entry.props.children;
+    assert.ok(
+      isValidElement<{
+        onMouseMove: (event: {
+          currentTarget: { focus: (options?: FocusOptions) => void };
+        }) => void;
+      }>(button),
+    );
+    const focused: (FocusOptions | undefined)[] = [];
+    const saved = Reflect.get(globalThis, 'document');
+    Object.assign(globalThis, { document: { activeElement: null } });
+    try {
+      button.props.onMouseMove({
+        currentTarget: { focus: (options) => focused.push(options) },
+      });
+    } finally {
+      Object.assign(globalThis, { document: saved });
+    }
+    assert.deepStrictEqual(focused, [{ preventScroll: true }]);
+  });
+
   test('removes an item by its X or the Delete key, without running it or closing the menu, and keeps the focus in the menu', () => {
     const log: string[] = [];
     const items = renderedBy(MenuItems, {

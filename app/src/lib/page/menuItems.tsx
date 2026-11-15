@@ -87,7 +87,7 @@ export function MenuItems({
               }}
               onMouseMove={(event) => {
                 if (document.activeElement !== event.currentTarget) {
-                  event.currentTarget.focus();
+                  event.currentTarget.focus({ preventScroll: true });
                 }
               }}
               className={`menu-item ${item.submenu ? 'has-submenu' : ''}`}
