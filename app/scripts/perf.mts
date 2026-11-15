@@ -7,13 +7,8 @@ import {
   resultSuffix,
   type SavedResult,
 } from '../src/test/perf/perfTrace.ts';
-import {
-  parseRunArgs,
-  runOrder,
-  summaryTable,
-  variantName,
-  type Ran,
-} from './perfRuns.mts';
+import { parseRunArgs, runOrder, variantName } from './perfRuns.mts';
+import { summaryTable, type Ran } from './perfSummary.mts';
 
 const app = path.resolve(import.meta.dirname, '..');
 const builds = path.join(app, 'perf-build');
