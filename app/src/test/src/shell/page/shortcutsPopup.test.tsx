@@ -4,11 +4,9 @@ import { shellKeymap } from '../../../../shell/shared/keymap';
 import { keymap } from '../../../../lib/page/keymap';
 import type { Binding } from '../../../../lib/shared/keymap';
 import { compareKeymap, gitKeymap } from '../../../../tools/git/page/keymap';
-import {
-  commanderKeymap,
-  editorKeymap,
-  viewerKeymap,
-} from '../../../../tools/commander/page/keymap';
+import { commanderKeymap } from '../../../../tools/commander/page/keymap';
+import { viewerKeymap } from '../../../../tools/commander/page/viewerKeymap';
+import { editorKeymap } from '../../../../tools/commander/page/editorKeymap';
 import { terminalKeymap } from '../../../../tools/terminal/page/keymap';
 import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { entry, contents } from './shortcutsFixtures';

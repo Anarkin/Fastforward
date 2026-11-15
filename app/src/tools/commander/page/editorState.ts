@@ -37,7 +37,7 @@ import {
   savingRulesOf,
   sinceSavedField,
 } from './editorSaving';
-import { editorKeymap } from './keymap';
+import { editorKeymap } from './editorKeymap';
 import {
   maxColoredBytes,
   type CommanderToWebviewOf,

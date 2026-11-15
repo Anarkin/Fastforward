@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test, vi } from 'vitest';
-import { viewerKeymap } from '../../../../../tools/commander/page/keymap';
+import { viewerKeymap } from '../../../../../tools/commander/page/viewerKeymap';
 import type {
   PdfEvents,
   PdfFound,

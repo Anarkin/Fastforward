@@ -11,12 +11,16 @@ import { strings } from '../../lib/shared/strings';
 import type { ToolId } from '../shared/tools';
 import {
   commanderGroups,
-  editorGroups,
-  editorKeymap,
-  viewerGroups,
-  viewerKeymap,
   commanderKeymap,
 } from '../../tools/commander/page/keymap';
+import {
+  viewerGroups,
+  viewerKeymap,
+} from '../../tools/commander/page/viewerKeymap';
+import {
+  editorGroups,
+  editorKeymap,
+} from '../../tools/commander/page/editorKeymap';
 import {
   terminalGroups,
   terminalKeymap,

@@ -8,7 +8,7 @@ import { ImagePane } from '../../../lib/page/images';
 import { imageType, vectorType } from '../../../lib/shared/images';
 import { MarkdownPane } from './markdownView';
 import { PdfPane } from './pdfView';
-import { viewerKeymap } from './keymap';
+import { viewerKeymap } from './viewerKeymap';
 import { useWholeText } from './textScroll';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { imageScrolled, previewUrl, type Preview } from './previews';

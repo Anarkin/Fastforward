@@ -7,7 +7,7 @@ import * as esbuild from 'esbuild';
 import type { ElectronApplication, JSHandle, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { CursorStyle } from '../../lib/shared/cursorSettings';
-import type * as commanderKeymapModule from '../../tools/commander/page/keymap';
+import type * as editorKeymapModule from '../../tools/commander/page/editorKeymap';
 import {
   cursorBlinkInterval,
   pixelBox,
@@ -65,7 +65,7 @@ type PageParts = Pick<typeof viewModule, 'EditorView'> &
   Pick<typeof stateModule, 'EditorSelection'> &
   Pick<typeof editorTextModule, 'appTextLook'> &
   Pick<typeof editorSelectionModule, 'appSelection'> &
-  Pick<typeof commanderKeymapModule, 'editorKeymap'> &
+  Pick<typeof editorKeymapModule, 'editorKeymap'> &
   Pick<typeof cellTableModule, 'terminalCells'> &
   Pick<typeof cursorModule, 'pageCursorLook'>;
 
@@ -93,7 +93,7 @@ async function partsInPage(): Promise<JSHandle<PageParts>> {
         "export { EditorSelection } from '@codemirror/state';",
         "export { appTextLook } from '../../tools/commander/page/editorText';",
         "export { appSelection } from '../../tools/commander/page/editorSelection';",
-        "export { editorKeymap } from '../../tools/commander/page/keymap';",
+        "export { editorKeymap } from '../../tools/commander/page/editorKeymap';",
         "export { terminalCells } from './cellTable';",
         "export { pageCursorLook } from './cursor';",
       ].join('\n'),

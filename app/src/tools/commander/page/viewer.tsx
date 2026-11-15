@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { viewerKeymap, type ViewMode } from './keymap';
+import { viewerKeymap, type ViewMode } from './viewerKeymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import {
   FindActions,

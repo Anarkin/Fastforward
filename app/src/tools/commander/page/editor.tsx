@@ -34,7 +34,7 @@ import {
 } from './editorFind';
 import { PromptPopup } from '../../../shell/page/promptPopup';
 import { savingFixes } from './editorSaving';
-import { editorKeymap } from './keymap';
+import { editorKeymap } from './editorKeymap';
 import { type TextEncoding } from '../shared/protocol';
 import {
   encodingSourceItems,
