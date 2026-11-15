@@ -16,7 +16,7 @@ import {
   MessageBody,
   MessageCorner,
   MessagePanel,
-} from '../../tools/git/page/messagePeek';
+} from '../../tools/git/page/messagePanel';
 import { HistoryMenu, NavButtons } from '../../tools/git/page/navBar';
 import { FileRow } from '../../tools/git/page/tree';
 import { WorktreeBar } from '../../tools/git/page/worktreeBar';
