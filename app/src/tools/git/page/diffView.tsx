@@ -105,6 +105,7 @@ import { selectionSide } from './selectionSide';
 import { DiffRowShown, type DiffRowParts } from './diffRowShown';
 import { useSideways } from './diffSideways';
 import { useFoundJumps, useRevealFound } from './diffJumps';
+import { useLargeFileLoads } from './diffLargeFiles';
 import { diffRowClass } from './diffRowClasses';
 import { FileHeader, HiddenChangeMarks } from './diffRowParts';
 
@@ -378,11 +379,8 @@ export function DiffView({
     setToggled,
     firstChange,
     lineHeight,
-    files,
-    toggled,
-    diff,
-    onLoad,
   });
+  useLargeFileLoads({ files, toggled, diff, onLoad });
 
   const header = (row: FileHeaderRow, stuck = false) => (
     <FileHeader

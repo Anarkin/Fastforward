@@ -7,7 +7,6 @@ import {
   type RefObject,
 } from 'react';
 import type { TextWidths } from '../../../lib/page/textWidths';
-import type { DiffFile } from './diff';
 import type { DiffRow } from './diffRows';
 import {
   changeMargin,
@@ -22,24 +21,6 @@ import { shownSideways } from './overflow';
 import { rowLines } from './rowMeasures';
 import { readSideways } from './textLayout';
 
-export function largeFilesToLoad(
-  files: readonly DiffFile[],
-  toggled: ReadonlyMap<string, boolean>,
-  diff: number,
-  requested: Map<string, number>,
-): string[] {
-  const load: string[] = [];
-  for (const file of files) {
-    if (!file.placeholder || toggled.get(file.path) !== true) {
-      requested.delete(file.path);
-    } else if (requested.get(file.path) !== diff) {
-      requested.set(file.path, diff);
-      load.push(file.path);
-    }
-  }
-  return load;
-}
-
 export function useFoundJumps({
   jump,
   found,
@@ -51,10 +32,6 @@ export function useFoundJumps({
   setToggled,
   firstChange,
   lineHeight,
-  files,
-  toggled,
-  diff,
-  onLoad,
 }: {
   readonly jump: number;
   readonly found: FindMatch | undefined;
@@ -68,10 +45,6 @@ export function useFoundJumps({
   ) => void;
   readonly firstChange: number | undefined;
   readonly lineHeight: number;
-  readonly files: readonly DiffFile[];
-  readonly toggled: ReadonlyMap<string, boolean>;
-  readonly diff: number;
-  readonly onLoad: (path: string) => void;
 }): {
   readonly revealing: string | undefined;
   readonly setRevealing: (revealing: string | undefined) => void;
@@ -131,18 +104,6 @@ export function useFoundJumps({
       virtualizer.scrollToOffset(top);
     }
   }, [firstChange, loading, found, rows, virtualizer, lineHeight]);
-
-  const requested = useRef(new Map<string, number>());
-  useEffect(() => {
-    for (const path of largeFilesToLoad(
-      files,
-      toggled,
-      diff,
-      requested.current,
-    )) {
-      onLoad(path);
-    }
-  }, [files, toggled, diff, onLoad]);
   return { revealing, setRevealing };
 }
 

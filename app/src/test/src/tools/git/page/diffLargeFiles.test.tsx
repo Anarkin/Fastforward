@@ -25,7 +25,7 @@ import {
   diffRows,
   largeDiffText,
 } from '../../../../../tools/git/page/diffRows';
-import { largeFilesToLoad } from '../../../../../tools/git/page/diffJumps';
+import { largeFilesToLoad } from '../../../../../tools/git/page/diffLargeFiles';
 
 const filesChanging = (...counts: readonly number[]) =>
   counts.map((insertions, index) =>
