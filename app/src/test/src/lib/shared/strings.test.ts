@@ -53,15 +53,16 @@ const textsOutsideTheDictionary = [
 
 suite('Strings', () => {
   test('uses every string, so none is translated for nothing', () => {
-    const code = codeFiles.map(({ text }) => text).join('\n');
+    const referenced = new Set(
+      codeFiles.flatMap(({ text }) =>
+        Array.from(
+          text.matchAll(/\bstrings((?:\.[A-Za-z_$][\w$]*)+)/g),
+          ([, chain = '']) => chain.slice(1),
+        ),
+      ),
+    );
     const used = (keys: readonly string[]) =>
-      keys.some((_, end) => {
-        const at = keys
-          .slice(0, end + 1)
-          .map(escaped)
-          .join('\\.');
-        return new RegExp(`\\bstrings\\.${at}(?![\\w.])`).test(code);
-      });
+      keys.some((_, end) => referenced.has(keys.slice(0, end + 1).join('.')));
     assert.deepStrictEqual(
       keysOf(strings)
         .filter((keys) => !used(keys))
