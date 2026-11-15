@@ -5,14 +5,9 @@ import { type ImageView, type TextView } from '../shared/views';
 import { isObject, type Json } from '../../lib/main/json';
 import { readText } from './readText';
 import { writeAtomically } from '../../lib/main/textFiles';
-import {
-  merge,
-  mergeSettings,
-  same,
-  valueAt,
-  withValue,
-  type Settings,
-} from './settings';
+import { merge, mergeSettings } from './settingsMerge';
+import { same, valueAt, withValue } from './settingsPaths';
+import type { Settings } from './settings';
 import { migratedSettings } from './settingsMigration';
 
 export class UserSettings {

@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { mergeSettings, overridesOf } from '../../../../shell/main/settings';
+import { mergeSettings } from '../../../../shell/main/settingsMerge';
 import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
 import { defaultSettings } from '../../../helpers/fixtures';
@@ -282,22 +282,5 @@ suite('Settings', () => {
       settings: defaults,
       problems: ['The user settings are not a JSON object'],
     });
-  });
-
-  test('keeps only what differs from the defaults as the user settings', () => {
-    assert.deepStrictEqual(
-      overridesOf(defaults, {
-        ...defaults,
-        tools: {
-          ...defaults.tools,
-          git: {
-            ...defaults.tools.git,
-            solo: true,
-            columnWidths: [...defaults.tools.git.columnWidths],
-          },
-        },
-      }),
-      { tools: { git: { solo: true } } },
-    );
   });
 });

@@ -1,5 +1,5 @@
 import { isObject, type Json } from '../../lib/main/json';
-import { valueAt, withValue } from './settings';
+import { valueAt, withValue } from './settingsPaths';
 
 const gitSettingsOfVersion22 = [
   'collapseMerges',
