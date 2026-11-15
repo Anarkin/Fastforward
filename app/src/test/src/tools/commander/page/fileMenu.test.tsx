@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { tools, type ToolId } from '../../../../../shell/shared/tools';
-import type { ContextMenuItem } from '../../../../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 import {
   fileMenuItems,
   menuTargetOf,

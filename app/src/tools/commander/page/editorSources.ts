@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from '../../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 import { plainOf, type Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type {

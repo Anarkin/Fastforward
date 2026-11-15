@@ -1,4 +1,4 @@
-import { type ContextMenuItem } from './menuControls';
+import type { ContextMenuItem } from './contextMenuItem';
 
 export function filteredItems(
   items: readonly ContextMenuItem[],

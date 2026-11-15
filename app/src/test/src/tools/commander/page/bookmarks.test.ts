@@ -7,7 +7,7 @@ import {
 } from '../../../../../tools/commander/page/bookmarks';
 import { strings } from '../../../../../lib/shared/strings';
 import { noop } from '../../../../helpers/fixtures';
-import type { ContextMenuItem } from '../../../../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 
 const shown = (items: readonly ContextMenuItem[]) =>
   items.map((item) =>

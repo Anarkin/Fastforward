@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../lib/shared/strings';
-import type { ContextMenuItem, OpenMenu } from '../../lib/page/menuControls';
+import type { ContextMenuItem, OpenMenu } from '../../lib/page/contextMenuItem';
 import { defaultDateFormat } from '../../lib/page/dates';
 import { defaultImageView } from './imageView';
 import {

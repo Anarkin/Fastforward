@@ -1,11 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { MenuItems } from '../../lib/page/menuItems';
-import {
-  onMenuKeyDown,
-  useMenuFocus,
-  type ContextMenuItem,
-  type OpenMenu,
-} from '../../lib/page/menuControls';
+import { onMenuKeyDown, useMenuFocus } from '../../lib/page/menuControls';
+import type { ContextMenuItem, OpenMenu } from '../../lib/page/contextMenuItem';
 import { useDismiss } from '../../lib/page/dismiss';
 
 export function ContextMenu({

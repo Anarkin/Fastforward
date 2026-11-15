@@ -16,9 +16,8 @@ import {
   shownKey,
   submenuPlacement,
   useMenuFocus,
-  type ContextMenuItem,
-  type MenuIcon,
 } from './menuControls';
+import type { ContextMenuItem, MenuIcon } from './contextMenuItem';
 
 function MenuIconOf({ icon }: { icon: MenuIcon }) {
   switch (icon) {

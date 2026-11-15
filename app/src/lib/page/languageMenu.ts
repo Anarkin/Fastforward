@@ -1,5 +1,5 @@
 import { strings } from '../shared/strings';
-import type { ContextMenuItem } from './menuControls';
+import type { ContextMenuItem } from './contextMenuItem';
 import { languages } from './languages';
 
 export type LanguageChoice = 'auto' | 'plain' | (string & {});

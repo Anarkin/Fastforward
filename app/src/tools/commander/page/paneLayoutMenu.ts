@@ -1,5 +1,5 @@
 import { layouts, type Layout } from '../shared/settings';
-import type { ContextMenuItem } from '../../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 import { strings } from '../../../lib/shared/strings';
 
 export function layoutMenu({

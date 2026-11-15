@@ -1,5 +1,5 @@
 import { type WindowInfo } from '../shared/protocol';
-import type { ContextMenuItem } from '../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../lib/page/contextMenuItem';
 import { strings } from '../../lib/shared/strings';
 import { tools, type ToolId } from '../shared/tools';
 

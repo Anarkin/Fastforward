@@ -4,7 +4,7 @@ import type {
   WorktreeInfo,
 } from '../../../../../tools/git/shared/protocol';
 import { createGitStore } from '../../../../../tools/git/page/store';
-import type { ContextMenuItem } from '../../../../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 
 export const at = 'a'.repeat(40);
 

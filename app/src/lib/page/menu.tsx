@@ -1,11 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { keymap } from './keymap';
 import { letterTyped, pressedAlone } from '../shared/keymap';
-import {
-  onMenuKeyDown,
-  useMenuFocus,
-  type ContextMenuItem,
-} from './menuControls';
+import { onMenuKeyDown, useMenuFocus } from './menuControls';
+import type { ContextMenuItem } from './contextMenuItem';
 import { useDismiss } from './dismiss';
 import { MenuItems } from './menuItems';
 import { DropdownIcon, MoreIcon } from './icons';

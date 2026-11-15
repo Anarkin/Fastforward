@@ -1,6 +1,6 @@
 import { imageType, vectorType } from '../../../lib/shared/images';
 import { strings } from '../../../lib/shared/strings';
-import type { ContextMenuItem } from '../../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 import { parentFolder, type FolderCommand } from '../shared/protocol';
 import type { Row } from './listing';
 import { pointedKeys } from './rowKeys';

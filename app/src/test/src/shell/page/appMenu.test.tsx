@@ -6,7 +6,7 @@ import type { UpdateStatus } from '../../../../shell/shared/protocol';
 import { updateLabel } from '../../../../shell/page/updateLabel';
 import { AppMenu } from '../../../../shell/page/appMenu';
 import { createShellStore } from '../../../../shell/page/store';
-import type { ContextMenuItem } from '../../../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../../../lib/page/contextMenuItem';
 import { cascaded } from '../../../helpers/cascade';
 import { withStores, renderedBy } from '../../../helpers/componentFixtures';
 import { allWithClass, rendered } from '../../../helpers/markup';

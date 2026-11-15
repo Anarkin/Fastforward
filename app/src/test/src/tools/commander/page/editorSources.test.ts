@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import type { ContextMenuItem } from '../../../../../lib/page/menuControls';
+import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import {
   encodingSourceItems,
