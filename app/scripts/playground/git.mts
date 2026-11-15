@@ -12,7 +12,8 @@ import {
   stream,
   write,
 } from './gitImport.mts';
-import { binary, png, sentence, shade } from './samples.mts';
+import { png, shade } from './formats.mts';
+import { binary, sentence } from './samples.mts';
 
 const flags = new Set(
   process.argv.slice(2).filter((arg) => arg.startsWith('--')),

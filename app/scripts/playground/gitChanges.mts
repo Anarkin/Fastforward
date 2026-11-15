@@ -1,19 +1,16 @@
 import { images } from './gitImages.mts';
 import { commit, searchable, type Change } from './gitImport.mts';
+import { png, shade } from './formats.mts';
 import {
-  decoded,
   diagrams,
-  emojiGrid,
   everything,
   everythingChanged,
-  imageKinds,
   languages,
-  paddedTable,
-  png,
   sentence,
-  shade,
-  vector,
 } from './samples.mts';
+import { emojiGrid } from './emojiGrid.mts';
+import { decoded, imageKinds, vector } from './imageSamples.mts';
+import { paddedTable } from './paddedTable.mts';
 
 const manyLines = (word: string) =>
   `${Array.from({ length: 30_000 }, (_, i) => `${word} ${i + 1}`).join('\n')}\n`;

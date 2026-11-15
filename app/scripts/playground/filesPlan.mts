@@ -3,7 +3,7 @@ import { planViewing } from './planViewing.mts';
 import { planNames } from './planNames.mts';
 import { planArchives } from './planArchives.mts';
 
-export { limits } from './planContents.mts';
+export { limits } from './appFacts.mts';
 
 export type Platform = 'win32' | 'darwin' | 'linux';
 

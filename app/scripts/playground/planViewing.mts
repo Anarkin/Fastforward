@@ -1,38 +1,39 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { encoded, pdf } from './formats.mts';
+import { pdf, png, shade } from './formats.mts';
+import { encoded } from './encodings.mts';
 import { images } from './gitImages.mts';
 import { dotnetFiles, rustFiles } from './projectSamples.mts';
 import {
   binary,
-  decoded,
   diagrams,
-  emojiGrid,
   everything,
-  imageKinds,
   languages,
-  paddedTable,
-  png,
   sentence,
-  shade,
 } from './samples.mts';
+import { emojiGrid } from './emojiGrid.mts';
+import { decoded, imageKinds, orientedJpeg } from './imageSamples.mts';
+import { paddedTable } from './paddedTable.mts';
 import type { PlanBuilder } from './filesPlan.mts';
 import {
   limits,
   syntaxLineLimit,
-  kib,
-  mib,
   appRoot,
   defaultColorGroups,
+  realSources,
+} from './appFacts.mts';
+import {
+  kib,
+  mib,
   lines,
   oneLineOfSize,
   logOfSize,
   codeOfSize,
   markdownOfSize,
+} from './sizedContents.mts';
+import {
   encodingTexts,
   unicodeText,
-  realSources,
-  orientedJpeg,
   pages,
   oneLine,
   three,

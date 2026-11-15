@@ -1,9 +1,10 @@
 import * as path from 'node:path';
-import { docx, gzip, tar, wav, xlsx, zip } from './formats.mts';
+import { gzip, tar, zip } from './archiveFormats.mts';
+import { docx, wav, xlsx } from './formats.mts';
 import { csvFiles, csvRows } from './projectSamples.mts';
 import { binary, sentence } from './samples.mts';
 import type { PlanBuilder, PlanOptions } from './filesPlan.mts';
-import { kib, mib, gib, lines, randomOfSize } from './planContents.mts';
+import { kib, mib, gib, lines, randomOfSize } from './sizedContents.mts';
 
 const photo = () => Buffer.concat([...randomOfSize(300 * kib, 7)]);
 

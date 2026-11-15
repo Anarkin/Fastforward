@@ -1,39 +1,29 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { zstdCompressSync } from 'node:zlib';
-import {
-  docx,
-  encoded,
-  gzip,
-  pdfParts,
-  sevenZipEncrypted,
-  tar,
-  zip,
-} from './formats.mts';
+import { gzip, sevenZipEncrypted, tar, zip } from './archiveFormats.mts';
+import { docx, pdfParts } from './formats.mts';
+import { codePage852, encoded } from './encodings.mts';
 import { dotnetPair, rustPair } from './projectSamples.mts';
-import {
-  binary,
-  emojiGrid,
-  imageKinds,
-  paddedTable,
-  sentence,
-} from './samples.mts';
+import { binary, sentence } from './samples.mts';
+import { emojiGrid } from './emojiGrid.mts';
+import { imageKinds, plainPng } from './imageSamples.mts';
+import { paddedTable } from './paddedTable.mts';
 import type { PlanBuilder, PlanOptions } from './filesPlan.mts';
 import type { Content } from './planContents.mts';
+import { appRoot, realSources } from './appFacts.mts';
 import {
   mib,
   gib,
-  appRoot,
   lines,
   oneLineOfSize,
   randomOfSize,
   logOfSize,
+} from './sizedContents.mts';
+import {
   unicodeText,
-  realSources,
   changedCode,
-  codePage852,
   prose,
-  plainPng,
   largePdfPages,
   three,
 } from './planContents.mts';
