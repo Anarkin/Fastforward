@@ -51,7 +51,8 @@ import {
 } from './viewFolders';
 import { emptyTabView, type TabAction, type TabView } from './tabView';
 import type { WrapColumns } from './rowMeasures';
-import type { CodeSnap, TextMeasures } from './textLayout';
+import type { TextMeasures } from './textLayout';
+import type { CodeSnap } from './codeSnap';
 
 import {
   checking,

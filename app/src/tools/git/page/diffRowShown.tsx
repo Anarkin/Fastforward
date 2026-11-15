@@ -29,7 +29,7 @@ import {
   type TextArea,
 } from './overflow';
 import type { WrapColumns } from './rowMeasures';
-import { sideSnaps } from './textLayout';
+import { sideSnaps } from './codeSnap';
 import type { WordRanges } from './wordDiff';
 import { WrapMarks } from './wrapMarks';
 

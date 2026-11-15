@@ -15,14 +15,8 @@ import {
 } from '../../../lib/page/cellTable';
 import { useGit, useGitActions } from './store';
 import { uniformHeight } from './rowMeasures';
-import {
-  unpadded,
-  codeSnapOf,
-  codeStarts,
-  sameSnap,
-  type CodeSnap,
-  type Edges,
-} from './textLayout';
+import { unpadded, type Edges } from './textLayout';
+import { codeSnapOf, codeStarts, sameSnap, type CodeSnap } from './codeSnap';
 
 export function useDiffText(listRef: RefObject<HTMLDivElement | null>): {
   readonly table: CellTable | undefined;

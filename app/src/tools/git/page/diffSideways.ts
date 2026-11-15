@@ -15,7 +15,31 @@ import {
 import { sidewaysMetrics, sidewaysScroll } from './sidewaysMetrics';
 import { sideRoom, wheelSideways } from './sidewaysScroll';
 import type { Sideways } from './overflow';
-import { readSideways, sameSideways } from './textLayout';
+
+export function readSideways(
+  element: HTMLElement,
+  scrollsSides: boolean,
+): Sideways {
+  const minimap =
+    parseFloat(getComputedStyle(element).getPropertyValue('--minimap-width')) ||
+    0;
+  if (scrollsSides) {
+    const { side, widest } = sideRoom(element);
+    return { scrolled: 0, width: side, room: widest, minimap };
+  }
+  return {
+    scrolled: element.scrollLeft,
+    width: element.clientWidth,
+    room: element.scrollWidth - element.clientWidth,
+    minimap,
+  };
+}
+
+export const sameSideways = (a: Sideways | undefined, b: Sideways) =>
+  a?.scrolled === b.scrolled &&
+  a.width === b.width &&
+  a.room === b.room &&
+  a.minimap === b.minimap;
 
 export function glideBy(
   glide: Glide | undefined,

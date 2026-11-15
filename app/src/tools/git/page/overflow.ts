@@ -1,4 +1,5 @@
 import type { FindRange } from './find';
+import type { DiffRow } from './diffRows';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type TextWidths } from '../../../lib/page/textWidths';
 
@@ -18,6 +19,20 @@ export function textColumn(
   widths?: TextWidths,
 ): number {
   return columnsOf(text, widths)(index);
+}
+
+export function widestColumns(
+  rows: readonly DiffRow[],
+  widths?: TextWidths,
+): number {
+  let widest = 0;
+  for (const row of rows) {
+    if (row.kind === 'line' || row.kind === 'wholeLine') {
+      const text = row.kind === 'line' ? row.line.text : row.text;
+      widest = Math.max(widest, textColumn(text, text.length, widths));
+    }
+  }
+  return widest;
 }
 
 export function visibleColumns(

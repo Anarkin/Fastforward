@@ -13,7 +13,7 @@ import { foundEdges, foundMiddle, foundScroll } from './diffFound';
 import { jumpStep, type FindMatch } from './find';
 import { shownSideways } from './overflow';
 import { rowLines } from './rowMeasures';
-import { readSideways } from './textLayout';
+import { readSideways } from './diffSideways';
 
 export function useFoundJumps({
   jump,

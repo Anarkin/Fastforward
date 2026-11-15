@@ -3,7 +3,8 @@ import { wrapColumns } from '../../../lib/page/wordWrap';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import { uniformHeight, type WrapColumns } from './rowMeasures';
-import { sideSnaps, wordPadding, type Edges } from './textLayout';
+import { wordPadding, type Edges } from './textLayout';
+import { sideSnaps } from './codeSnap';
 
 const wrapSample = '0'.repeat(100);
 
