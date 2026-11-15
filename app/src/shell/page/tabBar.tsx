@@ -19,7 +19,8 @@ import { clicked } from '../../lib/shared/keymap';
 import { strings } from '../../lib/shared/strings';
 import { useBinding } from '../../lib/page/shortcuts';
 import { useShell, useShellActions } from './store';
-import { visitedSlot, slide, useTabDrag } from './tabDrag';
+import { slide, useTabDrag } from './tabDrag';
+import { visitedSlot } from './tabVisit';
 import { adjacentTab, Cycle } from '../../lib/page/tabCycle';
 import { preloadDelay, resting } from '../../lib/page/resting';
 import {

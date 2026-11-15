@@ -10,13 +10,6 @@ import { rested, tabsStore } from '../../../helpers/componentFixtures';
 import { noModifiers, renderedBy } from '../../../helpers/fixtures';
 import { ShellStore, createShellStore } from '../../../../shell/page/store';
 import { TabBar } from '../../../../shell/page/tabBar';
-import {
-  movedTab,
-  nearestSlot,
-  slotLefts,
-  tornOut,
-  visitedSlot,
-} from '../../../../shell/page/tabDrag';
 
 function tabsShell(
   tabs: readonly TabInfo[],
@@ -58,6 +51,22 @@ function addButton(adding: boolean): Element | null {
       </ShellStore>,
     ),
   ).window.document.querySelector('.tab-add');
+}
+
+function draggable(shown: readonly TabInfo[], tearing = false): boolean[] {
+  const shell = tearing
+    ? createShellStore(() => undefined, {
+        tabs: shown,
+        active: shown[0].id,
+        tearsOff: true,
+        windows: [{ id: '2', name: 'other' }],
+      })
+    : tabsShell(shown, shown[0].id);
+  return tabsOf(renderedBy(TabBar, {}, { shell })).map(
+    (tab) =>
+      isValidElement<{ onPointerDown?: unknown }>(tab) &&
+      tab.props.onPointerDown !== undefined,
+  );
 }
 
 suite('Tab bar', () => {
@@ -216,65 +225,6 @@ suite('Tab bar', () => {
     assert.strictEqual(stopped, 1);
     assert.deepStrictEqual(closed, ['/a']);
   });
-});
-
-function roots(tabs: readonly { id: string }[]): string[] {
-  return tabs.map((tab) => tab.id);
-}
-
-function draggable(shown: readonly TabInfo[], tearing = false): boolean[] {
-  const shell = tearing
-    ? createShellStore(() => undefined, {
-        tabs: shown,
-        active: shown[0].id,
-        tearsOff: true,
-        windows: [{ id: '2', name: 'other' }],
-      })
-    : tabsShell(shown, shown[0].id);
-  return tabsOf(renderedBy(TabBar, {}, { shell })).map(
-    (tab) =>
-      isValidElement<{ onPointerDown?: unknown }>(tab) &&
-      tab.props.onPointerDown !== undefined,
-  );
-}
-
-suite('Tabs dragged', () => {
-  test('puts a tab dragged in the place its left edge comes nearest, so it takes the place of a tab once it passes its middle, as in Chrome', () => {
-    const lefts = slotLefts([100, 100, 100], 10, 0);
-    assert.deepStrictEqual(lefts, [0, 110, 220]);
-    assert.strictEqual(nearestSlot(lefts, 0), 0);
-    assert.strictEqual(nearestSlot(lefts, 54), 0);
-    assert.strictEqual(nearestSlot(lefts, 56), 1);
-    assert.strictEqual(nearestSlot(lefts, 164), 1);
-    assert.strictEqual(nearestSlot(lefts, 166), 2);
-    assert.strictEqual(nearestSlot(lefts, 400), 2);
-    assert.strictEqual(nearestSlot(lefts, -40), 0);
-  });
-
-  test('places a tab dragged among the others as wide as they are, though it is wider, as the open tab is once the tabs shrink', () => {
-    assert.deepStrictEqual(slotLefts([40, 80, 40], 6, 1), [0, 46, 92]);
-    assert.deepStrictEqual(slotLefts([80, 40, 30], 6, 0), [0, 46, 82]);
-  });
-
-  test('moves a tab to the place it is dropped in, keeping the others in their order', () => {
-    const four = ['a', 'b', 'c', 'd'].map((name) => ({
-      id: `/${name}`,
-      name,
-    }));
-    assert.deepStrictEqual(roots(movedTab(four, '/a', 2)), [
-      '/b',
-      '/c',
-      '/a',
-      '/d',
-    ]);
-    assert.deepStrictEqual(roots(movedTab(four, '/d', 0)), [
-      '/d',
-      '/a',
-      '/b',
-      '/c',
-    ]);
-    assert.deepStrictEqual(roots(movedTab(four, '/x', 0)), roots(four));
-  });
 
   test('lets a tab be dragged only with another tab to pass, as a lone tab drags the window', () => {
     const three = ['a', 'b', 'c'].map((name) => ({
@@ -292,30 +242,6 @@ suite('Tabs dragged', () => {
       { id: '/a', tool: 'git' as const, root: '/a', name: 'a' },
     ] as const;
     assert.deepStrictEqual(draggable(lone, true), [true]);
-  });
-
-  test('tears a tab off once the pointer leaves the row of tabs by more than a little, above or below it', () => {
-    const row = { top: 0, bottom: 32 };
-    assert.strictEqual(tornOut(row, 40), false);
-    assert.strictEqual(tornOut(row, 48), true);
-    assert.strictEqual(tornOut(row, -14), false);
-    assert.strictEqual(tornOut(row, -16), true);
-  });
-
-  test('shows a tab dragged in from another window in the place its left edge comes nearest, under the pointer', () => {
-    assert.deepStrictEqual(visitedSlot([100, 100], 10, 0), {
-      index: 0,
-      shift: 0,
-    });
-    assert.deepStrictEqual(visitedSlot([100, 100], 10, 60), {
-      index: 1,
-      shift: -50,
-    });
-    assert.deepStrictEqual(visitedSlot([100, 100], 10, 500), {
-      index: 2,
-      shift: 0,
-    });
-    assert.deepStrictEqual(visitedSlot([], 10, 40), { index: 0, shift: 0 });
   });
 });
 
