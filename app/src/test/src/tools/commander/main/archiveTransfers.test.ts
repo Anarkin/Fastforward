@@ -20,6 +20,134 @@ import {
 import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {
+  test('copies and moves items into the folder of an archive on the other side, only with an answer about items there already, skipping or replacing them as answered, deleting the originals of a move once packed, and not the archive into itself', async () => {
+    const { tool, page, send, archived, changedInArchives, removed, notices } =
+      commander({
+        [root]: [
+          file('a.zip'),
+          file('top.txt'),
+          file('new.txt'),
+          file('locked.txt'),
+        ],
+      });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({ type: 'enterArchive', tab: '1', side: 'left', name: 'a.zip' });
+    const transfer = (
+      names: string[],
+      move: boolean,
+      existing?: 'replace' | 'skip',
+    ) =>
+      send({
+        type: 'transfer',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        names,
+        target: at('a.zip'),
+        move,
+        ...(existing !== undefined && { existing }),
+      });
+    const added = (count: number) =>
+      waitFor(
+        () => changedInArchives.length === count,
+        `${count} additions to the archive`,
+      );
+
+    await transfer(['top.txt', 'new.txt'], false);
+    assert.deepStrictEqual(page.of('askExisting'), [
+      {
+        type: 'askExisting',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        names: ['top.txt', 'new.txt'],
+        target: at('a.zip'),
+        move: false,
+        existing: ['top.txt'],
+      },
+    ]);
+    await transfer(['a.zip'], false);
+    await transfer(['top.txt', 'new.txt'], false, 'skip');
+    await added(1);
+    await transfer(['top.txt', 'new.txt'], false, 'replace');
+    await added(2);
+    await transfer(['new.txt', 'locked.txt'], true);
+    await waitFor(() => notices.length === 2, 'the move to end');
+
+    assert.deepStrictEqual(changedInArchives, [
+      ['add', at('a.zip'), [], root, ['new.txt']],
+      ['add', at('a.zip'), [], root, ['top.txt', 'new.txt']],
+      ['add', at('a.zip'), [], root, ['new.txt', 'locked.txt']],
+    ]);
+    assert.deepStrictEqual(removed, [at('new.txt'), at('locked.txt')]);
+    assert.deepStrictEqual(
+      page
+        .of('transfer')
+        .find((message) => message.view?.archiveJob === 'moveIn')?.view,
+      {
+        id: 3,
+        move: true,
+        archiveJob: 'moveIn',
+        items: 2,
+        target: at('a.zip'),
+        stopping: false,
+      },
+    );
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.intoItself('a.zip') },
+      {
+        level: 'error',
+        message: strings.commander.movedWithout(
+          'a.zip',
+          'locked.txt: It is in use',
+        ),
+      },
+    ]);
+  });
+  test('refuses files of one name listed flat into an archive, as only one of them could go into its folder', async () => {
+    const { tool, page, send, archived, changedInArchives, notices } =
+      commander({
+        [root]: [file('a.zip'), folder('one'), folder('two')],
+        [at('one')]: [file('same.txt')],
+        [at('two')]: [file('same.txt'), file('other.txt')],
+      });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({ type: 'enterArchive', tab: '1', side: 'left', name: 'a.zip' });
+    await send({ type: 'flat', tab: '1', side: 'right', flat: true });
+    await waitFor(
+      () =>
+        page
+          .of('flatFiles')
+          .flatMap((message) => message.folders)
+          .flatMap((listed) => listed.entries).length === 4,
+      'the files to be listed flat',
+    );
+
+    for (const move of [false, true]) {
+      await send({
+        type: 'transfer',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        names: [
+          path.join('one', 'same.txt'),
+          path.join('two', 'other.txt'),
+          path.join('two', 'same.txt'),
+        ],
+        target: at('a.zip'),
+        move,
+      });
+    }
+
+    assert.deepStrictEqual(changedInArchives, []);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.namesAlike('same.txt') },
+      { level: 'error', message: strings.commander.namesAlike('same.txt') },
+    ]);
+  });
+
   suite('reading its files', () => {
     let copiesFolder: string;
 

@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { sentencesOf, type Sentence } from '../../../lib/shared/sentences';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import {
@@ -11,25 +11,12 @@ import {
   type Side,
 } from '../shared/protocol';
 import { folderKey } from '../shared/paths';
-import { archiveJob } from './archiveJobs';
-import { copiedBetween } from './betweenArchives';
-import { unpackingFirst } from './unpacking';
-import { reasonOf } from './reasons';
 import type { ConnectTransfer, TransferAsk, Transfers } from './transfers';
-import {
-  type Pane,
-  type ShownPane,
-  type Sides,
-  type Listing,
-  listedIn,
-} from './sides';
-import { post } from './post';
+import { type Sides, type Listing, listedIn } from './sides';
 import { parentOf } from './folderPaths';
-import { archiveItems } from './archiveItems';
-import type { ArchivePasswords } from './archivePasswords';
-import type { ArchiveCommands } from './archiveCommands';
-import type { ArchiveAccess, OpenedArchive } from './archives';
-import type { ArchiveBranch } from './archiveTree';
+import type { ArchiveAccess } from './archives';
+import type { ArchiveTransferCommands } from './archiveTransferCommands';
+import { refusedTarget } from './transferTargets';
 
 export interface TransferCommandsAccess {
   readonly archives?: ArchiveAccess;
@@ -55,44 +42,11 @@ export interface TransferCommandsHost {
   ) => Promise<void>;
 }
 
-function branchesNamed(
-  archive: OpenedArchive,
-  inner: readonly string[],
-  names: readonly string[],
-): ArchiveBranch[] {
-  return names.flatMap((name) => {
-    const parts = name.split(path.sep);
-    return (
-      archive.tree.branch(
-        [...inner, ...parts.slice(0, -1)],
-        parts.at(-1) ?? name,
-      ) ?? []
-    );
-  });
-}
-
-function nameShared(
-  names: readonly string[],
-  key: (name: string) => string,
-): string | undefined {
-  const seen = new Set<string>();
-  for (const name of names) {
-    const base = path.basename(name);
-    const each = key(base);
-    if (seen.has(each)) {
-      return base;
-    }
-    seen.add(each);
-  }
-  return undefined;
-}
-
 export class TransferCommands {
   constructor(
     private readonly access: TransferCommandsAccess,
     private readonly sides: Sides,
-    private readonly passwords: ArchivePasswords,
-    private readonly archiveCommands: ArchiveCommands,
+    private readonly archiveTransferCommands: ArchiveTransferCommands,
     private readonly transfers: Transfers,
     private readonly host: TransferCommandsHost,
   ) {}
@@ -172,12 +126,26 @@ export class TransferCommands {
     }
     if (other.archive !== undefined) {
       if (shown.pane.archive === undefined) {
-        this.transferIn(page, shown, other, names, move, existing);
+        this.archiveTransferCommands.transferIn(
+          page,
+          shown,
+          other,
+          names,
+          move,
+          existing,
+        );
       } else {
         void this.host
           .shell()
           .track(
-            this.transferBetween(page, shown, other, names, move, existing),
+            this.archiveTransferCommands.transferBetween(
+              page,
+              shown,
+              other,
+              names,
+              move,
+              existing,
+            ),
           );
       }
       return;
@@ -185,7 +153,15 @@ export class TransferCommands {
     if (shown.pane.archive !== undefined) {
       void this.host
         .shell()
-        .track(this.transferOut(page, shown.pane, target, names, move));
+        .track(
+          this.archiveTransferCommands.transferOut(
+            page,
+            shown.pane,
+            target,
+            names,
+            move,
+          ),
+        );
       return;
     }
     this.startTransfer(page, {
@@ -199,327 +175,11 @@ export class TransferCommands {
     });
   }
 
-  private transferIn(
-    page: Page,
-    shown: ShownPane,
-    other: Pane,
-    names: readonly string[],
-    move: boolean,
-    existing: unknown,
-  ): void {
-    const { archives, platform, remove } = this.access;
-    const inside = archives?.within(other.folder);
-    if (
-      archives === undefined ||
-      inside === undefined ||
-      (move && remove === undefined)
-    ) {
-      return;
-    }
-    const { archive, inner } = inside;
-    const key = (each: string) => folderKey(each, platform);
-    const there = new Set(
-      (archive.tree.entries(inner) ?? []).map((entry) => key(entry.name)),
-    );
-    const clashing = names.filter((name) =>
-      there.has(key(path.basename(name))),
-    );
-    if (clashing.length > 0 && existing !== 'replace' && existing !== 'skip') {
-      this.askExisting(page, shown, other, names, move, clashing);
-      return;
-    }
-    const kept =
-      existing === 'skip'
-        ? names.filter((name) => !clashing.includes(name))
-        : names;
-    const alike = nameShared(kept, key);
-    if (alike !== undefined) {
-      this.host.refuse(page, strings.commander.namesAlike(alike));
-      return;
-    }
-    const { folder } = shown.pane;
-    const into = kept.find((name) => {
-      const item = key(path.join(folder, name));
-      return (
-        key(archive.file) === item ||
-        key(archive.file).startsWith(`${item}${path.sep}`)
-      );
-    });
-    if (into !== undefined) {
-      this.host.refuse(page, strings.commander.intoItself(into));
-      return;
-    }
-    if (kept.length === 0 || !this.archiveCommands.changeable(page, archive)) {
-      return;
-    }
-    this.transfers.start(
-      {
-        plan: {
-          sources: kept.map((name) => path.join(folder, name)),
-          target: other.folder,
-          move,
-        },
-        folder,
-        names: kept,
-        archive: {
-          job: move ? 'moveIn' : 'copyIn',
-          file: archive.file,
-          at: other.folder,
-        },
-      },
-      archiveJob(path.basename(archive.file), async (options) => {
-        const added = await archives.addItems(
-          archive,
-          inner,
-          folder,
-          kept,
-          options,
-        );
-        if (!move || added.kind === 'refused') {
-          return added;
-        }
-        if (added.warning !== undefined) {
-          return {
-            kind: 'packed',
-            warning: sentencesOf([
-              added.warning,
-              strings.commander.originalsKept,
-            ]),
-          };
-        }
-        const failures: string[] = [];
-        for (const name of kept) {
-          try {
-            await remove?.(path.join(folder, name));
-          } catch (error) {
-            failures.push(`${name}: ${reasonOf(error)}`);
-          }
-        }
-        return failures.length === 0
-          ? added
-          : { kind: 'packed', warning: failures.join(' ') };
-      }),
-    );
-  }
-
-  private async transferBetween(
-    page: Page,
-    shown: ShownPane,
-    other: Pane,
-    names: readonly string[],
-    move: boolean,
-    existing: unknown,
-  ): Promise<void> {
-    const { archives, platform } = this.access;
-    const into = archives?.within(other.folder);
-    if (archives === undefined || into === undefined) {
-      return;
-    }
-    const key = (each: string) => folderKey(each, platform);
-    const { folder } = shown.pane;
-    const sources = names.map((name) => path.join(folder, name));
-    const target = other.folder;
-    const resolved = (each: string) => key(path.resolve(each));
-    if (
-      sources.some((each) => resolved(path.dirname(each)) === resolved(target))
-    ) {
-      this.host.refuse(page, strings.commander.alreadyIn(target));
-      return;
-    }
-    const intoItself = sources.find((each) => {
-      const relative = path.relative(resolved(each), resolved(target));
-      return (
-        relative !== '..' &&
-        !relative.startsWith(`..${path.sep}`) &&
-        !path.isAbsolute(relative)
-      );
-    });
-    if (intoItself !== undefined) {
-      this.host.refuse(
-        page,
-        strings.commander.intoItself(path.basename(intoItself)),
-      );
-      return;
-    }
-    const there = new Set(
-      (into.archive.tree.entries(into.inner) ?? []).map((entry) =>
-        key(entry.name),
-      ),
-    );
-    const clashing = names.filter((name) =>
-      there.has(key(path.basename(name))),
-    );
-    if (clashing.length > 0 && existing !== 'replace' && existing !== 'skip') {
-      this.askExisting(page, shown, other, names, move, clashing);
-      return;
-    }
-    const kept =
-      existing === 'skip'
-        ? names.filter((name) => !clashing.includes(name))
-        : names;
-    const found = archiveItems(this.access.archives, shown.pane, kept);
-    if (kept.length === 0 || found === undefined) {
-      return;
-    }
-    const { archive, inner, paths, withoutFolders, files, bytes, encrypted } =
-      found;
-    const alike = withoutFolders ? nameShared(kept, key) : undefined;
-    if (alike !== undefined) {
-      this.host.refuse(page, strings.commander.namesAlike(alike));
-      return;
-    }
-    if (
-      !this.archiveCommands.changeable(page, into.archive) ||
-      (move && !this.archiveCommands.changeable(page, archive))
-    ) {
-      return;
-    }
-    if (
-      encrypted &&
-      !archives.hasPassword(archive.file) &&
-      !(await this.passwords.passwordGiven(page, archive.file, false))
-    ) {
-      return;
-    }
-    this.transfers.start(
-      {
-        plan: {
-          sources: kept.map((name) => path.join(folder, name)),
-          target,
-          move,
-        },
-        folder,
-        names: kept,
-        archive: {
-          job: move ? 'moveIn' : 'copyIn',
-          file: into.archive.file,
-          at: target,
-        },
-      },
-      archiveJob(path.basename(into.archive.file), (options) =>
-        copiedBetween(
-          archives,
-          {
-            archive,
-            paths,
-            depth: inner.length,
-            withoutFolders,
-            files,
-            bytes,
-            roots: branchesNamed(archive, inner, kept),
-            platform,
-          },
-          into,
-          move,
-          options,
-        ),
-      ),
-    );
-  }
-
-  private async transferOut(
-    page: Page,
-    pane: Pane,
-    target: string,
-    names: readonly string[],
-    move: boolean,
-  ): Promise<void> {
-    const found = archiveItems(this.access.archives, pane, names);
-    if (
-      found === undefined ||
-      (move && !this.archiveCommands.changeable(page, found.archive))
-    ) {
-      return;
-    }
-    const {
-      archives,
-      archive,
-      inner,
-      paths,
-      withoutFolders,
-      files,
-      bytes,
-      encrypted,
-    } = found;
-    if (
-      encrypted &&
-      !archives.hasPassword(archive.file) &&
-      !(await this.passwords.passwordGiven(page, archive.file, false))
-    ) {
-      return;
-    }
-    this.transfers.start(
-      {
-        plan: {
-          sources: names.map((name) => path.join(pane.folder, name)),
-          target,
-          move,
-        },
-        folder: pane.folder,
-        names,
-      },
-      unpackingFirst(
-        {
-          archives,
-          archive,
-          paths,
-          depth: inner.length,
-          withoutFolders,
-          files,
-          bytes,
-          ...(move && {
-            moving: {
-              roots: branchesNamed(archive, inner, names),
-              platform: this.access.platform,
-            },
-          }),
-        },
-        this.access.connectTransfer,
-      ),
-    );
-  }
-
-  private askExisting(
-    page: Page,
-    shown: ShownPane,
-    other: Pane,
-    names: readonly string[],
-    move: boolean,
-    existing: readonly string[],
-  ): void {
-    post(page, {
-      type: 'askExisting',
-      tab: shown.tab,
-      side: shown.side,
-      folder: shown.pane.folder,
-      names,
-      target: other.folder,
-      move,
-      existing,
-    });
-  }
-
   private startTransfer(page: Page, ask: TransferAsk): void {
     const { sources, target } = ask.plan;
-    const key = (each: string) =>
-      folderKey(path.resolve(each), this.access.platform);
-    if (sources.some((source) => key(path.dirname(source)) === key(target))) {
-      this.host.refuse(page, strings.commander.alreadyIn(target));
-      return;
-    }
-    const intoItself = sources.find((source) => {
-      const relative = path.relative(key(source), key(target));
-      return (
-        relative !== '..' &&
-        !relative.startsWith(`..${path.sep}`) &&
-        !path.isAbsolute(relative)
-      );
-    });
-    if (intoItself !== undefined) {
-      this.host.refuse(
-        page,
-        strings.commander.intoItself(path.basename(intoItself)),
-      );
+    const refused = refusedTarget(sources, target, this.access.platform);
+    if (refused !== undefined) {
+      this.host.refuse(page, refused);
       return;
     }
     this.transfers.start(ask);

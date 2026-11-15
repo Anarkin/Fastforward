@@ -30,6 +30,7 @@ import { ArchiveCopies } from './archiveCopies';
 import { ArchivePasswords } from './archivePasswords';
 import { ArchiveCommands } from './archiveCommands';
 import { TransferCommands } from './transferCommands';
+import { ArchiveTransferCommands } from './archiveTransferCommands';
 import { PackCommands } from './packCommands';
 import type { CommanderAccess } from './commanderAccess';
 import { isFolder } from './fileStats';
@@ -141,8 +142,13 @@ export class CommanderTool implements Tool<'commander'> {
     this.transferCommands = new TransferCommands(
       access,
       this.sides,
-      this.passwords,
-      this.archiveCommands,
+      new ArchiveTransferCommands(
+        access,
+        this.passwords,
+        this.archiveCommands,
+        this.transfers,
+        { refuse: (page, message) => this.refuse(page, message) },
+      ),
       this.transfers,
       {
         shell: () => this.shell,
