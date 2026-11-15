@@ -16,51 +16,6 @@ input {
   font: inherit;
 }
 
-input[type='checkbox'],
-.check-box {
-  appearance: none;
-  position: relative;
-  box-sizing: border-box;
-  flex: none;
-  width: var(--check-size);
-  height: var(--check-size);
-  margin: 0;
-  border-width: 1px;
-  border-style: solid;
-  border-color: var(--muted-foreground);
-  border-radius: 2px;
-}
-
-.check-box {
-  display: block;
-}
-
-input[type='checkbox']::after,
-.check-box::after {
-  position: absolute;
-  inset: -1px;
-  background: var(--color-panel-background);
-  mask: var(--check-mark) center / 100% no-repeat;
-}
-
-input[type='checkbox']:hover:not(:disabled, :checked) {
-  border-color: var(--color-foreground);
-}
-
-input[type='checkbox']:checked {
-  background: var(--color-foreground);
-  border-color: var(--color-foreground);
-}
-
-input[type='checkbox']:checked::after {
-  content: '';
-}
-
-input[type='checkbox']:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 1px;
-}
-
 button:not(.menu-item):focus-visible,
 a:focus-visible {
   outline: 2px solid var(--color-focus);
@@ -155,8 +110,7 @@ body {
 }
 
 .diff-view,
-.error-message,
-.notice-message {
+.error-message {
   user-select: text;
 }
 
