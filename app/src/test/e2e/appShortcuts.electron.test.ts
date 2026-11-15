@@ -2,6 +2,8 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { page, sharedApp } from './appFixtures';
 import { waitFor } from '../helpers/fixtures';
+import { wheelsByWholeRows } from './scrollProbes';
+import { paneRows } from '../../shell/page/shortcutsList';
 import {
   app as commanderApp,
   page as commanderPage,
@@ -77,6 +79,15 @@ suite('App', () => {
 
 suite('App commander', () => {
   sharedCommanderApp();
+
+  test('scrolls the shortcuts on the wheel by whole rows, each notch coming to rest with a shortcut or a heading starting right below the heading stuck at the top, down and up alike, and at the end too', async () => {
+    await commanderPage.keyboard.press('F1');
+    const pane = commanderPage.locator('.shortcuts-pane');
+    await pane.locator('.shortcuts-heading', { hasText: 'Archives' }).waitFor();
+    await wheelsByWholeRows(commanderPage, pane, paneRows);
+    await commanderPage.keyboard.press('F1');
+    await pane.waitFor({ state: 'detached' });
+  });
 
   test('lists the shortcuts of the commander beside the tools, scrolling them only down in a small window, marking every group with a shortcut in view as it scrolls, brings a group clicked or stepped to to the top, and goes on to the next tool once the pane can scroll no further, each shortcut one key cap a line high', async () => {
     const size = await commanderApp.evaluate(({ BrowserWindow }) => {

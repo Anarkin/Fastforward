@@ -21,8 +21,9 @@
 .shortcuts-tree {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   padding: 8px;
+  line-height: var(--row-line-height);
   overflow-y: auto;
   border-right: 1px solid var(--color-border);
 }
@@ -40,7 +41,7 @@
 }
 
 .shortcuts-tool {
-  padding: 4px 8px;
+  padding: 0 8px;
   border-radius: 4px;
 }
 
@@ -84,16 +85,14 @@
 .shortcuts-groups {
   display: flex;
   flex-direction: column;
-  margin: 2px 0 6px 23px;
-  border-left: 1px solid var(--color-border);
+  margin: 0 0 0 23px;
+  box-shadow: inset var(--hairline) 0 var(--color-border);
 }
 
 .shortcuts-group-link {
   justify-content: space-between;
-  margin-left: -1px;
-  padding: 2px 8px;
+  padding: 0 8px;
   color: var(--muted-foreground);
-  border-left: 2px solid transparent;
 }
 
 .shortcuts-group-link:hover:not(:disabled) {
@@ -103,13 +102,15 @@
 .shortcuts-group-link.in-view {
   font-weight: 700;
   color: var(--color-foreground);
-  border-left-color: var(--color-focus);
+  box-shadow: inset 2px 0 var(--color-focus);
 }
 
 .shortcuts-pane {
   position: relative;
   overflow-y: auto;
   padding: 0 16px 16px;
+  line-height: var(--row-line-height);
+  scroll-padding-top: var(--row-line-height);
 }
 
 .shortcuts-heading {
@@ -117,13 +118,13 @@
   top: 0;
   z-index: 1;
   margin: 0 -16px;
-  padding: 12px 16px 6px;
+  padding: 0 16px;
   font-weight: 700;
   background: var(--color-panel-background);
 }
 
 .shortcuts-group {
-  padding: 0 0 9px;
+  padding: 0 0 var(--row-line-height);
 }
 
 .shortcuts-group + .shortcuts-group .shortcuts-heading {
@@ -133,15 +134,15 @@
 .shortcut-row {
   display: grid;
   grid-template-columns: minmax(140px, 36%) minmax(0, 1fr);
-  align-items: baseline;
-  gap: 16px;
-  padding: 3px 0;
+  align-items: start;
+  gap: 0 16px;
+  padding: 0;
 }
 
 .shortcut-keys {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 0 6px;
 }
 
 .shortcuts-empty {
@@ -158,15 +159,20 @@
 
 .shortcut-combo {
   display: inline-flex;
+  box-sizing: border-box;
+  height: calc(var(--row-line-height) - 2px);
+  margin: 1px 0;
   white-space: nowrap;
-  border: 1px solid var(--color-border);
-  border-bottom-width: 2px;
   border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 1px var(--color-border),
+    inset 0 -2px var(--color-border);
 }
 
 .shortcut-combo kbd {
   min-width: 1.2em;
   padding: 0 5px;
+  line-height: calc(var(--row-line-height) - 2px);
   font: inherit;
   text-align: center;
 }

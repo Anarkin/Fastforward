@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { MenuButton } from '../../../../lib/page/menu';
+import { defaultScrolling } from '../../../../lib/page/scrollSettings';
 import { Name } from '../../../../lib/page/name';
 import { ConfirmPopup } from '../../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../../shell/page/promptPopup';
@@ -149,7 +150,15 @@ suite('Style', () => {
 
   test('sets a name on a button apart only in the monospace font, as the button frames it as its tint would', () => {
     const name = withClass(
-      rendered(<MenuButton title="Drive" label="C:" named items={[]} />),
+      rendered(
+        <MenuButton
+          scrolling={defaultScrolling}
+          title="Drive"
+          label="C:"
+          named
+          items={[]}
+        />,
+      ),
       'name',
     );
     looks(name, {

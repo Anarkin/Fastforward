@@ -31,6 +31,10 @@ async function browsed(
     document: dom.window.document,
     HTMLElement: dom.window.HTMLElement,
     getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+    ResizeObserver: class {
+      observe() {}
+      disconnect() {}
+    },
     IS_REACT_ACT_ENVIRONMENT: true,
   };
   const saved = Object.fromEntries(

@@ -32,6 +32,10 @@ async function inPage(
     window: dom.window,
     document: dom.window.document,
     HTMLElement: dom.window.HTMLElement,
+    ResizeObserver: class {
+      observe() {}
+      disconnect() {}
+    },
     IS_REACT_ACT_ENVIRONMENT: true,
   };
   const saved = Object.fromEntries(

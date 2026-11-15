@@ -27,6 +27,7 @@ export function DiffLanguage({ comparing }: { comparing: string | undefined }) {
   );
   const picked = useGit(pickedFor(key));
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
+  const scrolling = useShell((state) => state.scrolling);
   const { changeTextView } = useShellActions();
   const { pickLanguage, seeLanguageKey } = useGitActions();
   useEffect(() => seeLanguageKey(key), [key, seeLanguageKey]);
@@ -48,6 +49,7 @@ export function DiffLanguage({ comparing }: { comparing: string | undefined }) {
       single={key !== undefined}
       choose={choose}
       trigger={trigger}
+      scrolling={scrolling}
     />
   );
 }

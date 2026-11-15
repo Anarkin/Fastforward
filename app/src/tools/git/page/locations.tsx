@@ -29,7 +29,14 @@ import {
 import { browseRows, Rows } from './locationRows';
 import { Highlighted, currentActive, nextActive } from './locationHighlight';
 import { RefTree } from './locationTree';
-import { contextMenus, focusLeaves, popupKeyAction } from './locationKeys';
+import {
+  contextMenus,
+  focusLeaves,
+  locationRows,
+  popupKeyAction,
+} from './locationKeys';
+import { useShell } from '../../../shell/page/store';
+import { useWholeRows } from '../../../lib/page/wholeRows';
 import {
   foundCommits,
   hashQuery,
@@ -67,7 +74,10 @@ export function LocationsPopup({
   } = useGitActions();
   const onClose = useCallback(() => openSearch(false), [openSearch]);
   const popup = useRef<HTMLDivElement>(null);
+  const groups = useRef<HTMLDivElement>(null);
   const height = usePopupHeight(popup);
+  const scrolling = useShell((state) => state.scrolling);
+  useWholeRows(groups, locationRows, scrolling);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.select(), []);
   useEffect(
@@ -218,6 +228,7 @@ export function LocationsPopup({
     >
       <div className="locations-bar">
         <SearchBar
+          font="proportional"
           query={query}
           options={options}
           found={{
@@ -248,6 +259,7 @@ export function LocationsPopup({
         />
       </div>
       <div
+        ref={groups}
         className="locations-groups"
         id={resultsId}
         role={hasQuery ? 'listbox' : 'tree'}

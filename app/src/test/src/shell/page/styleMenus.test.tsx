@@ -4,6 +4,7 @@ import { SearchBar } from '../../../../lib/page/searchBar';
 import { plainSearch } from '../../../../lib/shared/searchOptions';
 import { ContextMenu } from '../../../../shell/page/contextMenu';
 import { MenuButton } from '../../../../lib/page/menu';
+import { defaultScrolling } from '../../../../lib/page/scrollSettings';
 import { cascaded } from '../../../helpers/cascade';
 import {
   ContextMenuShown,
@@ -158,12 +159,19 @@ suite('Style', () => {
     );
   });
 
-  test("draws the line of a filtered menu's edge along the top of its filter, which stays atop the menu as it scrolls and would cover that line", () => {
+  test('makes a menu with a filter at least 260 px wide, so what is typed stays readable beside its counter and toggles however narrow its items are', () => {
+    looks(rendered(<div className="menu filtered-menu" />), {
+      'min-width': '260px',
+    });
+  });
+
+  test("draws the line of a filtered menu's edge along the top of its filter, which stays atop the menu as it scrolls and would cover that line, inside the menu's padding so the edge the menu draws inside itself shows beside it, its box 8 px in from that edge, clear of the rounded corners", () => {
     looks(
       withClass(
         rendered(
           <div className="menu filtered-menu">
             <SearchBar
+              font="proportional"
               compact
               query=""
               options={plainSearch}
@@ -178,6 +186,9 @@ suite('Style', () => {
       {
         position: 'sticky',
         top: '0',
+        height: 'var(--menu-search-height)',
+        margin: '0 0 4px',
+        padding: '0 4px',
         'box-shadow': 'inset 0 var(--hairline) 0 var(--color-border)',
       },
     );
@@ -288,7 +299,14 @@ suite('Style', () => {
 
   test('writes the choice shown on a dropdown button in the font size of the settings, as the text around it', () => {
     const button = withClass(
-      rendered(<MenuButton title="Encoding" label="UTF-8" items={[]} />),
+      rendered(
+        <MenuButton
+          scrolling={defaultScrolling}
+          title="Encoding"
+          label="UTF-8"
+          items={[]}
+        />,
+      ),
       'menu-button-trigger',
     );
     assert.strictEqual(cascaded(button, 'font'), 'inherit');

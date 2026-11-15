@@ -90,6 +90,7 @@ export function followRows(
   let glide: Glide | undefined;
   let frame: number | undefined;
   let placed: number | undefined;
+  let seen = element.scrollTop;
   const max = () => Math.max(0, limit());
   const snap = (top: number, toward = 0) =>
     snapTo === undefined
@@ -98,6 +99,7 @@ export function followRows(
   const place = (top: number) => {
     element.scrollTop = top;
     placed = element.scrollTop;
+    seen = placed;
     onPlace(placed);
   };
   const settle = () => {
@@ -158,10 +160,12 @@ export function followRows(
       }
       settle();
     }
-    const snapped = snap(element.scrollTop);
-    if (Math.abs(snapped - element.scrollTop) > onRow) {
+    const scrolled = element.scrollTop;
+    const snapped = snap(scrolled, Math.sign(scrolled - seen));
+    if (Math.abs(snapped - scrolled) > onRow) {
       element.scrollTop = snapped;
     }
+    seen = element.scrollTop;
   };
   const onKeyDown = (event: KeyboardEvent) => {
     const move = listMoveOf(event);

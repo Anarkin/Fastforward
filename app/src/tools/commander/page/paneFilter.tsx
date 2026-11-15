@@ -33,6 +33,7 @@ export function PaneFilter({
 }) {
   return (
     <SearchBar
+      font="monospace"
       query={query}
       options={options}
       found={found}

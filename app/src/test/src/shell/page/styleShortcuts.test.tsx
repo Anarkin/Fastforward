@@ -198,15 +198,40 @@ suite('Style', () => {
     );
   });
 
-  test('leaves as much room under the last shortcut of a group as over the heading of the next, the line between them halfway', () => {
+  test('lays the shortcuts on lines of the row height, so the pane comes to rest on a line wherever it stops: a heading one line, each shortcut as many as it wraps to, a blank line after each group, and the heading stuck at the top one line of cover', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
-    const under =
-      Number.parseFloat(paddingOf(withClass(popup, 'shortcuts-group')).bottom) +
-      Number.parseFloat(paddingOf(withClass(popup, 'shortcut-row')).bottom);
-    assert.strictEqual(
-      under,
-      Number.parseFloat(paddingOf(withClass(popup, 'shortcuts-heading')).top),
-    );
+    const line = 'var(--row-line-height)';
+    looks(withClass(popup, 'shortcuts-pane'), {
+      'line-height': line,
+      'scroll-padding-top': line,
+    });
+    looks(withClass(popup, 'shortcuts-heading'), { padding: '0 16px' });
+    looks(withClass(popup, 'shortcuts-group'), { padding: `0 0 ${line}` });
+    looks(withClass(popup, 'shortcut-row'), {
+      'align-items': 'start',
+      padding: '0',
+      gap: '0 16px',
+    });
+    looks(withClass(popup, 'shortcut-keys'), { gap: '0 6px' });
+  });
+
+  test('lays the tools and their groups on lines of the row height too, with no room between them, and their lines drawn without taking room', () => {
+    const popup = popupOf(<ShortcutsPopupShown />);
+    const line = 'var(--row-line-height)';
+    looks(withClass(popup, 'shortcuts-tree'), {
+      gap: '0',
+      'line-height': line,
+    });
+    looks(withClass(popup, 'shortcuts-tool'), { padding: '0 8px' });
+    looks(withClass(popup, 'shortcuts-groups'), {
+      margin: '0 0 0 23px',
+      border: undefined,
+      'box-shadow': 'inset var(--hairline) 0 var(--color-border)',
+    });
+    looks(withClass(popup, 'shortcuts-group-link'), {
+      padding: '0 8px',
+      border: 'none',
+    });
   });
 
   test('fills the tool open as the selected row of a list, the others tinted under the pointer, and marks the group in view by a line in the color of focus beside its name, the others muted, dimming what has no match', () => {
@@ -222,7 +247,7 @@ suite('Style', () => {
     looks(closed, { background: 'var(--hover-background)' }, hovered);
     looks(withClass(popup, 'shortcuts-group-link', 'in-view'), {
       color: 'var(--color-foreground)',
-      'border-left-color': 'var(--color-focus)',
+      'box-shadow': 'inset 2px 0 var(--color-focus)',
     });
     const other = allWithClass(popup, 'shortcuts-group-link').find(
       (link) => !link.classes.includes('in-view'),
@@ -230,7 +255,7 @@ suite('Style', () => {
     assert.ok(other);
     looks(other, {
       color: 'var(--muted-foreground)',
-      'border-left': '2px solid transparent',
+      'box-shadow': undefined,
     });
     for (const className of ['shortcuts-tool empty', 'shortcuts-group-link']) {
       const dimmed = withClass(
@@ -245,19 +270,27 @@ suite('Style', () => {
     }
   });
 
-  test('draws a shortcut as one key cap holding its keys, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted', () => {
+  test('draws a shortcut as one key cap holding its keys inside its line, two pixels short of it and centered, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
     const combo = withClass(popup, 'shortcut-combo');
     looks(combo, {
       display: 'inline-flex',
       'white-space': 'nowrap',
-      border: '1px solid var(--color-border)',
-      'border-bottom-width': '2px',
+      'box-sizing': 'border-box',
+      height: 'calc(var(--row-line-height) - 2px)',
+      margin: '1px 0',
+      border: undefined,
+      'box-shadow':
+        'inset 0 0 0 1px var(--color-border), inset 0 -2px var(--color-border)',
       'border-radius': '4px',
     });
     const key = keyOf(combo);
     assert.ok(key);
-    looks(key, { border: undefined, padding: '0 5px' });
+    looks(key, {
+      border: undefined,
+      padding: '0 5px',
+      'line-height': 'calc(var(--row-line-height) - 2px)',
+    });
     looks(withClass(combo, 'shortcut-joiner'), {
       'align-self': 'stretch',
       width: 'var(--hairline)',

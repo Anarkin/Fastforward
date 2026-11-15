@@ -1,5 +1,6 @@
 import { strings } from '../shared/strings';
 import { MenuButton } from './menu';
+import type { ScrollSettings } from './scrollSettings';
 import {
   type LanguageChoice,
   languageButtonLabel,
@@ -13,6 +14,7 @@ export function LanguageButton({
   choose,
   trigger,
   onChosen,
+  scrolling,
 }: {
   choice: LanguageChoice;
   detected: string | undefined;
@@ -20,6 +22,7 @@ export function LanguageButton({
   choose: (choice: LanguageChoice) => void;
   trigger?: React.Ref<HTMLButtonElement>;
   onChosen?: () => void;
+  scrolling: ScrollSettings;
 }) {
   const { language, findLanguage } = strings.common;
   return (
@@ -31,6 +34,7 @@ export function LanguageButton({
         filter={single ? findLanguage : undefined}
         items={languageMenu(choice, detected, single, choose)}
         onChosen={onChosen}
+        scrolling={scrolling}
       />
     </div>
   );

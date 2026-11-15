@@ -17,6 +17,7 @@ export function DiffOptionsShown(shown: ShownOptions) {
 export function DiffFindShown({ query = '' }: { readonly query?: string }) {
   return (
     <SearchBar
+      font="monospace"
       query={query}
       options={plainSearch}
       found={{ current: 0, matches: 0 }}

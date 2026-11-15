@@ -15,6 +15,7 @@ import { useModalDialog } from '../../lib/page/modalDialog';
 import { useDialogDrag } from '../../lib/page/dialogDrag';
 import { keyPressed } from '../../lib/page/shortcuts';
 import { shortcutsEntryOf } from '../../lib/page/shortcutsEntry';
+import { useWholeRows } from '../../lib/page/wholeRows';
 import {
   type ShownEntry,
   type PaneView,
@@ -25,6 +26,8 @@ import {
   steppedGroup,
   groupAround,
   groupsFound,
+  paneRows,
+  treeRows,
 } from './shortcutsList';
 
 export function ShortcutsList({ entry }: { entry: ShownEntry }) {
@@ -78,8 +81,12 @@ function ShortcutsTree({
   onOpen: (id: ShortcutEntryId) => void;
   onGo: (key: string) => void;
 }) {
+  const tree = useRef<HTMLElement>(null);
+  const scrolling = useShell((state) => state.scrolling);
+  useWholeRows(tree, treeRows, scrolling);
   return (
     <nav
+      ref={tree}
       className="shortcuts-tree"
       aria-label={strings.shortcuts.tools}
       onMouseDown={(event) => event.preventDefault()}
@@ -204,6 +211,8 @@ export function ShortcutsPopup() {
   const field = useRef<HTMLInputElement>(null);
   const pane = useRef<HTMLDivElement>(null);
   const pending = useRef<string>(undefined);
+  const scrolling = useShell((state) => state.scrolling);
+  useWholeRows(pane, paneRows, scrolling);
   useDismiss(popup, onClose, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
@@ -321,6 +330,7 @@ export function ShortcutsPopup() {
         </div>
         <div className="shortcuts-filter">
           <SearchBar
+            font="proportional"
             query={query}
             options={options}
             found={groupsFound(entries, marked[0])}

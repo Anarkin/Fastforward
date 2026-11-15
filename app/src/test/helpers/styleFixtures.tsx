@@ -5,6 +5,7 @@ import { tabsStore } from './componentFixtures';
 import { SearchButton } from '../../lib/page/search';
 import { Notices } from '../../shell/page/notices';
 import { MenuButton } from '../../lib/page/menu';
+import { defaultScrolling } from '../../lib/page/scrollSettings';
 import { AppMenu } from '../../shell/page/appMenu';
 import { TabBar } from '../../shell/page/tabBar';
 import { createShellStore, ShellStore } from '../../shell/page/store';
@@ -38,7 +39,14 @@ export function Columns({
 export function MenuButtonShown(
   props: Partial<React.ComponentProps<typeof MenuButton>>,
 ) {
-  return <MenuButton title="" items={[]} {...props} />;
+  return (
+    <MenuButton
+      title=""
+      items={[]}
+      {...props}
+      scrolling={props.scrolling ?? defaultScrolling}
+    />
+  );
 }
 
 export function TabBarShown() {

@@ -24,6 +24,8 @@ export function nextMenuItem(
   return current === -1 ? count - 1 : (current - 1 + count) % count;
 }
 
+export const menuRows = ':scope > .menu-entry';
+
 function menuItems(menu: Element | null): HTMLElement[] {
   return Array.from(
     menu?.querySelectorAll<HTMLElement>(

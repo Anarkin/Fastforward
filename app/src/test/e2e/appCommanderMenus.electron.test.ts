@@ -4,7 +4,8 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
-import { clippedCorner } from './scrollProbes';
+import { clippedCorner, wheelsByWholeRows } from './scrollProbes';
+import { menuRows } from '../../lib/page/menuControls';
 import {
   opened,
   app,
@@ -144,7 +145,27 @@ suite('App commander', () => {
     );
   });
 
-  test('scrolls the language menu to where its track is pressed, the thumb centered there and following the pointer while held, without choosing the language under it or selecting text', async () => {
+  test('scrolls the language menu on the wheel by whole languages, each notch coming to rest with a language starting right below its filter, down and up alike, and at its end too', async () => {
+    fs.writeFileSync(path.join(opened, 'wheel.ts'), 'const a = 1;');
+    await select('wheel');
+    await page.keyboard.press('F3');
+    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    await page.keyboard.press('l');
+    const menu = page.locator('.viewer .language-button .menu');
+    await menu.waitFor();
+    await wheelsByWholeRows(page, menu, menuRows);
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached' });
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    fs.rmSync(path.join(opened, 'wheel.ts'));
+    await waitFor(
+      async () => !(await rowNames()).includes('wheel.ts'),
+      'wheel.ts to be gone from the list',
+    );
+  });
+
+  test('scrolls the language menu to where its track is pressed, the thumb centered there and following the pointer while held as near as the whole languages it scrolls by let it, without choosing the language under it or selecting text', async () => {
     fs.writeFileSync(path.join(opened, 'track.ts'), 'const a = 1;');
     await select('track');
     await page.keyboard.press('F3');
@@ -165,9 +186,20 @@ suite('App commander', () => {
     const x = top.x + top.width / 2;
     const trackTop = top.y;
     const trackBottom = menuBox.y + menuBox.height - 6;
+    const rowOnTrack = await menu.evaluate(
+      (element, thumbHeight) =>
+        ((element.querySelector('.menu-entry')?.getBoundingClientRect()
+          .height ?? 0) *
+          thumbHeight) /
+        element.clientHeight,
+      top.height,
+    );
     const centered = async (y: number) => {
       const box = await thumb.boundingBox();
-      return box !== null && Math.abs(box.y + box.height / 2 - y) <= 1;
+      return (
+        box !== null &&
+        Math.abs(box.y + box.height / 2 - y) <= Math.max(1, rowOnTrack)
+      );
     };
 
     const middle = (trackTop + trackBottom) / 2;

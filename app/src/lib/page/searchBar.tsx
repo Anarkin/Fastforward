@@ -51,7 +51,7 @@ function SearchToggles({
         return (
           <button
             key={option}
-            className={`${compact ? '' : 'nav-button toggle '}search-toggle${pressed ? ' active' : ''}`}
+            className={`search-toggle${pressed ? ' active' : ''}`}
             title={off ? noRegex : title}
             aria-pressed={pressed}
             disabled={off}
@@ -71,6 +71,7 @@ function SearchToggles({
 
 export function SearchBar({
   query,
+  font,
   options,
   found,
   countTitle,
@@ -86,6 +87,7 @@ export function SearchBar({
   onKeyDown,
 }: {
   query: string;
+  font: 'monospace' | 'proportional';
   options: SearchOptions;
   found: MatchesFound;
   countTitle?: string;
@@ -111,7 +113,9 @@ export function SearchBar({
     />
   );
   return (
-    <div className={`search-bar${compact ? ' compact' : ''}`}>
+    <div
+      className={`search-bar${font === 'monospace' ? ' monospace' : ''}${compact ? ' compact' : ''}`}
+    >
       {!compact && onClose !== undefined && (
         <button
           className="nav-button"
@@ -138,9 +142,8 @@ export function SearchBar({
             {count}
           </span>
         )}
-        {compact && toggled}
+        {toggled}
       </div>
-      {!compact && toggled}
       {!compact && onStep !== undefined && (
         <div className="search-steps">
           <button

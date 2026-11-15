@@ -52,8 +52,9 @@
 }
 
 .menu.filtered-menu {
-  --menu-search-height: 34px;
+  --menu-search-height: 38px;
   box-sizing: border-box;
+  min-width: 260px;
   max-height: min(480px, 70vh);
   padding-top: 0;
   overflow-y: auto;
@@ -66,7 +67,7 @@
   z-index: 1;
   box-sizing: border-box;
   height: var(--menu-search-height);
-  margin: 0 -4px 4px;
+  margin: 0 0 4px;
   padding: 0 4px;
   background: var(--color-panel-background);
   border-bottom: 1px solid var(--color-border);

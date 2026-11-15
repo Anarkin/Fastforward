@@ -44,6 +44,7 @@ suite('The find of the diff', () => {
       (main) => {
         const bar = main.querySelector('.search-bar');
         assert.ok(bar);
+        assert.ok(bar.classList.contains('monospace'), 'the font of the code');
         assert.strictEqual(bar.querySelector('input')?.value, 'find');
         const count = bar.querySelector('.search-count');
         assert.strictEqual(count?.textContent, '2 of 3');

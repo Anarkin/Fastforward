@@ -41,6 +41,10 @@ suite('The filter of a side', () => {
         const bar = () =>
           main.querySelector('.column-title.searching > .search-bar');
         assert.ok(bar());
+        assert.ok(
+          bar()?.classList.contains('monospace'),
+          'the font of the names',
+        );
         assert.strictEqual(
           bar()?.querySelector('input')?.getAttribute('placeholder'),
           'Filter…',

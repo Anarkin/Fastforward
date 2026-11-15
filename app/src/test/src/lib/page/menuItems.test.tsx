@@ -6,6 +6,7 @@ import { suite, test } from 'vitest';
 import { plainFilter } from '../../../helpers/filters';
 import { onMenuKeyDown } from '../../../../lib/page/menuControls';
 import { MenuItems } from '../../../../lib/page/menuItems';
+import { defaultScrolling } from '../../../../lib/page/scrollSettings';
 import { SubmenuIcon } from '../../../../lib/page/icons';
 import { noop } from '../../../helpers/fixtures';
 import { keyPress } from '../../../helpers/keys';
@@ -18,6 +19,7 @@ suite('Menu items', () => {
     const document = new JSDOM(
       renderToStaticMarkup(
         <MenuItems
+          scrolling={defaultScrolling}
           items={[
             { label: 'UTF-8' },
             { label: 'Auto: UTF-8, utf' },
@@ -51,6 +53,7 @@ suite('Menu items', () => {
   test('sets an item whose label is a name, as a folder or a drive, apart as a name, and the others in the words of the menu', () => {
     const html = renderToStaticMarkup(
       <MenuItems
+        scrolling={defaultScrolling}
         items={[
           { label: 'C:\\', name: true },
           { label: 'Open', onClick: () => undefined },
@@ -69,6 +72,7 @@ suite('Menu items', () => {
 
   test('keys items apart that have the same label', () => {
     const items = renderedBy(MenuItems, {
+      scrolling: defaultScrolling,
       items: [
         { label: 'v1', onClick: noop },
         { separator: true },
@@ -84,6 +88,7 @@ suite('Menu items', () => {
   test('runs a plain item and closes the menu, but keeps it open on a submenu', () => {
     const log: string[] = [];
     const items = renderedBy(MenuItems, {
+      scrolling: defaultScrolling,
       items: [
         { label: 'a', onClick: () => log.push('a') },
         { label: 'sub', submenu: [{ label: 'x', onClick: noop }] },
@@ -110,6 +115,7 @@ suite('Menu items', () => {
   test("points to a submenu with the icon set's chevron, as the other icons are drawn, rather than a character of the font", () => {
     const html = renderToStaticMarkup(
       <MenuItems
+        scrolling={defaultScrolling}
         items={[{ label: 'sub', submenu: [{ label: 'x', onClick: noop }] }]}
         onClose={noop}
       />,
@@ -144,6 +150,7 @@ suite('Menu items', () => {
         root.render(
           <div className="menu" onKeyDown={(event) => onMenuKeyDown(event)}>
             <MenuItems
+              scrolling={defaultScrolling}
               items={[
                 { label: 'C:', accessKey: 'C', onClick: () => log.push('C') },
                 { label: 'D:', accessKey: 'D', onClick: () => log.push('D') },
@@ -178,6 +185,12 @@ suite('Menu items', () => {
       window: dom.window,
       document: dom.window.document,
       HTMLElement: dom.window.HTMLElement,
+      getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+      MutationObserver: dom.window.MutationObserver,
+      ResizeObserver: class {
+        observe() {}
+        disconnect() {}
+      },
       IS_REACT_ACT_ENVIRONMENT: true,
     };
     const saved = Object.fromEntries(
@@ -192,6 +205,7 @@ suite('Menu items', () => {
       await act(async () => {
         root.render(
           <MenuItems
+            scrolling={defaultScrolling}
             items={[
               { label: 'plain', onClick: noop },
               { label: 'sub', submenu: [{ label: 'x', onClick: noop }] },
@@ -223,6 +237,7 @@ suite('Menu items', () => {
   test('removes an item by its X or the Delete key, without running it or closing the menu, and keeps the focus in the menu', () => {
     const log: string[] = [];
     const items = renderedBy(MenuItems, {
+      scrolling: defaultScrolling,
       items: [
         {
           label: 'a',
@@ -264,7 +279,11 @@ suite('Menu items', () => {
     ]);
     assert.doesNotMatch(
       renderToStaticMarkup(
-        <MenuItems items={[{ label: 'b', onClick: noop }]} onClose={noop} />,
+        <MenuItems
+          scrolling={defaultScrolling}
+          items={[{ label: 'b', onClick: noop }]}
+          onClose={noop}
+        />,
       ),
       /menu-remove/,
     );
@@ -273,6 +292,7 @@ suite('Menu items', () => {
   test('marks the items that are on with a check', () => {
     const html = renderToStaticMarkup(
       <MenuItems
+        scrolling={defaultScrolling}
         items={[
           { label: 'main', checked: true, onClick: noop },
           { label: 'Collapse', checked: false, onClick: noop },
@@ -293,6 +313,7 @@ suite('Menu items', () => {
   test('shows the access key of an item before its label when asked, telling assistive technology it as the key of the item rather than reading it with the label, and hides it otherwise, as a drive letter is in its label already, leaving its room empty in a menu showing keys so the labels line up', () => {
     const html = renderToStaticMarkup(
       <MenuItems
+        scrolling={defaultScrolling}
         items={[
           {
             label: 'C:\\Code',
@@ -320,6 +341,7 @@ suite('Menu items', () => {
   test('leaves room for a check before every item, whether it can be checked or not, so the labels of every menu line up alike', () => {
     const html = renderToStaticMarkup(
       <MenuItems
+        scrolling={defaultScrolling}
         items={[
           { label: 'Open', onClick: noop },
           { separator: true },
@@ -339,6 +361,7 @@ suite('Menu items', () => {
   test('separates groups and greys out what cannot run', () => {
     const html = renderToStaticMarkup(
       <MenuItems
+        scrolling={defaultScrolling}
         items={[
           { label: 'Copy', onClick: noop },
           { separator: true },

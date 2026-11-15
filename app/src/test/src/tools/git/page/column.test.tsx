@@ -56,6 +56,7 @@ suite('Column', () => {
           search={<SearchButton title="Search files" onClick={noop} />}
           searching={
             <SearchBar
+              font="proportional"
               query=""
               options={plainSearch}
               found={{ current: 0, matches: 0 }}

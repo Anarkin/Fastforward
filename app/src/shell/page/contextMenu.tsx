@@ -1,8 +1,14 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { MenuItems } from '../../lib/page/menuItems';
-import { onMenuKeyDown, useMenuFocus } from '../../lib/page/menuControls';
+import {
+  menuRows,
+  onMenuKeyDown,
+  useMenuFocus,
+} from '../../lib/page/menuControls';
 import type { ContextMenuItem, OpenMenu } from '../../lib/page/contextMenuItem';
 import { useDismiss } from '../../lib/page/dismiss';
+import { useWholeRows } from '../../lib/page/wholeRows';
+import { useShell } from './store';
 
 export function ContextMenu({
   menu,
@@ -12,6 +18,8 @@ export function ContextMenu({
   onClose: () => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
+  const scrolling = useShell((state) => state.scrolling);
+  const scrolled = scrolls(menu.items);
   const [position, setPosition] = useState({ left: menu.x, top: menu.y });
 
   useLayoutEffect(() => {
@@ -33,17 +41,18 @@ export function ContextMenu({
 
   useDismiss(element, onClose, { onScroll: true, ignore: menu.trigger });
   useMenuFocus(element);
+  useWholeRows(element, scrolled ? menuRows : undefined, scrolling);
 
   return (
     <div
       ref={element}
-      className={`menu context-menu${scrolls(menu.items) ? ' scrolls' : ''}`}
+      className={`menu context-menu${scrolled ? ' scrolls' : ''}`}
       role="menu"
       style={position}
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={(event) => onMenuKeyDown(event)}
     >
-      <MenuItems items={menu.items} onClose={onClose} />
+      <MenuItems items={menu.items} scrolling={scrolling} onClose={onClose} />
     </div>
   );
 }

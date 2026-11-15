@@ -60,6 +60,7 @@ export function EditorFindBar({
           }}
         >
           <SearchBar
+            font="monospace"
             query={query.text}
             options={query.options}
             found={{

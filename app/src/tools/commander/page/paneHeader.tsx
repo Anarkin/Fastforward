@@ -1,6 +1,7 @@
 import { type Side } from '../shared/sides';
 import { type Layout } from './layouts';
 import { useCommander, useCommanderActions } from './store';
+import { useShell } from '../../../shell/page/store';
 import {
   BackIcon,
   BookmarkIcon,
@@ -32,8 +33,10 @@ function BookmarkButton({
     ),
   );
   const { addBookmark, removeBookmark, goToBookmark } = useCommanderActions();
+  const scrolling = useShell((state) => state.scrolling);
   return (
     <MenuButton
+      scrolling={scrolling}
       title={strings.commander.bookmarks}
       icon={<BookmarkIcon filled={bookmark !== undefined} />}
       arrow
@@ -86,6 +89,7 @@ export function PaneTitle({
   onFilter: () => void;
 }) {
   const back = useCommander((state) => state.view.panes[side]?.back);
+  const scrolling = useShell((state) => state.scrolling);
   const forward = useCommander((state) => state.view.panes[side]?.forward);
   const groupByColor = useCommander(
     (state) => state.view.panes[side]?.sort.groupByColor,
@@ -127,6 +131,7 @@ export function PaneTitle({
         {drives.length > 0 && (
           <div className="drive-menu" onClickCapture={onDrivesOpening}>
             <MenuButton
+              scrolling={scrolling}
               title={strings.commander.chooseDrive}
               label={(current ?? '').replace(/\\$/, '')}
               named
@@ -145,6 +150,7 @@ export function PaneTitle({
       <div className="column-actions">
         <div className="commander-layout">
           <MenuButton
+            scrolling={scrolling}
             title={strings.commander.layout}
             label={strings.commander.layouts[layout]}
             onChosen={onChosen}

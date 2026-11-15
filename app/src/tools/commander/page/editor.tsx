@@ -30,6 +30,7 @@ export function Editor() {
     colorOfFileNamed(nameOf(state.view.editing ?? ''), state.view.fileColors),
   );
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
+  const scrolling = useShell((state) => state.scrolling);
   const { changeTextView } = useShellActions();
   const choices = useCommander((state) => viewerChoices(state.view));
   const { choose: onChoose } = useCommanderActions();
@@ -81,6 +82,7 @@ export function Editor() {
               single
               choose={chooseLanguage}
               onChosen={() => view.current?.focus()}
+              scrolling={scrolling}
             />
           }
           onFind={() => setFindAsk(findAskOf(false, view.current?.state))}

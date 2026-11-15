@@ -12,6 +12,7 @@ import { keymap } from './keymap';
 import { strings } from '../shared/strings';
 import { keyPressed } from './shortcuts';
 import {
+  menuRows,
   onMenuKeyDown,
   openedSubmenu,
   shownKey,
@@ -20,6 +21,8 @@ import {
 } from './menuControls';
 import type { ContextMenuItem, MenuIcon } from './contextMenuItem';
 import { noFilter, type Filter } from '../shared/filter';
+import type { ScrollSettings } from './scrollSettings';
+import { useWholeRows } from './wholeRows';
 
 function MenuIconOf({ icon }: { icon: MenuIcon }) {
   switch (icon) {
@@ -39,10 +42,12 @@ function MenuIconOf({ icon }: { icon: MenuIcon }) {
 export function MenuItems({
   items,
   filter = noFilter,
+  scrolling,
   onClose,
 }: {
   items: readonly ContextMenuItem[];
   filter?: Filter;
+  scrolling: ScrollSettings;
   onClose: () => void;
 }) {
   const [openSubmenu, setOpenSubmenu] = useState<number>();
@@ -160,6 +165,7 @@ export function MenuItems({
             {item.submenu && openSubmenu === index && (
               <Submenu
                 items={item.submenu}
+                scrolling={scrolling}
                 onClose={onClose}
                 focusFirst={submenuByKey}
                 onBack={() => {
@@ -177,17 +183,20 @@ export function MenuItems({
 
 function Submenu({
   items,
+  scrolling,
   onClose,
   focusFirst,
   onBack,
 }: {
   items: readonly ContextMenuItem[];
+  scrolling: ScrollSettings;
   onClose: () => void;
   focusFirst: boolean;
   onBack: () => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
   useMenuFocus(element, focusFirst);
+  useWholeRows(element, menuRows, scrolling);
   const [placement, setPlacement] = useState({ flipped: false, up: 0 });
   useLayoutEffect(() => {
     const box = element.current?.getBoundingClientRect();
@@ -208,7 +217,7 @@ function Submenu({
       role="menu"
       onKeyDown={(event) => onMenuKeyDown(event, onBack)}
     >
-      <MenuItems items={items} onClose={onClose} />
+      <MenuItems items={items} scrolling={scrolling} onClose={onClose} />
     </div>
   );
 }

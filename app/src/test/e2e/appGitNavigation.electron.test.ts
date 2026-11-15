@@ -10,6 +10,8 @@ import {
   sharedApp,
 } from './appFixtures';
 import { waitForCount, waitForFocus } from './waits';
+import { wheelsByWholeRows } from './scrollProbes';
+import { locationRows } from '../../tools/git/page/locationKeys';
 import { waitFor } from '../helpers/fixtures';
 
 async function removeWorktree(worktree: string, branch: string): Promise<void> {
@@ -123,6 +125,32 @@ suite('App', () => {
     assert.ok(
       Math.abs(shown.y + shown.height - (column.y + column.height)) < 1,
       `the popup ends at ${shown.y + shown.height}, the column at ${column.y + column.height}`,
+    );
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+  });
+
+  test('scrolls the search popup on the wheel by whole rows, each notch coming to rest with a row starting at its top, below the folders stuck there too, down and up alike, and at its end too', async () => {
+    const branches = Array.from(
+      { length: 60 },
+      (_, index) => `wheel/${String(index).padStart(2, '0')}`,
+    );
+    await Promise.all(
+      branches.map((branch) => repository.git('branch', branch)),
+    );
+    onTestFinished(async () => {
+      await repository.git('branch', '-q', '-D', ...branches);
+    });
+    const popup = page.locator('.locations-popup');
+    await page.keyboard.press('ControlOrMeta+F');
+    await waitForFocus(popup.locator('.search-box-input'), 'the search field');
+    await page.keyboard.press('Backspace');
+    await popup.locator('.tree-row.folder', { hasText: 'wheel' }).click();
+    await popup.locator('.row', { hasText: '59' }).waitFor();
+    await wheelsByWholeRows(
+      page,
+      popup.locator('.locations-groups'),
+      locationRows,
     );
     await page.keyboard.press('Escape');
     await popup.waitFor({ state: 'detached' });

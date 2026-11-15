@@ -128,6 +128,11 @@ suite('Shortcuts popup', () => {
     const html = shortcutsMarkup(<ShortcutsPopup />, 'git');
     const [field] = tagsWith(html, 'search-box-input');
     assert.ok(field);
+    assert.deepStrictEqual(
+      tagsWith(html, 'search-bar').map((tag) => /monospace/.test(tag)),
+      [false],
+      'the font of the actions it filters',
+    );
     assert.match(field, /placeholder="Filter by words or keys"/);
     assert.match(field, /aria-label="Filter by words or keys"/);
     assert.ok(html.indexOf(field) < html.indexOf('shortcuts-tree'));

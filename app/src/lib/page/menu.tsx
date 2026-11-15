@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { keymap } from './keymap';
 import { letterTyped, pressedAlone } from '../shared/keymap';
-import { onMenuKeyDown, useMenuFocus } from './menuControls';
+import { menuRows, onMenuKeyDown, useMenuFocus } from './menuControls';
 import type { ContextMenuItem } from './contextMenuItem';
 import { useDismiss } from './dismiss';
 import { MenuItems } from './menuItems';
@@ -12,6 +12,8 @@ import { filteredItems } from './menuFilter';
 import { searchFilter } from '../shared/filter';
 import { noSearch } from '../shared/searchOptions';
 import { SearchBar } from './searchBar';
+import type { ScrollSettings } from './scrollSettings';
+import { useWholeRows } from './wholeRows';
 
 function thenChosen(
   items: readonly ContextMenuItem[],
@@ -46,6 +48,7 @@ export function MenuButton({
   trigger,
   filter,
   onChosen,
+  scrolling,
 }: {
   title: string;
   items: readonly ContextMenuItem[];
@@ -57,6 +60,7 @@ export function MenuButton({
   trigger?: React.Ref<HTMLButtonElement>;
   filter?: string;
   onChosen?: () => void;
+  scrolling: ScrollSettings;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -96,12 +100,18 @@ export function MenuButton({
       </button>
       {open &&
         (filter === undefined ? (
-          <Dropdown container={container} items={shown} onClose={close} />
+          <Dropdown
+            container={container}
+            items={shown}
+            scrolling={scrolling}
+            onClose={close}
+          />
         ) : (
           <FilteredDropdown
             container={container}
             items={shown}
             placeholder={filter}
+            scrolling={scrolling}
             onClose={close}
           />
         ))}
@@ -112,10 +122,12 @@ export function MenuButton({
 function Dropdown({
   container,
   items,
+  scrolling,
   onClose,
 }: {
   container: React.RefObject<HTMLElement | null>;
   items: readonly ContextMenuItem[];
+  scrolling: ScrollSettings;
   onClose: () => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
@@ -128,7 +140,7 @@ function Dropdown({
       ref={menu}
       onKeyDown={(event) => onMenuKeyDown(event)}
     >
-      <MenuItems items={items} onClose={onClose} />
+      <MenuItems items={items} scrolling={scrolling} onClose={onClose} />
     </div>
   );
 }
@@ -137,11 +149,13 @@ function FilteredDropdown({
   container,
   items,
   placeholder,
+  scrolling,
   onClose,
 }: {
   container: React.RefObject<HTMLElement | null>;
   items: readonly ContextMenuItem[];
   placeholder: string;
+  scrolling: ScrollSettings;
   onClose: () => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
@@ -152,6 +166,13 @@ function FilteredDropdown({
   const shown = filteredItems(items, filter);
   useDismiss(container, onClose);
   useMenuFocus(menu, false, input);
+  useWholeRows(menu, menuRows, scrolling);
+  useLayoutEffect(() => {
+    const element = menu.current;
+    if (element) {
+      element.style.minWidth = `${element.getBoundingClientRect().width}px`;
+    }
+  }, []);
   const firstItem = () =>
     menu.current?.querySelector<HTMLButtonElement>(
       ':scope > .menu-entry > .menu-item:not(:disabled)',
@@ -188,6 +209,7 @@ function FilteredDropdown({
       }}
     >
       <SearchBar
+        font="proportional"
         compact
         query={query}
         options={options}
@@ -211,7 +233,12 @@ function FilteredDropdown({
           event.stopPropagation();
         }}
       />
-      <MenuItems items={shown} filter={filter} onClose={onClose} />
+      <MenuItems
+        items={shown}
+        filter={filter}
+        scrolling={scrolling}
+        onClose={onClose}
+      />
     </div>
   );
 }

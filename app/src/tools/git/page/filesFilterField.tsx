@@ -29,6 +29,7 @@ export function FileFilterField({
 }) {
   return (
     <SearchBar
+      font="proportional"
       query={query}
       options={options}
       found={found}

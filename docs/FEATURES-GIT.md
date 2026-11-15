@@ -157,7 +157,7 @@
 | Upstream | Set or unset the branch a branch tracks | `git branch --set-upstream-to`, `--unset-upstream` | Common | 🟡 Partial | Set when checking out a remote branch or publishing; never changed or unset |
 | Ahead and behind | Count the commits to pull and to push | `git rev-list --left-right --count` | Core | ✅ Yes | On the Pull and Push buttons of every local branch with an upstream, since the last fetch, from `git for-each-ref`; Pull and Push say when the upstream is gone |
 | Fast-forward another branch | Move a branch that isn't checked out to its upstream | `git fetch . <upstream>:<branch>` | Advanced | ✅ Yes | Pull on any branch's bubble; knows branches checked out in other worktrees |
-| Find a branch | Search the branches | — | Common | ✅ Yes | Every word must be in its name, as every filter of the app, with the toggles of case, whole words and regular expressions; tags, stashes and bookmarks alike |
+| Find a branch | Search the branches | — | Common | ✅ Yes | Every word must be in its name, as every filter of the app, with the toggles of case, whole words and regular expressions; tags, stashes and bookmarks alike; the search scrolled by whole rows, as the commits are, below the folders stuck at its top |
 | Branching models | Start and finish features and releases | `git flow` | Advanced | ❌ No |  |
 
 ## Tags
@@ -288,7 +288,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Keyboard | Work every list, column and popup by keyboard | — | Common | ✅ Yes | F1 lists the shortcuts of every tool, opening on the one in use, the diff's in an entry of their own it opens on in a comparison or the diff column, grouped by what they are for and narrowed to the words or keys typed |
+| Keyboard | Work every list, column and popup by keyboard | — | Common | ✅ Yes | F1 lists the shortcuts of every tool, opening on the one in use, the diff's in an entry of their own it opens on in a comparison or the diff column, grouped by what they are for and narrowed to the words or keys typed, scrolled by whole rows below the heading stuck at the top |
 | Command palette | Find any command by typing | — | Common | ❌ No |  |
 | Themes | Light and dark, colors and fonts | — | Common | ✅ Yes | Following the system by default, or light or dark by the theme setting; every color and font in the settings |
 | Settings | Change the settings | — | Common | 🟡 Partial | JSON files, applied as saved and checked, no settings page |

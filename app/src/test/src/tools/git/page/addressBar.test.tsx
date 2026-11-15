@@ -26,6 +26,10 @@ suite('Navigation bar', () => {
       document: dom.window.document,
       HTMLElement: dom.window.HTMLElement,
       getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+      ResizeObserver: class {
+        observe() {}
+        disconnect() {}
+      },
       IS_REACT_ACT_ENVIRONMENT: true,
     };
     const saved = Object.fromEntries(
@@ -53,6 +57,10 @@ suite('Navigation bar', () => {
       });
       const typed = field();
       assert.ok(typed);
+      assert.ok(
+        !typed.closest('.search-bar')?.classList.contains('monospace'),
+        'the font of the names and messages it searches',
+      );
       await act(async () => {
         Object.getOwnPropertyDescriptor(
           dom.window.HTMLInputElement.prototype,

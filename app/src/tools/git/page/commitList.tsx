@@ -32,7 +32,7 @@ import { fullyVisible } from '../../../lib/page/listMoves';
 import { useCappedScroll } from './cappedVirtualizer';
 import { SearchButton } from '../../../lib/page/search';
 import { realHeight, scrollCap } from './cappedScroll';
-import { commitEndPadding, snappedToCommit } from './commitSnap';
+import { endPaddingToStart, snappedToStart } from '../../../lib/page/rowStarts';
 import { followRows } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
 import { rowPlace } from '../../../lib/page/rowPlace';
@@ -169,9 +169,11 @@ export function Commits({
   const capped = totalSize > scrollCap;
   const startOf = (index: number) =>
     virtualizer.measurementsCache[index]?.start ?? 0;
-  const endPad = capped ? 0 : commitEndPadding(startOf, count, totalSize, room);
+  const endPad = capped
+    ? 0
+    : endPaddingToStart(startOf, count, totalSize, room);
   const snapTo = useEffectEvent((top: number, toward: number, max: number) =>
-    capped ? top : snappedToCommit(startOf, count, top, toward, max),
+    capped ? top : snappedToStart(startOf, count, top, toward, max),
   );
   const lineStep = useEffectEvent(() => (capped ? 0 : line));
   const perNotch = useEffectEvent(() => scrollSettings.wheelRows);
@@ -391,6 +393,7 @@ export function Commits({
         <>
           <SoloButton />
           <MenuButton
+            scrolling={scrollSettings}
             title={strings.commits.settings}
             items={[
               {

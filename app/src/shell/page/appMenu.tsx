@@ -10,6 +10,7 @@ import { updateLabel } from './updateLabel';
 export function AppMenu() {
   const update = useShell((state) => state.update);
   const installsCommand = useShell((state) => state.installsCommand);
+  const scrolling = useShell((state) => state.scrolling);
   const {
     openSettings: onOpenSettings,
     openDefaultSettings: onOpenDefaultSettings,
@@ -27,6 +28,7 @@ export function AppMenu() {
   useBinding(shellKeymap.mainMenu, () => trigger.current?.click());
   return (
     <MenuButton
+      scrolling={scrolling}
       trigger={trigger}
       title={strings.tabs.settings}
       icon={<AppIcon />}

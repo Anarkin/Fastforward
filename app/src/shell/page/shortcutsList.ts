@@ -53,6 +53,10 @@ export interface PaneView {
   readonly atEnd: boolean;
 }
 
+export const paneRows = '.shortcuts-group, .shortcut-row';
+
+export const treeRows = '.shortcuts-tool, .shortcuts-group-link';
+
 const unmatched: ShortcutMatch = { filter: noFilter, keys: new Set() };
 
 function keysFound(labels: readonly string[], word: string): readonly string[] {

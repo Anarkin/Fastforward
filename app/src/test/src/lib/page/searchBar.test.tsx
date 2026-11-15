@@ -16,6 +16,7 @@ type Props = Parameters<typeof SearchBar>[0];
 
 const bar = (props: Partial<Props> = {}): Props => ({
   query: 'deal',
+  font: 'proportional',
   options: plainSearch,
   found: { current: 1, matches: 12 },
   onQuery: noop,
@@ -29,6 +30,9 @@ const page = (props: Partial<Props> = {}) =>
   new JSDOM(renderToStaticMarkup(<SearchBar {...bar(props)} />)).window
     .document;
 
+const barClassOf = (font: Props['font']) =>
+  page({ font }).querySelector('.search-bar')?.className;
+
 const classesOf = (element: Element | null | undefined) =>
   Array.from(element?.children ?? [], (child) => child.className);
 
@@ -41,13 +45,12 @@ const disabled = (matches: number) =>
   );
 
 suite('Search bar', () => {
-  test('draws, from the left, the back button, the box with its input and the counter at its right end, the three toggles and the previous and next buttons', () => {
+  test('draws, from the left, the back button, the box with its input, the counter and the three toggles at its right end, and the previous and next buttons', () => {
     const document = page();
     const shown = document.querySelector('.search-bar');
     assert.deepStrictEqual(classesOf(shown), [
       'nav-button',
       'search-box active',
-      'search-toggles',
       'search-steps',
     ]);
     const back = shown?.firstElementChild;
@@ -56,6 +59,7 @@ suite('Search bar', () => {
     assert.deepStrictEqual(classesOf(document.querySelector('.search-box')), [
       'search-box-input',
       'search-count',
+      'search-toggles',
     ]);
     const input = document.querySelector('input');
     assert.strictEqual(input?.value, 'deal');
@@ -68,9 +72,9 @@ suite('Search bar', () => {
         toggle.className,
       ]),
       [
-        ['Aa', 'Match Case', 'nav-button toggle search-toggle'],
-        ['W', 'Whole Word', 'nav-button toggle search-toggle'],
-        ['.*', 'Use Regular Expression', 'nav-button toggle search-toggle'],
+        ['Aa', 'Match Case', 'search-toggle'],
+        ['W', 'Whole Word', 'search-toggle'],
+        ['.*', 'Use Regular Expression', 'search-toggle'],
       ],
     );
     assert.deepStrictEqual(
@@ -207,6 +211,11 @@ suite('Search bar', () => {
     assert.deepStrictEqual(keys, ['Enter']);
   });
 
+  test('types in the font of what it searches, monospace where it searches code and file names, and the font of the app elsewhere', () => {
+    assert.strictEqual(barClassOf('monospace'), 'search-bar monospace');
+    assert.strictEqual(barClassOf('proportional'), 'search-bar');
+  });
+
   test('turns the previous and next buttons off while nothing matches', () => {
     assert.deepStrictEqual(disabled(0), [true, true]);
     assert.deepStrictEqual(disabled(3), [false, false]);
@@ -219,7 +228,7 @@ suite('Search bar', () => {
           '.search-bar',
         ),
       ),
-      ['search-box active', 'search-toggles'],
+      ['search-box active'],
     );
   });
 

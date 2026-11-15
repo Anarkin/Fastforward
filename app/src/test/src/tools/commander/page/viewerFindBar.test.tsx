@@ -36,6 +36,7 @@ suite('The find of the viewer', () => {
       (main) => {
         const bar = main.querySelector('.column-title.searching > .search-bar');
         assert.ok(bar);
+        assert.ok(bar.classList.contains('monospace'), 'the font of the text');
         assert.strictEqual(bar.querySelector('input')?.value, 'needle');
         assert.strictEqual(
           bar.querySelector('.search-count')?.textContent,
@@ -72,6 +73,10 @@ suite('The find of the viewer', () => {
         onClose={noop}
       />,
       (main) => {
+        assert.ok(
+          !main.querySelector('.search-bar')?.classList.contains('monospace'),
+          'the font of the app, as a PDF has fonts of its own',
+        );
         assert.deepStrictEqual(toggles(main)[2], [
           'false',
           true,

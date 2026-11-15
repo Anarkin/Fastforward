@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { noop } from '../../../helpers/fixtures';
 import { MenuButton } from '../../../../lib/page/menu';
+import { defaultScrolling } from '../../../../lib/page/scrollSettings';
 
 const triggerOf = (button: React.ReactElement) =>
   new JSDOM(renderToStaticMarkup(button)).window.document.querySelector(
@@ -23,6 +24,12 @@ async function rendered(
     HTMLInputElement: dom.window.HTMLInputElement,
     Element: dom.window.Element,
     Node: dom.window.Node,
+    getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+    MutationObserver: dom.window.MutationObserver,
+    ResizeObserver: class {
+      observe() {}
+      disconnect() {}
+    },
     IS_REACT_ACT_ENVIRONMENT: true,
   };
   const saved = Object.fromEntries(
@@ -49,10 +56,21 @@ async function rendered(
 suite('Menu button', () => {
   test('sets the label of its button apart as a name when the label is one, as a drive', () => {
     const named = triggerOf(
-      <MenuButton title="Drive" label="C:" named items={[]} />,
+      <MenuButton
+        scrolling={defaultScrolling}
+        title="Drive"
+        label="C:"
+        named
+        items={[]}
+      />,
     );
     const plain = triggerOf(
-      <MenuButton title="Layout" label="Details" items={[]} />,
+      <MenuButton
+        scrolling={defaultScrolling}
+        title="Layout"
+        label="Details"
+        items={[]}
+      />,
     );
     assert.strictEqual(
       named?.querySelector('.menu-button-label code.name')?.textContent,
@@ -63,7 +81,9 @@ suite('Menu button', () => {
 
   test('tells assistive technology it opens a menu, and that the menu is closed', () => {
     const trigger = new JSDOM(
-      renderToStaticMarkup(<MenuButton title="Settings" items={[]} />),
+      renderToStaticMarkup(
+        <MenuButton scrolling={defaultScrolling} title="Settings" items={[]} />,
+      ),
     ).window.document.querySelector('button');
     assert.strictEqual(trigger?.getAttribute('aria-haspopup'), 'menu');
     assert.strictEqual(trigger.getAttribute('aria-expanded'), 'false');
@@ -71,7 +91,12 @@ suite('Menu button', () => {
 
   test('marks a button showing the choice made with an arrow, as it opens a list of the others, but not a button showing an icon', () => {
     const labelled = triggerOf(
-      <MenuButton title="Encoding" label="UTF-8" items={[]} />,
+      <MenuButton
+        scrolling={defaultScrolling}
+        title="Encoding"
+        label="UTF-8"
+        items={[]}
+      />,
     );
     assert.strictEqual(
       labelled?.querySelector('.menu-button-label')?.textContent,
@@ -79,7 +104,9 @@ suite('Menu button', () => {
     );
     assert.ok(labelled.querySelector('.dropdown-icon'));
     assert.ok(labelled.classList.contains('labelled'));
-    const iconOnly = triggerOf(<MenuButton title="Settings" items={[]} />);
+    const iconOnly = triggerOf(
+      <MenuButton scrolling={defaultScrolling} title="Settings" items={[]} />,
+    );
     assert.strictEqual(iconOnly?.querySelector('.dropdown-icon'), null);
     assert.ok(!iconOnly.classList.contains('labelled'));
   });
@@ -87,6 +114,7 @@ suite('Menu button', () => {
   test('marks a button showing an icon with an arrow when asked, as one whose click opens a list rather than turning the icon on', () => {
     const arrowed = triggerOf(
       <MenuButton
+        scrolling={defaultScrolling}
         title="Bookmarks"
         icon={<svg className="icon star" />}
         arrow
@@ -126,8 +154,16 @@ suite('Menu button', () => {
       await act(async () => {
         root.render(
           <>
-            <MenuButton title="Left" items={items} />
-            <MenuButton title="Right" items={items} />
+            <MenuButton
+              scrolling={defaultScrolling}
+              title="Left"
+              items={items}
+            />
+            <MenuButton
+              scrolling={defaultScrolling}
+              title="Right"
+              items={items}
+            />
           </>,
         );
       });
@@ -168,7 +204,13 @@ suite('Menu button', () => {
       onClick: () => chosen.push(label),
     }));
     await rendered(
-      <MenuButton title="Language" label="Auto" filter="Find" items={items} />,
+      <MenuButton
+        scrolling={defaultScrolling}
+        title="Language"
+        label="Auto"
+        filter="Find"
+        items={items}
+      />,
       async (main, window) => {
         const trigger = main.querySelector<HTMLButtonElement>(
           '.menu-button-trigger',
@@ -236,13 +278,57 @@ suite('Menu button', () => {
       },
     );
   });
+  test('keeps a menu with a filter as wide as it opened while it is typed in, so what is typed stays readable when nothing is left to list', async () => {
+    const items = ['Windows-1250 Central European', 'UTF-8'].map((label) => ({
+      label,
+      onClick: noop,
+    }));
+    await rendered(
+      <MenuButton
+        scrolling={defaultScrolling}
+        title="Encoding"
+        label="UTF-8"
+        filter="Find"
+        items={items}
+      />,
+      async (main, window) => {
+        Object.defineProperty(
+          window.HTMLElement.prototype,
+          'getBoundingClientRect',
+          {
+            configurable: true,
+            value(this: HTMLElement) {
+              return window.DOMRect.fromRect({
+                width: this.classList.contains('menu') ? 312.5 : 0,
+                height: 20,
+              });
+            },
+          },
+        );
+        await act(async () =>
+          main
+            .querySelector<HTMLButtonElement>('.menu-button-trigger')
+            ?.click(),
+        );
+        const menu = main.querySelector<HTMLElement>('.filtered-menu');
+        assert.strictEqual(menu?.style.minWidth, '312.5px');
+      },
+    );
+  });
+
   test('filters in the compact search bar, the counter and the toggles inside its box and no back or step buttons, counting the item with the focus of those kept and matching with its toggles', async () => {
     const items = ['Plain Text', 'JavaScript', 'TypeScript'].map((label) => ({
       label,
       onClick: noop,
     }));
     await rendered(
-      <MenuButton title="Language" label="Auto" filter="Find" items={items} />,
+      <MenuButton
+        scrolling={defaultScrolling}
+        title="Language"
+        label="Auto"
+        filter="Find"
+        items={items}
+      />,
       async (main, window) => {
         await act(async () =>
           main
@@ -307,6 +393,7 @@ suite('Menu button', () => {
     await rendered(
       <>
         <MenuButton
+          scrolling={defaultScrolling}
           title="Drive"
           label="C:"
           items={[
@@ -372,6 +459,7 @@ suite('Menu button', () => {
   test('gives the focus back to its button once a menu with a filter closes, as it held it before the filter took it', async () => {
     await rendered(
       <MenuButton
+        scrolling={defaultScrolling}
         title="Language"
         label="Auto"
         filter="Find"

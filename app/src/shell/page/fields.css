@@ -59,11 +59,11 @@ input[type='checkbox']:focus-visible {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   box-sizing: border-box;
   min-width: 100px;
   height: var(--search-height);
-  padding: 0 12px;
+  padding: 0 3px 0 12px;
   background: var(--color-border);
   border: 1px solid var(--color-border);
   border-radius: calc(var(--search-height) / 2);
@@ -88,6 +88,7 @@ input[type='checkbox']:focus-visible {
 
 .search-box-input {
   flex: 1;
+  width: 0;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -95,6 +96,11 @@ input[type='checkbox']:focus-visible {
   background: none;
   border: none;
   outline: none;
+}
+
+.search-bar.monospace .search-box-input {
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
 }
 
 .search-box-input::placeholder {
@@ -118,20 +124,13 @@ input[type='checkbox']:focus-visible {
 
 .search-bar.compact .search-box {
   --search-height: 26px;
-  min-width: 0;
-  gap: 4px;
-  padding: 0 3px 0 10px;
 }
 
-.search-bar.compact .search-box-input {
-  width: 0;
-}
-
-.search-bar.compact .search-toggles {
+.search-box > .search-toggles {
   gap: 0;
 }
 
-.search-bar.compact .search-toggle {
+.search-box .search-toggle {
   flex: none;
   width: 20px;
   height: 20px;
@@ -144,12 +143,12 @@ input[type='checkbox']:focus-visible {
   border-radius: 10px;
 }
 
-.search-bar.compact .search-toggle:hover:not(:disabled) {
+.search-box .search-toggle:hover:not(:disabled) {
   color: var(--color-foreground);
   background: var(--hover-background);
 }
 
-.search-bar.compact .search-toggle.active {
+.search-box .search-toggle.active {
   color: var(--color-foreground);
   background: var(--toggle-on-background);
 }

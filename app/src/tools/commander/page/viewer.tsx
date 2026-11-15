@@ -69,6 +69,7 @@ export function Viewer() {
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const realSize = useShell((state) => state.imageView.realSize);
+  const scrolling = useShell((state) => state.scrolling);
   const { changeTextView, changeImageView } = useShellActions();
   const { choice: languageChoice, choose: chooseLanguage } = languageChoiceOf(
     file,
@@ -219,6 +220,7 @@ export function Viewer() {
             {mode === 'text' && (
               <div className="viewer-encoding">
                 <MenuButton
+                  scrolling={scrolling}
                   title={strings.commander.encoding}
                   trigger={encodingTrigger}
                   onChosen={focusBody}
@@ -236,6 +238,7 @@ export function Viewer() {
                 choose={chooseLanguage}
                 trigger={languageTrigger}
                 onChosen={focusBody}
+                scrolling={scrolling}
               />
             )}
             {showsImage && <span className="nav-button-space" />}

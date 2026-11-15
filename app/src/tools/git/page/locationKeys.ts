@@ -3,6 +3,9 @@ import { keyPressed } from '../../../lib/page/shortcuts';
 
 export const contextMenus = '.context-menu';
 
+export const locationRows =
+  '.locations-heading, .locations-empty, .tree-group, .row:not(.sticky), .commit';
+
 export function focusLeaves<
   Focused extends { closest(selector: string): unknown },
 >(

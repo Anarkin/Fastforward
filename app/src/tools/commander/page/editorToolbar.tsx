@@ -40,6 +40,7 @@ export function EditorToolbar({
   const edited = useCommander(editedShown);
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
+  const scrolling = useShell((state) => state.scrolling);
   const { changeTextView, openSettings } = useShellActions();
   const { saveIn, reopenIn, editSource } = useCommanderActions();
   const [reopening, setReopening] = useState<TextEncoding | 'auto'>();
@@ -86,6 +87,7 @@ export function EditorToolbar({
               {!made && (
                 <div className="viewer-encoding editor-encoding">
                   <MenuButton
+                    scrolling={scrolling}
                     title={strings.editor.readEncodingTitle}
                     label={strings.editor.readLabel(
                       strings.commander.encodingShort[
@@ -107,6 +109,7 @@ export function EditorToolbar({
               )}
               <div className="viewer-encoding editor-encoding">
                 <MenuButton
+                  scrolling={scrolling}
                   title={strings.editor.writeEncodingTitle}
                   label={strings.editor.writeLabel(savedName(encoding, bom))}
                   filter={strings.common.findEncoding}
@@ -123,6 +126,7 @@ export function EditorToolbar({
           {endingsShown !== undefined && !readOnly && (
             <div className="viewer-encoding">
               <MenuButton
+                scrolling={scrolling}
                 title={endingsTitle(endingsShown)}
                 label={endingsLabel(endingsShown)}
                 items={[

@@ -19,6 +19,7 @@ export function ViewerFindBar({
   return (
     <header className="column-title searching">
       <SearchBar
+        font={inPdf ? 'proportional' : 'monospace'}
         query={searched.query}
         options={searched.options}
         found={searched.found}

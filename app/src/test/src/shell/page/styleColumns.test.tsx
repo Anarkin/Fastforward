@@ -284,6 +284,17 @@ suite('Style', () => {
     looks(focusable[0], { outline: 'none' }, focused);
   });
 
+  test('types in a search box in the monospace font of the code it searches, and in the font of the app where it searches what is written in it', () => {
+    looks(withClass(rendered(<DiffFindShown />), 'search-box-input'), {
+      'font-family': 'var(--monospace-font-family)',
+      'font-size': 'var(--monospace-font-size)',
+    });
+    looks(
+      withClass(rendered(<LocationsPopupShown query="" />), 'search-box-input'),
+      { 'font-family': undefined, 'font-size': undefined },
+    );
+  });
+
   test('mutes the search placeholders and the magnifier of the search button like other muted text', () => {
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       color: 'var(--muted-foreground)',
