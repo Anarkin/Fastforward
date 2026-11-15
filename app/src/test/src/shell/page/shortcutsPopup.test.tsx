@@ -13,17 +13,17 @@ import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { entry, contents } from './shortcutsFixtures';
 
 suite('Shortcuts popup', () => {
-  test('lists the tools, the viewer, the diff and the editor apart from the commander and git they open in, then the shortcuts of every tab, last', () => {
+  test('lists the shortcuts of every tab first, as General, then the tools, the viewer, the diff and the editor apart from the commander and git they open in', () => {
     assert.deepStrictEqual(
       shortcutEntries.map((each) => [each.id, each.title]),
       [
+        ['everywhere', 'General'],
         ['commander', 'Commander'],
         ['viewer', 'Viewer'],
         ['diff', 'Diff'],
         ['editor', 'Editor'],
         ['git', 'Git'],
         ['terminal', 'Terminal'],
-        ['everywhere', 'Every tab'],
       ],
     );
   });
@@ -35,6 +35,7 @@ suite('Shortcuts popup', () => {
         each.groups.map((group) => group.title),
       ]),
       [
+        ['General', ['Tabs', 'App', 'Lists and popups']],
         [
           'Commander',
           [
@@ -58,7 +59,6 @@ suite('Shortcuts popup', () => {
           ['Moving around', 'Commits', 'Commit messages', 'Files', 'Searching'],
         ],
         ['Terminal', ['Clipboard', 'Kept from the shell']],
-        ['Every tab', ['Tabs', 'App', 'Lists and popups']],
       ],
     );
   });

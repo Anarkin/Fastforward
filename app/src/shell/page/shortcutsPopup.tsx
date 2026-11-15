@@ -10,7 +10,8 @@ import { narrows, searchFilter } from '../../lib/shared/filter';
 import { noSearch, type Search } from '../../lib/shared/searchOptions';
 import { SearchBar } from '../../lib/page/searchBar';
 import { useDismiss } from '../../lib/page/dismiss';
-import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
+import { CloseIcon, FileIcon, ToolIcon } from '../../lib/page/icons';
+import { AppIcon } from './appIcon';
 import { useModalDialog } from '../../lib/page/modalDialog';
 import { useDialogDrag } from '../../lib/page/dialogDrag';
 import { keyPressed } from '../../lib/page/shortcuts';
@@ -63,7 +64,11 @@ function EntryIcon({ id }: { id: ShortcutEntryId }) {
   if (id === 'viewer' || id === 'diff' || id === 'editor') {
     return <FileIcon />;
   }
-  return id === 'everywhere' ? <TabsIcon /> : <ToolIcon tool={id} />;
+  return id === 'everywhere' ? (
+    <AppIcon className="icon" />
+  ) : (
+    <ToolIcon tool={id} />
+  );
 }
 
 function ShortcutsTree({

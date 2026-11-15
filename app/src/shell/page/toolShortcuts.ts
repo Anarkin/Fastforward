@@ -52,6 +52,14 @@ const titles = strings.shortcuts.groups;
 
 export const shortcutEntries: readonly ShortcutEntry[] = [
   {
+    id: 'everywhere',
+    title: strings.shortcuts.everywhere,
+    groups: shortcutGroupsOf(everywhereGroups, titles, {
+      ...shellKeymap,
+      ...keymap,
+    }),
+  },
+  {
     id: 'commander',
     title: strings.tools.commander,
     groups: shortcutGroupsOf(commanderGroups, titles, commanderKeymap),
@@ -80,13 +88,5 @@ export const shortcutEntries: readonly ShortcutEntry[] = [
     id: 'terminal',
     title: strings.tools.terminal,
     groups: shortcutGroupsOf(terminalGroups, titles, terminalKeymap),
-  },
-  {
-    id: 'everywhere',
-    title: strings.shortcuts.everywhere,
-    groups: shortcutGroupsOf(everywhereGroups, titles, {
-      ...shellKeymap,
-      ...keymap,
-    }),
   },
 ];

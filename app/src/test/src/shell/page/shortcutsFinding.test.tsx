@@ -1,3 +1,4 @@
+import { AppIcon } from '../../../../shell/page/appIcon';
 import * as assert from 'node:assert';
 import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -55,14 +56,18 @@ suite('Shortcuts popup', () => {
   test('lists every tool beside the shortcuts, the one of the tab open with its groups under it, the first marked as in view, and only its shortcuts in the pane', () => {
     const html = shortcutsMarkup(<ShortcutsPopup />, 'commander');
     assert.deepStrictEqual(textsOf(html, 'shortcuts-tool-name'), [
+      'General',
       'Commander',
       'Viewer',
       'Diff',
       'Editor',
       'Git',
       'Terminal',
-      'Every tab',
     ]);
+    assert.ok(
+      html.includes(renderToStaticMarkup(<AppIcon className="icon" />)),
+      'the shortcuts of every tab under the icon of the app',
+    );
     const open = tagsWith(html, 'shortcuts-tool', 'open');
     assert.strictEqual(open.length, 1);
     assert.match(open[0] ?? '', /aria-expanded="true"/);
@@ -140,15 +145,15 @@ suite('Shortcuts popup', () => {
 
   test("narrows the shortcuts to those with every word typed in what they do or among their keys, whatever their case, counting each tool's matches", () => {
     assert.deepStrictEqual(counts('f3'), [
+      ['everywhere', 0],
       ['commander', 2],
       ['viewer', 0],
       ['diff', 0],
       ['editor', 0],
       ['git', 1],
       ['terminal', 0],
-      ['everywhere', 0],
     ]);
-    assert.deepStrictEqual(counts('ARCHIVE')[0], ['commander', 2]);
+    assert.deepStrictEqual(counts('ARCHIVE')[1], ['commander', 2]);
     const shiftF6 = shown('shift f6')
       .flatMap((each) => each.groups.flatMap((group) => group.rows))
       .map((row) => row.binding.action);
@@ -267,7 +272,7 @@ suite('Shortcuts popup', () => {
         view('terminal/Clipboard', { atStart: true, atEnd: true }),
         1,
       ),
-      'everywhere/Tabs',
+      undefined,
     );
     assert.strictEqual(
       steppedGroup(
@@ -276,13 +281,22 @@ suite('Shortcuts popup', () => {
         view('everywhere/Tabs', { atEnd: true }),
         1,
       ),
-      undefined,
+      'commander/Moving around',
     );
     assert.strictEqual(
       steppedGroup(
         all,
         'commander',
         view('commander/Moving around', { atStart: true }),
+        -1,
+      ),
+      'everywhere/Lists and popups',
+    );
+    assert.strictEqual(
+      steppedGroup(
+        all,
+        'everywhere',
+        view('everywhere/Tabs', { atStart: true }),
         -1,
       ),
       undefined,
@@ -340,7 +354,7 @@ suite('Shortcuts popup', () => {
           [
             ...document.querySelectorAll('.shortcuts-tool .shortcuts-count'),
           ].map((count) => count.textContent),
-          ['2', '0', '0', '0', '1', '0', '0'],
+          ['0', '2', '0', '0', '0', '1', '0'],
         );
         assert.strictEqual(
           document.querySelectorAll('.shortcuts-tool.empty').length,

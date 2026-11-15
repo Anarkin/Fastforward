@@ -393,7 +393,7 @@ export const strings = {
     viewer: 'Viewer',
     diff: 'Diff',
     editor: 'Editor',
-    everywhere: 'Every tab',
+    everywhere: 'General',
     groups: {
       Tabs: 'Tabs',
       App: 'App',

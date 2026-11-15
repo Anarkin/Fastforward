@@ -160,15 +160,6 @@ export function ToolIcon({ tool }: { tool: keyof typeof toolSigns }) {
   return <Icon className={`tool-icon tool-${tool}`}>{toolSigns[tool]}</Icon>;
 }
 
-export function TabsIcon() {
-  return (
-    <Icon>
-      <rect x="1.5" y="3.5" width="13" height="10" rx="1.5" />
-      <path d="M1.5 6.5h13M6.5 3.5v3" />
-    </Icon>
-  );
-}
-
 export function MouseIcon() {
   return (
     <Icon className="mouse-icon">
