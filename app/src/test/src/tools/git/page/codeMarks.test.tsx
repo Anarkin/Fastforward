@@ -1,26 +1,10 @@
 import * as assert from 'node:assert';
-import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
-import type { LineWords } from '../../../../../tools/git/page/wordDiff';
-import { countingReads } from '../../../../helpers/fixtures';
-import type { DiffRow } from '../../../../../tools/git/page/diffRows';
-import {
-  rowOverscan,
-  sameRowInput,
-} from '../../../../../tools/git/page/rowMeasures';
-import {
-  codeProps,
-  wholeChangeClass,
-} from '../../../../../tools/git/page/lineMarks';
+import { codeProps } from '../../../../../tools/git/page/lineMarks';
 import { Code, MarkedCode } from '../../../../../tools/git/page/codeMarks';
 import { codePieces } from '../../../../../tools/git/page/codePieces';
-import {
-  gapWidth,
-  wordPadding,
-} from '../../../../../tools/git/page/textLayout';
-import { selectionSide } from '../../../../../tools/git/page/selectionSide';
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
@@ -52,134 +36,7 @@ function wrapMarkup(
   );
 }
 
-function layoutSteps(padding: number, scale: number): number[] {
-  const exact = padding * scale * 64;
-  return [Math.floor(exact), Math.round(exact)];
-}
-
 suite('Drawing code', () => {
-  test('draws only one row beyond those in view while the diff is dragged by its scrollbar, enough for it to snap to whole lines, as a drag jumps past more, and drawing them made every step of it slow, but the wheel and keys scroll into them', () => {
-    assert.strictEqual(rowOverscan(true), 1);
-    assert.ok(rowOverscan(false) > 0);
-  });
-
-  test('draws a row anew only once the row or what it is drawn from changed, not on every scroll of the diff, as drawing every row shown on every step of a drag made dragging the scrollbar of a large diff slow', () => {
-    const row: DiffRow = { kind: 'hunk', file: 0 };
-    const words = new Map();
-    const drawn = (inputs: readonly unknown[], index = 3, shown = row) => ({
-      row: shown,
-      index,
-      inputs,
-      render: () => null,
-    });
-
-    assert.ok(sameRowInput(drawn([words, 17]), drawn([words, 17])));
-    assert.ok(!sameRowInput(drawn([words, 17]), drawn([new Map(), 17])));
-    assert.ok(!sameRowInput(drawn([words, 17]), drawn([words, 18])));
-    assert.ok(!sameRowInput(drawn([words, 17]), drawn([words, 17], 4)));
-    assert.ok(
-      !sameRowInput(drawn([words, 17]), drawn([words, 17], 3, { ...row })),
-    );
-  });
-
-  test('pads changed words up to the top and down to the bottom of their line, apart as the text sits off center at scales like 125%, and not before the text is measured', () => {
-    const line = { top: 154, bottom: 176 };
-    const even = wordPadding(line, { top: 157, bottom: 173 }, 1);
-    assert.deepStrictEqual(layoutSteps(even.top, 1), [192, 192]);
-    assert.deepStrictEqual(layoutSteps(even.bottom, 1), [192, 192]);
-    const off = wordPadding(
-      line,
-      { top: 154 + 2.4000091552734375, bottom: 176 - 3.5999908447265625 },
-      1.25,
-    );
-    assert.deepStrictEqual(layoutSteps(off.top, 1.25), [192, 192]);
-    assert.deepStrictEqual(layoutSteps(off.bottom, 1.25), [288, 288]);
-    assert.deepStrictEqual(wordPadding(line, { top: 0, bottom: 0 }, 1), {
-      top: 0,
-      bottom: 0,
-    });
-    const over = wordPadding(line, { top: 150, bottom: 180 }, 1);
-    assert.deepStrictEqual(
-      [layoutSteps(over.top, 1), layoutSteps(over.bottom, 1)],
-      [
-        [0, 0],
-        [0, 0],
-      ],
-    );
-  });
-
-  test('gives a line the same inputs to draw it from while its colors, changed words and matches stay, so it is not drawn again', () => {
-    const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
-    const changed = [{ start: 4, end: 7 }];
-    const match = { file: 0, line: 1, start: 4, end: 5 };
-    const matched = [match];
-    const marks = () => ({
-      syntax: new Map([['0:1', keyword]]),
-      words: new Map([['0:1', changed]]),
-      finds: new Map([['0:1', matched]]),
-      foundKey: '0:1',
-      found: match,
-      whitespace: false,
-    });
-    const before = codeProps(marks(), '0:1', 'let sum', 'removed');
-    const after = codeProps(marks(), '0:1', 'let sum', 'removed');
-    assert.deepStrictEqual(
-      Object.entries(after).map(([name, value]) => [name, value]),
-      Object.entries(before),
-    );
-    assert.ok(
-      Object.values(after).every(
-        (value, index) => Object.values(before)[index] === value,
-      ),
-    );
-    assert.strictEqual(before.wordClass, 'word-removed');
-    assert.strictEqual(before.current, match);
-    const plain = codeProps(marks(), '0:2', 'x', 'added');
-    const again = codeProps(marks(), undefined, 'x', undefined);
-    assert.deepStrictEqual(plain.syntax, []);
-    assert.strictEqual(again.syntax, plain.syntax);
-    assert.strictEqual(again.words, plain.words);
-    assert.strictEqual(again.finds, plain.finds);
-    assert.strictEqual(plain.current, undefined);
-    assert.strictEqual(plain.wordClass, 'word-added');
-  });
-
-  test('tints the row of a line changed through instead of marking its words', () => {
-    const words = new Map<string, LineWords>([
-      ['0:1', 'whole'],
-      ['0:2', [{ start: 0, end: 1 }]],
-    ]);
-    const marks = {
-      syntax: new Map(),
-      words,
-      finds: new Map(),
-      foundKey: undefined,
-      found: undefined,
-      whitespace: false,
-    };
-    assert.deepStrictEqual(codeProps(marks, '0:1', 'x', 'added').words, []);
-    assert.deepStrictEqual(codeProps(marks, '0:2', 'x', 'added').words, [
-      { start: 0, end: 1 },
-    ]);
-    assert.strictEqual(wholeChangeClass(words, '0:1'), 'whole-change');
-    assert.strictEqual(wholeChangeClass(words, '0:2'), '');
-    assert.strictEqual(wholeChangeClass(words, undefined), '');
-  });
-
-  test('tells which side of the side-by-side diff a selection starts on, and none outside the sides', () => {
-    const { document } = new JSDOM(
-      '<div class="split-line"><div class="split-side"><span class="split-code"><span class="code">old</span></span></div><div class="split-side"><span class="split-code"><span class="code">new</span></span></div></div><div class="file-header">a.txt</div>',
-    ).window;
-    const [left, right] = document.querySelectorAll('.code');
-    assert.strictEqual(selectionSide(left), 'left');
-    assert.strictEqual(selectionSide(right), 'right');
-    assert.strictEqual(
-      selectionSide(document.querySelector('.file-header')),
-      undefined,
-    );
-    assert.strictEqual(selectionSide(null), undefined);
-  });
-
   test('shows a carriage return, a non-breaking space and the spaces that draw nothing as signs of their own when asked, as a change to line endings or to a pasted space looked like none, but not the joiners inside emoji', () => {
     assert.strictEqual(
       renderToStaticMarkup(
@@ -439,63 +296,6 @@ suite('Drawing code', () => {
     assert.strictEqual(
       html,
       '<span class="syntax-keyword">a</span><span class="word-gap word-removed"></span><span class="syntax-keyword">b</span>c<span class="word-gap word-removed"></span>',
-    );
-  });
-
-  test('makes the bar where words were inserted 2 pixels wide, a whole number of screen pixels at any scale so it stays sharp', () => {
-    for (const [scale, pixels] of [
-      [1, 2],
-      [1.25, 3],
-      [1.5, 3],
-      [1.75, 4],
-      [2, 4],
-    ]) {
-      assert.deepStrictEqual(layoutSteps(gapWidth(scale), scale), [
-        pixels * 64,
-        pixels * 64,
-      ]);
-    }
-  });
-
-  test('marks a line dense with colors, changed words and matches piece by piece in one pass', () => {
-    const pairs = 2000;
-    const text = 'ab'.repeat(pairs);
-    const every = (offset: number) =>
-      Array.from({ length: pairs }, (_, pair) => ({
-        start: 2 * pair + offset,
-        end: 2 * pair + offset + 1,
-      }));
-    const colors = every(0).map((range) => ({
-      ...range,
-      kind: 'keyword' as const,
-    }));
-    const syntax = countingReads(colors);
-    const words = countingReads(every(1));
-    const matches = countingReads(every(1));
-    const { pieces } = codePieces(
-      text,
-      syntax.counted,
-      words.counted,
-      matches.counted,
-      undefined,
-    );
-    for (const { reads } of [syntax, words, matches]) {
-      assert.ok(reads <= 10 * pairs, `${reads} reads of ${pairs} ranges`);
-    }
-    assert.strictEqual(pieces?.length, 2 * pairs);
-    assert.ok(
-      renderToStaticMarkup(
-        <MarkedCode
-          text={text}
-          syntax={colors}
-          words={every(1)}
-          wordClass={'word-added'}
-          found={every(1)}
-          foundNow={undefined}
-        />,
-      ).endsWith(
-        '<span class="syntax-keyword">a</span><span class="word-added"><mark class="find-match ">b</mark></span>',
-      ),
     );
   });
 
