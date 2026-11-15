@@ -92,6 +92,11 @@ export interface EditorKeyActions {
   readonly find: () => void;
   readonly replace: () => void;
   readonly goToLine: () => void;
+  readonly close: () => void;
+}
+
+export function escapeCloses(selection: EditorSelection): boolean {
+  return selection.ranges.length === 1 && selection.main.empty;
 }
 
 const tabLeavesFor = 2000;
@@ -130,13 +135,23 @@ export function editorKeys(actions: EditorKeyActions): Extension {
     if (keyPressed(editorKeymap.nextOccurrence, event) !== undefined) {
       return selectNextOccurrence;
     }
-    if (keyPressed(editorKeymap.singleCursor, event) !== undefined) {
-      return (view) => {
-        if (simplifySelection(view)) {
-          return true;
-        }
+    if (keyPressed(editorKeymap.tabLeaves, event) !== undefined) {
+      return () => {
         tabLeavesUntil = Date.now() + tabLeavesFor;
-        return false;
+        return true;
+      };
+    }
+    const dropping = keyPressed(editorKeymap.singleCursor, event) !== undefined;
+    const closing = keyPressed(editorKeymap.closeEditor, event) !== undefined;
+    if (dropping || closing) {
+      return (view) => {
+        if (!escapeCloses(view.state.selection)) {
+          return dropping && simplifySelection(view);
+        }
+        if (closing) {
+          actions.close();
+        }
+        return closing;
       };
     }
     const action =

@@ -22,6 +22,7 @@ import {
 } from './editorPlace';
 import type { CommanderSource } from './commanderState';
 import { useCommander, useCommanderActions } from './store';
+import { useShellActions } from '../../../shell/page/store';
 import { pageCursorLook } from '../../../lib/page/cursor';
 import {
   stateKeepDelay,
@@ -56,6 +57,7 @@ export function useEditorView(language: string | undefined) {
     keptEditor,
     keepEditor,
   } = useCommanderActions();
+  const { closeTab } = useShellActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
   const [status, setStatus] = useState<string>();
   const [findCount, setFindCount] = useState<ReturnType<typeof countOf>>();
@@ -122,6 +124,7 @@ export function useEditorView(language: string | undefined) {
           setLineCount(shown.state.doc.lines);
           setGoingToLine(true);
         },
+        close: () => closeTab(tab),
       },
       scrolling: scrollingNow,
       onUpdate: (update) => {
@@ -250,6 +253,7 @@ export function useEditorView(language: string | undefined) {
     listenEditor,
     readEdited,
     saveText,
+    closeTab,
   ]);
 
   useEffect(() => {

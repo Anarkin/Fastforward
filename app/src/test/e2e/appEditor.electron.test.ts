@@ -152,6 +152,38 @@ suite('App editor', () => {
     assert.strictEqual(fs.readFileSync(file, 'latin1'), `x${before}`);
   });
 
+  test('closes the tab of a file on Escape, as the viewer does, once Escape has no selection left to drop, and asks first when the file has changes', async () => {
+    const file = path.join(opened, 'notes.txt');
+    const before = fs.readFileSync(file, 'latin1');
+    await backToCommander();
+    await edit('notes.txt');
+    const count = await tabCount();
+    await content().click();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.press('Escape');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.strictEqual(await tabCount(), count);
+    await page.keyboard.press('Escape');
+    await waitFor(
+      async () => (await tabCount()) === count - 1,
+      'the tab closed',
+    );
+
+    await backToCommander();
+    await edit('notes.txt');
+    await toStart();
+    await page.keyboard.type('z');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('.confirm-popup').waitFor();
+    await page.locator('.confirm-button', { hasText: "Don't Save" }).click();
+    await waitFor(
+      async () => (await tabCount()) === count - 1,
+      'the tab closed',
+    );
+    assert.strictEqual(fs.readFileSync(file, 'latin1'), before);
+  });
+
   test('edits a new file named on Shift+F4 as empty text, making the file only once it is saved', async () => {
     await backToCommander();
     const file = path.join(opened, 'fresh.txt');

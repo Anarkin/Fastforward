@@ -31,6 +31,18 @@ export const editorKeymap = {
     { Tab: 1, 'Shift+Tab': -1 } as const,
     typing,
   ),
+  tabLeaves: bind(
+    'Editing',
+    strings.actions.tabLeaves,
+    { 'Ctrl+M': true },
+    { fields: true },
+  ),
+  closeEditor: bind(
+    'Editing',
+    strings.actions.closeEditor,
+    { Escape: true },
+    { fields: true },
+  ),
   comment: bind(
     'Editing',
     strings.actions.toggleComment,

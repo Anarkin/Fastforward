@@ -14,7 +14,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Edit a file | Open a file to edit it | — | Core | ✅ Yes | F4 in the commander, in an editor tab of its own named and iconed after the file; F4 on a file open in one goes to that tab, in whichever window it is |
+| Edit a file | Open a file to edit it | — | Core | ✅ Yes | F4 in the commander, in an editor tab of its own named and iconed after the file; F4 on a file open in one goes to that tab, in whichever window it is; Escape closes it, as it closes the viewer, once Escape has no extra cursor or selection left to drop, asking first about unsaved changes |
 | New file | Edit a file not there yet | Ctrl+N | Core | ✅ Yes | Shift+F4 in the commander names it in a dialog that says what is wrong with a name as it is typed; made only once saved, a file of that name opened as it is |
 | Save | Write the file | Ctrl+S | Core | ✅ Yes | Through a file of its own beside it that replaces it once whole, through ReplaceFile on Windows so its attributes, streams and Mark of the Web stay, keeping its mode elsewhere; in place for a file of several names, one of another user or in a folder that lets no file be made, refused where its drive has no room for the whole of it, leaving it as it was; a link written through to its target |
 | Unsaved changes | Mark a file changed and ask before dropping its changes | — | Core | ✅ Yes | A star right after its name, on its tab and in its path; closing the tab asks Save, Don't Save or Cancel, and closing its window or quitting asks the same for every file changed, naming each, saving them in the main process |
@@ -54,7 +54,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Undo and redo | Take back and redo changes | Ctrl+Z, Ctrl+Y | Core | ✅ Yes | Ctrl+Shift+Z redoes too |
-| Indent | Indent and outdent lines | Tab, Shift+Tab | Core | ✅ Yes | By the indentation the file uses, its .editorconfig over what it shows, the editor settings where neither says; Escape then Tab moves the focus on |
+| Indent | Indent and outdent lines | Tab, Shift+Tab | Core | ✅ Yes | By the indentation the file uses, its .editorconfig over what it shows, the editor settings where neither says; Ctrl+M then Tab moves the focus on |
 | Keep the indentation | Start a new line as indented as the one before | Enter | Core | ✅ Yes |  |
 | Comment lines | Comment lines out and back in | Ctrl+/ | Common | ✅ Yes | Ctrl+K, by the markers of the language of the file, a block comment where a language has no line comments |
 | Move lines | Move the lines selected up or down | Alt+Up, Alt+Down | Common | ✅ Yes |  |
