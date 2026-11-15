@@ -30,6 +30,7 @@ import {
   hovered,
   after,
 } from './stylesheetFixtures';
+import { stylesheet } from '../../../helpers/fixtures';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { tabsStore } from '../../../helpers/componentFixtures';
 import { createElement } from 'react';
@@ -276,6 +277,23 @@ suite('Style', () => {
     const list = withClass(rendered(<TabBarShown />), 'tab-list');
     looks(list, { '-webkit-app-region': undefined });
     assert.ok(parseFloat(cascaded(list, 'padding-right') ?? '0') >= 32);
+  });
+
+  test('drags the window by the tab row, clear of the window buttons, but not by its tabs and buttons', () => {
+    const css = stylesheet();
+    assert.match(css, /\n\.tabs \{[^}]*-webkit-app-region: drag;/);
+    assert.match(
+      css,
+      /\n\.tabs \{[^}]*100vw - env\(titlebar-area-x, 0px\) - env\(titlebar-area-width, 100vw\)[^}]*calc\(\s*env\(titlebar-area-x, 0px\) \+ var\(--app-icon-margin\) -\s*var\(--app-icon-padding\)\s*\);/,
+    );
+    assert.match(
+      css,
+      /:root\[data-platform='darwin'\] \.tabs \{[^}]*padding-left: 78px;/,
+    );
+    assert.match(
+      css,
+      /\.tabs \.tab,\n\.tabs \.tab-add,\n\.tabs \.menu-button \{[^}]*-webkit-app-region: no-drag;/,
+    );
   });
 
   test('wraps the worktrees onto more rows rather than scrolling them sideways', () => {

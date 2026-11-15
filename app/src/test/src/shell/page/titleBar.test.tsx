@@ -48,21 +48,4 @@ suite('Title bar', () => {
       /:root\[data-platform='darwin'\] \.title-bar-content \{[^}]*padding-left: 78px;/,
     );
   });
-
-  test('drags the window by the tab row, clear of the window buttons, but not by its tabs and buttons', () => {
-    const css = stylesheet();
-    assert.match(css, /\n\.tabs \{[^}]*-webkit-app-region: drag;/);
-    assert.match(
-      css,
-      /\n\.tabs \{[^}]*100vw - env\(titlebar-area-x, 0px\) - env\(titlebar-area-width, 100vw\)[^}]*calc\(\s*env\(titlebar-area-x, 0px\) \+ var\(--app-icon-margin\) -\s*var\(--app-icon-padding\)\s*\);/,
-    );
-    assert.match(
-      css,
-      /:root\[data-platform='darwin'\] \.tabs \{[^}]*padding-left: 78px;/,
-    );
-    assert.match(
-      css,
-      /\.tabs \.tab,\n\.tabs \.tab-add,\n\.tabs \.menu-button \{[^}]*-webkit-app-region: no-drag;/,
-    );
-  });
 });
