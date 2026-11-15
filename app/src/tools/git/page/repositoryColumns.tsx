@@ -1,22 +1,42 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShell } from '../../../shell/page/store';
 import { useBinding } from '../../../lib/page/shortcuts';
+import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { gitKeymap } from './keymap';
 import { diffSelection } from './diffFiles';
 import { Diff } from './diffColumn';
 import { DiffLanguage, DiffOptions } from './diffOptions';
 import { Commits } from './commitList';
 import { Files } from './filesColumn';
-import { fileFilterOf, languageKeyOf, openingOf } from './gitSelectors';
+import {
+  diffShownOf,
+  fileFilterOf,
+  languageKeyOf,
+  layoutSelectionOf,
+  openingOf,
+} from './gitSelectors';
 import { useGit, useGitActions } from './store';
 import { usePrefetchedColors } from './syntax';
 import { changesShown } from './tabView';
+import { templateOf } from './columns';
+import { columnsClass } from './columnsShown';
+import {
+  columnOf,
+  columnOrder,
+  columnStep,
+  forwardedColumn,
+  keyboardAmongColumns,
+  keyboardDropped,
+  shownColumns,
+  type ColumnName,
+} from './activeColumn';
+import { AddressBar, NavButtons } from './navBar';
 
-export const CommitColumn = memo(Commits);
+const CommitColumn = memo(Commits);
 
-export const FileColumn = memo(Files);
+const FileColumn = memo(Files);
 
-export const RepositoryDiff = memo(function RepositoryDiff() {
+const RepositoryDiff = memo(function RepositoryDiff() {
   const root = useGit((state) => state.tab.root);
   const hash = useGit((state) => state.tab.hash);
   const path = useGit((state) => state.tab.path);
@@ -91,3 +111,113 @@ export const RepositoryDiff = memo(function RepositoryDiff() {
     />
   );
 });
+
+const commitNavigation = <NavButtons />;
+const commitSearch = <AddressBar />;
+
+export function RepositoryColumns() {
+  const columnWidths = useGit((state) => state.columnWidths);
+  const commitsShown = useGit((state) => state.commitsShown);
+  const searching = useGit((state) => state.searching);
+  const activeColumn = useGit((state) => state.activeColumn);
+  const layoutSelection = useGit(layoutSelectionOf);
+  const diffShown = useGit(diffShownOf);
+  const { activateColumn } = useGitActions();
+  const commitColumnShown = commitsShown || searching;
+  const columnsContainer = useRef<HTMLDivElement>(null);
+  const columnsTemplate = templateOf(columnWidths, [!commitColumnShown, false]);
+  const focusColumn = useCallback(
+    (column: ColumnName) => {
+      const target = columnsContainer.current?.children[
+        columnOrder.indexOf(column)
+      ]?.querySelector<HTMLElement>(`[${columnFocusAttribute}]`);
+      target?.focus();
+      return target;
+    },
+    [columnsContainer],
+  );
+  useEffect(() => {
+    const onFocusOut = ({ target }: FocusEvent) => {
+      if (
+        target instanceof Element &&
+        columnsContainer.current?.contains(target)
+      ) {
+        queueMicrotask(() => {
+          if (keyboardDropped(target, document.activeElement, document.body)) {
+            focusColumn(activeColumn);
+          }
+        });
+      }
+    };
+    document.addEventListener('focusout', onFocusOut);
+    return () => document.removeEventListener('focusout', onFocusOut);
+  }, [columnsContainer, focusColumn, activeColumn]);
+  const activeShown = shownColumns(
+    commitColumnShown,
+    layoutSelection,
+    diffShown,
+  ).includes(activeColumn);
+  useEffect(() => {
+    if (!activeShown) {
+      const [first] = shownColumns(
+        commitColumnShown,
+        layoutSelection,
+        diffShown,
+      );
+      if (
+        first &&
+        keyboardAmongColumns(
+          document.activeElement,
+          columnsContainer.current,
+          document.body,
+        )
+      ) {
+        focusColumn(first);
+      }
+    }
+  }, [activeShown, commitColumnShown, layoutSelection, diffShown, focusColumn]);
+  return (
+    <div
+      className={columnsClass(commitColumnShown, layoutSelection, diffShown)}
+      ref={columnsContainer}
+      style={{ gridTemplateColumns: columnsTemplate }}
+      data-active-column={activeColumn}
+      onFocus={(event) => {
+        const column = columnOf(
+          event.target instanceof Element ? event.target : null,
+        );
+        if (column) {
+          activateColumn(column);
+        }
+      }}
+      onKeyDown={(event) => {
+        const target =
+          event.target instanceof HTMLElement ? event.target : null;
+        const forwarded = forwardedColumn(columnOf(target), event);
+        if (forwarded) {
+          event.preventDefault();
+          focusColumn(forwarded)?.dispatchEvent(
+            new KeyboardEvent('keydown', event.nativeEvent),
+          );
+          return;
+        }
+        const step = columnStep(
+          event,
+          shownColumns(commitColumnShown, layoutSelection, diffShown),
+          columnOf(target) ?? activeColumn,
+          target?.hasAttribute(columnFocusAttribute) ?? true,
+        );
+        if (step?.preventDefault) {
+          event.preventDefault();
+        }
+        if (step?.next) {
+          focusColumn(step.next);
+        }
+      }}
+    >
+      <CommitColumn navigation={commitNavigation} search={commitSearch} />
+      <FileColumn />
+      <RepositoryDiff />
+    </div>
+  );
+}

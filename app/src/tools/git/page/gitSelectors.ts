@@ -1,7 +1,8 @@
-import { shownSelection } from './columnsShown';
+import { shownSelection, showsDiff } from './columnsShown';
 import { shownFolders, type Folders } from './viewFolders';
-import type { TabView } from './tabView';
-import type { GitData, GitSource } from './gitState';
+import { treeOf, type TabView } from './tabView';
+import { listsNothing } from './filesColumnState';
+import type { GitData, GitSource, GitState } from './gitState';
 
 export function languageKeyOf(
   comparing: string | undefined,
@@ -20,6 +21,19 @@ export function openingOf({ tab }: GitSource): boolean {
 
 export function layoutSelectionOf({ tab }: GitSource): string | undefined {
   return shownSelection(tab.hash, tab.workingTree);
+}
+
+export function diffShownOf(state: GitState): boolean {
+  const { tab, showAllFiles } = state;
+  return showsDiff(
+    tab.error,
+    listsNothing({
+      files: tab.files,
+      staged: tab.staged,
+      allPaths: showAllFiles ? treeOf(tab) : undefined,
+      loading: tab.filesLoading || openingOf(state),
+    }),
+  );
 }
 
 export function folderViewOf({ root, hash }: TabView): string {
