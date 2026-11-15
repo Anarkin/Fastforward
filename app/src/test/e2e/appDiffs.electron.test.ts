@@ -305,7 +305,7 @@ suite('App', () => {
         .getByRole('button', { name: 'Show the Entire File', pressed: false })
         .waitFor();
       await waitFor(
-        () => savedSetting('showEntireFile') === false,
+        () => savedSetting('diff', 'showEntireFile') === false,
         'the entire file turned off to be saved',
       );
       await waitFor(
@@ -323,7 +323,7 @@ suite('App', () => {
         'the entire file to be shown at its change',
       );
       await waitFor(
-        () => savedSetting('showEntireFile') === undefined,
+        () => savedSetting('diff', 'showEntireFile') === undefined,
         'the entire file left to the default again',
       );
     } finally {

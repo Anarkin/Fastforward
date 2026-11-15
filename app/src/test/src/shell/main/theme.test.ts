@@ -144,6 +144,7 @@ suite('Theme', () => {
     const css = themeCss({
       ...defaults,
       tools: {
+        ...defaults.tools,
         git: {
           ...defaults.tools.git,
           colors: { light: { icon: '#c00' }, dark: { icon: '#f00' } },

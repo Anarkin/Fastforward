@@ -29,20 +29,19 @@ export const threeLines = (changed: string) =>
 
 export const savedSetting = (
   profileFolder: string,
-  group: string,
-  name: string,
+  ...keys: readonly string[]
 ): unknown => {
   const file = path.join(profileFolder, 'settings.user.json');
-  const settings: unknown = fs.existsSync(file)
+  let saved: unknown = fs.existsSync(file)
     ? JSON.parse(fs.readFileSync(file, 'utf8'))
     : {};
-  const saved: unknown =
-    typeof settings === 'object' && settings !== null
-      ? Reflect.get(settings, group)
-      : undefined;
-  return typeof saved === 'object' && saved !== null
-    ? Reflect.get(saved, name)
-    : undefined;
+  for (const key of keys) {
+    saved =
+      typeof saved === 'object' && saved !== null
+        ? Reflect.get(saved, key)
+        : undefined;
+  }
+  return saved;
 };
 
 export const hiding = (element: Locator) =>

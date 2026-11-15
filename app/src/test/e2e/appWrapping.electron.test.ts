@@ -75,7 +75,7 @@ suite('App', () => {
     assert.strictEqual(await page.locator('.split-side.removed').count(), 1);
     assert.strictEqual(await page.locator('.split-side.added').count(), 1);
     await waitFor(
-      () => savedSetting('diffLayout') === undefined,
+      () => savedSetting('diff', 'diffLayout') === undefined,
       'the layout to be saved',
     );
     await page.getByRole('button', { name: 'Inline' }).click();
@@ -86,7 +86,7 @@ suite('App', () => {
     );
     await page.locator('.diff-line.added').first().waitFor();
     await waitFor(
-      () => savedSetting('diffLayout') === 'inline',
+      () => savedSetting('diff', 'diffLayout') === 'inline',
       'the layout to be saved',
     );
 

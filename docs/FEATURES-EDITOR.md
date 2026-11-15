@@ -59,7 +59,7 @@
 | Comment lines | Comment lines out and back in | Ctrl+/ | Common | ✅ Yes | Ctrl+K, by the markers of the language of the file, a block comment where a language has no line comments |
 | Move lines | Move the lines selected up or down | Alt+Up, Alt+Down | Common | ✅ Yes |  |
 | Duplicate and delete lines | Copy or delete the lines selected | Shift+Alt+Down, Ctrl+Shift+K | Common | ❌ No |  |
-| Close brackets | Type the closing bracket or quote with the opening one | — | Common | ✅ Yes | Off by default, `editor.closeBrackets` in the settings, by CodeMirror: a closing bracket typed over, and Backspace between a pair deleting both |
+| Close brackets | Type the closing bracket or quote with the opening one | — | Common | ✅ Yes | Off by default, `tools.editor.closeBrackets` in the settings, by CodeMirror: a closing bracket typed over, and Backspace between a pair deleting both |
 | Trim trailing whitespace | Drop the spaces at the ends of lines as saved | — | Common | 🟡 Partial | Where `trim_trailing_whitespace` of the .editorconfig says so, on Ctrl+S, of the lines edited since saved alone, as an edit Ctrl+Z undoes; not as a tab is closed or the app quits with Save, nor by a setting of the app |
 | Final newline | End the file with a line break as saved | — | Common | 🟡 Partial | Where `insert_final_newline` of the .editorconfig says so, on Ctrl+S, once its last line was edited since saved, in the line ending of the file; not as a tab is closed or the app quits with Save, nor by a setting of the app |
 | Autocompletion | Suggest words and names as typed | Ctrl+Space | Common | ❌ No |  |
@@ -105,7 +105,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Keyboard | List every key of the editor | — | Common | ✅ Yes | In F1, under Editor; no key binds punctuation, so every key is the same on every layout |
-| Settings | Set how new files and indentation are | — | Common | ✅ Yes | The editor section of the settings: the line ending, charset and indentation of new files, by extension too, and whether brackets close as typed |
+| Settings | Set how new files and indentation are | — | Common | ✅ Yes | The editor section of the settings, `tools.editor`: the line ending, charset and indentation of new files, by extension too, and whether brackets close as typed |
 | EditorConfig | Follow the .editorconfig of a project | — | Common | ✅ Yes | `end_of_line` and `charset` for new files, `indent_style`, `indent_size` and `tab_width` for indenting, and `trim_trailing_whitespace` and `insert_final_newline` for the lines edited, never changing the lines not edited |
 | Command palette | Find any command by typing | Ctrl+Shift+P | Common | ❌ No |  |
 | Screen readers | Read the text to assistive technology | — | Common | ✅ Yes | By CodeMirror, which edits a text the browser reads |

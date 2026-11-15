@@ -326,7 +326,7 @@ suite('App', () => {
       .locator('.row.file .path.unchanged', { hasText: 'kept.txt' })
       .waitFor();
     await waitFor(
-      () => savedSetting('showAllFiles') === true,
+      () => savedSetting('git', 'showAllFiles') === true,
       'the setting to be saved',
     );
   });

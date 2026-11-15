@@ -150,7 +150,7 @@ suite('App editor', () => {
     );
     assert.ok(
       texts.some((text) =>
-        text.endsWith('LF, from editor.endOfLine in the settings'),
+        text.endsWith('LF, from tools.editor.endOfLine in the settings'),
       ),
       texts.join('\n'),
     );

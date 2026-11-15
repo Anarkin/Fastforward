@@ -108,11 +108,11 @@ suite('Replacing a file', () => {
     for (const code of ['EPERM', 'EACCES', 'EBUSY']) {
       const user = new UserSettings(defaults, file);
       const renames = await renameFailing(2, code, () =>
-        user.setImages('realSize', code === 'EBUSY'),
+        user.setIn('viewer', 'realSize', code === 'EBUSY'),
       );
       assert.strictEqual(renames, 3);
       assert.strictEqual(
-        new UserSettings(defaults, file).settings.images.realSize,
+        new UserSettings(defaults, file).settings.tools.viewer.realSize,
         code === 'EBUSY',
       );
     }

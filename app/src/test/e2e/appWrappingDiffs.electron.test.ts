@@ -318,7 +318,7 @@ suite('App', () => {
     assert.strictEqual(await bar.count(), 0);
     await page.getByRole('button', { name: 'Inline' }).click();
     await waitFor(
-      () => wrapsSaved() && savedSetting('diffLayout') === 'inline',
+      () => wrapsSaved() && savedSetting('diff', 'diffLayout') === 'inline',
       'the last choices to be saved',
     );
   });

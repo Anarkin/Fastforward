@@ -1,8 +1,7 @@
 import * as fs from 'node:fs';
 import type { ThemeColors, ToolSettings } from '../shared/tools';
 import { strings } from '../../lib/shared/strings';
-import type { EditorSettings } from './editorSettings';
-import { type ImageView, type TextView } from '../shared/views';
+import type { TextView } from '../shared/views';
 import type { CursorLook } from '../../lib/shared/cursorSettings';
 import { isObject } from '../../lib/main/json';
 
@@ -22,8 +21,6 @@ export interface Settings {
   };
   readonly cursor: CursorLook;
   readonly text: TextView;
-  readonly images: ImageView;
-  readonly editor: EditorSettings;
   readonly tools: ToolSettings;
   readonly fonts: {
     readonly family: string;

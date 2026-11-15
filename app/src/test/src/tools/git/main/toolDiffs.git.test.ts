@@ -132,7 +132,7 @@ suite('Git tool showing diffs', () => {
       await view.connection.receive({ type: 'setShowEntireFile', show: false });
       assert.strictEqual(entire(), false);
       assert.strictEqual(
-        view.settings.settings.tools.git.showEntireFile,
+        view.settings.settings.tools.diff.showEntireFile,
         false,
       );
       await select('a.txt');
@@ -151,11 +151,17 @@ suite('Git tool showing diffs', () => {
 
       await view.connection.receive({ type: 'setShowEntireFile', show: true });
       assert.strictEqual(entire(), true);
-      assert.strictEqual(view.settings.settings.tools.git.showEntireFile, true);
+      assert.strictEqual(
+        view.settings.settings.tools.diff.showEntireFile,
+        true,
+      );
       await view.connection.receive(
         forged('{ "type": "setShowEntireFile", "show": "yes" }'),
       );
-      assert.strictEqual(view.settings.settings.tools.git.showEntireFile, true);
+      assert.strictEqual(
+        view.settings.settings.tools.diff.showEntireFile,
+        true,
+      );
     });
   });
 
@@ -282,7 +288,7 @@ suite('Git tool showing diffs', () => {
       });
       assert.strictEqual(changed(), true);
       assert.strictEqual(
-        view.settings.settings.tools.git.ignoreWhitespace,
+        view.settings.settings.tools.diff.ignoreWhitespace,
         false,
       );
       await view.connection.receive({ type: 'ready' });

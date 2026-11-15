@@ -207,7 +207,7 @@ suite('App editor', () => {
       settings,
       JSON.stringify({
         scrolling: { smooth: true },
-        editor: { closeBrackets: true },
+        tools: { editor: { closeBrackets: true } },
       }),
     );
     try {

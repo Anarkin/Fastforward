@@ -79,7 +79,7 @@ export function commanderToolOf({
   viewedFiles,
 }: CommanderHostDeps): CommanderTool {
   const editorSourcesOf = (): TextDefaultSources => ({
-    settings: userSettings.settings.editor,
+    settings: userSettings.settings.tools.editor,
     editorConfig: (edited) =>
       editorConfigOf(edited, (config) =>
         fs.promises.readFile(config, 'utf8').catch(() => undefined),
@@ -107,7 +107,7 @@ export function commanderToolOf({
       textDefaultsOf(file, asksGit, editorSourcesOf()),
     editorSources: (file) => endingSourcesOf(file, editorSourcesOf()),
     settings: () => userSettings.settings.tools.commander,
-    closesBrackets: () => userSettings.settings.editor.closeBrackets,
+    closesBrackets: () => userSettings.settings.tools.editor.closeBrackets,
     defaultColumns: () => userSettings.defaults.tools.commander.columns,
     saveShowHidden: (shown) =>
       userSettings.setIn('commander', 'showHidden', shown),

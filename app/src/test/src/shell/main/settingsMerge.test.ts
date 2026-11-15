@@ -10,19 +10,19 @@ const defaults = defaultSettings();
 suite('Settings', () => {
   test('takes each setting the user changed over its default', () => {
     const { settings, problems } = mergeSettings(defaults, {
-      images: { realSize: true },
-      tools: { git: { ignoreWhitespace: false, columnWidths: [300, 200] } },
+      tools: {
+        viewer: { realSize: true },
+        diff: { ignoreWhitespace: false },
+        git: { columnWidths: [300, 200] },
+      },
     });
     assert.deepStrictEqual(settings, {
       ...defaults,
-      images: { ...defaults.images, realSize: true },
       tools: {
         ...defaults.tools,
-        git: {
-          ...defaults.tools.git,
-          ignoreWhitespace: false,
-          columnWidths: [300, 200],
-        },
+        viewer: { ...defaults.tools.viewer, realSize: true },
+        diff: { ...defaults.tools.diff, ignoreWhitespace: false },
+        git: { ...defaults.tools.git, columnWidths: [300, 200] },
       },
     });
     assert.deepStrictEqual(problems, []);
@@ -241,15 +241,15 @@ suite('Settings', () => {
 
   test('keeps the default of a setting set to none of its choices, and names them', () => {
     const { settings, problems } = mergeSettings(defaults, {
-      tools: { git: { diffLayout: 'sideways' } },
+      tools: { diff: { diffLayout: 'sideways' } },
     });
     assert.deepStrictEqual(settings, defaults);
     assert.deepStrictEqual(problems.map(plainOf), [
-      '"tools.git.diffLayout" should be "inline" or "sideBySide"',
+      '"tools.diff.diffLayout" should be "inline" or "sideBySide"',
     ]);
     assert.strictEqual(
-      mergeSettings(defaults, { tools: { git: { diffLayout: 'inline' } } })
-        .settings.tools.git.diffLayout,
+      mergeSettings(defaults, { tools: { diff: { diffLayout: 'inline' } } })
+        .settings.tools.diff.diffLayout,
       'inline',
     );
   });

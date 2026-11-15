@@ -4,7 +4,7 @@ import { everywhereGroups, shellKeymap } from '../shared/keymap';
 import type { Binding } from '../../lib/shared/keymap';
 import { keymap } from '../../lib/page/keymap';
 import { strings } from '../../lib/shared/strings';
-import type { ToolId } from '../shared/tools';
+import type { ToolSection } from '../shared/tools';
 import {
   commanderGroups,
   commanderKeymap,
@@ -40,8 +40,7 @@ function shortcutGroupsOf<const Group extends string>(
   }));
 }
 
-export type ShortcutEntryId =
-  ToolId | 'viewer' | 'diff' | 'editor' | 'everywhere';
+export type ShortcutEntryId = ToolSection | 'everywhere';
 
 export interface ShortcutEntry {
   readonly id: ShortcutEntryId;

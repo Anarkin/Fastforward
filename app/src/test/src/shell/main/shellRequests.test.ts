@@ -236,14 +236,14 @@ suite('Shell with no tab open', () => {
         });
         const chosen = { realSize: true };
         await view.connection.receive({ type: 'setImageView', view: chosen });
-        assert.deepStrictEqual(view.settings.settings.images, chosen);
+        assert.deepStrictEqual(view.settings.settings.tools.viewer, chosen);
         assert.deepStrictEqual(view.page.last('imageView')?.view, chosen);
         await view.connection.receive({ type: 'ready' });
         assert.deepStrictEqual(view.page.last('imageView')?.view, chosen);
         await view.connection.receive(
           forged('{ "type": "setImageView", "view": { "realSize": "yes" } }'),
         );
-        assert.deepStrictEqual(view.settings.settings.images, chosen);
+        assert.deepStrictEqual(view.settings.settings.tools.viewer, chosen);
       },
       true,
       undefined,

@@ -150,12 +150,12 @@ export class Storage {
   }
 
   get imageView(): ImageView {
-    return this.settings.images;
+    return this.settings.tools.viewer;
   }
 
   async setImageView(view: ImageView): Promise<void> {
     if (view.realSize !== this.imageView.realSize) {
-      await this.userSettings.setImages('realSize', view.realSize);
+      await this.userSettings.setIn('viewer', 'realSize', view.realSize);
     }
   }
 

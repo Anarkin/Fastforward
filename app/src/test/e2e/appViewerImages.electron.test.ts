@@ -218,7 +218,7 @@ suite('App commander', () => {
     assert.ok(Math.abs(real.top - real.tallest / 2) <= 1, JSON.stringify(real));
     assert.strictEqual(await realSize.getAttribute('aria-pressed'), 'true');
     await waitFor(
-      () => savedSetting(profile, 'images', 'realSize') === true,
+      () => savedSetting(profile, 'tools', 'viewer', 'realSize') === true,
       'real size to be saved',
     );
 
@@ -251,7 +251,7 @@ suite('App commander', () => {
     );
     assert.strictEqual((await previewSize()).widest, 0);
     await waitFor(
-      () => savedSetting(profile, 'images', 'realSize') === undefined,
+      () => savedSetting(profile, 'tools', 'viewer', 'realSize') === undefined,
       'the default to be saved',
     );
     await close();
@@ -295,7 +295,8 @@ suite('App commander', () => {
       );
       await page.keyboard.press('f');
       await waitFor(
-        () => savedSetting(profile, 'images', 'realSize') === undefined,
+        () =>
+          savedSetting(profile, 'tools', 'viewer', 'realSize') === undefined,
         'the default to be saved',
       );
       await close();

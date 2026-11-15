@@ -1,14 +1,13 @@
 import { toolSettingProblems } from '../shared/tools';
 import { strings } from '../../lib/shared/strings';
 import type { Sentence } from '../../lib/shared/sentences';
-import { type ImageView, type TextView } from '../shared/views';
+import type { TextView } from '../shared/views';
 import { isObject, type Json } from '../../lib/main/json';
 import { readText } from './readText';
 import { writeAtomically } from '../../lib/main/textFiles';
 import { merge, mergeSettings } from './settingsMerge';
 import { same, valueAt, withValue } from './settingsPaths';
 import type { Settings } from './settings';
-import { migratedSettings } from './settingsMigration';
 
 export class UserSettings {
   private current: Settings;
@@ -89,23 +88,10 @@ export class UserSettings {
       ];
       return;
     }
-    const migrated = isObject(parsed) ? migratedSettings(parsed) : undefined;
-    if (migrated !== undefined) {
-      parsed = migrated;
-      this.saveMigrated(this.file, migrated);
-    }
     const { settings, problems } = mergeSettings(this.base, parsed);
     this.current = this.withUnsaved(settings);
     this.broken = !isObject(parsed);
     this.issues = [...problems, ...toolSettingProblems(settings.tools)];
-  }
-
-  private saveMigrated(file: string, migrated: Json): void {
-    this.writing = this.writing
-      .catch(() => undefined)
-      .then(() =>
-        writeAtomically(file, `${JSON.stringify(migrated, undefined, 2)}\n`),
-      );
   }
 
   set<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
@@ -128,13 +114,6 @@ export class UserSettings {
 
   setText<K extends keyof TextView>(key: K, value: TextView[K]): Promise<void> {
     return this.update(['text', key], value);
-  }
-
-  setImages<K extends keyof ImageView>(
-    key: K,
-    value: ImageView[K],
-  ): Promise<void> {
-    return this.update(['images', key], value);
   }
 
   private update(keys: readonly string[], value: unknown): Promise<void> {

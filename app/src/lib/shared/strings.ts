@@ -1191,13 +1191,13 @@ export const strings = {
       sentence`${ending}, from ${named(key)} of git`,
     endingNotInGit: sentence`Git sets no ${named('eol')} attribute, ${named('core.autocrlf')} or ${named('core.eol')}`,
     endingFromExtension: (ending: string, extension: string) =>
-      sentence`${ending}, from ${named('editor.files')} for ${named(`.${extension}`)} in the settings`,
+      sentence`${ending}, from ${named('tools.editor.files')} for ${named(`.${extension}`)} in the settings`,
     endingNotForExtension: (extension: string) =>
       extension === ''
-        ? sentence`${named('editor.files')} in the settings sets nothing for files without an extension`
-        : sentence`${named('editor.files')} in the settings sets nothing for ${named(`.${extension}`)}`,
+        ? sentence`${named('tools.editor.files')} in the settings sets nothing for files without an extension`
+        : sentence`${named('tools.editor.files')} in the settings sets nothing for ${named(`.${extension}`)}`,
     endingFromSettings: (ending: string) =>
-      sentence`${ending}, from ${named('editor.endOfLine')} in the settings`,
+      sentence`${ending}, from ${named('tools.editor.endOfLine')} in the settings`,
     chosenEncoding: (encoding: string) => `${encoding}, chosen for this file`,
     notChosen: 'No encoding chosen for this file',
     fromByteOrderMark: (encoding: string) =>
@@ -1214,7 +1214,7 @@ export const strings = {
       sentence`${encoding}, from ${named('charset')} in ${named(file)}`,
     charsetNotInEditorConfig: sentence`No .editorconfig sets ${named('charset')}`,
     charsetFromSettings: (encoding: string) =>
-      sentence`${encoding}, from ${named('editor.charset')} in the settings`,
+      sentence`${encoding}, from ${named('tools.editor.charset')} in the settings`,
     reopenTitle: 'Reopen',
     reopenAsked:
       'Reopening the file in another encoding drops the changes made here. Reopen it?',

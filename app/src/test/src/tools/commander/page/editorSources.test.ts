@@ -58,8 +58,8 @@ suite('Where the editor says its text comes from', () => {
         '(off) With no line break yet, new lines end in the first of these that applies:',
         `✓ LF, from "end_of_line" in "${config}"`,
         'CRLF, from "core.autocrlf" of git',
-        '(off) "editor.files" in the settings sets nothing for ".txt"',
-        'LF, from "editor.endOfLine" in the settings',
+        '(off) "tools.editor.files" in the settings sets nothing for ".txt"',
+        'LF, from "tools.editor.endOfLine" in the settings',
       ],
     );
     assert.deepStrictEqual(
@@ -81,8 +81,8 @@ suite('Where the editor says its text comes from', () => {
         '(off) With no line break yet, new lines end in the first of these that applies:',
         '(off) No .editorconfig sets "end_of_line"',
         '✓ LF, from the "eol" attribute of git',
-        'CRLF, from "editor.files" for ".cmd" in the settings',
-        'LF, from "editor.endOfLine" in the settings',
+        'CRLF, from "tools.editor.files" for ".cmd" in the settings',
+        'LF, from "tools.editor.endOfLine" in the settings',
       ],
     );
     assert.deepStrictEqual(
@@ -99,7 +99,7 @@ suite('Where the editor says its text comes from', () => {
       ).slice(4, 6),
       [
         '(off) Git sets no "eol" attribute, "core.autocrlf" or "core.eol"',
-        '(off) "editor.files" in the settings sets nothing for files without an extension',
+        '(off) "tools.editor.files" in the settings sets nothing for files without an extension',
       ],
     );
   });
@@ -185,7 +185,7 @@ suite('Where the editor says its text comes from', () => {
     assert.deepStrictEqual(rowsOf(items), [
       '(off) Written in the first of these that applies:',
       `✓ UTF-8 with BOM, from "charset" in "${config}"`,
-      'UTF-8, from "editor.charset" in the settings',
+      'UTF-8, from "tools.editor.charset" in the settings',
     ]);
     click(items, 1);
     click(items, 2);
@@ -202,7 +202,7 @@ suite('Where the editor says its text comes from', () => {
       ).slice(1),
       [
         '(off) No .editorconfig sets "charset"',
-        '✓ UTF-16 LE, from "editor.charset" in the settings',
+        '✓ UTF-16 LE, from "tools.editor.charset" in the settings',
       ],
     );
   });

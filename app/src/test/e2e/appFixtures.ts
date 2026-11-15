@@ -97,19 +97,15 @@ function userSettings(): unknown {
   }
 }
 
-export function savedSetting(name: string): unknown {
-  const settings = userSettings();
-  const tools: unknown =
-    typeof settings === 'object' && settings !== null
-      ? Reflect.get(settings, 'tools')
-      : undefined;
-  const git: unknown =
-    typeof tools === 'object' && tools !== null
-      ? Reflect.get(tools, 'git')
-      : undefined;
-  return typeof git === 'object' && git !== null
-    ? Reflect.get(git, name)
-    : undefined;
+export function savedSetting(tool: string, name: string): unknown {
+  let saved: unknown = userSettings();
+  for (const key of ['tools', tool, name]) {
+    saved =
+      typeof saved === 'object' && saved !== null
+        ? Reflect.get(saved, key)
+        : undefined;
+  }
+  return saved;
 }
 
 function savedText(name: string): unknown {
@@ -140,7 +136,8 @@ export function viewSaved(wordWrap: boolean, diffLayout: string): boolean {
   const defaults = defaultSettings();
   return (
     (savedText('wordWrap') ?? defaults.text.wordWrap) === wordWrap &&
-    (savedSetting('diffLayout') ?? defaults.tools.git.diffLayout) === diffLayout
+    (savedSetting('diff', 'diffLayout') ?? defaults.tools.diff.diffLayout) ===
+      diffLayout
   );
 }
 

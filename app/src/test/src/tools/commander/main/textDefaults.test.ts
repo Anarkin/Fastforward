@@ -7,7 +7,7 @@ import {
   endingSourcesOf,
   textDefaultsOf,
 } from '../../../../../tools/commander/main/textDefaults';
-import type { EditorSettings } from '../../../../../shell/main/editorSettings';
+import type { EditorSettings } from '../../../../../tools/commander/shared/editorSettings';
 
 const settings: EditorSettings = {
   endOfLine: 'lf',

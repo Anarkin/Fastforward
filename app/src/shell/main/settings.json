@@ -18,17 +18,6 @@
     "showWhitespace": true,
     "highlightSyntax": true
   },
-  "images": {
-    "realSize": false
-  },
-  "editor": {
-    "endOfLine": "lf",
-    "charset": "utf-8",
-    "indentStyle": "space",
-    "indentSize": 4,
-    "files": [{ "extensions": ["bat", "cmd"], "endOfLine": "crlf" }],
-    "closeBrackets": false
-  },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
     "size": "12px",
@@ -42,61 +31,6 @@
     "minimap": "40px"
   },
   "tools": {
-    "terminal": {
-      "shell": "",
-      "shellArgs": [],
-      "renderer": "webgl",
-      "scrollback": 10000,
-      "minimumContrastRatio": 4.5,
-      "colors": {
-        "light": {
-          "icon": "#000",
-
-          "background": "#fff",
-          "foreground": "#000000",
-          "selection": "#0066cc2e",
-          "black": "#000000",
-          "red": "#a00000",
-          "green": "#00a000",
-          "yellow": "#a0a000",
-          "blue": "#0000a0",
-          "magenta": "#a000a0",
-          "cyan": "#00a0a0",
-          "white": "#a0a0a0",
-          "bright-black": "#a0a0a0",
-          "bright-red": "#c00000",
-          "bright-green": "#00c000",
-          "bright-yellow": "#c0c000",
-          "bright-blue": "#0000c0",
-          "bright-magenta": "#c000c0",
-          "bright-cyan": "#00c0c0",
-          "bright-white": "#a0a0a0"
-        },
-        "dark": {
-          "icon": "#ddd",
-
-          "background": "#111",
-          "foreground": "#c0c0c0",
-          "selection": "#0066cc59",
-          "black": "#000000",
-          "red": "#800000",
-          "green": "#008000",
-          "yellow": "#808000",
-          "blue": "#000080",
-          "magenta": "#800080",
-          "cyan": "#008080",
-          "white": "#c0c0c0",
-          "bright-black": "#808080",
-          "bright-red": "#ff0000",
-          "bright-green": "#00ff00",
-          "bright-yellow": "#ffff00",
-          "bright-blue": "#0000ff",
-          "bright-magenta": "#ff00ff",
-          "bright-cyan": "#00ffff",
-          "bright-white": "#ffffff"
-        }
-      }
-    },
     "commander": {
       "showHidden": true,
       "sort": {
@@ -440,12 +374,25 @@
         }
       }
     },
+    "viewer": {
+      "realSize": false
+    },
+    "diff": {
+      "diffLayout": "sideBySide",
+      "ignoreWhitespace": true,
+      "showEntireFile": true
+    },
+    "editor": {
+      "endOfLine": "lf",
+      "charset": "utf-8",
+      "indentStyle": "space",
+      "indentSize": 4,
+      "files": [{ "extensions": ["bat", "cmd"], "endOfLine": "crlf" }],
+      "closeBrackets": false
+    },
     "git": {
       "collapseMerges": true,
       "showAllFiles": false,
-      "showEntireFile": true,
-      "ignoreWhitespace": true,
-      "diffLayout": "sideBySide",
       "solo": false,
       "autoFetch": true,
       "autoFetchMinutes": 1,
@@ -490,6 +437,61 @@
           "graph-yellow": "#eb7",
           "graph-cyan": "#1ac",
           "graph-magenta": "#b4b"
+        }
+      }
+    },
+    "terminal": {
+      "shell": "",
+      "shellArgs": [],
+      "renderer": "webgl",
+      "scrollback": 10000,
+      "minimumContrastRatio": 4.5,
+      "colors": {
+        "light": {
+          "icon": "#000",
+
+          "background": "#fff",
+          "foreground": "#000000",
+          "selection": "#0066cc2e",
+          "black": "#000000",
+          "red": "#a00000",
+          "green": "#00a000",
+          "yellow": "#a0a000",
+          "blue": "#0000a0",
+          "magenta": "#a000a0",
+          "cyan": "#00a0a0",
+          "white": "#a0a0a0",
+          "bright-black": "#a0a0a0",
+          "bright-red": "#c00000",
+          "bright-green": "#00c000",
+          "bright-yellow": "#c0c000",
+          "bright-blue": "#0000c0",
+          "bright-magenta": "#c000c0",
+          "bright-cyan": "#00c0c0",
+          "bright-white": "#a0a0a0"
+        },
+        "dark": {
+          "icon": "#ddd",
+
+          "background": "#111",
+          "foreground": "#c0c0c0",
+          "selection": "#0066cc59",
+          "black": "#000000",
+          "red": "#800000",
+          "green": "#008000",
+          "yellow": "#808000",
+          "blue": "#000080",
+          "magenta": "#800080",
+          "cyan": "#008080",
+          "white": "#c0c0c0",
+          "bright-black": "#808080",
+          "bright-red": "#ff0000",
+          "bright-green": "#00ff00",
+          "bright-yellow": "#ffff00",
+          "bright-blue": "#0000ff",
+          "bright-magenta": "#ff00ff",
+          "bright-cyan": "#00ffff",
+          "bright-white": "#ffffff"
         }
       }
     }

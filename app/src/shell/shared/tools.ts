@@ -5,6 +5,14 @@ import {
   type GitToWebview,
 } from '../../tools/git/shared/protocol';
 import type { GitSettings } from '../../tools/git/shared/settings';
+import type { DiffSettings } from '../../tools/git/shared/diffSettings';
+import {
+  editorCharsets,
+  editorEndings,
+  indentStyles,
+  type EditorSettings,
+} from '../../tools/commander/shared/editorSettings';
+import type { ImageView } from './views';
 import type {
   CommanderToHost,
   CommanderToWebview,
@@ -27,6 +35,17 @@ import {
 export const tools = ['terminal', 'commander', 'git'] as const;
 
 export type ToolId = (typeof tools)[number];
+
+export const toolSections = [
+  'commander',
+  'viewer',
+  'diff',
+  'editor',
+  'git',
+  'terminal',
+] as const;
+
+export type ToolSection = (typeof toolSections)[number];
 
 export const confirmsClose: Readonly<Record<ToolId, boolean>> = {
   terminal: true,
@@ -83,14 +102,20 @@ interface Themed {
 }
 
 export interface ToolSettings {
-  readonly terminal: TerminalSettings & Themed;
   readonly commander: CommanderSettings & Themed;
+  readonly viewer: ImageView;
+  readonly diff: DiffSettings;
+  readonly editor: EditorSettings;
   readonly git: GitSettings & Themed;
+  readonly terminal: TerminalSettings & Themed;
 }
 
 export const toolSettingChoices: ReadonlyMap<string, readonly string[]> =
   new Map<string, readonly string[]>([
-    ['tools.git.diffLayout', diffLayouts],
+    ['tools.diff.diffLayout', diffLayouts],
+    ['tools.editor.endOfLine', editorEndings],
+    ['tools.editor.charset', editorCharsets],
+    ['tools.editor.indentStyle', indentStyles],
     ['tools.terminal.renderer', renderers],
     ['tools.commander.sort.left.column', sortColumns],
     ['tools.commander.sort.right.column', sortColumns],

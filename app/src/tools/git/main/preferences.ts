@@ -1,5 +1,6 @@
 import type { DiffLayout, GitToWebviewOf } from '../shared/protocol';
 import type { GitSettings } from '../shared/settings';
+import type { DiffSettings } from '../shared/diffSettings';
 import type { UserSettings } from '../../../shell/main/userSettings';
 
 const maxAutoFetchMinutes = Math.floor((2 ** 31 - 1) / 60_000);
@@ -11,16 +12,20 @@ export class GitPreferences {
     return this.userSettings.settings.tools.git;
   }
 
+  private get diff(): DiffSettings {
+    return this.userSettings.settings.tools.diff;
+  }
+
   get layout(): GitToWebviewOf<'layout'> {
-    const { settings } = this;
+    const { settings, diff } = this;
     return {
       type: 'layout',
       columnWidths: settings.columnWidths,
       defaultColumnWidths: this.userSettings.defaults.tools.git.columnWidths,
       collapseMerges: settings.collapseMerges,
-      showEntireFile: settings.showEntireFile,
-      ignoreWhitespace: settings.ignoreWhitespace,
-      diffLayout: settings.diffLayout,
+      showEntireFile: diff.showEntireFile,
+      ignoreWhitespace: diff.ignoreWhitespace,
+      diffLayout: diff.diffLayout,
       showAllFiles: settings.showAllFiles,
       autoFetch: settings.autoFetch,
       autoFetchMinutes: this.fetchMinutes,
@@ -56,23 +61,23 @@ export class GitPreferences {
   }
 
   get showEntireFile(): boolean {
-    return this.settings.showEntireFile;
+    return this.diff.showEntireFile;
   }
 
   async setShowEntireFile(show: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'showEntireFile', show);
+    await this.userSettings.setIn('diff', 'showEntireFile', show);
   }
 
   get ignoreWhitespace(): boolean {
-    return this.settings.ignoreWhitespace;
+    return this.diff.ignoreWhitespace;
   }
 
   async setIgnoreWhitespace(ignore: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'ignoreWhitespace', ignore);
+    await this.userSettings.setIn('diff', 'ignoreWhitespace', ignore);
   }
 
   async setDiffLayout(layout: DiffLayout): Promise<void> {
-    await this.userSettings.setIn('git', 'diffLayout', layout);
+    await this.userSettings.setIn('diff', 'diffLayout', layout);
   }
 
   async setShowAllFiles(show: boolean): Promise<void> {

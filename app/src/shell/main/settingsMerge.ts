@@ -5,7 +5,6 @@ import {
 } from '../shared/tools';
 import { strings } from '../../lib/shared/strings';
 import type { Sentence } from '../../lib/shared/sentences';
-import { editorCharsets, editorEndings, indentStyles } from './editorSettings';
 import { cursorStyles } from '../../lib/shared/cursorSettings';
 import { isObject, type Json } from '../../lib/main/json';
 import { themes } from './settings';
@@ -62,9 +61,6 @@ const choices: ReadonlyMap<string, readonly string[]> = new Map([
   ...toolSettingChoices,
   ['theme', themes],
   ['cursor.style', cursorStyles],
-  ['editor.endOfLine', editorEndings],
-  ['editor.charset', editorCharsets],
-  ['editor.indentStyle', indentStyles],
 ]);
 
 const themed = /^(?:colors|fonts|sizes|tools\.[^.]+\.colors)\./;

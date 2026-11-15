@@ -42,7 +42,7 @@ function killWithChildren(child: ChildProcess): void {
 export const baseSettings = {
   scrolling: { smooth: true },
   text: { wordWrap: false },
-  tools: { git: { diffLayout: 'inline' } },
+  tools: { diff: { diffLayout: 'inline' } },
 };
 
 export function savedTabs(

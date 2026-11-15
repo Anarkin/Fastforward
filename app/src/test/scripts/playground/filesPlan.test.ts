@@ -331,7 +331,7 @@ suite('Playground of files', () => {
       ],
     );
     assert.ok(
-      defaultSettings().editor.files.some(
+      defaultSettings().tools.editor.files.some(
         ({ extensions, endOfLine }) =>
           extensions.includes('cmd') && endOfLine === 'crlf',
       ),

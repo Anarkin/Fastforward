@@ -26,7 +26,7 @@ const readSources: readonly ContextMenuItem[] = [
 
 const writtenSources: readonly ContextMenuItem[] = [
   { label: 'Written in', disabled: true },
-  { label: 'UTF-8, from editor.charset in the settings', checked: true },
+  { label: 'UTF-8, from tools.editor.charset in the settings', checked: true },
 ];
 
 const click = (menu: readonly ContextMenuItem[], label: string) => {
@@ -150,7 +150,11 @@ suite('The encoding menus of the editor', () => {
           writtenSources,
         ),
       ).slice(-3),
-      ['-', '(off) Written in', '✓ UTF-8, from editor.charset in the settings'],
+      [
+        '-',
+        '(off) Written in',
+        '✓ UTF-8, from tools.editor.charset in the settings',
+      ],
     );
   });
 

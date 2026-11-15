@@ -2,7 +2,8 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { tools } from '../shell/shared/tools';
+import { toolSections, tools } from '../shell/shared/tools';
+import { shortcutEntries } from '../shell/page/toolShortcuts';
 import { defaultSettings } from './helpers/fixtures';
 import { programsOfSuffixes } from './helpers/programs';
 
@@ -490,14 +491,16 @@ suite('Architecture', () => {
     );
   });
 
-  test('keeps the settings of each tool under tools, by its id', () => {
+  test('keeps the settings of each tool under tools, by its id, in the order the shortcuts list the tools, the viewer, the diff and the editor among them, as people know them', () => {
     const settings = defaultSettings();
+    assert.deepStrictEqual(Object.keys(settings.tools), [...toolSections]);
     assert.deepStrictEqual(
-      Object.keys(settings.tools).toSorted(),
-      [...tools].toSorted(),
+      shortcutEntries.map((entry) => entry.id),
+      [...toolSections, 'everywhere'],
     );
+    assert.ok(tools.every((tool) => toolSections.includes(tool)));
     assert.deepStrictEqual(
-      tools.filter((tool) => Object.hasOwn(settings, tool)),
+      toolSections.filter((tool) => Object.hasOwn(settings, tool)),
       [],
     );
   });

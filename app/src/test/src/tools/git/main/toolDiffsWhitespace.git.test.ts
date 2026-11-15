@@ -210,7 +210,7 @@ suite('Git tool showing diffs', () => {
         hash: indent,
       });
       assert.strictEqual(changed(), false);
-      await view.settings.setIn('git', 'ignoreWhitespace', false);
+      await view.settings.setIn('diff', 'ignoreWhitespace', false);
       view.view.reloadSettings();
       view.page.clear();
       await view.connection.receive({ type: 'ready' });
