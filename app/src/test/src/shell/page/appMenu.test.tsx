@@ -7,8 +7,9 @@ import { updateLabel } from '../../../../shell/page/updateLabel';
 import { AppMenu } from '../../../../shell/page/appMenu';
 import { createShellStore } from '../../../../shell/page/store';
 import type { ContextMenuItem } from '../../../../lib/page/menuControls';
-import { allWithClass, cascaded, rendered } from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import { withStores, renderedBy } from '../../../helpers/componentFixtures';
+import { allWithClass, rendered } from '../../../helpers/markup';
 
 function menuOf(
   update: UpdateStatus,

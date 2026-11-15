@@ -2,14 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { TabBar } from '../../../../shell/page/tabBar';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-  type MarkupElement,
-  type States,
-} from '../../../helpers/cascade';
+import { cascaded, type States } from '../../../helpers/cascade';
 import {
   Columns,
   MenuButtonShown,
@@ -34,6 +27,12 @@ import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { tabsStore } from '../../../helpers/componentFixtures';
 import { createElement } from 'react';
 import { stylesheet } from '../../../helpers/pageSources';
+import {
+  allWithClass,
+  rendered,
+  withClass,
+  type MarkupElement,
+} from '../../../helpers/markup';
 
 function TabRow({
   count,

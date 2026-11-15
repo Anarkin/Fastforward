@@ -2,15 +2,15 @@ import type {
   RepositoryState,
   WorktreeInfo,
 } from '../../tools/git/shared/protocol';
+import { createElement } from 'react';
+import { overlayScrollbarClass } from '../../lib/page/overlayScrollbars';
 import {
   allWithClass,
   rendered,
   renderedApart,
   withClass,
   type MarkupElement,
-} from './cascade';
-import { createElement } from 'react';
-import { overlayScrollbarClass } from '../../lib/page/overlayScrollbars';
+} from './markup';
 
 export const worktree = (name: string): WorktreeInfo => ({
   root: `/${name}`,

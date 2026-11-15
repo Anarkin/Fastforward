@@ -4,13 +4,7 @@ import { CopyButton } from '../../../../shell/page/aboutPopup';
 import { shownEntries } from '../../../../shell/page/shortcutsList';
 import { ShortcutsList } from '../../../../shell/page/shortcutsPopup';
 import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-  type MarkupElement,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import {
   AboutPopupShown,
   ContextMenuShown,
@@ -29,6 +23,12 @@ import {
   after,
 } from './stylesheetFixtures';
 import { overlayScrollbar, keyOf, popupOf } from '../../../helpers/styleMarkup';
+import {
+  allWithClass,
+  rendered,
+  withClass,
+  type MarkupElement,
+} from '../../../helpers/markup';
 
 function widthCap(popup: MarkupElement): { cap: number; room: string } {
   const width = /^min\(([\d.]+)px, (.+)\)$/.exec(

@@ -1,12 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { Column } from '../../../../tools/git/page/column';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import {
   AboutPopupShown,
   DiffOptionsShown,
@@ -36,6 +31,7 @@ import { emptyTabView } from '../../../../tools/git/page/tabView';
 import { SoloButton } from '../../../../tools/git/page/commitList';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { renderedBy } from '../../../helpers/componentFixtures';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 
 function SoloButtonShown({
   solo,

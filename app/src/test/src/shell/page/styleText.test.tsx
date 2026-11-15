@@ -1,12 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { tabSize } from '../../../../lib/page/tabStops';
-import {
-  cascaded,
-  rendered,
-  withClass,
-  type MarkupElement,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import {
   DiffViewShown,
   IndentedLine,
@@ -18,6 +13,11 @@ import { TerminalTool } from '../../../../tools/terminal/page/tool';
 import { createElement } from 'react';
 import { Code } from '../../../../tools/git/page/codeMarks';
 import { BreakMarks } from '../../../../tools/git/page/wrapMarks';
+import {
+  rendered,
+  withClass,
+  type MarkupElement,
+} from '../../../helpers/markup';
 
 function HangingSpacesLine() {
   return (

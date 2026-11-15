@@ -2,13 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { RefBubble } from '../../../../tools/git/page/bubbles';
 import { GitStore } from '../../../../tools/git/page/store';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-  type MarkupElement,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import { gitStore } from '../../../helpers/componentFixtures';
 import { BubbleSources, CommitRowShown } from '../../../helpers/styleFixtures';
 import { bubbles, repository } from '../../../helpers/styleMarkup';
@@ -19,6 +13,12 @@ import {
   hovered,
   unwrapped,
 } from './stylesheetFixtures';
+import {
+  allWithClass,
+  rendered,
+  withClass,
+  type MarkupElement,
+} from '../../../helpers/markup';
 
 const bubbleLook = ['color', 'background', 'box-shadow', 'border'];
 

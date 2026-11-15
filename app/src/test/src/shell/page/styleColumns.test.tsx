@@ -4,12 +4,7 @@ import type { ColumnName } from '../../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { Column } from '../../../../tools/git/page/column';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import {
   Columns,
   ColumnShown,
@@ -39,6 +34,7 @@ import {
   halved,
 } from './stylesheetFixtures';
 import { renderedBy } from '../../../helpers/componentFixtures';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 
 function columnVisibility(columns: React.ReactElement) {
   return allWithClass(rendered(columns), 'column').map((column) =>

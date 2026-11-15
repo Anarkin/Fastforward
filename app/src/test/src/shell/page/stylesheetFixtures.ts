@@ -1,14 +1,13 @@
 import * as assert from 'node:assert';
 import { createElement } from 'react';
+import { cascaded, type States } from '../../../helpers/cascade';
+import { columnTitle } from '../../../helpers/styleMarkup';
+import { stylesheet } from '../../../helpers/pageSources';
 import {
-  cascaded,
   rendered,
   withClass,
   type MarkupElement,
-  type States,
-} from '../../../helpers/cascade';
-import { columnTitle } from '../../../helpers/styleMarkup';
-import { stylesheet } from '../../../helpers/pageSources';
+} from '../../../helpers/markup';
 
 export const css = stylesheet();
 

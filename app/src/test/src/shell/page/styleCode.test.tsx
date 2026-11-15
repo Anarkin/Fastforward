@@ -1,12 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { tabSize } from '../../../../lib/page/tabStops';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import {
   DiffViewShown,
   IndentedLine,
@@ -16,6 +11,7 @@ import {
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { looks } from './stylesheetFixtures';
 import { layoutVariables } from '../../../../tools/git/page/textLayout';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 
 suite('Style', () => {
   test('wraps long lines of code at spaces, breaking a word only where it would not fit, in rows as tall as their lines', () => {

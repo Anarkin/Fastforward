@@ -6,13 +6,9 @@ import { Name } from '../../../../lib/page/name';
 import { ConfirmPopup } from '../../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../../shell/page/promptPopup';
 import { ClonePopup } from '../../../../tools/git/page/clonePopup';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import { noop, looks } from './stylesheetFixtures';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 
 suite('Style', () => {
   test('draws the button of a dialog the keyboard moved the focus to as the tool chooser draws its tool, tinted inside the outline of focus, the default button then plain, as Enter presses the one focused', () => {

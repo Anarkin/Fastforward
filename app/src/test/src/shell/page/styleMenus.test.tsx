@@ -2,12 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { ContextMenu } from '../../../../shell/page/contextMenu';
 import { MenuButton } from '../../../../lib/page/menu';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import {
   ContextMenuShown,
   HistoryMenuShown,
@@ -25,6 +20,7 @@ import {
   focused,
 } from './stylesheetFixtures';
 import { overlayScrollbar, popupOf } from '../../../helpers/styleMarkup';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 
 suite('Style', () => {
   test('starts the labels of every menu alike, leaving the same room before each for an icon, a check or nothing, as an item without an icon started further left than those with one', () => {

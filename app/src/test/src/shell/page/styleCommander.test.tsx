@@ -1,14 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { PathTitle } from '../../../../tools/commander/page/pathTitle';
-import {
-  cascaded,
-  rendered,
-  withClass,
-  type States,
-  allWithClass,
-  type MarkupElement,
-} from '../../../helpers/cascade';
+import { cascaded, type States } from '../../../helpers/cascade';
 import { defaultSettings } from '../../../helpers/fixtures';
 import { PathTitleShown } from '../../../helpers/styleFixtures';
 import {
@@ -21,6 +14,12 @@ import {
 } from './stylesheetFixtures';
 import { createElement } from 'react';
 import { MarkBox } from '../../../../tools/commander/page/paneCells';
+import {
+  rendered,
+  withClass,
+  allWithClass,
+  type MarkupElement,
+} from '../../../helpers/markup';
 
 function CommanderItem({
   className,

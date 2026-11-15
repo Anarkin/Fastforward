@@ -1,12 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
-import {
-  cascaded,
-  rendered,
-  withClass,
-  type MarkupElement,
-} from '../../../helpers/cascade';
+import { cascaded } from '../../../helpers/cascade';
 import {
   Columns,
   CommitRowShown,
@@ -26,6 +21,11 @@ import {
 import { createElement } from 'react';
 import { overlayScrollbarClass } from '../../../../lib/page/overlayScrollbars';
 import { keyOf, popupOf } from '../../../helpers/styleMarkup';
+import {
+  rendered,
+  withClass,
+  type MarkupElement,
+} from '../../../helpers/markup';
 
 function shownScrollbar(message?: string): MarkupElement {
   return withClass(

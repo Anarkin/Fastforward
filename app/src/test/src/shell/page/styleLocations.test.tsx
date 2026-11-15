@@ -1,13 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { RefBubble } from '../../../../tools/git/page/bubbles';
-import {
-  allWithClass,
-  cascaded,
-  rendered,
-  withClass,
-  matchingRules,
-} from '../../../helpers/cascade';
+import { cascaded, matchingRules } from '../../../helpers/cascade';
 import {
   CommitColumn,
   CommitRowShown,
@@ -16,6 +10,7 @@ import {
 } from '../../../helpers/styleFixtures';
 import { columnTitle } from '../../../helpers/styleMarkup';
 import { looks, hovered } from './stylesheetFixtures';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 
 function badgeRules(node: React.ReactNode): string[] {
   return matchingRules(withClass(rendered(node), 'badge')).map(

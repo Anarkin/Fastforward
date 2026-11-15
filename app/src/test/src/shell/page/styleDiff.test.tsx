@@ -8,13 +8,7 @@ import {
   markerWidth,
   numberWidth,
 } from '../../../../tools/git/page/overflow';
-import {
-  allWithClass,
-  cascaded,
-  matchingRules,
-  rendered,
-  withClass,
-} from '../../../helpers/cascade';
+import { cascaded, matchingRules } from '../../../helpers/cascade';
 import {
   Columns,
   DiffRow,
@@ -33,6 +27,7 @@ import {
   FileHeader,
   HunkDivider,
 } from '../../../../tools/git/page/diffRowParts';
+import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 
 suite('Style', () => {
   test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {
