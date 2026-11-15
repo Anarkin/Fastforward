@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act, type ReactElement } from 'react';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import type { LoadedText } from '../../../../../tools/git/page/sideTexts';
-import { syntaxSources } from '../../../../../tools/git/page/syntax';
+import { syntaxSources } from '../../../../../tools/git/page/syntaxSources';
 import { noop } from '../../../../helpers/fixtures';
 import type { SyntaxRange } from '../../../../../lib/page/syntaxEngine';
 import type {
@@ -126,3 +126,37 @@ export const gappedPatch = [
   ' end */',
   '',
 ].join('\n');
+
+export const keptPatch = (oldBlob: string, newBlob: string) =>
+  parsePatch(
+    gappedPatch.replace(
+      `${blobs.old}..${blobs.new}`,
+      `${oldBlob.repeat(40)}..${newBlob.repeat(40)}`,
+    ),
+  );
+
+export const addedPatch = [
+  'diff --git a/a.ts b/a.ts',
+  'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+  '--- a/a.ts',
+  '+++ b/a.ts',
+  '@@ -3,1 +3,2 @@',
+  ' end */',
+  '+new = 2;',
+  '',
+].join('\n');
+
+export const paths = ['a.ts', 'b.ts', 'c.ts'];
+
+export const farFiles = parsePatch(
+  paths
+    .flatMap((path) => [
+      `diff --git a/${path} b/${path}`,
+      'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+      '@@ -5000,1 +5000,1 @@',
+      '-old;',
+      '+new;',
+    ])
+    .concat('')
+    .join('\n'),
+);

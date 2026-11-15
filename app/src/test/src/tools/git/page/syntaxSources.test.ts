@@ -1,39 +1,20 @@
 import * as assert from 'node:assert';
-import { createElement, Fragment, useLayoutEffect } from 'react';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import type { LoadedText } from '../../../../../tools/git/page/sideTexts';
-import type { TextRequest } from '../../../../../tools/git/shared/protocol';
+import { syntaxSources } from '../../../../../tools/git/page/syntaxSources';
+import { textsToLoad } from '../../../../../tools/git/page/textsToLoad';
 import {
-  keepColors,
-  keptColorsOf,
-  syntaxSources,
-  usePrefetchedColors,
-  useSyntax,
-  useTextsToLoad,
-} from '../../../../../tools/git/page/syntax';
-import type { SyntaxRange } from '../../../../../lib/page/syntaxEngine';
-import { packedPart } from '../../../../../lib/page/syntaxParts';
-import {
-  workerSeen,
-  inPage,
-  answered,
-  comment,
   colored,
   blobs,
   loadedTexts,
   linesColored,
   gappedPatch,
+  addedPatch,
+  paths,
+  farFiles,
 } from './syntaxFixtures';
 import { warmsUpTheGrammar } from '../../../lib/page/syntaxFixtures';
-
-const keptPatch = (oldBlob: string, newBlob: string) =>
-  parsePatch(
-    gappedPatch.replace(
-      `${blobs.old}..${blobs.new}`,
-      `${oldBlob.repeat(40)}..${newBlob.repeat(40)}`,
-    ),
-  );
 
 suite('Syntax', () => {
   warmsUpTheGrammar();
@@ -77,183 +58,6 @@ suite('Syntax', () => {
         '0:0': ['comment old = 1;'],
         '0:1': ['comment new = 2;'],
         '0:2': ['comment end */'],
-      },
-    );
-  });
-
-  test('colors the shown lines of a side by the colors kept of the whole text of its blob, found by their numbers, keeping the longer of two in the language colored, and forgetting the least recently used beyond 200000 lines', () => {
-    const files = keptPatch('3', '4');
-    const lines = [comment(8), comment(6), comment(8), comment(6)];
-    keepColors('typescript', '4'.repeat(40), packedPart(lines, 0, true), 10);
-    keepColors(
-      'typescript',
-      '4'.repeat(40),
-      packedPart(lines.slice(0, 2), 0, true),
-      10,
-    );
-    assert.deepStrictEqual(Object.fromEntries(keptColorsOf(files)), {
-      '0:1': lines[2],
-      '0:2': lines[3],
-    });
-    assert.deepStrictEqual(keptColorsOf(files, undefined, 'json').size, 0);
-    keepColors(
-      'typescript',
-      '5'.repeat(40),
-      packedPart(
-        Array.from({ length: 199_996 }, () => []),
-        0,
-        true,
-      ),
-      10,
-    );
-    assert.deepStrictEqual(keptColorsOf(keptPatch('9', '5')).size, 2);
-    assert.deepStrictEqual(keptColorsOf(files).size, 2);
-    keepColors('typescript', '6'.repeat(40), packedPart([[]], 0, true), 10);
-    assert.deepStrictEqual(keptColorsOf(keptPatch('9', '5')).size, 0);
-    assert.deepStrictEqual(keptColorsOf(files).size, 2);
-  });
-
-  test('forgets the colors kept of a language from before a language it embeds loaded once colors of it come from after, keeping those of the other languages', () => {
-    const part = packedPart([[], [], comment(8), comment(6)], 0, true);
-    keepColors('typescript', 'a'.repeat(40), part, 20);
-    keepColors('json', 'c'.repeat(40), part, 99);
-    assert.deepStrictEqual(keptColorsOf(keptPatch('9', 'a')).size, 2);
-    keepColors('typescript', 'b'.repeat(40), part, 21);
-    assert.deepStrictEqual(keptColorsOf(keptPatch('9', 'a')).size, 0);
-    assert.deepStrictEqual(keptColorsOf(keptPatch('9', 'b')).size, 2);
-  });
-
-  test('asks for the whole texts of a diff in the commit that shows it, before the window paints, rather than after, so they come a frame sooner', async () => {
-    const files = parsePatch(gappedPatch);
-    const asked: TextRequest[][] = [];
-    let askedBeforePaint: boolean | undefined;
-    const texts = new Map<string, LoadedText>();
-    const open = new Set([0]);
-    const ask = (load: TextRequest[]) => asked.push(load);
-    function Asking() {
-      useTextsToLoad(files, undefined, 1, open, texts, undefined, ask);
-      return null;
-    }
-    function Painted() {
-      useLayoutEffect(() => {
-        askedBeforePaint = asked.length > 0;
-      }, []);
-      return null;
-    }
-    await inPage(async (render) => {
-      await render(
-        createElement(
-          Fragment,
-          null,
-          createElement(Asking),
-          createElement(Painted),
-        ),
-      );
-    });
-    assert.strictEqual(askedBeforePaint, true);
-    assert.deepStrictEqual(asked, [
-      [
-        { path: 'a.ts', side: 'old', blob: blobs.old },
-        { path: 'a.ts', side: 'new', blob: blobs.new },
-      ],
-    ]);
-  });
-
-  test('colors a diff by the colors kept of its blobs in the render before its first paint, rather than once the worker answers, the colors the worker gives from the hunks alone not taking their place unless they come from after a language loaded', async () => {
-    const files = keptPatch('7', '8');
-    const lines = [comment(8), comment(6), comment(8), comment(6)];
-    keepColors('typescript', '8'.repeat(40), packedPart(lines, 0, true), 30);
-    workerSeen.posted.length = 0;
-    await inPage(async (render) => {
-      const shown: ReadonlyMap<string, readonly SyntaxRange[]>[] = [];
-      const texts = new Map<string, LoadedText>();
-      const open = new Set([0]);
-      function Diff() {
-        shown.push(useSyntax(files, undefined, texts, open));
-        return null;
-      }
-      await render(createElement(Diff));
-      assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
-        '0:1': lines[2],
-        '0:2': lines[3],
-      });
-      const job = workerSeen.posted.find(
-        (message) => message.type === 'color',
-      )?.job;
-      assert.ok(job !== undefined);
-      const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
-      await answered({
-        type: 'colors',
-        job,
-        generations: { typescript: 30 },
-        ranges: [
-          ['0:0', keyword],
-          ['0:1', keyword],
-        ],
-      });
-      assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
-        '0:0': keyword,
-        '0:1': lines[2],
-        '0:2': lines[3],
-      });
-      await answered({
-        type: 'colors',
-        job,
-        generations: { typescript: 31, json: 100 },
-        ranges: [['0:2', keyword]],
-      });
-      assert.deepStrictEqual(Object.fromEntries(shown.at(-1) ?? []), {
-        '0:0': keyword,
-        '0:1': lines[2],
-        '0:2': keyword,
-      });
-    });
-  });
-
-  test('colors a diff read ahead in the background, keeping the colors of each whole text by its blob, so the diff is colored in its first frame once it is shown', async () => {
-    const patch = gappedPatch.replace(
-      `${blobs.old}..${blobs.new}`,
-      `${'c'.repeat(40)}..${'d'.repeat(40)}`,
-    );
-    const texts = new Map<string, LoadedText>([
-      [
-        'old:a.ts',
-        { blob: 'c'.repeat(40), text: '/* start\nmiddle\nold = 1;\nend */\n' },
-      ],
-      [
-        'new:a.ts',
-        { blob: 'd'.repeat(40), text: '/* start\nmiddle\nnew = 2;\nend */\n' },
-      ],
-    ]);
-    const colors = [[], [], comment(8), comment(6)];
-    workerSeen.posted.length = 0;
-    function Ahead() {
-      usePrefetchedColors(patch, texts, true);
-      return null;
-    }
-    await inPage(async (render) => {
-      await render(createElement(Ahead));
-      const asked = workerSeen.posted.find(
-        (message) => message.type === 'color',
-      );
-      assert.ok(asked?.type === 'color');
-      assert.strictEqual(asked.background, true);
-      const newSide = asked.sources.findIndex(
-        ({ lines }) => lines[2] === 'new = 2;',
-      );
-      await answered({
-        type: 'entire',
-        job: asked.job,
-        generation: 40,
-        source: newSide,
-        part: packedPart(colors, 0, true),
-      });
-    });
-    assert.deepStrictEqual(
-      Object.fromEntries(keptColorsOf(parsePatch(patch))),
-      {
-        '0:1': colors[2],
-        '0:2': colors[3],
       },
     );
   });
@@ -423,5 +227,183 @@ suite('Syntax', () => {
       text: undefined,
     });
     assert.deepStrictEqual(sides(unreadable), sides(texts));
+  });
+
+  test('asks for the colors of every line of a side shown whole from its first line, as of an added file, so the page keeps them by its blob without its text, but not of one shown from hunks apart', () => {
+    const added = parsePatch(
+      [
+        'diff --git a/b.ts b/b.ts',
+        'new file mode 100644',
+        `index ${'0'.repeat(40)}..${'3'.repeat(40)}`,
+        '--- /dev/null',
+        '+++ b/b.ts',
+        '@@ -0,0 +1,2 @@',
+        '+let a = 1;',
+        '+let b = 2;',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(added, undefined).map(({ entire }) => entire),
+      [true],
+    );
+    assert.deepStrictEqual(
+      syntaxSources(parsePatch(gappedPatch), undefined).map(
+        ({ entire }) => entire,
+      ),
+      [undefined, undefined],
+    );
+  });
+
+  test('takes an old side shown from its first line from its hunks as the whole text of its blob only when it shows no unchanged line, as git ignoring whitespace prints those as the new side has them', () => {
+    const reindented = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        `index ${'1'.repeat(40)}..${'2'.repeat(40)} 100644`,
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,3 +1,3 @@',
+        ' int x;',
+        ' foo();',
+        '-bar();',
+        '+qux();',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(reindented, undefined).map(({ entire }) => entire),
+      [undefined, true],
+    );
+    const deleted = parsePatch(
+      [
+        'diff --git a/b.ts b/b.ts',
+        'deleted file mode 100644',
+        `index ${'3'.repeat(40)}..${'0'.repeat(40)}`,
+        '--- a/b.ts',
+        '+++ /dev/null',
+        '@@ -1,2 +0,0 @@',
+        '-let a = 1;',
+        '-let b = 2;',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(deleted, undefined).map(({ entire }) => entire),
+      [true],
+    );
+  });
+
+  test('colors no side that owns none of the lines shown', () => {
+    assert.deepStrictEqual(
+      syntaxSources(parsePatch(addedPatch), undefined).map(
+        (source) => source.lines,
+      ),
+      [['end */', 'new = 2;']],
+    );
+  });
+
+  test('leaves files of unknown languages, binary files and files not loaded yet out', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/notes.unknown b/notes.unknown',
+        '@@ -0,0 +1 @@',
+        '+text',
+        'diff --git a/image.png b/image.png',
+        'Binary files a/image.png and b/image.png differ',
+        '',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(
+        [
+          ...files,
+          {
+            path: 'large.ts',
+            binary: false,
+            hunks: [],
+            placeholder: { lines: 9 },
+          },
+        ],
+        undefined,
+      ),
+      [],
+    );
+  });
+
+  test('colors a file in the language chosen for it, whatever its name tells, asking for the whole text of its sides as for any file it colors', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/notes.unknown b/notes.unknown',
+        'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
+        '@@ -5 +5 @@',
+        '-{"a": 1}',
+        '+{"a": 2}',
+        '',
+      ].join(String.fromCharCode(10)),
+    );
+
+    assert.deepStrictEqual(
+      syntaxSources(files, undefined, new Map(), undefined, 'json').map(
+        (source) => [source.language, source.lines],
+      ),
+      [
+        ['json', ['{"a": 1}']],
+        ['json', ['{"a": 2}']],
+      ],
+    );
+    assert.deepStrictEqual(
+      syntaxSources(
+        [],
+        { path: 'a.ts', binary: false, content: 'x' },
+        new Map(),
+        undefined,
+        'json',
+      ).map((source) => source.language),
+      ['json'],
+    );
+    assert.deepStrictEqual(
+      textsToLoad(files, 1, new Set(), undefined, new Map(), 'json'),
+      [
+        { path: 'notes.unknown', side: 'old', blob: '1'.repeat(40) },
+        { path: 'notes.unknown', side: 'new', blob: '2'.repeat(40) },
+      ],
+    );
+  });
+
+  test('colors no file that is collapsed', () => {
+    const files = parsePatch(
+      ['a.ts', 'b.ts']
+        .flatMap((path) => [
+          `diff --git a/${path} b/${path}`,
+          '@@ -0,0 +1 @@',
+          `+let ${path[0]};`,
+        ])
+        .concat('')
+        .join('\n'),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(files, undefined, new Map(), new Set([1])).map(
+        (source) => source.lines,
+      ),
+      [['let b;']],
+    );
+  });
+
+  test('colors sides from their hunks alone once the sides before take 20000 lines', () => {
+    const filler = Array.from({ length: 4999 }, () => 'x;');
+    const texts = loadedTexts(
+      paths.flatMap((path) =>
+        ['old', 'new'].map(
+          (side) =>
+            [`${side}:${path}`, [...filler, `${side};`].join('\n')] as const,
+        ),
+      ),
+    );
+    assert.deepStrictEqual(
+      syntaxSources(farFiles, undefined, texts).map(
+        (source) => source.lines.length,
+      ),
+      [5000, 5000, 5000, 5000, 1, 1],
+    );
   });
 });

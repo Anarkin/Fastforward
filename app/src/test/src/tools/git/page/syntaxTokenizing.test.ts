@@ -1,10 +1,5 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { parsePatch } from '../../../../../tools/git/page/diff';
-import {
-  syntaxSources,
-  textsToLoad,
-} from '../../../../../tools/git/page/syntax';
 import {
   loadLanguages,
   type SyntaxRange,
@@ -22,7 +17,6 @@ import {
   assertNotLoaded,
   warmsUpTheGrammar,
 } from '../../../lib/page/syntaxFixtures';
-import { loadedTexts } from './syntaxFixtures';
 
 suite('Syntax', () => {
   warmsUpTheGrammar();
@@ -518,107 +512,5 @@ suite('Syntax', () => {
       tokenized.filter((line) => line !== ''),
       ['keptBeside', 'overLines', 'overLines'],
     );
-  });
-
-  test('colors no file that is collapsed', () => {
-    const files = parsePatch(
-      ['a.ts', 'b.ts']
-        .flatMap((path) => [
-          `diff --git a/${path} b/${path}`,
-          '@@ -0,0 +1 @@',
-          `+let ${path[0]};`,
-        ])
-        .concat('')
-        .join('\n'),
-    );
-    assert.deepStrictEqual(
-      syntaxSources(files, undefined, new Map(), new Set([1])).map(
-        (source) => source.lines,
-      ),
-      [['let b;']],
-    );
-  });
-
-  const paths = ['a.ts', 'b.ts', 'c.ts'];
-  const farFiles = parsePatch(
-    paths
-      .flatMap((path) => [
-        `diff --git a/${path} b/${path}`,
-        'index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644',
-        '@@ -5000,1 +5000,1 @@',
-        '-old;',
-        '+new;',
-      ])
-      .concat('')
-      .join('\n'),
-  );
-
-  const farRequests = (open?: ReadonlySet<number>) =>
-    textsToLoad(farFiles, 1, new Set(), open).map(
-      ({ path, side }) => `${side}:${path}`,
-    );
-
-  const requestsAfter = (count: number) =>
-    textsToLoad(
-      [
-        ...parsePatch(
-          [
-            'diff --git a/added.ts b/added.ts',
-            'new file mode 100644',
-            'index 0000000000000000000000000000000000000000..3333333333333333333333333333333333333333',
-            '--- /dev/null',
-            '+++ b/added.ts',
-            `@@ -0,0 +1,${count} @@`,
-            ...Array.from({ length: count }, () => '+x;'),
-            '',
-          ].join('\n'),
-        ),
-        ...farFiles,
-      ],
-      1,
-      new Set(),
-    ).map(({ path, side }) => `${side}:${path}`);
-
-  test('colors sides from their hunks alone once the sides before take 20000 lines', () => {
-    const filler = Array.from({ length: 4999 }, () => 'x;');
-    const texts = loadedTexts(
-      paths.flatMap((path) =>
-        ['old', 'new'].map(
-          (side) =>
-            [`${side}:${path}`, [...filler, `${side};`].join('\n')] as const,
-        ),
-      ),
-    );
-    assert.deepStrictEqual(
-      syntaxSources(farFiles, undefined, texts).map(
-        (source) => source.lines.length,
-      ),
-      [5000, 5000, 5000, 5000, 1, 1],
-    );
-  });
-
-  test('asks for the whole texts of open files only, as long as the sides before take less than 20000 lines', () => {
-    assert.deepStrictEqual(farRequests(), [
-      'old:a.ts',
-      'new:a.ts',
-      'old:b.ts',
-      'new:b.ts',
-    ]);
-    assert.deepStrictEqual(farRequests(new Set([2])), ['old:c.ts', 'new:c.ts']);
-  });
-
-  test('asks for whole texts only until the sides before take 20000 lines, counting a side colored from its hunks alone by its lines shown up to the 5000 it colors, as each whole text is read in full and tokenized up to its last line shown', () => {
-    assert.deepStrictEqual(requestsAfter(4999), [
-      'old:a.ts',
-      'new:a.ts',
-      'old:b.ts',
-      'new:b.ts',
-    ]);
-    assert.deepStrictEqual(requestsAfter(5000), [
-      'old:a.ts',
-      'new:a.ts',
-      'old:b.ts',
-    ]);
-    assert.deepStrictEqual(requestsAfter(20_000), requestsAfter(5000));
   });
 });

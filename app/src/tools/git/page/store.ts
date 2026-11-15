@@ -10,7 +10,7 @@ import { parsePatch } from './diff';
 import { foldersOf } from './fileTree';
 import { settling } from './outbox';
 import { startAfter } from './startAfter';
-import { textsToLoad } from './syntax';
+import { textsToLoad } from './textsToLoad';
 import {
   openFolders,
   replaceFolders,
