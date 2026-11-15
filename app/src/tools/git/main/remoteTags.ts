@@ -54,7 +54,7 @@ export class RemoteTags {
       return;
     }
     if (
-      this.access.storage
+      this.access.storage.remoteTags
         .remoteTagsOf(context.repository)
         .get(remote)
         ?.get(name) === tag.commit
@@ -84,12 +84,14 @@ export class RemoteTags {
     const known =
       pushedTo === undefined
         ? undefined
-        : this.access.storage.remoteTagsOf(context.repository).get(pushedTo);
+        : this.access.storage.remoteTags
+            .remoteTagsOf(context.repository)
+            .get(pushedTo);
     if (pushedTo === undefined || known === undefined) {
       return;
     }
     this.tagsRecorded++;
-    await this.access.storage.setRemoteTags(
+    await this.access.storage.remoteTags.setRemoteTags(
       context.repository,
       pushedTo,
       new Map([...known, [name, tag.commit]]),
@@ -105,7 +107,7 @@ export class RemoteTags {
     let remotes: string[];
     try {
       remotes = await listRemotes(gitPath, root);
-      await this.access.storage.keepRemoteTags(repository, remotes);
+      await this.access.storage.remoteTags.keepRemoteTags(repository, remotes);
     } catch (error) {
       this.access.log.warn(
         strings.log.listingRemoteTagsFailed(gitErrorText(error)),
@@ -126,9 +128,15 @@ export class RemoteTags {
         if (this.tagsRecorded !== recorded) {
           continue;
         }
-        const known = this.access.storage.remoteTagsOf(repository).get(remote);
+        const known = this.access.storage.remoteTags
+          .remoteTagsOf(repository)
+          .get(remote);
         if (!sameTags(known, tags)) {
-          await this.access.storage.setRemoteTags(repository, remote, tags);
+          await this.access.storage.remoteTags.setRemoteTags(
+            repository,
+            remote,
+            tags,
+          );
           changed ||= !sameTags(known ?? new Map(), tags);
           newlyKnown ||= known === undefined;
         }

@@ -207,7 +207,7 @@ export class HistoryPages {
     const started = performance.now();
     const generation = layOutHistory(
       tab,
-      this.storage.collapseMerges,
+      this.storage.preferences.collapseMerges,
       tab.headCommit,
     );
     this.log.info(

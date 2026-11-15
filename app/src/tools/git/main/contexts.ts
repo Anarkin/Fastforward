@@ -77,7 +77,7 @@ export class Contexts {
       refs: [
         ...refs.refs,
         ...remoteTagRefs(
-          this.storage.remoteTagsOf(context.repository),
+          this.storage.remoteTags.remoteTagsOf(context.repository),
           refs.remotes,
         ),
       ],

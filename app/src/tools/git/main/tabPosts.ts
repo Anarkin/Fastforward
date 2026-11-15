@@ -46,7 +46,9 @@ export class TabPosts {
       headCommit: head?.commit,
       refs: listed,
       ...(tagRemote !== undefined &&
-        this.storage.remoteTagsOf(context.repository).has(tagRemote) && {
+        this.storage.remoteTags
+          .remoteTagsOf(context.repository)
+          .has(tagRemote) && {
           tagRemote,
         }),
       stashes: stashes.map(({ name, commit, message }) => ({

@@ -399,7 +399,8 @@ suite('Git tool of one repository', () => {
         bookmarks: [],
       });
       assert.strictEqual(own.page.last('error'), undefined);
-      const { layout } = new GitStorage(own.settings, gitState(own.store));
+      const { layout } = new GitStorage(own.settings, gitState(own.store))
+        .preferences;
       assert.deepStrictEqual(
         [layout.columnWidths, layout.showAllFiles, layout.diffLayout],
         [[300, 400], true, 'sideBySide'],

@@ -145,7 +145,7 @@ export class Diffs {
       return undefined;
     }
     const loading = new AbortController();
-    const { ignoreWhitespace } = this.storage;
+    const { ignoreWhitespace } = this.storage.preferences;
     const patch = this.budgetedPatch(
       context,
       hash,
@@ -159,7 +159,9 @@ export class Diffs {
     context: Context,
     hash: string,
     signal: AbortSignal,
-    scope: PatchScope = { ignoreWhitespace: this.storage.ignoreWhitespace },
+    scope: PatchScope = {
+      ignoreWhitespace: this.storage.preferences.ignoreWhitespace,
+    },
   ): Promise<ReadPatch> {
     const compared = comparedOf(hash);
     const stash = context.tab.stashes.get(hash);
@@ -217,7 +219,7 @@ export class Diffs {
         hash,
         {
           include: includedChanges(files),
-          ignoreWhitespace: this.storage.ignoreWhitespace,
+          ignoreWhitespace: this.storage.preferences.ignoreWhitespace,
         },
         signal,
       );
@@ -257,7 +259,7 @@ export class Diffs {
     shownPatch?: string,
   ): Promise<void> {
     const change = changesOf(context.tab).get(file);
-    const { ignoreWhitespace } = this.storage;
+    const { ignoreWhitespace } = this.storage.preferences;
     const scope = {
       path: file,
       oldPath: change?.oldPath,
@@ -290,7 +292,7 @@ export class Diffs {
     return (
       file !== undefined &&
       file === context.tab.path &&
-      this.storage.showEntireFile
+      this.storage.preferences.showEntireFile
     );
   }
 
@@ -376,7 +378,7 @@ export class Diffs {
     if (early) {
       if (
         file === undefined &&
-        early.ignoreWhitespace === this.storage.ignoreWhitespace
+        early.ignoreWhitespace === this.storage.preferences.ignoreWhitespace
       ) {
         loading.signal.addEventListener('abort', () => early.loading.abort(), {
           once: true,
@@ -425,7 +427,7 @@ export class Diffs {
       }
       return;
     }
-    const { ignoreWhitespace } = this.storage;
+    const { ignoreWhitespace } = this.storage.preferences;
     let patch: string;
     let leftOut: readonly LeftOut[] | undefined;
     let whitespaceOnly: string[] = [];
@@ -438,7 +440,7 @@ export class Diffs {
           context,
           hash,
           [...changes.values()],
-          early?.ignoreWhitespace === this.storage.ignoreWhitespace
+          early?.ignoreWhitespace === this.storage.preferences.ignoreWhitespace
             ? early.patch
             : undefined,
           loading.signal,

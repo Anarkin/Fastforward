@@ -261,7 +261,7 @@ export class GitTool implements Tool<'git'> {
     );
     this.inits = new Inits(log, gitPath, this.worktrees);
     this.autoFetch = new AutoFetch(
-      () => storage.autoFetchMinutes,
+      () => storage.preferences.autoFetchMinutes,
       () =>
         fetchOrder(
           this.sessions.repositoryTabs,
@@ -306,7 +306,7 @@ export class GitTool implements Tool<'git'> {
 
   quit(): void {
     this.quitting.abort();
-    this.save(this.storage.saveFetches());
+    this.save(this.storage.fetches.saveFetches());
   }
 
   reloadSettings(): void {
@@ -329,7 +329,7 @@ export class GitTool implements Tool<'git'> {
       this.clones.pageLoaded();
     }
     const session = this.sessions.of(page);
-    session.post(this.storage.layout);
+    session.post(this.storage.preferences.layout);
     this.posts.sendRecent(session);
   }
 

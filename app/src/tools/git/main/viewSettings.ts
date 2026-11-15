@@ -36,14 +36,15 @@ export class ViewSettings {
     private readonly contexts: Contexts,
     private readonly save: (saving: Promise<void>) => void,
   ) {
-    this.collapseMerges = storage.collapseMerges;
+    this.collapseMerges = storage.preferences.collapseMerges;
     this.soloDefault = storage.soloDefault;
   }
 
   reloaded(): void {
-    const collapseChanged = this.storage.collapseMerges !== this.collapseMerges;
+    const collapseChanged =
+      this.storage.preferences.collapseMerges !== this.collapseMerges;
     const soloChanged = this.storage.soloDefault !== this.soloDefault;
-    this.collapseMerges = this.storage.collapseMerges;
+    this.collapseMerges = this.storage.preferences.collapseMerges;
     this.soloDefault = this.storage.soloDefault;
     for (const tab of this.tabStates.values()) {
       if (soloChanged) {
@@ -62,13 +63,13 @@ export class ViewSettings {
     const { storage } = this;
     switch (message.type) {
       case 'setColumnWidths':
-        this.save(storage.setColumnWidths(message.widths));
+        this.save(storage.preferences.setColumnWidths(message.widths));
         return;
       case 'setShowAllFiles':
-        this.save(storage.setShowAllFiles(message.show));
+        this.save(storage.preferences.setShowAllFiles(message.show));
         return;
       case 'setCollapseMerges': {
-        this.save(storage.setCollapseMerges(message.collapse));
+        this.save(storage.preferences.setCollapseMerges(message.collapse));
         this.collapseMerges = message.collapse;
         for (const tab of this.tabStates.values()) {
           tab.toggledMerges.clear();
@@ -81,7 +82,7 @@ export class ViewSettings {
         return;
       }
       case 'setShowEntireFile': {
-        this.save(storage.setShowEntireFile(message.show));
+        this.save(storage.preferences.setShowEntireFile(message.show));
         await this.compareTabs.sendCompare(session);
         const context = await this.contexts.context(session);
         this.staleDiffs(context, (tab) => tab.path !== undefined);
@@ -91,14 +92,14 @@ export class ViewSettings {
         return;
       }
       case 'setAutoFetch':
-        this.save(storage.setAutoFetch(message.on));
+        this.save(storage.preferences.setAutoFetch(message.on));
         this.autoFetch().update(message.on);
         return;
       case 'setDiffLayout':
-        this.save(storage.setDiffLayout(message.layout));
+        this.save(storage.preferences.setDiffLayout(message.layout));
         return;
       case 'setIgnoreWhitespace': {
-        this.save(storage.setIgnoreWhitespace(message.ignore));
+        this.save(storage.preferences.setIgnoreWhitespace(message.ignore));
         await this.compareTabs.sendCompare(session);
         const context = await this.contexts.context(session);
         this.staleDiffs(context, () => true);

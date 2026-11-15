@@ -6,9 +6,9 @@ import {
   type GitToHost,
   commitPageSize,
   commitPagesAsked,
+  isBookmark,
 } from '../shared/protocol';
 import { isColumnWidths } from '../shared/settings';
-import { isBookmark } from './storage';
 
 const maxBookmarks = 1000;
 

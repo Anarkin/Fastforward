@@ -2,10 +2,7 @@ import {
   workingTreeHash,
   type Bookmark,
   type ChangeArea,
-  type DiffLayout,
-  type GitToWebviewOf,
-  type LastFetch,
-  type RefKind,
+  isBookmark,
 } from '../shared/protocol';
 import { sidesOf } from '../shared/comparisons';
 import { isFullHash } from '../shared/hashes';
@@ -15,21 +12,17 @@ import type { UserSettings } from '../../../shell/main/userSettings';
 import { maxRecentItems } from '../../../shell/main/storage';
 import { sameRoot } from '../../../lib/main/paths';
 import type { Store } from '../../../shell/main/stateFile';
+import { LastFetches } from './lastFetches';
+import { RemoteTagStore } from './remoteTagStore';
+import { GitPreferences } from './preferences';
+import { keyOf, recordOf, withoutRoots } from './rootRecords';
 
 export const recentKey = 'recentRepositories';
 export const soloKey = 'solo';
 export const bookmarksKey = 'bookmarks';
 export const worktreesKey = 'activeWorktrees';
-export const lastFetchesKey = 'lastFetches';
-export const remoteTagsKey = 'remoteTags';
 export const cloneFolderKey = 'cloneFolder';
 export const selectionsKey = 'selections';
-const maxAutoFetchMinutes = Math.floor((2 ** 31 - 1) / 60_000);
-const fetchesSavedEvery = 10 * 60_000;
-const noRemoteTags: ReadonlyMap<
-  string,
-  ReadonlyMap<string, string>
-> = new Map();
 
 export interface SavedSelection {
   readonly hash: string;
@@ -38,17 +31,18 @@ export interface SavedSelection {
 }
 
 export class GitStorage {
-  private readonly unsavedFetches = new Map<string, LastFetch>();
-  private fetchesSavedAt: number | undefined;
-  private readonly parsedTags = new WeakMap<
-    object,
-    ReadonlyMap<string, string>
-  >();
+  readonly fetches: LastFetches;
+  readonly remoteTags: RemoteTagStore;
+  readonly preferences: GitPreferences;
 
   constructor(
     private readonly userSettings: UserSettings,
     private readonly state: Store,
-  ) {}
+  ) {
+    this.fetches = new LastFetches(state);
+    this.remoteTags = new RemoteTagStore(state);
+    this.preferences = new GitPreferences(userSettings);
+  }
 
   private get settings(): GitSettings {
     return this.userSettings.settings.tools.git;
@@ -157,217 +151,23 @@ export class GitStorage {
     return recordOf(this.state.get(bookmarksKey));
   }
 
-  lastFetchOf(repository: string): LastFetch {
-    const unsaved = this.unsavedFetches.get(
-      keyIn(this.unsavedFetches, repository),
-    );
-    if (unsaved !== undefined) {
-      return unsaved;
-    }
-    const all = this.lastFetches;
-    const { succeeded, failed } = recordOf(all[keyOf(all, repository)]);
-    return {
-      ...(typeof succeeded === 'number' && { succeeded }),
-      ...(typeof failed === 'number' && { failed }),
-    };
-  }
-
-  async recordFetch(
-    repository: string,
-    failed: boolean,
-    at: number,
-  ): Promise<void> {
-    this.unsavedFetches.set(keyIn(this.unsavedFetches, repository), {
-      ...this.lastFetchOf(repository),
-      [failed ? 'failed' : 'succeeded']: at,
-    });
-    const savedAt = this.fetchesSavedAt;
-    if (savedAt === undefined || at - savedAt >= fetchesSavedEvery) {
-      this.fetchesSavedAt = at;
-      await this.saveFetches();
-    }
-  }
-
-  async saveFetches(): Promise<void> {
-    if (this.unsavedFetches.size === 0) {
-      return;
-    }
-    const all = this.lastFetches;
-    for (const [repository, fetched] of this.unsavedFetches) {
-      all[keyOf(all, repository)] = fetched;
-    }
-    this.unsavedFetches.clear();
-    await this.state.update(lastFetchesKey, all);
-  }
-
-  private get lastFetches(): Record<string, unknown> {
-    return recordOf(this.state.get(lastFetchesKey));
-  }
-
-  remoteTagsOf(
-    repository: string,
-  ): ReadonlyMap<string, ReadonlyMap<string, string>> {
-    const all = this.allRemoteTags;
-    const remotes = all[keyOf(all, repository)];
-    if (!isObject(remotes)) {
-      return noRemoteTags;
-    }
-    return new Map(
-      Object.entries(remotes).flatMap(
-        ([remote, tags]): [string, ReadonlyMap<string, string>][] =>
-          isObject(tags) ? [[remote, this.tagsOf(tags)]] : [],
-      ),
-    );
-  }
-
-  private tagsOf(saved: Record<string, unknown>): ReadonlyMap<string, string> {
-    const known = this.parsedTags.get(saved);
-    if (known !== undefined) {
-      return known;
-    }
-    const tags = new Map(
-      Object.entries(saved).filter(
-        (tag): tag is [string, string] =>
-          typeof tag[1] === 'string' && isFullHash(tag[1]),
-      ),
-    );
-    this.parsedTags.set(saved, tags);
-    return tags;
-  }
-
-  async setRemoteTags(
-    repository: string,
-    remote: string,
-    tags: ReadonlyMap<string, string>,
-  ): Promise<void> {
-    const all = this.allRemoteTags;
-    const key = keyOf(all, repository);
-    await this.state.update(remoteTagsKey, {
-      ...all,
-      [key]: { ...recordOf(all[key]), [remote]: Object.fromEntries(tags) },
-    });
-  }
-
-  async keepRemoteTags(
-    repository: string,
-    remotes: readonly string[],
-  ): Promise<void> {
-    const all = this.allRemoteTags;
-    const key = keyOf(all, repository);
-    const kept = Object.entries(recordOf(all[key])).filter(([remote]) =>
-      remotes.includes(remote),
-    );
-    if (kept.length === Object.keys(recordOf(all[key])).length) {
-      return;
-    }
-    await this.state.update(remoteTagsKey, {
-      ...all,
-      [key]: Object.fromEntries(kept),
-    });
-  }
-
-  private get allRemoteTags(): Record<string, unknown> {
-    return recordOf(this.state.get(remoteTagsKey));
-  }
-
   async forget(
     repository: string,
     worktrees: readonly string[],
   ): Promise<void> {
-    this.unsavedFetches.delete(keyIn(this.unsavedFetches, repository));
     const worktreesToo = [
       repository,
       this.worktreeOf(repository),
       ...worktrees,
     ];
     await Promise.all([
-      ...[bookmarksKey, remoteTagsKey, lastFetchesKey, worktreesKey].map(
-        (key) => this.withoutRoots(key, [repository]),
-      ),
-      this.withoutRoots(soloKey, worktreesToo),
-      this.withoutRoots(selectionsKey, worktreesToo),
+      withoutRoots(this.state, bookmarksKey, [repository]),
+      this.remoteTags.forget(repository),
+      this.fetches.forget(repository),
+      withoutRoots(this.state, worktreesKey, [repository]),
+      withoutRoots(this.state, soloKey, worktreesToo),
+      withoutRoots(this.state, selectionsKey, worktreesToo),
     ]);
-  }
-
-  private async withoutRoots(
-    key: string,
-    roots: readonly string[],
-  ): Promise<void> {
-    const all = recordOf(this.state.get(key));
-    const kept = Object.entries(all).filter(
-      ([root]) => !roots.some((forgotten) => sameRoot(root, forgotten)),
-    );
-    if (kept.length < Object.keys(all).length) {
-      await this.state.update(key, Object.fromEntries(kept));
-    }
-  }
-
-  get layout(): GitToWebviewOf<'layout'> {
-    const { settings } = this;
-    return {
-      type: 'layout',
-      columnWidths: settings.columnWidths,
-      defaultColumnWidths: this.userSettings.defaults.tools.git.columnWidths,
-      collapseMerges: settings.collapseMerges,
-      showEntireFile: settings.showEntireFile,
-      ignoreWhitespace: settings.ignoreWhitespace,
-      diffLayout: settings.diffLayout,
-      showAllFiles: settings.showAllFiles,
-      autoFetch: settings.autoFetch,
-      autoFetchMinutes: this.fetchMinutes,
-      hideDimmedButtons: settings.hideDimmedButtons,
-    };
-  }
-
-  private get fetchMinutes(): number {
-    return Math.min(
-      Math.max(0, this.settings.autoFetchMinutes),
-      maxAutoFetchMinutes,
-    );
-  }
-
-  get autoFetchMinutes(): number {
-    return this.settings.autoFetch ? this.fetchMinutes : 0;
-  }
-
-  async setAutoFetch(on: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'autoFetch', on);
-  }
-
-  get collapseMerges(): boolean {
-    return this.settings.collapseMerges;
-  }
-
-  async setCollapseMerges(collapse: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'collapseMerges', collapse);
-  }
-
-  async setColumnWidths(widths: readonly number[]): Promise<void> {
-    await this.userSettings.setIn('git', 'columnWidths', widths);
-  }
-
-  get showEntireFile(): boolean {
-    return this.settings.showEntireFile;
-  }
-
-  async setShowEntireFile(show: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'showEntireFile', show);
-  }
-
-  get ignoreWhitespace(): boolean {
-    return this.settings.ignoreWhitespace;
-  }
-
-  async setIgnoreWhitespace(ignore: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'ignoreWhitespace', ignore);
-  }
-
-  async setDiffLayout(layout: DiffLayout): Promise<void> {
-    await this.userSettings.setIn('git', 'diffLayout', layout);
-  }
-
-  async setShowAllFiles(show: boolean): Promise<void> {
-    await this.userSettings.setIn('git', 'showAllFiles', show);
   }
 
   get soloDefault(): boolean {
@@ -396,22 +196,10 @@ export class GitStorage {
   }
 }
 
-function keyOf(roots: Record<string, unknown>, root: string): string {
-  return Object.keys(roots).find((key) => sameRoot(key, root)) ?? root;
-}
-
-function keyIn(roots: ReadonlyMap<string, unknown>, root: string): string {
-  return [...roots.keys()].find((key) => sameRoot(key, root)) ?? root;
-}
-
 function stringsIn(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item) => typeof item === 'string')
     : [];
-}
-
-function recordOf(value: unknown): Record<string, unknown> {
-  return isObject(value) ? { ...value } : {};
 }
 
 function selectionFrom(value: unknown): SavedSelection | undefined {
@@ -439,24 +227,5 @@ function selectionFrom(value: unknown): SavedSelection | undefined {
 function isSavedPath(value: unknown): value is string {
   return (
     typeof value === 'string' && !value.includes('\0') && !value.includes('\n')
-  );
-}
-
-const bookmarkKinds: readonly (RefKind | 'commit')[] = [
-  'branch',
-  'remote',
-  'tag',
-  'remote-tag',
-  'commit',
-];
-
-export function isBookmark(value: unknown): value is Bookmark {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'kind' in value &&
-    'name' in value &&
-    bookmarkKinds.some((kind) => kind === value.kind) &&
-    typeof value.name === 'string'
   );
 }

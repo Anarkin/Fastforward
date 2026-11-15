@@ -1,10 +1,7 @@
 import type { Store } from '../../../../../shell/main/stateFile';
-import {
-  bookmarksKey,
-  lastFetchesKey,
-  remoteTagsKey,
-  soloKey,
-} from '../../../../../tools/git/main/storage';
+import { bookmarksKey, soloKey } from '../../../../../tools/git/main/storage';
+import { lastFetchesKey } from '../../../../../tools/git/main/lastFetches';
+import { remoteTagsKey } from '../../../../../tools/git/main/remoteTagStore';
 import { gitState } from '../../../../helpers/harness';
 
 export const keptOf = (store: Store) =>

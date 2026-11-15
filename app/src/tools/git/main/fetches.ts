@@ -111,7 +111,7 @@ export class Fetches {
       this.fetchFailures.add(repository);
     }
     this.access.core.save(
-      this.access.storage.recordFetch(repository, !fetched, Date.now()),
+      this.access.storage.fetches.recordFetch(repository, !fetched, Date.now()),
     );
     const shownIn = this.access.core.sessionShowingRepository(repository);
     const live = shownIn && this.access.core.live(shownIn);
@@ -133,7 +133,7 @@ export class Fetches {
     session.post({
       type: 'lastFetch',
       ...(repository !== undefined &&
-        this.access.storage.lastFetchOf(repository)),
+        this.access.storage.fetches.lastFetchOf(repository)),
     });
   }
 

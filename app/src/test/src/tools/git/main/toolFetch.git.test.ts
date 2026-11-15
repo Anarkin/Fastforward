@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { lastFetchesKey } from '../../../../../tools/git/main/storage';
+import { lastFetchesKey } from '../../../../../tools/git/main/lastFetches';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   removeFolder,

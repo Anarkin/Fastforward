@@ -130,7 +130,8 @@ export class CompareTabs {
       return;
     }
     const { compared } = comparing;
-    const { showEntireFile: entire, ignoreWhitespace } = this.storage.layout;
+    const { showEntireFile: entire, ignoreWhitespace } =
+      this.storage.preferences.layout;
     const version = ++comparing.version;
     comparing.running?.abort();
     const running = new AbortController();

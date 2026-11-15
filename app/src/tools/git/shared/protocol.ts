@@ -145,6 +145,25 @@ interface BookmarkCommit {
 
 export type Bookmark = BookmarkRef | BookmarkCommit;
 
+const bookmarkKinds: readonly (RefKind | 'commit')[] = [
+  'branch',
+  'remote',
+  'tag',
+  'remote-tag',
+  'commit',
+];
+
+export function isBookmark(value: unknown): value is Bookmark {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    'name' in value &&
+    bookmarkKinds.some((kind) => kind === value.kind) &&
+    typeof value.name === 'string'
+  );
+}
+
 export interface CommitInfo {
   readonly hash: string;
   readonly subject: string;

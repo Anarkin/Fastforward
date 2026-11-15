@@ -188,7 +188,7 @@ export class CommitNavigation {
       hiddenSides(tab, hash).flatMap((side) => mergesHidingCommit(tab, side)),
     );
     if (merges.size > 0) {
-      expandMerges(tab, [...merges], this.storage.collapseMerges);
+      expandMerges(tab, [...merges], this.storage.preferences.collapseMerges);
       await this.historyPages.sendShownHistory(context, { scrollTo: hash });
       if (tab.selection !== picked) {
         return;

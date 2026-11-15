@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { RefInfo } from '../../../../../tools/git/shared/protocol';
-import { remoteTagsKey } from '../../../../../tools/git/main/storage';
+import { remoteTagsKey } from '../../../../../tools/git/main/remoteTagStore';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   removeFolder,
