@@ -4,8 +4,9 @@ import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { floodDone, floodReady } from './perfData';
-import { launchedForPerf, measure, perfData, sleep } from './perfFixtures';
+import { launchedForPerf, measure, perfData } from './perfFixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { sleep } from './perfInput';
 
 suite('Frames of the terminal', () => {
   const { flood } = perfData();

@@ -1,14 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { hugeFile, reworkSubject } from './perfData';
-import {
-  heldKey,
-  launchedForPerf,
-  measure,
-  perfData,
-  touchpadScroll,
-  wheelNotches,
-} from './perfFixtures';
+import { launchedForPerf, measure, perfData } from './perfFixtures';
+import { heldKey, touchpadScroll, wheelNotches } from './perfInput';
 
 suite('Frames of the git tool', () => {
   const { repository } = perfData();

@@ -2,14 +2,8 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { codeFile, imagesFolder, logFile, manyFolder } from './perfData';
-import {
-  heldKey,
-  launchedForPerf,
-  measure,
-  perfData,
-  sleep,
-  wheelNotches,
-} from './perfFixtures';
+import { launchedForPerf, measure, perfData } from './perfFixtures';
+import { heldKey, sleep, wheelNotches } from './perfInput';
 
 function stem(file: string): string {
   return file.slice(0, file.lastIndexOf('.'));

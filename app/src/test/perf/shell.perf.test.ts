@@ -2,7 +2,8 @@ import * as assert from 'node:assert';
 import type { BrowserWindow } from 'electron';
 import { suite, test } from 'vitest';
 import { manyFolder } from './perfData';
-import { launchedForPerf, measure, paced, perfData } from './perfFixtures';
+import { launchedForPerf, measure, perfData } from './perfFixtures';
+import { paced } from './perfInput';
 
 suite('Frames of the window and its tabs', () => {
   const { repository, files } = perfData();
