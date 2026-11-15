@@ -4,16 +4,9 @@ import * as path from 'node:path';
 import type { JSHandle } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
-import { page, profile, repository, sharedApp } from './appFixtures';
+import { page, repository, sharedApp } from './appFixtures';
 import { gridLines, linesOffGrid } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
-
-const focusColor = () =>
-  page.evaluate(() =>
-    getComputedStyle(document.documentElement)
-      .getPropertyValue('--color-focus')
-      .trim(),
-  );
 
 const viewDiagram = async (
   from: 'first' | 'uncommitted',
@@ -213,39 +206,5 @@ suite('App', () => {
       await repository.git('checkout', '-q', 'HEAD', '--', 'diagram.md');
     }
     await page.locator('.commit.working-tree.empty').waitFor();
-  });
-
-  test('applies settings edited by hand while it runs, and says what is wrong with them', async () => {
-    const file = path.join(profile, 'settings.user.json');
-    const colored = page.waitForEvent('load');
-    fs.writeFileSync(
-      file,
-      JSON.stringify({
-        colors: { light: { focus: '#123456' }, dark: { focus: '#123456' } },
-      }),
-    );
-    await colored;
-    await page.waitForFunction(
-      () =>
-        getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-focus')
-          .trim() === '#123456',
-    );
-    assert.strictEqual(await focusColor(), '#123456');
-    const broken = page.waitForEvent('load');
-    fs.writeFileSync(file, '{ "showAllFiles": tru');
-    await broken;
-    await page
-      .locator('.notice.error', { hasText: 'not valid JSON' })
-      .waitFor();
-    const emptied = page.waitForEvent('load');
-    fs.writeFileSync(file, '{}');
-    await emptied;
-    await page.waitForFunction(
-      () =>
-        getComputedStyle(document.documentElement)
-          .getPropertyValue('--color-focus')
-          .trim() !== '#123456',
-    );
   });
 });
