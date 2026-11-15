@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type { GraphRow } from '../../../../../tools/git/shared/protocol';
-import { graphWidth, rowLanes } from '../../../../../tools/git/page/graphLanes';
 import { GraphCell } from '../../../../../tools/git/page/graph';
 import { noop } from '../../../../helpers/fixtures';
 
@@ -121,29 +120,6 @@ suite('Graph cell', () => {
     assert.deepStrictEqual(attributes(html, 'path', 'stroke'), [
       'var(--color-git-graph-green)',
     ]);
-  });
-
-  test('is as wide as the lanes its dot and lines reach, from one to twelve', () => {
-    assert.strictEqual(rowLanes(undefined), 1);
-    assert.strictEqual(
-      rowLanes({
-        lane: 0,
-        color: 0,
-        lines: [{ from: 0, to: 3, color: 0, bottom: true }],
-      }),
-      4,
-    );
-    assert.strictEqual(
-      rowLanes({
-        lane: 2,
-        color: 0,
-        lines: [{ from: 4, to: 2, color: 0, bottom: false }],
-      }),
-      5,
-    );
-    assert.strictEqual(graphWidth(0), 18);
-    assert.strictEqual(graphWidth(3), 42);
-    assert.strictEqual(graphWidth(20), 150);
   });
 
   test('draws the edge around a dot or a square, and the inside of a merge ring, in the ground of its row, which a hovered or selected row changes', () => {

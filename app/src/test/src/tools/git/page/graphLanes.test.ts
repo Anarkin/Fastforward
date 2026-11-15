@@ -4,7 +4,11 @@ import type {
   GraphLine,
   GraphRow,
 } from '../../../../../tools/git/shared/protocol';
-import { withoutWorkingTreeLink } from '../../../../../tools/git/page/graphLanes';
+import {
+  graphWidth,
+  rowLanes,
+  withoutWorkingTreeLink,
+} from '../../../../../tools/git/page/graphLanes';
 
 const graphRow = (lane: number, ...lines: GraphLine[]): GraphRow => ({
   lane,
@@ -32,5 +36,30 @@ suite('Commit list without its working tree row', () => {
       withoutWorkingTreeLink(graphRow(1, link), 5, undefined),
       graphRow(1),
     );
+  });
+});
+
+suite('Graph cell', () => {
+  test('is as wide as the lanes its dot and lines reach, from one to twelve', () => {
+    assert.strictEqual(rowLanes(undefined), 1);
+    assert.strictEqual(
+      rowLanes({
+        lane: 0,
+        color: 0,
+        lines: [{ from: 0, to: 3, color: 0, bottom: true }],
+      }),
+      4,
+    );
+    assert.strictEqual(
+      rowLanes({
+        lane: 2,
+        color: 0,
+        lines: [{ from: 4, to: 2, color: 0, bottom: false }],
+      }),
+      5,
+    );
+    assert.strictEqual(graphWidth(0), 18);
+    assert.strictEqual(graphWidth(3), 42);
+    assert.strictEqual(graphWidth(20), 150);
   });
 });
