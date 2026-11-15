@@ -3,7 +3,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import type { ToHost } from '../../../../../shell/shared/protocol';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   tempRepository,
@@ -19,8 +18,6 @@ import {
 } from '../../../../helpers/harness';
 import { fortyLines, numberedLines } from '../../../../helpers/gitFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
-
-const forged = (json: string): ToHost => JSON.parse(json);
 
 suite('Git tool showing diffs', () => {
   let folder: string;
@@ -219,48 +216,6 @@ suite('Git tool showing diffs', () => {
       await view.connection.receive({ type: 'ready' });
       assert.strictEqual(view.page.last('layout')?.ignoreWhitespace, false);
       assert.strictEqual(changed(), true);
-    });
-  });
-
-  test('wraps long lines, highlights syntax and shows whitespace by default, for the diff and the viewer alike, and remembers what is chosen in either, telling the page', async () => {
-    await withView(log, [], async (view) => {
-      assert.deepStrictEqual(view.page.last('textView')?.view, {
-        wordWrap: true,
-        showWhitespace: true,
-        highlightSyntax: true,
-      });
-      const chosen = {
-        wordWrap: false,
-        showWhitespace: false,
-        highlightSyntax: false,
-      };
-      await view.connection.receive({ type: 'setTextView', view: chosen });
-      assert.deepStrictEqual(view.settings.settings.text, chosen);
-      assert.deepStrictEqual(view.page.last('textView')?.view, chosen);
-      await view.connection.receive({ type: 'ready' });
-      assert.deepStrictEqual(view.page.last('textView')?.view, chosen);
-      await view.connection.receive(
-        forged('{ "type": "setTextView", "view": { "wordWrap": "yes" } }'),
-      );
-      assert.deepStrictEqual(view.settings.settings.text, chosen);
-    });
-  });
-
-  test('fits images to the viewer by default, and remembers when they are chosen at their real size, telling the page', async () => {
-    await withView(log, [], async (view) => {
-      assert.deepStrictEqual(view.page.last('imageView')?.view, {
-        realSize: false,
-      });
-      const chosen = { realSize: true };
-      await view.connection.receive({ type: 'setImageView', view: chosen });
-      assert.deepStrictEqual(view.settings.settings.images, chosen);
-      assert.deepStrictEqual(view.page.last('imageView')?.view, chosen);
-      await view.connection.receive({ type: 'ready' });
-      assert.deepStrictEqual(view.page.last('imageView')?.view, chosen);
-      await view.connection.receive(
-        forged('{ "type": "setImageView", "view": { "realSize": "yes" } }'),
-      );
-      assert.deepStrictEqual(view.settings.settings.images, chosen);
     });
   });
 

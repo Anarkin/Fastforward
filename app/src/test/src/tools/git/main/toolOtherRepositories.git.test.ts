@@ -177,22 +177,4 @@ suite('Git tool of other repositories', () => {
       );
     });
   }
-
-  test('logs what the page sends at its level, marked as from the webview', async () => {
-    const recording = recordingLog();
-    await withView(recording.log, [], async (view) => {
-      await view.connection.receive({
-        type: 'log',
-        level: 'info',
-        message: 'from the page',
-      });
-      await view.connection.receive({
-        type: 'log',
-        level: 'error',
-        message: 'failed in the page',
-      });
-      assert.ok(recording.info.includes('Webview: from the page'));
-      assert.deepStrictEqual(recording.error, ['Webview: failed in the page']);
-    });
-  });
 });

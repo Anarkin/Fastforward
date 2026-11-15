@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
+import type { ToHost } from '../../../../shell/shared/protocol';
 import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
 import {
   closeViews,
@@ -12,6 +13,8 @@ import {
   withView,
 } from '../../../helpers/harness';
 import { FakeHost } from '../../../helpers/fakeHost';
+
+const forged = (json: string): ToHost => JSON.parse(json);
 
 suite('Shell with no tab open', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');
@@ -188,6 +191,89 @@ suite('Shell with no tab open', () => {
       },
       true,
       host,
+      noGit,
+    );
+  });
+
+  test('wraps long lines, highlights syntax and shows whitespace by default, for the diff and the viewer alike, and remembers what is chosen in either, telling the page', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('textView')?.view, {
+          wordWrap: true,
+          showWhitespace: true,
+          highlightSyntax: true,
+        });
+        const chosen = {
+          wordWrap: false,
+          showWhitespace: false,
+          highlightSyntax: false,
+        };
+        await view.connection.receive({ type: 'setTextView', view: chosen });
+        assert.deepStrictEqual(view.settings.settings.text, chosen);
+        assert.deepStrictEqual(view.page.last('textView')?.view, chosen);
+        await view.connection.receive({ type: 'ready' });
+        assert.deepStrictEqual(view.page.last('textView')?.view, chosen);
+        await view.connection.receive(
+          forged('{ "type": "setTextView", "view": { "wordWrap": "yes" } }'),
+        );
+        assert.deepStrictEqual(view.settings.settings.text, chosen);
+      },
+      true,
+      undefined,
+      noGit,
+    );
+  });
+
+  test('fits images to the viewer by default, and remembers when they are chosen at their real size, telling the page', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('imageView')?.view, {
+          realSize: false,
+        });
+        const chosen = { realSize: true };
+        await view.connection.receive({ type: 'setImageView', view: chosen });
+        assert.deepStrictEqual(view.settings.settings.images, chosen);
+        assert.deepStrictEqual(view.page.last('imageView')?.view, chosen);
+        await view.connection.receive({ type: 'ready' });
+        assert.deepStrictEqual(view.page.last('imageView')?.view, chosen);
+        await view.connection.receive(
+          forged('{ "type": "setImageView", "view": { "realSize": "yes" } }'),
+        );
+        assert.deepStrictEqual(view.settings.settings.images, chosen);
+      },
+      true,
+      undefined,
+      noGit,
+    );
+  });
+
+  test('logs what the page sends at its level, marked as from the webview', async () => {
+    const recording = recordingLog();
+    await withView(
+      recording.log,
+      [],
+      async (view) => {
+        await view.connection.receive({
+          type: 'log',
+          level: 'info',
+          message: 'from the page',
+        });
+        await view.connection.receive({
+          type: 'log',
+          level: 'error',
+          message: 'failed in the page',
+        });
+        assert.ok(recording.info.includes('Webview: from the page'));
+        assert.deepStrictEqual(recording.error, [
+          'Webview: failed in the page',
+        ]);
+      },
+      true,
+      undefined,
       noGit,
     );
   });
