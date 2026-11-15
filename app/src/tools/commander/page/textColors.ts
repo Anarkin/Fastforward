@@ -1,6 +1,7 @@
 import type { TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../shared/textEncodings';
 import type { CodeSegment } from './codeSegments';
+import { bytesOf } from './encodedBytes';
 import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
 import {
   partHasRanges,
@@ -27,43 +28,25 @@ export interface ColoredText {
   readonly lines: readonly string[];
   readonly lineStarts: readonly number[];
   readonly unitLines: readonly boolean[];
-  readonly unit: 1 | 2;
+  readonly unit: number;
   readonly parts: readonly CodePart[];
 }
 
-function bytesOf(char: string): number {
-  const code = char.codePointAt(0) ?? 0;
-  return code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
-}
-
-function utf8Length(text: string): number {
-  let bytes = 0;
-  for (const char of text) {
-    bytes += bytesOf(char);
-  }
-  return bytes;
-}
-
-const unitOf = (encoding: TextEncoding) =>
-  encoding === 'utf-16le' || encoding === 'utf-16be' ? 2 : 1;
-
-const markBytes = (encoding: TextEncoding) =>
-  encoding === 'utf-8' ? 3 : unitOf(encoding);
+const wholeBytes = (text: string, encoding: TextEncoding) =>
+  bytesOf(text, 0, text.length, encoding);
 
 export function coloredText(
   text: string,
   encoding: TextEncoding,
   marked: boolean,
 ): ColoredText {
-  const unit = unitOf(encoding);
-  const lengthOf =
-    encoding === 'utf-8' ? utf8Length : (line: string) => line.length * unit;
+  const unit = wholeBytes('\n', encoding);
   const lines = text.split('\n');
   const lineStarts: number[] = [];
   const unitLines: boolean[] = [];
-  let at = marked ? markBytes(encoding) : 0;
+  let at = marked ? wholeBytes(byteOrderMark, encoding) : 0;
   for (const line of lines) {
-    const bytes = lengthOf(line);
+    const bytes = wholeBytes(line, encoding);
     lineStarts.push(at);
     unitLines.push(bytes === line.length * unit);
     at += bytes + unit;
@@ -116,7 +99,7 @@ function charAt(line: string, bytes: number): number | undefined {
     if (counted >= bytes) {
       break;
     }
-    counted += bytesOf(char);
+    counted += wholeBytes(char, 'utf-8');
     chars += char.length;
   }
   return counted === bytes ? chars : undefined;
