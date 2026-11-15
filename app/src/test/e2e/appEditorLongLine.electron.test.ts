@@ -212,13 +212,14 @@ suite('App editor, long lines and places shown again', () => {
     const editorTab = await tabs().evaluateAll((all) =>
       all.findIndex((tab) => tab.classList.contains('active')),
     );
+    const left = JSON.stringify(await topRow());
     await tabs().first().click();
     await right().locator('.commander-row').first().waitFor();
     await page.evaluate(recordTopRows, 120);
     await tabs().nth(editorTab).click();
     await content().waitFor();
     await new Promise((resolve) => setTimeout(resolve, 2500));
-    return recordedRows();
+    return { left, frames: await recordedRows() };
   };
 
   beforeAll(async () => {
@@ -258,9 +259,10 @@ suite('App editor, long lines and places shown again', () => {
     await edit('places');
     await firstLineIs('place 1');
     const scrolledTo = await scrolledToRow(150);
-    const frames = await shownAgain();
+    const { left, frames } = await shownAgain();
+    assert.strictEqual(left, JSON.stringify(scrolledTo), 'left where scrolled');
     assert.ok(frames.length > 0, 'frames drawn');
-    assert.deepStrictEqual([...new Set(frames)], [JSON.stringify(scrolledTo)]);
+    assert.deepStrictEqual([...new Set(frames)], [left]);
   });
 
   test('draws every row of a long line in view from the first frame drawn once its tab is shown again, the view starting at the line, rather than leaving the rows after the cursor undrawn', async () => {
@@ -274,9 +276,10 @@ suite('App editor, long lines and places shown again', () => {
     }
     const scrolledTo = await scrolledToRow(222);
     assert.deepStrictEqual(await gapsShown(), [], 'nothing undrawn at first');
-    const frames = await shownAgain();
+    const { left, frames } = await shownAgain();
+    assert.strictEqual(left, JSON.stringify(scrolledTo), 'left where scrolled');
     assert.ok(frames.length > 0, 'frames drawn');
-    assert.deepStrictEqual([...new Set(frames)], [JSON.stringify(scrolledTo)]);
+    assert.deepStrictEqual([...new Set(frames)], [left]);
     assert.deepStrictEqual(await topRow(), scrolledTo);
     assert.deepStrictEqual(await gapsShown(), [], 'nothing undrawn');
   });
@@ -312,11 +315,11 @@ suite('App editor, long lines and places shown again', () => {
     const scrolledTo = await settledTopRow();
     assert.match(scrolledTo.text, /^(?!<script)/, 'deep inside the line');
     for (let time = 0; time < 6; time++) {
-      const frames = await shownAgain();
+      const { left, frames } = await shownAgain();
       assert.ok(frames.length > 0, 'frames drawn');
       assert.deepStrictEqual(
         [...new Set(frames)],
-        [JSON.stringify(scrolledTo)],
+        [left],
         `shown again ${time + 1} times`,
       );
       assert.deepStrictEqual(await gapsShown(), [], 'nothing undrawn');

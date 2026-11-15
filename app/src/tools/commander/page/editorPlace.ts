@@ -51,7 +51,7 @@ export function placeOf(view: EditorView): EditorPlace {
     },
     false,
   );
-  return { from: row, offset: 0 };
+  return { from: Math.min(row + 1, view.state.doc.lineAt(row).to), offset: 0 };
 }
 
 function backTo(
