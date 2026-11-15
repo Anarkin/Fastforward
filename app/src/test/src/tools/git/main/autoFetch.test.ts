@@ -1,7 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { AutoFetch } from '../../../../../tools/git/main/autoFetch';
+import { AutoFetch, fetchOrder } from '../../../../../tools/git/main/autoFetch';
 import { fakeTimer } from '../../../../helpers/fakeTimer';
+import * as path from 'node:path';
 
 suite('Auto fetch', () => {
   test('fetches the repositories one after another, the next round the interval after this one started, so the first is fetched every interval however long the others take', async () => {
@@ -205,5 +206,42 @@ suite('Auto fetch', () => {
     await fire();
     assert.deepStrictEqual(fetched, ['a', 'b']);
     assert.strictEqual(waiting().length, 1);
+  });
+});
+
+suite('Fetch order', () => {
+  const first = path.resolve('first');
+  const second = path.resolve('second');
+  const third = path.resolve('third');
+
+  test('fetches the active repository first, wherever its tab is, then the rest in tab order', () => {
+    assert.deepStrictEqual(fetchOrder([first, second, third], [second]), [
+      second,
+      first,
+      third,
+    ]);
+    assert.deepStrictEqual(fetchOrder([first, second, third], [third]), [
+      third,
+      first,
+      second,
+    ]);
+  });
+
+  test('fetches the repositories every window shows first, in tab order, then the rest', () => {
+    assert.deepStrictEqual(
+      fetchOrder([first, second, third], [third, second]),
+      [second, third, first],
+    );
+  });
+
+  test('finds the active repository however its folder is spelled', () => {
+    assert.deepStrictEqual(
+      fetchOrder([first, second], [`${second}${path.sep}`]),
+      [second, first],
+    );
+  });
+
+  test('fetches in tab order when no tab is active', () => {
+    assert.deepStrictEqual(fetchOrder([first, second], []), [first, second]);
   });
 });
