@@ -2,9 +2,7 @@ import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
 import { maxDroppedIcons } from '../shared/icons';
-import type { PdfPlace } from '../shared/pdf';
 import {
-  maxFindLength,
   sides,
   type CommanderDrop,
   type CommanderToHost,
@@ -17,8 +15,6 @@ import {
   type CommanderActions,
   type CommanderSource,
   type CommanderState,
-  type KeptEditor,
-  type ToViewer,
 } from './commanderState';
 import {
   isEditorStream,
@@ -28,38 +24,21 @@ import {
   stillTargeted,
 } from './commanderReceived';
 import { filesToCompare } from './comparing';
-import { dialogActions } from './dialogActions';
+import { dialogActions, type StoreParts } from './dialogActions';
+import { editorActions } from './editorActions';
+import { flatActions, startFlatWorker, type FlatOptions } from './flatActions';
 import { filteredSelection, nearestShown } from './rowSelection';
 import { nextSort } from './rowOrder';
 import { shownColumns, shownRowsOf } from './shownRows';
-import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
+import { filterKey, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
-import {
-  FlatLists,
-  flatPanesOf,
-  type FlatTiming,
-  type FlatWorker,
-} from './flatLists';
-import type { ToEditor } from './editorState';
-
-function startFlatWorker(): FlatWorker {
-  return new Worker(new URL('flatWorker.js', location.href), {
-    type: 'module',
-  });
-}
-
-const pdfPlaceWait = 2000;
-
-const pdfPlaceEvery = 1000;
+import { viewerActions } from './viewerActions';
 
 export function createCommanderStore(
   post: (message: CommanderToHost) => void,
   initial: Partial<CommanderSource> = {},
-  flatOptions: {
-    readonly worker: () => FlatWorker;
-    readonly timing?: FlatTiming;
-  } = { worker: startFlatWorker },
+  flatOptions: FlatOptions = { worker: startFlatWorker },
   dropFiles: (
     files: readonly File[],
     message: CommanderDrop,
@@ -67,93 +46,9 @@ export function createCommanderStore(
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
   const scrolls = new ScrollPlaces();
-  const places = new Map<string, number>();
-  const viewerListeners = new Set<(message: ToViewer) => void>();
-  const editorListeners = new Set<(message: ToEditor) => void>();
-  const keptEditors = new Map<string, KeptEditor>();
-  const listenEditor = (handler: (message: ToEditor) => void) => {
-    editorListeners.add(handler);
-    return () => {
-      editorListeners.delete(handler);
-    };
-  };
-  const listenViewer = (handler: (message: ToViewer) => void) => {
-    viewerListeners.add(handler);
-    return () => {
-      viewerListeners.delete(handler);
-    };
-  };
-  let viewerRequests = 0;
-  let pendingPdfPlace:
-    | {
-        readonly tab: string;
-        readonly fingerprint: string;
-        readonly place: PdfPlace;
-      }
-    | undefined;
-  let pdfPlaceTimer: ReturnType<typeof setTimeout> | undefined;
-  const flushPdfPlace = () => {
-    clearTimeout(pdfPlaceTimer);
-    pdfPlaceTimer = undefined;
-    const pending = pendingPdfPlace;
-    pendingPdfPlace = undefined;
-    if (pending !== undefined) {
-      post({ type: 'savePdfPlace', ...pending });
-    }
-  };
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
   return createStore<CommanderState>()((set, get) => {
-    const flats = new FlatLists(
-      flatOptions.worker,
-      () => reconcileFlats(),
-      flatOptions.timing,
-    );
-    const reconcileFlats = () => {
-      const state = get();
-      const { view } = state;
-      const live = flatPanesOf(view);
-      for (const pane of flats.panes()) {
-        if (!live.has(pane)) {
-          flats.drop(pane);
-        }
-      }
-      const { tab, panes } = view;
-      if (tab === undefined) {
-        return;
-      }
-      for (const side of sides) {
-        const pane = panes[side];
-        const flat = pane?.flat;
-        if (pane === undefined || flat === undefined) {
-          continue;
-        }
-        const key = filterKey(tab, side);
-        flats.ensure(key, flat.walk, pane.parent, {
-          sort: pane.sort,
-          showHidden: view.showHidden,
-          fileColors: view.fileColors,
-          query: filterOf(state, side) ?? '',
-        });
-        const built = flats.built(key, flat.walk);
-        if (
-          built !== undefined &&
-          (built.rows !== pane.rows || built.shown !== flat.shown)
-        ) {
-          set((now) => ({
-            view: reduceView(now.view, {
-              type: 'flatRows',
-              tab,
-              side,
-              walk: flat.walk,
-              rows: built.rows,
-              shown: built.shown,
-              complete: built.complete,
-            }),
-          }));
-        }
-      }
-    };
     const announced = (change: () => void) => {
       const before = get().view;
       change();
@@ -226,7 +121,7 @@ export function createCommanderStore(
       ) {
         post({ type: 'activate', tab, side: active });
       }
-      reconcileFlats();
+      flat.reconcile();
     };
     const dispatch = (action: ViewAction) =>
       announced(() =>
@@ -259,6 +154,10 @@ export function createCommanderStore(
         onPane(side, send);
       }
     };
+    const parts: StoreParts = { set, get, post, onTab, onPane, onDisk };
+    const viewer = viewerActions(parts);
+    const editor = editorActions(parts);
+    const flat = flatActions(parts, flatOptions);
     const sortOf = (side: Side) => {
       const { panes, sorts } = get().view;
       return panes[side]?.sort ?? sorts[side];
@@ -272,98 +171,24 @@ export function createCommanderStore(
       ...initial,
       receive: (message) => {
         if (isViewerStream(message)) {
-          for (const handler of viewerListeners) {
-            handler(message);
-          }
+          viewer.heard(message);
           return;
         }
         if (isEditorStream(message)) {
-          for (const handler of editorListeners) {
-            handler(message);
-          }
+          editor.heard(message);
           return;
         }
         if (message.type === 'flatFiles') {
-          const { tab, panes } = get().view;
-          const pane = panes[message.side];
-          if (
-            tab === message.tab &&
-            pane?.flat?.walk === message.walk &&
-            pane.folder === message.folder
-          ) {
-            flats.files(
-              filterKey(message.tab, message.side),
-              message.walk,
-              message.folders,
-            );
-          }
+          flat.heard(message);
         }
         announced(() => set((state) => received(state, message)));
         if (message.type === 'closed') {
-          places.delete(message.tab);
-          keptEditors.delete(message.tab);
+          viewer.forget(message.tab);
+          editor.forget(message.tab);
           set((state) => ({ filters: withoutTab(state.filters, message.tab) }));
         }
       },
-      request: post,
-      listenViewer,
-      findText: (tab, encoding, query, onFound) => {
-        if (query.length > maxFindLength) {
-          onFound({ matches: [], done: true });
-          return () => undefined;
-        }
-        const request = ++viewerRequests;
-        const stop = listenViewer((message) => {
-          if (
-            message.type === 'found' &&
-            message.tab === tab &&
-            message.request === request
-          ) {
-            onFound({ matches: message.matches, done: message.done });
-          }
-        });
-        post({ type: 'findText', tab, encoding, query, request });
-        return () => {
-          stop();
-          post({ type: 'stopFind', tab, request });
-        };
-      },
-      readWholeText: (tab, encoding, onText) => {
-        const request = ++viewerRequests;
-        const stop = listenViewer((message) => {
-          if (
-            message.type === 'text' &&
-            message.tab === tab &&
-            message.request === request &&
-            message.text !== undefined
-          ) {
-            onText(message.text);
-          }
-        });
-        post({ type: 'readText', tab, encoding, request });
-        return stop;
-      },
-      readPdfPlace: (tab, fingerprint) =>
-        new Promise((resolve) => {
-          const request = ++viewerRequests;
-          const answered = (place: PdfPlace | undefined) => {
-            clearTimeout(waiting);
-            stop();
-            resolve(place);
-          };
-          const waiting = setTimeout(() => answered(undefined), pdfPlaceWait);
-          const stop = listenViewer((message) => {
-            if (message.type === 'pdfPlace' && message.request === request) {
-              answered(message.place);
-            }
-          });
-          post({ type: 'readPdfPlace', tab, fingerprint, request });
-        }),
-      keepPdfPlace: (tab, fingerprint, place) => {
-        pendingPdfPlace = { tab, fingerprint, place };
-        pdfPlaceTimer ??= setTimeout(flushPdfPlace, pdfPlaceEvery);
-      },
-      flushPdfPlace,
+      ...viewer.actions,
       dispatch,
       select: (side, key) => dispatch({ type: 'select', side, key }),
       mark: (side, keys, marked) =>
@@ -388,38 +213,7 @@ export function createCommanderStore(
         onPane(side, (tab, folder) =>
           post({ type: 'view', tab, side, folder, name }),
         ),
-      editFile: (side, name) =>
-        onPane(side, (tab, folder) =>
-          post({ type: 'editFile', tab, side, folder, name }),
-        ),
-      listenEditor,
-      keptEditor: (tab) => keptEditors.get(tab),
-      keepEditor: (tab, kept) => {
-        keptEditors.set(tab, kept);
-      },
-      readEdited: (tab) => post({ type: 'readEdited', tab }),
-      editText: (tab, update) => post({ type: 'editText', tab, update }),
-      keepEditState: (tab, version, state) =>
-        post({ type: 'editState', tab, version, state }),
-      saveText: (tab, overwrite) =>
-        post({
-          type: 'saveText',
-          tab,
-          ...(overwrite?.readOnly === true && { overwriteReadOnly: true }),
-          ...(overwrite?.changed === true && { overwriteChanged: true }),
-        }),
-      reloadEdited: (tab) => post({ type: 'reloadEdited', tab }),
-      editSource: (tab, file) => post({ type: 'editSource', tab, file }),
-      editViewed: (tab, at, encoding) =>
-        post({
-          type: 'editViewed',
-          tab,
-          at,
-          ...(encoding !== undefined && { encoding }),
-        }),
-      saveIn: (tab, encoding, bom) =>
-        post({ type: 'saveIn', tab, encoding, bom }),
-      reopenIn: (tab, encoding) => post({ type: 'reopenIn', tab, encoding }),
+      ...editor.actions,
       openRepository: (side, name) =>
         onDisk(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),
@@ -498,7 +292,7 @@ export function createCommanderStore(
             extended,
           }),
         ),
-      ...dialogActions({ set, get, post, onTab, onPane, onDisk }),
+      ...dialogActions(parts),
       copyToClipboard: (side, names) =>
         onPane(side, (tab, folder) =>
           post({ type: 'copyToClipboard', tab, side, folder, names }),
@@ -544,10 +338,6 @@ export function createCommanderStore(
         saveColumns({ ...columns, [column]: defaultColumns[column] });
       },
       scrollOf: (key) => scrolls.of(key),
-      placeOf: (tab) => places.get(tab) ?? 0,
-      keepPlace: (tab, byte) => {
-        places.set(tab, byte);
-      },
       filterSide: (side, query) => {
         set((state) => {
           const { tab, panes } = state.view;
@@ -571,17 +361,9 @@ export function createCommanderStore(
         if (selection !== undefined && selection !== selected) {
           dispatch({ type: 'select', side, key: selection });
         }
-        reconcileFlats();
+        flat.reconcile();
       },
-      flat: (side) =>
-        onTab((tab) =>
-          post({
-            type: 'flat',
-            tab,
-            side,
-            flat: get().view.panes[side]?.flat === undefined,
-          }),
-        ),
+      ...flat.actions,
       duplicates: (side) =>
         onTab((tab) =>
           post({
@@ -591,8 +373,6 @@ export function createCommanderStore(
             duplicates: get().view.panes[side]?.duplicates === undefined,
           }),
         ),
-      stopReading: (side) =>
-        onTab((tab) => post({ type: 'stopReading', tab, side })),
       countSizes: (side, names) =>
         onDisk(side, (tab, folder) =>
           post({ type: 'countSizes', tab, side, folder, names }),
