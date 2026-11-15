@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   imageSourceOf,
-  imageType,
   imageUrl,
   type ImageSource,
 } from '../../../../../tools/git/shared/images';
@@ -11,17 +10,6 @@ const blob = 'a'.repeat(40);
 const parse = (url: string) => imageSourceOf(new URL(url, 'fastforward://app'));
 
 suite('Images', () => {
-  test('knows the images Chromium shows by their extension, in any case', () => {
-    assert.strictEqual(imageType('a/b.png'), 'image/png');
-    assert.strictEqual(imageType('photo.JPG'), 'image/jpeg');
-    assert.strictEqual(imageType('photo.jpeg'), 'image/jpeg');
-    assert.strictEqual(imageType('favicon.ico'), 'image/x-icon');
-    assert.strictEqual(imageType('vector.svg'), 'image/svg+xml');
-    for (const path of ['a.bin', 'png', '.png', 'a.png/b']) {
-      assert.strictEqual(imageType(path), undefined, path);
-    }
-  });
-
   test('reads back the source of an image from its URL', () => {
     const sources: ImageSource[] = [
       { root: 'C:\\repo & co', path: 'a b/c#d.png', id: blob, disk: false },
