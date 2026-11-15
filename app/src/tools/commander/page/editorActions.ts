@@ -7,7 +7,7 @@ type EditorActions = Pick<
   | 'editFile'
   | 'listenEditor'
   | 'keptEditor'
-  | 'keepEditor'
+  | 'editorKeeper'
   | 'readEdited'
   | 'editText'
   | 'keepEditState'
@@ -26,6 +26,16 @@ export function editorActions({ post, onPane }: StoreParts): {
 } {
   const editorListeners = new Set<(message: ToEditor) => void>();
   const keptEditors = new Map<string, KeptEditor>();
+  const openTabs = new Map<string, object>();
+  const openTabOf = (tab: string) => {
+    const known = openTabs.get(tab);
+    if (known !== undefined) {
+      return known;
+    }
+    const open = {};
+    openTabs.set(tab, open);
+    return open;
+  };
   const listenEditor = (handler: (message: ToEditor) => void) => {
     editorListeners.add(handler);
     return () => {
@@ -40,6 +50,7 @@ export function editorActions({ post, onPane }: StoreParts): {
     },
     forget: (tab) => {
       keptEditors.delete(tab);
+      openTabs.delete(tab);
     },
     actions: {
       editFile: (side, name) =>
@@ -48,8 +59,13 @@ export function editorActions({ post, onPane }: StoreParts): {
         ),
       listenEditor,
       keptEditor: (tab) => keptEditors.get(tab),
-      keepEditor: (tab, kept) => {
-        keptEditors.set(tab, kept);
+      editorKeeper: (tab) => {
+        const open = openTabOf(tab);
+        return (kept) => {
+          if (openTabs.get(tab) === open) {
+            keptEditors.set(tab, kept);
+          }
+        };
       },
       readEdited: (tab) => post({ type: 'readEdited', tab }),
       editText: (tab, update) => post({ type: 'editText', tab, update }),

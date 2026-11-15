@@ -107,6 +107,36 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('gives a tab opened after others closed an id no tab had since the app started, as the tools and pages keep what they know of a tab by its id', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const ids = () => view.page.tabs?.tabs.map((tab) => tab.id) ?? [];
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
+        const [first, second] = ids();
+        assert.ok(first !== undefined && second !== undefined);
+        await view.connection.receive({ type: 'closeTab', tab: second });
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
+        const third = ids().at(-1);
+        assert.ok(third !== undefined);
+        await view.connection.receive({ type: 'closeTab', tab: third });
+        await view.connection.receive({ type: 'closeTab', tab: first });
+        await view.connection.receive({ type: 'newTab', tool: 'commander' });
+        const fourth = ids().at(-1);
+        assert.strictEqual(
+          new Set([first, second, third, fourth]).size,
+          4,
+          JSON.stringify([first, second, third, fourth]),
+        );
+      },
+      true,
+      undefined,
+      noGit,
+    );
+  });
+
   test('says what is wrong with the settings when the page loads', async () => {
     const host = new FakeHost();
     host.problems = ['Unknown setting "sollo"'];

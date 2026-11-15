@@ -118,7 +118,10 @@ const noWatching = () => {};
 
 export class Editing {
   private readonly opened = new Map<string, Opened>();
-  private readonly opening = new Map<string, Promise<Opened>>();
+  private readonly opening = new Map<
+    string,
+    { readonly file: string; readonly loading: Promise<Opened> }
+  >();
   private readonly starts = new Map<string, ViewedStart>();
 
   constructor(
@@ -149,6 +152,9 @@ export class Editing {
 
   async show(page: Page, tab: string, file: string): Promise<void> {
     const opened = await this.open(tab, file);
+    if (this.opened.get(tab) !== opened) {
+      return;
+    }
     this.postEditing(page, tab, opened);
     void this.findSources(tab, opened);
   }
@@ -203,8 +209,8 @@ export class Editing {
       return known;
     }
     const pending = this.opening.get(tab);
-    if (pending !== undefined) {
-      return pending;
+    if (pending?.file === file) {
+      return pending.loading;
     }
     const start = this.starts.get(tab);
     this.starts.delete(tab);
@@ -220,11 +226,11 @@ export class Editing {
         stop: noWatching,
       }),
     );
-    this.opening.set(tab, loading);
+    this.opening.set(tab, { file, loading });
     try {
       const opened = await loading;
-      if (this.opening.get(tab) === loading) {
-        known?.stop();
+      if (this.opening.get(tab)?.loading === loading) {
+        this.opened.get(tab)?.stop();
         opened.stop = this.access.watch(file, () => {
           void this.changedOnDisk(tab, opened);
         });
@@ -232,7 +238,7 @@ export class Editing {
       }
       return opened;
     } finally {
-      if (this.opening.get(tab) === loading) {
+      if (this.opening.get(tab)?.loading === loading) {
         this.opening.delete(tab);
       }
     }

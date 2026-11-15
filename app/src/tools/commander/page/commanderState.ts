@@ -225,7 +225,7 @@ export interface CommanderActions {
   ) => void;
   readonly reopenIn: (tab: string, encoding: TextEncoding | 'auto') => void;
   readonly keptEditor: (tab: string) => KeptEditor | undefined;
-  readonly keepEditor: (tab: string, kept: KeptEditor) => void;
+  readonly editorKeeper: (tab: string) => (kept: KeptEditor) => void;
   readonly openRepository: (side: Side, name: string) => void;
   readonly folderCommand: (
     side: Side,

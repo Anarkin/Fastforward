@@ -55,7 +55,7 @@ export function useEditorView(language: string | undefined) {
     keepEditState,
     saveText,
     keptEditor,
-    keepEditor,
+    editorKeeper,
   } = useCommanderActions();
   const { closeTab } = useShellActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
@@ -87,11 +87,12 @@ export function useEditorView(language: string | undefined) {
     if (element === null) {
       return undefined;
     }
+    const keepEditor = editorKeeper(tab);
     let version = startingVersion();
     let place: EditorPlace | undefined;
     let keepTimer: ReturnType<typeof setTimeout> | undefined;
     const keepState = (state: EditorState) => {
-      keepEditor(tab, { state, version, place });
+      keepEditor({ state, version, place });
       clearTimeout(keepTimer);
       keepTimer = setTimeout(
         () => keepEditState(tab, version, keptJson(state, place)),
@@ -225,7 +226,7 @@ export function useEditorView(language: string | undefined) {
       } else {
         shown.setState(next);
       }
-      keepEditor(tab, { state: shown.state, version, place });
+      keepEditor({ state: shown.state, version, place });
       setEndingsShown(endingsShownOf(shown.state));
       setStatus(statusOf(shown.state, table));
       shown.focus();
@@ -236,7 +237,7 @@ export function useEditorView(language: string | undefined) {
       stopSettling();
       clearTimeout(keepTimer);
       shown.scrollDOM.removeEventListener('scroll', onScroll);
-      keepEditor(tab, { state: shown.state, version, place });
+      keepEditor({ state: shown.state, version, place });
       keepEditState(tab, version, keptJson(shown.state, place));
       shown.destroy();
       view.current = undefined;
@@ -248,7 +249,7 @@ export function useEditorView(language: string | undefined) {
     readOnly,
     editText,
     keepEditState,
-    keepEditor,
+    editorKeeper,
     keptEditor,
     listenEditor,
     readEdited,

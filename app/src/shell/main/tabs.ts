@@ -21,6 +21,7 @@ export interface TabsHost {
 
 export class Tabs {
   private readonly shownTools = new WeakMap<Page, ToolId>();
+  private lastTabId = 0;
 
   constructor(
     private readonly storage: Storage,
@@ -103,7 +104,7 @@ export class Tabs {
     const tabs = storage.savedTabs;
     const added: Tab[] = [];
     const opened: string[] = [];
-    let next = Number(nextTabId(storage.layout));
+    let next = Math.max(Number(nextTabId(storage.layout)), this.lastTabId + 1);
     for (const root of roots) {
       const existing = reuse
         ? [...tabs, ...added].find(
@@ -129,6 +130,7 @@ export class Tabs {
       added.push(tab);
       opened.push(tab.id);
     }
+    this.lastTabId = Math.max(this.lastTabId, next - 1);
     this.host.save(
       storage.setLayout(withOpened(storage.layout, window.id, added)),
     );
