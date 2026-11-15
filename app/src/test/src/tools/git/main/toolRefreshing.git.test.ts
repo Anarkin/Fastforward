@@ -1,6 +1,4 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import {
   afterAll,
   afterEach,
@@ -13,9 +11,7 @@ import { plainOf } from '../../../../../lib/shared/sentences';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  commitAtTime,
   removeFolder,
-  tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { recordingLog } from '../../../../helpers/stub';
@@ -33,6 +29,7 @@ import {
   takeErrorsLogged,
   withView,
   workingTreesSent,
+  holderOf,
 } from '../../../../helpers/harness';
 import {
   viewRepositories,
@@ -216,47 +213,6 @@ suite('Git tool refreshing one repository', () => {
     }
   });
 
-  test('reads the history whole once a shallow clone is deepened, as the commits it ended at gain their parents', async () => {
-    const shallow = await tempRepository(path.join(folder, 'shallow'));
-    for (const message of ['c0', 'c1', 'c2']) {
-      await shallow.commit(message);
-    }
-    const [c1, c2] = await shallow.resolve('HEAD~1', 'HEAD');
-    const boundary = path.join(shallow.root, '.git', 'shallow');
-    fs.writeFileSync(boundary, `${c2}\n`);
-    await withView(log, [shallow.root], async ({ page, connection }) => {
-      assert.strictEqual(page.last('commits')?.total, 1);
-      fs.writeFileSync(boundary, `${c1}\n`);
-      await connection.refresh();
-      assert.strictEqual(page.last('commits')?.total, 2);
-      fs.rmSync(boundary);
-      await shallow.commit('c3');
-      await connection.refresh();
-      assert.strictEqual(page.last('commits')?.total, 4);
-    });
-  });
-
-  test('reads the history whole for a checkout of a tip made in the same second as the one left, as git takes the one checked out first', async () => {
-    const tied = await tempRepository(path.join(folder, 'tied'));
-    await tied.commit('x');
-    const [x] = await tied.resolve('HEAD');
-    const time = Number((await tied.git('log', '-1', '--format=%ct')).trim());
-    await tied.git(
-      'update-ref',
-      'refs/heads/main',
-      await commitAtTime(tied, x, time + 1, 'a'),
-    );
-    await tied.git('branch', 'aaa', await commitAtTime(tied, x, time + 1, 'c'));
-    await withView(log, [tied.root], async ({ page, connection }) => {
-      const subjects = () =>
-        page.last('commits')?.commits.map((commit) => commit.subject);
-      assert.deepStrictEqual(subjects(), ['a', 'c', 'x']);
-      await tied.git('checkout', '-q', 'aaa');
-      await connection.refresh();
-      assert.deepStrictEqual(subjects(), ['c', 'a', 'x']);
-    });
-  });
-
   suite('with its tab open', () => {
     let fastforward: GitTool;
     let page: FakePage;
@@ -271,6 +227,72 @@ suite('Git tool refreshing one repository', () => {
     });
 
     afterEach(() => connection.dispose());
+
+    test('applies Solo and ends a refresh while refreshes keep being asked for', async () => {
+      let refilling = true;
+      let started = 0;
+      let waiting: { from: number; most: number } | undefined;
+      const heldBack = Promise.withResolvers<void>();
+      const refreshing = holderOf(fastforward, 'refresh');
+      const refresh: unknown = Reflect.get(refreshing, 'refresh');
+      assert.ok(typeof refresh === 'function');
+      stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
+        started++;
+        if (waiting && started - waiting.from > waiting.most) {
+          refilling = false;
+          heldBack.resolve();
+        }
+        await original(...args);
+        if (refilling) {
+          const queued: unknown = Reflect.apply(refresh, refreshing, [args[0]]);
+          void Promise.resolve(queued).catch(() => undefined);
+        }
+      });
+      stubMethod(fastforward, 'queueRefresh', (original, ...args) => {
+        const [context, load, ...rest] = args;
+        if (typeof load !== 'function') {
+          return original(...args);
+        }
+        waiting = { from: started, most: 0 };
+        return original(
+          context,
+          () => {
+            waiting = undefined;
+            return Reflect.apply(load, undefined, []);
+          },
+          ...rest,
+        );
+      });
+      const looping = connection.refresh();
+      try {
+        page.clear();
+        const solo = connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
+        });
+        await Promise.race([solo, heldBack.promise]);
+        assert.ok(refilling, 'Solo waited for refreshes asked for after it');
+        await solo;
+        assert.strictEqual(page.last('applyingSolo')?.running, false);
+
+        waiting = { from: started, most: 2 };
+        await Promise.race([connection.refresh(), heldBack.promise]);
+        assert.ok(
+          refilling,
+          'a refresh waited for refreshes asked for after it',
+        );
+        waiting = undefined;
+      } finally {
+        refilling = false;
+        await looping;
+        await connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: false,
+        });
+      }
+    });
 
     test('refreshes once more for a page that asks while a refresh runs', async () => {
       let calls = 0;

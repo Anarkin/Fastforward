@@ -26,7 +26,6 @@ import {
   type FakePage,
   gate,
   openView,
-  holderOf,
   stubMethod,
 } from '../../../../helpers/harness';
 import {
@@ -68,72 +67,6 @@ suite('Git tool refreshing one repository', () => {
     });
 
     afterEach(() => connection.dispose());
-
-    test('applies Solo and ends a refresh while refreshes keep being asked for', async () => {
-      let refilling = true;
-      let started = 0;
-      let waiting: { from: number; most: number } | undefined;
-      const heldBack = Promise.withResolvers<void>();
-      const refreshing = holderOf(fastforward, 'refresh');
-      const refresh: unknown = Reflect.get(refreshing, 'refresh');
-      assert.ok(typeof refresh === 'function');
-      stubMethod(fastforward, 'refreshOnce', async (original, ...args) => {
-        started++;
-        if (waiting && started - waiting.from > waiting.most) {
-          refilling = false;
-          heldBack.resolve();
-        }
-        await original(...args);
-        if (refilling) {
-          const queued: unknown = Reflect.apply(refresh, refreshing, [args[0]]);
-          void Promise.resolve(queued).catch(() => undefined);
-        }
-      });
-      stubMethod(fastforward, 'queueRefresh', (original, ...args) => {
-        const [context, load, ...rest] = args;
-        if (typeof load !== 'function') {
-          return original(...args);
-        }
-        waiting = { from: started, most: 0 };
-        return original(
-          context,
-          () => {
-            waiting = undefined;
-            return Reflect.apply(load, undefined, []);
-          },
-          ...rest,
-        );
-      });
-      const looping = connection.refresh();
-      try {
-        page.clear();
-        const solo = connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: true,
-        });
-        await Promise.race([solo, heldBack.promise]);
-        assert.ok(refilling, 'Solo waited for refreshes asked for after it');
-        await solo;
-        assert.strictEqual(page.last('applyingSolo')?.running, false);
-
-        waiting = { from: started, most: 2 };
-        await Promise.race([connection.refresh(), heldBack.promise]);
-        assert.ok(
-          refilling,
-          'a refresh waited for refreshes asked for after it',
-        );
-        waiting = undefined;
-      } finally {
-        refilling = false;
-        await looping;
-        await connection.receive({
-          type: 'setSolo',
-          root: repository.root,
-          solo: false,
-        });
-      }
-    });
 
     test('ignores a file picked on a commit no longer selected', async () => {
       await connection.receive({

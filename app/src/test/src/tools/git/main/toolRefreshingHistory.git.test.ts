@@ -19,6 +19,8 @@ import {
   removeFolder,
   tempFolder,
   type TempRepository,
+  tempRepository,
+  commitAtTime,
 } from '../../../../helpers/repositories';
 import { recordingLog } from '../../../../helpers/stub';
 import {
@@ -32,6 +34,7 @@ import {
   stubMethod,
   takeErrorsLogged,
   gitState,
+  withView,
 } from '../../../../helpers/harness';
 import {
   restoreRepository,
@@ -57,6 +60,47 @@ suite('Git tool refreshing one repository', () => {
   });
 
   const restore = () => restoreRepository(repository, fixture.merge);
+
+  test('reads the history whole once a shallow clone is deepened, as the commits it ended at gain their parents', async () => {
+    const shallow = await tempRepository(path.join(folder, 'shallow'));
+    for (const message of ['c0', 'c1', 'c2']) {
+      await shallow.commit(message);
+    }
+    const [c1, c2] = await shallow.resolve('HEAD~1', 'HEAD');
+    const boundary = path.join(shallow.root, '.git', 'shallow');
+    fs.writeFileSync(boundary, `${c2}\n`);
+    await withView(log, [shallow.root], async ({ page, connection }) => {
+      assert.strictEqual(page.last('commits')?.total, 1);
+      fs.writeFileSync(boundary, `${c1}\n`);
+      await connection.refresh();
+      assert.strictEqual(page.last('commits')?.total, 2);
+      fs.rmSync(boundary);
+      await shallow.commit('c3');
+      await connection.refresh();
+      assert.strictEqual(page.last('commits')?.total, 4);
+    });
+  });
+
+  test('reads the history whole for a checkout of a tip made in the same second as the one left, as git takes the one checked out first', async () => {
+    const tied = await tempRepository(path.join(folder, 'tied'));
+    await tied.commit('x');
+    const [x] = await tied.resolve('HEAD');
+    const time = Number((await tied.git('log', '-1', '--format=%ct')).trim());
+    await tied.git(
+      'update-ref',
+      'refs/heads/main',
+      await commitAtTime(tied, x, time + 1, 'a'),
+    );
+    await tied.git('branch', 'aaa', await commitAtTime(tied, x, time + 1, 'c'));
+    await withView(log, [tied.root], async ({ page, connection }) => {
+      const subjects = () =>
+        page.last('commits')?.commits.map((commit) => commit.subject);
+      assert.deepStrictEqual(subjects(), ['a', 'c', 'x']);
+      await tied.git('checkout', '-q', 'aaa');
+      await connection.refresh();
+      assert.deepStrictEqual(subjects(), ['c', 'a', 'x']);
+    });
+  });
 
   suite('with its tab open', () => {
     let fastforward: GitTool;
