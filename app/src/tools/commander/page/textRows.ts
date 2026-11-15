@@ -26,6 +26,7 @@ import {
   lastScreenStart,
 } from './textScroll';
 import type { ViewerFind } from './viewerFind';
+import { useCommanderActions } from './store';
 
 const rowsAboveMatch = 2;
 
@@ -92,10 +93,20 @@ export function useTextRows({
   readonly onPlace: (byte: number) => void;
   readonly find: ViewerFind | undefined;
 }) {
-  const [read, setRead] = useState<Read>({
-    rows: [],
-    top: { index: 0, from: 0 },
+  const { tab, size, version } = viewing;
+  const { keptViewer, keepViewer } = useCommanderActions();
+  const [read, setRead] = useState<Read>(() => {
+    const kept = keptViewer(tab).rows;
+    return kept?.encoding === encoding && kept.version === version
+      ? { rows: kept.rows, top: kept.top }
+      : { rows: [], top: { index: 0, from: 0 } };
   });
+  const readVersion = useEffectEvent(() => version);
+  useEffect(() => {
+    keepViewer(tab, {
+      rows: { encoding, version: readVersion(), ...read },
+    });
+  }, [keepViewer, tab, encoding, read]);
   const rows = useMemo(
     () => screenRows(read.rows, wrapAt, encoding, counting),
     [read.rows, wrapAt, encoding, counting],
@@ -119,7 +130,6 @@ export function useTextRows({
       onPlace(topStart);
     }
   }, [topStart, onPlace]);
-  const { tab, size, version } = viewing;
   const [lastScreen, setLastScreen] = useState<{
     readonly size: number | undefined;
     readonly version: string | undefined;

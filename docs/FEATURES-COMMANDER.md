@@ -85,7 +85,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| View a file | Show a file without its app | F3 | Common | ✅ Yes | In a viewer tab of its own, named and iconed after the file, keeping the text, hex or preview, the encoding, the language chosen and where it was in the text, the bytes or a PDF while it is open, a Markdown preview or an image at its real size from the top again; Escape closes it, F4 turns it into an editor tab |
+| View a file | Show a file without its app | F3 | Common | ✅ Yes | In a viewer tab of its own, named and iconed after the file, keeping the text, hex or preview, the encoding, the language chosen and where it was in the text, the bytes or a PDF while it is open, a Markdown preview or an image at its real size from the top again; its tab shown again comes back at once as it was left, its text, bytes and colors drawn as they were, its find open with its query, toggles and the match it was at, and the focus and caret where they were, the file read and searched anew only once it changed; Escape closes it, F4 turns it into an editor tab |
 | Quick view | Show the selected file on the other side as it is selected | Ctrl+Q | Common | ❌ No |  |
 | Text | Show a file as text, of any size | — | Core | ✅ Yes | Read by byte position a screen at a time, so a gigabyte opens as fast as a kilobyte, each line of up to 64 KiB whole, as the diff shows it, a longer one in rows of 4 KiB, after an empty column as wide as the line numbers of the editor, so the text starts where the editor starts it; 2 |
 | Hex | Show a file as bytes | — | Common | ✅ Yes | 1: its offset, 16 bytes a row and their printable characters |

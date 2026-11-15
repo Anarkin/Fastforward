@@ -2,6 +2,7 @@ import type { PdfPlace } from '../shared/pdf';
 import { maxFindLength } from '../shared/protocol';
 import type { CommanderActions, ToViewer } from './commanderState';
 import type { StoreParts } from './dialogActions';
+import { noKeptViewer, type KeptViewer } from './viewerKept';
 
 const pdfPlaceWait = 2000;
 
@@ -18,14 +19,30 @@ type ViewerActions = Pick<
   | 'flushPdfPlace'
   | 'placeOf'
   | 'keepPlace'
+  | 'keptViewer'
+  | 'keepViewer'
 >;
 
-export function viewerActions({ post }: StoreParts): {
+type Asked = Parameters<StoreParts['post']>[0];
+
+export function viewerActions({ post: sent }: StoreParts): {
   readonly actions: ViewerActions;
   readonly heard: (message: ToViewer) => void;
   readonly forget: (tab: string) => void;
+  readonly awaitViewing: (tab: string | undefined) => void;
+  readonly viewingCame: (tab: string) => void;
 } {
+  let awaited: string | undefined;
+  let held: Asked[] = [];
+  const post = (message: Asked) => {
+    if (awaited !== undefined && 'tab' in message && message.tab === awaited) {
+      held.push(message);
+    } else {
+      sent(message);
+    }
+  };
   const places = new Map<string, number>();
+  const keptViewers = new Map<string, KeptViewer>();
   const viewerListeners = new Set<(message: ToViewer) => void>();
   const listenViewer = (handler: (message: ToViewer) => void) => {
     viewerListeners.add(handler);
@@ -59,6 +76,20 @@ export function viewerActions({ post }: StoreParts): {
     },
     forget: (tab) => {
       places.delete(tab);
+      keptViewers.delete(tab);
+    },
+    awaitViewing: (tab) => {
+      awaited = tab;
+      held = [];
+    },
+    viewingCame: (tab) => {
+      if (awaited !== tab) {
+        return;
+      }
+      awaited = undefined;
+      for (const message of held.splice(0)) {
+        sent(message);
+      }
     },
     actions: {
       request: post,
@@ -123,6 +154,13 @@ export function viewerActions({ post }: StoreParts): {
       placeOf: (tab) => places.get(tab) ?? 0,
       keepPlace: (tab, byte) => {
         places.set(tab, byte);
+      },
+      keptViewer: (tab) => keptViewers.get(tab) ?? noKeptViewer,
+      keepViewer: (tab, change) => {
+        keptViewers.set(tab, {
+          ...(keptViewers.get(tab) ?? noKeptViewer),
+          ...change,
+        });
       },
     },
   };

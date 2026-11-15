@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ViewMode } from './viewerKeymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
+import { focusBack, useFocusKeeper } from '../../../lib/page/keptFocus';
 import { SearchButton } from '../../../lib/page/search';
 import { useViewerFind } from './viewerFind';
 import { ViewerFindBar } from './viewerFindBar';
@@ -79,7 +80,11 @@ export function Viewer() {
     },
   );
   const tab = useCommander((state) => state.view.tab);
-  const { placeOf, keepPlace, editViewed } = useCommanderActions();
+  const { placeOf, keepPlace, editViewed, keptViewer, keepViewer } =
+    useCommanderActions();
+  const [kept] = useState(() =>
+    tab === undefined ? undefined : keptViewer(tab),
+  );
   const place = useRef(tab === undefined ? 0 : placeOf(tab));
   const onPlace = useCallback(
     (byte: number) => {
@@ -109,14 +114,20 @@ export function Viewer() {
     }
   };
   const finder = useViewerFind(
+    tab,
     viewing,
     mode === 'hex' || shown === 'bytes' ? 'windows-1252' : shown,
   );
   const pdf = usePdfPreview(viewing?.tab);
   const inPdf = mode === 'preview' && preview === 'pdf';
   const searched = inPdf ? pdf.find : finder;
-  const [finding, setFinding] = useState(false);
+  const [finding, setFinding] = useState(kept?.finding === true);
   const [focusAsks, setFocusAsks] = useState(0);
+  useEffect(() => {
+    if (tab !== undefined) {
+      keepViewer(tab, { finding });
+    }
+  }, [tab, keepViewer, finding]);
   const findInput = useRef<HTMLInputElement>(null);
   const openFind = () => {
     if (mode === 'preview' && preview !== 'pdf') {
@@ -126,6 +137,20 @@ export function Viewer() {
     setFocusAsks((count) => count + 1);
   };
   const viewer = useRef<HTMLElement>(null);
+  useFocusKeeper(viewer, (focus) => {
+    if (tab !== undefined) {
+      keepViewer(tab, { focus });
+    }
+  });
+  const focusKept = useRef(kept?.focus);
+  const bodyShown = viewing !== undefined;
+  useEffect(() => {
+    const root = viewer.current;
+    if (root !== null && bodyShown && focusKept.current !== undefined) {
+      focusBack(root, focusKept.current);
+      focusKept.current = undefined;
+    }
+  }, [bodyShown]);
   const focusBody = () => columnFocusOf(viewer.current)?.focus();
   const closeFind = () => {
     columnFocusOf(findInput.current)?.focus();

@@ -19,6 +19,7 @@ import type { SortColumn } from '../shared/sorts';
 import type { ClashAnswer, TransferView } from '../shared/transfers';
 import type { EditorPlace } from './editorPlace';
 import type { EditedTab, ToEditor } from './editorState';
+import type { KeptViewer } from './viewerKept';
 import {
   emptyView,
   type CommanderView,
@@ -126,6 +127,7 @@ export interface CommanderSource {
   readonly view: CommanderView;
   readonly drives: readonly string[];
   readonly viewed: Viewing | undefined;
+  readonly keptViewed: ReadonlyMap<string, Viewing>;
   readonly edited: EditedTab | undefined;
   readonly deleting: Deleting | undefined;
   readonly transferring: Transferring | undefined;
@@ -308,6 +310,8 @@ export interface CommanderActions {
   readonly scrollOf: (key: string) => number;
   readonly placeOf: (tab: string) => number;
   readonly keepPlace: (tab: string, byte: number) => void;
+  readonly keptViewer: (tab: string) => KeptViewer;
+  readonly keepViewer: (tab: string, change: Partial<KeptViewer>) => void;
   readonly filterSide: (
     side: Side,
     query: string | undefined,
@@ -338,6 +342,7 @@ export const commanderDefaults: CommanderSource = {
   view: emptyView,
   drives: [],
   viewed: undefined,
+  keptViewed: new Map(),
   edited: undefined,
   deleting: undefined,
   transferring: undefined,

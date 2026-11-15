@@ -138,16 +138,33 @@ export function received(
     }
     case 'viewing': {
       const viewed = viewedOf(message);
-      return sameViewed(state.viewed, viewed) ? state : { viewed };
+      return sameViewed(state.viewed, viewed)
+        ? state
+        : {
+            viewed,
+            keptViewed: new Map(state.keptViewed).set(viewed.tab, viewed),
+          };
     }
     case 'show':
     case 'hide': {
       const view = reduceView(state.view, message);
+      const viewed =
+        message.type === 'show' &&
+        message.file !== undefined &&
+        message.edit !== true
+          ? state.keptViewed.get(message.tab)
+          : undefined;
       return {
         ...(view !== state.view && { view }),
-        ...(state.viewed !== undefined && { viewed: undefined }),
+        ...(state.viewed !== viewed && { viewed }),
         ...(state.edited !== undefined && { edited: undefined }),
       };
+    }
+    case 'closed': {
+      const view = reduceView(state.view, message);
+      const keptViewed = new Map(state.keptViewed);
+      keptViewed.delete(message.tab);
+      return { view, keptViewed };
     }
     case 'noAccess':
       return {

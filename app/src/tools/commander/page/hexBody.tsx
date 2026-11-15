@@ -22,12 +22,9 @@ import {
 } from './hex';
 import type { Viewing } from './commanderState';
 import { useCommanderActions } from './store';
+import type { KeptBytes } from './viewerKept';
 
-interface Bytes {
-  readonly start: number;
-  readonly data: readonly number[];
-  readonly asked: number;
-}
+type Bytes = KeptBytes;
 
 export type ByteLayout = 'hex' | 'text';
 
@@ -48,13 +45,26 @@ export function ByteBody({
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
 }) {
-  const { request: post, listenViewer: listen } = useCommanderActions();
-  const { tab } = viewing;
+  const {
+    request: post,
+    listenViewer: listen,
+    keptViewer,
+    keepViewer,
+  } = useCommanderActions();
+  const { tab, version } = viewing;
   const size = viewing.size ?? 0;
   const [screen, setScreen] = useState(1);
   const [columns, setColumns] = useState(minTextColumns);
   const [topByte, setTopByte] = useState(() => place.current);
-  const [bytes, setBytes] = useState<Bytes>();
+  const [bytes, setBytes] = useState<Bytes | undefined>(() => {
+    const kept = keptViewer(tab).bytes;
+    return kept?.version === version ? kept : undefined;
+  });
+  useEffect(() => {
+    if (bytes !== undefined) {
+      keepViewer(tab, { bytes });
+    }
+  }, [keepViewer, tab, bytes]);
   const rowBytes =
     layout === 'hex' ? hexRowBytes : Math.max(minTextColumns, columns);
   const rowCount = Math.ceil(size / rowBytes);
@@ -64,8 +74,9 @@ export function ByteBody({
 
   const requests = useMemo(
     () =>
-      new RowRequests<LoadedBytes>((request, { start, length }) =>
-        post({ type: 'readBytes', tab, request, start, length }),
+      new RowRequests<LoadedBytes & { readonly version: string | undefined }>(
+        (request, { start, length }) =>
+          post({ type: 'readBytes', tab, request, start, length }),
       ),
     [post, tab],
   );
@@ -79,6 +90,7 @@ export function ByteBody({
         const asked = requests.answered(message.request);
         if (asked !== undefined) {
           setBytes({
+            version: asked.version,
             start: message.start,
             data: message.data,
             asked: asked.length,
@@ -91,7 +103,9 @@ export function ByteBody({
   useEffect(() => {
     if (viewing.size !== undefined) {
       requests.restart();
-      setBytes(undefined);
+      setBytes((shown) =>
+        shown?.version === viewing.version ? shown : undefined,
+      );
     }
   }, [requests, viewing]);
 
@@ -107,7 +121,7 @@ export function ByteBody({
       rowBytes,
     );
     if (wanted !== undefined) {
-      requests.ask(wanted);
+      requests.ask({ ...wanted, version: viewing.version });
     }
   }, [requests, top, screen, viewing, bytes, rowBytes]);
 

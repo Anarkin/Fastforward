@@ -1,14 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { ByteRange } from '../shared/protocol';
 import type { TextEncoding } from '../shared/textEncodings';
 import { stepMatch, type MatchesFound } from '../../../lib/shared/textMatches';
-import {
-  noSearch,
-  type Search,
-  type SearchOptions,
-} from '../../../lib/shared/searchOptions';
+import type { Search, SearchOptions } from '../../../lib/shared/searchOptions';
 import type { Viewing } from './commanderState';
 import { useCommanderActions } from './store';
+import { noKeptViewer, type ViewerFound } from './viewerKept';
 
 export interface ViewerFind {
   readonly query: string;
@@ -16,14 +13,6 @@ export interface ViewerFind {
   readonly matches: readonly ByteRange[];
   readonly current: ByteRange | undefined;
   readonly jump: number;
-}
-
-interface Found {
-  readonly query: string;
-  readonly options: SearchOptions;
-  readonly encoding: TextEncoding;
-  readonly matches: readonly ByteRange[];
-  readonly done: boolean;
 }
 
 export function viewerFound(
@@ -34,28 +23,58 @@ export function viewerFound(
   return { current, matches: found, searching: !done };
 }
 
+function foundFor(
+  found: ViewerFound | undefined,
+  { query, options }: Search,
+  encoding: TextEncoding,
+  version: string | undefined,
+): found is ViewerFound {
+  return (
+    found?.query === query &&
+    found.options === options &&
+    found.encoding === encoding &&
+    found.version === version
+  );
+}
+
 export function useViewerFind(
+  tab: string | undefined,
   viewing: Viewing | undefined,
   encoding: TextEncoding,
 ) {
-  const { findText } = useCommanderActions();
-  const [{ query, options }, setSearch] = useState(noSearch);
-  const [found, setFound] = useState<Found>();
-  const [current, setCurrent] = useState(0);
+  const { findText, keptViewer, keepViewer } = useCommanderActions();
+  const [kept] = useState(() =>
+    tab === undefined ? noKeptViewer : keptViewer(tab),
+  );
+  const [{ query, options }, setSearch] = useState(kept.search);
+  const [found, setFound] = useState(kept.found);
+  const [current, setCurrent] = useState(kept.current);
   const [jump, setJump] = useState(0);
   const awaitingFirst = useRef(false);
+  const version = viewing?.version;
+  const foundAlready = useEffectEvent(
+    () => foundFor(found, { query, options }, encoding, version) && found.done,
+  );
 
   useEffect(() => {
-    if (viewing?.size === undefined || query === '') {
+    if (viewing?.size === undefined || query === '' || foundAlready()) {
       return undefined;
     }
+    const searched = viewing.version;
     return findText(
       viewing.tab,
       encoding,
       query,
       options,
       ({ matches, done }) => {
-        setFound({ query, options, encoding, matches, done });
+        setFound({
+          query,
+          options,
+          encoding,
+          version: searched,
+          matches,
+          done,
+        });
         if (awaitingFirst.current && matches.length > 0) {
           awaitingFirst.current = false;
           setJump((count) => count + 1);
@@ -64,10 +83,13 @@ export function useViewerFind(
     );
   }, [viewing, encoding, query, options, findText]);
 
-  const ours =
-    found?.query === query &&
-    found.options === options &&
-    found.encoding === encoding;
+  useEffect(() => {
+    if (tab !== undefined) {
+      keepViewer(tab, { search: { query, options }, current, found });
+    }
+  }, [tab, keepViewer, query, options, current, found]);
+
+  const ours = foundFor(found, { query, options }, encoding, version);
   const matches = ours ? found.matches : [];
   const shown = Math.min(current, Math.max(0, matches.length - 1));
   const goTo = (index: number) => {

@@ -1,0 +1,80 @@
+import type { KeptFocus } from '../../../lib/page/keptFocus';
+import { noSearch, type Search } from '../../../lib/shared/searchOptions';
+import type { ByteRange, TextRow } from '../shared/protocol';
+import type { TextEncoding } from '../shared/textEncodings';
+import type { ColoredText, WholeText } from './textColors';
+
+export interface ViewerFound extends Search {
+  readonly encoding: TextEncoding;
+  readonly version: string | undefined;
+  readonly matches: readonly ByteRange[];
+  readonly done: boolean;
+}
+
+interface KeptRows {
+  readonly encoding: TextEncoding;
+  readonly version: string | undefined;
+  readonly rows: readonly TextRow[];
+  readonly top: { readonly index: number; readonly from: number };
+}
+
+interface KeptText {
+  readonly encoding: TextEncoding;
+  readonly version: string | undefined;
+  readonly text: WholeText;
+}
+
+interface KeptColors {
+  readonly language: string;
+  readonly whole: WholeText;
+  readonly colored: ColoredText;
+  readonly done: boolean;
+}
+
+export interface KeptBytes {
+  readonly version: string | undefined;
+  readonly start: number;
+  readonly data: readonly number[];
+  readonly asked: number;
+}
+
+interface KeptSideways {
+  readonly body: string;
+  readonly left: number;
+  readonly column: number;
+}
+
+interface KeptPreview {
+  readonly top: number;
+  readonly left: number;
+  readonly block: number | undefined;
+  readonly offset: number;
+}
+
+export interface KeptViewer {
+  readonly finding: boolean;
+  readonly search: Search;
+  readonly current: number;
+  readonly found: ViewerFound | undefined;
+  readonly focus: KeptFocus | undefined;
+  readonly rows: KeptRows | undefined;
+  readonly text: KeptText | undefined;
+  readonly colors: KeptColors | undefined;
+  readonly bytes: KeptBytes | undefined;
+  readonly sideways: KeptSideways | undefined;
+  readonly preview: KeptPreview | undefined;
+}
+
+export const noKeptViewer: KeptViewer = {
+  finding: false,
+  search: noSearch,
+  current: 0,
+  found: undefined,
+  focus: undefined,
+  rows: undefined,
+  text: undefined,
+  colors: undefined,
+  bytes: undefined,
+  sideways: undefined,
+  preview: undefined,
+};

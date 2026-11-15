@@ -178,7 +178,19 @@ export function createCommanderStore(
         if (message.type === 'flatFiles') {
           flat.heard(message);
         }
+        if (message.type === 'show') {
+          viewer.awaitViewing(
+            message.file !== undefined && message.edit !== true
+              ? message.tab
+              : undefined,
+          );
+        } else if (message.type === 'hide') {
+          viewer.awaitViewing(undefined);
+        }
         announced(() => set((state) => received(state, message)));
+        if (message.type === 'viewing') {
+          viewer.viewingCame(message.tab);
+        }
         if (message.type === 'closed') {
           viewer.forget(message.tab);
           editor.forget(message.tab);

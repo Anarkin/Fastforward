@@ -79,7 +79,7 @@ export function TextBody({
   const { tab, size } = viewing;
   const whole = wrapAt === undefined;
   const text = useWholeText(viewing, language !== undefined || whole, encoding);
-  const colored = useColors(language, encoding, text);
+  const colored = useColors(tab, language, encoding, text);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
   const { width, onSideways, parts } = useSideways({
     whole,

@@ -3,7 +3,10 @@ import { suite, test, vi } from 'vitest';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 
 const wholeWord = { ...plainSearch, wholeWord: true };
-import { maxFindLength } from '../../../../../tools/commander/shared/protocol';
+import {
+  maxFindLength,
+  type CommanderToHost,
+} from '../../../../../tools/commander/shared/protocol';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { noop } from '../../../../helpers/fixtures';
 import { shown, place } from './storeFixtures';
@@ -179,19 +182,31 @@ suite('Commander store', () => {
     assert.strictEqual(store.getState(), state);
   });
 
-  test('forgets what the viewer showed once a tab is shown or hidden, so a viewer shown again asks for nothing before the main process views its file anew, which drops what is asked meanwhile', () => {
-    const store = createCommanderStore(noop);
-    const { receive } = store.getState();
+  test('shows what a viewer tab showed once it is shown again, holding what it asks until the main process views its file anew, which drops what is asked meanwhile, and forgets it once the tab closes', () => {
+    const posted: CommanderToHost[] = [];
+    const store = createCommanderStore((message) => posted.push(message));
+    const { receive, request } = store.getState();
     const viewing = () =>
       receive({ type: 'viewing', tab: '1', size: 10, version: '1' });
+    const ask = () =>
+      request({ type: 'readText', tab: '1', encoding: 'utf-8', request: 1 });
+    const asked = () => posted.filter(({ type }) => type === 'readText');
 
     receive({ type: 'show', tab: '1', file: '/work/a.txt' });
     viewing();
+    const left = store.getState().viewed;
     receive({ type: 'show', tab: '2' });
     assert.strictEqual(store.getState().viewed, undefined);
     receive({ type: 'show', tab: '1', file: '/work/a.txt' });
+    assert.strictEqual(store.getState().viewed, left);
+    ask();
+    assert.deepStrictEqual(asked(), []);
     viewing();
+    assert.strictEqual(asked().length, 1);
     receive({ type: 'hide' });
+    assert.strictEqual(store.getState().viewed, undefined);
+    receive({ type: 'closed', tab: '1' });
+    receive({ type: 'show', tab: '1', file: '/work/b.txt' });
     assert.strictEqual(store.getState().viewed, undefined);
   });
 
