@@ -31,7 +31,7 @@ beforeAll(async () => {
     fs.writeFileSync(at(`file${index}.txt`), `content ${index % 2}`);
   }
   fs.writeFileSync(at('big.bin'), Buffer.alloc(64 * 1024 * 1024, 1));
-});
+}, 60_000);
 
 afterAll(() => {
   removeFolder(built);

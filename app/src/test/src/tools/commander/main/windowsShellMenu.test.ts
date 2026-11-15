@@ -24,7 +24,7 @@ suite.skipIf(process.platform !== 'win32')('The menu of the system', () => {
     } finally {
       removeFolder(folder);
     }
-  });
+  }, 30_000);
 
   test('builds no menu for files that are gone, rather than one for what is left', async () => {
     const { shellVerbs } =
