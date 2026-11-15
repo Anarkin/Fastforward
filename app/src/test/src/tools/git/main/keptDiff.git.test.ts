@@ -10,7 +10,7 @@ import {
   keptGits,
   runGit,
 } from '../../../../../tools/git/main/run';
-import { patchByteBudget } from '../../../../../tools/git/shared/protocol';
+import { patchByteBudget } from '../../../../../tools/git/shared/patchBudget';
 import {
   gitsStarted,
   removeFolder,

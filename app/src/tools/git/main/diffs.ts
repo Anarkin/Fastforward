@@ -32,13 +32,12 @@ import {
 } from '../shared/comparisons';
 import { isFullHash } from '../shared/hashes';
 import {
-  includedChanges,
-  leftOutChanges,
   workingTreeHash,
   type FileChange,
   type LeftOut,
   type ChangeArea,
 } from '../shared/protocol';
+import { includedChanges, leftOutChanges } from '../shared/patchBudget';
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import type { GitStorage } from './storage';
 import { changesOf, pickable, stillThere } from './tabState';

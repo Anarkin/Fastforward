@@ -18,7 +18,7 @@ import {
   leftOutOf,
   readPatch,
 } from '../../../../../tools/git/main/patchBudget';
-import { collapseThreshold } from '../../../../../tools/git/shared/protocol';
+import { collapseThreshold } from '../../../../../tools/git/shared/patchBudget';
 import { readFile } from '../../../../../tools/git/main/files';
 import { listTree } from '../../../../../tools/git/main/fileLists';
 import { runGit } from '../../../../../tools/git/main/run';

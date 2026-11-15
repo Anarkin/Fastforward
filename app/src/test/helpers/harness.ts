@@ -5,13 +5,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach } from 'vitest';
 import {
-  collapseThreshold,
   type GitToHost,
   type GitToWebview,
   type Bookmark,
   type RepositoryInfo,
   type WorktreeInfo,
 } from '../../tools/git/shared/protocol';
+import { collapseThreshold } from '../../tools/git/shared/patchBudget';
 import type {
   AboutInfo,
   ToHost,

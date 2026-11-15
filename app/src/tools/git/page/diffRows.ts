@@ -1,4 +1,4 @@
-import { collapseThreshold } from '../shared/protocol';
+import { collapseThreshold } from '../shared/patchBudget';
 import type { DiffFile, DiffLine, LinkTargets } from './diff';
 import { changeBlocks, type NumberedLine } from './changeBlocks';
 import { lineKey, wholeLines } from './diffLines';

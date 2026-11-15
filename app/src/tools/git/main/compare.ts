@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname } from 'node:path';
 import type { Compared } from '../../../shell/main/savedTabs';
 import { maxImageSize } from '../shared/images';
-import { patchByteBudget } from '../shared/protocol';
+import { patchByteBudget } from '../shared/patchBudget';
 import { diffArgs, diffOptionArgs, type PatchScope } from './diffArgs';
 import type { ImageRead } from './files';
 import { runGit } from './run';

@@ -1,11 +1,10 @@
 import { StringDecoder } from 'node:string_decoder';
+import { type FileChange, type LeftOut } from '../shared/protocol';
 import {
   collapseThreshold,
   patchByteBudget,
   patchLineBudget,
-  type FileChange,
-  type LeftOut,
-} from '../shared/protocol';
+} from '../shared/patchBudget';
 import { headerOf } from './patchText';
 import { runGitBytes } from './run';
 

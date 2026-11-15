@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../../tools/git/page/diff';
-import { collapseThreshold } from '../../../../../tools/git/shared/protocol';
+import { collapseThreshold } from '../../../../../tools/git/shared/patchBudget';
 import {
   diffRowKey,
   diffRows,

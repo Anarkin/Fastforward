@@ -2,12 +2,12 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import {
   collapseThreshold,
   patchByteBudget,
   patchLineBudget,
-  workingTreeHash,
-} from '../../../../../tools/git/shared/protocol';
+} from '../../../../../tools/git/shared/patchBudget';
 import { maxFileSize } from '../../../../../tools/git/main/files';
 import { waitFor } from '../../../../helpers/fixtures';
 import {

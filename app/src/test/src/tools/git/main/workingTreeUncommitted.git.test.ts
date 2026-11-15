@@ -11,7 +11,7 @@ import {
 import {
   isLargeChange,
   leftOutChanges,
-} from '../../../../../tools/git/shared/protocol';
+} from '../../../../../tools/git/shared/patchBudget';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import {
   removeFolder,

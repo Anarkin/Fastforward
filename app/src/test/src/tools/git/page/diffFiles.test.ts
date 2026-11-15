@@ -5,7 +5,7 @@ import {
   parsePatch,
   type DiffFile,
 } from '../../../../../tools/git/page/diff';
-import { collapseThreshold } from '../../../../../tools/git/shared/protocol';
+import { collapseThreshold } from '../../../../../tools/git/shared/patchBudget';
 import {
   filteredDiffFiles,
   shownFiles,

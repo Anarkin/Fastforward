@@ -4,11 +4,11 @@ import {
   leftOutOf,
   PatchBudget,
 } from '../../../../../tools/git/main/patchBudget';
+import { type FileChange } from '../../../../../tools/git/shared/protocol';
 import {
   collapseThreshold,
   patchByteBudget,
-  type FileChange,
-} from '../../../../../tools/git/shared/protocol';
+} from '../../../../../tools/git/shared/patchBudget';
 import { fileChange } from '../../../../helpers/fixtures';
 import { section } from './patchFixtures';
 

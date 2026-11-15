@@ -10,7 +10,7 @@ import {
   deferredChanges,
   leftOutChanges,
   patchPathBudget,
-} from '../../../../../tools/git/shared/protocol';
+} from '../../../../../tools/git/shared/patchBudget';
 import {
   diffSelection,
   shownFiles,
