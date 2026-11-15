@@ -14,6 +14,24 @@ export interface RoutedTools {
   readonly commander: Pick<CommanderTool, 'icon' | 'thumbnail' | 'file'>;
 }
 
+const fileHeaders = {
+  'content-security-policy':
+    "default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+  'x-content-type-options': 'nosniff',
+};
+
+function servedFile(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(fileHeaders)) {
+    headers.set(name, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export function appRoutes(
   dist: string,
   settings: () => Settings,
@@ -28,18 +46,24 @@ export function appRoutes(
       });
     }
     if (url.pathname === imageRoute) {
-      return tools.then(({ git }) => git.image(url));
+      return tools.then(({ git }) => git.image(url)).then(servedFile);
     }
     if (url.pathname === iconRoute) {
-      return tools.then(({ commander }) => commander.icon(url));
+      return tools
+        .then(({ commander }) => commander.icon(url))
+        .then(servedFile);
     }
     if (url.pathname === thumbnailRoute) {
-      return tools.then(({ commander }) => commander.thumbnail(url));
+      return tools
+        .then(({ commander }) => commander.thumbnail(url))
+        .then(servedFile);
     }
     if (url.pathname === viewedFileRoute) {
-      return tools.then(({ commander }) =>
-        commander.file(url, request.headers.get('range')),
-      );
+      return tools
+        .then(({ commander }) =>
+          commander.file(url, request.headers.get('range')),
+        )
+        .then(servedFile);
     }
     const file = appFile(dist, request.url);
     return file
