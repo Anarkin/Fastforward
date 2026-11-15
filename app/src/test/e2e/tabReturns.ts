@@ -1,12 +1,13 @@
 import * as assert from 'node:assert';
 import type { Page } from 'playwright-core';
+import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 
 export interface TabLooks {
   readonly focus: string | null;
   readonly caret: readonly [number, number, string] | null;
   readonly fields: readonly (readonly [string, string])[];
-  readonly scrolls: readonly (readonly [string, number, number])[];
+  readonly scrolls: readonly (readonly [string, string, number, number])[];
   readonly states: readonly (readonly [string, string])[];
   readonly text: string;
 }
@@ -120,11 +121,52 @@ const tabLooks = (page: Page): Promise<TabLooks> =>
         .filter(
           (element) => element.scrollTop !== 0 || element.scrollLeft !== 0,
         )
-        .map((element) => [
-          pathOf(element),
-          Math.round(element.scrollTop),
-          Math.round(element.scrollLeft),
-        ]),
+        .map((element) => {
+          const box = element.getBoundingClientRect();
+          const walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+          );
+          const range = document.createRange();
+          for (
+            let node = walker.nextNode();
+            node !== null;
+            node = walker.nextNode()
+          ) {
+            const parent = node.parentElement;
+            const text = node.textContent?.trim() ?? '';
+            let stuck = false;
+            for (
+              let at = parent;
+              at !== null && at !== element;
+              at = at.parentElement
+            ) {
+              const { position } = getComputedStyle(at);
+              stuck ||= position === 'sticky' || position === 'fixed';
+            }
+            range.selectNodeContents(node);
+            const top = [...range.getClientRects()].find(
+              (rect) =>
+                rect.bottom > box.top &&
+                rect.top < box.bottom &&
+                seen(rect, parent),
+            );
+            if (text !== '' && !stuck && top !== undefined) {
+              return [
+                pathOf(element),
+                text,
+                Math.round(top.top - box.top),
+                Math.round(element.scrollLeft),
+              ] as const;
+            }
+          }
+          return [
+            pathOf(element),
+            '',
+            Math.round(element.scrollTop),
+            Math.round(element.scrollLeft),
+          ] as const;
+        }),
       states: inside
         .filter(onScreen)
         .flatMap((element) =>
@@ -142,6 +184,14 @@ const tabLooks = (page: Page): Promise<TabLooks> =>
 const looksAlike = (one: TabLooks, other: TabLooks) =>
   JSON.stringify(one) === JSON.stringify(other);
 
+const newline = String.fromCharCode(10);
+
+const busy: readonly string[] = [
+  strings.common.reading,
+  strings.search.searching,
+  strings.find.searching,
+];
+
 export async function settledLooks(page: Page): Promise<TabLooks> {
   let last = await tabLooks(page);
   let since = Date.now();
@@ -151,7 +201,10 @@ export async function settledLooks(page: Page): Promise<TabLooks> {
       last = now;
       since = Date.now();
     }
-    return Date.now() - since >= 400;
+    return (
+      Date.now() - since >= 400 &&
+      !busy.some((sentence) => now.text.split(newline).includes(sentence))
+    );
   }, 'the tab to settle');
   return last;
 }
