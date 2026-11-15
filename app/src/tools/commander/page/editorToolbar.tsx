@@ -11,14 +11,13 @@ import {
   endingSourceItems,
   type SourceOpening,
 } from './editorSources';
+import { conversionsOf, convertedTo } from './editorEndings';
 import {
-  conversionsOf,
-  convertedTo,
   endingsLabel,
   linesEnding,
   endingsTitle,
   type EndingsShown,
-} from './editorEndings';
+} from './endingsLabel';
 import type { LineEnding } from '../shared/textMarks';
 import { MenuButton } from '../../../lib/page/menu';
 import { readMenu, savedName, saveMenu } from './editorEncodings';

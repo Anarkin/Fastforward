@@ -11,13 +11,8 @@ import { blanksShown } from './editorText';
 import { useCellTable } from '../../../lib/page/cellTable';
 import { countOf, findAskOf, type FindAsk } from './editorFind';
 import { savingFixes } from './editorSaving';
-import {
-  endingsChanged,
-  endingsField,
-  endingsSent,
-  endingsShownOf,
-  type EndingsShown,
-} from './editorEndings';
+import { endingsChanged, endingsField, endingsSent } from './editorEndings';
+import { endingsShownOf, type EndingsShown } from './endingsLabel';
 import {
   editorAt,
   placeIn,

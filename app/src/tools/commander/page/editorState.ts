@@ -39,12 +39,8 @@ import {
   type EndingSource,
 } from '../shared/protocol';
 import { type TextEncoding } from '../shared/textEncodings';
-import {
-  endingsField,
-  endingsFrom,
-  endingSigns,
-  endingsUndone,
-} from './editorEndings';
+import { endingsField, endingsFrom, endingsUndone } from './editorEndings';
+import { endingSigns } from './editorEndingSigns';
 import { type Encoded } from './editorEncodings';
 import { type EditorPlace } from './editorPlace';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
