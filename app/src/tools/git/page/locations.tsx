@@ -2,45 +2,29 @@ import {
   useCallback,
   useEffect,
   useId,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import type { CommitInfo, StashInfo } from '../shared/protocol';
 import { searchedBookmarks } from './bookmarks';
 import { BackIcon } from '../../../lib/page/icons';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
-import { CommitBubble, HeadBubble, RefBubble } from './bubbles';
 import { useDismiss } from '../../../lib/page/dismiss';
-import { useOpenMenu, refMenuTarget } from './menus';
 import { noRefs } from './commitListItems';
-import { CommitRow } from './commitRow';
-import { detachedHead, searchQueryOf, useGit, useGitActions } from './store';
-import { Highlight } from './highlight';
+import { searchQueryOf, useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
-import { Words } from '../../../lib/page/name';
 import {
-  SearchGroup,
   searchRefs,
   noStashList,
   searchStashes,
   shownStashes,
-  PinnedResult,
   pinnedResults,
   resultItems,
-  commitKey,
-  stashKey,
-  refKey,
-  pinnedKey,
   itemKey,
 } from './locationResults';
-import { RefLabel } from './locationsSearch';
 import {
   browseRows,
   Rows,
-  rowProps,
-  activeClass,
   Highlighted,
   currentActive,
   nextActive,
@@ -49,119 +33,20 @@ import { RefTree } from './locationTree';
 import {
   foundCommits,
   hashQuery,
+  textQuery,
   enterTarget,
   contextMenus,
   focusLeaves,
   popupKeyAction,
 } from './locationKeys';
-
-const minSearchLength = 3;
-
-const commitIndent = 8;
-
-function textQuery(query: string): string | undefined {
-  const trimmed = query.trim();
-  return trimmed.length >= minSearchLength ? trimmed : undefined;
-}
-
-function CommitResultsSection({
-  hash,
-  lookingUp,
-  searching,
-  found,
-  hashMore,
-  capped,
-  query,
-  active,
-  rows,
-  onJump,
-}: {
-  hash: string | undefined;
-  lookingUp: boolean;
-  searching: boolean;
-  found: readonly CommitInfo[];
-  hashMore: number;
-  capped: boolean;
-  query: string;
-  active: string | undefined;
-  rows: Rows;
-  onJump: (commit: string) => void;
-}) {
-  if (found.length === 0) {
-    const status =
-      lookingUp && hash !== undefined
-        ? strings.search.lookingUp(hash)
-        : searching
-          ? strings.search.searching
-          : hash && strings.search.noCommitStartsWith(hash);
-    return status ? (
-      <div className="row hash-suggestion empty">
-        <Words>{status}</Words>
-      </div>
-    ) : null;
-  }
-  return (
-    <section
-      className="locations-group"
-      role="group"
-      aria-label={strings.search.commits}
-    >
-      <GroupHeading
-        title={strings.search.commits}
-        count={found.length + hashMore}
-      />
-      <div className="locations-list">
-        {found.map((commit) => (
-          <CommitRow
-            key={commit.hash}
-            commit={commit}
-            selected={active}
-            indent={commitIndent}
-            onSelect={onJump}
-            highlight={query}
-            itemProps={rowProps(rows, commitKey(commit.hash), 1)}
-          />
-        ))}
-        {(lookingUp || searching) && (
-          <div className="locations-empty">{strings.search.searching}</div>
-        )}
-        {hashMore > 0 ? (
-          <div className="locations-empty">{strings.search.more(hashMore)}</div>
-        ) : (
-          capped && (
-            <div className="locations-empty">{strings.search.moreCommits}</div>
-          )
-        )}
-      </div>
-    </section>
-  );
-}
-
-function popupBottom(popup: HTMLElement): number {
-  return (
-    popup.closest('.column')?.getBoundingClientRect().bottom ??
-    window.innerHeight
-  );
-}
-
-function usePopupHeight(
-  popup: React.RefObject<HTMLElement | null>,
-): number | undefined {
-  const [height, setHeight] = useState<number>();
-  useLayoutEffect(() => {
-    const fit = () => {
-      const element = popup.current;
-      if (element) {
-        const top = element.getBoundingClientRect().top;
-        setHeight(Math.max(200, popupBottom(element) - top));
-      }
-    };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, [popup]);
-  return height;
-}
+import { usePopupHeight } from './popupHeight';
+import {
+  BookmarksSection,
+  CommitResultsSection,
+  GroupHeading,
+  SearchResults,
+  StashesSection,
+} from './locationGroups';
 
 export function LocationsPopup({
   anchor,
@@ -428,145 +313,5 @@ export function LocationsPopup({
         )}
       </div>
     </div>
-  );
-}
-
-function StashesSection({
-  stashes,
-  more,
-  query,
-  rows,
-  onJump,
-}: {
-  stashes: readonly StashInfo[];
-  more: number;
-  query: string;
-  rows: Rows;
-  onJump: (commit: string) => void;
-}) {
-  if (stashes.length === 0) {
-    return null;
-  }
-  return (
-    <section
-      className="locations-group"
-      role="group"
-      aria-label={strings.search.stashes}
-    >
-      <GroupHeading
-        title={strings.search.stashes}
-        count={stashes.length + more}
-      />
-      <div className="locations-list">
-        {stashes.map((stash) => (
-          <div
-            key={stash.name}
-            {...rowProps(rows, stashKey(stash), 1)}
-            className={`row result ${activeClass(rows, stashKey(stash))}`}
-            title={stash.message}
-            onClick={() => onJump(stash.commit)}
-          >
-            <span className="badge stash">
-              <Highlight text={stash.name} query={query} />
-            </span>
-            <span className="stash-message">
-              <Highlight text={stash.message} query={query} />
-            </span>
-          </div>
-        ))}
-        {more > 0 && (
-          <div className="locations-empty">{strings.search.more(more)}</div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function GroupHeading({ title, count }: { title: string; count: number }) {
-  return (
-    <header className="locations-heading">
-      {title}
-      <span className="locations-count">{count}</span>
-    </header>
-  );
-}
-
-function BookmarksSection({
-  pinned,
-  rows,
-  onJump,
-}: {
-  pinned: readonly PinnedResult[];
-  rows: Rows;
-  onJump: (commit: string) => void;
-}) {
-  const detached = useGit(detachedHead);
-  if (pinned.length === 0) {
-    return null;
-  }
-  return (
-    <section
-      className="locations-group"
-      role="group"
-      aria-label={strings.search.bookmarks}
-    >
-      <GroupHeading title={strings.search.bookmarks} count={pinned.length} />
-      <div className="locations-list">
-        {pinned.map(({ bookmark, commit }) => {
-          const key = pinnedKey(bookmark);
-          return (
-            <div
-              key={`${bookmark.kind}:${bookmark.name}`}
-              {...rowProps(rows, key, 1)}
-              className={`row result pinned ${activeClass(rows, key)}`}
-              onClick={() => commit && onJump(commit)}
-            >
-              {bookmark.kind !== 'commit' ? (
-                <RefBubble info={bookmark} missing={commit === undefined} />
-              ) : bookmark.name === detached ? (
-                <HeadBubble hash={bookmark.name} />
-              ) : (
-                <CommitBubble hash={bookmark.name} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function SearchResults({
-  group,
-  query,
-  rows,
-  onJump,
-}: {
-  group: SearchGroup;
-  query: string;
-  rows: Rows;
-  onJump: (commit: string) => void;
-}) {
-  const openMenu = useOpenMenu();
-  return (
-    <>
-      {group.refs.map((ref) => (
-        <div
-          key={ref.name}
-          {...rowProps(rows, refKey(ref), 1)}
-          className={`row result ${activeClass(rows, refKey(ref))}`}
-          title={ref.name}
-          onClick={() => onJump(ref.commit)}
-          onContextMenu={(event) => openMenu(event, refMenuTarget(ref))}
-        >
-          <RefLabel info={ref}>
-            <Highlight text={ref.name} query={query} />
-          </RefLabel>
-        </div>
-      ))}
-      {group.more > 0 && (
-        <div className="locations-empty">{strings.search.more(group.more)}</div>
-      )}
-    </>
   );
 }

@@ -17,6 +17,13 @@ export function hashQuery(query: string): string | undefined {
   return isHashPrefix(trimmed) ? trimmed : undefined;
 }
 
+const minSearchLength = 3;
+
+export function textQuery(query: string): string | undefined {
+  const trimmed = query.trim();
+  return trimmed.length >= minSearchLength ? trimmed : undefined;
+}
+
 export function enterTarget(
   query: string,
   found: CommitResults | undefined,
