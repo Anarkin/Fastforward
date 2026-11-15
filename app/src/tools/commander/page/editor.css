@@ -20,6 +20,18 @@
 
 .editor-replace-input {
   flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--color-foreground);
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.editor-replace-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
 }
 
 .cm-editor.editor-text.cm-focused .cm-matchingBracket,

@@ -148,11 +148,11 @@ suite('App', () => {
     await openChangedFile();
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.find-field-input');
+    const field = page.locator('.search-box-input');
     await waitForFocus(field, 'the find field');
     await field.fill('T');
-    const count = page.locator('.find-field-count');
-    await page.locator('.find-field-count', { hasText: '1 of 2' }).waitFor();
+    const count = page.locator('.search-count');
+    await page.locator('.search-count', { hasText: '1 of 2' }).waitFor();
     assert.deepStrictEqual(
       await page.locator('.diff-line .find-match').allTextContents(),
       ['t', 't'],
@@ -165,11 +165,11 @@ suite('App', () => {
       'two',
     );
     await field.press('Enter');
-    await page.locator('.find-field-count', { hasText: '2 of 2' }).waitFor();
+    await page.locator('.search-count', { hasText: '2 of 2' }).waitFor();
     await waitForCount(page.locator('.minimap-mark.match'), 2, 'match marks');
     await page.locator('.minimap-mark.added').first().waitFor();
     await page.locator('.row.group', { hasText: 'All Changes' }).click();
-    await page.locator('.find-field-count', { hasText: '1 of 2' }).waitFor();
+    await page.locator('.search-count', { hasText: '1 of 2' }).waitFor();
     await page.locator('.diff-minimap').waitFor();
     await waitForCount(page.locator('.minimap-mark.match'), 2, 'match marks');
     await waitForCount(page.locator('.minimap-mark.added'), 0, 'added marks');
@@ -178,11 +178,11 @@ suite('App', () => {
     await waitForCount(page.locator('.find-match'), 0, 'matches');
   });
 
-  test('opens the diff search from its round button, giving it the header but for going back and stepping between matches, and closes it from the back button', async () => {
+  test('opens the diff search from its round button, giving it the header but for going back, its toggles and stepping between matches, matching case while its toggle is pressed, and closes it from the back button', async () => {
     await openChangedFile();
     const diff = page.locator('.columns > .column').nth(2);
     await diff.locator('.column-actions > .search-button').click();
-    const field = page.locator('.find-field-input');
+    const field = page.locator('.search-box-input');
     await waitForFocus(field, 'the find field');
     assert.strictEqual(await diff.locator('.diff-options').count(), 0);
     assert.deepStrictEqual(
@@ -191,11 +191,25 @@ suite('App', () => {
         .evaluateAll((buttons) =>
           buttons.map((button) => button.getAttribute('title')),
         ),
-      ['Close', 'Previous Match', 'Next Match'],
+      [
+        'Close',
+        'Match Case',
+        'Whole Word',
+        'Use Regular Expression',
+        'Previous Match',
+        'Next Match',
+      ],
     );
     await field.fill('T');
     await page.locator('.diff-line .find-match').first().waitFor();
-    await diff.locator('.search-row > .nav-button').first().click();
+    const matchCase = diff.locator('.search-toggle[title="Match Case"]');
+    await matchCase.click();
+    await diff.locator('.search-count', { hasText: 'No matches' }).waitFor();
+    assert.strictEqual(await matchCase.getAttribute('aria-pressed'), 'true');
+    await waitForFocus(field, 'the find field');
+    await matchCase.click();
+    await diff.locator('.search-count', { hasText: '1 of 2' }).waitFor();
+    await diff.locator('.search-bar > .nav-button').first().click();
     await field.waitFor({ state: 'detached' });
     await waitForCount(page.locator('.find-match'), 0, 'matches');
     await diff.locator('.diff-options').waitFor();
@@ -205,7 +219,7 @@ suite('App', () => {
     await openChangedFile();
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
-    await waitForFocus(page.locator('.find-field-input'), 'the find field');
+    await waitForFocus(page.locator('.search-box-input'), 'the find field');
     await page.keyboard.press('Escape');
     await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');
   });

@@ -309,7 +309,7 @@ suite('App editor, long lines and places shown again', () => {
       () =>
         page.evaluate(
           () =>
-            document.activeElement?.classList.contains('find-field-input') ===
+            document.activeElement?.classList.contains('search-box-input') ===
             true,
         ),
       'the find field focused',

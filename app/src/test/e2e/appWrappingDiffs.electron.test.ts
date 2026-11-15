@@ -55,7 +55,7 @@ suite('App', () => {
     await page.locator('.diff-view .virtual-row .wrap-break').first().waitFor();
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.find-field-input');
+    const field = page.locator('.search-box-input');
     await waitForFocus(field, 'the find field');
     await field.fill('999');
     for (const match of [1, 2, 3, 4]) {
@@ -63,7 +63,7 @@ suite('App', () => {
         await field.press('Enter');
       }
       await page
-        .locator('.find-field-count', { hasText: `${match} of 4` })
+        .locator('.search-count', { hasText: `${match} of 4` })
         .waitFor();
       await waitFor(matchInView, `match ${match} in view`);
     }
@@ -157,7 +157,7 @@ suite('App', () => {
     );
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.find-field-input');
+    const field = page.locator('.search-box-input');
     await waitForFocus(field, 'the find field');
     await field.fill('Cafe');
     await page.locator('.diff-line .find-match').first().waitFor();

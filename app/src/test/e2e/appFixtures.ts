@@ -71,6 +71,7 @@ async function resetApp(): Promise<void> {
     ['.locations-popup', '.locations-search'],
     ['.shortcuts-popup', '.shortcuts-popup'],
     ['.search-row', '.search-row input'],
+    ['.column-title .search-bar', '.column-title .search-bar input'],
   ]) {
     if ((await page.locator(popup).count()) > 0) {
       await page.locator(focused).first().focus();

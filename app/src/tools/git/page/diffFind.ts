@@ -4,7 +4,10 @@ import type { DiffFile } from './diff';
 import type { WholeFile } from './diffRows';
 import { findMatches, type FindMatch } from './find';
 import { stepMatch } from '../../../lib/shared/textMatches';
-import { plainSearch } from '../../../lib/shared/searchOptions';
+import {
+  noSearch,
+  type SearchOptions,
+} from '../../../lib/shared/searchOptions';
 
 export function useDiffFind({
   diffFiles,
@@ -16,7 +19,9 @@ export function useDiffFind({
   readonly findAsked: number;
 }): {
   readonly query: string;
+  readonly options: SearchOptions;
   readonly setQuery: (query: string) => void;
+  readonly setOptions: (options: SearchOptions) => void;
   readonly setCurrent: (current: number) => void;
   readonly jump: number;
   readonly setJump: (jump: (count: number) => number) => void;
@@ -29,13 +34,17 @@ export function useDiffFind({
   readonly openFind: () => void;
   readonly closeFind: () => void;
 } {
-  const [query, setQuery] = useState('');
+  const [{ query, options }, setSearch] = useState(noSearch);
+  const setQuery = (next: string) =>
+    setSearch((was) => ({ ...was, query: next }));
+  const setOptions = (next: SearchOptions) =>
+    setSearch((was) => ({ ...was, options: next }));
   const [current, setCurrent] = useState(0);
   const [jump, setJump] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const matches = useMemo(
-    () => findMatches(diffFiles, fileContent, query, plainSearch),
-    [diffFiles, fileContent, query],
+    () => findMatches(diffFiles, fileContent, query, options),
+    [diffFiles, fileContent, query, options],
   );
   const shown = Math.min(current, Math.max(0, matches.length - 1));
   const goTo = (index: number) => {
@@ -67,7 +76,9 @@ export function useDiffFind({
   }, [focusAsks]);
   return {
     query,
+    options,
     setQuery,
+    setOptions,
     setCurrent,
     jump,
     setJump,

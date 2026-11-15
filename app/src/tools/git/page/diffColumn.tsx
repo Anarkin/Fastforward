@@ -11,7 +11,6 @@ import { Column } from './column';
 import { parsePatch, type DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { unsearchedFiles } from './find';
-import { matchCount } from '../../../lib/shared/textMatches';
 import { searchFilter } from '../../../lib/shared/filter';
 import { plainSearch } from '../../../lib/shared/searchOptions';
 import { withUnchangedObjects, type ImageOrigin } from './images';
@@ -20,20 +19,15 @@ import {
   wholeViewedSource,
   type ViewedSource,
 } from './viewedSource';
-import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
-import {
-  FindActions,
-  FindField,
-  SearchButton,
-  SearchRow,
-} from '../../../lib/page/search';
+import { SearchButton } from '../../../lib/page/search';
 import type { WholeFile } from './diffRows';
 import { DiffView } from './diffView';
 import { shownFiles, filteredDiffFiles } from './diffFiles';
 import { useDiffFind } from './diffFind';
+import { DiffFindBar } from './diffFindBar';
 
 export function Diff({
   selection,
@@ -137,21 +131,8 @@ export function Diff({
       viewShown();
     }
   }, [viewAsked]);
-  const {
-    query,
-    setQuery,
-    setCurrent,
-    jump,
-    setJump,
-    input,
-    matches,
-    shown,
-    goTo,
-    step,
-    finding,
-    openFind,
-    closeFind,
-  } = useDiffFind({ diffFiles, fileContent, findAsked });
+  const find = useDiffFind({ diffFiles, fileContent, findAsked });
+  const { setCurrent, jump, setJump, matches, shown, finding, openFind } = find;
   const [firstChange, setFirstChange] = useState(0);
   const [entireSeen, setEntireSeen] = useState(entire);
   const [awaitedDiff, setAwaitedDiff] = useState<number>();
@@ -176,31 +157,10 @@ export function Diff({
       search={<SearchButton title={strings.find.title} onClick={openFind} />}
       searching={
         finding && (
-          <SearchRow onClose={closeFind}>
-            <FindField
-              query={query}
-              count={matchCount(query, plainSearch, {
-                current: shown,
-                matches: matches.length,
-              })}
-              countTitle={
-                unsearchedFiles(diffFiles, fileContent) > 0
-                  ? strings.find.unsearched(
-                      unsearchedFiles(diffFiles, fileContent),
-                    )
-                  : undefined
-              }
-              keys={gitKeymap}
-              input={input}
-              onQuery={(next) => {
-                setQuery(next);
-                goTo(0);
-              }}
-              onStep={step}
-              onClose={closeFind}
-            />
-            <FindActions matches={matches.length} onStep={step} />
-          </SearchRow>
+          <DiffFindBar
+            find={find}
+            unsearched={unsearchedFiles(diffFiles, fileContent)}
+          />
         )
       }
     >

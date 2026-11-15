@@ -90,13 +90,13 @@ suite('App commander', () => {
 
     await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(
-      page.locator('.compare-view .find-field-input'),
+      page.locator('.compare-view .search-box-input'),
       'the search of the diff',
     );
     await page.keyboard.press('Escape');
     await waitFor(
       async () =>
-        (await page.locator('.compare-view .find-field-input').count()) === 0,
+        (await page.locator('.compare-view .search-box-input').count()) === 0,
       'the search to close',
     );
     assert.strictEqual(

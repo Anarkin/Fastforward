@@ -22,3 +22,10 @@ export function sameSearchOptions(
 ): boolean {
   return searchOptionNames.every((name) => one[name] === other[name]);
 }
+
+export interface Search {
+  readonly query: string;
+  readonly options: SearchOptions;
+}
+
+export const noSearch: Search = { query: '', options: plainSearch };

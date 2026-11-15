@@ -47,12 +47,112 @@ input[type='checkbox']:focus-visible {
   padding: var(--column-line, 0px) var(--search-gap) 0 4px;
 }
 
-.search-row {
+.search-row,
+.search-bar {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-width: 100px;
+  height: var(--search-height);
+  padding: 0 12px;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--search-height) / 2);
+}
+
+.search-box:hover {
+  background:
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--color-border);
+  border-color: transparent;
+}
+
+.search-box.active,
+.search-box:focus-within {
+  background: var(--color-panel-background);
+  border-color: var(--color-border);
+}
+
+.search-box:focus-within {
+  border-color: var(--color-focus);
+}
+
+.search-box-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--color-foreground);
+  background: none;
+  border: none;
+  outline: none;
+}
+
+.search-box-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+.search-count {
+  flex: none;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.search-toggles,
+.search-steps {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--button-gap);
+}
+
+.search-bar.compact .search-box {
+  --search-height: 26px;
+  min-width: 0;
+  gap: 4px;
+  padding: 0 3px 0 10px;
+}
+
+.search-bar.compact .search-toggles {
+  gap: 0;
+}
+
+.search-bar.compact .search-toggle {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font: inherit;
+  font-size: calc(var(--font-size) * 0.85);
+  color: var(--muted-foreground);
+  background: none;
+  border: none;
+  border-radius: 10px;
+}
+
+.search-bar.compact .search-toggle:hover:not(:disabled) {
+  color: var(--color-foreground);
+  background: var(--hover-background);
+}
+
+.search-bar.compact .search-toggle.active {
+  color: var(--color-foreground);
+  background: var(--toggle-on-background);
+}
+
+.search-toggle:disabled {
+  opacity: var(--muted-opacity);
 }
 
 .find-field,

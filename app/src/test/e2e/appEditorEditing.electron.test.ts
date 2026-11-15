@@ -107,10 +107,10 @@ suite('App editor', () => {
     );
     await toStart();
     await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.editor .find-field .find-field-input');
+    const field = page.locator('.editor .search-box .search-box-input');
     await field.waitFor();
     await field.fill('one');
-    const count = page.locator('.editor .find-field-count');
+    const count = page.locator('.editor .search-count');
     await waitFor(
       async () => (await count.textContent()) === '1 of 3',
       'the first match',
@@ -134,7 +134,7 @@ suite('App editor', () => {
     );
     await field.press('Escape');
     await page
-      .locator('.editor .find-field .find-field-input')
+      .locator('.editor .search-box .search-box-input')
       .waitFor({ state: 'detached' });
   });
 
@@ -159,10 +159,10 @@ suite('App editor', () => {
     );
     await toStart();
     await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.editor .find-field .find-field-input');
+    const field = page.locator('.editor .search-box .search-box-input');
     await field.waitFor();
     await field.fill('needle');
-    const count = page.locator('.editor .find-field-count');
+    const count = page.locator('.editor .search-count');
     await waitFor(
       async () => (await count.textContent()) === '1 of 6',
       'the first match',

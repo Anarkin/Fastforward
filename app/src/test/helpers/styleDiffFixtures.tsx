@@ -1,7 +1,7 @@
 import { inStores, optionStores, type ShownOptions } from './componentFixtures';
 import { DiffOptions } from '../../tools/git/page/diffOptions';
-import { FindField } from '../../lib/page/search';
-import { gitKeymap } from '../../tools/git/page/keymap';
+import { SearchBar } from '../../lib/page/searchBar';
+import { plainSearch } from '../../lib/shared/searchOptions';
 import type { FindRange } from '../../lib/shared/textMatches';
 import { Minimap } from '../../tools/git/page/minimap';
 import { Code, MarkedCode } from '../../tools/git/page/codeMarks';
@@ -16,11 +16,12 @@ export function DiffOptionsShown(shown: ShownOptions) {
 
 export function DiffFindShown({ query = '' }: { readonly query?: string }) {
   return (
-    <FindField
+    <SearchBar
       query={query}
-      count=""
-      keys={gitKeymap}
+      options={plainSearch}
+      found={{ current: 0, matches: 0 }}
       onQuery={noop}
+      onOptions={noop}
       onStep={noop}
       onClose={noop}
     />

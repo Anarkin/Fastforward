@@ -66,18 +66,18 @@ suite('Style', () => {
       rendered(<LocationsPopupShown query="" />),
       'locations-search',
     );
-    looks(rendered(<DiffFindShown />), {
+    looks(withClass(rendered(<DiffFindShown />), 'search-box'), {
       background: cascaded(resting, 'background'),
       border: cascaded(resting, 'border'),
     });
-    for (const field of [
+    for (const shown of [
       rendered(<DiffFindShown />),
       rendered(<DiffFindShown query="a" />),
     ]) {
       looks(
-        field,
+        withClass(shown, 'search-box'),
         { 'border-color': 'var(--color-focus)' },
-        { focus: withClass(field, 'find-field-input') },
+        { focus: withClass(shown, 'search-box-input') },
       );
     }
   });
@@ -133,7 +133,12 @@ suite('Style', () => {
       looks(group, { gap, border: undefined, padding: undefined });
     }
     assert.ok(
-      parseFloat(cascaded(rendered(<DiffFindShown />), 'min-width') ?? '') > 0,
+      parseFloat(
+        cascaded(
+          withClass(rendered(<DiffFindShown />), 'search-box'),
+          'min-width',
+        ) ?? '',
+      ) > 0,
     );
   });
 
@@ -216,7 +221,7 @@ suite('Style', () => {
       (px('title-height') - line - deviceRounded('button-size')) / 2;
     assert.ok(above - edge >= 2, String(above));
     for (const field of [
-      rendered(<DiffFindShown />),
+      withClass(rendered(<DiffFindShown />), 'search-box'),
       withClass(rendered(<LocationsPopupShown query="" />), 'locations-search'),
     ]) {
       looks(field, { height: 'var(--search-height)' });
@@ -287,7 +292,7 @@ suite('Style', () => {
     });
     for (const field of [
       withClass(rendered(<LocationsPopupShown query="" />), 'locations-search'),
-      withClass(rendered(<DiffFindShown />), 'find-field-input'),
+      withClass(rendered(<DiffFindShown />), 'search-box-input'),
     ]) {
       looks(
         field,

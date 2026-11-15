@@ -2,7 +2,8 @@ import type { ReactNode, RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { strings } from '../../../lib/shared/strings';
 import { keyPressed } from '../../../lib/page/shortcuts';
-import { FindActions, FindField, SearchRow } from '../../../lib/page/search';
+import { SearchBar } from '../../../lib/page/searchBar';
+import { findKeyDown } from '../../../lib/page/findKeys';
 import {
   replace,
   replaceAll,
@@ -46,36 +47,6 @@ export function EditorFindBar({
       step(view.current, direction);
     }
   };
-  const countShown =
-    query.text === '' || findCount === undefined
-      ? ''
-      : findCount.invalid
-        ? strings.find.badPattern
-        : findCount.matches === 0
-          ? strings.find.noResults
-          : strings.find.count(
-              findCount.current,
-              findCount.matches,
-              findCount.capped,
-            );
-  const toggles = [
-    {
-      key: 'caseSensitive',
-      title: strings.find.matchCase,
-      glyph: strings.find.caseGlyph,
-    },
-    {
-      key: 'wholeWord',
-      title: strings.find.wholeWord,
-      glyph: strings.find.wordGlyph,
-    },
-    {
-      key: 'regex',
-      title: strings.find.regexTitle,
-      glyph: strings.find.regexGlyph,
-    },
-  ] as const;
-
   return (
     <>
       {finding ? (
@@ -88,37 +59,21 @@ export function EditorFindBar({
             }
           }}
         >
-          <SearchRow onClose={closeFind}>
-            <FindField
-              query={query.text}
-              count={countShown}
-              input={findInput}
-              keys={editorKeymap}
-              onQuery={(text) => search({ ...query, text })}
-              onStep={findStep}
-              onClose={closeFind}
-            />
-            <div className="nav-buttons">
-              {toggles.map(({ key, title, glyph }) => (
-                <button
-                  key={key}
-                  className={`nav-button toggle ${query.options[key] ? 'active' : ''}`}
-                  title={title}
-                  aria-pressed={query.options[key]}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() =>
-                    search({
-                      ...query,
-                      options: { ...query.options, [key]: !query.options[key] },
-                    })
-                  }
-                >
-                  {glyph}
-                </button>
-              ))}
-            </div>
-            <FindActions matches={findCount?.matches ?? 0} onStep={findStep} />
-          </SearchRow>
+          <SearchBar
+            query={query.text}
+            options={query.options}
+            found={{
+              current: (findCount?.current ?? 0) - 1,
+              matches: findCount?.matches ?? 0,
+              capped: findCount?.capped,
+            }}
+            input={findInput}
+            onQuery={(text) => search({ ...query, text })}
+            onOptions={(options) => search({ ...query, options })}
+            onStep={findStep}
+            onClose={closeFind}
+            onKeyDown={findKeyDown(editorKeymap, findStep, closeFind)}
+          />
         </header>
       ) : (
         children
@@ -126,7 +81,7 @@ export function EditorFindBar({
       {finding && replacing && (
         <div className="editor-replace">
           <input
-            className="find-field-input editor-replace-input"
+            className="editor-replace-input"
             placeholder={strings.editor.replacePlaceholder}
             spellCheck={false}
             value={replacement}
