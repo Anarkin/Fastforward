@@ -18,10 +18,10 @@ import {
   ReportedPlaces,
   trailing,
   useScrollReports,
-  atMostEvery,
   movingPlaces,
   workingTreeShift,
   listTop,
+  listScroll,
 } from '../../../../../tools/git/page/commitListScrolling';
 import {
   bubbleLineHeight,
@@ -255,28 +255,6 @@ suite('Telling the place scrolled to', () => {
     } finally {
       Object.assign(globalThis, before);
     }
-  });
-});
-
-suite('Asking for the pages in view', () => {
-  test('asks at once, then at most once a delay however often it is asked meanwhile, and at once again after a quiet delay', async () => {
-    let asked = 0;
-    const ask = atMostEvery(() => asked++, 20);
-    ask.schedule();
-    assert.strictEqual(asked, 1);
-    ask.schedule();
-    ask.schedule();
-    assert.strictEqual(asked, 1);
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    assert.strictEqual(asked, 2);
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    assert.strictEqual(asked, 2);
-    ask.schedule();
-    assert.strictEqual(asked, 3);
-    ask.schedule();
-    ask.cancel();
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    assert.strictEqual(asked, 3);
   });
 });
 
@@ -528,5 +506,43 @@ suite('Commit list drawing', () => {
       await select('c14');
       assert.deepStrictEqual(drawnAgain(selected), ['row c12', 'row c14']);
     });
+  });
+});
+
+suite('Commit list working tree row', () => {
+  test('keeps a scrolled list in place when the working tree row appears above it', () => {
+    assert.strictEqual(
+      workingTreeShift(500, 1, workingTreeRowHeight),
+      500 + workingTreeRowHeight,
+    );
+    assert.strictEqual(
+      workingTreeShift(500 + workingTreeRowHeight, -1, workingTreeRowHeight),
+      500,
+    );
+    assert.strictEqual(workingTreeShift(0, 1, workingTreeRowHeight), undefined);
+  });
+
+  test('shifts the list rather than scrolling to its target again when only the working tree row comes or goes', () => {
+    const target = { index: 3 };
+    assert.deepStrictEqual(
+      listScroll({ target, offset: 0 }, { target, offset: 1 }),
+      { shiftBy: 1 },
+    );
+  });
+
+  test('scrolls to a new target without shifting, even when the working tree row appears with it', () => {
+    const target = { index: 3 };
+    assert.deepStrictEqual(
+      listScroll({ target: { index: 3 }, offset: 0 }, { target, offset: 1 }),
+      { target },
+    );
+  });
+
+  test('leaves the list alone when neither its target nor the working tree row changes', () => {
+    const target = { index: 3 };
+    assert.strictEqual(
+      listScroll({ target, offset: 1 }, { target, offset: 1 }),
+      undefined,
+    );
   });
 });

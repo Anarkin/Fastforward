@@ -10,15 +10,10 @@ import { GitStore } from '../../../../../tools/git/page/store';
 import { gitStore, type ShownGit } from '../../../../helpers/componentFixtures';
 import { withMacKeys } from '../../../../helpers/fixtures';
 import { renderToStaticMarkup, noop, plainClick } from './commitListFixtures';
-import { workingTreeRowHeight } from '../../../../../tools/git/page/commitListRows';
 import {
   CommitBubbles,
   WorkingTreeRow,
 } from '../../../../../tools/git/page/commitList';
-import {
-  listScroll,
-  workingTreeShift,
-} from '../../../../../tools/git/page/commitListScrolling';
 
 const tracking = { upstream: 'origin/main', ahead: 0, behind: 0 };
 
@@ -252,42 +247,6 @@ suite('Commit list working tree row', () => {
     assert.match(
       workingTreeHtml(comparisonOf('a', workingTreeHash)),
       /class="commit working-tree\s+selected"/,
-    );
-  });
-
-  test('keeps a scrolled list in place when the working tree row appears above it', () => {
-    assert.strictEqual(
-      workingTreeShift(500, 1, workingTreeRowHeight),
-      500 + workingTreeRowHeight,
-    );
-    assert.strictEqual(
-      workingTreeShift(500 + workingTreeRowHeight, -1, workingTreeRowHeight),
-      500,
-    );
-    assert.strictEqual(workingTreeShift(0, 1, workingTreeRowHeight), undefined);
-  });
-
-  test('shifts the list rather than scrolling to its target again when only the working tree row comes or goes', () => {
-    const target = { index: 3 };
-    assert.deepStrictEqual(
-      listScroll({ target, offset: 0 }, { target, offset: 1 }),
-      { shiftBy: 1 },
-    );
-  });
-
-  test('scrolls to a new target without shifting, even when the working tree row appears with it', () => {
-    const target = { index: 3 };
-    assert.deepStrictEqual(
-      listScroll({ target: { index: 3 }, offset: 0 }, { target, offset: 1 }),
-      { target },
-    );
-  });
-
-  test('leaves the list alone when neither its target nor the working tree row changes', () => {
-    const target = { index: 3 };
-    assert.strictEqual(
-      listScroll({ target, offset: 1 }, { target, offset: 1 }),
-      undefined,
     );
   });
 });

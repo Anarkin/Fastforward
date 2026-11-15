@@ -58,9 +58,9 @@ import {
   ReportedPlaces,
   movingPlaces,
   useScrollReports,
-  atMostEvery,
   listTop,
 } from './commitListScrolling';
+import { atMostEvery } from './commitPages';
 import {
   keySelection,
   mergeToToggle,
