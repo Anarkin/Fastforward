@@ -1,7 +1,8 @@
 import { CommanderTool } from '../../tools/commander/page/tool';
 import { TerminalTool } from '../../tools/terminal/page/tool';
 import { GitTool } from '../../tools/git/page/tool';
-import { activeTabOf, useShell, useShellActions } from './store';
+import { activeTabOf } from './shellSelectors';
+import { useShell, useShellActions } from './store';
 
 export function ToolViews() {
   const active = useShell((state) => activeTabOf(state)?.tool);

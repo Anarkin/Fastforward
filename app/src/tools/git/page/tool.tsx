@@ -1,10 +1,7 @@
 import { compareKeymap, gitKeymap } from './keymap';
 import { CompareView } from './compareView';
-import {
-  comparingOf,
-  useShell,
-  useShellActions,
-} from '../../../shell/page/store';
+import { comparingOf } from '../../../shell/page/shellSelectors';
+import { useShell, useShellActions } from '../../../shell/page/store';
 import './style.css';
 import { useEffect, useRef, useState } from 'react';
 import { type GitToHost, type GitToWebview } from '../shared/protocol';

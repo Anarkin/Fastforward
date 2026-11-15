@@ -11,8 +11,8 @@ import { Notices } from './notices';
 import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../lib/page/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
+import { activeTabOf } from './shellSelectors';
 import {
-  activeTabOf,
   createShellStore,
   ShellStore,
   useShell,

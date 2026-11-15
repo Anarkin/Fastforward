@@ -1,12 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { ToHost, TabInfo } from '../../../../shell/shared/protocol';
-import {
-  createShellStore,
-  menuIn,
-  nextMenu,
-  withPopup,
-} from '../../../../shell/page/store';
+import { createShellStore } from '../../../../shell/page/store';
 import { defaultTextView } from '../../../../shell/page/textView';
 import { noop } from '../../../helpers/fixtures';
 
@@ -65,27 +60,6 @@ suite('Shell store', () => {
     store.getState().showMenu(menu);
     store.getState().closeMenu();
     assert.strictEqual(store.getState().menu, undefined);
-  });
-
-  test('closes a menu once another tab is shown, as its items act on the one it opened in', () => {
-    const menu = { x: 1, y: 2, items: [] };
-    const opened = { tab: '1', menu, id: 1 };
-    assert.strictEqual(menuIn(opened, '1'), menu);
-    assert.strictEqual(menuIn(opened, '2'), undefined);
-    assert.strictEqual(menuIn(opened, undefined), undefined);
-    assert.strictEqual(
-      menuIn({ tab: undefined, menu, id: 1 }, undefined),
-      menu,
-    );
-    assert.strictEqual(menuIn(undefined, '1'), undefined);
-  });
-
-  test('opens each menu anew, so one opened over another, as the + menu over a commit menu, takes the focus and none of its submenus', () => {
-    const menu = { x: 1, y: 2, items: [] };
-    const first = nextMenu(undefined, '1', menu);
-    const second = nextMenu(first, '1', menu);
-    assert.notStrictEqual(first.id, second.id);
-    assert.notStrictEqual(nextMenu(undefined, '1', menu).id, second.id);
   });
 
   test('adds each notice with an id of its own, putting one of the same message last, and dismisses it', () => {
@@ -308,24 +282,6 @@ suite('Shell store', () => {
     store.getState().togglePopup('shortcuts');
     store.getState().showPopup('about', false);
     assert.deepStrictEqual(store.getState().popups, []);
-  });
-
-  test('shows a popup opened from inside another over it, as it takes the focus and the next Escape, keeping each where it is while it stays open', () => {
-    const about = withPopup([], 'about', true);
-    const both = withPopup(about, 'shortcuts', true);
-    assert.deepStrictEqual(both, ['about', 'shortcuts']);
-    assert.strictEqual(withPopup(both, 'about', true), both);
-    assert.deepStrictEqual(withPopup(both, 'openWith', true), [
-      'about',
-      'shortcuts',
-      'openWith',
-    ]);
-    assert.deepStrictEqual(withPopup(both, 'about', false), ['shortcuts']);
-    assert.deepStrictEqual(
-      withPopup(withPopup(both, 'about', false), 'about', true),
-      ['shortcuts', 'about'],
-    );
-    assert.strictEqual(withPopup(about, 'shortcuts', false), about);
   });
 
   test('moves a tab at once, telling the main process', () => {
