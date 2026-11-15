@@ -54,11 +54,11 @@
   background: var(--selection-background);
 }
 
-.shortcuts-tool .icon {
+.shortcuts-tool .icon:not(.tool-icon) {
   color: var(--muted-foreground);
 }
 
-.shortcuts-tool.open .icon {
+.shortcuts-tool.open .icon:not(.tool-icon) {
   color: inherit;
 }
 
