@@ -93,12 +93,12 @@ suite('Git column status', () => {
     });
   });
 
-  test('says nothing the first half second its column loads, not even what it said before, then that it reads, in the font of its column, until it is loaded', async () => {
+  test('says nothing the first half second its column loads when it said nothing before, then that it reads, in the font of its column, until it is loaded', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     await rendering(async (show) => {
       const loading = {
         loading: true,
-        text: '+9 −9',
+        text: undefined,
         font: 'monospace',
       } as const;
       assert.strictEqual(await show(loading), undefined);
@@ -115,6 +115,54 @@ suite('Git column status', () => {
         {
           text: '+1 −0',
           className: 'column-status monospace',
+          role: undefined,
+        },
+      );
+    });
+  });
+
+  test('keeps saying what it said before the first half second its column loads, so it does not blink away on each selection, whatever it is given meanwhile', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    await rendering(async (show) => {
+      const before = {
+        text: '12 files changed',
+        className: 'column-status',
+        role: undefined,
+      };
+      assert.deepStrictEqual(
+        await show({
+          loading: false,
+          text: '12 files changed',
+          font: 'proportional',
+        }),
+        before,
+      );
+      const loading = {
+        loading: true,
+        text: undefined,
+        font: 'proportional',
+      } as const;
+      assert.deepStrictEqual(await show(loading), before);
+      await waited(499);
+      assert.deepStrictEqual(
+        await show({ ...loading, text: '1 file changed' }),
+        before,
+      );
+      await waited(1);
+      assert.deepStrictEqual(await show(loading), {
+        text: strings.common.reading,
+        className: 'column-status',
+        role: 'status',
+      });
+      assert.deepStrictEqual(
+        await show({
+          loading: false,
+          text: '3 files changed',
+          font: 'proportional',
+        }),
+        {
+          text: '3 files changed',
+          className: 'column-status',
           role: undefined,
         },
       );
