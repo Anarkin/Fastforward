@@ -64,9 +64,13 @@ suite('Shortcuts popup', () => {
       'Git',
       'Terminal',
     ]);
+    const appIcon = renderToStaticMarkup(
+      <AppIcon className="icon" size={16} />,
+    );
+    assert.match(appIcon, /^<svg class="icon" width="16" height="16"/);
     assert.ok(
-      html.includes(renderToStaticMarkup(<AppIcon className="icon" />)),
-      'the shortcuts of every tab under the icon of the app',
+      html.includes(appIcon),
+      'the shortcuts of every tab under the icon of the app, as small as the icons of the tools',
     );
     const open = tagsWith(html, 'shortcuts-tool', 'open');
     assert.strictEqual(open.length, 1);

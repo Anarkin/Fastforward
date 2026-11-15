@@ -65,7 +65,7 @@ function EntryIcon({ id }: { id: ShortcutEntryId }) {
     return <FileIcon />;
   }
   return id === 'everywhere' ? (
-    <AppIcon className="icon" />
+    <AppIcon className="icon" size={16} />
   ) : (
     <ToolIcon tool={id} />
   );

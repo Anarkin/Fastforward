@@ -15,12 +15,20 @@ function Dot({ cx, color }: { cx: number; color: string }) {
 
 export function AppIcon({
   className = 'title-bar-icon',
+  size,
 }: {
   className?: string;
+  size?: number;
 }) {
   const blue = '#4285F4';
   return (
-    <svg className={className} viewBox="50 50 412 412" aria-hidden>
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="50 50 412 412"
+      aria-hidden
+    >
       <rect x="50" y="50" width="412" height="412" rx="92" fill={tile} />
       <line
         x1="140"
