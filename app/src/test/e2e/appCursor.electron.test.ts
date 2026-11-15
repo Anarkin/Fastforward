@@ -36,11 +36,9 @@ import {
   cursorWidth,
   selectedBeside,
   elementBox,
-  fitWindow,
-  windowOfPage,
-  focusColor,
 } from './cursorPixels';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { fitWindow, windowOfPage, focusColor } from './cursorWindow';
 
 const shell =
   process.platform === 'win32'
