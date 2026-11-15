@@ -24,7 +24,6 @@ import {
   withView,
 } from '../../../../helpers/harness';
 import {
-  fortyLines,
   viewRepositories,
   type ViewRepositories,
   numberedLines,
@@ -34,8 +33,6 @@ import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool showing diffs', () => {
   let folder: string;
-  let long: TempRepository;
-  let spaced: TempRepository;
   let viewFolder: string;
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
@@ -45,18 +42,6 @@ suite('Git tool showing diffs', () => {
 
   beforeAll(async () => {
     folder = tempFolder('diffs');
-    long = await tempRepository(path.join(folder, 'long'));
-    await long.commit('first', {
-      'a.txt': fortyLines(-1),
-      'b.txt': fortyLines(-1),
-    });
-    await long.commit('second', {
-      'a.txt': fortyLines(19),
-      'b.txt': fortyLines(19),
-    });
-    spaced = await tempRepository(path.join(folder, 'spaced'));
-    await spaced.commit('first', { 'a.txt': 'one\ntwo\n' });
-    await spaced.commit('indent', { 'a.txt': '  one\ntwo\n' });
     ({ folder: viewFolder, repository, fixture } = await viewRepositories());
   });
 
