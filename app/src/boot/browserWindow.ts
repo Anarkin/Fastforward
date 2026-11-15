@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import { app, BrowserWindow, nativeTheme, screen, shell } from 'electron';
-import { appNameSwitch, titleBarHeight } from '../shell/shared/titleBar';
+import { titleBarHeight } from '../shell/shared/titleBar';
+import { appNameSwitch } from '../shell/shared/bridge';
 import { shellKeymap } from '../shell/shared/keymap';
 import { pressed, pressOfInput } from '../lib/shared/keymap';
 import { brand, strings } from '../lib/shared/strings';

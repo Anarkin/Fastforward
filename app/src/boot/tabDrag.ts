@@ -1,6 +1,6 @@
 import type { Bounds } from './windowPlacement';
 import type { DragStart, Point, Strip, Visit } from '../shell/main/dragEvents';
-import { tabMagnetism } from '../shell/shared/titleBar';
+import { tabMagnetism } from '../shell/shared/tabDrag';
 
 export interface DragWindow {
   readonly id: string;

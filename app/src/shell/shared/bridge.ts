@@ -10,3 +10,5 @@ export interface Bridge {
   listen(handler: (message: ToWebview) => void): () => void;
   listenMaximized(handler: (maximized: boolean) => void): () => void;
 }
+
+export const appNameSwitch = '--fastforward-app-name=';

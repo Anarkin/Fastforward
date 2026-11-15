@@ -4,10 +4,9 @@ import {
   webUtils,
   type IpcRendererEvent,
 } from 'electron';
-import type { Bridge } from '../shell/shared/bridge';
+import { appNameSwitch, type Bridge } from '../shell/shared/bridge';
 import type { ToWebview } from '../shell/shared/protocol';
 import { brand } from '../lib/shared/strings';
-import { appNameSwitch } from '../shell/shared/titleBar';
 
 contextBridge.exposeInMainWorld('fastforward', {
   platform: process.platform,

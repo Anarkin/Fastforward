@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { type TabInfo } from '../shared/protocol';
-import { tabMagnetism } from '../shared/titleBar';
+import { tabMagnetism } from '../shared/tabDrag';
 import { shellKeymap } from '../shared/keymap';
 import { clicked, released } from '../../lib/shared/keymap';
 import { keymap } from '../../lib/page/keymap';
