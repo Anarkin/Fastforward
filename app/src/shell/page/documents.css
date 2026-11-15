@@ -259,12 +259,3 @@
 .markdown a[href] {
   color: var(--color-focus);
 }
-
-@keyframes bob {
-  from {
-    transform: translateY(-1.5px);
-  }
-  to {
-    transform: translateY(1.5px);
-  }
-}
