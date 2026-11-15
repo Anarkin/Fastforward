@@ -12,14 +12,15 @@ import { isTextEncoding, type TextEncoding } from '../shared/textEncodings';
 import { EditedText } from './editedText';
 import { NoRoomToSave, ReadOnlyFile, type Saved } from './fileSaving';
 import { reasonOf } from './reasons';
-import type { TextDefaults } from './textDefaults';
+import { rulesOf, type TextDefaults, type TextRules } from './textDefaults';
 import { decodedText } from './textCodec';
+import { looksBinary } from './encodingDetection';
 import {
-  byteOrderMarkOf,
-  isUtf8,
-  looksBinary,
-  utf16Order,
-} from './encodingDetection';
+  foundIn,
+  sourcesOf,
+  startBytes,
+  textEncodingOf,
+} from './encodingSources';
 
 const maxEditedBytes = 50 * 1024 * 1024;
 
@@ -92,31 +93,10 @@ export interface ViewedStart {
   readonly encoding?: TextEncoding;
 }
 
-type TextRules = Pick<
-  TextShown,
-  'indent' | 'fallbackIndent' | 'trimTrailingWhitespace' | 'insertFinalNewline'
->;
-
 const shownOf = (read: Read, text: EditedText): TextShown => ({
   ...text.shown(),
   ...read.rules,
 });
-
-const rulesOf = (defaults: TextDefaults | undefined) =>
-  defaults === undefined
-    ? {}
-    : {
-        rules: {
-          ...(defaults.indent !== undefined && { indent: defaults.indent }),
-          fallbackIndent: defaults.fallbackIndent,
-          ...(defaults.trimTrailingWhitespace === true && {
-            trimTrailingWhitespace: true,
-          }),
-          ...(defaults.insertFinalNewline === true && {
-            insertFinalNewline: true,
-          }),
-        } satisfies TextRules,
-      };
 
 interface Opened {
   readonly file: string;
@@ -134,47 +114,7 @@ interface Opened {
 const isMissing = (error: unknown) =>
   error instanceof Error && 'code' in error && error.code === 'ENOENT';
 
-function textEncodingOf(start: Buffer): TextEncoding | undefined {
-  return byteOrderMarkOf(start) ?? utf16Order(start);
-}
-
-const startBytes = 64 * 1024;
-
 const noWatching = () => {};
-
-interface Found {
-  readonly bom: TextEncoding | undefined;
-  readonly order: TextEncoding | undefined;
-  readonly valid: boolean;
-  readonly encoding: TextEncoding;
-}
-
-function foundIn(bytes: Buffer, codePage: TextEncoding): Found {
-  const start = bytes.subarray(0, startBytes);
-  const bom = byteOrderMarkOf(start);
-  const order = bom === undefined ? utf16Order(start) : undefined;
-  const valid = isUtf8(bytes);
-  return {
-    bom,
-    order,
-    valid,
-    encoding: bom ?? order ?? (valid ? 'utf-8' : codePage),
-  };
-}
-
-function sourcesOf(
-  { bom, order, valid }: Found,
-  chosen: TextEncoding | undefined,
-  codePage: TextEncoding,
-): EncodingSource[] {
-  return [
-    { kind: 'chosen', ...(chosen !== undefined && { encoding: chosen }) },
-    { kind: 'bom', ...(bom !== undefined && { encoding: bom }) },
-    { kind: 'utf16', ...(order !== undefined && { encoding: order }) },
-    { kind: 'utf8', ...(valid && { encoding: 'utf-8' }) },
-    { kind: 'codePage', encoding: codePage },
-  ];
-}
 
 export class Editing {
   private readonly opened = new Map<string, Opened>();

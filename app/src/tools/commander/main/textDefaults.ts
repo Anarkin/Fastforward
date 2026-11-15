@@ -1,5 +1,9 @@
 import * as path from 'node:path';
-import type { EncodingSource, EndingSource } from '../shared/protocol';
+import type {
+  EncodingSource,
+  EndingSource,
+  TextShown,
+} from '../shared/protocol';
 import type { TextEncoding } from '../shared/textEncodings';
 import type { EditorSettings } from '../../../shell/main/editorSettings';
 import { isLineEnding, type LineEnding } from '../shared/textMarks';
@@ -145,3 +149,24 @@ export async function textDefaultsOf(
     ...(config.insertFinalNewline === true && { insertFinalNewline: true }),
   };
 }
+
+export type TextRules = Pick<
+  TextShown,
+  'indent' | 'fallbackIndent' | 'trimTrailingWhitespace' | 'insertFinalNewline'
+>;
+
+export const rulesOf = (defaults: TextDefaults | undefined) =>
+  defaults === undefined
+    ? {}
+    : {
+        rules: {
+          ...(defaults.indent !== undefined && { indent: defaults.indent }),
+          fallbackIndent: defaults.fallbackIndent,
+          ...(defaults.trimTrailingWhitespace === true && {
+            trimTrailingWhitespace: true,
+          }),
+          ...(defaults.insertFinalNewline === true && {
+            insertFinalNewline: true,
+          }),
+        } satisfies TextRules,
+      };
