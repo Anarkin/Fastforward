@@ -2,11 +2,9 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import {
-  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -14,99 +12,16 @@ import type { ByteRange } from '../shared/protocol';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { wheeled } from '../../../lib/shared/keymap';
 import { viewerKeymap } from './viewerKeymap';
-import { followDrag } from '../../../lib/page/followDrag';
 import { sidewaysColumns, wheelTurn } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
-import { hideAfter, shareAt } from '../../../lib/page/scrollbarGeometry';
-import { overlayScrollbarClass } from '../../../lib/page/overlayScrollbars';
-import {
-  type Thumb,
-  type RowText,
-  thumbBox,
-  matchTicks,
-  grabbedAt,
-} from './scrollThumbs';
-
-const minTick = 2;
+import { hideAfter } from '../../../lib/page/scrollbarGeometry';
+import { type Thumb } from './scrollThumbs';
+import { copiedRows, type RowText } from './rowCopy';
+import { ViewerScrollbar } from './viewerScrollbar';
 
 const probeText = '0'.repeat(100);
 
 const revealColumns = 8;
-
-function percent(share: number): string {
-  return `${share * 100}%`;
-}
-
-const MatchTicks = memo(function MatchTicks({
-  matches,
-  size,
-  track,
-}: {
-  matches: readonly ByteRange[];
-  size: number;
-  track: number;
-}) {
-  const ticks = useMemo(
-    () => matchTicks(matches, size, track > 0 ? minTick / track : 0),
-    [matches, size, track],
-  );
-  return ticks.map((tick) => (
-    <div
-      key={tick.top}
-      className="minimap-mark match"
-      style={{ top: percent(tick.top), height: percent(tick.height) }}
-    />
-  ));
-});
-
-function charsBefore(row: Element, container: Node, offset: number): number {
-  const before = document.createRange();
-  before.selectNodeContents(row);
-  before.setEnd(container, offset);
-  return before.toString().length;
-}
-
-function copiedRows(
-  selection: Selection | null,
-  shown: Element | null,
-  rowText: ((row: Element) => RowText | undefined) | undefined,
-): string | undefined {
-  if (selection === null || selection.rangeCount === 0 || shown === null) {
-    return undefined;
-  }
-  const range = selection.getRangeAt(0);
-  const rows = [...shown.children].filter((row) => range.intersectsNode(row));
-  if (
-    rows.length < 2 ||
-    (rowText === undefined &&
-      !rows.slice(0, -1).some((row) => row.hasAttribute('data-continues')))
-  ) {
-    return undefined;
-  }
-  return rows
-    .map((row, index) => {
-      const start = row.contains(range.startContainer)
-        ? charsBefore(row, range.startContainer, range.startOffset)
-        : undefined;
-      const end = row.contains(range.endContainer)
-        ? charsBefore(row, range.endContainer, range.endOffset)
-        : undefined;
-      const whole = rowText?.(row);
-      const text =
-        whole === undefined
-          ? (row.textContent ?? '').slice(start ?? 0, end)
-          : whole.text.slice(
-              start === undefined ? 0 : whole.from + start,
-              end === undefined ? undefined : whole.from + end,
-            );
-      const ends =
-        index === rows.length - 1 || row.hasAttribute('data-continues')
-          ? ''
-          : '\n';
-      return `${text}${ends}`;
-    })
-    .join('');
-}
 
 const noMatches: readonly ByteRange[] = [];
 
@@ -183,7 +98,6 @@ export function ScrollBody({
   const wheel = useRef(0);
   const wheelRows = useShell((state) => state.scrolling.wheelRows);
   const [barShown, setBarShown] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
   const showBar = useCallback(() => {
     clearTimeout(hiding.current);
@@ -247,7 +161,6 @@ export function ScrollBody({
     showBar();
     move(by);
   };
-  const box = thumb && thumbBox(thumb, track);
 
   return (
     <div
@@ -355,45 +268,16 @@ export function ScrollBody({
           <Words>{error}</Words>
         </div>
       )}
-      <div
-        className="viewer-scrollbar"
-        ref={scrollbar}
-        style={box === undefined ? { pointerEvents: 'none' } : undefined}
-        onPointerDown={(event) => {
-          if (box === undefined) {
-            return;
-          }
-          event.preventDefault();
-          const bar = event.currentTarget.getBoundingClientRect();
-          const grab = grabbedAt(event.clientY - bar.top, box);
-          const at = (clientY: number) => {
-            setDragging(true);
-            jump(shareAt(clientY, bar.top, bar.height, box.height, grab));
-          };
-          at(event.clientY);
-          followDrag(
-            window,
-            (pointer: PointerEvent) => at(pointer.clientY),
-            () => {
-              setDragging(false);
-              showBar();
-            },
-          );
-        }}
-      >
-        {box !== undefined && (
-          <>
-            <MatchTicks matches={matches} size={size} track={track} />
-            <div
-              className={`${overlayScrollbarClass} viewer-thumb${barShown || dragging || barPinned ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
-              style={{
-                top: box.top,
-                height: box.height,
-              }}
-            />
-          </>
-        )}
-      </div>
+      <ViewerScrollbar
+        scrollbar={scrollbar}
+        thumb={thumb}
+        track={track}
+        shown={barShown || barPinned}
+        onShow={showBar}
+        jump={jump}
+        matches={matches}
+        size={size}
+      />
     </div>
   );
 }

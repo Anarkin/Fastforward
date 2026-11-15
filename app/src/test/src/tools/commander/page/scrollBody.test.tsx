@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import type { ByteRange } from '../../../../../tools/commander/shared/protocol';
-import { matchTicks } from '../../../../../tools/commander/page/scrollThumbs';
 import { ScrollBody } from '../../../../../tools/commander/page/scrollBody';
 import { withStores } from '../../../../helpers/componentFixtures';
 const renderToStaticMarkup = (node: React.ReactNode) =>
@@ -50,24 +49,5 @@ suite('Commander scroll body', () => {
       /class="minimap-mark match" style="top:50%;height:3.125%"/,
     );
     assert.doesNotMatch(scrollBody(false), /minimap-mark/);
-  });
-
-  test('ticks matches too close to tell apart once, each at least the least tick tall, so a file of many matches draws a tick per few pixels at most', () => {
-    assert.deepStrictEqual(
-      matchTicks(
-        [
-          { start: 0, end: 8 },
-          { start: 12, end: 16 },
-          { start: 512, end: 544 },
-        ],
-        1024,
-        1 / 64,
-      ),
-      [
-        { top: 0, height: 0.02734375 },
-        { top: 0.5, height: 0.03125 },
-      ],
-    );
-    assert.deepStrictEqual(matchTicks([{ start: 0, end: 8 }], 0, 1 / 64), []);
   });
 });

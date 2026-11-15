@@ -7,11 +7,6 @@ export interface Thumb {
 
 const minThumb = 24;
 
-export interface RowText {
-  readonly text: string;
-  readonly from: number;
-}
-
 export function thumbBox(
   thumb: Thumb,
   track: number,
