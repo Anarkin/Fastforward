@@ -5,7 +5,8 @@ import type { CommanderToHost } from '../shared/protocol';
 import type { Side } from '../shared/sides';
 import { codeOf, reasonOf } from './reasons';
 import { nameProblem } from '../shared/names';
-import { type Sides, type Listing, listedIn } from './sides';
+import { type Sides, type Listing } from './sides';
+import { listedIn } from './listedEntries';
 import type { ArchiveCommands } from './archiveCommands';
 import type { CommanderAccess } from './commanderAccess';
 

@@ -2,7 +2,8 @@ import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import type { CommanderToHost } from '../shared/protocol';
-import { type Sides, listedIn } from './sides';
+import { type Sides } from './sides';
+import { listedIn } from './listedEntries';
 import type { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './commanderAccess';
 

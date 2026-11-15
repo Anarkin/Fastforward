@@ -16,7 +16,8 @@ import { thumbnailKey } from './thumbnailStore';
 import { ArchiveImages } from './archiveImages';
 import { fileResponse } from './fileRanges';
 import type { ArchiveAccess, OpenedArchive } from './archives';
-import { type Pane, type Sides, listedIn } from './sides';
+import { type Pane, type Sides } from './sides';
+import { listedIn } from './listedEntries';
 import { archiveItems } from './archiveItems';
 
 export interface Thumbnails {

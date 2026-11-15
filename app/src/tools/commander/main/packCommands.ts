@@ -16,7 +16,8 @@ import {
 import type { PackPlan } from './archiveReader';
 import type { Transfers } from './transfers';
 import { nameProblem } from '../shared/names';
-import { type Sides, listedIn } from './sides';
+import { type Sides } from './sides';
+import { listedIn } from './listedEntries';
 import type { ArchivePasswords } from './archivePasswords';
 import type {
   TransferCommandsAccess,

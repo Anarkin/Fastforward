@@ -8,7 +8,8 @@ import { isPdf, pdfType } from '../shared/pdf';
 import type { Icons } from './icons';
 import { onSameVolume } from './volumes';
 import { iconSourceOf, iconTicketOf, viewerOfIcon } from '../shared/icons';
-import { type Sides, listedIn } from './sides';
+import { type Sides } from './sides';
+import { listedIn } from './listedEntries';
 
 export class Serving {
   constructor(

@@ -13,13 +13,8 @@ import { isTextEncoding } from '../shared/textEncodings';
 import { type Side } from '../shared/sides';
 import type { Editing } from './editing';
 import { nameProblem } from '../shared/names';
-import {
-  type Pane,
-  type ShownPane,
-  type Sides,
-  type Listing,
-  listedIn,
-} from './sides';
+import { type Pane, type ShownPane, type Sides, type Listing } from './sides';
+import { listedIn } from './listedEntries';
 import { parentOf } from './folderPaths';
 import type { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './commanderAccess';

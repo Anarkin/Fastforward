@@ -4,7 +4,7 @@ import { isSide, sides, type Side } from '../shared/sides';
 import type { FlatTree } from './flatTree';
 import type { Duplicates } from './duplicates';
 import type { BlockCache } from './fileBlocks';
-import type { FolderSizes, FolderSize } from './folderSizes';
+import type { FolderSizes } from './folderSizes';
 
 export interface Duplicating {
   readonly look: number;
@@ -164,50 +164,3 @@ export class Sides {
 }
 
 export type Listing = 'visit' | 'show' | 'refresh' | { readonly at: number };
-
-const entriesByName = new WeakMap<
-  readonly Entry[],
-  ReadonlyMap<string, Entry>
->();
-
-export function sizedEntry(entry: Entry, size: FolderSize | undefined): Entry {
-  return size === undefined
-    ? entry
-    : {
-        ...entry,
-        size: size.bytes,
-        ...(size.counting && { counting: true }),
-        ...(size.unread > 0 && { unreadFolders: size.unread }),
-      };
-}
-
-export function entryNamed(
-  entries: readonly Entry[] | undefined,
-  name: unknown,
-): Entry | undefined {
-  if (entries === undefined || typeof name !== 'string') {
-    return undefined;
-  }
-  let named = entriesByName.get(entries);
-  if (named === undefined) {
-    const built = new Map<string, Entry>();
-    for (const entry of entries) {
-      if (!built.has(entry.name)) {
-        built.set(entry.name, entry);
-      }
-    }
-    named = built;
-    entriesByName.set(entries, named);
-  }
-  return named.get(name);
-}
-
-export function listedIn(
-  pane: Pane | undefined,
-  name: unknown,
-): Entry | undefined {
-  if (pane?.flat === undefined) {
-    return entryNamed(pane?.entries, name);
-  }
-  return typeof name === 'string' ? pane.flat.tree.file(name) : undefined;
-}

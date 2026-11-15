@@ -1,16 +1,10 @@
 import type { Page } from '../../../shell/main/toolContract';
 import type { CommanderToHost, Entry } from '../shared/protocol';
 import type { Side } from '../shared/sides';
-import { FolderSizes } from './folderSizes';
+import { FolderSizes, type FolderSize } from './folderSizes';
 import { listingWalker, type SizeWalker } from './sizeWalk';
-import {
-  type Sizing,
-  type Pane,
-  type ShownPane,
-  type Sides,
-  sizedEntry,
-  entryNamed,
-} from './sides';
+import { type Sizing, type Pane, type ShownPane, type Sides } from './sides';
+import { entryNamed } from './listedEntries';
 import { post } from './post';
 import { flushThrottled } from './throttledFlush';
 
@@ -22,6 +16,17 @@ export interface SideSizesHost {
   readonly listed: (
     folder: string,
   ) => Promise<{ readonly entries: readonly Entry[] }>;
+}
+
+export function sizedEntry(entry: Entry, size: FolderSize | undefined): Entry {
+  return size === undefined
+    ? entry
+    : {
+        ...entry,
+        size: size.bytes,
+        ...(size.counting && { counting: true }),
+        ...(size.unread > 0 && { unreadFolders: size.unread }),
+      };
 }
 
 export class SideSizes {
