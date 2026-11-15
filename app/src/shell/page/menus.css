@@ -78,3 +78,86 @@
 .menu-check:has(> .icon) {
   vertical-align: -3px;
 }
+
+.menu.context-menu {
+  position: fixed;
+  right: auto;
+}
+
+.menu.context-menu.scrolls {
+  box-sizing: border-box;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.menu-entry {
+  position: relative;
+}
+
+.menu-entry:has(> .menu-remove) > .menu-item {
+  padding-right: 32px;
+}
+
+.menu-remove {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: auto 0;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  opacity: var(--muted-opacity);
+}
+
+.menu-entry:not(:hover):not(:focus-within) > .menu-remove {
+  visibility: hidden;
+}
+
+.menu-remove:hover {
+  opacity: 1;
+  background: var(--hover-background);
+}
+
+.menu-item.has-submenu {
+  display: flex;
+  align-items: center;
+}
+
+.submenu-arrow {
+  display: flex;
+  margin-left: auto;
+  padding-left: 16px;
+  color: var(--muted-foreground);
+}
+
+.menu.submenu {
+  top: -4px;
+  left: 100%;
+  right: auto;
+  box-sizing: border-box;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.menu.submenu.flipped {
+  left: auto;
+  right: 100%;
+}
+
+.menu-item:disabled {
+  opacity: var(--muted-opacity);
+}
+
+.menu-separator {
+  height: 0;
+  margin: 4px 6px;
+  border-top: 1px solid var(--color-border);
+}

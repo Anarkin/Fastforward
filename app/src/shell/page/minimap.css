@@ -1,0 +1,65 @@
+.diff-minimap {
+  position: absolute;
+  top: 0;
+  right: var(--column-line, 0px);
+  bottom: var(--column-line, 0px);
+  overflow: hidden;
+  border-bottom-right-radius: calc(
+    var(--card-radius) - var(--column-line, 0px)
+  );
+  z-index: 6;
+  width: var(--minimap-width);
+}
+
+.minimap-mark {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  min-height: 2px;
+}
+
+.minimap-mark.added {
+  background: color-mix(
+    in srgb,
+    var(--color-change-added) var(--color-change-added-minimap),
+    transparent
+  );
+}
+
+.minimap-mark.match {
+  left: 50%;
+  background: var(--color-search-match);
+}
+
+.minimap-mark.removed {
+  background: color-mix(
+    in srgb,
+    var(--color-change-deleted) var(--color-change-deleted-minimap),
+    transparent
+  );
+}
+
+.minimap-viewport {
+  position: absolute;
+  right: 0;
+  width: var(--scrollbar-size);
+  box-sizing: border-box;
+  min-height: 8px;
+  border-radius: 1px;
+  background: var(--scrollbar-background) padding-box;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.diff-minimap.shown .minimap-viewport {
+  opacity: 1;
+}
+
+.diff-minimap:hover .minimap-viewport {
+  background-color: var(--scrollbar-hover-background);
+}
+
+.diff-minimap.dragging .minimap-viewport {
+  background-color: var(--scrollbar-active-background);
+}

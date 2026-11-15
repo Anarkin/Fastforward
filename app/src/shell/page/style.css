@@ -1,10 +1,14 @@
 @import 'pdfjs-dist/web/pdf_viewer.css' layer(pdfjs);
 @import './window.css';
-@import './menus.css';
 @import './tabs.css';
 @import './fallbacks.css';
 @import './notices.css';
 @import './columns.css';
+@import './menus.css';
 @import './rows.css';
 @import './documents.css';
 @import './text.css';
+@import './minimap.css';
+@import './buttons.css';
+@import './fields.css';
+@import './popups.css';

@@ -73,3 +73,63 @@
   height: 100%;
   overflow: hidden;
 }
+
+.bar {
+  display: block;
+  height: 0.7em;
+  margin: 0.25em 0;
+  border-radius: 3px;
+  background: var(--muted-foreground);
+  opacity: 0.15;
+}
+
+.row.file,
+.row.folder,
+.row.group {
+  display: flex;
+  align-items: center;
+}
+
+.row .path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pinned-rows {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--color-panel-background);
+  box-shadow: 0 var(--hairline) 0 var(--color-border);
+}
+
+.virtual-rows {
+  box-sizing: border-box;
+  height: 100%;
+  padding-bottom: calc(var(--column-line, 0px) + var(--device-pixel, 1px));
+  overflow: auto;
+  background: var(--color-panel-background);
+}
+
+.virtual-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.virtual-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.skeleton-row:hover,
+.commit.placeholder:hover,
+.hash-suggestion.empty:hover {
+  background: none;
+}
+
+.skeleton-row .bar {
+  margin: 0.35em 0;
+}
