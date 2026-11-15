@@ -415,23 +415,24 @@ suite('App', () => {
     );
   });
 
-  test('counts under the diff the lines added and removed in the file shown, in monospace, and nothing while every file of the commit is shown', async () => {
+  test('counts under the diff the lines added and removed in the file shown, or in every file shown, in monospace', async () => {
     const diff = page.locator('.columns > .column').nth(2);
+    const status = () => diff.locator('.column-status.monospace').textContent();
     await page.locator('.commit', { hasText: 'second' }).click();
     await page.locator('.row.file', { hasText: 'changed.txt' }).click();
     await waitFor(
-      async () =>
-        (await diff.locator('.column-status.monospace').textContent()) ===
-        '+1 −1',
+      async () => (await status()) === '+1 −1',
       'the lines counted',
     );
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
     await page.locator('.row.group', { hasText: 'All Changes' }).click();
     await page
       .locator('.row.group.selected', { hasText: 'All Changes' })
       .waitFor();
     await waitFor(
-      async () => (await diff.locator('.column-status').count()) === 0,
-      'no line under the diff of every file',
+      async () => (await status()) === '+4 −0',
+      'the lines of every file counted',
     );
   });
 

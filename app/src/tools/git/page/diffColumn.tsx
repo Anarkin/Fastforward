@@ -96,11 +96,8 @@ export function Diff({
     [parsed, path, files, leftOut, largeFiles, whitespaceOnly, filter],
   );
   const lines = useMemo(
-    () =>
-      linesCounted(
-        path !== undefined && diffFiles.length === 1 ? diffFiles[0] : undefined,
-      ),
-    [path, diffFiles],
+    () => linesCounted(diffFiles, files),
+    [diffFiles, files],
   );
   const errorRow = useMemo(
     () =>

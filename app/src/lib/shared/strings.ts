@@ -569,6 +569,8 @@ export const strings = {
   diff: {
     linesCounted: (added: number, removed: number) =>
       `+${added.toLocaleString()} −${removed.toLocaleString()}`,
+    linesCountedLeavingOut: (added: number, removed: number, left: number) =>
+      `+${added.toLocaleString()} −${removed.toLocaleString()}, ${left === 1 ? '1 file' : `${left.toLocaleString()} files`} not counted`,
     viewMissing: (file: string) =>
       sentence`${named(file)} isn't there to view.`,
     viewTooLarge: (file: string) =>
