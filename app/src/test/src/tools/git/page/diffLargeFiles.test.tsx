@@ -12,7 +12,6 @@ import {
   patchPathBudget,
 } from '../../../../../tools/git/shared/patchBudget';
 import {
-  diffSelection,
   shownFiles,
   withLargeFiles,
 } from '../../../../../tools/git/page/diffFiles';
@@ -333,25 +332,6 @@ suite('Large files fetched', () => {
     assert.deepStrictEqual(
       largeFilesToLoad([empty], new Map([['a.json', true]]), 0, new Map()),
       [],
-    );
-  });
-
-  test('starts the requests of a diff over in another tab, though it shows the same commit and file', () => {
-    assert.notStrictEqual(
-      diffSelection('/a', 'working-tree', undefined),
-      diffSelection('/b', 'working-tree', undefined),
-    );
-    assert.strictEqual(
-      diffSelection('/a', 'working-tree', 'a.ts'),
-      diffSelection('/a', 'working-tree', 'a.ts'),
-    );
-    assert.notStrictEqual(
-      diffSelection('/a', 'working-tree', 'a.ts', 'staged'),
-      diffSelection('/a', 'working-tree', 'a.ts', 'unstaged'),
-    );
-    assert.notStrictEqual(
-      diffSelection('/a', 'working-tree', 'a.ts'),
-      diffSelection('/a', 'working-tree', undefined),
     );
   });
 });

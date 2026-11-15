@@ -1,4 +1,4 @@
-import type { ChangeArea, FileChange, LeftOut } from '../shared/protocol';
+import type { FileChange, LeftOut } from '../shared/protocol';
 import { type DiffFile } from './diff';
 import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
 
@@ -94,13 +94,4 @@ export function filteredDiffFiles(
   return path !== undefined || words.length === 0
     ? files
     : files.filter((file) => matchesFilter(words, file.path, file.oldPath));
-}
-
-export function diffSelection(
-  root: string | undefined,
-  hash: string | undefined,
-  path: string | undefined,
-  area?: ChangeArea,
-): string {
-  return JSON.stringify([root, hash, path, area]);
 }
