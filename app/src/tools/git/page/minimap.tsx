@@ -8,12 +8,12 @@ import {
   type RefObject,
 } from 'react';
 import { hideAfter } from '../../../lib/page/scrollbarGeometry';
+import { type MinimapMark } from './minimapMarks';
 import {
-  type MinimapMark,
   pointerFraction,
   minimapScrollTop,
   grabPointer,
-} from './minimapMarks';
+} from './minimapPointer';
 
 function percent(value: number): string {
   return `${value * 100}%`;
