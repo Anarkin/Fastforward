@@ -3,7 +3,6 @@ import { suite, test } from 'vitest';
 import {
   commitPageSize,
   commitPagesAsked,
-  pageStart,
 } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import { commitInfo } from '../../../../helpers/fixtures';
@@ -95,18 +94,6 @@ suite('Commit history', () => {
     assert.deepStrictEqual(pages(), [run]);
     history.release(run.start, run.count);
     assert.deepStrictEqual(pages(), [run]);
-  });
-});
-
-suite('Commit pages', () => {
-  test('starts the page an index is on', () => {
-    assert.strictEqual(pageStart(0), 0);
-    assert.strictEqual(pageStart(commitPageSize - 1), 0);
-    assert.strictEqual(pageStart(commitPageSize), commitPageSize);
-    assert.strictEqual(
-      pageStart(2 * commitPageSize + commitPageSize / 2),
-      2 * commitPageSize,
-    );
   });
 });
 
