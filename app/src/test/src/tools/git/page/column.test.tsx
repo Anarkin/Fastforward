@@ -4,7 +4,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { Column } from '../../../../../tools/git/page/column';
 import { SearchButton, SearchRow } from '../../../../../lib/page/search';
-import { StatusLine } from '../../../../../tools/commander/page/statusLine';
 import { noop } from '../../../../helpers/fixtures';
 
 const page = (html: string) => new JSDOM(html).window.document;
@@ -73,7 +72,10 @@ suite('Status line', () => {
   test('goes under the body of a git column given one', () => {
     const document = page(
       renderToStaticMarkup(
-        <Column title="Files" status={<StatusLine>3 files</StatusLine>}>
+        <Column
+          title="Files"
+          status={<footer className="column-status">3 files</footer>}
+        >
           <div className="body" />
         </Column>,
       ),
