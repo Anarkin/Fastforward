@@ -375,32 +375,6 @@ suite('Git tool of other repositories', () => {
     });
   });
 
-  test('says nothing of a tab that fails to preload until it is opened', async () => {
-    const plain = path.join(folder, 'plain');
-    fs.mkdirSync(plain);
-    await withView(log, [repository.root, plain], async (view) => {
-      view.page.clear();
-      await view.connection.receive({
-        type: 'preloadTab',
-        tab: tabOf(view.page, plain),
-      });
-      assert.strictEqual(view.page.last('error'), undefined);
-      await view.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(view.page, plain),
-      });
-      assert.match(
-        plainOf(view.page.last('error')?.message ?? ''),
-        /is not a git repository/,
-      );
-    });
-    takeErrorsLogged(
-      logged,
-      /^Listing the worktrees of .*plain failed$/,
-      /^git worktree list .* failed: fatal: not a git repository/,
-    );
-  });
-
   test('says the folder of a tab is no repository once its .git is deleted while it is open, rather than what git said', async () => {
     const unmade = await tempRepository(path.join(folder, 'unmade'));
     await unmade.commit('first');

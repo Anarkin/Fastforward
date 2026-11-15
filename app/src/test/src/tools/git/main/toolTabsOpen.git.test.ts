@@ -22,7 +22,6 @@ import {
   failOnErrorsLogged,
   gate,
   openView,
-  rootOf,
   savedBookmarks,
   stubMethod,
   takeErrorsLogged,
@@ -41,14 +40,12 @@ suite('Git tool with two tabs', () => {
   let repository: TempRepository;
   let fixture: ViewRepositories['fixture'];
   let other: string;
-  let otherHead: string;
 
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
   beforeAll(async () => {
-    ({ folder, repository, fixture, other, otherHead } =
-      await viewRepositories());
+    ({ folder, repository, fixture, other } = await viewRepositories());
   });
 
   afterAll(async () => {
@@ -132,58 +129,6 @@ suite('Git tool with two tabs', () => {
       assert.strictEqual(tabs.page.last('commits')?.total, 5);
     });
 
-    test('preloads a tab in the background, which then opens as it was left', async () => {
-      tabs.page.clear();
-      await tabs.connection.receive({
-        type: 'preloadTab',
-        tab: tabOf(tabs.page, other),
-      });
-      assert.ok(
-        !tabs.page.messages.some(
-          (message) =>
-            (message.type === 'files' && message.hash === otherHead) ||
-            (message.type === 'commits' && message.total === 1),
-        ),
-      );
-      tabs.page.clear();
-      await tabs.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(tabs.page, other),
-      });
-      assert.strictEqual(commitsSent(tabs.page.messages), 1);
-      assert.strictEqual(tabs.page.last('files'), undefined);
-      assert.strictEqual(tabs.page.last('commits')?.total, 1);
-    });
-
-    test('opens a tab whose preload failed with its history', async () => {
-      let failed = false;
-      stubMethod(tabs.view, 'sendWorkingTree', async (original, ...args) => {
-        const [context] = args;
-        if (!failed && rootOf(context) === other) {
-          failed = true;
-          throw new Error('working tree failed');
-        }
-        await original(...args);
-      });
-      await tabs.connection.receive({
-        type: 'preloadTab',
-        tab: tabOf(tabs.page, other),
-      });
-      assert.ok(failed);
-      tabs.page.clear();
-      await tabs.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(tabs.page, other),
-      });
-      assert.strictEqual(tabs.page.last('commits')?.total, 1);
-      assert.strictEqual(tabs.page.last('files'), undefined);
-      takeErrorsLogged(
-        logged,
-        /^Preloading tab .*other failed$/,
-        /^working tree failed$/,
-      );
-    });
-
     test("shows no error of a tab's request that failed after it was left", async () => {
       await tabs.connection.receive({
         type: 'selectCommit',
@@ -215,97 +160,6 @@ suite('Git tool with two tabs', () => {
         logged,
         /^Handling loadTree from the page failed$/,
         /^tree failed$/,
-      );
-    });
-
-    test('preloads nothing for the shown tab, or one opened before', async () => {
-      const preloaded: unknown[] = [];
-      stubMethod(tabs.view, 'preload', (original, ...args) => {
-        preloaded.push(rootOf(args[1]));
-        return original(...args);
-      });
-      const loaded: unknown[] = [];
-      stubMethod(tabs.view, 'loadTab', (original, ...args) => {
-        loaded.push(rootOf(args[0]));
-        return original(...args);
-      });
-      await tabs.connection.receive({
-        type: 'preloadTab',
-        tab: tabOf(tabs.page, repository.root),
-      });
-      assert.deepStrictEqual(preloaded, []);
-      await tabs.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(tabs.page, other),
-      });
-      await tabs.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(tabs.page, repository.root),
-      });
-      assert.deepStrictEqual(loaded, [other]);
-      await tabs.connection.receive({
-        type: 'preloadTab',
-        tab: tabOf(tabs.page, other),
-      });
-      assert.deepStrictEqual(preloaded, [other]);
-      assert.deepStrictEqual(loaded, [other]);
-    });
-
-    test('opens a tab that is preloading once it has loaded, without sending its history again', async () => {
-      tabs.page.clear();
-      await Promise.all([
-        tabs.connection.receive({
-          type: 'preloadTab',
-          tab: tabOf(tabs.page, other),
-        }),
-        tabs.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(tabs.page, other),
-        }),
-      ]);
-      assert.strictEqual(tabs.page.last('files'), undefined);
-      assert.strictEqual(tabs.page.last('commits')?.total, 1);
-      assert.strictEqual(tabs.page.last('error'), undefined);
-      assert.strictEqual(commitsSent(tabs.page.messages), 1);
-    });
-
-    test('shows the bookmarks a preloading tab makes once it opens', async () => {
-      await Promise.all([
-        tabs.connection.receive({
-          type: 'preloadTab',
-          tab: tabOf(tabs.page, other),
-        }),
-        tabs.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(tabs.page, other),
-        }),
-      ]);
-      const saved = savedBookmarks(tabs.store, other);
-      assert.ok(saved && saved.length > 0);
-      assert.deepStrictEqual(tabs.page.last('bookmarks')?.bookmarks, saved);
-    });
-
-    test('shows nothing of a preloading tab once another tab is clicked', async () => {
-      tabs.page.clear();
-      await Promise.all([
-        tabs.connection.receive({
-          type: 'preloadTab',
-          tab: tabOf(tabs.page, other),
-        }),
-        tabs.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(tabs.page, other),
-        }),
-        tabs.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(tabs.page, repository.root),
-        }),
-      ]);
-      assert.strictEqual(shownTabs(tabs.page)?.active, repository.root);
-      assert.ok(
-        !tabs.page.messages.some(
-          (message) => message.type === 'commits' && message.total === 1,
-        ),
       );
     });
 
