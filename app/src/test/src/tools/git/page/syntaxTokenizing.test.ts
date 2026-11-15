@@ -20,9 +20,9 @@ import {
   sideKeys,
   onTickingClock,
   assertNotLoaded,
-  loadedTexts,
   warmsUpTheGrammar,
-} from './syntaxFixtures';
+} from '../../../lib/page/syntaxFixtures';
+import { loadedTexts } from './syntaxFixtures';
 
 suite('Syntax', () => {
   warmsUpTheGrammar();

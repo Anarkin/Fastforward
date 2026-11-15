@@ -23,9 +23,9 @@ import {
   blobs,
   loadedTexts,
   linesColored,
-  warmsUpTheGrammar,
   gappedPatch,
 } from './syntaxFixtures';
+import { warmsUpTheGrammar } from '../../../lib/page/syntaxFixtures';
 
 const keptPatch = (oldBlob: string, newBlob: string) =>
   parsePatch(

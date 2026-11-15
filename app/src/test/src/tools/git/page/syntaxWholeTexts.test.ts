@@ -7,13 +7,8 @@ import {
   syntaxSources,
   textsToLoad,
 } from '../../../../../tools/git/page/syntax';
-import {
-  blobs,
-  loadedTexts,
-  range,
-  warmsUpTheGrammar,
-  gappedPatch,
-} from './syntaxFixtures';
+import { blobs, loadedTexts, range, gappedPatch } from './syntaxFixtures';
+import { warmsUpTheGrammar } from '../../../lib/page/syntaxFixtures';
 
 suite('Syntax', () => {
   warmsUpTheGrammar();

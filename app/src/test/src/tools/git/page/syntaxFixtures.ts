@@ -1,53 +1,16 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act, type ReactElement } from 'react';
-import { beforeAll } from 'vitest';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import type { LoadedText } from '../../../../../tools/git/page/sideTexts';
 import { syntaxSources } from '../../../../../tools/git/page/syntax';
 import { noop } from '../../../../helpers/fixtures';
-import {
-  loadLanguages,
-  type SyntaxRange,
-} from '../../../../../lib/page/syntaxEngine';
-import {
-  tokenizing,
-  uncachedSources,
-} from '../../../../../lib/page/syntaxSources';
+import type { SyntaxRange } from '../../../../../lib/page/syntaxEngine';
 import type {
   FromSyntax,
   ToSyntax,
 } from '../../../../../lib/page/syntaxServing';
-
-export type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
-
-export function syntaxRanges(
-  highlighter: Highlighter,
-  sources: Parameters<typeof uncachedSources>[0],
-) {
-  const ranges = new Map<string, readonly SyntaxRange[]>();
-  tokenizing(highlighter, uncachedSources(sources, ranges))(Infinity, ranges);
-  return ranges;
-}
-
-export function countingLines(highlighter: Highlighter) {
-  const lines: string[] = [];
-  const counting: Highlighter = {
-    ...highlighter,
-    getLanguage: (...args) => {
-      const grammar = highlighter.getLanguage(...args);
-      const tokenizeLine2: typeof grammar.tokenizeLine2 = (...line) => {
-        lines.push(line[0]);
-        return grammar.tokenizeLine2(...line);
-      };
-      return new Proxy(grammar, {
-        get: (target, name) =>
-          name === 'tokenizeLine2' ? tokenizeLine2 : Reflect.get(target, name),
-      });
-    },
-  };
-  return { counting, tokenized: () => lines.length, lines };
-}
+import { coloredSources } from '../../../lib/page/syntaxFixtures';
 
 export const workerSeen: {
   readonly posted: ToSyntax[];
@@ -111,47 +74,8 @@ export const comment = (end: number) => [
   { start: 0, end, kind: 'comment' as const },
 ];
 
-export const sideKeys = (side: number, lines: readonly string[]) =>
-  lines.map((_, index) => `${side}:${index}`);
-
-export function onTickingClock(from: number, run: () => void) {
-  const now = performance.now.bind(performance);
-  let clock = from;
-  performance.now = () => (clock += 1);
-  try {
-    run();
-  } finally {
-    performance.now = now;
-  }
-}
-
-export async function assertNotLoaded(language: string) {
-  assert.ok(
-    !(await loadLanguages([])).getLoadedLanguages().includes(language),
-    `${language} was loaded before this test, so it cannot see it load`,
-  );
-}
-
-export async function colored(
-  ...args: Parameters<typeof syntaxSources>
-): Promise<Record<string, string[]>> {
-  const sources = syntaxSources(...args);
-  const highlighter = await loadLanguages(sources.map((s) => s.language));
-  const texts = new Map(
-    sources.flatMap((source) =>
-      source.keys.map((key, index) => [key, source.lines[index]] as const),
-    ),
-  );
-  return Object.fromEntries(
-    [...syntaxRanges(highlighter, sources)].map(([key, ranges]) => [
-      key,
-      ranges.map(
-        (range) =>
-          `${range.kind} ${texts.get(key)?.slice(range.start, range.end)}`,
-      ),
-    ]),
-  );
-}
+export const colored = (...args: Parameters<typeof syntaxSources>) =>
+  coloredSources(syntaxSources(...args));
 
 export const blobs = { old: '1'.repeat(40), new: '2'.repeat(40) };
 
@@ -190,16 +114,6 @@ export const linesColored = (far: number) => {
     loadedTexts([['new:a.ts', text]]),
   ).map((source) => source.lines);
 };
-
-export function warmsUpTheGrammar(): void {
-  beforeAll(async function warmUpTheGrammarAsShikiGivesUpOnALinePast500Ms() {
-    const highlighter = await loadLanguages(['typescript']);
-    highlighter.codeToTokensBase(
-      "/** a */ let s = 'x' + `y${1}` + /z/g; // c\nclass C<T> { m(): T[] { return []; } }",
-      { lang: 'typescript', theme: highlighter.getLoadedThemes()[0] },
-    );
-  }, 30_000);
-}
 
 export const gappedPatch = [
   'diff --git a/a.ts b/a.ts',
