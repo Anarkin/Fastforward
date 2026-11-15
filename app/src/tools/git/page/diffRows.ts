@@ -1,11 +1,11 @@
 import { collapseThreshold } from '../shared/patchBudget';
 import type { DiffFile, DiffLine, LinkTargets } from './diff';
-import { changeBlocks, type NumberedLine } from './changeBlocks';
+import { type NumberedLine } from './changeBlocks';
 import { lineKey, wholeLines } from './diffLines';
-import { changePairs, pairingBudget, type PairingBudget } from './pairing';
-import type { Pair } from './wordDiff';
+import { pairingBudget } from './pairing';
 import { strings } from '../../../lib/shared/strings';
 import { previewsImage, previewsWholeImage } from './images';
+import { splitRows } from './sideBySideRows';
 
 export interface WholeFile {
   readonly path: string;
@@ -13,13 +13,6 @@ export interface WholeFile {
   readonly binary: boolean;
   readonly id?: string;
   readonly link?: true;
-}
-
-export function showsSideBySide(
-  sideBySide: boolean,
-  whole: WholeFile | undefined,
-): boolean {
-  return sideBySide && !whole;
 }
 
 export type DiffRow =
@@ -109,69 +102,6 @@ export function changeOf(row: DiffRow): 'added' | 'removed' | undefined {
 
 export const isChange = (row: DiffRow | undefined) =>
   row !== undefined && changeOf(row) !== undefined;
-
-type SplitRow = Extract<DiffRow, { kind: 'split' | 'hunk' }>;
-
-const splitRowsOfFile = new WeakMap<
-  DiffFile,
-  { readonly rows: readonly SplitRow[]; readonly words: number }
->();
-
-export function splitRows(
-  file: DiffFile,
-  index: number,
-  budget = pairingBudget(),
-): readonly SplitRow[] {
-  const known = splitRowsOfFile.get(file);
-  let rows: readonly SplitRow[];
-  if (known && !budget.spent && known.words <= budget.words) {
-    budget.words -= known.words;
-    rows = known.rows;
-  } else {
-    const before = budget.words;
-    rows = alignedRows(file, index, budget);
-    if (!budget.spent) {
-      splitRowsOfFile.set(file, { rows, words: before - budget.words });
-    }
-  }
-  return rows[0]?.file === index
-    ? rows
-    : rows.map((row) => ({ ...row, file: index }));
-}
-
-function alignedRows(
-  file: DiffFile,
-  index: number,
-  budget: PairingBudget,
-): SplitRow[] {
-  const rows: SplitRow[] = [];
-  for (const [number, blocks] of changeBlocks(file).entries()) {
-    if (number > 0) {
-      rows.push({ kind: 'hunk', file: index });
-    }
-    for (const block of blocks) {
-      if (block.kind === 'context') {
-        rows.push({
-          kind: 'split',
-          file: index,
-          left: block.line,
-          right: block.line,
-        });
-        continue;
-      }
-      const { removed, added } = block;
-      for (const [left, right] of changePairs(block, budget)) {
-        rows.push({
-          kind: 'split',
-          file: index,
-          left: left === undefined ? undefined : removed[left],
-          right: right === undefined ? undefined : added[right],
-        });
-      }
-    }
-  }
-  return rows;
-}
 
 const linkSides: readonly (keyof LinkTargets)[] = ['old', 'new'];
 
@@ -326,24 +256,6 @@ export function largeDiffText(lines: number | undefined): string {
   return lines > collapseThreshold
     ? strings.diff.largeDiff(lines)
     : strings.diff.notLoadedLines(lines);
-}
-
-export function splitPairs(
-  rows: readonly DiffRow[],
-): ReadonlyMap<string, Pair> {
-  const pairs = new Map<string, Pair>();
-  for (const row of rows) {
-    if (row.kind !== 'split' || row.left === row.right) {
-      continue;
-    }
-    const pair = { removed: row.left, added: row.right };
-    for (const side of [row.left, row.right]) {
-      if (side) {
-        pairs.set(lineKey(row.file, side.index), pair);
-      }
-    }
-  }
-  return pairs;
 }
 
 export function lineKeys(rows: readonly DiffRow[]): string[][] {

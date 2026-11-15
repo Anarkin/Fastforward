@@ -41,14 +41,13 @@ import {
 import { cellWidthsOf } from '../../../lib/page/textWidths';
 import {
   type WholeFile,
-  showsSideBySide,
   type DiffRow,
   type FileHeaderRow,
   waitingRows,
   diffRows,
-  splitPairs,
   lineKeys,
 } from './diffRows';
+import { showsSideBySide, splitPairs } from './sideBySideRows';
 import { rowMeasures, rowHeight } from './rowMeasures';
 import { RowContent, rowOverscan } from './rowContent';
 import { sideScroll, sideRoom } from './sidewaysScroll';
