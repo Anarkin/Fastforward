@@ -1,73 +1,43 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
-import { tileColumns, tileWidthOf } from './tiles';
-import { type IconSource } from '../shared/icons';
-import { useThumbnailFill } from './thumbnailFills';
-import { commanderKeymap } from './keymap';
-import { clicked } from '../../../lib/shared/keymap';
-import { parentFolder, type Side } from '../shared/protocol';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type Side } from '../shared/protocol';
 import { fileMenuItems, menuTargetOf } from './fileMenu';
 import { copiedText, type Copied } from './copiedText';
 import { type Row } from './listing';
-import { goesInto, opens, pointedKeys, rangeKeys } from './rowKeys';
+import { goesInto } from './rowKeys';
 import { filterStep } from './filterSteps';
 import { PaneFilter } from './paneFilter';
 import { filterWords } from '../../../lib/page/fileFilter';
-import { HighlightWords } from '../../../lib/page/highlight';
-import { SearchButton, SearchRow } from '../../../lib/page/search';
+import { SearchRow } from '../../../lib/page/search';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { clickPairs } from './clickPairs';
 import { ColumnHeader } from './columnHeader';
-import { type Layout } from '../shared/settings';
 import { readingKey } from './commanderReceived';
 import { shownColumns, shownRowsOf } from './shownRows';
 import { filterOf } from './sideFilters';
 import { useCommander, useCommanderActions } from './store';
-import { formatDate } from '../../../lib/page/dates';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { dropIntoOf, dropTargetOf } from './dropping';
-import { whatOf } from './transferring';
-import { BackIcon, ForwardIcon, ShieldIcon } from '../../../lib/page/icons';
-import { MenuButton } from '../../../lib/page/menu';
-import { estimatedRowHeight } from '../../../lib/page/listRows';
+import { useFileDrop } from './dropping';
+import { ShieldIcon } from '../../../lib/page/icons';
 import { VirtualRows } from '../../../lib/page/virtualRows';
-import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
-import { fileColorOf } from './fileColors';
 import { PathTitle } from './pathTitle';
-import { driveMenu, driveOf } from './driveMenu';
 import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
-
-import { fillDelay, thumbnailFills, tileRowsOf } from './paneTiles';
-import {
-  RowIcon,
-  ExtensionCell,
-  MarkBox,
-  NameCell,
-  SizeCell,
-  TileImage,
-} from './paneCells';
+import { actOnPane } from './paneActs';
+import { useTiles } from './paneTiles';
+import { PaneLine, PaneTile } from './paneRows';
 import {
   ReadingStatus,
   DuplicatesStatus,
   CountingStatus,
   FlatStatus,
 } from './paneStatus';
-import { layoutMenu } from './paneLayoutMenu';
 import { archivePart } from './archivePart';
-import { BookmarkButton, FlatButton } from './paneHeader';
+import { PaneTitle } from './paneHeader';
 declare module 'react' {
   interface CSSProperties {
     readonly '--commander-extension'?: string;
     readonly '--commander-size'?: string;
     readonly '--commander-date'?: string;
-    readonly '--file-color'?: string;
   }
 }
 
@@ -89,41 +59,19 @@ export function Pane({
     state.readingArchives.get(readingKey(state.view.tab, side)),
   );
   const layout = useCommander((state) => state.view.layouts[side]);
-  const thumbnailSize = useCommander((state) => state.view.thumbnailSize);
   const fileColors = useCommander((state) => state.view.fileColors);
-  const canGroupByColor = useCommander(
-    (state) => state.view.fileColors.colors.length > 0,
-  );
   const columns = useCommander(shownColumns);
-  const drives = useCommander((state) => state.drives);
   const actions = useCommanderActions();
-  const onLayout = (chosen: Layout) => actions.chooseLayout(side, chosen);
-  const onGroupByColor = () => actions.groupByColor(side);
-  const onDropIcon = actions.dropIcon;
   const onSelect = (key: string) => actions.select(side, key);
-  const onMark = (keys: readonly string[], marked: boolean) =>
-    actions.mark(side, keys, marked);
   const onOpen = (name: string) => actions.open(side, name);
   const onActivate = () => actions.activate(side);
-  const onSwitchSide = actions.switchSide;
-  const onDrive = (drive: string) => actions.drive(side, drive);
-  const onDrivesOpening = actions.listDrives;
-  const onStep = (step: -1 | 1) => actions.step(side, step);
-  const onOpenOnSide = (target: Side, name: string) =>
-    actions.openOnSide(side, target, name);
-  const onOpenRepository = (name: string) => actions.openRepository(side, name);
-  const onView = (name: string) => actions.viewFile(side, name);
-  const onEdit = (name: string) => actions.editFile(side, name);
-  const onDelete = (names: readonly string[], permanently: boolean) =>
-    actions.askDelete(side, names, permanently);
   const onShellMenu = (
     names: readonly string[],
     at: { readonly x: number; readonly y: number },
     extended: boolean,
   ) => actions.shellMenu(side, names, at, extended);
-  const onCompare = actions.compare;
   const filter = useCommander((state) => filterOf(state, side));
-  const { rows, files, total, starts } = useCommander((state) =>
+  const { rows, files, total } = useCommander((state) =>
     shownRowsOf(state, side),
   );
   const setFilter = (query: string | undefined) =>
@@ -135,7 +83,7 @@ export function Pane({
   const body = useRef<HTMLDivElement>(null);
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
   const [pairsClick] = useState(clickPairs);
-  const [dropInto, setDropInto] = useState<string | null>();
+  const { dropInto, onDragOver, onDragLeave, onDrop } = useFileDrop(side);
   const { showMenu, copyText } = useShellActions();
   const platform = useCommander((state) => state.view.platform);
   const copyItems = (copied: Copied, names: readonly string[]) => {
@@ -163,7 +111,6 @@ export function Pane({
     setFilter(undefined);
   };
   const filterTo = (next: string) => setFilter(next);
-  const dateFormat = useShell((state) => state.dateFormat);
   const scrolling = useShell((state) => state.scrolling);
   const listed = useMemo(
     () => ({
@@ -175,7 +122,6 @@ export function Pane({
   );
   const selectedIndex = listed.indexOf(pane?.selected ?? '');
   const marked = pane?.marked;
-  const current = pane && driveOf(pane.folder, drives);
   const openMenu = (
     key: string | undefined,
     at: { readonly x: number; readonly y: number },
@@ -213,70 +159,13 @@ export function Pane({
     }
   };
 
-  const tileWidth = tileWidthOf(thumbnailSize);
-  const [fitting, setFitting] = useState<number>();
-  useLayoutEffect(() => {
-    const element = body.current;
-    if (!element) {
-      return undefined;
-    }
-    const measure = () =>
-      setFitting(
-        element.clientWidth > 0
-          ? tileColumns(element.clientWidth, tileWidth)
-          : undefined,
-      );
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [tileWidth]);
-  const across = fitting ?? 1;
-  const tiled = layout === 'thumbnails';
-  const tileTextRow = () =>
-    body.current?.querySelector('.commander-tile-name')?.getBoundingClientRect()
-      .height || estimatedRowHeight;
+  const { tiled, across, shownList, tileTextRow, fillScrolledTo, tileRows } =
+    useTiles(body, side, rows);
   const scrollKey = `${tab ?? ''} ${side} ${pane?.folder ?? ''} ${layout}`;
-  const shownList = tiled
-    ? fitting !== undefined
-      ? `tiles ${thumbnailSize}`
-      : undefined
-    : 'details';
-  const [fillFrom, setFillFrom] = useState(0);
-  const fillTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(fillTimer.current), []);
   const scrolledTo = (offset: number) => {
     actions.keepScroll(scrollKey, offset);
-    if (!tiled) {
-      return;
-    }
-    clearTimeout(fillTimer.current);
-    fillTimer.current = setTimeout(() => {
-      const height =
-        body.current?.querySelector('.virtual-row')?.getBoundingClientRect()
-          .height ?? 0;
-      setFillFrom(height > 0 ? Math.floor(offset / height + 0.01) * across : 0);
-    }, fillDelay);
+    fillScrolledTo(offset);
   };
-  const shownFolder = pane?.folder;
-  const fillItems = useMemo(
-    () =>
-      tiled && tab !== undefined && shownFolder !== undefined
-        ? thumbnailFills(rows, { tab, side, folder: shownFolder })
-        : [],
-    [tiled, rows, tab, side, shownFolder],
-  );
-  useThumbnailFill(
-    fillItems,
-    Math.max(
-      0,
-      fillItems.findIndex((item) => item.index >= fillFrom),
-    ),
-    thumbnailSize,
-    tiled && shownList !== undefined,
-    (item, made, pixelRatio) =>
-      void actions.saveThumbnail(item.source, thumbnailSize, pixelRatio, made),
-  );
   useLayoutEffect(() => {
     const focused = document.activeElement;
     if (
@@ -288,249 +177,52 @@ export function Pane({
       columnFocusOf(body.current)?.focus();
     }
   }, [shownList, active, tab]);
-  const tileRows = useMemo(() => tileRowsOf(rows, across), [rows, across]);
 
-  const fileColor = (row: Row) =>
-    row.entry === undefined ? undefined : fileColorOf(row.entry, fileColors);
-  const rowClass = (row: Row) =>
-    `row commander-row${row.key === pane?.selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${row.key === dropInto ? ' drop-target' : ''}${fileColor(row) === undefined ? '' : ' colored'}${starts?.has(row.key) === true ? ' group-start' : ''}`;
-  const colorStyle = (row: Row): CSSProperties => {
-    const color = fileColor(row);
-    return color === undefined ? {} : { '--file-color': color };
-  };
-  const iconSource = (row: Row): IconSource | undefined =>
-    tab === undefined ||
-    pane === undefined ||
-    row.entry === undefined ||
-    row.entry.folder
-      ? undefined
-      : { tab, side, folder: pane.folder, name: row.key };
-  const dateOf = (row: Row) =>
-    row.entry?.modified === undefined
-      ? ''
-      : formatDate(row.entry.modified, dateFormat);
-  const itemEvents = (row: Row, index: number) => ({
-    'data-drop':
-      row.entry === undefined || row.entry.folder ? row.key : undefined,
-    draggable: row.entry !== undefined,
-    onDragStart: (event: React.DragEvent) => {
-      event.preventDefault();
-      const names = pointedKeys(rows, row.key, marked);
-      if (names.length > 0) {
-        onSelect(row.key);
-        actions.drag(side, names);
-      }
-    },
-    onClick: (event: React.MouseEvent) => {
-      const marking = clicked(commanderKeymap.markClick, event);
-      if (marking === 'toggle') {
-        onMark([row.key], !marked?.has(row.key));
-      } else if (marking === 'range' && selectedIndex !== -1) {
-        onMark(rangeKeys(rows, selectedIndex, index), true);
-      }
-      onSelect(row.key);
-      if (pairsClick(row.key, event.detail) && opens(row)) {
-        onOpen(row.key);
-      }
-    },
-    onContextMenu: (event: React.MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const at = { x: event.clientX, y: event.clientY };
-      onSelect(row.key);
-      if (menuOfClick(event) === 'system') {
-        onShellMenu(
-          row.key === parentFolder ? [] : pointedKeys(rows, row.key, marked),
-          at,
-          true,
-        );
-      } else {
-        openMenu(row.key, at);
-      }
-    },
+  const itemOf = (row: Row, index: number) => ({
+    side,
+    row,
+    index,
+    words,
+    dropInto,
+    pairsClick,
+    onMenu: openMenu,
   });
 
-  const markBox = (row: Row) =>
-    row.entry !== undefined && (
-      <MarkBox onToggle={() => onMark([row.key], !marked?.has(row.key))} />
-    );
-
-  const renderRow = (index: number) => {
-    const row = rows[index];
-    const { entry } = row;
-    return (
-      <div
-        className={`${rowClass(row)} commander-line`}
-        style={colorStyle(row)}
-        {...itemEvents(row, index)}
-      >
-        {markBox(row)}
-        <span className="commander-icon">
-          <RowIcon row={row} source={iconSource(row)} onDropIcon={onDropIcon} />
-        </span>
-        <NameCell row={row} words={words} />
-        <ExtensionCell
-          row={row}
-          words={words}
-          onOpenRepository={onOpenRepository}
-        />
-        <SizeCell entry={entry} />
-        <span className="commander-date">{dateOf(row)}</span>
-      </div>
-    );
-  };
-
-  const renderTile = (row: Row, index: number) => (
-    <div
-      key={row.key}
-      className={`${rowClass(row)} commander-tile`}
-      style={{ ...colorStyle(row), width: tileWidth }}
-      {...itemEvents(row, index)}
-    >
-      {markBox(row)}
-      <div className="commander-thumbnail" style={{ height: thumbnailSize }}>
-        <TileImage
-          row={row}
-          source={iconSource(row)}
-          box={thumbnailSize}
-          onMade={(made, pixelRatio) => {
-            const source = iconSource(row);
-            if (source !== undefined) {
-              void actions.saveThumbnail(
-                source,
-                thumbnailSize,
-                pixelRatio,
-                made,
-              );
-            }
-          }}
-          onDropIcon={onDropIcon}
-        />
-      </div>
-      <div className="commander-tile-name">
-        <span className="commander-tile-base">
-          <HighlightWords text={row.base} words={words} />
-        </span>
-        {row.extension !== '' && (
-          <span className="commander-tile-extension">
-            <HighlightWords text={`.${row.extension}`} words={words} />
-          </span>
-        )}
-      </div>
-      <SizeCell entry={row.entry} tile />
-      <div className="commander-tile-date">{dateOf(row)}</div>
-    </div>
+  const renderRow = (index: number) => (
+    <PaneLine {...itemOf(rows[index], index)} />
   );
 
   const renderTiles = (gridRow: number) => (
     <div className="commander-tiles">
       {rows
         .slice(gridRow * across, (gridRow + 1) * across)
-        .map((row, offset) => renderTile(row, gridRow * across + offset))}
+        .map((row, offset) => (
+          <PaneTile key={row.key} {...itemOf(row, gridRow * across + offset)} />
+        ))}
     </div>
   );
 
-  const act = (action: PaneAct) => {
-    switch (action.kind) {
-      case 'newFolder':
-        actions.askNewFolder(side);
-        return;
-      case 'newFile':
-        actions.askNewFile(side);
-        return;
-      case 'rename':
-        actions.askRename(side, action.name);
-        return;
-      case 'pack':
-        actions.askPack(side, action.names);
-        return;
-      case 'test':
-        actions.testArchives(side, action.names);
-        return;
-      case 'enterArchive':
-        actions.enterArchive(side, action.name);
-        return;
-      case 'copyToClipboard':
-        actions.copyToClipboard(side, action.names);
-        return;
-      case 'paste':
-        actions.paste(side);
-        return;
-      case 'copyText':
-        copyItems(action.copied, action.names);
-        return;
-      case 'transfer':
-        actions.askTransfer(side, action.names, action.move);
-        return;
-      case 'delete':
-        onDelete(action.names, action.permanently);
-        return;
-      case 'menu': {
+  const act = (action: PaneAct) =>
+    actOnPane(action, side, actions, {
+      query,
+      copyItems,
+      openMenu: (key) => {
         const row =
-          action.key === undefined
+          key === undefined
             ? null
             : body.current?.querySelector('.commander-row.selected');
         const box = (row ?? body.current)?.getBoundingClientRect();
         if (box !== undefined) {
-          openMenu(action.key, {
+          openMenu(key, {
             x: box.left,
             y: row ? box.bottom : box.top,
           });
         }
-        return;
-      }
-      case 'filterLetter':
-        filterTo(query + action.letter);
-        setFocusAsks(({ count }) => ({ count: count + 1, select: false }));
-        return;
-      case 'openFilter':
-        openFilter();
-        return;
-      case 'stopFiltering':
-        setFilter(undefined);
-        return;
-      case 'stopReading':
-        actions.stopReading(side);
-        return;
-      case 'switchSide':
-        onSwitchSide();
-        return;
-      case 'compare':
-        onCompare();
-        return;
-      case 'view':
-        onView(action.name);
-        return;
-      case 'edit':
-        onEdit(action.name);
-        return;
-      case 'openOnSide':
-        onOpenOnSide(action.side, action.name);
-        return;
-      case 'open':
-        onOpen(action.name);
-        return;
-      case 'mark':
-        onMark(action.keys, action.marked);
-        onSelect(action.select);
-        if (action.count !== undefined) {
-          actions.countSizes(side, action.count);
-        }
-        return;
-      case 'countSizes':
-        actions.countSizes(side, action.names);
-        return;
-      case 'markPattern':
-        actions.askMarkPattern(side, action.mark, action.suggested);
-        return;
-      case 'invertMarks':
-        onMark(action.marking, true);
-        onMark(action.unmarking, false);
-        return;
-      case 'select':
-        onSelect(action.key);
-    }
-  };
+      },
+      openFilter,
+      focusFilter: () =>
+        setFocusAsks(({ count }) => ({ count: count + 1, select: false })),
+    });
 
   return (
     <section
@@ -586,64 +278,13 @@ export function Pane({
           </SearchRow>
         </header>
       ) : (
-        <header className="column-title">
-          <div className="column-start nav-buttons">
-            <button
-              className="nav-button"
-              title={strings.commander.back}
-              disabled={pane?.back !== true}
-              onClick={() => onStep(-1)}
-            >
-              <BackIcon />
-            </button>
-            <button
-              className="nav-button"
-              title={strings.commander.forward}
-              disabled={pane?.forward !== true}
-              onClick={() => onStep(1)}
-            >
-              <ForwardIcon />
-            </button>
-            {drives.length > 0 && (
-              <div className="drive-menu" onClickCapture={onDrivesOpening}>
-                <MenuButton
-                  title={strings.commander.chooseDrive}
-                  label={(current ?? '').replace(/\\$/, '')}
-                  named
-                  trigger={driveTrigger}
-                  onChosen={focusList}
-                  items={driveMenu(drives, current, onDrive)}
-                />
-              </div>
-            )}
-            <BookmarkButton
-              side={side}
-              trigger={bookmarkTrigger}
-              onChosen={focusList}
-            />
-          </div>
-          <div className="column-actions">
-            <div className="commander-layout">
-              <MenuButton
-                title={strings.commander.layout}
-                label={strings.commander.layouts[layout]}
-                onChosen={focusList}
-                items={layoutMenu({
-                  layout,
-                  groupByColor: pane?.sort.groupByColor ?? false,
-                  canGroupByColor,
-                  onLayout,
-                  onGroupByColor,
-                })}
-              />
-            </div>
-            <FlatButton side={side} />
-            <SearchButton
-              title={strings.commander.filterFolder}
-              onClick={openFilter}
-            />
-          </div>
-        </header>
+        <PaneTitle
+          side={side}
+          driveTrigger={driveTrigger}
+          bookmarkTrigger={bookmarkTrigger}
+          onChosen={focusList}
+          onFilter={openFilter}
+        />
       )}
       <div
         className="commander-path commander-line"
@@ -673,62 +314,9 @@ export function Pane({
         className={`column-body${dropInto === null ? ' drop-target' : ''}`}
         ref={body}
         onContextMenu={openFolderMenu}
-        onDragOver={(event) => {
-          if (
-            !event.dataTransfer.types.includes('Files') ||
-            pane?.archive !== undefined
-          ) {
-            return;
-          }
-          event.preventDefault();
-          event.dataTransfer.dropEffect = 'copy';
-          const into = dropIntoOf(event.target);
-          if (into !== dropInto) {
-            setDropInto(into);
-          }
-        }}
-        onDragLeave={(event) => {
-          if (
-            !(event.relatedTarget instanceof Node) ||
-            !event.currentTarget.contains(event.relatedTarget)
-          ) {
-            setDropInto(undefined);
-          }
-        }}
-        onDrop={(event) => {
-          if (
-            !event.dataTransfer.types.includes('Files') ||
-            pane?.archive !== undefined
-          ) {
-            return;
-          }
-          event.preventDefault();
-          setDropInto(undefined);
-          const dropped = [...event.dataTransfer.files];
-          const [first] = dropped;
-          if (first === undefined || pane === undefined) {
-            return;
-          }
-          const into = dropIntoOf(event.target) ?? undefined;
-          const what = whatOf(dropped.length, first.name);
-          const target = dropTargetOf(pane.folder, into, platform);
-          showMenu({
-            x: event.clientX,
-            y: event.clientY,
-            items: [
-              {
-                label: strings.commander.dropCopy,
-                title: plainOf(strings.commander.dropCopyTitle(what, target)),
-                onClick: () => actions.dropOn(side, dropped, into, false),
-              },
-              {
-                label: strings.commander.dropMove,
-                title: plainOf(strings.commander.dropMoveTitle(what, target)),
-                onClick: () => actions.dropOn(side, dropped, into, true),
-              },
-            ],
-          });
-        }}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
       >
         {shownList !== undefined && (
           <VirtualRows
