@@ -18,7 +18,7 @@ export type Side = 'old' | 'new';
 
 const sides: readonly Side[] = ['old', 'new'];
 
-function sidePath(file: DiffFile, side: Side): string {
+export function sidePath(file: DiffFile, side: Side): string {
   return side === 'old' ? (file.oldPath ?? file.path) : file.path;
 }
 
@@ -103,34 +103,4 @@ export function wholeImageUrl(
         id: whole.id,
         disk: shownSide(hash) === workingTreeHash,
       });
-}
-
-export interface ViewedSource {
-  readonly path: string;
-  readonly blob?: string;
-}
-
-export function viewedSource(
-  { hash, area }: ImageOrigin,
-  file: DiffFile,
-): ViewedSource | undefined {
-  const side: Side = file.blobs?.new === undefined ? 'old' : 'new';
-  const path = sidePath(file, side);
-  if (area !== 'staged' && side === workingTreeSide(hash)) {
-    return { path };
-  }
-  const blob = file.blobs?.[side];
-  return blob === undefined ? undefined : { path, blob };
-}
-
-export function wholeViewedSource(
-  { hash }: ImageOrigin,
-  whole: Omit<WholeFile, 'content'>,
-): ViewedSource | undefined {
-  if (shownSide(hash) === workingTreeHash) {
-    return { path: whole.path };
-  }
-  return whole.id === undefined
-    ? undefined
-    : { path: whole.path, blob: whole.id };
 }

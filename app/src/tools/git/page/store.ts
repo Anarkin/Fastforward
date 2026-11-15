@@ -32,7 +32,7 @@ import { shownSelection } from './columnsShown';
 import { parsePatch } from './diff';
 import type { LoadedText } from './sideTexts';
 import { foldersOf } from './fileTree';
-import type { ViewedSource } from './images';
+import type { ViewedSource } from './viewedSource';
 import type { MenuTarget } from './menus';
 import { settling } from './outbox';
 import { indexRefs, type RefGroup } from './refIndex';

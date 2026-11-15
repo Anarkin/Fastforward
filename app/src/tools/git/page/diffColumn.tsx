@@ -12,13 +12,12 @@ import { parsePatch, type DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { unsearchedFiles } from './find';
 import { matchCount } from '../../../lib/shared/textMatches';
+import { withUnchangedObjects, type ImageOrigin } from './images';
 import {
   viewedSource,
   wholeViewedSource,
-  withUnchangedObjects,
-  type ImageOrigin,
   type ViewedSource,
-} from './images';
+} from './viewedSource';
 import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
