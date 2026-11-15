@@ -282,6 +282,43 @@ suite('Commander tool in archives', () => {
       assert.strictEqual((await editTab('8', fromInner))?.readOnly, true);
     });
 
+    test('goes back to the tab editing a file of an archive on F4 again, rather than editing a second copy whose save would undo the edits saved from the first, and takes a copy again once that tab is closed', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), zipped);
+      made.copies.folder = copiesFolder;
+      const { tool, page, send, edited, tabs } = made;
+      await tool.show(page, tab);
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+      const editFile = (name: string) =>
+        send({ type: 'editFile', tab: '1', side: 'right', name });
+      await editFile('top.txt');
+      const [copy] = edited;
+      assert.ok(copy !== undefined);
+      tabs.push({ id: '7', tool: 'commander', root: copy, edit: true });
+      await editFile('top.txt');
+      assert.deepStrictEqual(edited, [copy, copy]);
+      assert.strictEqual(
+        fs.readdirSync(path.join(copiesFolder, 'viewed')).length,
+        1,
+      );
+      tabs.splice(0);
+      await editFile('top.txt');
+      assert.strictEqual(edited.length, 3);
+      assert.notStrictEqual(edited[2], copy);
+
+      await send({ type: 'newFile', tab: '1', side: 'right', name: 'new.txt' });
+      const newCopy = edited.at(-1);
+      assert.ok(newCopy !== undefined);
+      tabs.push({ id: '9', tool: 'commander', root: newCopy, edit: true });
+      await send({ type: 'newFile', tab: '1', side: 'right', name: 'new.txt' });
+      assert.strictEqual(edited.at(-1), newCopy);
+    });
+
     test('stops watching a copy opened from an archive once no side of an open tab shows the archive, making it read-only, so a change saved to it is not lost unnoticed', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), zipped);

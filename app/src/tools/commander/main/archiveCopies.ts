@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
+import { sameRoot } from '../../../lib/main/paths';
 import type { WatchFolder } from './watch';
 import { archiveJob } from './archiveJobs';
 import type { Editing } from './editing';
@@ -145,11 +146,44 @@ export class ArchiveCopies {
     }
   }
 
+  private editedCopyOf(folder: string, name: string): string | undefined {
+    const inside = this.access.archives?.within(folder);
+    if (inside === undefined) {
+      return undefined;
+    }
+    const wanted = [...inside.inner, ...name.split(path.sep)].join('/');
+    const editedRoots = this.host
+      .shell()
+      .tabs()
+      .flatMap((open) =>
+        open.tool === 'commander' &&
+        open.edit === true &&
+        open.root !== undefined
+          ? [open.root]
+          : [],
+      );
+    for (const [copy, edited] of this.editedCopies) {
+      if (
+        edited.archive.file === inside.archive.file &&
+        [...edited.inner, path.basename(copy)].join('/') === wanted &&
+        editedRoots.some((root) => sameRoot(root, copy))
+      ) {
+        return copy;
+      }
+    }
+    return undefined;
+  }
+
   async editInArchive(
     page: Page,
     shown: ShownPane,
     name: string,
   ): Promise<void> {
+    const editedCopy = this.editedCopyOf(shown.pane.folder, name);
+    if (editedCopy !== undefined) {
+      await this.host.shell().openEdit(page, 'commander', editedCopy);
+      return;
+    }
     const { viewedCopies } = this.access;
     const [copy] =
       (await this.copiesIn(
@@ -182,6 +216,11 @@ export class ArchiveCopies {
   ): Promise<void> {
     if (listedIn(shown.pane, name) !== undefined) {
       await this.editInArchive(page, shown, name);
+      return;
+    }
+    const editedCopy = this.editedCopyOf(shown.pane.folder, name);
+    if (editedCopy !== undefined) {
+      await this.host.shell().openEdit(page, 'commander', editedCopy);
       return;
     }
     const { archives, viewedCopies } = this.access;
