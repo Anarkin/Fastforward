@@ -1,3 +1,4 @@
+import type { Filter } from '../../../lib/shared/filter';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 
@@ -11,7 +12,7 @@ export function useFilesFilter({
   filterAsked,
 }: {
   readonly view: string;
-  readonly words: readonly string[];
+  readonly words: Filter;
   readonly filter: string | undefined;
   readonly onFilter: (filter: string | undefined) => void;
   readonly filterAsked: number;
@@ -23,7 +24,7 @@ export function useFilesFilter({
   readonly closeFilter: () => void;
   readonly openFilter: () => void;
 } {
-  const searched = words.join(' ');
+  const searched = JSON.stringify(words);
   const [folds, setFolds] = useState({ view, searched, closed: noneClosed });
   const closedWhileFiltering =
     folds.view === view && folds.searched === searched

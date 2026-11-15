@@ -6,6 +6,7 @@ import { type Entry } from '../shared/protocol';
 import { formatSize } from './format';
 import { type Row } from './listing';
 import { HighlightWords } from '../../../lib/page/highlight';
+import type { Filter } from '../../../lib/shared/filter';
 import {
   CheckBoxIcon,
   FileIcon,
@@ -87,11 +88,11 @@ export function RowIcon({
 
 export function ExtensionCell({
   row,
-  words,
+  filter,
   onOpenRepository,
 }: {
   row: Row;
-  words: readonly string[];
+  filter: Filter;
   onOpenRepository: ((name: string) => void) | undefined;
 }) {
   return (
@@ -109,7 +110,7 @@ export function ExtensionCell({
           <ToolIcon tool="git" />
         </button>
       ) : (
-        <HighlightWords text={row.extension} words={words} />
+        <HighlightWords text={row.extension} filter={filter} />
       )}
     </span>
   );
@@ -129,16 +130,10 @@ export function MarkBox({ onToggle }: { onToggle: () => void }) {
   );
 }
 
-export function NameCell({
-  row,
-  words,
-}: {
-  row: Row;
-  words: readonly string[];
-}) {
+export function NameCell({ row, filter }: { row: Row; filter: Filter }) {
   return (
     <span className="commander-name">
-      <HighlightWords text={row.base} words={words} />
+      <HighlightWords text={row.base} filter={filter} />
     </span>
   );
 }

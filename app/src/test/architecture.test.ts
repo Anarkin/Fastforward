@@ -510,6 +510,7 @@ suite('Architecture', () => {
     const finds = [
       ...matchers,
       'tools/git/page/find.ts',
+      'tools/commander/page/editorFind.ts',
       'tools/commander/main/textFind.ts',
       'tools/commander/page/markPieces.ts',
     ];

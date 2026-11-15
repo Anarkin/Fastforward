@@ -31,7 +31,10 @@ suite('Ref index', () => {
       refNamed('branch', 'Café'),
       refNamed('branch', 'ΟΔΟΣ'),
     ]);
-    assert.deepStrictEqual(branches.names, ['café', 'οδοσ']);
+    assert.deepStrictEqual(
+      branches.names.map((name) => name.folded),
+      ['café', 'οδοσ'],
+    );
   });
 
   test('lays the refs of each kind out as a tree, folders first', () => {

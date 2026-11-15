@@ -19,7 +19,8 @@ import {
 } from './filesRows';
 import { ChangesTreeItem } from './changesTree';
 import { Column } from './column';
-import { filterWords } from '../../../lib/shared/filter';
+import { narrows, searchFilter } from '../../../lib/shared/filter';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import { SearchButton, SearchRow } from '../../../lib/page/search';
 import { useSettled } from './settled';
 import {
@@ -100,8 +101,11 @@ export function Files() {
     filter ?? '',
     (allPaths?.length ?? 0) > settlingPaths,
   );
-  const words = useMemo(() => filterWords(shownFilter), [shownFilter]);
-  const filtering = words.length > 0;
+  const words = useMemo(
+    () => searchFilter(shownFilter, plainSearch),
+    [shownFilter],
+  );
+  const filtering = narrows(words);
   const sides = useMemo(
     () =>
       sidesOf(files, staged, allPaths).map((side) => filteredSide(side, words)),
@@ -287,7 +291,7 @@ export function Files() {
     selected: side === selection.area ? selected : undefined,
     onSelect: (path: string | undefined) => select(path, side),
     cursor,
-    words,
+    filter: words,
   });
   const nothingFound =
     filtering && !loading && !rows.some((row) => row.kind === 'tree');

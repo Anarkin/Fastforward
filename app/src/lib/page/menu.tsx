@@ -9,7 +9,8 @@ import { DropdownIcon, MoreIcon } from './icons';
 import { Name } from './name';
 import { keyPressed } from './shortcuts';
 import { filteredItems } from './menuFilter';
-import { filterWords } from '../shared/filter';
+import { searchFilter } from '../shared/filter';
+import { plainSearch } from '../shared/searchOptions';
 
 function thenChosen(
   items: readonly ContextMenuItem[],
@@ -145,6 +146,7 @@ function FilteredDropdown({
   const menu = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
+  const filter = searchFilter(query, plainSearch);
   useDismiss(container, onClose);
   useMenuFocus(menu, false, input);
   const firstItem = () =>
@@ -196,8 +198,8 @@ function FilteredDropdown({
         }}
       />
       <MenuItems
-        items={filteredItems(items, query)}
-        words={filterWords(query)}
+        items={filteredItems(items, filter)}
+        filter={filter}
         onClose={onClose}
       />
     </div>

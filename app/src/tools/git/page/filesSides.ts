@@ -1,6 +1,10 @@
 import { type ChangeArea, type FileChange } from '../shared/protocol';
 import { areaKey } from './changesRows';
-import { matchesFilter } from '../../../lib/shared/filter';
+import {
+  narrows,
+  matchesFilter,
+  type Filter,
+} from '../../../lib/shared/filter';
 
 export function listsNothing({
   files,
@@ -41,15 +45,15 @@ export function sidesOf(
       ];
 }
 
-export function filteredSide(side: Side, words: readonly string[]): Side {
-  return words.length === 0
+export function filteredSide(side: Side, filter: Filter): Side {
+  return !narrows(filter)
     ? side
     : {
         area: side.area,
         files: side.files.filter((file) =>
-          matchesFilter(words, file.path, file.oldPath),
+          matchesFilter(filter, file.path, file.oldPath),
         ),
-        allPaths: side.allPaths?.filter((path) => matchesFilter(words, path)),
+        allPaths: side.allPaths?.filter((path) => matchesFilter(filter, path)),
       };
 }
 

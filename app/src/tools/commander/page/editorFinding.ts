@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { find, findNearest, type FindAsk, type FindQuery } from './editorFind';
 import { lineBreak } from './editorState';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 
 export function useEditorFinding(
   view: RefObject<EditorView | undefined>,
@@ -11,9 +12,7 @@ export function useEditorFinding(
   const [replacing, setReplacing] = useState(false);
   const [query, setQuery] = useState<FindQuery>({
     text: '',
-    caseSensitive: false,
-    wholeWord: false,
-    regex: false,
+    options: plainSearch,
   });
   const [replacement, setReplacement] = useState('');
   const [focusAsks, setFocusAsks] = useState(0);

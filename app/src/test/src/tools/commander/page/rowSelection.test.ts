@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import { rowsOf } from '../../../../../tools/commander/page/listing';
 import {
   filteredSelection,
@@ -89,7 +90,7 @@ suite('Filtering the rows of a side', () => {
   );
 
   test('keeps the selected row once filtered if it matches, else selects the first match, the parent row only when nothing matches', () => {
-    const shown = filteredRows(rows, ['report']);
+    const shown = filteredRows(rows, plainFilter('report'));
     assert.strictEqual(filteredSelection(shown, 'report.md'), 'report.md');
     assert.strictEqual(filteredSelection(shown, '..'), 'Report-Q3-2024.xlsx');
     assert.strictEqual(
@@ -97,7 +98,10 @@ suite('Filtering the rows of a side', () => {
       'Report-Q3-2024.xlsx',
     );
     assert.strictEqual(
-      filteredSelection(filteredRows(rows, ['nothing']), 'notes.txt'),
+      filteredSelection(
+        filteredRows(rows, plainFilter('nothing')),
+        'notes.txt',
+      ),
       '..',
     );
     assert.strictEqual(filteredSelection([], 'notes.txt'), undefined);

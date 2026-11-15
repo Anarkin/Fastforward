@@ -19,6 +19,7 @@ import {
   useMenuFocus,
 } from './menuControls';
 import type { ContextMenuItem, MenuIcon } from './contextMenuItem';
+import { noFilter, type Filter } from '../shared/filter';
 
 function MenuIconOf({ icon }: { icon: MenuIcon }) {
   switch (icon) {
@@ -35,15 +36,13 @@ function MenuIconOf({ icon }: { icon: MenuIcon }) {
   }
 }
 
-const noWords: readonly string[] = [];
-
 export function MenuItems({
   items,
-  words = noWords,
+  filter = noFilter,
   onClose,
 }: {
   items: readonly ContextMenuItem[];
-  words?: readonly string[];
+  filter?: Filter;
   onClose: () => void;
 }) {
   const [openSubmenu, setOpenSubmenu] = useState<number>();
@@ -132,11 +131,11 @@ export function MenuItems({
                 </span>
               )}
               {item.sentence !== undefined ? (
-                <Words words={words}>{item.sentence}</Words>
+                <Words filter={filter}>{item.sentence}</Words>
               ) : item.name ? (
-                <Name words={words}>{item.label}</Name>
+                <Name filter={filter}>{item.label}</Name>
               ) : (
-                <HighlightWords text={item.label} words={words} />
+                <HighlightWords text={item.label} filter={filter} />
               )}
               {item.submenu && (
                 <span className="submenu-arrow">

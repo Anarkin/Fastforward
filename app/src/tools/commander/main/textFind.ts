@@ -6,6 +6,7 @@ import {
   matchesIn,
   type FindRange,
 } from '../../../lib/shared/textMatches';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 
 const defaultChunk = 1024 * 1024;
 const widestCharacter = 4;
@@ -100,6 +101,7 @@ export async function findInFile(
   read: ReadBytes,
   size: number,
   query: string,
+  options: SearchOptions,
   encoding: TextEncoding,
   {
     chunk = defaultChunk,
@@ -143,7 +145,7 @@ export async function findInFile(
     const decoded = bytes.subarray(0, end);
     const text = coding.decode(decoded);
     const offset = byteOffsets(text, decoded, encoding);
-    for (const range of matchesIn(text, query)) {
+    for (const range of matchesIn(text, query, options)) {
       const start = offset(range.start);
       if (start >= core || matches.length >= limit) {
         break;

@@ -50,7 +50,7 @@ export function EditorFindBar({
     query.text === '' || findCount === undefined
       ? ''
       : findCount.invalid
-        ? strings.editor.badPattern
+        ? strings.find.badPattern
         : findCount.matches === 0
           ? strings.find.noResults
           : strings.find.count(
@@ -61,18 +61,18 @@ export function EditorFindBar({
   const toggles = [
     {
       key: 'caseSensitive',
-      title: strings.editor.matchCase,
-      glyph: strings.editor.caseGlyph,
+      title: strings.find.matchCase,
+      glyph: strings.find.caseGlyph,
     },
     {
       key: 'wholeWord',
-      title: strings.editor.wholeWord,
-      glyph: strings.editor.wordGlyph,
+      title: strings.find.wholeWord,
+      glyph: strings.find.wordGlyph,
     },
     {
       key: 'regex',
-      title: strings.editor.regexTitle,
-      glyph: strings.editor.regexGlyph,
+      title: strings.find.regexTitle,
+      glyph: strings.find.regexGlyph,
     },
   ] as const;
 
@@ -102,11 +102,16 @@ export function EditorFindBar({
               {toggles.map(({ key, title, glyph }) => (
                 <button
                   key={key}
-                  className={`nav-button toggle ${query[key] ? 'active' : ''}`}
+                  className={`nav-button toggle ${query.options[key] ? 'active' : ''}`}
                   title={title}
-                  aria-pressed={query[key]}
+                  aria-pressed={query.options[key]}
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => search({ ...query, [key]: !query[key] })}
+                  onClick={() =>
+                    search({
+                      ...query,
+                      options: { ...query.options, [key]: !query.options[key] },
+                    })
+                  }
                 >
                   {glyph}
                 </button>

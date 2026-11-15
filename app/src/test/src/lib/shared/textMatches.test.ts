@@ -1,10 +1,21 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../lib/shared/searchOptions';
 import {
   matchCount,
-  matchesIn,
+  matchesIn as matchesWith,
   stepMatch,
+  validSearch,
 } from '../../../../lib/shared/textMatches';
+
+const matchesIn = (text: string, query: string) =>
+  matchesWith(text, query, plainSearch);
+
+const caseSensitive = { ...plainSearch, caseSensitive: true };
+
+const found = (current: number, matches: number) => ({ current, matches });
+const wholeWord = { ...plainSearch, wholeWord: true };
+const regex = { ...plainSearch, regex: true };
 
 suite('Find in diff', () => {
   test('finds a match where it is, also after letters that lowercase longer', () => {
@@ -63,10 +74,28 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(matchesIn('find', ''), []);
   });
 
-  test('says which match is shown of how many, or that there are none', () => {
-    assert.strictEqual(matchCount('', 0, 0), '');
-    assert.strictEqual(matchCount('x', 0, 0), 'No results');
-    assert.strictEqual(matchCount('x', 17, 2), '3 of 17');
+  test('says which match is shown of how many, that there are none, that it is still searching, or that the pattern is not valid, and nothing while nothing is asked', () => {
+    assert.strictEqual(matchCount('', plainSearch, found(0, 0)), '');
+    assert.strictEqual(matchCount('x', plainSearch, found(0, 0)), 'No matches');
+    assert.strictEqual(
+      matchCount('x', plainSearch, { ...found(0, 0), searching: true }),
+      'Searching…',
+    );
+    assert.strictEqual(matchCount('x', plainSearch, found(2, 17)), '3 of 17');
+    assert.strictEqual(matchCount('x', plainSearch, found(-1, 17)), '0 of 17');
+    assert.strictEqual(
+      matchCount('x', plainSearch, { ...found(0, 4), capped: true }),
+      '1 of 4+',
+    );
+    assert.strictEqual(
+      matchCount('x', plainSearch, found(0, 10_000)),
+      '1 of 10000+',
+    );
+    assert.strictEqual(
+      matchCount('(', regex, found(0, 0)),
+      'Not a valid pattern',
+    );
+    assert.strictEqual(matchCount('(', plainSearch, found(0, 0)), 'No matches');
   });
 
   test('steps to the next or previous match, wrapping around', () => {
@@ -74,5 +103,108 @@ suite('Find in diff', () => {
     assert.strictEqual(stepMatch(2, 3, 1), 0);
     assert.strictEqual(stepMatch(0, 3, -1), 2);
     assert.strictEqual(stepMatch(0, 0, 1), 0);
+  });
+});
+
+suite('Find with options', () => {
+  test('matches the case of the query when asked, still finding a letter however either side composes it', () => {
+    assert.deepStrictEqual(
+      matchesWith('Find find FIND', 'find', caseSensitive),
+      [{ start: 5, end: 9 }],
+    );
+    assert.deepStrictEqual(matchesWith('café.txt', 'café', caseSensitive), [
+      { start: 0, end: 5 },
+    ]);
+    assert.deepStrictEqual(matchesWith('x CAFÉ', 'CAFÉ', caseSensitive), [
+      { start: 2, end: 6 },
+    ]);
+    assert.deepStrictEqual(matchesWith('CAFÉ', 'café', caseSensitive), []);
+    assert.deepStrictEqual(matchesWith('ΟΔΟΣ', 'ΟΔΟΣ', caseSensitive), [
+      { start: 0, end: 4 },
+    ]);
+    assert.deepStrictEqual(matchesWith('οδος', 'οδοσ', caseSensitive), []);
+  });
+
+  test('finds whole words only when asked, with no letter, mark, digit or underscore of any script just before or after them', () => {
+    assert.deepStrictEqual(
+      matchesWith(
+        'find finder refind find2 _find (find) find',
+        'find',
+        wholeWord,
+      ),
+      [
+        { start: 0, end: 4 },
+        { start: 32, end: 36 },
+        { start: 38, end: 42 },
+      ],
+    );
+    assert.deepStrictEqual(matchesWith('éfind find', 'find', wholeWord), [
+      { start: 6, end: 10 },
+    ]);
+    assert.deepStrictEqual(matchesWith('mañana', 'man', wholeWord), []);
+    assert.deepStrictEqual(matchesWith('mañana', 'man', wholeWord), []);
+    assert.deepStrictEqual(matchesWith('aaa aa', 'aa', wholeWord), [
+      { start: 4, end: 6 },
+    ]);
+    assert.deepStrictEqual(matchesWith('a-b a', 'a', wholeWord), [
+      { start: 0, end: 1 },
+      { start: 4, end: 5 },
+    ]);
+    assert.deepStrictEqual(
+      matchesWith('Find FIND', 'find', { ...wholeWord, caseSensitive: true }),
+      [],
+    );
+  });
+
+  test('finds what a regular expression matches, ignoring case unless asked, in whole words when asked, skipping empty matches', () => {
+    assert.deepStrictEqual(matchesWith('a1 b22 c333', String.raw`\d+`, regex), [
+      { start: 1, end: 2 },
+      { start: 4, end: 6 },
+      { start: 8, end: 11 },
+    ]);
+    assert.deepStrictEqual(matchesWith('ABC', 'b', regex), [
+      { start: 1, end: 2 },
+    ]);
+    assert.deepStrictEqual(
+      matchesWith('ABC', 'b', { ...regex, caseSensitive: true }),
+      [],
+    );
+    assert.deepStrictEqual(
+      matchesWith('cat concat cats cat', 'cat|dog', {
+        ...regex,
+        wholeWord: true,
+      }),
+      [
+        { start: 0, end: 3 },
+        { start: 16, end: 19 },
+      ],
+    );
+    assert.deepStrictEqual(matchesWith('baaa', 'a*', regex), [
+      { start: 1, end: 4 },
+    ]);
+    assert.deepStrictEqual(matchesWith('a.b', '.', plainSearch), [
+      { start: 1, end: 2 },
+    ]);
+    assert.deepStrictEqual(matchesWith('one\ntwo', '^t', regex), [
+      { start: 4, end: 5 },
+    ]);
+  });
+
+  test('finds nothing for a regular expression that is not valid, and says so', () => {
+    assert.deepStrictEqual(matchesWith('(a)', '(', regex), []);
+    assert.strictEqual(validSearch('(', regex), false);
+    assert.strictEqual(validSearch('(', plainSearch), true);
+    assert.strictEqual(validSearch('', regex), true);
+    assert.strictEqual(validSearch('(a)', regex), true);
+  });
+
+  test('stops at the limit asked, whatever the options', () => {
+    for (const options of [plainSearch, caseSensitive, wholeWord, regex]) {
+      assert.strictEqual(
+        matchesWith('a a a a', 'a', options, 2).length,
+        2,
+        JSON.stringify(options),
+      );
+    }
   });
 });

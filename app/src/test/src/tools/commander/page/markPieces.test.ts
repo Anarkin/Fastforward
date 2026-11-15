@@ -6,6 +6,7 @@ import {
   markPieces,
   textMarks,
 } from '../../../../../tools/commander/page/markPieces';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 
 suite('Matches marked in a file viewed', () => {
   test('marks the matches of a row of text ignoring case, the one current among them by the bytes it starts at', () => {
@@ -17,20 +18,20 @@ suite('Matches marked in a file viewed', () => {
     ];
 
     assert.deepStrictEqual(
-      textMarks(row, 'árvíz', matches, matches[2], 'utf-8'),
+      textMarks(row, 'árvíz', plainSearch, matches, matches[2], 'utf-8'),
       [
         { start: 0, end: 5, current: false },
         { start: 6, end: 11, current: true },
       ],
     );
     assert.deepStrictEqual(
-      textMarks(row, 'árvíz', matches, matches[0], 'utf-8').map(
+      textMarks(row, 'árvíz', plainSearch, matches, matches[0], 'utf-8').map(
         (mark) => mark.current,
       ),
       [false, false],
     );
     assert.deepStrictEqual(
-      textMarks(row, '', matches, matches[1], 'utf-8'),
+      textMarks(row, '', plainSearch, matches, matches[1], 'utf-8'),
       [],
     );
   });
@@ -44,18 +45,18 @@ suite('Matches marked in a file viewed', () => {
     ];
 
     assert.deepStrictEqual(
-      textMarks(cut, 'needle', matches, matches[0], 'utf-8'),
+      textMarks(cut, 'needle', plainSearch, matches, matches[0], 'utf-8'),
       [{ start: 3, end: 5, current: true }],
     );
     assert.deepStrictEqual(
-      textMarks(rest, 'needle', matches, matches[0], 'utf-8'),
+      textMarks(rest, 'needle', plainSearch, matches, matches[0], 'utf-8'),
       [
         { start: 0, end: 4, current: true },
         { start: 5, end: 11, current: false },
       ],
     );
     assert.deepStrictEqual(
-      textMarks(rest, 'needle', matches, matches[1], 'utf-8'),
+      textMarks(rest, 'needle', plainSearch, matches, matches[1], 'utf-8'),
       [
         { start: 0, end: 4, current: false },
         { start: 5, end: 11, current: true },
@@ -65,6 +66,7 @@ suite('Matches marked in a file viewed', () => {
       textMarks(
         { start: 2, end: 4, text: 'aa' },
         'aa',
+        plainSearch,
         [{ start: 1, end: 3 }],
         undefined,
         'utf-8',
@@ -76,6 +78,7 @@ suite('Matches marked in a file viewed', () => {
         textMarks(
           { start: 0, end: 10, text: 'ab ne' },
           'needle',
+          plainSearch,
           [{ start: 6, end: 18 }],
           undefined,
           'utf-16le',
@@ -83,6 +86,7 @@ suite('Matches marked in a file viewed', () => {
         textMarks(
           { start: 10, end: 20, text: 'edle' },
           'needle',
+          plainSearch,
           [{ start: 6, end: 18 }],
           undefined,
           'utf-16le',

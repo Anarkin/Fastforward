@@ -1,7 +1,12 @@
 import { StringDecoder } from 'node:string_decoder';
 import { logCommits } from './commitLog';
 import { hashLines, historyRefs, parseHistory } from './history';
-import { filterWords, matchesFilter } from '../../../lib/shared/filter';
+import {
+  matchesFilter,
+  searchFilter,
+  type Filter,
+} from '../../../lib/shared/filter';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { CommitSearch } from '../shared/protocol';
 import { runGit, runGitBytes } from './run';
 
@@ -55,13 +60,8 @@ export function parseSearchedCommit(record: string): SearchedCommit {
   };
 }
 
-export function matchesCommit(commit: SearchedCommit, query: string): boolean {
-  return matchesFilter(
-    filterWords(query),
-    commit.author,
-    commit.committer,
-    commit.message,
-  );
+export function matchesCommit(commit: SearchedCommit, filter: Filter): boolean {
+  return matchesFilter(filter, commit.author, commit.committer, commit.message);
 }
 
 interface FoundHashes {
@@ -71,16 +71,20 @@ interface FoundHashes {
 
 export class SearchMatches {
   private readonly found: string[] = [];
+  private readonly filter: Filter;
 
   constructor(
-    private readonly query: string,
+    query: string,
+    options: SearchOptions,
     private readonly limit = searchLimit,
     private readonly hidden: ReadonlySet<string> = new Set(),
-  ) {}
+  ) {
+    this.filter = searchFilter(query, options);
+  }
 
   add(record: string): FoundHashes | undefined {
     const commit = parseSearchedCommit(record);
-    if (this.hidden.has(commit.hash) || !matchesCommit(commit, this.query)) {
+    if (this.hidden.has(commit.hash) || !matchesCommit(commit, this.filter)) {
       return undefined;
     }
     if (this.found.length === this.limit) {
@@ -105,11 +109,12 @@ function streamMatches(
   gitPath: string,
   cwd: string,
   query: string,
+  options: SearchOptions,
   { solo, stashes, hidden }: Searched,
   limit: number | undefined,
   signal: AbortSignal | undefined,
 ): Promise<FoundHashes> {
-  const matches = new SearchMatches(query, limit, hidden);
+  const matches = new SearchMatches(query, options, limit, hidden);
   const stopping = new AbortController();
   const capped = Promise.withResolvers<FoundHashes>();
   const add = (record: string) => {
@@ -155,6 +160,7 @@ export async function searchCommits(
   gitPath: string,
   cwd: string,
   query: string,
+  options: SearchOptions,
   solo: boolean,
   stashes: readonly string[] = [],
   signal?: AbortSignal,
@@ -165,6 +171,7 @@ export async function searchCommits(
     gitPath,
     cwd,
     query,
+    options,
     {
       solo,
       stashes: searched,

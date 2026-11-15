@@ -6,13 +6,18 @@ import {
   replacedText,
   type FindQuery,
 } from '../../../../../tools/commander/page/editorFind';
+import {
+  plainSearch,
+  type SearchOptions,
+} from '../../../../../lib/shared/searchOptions';
+import { matchesIn } from '../../../../../lib/shared/textMatches';
 
-const query = (text: string, chosen: Partial<FindQuery> = {}): FindQuery => ({
+const query = (
+  text: string,
+  chosen: Partial<SearchOptions> = {},
+): FindQuery => ({
   text,
-  caseSensitive: false,
-  wholeWord: false,
-  regex: false,
-  ...chosen,
+  options: { ...plainSearch, ...chosen },
 });
 
 const doc = Text.of(['Let let LET', 'letter (a+b)']);
@@ -46,6 +51,33 @@ suite('Finding in the editor', () => {
     );
     assert.strictEqual(foundIn(doc, query('(', { regex: true })).invalid, true);
     assert.strictEqual(foundIn(doc, query('')).invalid, false);
+  });
+
+  test('finds what the diff and the viewer find, a letter however it is composed and a sigma however it is spelt, line by line, and a regular expression across lines', () => {
+    const lines = ['ΟΔΟΣ café', 'café οδος', 'end'];
+    const text = Text.of(lines);
+    for (const chosen of [{}, { caseSensitive: true }, { wholeWord: true }]) {
+      for (const asked of ['οδος', 'ΟΔΟΣ', 'café', 'caf']) {
+        const options = { ...plainSearch, ...chosen };
+        let at = 0;
+        const expected = lines.flatMap((line) => {
+          const found = matchesIn(line, asked, options).map(
+            ({ start, end }) => ({ from: at + start, to: at + end }),
+          );
+          at += line.length + 1;
+          return found;
+        });
+        assert.deepStrictEqual(
+          foundIn(text, query(asked, chosen)).found,
+          expected,
+          `${asked} with ${JSON.stringify(chosen)}`,
+        );
+      }
+    }
+    assert.deepStrictEqual(
+      foundIn(text, query(String.raw`οδος\nend`, { regex: true })).found,
+      [{ from: 16, to: 24 }],
+    );
   });
 
   test('replaces a match with the text typed, and with the groups of a regular expression put in', () => {

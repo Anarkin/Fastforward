@@ -8,9 +8,10 @@ import type {
 import { findRef } from '../shared/refNames';
 import {
   filterNeedles,
-  filterWords,
+  narrows,
   matchesFilter,
   matchesNeedles,
+  type Filter,
 } from '../../../lib/shared/filter';
 import type { RefGroup } from './refIndex';
 
@@ -25,14 +26,14 @@ export interface SearchGroup {
 
 export function searchRefs(
   index: readonly RefGroup[],
-  query: string,
+  filter: Filter,
   limit = maxResults,
 ): SearchGroup[] {
-  const needles = filterNeedles(filterWords(query));
+  const needles = filterNeedles(filter);
   return index.map(({ kind, title, refs, names }) => {
     const found: RefInfo[] = [];
     let more = 0;
-    if (needles.length > 0) {
+    if (narrows(filter)) {
       for (const [i, name] of names.entries()) {
         if (!matchesNeedles(needles, name)) {
           continue;
@@ -59,26 +60,25 @@ export const noStashList: readonly StashInfo[] = [];
 
 export function searchStashes(
   stashes: readonly StashInfo[],
-  query: string,
+  filter: Filter,
   limit = maxResults,
 ): StashSearch {
-  const words = filterWords(query);
-  if (words.length === 0) {
+  if (!narrows(filter)) {
     return noStashes;
   }
   const found = stashes.filter((stash) =>
-    matchesFilter(words, stash.name, stash.message),
+    matchesFilter(filter, stash.name, stash.message),
   );
   return cappedStashes(found, limit);
 }
 
 export function shownStashes(
   stashes: readonly StashInfo[],
-  query: string,
+  filter: Filter,
   limit = maxResults,
 ): StashSearch {
-  return query.trim()
-    ? searchStashes(stashes, query, limit)
+  return narrows(filter)
+    ? searchStashes(stashes, filter, limit)
     : cappedStashes(stashes, limit);
 }
 

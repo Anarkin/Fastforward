@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../helpers/filters';
 import { onMenuKeyDown } from '../../../../lib/page/menuControls';
 import { MenuItems } from '../../../../lib/page/menuItems';
 import { SubmenuIcon } from '../../../../lib/page/icons';
@@ -27,7 +28,7 @@ suite('Menu items', () => {
               sentence: sentence`UTF-8, from ${named('tools.editor.charset')} in the settings`,
             },
           ]}
-          words={['utf', 'charset']}
+          filter={plainFilter('utf charset')}
           onClose={noop}
         />,
       ),

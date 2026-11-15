@@ -15,12 +15,17 @@ import {
   type PluginValue,
   type ViewUpdate,
 } from '@codemirror/view';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
+import {
+  matchesIn,
+  searchPattern,
+  validSearch,
+  type FindRange,
+} from '../../../lib/shared/textMatches';
 
 export interface FindQuery {
   readonly text: string;
-  readonly caseSensitive: boolean;
-  readonly wholeWord: boolean;
-  readonly regex: boolean;
+  readonly options: SearchOptions;
 }
 
 interface Found {
@@ -37,47 +42,41 @@ interface Finding {
 
 const maxFound = 10_000;
 
-const specialCharacters = /[.*+?^${}()|[\]\\]/g;
-
-function patternOf(query: FindQuery): RegExp | undefined {
-  if (query.text === '') {
-    return undefined;
+function rangesIn(doc: Text, { text, options }: FindQuery): FindRange[] {
+  if (options.regex) {
+    return matchesIn(doc.toString(), text, options, maxFound + 1);
   }
-  const source = query.regex
-    ? query.text
-    : query.text.replace(specialCharacters, (character) => `\\${character}`);
-  const bounded = query.wholeWord
-    ? `(?<![\\p{L}\\p{N}_])(?:${source})(?![\\p{L}\\p{N}_])`
-    : source;
-  try {
-    return new RegExp(bounded, `gmu${query.caseSensitive ? '' : 'i'}`);
-  } catch {
-    return undefined;
+  const ranges: FindRange[] = [];
+  let at = 0;
+  for (const line of doc.iterLines()) {
+    for (const { start, end } of matchesIn(
+      line,
+      text,
+      options,
+      maxFound + 1 - ranges.length,
+    )) {
+      ranges.push({ start: at + start, end: at + end });
+    }
+    if (ranges.length > maxFound) {
+      break;
+    }
+    at += line.length + 1;
   }
+  return ranges;
 }
 
 export function foundIn(doc: Text, query: FindQuery): Omit<Finding, 'query'> {
-  const pattern = patternOf(query);
-  if (pattern === undefined) {
+  if (query.text === '' || !validSearch(query.text, query.options)) {
     return { found: [], capped: false, invalid: query.text !== '' };
   }
-  const text = doc.toString();
-  const found: Found[] = [];
-  for (
-    let match = pattern.exec(text);
-    match !== null;
-    match = pattern.exec(text)
-  ) {
-    if (match[0] === '') {
-      pattern.lastIndex += 1;
-      continue;
-    }
-    if (found.length === maxFound) {
-      return { found, capped: true, invalid: false };
-    }
-    found.push({ from: match.index, to: match.index + match[0].length });
-  }
-  return { found, capped: false, invalid: false };
+  const ranges = rangesIn(doc, query);
+  return {
+    found: ranges
+      .slice(0, maxFound)
+      .map(({ start, end }) => ({ from: start, to: end })),
+    capped: ranges.length > maxFound,
+    invalid: false,
+  };
 }
 
 export function replacedText(
@@ -85,10 +84,10 @@ export function replacedText(
   query: FindQuery,
   replacement: string,
 ): string {
-  if (!query.regex) {
+  if (!query.options.regex) {
     return replacement;
   }
-  const pattern = patternOf(query);
+  const pattern = searchPattern(query.text, query.options);
   return pattern === undefined
     ? replacement
     : matched.replace(

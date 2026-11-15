@@ -1,4 +1,10 @@
-import { filterWords, matchesFilter } from '../../../lib/shared/filter';
+import {
+  narrows,
+  matchesFilter,
+  searchFilter,
+  type Filter,
+} from '../../../lib/shared/filter';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import type { Entry } from '../shared/protocol';
 import { sameGrouping } from './fileColors';
 import type { FlatChoices, SlottedFolder } from './flatMessages';
@@ -27,7 +33,7 @@ function sortsAlike(one: FlatChoices, other: FlatChoices): boolean {
 
 interface Matching {
   readonly query: string;
-  readonly words: readonly string[];
+  readonly filter: Filter;
   readonly rows: Set<SlotRow>;
 }
 
@@ -57,7 +63,7 @@ export class FlatOrder {
         this.added.push(row);
         if (
           this.matching !== undefined &&
-          matchesFilter(this.matching.words, entry.name)
+          matchesFilter(this.matching.filter, entry.name)
         ) {
           this.matching.rows.add(row);
         }
@@ -107,17 +113,17 @@ export class FlatOrder {
   }
 
   private matchingOf(query: string): Matching | undefined {
-    const words = filterWords(query);
-    if (words.length === 0) {
+    const filter = searchFilter(query, plainSearch);
+    if (!narrows(filter)) {
       this.matching = undefined;
     } else if (this.matching?.query !== query) {
       const rows = new Set<SlotRow>();
       for (const row of this.bySlot.values()) {
-        if (matchesFilter(words, row.entry.name)) {
+        if (matchesFilter(filter, row.entry.name)) {
           rows.add(row);
         }
       }
-      this.matching = { query, words, rows };
+      this.matching = { query, filter, rows };
     }
     return this.matching;
   }

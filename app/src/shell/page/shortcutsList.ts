@@ -9,13 +9,15 @@ import {
 } from './toolShortcuts';
 import { strings } from '../../lib/shared/strings';
 import {
-  filterWords,
+  narrows,
   foldedForFilter,
   matchesFilter,
+  noFilter,
+  type Filter,
 } from '../../lib/shared/filter';
 
 interface ShortcutMatch {
-  readonly words: readonly string[];
+  readonly filter: Filter;
   readonly keys: ReadonlySet<string>;
 }
 
@@ -50,7 +52,7 @@ export interface PaneView {
   readonly atEnd: boolean;
 }
 
-const unmatched: ShortcutMatch = { words: [], keys: new Set() };
+const unmatched: ShortcutMatch = { filter: noFilter, keys: new Set() };
 
 function keysFound(labels: readonly string[], word: string): readonly string[] {
   const { joiner } = strings.shortcuts;
@@ -64,12 +66,12 @@ function keysFound(labels: readonly string[], word: string): readonly string[] {
 
 function shortcutMatch(
   binding: Binding<unknown>,
-  words: readonly string[],
+  { words, options }: Filter,
 ): ShortcutMatch | undefined {
   const said: string[] = [];
   const keys = new Set<string>();
   for (const word of words) {
-    const inAction = matchesFilter([word], binding.action);
+    const inAction = matchesFilter({ words: [word], options }, binding.action);
     if (inAction) {
       said.push(word);
     }
@@ -83,21 +85,21 @@ function shortcutMatch(
       return undefined;
     }
   }
-  return { words: said, keys };
+  return { filter: { words: said, options }, keys };
 }
 
 export function shownEntries(
   entries: readonly ShortcutEntry[],
-  query: string,
+  filter: Filter,
 ): ShownEntry[] {
-  const words = filterWords(query);
   return entries.map((entry) => {
     const groups = entry.groups.map((group) => ({
       key: `${entry.id}/${group.title}`,
       title: group.title,
       rows: group.bindings.flatMap((binding) => {
-        const match =
-          words.length === 0 ? unmatched : shortcutMatch(binding, words);
+        const match = narrows(filter)
+          ? shortcutMatch(binding, filter)
+          : unmatched;
         return match ? [{ binding, match }] : [];
       }),
     }));

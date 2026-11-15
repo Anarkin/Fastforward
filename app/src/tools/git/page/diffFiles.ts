@@ -1,6 +1,10 @@
 import type { FileChange, LeftOut } from '../shared/protocol';
 import { type DiffFile } from './diff';
-import { filterWords, matchesFilter } from '../../../lib/shared/filter';
+import {
+  narrows,
+  matchesFilter,
+  type Filter,
+} from '../../../lib/shared/filter';
 
 export function withLargeFiles(
   parsed: readonly DiffFile[],
@@ -88,10 +92,9 @@ export function shownFiles(
 export function filteredDiffFiles(
   files: readonly DiffFile[],
   path: string | undefined,
-  filter: string | undefined,
+  filter: Filter,
 ): readonly DiffFile[] {
-  const words = filterWords(filter ?? '');
-  return path !== undefined || words.length === 0
+  return path !== undefined || !narrows(filter)
     ? files
-    : files.filter((file) => matchesFilter(words, file.path, file.oldPath));
+    : files.filter((file) => matchesFilter(filter, file.path, file.oldPath));
 }

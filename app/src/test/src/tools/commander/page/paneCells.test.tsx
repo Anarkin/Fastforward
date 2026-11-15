@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import { act } from 'react';
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { flatRowOf, rowsOf } from '../../../../../tools/commander/page/listing';
@@ -285,7 +286,11 @@ suite('Commander pane', () => {
     ].map((key) => rows.find((row) => row.key === key) ?? rows[0]);
     const cell = (row: typeof parent) =>
       renderToStaticMarkup(
-        <ExtensionCell row={row} words={[]} onOpenRepository={noop} />,
+        <ExtensionCell
+          row={row}
+          filter={plainFilter('')}
+          onOpenRepository={noop}
+        />,
       );
 
     assert.strictEqual(
@@ -319,8 +324,11 @@ const file = (name: string) => ({
 });
 
 const cell = (row: ReturnType<typeof flatRowOf>, words: string[]) =>
-  new JSDOM(renderToStaticMarkup(<NameCell row={row} words={words} />)).window
-    .document;
+  new JSDOM(
+    renderToStaticMarkup(
+      <NameCell row={row} filter={plainFilter(words.join(' '))} />,
+    ),
+  ).window.document;
 
 suite('Commander pane in flat view', () => {
   test('shows the name of a file under the side without the folder it is in, so the names line up', () => {

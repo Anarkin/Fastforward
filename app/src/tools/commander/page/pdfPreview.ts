@@ -1,20 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PdfPlace } from '../shared/pdf';
-import { strings } from '../../../lib/shared/strings';
 import { matchCount } from '../../../lib/shared/textMatches';
+import {
+  plainSearch,
+  type SearchOptions,
+} from '../../../lib/shared/searchOptions';
 import type { PdfFound, ShownPdf } from './pdfDocument';
 import { useCommanderActions } from './store';
 
 export function pdfFindCount(
   query: string,
+  options: SearchOptions,
   found: PdfFound | undefined,
 ): string {
-  if (query === '') {
-    return '';
-  }
-  return found === undefined || (found.total === 0 && !found.done)
-    ? strings.find.searching
-    : matchCount(query, found.total, Math.max(0, found.current - 1));
+  return matchCount(query, options, {
+    current: Math.max(0, (found?.current ?? 0) - 1),
+    matches: found?.total ?? 0,
+    searching: found === undefined || !found.done,
+  });
 }
 
 export interface PdfControls {
@@ -56,7 +59,7 @@ export function usePdfPreview(tab: string | undefined) {
     controls,
     find: {
       query,
-      count: pdfFindCount(query, found),
+      count: pdfFindCount(query, plainSearch, found),
       matches: found?.total ?? 0,
       search: (next: string) => {
         setQuery(next);

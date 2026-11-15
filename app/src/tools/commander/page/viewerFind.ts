@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ByteRange } from '../shared/protocol';
 import type { TextEncoding } from '../shared/textEncodings';
-import { strings } from '../../../lib/shared/strings';
 import { matchCount, stepMatch } from '../../../lib/shared/textMatches';
+import {
+  plainSearch,
+  type SearchOptions,
+} from '../../../lib/shared/searchOptions';
 import type { Viewing } from './commanderState';
 import { useCommanderActions } from './store';
 
 export interface ViewerFind {
   readonly query: string;
+  readonly options: SearchOptions;
   readonly matches: readonly ByteRange[];
   readonly current: ByteRange | undefined;
   readonly jump: number;
@@ -22,13 +26,16 @@ interface Found {
 
 export function findCount(
   query: string,
+  options: SearchOptions,
   found: number,
   current: number,
   done: boolean,
 ): string {
-  return query !== '' && found === 0 && !done
-    ? strings.find.searching
-    : matchCount(query, found, current);
+  return matchCount(query, options, {
+    current,
+    matches: found,
+    searching: !done,
+  });
 }
 
 export function useViewerFind(
@@ -66,8 +73,20 @@ export function useViewerFind(
   return {
     query,
     matches,
-    count: findCount(query, matches.length, shown, ours && found.done),
-    find: { query, matches, current: matches[shown], jump },
+    count: findCount(
+      query,
+      plainSearch,
+      matches.length,
+      shown,
+      ours && found.done,
+    ),
+    find: {
+      query,
+      options: plainSearch,
+      matches,
+      current: matches[shown],
+      jump,
+    },
     search: (next: string) => {
       setQuery(next);
       setCurrent(0);

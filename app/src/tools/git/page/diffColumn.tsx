@@ -12,6 +12,8 @@ import { parsePatch, type DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { unsearchedFiles } from './find';
 import { matchCount } from '../../../lib/shared/textMatches';
+import { searchFilter } from '../../../lib/shared/filter';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import { withUnchangedObjects, type ImageOrigin } from './images';
 import {
   viewedSource,
@@ -91,7 +93,7 @@ export function Diff({
         filteredDiffFiles(
           shownFiles(parsed, path, files, leftOut, largeFiles, whitespaceOnly),
           path,
-          filter,
+          searchFilter(filter ?? '', plainSearch),
         ),
         files,
       ),
@@ -177,7 +179,10 @@ export function Diff({
           <SearchRow onClose={closeFind}>
             <FindField
               query={query}
-              count={matchCount(query, matches.length, shown)}
+              count={matchCount(query, plainSearch, {
+                current: shown,
+                matches: matches.length,
+              })}
               countTitle={
                 unsearchedFiles(diffFiles, fileContent) > 0
                   ? strings.find.unsearched(

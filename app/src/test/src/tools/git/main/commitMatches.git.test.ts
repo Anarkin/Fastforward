@@ -6,6 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { gitErrorText } from '../../../../../tools/git/main/errorText';
 import { searchCommits } from '../../../../../tools/git/main/commitMatches';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import {
   tempRepository,
   type TempRepository,
@@ -92,12 +93,18 @@ suite('Commit search', { timeout: 60000 }, () => {
   afterAll(() => removeFolder(search.root));
 
   const subjectsFound = async (query: string) =>
-    (await searchCommits(gitPath, search.root, query, false)).commits.map(
-      (commit) => commit.subject,
-    );
+    (
+      await searchCommits(gitPath, search.root, query, plainSearch, false)
+    ).commits.map((commit) => commit.subject);
 
   test('finds commits by author, committer or message, ignoring case, newest first', async () => {
-    const found = await searchCommits(gitPath, search.root, 'ADA', false);
+    const found = await searchCommits(
+      gitPath,
+      search.root,
+      'ADA',
+      plainSearch,
+      false,
+    );
     assert.deepStrictEqual(
       found.commits.map((commit) => commit.subject),
       ['third', 'second', 'first'],
@@ -107,13 +114,15 @@ suite('Commit search', { timeout: 60000 }, () => {
 
   test('takes the text literally, and stops at the limit, saying there may be more', async () => {
     assert.deepStrictEqual(
-      (await searchCommits(gitPath, search.root, 'a.a', false)).commits,
+      (await searchCommits(gitPath, search.root, 'a.a', plainSearch, false))
+        .commits,
       [],
     );
     const limited = await searchCommits(
       gitPath,
       search.root,
       'ada',
+      plainSearch,
       false,
       [],
       undefined,
@@ -145,7 +154,15 @@ suite('Commit search', { timeout: 60000 }, () => {
     const before = new AbortController();
     before.abort();
     await assert.rejects(
-      searchCommits(gitPath, search.root, 'ada', false, [], before.signal),
+      searchCommits(
+        gitPath,
+        search.root,
+        'ada',
+        plainSearch,
+        false,
+        [],
+        before.signal,
+      ),
       (error) => error === before.signal.reason,
     );
     const during = new AbortController();
@@ -153,6 +170,7 @@ suite('Commit search', { timeout: 60000 }, () => {
       gitPath,
       search.root,
       'ada',
+      plainSearch,
       false,
       [],
       during.signal,
@@ -179,6 +197,7 @@ suite('Commit search', { timeout: 60000 }, () => {
             gitPath,
             stashed.root,
             'on feature',
+            plainSearch,
             solo,
             stashes,
           )
@@ -197,7 +216,7 @@ suite('Commit search', { timeout: 60000 }, () => {
     const outside = tempFolder('unsearched');
     try {
       await assert.rejects(
-        searchCommits(gitPath, outside, 'ada', false),
+        searchCommits(gitPath, outside, 'ada', plainSearch, false),
         (error) => {
           assert.match(gitErrorText(error), /^fatal: not a git repository/);
           assert.match(String(error), /git log .+ failed/);
@@ -218,7 +237,7 @@ suite('Commit search', { timeout: 60000 }, () => {
       },
       () =>
         assert.rejects(
-          searchCommits(gitPath, search.root, 'ada', false),
+          searchCommits(gitPath, search.root, 'ada', plainSearch, false),
           (error) => {
             assert.match(gitErrorText(error), /it was stopped by SIGTERM$/);
             return true;
@@ -251,6 +270,7 @@ suite('Commit search', { timeout: 60000 }, () => {
           gitPath,
           search.root,
           'needle',
+          plainSearch,
           false,
         );
         assert.deepStrictEqual(

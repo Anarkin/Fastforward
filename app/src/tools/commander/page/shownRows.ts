@@ -1,4 +1,10 @@
-import { filterWords, matchesFilter } from '../../../lib/shared/filter';
+import {
+  narrows,
+  matchesFilter,
+  searchFilter,
+  type Filter,
+} from '../../../lib/shared/filter';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import type { Side } from '../shared/sides';
 import type { ColumnWidths } from '../shared/columnWidths';
 import type { CommanderSource } from './commanderState';
@@ -53,13 +59,13 @@ export function duplicateRows(
 
 export function filteredRows(
   rows: readonly Row[],
-  words: readonly string[],
+  filter: Filter,
 ): readonly Row[] {
-  return words.length === 0
-    ? rows
-    : rows.filter(
-        (row) => row.entry === undefined || matchesFilter(words, row.key),
-      );
+  return narrows(filter)
+    ? rows.filter(
+        (row) => row.entry === undefined || matchesFilter(filter, row.key),
+      )
+    : rows;
 }
 
 export interface ShownRows {
@@ -88,7 +94,7 @@ function shownRowsIn(all: readonly Row[], query: string): ShownRows {
   if (kept?.query === query) {
     return kept.shown;
   }
-  const rows = filteredRows(all, filterWords(query));
+  const rows = filteredRows(all, searchFilter(query, plainSearch));
   const total = filesIn(all);
   const shown = { rows, files: rows === all ? total : filesIn(rows), total };
   shownByRows.set(all, { query, shown });
@@ -146,7 +152,9 @@ export function shownRowsOf(state: CommanderSource, side: Side): ShownRows {
       ? shownRowsIn(pane?.rows ?? noRows, query)
       : flatShownRows(
           pane.rows,
-          filterWords(query).length === 0 ? undefined : pane.flat.shown?.rows,
+          narrows(searchFilter(query, plainSearch))
+            ? pane.flat.shown?.rows
+            : undefined,
         );
   return pane?.duplicates === undefined
     ? all

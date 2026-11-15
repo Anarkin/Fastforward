@@ -4,6 +4,7 @@ import { maxFindLength, type CommanderToHost } from '../shared/protocol';
 import { isTextEncoding } from '../shared/textEncodings';
 import { readingFile } from './fileBlocks';
 import { findInFile } from './textFind';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import { reasonOf } from './reasons';
 import type { Sides } from './sides';
 import { post } from './post';
@@ -42,7 +43,7 @@ export class ViewerFind {
     let told = Date.now();
     let failed: unknown;
     const found = await readingFile(viewing.file, (read) =>
-      findInFile(read, viewing.size, query, encoding, {
+      findInFile(read, viewing.size, query, plainSearch, encoding, {
         signal: finding.signal,
         onChunk: (matches) => {
           if (Date.now() - told >= findProgressEvery) {

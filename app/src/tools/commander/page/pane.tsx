@@ -6,7 +6,8 @@ import { type Row } from './listing';
 import { goesInto } from './rowKeys';
 import { filterStep } from './filterSteps';
 import { PaneFilter } from './paneFilter';
-import { filterWords } from '../../../lib/shared/filter';
+import { searchFilter } from '../../../lib/shared/filter';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import { SearchRow } from '../../../lib/page/search';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { clickPairs } from './clickPairs';
@@ -78,7 +79,7 @@ export function Pane({
     actions.filterSide(side, query);
   const filtering = filter !== undefined;
   const query = filter ?? '';
-  const words = useMemo(() => filterWords(query), [query]);
+  const matching = useMemo(() => searchFilter(query, plainSearch), [query]);
   const filterInput = useRef<HTMLInputElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
@@ -183,7 +184,7 @@ export function Pane({
     side,
     row,
     index,
-    words,
+    filter: matching,
     dropInto,
     pairsClick,
     onMenu: openMenu,

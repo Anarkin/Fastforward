@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { findInFile } from '../../../../../tools/commander/main/textFind';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type { ReadBytes } from '../../../../../tools/commander/main/fileBlocks';
 
 function inMemory(bytes: Buffer): { read: ReadBytes; size: number } {
@@ -17,7 +18,7 @@ suite('Finding text in a file viewed', () => {
   test('finds every match ignoring case, as the diff does, giving the bytes each takes in UTF-8', async () => {
     const { read, size } = inMemory(Buffer.from('Árvíz ÁRVÍZ árvíz', 'utf8'));
 
-    const found = await findInFile(read, size, 'árvíz', 'utf-8');
+    const found = await findInFile(read, size, 'árvíz', plainSearch, 'utf-8');
 
     assert.deepStrictEqual(found?.matches, [
       { start: 0, end: 7 },
@@ -30,17 +31,19 @@ suite('Finding text in a file viewed', () => {
   test('finds a match cut by the end of a chunk once, never splitting a character between chunks', async () => {
     const text = 'xx é match xx match é xx match';
     const { read, size } = inMemory(Buffer.from(text, 'utf8'));
-    const whole = await findInFile(read, size, 'match', 'utf-8');
+    const whole = await findInFile(read, size, 'match', plainSearch, 'utf-8');
 
     for (const chunk of [1, 2, 3, 4, 5, 7]) {
       assert.deepStrictEqual(
-        (await findInFile(read, size, 'match', 'utf-8', { chunk }))?.matches,
+        (await findInFile(read, size, 'match', plainSearch, 'utf-8', { chunk }))
+          ?.matches,
         whole?.matches,
         String(chunk),
       );
     }
     assert.deepStrictEqual(
-      (await findInFile(read, size, 'é m', 'utf-8', { chunk: 3 }))?.matches,
+      (await findInFile(read, size, 'é m', plainSearch, 'utf-8', { chunk: 3 }))
+        ?.matches,
       [{ start: 3, end: 7 }],
     );
   });
@@ -54,7 +57,7 @@ suite('Finding text in a file viewed', () => {
       ]),
     );
 
-    const found = await findInFile(read, size, 'needle', 'utf-8');
+    const found = await findInFile(read, size, 'needle', plainSearch, 'utf-8');
 
     assert.deepStrictEqual(found?.matches, [{ start: 14, end: 20 }]);
   });
@@ -63,15 +66,23 @@ suite('Finding text in a file viewed', () => {
     const little = inMemory(Buffer.from('ab Ő ab', 'utf16le'));
     assert.deepStrictEqual(
       (
-        await findInFile(little.read, little.size, 'ő a', 'utf-16le', {
-          chunk: 3,
-        })
+        await findInFile(
+          little.read,
+          little.size,
+          'ő a',
+          plainSearch,
+          'utf-16le',
+          {
+            chunk: 3,
+          },
+        )
       )?.matches,
       [{ start: 6, end: 12 }],
     );
     const big = inMemory(Buffer.from('ab Ő ab', 'utf16le').swap16());
     assert.deepStrictEqual(
-      (await findInFile(big.read, big.size, 'AB', 'utf-16be'))?.matches,
+      (await findInFile(big.read, big.size, 'AB', plainSearch, 'utf-16be'))
+        ?.matches,
       [
         { start: 0, end: 4 },
         { start: 10, end: 14 },
@@ -79,8 +90,15 @@ suite('Finding text in a file viewed', () => {
     );
     const codePage = inMemory(Buffer.from([0x61, 0xe8, 0x20, 0xc8, 0x62]));
     assert.deepStrictEqual(
-      (await findInFile(codePage.read, codePage.size, 'č', 'windows-1250'))
-        ?.matches,
+      (
+        await findInFile(
+          codePage.read,
+          codePage.size,
+          'č',
+          plainSearch,
+          'windows-1250',
+        )
+      )?.matches,
       [
         { start: 1, end: 2 },
         { start: 3, end: 4 },
@@ -96,8 +114,11 @@ suite('Finding text in a file viewed', () => {
 
       for (const chunk of [4, 1024]) {
         assert.deepStrictEqual(
-          (await findInFile(read, size, 'needle', encoding, { chunk }))
-            ?.matches,
+          (
+            await findInFile(read, size, 'needle', plainSearch, encoding, {
+              chunk,
+            })
+          )?.matches,
           [{ start: 10, end: 22 }],
           `${encoding} ${chunk}`,
         );
@@ -108,7 +129,9 @@ suite('Finding text in a file viewed', () => {
   test('stops at the most matches the diff finds, saying it stopped', async () => {
     const { read, size } = inMemory(Buffer.from('a'.repeat(30)));
 
-    const found = await findInFile(read, size, 'a', 'utf-8', { limit: 10 });
+    const found = await findInFile(read, size, 'a', plainSearch, 'utf-8', {
+      limit: 10,
+    });
 
     assert.strictEqual(found?.matches.length, 10);
     assert.strictEqual(found?.capped, true);
@@ -119,7 +142,7 @@ suite('Finding text in a file viewed', () => {
     const told: number[] = [];
     const leaving = new AbortController();
 
-    const found = await findInFile(read, size, 'ab', 'utf-8', {
+    const found = await findInFile(read, size, 'ab', plainSearch, 'utf-8', {
       chunk: 6,
       signal: leaving.signal,
       onChunk: (matches) => {
@@ -147,10 +170,17 @@ suite('Finding text in a file viewed', () => {
         }
         return read(position, length);
       };
-      const found = await findInFile(counted, 5000, 'match', 'utf-8', {
-        chunk,
-        signal: calledOff.signal,
-      });
+      const found = await findInFile(
+        counted,
+        5000,
+        'match',
+        plainSearch,
+        'utf-8',
+        {
+          chunk,
+          signal: calledOff.signal,
+        },
+      );
       assert.deepStrictEqual(
         found?.matches,
         [{ start: 3, end: 8 }],
@@ -162,9 +192,12 @@ suite('Finding text in a file viewed', () => {
   test('finds nothing for an empty query', async () => {
     const { read, size } = inMemory(Buffer.from('abc'));
 
-    assert.deepStrictEqual(await findInFile(read, size, '', 'utf-8'), {
-      matches: [],
-      capped: false,
-    });
+    assert.deepStrictEqual(
+      await findInFile(read, size, '', plainSearch, 'utf-8'),
+      {
+        matches: [],
+        capped: false,
+      },
+    );
   });
 });

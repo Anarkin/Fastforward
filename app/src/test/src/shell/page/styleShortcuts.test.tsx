@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../helpers/filters';
 import { CopyButton } from '../../../../shell/page/aboutPopup';
 import { shownEntries } from '../../../../shell/page/shortcutsList';
 import { ShortcutsList } from '../../../../shell/page/shortcutsPopup';
@@ -272,9 +273,10 @@ suite('Style', () => {
   });
 
   test('marks what the filter found in a shortcut, words and keys alike, in the colors of a search match', () => {
-    const commander = shownEntries(shortcutEntries, 'rename f6').find(
-      (entry) => entry.id === 'commander',
-    );
+    const commander = shownEntries(
+      shortcutEntries,
+      plainFilter('rename f6'),
+    ).find((entry) => entry.id === 'commander');
     assert.ok(commander);
     const list = rendered(
       <div className="shortcuts-popup">

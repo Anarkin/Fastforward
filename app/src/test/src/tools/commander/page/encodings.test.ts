@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import { filteredItems } from '../../../../../lib/page/menuFilter';
 import {
   encodingMenu,
@@ -16,7 +17,7 @@ const labels = (menu: ReturnType<typeof encodingMenu>) =>
 const found = (query: string) =>
   filteredItems(
     encodingMenu('auto', 'utf-8', () => {}),
-    query,
+    plainFilter(query),
   ).map((item) => ('separator' in item ? '-' : item.label));
 
 suite('The encoding of a file viewed', () => {

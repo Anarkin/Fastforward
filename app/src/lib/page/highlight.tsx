@@ -1,14 +1,14 @@
-import { filterRanges } from '../shared/filter';
+import { filterRanges, type Filter } from '../shared/filter';
 import type { FindRange } from '../shared/textMatches';
 
 export function HighlightWords({
   text,
-  words,
+  filter,
 }: {
   text: string;
-  words: readonly string[];
+  filter: Filter;
 }) {
-  return <Marked text={text} ranges={filterRanges(text, words)} />;
+  return <Marked text={text} ranges={filterRanges(text, filter)} />;
 }
 
 export function Marked({

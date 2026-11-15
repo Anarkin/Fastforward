@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { parsePatch, type DiffFile } from '../../../../../tools/git/page/diff';
 import {
   findMatches,
@@ -33,11 +34,12 @@ const whole = { path: 'c.ts', content: 'find\nnone\n', binary: false };
 suite('Find in diff', () => {
   test('searches every line of every file, collapsed or not, numbering lines across hunks', () => {
     const files = parsePatch(patch);
-    assert.deepStrictEqual(findMatches(files, undefined, 'finder'), [
-      { file: 0, line: 2, start: 6, end: 12 },
-    ]);
     assert.deepStrictEqual(
-      findMatches(files, undefined, 'find').map((match) => [
+      findMatches(files, undefined, 'finder', plainSearch),
+      [{ file: 0, line: 2, start: 6, end: 12 }],
+    );
+    assert.deepStrictEqual(
+      findMatches(files, undefined, 'find', plainSearch).map((match) => [
         match.file,
         match.line,
       ]),
@@ -50,23 +52,23 @@ suite('Find in diff', () => {
         [1, 1],
       ],
     );
-    assert.deepStrictEqual(findMatches(files, undefined, ''), []);
+    assert.deepStrictEqual(findMatches(files, undefined, '', plainSearch), []);
   });
 
   test('searches each file once a query, keeping its matches as other files load or it moves', () => {
     const files = parsePatch(patch);
-    const matches = findMatches(files, undefined, 'find');
+    const matches = findMatches(files, undefined, 'find', plainSearch);
     const loaded = findMatches(
       [...files, { path: 'big.ts', binary: false, hunks: [] }],
       undefined,
       'find',
+      plainSearch,
     );
     matches.forEach((match, index) => assert.strictEqual(loaded[index], match));
     assert.deepStrictEqual(
-      findMatches(files.toReversed(), undefined, 'find').map((match) => [
-        match.file,
-        match.line,
-      ]),
+      findMatches(files.toReversed(), undefined, 'find', plainSearch).map(
+        (match) => [match.file, match.line],
+      ),
       [
         [0, 1],
         [1, 0],
@@ -76,13 +78,14 @@ suite('Find in diff', () => {
         [1, 3],
       ],
     );
-    assert.deepStrictEqual(findMatches(files, undefined, 'finder'), [
-      { file: 0, line: 2, start: 6, end: 12 },
-    ]);
+    assert.deepStrictEqual(
+      findMatches(files, undefined, 'finder', plainSearch),
+      [{ file: 0, line: 2, start: 6, end: 12 }],
+    );
   });
 
   test('searches the whole of an unchanged file instead, when one is shown', () => {
-    assert.deepStrictEqual(findMatches([], whole, 'find'), [
+    assert.deepStrictEqual(findMatches([], whole, 'find', plainSearch), [
       { file: 0, line: 0, start: 0, end: 4 },
     ]);
     assert.deepStrictEqual(wholeLines(whole), ['find', 'none']);
@@ -92,7 +95,12 @@ suite('Find in diff', () => {
 
   test('leaves out a symbolic link shown whole, whose target is noted rather than shown as a line', () => {
     assert.deepStrictEqual(
-      findMatches([], { ...whole, content: 'find', link: true }, 'find'),
+      findMatches(
+        [],
+        { ...whole, content: 'find', link: true },
+        'find',
+        plainSearch,
+      ),
       [],
     );
   });
@@ -105,7 +113,9 @@ suite('Find in diff', () => {
     assert.strictEqual(unsearchedFiles(files, undefined), 1);
     assert.strictEqual(unsearchedFiles(files, whole), 0);
     const searched = new Set(
-      findMatches(files, undefined, 'find').map(({ file }) => file),
+      findMatches(files, undefined, 'find', plainSearch).map(
+        ({ file }) => file,
+      ),
     );
     assert.deepStrictEqual(
       [...searched].toSorted((a, b) => a - b),
@@ -115,7 +125,12 @@ suite('Find in diff', () => {
 
   test('stops at 10000 matches, on one line or across files, saying there are more, as each one is marked', () => {
     assert.strictEqual(
-      findMatches([], { ...whole, content: 'a'.repeat(30_000) }, 'a').length,
+      findMatches(
+        [],
+        { ...whole, content: 'a'.repeat(30_000) },
+        'a',
+        plainSearch,
+      ).length,
       10_000,
     );
     const files = parsePatch(
@@ -130,7 +145,7 @@ suite('Find in diff', () => {
         ])
         .join('\n'),
     );
-    const matches = findMatches(files, undefined, 'a');
+    const matches = findMatches(files, undefined, 'a', plainSearch);
     assert.strictEqual(matches.length, 10_000);
     assert.deepStrictEqual(
       [matches[5999], matches[6000], matches.at(-1)].map((match) => [
@@ -145,11 +160,17 @@ suite('Find in diff', () => {
       ],
     );
     assert.strictEqual(
-      findMatches(files.toReversed(), undefined, 'a')[6000].file,
+      findMatches(files.toReversed(), undefined, 'a', plainSearch)[6000].file,
       1,
     );
-    assert.strictEqual(matchCount('a', 10_000, 2), '3 of 10000+');
-    assert.strictEqual(matchCount('a', 9_999, 2), '3 of 9999');
+    assert.strictEqual(
+      matchCount('a', plainSearch, { current: 2, matches: 10_000 }),
+      '3 of 10000+',
+    );
+    assert.strictEqual(
+      matchCount('a', plainSearch, { current: 2, matches: 9_999 }),
+      '3 of 9999',
+    );
   });
 
   test('jumps to a match once it loads, opening its file first, and gives up when there is none', () => {

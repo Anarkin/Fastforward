@@ -1,4 +1,4 @@
-import { filterWords, matchesFilter } from '../../../lib/shared/filter';
+import { matchesFilter, type Filter } from '../../../lib/shared/filter';
 import { shortHash } from '../shared/hashes';
 import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
 import {
@@ -74,11 +74,10 @@ export function toggleBookmark(
 export function searchedBookmarks(
   bookmarks: readonly Bookmark[],
   refs: readonly RefInfo[],
-  query: string,
+  filter: Filter,
 ): Bookmark[] {
-  const words = filterWords(query);
   return bookmarks
-    .filter((bookmark) => matchesFilter(words, bookmark.name))
+    .filter((bookmark) => matchesFilter(filter, bookmark.name))
     .map((bookmark): [Bookmark, SortedBookmark] => [
       bookmark,
       onRemote(bookmark) ? (findRef(refs, bookmark) ?? bookmark) : bookmark,

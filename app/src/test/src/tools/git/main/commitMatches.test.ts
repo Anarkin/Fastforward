@@ -1,5 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import {
   matchesCommit,
   parseSearchedCommit,
@@ -22,24 +24,30 @@ suite('Commit search matching', () => {
   });
 
   test('finds the text in any of them, ignoring case, emails and the description included', () => {
-    assert.strictEqual(matchesCommit(commit, 'LOVELACE'), true);
-    assert.strictEqual(matchesCommit(commit, 'TEST@'), true);
-    assert.strictEqual(matchesCommit(commit, 'body'), true);
-    assert.strictEqual(matchesCommit(commit, 'nothing'), false);
+    assert.strictEqual(matchesCommit(commit, plainFilter('LOVELACE')), true);
+    assert.strictEqual(matchesCommit(commit, plainFilter('TEST@')), true);
+    assert.strictEqual(matchesCommit(commit, plainFilter('body')), true);
+    assert.strictEqual(matchesCommit(commit, plainFilter('nothing')), false);
   });
 
   test('finds a commit by every word of the search, each in its author, committer or message, as every filter of the app does', () => {
-    assert.strictEqual(matchesCommit(commit, 'body lovelace'), true);
-    assert.strictEqual(matchesCommit(commit, 'ADA subject'), true);
-    assert.strictEqual(matchesCommit(commit, 'body nothing'), false);
+    assert.strictEqual(
+      matchesCommit(commit, plainFilter('body lovelace')),
+      true,
+    );
+    assert.strictEqual(matchesCommit(commit, plainFilter('ADA subject')), true);
+    assert.strictEqual(
+      matchesCommit(commit, plainFilter('body nothing')),
+      false,
+    );
   });
 
   test('folds the text as every find of the page does, so a final sigma and letters composed or not match alike', () => {
     const greek = parseSearchedCommit(
       'bbb\0Ada\0ada@example.com\0Ada\0ada@example.com\0ΟΔΟΣ and élan\n',
     );
-    assert.strictEqual(matchesCommit(greek, 'οδοσ'), true);
-    assert.strictEqual(matchesCommit(greek, 'ÉLAN'), true);
+    assert.strictEqual(matchesCommit(greek, plainFilter('οδοσ')), true);
+    assert.strictEqual(matchesCommit(greek, plainFilter('ÉLAN')), true);
   });
 });
 
@@ -60,7 +68,7 @@ suite('Commit search stream', () => {
   });
 
   test('takes the commits that match from the one walk of the history, settling at one past the limit without waiting for the rest', () => {
-    const matches = new SearchMatches('ada', 2);
+    const matches = new SearchMatches('ada', plainSearch, 2);
     assert.strictEqual(
       matches.add('aaa\0Ada\0a@x\0B\0b@x\0About ada'),
       undefined,
@@ -74,7 +82,7 @@ suite('Commit search stream', () => {
   });
 
   test('stops at 50 matches unless told another limit, as each search walks every commit', () => {
-    const matches = new SearchMatches('ada');
+    const matches = new SearchMatches('ada', plainSearch);
     for (let i = 0; i < 50; i++) {
       assert.strictEqual(matches.add(`h${i}\0Ada\0a@x\0B\0b@x\0`), undefined);
     }
@@ -82,14 +90,14 @@ suite('Commit search stream', () => {
   });
 
   test('ends after the last commit, with every match in any letters', () => {
-    const matches = new SearchMatches('ada', 5);
+    const matches = new SearchMatches('ada', plainSearch, 5);
     matches.add('aaa\0Ada\0a@x\0B\0b@x\0');
     matches.add('bbb\0B\0b@x\0B\0b@x\0Nothing');
     assert.deepStrictEqual(matches.end(), {
       found: ['aaa'],
       capped: false,
     });
-    const whole = new SearchMatches('ÉLAN', 5);
+    const whole = new SearchMatches('ÉLAN', plainSearch, 5);
     whole.add('aaa\0B\0b@x\0B\0b@x\0élan');
     assert.deepStrictEqual(whole.end(), {
       found: ['aaa'],

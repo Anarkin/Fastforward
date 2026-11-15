@@ -6,7 +6,8 @@ import { activeTabOf } from './shellSelectors';
 import { useShell, useShellActions } from './store';
 import { shortcutEntries, type ShortcutEntryId } from './toolShortcuts';
 import { strings } from '../../lib/shared/strings';
-import { filterWords } from '../../lib/shared/filter';
+import { narrows, searchFilter } from '../../lib/shared/filter';
+import { plainSearch } from '../../lib/shared/searchOptions';
 import { useDismiss } from '../../lib/page/dismiss';
 import { CloseIcon, FileIcon, TabsIcon, ToolIcon } from '../../lib/page/icons';
 import { useModalDialog } from '../../lib/page/modalDialog';
@@ -44,7 +45,7 @@ export function ShortcutsList({ entry }: { entry: ShownEntry }) {
               ))}
             </span>
             <span>
-              <HighlightWords text={binding.action} words={match.words} />
+              <HighlightWords text={binding.action} filter={match.filter} />
             </span>
           </div>
         ))}
@@ -206,7 +207,11 @@ export function ShortcutsPopup() {
   useLayoutEffect(() => {
     field.current?.focus();
   }, []);
-  const entries = useMemo(() => shownEntries(shortcutEntries, query), [query]);
+  const filter = useMemo(() => searchFilter(query, plainSearch), [query]);
+  const entries = useMemo(
+    () => shownEntries(shortcutEntries, filter),
+    [filter],
+  );
   const entry = entries.find((each) => each.id === open);
   const firstKey = entry?.groups.find((group) => group.rows.length > 0)?.key;
   const marked = visible ?? (firstKey === undefined ? [] : [firstKey]);
@@ -329,7 +334,7 @@ export function ShortcutsPopup() {
             entries={entries}
             open={open}
             marked={marked}
-            filtering={filterWords(query).length > 0}
+            filtering={narrows(filter)}
             onOpen={openEntry}
             onGo={goTo}
           />

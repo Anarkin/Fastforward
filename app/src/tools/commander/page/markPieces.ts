@@ -2,6 +2,7 @@ import type { ByteRange, TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../shared/textEncodings';
 import type { CodeSegment } from './codeSegments';
 import { matchesIn } from '../../../lib/shared/textMatches';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import { wholeClusters } from '../../../lib/page/wholeClusters';
 import { bytesOf } from './encodedBytes';
 
@@ -70,6 +71,7 @@ function charAtByte(
 export function textMarks(
   row: Pick<TextRow, 'start' | 'end' | 'text'>,
   query: string,
+  options: SearchOptions,
   matches: readonly ByteRange[],
   current: ByteRange | undefined,
   encoding: TextEncoding,
@@ -82,7 +84,7 @@ export function textMarks(
     carried === undefined
       ? 0
       : charAtByte(row.text, carried.end - row.start, encoding);
-  const ranges = matchesIn(row.text.slice(skip), query);
+  const ranges = matchesIn(row.text.slice(skip), query, options);
   const currentIndex =
     current !== undefined &&
     current.start >= row.start &&

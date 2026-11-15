@@ -1,5 +1,6 @@
 import type { ChangeArea } from '../shared/protocol';
 import { HighlightWords } from '../../../lib/page/highlight';
+import { noFilter, type Filter } from '../../../lib/shared/filter';
 import { FileRow, FolderRow } from './tree';
 import { areaKey, treeRowKey, type ChangesTreeRow } from './changesRows';
 
@@ -11,7 +12,7 @@ export function ChangesTreeItem({
   selected,
   onSelect,
   cursor,
-  words = [],
+  filter = noFilter,
 }: {
   readonly row: ChangesTreeRow;
   area?: ChangeArea;
@@ -20,7 +21,7 @@ export function ChangesTreeItem({
   selected: string | undefined;
   onSelect: (path: string | undefined) => void;
   cursor: string | undefined;
-  words?: readonly string[];
+  filter?: Filter;
 }): React.ReactElement {
   const key = areaKey(area, treeRowKey(row));
   return row.kind === 'folder' ? (
@@ -37,7 +38,7 @@ export function ChangesTreeItem({
       onToggle={(folder) => onToggle(folder, row.changed)}
     >
       <span className="path">
-        <HighlightWords text={row.name} words={words} />
+        <HighlightWords text={row.name} filter={filter} />
       </span>
     </FolderRow>
   ) : (
@@ -50,7 +51,7 @@ export function ChangesTreeItem({
       selected={selected}
       marked={cursor === key}
       onSelect={onSelect}
-      words={words}
+      filter={filter}
     />
   );
 }

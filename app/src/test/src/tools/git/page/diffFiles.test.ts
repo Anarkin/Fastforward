@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import {
   parseFilePatch,
   parsePatch,
@@ -120,7 +121,9 @@ suite('File filter', () => {
       diffFile('c.ts'),
     ];
     const paths = (path: string | undefined, filter: string | undefined) =>
-      filteredDiffFiles(files, path, filter).map((shown) => shown.path);
+      filteredDiffFiles(files, path, plainFilter(filter ?? '')).map(
+        (shown) => shown.path,
+      );
     assert.deepStrictEqual(paths(undefined, 'view'), ['a/view.ts', 'b/api.ts']);
     assert.deepStrictEqual(paths(undefined, undefined), [
       'a/view.ts',

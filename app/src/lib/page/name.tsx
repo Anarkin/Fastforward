@@ -1,20 +1,18 @@
 import { Fragment } from 'react';
 import type { Line, Sentence } from '../shared/sentences';
-import { filterRanges } from '../shared/filter';
+import { filterRanges, noFilter, type Filter } from '../shared/filter';
 import { HighlightWords, Marked } from './highlight';
 
 const piecesOf = (name: string) => name.split(/(?<=[\\/])/);
 
-const noWords: readonly string[] = [];
-
 export function Name({
   children,
-  words = noWords,
+  filter = noFilter,
 }: {
   readonly children: string;
-  readonly words?: readonly string[];
+  readonly filter?: Filter;
 }) {
-  const ranges = filterRanges(children, words);
+  const ranges = filterRanges(children, filter);
   const starts = piecesOf(children).reduce<number[]>(
     (at, piece) => [...at, (at.at(-1) ?? 0) + piece.length],
     [0],
@@ -32,19 +30,19 @@ export function Name({
 
 export function Words({
   children,
-  words = noWords,
+  filter = noFilter,
 }: {
   readonly children: Sentence;
-  readonly words?: readonly string[];
+  readonly filter?: Filter;
 }) {
   return typeof children === 'string' ? (
-    <HighlightWords text={children} words={words} />
+    <HighlightWords text={children} filter={filter} />
   ) : (
     children.map((part, index) =>
       typeof part === 'string' ? (
-        <HighlightWords key={index} text={part} words={words} />
+        <HighlightWords key={index} text={part} filter={filter} />
       ) : (
-        <Name key={index} words={words}>
+        <Name key={index} filter={filter}>
           {part.name}
         </Name>
       ),

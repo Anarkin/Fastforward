@@ -13,6 +13,7 @@ import {
 import { gitKeymap } from '../../../../tools/git/page/keymap';
 import { strings } from '../../../../lib/shared/strings';
 import { matchCount } from '../../../../lib/shared/textMatches';
+import { plainSearch } from '../../../../lib/shared/searchOptions';
 import { noop } from '../../../helpers/fixtures';
 import { keyPress } from '../../../helpers/keys';
 import { tagWith } from '../../../helpers/markup';
@@ -61,7 +62,7 @@ suite('Find in diff', () => {
     const field = (query: string) => {
       const element = FindField({
         query,
-        count: matchCount(query, 3, 0),
+        count: matchCount(query, plainSearch, { current: 0, matches: 3 }),
         countTitle: strings.find.unsearched(2),
         keys: gitKeymap,
         onQuery: (next) => queries.push(next),

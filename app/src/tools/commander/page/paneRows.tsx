@@ -7,6 +7,7 @@ import { type Side } from '../shared/sides';
 import { type Row } from './listing';
 import { opens, pointedKeys, rangeKeys } from './rowKeys';
 import { HighlightWords } from '../../../lib/page/highlight';
+import type { Filter } from '../../../lib/shared/filter';
 import { shownRowsOf } from './shownRows';
 import { useCommander, useCommanderActions } from './store';
 import { formatDate } from '../../../lib/page/dates';
@@ -32,7 +33,7 @@ interface PaneItemProps {
   side: Side;
   row: Row;
   index: number;
-  words: readonly string[];
+  filter: Filter;
   dropInto: string | null | undefined;
   pairsClick: (key: string, count: number) => boolean;
   onMenu: (
@@ -128,7 +129,7 @@ function usePaneItem({
 }
 
 export function PaneLine(props: PaneItemProps) {
-  const { side, row, words } = props;
+  const { side, row, filter } = props;
   const { entry } = row;
   const actions = useCommanderActions();
   const gitMissing = useCommander((state) => state.view.gitMissing);
@@ -147,10 +148,10 @@ export function PaneLine(props: PaneItemProps) {
       <span className="commander-icon">
         <RowIcon row={row} source={iconSource} onDropIcon={actions.dropIcon} />
       </span>
-      <NameCell row={row} words={words} />
+      <NameCell row={row} filter={filter} />
       <ExtensionCell
         row={row}
-        words={words}
+        filter={filter}
         onOpenRepository={onOpenRepository}
       />
       <SizeCell entry={entry} />
@@ -160,7 +161,7 @@ export function PaneLine(props: PaneItemProps) {
 }
 
 export function PaneTile(props: PaneItemProps) {
-  const { row, words } = props;
+  const { row, filter } = props;
   const thumbnailSize = useCommander((state) => state.view.thumbnailSize);
   const actions = useCommanderActions();
   const tileWidth = tileWidthOf(thumbnailSize);
@@ -193,11 +194,11 @@ export function PaneTile(props: PaneItemProps) {
       </div>
       <div className="commander-tile-name">
         <span className="commander-tile-base">
-          <HighlightWords text={row.base} words={words} />
+          <HighlightWords text={row.base} filter={filter} />
         </span>
         {row.extension !== '' && (
           <span className="commander-tile-extension">
-            <HighlightWords text={`.${row.extension}`} words={words} />
+            <HighlightWords text={`.${row.extension}`} filter={filter} />
           </span>
         )}
       </div>

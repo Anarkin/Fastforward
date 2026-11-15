@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../helpers/filters';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { HighlightWords } from '../../../../lib/page/highlight';
 import { KeyCombo } from '../../../../lib/page/keyCombo';
@@ -261,7 +262,10 @@ suite('Style', () => {
     ]) {
       looks(
         withClass(
-          inside(classes, <HighlightWords text="x" words={['x']} />),
+          inside(
+            classes,
+            <HighlightWords text="x" filter={plainFilter('x')} />,
+          ),
           'match',
         ),
         match,

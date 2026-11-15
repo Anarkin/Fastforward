@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 import { filteredItems } from '../../../../../lib/page/menuFilter';
 import { encodingMenu } from '../../../../../tools/commander/page/encodings';
@@ -45,7 +46,7 @@ const found = (query: string) =>
         nothing,
         [],
       ),
-      query,
+      plainFilter(query),
     ),
   );
 

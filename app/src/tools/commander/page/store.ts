@@ -5,7 +5,8 @@ import { maxDroppedIcons } from '../shared/icons';
 import { type CommanderDrop, type CommanderToHost } from '../shared/protocol';
 import { sides, type Side } from '../shared/sides';
 import type { ColumnWidths } from '../shared/columnWidths';
-import { filterWords } from '../../../lib/shared/filter';
+import { narrows, searchFilter } from '../../../lib/shared/filter';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import {
   commanderDefaults,
   type CommanderActions,
@@ -351,7 +352,7 @@ export function createCommanderStore(
         });
         const selected = get().view.panes[side]?.selected;
         const selection =
-          query === undefined || filterWords(query).length === 0
+          query === undefined || !narrows(searchFilter(query, plainSearch))
             ? undefined
             : filteredSelection(shownRowsOf(get(), side).rows, selected);
         if (selection !== undefined && selection !== selected) {

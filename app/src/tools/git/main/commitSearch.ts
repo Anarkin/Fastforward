@@ -1,5 +1,6 @@
 import { findCommits } from './commitLookup';
 import { searchCommits } from './commitMatches';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import type {
   CommitResults,
   CommitSearch as CommitSearchResult,
@@ -69,6 +70,7 @@ export class CommitSearch {
       context.gitPath,
       context.root,
       query,
+      plainSearch,
       this.storage.soloOf(context.root),
       [...context.tab.stashes.keys()],
       signal,

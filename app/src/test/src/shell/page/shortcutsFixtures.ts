@@ -6,6 +6,8 @@ import type { TabInfo } from '../../../../shell/shared/protocol';
 import type { ToolId } from '../../../../shell/shared/tools';
 import { setKeyPlatform } from '../../../../lib/shared/keymap';
 import { shownEntries } from '../../../../shell/page/shortcutsList';
+import { searchFilter } from '../../../../lib/shared/filter';
+import { plainSearch } from '../../../../lib/shared/searchOptions';
 import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { createShellStore } from '../../../../shell/page/store';
 import { withStores } from '../../../helpers/componentFixtures';
@@ -55,7 +57,8 @@ export const contents = (id: string) =>
     group.bindings.map((binding) => binding.action),
   ]);
 
-export const shown = (query: string) => shownEntries(shortcutEntries, query);
+export const shown = (query: string) =>
+  shownEntries(shortcutEntries, searchFilter(query, plainSearch));
 
 export function onMac<T>(draw: () => T): T {
   setKeyPlatform('darwin');

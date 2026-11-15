@@ -7,7 +7,7 @@ import { useGit } from './store';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
 import { HighlightWords } from '../../../lib/page/highlight';
-import { filterWords } from '../../../lib/shared/filter';
+import { noFilter, type Filter } from '../../../lib/shared/filter';
 import { type Click } from '../../../lib/shared/keymap';
 import { inPairs } from './bubbleOrder';
 import {
@@ -58,7 +58,7 @@ export function CommitRow({
   indent,
   onSelect,
   onCompare,
-  highlight = '',
+  highlight = noFilter,
   itemProps,
   corner,
   children,
@@ -68,7 +68,7 @@ export function CommitRow({
   indent: number;
   onSelect: (hash: string) => void;
   onCompare?: (hash: string) => void;
-  highlight?: string;
+  highlight?: Filter;
   itemProps?: React.HTMLAttributes<HTMLDivElement>;
   corner?: React.ReactNode;
   children?: React.ReactNode;
@@ -95,19 +95,13 @@ export function CommitRow({
     >
       <div className="commit-line">
         <span className="subject">
-          <HighlightWords
-            text={commit.subject}
-            words={filterWords(highlight)}
-          />
+          <HighlightWords text={commit.subject} filter={highlight} />
         </span>
         {corner}
       </div>
       <div className="commit-line secondary">
         <span className="author">
-          <HighlightWords
-            text={commit.authorName}
-            words={filterWords(highlight)}
-          />
+          <HighlightWords text={commit.authorName} filter={highlight} />
         </span>
         <span className="date">
           {formatDate(commit.commitDate, dateFormat)}

@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import {
   changesTree,
   changesTreeRows,
@@ -58,7 +59,7 @@ suite('Changes tree rows', () => {
           selected: undefined,
           onSelect: noop,
           cursor: undefined,
-          words: ['deal'],
+          filter: plainFilter('deal'),
         })}
       </>,
     );

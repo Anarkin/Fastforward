@@ -2,6 +2,7 @@ import type { FileChange } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
 import { HighlightWords } from '../../../lib/page/highlight';
+import { noFilter, type Filter } from '../../../lib/shared/filter';
 import { ChangeIcon, LinkIcon } from '../../../lib/page/icons';
 import { treeIndent, twistyWidth } from './treeLayout';
 
@@ -56,7 +57,7 @@ export function FileRow({
   selected,
   marked,
   onSelect,
-  words = [],
+  filter = noFilter,
 }: {
   path: string;
   name: string;
@@ -65,7 +66,7 @@ export function FileRow({
   selected: string | undefined;
   marked: boolean;
   onSelect: (path: string | undefined) => void;
-  words?: readonly string[];
+  filter?: Filter;
 }) {
   return (
     <div
@@ -76,7 +77,7 @@ export function FileRow({
     >
       {change && <ChangeIcon kind={changeKind(change)} />}
       <span className={changeClass(change)}>
-        <HighlightWords text={name} words={words} />
+        <HighlightWords text={name} filter={filter} />
       </span>
       {change?.link && <LinkIcon />}
     </div>

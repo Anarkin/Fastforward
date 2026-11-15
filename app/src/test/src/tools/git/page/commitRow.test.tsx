@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import { isValidElement } from 'react';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import {
@@ -36,7 +37,7 @@ suite('Commit row', () => {
           selected={undefined}
           indent={0}
           onSelect={noop}
-          highlight="fix  CURSOR"
+          highlight={plainFilter('fix  CURSOR')}
         />
       </GitStore>,
     );

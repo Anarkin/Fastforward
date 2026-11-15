@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import {
   duplicateRows,
   filteredRows,
@@ -15,14 +16,14 @@ suite('Filtering the rows of a side', () => {
 
   test('keeps the parent row and the rows whose name holds every word, anywhere and ignoring case', () => {
     assert.deepStrictEqual(
-      filteredRows(rows, ['rep', '2024']).map((each) => each.key),
+      filteredRows(rows, plainFilter('rep 2024')).map((each) => each.key),
       ['..', 'Report-Q3-2024.xlsx'],
     );
     assert.deepStrictEqual(
-      filteredRows(rows, ['REPORT']).map((each) => each.key),
+      filteredRows(rows, plainFilter('REPORT')).map((each) => each.key),
       ['..', 'Report-Q3-2024.xlsx', 'report.md'],
     );
-    assert.strictEqual(filteredRows(rows, []), rows);
+    assert.strictEqual(filteredRows(rows, plainFilter('')), rows);
   });
 });
 

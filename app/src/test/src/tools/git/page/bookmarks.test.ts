@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import type {
   RefInfo,
   Bookmark,
@@ -179,18 +180,17 @@ suite('Bookmarks of the search', () => {
       { kind: 'branch', name: 'main' },
     ];
     assert.deepStrictEqual(
-      names(searchedBookmarks(named, refs, 'MENU feature')),
+      names(searchedBookmarks(named, refs, plainFilter('MENU feature'))),
       ['feature/main-menu'],
     );
   });
 
   test('lists every bookmark in order, and nothing else, not the checked-out branch', () => {
-    assert.deepStrictEqual(names(searchedBookmarks(bookmarks, refs, '')), [
-      'main',
-      'v1',
-      'c1',
-    ]);
-    assert.deepStrictEqual(searchedBookmarks([], refs, ''), []);
+    assert.deepStrictEqual(
+      names(searchedBookmarks(bookmarks, refs, plainFilter(''))),
+      ['main', 'v1', 'c1'],
+    );
+    assert.deepStrictEqual(searchedBookmarks([], refs, plainFilter('')), []);
   });
 
   test('orders a bookmarked remote tag right after the local tag of its name, knowing the remote it is on, also one with a slash in its name', () => {
@@ -211,7 +211,7 @@ suite('Bookmarks of the search', () => {
         { kind: 'tag', name: 'u2' },
       ],
       tagged,
-      '',
+      plainFilter(''),
     );
     assert.deepStrictEqual(names(found), ['u2', 'v1', 'team/fork/v1']);
   });
@@ -233,18 +233,20 @@ suite('Bookmarks of the search', () => {
         { kind: 'branch', name: 'main' },
       ],
       forked,
-      '',
+      plainFilter(''),
     );
     assert.deepStrictEqual(names(found), ['hotfix', 'main', 'team/fork/main']);
   });
 
   test('keeps only what matches the search, ignoring case and spaces around it', () => {
-    assert.deepStrictEqual(names(searchedBookmarks(bookmarks, refs, ' MAI ')), [
-      'main',
-    ]);
-    assert.deepStrictEqual(names(searchedBookmarks(bookmarks, refs, 'V1')), [
-      'v1',
-    ]);
+    assert.deepStrictEqual(
+      names(searchedBookmarks(bookmarks, refs, plainFilter(' MAI '))),
+      ['main'],
+    );
+    assert.deepStrictEqual(
+      names(searchedBookmarks(bookmarks, refs, plainFilter('V1'))),
+      ['v1'],
+    );
   });
 
   test('folds the search and the names as every find does, so a letter finds its accented letter and either sigma the other', () => {
@@ -260,7 +262,7 @@ suite('Bookmarks of the search', () => {
             { kind: 'tag', name: 'ΛΟΓΟΣ' },
           ],
           folding,
-          query,
+          plainFilter(query),
         ),
       );
     assert.deepStrictEqual(found('CAFE'), ['feature/café']);

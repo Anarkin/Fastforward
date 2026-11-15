@@ -1,4 +1,5 @@
 import { strings } from './strings';
+import type { SearchOptions } from './searchOptions';
 
 export interface FindRange {
   readonly start: number;
@@ -7,32 +8,124 @@ export interface FindRange {
 
 export const maxMatches = 10_000;
 
+const wordCharacter = '[\\p{L}\\p{M}\\p{N}_]';
+const wordBefore = new RegExp(`${wordCharacter}$`, 'u');
+const wordAfter = new RegExp(`^${wordCharacter}`, 'u');
+
+let compiled:
+  | {
+      readonly query: string;
+      readonly caseSensitive: boolean;
+      readonly wholeWord: boolean;
+      readonly pattern: RegExp | undefined;
+    }
+  | undefined;
+
+export function searchPattern(
+  query: string,
+  options: SearchOptions,
+): RegExp | undefined {
+  if (!options.regex || query === '') {
+    return undefined;
+  }
+  const { caseSensitive, wholeWord } = options;
+  if (
+    compiled?.query !== query ||
+    compiled.caseSensitive !== caseSensitive ||
+    compiled.wholeWord !== wholeWord
+  ) {
+    const source = wholeWord
+      ? `(?<!${wordCharacter})(?:${query})(?!${wordCharacter})`
+      : query;
+    let pattern: RegExp | undefined;
+    try {
+      pattern = new RegExp(source, `gmu${caseSensitive ? '' : 'i'}`);
+    } catch {
+      pattern = undefined;
+    }
+    compiled = { query, caseSensitive, wholeWord, pattern };
+  }
+  return compiled.pattern;
+}
+
+export function validSearch(query: string, options: SearchOptions): boolean {
+  return !options.regex || query === '' || !!searchPattern(query, options);
+}
+
 export function matchesIn(
   text: string,
   query: string,
+  options: SearchOptions,
   limit = Infinity,
 ): FindRange[] {
-  if (query === '') {
+  if (query === '' || limit <= 0) {
     return [];
   }
-  const needle = folded(query);
-  const whole = folded(text);
+  return options.regex
+    ? patternMatches(text, query, options, limit)
+    : plainMatches(text, query, options, limit);
+}
+
+function patternMatches(
+  text: string,
+  query: string,
+  options: SearchOptions,
+  limit: number,
+): FindRange[] {
+  const pattern = searchPattern(query, options);
   const ranges: FindRange[] = [];
-  if (whole.length === text.length) {
-    let from = whole.indexOf(needle);
-    while (from !== -1 && ranges.length < limit) {
-      const end = from + needle.length;
-      ranges.push({ start: from, end });
-      from = whole.indexOf(needle, end);
-    }
+  if (pattern === undefined) {
     return ranges;
   }
-  const { lowered, starts, ends } = lowercased(text);
-  let from = lowered.indexOf(needle);
+  pattern.lastIndex = 0;
+  for (
+    let match = pattern.exec(text);
+    match !== null && ranges.length < limit;
+    match = pattern.exec(text)
+  ) {
+    if (match[0] === '') {
+      pattern.lastIndex =
+        match.index + ((text.codePointAt(match.index) ?? 0) > 0xffff ? 2 : 1);
+    } else {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
+  }
+  return ranges;
+}
+
+function standsAlone(text: string, start: number, end: number): boolean {
+  return (
+    !wordBefore.test(text.slice(Math.max(0, start - 2), start)) &&
+    !wordAfter.test(text.slice(end, end + 2))
+  );
+}
+
+function plainMatches(
+  text: string,
+  query: string,
+  { caseSensitive, wholeWord }: SearchOptions,
+  limit: number,
+): FindRange[] {
+  const fold = caseSensitive ? decomposed : folded;
+  const needle = fold(query);
+  const whole = fold(text);
+  const map =
+    whole.length === text.length ? undefined : foldedPlaces(text, fold);
+  const searched = map?.folded ?? whole;
+  const ranges: FindRange[] = [];
+  let from = searched.indexOf(needle);
   while (from !== -1 && ranges.length < limit) {
     const end = from + needle.length;
-    ranges.push({ start: starts[from], end: ends[end - 1] });
-    from = lowered.indexOf(needle, end);
+    if (wholeWord && !standsAlone(searched, from, end)) {
+      from = searched.indexOf(needle, from + 1);
+      continue;
+    }
+    ranges.push(
+      map === undefined
+        ? { start: from, end }
+        : { start: map.starts[from], end: map.ends[end - 1] },
+    );
+    from = searched.indexOf(needle, end);
   }
   return ranges;
 }
@@ -41,39 +134,56 @@ export function folded(text: string): string {
   return text.toLowerCase().replaceAll('ς', 'σ').normalize('NFD');
 }
 
-function lowercased(text: string): {
-  lowered: string;
+function decomposed(text: string): string {
+  return text.normalize('NFD');
+}
+
+function foldedPlaces(
+  text: string,
+  fold: (text: string) => string,
+): {
+  folded: string;
   starts: number[];
   ends: number[];
 } {
-  let lowered = '';
+  let all = '';
   const starts: number[] = [];
   const ends: number[] = [];
   let index = 0;
   for (const character of text) {
-    const lower = folded(character);
-    for (let unit = 0; unit < lower.length; unit++) {
+    const each = fold(character);
+    for (let unit = 0; unit < each.length; unit++) {
       starts.push(index);
       ends.push(index + character.length);
     }
-    lowered += lower;
+    all += each;
     index += character.length;
   }
-  return { lowered, starts, ends };
+  return { folded: all, starts, ends };
+}
+
+export interface MatchesFound {
+  readonly current: number;
+  readonly matches: number;
+  readonly capped?: boolean;
+  readonly searching?: boolean;
 }
 
 export function matchCount(
   query: string,
-  matches: number,
-  current: number,
+  options: SearchOptions,
+  { current, matches, capped = matches >= maxMatches, searching }: MatchesFound,
 ): string {
   if (query === '') {
     return '';
   }
-  if (matches === 0) {
-    return strings.find.noResults;
+  if (!validSearch(query, options)) {
+    return strings.find.badPattern;
   }
-  return strings.find.count(current + 1, matches, matches >= maxMatches);
+  if (matches === 0) {
+    return searching === true ? strings.find.searching : strings.find.noResults;
+  }
+  return strings.find.count(current + 1, matches, capped);
 }
 
 export function stepMatch(

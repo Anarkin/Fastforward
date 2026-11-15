@@ -5,7 +5,7 @@ import { CommitRow } from './commitRow';
 import { detachedHead } from './gitSelectors';
 import { useGit } from './store';
 import { HighlightWords } from '../../../lib/page/highlight';
-import { filterWords } from '../../../lib/shared/filter';
+import type { Filter } from '../../../lib/shared/filter';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import {
@@ -28,7 +28,7 @@ export function CommitResultsSection({
   found,
   hashMore,
   capped,
-  query,
+  filter,
   active,
   rows,
   onJump,
@@ -39,7 +39,7 @@ export function CommitResultsSection({
   found: readonly CommitInfo[];
   hashMore: number;
   capped: boolean;
-  query: string;
+  filter: Filter;
   active: string | undefined;
   rows: Rows;
   onJump: (commit: string) => void;
@@ -75,7 +75,7 @@ export function CommitResultsSection({
             selected={active}
             indent={commitIndent}
             onSelect={onJump}
-            highlight={query}
+            highlight={filter}
             itemProps={rowProps(rows, commitKey(commit.hash), 1)}
           />
         ))}
@@ -97,13 +97,13 @@ export function CommitResultsSection({
 export function StashesSection({
   stashes,
   more,
-  query,
+  filter,
   rows,
   onJump,
 }: {
   stashes: readonly StashInfo[];
   more: number;
-  query: string;
+  filter: Filter;
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
@@ -130,10 +130,10 @@ export function StashesSection({
             onClick={() => onJump(stash.commit)}
           >
             <span className="badge stash">
-              <HighlightWords text={stash.name} words={filterWords(query)} />
+              <HighlightWords text={stash.name} filter={filter} />
             </span>
             <span className="stash-message">
-              <HighlightWords text={stash.message} words={filterWords(query)} />
+              <HighlightWords text={stash.message} filter={filter} />
             </span>
           </div>
         ))}
@@ -207,12 +207,12 @@ export function BookmarksSection({
 
 export function SearchResults({
   group,
-  query,
+  filter,
   rows,
   onJump,
 }: {
   group: SearchGroup;
-  query: string;
+  filter: Filter;
   rows: Rows;
   onJump: (commit: string) => void;
 }) {
@@ -229,7 +229,7 @@ export function SearchResults({
           onContextMenu={(event) => openMenu(event, refMenuTarget(ref))}
         >
           <RefLabel info={ref}>
-            <HighlightWords text={ref.name} words={filterWords(query)} />
+            <HighlightWords text={ref.name} filter={filter} />
           </RefLabel>
         </div>
       ))}

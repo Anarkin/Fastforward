@@ -1,5 +1,5 @@
 import { strings } from '../../../lib/shared/strings';
-import { foldedForFilter } from '../../../lib/shared/filter';
+import { filterText, type FilterText } from '../../../lib/shared/filter';
 import { byName } from './byName';
 import type { RefInfo, RefKind } from '../shared/protocol';
 
@@ -19,7 +19,7 @@ export interface RefGroup {
   readonly kind: RefKind;
   readonly title: string;
   readonly refs: readonly RefInfo[];
-  readonly names: readonly string[];
+  readonly names: readonly FilterText[];
   readonly tree: TreeNode;
 }
 
@@ -31,7 +31,7 @@ export function indexRefs(refs: readonly RefInfo[]): RefGroup[] {
     return {
       ...group,
       refs: sorted,
-      names: sorted.map((ref) => foldedForFilter(ref.name)),
+      names: sorted.map((ref) => filterText(ref.name)),
       tree: buildTree(sorted),
     };
   });

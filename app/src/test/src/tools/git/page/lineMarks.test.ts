@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type { LineWords } from '../../../../../tools/git/page/wordDiff';
 import {
   codeProps,
@@ -91,7 +92,9 @@ suite('Drawing code', () => {
 suite('Find in diff', () => {
   test('groups the matches by their line, in order, even a great many on one line', () => {
     const files = parsePatch(patch);
-    const byLine = findRangesByLine(findMatches(files, undefined, 'find'));
+    const byLine = findRangesByLine(
+      findMatches(files, undefined, 'find', plainSearch),
+    );
     assert.deepStrictEqual(
       [...byLine].map(([key, ranges]) => [
         key,

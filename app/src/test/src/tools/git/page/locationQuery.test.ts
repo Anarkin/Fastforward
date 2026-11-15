@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import { indexRefs } from '../../../../../tools/git/page/refIndex';
 import { refs } from './locationsFixtures';
 import {
@@ -53,7 +54,7 @@ suite('Locations search', () => {
   test('jumps on Enter to the highlighted commit or ref', () => {
     const [branch, commit] = resultItems(
       [commitInfo('b'.repeat(40))],
-      searchRefs(indexRefs([refs[3]]), 'feat'),
+      searchRefs(indexRefs([refs[3]]), plainFilter('feat')),
     );
     const found = { commits: [], more: 0 };
     assert.strictEqual(enterTarget('ab12', found, commit), 'b'.repeat(40));
@@ -63,7 +64,10 @@ suite('Locations search', () => {
   });
 
   test('jumps on Enter to a hash not looked up yet as typed', () => {
-    const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
+    const [branch] = resultItems(
+      [],
+      searchRefs(indexRefs([refs[3]]), plainFilter('a')),
+    );
     assert.strictEqual(enterTarget('A1B2c3d4', undefined, branch), 'a1b2c3d4');
     assert.strictEqual(enterTarget(' AB12 ', undefined, branch), 'ab12');
   });
@@ -73,14 +77,17 @@ suite('Locations search', () => {
       [],
       searchRefs(
         indexRefs([{ kind: 'tag', name: '2024', commit: 'e' }]),
-        '2024',
+        plainFilter('2024'),
       ),
     );
     assert.strictEqual(enterTarget(' 2024 ', undefined, tag), 'e');
   });
 
   test('jumps on Enter to the result picked with the arrows, though the typed text may be a hash not looked up yet', () => {
-    const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
+    const [branch] = resultItems(
+      [],
+      searchRefs(indexRefs([refs[3]]), plainFilter('a')),
+    );
     assert.strictEqual(
       enterTarget('ab12', undefined, branch, true),
       refs[3].commit,
@@ -88,12 +95,18 @@ suite('Locations search', () => {
   });
 
   test('jumps nowhere on Enter without a search, which highlights no match', () => {
-    const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
+    const [branch] = resultItems(
+      [],
+      searchRefs(indexRefs([refs[3]]), plainFilter('a')),
+    );
     assert.strictEqual(enterTarget('', undefined, branch), undefined);
   });
 
   test('takes a search of spaces alone as no search, jumping nowhere', () => {
-    const [branch] = resultItems([], searchRefs(indexRefs([refs[3]]), 'a'));
+    const [branch] = resultItems(
+      [],
+      searchRefs(indexRefs([refs[3]]), plainFilter('a')),
+    );
     assert.strictEqual(enterTarget('  ', undefined, branch), undefined);
   });
 });

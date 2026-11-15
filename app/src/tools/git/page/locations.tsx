@@ -14,6 +14,8 @@ import { noRefs } from './commitListItems';
 import { searchQueryOf } from './gitSelectors';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
+import { searchFilter } from '../../../lib/shared/filter';
+import { plainSearch } from '../../../lib/shared/searchOptions';
 import {
   searchRefs,
   noStashList,
@@ -76,19 +78,20 @@ export function LocationsPopup({
     [anchor],
   );
   const index = useGit((state) => state.refIndex);
-  const search = useMemo(() => searchRefs(index, query), [index, query]);
+  const filter = useMemo(() => searchFilter(query, plainSearch), [query]);
+  const search = useMemo(() => searchRefs(index, filter), [index, filter]);
   const stashSearch = useMemo(
-    () => searchStashes(stashes, query),
-    [stashes, query],
+    () => searchStashes(stashes, filter),
+    [stashes, filter],
   );
   const drawnStashes = useMemo(
-    () => shownStashes(stashes, query),
-    [stashes, query],
+    () => shownStashes(stashes, filter),
+    [stashes, filter],
   );
   const hasQuery = query.trim() !== '';
   const pinned = useMemo(
-    () => searchedBookmarks(bookmarks, refs, query),
-    [bookmarks, refs, query],
+    () => searchedBookmarks(bookmarks, refs, filter),
+    [bookmarks, refs, filter],
   );
   const pinnedItems = useMemo(
     () => pinnedResults(pinned, refs),
@@ -266,7 +269,7 @@ export function LocationsPopup({
                 {hasQuery ? (
                   <SearchResults
                     group={group}
-                    query={query}
+                    filter={filter}
                     rows={rows}
                     onJump={jump}
                   />
@@ -285,7 +288,7 @@ export function LocationsPopup({
         <StashesSection
           stashes={drawnStashes.stashes}
           more={drawnStashes.more}
-          query={query}
+          filter={filter}
           rows={rows}
           onJump={jump}
         />
@@ -297,7 +300,7 @@ export function LocationsPopup({
             found={commits}
             hashMore={found?.more ?? 0}
             capped={textFound?.capped ?? false}
-            query={query.trim()}
+            filter={filter}
             active={
               activeItem?.kind === 'commit' ? activeItem.commit.hash : undefined
             }

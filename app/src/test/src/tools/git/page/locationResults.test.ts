@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainFilter } from '../../../../helpers/filters';
 import type { RefInfo } from '../../../../../tools/git/shared/protocol';
 import { indexRefs } from '../../../../../tools/git/page/refIndex';
 import { refs } from './locationsFixtures';
@@ -27,7 +28,10 @@ const manyBranches = (count: number) =>
   Array.from({ length: count }, (_, index) => branchNamed(`b${index}`));
 
 const refsDrawn = (count: number) => {
-  const [branches] = searchRefs(indexRefs(manyBranches(count)), 'b');
+  const [branches] = searchRefs(
+    indexRefs(manyBranches(count)),
+    plainFilter('b'),
+  );
   return [branches.refs.length, branches.more];
 };
 
@@ -37,7 +41,7 @@ suite('Locations search', () => {
       names(
         searchRefs(
           indexRefs([branchNamed('feature/cursor-fix'), branchNamed('fix')]),
-          'fix CURSOR',
+          plainFilter('fix CURSOR'),
         ),
       )[0],
       ['Local branches', ['feature/cursor-fix']],
@@ -48,18 +52,25 @@ suite('Locations search', () => {
       commit: 'c',
       parent: 'p',
     };
-    assert.deepStrictEqual(searchStashes([stash], 'cursor stash@').stashes, [
-      stash,
-    ]);
-    assert.deepStrictEqual(searchStashes([stash], 'cursor caret').stashes, []);
+    assert.deepStrictEqual(
+      searchStashes([stash], plainFilter('cursor stash@')).stashes,
+      [stash],
+    );
+    assert.deepStrictEqual(
+      searchStashes([stash], plainFilter('cursor caret')).stashes,
+      [],
+    );
   });
 
   test('finds parts of names, ignoring case, in a group per kind', () => {
-    assert.deepStrictEqual(names(searchRefs(indexRefs(refs), 'Epmaisa-798')), [
-      ['Local branches', ['feat/epmaisa-798-drop']],
-      ['Remote branches', ['origin/feat/EPMAISA-798-drop']],
-      ['Tags', []],
-    ]);
+    assert.deepStrictEqual(
+      names(searchRefs(indexRefs(refs), plainFilter('Epmaisa-798'))),
+      [
+        ['Local branches', ['feat/epmaisa-798-drop']],
+        ['Remote branches', ['origin/feat/EPMAISA-798-drop']],
+        ['Tags', []],
+      ],
+    );
   });
 
   test('folds the search and the names as every find does, so a letter finds its accented letter and either sigma the other', () => {
@@ -67,35 +78,48 @@ suite('Locations search', () => {
       branchNamed('feature/café'),
       { kind: 'tag', name: 'ΛΟΓΟΣ', commit: 'c' },
     ];
-    assert.deepStrictEqual(names(searchRefs(indexRefs(folding), 'CAFE')), [
-      ['Local branches', ['feature/café']],
-      ['Remote branches', []],
-      ['Tags', []],
-    ]);
-    assert.deepStrictEqual(names(searchRefs(indexRefs(folding), 'λογοσ')), [
-      ['Local branches', []],
-      ['Remote branches', []],
-      ['Tags', ['ΛΟΓΟΣ']],
-    ]);
+    assert.deepStrictEqual(
+      names(searchRefs(indexRefs(folding), plainFilter('CAFE'))),
+      [
+        ['Local branches', ['feature/café']],
+        ['Remote branches', []],
+        ['Tags', []],
+      ],
+    );
+    assert.deepStrictEqual(
+      names(searchRefs(indexRefs(folding), plainFilter('λογοσ'))),
+      [
+        ['Local branches', []],
+        ['Remote branches', []],
+        ['Tags', ['ΛΟΓΟΣ']],
+      ],
+    );
   });
 
   test('leaves out spaces around the search, as pasted text may have', () => {
     assert.deepStrictEqual(
-      names(searchRefs(indexRefs(refs), ' Epmaisa-798 ')),
-      names(searchRefs(indexRefs(refs), 'Epmaisa-798')),
+      names(searchRefs(indexRefs(refs), plainFilter(' Epmaisa-798 '))),
+      names(searchRefs(indexRefs(refs), plainFilter('Epmaisa-798'))),
     );
   });
 
   test('keeps every group, also one with no matches', () => {
-    assert.deepStrictEqual(names(searchRefs(indexRefs(refs), 'v0.16')), [
-      ['Local branches', []],
-      ['Remote branches', []],
-      ['Tags', ['v0.16.4']],
-    ]);
+    assert.deepStrictEqual(
+      names(searchRefs(indexRefs(refs), plainFilter('v0.16'))),
+      [
+        ['Local branches', []],
+        ['Remote branches', []],
+        ['Tags', ['v0.16.4']],
+      ],
+    );
   });
 
   test('draws at most the limit per group and counts the rest', () => {
-    const [branches, remotes] = searchRefs(indexRefs(refs), 'o', 1);
+    const [branches, remotes] = searchRefs(
+      indexRefs(refs),
+      plainFilter('o'),
+      1,
+    );
     assert.deepStrictEqual([branches.refs.length, branches.more], [1, 0]);
     assert.deepStrictEqual([remotes.refs.length, remotes.more], [1, 1]);
   });
@@ -108,7 +132,7 @@ suite('Locations search', () => {
   test('sorts matches by name before cutting them to the limit', () => {
     const [branches] = searchRefs(
       indexRefs([branchNamed('b1'), branchNamed('a1'), branchNamed('c1')]),
-      '1',
+      plainFilter('1'),
       2,
     );
     assert.deepStrictEqual(
@@ -119,11 +143,14 @@ suite('Locations search', () => {
   });
 
   test('searches nothing without a query', () => {
-    assert.deepStrictEqual(names(searchRefs(indexRefs(refs), '')), [
-      ['Local branches', []],
-      ['Remote branches', []],
-      ['Tags', []],
-    ]);
+    assert.deepStrictEqual(
+      names(searchRefs(indexRefs(refs), plainFilter(''))),
+      [
+        ['Local branches', []],
+        ['Remote branches', []],
+        ['Tags', []],
+      ],
+    );
   });
 
   test('lists the pinned rows first, then the matching refs group after group and the stashes, and the found commits last, as they come later and may be many', () => {
@@ -137,8 +164,8 @@ suite('Locations search', () => {
     assert.deepStrictEqual(
       resultItems(
         [commitInfo('f1'), commitInfo('f2')],
-        searchRefs(indexRefs(matching), 'main'),
-        searchStashes([stash], 'main'),
+        searchRefs(indexRefs(matching), plainFilter('main')),
+        searchStashes([stash], plainFilter('main')),
         pinned,
       ).map(itemKey),
       [
@@ -160,7 +187,7 @@ suite('Locations search', () => {
       { name: 'stash@{2}', commit: 's2', message: 'On main: New notes' },
     ];
     const found = (query: string, limit?: number) => {
-      const search = searchStashes(stashes, query, limit);
+      const search = searchStashes(stashes, plainFilter(query), limit);
       return [search.stashes.map((stash) => stash.name), search.more];
     };
     assert.deepStrictEqual(found(' NEW '), [['stash@{0}', 'stash@{2}'], 0]);
@@ -175,7 +202,9 @@ suite('Locations search', () => {
       { name: 'stash@{1}', commit: 's1', message: 'On main: ΟΔΟΣ' },
     ];
     const found = (query: string) =>
-      searchStashes(stashes, query).stashes.map((stash) => stash.name);
+      searchStashes(stashes, plainFilter(query)).stashes.map(
+        (stash) => stash.name,
+      );
     assert.deepStrictEqual(found('cafe'), ['stash@{0}']);
     assert.deepStrictEqual(found('οδοσ'), ['stash@{1}']);
   });
@@ -186,11 +215,11 @@ suite('Locations search', () => {
       commit: `s${index}`,
       message: 'On main: wip',
     }));
-    assert.deepStrictEqual(shownStashes(stashes, ''), {
+    assert.deepStrictEqual(shownStashes(stashes, plainFilter('')), {
       stashes: stashes.slice(0, 200),
       more: 50,
     });
-    assert.deepStrictEqual(shownStashes(stashes, 'wip'), {
+    assert.deepStrictEqual(shownStashes(stashes, plainFilter('wip')), {
       stashes: stashes.slice(0, 200),
       more: 50,
     });
@@ -200,8 +229,8 @@ suite('Locations search', () => {
     const stash = { name: 'stash@{0}', commit: 's0', message: 'On main: x' };
     const items = resultItems(
       [],
-      searchRefs(indexRefs([branchNamed('main')]), 'main'),
-      searchStashes([stash], 'main'),
+      searchRefs(indexRefs([branchNamed('main')]), plainFilter('main')),
+      searchStashes([stash], plainFilter('main')),
     );
     assert.deepStrictEqual(items.map(itemKey), [
       'branch:main',

@@ -112,9 +112,14 @@ export function TextBody({
   const matchStart =
     matched === undefined || find === undefined
       ? undefined
-      : textMarks(matched.row, find.query, find.matches, target, encoding).find(
-          (mark) => mark.current,
-        )?.start;
+      : textMarks(
+          matched.row,
+          find.query,
+          find.options,
+          find.matches,
+          target,
+          encoding,
+        ).find((mark) => mark.current)?.start;
   const jumps = find?.jump ?? 0;
 
   return (
@@ -156,6 +161,7 @@ export function TextBody({
                 : textMarks(
                     row.row,
                     find.query,
+                    find.options,
                     find.matches,
                     find.current,
                     encoding,
