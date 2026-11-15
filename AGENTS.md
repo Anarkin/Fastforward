@@ -27,7 +27,7 @@
   - `.git`: what runs the installed git: most of `src/tools/git/main/`, `src/tools/commander/main/gitEnding.ts`, `scripts/release.mts`, `scripts/push.mts`, the repositories of `src/test/helpers` and the playgrounds of `scripts/playground/`, which `npm test` leaves to a project of their own
   - `.electron`: what only the running app shows: the window, the preload, the app's protocol, focus, drag and drop, layout, wrapping and styles, the previews, the syntax worker, settings applied as saved, the terminal, quitting; after `npm run build`
   - `.shells`: what starts real shells: the terminal's shells and the login shell `src/boot/shellPath.ts` reads the environment from
-  - `.7zip`: anything that runs 7-Zip: `src/tools/commander/main/sevenZip.ts` and the archives of the playground; after `npm run build`, which fetches it
+  - `.7zip`: anything that runs 7-Zip: the `sevenZip*.ts` modules of `src/tools/commander/main/` and the archives of the playground; after `npm run build`, which fetches it
   - packaging, every test of `src/test/build/`: `esbuild.config.mts`, `build/`, the `ff` scripts and the Explorer menu
 - Tests check the app's sentences word for word: after rewording one in `strings.ts`, search `src/test` for the old text and run the files that have it
 - After changing a value or function in a `shared/protocol.ts` or `settings.ts`, run the `.git` and `.electron` files that import it
