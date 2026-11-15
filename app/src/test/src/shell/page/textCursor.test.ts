@@ -136,8 +136,29 @@ suite('Text cursor', () => {
   });
 
   test('measures a password by the bullets Chromium shows for its characters', () => {
-    assert.strictEqual(shownText({ type: 'password', value: 'abc' }), '•••');
-    assert.strictEqual(shownText({ type: 'text', value: 'abc' }), 'abc');
+    assert.strictEqual(
+      shownText({ type: 'password', value: 'abc', placeholder: '' }),
+      '•••',
+    );
+    assert.strictEqual(
+      shownText({ type: 'text', value: 'abc', placeholder: '' }),
+      'abc',
+    );
+  });
+
+  test('stands the block of an empty box on the first character of its placeholder, drawing it inside the block as it draws a character typed, rather than hiding it', () => {
+    assert.strictEqual(
+      shownText({ type: 'text', value: '', placeholder: 'Search...' }),
+      'Search...',
+    );
+    assert.strictEqual(
+      shownText({ type: 'text', value: 'a', placeholder: 'Search...' }),
+      'a',
+    );
+    assert.strictEqual(
+      shownText({ type: 'password', value: '', placeholder: 'Password' }),
+      'Password',
+    );
   });
 
   test('draws the cursor at the end of a selection one extends, the start of one extended backward', () => {

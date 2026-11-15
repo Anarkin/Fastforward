@@ -34,7 +34,14 @@ const passwordBullet = '•';
 
 const pixels = (value: string) => parseFloat(value) || 0;
 
-export function shownText(field: { type: string; value: string }): string {
+export function shownText(field: {
+  type: string;
+  value: string;
+  placeholder: string;
+}): string {
+  if (field.value === '') {
+    return field.placeholder;
+  }
   return field.type === 'password'
     ? passwordBullet.repeat(field.value.length)
     : field.value;
