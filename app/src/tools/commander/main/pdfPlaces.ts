@@ -22,6 +22,15 @@ function keptOf(value: unknown): Kept | undefined {
     : undefined;
 }
 
+export interface PdfPlaceStore {
+  readonly of: (fingerprint: string) => Promise<PdfPlace | undefined>;
+  readonly save: (
+    fingerprint: string,
+    place: PdfPlace,
+    file: string,
+  ) => Promise<void>;
+}
+
 export class PdfPlaces {
   private places: Promise<Map<string, Kept>> | undefined;
   private writing: Promise<void> = Promise.resolve();

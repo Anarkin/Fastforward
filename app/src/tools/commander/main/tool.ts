@@ -21,6 +21,8 @@ import { maxDroppedIcons, viewerIconUrl } from '../shared/icons';
 import { newPane, type Panes, Sides } from './sides';
 import { post } from './post';
 import { Viewers } from './viewers';
+import { ViewerFind } from './viewerFind';
+import { ViewedPdfPlaces } from './viewedPdfPlaces';
 import { SideFlat } from './sideFlat';
 import { SideSizes } from './sideSizes';
 import { SideDuplicates } from './sideDuplicates';
@@ -47,6 +49,8 @@ export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
   private readonly sides = new Sides();
   private readonly viewers: Viewers;
+  private readonly viewerFind: ViewerFind;
+  private readonly viewedPdfPlaces: ViewedPdfPlaces;
   private readonly flat: SideFlat;
   private readonly sizes: SideSizes;
   private readonly duplicates: SideDuplicates;
@@ -74,8 +78,13 @@ export class CommanderTool implements Tool<'commander'> {
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
-    this.viewers = new Viewers(access, this.sides, (file) =>
-      this.listings.hiddenParts(file),
+    this.viewerFind = new ViewerFind(this.sides);
+    this.viewedPdfPlaces = new ViewedPdfPlaces(access, this.sides);
+    this.viewers = new Viewers(
+      access,
+      this.sides,
+      (file) => this.listings.hiddenParts(file),
+      (tab, file) => this.viewedPdfPlaces.viewed(tab, file),
     );
     this.flat = new SideFlat(access, this.sides, {
       listed: (folder) => this.listings.listed(folder),
@@ -442,14 +451,14 @@ export class CommanderTool implements Tool<'commander'> {
       case 'readText':
         return this.viewers.readText(page, message);
       case 'findText':
-        return this.viewers.findText(page, message);
+        return this.viewerFind.findText(page, message);
       case 'stopFind':
-        this.viewers.stopFind(page, message);
+        this.viewerFind.stopFind(page, message);
         return undefined;
       case 'readPdfPlace':
-        return this.viewers.readPdfPlace(page, message);
+        return this.viewedPdfPlaces.readPdfPlace(page, message);
       case 'savePdfPlace':
-        return this.viewers.savePdfPlace(page, message);
+        return this.viewedPdfPlaces.savePdfPlace(page, message);
       case 'readBytes':
         return this.viewers.readBytes(page, message);
       case 'reread':

@@ -14,7 +14,7 @@ import type { TextDefaults } from './textDefaults';
 import type { Saved } from './fileSaving';
 import type { ConnectTransfer } from './transfers';
 import type { SizeWalker } from './sizeWalk';
-import type { PdfPlaceStore } from './viewers';
+import type { PdfPlaceStore } from './pdfPlaces';
 import type { Thumbnails } from './thumbnailServing';
 
 export interface CommanderAccess {

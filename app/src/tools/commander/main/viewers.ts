@@ -5,7 +5,6 @@ import {
   isTextEncoding,
   maxBytesAsked,
   maxColoredBytes,
-  maxFindLength,
   maxRowsAsked,
   type TextEncoding,
   type CommanderToHost,
@@ -22,13 +21,6 @@ import {
   utf16Order,
 } from './encodingDetection';
 import { blockCache, readingFile } from './fileBlocks';
-import { findInFile } from './textFind';
-import {
-  isPdf,
-  isPdfFingerprint,
-  pdfPlaceOf,
-  type PdfPlace,
-} from '../shared/pdf';
 import { reasonOf } from './reasons';
 import type { Sides } from './sides';
 import { post } from './post';
@@ -36,27 +28,14 @@ import { post } from './post';
 export interface ViewersAccess {
   readonly codePage: () => Promise<TextEncoding>;
   readonly watch: WatchFolder;
-  readonly pdfPlaces: PdfPlaceStore;
 }
-
-export interface PdfPlaceStore {
-  readonly of: (fingerprint: string) => Promise<PdfPlace | undefined>;
-  readonly save: (
-    fingerprint: string,
-    place: PdfPlace,
-    file: string,
-  ) => Promise<void>;
-}
-
-const findProgressEvery = 150;
 
 export class Viewers {
-  private readonly pdfTabs = new Map<string, string>();
-
   constructor(
     private readonly access: ViewersAccess,
     private readonly sides: Sides,
     private readonly hiddenParts: (file: string) => Promise<readonly boolean[]>,
+    private readonly viewed: (tab: string, file: string) => void,
   ) {}
 
   async startViewing(page: Page, tab: string, file: string): Promise<void> {
@@ -144,9 +123,7 @@ export class Viewers {
     showing.finding?.abort();
     showing.finding = undefined;
     showing.viewing = viewing;
-    if (isPdf(file)) {
-      this.pdfTabs.set(tab, file);
-    }
+    this.viewed(tab, file);
     post(page, {
       type: 'viewing',
       tab,
@@ -217,155 +194,6 @@ export class Viewers {
             )
             .catch(() => undefined);
     post(page, { type: 'text', tab, request, text });
-  }
-
-  private viewedPdf(page: Page, tab: unknown, fingerprint: unknown) {
-    const viewing = this.sides.shown.get(page)?.viewing;
-    return viewing !== undefined &&
-      viewing.tab === tab &&
-      isPdf(viewing.file) &&
-      isPdfFingerprint(fingerprint)
-      ? { file: viewing.file, fingerprint }
-      : undefined;
-  }
-
-  async readPdfPlace(
-    page: Page,
-    {
-      tab,
-      fingerprint,
-      request,
-    }: Extract<CommanderToHost, { type: 'readPdfPlace' }>,
-  ): Promise<void> {
-    const viewed = this.viewedPdf(page, tab, fingerprint);
-    if (viewed === undefined || !Number.isSafeInteger(request)) {
-      return;
-    }
-    const place = await this.access.pdfPlaces
-      .of(viewed.fingerprint)
-      .catch(() => undefined);
-    post(page, {
-      type: 'pdfPlace',
-      tab,
-      request,
-      ...(place !== undefined && { place }),
-    });
-  }
-
-  async savePdfPlace(
-    _page: Page,
-    {
-      tab,
-      fingerprint,
-      place,
-    }: Extract<CommanderToHost, { type: 'savePdfPlace' }>,
-  ): Promise<void> {
-    const file = typeof tab === 'string' ? this.pdfTabs.get(tab) : undefined;
-    const checked = pdfPlaceOf(place);
-    if (
-      file === undefined ||
-      !isPdfFingerprint(fingerprint) ||
-      checked === undefined
-    ) {
-      return;
-    }
-    await this.access.pdfPlaces
-      .save(fingerprint, checked, file)
-      .catch(() => undefined);
-  }
-
-  async findText(
-    page: Page,
-    {
-      tab,
-      request,
-      encoding,
-      query,
-    }: Extract<CommanderToHost, { type: 'findText' }>,
-  ): Promise<void> {
-    const showing = this.sides.shown.get(page);
-    const viewing = showing?.viewing;
-    if (
-      showing === undefined ||
-      viewing === undefined ||
-      viewing.tab !== tab ||
-      !Number.isSafeInteger(request) ||
-      !isTextEncoding(encoding) ||
-      typeof query !== 'string' ||
-      query.length > maxFindLength
-    ) {
-      return;
-    }
-    showing.finding?.abort();
-    const finding = new AbortController();
-    showing.finding = finding;
-    showing.findingRequest = request;
-    let told = Date.now();
-    let failed: unknown;
-    const found = await readingFile(viewing.file, (read) =>
-      findInFile(read, viewing.size, query, encoding, {
-        signal: finding.signal,
-        onChunk: (matches) => {
-          if (Date.now() - told >= findProgressEvery) {
-            told = Date.now();
-            post(page, {
-              type: 'found',
-              tab,
-              request,
-              matches: [...matches],
-              capped: false,
-              done: false,
-            });
-          }
-        },
-      }),
-    ).catch((error: unknown) => {
-      failed = error;
-      return undefined;
-    });
-    if (finding.signal.aborted) {
-      return;
-    }
-    showing.finding = undefined;
-    showing.findingRequest = undefined;
-    if (found === undefined) {
-      if (
-        failed !== undefined &&
-        this.sides.shown.get(page)?.viewing === viewing
-      ) {
-        post(page, {
-          type: 'viewing',
-          tab,
-          size: undefined,
-          error: strings.commander.couldNotRead(viewing.file, reasonOf(failed)),
-        });
-      }
-      return;
-    }
-    post(page, {
-      type: 'found',
-      tab,
-      request,
-      matches: found.matches,
-      capped: found.capped,
-      done: true,
-    });
-  }
-
-  stopFind(
-    page: Page,
-    message: Extract<CommanderToHost, { type: 'stopFind' }>,
-  ): void {
-    const showing = this.sides.shown.get(page);
-    if (
-      showing?.findingRequest !== undefined &&
-      message.request === showing.findingRequest &&
-      message.tab === showing.viewing?.tab
-    ) {
-      showing.finding?.abort();
-      showing.finding = undefined;
-      showing.findingRequest = undefined;
-    }
   }
 
   async readRows(
