@@ -34,31 +34,3 @@ export function startsAppPage(details: {
 function fromApp(url: URL): boolean {
   return `${url.protocol}//${url.host}` === appOrigin;
 }
-
-export function opensExternally(url: string): boolean {
-  const protocol = URL.parse(url)?.protocol;
-  return protocol === 'https:' || protocol === 'mailto:';
-}
-
-interface LockedSession {
-  setPermissionRequestHandler(
-    handler: (
-      contents: unknown,
-      permission: string,
-      answer: (granted: boolean) => void,
-    ) => void,
-  ): void;
-  setPermissionCheckHandler(handler: () => boolean): void;
-  on(
-    event: 'will-download',
-    listener: (event: { preventDefault(): void }) => void,
-  ): unknown;
-}
-
-export function lockDown(session: LockedSession): void {
-  session.setPermissionRequestHandler((_contents, _permission, answer) =>
-    answer(false),
-  );
-  session.setPermissionCheckHandler(() => false);
-  session.on('will-download', (event) => event.preventDefault());
-}

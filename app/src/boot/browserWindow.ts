@@ -6,7 +6,8 @@ import { shellKeymap } from '../shell/shared/keymap';
 import { pressed, pressOfInput } from '../lib/shared/keymap';
 import { brand, strings } from '../lib/shared/strings';
 import type { Settings } from '../shell/main/settings';
-import { isAppUrl, lockDown, opensExternally } from './files';
+import { isAppUrl } from './files';
+import { lockDown, opensExternally } from './lockDown';
 import {
   firstWindowSize,
   keptBounds,
