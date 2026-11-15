@@ -14,8 +14,8 @@ import {
 import {
   changesTree,
   changesTreeRows,
-  filesRows,
 } from '../../../../../tools/git/page/changesRows';
+import { filesRows } from '../../../../../tools/git/page/filesRows';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import {
   filesCursor,

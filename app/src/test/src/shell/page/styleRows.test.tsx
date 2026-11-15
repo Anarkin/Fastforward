@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { listedFilesRows } from '../../../../tools/git/page/changesRows';
+import { listedFilesRows } from '../../../../tools/git/page/filesRows';
 import { Column } from '../../../../tools/git/page/column';
 import { VirtualRows } from '../../../../lib/page/virtualRows';
 import { cascaded, rendered, withClass } from '../../../helpers/cascade';

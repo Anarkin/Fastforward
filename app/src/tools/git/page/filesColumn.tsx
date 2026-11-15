@@ -3,18 +3,20 @@ import { type ChangeArea, type FileChange } from '../shared/protocol';
 import {
   areaKey,
   changesTree,
-  changesKey,
   changesTreeRows,
+  folderRowKey,
+  treeFolders,
+} from './changesRows';
+import {
+  changesKey,
   filesAncestors,
   filesKey,
   filesRows,
   filesTreeItem,
-  folderRowKey,
   listedFilesRows,
   shownFileKey,
-  treeFolders,
   treeRowOf,
-} from './changesRows';
+} from './filesRows';
 import { ChangesTreeItem } from './changesTree';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { Column } from './column';
