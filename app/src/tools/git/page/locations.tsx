@@ -26,15 +26,13 @@ import {
 import { browseRows, Rows } from './locationRows';
 import { Highlighted, currentActive, nextActive } from './locationHighlight';
 import { RefTree } from './locationTree';
+import { contextMenus, focusLeaves, popupKeyAction } from './locationKeys';
 import {
   foundCommits,
   hashQuery,
   textQuery,
   enterTarget,
-  contextMenus,
-  focusLeaves,
-  popupKeyAction,
-} from './locationKeys';
+} from './locationQuery';
 import { usePopupHeight } from './popupHeight';
 import {
   BookmarksSection,

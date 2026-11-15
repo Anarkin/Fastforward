@@ -11,7 +11,7 @@ import {
   searchStashes,
   shownStashes,
 } from '../../../../../tools/git/page/locationResults';
-import { enterTarget } from '../../../../../tools/git/page/locationKeys';
+import { enterTarget } from '../../../../../tools/git/page/locationQuery';
 import { commitInfo } from '../../../../helpers/gitValues';
 
 const branchNamed = (name: string): RefInfo => ({
