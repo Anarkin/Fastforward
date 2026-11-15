@@ -1,13 +1,13 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
 import type { GitToHost } from '../../../../../tools/git/shared/protocol';
+import { createGitStore } from '../../../../../tools/git/page/store';
 import {
-  createGitStore,
   fileFilterOf,
   pickedFor,
   searchQueryOf,
   shownFoldersOf,
-} from '../../../../../tools/git/page/store';
+} from '../../../../../tools/git/page/gitSelectors';
 import { areaKey } from '../../../../../tools/git/page/changesRows';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import { checkoutOptions } from '../../../../../tools/git/page/checkout';

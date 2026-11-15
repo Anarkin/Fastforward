@@ -29,7 +29,8 @@ import { wrapIndent } from '../../../lib/page/wordWrap';
 import { snapOffset } from '../../../lib/page/devicePixels';
 import { snappedTop, type RowFollower } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
-import { pickedFor, useGit, useGitActions } from './store';
+import { pickedFor } from './gitSelectors';
+import { useGit, useGitActions } from './store';
 import {
   lineWidth,
   shownSideways,

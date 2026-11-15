@@ -36,6 +36,22 @@ export interface TextMeasures {
   readonly padding: Edges;
 }
 
+export function sameTextMeasures(
+  one: TextMeasures | undefined,
+  other: TextMeasures,
+): boolean {
+  return (
+    one !== undefined &&
+    one.charWidth === other.charWidth &&
+    one.font === other.font &&
+    one.spacing === other.spacing &&
+    one.scale === other.scale &&
+    one.lineHeight === other.lineHeight &&
+    one.padding.top === other.padding.top &&
+    one.padding.bottom === other.padding.bottom
+  );
+}
+
 const layoutSteps = 64;
 
 function onLayoutStep(gap: number, scale: number): number {

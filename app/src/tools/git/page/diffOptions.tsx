@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { languageKeyOf, pickedFor, useGit, useGitActions } from './store';
+import { languageKeyOf, pickedFor } from './gitSelectors';
+import { useGit, useGitActions } from './store';
 import { languageChoiceOf } from '../../../lib/page/languageMenu';
 import { LanguageButton } from '../../../lib/page/languageChoice';
 import { languageOf } from '../../../lib/page/languages';

@@ -11,7 +11,8 @@ import type { DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { Diff } from './diffColumn';
 import { DiffLanguage, DiffOptions } from './diffOptions';
-import { compareLanguageKey, useGit, useGitActions } from './store';
+import { compareLanguageKey } from './gitSelectors';
+import { useGit, useGitActions } from './store';
 
 const noFiles: readonly FileChange[] = [];
 const noLeftOut: readonly LeftOut[] = [];

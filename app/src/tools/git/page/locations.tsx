@@ -11,7 +11,8 @@ import { BackIcon } from '../../../lib/page/icons';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { noRefs } from './commitListItems';
-import { searchQueryOf, useGit, useGitActions } from './store';
+import { searchQueryOf } from './gitSelectors';
+import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
 import {
   searchRefs,

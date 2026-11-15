@@ -5,12 +5,12 @@ import { widthsToLoad } from './columns';
 import { textKey } from './sideTexts';
 import { reduceTabView, type TabAction } from './tabView';
 
-import type { Cloning, ComparedTexts, GitState } from './store';
-
-export const noComparedTexts: ComparedTexts = {
-  tab: undefined,
-  texts: new Map(),
-};
+import {
+  noComparedTexts,
+  type Cloning,
+  type ComparedTexts,
+  type GitState,
+} from './gitState';
 
 export function withTab(state: GitState, action: TabAction): GitState {
   const tab = reduceTabView(state.tab, action);

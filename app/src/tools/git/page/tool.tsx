@@ -8,15 +8,9 @@ import {
 import './style.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type GitToHost, type GitToWebview } from '../shared/protocol';
-import {
-  createGitStore,
-  GitStore,
-  layoutSelectionOf,
-  openingOf,
-  useGit,
-  useGitActions,
-  type GitState,
-} from './store';
+import { createGitStore, GitStore, useGit, useGitActions } from './store';
+import { layoutSelectionOf, openingOf } from './gitSelectors';
+import type { GitState } from './gitState';
 import { templateOf } from './columns';
 import { columnsClass, showsDiff } from './columnsShown';
 import {

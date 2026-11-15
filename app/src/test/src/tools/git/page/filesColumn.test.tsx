@@ -11,13 +11,12 @@ import {
 } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import { Files } from '../../../../../tools/git/page/filesColumn';
+import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
 import {
-  createGitStore,
   fileFilterOf,
   folderViewOf,
-  GitStore,
   shownFoldersOf,
-} from '../../../../../tools/git/page/store';
+} from '../../../../../tools/git/page/gitSelectors';
 import {
   emptyTabView,
   type TabView,

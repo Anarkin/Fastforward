@@ -7,13 +7,8 @@ import { Diff } from './diffColumn';
 import { DiffLanguage, DiffOptions } from './diffOptions';
 import { Commits } from './commitList';
 import { Files } from './filesColumn';
-import {
-  fileFilterOf,
-  languageKeyOf,
-  openingOf,
-  useGit,
-  useGitActions,
-} from './store';
+import { fileFilterOf, languageKeyOf, openingOf } from './gitSelectors';
+import { useGit, useGitActions } from './store';
 import { usePrefetchedColors } from './syntax';
 import { changesShown } from './tabView';
 

@@ -1,9 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
-import {
-  createGitStore,
-  detachedHead,
-} from '../../../../../tools/git/page/store';
+import { createGitStore } from '../../../../../tools/git/page/store';
+import { detachedHead } from '../../../../../tools/git/page/gitSelectors';
 import { noop } from '../../../../helpers/fixtures';
 import { at, worktree, shown, layout, compare, posting } from './storeFixtures';
 

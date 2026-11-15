@@ -41,9 +41,8 @@ import {
   folderViewOf,
   openingOf,
   shownFoldersOf,
-  useGit,
-  useGitActions,
-} from './store';
+} from './gitSelectors';
+import { useGit, useGitActions } from './store';
 import { treeOf } from './tabView';
 import {
   type MovedCursor,

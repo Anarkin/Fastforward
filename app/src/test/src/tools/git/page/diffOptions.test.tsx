@@ -7,11 +7,11 @@ import {
   DiffLanguage,
   DiffOptions,
 } from '../../../../../tools/git/page/diffOptions';
+import { createGitStore } from '../../../../../tools/git/page/store';
 import {
-  createGitStore,
   languageKeyOf,
   pickedFor,
-} from '../../../../../tools/git/page/store';
+} from '../../../../../tools/git/page/gitSelectors';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import { createShellStore } from '../../../../../shell/page/store';
 import { defaultTextView } from '../../../../../shell/page/textView';
