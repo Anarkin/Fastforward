@@ -37,7 +37,8 @@ import {
   useCommanderActions,
 } from './store';
 import { keysMatching } from './listing';
-import { shareOf, sideToFocus } from './sideFocus';
+import { sideToFocus } from './sideFocus';
+import { shareOf } from './sideShare';
 
 function CommanderPopups() {
   const tab = useCommander((state) => state.view.tab);

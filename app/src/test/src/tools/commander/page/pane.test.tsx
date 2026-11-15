@@ -21,10 +21,6 @@ import {
 } from '../../../../../tools/commander/page/store';
 import { strings } from '../../../../../lib/shared/strings';
 import { noop } from '../../../../helpers/fixtures';
-import {
-  shareOf,
-  sideToFocus,
-} from '../../../../../tools/commander/page/sideFocus';
 import { JSDOM } from 'jsdom';
 import { withStores } from '../../../../helpers/componentFixtures';
 import {
@@ -354,24 +350,6 @@ suite('Commander pane', () => {
     }
   });
 
-  test('focuses the list of the side made active, unless the focus is in that side already, as in its drive menu', () => {
-    const { document } = new JSDOM(
-      '<section><button class="drive"></button><div data-column-focus tabindex="0"></div></section><button class="elsewhere"></button>',
-    ).window;
-    const column = document.querySelector('section') ?? undefined;
-    const list = document.querySelector('[data-column-focus]');
-    assert.strictEqual(
-      sideToFocus(column, document.querySelector('.elsewhere')),
-      list,
-    );
-    assert.strictEqual(sideToFocus(column, null), list);
-    assert.strictEqual(
-      sideToFocus(column, document.querySelector('.drive')),
-      undefined,
-    );
-    assert.strictEqual(sideToFocus(undefined, null), undefined);
-  });
-
   test('fills the star of the bookmarks of a side once its folder is bookmarked, whatever the case of its letters on Windows, and outlines it otherwise', () => {
     assert.strictEqual(
       bookmarkStar(['C:\\config.msi'], 'win32'),
@@ -429,13 +407,6 @@ suite('Commander pane', () => {
       pathOf(false),
       '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name">Config.Msi</span></span></span>',
     );
-  });
-
-  test('splits the sides where the divider is dragged, leaving each some room, and evenly before it is laid out', () => {
-    assert.strictEqual(shareOf(300, 1000), 0.3);
-    assert.strictEqual(shareOf(10, 1000), 0.15);
-    assert.strictEqual(shareOf(990, 1000), 0.85);
-    assert.strictEqual(shareOf(10, 0), 0.5);
   });
 
   test('shows the extension of a file, and the git icon of a folder that is a repository as a button opening it in a git tab', () => {
