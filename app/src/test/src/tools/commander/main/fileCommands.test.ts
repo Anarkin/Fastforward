@@ -35,7 +35,7 @@ suite('Commander tool', () => {
     ]);
     assert.strictEqual(tool.folderOf(tab), root);
   });
-  test('acts on the files a page names only in the folder it names, which the side must still show, as Delete right after Backspace trashed a file of the same name in the folder the side went to', async () => {
+  test('acts on the files a page names only in the folder it names, which the side must still show, as Delete right after Backspace trashed a file of the same name in the folder the side went to, and F4 would edit one', async () => {
     const {
       tool,
       page,
@@ -53,6 +53,8 @@ suite('Commander tool', () => {
       madeFolders,
       clipboard,
       dragged,
+      edited,
+      renamed,
     } = commander({
       [root]: [folder('sub'), folder('same'), file('same.txt')],
       [at('sub')]: [folder('same'), file('same.txt')],
@@ -116,6 +118,10 @@ suite('Commander tool', () => {
       move: false,
     });
     await send({ type: 'newFolder', ...named, name: 'new' });
+    await send({ type: 'editFile', ...named, name: 'same.txt' });
+    await send({ type: 'newFile', ...named, name: 'same.txt' });
+    await send({ type: 'newFile', ...named, name: 'new.txt' });
+    await send({ type: 'rename', ...named, name: 'same.txt', to: 'other.txt' });
     await send({ type: 'copyToClipboard', ...named, names: ['same.txt'] });
     clipboard.files = [at('same.txt')];
     await send({ type: 'paste', ...named });
@@ -149,6 +155,8 @@ suite('Commander tool', () => {
     assert.strictEqual(tool.folderOf(tab), root);
     assert.deepStrictEqual(clipboard.files, [at('same.txt')]);
     assert.deepStrictEqual(dragged, []);
+    assert.deepStrictEqual(edited, []);
+    assert.deepStrictEqual(renamed, []);
   });
   test('opens a tab viewing a file the side lists, and nothing for a folder, ..  or a name it doesn’t list', async () => {
     const { tool, page, send, viewed } = commander({

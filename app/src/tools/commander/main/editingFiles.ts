@@ -17,9 +17,14 @@ export type EditingFilesAccess = Pick<
   | 'editorDefaults'
 >;
 
+type EditedCopies = Pick<
+  ArchiveCopies,
+  'copyOf' | 'editedCopies' | 'editedCopySaved'
+>;
+
 export function editingFiles(
   access: EditingFilesAccess,
-  copies: () => ArchiveCopies,
+  copies: () => EditedCopies,
 ): EditingAccess {
   return {
     readFile: (file) => fs.promises.readFile(file),

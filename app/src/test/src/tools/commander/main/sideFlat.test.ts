@@ -138,6 +138,48 @@ suite('Commander tool in flat view', () => {
     assert.deepStrictEqual(page.of('listing').at(-1)?.flat, 1);
   });
 
+  test('reaches the file of the folder asked for among files of one name in two folders, as it opens, views, edits, copies, renames and deletes it', async () => {
+    const listed: Record<string, Listed> = {
+      [root]: [folder('Downloads')],
+      [downloads]: [folder('a'), folder('b')],
+      [inDownloads('a')]: [file('readme.md')],
+      [inDownloads('b')]: [file('readme.md')],
+    };
+    const { send, opened, viewed, edited, transfers, renamed, trashed } =
+      await flatDownloads(listed);
+    const name = `${under('b')}readme.md`;
+    const chosen = inDownloads('b', 'readme.md');
+    const asked = { tab: '1', side: 'right' } as const;
+
+    await send({ type: 'open', ...asked, name });
+    await send({ type: 'view', ...asked, name });
+    await send({ type: 'editFile', ...asked, folder: downloads, name });
+    await send({
+      type: 'transfer',
+      ...asked,
+      names: [name],
+      target: root,
+      move: false,
+    });
+    await send({
+      type: 'rename',
+      ...asked,
+      folder: downloads,
+      name,
+      to: 'notes.md',
+    });
+    await send({ type: 'delete', ...asked, names: [name], permanently: false });
+
+    assert.deepStrictEqual(opened, [chosen]);
+    assert.deepStrictEqual(viewed, [chosen]);
+    assert.deepStrictEqual(edited, [chosen]);
+    assert.deepStrictEqual(plansOf(transfers), [
+      { sources: [chosen], target: root, move: false },
+    ]);
+    assert.deepStrictEqual(renamed, [[chosen, inDownloads('b', 'notes.md')]]);
+    assert.deepStrictEqual(trashed, [chosen]);
+  });
+
   test('opens nothing that is not a file it read', async () => {
     const { send, opened, viewed } = await flatDownloads();
 
