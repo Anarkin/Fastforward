@@ -17,6 +17,7 @@ import {
   viewerThumb,
   select,
   sharedCommanderApp,
+  right,
 } from './commanderAppFixtures';
 
 const count = () => page.locator('.viewer .find-field-count').textContent();
@@ -27,8 +28,97 @@ const firstRowText = () =>
 const nextFrame = () =>
   page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
 
+const placesOf = () =>
+  page.locator('.viewer').evaluate((viewer) => {
+    const box = (selector: string) => {
+      const found = viewer.querySelector(selector);
+      if (found === null) {
+        throw new Error(selector);
+      }
+      return found.getBoundingClientRect();
+    };
+    const header = box('.column-title');
+    const start = box('.column-title .column-start');
+    const actions = box('.column-title .column-actions');
+    const text = box('.path-text');
+    const row = box('.viewer-rows .viewer-row');
+    return {
+      inHeader: viewer.querySelector('.column-title .path-title') !== null,
+      underHeader: text.top >= header.bottom,
+      aboveText: text.bottom <= row.top,
+      fromText: Math.round(text.left - row.left),
+      start: Math.round(start.left - header.left),
+      actions: Math.round(header.right - actions.right),
+    };
+  });
+
 suite('App commander', () => {
   sharedCommanderApp();
+
+  test('views a file in a tab of its own with F3, saved as one, and goes back to the commander with Escape, its row still selected', async () => {
+    await select('notes');
+    await page.keyboard.press('F3');
+    await page.locator('.tabs .tab.active', { hasText: 'notes.txt' }).waitFor();
+    await page.locator('.viewer').waitFor();
+    if (process.platform !== 'linux') {
+      await waitFor(
+        () =>
+          page
+            .locator('.tabs .tab.active img.tab-icon')
+            .evaluate(
+              (image: HTMLImageElement) =>
+                image.complete && image.naturalWidth > 0,
+            ),
+        'the tab to show the icon of the file',
+      );
+    }
+    await waitFor(() => {
+      const state: unknown = JSON.parse(
+        fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
+      );
+      return JSON.stringify(state).includes('"view":true');
+    }, 'the viewing tab to be saved');
+
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    assert.strictEqual(
+      await page
+        .locator('.tabs [role="tab"]', { hasText: 'notes.txt' })
+        .count(),
+      0,
+    );
+    assert.match(
+      (await right().locator('.commander-row.selected').textContent()) ?? '',
+      /^notes/,
+    );
+    await page.keyboard.press('ArrowUp');
+    await waitFor(
+      async () =>
+        !(
+          (await right().locator('.commander-row.selected').textContent()) ?? ''
+        ).startsWith('notes'),
+      'the keys to move the selection again',
+    );
+  });
+
+  test('puts the path of a file viewed on a line of its own under the buttons of its header, starting where the editor starts its path, the empty column of line numbers before its text, the buttons staying at the edges of the header', async () => {
+    await select('notes');
+    await page.keyboard.press('F3');
+    await page.locator('.viewer .viewer-rows .viewer-row').first().waitFor();
+    assert.deepStrictEqual(await placesOf(), {
+      inHeader: false,
+      underHeader: true,
+      aboveText: true,
+      fromText: 8 - 56 - 6,
+      start: 4,
+      actions: 4,
+    });
+
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+  });
 
   test('previews a PDF, searching it on Ctrl+F without leaving the preview, and opens it again where it was left', async () => {
     fs.writeFileSync(

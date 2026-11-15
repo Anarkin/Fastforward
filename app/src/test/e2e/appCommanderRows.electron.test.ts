@@ -10,10 +10,187 @@ import {
   right,
   rowNames,
   sharedCommanderApp,
+  folder,
+  colorOf,
+  hiding,
+  icons,
 } from './commanderAppFixtures';
+import { execFileSync } from 'node:child_process';
+import type { Locator } from 'playwright-core';
+
+const rowOf = (name: string) =>
+  right().locator('.commander-row', { hasText: name });
+
+const markOf = (name: string) =>
+  right()
+    .locator('.commander-row', { hasText: name })
+    .locator('.commander-extension .commander-mark .tool-git');
 
 suite('App commander', () => {
   sharedCommanderApp();
+
+  test('lists the folder it was opened with on the right, the active side, folders first and then files by their colors and by extension, those of no color last, with their sizes', async () => {
+    await waitForFocus(
+      right().locator('.virtual-rows'),
+      'the list of the right side',
+    );
+    assert.deepStrictEqual(await rowNames(), [
+      '..',
+      'src',
+      'notes.txt',
+      'big.bin',
+    ]);
+    assert.strictEqual(
+      await right()
+        .locator('.commander-row', { hasText: 'big' })
+        .locator('.commander-size')
+        .textContent(),
+      '12,288',
+    );
+  });
+
+  test('draws the name of a folder in brackets, the parent folder too, as Total Commander does, and the name of a file without', async () => {
+    const drawn = await right()
+      .locator('.commander-row.commander-line')
+      .evaluateAll((rows) =>
+        rows.map((row) => {
+          const name = row.querySelector('.commander-name');
+          const around = (part: string) => {
+            const content = name ? getComputedStyle(name, part).content : '';
+            return content === 'none' ? '' : content.replaceAll('"', '');
+          };
+          return `${around('::before')}${name?.textContent ?? ''}${around('::after')}`;
+        }),
+      );
+    assert.deepStrictEqual(drawn, ['[..]', '[src]', 'notes', 'big']);
+  });
+
+  test('dims a hidden file in its own color, or the color of the text without one, its icon with it, by the share the theme gives hidden files, and a hidden folder of the path alike', async () => {
+    const share =
+      Number.parseFloat(
+        await page.evaluate(() =>
+          getComputedStyle(document.body).getPropertyValue(
+            '--color-hidden-file',
+          ),
+        ),
+      ) / 100;
+    assert.ok(share > 0.3 && share < 0.8, String(share));
+    const dimmed = async (element: Locator) => {
+      const { before, after } = await hiding(element);
+      assert.ok(
+        after.color
+          .slice(0, 3)
+          .every(
+            (channel, index) =>
+              Math.abs(channel - (before.color[index] ?? 0)) <= 1,
+          ),
+        `${after.color.join()} is not of the color ${before.color.join()}, a canvas reading a color half transparent back to a unit of it`,
+      );
+      assert.ok(
+        Math.abs((after.color[3] ?? 0) / 255 - share) < 0.02,
+        `${after.color.join()} is not ${share} of ${before.color.join()}`,
+      );
+      return { before, after };
+    };
+
+    const colored = await dimmed(rowOf('notes'));
+    const plain = await dimmed(rowOf('big'));
+    assert.notDeepStrictEqual(colored.before.color, plain.before.color);
+    for (const { before, after } of [colored, plain]) {
+      assert.strictEqual(before.icon, 1);
+      assert.ok(Math.abs((after.icon ?? 0) - share) < 0.01, String(after.icon));
+    }
+    await dimmed(right().locator('.path-title .path-part').first());
+  });
+
+  test('counts the size of a folder it marks on Space in the threads that count sizes, showing it in its Size column', async () => {
+    const counted = path.join(opened, 'src', 'counted.bin');
+    fs.writeFileSync(counted, Buffer.alloc(1000));
+    try {
+      const source = right().locator('.commander-row', { hasText: 'src' });
+      await source.click();
+      await page.keyboard.press(' ');
+      await waitFor(
+        async () =>
+          (await source.locator('.commander-size').textContent()) === '1,000',
+        'the size of src',
+      );
+      await source.click();
+      await page.keyboard.press(' ');
+      await waitFor(
+        async () =>
+          !((await source.getAttribute('class')) ?? '').includes('marked'),
+        'src to be unmarked',
+      );
+    } finally {
+      fs.rmSync(counted);
+    }
+  });
+
+  test('draws the system icon of each file, and an outlined folder for folders', async () => {
+    await waitFor(
+      async () =>
+        (await icons()).every(
+          (icon) => !icon.loading && (icon.folder || icon.file || icon.loaded),
+        ),
+      'every row to have its icon, none still loading',
+    );
+    const drawn = await icons();
+    assert.deepStrictEqual(
+      drawn.filter((icon) => icon.folder).map((icon) => icon.name),
+      ['..', 'src'],
+    );
+    if (process.platform !== 'linux') {
+      assert.ok(
+        drawn.filter((icon) => !icon.folder).every((icon) => icon.loaded),
+        JSON.stringify(drawn),
+      );
+    }
+  });
+
+  test('marks a folder that is a repository with the git icon in its Ext column, and no other, opening it in a git tab on a click of the icon', async () => {
+    const made = path.join(folder, 'made-repository');
+    execFileSync('git', ['init', '--quiet', made]);
+    fs.renameSync(made, path.join(opened, 'repo'));
+    await markOf('repo').waitFor();
+    assert.strictEqual(await markOf('src').count(), 0);
+    const repoRow = right().locator('.commander-row', { hasText: 'repo' });
+    const surroundOf = () =>
+      repoRow
+        .locator('.commander-mark')
+        .evaluate((element) => getComputedStyle(element).boxShadow);
+    await page.mouse.move(0, 0);
+    assert.strictEqual(await surroundOf(), 'none');
+    await repoRow.locator('.commander-mark').hover();
+    assert.strictEqual(
+      await colorOf(markOf('repo')),
+      await colorOf(repoRow.locator('.commander-name')),
+    );
+    assert.notStrictEqual(await surroundOf(), 'none');
+
+    const gitTab = page.locator('.tabs .tab.active', { hasText: 'repo' });
+    const backToCommander = async () => {
+      await page.keyboard.press('ControlOrMeta+W');
+      await gitTab.waitFor({ state: 'detached' });
+      await page
+        .locator('.tabs .tab.active', { hasText: 'Commander' })
+        .waitFor();
+    };
+    await markOf('repo').click();
+    await gitTab.locator('.tool-git').waitFor();
+    await backToCommander();
+
+    fs.rmSync(path.join(opened, 'repo'), {
+      recursive: true,
+      force: true,
+      maxRetries: 20,
+      retryDelay: 100,
+    });
+    await waitFor(
+      async () => !(await rowNames()).includes('repo'),
+      'the repository to be gone from the list',
+    );
+  });
 
   test('shows the spaces of a name as they are, two in a row or one first, so names differing only in their spaces look apart', async () => {
     const names = ['spaced one', 'spaced  two', ' spaced first'];

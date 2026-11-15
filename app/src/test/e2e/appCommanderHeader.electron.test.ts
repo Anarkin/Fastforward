@@ -8,6 +8,11 @@ import {
   page,
   right,
   sharedCommanderApp,
+  opened,
+  select,
+  openFolder,
+  pathCut,
+  pathPlaces,
 } from './commanderAppFixtures';
 
 const lines = () =>
@@ -21,6 +26,90 @@ const lines = () =>
 
 suite('App commander', () => {
   sharedCommanderApp();
+
+  test('puts the path of a side on a line of its own under its buttons, starting where the names of its rows start, and a long one running to the end of their dates', async () => {
+    const long = `a folder named at such length that its path is cut ${'x'.repeat(160)}`;
+    fs.mkdirSync(path.join(opened, long));
+    try {
+      const short = await pathPlaces();
+      assert.deepStrictEqual(
+        [
+          short.underButtons,
+          short.aboveHeadings,
+          short.fromNames,
+          short.shortOfDates >= 0,
+        ],
+        [true, true, 0, true],
+        JSON.stringify(short),
+      );
+      await select(long);
+      await page.keyboard.press('Enter');
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) ===
+          path.join(opened, long),
+        'the long folder to open',
+      );
+      const places = await pathPlaces();
+      assert.deepStrictEqual(
+        [
+          places.underButtons,
+          places.aboveHeadings,
+          places.fromNames,
+          places.shortOfDates,
+        ],
+        [true, true, 0, 0],
+        JSON.stringify(places),
+      );
+      await page.keyboard.press('Backspace');
+    } finally {
+      fs.rmSync(path.join(opened, long), { recursive: true, force: true });
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    }
+  });
+
+  test('cuts the folders of a path too long for its header from their start, keeping those nearest the name in view, the separator before the name and the name whole, and an ellipsis of them once the name alone is too long, cut at its end', async () => {
+    const long = `a folder named at such length that its path is cut ${'x'.repeat(160)}`;
+    const folders = [long, 'in', 'end'];
+    const longer = `a name too long for the header alone ${'y'.repeat(160)}`;
+    fs.mkdirSync(path.join(opened, ...folders, longer), { recursive: true });
+    try {
+      for (let depth = 1; depth <= folders.length; depth++) {
+        await openFolder(
+          folders[depth - 1],
+          path.join(opened, ...folders.slice(0, depth)),
+        );
+      }
+      assert.deepStrictEqual(await pathCut(), {
+        startCut: true,
+        startMarked: true,
+        nearestInView: true,
+        separatorInView: true,
+        nameWhole: true,
+        nameInView: true,
+      });
+      await openFolder(longer, path.join(opened, ...folders, longer));
+      assert.deepStrictEqual(await pathCut(), {
+        startCut: true,
+        startMarked: true,
+        nearestInView: false,
+        separatorInView: true,
+        nameWhole: false,
+        nameInView: true,
+      });
+    } finally {
+      fs.rmSync(path.join(opened, long), { recursive: true, force: true });
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    }
+  });
 
   test('shows where columns can be resized once the pointer is on the header, in the focus color on the one under it', async () => {
     const [border, focus] = await page.evaluate(() => {
