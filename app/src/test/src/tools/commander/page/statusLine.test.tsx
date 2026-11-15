@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { Column } from '../../../../../tools/git/page/column';
 import { StatusLine } from '../../../../../tools/commander/page/statusLine';
 
 const page = (html: string) => new JSDOM(html).window.document;
@@ -60,23 +59,6 @@ suite('Status line', () => {
     assert.strictEqual(
       error.querySelector('footer')?.className,
       'column-status error',
-    );
-  });
-
-  test('goes under the body of a git column given one', () => {
-    const document = page(
-      renderToStaticMarkup(
-        <Column title="Files" status={<StatusLine>3 files</StatusLine>}>
-          <div className="body" />
-        </Column>,
-      ),
-    );
-    assert.deepStrictEqual(
-      Array.from(
-        document.querySelector('section.column')?.children ?? [],
-        (child) => child.className,
-      ),
-      ['column-title', 'column-body', 'column-status'],
     );
   });
 });

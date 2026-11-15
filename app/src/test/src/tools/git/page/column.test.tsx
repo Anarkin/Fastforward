@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { Column } from '../../../../../tools/git/page/column';
 import { SearchButton, SearchRow } from '../../../../../lib/page/search';
+import { StatusLine } from '../../../../../tools/commander/page/statusLine';
 import { noop } from '../../../../helpers/fixtures';
 
 const page = (html: string) => new JSDOM(html).window.document;
@@ -64,6 +65,25 @@ suite('Column', () => {
     assert.deepStrictEqual(
       Array.from(header.children, (child) => child.className),
       ['search-row'],
+    );
+  });
+});
+
+suite('Status line', () => {
+  test('goes under the body of a git column given one', () => {
+    const document = page(
+      renderToStaticMarkup(
+        <Column title="Files" status={<StatusLine>3 files</StatusLine>}>
+          <div className="body" />
+        </Column>,
+      ),
+    );
+    assert.deepStrictEqual(
+      Array.from(
+        document.querySelector('section.column')?.children ?? [],
+        (child) => child.className,
+      ),
+      ['column-title', 'column-body', 'column-status'],
     );
   });
 });
