@@ -3,6 +3,7 @@ import type { FindRange } from './find';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
+import { PathName } from '../../../lib/page/pathName';
 import { PreviewIcon } from '../../../lib/page/icons';
 import { SkeletonRows } from './skeleton';
 import { Twisty } from './tree';
@@ -27,6 +28,7 @@ export function HunkDivider() {
 
 export function FileHeader({
   path,
+  root,
   oldPath,
   open,
   whole,
@@ -35,6 +37,7 @@ export function FileHeader({
   onView,
 }: {
   path: string;
+  root?: string | undefined;
   oldPath?: string;
   open: boolean;
   whole: boolean;
@@ -46,7 +49,9 @@ export function FileHeader({
     <div className="file-header" onClick={onClick}>
       {collapsible && <Twisty open={open} />}
       {oldPath === undefined ? (
-        <span className="path">{path}</span>
+        <span className="path">
+          <PathName path={path} file root={root} />
+        </span>
       ) : (
         <span className="path" title={strings.common.fromTo(oldPath, path)}>
           {renamedPath(oldPath, path)}

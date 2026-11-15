@@ -14,7 +14,7 @@ import {
   noFileColors,
   sameGrouping,
   type FileColors,
-} from './fileColors';
+} from '../../../lib/page/fileColors';
 import { flatListed, folderOfSelected, withFlatRows } from './flatPane';
 import {
   duplicatesOf,

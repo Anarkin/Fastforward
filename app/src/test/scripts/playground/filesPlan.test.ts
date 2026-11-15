@@ -10,10 +10,7 @@ import {
   encodingMenu,
   type EncodingChoice,
 } from '../../../tools/commander/page/encodings';
-import {
-  fileColorOf,
-  fileColorsOf,
-} from '../../../tools/commander/page/fileColors';
+import { fileColorOf, fileColorsOf } from '../../../lib/page/fileColors';
 import { previewOf } from '../../../tools/commander/page/previews';
 import {
   maxColoredBytes,
@@ -163,10 +160,6 @@ suite('Playground of files', () => {
             {
               name: path.posix.basename(item.path),
               folder: item.kind === 'folder',
-              link: false,
-              hidden: false,
-              size: 0,
-              modified: 0,
               ...(executable && { executable: true }),
             },
             numbered,

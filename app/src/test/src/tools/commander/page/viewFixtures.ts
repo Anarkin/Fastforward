@@ -5,7 +5,7 @@ import {
   type ViewAction,
 } from '../../../../../tools/commander/page/view';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
-import type { FileColor } from '../../../../../tools/commander/shared/fileColors';
+import type { FileColor } from '../../../../../lib/shared/fileColors';
 
 export const entry = (name: string, extra: Partial<Entry> = {}): Entry => ({
   name,

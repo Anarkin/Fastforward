@@ -11,6 +11,11 @@ import type { QuitGuard } from './quitGuard';
 import type { Updates } from './updates';
 import { tearsOffTabs } from './tabDrag';
 import {
+  fileSystemFor,
+  type LocalFileSystem,
+} from '../tools/commander/main/fileSystem';
+import { partLooksOf } from '../tools/commander/main/partLooks';
+import {
   commandFiles,
   commandState,
   installCommand,
@@ -47,6 +52,7 @@ export function shellHostOf({
   commandPlace,
   windows,
 }: ShellHostDeps): ShellHost {
+  let looking: Promise<LocalFileSystem> | undefined;
   return {
     userSettingsFile: async () => {
       if (!fs.existsSync(userSettingsFile)) {
@@ -102,5 +108,17 @@ export function shellHostOf({
     showWindow: (id) => windows.show(id),
     tearsOff: () => tearsOffTabs(process.platform, process.env),
     drag: (window, event) => windows.dragged(window, event),
+    partLooks: async (paths) => {
+      looking ??= fileSystemFor(process.platform);
+      const files = await looking;
+      return partLooksOf(
+        paths,
+        {
+          hidden: (file) => files.hidden(file),
+          stat: (file) => fs.promises.stat(file).catch(() => undefined),
+        },
+        process.platform,
+      );
+    },
   };
 }

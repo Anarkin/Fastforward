@@ -9,7 +9,7 @@ import { CloseIcon, ToolIcon } from '../../lib/page/icons';
 import { useModalDialog } from '../../lib/page/modalDialog';
 import { useDialogDrag } from '../../lib/page/dialogDrag';
 import { useShell, useShellActions } from './store';
-import { Name } from '../../lib/page/name';
+import { NamedPath } from '../../lib/page/name';
 
 function moveBetweenTools(event: React.KeyboardEvent<HTMLElement>): void {
   const move = keyPressed(keymap.menuItem, event);
@@ -80,7 +80,7 @@ export function OpenWithPopup() {
           <div className="open-with-folders">
             {choice.folders.map((folder) => (
               <div key={folder}>
-                <Name>{folder}</Name>
+                <NamedPath path={folder} />
               </div>
             ))}
           </div>

@@ -11,7 +11,7 @@ import type {
   FromFlatWorker,
   ToFlatWorker,
 } from '../../../../../tools/commander/page/flatMessages';
-import { noFileColors } from '../../../../../tools/commander/page/fileColors';
+import { noFileColors } from '../../../../../lib/page/fileColors';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 
 const file = (name: string, extra: Partial<Entry> = {}): Entry => ({

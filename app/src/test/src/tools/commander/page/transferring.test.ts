@@ -10,7 +10,7 @@ suite('Commander transferring into an archive', () => {
         title: 'Copy',
         lines: [
           { label: 'Copy', text: '3 items' },
-          { label: 'To', name: '/x/a.zip/docs' },
+          { label: 'To', name: '/x/a.zip/docs', path: 'folder' },
         ],
         note: '2 of them are there already.',
         confirm: 'Replace',
@@ -29,7 +29,7 @@ suite('Commander transferring', () => {
       title: 'Copy',
       lines: [
         { label: 'Copy', name: 'a.txt' },
-        { label: 'To', name: 'D:\\photos' },
+        { label: 'To', name: 'D:\\photos', path: 'folder' },
       ],
       confirm: 'Copy',
     });
@@ -37,7 +37,7 @@ suite('Commander transferring', () => {
       title: 'Move',
       lines: [
         { label: 'Move', text: '3 items' },
-        { label: 'To', name: '/tmp' },
+        { label: 'To', name: '/tmp', path: 'folder' },
       ],
       confirm: 'Move',
     });

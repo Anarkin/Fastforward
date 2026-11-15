@@ -1,4 +1,6 @@
 import type { Sentence } from '../../lib/shared/sentences';
+import type { FileColor } from '../../lib/shared/fileColors';
+import type { PathLooks } from '../../lib/shared/partLooks';
 import type { ImageView, TextView } from './views';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
@@ -97,6 +99,7 @@ export type ToHost =
   | { readonly type: 'openWith'; readonly tool: ToolId | undefined }
   | { readonly type: 'openIn' }
   | { readonly type: 'copyText'; readonly text: string }
+  | { readonly type: 'partLooks'; readonly paths: readonly string[] }
   | { readonly type: 'openSettings' }
   | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'checkForUpdates' }
@@ -120,6 +123,8 @@ export type ToWebview =
   | { readonly type: 'tabVisit'; readonly visit?: TabVisit }
   | { readonly type: 'tearsOff'; readonly allowed: boolean }
   | { readonly type: 'dateFormat'; readonly format: string }
+  | { readonly type: 'fileColors'; readonly groups: readonly FileColor[] }
+  | { readonly type: 'partLooks'; readonly looks: readonly PathLooks[] }
   | {
       readonly type: 'scrolling';
       readonly wheelRows: number;

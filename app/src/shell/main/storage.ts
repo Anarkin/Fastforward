@@ -1,4 +1,5 @@
 import { isObject } from '../../lib/main/json';
+import type { FileColor } from '../../lib/shared/fileColors';
 import type { Settings } from './settings';
 import type { UserSettings } from './userSettings';
 import type { ImageView, TextView } from '../shared/views';
@@ -119,6 +120,10 @@ export class Storage {
 
   async setCommandOffered(): Promise<void> {
     await this.state.update(commandOfferedKey, true);
+  }
+
+  get fileColors(): readonly FileColor[] {
+    return this.settings.tools.commander.fileColors;
   }
 
   get dateFormat(): string {

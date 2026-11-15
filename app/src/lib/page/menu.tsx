@@ -6,7 +6,7 @@ import type { ContextMenuItem } from './contextMenuItem';
 import { useDismiss } from './dismiss';
 import { MenuItems } from './menuItems';
 import { DropdownIcon, MoreIcon } from './icons';
-import { Name } from './name';
+import { NamedPath } from './name';
 import { keyPressed } from './shortcuts';
 import { filteredItems } from './menuFilter';
 import { searchFilter } from '../shared/filter';
@@ -44,7 +44,7 @@ export function MenuButton({
   icon = <MoreIcon />,
   arrow = false,
   label,
-  named = false,
+  path = false,
   trigger,
   filter,
   onChosen,
@@ -56,7 +56,7 @@ export function MenuButton({
   icon?: React.ReactNode;
   arrow?: boolean;
   label?: string;
-  named?: boolean;
+  path?: boolean;
   trigger?: React.Ref<HTMLButtonElement>;
   filter?: string;
   onChosen?: () => void;
@@ -92,7 +92,7 @@ export function MenuButton({
           icon
         ) : (
           <span className="menu-button-label">
-            {named ? <Name>{label}</Name> : label}
+            {path ? <NamedPath path={label} /> : label}
           </span>
         )}
         {(label !== undefined || arrow) && <DropdownIcon />}

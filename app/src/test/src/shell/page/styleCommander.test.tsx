@@ -388,7 +388,7 @@ suite('Style', () => {
       <div className="commander">
         <div className="commander-path commander-line">
           <span className="commander-icon" />
-          <PathTitle path="C:/notes.txt" hidden={[]} />
+          <PathTitle path="C:/notes.txt" looks={[]} />
         </div>
       </div>,
     );
@@ -410,7 +410,7 @@ suite('Style', () => {
   });
 
   test('draws the path of a commander title in the font of its rows, each part in the color its own row has, the folders giving way to an ellipsis at their start first, and the name only once it alone is too long, leaving the folders room for their ellipsis', () => {
-    const title = rendered(<PathTitle path="C:/notes.txt" hidden={[]} />);
+    const title = rendered(<PathTitle path="C:/notes.txt" looks={[]} />);
     looks(title, {
       display: 'flex',
       'font-family': 'var(--monospace-font-family)',
@@ -434,7 +434,7 @@ suite('Style', () => {
       'max-width': 'calc(100% - 2 * max(1ch, var(--commander-advance)))',
     });
     looks(
-      withClass(rendered(<PathTitle path="C:/" hidden={[]} />), 'path-end'),
+      withClass(rendered(<PathTitle path="C:/" looks={[]} />), 'path-end'),
       { 'max-width': '100%' },
     );
     looks(withClass(title, 'path-name'), {
@@ -457,9 +457,15 @@ suite('Style', () => {
         ),
       ],
       [
-        [foreground, undefined, undefined, undefined],
-        [foreground, undefined, muted, 'var(--file-color)'],
-        [foreground, undefined, undefined, muted],
+        [foreground, undefined, undefined, undefined, undefined],
+        [
+          foreground,
+          undefined,
+          muted,
+          'var(--file-color)',
+          'var(--file-color)',
+        ],
+        [foreground, undefined, undefined, muted, muted],
       ],
     );
   });

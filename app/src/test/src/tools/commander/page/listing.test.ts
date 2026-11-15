@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { nameParts, rowsOf } from '../../../../../tools/commander/page/listing';
-import { fileColorsOf } from '../../../../../tools/commander/page/fileColors';
+import { fileColorsOf } from '../../../../../lib/page/fileColors';
 import type { Sort } from '../../../../../tools/commander/shared/sorts';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import { defaultSort, entry, folder } from './listingFixtures';

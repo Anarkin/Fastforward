@@ -1,4 +1,5 @@
 import type { Sentence } from '../../lib/shared/sentences';
+import type { PathLooks } from '../../lib/shared/partLooks';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { AboutInfo, UpdateStatus } from '../../shell/shared/protocol';
@@ -108,6 +109,20 @@ export class FakeHost implements ShellHost, GitHost {
 
   drag(window: string, event: DragEvent): void {
     this.dragged.push([window, event]);
+  }
+
+  readonly looked: (readonly string[])[] = [];
+
+  partLooks(paths: readonly string[]): Promise<readonly PathLooks[]> {
+    this.looked.push(paths);
+    return Promise.resolve(
+      paths.map((looked) => ({
+        path: looked,
+        parts: [
+          { hidden: looked.includes('.hidden'), file: true, executable: false },
+        ],
+      })),
+    );
   }
 
   updateStatus(): UpdateStatus {

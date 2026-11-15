@@ -60,7 +60,7 @@ suite('Menu button', () => {
         scrolling={defaultScrolling}
         title="Drive"
         label="C:"
-        named
+        path
         items={[]}
       />,
     );

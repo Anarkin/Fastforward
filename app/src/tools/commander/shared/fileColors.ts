@@ -1,22 +1,10 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
-
-export const languagesGroup = 'languages';
-
-export const executablesGroup = 'executables';
-
-export const groupStandIns = [languagesGroup, executablesGroup] as const;
-
-type GroupStandIn = (typeof groupStandIns)[number];
-
-export interface FileColor {
-  readonly extensions: readonly string[] | GroupStandIn;
-  readonly colors: { readonly light: string; readonly dark: string };
-}
-
-export function extensionKey(extension: string): string {
-  return extension.replace(/^\./, '').toLowerCase();
-}
+import {
+  extensionKey,
+  type FileColor,
+  type GroupStandIn,
+} from '../../../lib/shared/fileColors';
 
 const standInTwice: Readonly<
   Record<GroupStandIn, (first: number, again: number) => Sentence>

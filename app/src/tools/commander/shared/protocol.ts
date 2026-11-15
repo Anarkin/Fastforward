@@ -3,7 +3,7 @@ import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { PdfPlace } from './pdf';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths } from './columnWidths';
-import type { FileColor } from './fileColors';
+import type { FileColor } from '../../../lib/shared/fileColors';
 import type { Sort, Sorts } from './sorts';
 import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';
 import type { ClashAnswer, TransferView } from './transfers';

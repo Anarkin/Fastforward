@@ -18,7 +18,7 @@ export function folderMenuItems(
     ...(folders.length > 0 ? [{ separator: true } as const] : []),
     ...folders.map((folder) => ({
       label: folder,
-      name: true,
+      path: true,
       title: folder,
       onClick: () => onOpen(folder),
       onRemove: () => onForget(folder),

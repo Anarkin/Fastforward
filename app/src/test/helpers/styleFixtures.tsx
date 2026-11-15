@@ -1,4 +1,7 @@
 import type { ColumnName } from '../../tools/git/page/activeColumn';
+import { PathLooksContext } from '../../lib/page/pathLooks';
+import { fileColorsOf } from '../../lib/page/fileColors';
+import { fileLooks } from '../../tools/commander/page/headerLooks';
 import { Column } from '../../tools/git/page/column';
 import { ContextMenu } from '../../shell/page/contextMenu';
 import { tabsStore } from './componentFixtures';
@@ -165,5 +168,22 @@ export function PathTitleShown({
   readonly hidden: readonly boolean[];
   readonly color?: string;
 }) {
-  return <PathTitle path="C:/cache/notes.txt" hidden={hidden} color={color} />;
+  const colors = fileColorsOf(
+    color === undefined
+      ? []
+      : [{ extensions: ['txt'], colors: { light: color, dark: color } }],
+  );
+  return (
+    <PathLooksContext
+      value={{
+        subscribe: () => () => {},
+        fileColors: () => colors,
+        known: () => new Map(),
+        ask: () => {},
+        know: () => {},
+      }}
+    >
+      <PathTitle path="C:/cache/notes.txt" file looks={fileLooks(hidden)} />
+    </PathLooksContext>
+  );
 }

@@ -15,6 +15,7 @@ import {
 import { received } from './shellReceived';
 import { withPopup } from './popups';
 import { nextMenu } from './openedMenu';
+import { lookAsker } from './lookAsker';
 
 export function createShellStore(
   post: (message: ToHost) => void,
@@ -27,6 +28,7 @@ export function createShellStore(
 ): StoreApi<ShellState> {
   let noticesShown = 0;
   const { channels, deliver } = toolChannels(post, dropFiles);
+  const askLooks = lookAsker((paths) => post({ type: 'partLooks', paths }));
   return createStore<ShellState>()((set, get) => {
     return {
       ...shellDefaults,
@@ -162,6 +164,7 @@ export function createShellStore(
         post({ type: 'setImageView', view });
       },
       copyText: (text) => post({ type: 'copyText', text }),
+      askLooks,
       ready: () => post({ type: 'ready' }),
       log: (message) => post({ type: 'log', level: 'info', message }),
       selectTab: (id) => post({ type: 'selectTab', tab: id }),

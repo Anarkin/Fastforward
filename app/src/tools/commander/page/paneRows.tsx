@@ -12,7 +12,7 @@ import { shownRowsOf } from './shownRows';
 import { useCommander, useCommanderActions } from './store';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
-import { fileColorOf } from './fileColors';
+import { fileColorOf } from '../../../lib/page/fileColors';
 import { menuOfClick } from './paneKeys';
 import { tileWidthOf } from './tiles';
 import {

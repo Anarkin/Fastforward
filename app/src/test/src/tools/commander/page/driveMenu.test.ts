@@ -15,7 +15,7 @@ suite('Commander drive menu', () => {
       items.map((item) =>
         'separator' in item
           ? '---'
-          : [item.label, item.name, item.accessKey, item.checked],
+          : [item.label, item.path, item.accessKey, item.checked],
       ),
       [
         ['C:\\', true, 'C', false],

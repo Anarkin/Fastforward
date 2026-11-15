@@ -10,7 +10,7 @@ import {
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { readBudgetBytes } from '../../../../../tools/commander/main/textRows';
 import { sampledVersion } from '../../../../../tools/commander/main/fileVersions';
-import { pathParts } from '../../../../../tools/commander/shared/paths';
+import { pathParts } from '../../../../../lib/shared/pathParts';
 import { waitFor } from '../../../../helpers/fixtures';
 import { commander, forged } from './commanderFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';

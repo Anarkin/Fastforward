@@ -109,11 +109,11 @@ suite('Commander pane', () => {
   test('dims each hidden folder of its path, as its row is, and no other', () => {
     assert.strictEqual(
       pathOf(false, [false, true]),
-      '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name hidden">Config.Msi</span></span></span>',
+      '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name path-part hidden">Config.Msi</span></span></span>',
     );
     assert.strictEqual(
       pathOf(false),
-      '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name">Config.Msi</span></span></span>',
+      '<span class="path-text"><span class="path-folder"><span dir="ltr"><span class="path-part">C:\\</span></span></span><span class="path-end"><span class="path-name path-part">Config.Msi</span></span></span>',
     );
   });
 });

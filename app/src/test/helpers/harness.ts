@@ -245,6 +245,7 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   openWith: true,
   openIn: true,
   copyText: true,
+  partLooks: true,
   openSettings: true,
   openDefaultSettings: true,
   checkForUpdates: true,

@@ -24,7 +24,7 @@ suite('Menu items', () => {
             { label: 'UTF-8' },
             { label: 'Auto: UTF-8, utf' },
             { label: 'Latin', keywords: 'utf' },
-            { label: 'C:\\utf-data', name: true },
+            { label: 'C:\\utf-data', path: true },
             {
               label: 'UTF-8, from tools.editor.charset in the settings',
               sentence: sentence`UTF-8, from ${named('tools.editor.charset')} in the settings`,
@@ -55,7 +55,7 @@ suite('Menu items', () => {
       <MenuItems
         scrolling={defaultScrolling}
         items={[
-          { label: 'C:\\', name: true },
+          { label: 'C:\\', path: true },
           { label: 'Open', onClick: () => undefined },
         ]}
         onClose={() => undefined}

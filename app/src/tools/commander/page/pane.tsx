@@ -27,7 +27,7 @@ import { useTiles } from './paneTiles';
 import { PaneLine, PaneTile } from './paneRows';
 import { PaneStatus } from './paneStatus';
 import { goesOn } from './sideStatus';
-import { archivePart } from './archivePart';
+import { folderLooks } from './headerLooks';
 import { PaneTitle } from './paneHeader';
 declare module 'react' {
   interface CSSProperties {
@@ -55,7 +55,6 @@ export function Pane({
     state.readingSides.has(readingKey(state.view.tab, side)),
   );
   const layout = useCommander((state) => state.view.layouts[side]);
-  const fileColors = useCommander((state) => state.view.fileColors);
   const columns = useCommander(shownColumns);
   const actions = useCommanderActions();
   const onSelect = (key: string) => actions.select(side, key);
@@ -306,9 +305,7 @@ export function Pane({
         </span>
         <PathTitle
           path={pane?.folder ?? ''}
-          hidden={pane?.hidden ?? []}
-          {...(pane?.archive !== undefined &&
-            archivePart(pane.archive, fileColors))}
+          looks={folderLooks(pane?.hidden ?? [], pane?.archive)}
           flat={pane?.flat !== undefined}
           duplicates={pane?.duplicates !== undefined}
         />

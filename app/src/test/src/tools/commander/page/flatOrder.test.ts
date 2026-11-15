@@ -5,10 +5,7 @@ import {
   FlatOrder,
   type FlatChoices,
 } from '../../../../../tools/commander/page/flatOrder';
-import {
-  fileColorsOf,
-  noFileColors,
-} from '../../../../../tools/commander/page/fileColors';
+import { fileColorsOf, noFileColors } from '../../../../../lib/page/fileColors';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 
 const file = (name: string, extra: Partial<Entry> = {}): Entry => ({

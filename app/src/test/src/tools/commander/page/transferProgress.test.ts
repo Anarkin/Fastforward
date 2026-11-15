@@ -84,11 +84,11 @@ suite('Commander transferring', () => {
     };
     assert.deepStrictEqual(runningLines(copy), [
       { label: 'Copying', name: 'a.txt' },
-      { label: 'To', name: 'D:\\photos' },
+      { label: 'To', name: 'D:\\photos', path: 'folder' },
     ]);
     assert.deepStrictEqual(runningLines({ ...copy, move: true, items: 2 }), [
       { label: 'Moving', text: '2 items' },
-      { label: 'To', name: 'D:\\photos' },
+      { label: 'To', name: 'D:\\photos', path: 'folder' },
     ]);
     const archive = { ...copy, items: 3, target: '/x/a.zip' };
     assert.deepStrictEqual(
@@ -107,27 +107,27 @@ suite('Commander transferring', () => {
       [
         [
           { label: 'Packing', text: '3 items' },
-          { label: 'Into', name: '/x/a.zip' },
+          { label: 'Into', name: '/x/a.zip', path: 'file' },
         ],
         [
           { label: 'Deleting', text: '3 items' },
-          { label: 'From', name: '/x/a.zip' },
+          { label: 'From', name: '/x/a.zip', path: 'file' },
         ],
         [
           { label: 'Renaming', text: '3 items' },
-          { label: 'In', name: '/x/a.zip' },
+          { label: 'In', name: '/x/a.zip', path: 'file' },
         ],
         [
           { label: 'Making', text: '3 items' },
-          { label: 'In', name: '/x/a.zip' },
+          { label: 'In', name: '/x/a.zip', path: 'file' },
         ],
         [
           { label: 'Copying', text: '3 items' },
-          { label: 'To', name: '/x/a.zip' },
+          { label: 'To', name: '/x/a.zip', path: 'folder' },
         ],
         [
           { label: 'Moving', text: '3 items' },
-          { label: 'To', name: '/x/a.zip' },
+          { label: 'To', name: '/x/a.zip', path: 'folder' },
         ],
         [{ label: 'Testing', text: '3 items' }],
         [{ label: 'Putting back', text: '3 items' }],

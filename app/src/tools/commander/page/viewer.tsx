@@ -28,9 +28,8 @@ import {
 import { LanguageButton } from '../../../lib/page/languageChoice';
 import { languageOf } from '../../../lib/page/languages';
 import { startColorer } from '../../../lib/page/syntax';
-import { colorOfFileNamed } from './fileColors';
-import { nameOf } from './pathNames';
 import { PathTitle } from './pathTitle';
+import { fileLooks } from './headerLooks';
 import { useCommander, useCommanderActions } from './store';
 import { viewerChoices } from './view';
 import { viewerKey } from './viewerKeys';
@@ -52,9 +51,6 @@ const modes: readonly {
 export function Viewer() {
   useEffect(startColorer, []);
   const file = useCommander((state) => state.view.viewing) ?? '';
-  const fileColor = useCommander((state) =>
-    colorOfFileNamed(nameOf(state.view.viewing ?? ''), state.view.fileColors),
-  );
   const viewing = useCommander(({ viewed, view }) =>
     viewed?.tab === view.tab ? viewed : undefined,
   );
@@ -290,11 +286,7 @@ export function Viewer() {
         </header>
       )}
       <div className="viewer-path">
-        <PathTitle
-          path={file}
-          hidden={viewing?.hidden ?? []}
-          color={fileColor}
-        />
+        <PathTitle path={file} file looks={fileLooks(viewing?.hidden ?? [])} />
       </div>
       {viewing === undefined ? (
         <div className="column-body viewer-body" />

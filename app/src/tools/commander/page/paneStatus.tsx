@@ -3,6 +3,7 @@ import { type Row } from './listing';
 import { readingKey } from './commanderReceived';
 import { useCommander } from './store';
 import { StatusLine } from '../../../lib/page/statusLine';
+import { PathName } from '../../../lib/page/pathName';
 import { useShownAfter } from '../../../lib/page/shownAfter';
 import { selectedPathOf, goesOn } from './sideStatus';
 import { strings } from '../../../lib/shared/strings';
@@ -30,6 +31,8 @@ export function PaneStatus({
     );
   }
   return path === undefined ? null : (
-    <StatusLine font="monospace">{path}</StatusLine>
+    <StatusLine font="monospace">
+      <PathName path={path} file />
+    </StatusLine>
   );
 }

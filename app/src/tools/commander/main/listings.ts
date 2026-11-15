@@ -6,7 +6,7 @@ import { SavedSides } from './savedSides';
 import { type CommanderToHost, type Entry } from '../shared/protocol';
 import { type Side } from '../shared/sides';
 import type { LocalFileSystem } from './fileSystem';
-import { pathParts } from '../shared/paths';
+import { pathParts } from '../../../lib/shared/pathParts';
 import type { ElevatedFileSystem } from './elevated';
 import { codeOf, reasonOf } from './reasons';
 import { type Pane, Sides, type Listing } from './sides';

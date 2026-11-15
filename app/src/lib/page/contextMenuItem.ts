@@ -6,7 +6,7 @@ export type ContextMenuItem =
   | {
       readonly label: string;
       readonly sentence?: Sentence;
-      readonly name?: boolean;
+      readonly path?: boolean;
       readonly icon?: MenuIcon;
       readonly title?: string;
       readonly onClick?: () => void;

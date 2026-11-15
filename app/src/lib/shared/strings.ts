@@ -5,6 +5,8 @@ import {
   sentence,
   type Sentence,
   type Value,
+  namedFile,
+  namedFolder,
 } from './sentences';
 
 export const brand = 'Fastforward';
@@ -97,7 +99,7 @@ export const strings = {
     installGit: (needed: string) =>
       `Install git ${needed} or later, make sure it is on the PATH, then try again.`,
     gitTooOld: (version: string, path: string, needed: string) =>
-      sentence`Git ${version} at ${named(path)} is too old. Install git ${needed} or later, then try again.`,
+      sentence`Git ${version} at ${namedFile(path)} is too old. Install git ${needed} or later, then try again.`,
     openRepositories: 'Open Repositories',
     initRepository: 'Init a Repository',
     init: 'Init',
@@ -186,8 +188,8 @@ export const strings = {
     initInside:
       'This folder is inside another repository. Are you sure you want to init a repository in it?',
     initInsideLines: (folder: string, repository: string) => [
-      labeled('Folder', named(folder)),
-      labeled('Repository', named(repository)),
+      labeled('Folder', namedFolder(folder)),
+      labeled('Repository', namedFolder(repository)),
     ],
     init: 'Init',
     saveTitle: 'Unsaved Changes',
@@ -572,11 +574,11 @@ export const strings = {
     linesCountedLeavingOut: (added: number, removed: number, left: number) =>
       `+${added.toLocaleString()} −${removed.toLocaleString()}, ${left === 1 ? '1 file' : `${left.toLocaleString()} files`} not counted`,
     viewMissing: (file: string) =>
-      sentence`${named(file)} isn't there to view.`,
+      sentence`${namedFile(file)} isn't there to view.`,
     viewTooLarge: (file: string) =>
-      sentence`${named(file)} is too large to view.`,
+      sentence`${namedFile(file)} is too large to view.`,
     couldNotView: (file: string, reason: Sentence) =>
-      sentence`Couldn't view ${named(file)}. ${reason}`,
+      sentence`Couldn't view ${namedFile(file)}. ${reason}`,
     showEntireFile: 'Show the Entire File',
     showWhitespaceChanges: 'Show Whitespace Changes',
     layout: 'Layout',
@@ -599,7 +601,7 @@ export const strings = {
     modeChanged: (from: string, to: string) =>
       `Mode changed from ${from} to ${to}`,
     symbolicLink: (target: string) =>
-      sentence`Symbolic link to ${named(target)}`,
+      sentence`Symbolic link to ${namedFolder(target)}`,
     imageDetails: (width: number, height: number, bytes: number) =>
       `${width} × ${height} · ${fileSize(bytes)}`,
     imageTooLarge: (megabytes: number) =>
@@ -621,11 +623,11 @@ export const strings = {
     folder: 'Folder',
     name: 'Name',
     chooseFolder: 'Choose the folder to clone into',
-    into: (target: string) => sentence`Clones into ${named(target)}`,
+    into: (target: string) => sentence`Clones into ${namedFolder(target)}`,
     clone: 'Clone',
     stop: 'Stop',
     cloning: (url: string) => sentence`Cloning ${named(url)}`,
-    intoTarget: (target: string) => sentence`into ${named(target)}`,
+    intoTarget: (target: string) => sentence`into ${namedFolder(target)}`,
     connecting: 'Connecting',
     percent: (percent: number) => `${percent}%`,
     noUrl: 'Paste the URL of the repository to clone',
@@ -636,10 +638,11 @@ export const strings = {
     badName: (name: string) =>
       sentence`${named(name)} can't be the name of a folder`,
     notFullPath: (folder: string) =>
-      sentence`${named(folder)} is not a full path`,
-    noFolder: (folder: string) => sentence`${named(folder)} is not a folder`,
+      sentence`${namedFolder(folder)} is not a full path`,
+    noFolder: (folder: string) =>
+      sentence`${namedFolder(folder)} is not a folder`,
     taken: (target: string) =>
-      sentence`${named(target)} already exists and isn't an empty folder`,
+      sentence`${namedFolder(target)} already exists and isn't an empty folder`,
   },
   terminal: {
     newTab: 'New',
@@ -661,7 +664,7 @@ export const strings = {
     passwordTitle: 'Password',
     passwordAsked: 'The archive is encrypted. Type its password.',
     passwordWrong: 'The password is wrong. Type it again.',
-    archiveLines: (archive: string) => [labeled('Archive', named(archive))],
+    archiveLines: (archive: string) => [labeled('Archive', namedFile(archive))],
     passwordLabel: 'Password',
     passwordOpen: 'Open',
     noPassword: 'No password is typed.',
@@ -707,15 +710,15 @@ export const strings = {
     moveTitle: 'Move',
     transferLines: (move: boolean, what: Value, target: string) => [
       labeled(move ? 'Move' : 'Copy', what),
-      labeled('To', named(target)),
+      labeled('To', namedFolder(target)),
     ],
     copying: (what: Value, target: string) => [
       labeled('Copying', what),
-      labeled('To', named(target)),
+      labeled('To', namedFolder(target)),
     ],
     moving: (what: Value, target: string) => [
       labeled('Moving', what),
-      labeled('To', named(target)),
+      labeled('To', namedFolder(target)),
     ],
     counting: 'Counting the files…',
     transferredFiles: (files: number, total: number) =>
@@ -744,9 +747,9 @@ export const strings = {
     keepBoth: 'Keep Both',
     forTheRest: 'Do the same for the rest',
     copied: (what: Value | string, target: string) =>
-      sentence`Copied ${what} to ${named(target)}`,
+      sentence`Copied ${what} to ${namedFolder(target)}`,
     moved: (what: Value | string, target: string) =>
-      sentence`Moved ${what} to ${named(target)}`,
+      sentence`Moved ${what} to ${namedFolder(target)}`,
     copyFailed: (name: string, reason: Sentence) =>
       sentence`${named(name)} could not be copied: ${reason}`,
     moveFailed: (name: string, reason: Sentence) =>
@@ -756,18 +759,18 @@ export const strings = {
     moveFailedMany: (count: number, name: string, reason: Sentence) =>
       sentence`${String(count)} items could not be moved, among them ${named(name)}: ${reason}`,
     alreadyIn: (target: string) =>
-      sentence`The items are in ${named(target)} already.`,
+      sentence`The items are in ${namedFolder(target)} already.`,
     nothingToPaste: 'The clipboard holds no files to paste.',
     dropCopy: 'Copy Here',
     dropMove: 'Move Here',
     dropCopyTitle: (what: Value, target: string) =>
-      sentence`Copy ${what} to ${named(target)}`,
+      sentence`Copy ${what} to ${namedFolder(target)}`,
     dropMoveTitle: (what: Value, target: string) =>
-      sentence`Move ${what} to ${named(target)}`,
+      sentence`Move ${what} to ${namedFolder(target)}`,
     newFolderTitle: 'New Folder',
     newFileTitle: 'New File',
     editNewFile: 'Edit',
-    newFolderLines: (folder: string) => [labeled('In', named(folder))],
+    newFolderLines: (folder: string) => [labeled('In', namedFolder(folder))],
     newFolderName: 'Name',
     makeFolder: 'Make',
     noName: 'Type the name of the folder.',
@@ -852,7 +855,7 @@ export const strings = {
     archiveNotWhole:
       'Type the whole path of the archive, from the root of its drive.',
     archiveThereKept: (archive: string) =>
-      sentence`${named(archive)} is there already, so nothing was packed over it.`,
+      sentence`${namedFile(archive)} is there already, so nothing was packed over it.`,
     archiveThere:
       'An archive of that name is there already; packing replaces it.',
     packConfirm: 'Pack',
@@ -862,10 +865,10 @@ export const strings = {
     volumeDvd: '4480 MB, a DVD',
     packingInto: (what: Value, archive: string) => [
       labeled('Packing', what),
-      labeled('Into', named(archive)),
+      labeled('Into', namedFile(archive)),
     ],
     packed: (what: Value | string, archive: string) =>
-      sentence`Packed ${what} into ${named(archive)}`,
+      sentence`Packed ${what} into ${namedFile(archive)}`,
     packFailed: (name: string, reason: Sentence) =>
       sentence`${named(name)} could not be packed: ${reason}`,
     warnedMore: (count: number) => `And ${count.toLocaleString()} more.`,
@@ -873,34 +876,34 @@ export const strings = {
       sentence`${named(name)} was packed without some of the files: ${reason}`,
     deletingFrom: (what: Value, archive: string) => [
       labeled('Deleting', what),
-      labeled('From', named(archive)),
+      labeled('From', namedFile(archive)),
     ],
     deletedFrom: (what: Value | string, archive: string) =>
-      sentence`Deleted ${what} from ${named(archive)}`,
+      sentence`Deleted ${what} from ${namedFile(archive)}`,
     deleteFromFailed: (name: string, reason: Sentence) =>
       sentence`Nothing could be deleted from ${named(name)}: ${reason}`,
     deletingStopped: (archive: string) =>
-      sentence`Deleting from ${named(archive)} stopped unexpectedly.`,
+      sentence`Deleting from ${namedFile(archive)} stopped unexpectedly.`,
     renamingIn: (what: Value, archive: string) => [
       labeled('Renaming', what),
-      labeled('In', named(archive)),
+      labeled('In', namedFile(archive)),
     ],
     renamedIn: (what: Value | string, archive: string) =>
-      sentence`Renamed ${what} in ${named(archive)}`,
+      sentence`Renamed ${what} in ${namedFile(archive)}`,
     renameInFailed: (name: string, reason: Sentence) =>
       sentence`Nothing could be renamed in ${named(name)}: ${reason}`,
     renamingStopped: (archive: string) =>
-      sentence`Renaming in ${named(archive)} stopped unexpectedly.`,
+      sentence`Renaming in ${namedFile(archive)} stopped unexpectedly.`,
     makingFolderIn: (what: Value, archive: string) => [
       labeled('Making', what),
-      labeled('In', named(archive)),
+      labeled('In', namedFile(archive)),
     ],
     madeFolderIn: (what: Value | string, archive: string) =>
-      sentence`Made the folder ${what} in ${named(archive)}`,
+      sentence`Made the folder ${what} in ${namedFile(archive)}`,
     folderInFailed: (name: string, reason: Sentence) =>
       sentence`No folder could be made in ${named(name)}: ${reason}`,
     makingFolderStopped: (archive: string) =>
-      sentence`Making a folder in ${named(archive)} stopped unexpectedly.`,
+      sentence`Making a folder in ${namedFile(archive)} stopped unexpectedly.`,
     copyInFailed: (name: string, reason: Sentence) =>
       sentence`Nothing could be copied into ${named(name)}: ${reason}`,
     moveInFailed: (name: string, reason: Sentence) =>
@@ -923,17 +926,17 @@ export const strings = {
       'A file was changed since it was taken out of its archive. Put it back into the archive?',
     updateLines: (name: string, archive: string) => [
       labeled('File', named(name)),
-      labeled('Archive', named(archive)),
+      labeled('Archive', namedFile(archive)),
     ],
     updateConfirm: 'Update',
     updateLater: 'Not Now',
     puttingBack: (what: Value) => [labeled('Putting back', what)],
     putBack: (what: Value | string, archive: string) =>
-      sentence`Put ${what} back into ${named(archive)}`,
+      sentence`Put ${what} back into ${namedFile(archive)}`,
     putBackFailed: (name: string, reason: Sentence) =>
       sentence`Nothing could be put back into ${named(name)}: ${reason}`,
     puttingBackStopped: (archive: string) =>
-      sentence`Putting back into ${named(archive)} stopped unexpectedly.`,
+      sentence`Putting back into ${namedFile(archive)} stopped unexpectedly.`,
     putBackWithout: (name: string, reason: Sentence) =>
       sentence`Not everything could be put back into ${named(name)}: ${reason}`,
     deletingMovedFrom: (name: string) =>
@@ -968,11 +971,11 @@ export const strings = {
     archiveUnchangeable: (name: string) =>
       sentence`${named(name)} cannot be changed yet, as it is inside another archive or a compressed file.`,
     packingStopped: (archive: string) =>
-      sentence`Packing into ${named(archive)} stopped unexpectedly.`,
+      sentence`Packing into ${namedFile(archive)} stopped unexpectedly.`,
     copyingStopped: (target: string) =>
-      sentence`Copying to ${named(target)} stopped unexpectedly.`,
+      sentence`Copying to ${namedFolder(target)} stopped unexpectedly.`,
     movingStopped: (target: string) =>
-      sentence`Moving to ${named(target)} stopped unexpectedly.`,
+      sentence`Moving to ${namedFolder(target)} stopped unexpectedly.`,
     name: 'Name',
     extension: 'Ext',
     size: 'Size',
@@ -989,10 +992,10 @@ export const strings = {
       right: 'Right side',
     },
     couldNotOpen: (folder: string, reason: Sentence) =>
-      sentence`Couldn't open ${named(folder)}. ${reason}`,
+      sentence`Couldn't open ${namedFolder(folder)}. ${reason}`,
     noAccessTitle: 'No Access',
     noAccess: "You don't have access to this folder.",
-    folderLines: (folder: string) => [labeled('Folder', named(folder))],
+    folderLines: (folder: string) => [labeled('Folder', namedFolder(folder))],
     asAdministrator: 'As Administrator',
     readAsAdministrator: 'Read as administrator',
     openRepository: 'Open the repository in a git tab',
@@ -1015,7 +1018,7 @@ export const strings = {
     fileThere: 'A file of that name is there.',
     itselfThere: 'The item there is this one, reached by another path.',
     couldNotRead: (file: string, reason: Sentence) =>
-      sentence`Couldn't read ${named(file)}. ${reason}`,
+      sentence`Couldn't read ${namedFile(file)}. ${reason}`,
     layout: 'Layout',
     layouts: { details: 'Details', thumbnails: 'Thumbnails' },
     groupByColor: 'Group by Color',
@@ -1109,9 +1112,9 @@ export const strings = {
   },
   editor: {
     tooLarge: (file: string) =>
-      sentence`${named(file)} is over 50 MB, too large to edit. F3 views it.`,
+      sentence`${namedFile(file)} is over 50 MB, too large to edit. F3 views it.`,
     binary: (file: string) =>
-      sentence`${named(file)} holds binary data, so it can't be edited as text. F3 views it.`,
+      sentence`${namedFile(file)} holds binary data, so it can't be edited as text. F3 views it.`,
     folder: (name: string) =>
       sentence`${named(name)} is a folder. F4 edits files.`,
     asAdministrator: (name: string) =>
@@ -1119,26 +1122,26 @@ export const strings = {
     viewedCopy: (name: string) =>
       sentence`${named(name)} is a copy taken out of an archive or a commit to view it, so it can't be edited.`,
     couldNotSave: (file: string, reason: Sentence) =>
-      sentence`Couldn't save ${named(file)}. ${reason}`,
+      sentence`Couldn't save ${namedFile(file)}. ${reason}`,
     noRoom: (file: string) =>
-      sentence`Couldn't save ${named(file)}, as its drive hasn't room for it.`,
+      sentence`Couldn't save ${namedFile(file)}, as its drive hasn't room for it.`,
     unencodable: (
       file: string,
       encoding: string,
       characters: readonly string[],
     ) =>
-      sentence`Couldn't save ${named(file)}, as ${encoding} has no ${namesBetween(characters, ', ')}.`,
+      sentence`Couldn't save ${namedFile(file)}, as ${encoding} has no ${namesBetween(characters, ', ')}.`,
     readOnly: (file: string) =>
-      sentence`${named(file)} is open read-only, so it isn't saved.`,
+      sentence`${namedFile(file)} is open read-only, so it isn't saved.`,
     changedOutside: (file: string) =>
-      sentence`${named(file)} changed on disk while edited here. Saving it writes over those changes.`,
+      sentence`${namedFile(file)} changed on disk while edited here. Saving it writes over those changes.`,
     changedTitle: 'Changed on Disk',
     changedAsked:
       'The file changed on disk since it was opened here. Save over it, or read it again and drop the changes made here?',
     saveOver: 'Save Over It',
     readAgain: 'Read Again',
     askedInTab: (file: string) =>
-      sentence`${named(file)} isn't saved: its tab asks what to do.`,
+      sentence`${namedFile(file)} isn't saved: its tab asks what to do.`,
     column: (column: number) => `Col ${column}`,
     cursors: (cursors: number) => `${cursors} cursors`,
     selected: (characters: number) =>
@@ -1168,7 +1171,7 @@ export const strings = {
       `${ending}, as most lines of the file end`,
     noLineBreak: 'The file has no line break yet',
     endingFromEditorConfig: (ending: string, file: string) =>
-      sentence`${ending}, from ${named('end_of_line')} in ${named(file)}`,
+      sentence`${ending}, from ${named('end_of_line')} in ${namedFile(file)}`,
     endingNotInEditorConfig: sentence`No .editorconfig sets ${named('end_of_line')}`,
     endingFromGitAttribute: (ending: string) =>
       sentence`${ending}, from the ${named('eol')} attribute of git`,
@@ -1196,7 +1199,7 @@ export const strings = {
     systemCodePage: (encoding: string) =>
       `${encoding}, the code page of the system`,
     charsetFromEditorConfig: (encoding: string, file: string) =>
-      sentence`${encoding}, from ${named('charset')} in ${named(file)}`,
+      sentence`${encoding}, from ${named('charset')} in ${namedFile(file)}`,
     charsetNotInEditorConfig: sentence`No .editorconfig sets ${named('charset')}`,
     charsetFromSettings: (encoding: string) =>
       sentence`${encoding}, from ${named('tools.editor.charset')} in the settings`,
@@ -1213,7 +1216,7 @@ export const strings = {
       `${lines} ${lines === 1 ? 'line ends' : 'lines end'} in ${ending}`,
     overwriteTitle: 'Read-only file',
     overwriteAsked: 'The file is read-only. Save over it anyway?',
-    overwriteLines: (file: string) => [labeled('File', named(file))],
+    overwriteLines: (file: string) => [labeled('File', namedFile(file))],
     overwrite: 'Save Anyway',
     unsaved: 'Unsaved changes',
     readOnlyMark: 'Read-only',
@@ -1253,31 +1256,32 @@ export const strings = {
     inTab: (tab: string, message: Sentence) => sentence`${tab}: ${message}`,
     settingsProblem: (problem: Sentence) => sentence`Settings: ${problem}`,
     couldNotOpen: (folder: string, reason: Sentence) =>
-      sentence`Couldn't open ${named(folder)}. ${reason}`,
+      sentence`Couldn't open ${namedFolder(folder)}. ${reason}`,
     notInRepository: (folder: string) =>
-      sentence`${named(folder)} is not in a git repository`,
+      sentence`${namedFolder(folder)} is not in a git repository`,
     unreachable: "The folder isn't there, or can't be reached.",
     alreadyRepository: (folder: string) =>
-      sentence`${named(folder)} is a git repository already, so it was opened`,
+      sentence`${namedFolder(folder)} is a git repository already, so it was opened`,
     couldNotInit: (folder: string, reason: Sentence) =>
-      sentence`Couldn't init a repository in ${named(folder)}. ${reason}`,
+      sentence`Couldn't init a repository in ${namedFolder(folder)}. ${reason}`,
     cloned: (url: string, target: string) =>
-      sentence`Cloned ${named(url)} into ${named(target)}`,
+      sentence`Cloned ${named(url)} into ${namedFolder(target)}`,
     couldNotClone: (url: string, reason: Sentence) =>
       sentence`Couldn't clone ${named(url)}. ${reason}`,
-    noToolOpens: (folder: string) => sentence`${named(folder)} can't be opened`,
+    noToolOpens: (folder: string) =>
+      sentence`${namedFolder(folder)} can't be opened`,
     noFolder: (tool: string) => `${tool} doesn't know which folder it's in`,
     notRepository: (root: string) =>
-      sentence`${named(root)} is not a git repository`,
+      sentence`${namedFolder(root)} is not a git repository`,
     compareTab: (old: string, changed: string) => `${old} → ${changed}`,
     compareTooLarge: (megabytes: number) =>
       `Files over ${megabytes} MB together are not compared.`,
     couldNotWatchCompared: (old: string, changed: string) =>
-      sentence`Couldn't watch ${named(old)} and ${named(changed)}, so their changes won't show until they are compared again`,
+      sentence`Couldn't watch ${namedFile(old)} and ${namedFile(changed)}, so their changes won't show until they are compared again`,
     couldNotCompare: (old: string, changed: string, reason: Sentence) =>
-      sentence`Couldn't compare ${named(old)} with ${named(changed)}. ${reason}`,
+      sentence`Couldn't compare ${namedFile(old)} with ${namedFile(changed)}. ${reason}`,
     couldNotWatch: (root: string) =>
-      sentence`Couldn't watch ${named(root)}, so changes made outside ${brand} won't show until it is opened again`,
+      sentence`Couldn't watch ${namedFolder(root)}, so changes made outside ${brand} won't show until it is opened again`,
     couldNotCheckOut: (name: string, reason: Sentence) =>
       sentence`Couldn't check out ${named(name)}. ${reason}`,
     noRefToCheckOut: (name: string) =>
@@ -1345,13 +1349,13 @@ export const strings = {
       `Couldn't install ${brand} ${version}. ${reason}`,
     offerCommand: sentence`Type ${named('ff')} in a terminal to open the repository of the folder you are in. Install it from the ${brand} icon at the top left.`,
     commandInstalled: (file: string) =>
-      sentence`Installed ${named('ff')} as ${named(file)}. Type ${named('ff')} in a terminal to open the repository of the folder you are in.`,
+      sentence`Installed ${named('ff')} as ${namedFile(file)}. Type ${named('ff')} in a terminal to open the repository of the folder you are in.`,
     commandOffPath: (file: string, folder: string) =>
-      sentence`Installed ${named('ff')} as ${named(file)}, but ${named(folder)} is not on your PATH, so add it there to type ${named('ff')} in a terminal`,
+      sentence`Installed ${named('ff')} as ${namedFile(file)}, but ${namedFolder(folder)} is not on your PATH, so add it there to type ${named('ff')} in a terminal`,
     commandAlreadyInstalled: (file: string) =>
-      sentence`${named('ff')} is already installed as ${named(file)}`,
+      sentence`${named('ff')} is already installed as ${namedFile(file)}`,
     commandTaken: (file: string) =>
-      sentence`${named(file)} is not from ${brand}, so ${named('ff')} was not installed there`,
+      sentence`${namedFile(file)} is not from ${brand}, so ${named('ff')} was not installed there`,
     commandNotMoved: sentence`Move ${brand} into the Applications folder and start it from there to install ${named('ff')}, as macOS runs it from a temporary copy now`,
     couldNotInstallCommand: (reason: Sentence) =>
       sentence`Couldn't install ${named('ff')}. ${reason}`,
@@ -1368,7 +1372,7 @@ export const strings = {
     unreadable: (reason: string) =>
       `The saved state could not be read, so changes to it are kept until it can be: ${reason}`,
     putAside: (copy: string) =>
-      sentence`The saved state was broken, so it was put aside as ${named(copy)} and starts afresh`,
+      sentence`The saved state was broken, so it was put aside as ${namedFile(copy)} and starts afresh`,
     notPutAside: (reason: string) =>
       `The saved state was broken and could not be put aside, so it starts afresh: ${reason}`,
   },

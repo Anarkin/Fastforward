@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
-import { named } from '../../../../../lib/shared/sentences';
+import { namedFile } from '../../../../../lib/shared/sentences';
 import { GitLocator, needsGit } from '../../../../../tools/git/main/gitLocator';
 import { findGit, type GitSearch } from '../../../../../tools/git/main/locate';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
@@ -114,7 +114,7 @@ suite('Locating git', () => {
     );
     assert.deepStrictEqual(strings.app.gitTooOld('2.51.2', gitPath, '2.52'), [
       'Git 2.51.2 at ',
-      named(gitPath),
+      namedFile(gitPath),
       ' is too old. Install git 2.52 or later, then try again.',
     ]);
   });

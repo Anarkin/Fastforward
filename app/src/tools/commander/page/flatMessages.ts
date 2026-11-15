@@ -1,7 +1,7 @@
 import type { Entry } from '../shared/protocol';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { Sort } from '../shared/sorts';
-import type { FileColors } from './fileColors';
+import type { FileColors } from '../../../lib/page/fileColors';
 
 export interface FlatChoices {
   readonly sort: Sort;

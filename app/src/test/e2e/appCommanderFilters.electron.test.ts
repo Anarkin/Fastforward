@@ -22,6 +22,11 @@ import {
 
 const count = () => right().locator('.search-count').textContent();
 
+const colorsOf = (selector: string) =>
+  right()
+    .locator(selector)
+    .evaluateAll((parts) => parts.map((part) => getComputedStyle(part).color));
+
 suite('App commander', () => {
   sharedCommanderApp();
 
@@ -67,6 +72,16 @@ suite('App commander', () => {
       await waitFor(
         async () => (await statusShown()) === path.join(dupes, 'two.log'),
         'the path of the file selected',
+      );
+      const headerColors = await colorsOf('.path-title .path-part');
+      const rowColor = await right()
+        .locator('.commander-row.selected')
+        .evaluate((row) => getComputedStyle(row).color);
+      await waitFor(
+        async () =>
+          JSON.stringify(await colorsOf('.column-status .path-part')) ===
+          JSON.stringify([...headerColors, rowColor]),
+        'the path of the file selected in the colors of the side and its row',
       );
 
       await page.keyboard.press('Control+B');

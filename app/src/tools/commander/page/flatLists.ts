@@ -1,7 +1,7 @@
 import { type FlatFolder } from '../shared/protocol';
 import { sameSearchOptions } from '../../../lib/shared/searchOptions';
 import { sides, type Side } from '../shared/sides';
-import { sameGrouping } from './fileColors';
+import { sameGrouping } from '../../../lib/page/fileColors';
 import type {
   FlatChoices,
   FromFlatWorker,

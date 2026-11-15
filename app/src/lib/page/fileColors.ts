@@ -1,11 +1,16 @@
-import { languageOf } from '../../../lib/page/languages';
-import type { Entry } from '../shared/protocol';
+import { languageOf } from './languages';
 import {
   executablesGroup,
   extensionKey,
   languagesGroup,
   type FileColor,
 } from '../shared/fileColors';
+
+export interface ColoredEntry {
+  readonly name: string;
+  readonly folder: boolean;
+  readonly executable?: boolean;
+}
 
 export interface FileColors {
   readonly colors: readonly string[];
@@ -83,7 +88,7 @@ function groupOfFileNamed(
 }
 
 export function groupOfEntry(
-  entry: Entry,
+  entry: ColoredEntry,
   fileColors: FileColors,
 ): number | undefined {
   if (entry.folder) {
@@ -109,7 +114,7 @@ export function colorOfFileNamed(
 }
 
 export function fileColorOf(
-  entry: Entry,
+  entry: ColoredEntry,
   fileColors: FileColors,
 ): string | undefined {
   const group = groupOfEntry(entry, fileColors);

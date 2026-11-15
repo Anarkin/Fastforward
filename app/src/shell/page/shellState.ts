@@ -1,5 +1,7 @@
 import type { ContextMenuItem, OpenMenu } from '../../lib/page/contextMenuItem';
 import { defaultDateFormat } from '../../lib/page/dates';
+import { noFileColors, type FileColors } from '../../lib/page/fileColors';
+import type { KnownLooks } from '../../lib/page/pathLooks';
 import { defaultImageView } from './imageView';
 import {
   defaultScrolling,
@@ -40,6 +42,8 @@ export interface ShellSource {
   readonly about: AboutInfo | undefined;
   readonly installsCommand: boolean;
   readonly dateFormat: string;
+  readonly fileColors: FileColors;
+  readonly partLooks: KnownLooks;
   readonly scrolling: ScrollSettings;
   readonly textView: TextView;
   readonly imageView: ImageView;
@@ -82,6 +86,7 @@ export interface ShellActions {
   readonly toggleTextView: (key: 'wordWrap' | 'showWhitespace') => void;
   readonly changeImageView: (change: Partial<ImageView>) => void;
   readonly copyText: (text: string) => void;
+  readonly askLooks: (path: string) => void;
   readonly ready: () => void;
   readonly log: (message: string) => void;
   readonly selectTab: (id: string) => void;
@@ -109,6 +114,8 @@ export const shellDefaults: ShellSource = {
   about: undefined,
   installsCommand: false,
   dateFormat: defaultDateFormat,
+  fileColors: noFileColors,
+  partLooks: new Map(),
   scrolling: defaultScrolling,
   textView: defaultTextView,
   imageView: defaultImageView,

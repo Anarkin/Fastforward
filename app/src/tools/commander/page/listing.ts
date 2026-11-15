@@ -1,6 +1,6 @@
 import { parentFolder, type Entry } from '../shared/protocol';
 import type { Sort } from '../shared/sorts';
-import { noFileColors, type FileColors } from './fileColors';
+import { noFileColors, type FileColors } from '../../../lib/page/fileColors';
 import { fileGroupOf, mergedRows, sortedRows } from './rowOrder';
 
 export interface Row {

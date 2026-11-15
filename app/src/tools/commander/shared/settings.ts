@@ -1,6 +1,6 @@
 import type { Sorts } from './sorts';
 import type { ColumnWidths } from './columnWidths';
-import type { FileColor } from './fileColors';
+import type { FileColor } from '../../../lib/shared/fileColors';
 
 export interface CommanderSettings {
   readonly showHidden: boolean;

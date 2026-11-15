@@ -239,7 +239,7 @@ export const pathCut = () =>
       };
       const shownFolders = box('.path-folder');
       const name = box('.path-name');
-      const parts = [...title.querySelectorAll('.path-part')];
+      const parts = [...title.querySelectorAll('.path-folder .path-part')];
       const first = textBox(parts[0]);
       const nearestPart = parts[parts.length - 1];
       const nearest = textBox(nearestPart);

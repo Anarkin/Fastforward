@@ -6,7 +6,7 @@ import {
   SubmenuIcon,
   ToolIcon,
 } from './icons';
-import { Name, Words } from './name';
+import { NamedPath, Words } from './name';
 import { HighlightWords } from './highlight';
 import { keymap } from './keymap';
 import { strings } from '../shared/strings';
@@ -137,8 +137,8 @@ export function MenuItems({
               )}
               {item.sentence !== undefined ? (
                 <Words filter={filter}>{item.sentence}</Words>
-              ) : item.name ? (
-                <Name filter={filter}>{item.label}</Name>
+              ) : item.path === true ? (
+                <NamedPath path={item.label} filter={filter} />
               ) : (
                 <HighlightWords text={item.label} filter={filter} />
               )}

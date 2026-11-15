@@ -57,7 +57,7 @@ suite('Commander deleting', () => {
         title: 'Delete Permanently',
         message:
           'Delete 2 items from the archive permanently? This cannot be undone.',
-        lines: [{ label: 'Archive', name: 'photos.zip' }],
+        lines: [{ label: 'Archive', name: 'photos.zip', path: 'file' }],
         confirm: 'Delete Permanently',
       },
     );
@@ -68,7 +68,7 @@ suite('Commander deleting', () => {
         message: 'Delete from the archive permanently? This cannot be undone.',
         lines: [
           { label: 'Item', name: 'a.txt' },
-          { label: 'Archive', name: 'photos.zip' },
+          { label: 'Archive', name: 'photos.zip', path: 'file' },
         ],
         confirm: 'Delete Permanently',
       },

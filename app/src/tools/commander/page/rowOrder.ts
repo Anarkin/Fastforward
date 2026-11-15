@@ -1,5 +1,5 @@
 import type { Sort, SortColumn } from '../shared/sorts';
-import { groupOfEntry, type FileColors } from './fileColors';
+import { groupOfEntry, type FileColors } from '../../../lib/page/fileColors';
 import type { Row } from './listing';
 
 const collator = new Intl.Collator(undefined, {

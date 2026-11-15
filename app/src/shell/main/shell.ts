@@ -1,4 +1,5 @@
 import type { Log } from './log';
+import { lookedPaths, type PathLooks } from '../../lib/shared/partLooks';
 import { isImageView, isTextView } from '../shared/views';
 import type { DragEvent, Visit } from './dragEvents';
 import { InFlight } from '../../lib/main/inFlight';
@@ -50,6 +51,7 @@ export interface ShellHost {
   showWindow(window: string): void;
   tearsOff(): boolean;
   drag(window: string, event: DragEvent): void;
+  partLooks(paths: readonly string[]): Promise<readonly PathLooks[]>;
 }
 
 export interface Connection {
@@ -378,6 +380,13 @@ export class Shell {
           host.copyText(message.text);
         }
         return;
+      case 'partLooks': {
+        const paths = lookedPaths(message.paths);
+        if (paths !== undefined) {
+          page.post({ type: 'partLooks', looks: await host.partLooks(paths) });
+        }
+        return;
+      }
       case 'log':
         if (
           (message.level === 'info' || message.level === 'error') &&
@@ -461,6 +470,7 @@ export class Shell {
   private async ready(page: Page): Promise<void> {
     const { storage, host } = this;
     page.post({ type: 'dateFormat', format: storage.dateFormat });
+    page.post({ type: 'fileColors', groups: storage.fileColors });
     page.post({
       type: 'scrolling',
       wheelRows: storage.wheelRows,

@@ -195,6 +195,43 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('answers which parts of the paths a page asks about are hidden, files or programs, and nothing to a forged ask', async () => {
+    const host = new FakeHost();
+    await withView(
+      log,
+      [],
+      async (view) => {
+        for (const message of [
+          '{ "type": "partLooks", "paths": "C:\\\\Temp" }',
+          '{ "type": "partLooks", "paths": [] }',
+          '{ "type": "partLooks", "paths": [5] }',
+          '{ "type": "partLooks" }',
+        ]) {
+          await view.connection.receive(JSON.parse(message));
+        }
+        assert.deepStrictEqual(host.looked, []);
+        assert.strictEqual(view.page.last('partLooks'), undefined);
+        await view.connection.receive({
+          type: 'partLooks',
+          paths: ['C:\\.hidden'],
+        });
+        assert.deepStrictEqual(host.looked, [['C:\\.hidden']]);
+        assert.deepStrictEqual(view.page.last('partLooks'), {
+          type: 'partLooks',
+          looks: [
+            {
+              path: 'C:\\.hidden',
+              parts: [{ hidden: true, file: true, executable: false }],
+            },
+          ],
+        });
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('wraps long lines, highlights syntax and shows whitespace by default, for the diff and the viewer alike, and remembers what is chosen in either, telling the page', async () => {
     await withView(
       log,

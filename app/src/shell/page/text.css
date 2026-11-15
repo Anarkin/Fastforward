@@ -281,3 +281,15 @@ mark.match,
 .cm-editor.editor-text .syntax-comment {
   color: var(--color-syntax-comment);
 }
+
+.path-part.colored {
+  color: var(--file-color);
+}
+
+.path-part.hidden {
+  color: color-mix(
+    in srgb,
+    var(--file-color, var(--color-foreground)) var(--color-hidden-file),
+    transparent
+  );
+}

@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import type { Line, Sentence } from '../shared/sentences';
 import { filterRanges, noFilter, type Filter } from '../shared/filter';
 import { HighlightWords, Marked } from './highlight';
+import { PathName } from './pathName';
 
 const piecesOf = (name: string) => name.split(/(?<=[\\/])/);
 
@@ -28,6 +29,36 @@ export function Name({
   );
 }
 
+export function NamedPath({
+  path,
+  file = false,
+  filter = noFilter,
+}: {
+  readonly path: string;
+  readonly file?: boolean;
+  readonly filter?: Filter;
+}) {
+  return (
+    <code className="name">
+      <PathName path={path} file={file} filter={filter} />
+    </code>
+  );
+}
+
+function NamedPart({
+  part,
+  filter = noFilter,
+}: {
+  readonly part: { readonly name: string; readonly path?: 'file' | 'folder' };
+  readonly filter?: Filter;
+}) {
+  return part.path === undefined ? (
+    <Name filter={filter}>{part.name}</Name>
+  ) : (
+    <NamedPath path={part.name} file={part.path === 'file'} filter={filter} />
+  );
+}
+
 export function Words({
   children,
   filter = noFilter,
@@ -42,9 +73,7 @@ export function Words({
       typeof part === 'string' ? (
         <HighlightWords key={index} text={part} filter={filter} />
       ) : (
-        <Name key={index} filter={filter}>
-          {part.name}
-        </Name>
+        <NamedPart key={index} part={part} filter={filter} />
       ),
     )
   );
@@ -57,7 +86,7 @@ export function NameLines({ lines }: { readonly lines: readonly Line[] }) {
         <Fragment key={line.label}>
           <span className="name-label">{line.label}</span>
           <span className="name-value">
-            {'name' in line ? <Name>{line.name}</Name> : line.text}
+            {'name' in line ? <NamedPart part={line} /> : line.text}
           </span>
         </Fragment>
       ))}

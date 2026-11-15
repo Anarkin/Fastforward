@@ -7,7 +7,7 @@ export function driveMenu(
 ): readonly ContextMenuItem[] {
   return drives.map((drive) => ({
     label: drive,
-    name: true,
+    path: true,
     accessKey: drive.charAt(0),
     checked: drive === current,
     onClick: () => onDrive(drive),

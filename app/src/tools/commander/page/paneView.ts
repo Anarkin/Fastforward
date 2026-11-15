@@ -6,7 +6,7 @@ import type {
 import type { Sort } from '../shared/sorts';
 import { rowsOf, type Row } from './listing';
 import { selectionAfter, type Selection } from './rowSelection';
-import type { FileColors } from './fileColors';
+import type { FileColors } from '../../../lib/page/fileColors';
 
 export interface Listed {
   readonly folder: string;

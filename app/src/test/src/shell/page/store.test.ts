@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { maxLookedPaths } from '../../../../lib/shared/partLooks';
 import { suite, test } from 'vitest';
 import type { ToHost, TabInfo } from '../../../../shell/shared/protocol';
 import { createShellStore } from '../../../../shell/page/store';
@@ -14,6 +15,64 @@ function posting() {
 }
 
 suite('Shell store', () => {
+  test('keeps the color groups of the files and what it was told of the parts of paths, part by part', () => {
+    const store = createShellStore(noop);
+    const { receive } = store.getState();
+    receive({
+      type: 'fileColors',
+      groups: [
+        { extensions: ['log'], colors: { light: 'blue', dark: 'navy' } },
+      ],
+    });
+    receive({
+      type: 'partLooks',
+      looks: [
+        {
+          path: 'C:\\Temp\\a.log',
+          parts: [
+            { hidden: false, file: false, executable: false },
+            { hidden: true, file: false, executable: false },
+            null,
+          ],
+        },
+      ],
+    });
+    const state = store.getState();
+    assert.deepStrictEqual(state.fileColors.colors, ['light-dark(blue, navy)']);
+    assert.deepStrictEqual(
+      [...state.partLooks],
+      [
+        ['C:\\', { hidden: false, file: false, executable: false }],
+        ['C:\\Temp', { hidden: true, file: false, executable: false }],
+        ['C:\\Temp\\a.log', null],
+      ],
+    );
+  });
+
+  test('asks the main process about the parts of paths once each, together, a list at a time', async () => {
+    const { posted, store } = posting();
+    const { askLooks } = store.getState();
+    askLooks('C:\\a');
+    askLooks('C:\\b');
+    askLooks('C:\\a');
+    assert.strictEqual(posted.length, 0);
+    await Promise.resolve();
+    assert.deepStrictEqual(posted.slice(), [
+      { type: 'partLooks', paths: ['C:\\a', 'C:\\b'] },
+    ]);
+    posted.length = 0;
+    for (let index = 0; index < maxLookedPaths + 1; index++) {
+      askLooks(`C:\\${index}`);
+    }
+    await Promise.resolve();
+    assert.deepStrictEqual(
+      posted.map((message) =>
+        message.type === 'partLooks' ? message.paths.length : 0,
+      ),
+      [maxLookedPaths, 1],
+    );
+  });
+
   test('keeps the tabs, the one shown and the settings as the main process sends them', () => {
     const store = createShellStore(noop);
     const { receive } = store.getState();

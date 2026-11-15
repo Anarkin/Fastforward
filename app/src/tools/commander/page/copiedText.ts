@@ -1,4 +1,4 @@
-import { pathParts } from '../shared/paths';
+import { pathParts } from '../../../lib/shared/pathParts';
 import { baseNameOf } from './naming';
 
 export type Copied = 'paths' | 'names';

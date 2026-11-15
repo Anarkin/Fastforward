@@ -1,4 +1,4 @@
-type Named = { readonly name: string };
+type Named = { readonly name: string; readonly path?: 'file' | 'folder' };
 
 export type Value = Named | { readonly text: string };
 
@@ -12,6 +12,16 @@ export const labeled = (label: string, value: Value): Line => ({
 });
 
 export const named = (name: string): Named => ({ name });
+
+export const namedFile = (path: string): Named => ({
+  name: path,
+  path: 'file',
+});
+
+export const namedFolder = (path: string): Named => ({
+  name: path,
+  path: 'folder',
+});
 
 export const namesBetween = (names: readonly string[], between: string) =>
   names.flatMap((name, index) =>
@@ -41,7 +51,11 @@ const partsOf = (piece: Sentence | Value): readonly (string | Named)[] =>
   typeof piece === 'string'
     ? [piece]
     : 'name' in piece
-      ? [named(piece.name)]
+      ? [
+          piece.path === undefined
+            ? named(piece.name)
+            : { name: piece.name, path: piece.path },
+        ]
       : 'text' in piece
         ? [piece.text]
         : piece;

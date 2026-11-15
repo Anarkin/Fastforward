@@ -1,4 +1,6 @@
 import { addNotice } from '../shared/notices';
+import { fileColorsOf } from '../../lib/page/fileColors';
+import { knownWith } from '../../lib/page/pathLooks';
 import type { ToWebview } from '../shared/protocol';
 import { menuIn } from './openedMenu';
 import { withPopup } from './popups';
@@ -27,6 +29,10 @@ export function received(
       };
     case 'dateFormat':
       return { dateFormat: message.format };
+    case 'fileColors':
+      return { fileColors: fileColorsOf(message.groups) };
+    case 'partLooks':
+      return { partLooks: knownWith(state.partLooks, message.looks) };
     case 'scrolling':
       return {
         scrolling: { wheelRows: message.wheelRows, smooth: message.smooth },

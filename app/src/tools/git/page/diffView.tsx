@@ -112,6 +112,7 @@ export function DiffView({
   languageKey?: string;
 }) {
   const sideBySide = useGit((state) => state.diffLayout === 'sideBySide');
+  const root = useGit((state) => state.tab.root);
   const chosenLanguage = useGit(pickedFor(languageKey));
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
@@ -283,6 +284,7 @@ export function DiffView({
   const header = (row: FileHeaderRow, stuck = false) => (
     <FileHeader
       path={row.path}
+      root={root}
       oldPath={row.oldPath}
       open={row.open}
       whole={whole !== undefined}

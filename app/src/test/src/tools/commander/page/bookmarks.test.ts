@@ -32,7 +32,7 @@ suite('Commander bookmarks menu', () => {
       onGo: noop,
     });
     assert.deepStrictEqual(
-      items.map((item) => ('separator' in item ? '---' : (item.name ?? false))),
+      items.map((item) => ('separator' in item ? '---' : (item.path ?? false))),
       [false, '---', true],
     );
   });

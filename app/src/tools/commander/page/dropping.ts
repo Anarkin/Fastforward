@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { parentFolder } from '../shared/protocol';
 import { type Side } from '../shared/sides';
-import { pathParts } from '../shared/paths';
+import { pathParts } from '../../../lib/shared/pathParts';
 import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { useShellActions } from '../../../shell/page/store';

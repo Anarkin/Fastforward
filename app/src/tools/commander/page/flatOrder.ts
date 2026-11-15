@@ -9,7 +9,7 @@ import {
   type SearchOptions,
 } from '../../../lib/shared/searchOptions';
 import type { Entry } from '../shared/protocol';
-import { sameGrouping } from './fileColors';
+import { sameGrouping } from '../../../lib/page/fileColors';
 import type { FlatChoices, SlottedFolder } from './flatMessages';
 import { flatRowOf, type Row } from './listing';
 import { fileGroupOf, mergedRows, sortedRows } from './rowOrder';

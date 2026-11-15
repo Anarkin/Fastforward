@@ -6,14 +6,12 @@ import { languageOf } from '../../../lib/page/languages';
 import { startColorer } from '../../../lib/page/syntax';
 import { StatusLine } from '../../../lib/page/statusLine';
 import { findAskOf } from './editorFind';
-import { colorOfFileNamed } from './fileColors';
 import { viewerChoices } from './view';
 import {
   languageChoiceOf,
   shownLanguage,
 } from '../../../lib/page/languageMenu';
 import { LanguageButton } from '../../../lib/page/languageChoice';
-import { nameOf } from './pathNames';
 import { PathTitle } from './pathTitle';
 import { useCommander, useCommanderActions } from './store';
 import { editedShown, useEditorView } from './editorView';
@@ -26,9 +24,6 @@ export function Editor() {
   useEffect(startColorer, []);
   const file = useCommander((state) => state.view.editing) ?? '';
   const edited = useCommander(editedShown);
-  const fileColor = useCommander((state) =>
-    colorOfFileNamed(nameOf(state.view.editing ?? ''), state.view.fileColors),
-  );
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const scrolling = useShell((state) => state.scrolling);
   const { changeTextView } = useShellActions();
@@ -89,7 +84,7 @@ export function Editor() {
         />
       </EditorFindBar>
       <div className="viewer-path editor-path">
-        <PathTitle path={file} hidden={[]} color={fileColor} />
+        <PathTitle path={file} file />
         {mark !== undefined && (
           <span
             className={`editor-mark ${edited?.changed ? 'unsaved' : ''}`}

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { PathLooksContext } from '../../lib/page/pathLooks';
+import { shellPathLooks } from './shellPathLooks';
 import { shellKeymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { strings } from '../../lib/shared/strings';
@@ -146,6 +148,7 @@ function NoticeKey() {
 
 export function App({ name, post, listen, dropFiles }: Props) {
   const [store] = useState(() => createShellStore(post, {}, dropFiles));
+  const [looks] = useState(() => shellPathLooks(store));
   const { togglePopup, closeTab, ready, openIn, newWindow } = store.getState();
 
   useEffect(() => {
@@ -167,16 +170,18 @@ export function App({ name, post, listen, dropFiles }: Props) {
 
   return (
     <ShellStore value={store}>
-      <div className="app">
-        <WindowTitle name={name} />
-        <TabBar menu={<AppMenu />} />
-        <ShellMenu />
-        <Popups />
-        <Notices />
-        <EmptyState />
-        <ToolViews />
-        <NoticeKey />
-      </div>
+      <PathLooksContext value={looks}>
+        <div className="app">
+          <WindowTitle name={name} />
+          <TabBar menu={<AppMenu />} />
+          <ShellMenu />
+          <Popups />
+          <Notices />
+          <EmptyState />
+          <ToolViews />
+          <NoticeKey />
+        </div>
+      </PathLooksContext>
     </ShellStore>
   );
 }

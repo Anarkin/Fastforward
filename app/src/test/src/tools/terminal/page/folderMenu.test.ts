@@ -11,7 +11,7 @@ suite('Terminal folder menu', () => {
       onForget: () => undefined,
     });
     assert.deepStrictEqual(
-      items.map((item) => ('separator' in item ? '-' : (item.name ?? false))),
+      items.map((item) => ('separator' in item ? '-' : (item.path ?? false))),
       [false, false, '-', true],
     );
   });

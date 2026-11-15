@@ -134,7 +134,7 @@ export function PaneTitle({
               scrolling={scrolling}
               title={strings.commander.chooseDrive}
               label={(current ?? '').replace(/\\$/, '')}
-              named
+              path
               trigger={driveTrigger}
               onChosen={onChosen}
               items={driveMenu(drives, current, onDrive)}

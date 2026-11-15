@@ -11,6 +11,7 @@ import {
 import { closeViews, withView } from '../../../helpers/harness';
 import { noticesOf } from './shellFixtures';
 import { FakeHost } from '../../../helpers/fakeHost';
+import { defaultSettings } from '../../../helpers/fixtures';
 
 suite('Shell with no tab open', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');
@@ -215,6 +216,22 @@ suite('Shell with no tab open', () => {
         noGit,
       );
     }
+  });
+
+  test('tells the page the color groups of the files, which every path is drawn in, as the commander lists it', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('fileColors'), {
+          type: 'fileColors',
+          groups: defaultSettings().tools.commander.fileColors,
+        });
+      },
+      true,
+      new FakeHost(),
+      noGit,
+    );
   });
 
   test('tells the page the date format of the settings, which every tool writes its dates in', async () => {

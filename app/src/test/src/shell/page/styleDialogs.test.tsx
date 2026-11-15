@@ -155,7 +155,7 @@ suite('Style', () => {
           scrolling={defaultScrolling}
           title="Drive"
           label="C:"
-          named
+          path
           items={[]}
         />,
       ),
