@@ -10,10 +10,8 @@ import {
 } from '../../../../../tools/terminal/main/folderRanks';
 import type { ShellLaunch } from '../../../../../tools/terminal/main/hostProtocol';
 import { PtyHost } from '../../../../../tools/terminal/main/sessions';
-import {
-  TerminalTool,
-  type HostListener,
-} from '../../../../../tools/terminal/main/tool';
+import type { HostListener } from '../../../../../tools/terminal/main/hostLink';
+import { TerminalTool } from '../../../../../tools/terminal/main/tool';
 import {
   maxInputLength,
   type TerminalToHost,

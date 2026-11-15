@@ -22,10 +22,8 @@ import type { Timer } from '../../lib/main/timer';
 import { nodeFileSystem } from '../../tools/commander/main/nodeFileSystem';
 import { isRepository } from '../../tools/commander/main/repositories';
 import { CommanderTool } from '../../tools/commander/main/tool';
-import {
-  TerminalTool,
-  type HostListener,
-} from '../../tools/terminal/main/tool';
+import { TerminalTool } from '../../tools/terminal/main/tool';
+import type { HostListener } from '../../tools/terminal/main/hostLink';
 import {
   GitTool,
   refreshDelays,

@@ -1,6 +1,6 @@
 import { utilityProcess } from 'electron';
 import type { HostEvent } from './hostProtocol';
-import type { ConnectHost } from './tool';
+import type { ConnectHost } from './hostLink';
 import type { Log } from '../../../shell/main/log';
 import { brand, strings } from '../../../lib/shared/strings';
 
