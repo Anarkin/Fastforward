@@ -4,6 +4,7 @@ import { strings } from '../../../lib/shared/strings';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { SearchBar } from '../../../lib/page/searchBar';
 import { findKeyDown } from '../../../lib/page/findKeys';
+import { focusNameAttribute } from '../../../lib/page/keptFocus';
 import {
   replace,
   replaceAll,
@@ -83,6 +84,7 @@ export function EditorFindBar({
         <div className="editor-replace">
           <input
             className="editor-replace-input"
+            {...{ [focusNameAttribute]: 'replace' }}
             placeholder={strings.editor.replacePlaceholder}
             spellCheck={false}
             value={replacement}

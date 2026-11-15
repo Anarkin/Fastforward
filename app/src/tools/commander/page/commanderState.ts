@@ -20,6 +20,7 @@ import type { ClashAnswer, TransferView } from '../shared/transfers';
 import type { EditorPlace } from './editorPlace';
 import type { EditedTab, ToEditor } from './editorState';
 import type { KeptViewer } from './viewerKept';
+import type { KeptEditing } from './editorKept';
 import {
   emptyView,
   type CommanderView,
@@ -227,6 +228,8 @@ export interface CommanderActions {
   ) => void;
   readonly reopenIn: (tab: string, encoding: TextEncoding | 'auto') => void;
   readonly keptEditor: (tab: string) => KeptEditor | undefined;
+  readonly keptEditing: (tab: string) => KeptEditing;
+  readonly keepEditing: (tab: string, change: Partial<KeptEditing>) => void;
   readonly editorKeeper: (tab: string) => (kept: KeptEditor) => void;
   readonly openRepository: (side: Side, name: string) => void;
   readonly folderCommand: (

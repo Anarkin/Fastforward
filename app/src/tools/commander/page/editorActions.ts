@@ -1,12 +1,15 @@
 import type { CommanderActions, KeptEditor } from './commanderState';
 import type { StoreParts } from './dialogActions';
 import type { ToEditor } from './editorState';
+import { noKeptEditing, type KeptEditing } from './editorKept';
 
 type EditorActions = Pick<
   CommanderActions,
   | 'editFile'
   | 'listenEditor'
   | 'keptEditor'
+  | 'keptEditing'
+  | 'keepEditing'
   | 'editorKeeper'
   | 'readEdited'
   | 'editText'
@@ -26,6 +29,7 @@ export function editorActions({ post, onPane }: StoreParts): {
 } {
   const editorListeners = new Set<(message: ToEditor) => void>();
   const keptEditors = new Map<string, KeptEditor>();
+  const keptEditings = new Map<string, KeptEditing>();
   const openTabs = new Map<string, object>();
   const openTabOf = (tab: string) => {
     const known = openTabs.get(tab);
@@ -50,6 +54,7 @@ export function editorActions({ post, onPane }: StoreParts): {
     },
     forget: (tab) => {
       keptEditors.delete(tab);
+      keptEditings.delete(tab);
       openTabs.delete(tab);
     },
     actions: {
@@ -59,6 +64,13 @@ export function editorActions({ post, onPane }: StoreParts): {
         ),
       listenEditor,
       keptEditor: (tab) => keptEditors.get(tab),
+      keptEditing: (tab) => keptEditings.get(tab) ?? noKeptEditing,
+      keepEditing: (tab, change) => {
+        keptEditings.set(tab, {
+          ...(keptEditings.get(tab) ?? noKeptEditing),
+          ...change,
+        });
+      },
       editorKeeper: (tab) => {
         const open = openTabOf(tab);
         return (kept) => {

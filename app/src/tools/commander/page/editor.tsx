@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useFocusKeeper } from '../../../lib/page/keptFocus';
 import { strings } from '../../../lib/shared/strings';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { Words } from '../../../lib/page/name';
@@ -53,8 +54,17 @@ export function Editor() {
     goingToLine,
     setGoingToLine,
     lineCount,
+    mounts,
   } = useEditorView(language);
-  const finder = useEditorFinding(view, findAsk);
+  const tab = useCommander((state) => state.view.tab);
+  const finder = useEditorFinding(view, findAsk, tab, mounts);
+  const { keepEditing } = useCommanderActions();
+  const section = useRef<HTMLElement>(null);
+  useFocusKeeper(section, (focus) => {
+    if (tab !== undefined) {
+      keepEditing(tab, { focus });
+    }
+  });
 
   const mark = edited?.readOnly
     ? strings.editor.readOnlyMark
@@ -65,7 +75,7 @@ export function Editor() {
         : undefined;
 
   return (
-    <section className="column viewer editor">
+    <section className="column viewer editor" ref={section}>
       <EditorFindBar view={view} finder={finder} findCount={findCount}>
         <EditorToolbar
           view={view}

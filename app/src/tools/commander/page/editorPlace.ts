@@ -9,6 +9,7 @@ import { EditorView } from '@codemirror/view';
 export interface EditorPlace {
   readonly from: number;
   readonly offset: number;
+  readonly left?: number;
 }
 
 const placeNumber = (value: unknown): value is number =>
@@ -24,8 +25,9 @@ export function placeIn(kept: unknown): EditorPlace | undefined {
   }
   const from: unknown = Reflect.get(place, 'from');
   const offset: unknown = Reflect.get(place, 'offset');
+  const left: unknown = Reflect.get(place, 'left');
   return placeNumber(from) && placeNumber(offset)
-    ? { from, offset }
+    ? { from, offset, ...(placeNumber(left) && left > 0 && { left }) }
     : undefined;
 }
 
@@ -37,6 +39,12 @@ export function placeMapped(
 }
 
 export function placeOf(view: EditorView): EditorPlace {
+  const left = view.scrollDOM.scrollLeft;
+  const place = placeDown(view);
+  return left > 0 ? { ...place, left } : place;
+}
+
+function placeDown(view: EditorView): EditorPlace {
   const scroller = view.scrollDOM.getBoundingClientRect();
   const height = scroller.top - view.documentTop;
   const { from, top } = view.lineBlockAtHeight(height);
@@ -109,6 +117,9 @@ function shownWhenBack(
     const settled = seen === last;
     last = seen;
     if ((settled && samePlace(now, wanted)) || checks > settleChecks) {
+      if (wanted.left !== undefined) {
+        scroller.scrollLeft = wanted.left;
+      }
       interrupted();
       return;
     }

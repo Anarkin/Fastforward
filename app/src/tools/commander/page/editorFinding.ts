@@ -1,22 +1,32 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { find, findNearest, type FindAsk, type FindQuery } from './editorFind';
+import { find, findNearest, type FindAsk } from './editorFind';
 import { lineBreak } from './editorState';
-import { plainSearch } from '../../../lib/shared/searchOptions';
+import { noKeptEditing } from './editorKept';
+import { useCommanderActions } from './store';
 
 export function useEditorFinding(
   view: RefObject<EditorView | undefined>,
   findAsk: FindAsk | undefined,
+  tab: string | undefined,
+  mounts: number,
 ) {
-  const [finding, setFinding] = useState(false);
-  const [replacing, setReplacing] = useState(false);
-  const [query, setQuery] = useState<FindQuery>({
-    text: '',
-    options: plainSearch,
-  });
-  const [replacement, setReplacement] = useState('');
+  const { keptEditing, keepEditing } = useCommanderActions();
+  const [kept] = useState(() =>
+    tab === undefined ? noKeptEditing : keptEditing(tab),
+  );
+  const [finding, setFinding] = useState(kept.finding);
+  const [replacing, setReplacing] = useState(kept.replacing);
+  const [query, setQuery] = useState(kept.query);
+  const [replacement, setReplacement] = useState(kept.replacement);
   const [focusAsks, setFocusAsks] = useState(0);
   const findInput = useRef<HTMLInputElement>(null);
+  const applied = useRef({ finding: kept.finding, query: kept.query });
+  useEffect(() => {
+    if (tab !== undefined) {
+      keepEditing(tab, { finding, replacing, query, replacement });
+    }
+  }, [tab, keepEditing, finding, replacing, query, replacement]);
   useEffect(() => {
     if (findAsk === undefined) {
       return;
@@ -30,13 +40,18 @@ export function useEditorFinding(
     setFocusAsks((asks) => asks + 1);
   }, [findAsk]);
   useEffect(() => {
-    if (view.current !== undefined) {
-      find(view.current, finding ? query : undefined);
-      if (finding) {
-        findNearest(view.current);
-      }
+    const shown = view.current;
+    if (shown === undefined || mounts === 0) {
+      return;
     }
-  }, [finding, query, view]);
+    const asked =
+      applied.current.finding !== finding || applied.current.query !== query;
+    applied.current = { finding, query };
+    find(shown, finding ? query : undefined);
+    if (finding && asked) {
+      findNearest(shown);
+    }
+  }, [finding, query, view, mounts]);
   useEffect(() => {
     if (focusAsks > 0) {
       findInput.current?.focus();

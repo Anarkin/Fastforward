@@ -24,6 +24,7 @@ import type { CommanderSource } from './commanderState';
 import { useCommander, useCommanderActions } from './store';
 import { useShellActions } from '../../../shell/page/store';
 import { pageCursorLook } from '../../../lib/page/cursor';
+import { focusBack } from '../../../lib/page/keptFocus';
 import {
   stateKeepDelay,
   bracketsClosed,
@@ -57,6 +58,7 @@ export function useEditorView(language: string | undefined) {
     saveText,
     keptEditor,
     editorKeeper,
+    keptEditing,
   } = useCommanderActions();
   const { closeTab } = useShellActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
@@ -65,6 +67,7 @@ export function useEditorView(language: string | undefined) {
   const [findAsk, setFindAsk] = useState<FindAsk>();
   const [goingToLine, setGoingToLine] = useState(false);
   const [lineCount, setLineCount] = useState(0);
+  const [mounts, setMounts] = useState(0);
   const table = useCellTable();
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
@@ -89,6 +92,16 @@ export function useEditorView(language: string | undefined) {
       return undefined;
     }
     const keepEditor = editorKeeper(tab);
+    let focusLeft = keptEditing(tab).focus;
+    const focusFirst = () => {
+      const root = element.closest('.editor');
+      const back =
+        root !== null && focusLeft !== undefined && focusBack(root, focusLeft);
+      focusLeft = undefined;
+      if (!back) {
+        shown.focus();
+      }
+    };
     let version = startingVersion();
     let place: EditorPlace | undefined;
     let keepTimer: ReturnType<typeof setTimeout> | undefined;
@@ -173,6 +186,7 @@ export function useEditorView(language: string | undefined) {
         passive: true,
       });
       view.current = made.view;
+      setMounts((count) => count + 1);
       return made.view;
     };
     const remount = (state: EditorState, back: EditorPlace) => {
@@ -192,6 +206,7 @@ export function useEditorView(language: string | undefined) {
         )
       : mounted(EditorState.create({ extensions: [extensions, fieldsKept] }));
     setStatus(reused ? statusOf(shown.state, table) : undefined);
+    setFindCount(reused ? countOf(shown.state) : undefined);
     setEndingsShown(reused ? endingsShownOf(shown.state) : undefined);
     if (!reused) {
       readEdited(tab);
@@ -220,9 +235,10 @@ export function useEditorView(language: string | undefined) {
         const start = next.doc.lineAt(
           Math.min(message.at, next.doc.length),
         ).from;
+        place = { from: start, offset: 0 };
         remount(
           next.update({ selection: EditorSelection.cursor(start) }).state,
-          { from: start, offset: 0 },
+          place,
         );
         keepState(shown.state);
       } else if (keptPlace !== undefined) {
@@ -234,9 +250,14 @@ export function useEditorView(language: string | undefined) {
       keepEditor({ state: shown.state, version, place });
       setEndingsShown(endingsShownOf(shown.state));
       setStatus(statusOf(shown.state, table));
-      shown.focus();
+      setFindCount(countOf(shown.state));
+      focusFirst();
     });
-    shown.focus();
+    if (reused) {
+      focusFirst();
+    } else {
+      shown.focus();
+    }
     return () => {
       stop();
       stopSettling();
@@ -256,6 +277,7 @@ export function useEditorView(language: string | undefined) {
     keepEditState,
     editorKeeper,
     keptEditor,
+    keptEditing,
     listenEditor,
     readEdited,
     saveText,
@@ -303,5 +325,6 @@ export function useEditorView(language: string | undefined) {
     goingToLine,
     setGoingToLine,
     lineCount,
+    mounts,
   };
 }

@@ -46,3 +46,16 @@ test('takes the place scrolled to as reached within a pixel of it, and not at an
     samePlace({ from: 120, offset: 17.6 }, { from: 120, offset: 0 }),
   );
 });
+
+test('reads how far the text was scrolled sideways from the state kept, as a line longer than the editor came back at its start', () => {
+  assert.deepStrictEqual(
+    placeIn({ place: { from: 120, offset: 38, left: 240 } }),
+    { from: 120, offset: 38, left: 240 },
+  );
+  for (const left of [0, -5, '240', Number.NaN]) {
+    assert.deepStrictEqual(
+      placeIn({ place: { from: 120, offset: 38, left } }),
+      { from: 120, offset: 38 },
+    );
+  }
+});
