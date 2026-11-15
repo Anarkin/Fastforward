@@ -152,6 +152,38 @@ suite('Terminal sessions', () => {
     );
   });
 
+  test('sends a page attaching again the line the page before it was scrolled back to and the text selected there, followed through what the shell printed meanwhile, and neither once the page is at the end and selects nothing', async () => {
+    const { ptyHost, ptys, clock, start, attach } = host();
+    start(80, 5);
+    await attach(80, 5);
+    ptys
+      .last()
+      .print(
+        Array.from({ length: 30 }, (_, index) => `line ${index}`).join('\r\n'),
+      );
+    await clock.fire();
+    ptyHost.receive({ type: 'scrolled', id: '1', top: 10 });
+    ptyHost.receive({
+      type: 'selected',
+      id: '1',
+      selection: { start: { x: 0, y: 11 }, end: { x: 7, y: 12 } },
+    });
+    ptyHost.receive({ type: 'detach', id: '1' });
+    ptys.last().print('\r\nmore');
+    await clock.fire();
+    const screen = await attach(80, 5);
+    assert.ok(screen?.type === 'screen');
+    assert.deepStrictEqual(
+      [screen.top, screen.selection],
+      [10, { start: { x: 0, y: 11 }, end: { x: 7, y: 12 } }],
+    );
+    ptyHost.receive({ type: 'scrolled', id: '1', top: undefined });
+    ptyHost.receive({ type: 'selected', id: '1', selection: undefined });
+    const end = await attach(80, 5);
+    assert.ok(end?.type === 'screen');
+    assert.deepStrictEqual(['top' in end, 'selection' in end], [false, false]);
+  });
+
   test('pauses the shell once the page falls behind by more than the high watermark, and resumes it once the page catches up below the low one', async () => {
     const { ptyHost, ptys, clock, start, attach } = host({
       highWatermark: 10,

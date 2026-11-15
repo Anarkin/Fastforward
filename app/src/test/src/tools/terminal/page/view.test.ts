@@ -28,6 +28,7 @@ class QuietTerminal {
   onRender = quiet;
   onCursorMove = quiet;
   onScroll = quiet;
+  onSelectionChange = quiet;
   refresh = quiet;
 }
 

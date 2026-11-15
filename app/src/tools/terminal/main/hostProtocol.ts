@@ -1,3 +1,5 @@
+import type { CellRange } from '../shared/protocol';
+
 export interface ShellLaunch {
   readonly file: string;
   readonly args: readonly string[];
@@ -30,6 +32,16 @@ export type HostCommand =
       readonly rows: number;
     }
   | { readonly type: 'ack'; readonly id: string; readonly chars: number }
+  | {
+      readonly type: 'scrolled';
+      readonly id: string;
+      readonly top: number | undefined;
+    }
+  | {
+      readonly type: 'selected';
+      readonly id: string;
+      readonly selection: CellRange | undefined;
+    }
   | { readonly type: 'kill'; readonly id: string };
 
 export type HostEvent =
@@ -38,6 +50,8 @@ export type HostEvent =
       readonly id: string;
       readonly data: string;
       readonly exited: boolean;
+      readonly top?: number;
+      readonly selection?: CellRange;
     }
   | { readonly type: 'output'; readonly id: string; readonly data: string }
   | { readonly type: 'folder'; readonly id: string; readonly folder: string }

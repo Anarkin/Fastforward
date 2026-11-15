@@ -282,6 +282,43 @@ suite('Terminal tool', () => {
     assert.strictEqual(page.of('output').length, 0);
   });
 
+  test('keeps where the page scrolled back to and what it selected in the tab it shows, sending them with the screen once the tab is shown again, though only lines and columns of whole numbers from the page showing the tab, as the page is not trusted', async () => {
+    const { ptys, clock, page, send, open } = terminal();
+    await open(work);
+    ptys
+      .last()
+      .print(
+        Array.from({ length: 40 }, (_, index) => `line ${index}`).join('\r\n'),
+      );
+    await clock.fire();
+    const selection = { start: { x: 1, y: 4 }, end: { x: 6, y: 5 } };
+    await send({ type: 'scrolled', tab: '1', top: 3 });
+    await send({ type: 'selected', tab: '1', selection });
+    const otherPage = new TerminalPage();
+    await send({ type: 'scrolled', tab: '1', top: 9 }, otherPage);
+    await send({ type: 'scrolled', tab: '2', top: 9 });
+    for (const top of [-1, 1.5, Number.NaN, '7', null]) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      await send({ type: 'scrolled', tab: '1', top: top as number });
+    }
+    for (const wrong of [
+      null,
+      7,
+      { start: { x: 0, y: 0 } },
+      { start: { x: 0, y: 0 }, end: { x: -1, y: 0 } },
+      { start: { x: 0, y: 0.5 }, end: { x: 1, y: 0 } },
+      { start: [0, 0], end: [1, 0] },
+    ]) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      const sent = wrong as unknown as typeof selection;
+      await send({ type: 'selected', tab: '1', selection: sent });
+    }
+    await open(other);
+    const screen = await open(work);
+    assert.deepStrictEqual([screen?.top, screen?.selection], [3, selection]);
+    assert.deepStrictEqual(page.of('show').length, 3);
+  });
+
   test('passes on what is typed before the screen comes, so nothing typed into a terminal just opened is lost', async () => {
     const { tool, ptys, page, send } = terminal();
     await tool.show(page, work);

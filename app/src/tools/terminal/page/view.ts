@@ -19,6 +19,7 @@ import type { WindowsPty } from '../shared/protocol';
 import type { FromScreen } from './store';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
 import { cursorOptions, drawnByPage, PageCursor } from './pageCursor';
+import { PlaceReports } from './placeReports';
 
 const resizeDelay = 50;
 
@@ -84,6 +85,7 @@ export class TerminalView {
   private readonly terminal: Terminal;
   private readonly fit: FitAddon;
   private readonly cursor: PageCursor;
+  private readonly place: PlaceReports;
   private readonly probe = document.createElement('span');
   private readonly observer = new ResizeObserver(() => this.layOut());
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
@@ -120,6 +122,12 @@ export class TerminalView {
     this.terminal.onResize(() => this.resized());
     this.terminal.open(element);
     this.cursor = new PageCursor(this.terminal, options.cursor, this.restyle);
+    this.place = new PlaceReports(this.terminal, {
+      scrolled: (top) =>
+        options.post({ type: 'scrolled', tab: options.tab, top }),
+      selected: (selection) =>
+        options.post({ type: 'selected', tab: options.tab, selection }),
+    });
     element.addEventListener('wheel', this.wheel, {
       capture: true,
       passive: false,
@@ -169,9 +177,12 @@ export class TerminalView {
     switch (message.type) {
       case 'screen':
         if (message.tab === tab) {
+          this.place.writing();
           this.terminal.reset();
           this.cursor.reset();
-          this.terminal.write(message.data);
+          this.terminal.write(message.data, () =>
+            this.place.restore(message.top, message.selection),
+          );
           this.exited = message.exited;
         }
         return;
@@ -200,6 +211,7 @@ export class TerminalView {
     this.element.removeEventListener('wheel', this.wheel, { capture: true });
     this.stopWatching();
     removeEventListener('resize', this.snapToPixels);
+    this.place.dispose();
     this.cursor.dispose();
     this.terminal.dispose();
     this.probe.remove();

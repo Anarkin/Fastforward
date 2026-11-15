@@ -2,9 +2,17 @@ import { SerializeAddon } from '@xterm/addon-serialize';
 import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import { Terminal } from '@xterm/headless';
 import type { WindowsPty } from '../shared/protocol';
+import {
+  programCursor,
+  programCursorSequence,
+  setsCursorMode,
+} from '../shared/programCursor';
+import type { CursorStyle } from '../../../lib/shared/cursorSettings';
+import { KeptPlace } from './keptPlace';
 
 export interface Mirror {
   readonly terminal: Terminal;
+  readonly place: KeptPlace;
   serialize(): string;
   scrollback(lines: number): void;
   dispose(): void;
@@ -93,6 +101,91 @@ function trackMouseEncoding(terminal: Terminal): () => string {
   return () => (encoding === undefined ? '' : `\x1b[?${encoding}h`);
 }
 
+function trackCursor(terminal: Terminal): () => string {
+  let hidden = false;
+  let style: CursorStyle | undefined;
+  let blink: boolean | undefined;
+  const { parser } = terminal;
+  const reset = () => {
+    hidden = false;
+    style = undefined;
+    blink = undefined;
+    return false;
+  };
+  parser.registerCsiHandler({ prefix: '?', final: 'h' }, (params) => {
+    hidden &&= !setsCursorMode(params);
+    return false;
+  });
+  parser.registerCsiHandler({ prefix: '?', final: 'l' }, (params) => {
+    hidden ||= setsCursorMode(params);
+    return false;
+  });
+  parser.registerCsiHandler({ intermediates: ' ', final: 'q' }, (params) => {
+    const asked = programCursor(params);
+    if (asked === 'reset') {
+      style = undefined;
+      blink = undefined;
+    } else {
+      style = asked.style ?? style;
+      blink = asked.blink;
+    }
+    return false;
+  });
+  parser.registerCsiHandler({ intermediates: '!', final: 'p' }, reset);
+  parser.registerEscHandler({ final: 'c' }, reset);
+  return () =>
+    `${hidden ? '\x1b[?25l' : ''}${programCursorSequence(style, blink)}`;
+}
+
+type Region = readonly [top: number, bottom: number];
+
+function trackScrollRegion(terminal: Terminal): () => string {
+  const regions = new Map<'normal' | 'alternate', Region>();
+  const { parser } = terminal;
+  parser.registerCsiHandler({ final: 'r' }, (params) => {
+    const [first, second] = params;
+    const top = (typeof first === 'number' ? first : 0) || 1;
+    const asked = typeof second === 'number' ? second : 0;
+    const { rows } = terminal;
+    const bottom =
+      params.length < 2 || asked > rows || asked === 0 ? rows : asked;
+    if (bottom > top) {
+      const { type } = terminal.buffer.active;
+      if (top === 1 && bottom === rows) {
+        regions.delete(type);
+      } else {
+        regions.set(type, [top, bottom]);
+      }
+    }
+    return false;
+  });
+  parser.registerCsiHandler({ intermediates: '!', final: 'p' }, () => {
+    regions.delete(terminal.buffer.active.type);
+    return false;
+  });
+  parser.registerEscHandler({ final: 'c' }, () => {
+    regions.clear();
+    return false;
+  });
+  terminal.onResize(() => regions.clear());
+  terminal.buffer.onBufferChange(({ type }) => {
+    if (type === 'normal') {
+      regions.delete('alternate');
+    }
+  });
+  return () => {
+    const buffer = terminal.buffer.active;
+    const region = regions.get(buffer.type);
+    if (region === undefined) {
+      return '';
+    }
+    const [top, bottom] = region;
+    const row = buffer.cursorY + 1 - (terminal.modes.originMode ? top - 1 : 0);
+    const column = Math.min(buffer.cursorX, terminal.cols - 1) + 1;
+    return `\x1b[${top};${bottom}r\x1b[${row};${column}H`;
+  };
+}
+
 export function createMirror({
   columns,
   rows,
@@ -116,9 +209,13 @@ export function createMirror({
   terminal.loadAddon(new UnicodeGraphemesAddon());
   const colors = trackColors(terminal);
   const mouseEncoding = trackMouseEncoding(terminal);
+  const cursor = trackCursor(terminal);
+  const region = trackScrollRegion(terminal);
   return {
     terminal,
-    serialize: () => colors() + serializer.serialize() + mouseEncoding(),
+    place: new KeptPlace(terminal),
+    serialize: () =>
+      colors() + serializer.serialize() + mouseEncoding() + cursor() + region(),
     scrollback: (lines) => {
       terminal.options.scrollback = lines;
     },

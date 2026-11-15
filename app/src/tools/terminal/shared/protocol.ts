@@ -7,6 +7,16 @@ export interface WindowsPty {
   readonly buildNumber: number;
 }
 
+export interface CellPosition {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface CellRange {
+  readonly start: CellPosition;
+  readonly end: CellPosition;
+}
+
 export type TerminalToHost =
   | {
       readonly type: 'open';
@@ -23,6 +33,16 @@ export type TerminalToHost =
     }
   | { readonly type: 'ack'; readonly tab: string; readonly chars: number }
   | { readonly type: 'restart'; readonly tab: string }
+  | {
+      readonly type: 'scrolled';
+      readonly tab: string;
+      readonly top: number | undefined;
+    }
+  | {
+      readonly type: 'selected';
+      readonly tab: string;
+      readonly selection: CellRange | undefined;
+    }
   | { readonly type: 'newTab' }
   | { readonly type: 'openFolder'; readonly folder: string }
   | { readonly type: 'browseFolders' }
@@ -43,6 +63,8 @@ export type TerminalToWebview =
       readonly tab: string;
       readonly data: string;
       readonly exited: boolean;
+      readonly top?: number;
+      readonly selection?: CellRange;
     }
   | { readonly type: 'output'; readonly tab: string; readonly data: string }
   | { readonly type: 'exited'; readonly tab: string }

@@ -6,8 +6,6 @@ import {
   cursorOptions,
   drawnByPage,
   gridOf,
-  programCursor,
-  setsCursorMode,
 } from '../../../../../tools/terminal/page/pageCursor';
 import { defaultCursorLook } from '../../../../../lib/shared/cursorSettings';
 
@@ -65,26 +63,6 @@ suite('Cursor the page draws over the terminal', () => {
     );
   });
 
-  test('follows a program setting the style of the cursor and its blinking as xterm.js does, the settings again on 0 or no parameter, which xterm.js reads as 0, and only the blinking past 6', () => {
-    assert.strictEqual(programCursor([]), 'reset');
-    assert.strictEqual(programCursor([0]), 'reset');
-    assert.deepStrictEqual(
-      [1, 2, 3, 4, 5, 6].map((param) => programCursor([param])),
-      [
-        { style: 'block', blink: true },
-        { style: 'block', blink: false },
-        { style: 'underline', blink: true },
-        { style: 'underline', blink: false },
-        { style: 'bar', blink: true },
-        { style: 'bar', blink: false },
-      ],
-    );
-    assert.deepStrictEqual(programCursor([7]), {
-      style: undefined,
-      blink: true,
-    });
-  });
-
   test('places the cells by the size of the canvas in device pixels, which xterm.js lays its rows out by, rather than by its screen, which it rounds to whole CSS pixels', () => {
     assert.deepStrictEqual(
       gridOf(
@@ -98,13 +76,6 @@ suite('Cursor the page draws over the terminal', () => {
       gridOf({ left: 10, top: 20, width: 600, height: 691 }, undefined, 1.5),
       { left: 10, top: 20, width: 600, height: 691 },
     );
-  });
-
-  test('follows a program showing and hiding the cursor by its mode alone', () => {
-    assert.strictEqual(setsCursorMode([25]), true);
-    assert.strictEqual(setsCursorMode([1049, 25]), true);
-    assert.strictEqual(setsCursorMode([[25]]), true);
-    assert.strictEqual(setsCursorMode([1049]), false);
   });
 
   test('hands xterm.js the style, the width of the bar in whole CSS pixels and the blinking of the setting, keeping a block or a bar as it is without the focus, and leaves the underline and the outline to the page', () => {

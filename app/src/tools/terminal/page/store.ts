@@ -11,7 +11,10 @@ type ToScreen = TerminalToWebviewOf<'screen' | 'output' | 'exited'>;
 
 export type FromScreen = Extract<
   TerminalToHost,
-  { readonly type: 'open' | 'input' | 'resize' | 'ack' | 'restart' }
+  {
+    readonly type:
+      'open' | 'input' | 'resize' | 'ack' | 'restart' | 'scrolled' | 'selected';
+  }
 >;
 
 export interface TerminalState {

@@ -25,6 +25,7 @@ import {
   type TerminalSettings,
 } from '../shared/settings';
 import { strings } from '../../../lib/shared/strings';
+import { cellRangeOf, isLine } from './cellRanges';
 
 interface Shown {
   readonly page: Page;
@@ -206,6 +207,26 @@ export class TerminalTool implements Tool<'terminal'> {
           this.link.send({ type: 'ack', id: shown.tab, chars: message.chars });
         }
         break;
+      case 'scrolled':
+        if (
+          shown.attached &&
+          session !== undefined &&
+          (message.top === undefined || isLine(message.top))
+        ) {
+          this.link.send({ type: 'scrolled', id: shown.tab, top: message.top });
+        }
+        break;
+      case 'selected': {
+        const selection = cellRangeOf(message.selection);
+        if (
+          shown.attached &&
+          session !== undefined &&
+          (message.selection === undefined || selection !== undefined)
+        ) {
+          this.link.send({ type: 'selected', id: shown.tab, selection });
+        }
+        break;
+      }
       case 'restart':
         if (shown.attached && session?.exited !== false) {
           this.spawn(shown);
@@ -319,6 +340,10 @@ export class TerminalTool implements Tool<'terminal'> {
             tab: event.id,
             data: event.data,
             exited: event.exited,
+            ...(event.top !== undefined && { top: event.top }),
+            ...(event.selection !== undefined && {
+              selection: event.selection,
+            }),
           });
         }
         return;

@@ -10,24 +10,14 @@ import type {
   CursorLook,
   CursorStyle,
 } from '../../../lib/shared/cursorSettings';
-
-const cursorMode = 25;
+import {
+  programCursor,
+  setsCursorMode,
+  setsMode,
+  type ProgramCursor,
+} from '../shared/programCursor';
 
 const alternateScreens = [47, 1047, 1049];
-
-const setsMode = (
-  params: readonly (number | readonly number[])[],
-  modes: readonly number[],
-): boolean =>
-  params.some((param) =>
-    (typeof param === 'number' ? [param] : param).some((mode) =>
-      modes.includes(mode),
-    ),
-  );
-
-export const setsCursorMode = (
-  params: readonly (number | readonly number[])[],
-): boolean => setsMode(params, [cursorMode]);
 
 interface CursorBuffer {
   readonly cursorX: number;
@@ -126,30 +116,6 @@ export function cursorOptions(look: CursorLook): {
     cursorBlink: look.blink,
     cursorInactiveStyle: inactiveStyleOf(look.style),
   };
-}
-
-export type ProgramCursor =
-  | 'reset'
-  | { readonly style: CursorStyle | undefined; readonly blink: boolean };
-
-const programStyles: readonly (CursorStyle | undefined)[] = [
-  undefined,
-  'block',
-  'block',
-  'underline',
-  'underline',
-  'bar',
-  'bar',
-];
-
-export function programCursor(
-  params: readonly (number | readonly number[])[],
-): ProgramCursor {
-  const [first = 0] = params;
-  const param = typeof first === 'number' ? first : (first[0] ?? 0);
-  return param === 0
-    ? 'reset'
-    : { style: programStyles[param], blink: param % 2 === 1 };
 }
 
 export class PageCursor {

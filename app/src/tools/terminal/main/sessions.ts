@@ -3,7 +3,7 @@ import { Backlog, flowLimits, type FlowLimits } from './flowControl';
 import { reportFolders, type FolderPlace } from './folders';
 import type { HostCommand, HostEvent, ShellLaunch } from './hostProtocol';
 import { createMirror, type Mirror } from './mirror';
-import type { WindowsPty } from '../shared/protocol';
+import type { CellRange, WindowsPty } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import { realTimer, type Timer } from '../../../lib/main/timer';
 
@@ -64,6 +64,7 @@ class Session {
   private paused = false;
   private exited = false;
   private started = false;
+  private killed = false;
   private readonly startedIn: (cwd: string) => void;
   constructor(
     private readonly id: string,
@@ -160,11 +161,14 @@ class Session {
       if (attachment !== this.attachment) {
         return;
       }
+      const { top, selection } = this.mirror.place.place();
       this.post({
         type: 'screen',
         id: this.id,
         data: this.mirror.serialize(),
         exited: this.exited,
+        ...(top !== undefined && { top }),
+        ...(selection !== undefined && { selection }),
       });
       this.attached = true;
       this.holding = false;
@@ -188,7 +192,24 @@ class Session {
     this.balance();
   }
 
+  scrolled(top: number | undefined): void {
+    this.afterOutput(() => this.mirror.place.scrolled(top));
+  }
+
+  selected(selection: CellRange | undefined): void {
+    this.afterOutput(() => this.mirror.place.selected(selection));
+  }
+
+  private afterOutput(act: () => void): void {
+    this.mirror.terminal.write('', () => {
+      if (!this.killed) {
+        act();
+      }
+    });
+  }
+
   kill(): void {
+    this.killed = true;
     this.attachment++;
     this.stopListening();
     this.cancelFlush?.();
@@ -324,6 +345,12 @@ export class PtyHost {
         return;
       case 'ack':
         this.sessions.get(command.id)?.acked(command.chars);
+        return;
+      case 'scrolled':
+        this.sessions.get(command.id)?.scrolled(command.top);
+        return;
+      case 'selected':
+        this.sessions.get(command.id)?.selected(command.selection);
         return;
       case 'kill':
         this.sessions.get(command.id)?.kill();
