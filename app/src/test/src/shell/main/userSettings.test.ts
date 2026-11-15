@@ -145,7 +145,12 @@ suite('User settings file', () => {
     await user.setImages('realSize', true);
     assert.strictEqual(user.settings.images.realSize, true);
     assert.ok(fs.statSync(file).isDirectory());
-    assert.ok(!fs.existsSync(`${file}.tmp`));
+    assert.deepStrictEqual(
+      fs
+        .readdirSync(path.dirname(file))
+        .filter((name) => name.endsWith('.tmp')),
+      [],
+    );
   });
 
   test('saves to the file a symlink points to, keeping the symlink', async (context) => {

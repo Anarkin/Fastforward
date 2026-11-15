@@ -125,10 +125,19 @@ suite('Places in PDFs', () => {
     try {
       const file = path.join(folder, 'pdf-places.json');
       const places = new PdfPlaces(file, () => 1000);
-      fs.mkdirSync(path.join(`${file}.tmp`, 'held'), { recursive: true });
-
-      await assert.rejects(places.save('aa11', third, 'C:/books/one.pdf'));
-      fs.rmSync(`${file}.tmp`, { recursive: true });
+      const rename = fs.promises.rename;
+      replaceBuiltin(fs.promises, 'rename', () =>
+        Promise.reject(
+          Object.assign(new Error('EISDIR: illegal operation on a directory'), {
+            code: 'EISDIR',
+          }),
+        ),
+      );
+      try {
+        await assert.rejects(places.save('aa11', third, 'C:/books/one.pdf'));
+      } finally {
+        replaceBuiltin(fs.promises, 'rename', rename);
+      }
       await places.save('bb22', tenth, 'C:/books/two.pdf');
 
       assert.deepStrictEqual(await new PdfPlaces(file).of('aa11'), third);

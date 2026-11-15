@@ -79,7 +79,12 @@ suite('State file', () => {
     await store.update('tabs', ['/a']);
     assert.deepStrictEqual(store.get('tabs'), ['/a']);
     assert.ok(fs.statSync(file).isDirectory());
-    assert.ok(!fs.existsSync(`${file}.tmp`));
+    assert.deepStrictEqual(
+      fs
+        .readdirSync(path.dirname(file))
+        .filter((name) => name.endsWith('.tmp')),
+      [],
+    );
   });
 
   test('saves again once a file that could not be read at first can be, keeping what it held under the changes made since', async () => {

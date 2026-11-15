@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -13,7 +14,7 @@ export async function writeAtomically(
   retryDelays: readonly number[] = renameRetryDelays,
 ): Promise<void> {
   const target = await linkedFile(file);
-  const temporary = `${target}.tmp`;
+  const temporary = `${target}.${randomBytes(4).toString('hex')}.tmp`;
   await fs.promises.mkdir(path.dirname(file), { recursive: true });
   try {
     const handle = await fs.promises.open(temporary, 'w');

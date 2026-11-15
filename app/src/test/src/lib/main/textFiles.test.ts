@@ -31,6 +31,21 @@ async function renameFailing(
   return renames;
 }
 
+async function filesOpened(run: () => Promise<unknown>): Promise<string[]> {
+  const open = fs.promises.open;
+  const opened: string[] = [];
+  Reflect.set(fs.promises, 'open', (...args: Parameters<typeof open>) => {
+    opened.push(String(args[0]));
+    return open(...args);
+  });
+  try {
+    await run();
+  } finally {
+    Reflect.set(fs.promises, 'open', open);
+  }
+  return opened;
+}
+
 suite('Writing a file whole', () => {
   test('flushes the new text to the disk before putting it in place, so a crash leaves the old file or the new one, not an empty one', async () => {
     const folder = tempFolder('flushed');
@@ -112,8 +127,7 @@ suite('Replacing a file', () => {
     );
     assert.strictEqual(renames, 3);
     assert.match(String(failure), /EPERM/);
-    assert.ok(!fs.existsSync(`${file}.tmp`));
-    assert.ok(!fs.existsSync(file));
+    assert.deepStrictEqual(fs.readdirSync(folder), []);
   });
 
   test('gives up at once when the file can never be replaced', async () => {
@@ -125,6 +139,18 @@ suite('Replacing a file', () => {
     );
     assert.strictEqual(renames, 1);
     assert.match(String(failure), /EISDIR/);
-    assert.ok(!fs.existsSync(`${file}.tmp`));
+    assert.deepStrictEqual(fs.readdirSync(folder), []);
+  });
+
+  test('writes a file twice at once, each through a temporary file of its own, so neither fails and the file holds the text of one of them whole', async () => {
+    const texts = ['{"first":1}', '{"second":"a longer text"}'];
+
+    const opened = await filesOpened(() =>
+      Promise.all(texts.map((text) => writeAtomically(file, text))),
+    );
+
+    assert.strictEqual(new Set(opened).size, texts.length);
+    assert.ok(texts.includes(fs.readFileSync(file, 'utf8')));
+    assert.deepStrictEqual(fs.readdirSync(folder), [path.basename(file)]);
   });
 });
