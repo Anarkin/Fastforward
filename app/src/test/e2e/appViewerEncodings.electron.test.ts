@@ -7,12 +7,10 @@ import {
   opened,
   page,
   rowNames,
-  shownState,
-  closeViewer,
-  firstViewerRow,
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { shownState, closeViewer, firstViewerRow } from './viewerAppFixtures';
 
 const rowTexts = () =>
   page.locator('.viewer-rows .viewer-row').allTextContents();

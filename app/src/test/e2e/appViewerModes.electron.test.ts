@@ -13,12 +13,10 @@ import {
   savedText,
   right,
   rowNames,
-  shownState,
-  closeViewer,
-  firstViewerRow,
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { shownState, closeViewer, firstViewerRow } from './viewerAppFixtures';
 
 const languageLabel = () =>
   page.locator('.viewer .language-button .menu-button-label').textContent();

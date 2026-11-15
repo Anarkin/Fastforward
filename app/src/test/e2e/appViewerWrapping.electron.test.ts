@@ -13,10 +13,10 @@ import {
   dotted,
   savedText,
   rowNames,
-  firstViewerRow,
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { firstViewerRow } from './viewerAppFixtures';
 
 const layout = () =>
   page.locator('.viewer-body').evaluate((body) => {

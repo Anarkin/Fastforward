@@ -9,12 +9,12 @@ import {
   profile,
   app,
   page,
-  grayPng,
   savedSetting,
   rowNames,
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { grayPng } from './images';
 
 const pressedMode = () =>
   page

@@ -7,7 +7,6 @@ import { waitForFocus } from './waits';
 import {
   opened,
   page,
-  grayPng,
   rowNames,
   select,
   threeLines,
@@ -15,6 +14,7 @@ import {
   markedNames,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { grayPng } from './images';
 
 suite('App commander', () => {
   sharedCommanderApp();

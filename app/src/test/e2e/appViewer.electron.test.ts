@@ -11,14 +11,16 @@ import {
   profile,
   page,
   rowNames,
-  firstViewerRow,
-  findMarks,
-  findCount,
-  viewerThumb,
   select,
   right,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import {
+  firstViewerRow,
+  findMarks,
+  findCount,
+  viewerThumb,
+} from './viewerAppFixtures';
 
 const count = () => page.locator('.viewer .find-field-count').textContent();
 

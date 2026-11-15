@@ -8,17 +8,72 @@ import {
   opened,
   profile,
   page,
-  grayPng,
-  withOrientation,
-  storedThumbnails,
   right,
   rowNames,
-  thumbnailed,
-  shownThumbnailOf,
-  thumbnailLookOf,
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { grayPng, withOrientation } from './images';
+
+const storedThumbnails = (profileFolder: string): number => {
+  const stored = path.join(profileFolder, 'Thumbnails');
+  return fs.existsSync(stored)
+    ? fs.readdirSync(stored).filter((name) => name.endsWith('.webp')).length
+    : 0;
+};
+
+const thumbnailed = () =>
+  right()
+    .locator('.virtual-rows')
+    .evaluate((list) => {
+      const shown = list.getBoundingClientRect();
+      return [...list.querySelectorAll('.commander-tile')]
+        .filter((tile) => tile.querySelector('img.thumbnail-image'))
+        .map((tile) => {
+          const box = tile.getBoundingClientRect();
+          return {
+            name: tile.querySelector('.commander-tile-name')?.textContent,
+            inView: box.bottom > shown.top && box.top < shown.bottom,
+          };
+        });
+    });
+
+const shownThumbnailOf = (name: string) =>
+  right()
+    .locator('.commander-tile', { hasText: name })
+    .locator('img.thumbnail-image')
+    .evaluate((image: HTMLImageElement) =>
+      image.complete ? image.naturalWidth : 0,
+    )
+    .catch(() => 0);
+
+const thumbnailLookOf = (name: string) =>
+  right()
+    .locator('.commander-tile', { hasText: name })
+    .locator('img.thumbnail-image')
+    .evaluate((image: HTMLImageElement) => {
+      if (!image.complete || image.naturalWidth === 0) {
+        return undefined;
+      }
+      const { naturalWidth: width, naturalHeight: height } = image;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      context?.drawImage(image, 0, 0);
+      const light = (x: number, y: number) =>
+        context?.getImageData(Math.floor(x), Math.floor(y), 1, 1).data[0] ?? 0;
+      const box = image.getBoundingClientRect();
+      return {
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+        left: light(width / 4, height / 2),
+        right: light((3 * width) / 4, height / 2),
+        top: light(width / 2, height / 4),
+        bottom: light(width / 2, (3 * height) / 4),
+      };
+    })
+    .catch(() => undefined);
 
 const tileNames = () =>
   right().locator('.commander-tile .commander-tile-name').allTextContents();

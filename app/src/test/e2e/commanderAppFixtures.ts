@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { crc32, deflateSync } from 'node:zlib';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
@@ -24,63 +23,6 @@ export const dotted = (drawn: Locator) =>
     .evaluate((element) =>
       getComputedStyle(element).backgroundImage.startsWith('linear-gradient'),
     );
-
-const pngChunk = (type: string, body: Buffer) => {
-  const length = Buffer.alloc(4);
-  length.writeUInt32BE(body.length);
-  const typed = Buffer.concat([Buffer.from(type), body]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(typed));
-  return Buffer.concat([length, typed, crc]);
-};
-
-export const grayPng = (width: number, height: number) => {
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width, 0);
-  header.writeUInt32BE(height, 4);
-  header[8] = 8;
-  const rows = Buffer.alloc((width + 1) * height, 128);
-  for (let row = 0; row < height; row++) {
-    rows[row * (width + 1)] = 0;
-  }
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    pngChunk('IHDR', header),
-    pngChunk('IDAT', deflateSync(rows)),
-    pngChunk('IEND', Buffer.alloc(0)),
-  ]);
-};
-
-export const withOrientation = (jpeg: Buffer, orientation: number) => {
-  const tiff = Buffer.alloc(26);
-  tiff.write('MM', 0, 'latin1');
-  tiff.writeUInt16BE(42, 2);
-  tiff.writeUInt32BE(8, 4);
-  tiff.writeUInt16BE(1, 8);
-  tiff.writeUInt16BE(0x0112, 10);
-  tiff.writeUInt16BE(3, 12);
-  tiff.writeUInt32BE(1, 14);
-  tiff.writeUInt16BE(orientation, 18);
-  tiff.writeUInt32BE(0, 22);
-  const exif = Buffer.concat([Buffer.from('Exif\0\0', 'latin1'), tiff]);
-  const segment = Buffer.alloc(4);
-  segment.writeUInt16BE(0xffe1, 0);
-  segment.writeUInt16BE(exif.length + 2, 2);
-  const afterApp0 = 4 + jpeg.readUInt16BE(4);
-  return Buffer.concat([
-    jpeg.subarray(0, afterApp0),
-    segment,
-    exif,
-    jpeg.subarray(afterApp0),
-  ]);
-};
-
-export const storedThumbnails = (profileFolder: string): number => {
-  const stored = path.join(profileFolder, 'Thumbnails');
-  return fs.existsSync(stored)
-    ? fs.readdirSync(stored).filter((name) => name.endsWith('.webp')).length
-    : 0;
-};
 
 export const threeLines = (changed: string) =>
   ['one', changed, 'three', ''].join(String.fromCharCode(10));
@@ -215,59 +157,6 @@ export const thumbGaps = () =>
 
 export const markedSorted = async () => (await markedNames()).toSorted().join();
 
-export const thumbnailed = () =>
-  right()
-    .locator('.virtual-rows')
-    .evaluate((list) => {
-      const shown = list.getBoundingClientRect();
-      return [...list.querySelectorAll('.commander-tile')]
-        .filter((tile) => tile.querySelector('img.thumbnail-image'))
-        .map((tile) => {
-          const box = tile.getBoundingClientRect();
-          return {
-            name: tile.querySelector('.commander-tile-name')?.textContent,
-            inView: box.bottom > shown.top && box.top < shown.bottom,
-          };
-        });
-    });
-
-export const shownThumbnailOf = (name: string) =>
-  right()
-    .locator('.commander-tile', { hasText: name })
-    .locator('img.thumbnail-image')
-    .evaluate((image: HTMLImageElement) =>
-      image.complete ? image.naturalWidth : 0,
-    )
-    .catch(() => 0);
-
-export const thumbnailLookOf = (name: string) =>
-  right()
-    .locator('.commander-tile', { hasText: name })
-    .locator('img.thumbnail-image')
-    .evaluate((image: HTMLImageElement) => {
-      if (!image.complete || image.naturalWidth === 0) {
-        return undefined;
-      }
-      const { naturalWidth: width, naturalHeight: height } = image;
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d');
-      context?.drawImage(image, 0, 0);
-      const light = (x: number, y: number) =>
-        context?.getImageData(Math.floor(x), Math.floor(y), 1, 1).data[0] ?? 0;
-      const box = image.getBoundingClientRect();
-      return {
-        width: Math.round(box.width),
-        height: Math.round(box.height),
-        left: light(width / 4, height / 2),
-        right: light((3 * width) / 4, height / 2),
-        top: light(width / 2, height / 4),
-        bottom: light(width / 2, (3 * height) / 4),
-      };
-    })
-    .catch(() => undefined);
-
 export const onClipboard = () =>
   app
     .evaluate(async ({ clipboard }) => {
@@ -312,53 +201,8 @@ export const icons = () =>
       }),
     );
 
-export const shownState = () =>
-  page.evaluate(() => {
-    const viewer = document.querySelector('.viewer');
-    return JSON.stringify({
-      viewing: viewer?.getAttribute('data-file') ?? null,
-      text:
-        viewer instanceof HTMLElement ? viewer.innerText.slice(0, 300) : null,
-      selected: [...document.querySelectorAll('.commander-row.selected')].map(
-        (row) => row.textContent,
-      ),
-      focused: document.activeElement?.className ?? null,
-    });
-  });
-export const closeViewer = async () => {
-  if (await page.locator('.viewer').isVisible()) {
-    await page.keyboard.press('Escape');
-    await page
-      .locator('.viewer')
-      .waitFor({ state: 'detached' })
-      .catch(() => undefined);
-  }
-};
-export const firstViewerRow = async () =>
-  (await page.locator('.viewer-rows .viewer-row').first().textContent()) ?? '';
-export const findMarks = () =>
-  page
-    .locator('.viewer-rows .find-match')
-    .evaluateAll((elements) =>
-      elements.map((element) => [
-        element.textContent,
-        element.classList.contains('current'),
-      ]),
-    );
-export const findCount = () =>
-  page.locator('.viewer .find-field-count').textContent();
 export const selected = async () =>
   (await right().locator('.commander-row.selected').textContent()) ?? '';
-export const viewerThumb = () =>
-  page.locator('.viewer-thumb').evaluate((element) => {
-    const box = element.getBoundingClientRect();
-    const track = element.parentElement?.getBoundingClientRect();
-    return {
-      top: box.top,
-      height: box.height,
-      fromEnd: (track?.bottom ?? 0) - box.bottom,
-    };
-  });
 export const select = async (name: string) => {
   await right().locator('.commander-row', { hasText: name }).click();
   await waitFor(
