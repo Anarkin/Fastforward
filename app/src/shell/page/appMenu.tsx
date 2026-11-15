@@ -3,7 +3,7 @@ import { shellKeymap } from '../shared/keymap';
 import { strings } from '../../lib/shared/strings';
 import { MenuButton } from '../../lib/page/menu';
 import { useBinding } from '../../lib/page/shortcuts';
-import { AppIcon } from './titleBar';
+import { AppIcon } from './appIcon';
 import { useShell, useShellActions } from './store';
 import { updateLabel } from './updateLabel';
 

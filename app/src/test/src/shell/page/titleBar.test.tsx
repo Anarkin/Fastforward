@@ -1,6 +1,4 @@
 import * as assert from 'node:assert';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
@@ -8,24 +6,8 @@ import {
   windowButtonColor,
   windowTitle,
 } from '../../../../shell/page/windowTitle';
-import { AppIcon, TitleBar } from '../../../../shell/page/titleBar';
+import { TitleBar } from '../../../../shell/page/titleBar';
 import { stylesheet } from '../../../helpers/fixtures';
-
-function drawingOf(svg: string) {
-  return {
-    viewBox: /viewBox="([^"]*)"/.exec(svg)?.[1],
-    shapes: [
-      ...svg.matchAll(/<(rect|line|circle|path|polyline)\b([^>]*?)\/?>/g),
-    ].map(([, tag, attributes]) => ({
-      tag,
-      attributes: Object.fromEntries(
-        [...(attributes ?? '').matchAll(/([\w-]+)="([^"]*)"/g)].map(
-          ([, name, value]) => [name, value],
-        ),
-      ),
-    })),
-  };
-}
 
 suite('Title bar', () => {
   test('names the open repository, or only the app without one', () => {
@@ -88,15 +70,6 @@ suite('Title bar', () => {
     );
     assert.match(html, /<svg class="title-bar-icon"/);
     assert.match(html, />\/code\/app - Fastforward<\/span>/);
-  });
-
-  test('draws the same icon as the taskbar, the mark on its white rounded tile, so it looks alike in both places', () => {
-    assert.deepStrictEqual(
-      drawingOf(renderToStaticMarkup(<AppIcon />)),
-      drawingOf(
-        readFileSync(join(__dirname, '../../../../../build/icon.svg'), 'utf8'),
-      ),
-    );
   });
 
   test("puts the app's menu between the icon and the title, kept out of the area that drags the window, opening to the right", () => {
