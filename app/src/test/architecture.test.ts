@@ -6,6 +6,11 @@ import { toolSections, tools } from '../shell/shared/tools';
 import { shortcutEntries } from '../shell/page/toolShortcuts';
 import { defaultSettings } from './helpers/fixtures';
 import { programsOfSuffixes } from './helpers/programs';
+import {
+  keptStates,
+  lostStates,
+  passingStates,
+} from './helpers/componentStates';
 
 const source = path.join(__dirname, '..');
 const appFolder = path.join(source, '..');
@@ -136,7 +141,40 @@ function countedOver(
   );
 }
 
+function statesIn(text: string): string[] {
+  const named = [
+    ...text.matchAll(
+      /\bconst\s+(\[[^\]]*\]|\w+)\s*(?::[^=]*)?=\s*use(?:State|Reducer)\b/g,
+    ),
+  ].map(([, held = '']) => {
+    const [first = '', setter = ''] = held.startsWith('[')
+      ? held
+          .slice(1, -1)
+          .split(/,(?![^{]*\})/)
+          .map((part) => part.trim())
+      : [held];
+    return /^\w+$/.test(first)
+      ? first
+      : setter.replace(/^set(\w)/, (_, letter: string) => letter.toLowerCase());
+  });
+  const calls = text.match(/\buse(?:State|Reducer)\s*[<(]/g)?.length ?? 0;
+  return calls === named.length ? named : [...named, '?'];
+}
+
 suite('Architecture', () => {
+  test('holds in a component, by useState or useReducer, only a state helpers/componentStates.ts lists, each with why: kept, read back as the component mounts from what the tab keeps, or passing, a measure, a moment or a trigger a tab shown again may lose, so leaving a tab and coming back finds it as it was left, and a state added later is weighed before it lands', () => {
+    const held = sourceFiles
+      .filter((file) =>
+        /^(?:lib|shell|tools\/[^/]+)\/page\/.+\.tsx?$/.test(file),
+      )
+      .flatMap((file) => statesIn(read(file)).map((name) => `${file} ${name}`));
+    const listed = [keptStates, passingStates, lostStates].flatMap((states) =>
+      Object.keys(states),
+    );
+    assert.deepStrictEqual(held.toSorted(), listed.toSorted());
+    assert.strictEqual(new Set(listed).size, listed.length);
+  });
+
   test('keeps each source file in the folder of its part, the library, the shell or a tool, by where it runs, or in boot', () => {
     const placed =
       /^(?:(?:lib|shell|tools\/[^/]+)\/(?:main|page|shared)\/.+|boot\/[^/]+)$/;
