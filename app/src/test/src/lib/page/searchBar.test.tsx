@@ -44,7 +44,17 @@ const disabled = (matches: number) =>
     (button) => button.hasAttribute('disabled'),
   );
 
+const named = (props: Partial<Props>) =>
+  page(props)
+    .querySelector('.search-box-input')
+    ?.getAttribute('data-focus-name');
+
 suite('Search bar', () => {
+  test('names its box for the focus a tab keeps, find unless told another name, so the tab gives the focus back to it', () => {
+    assert.strictEqual(named({}), 'find');
+    assert.strictEqual(named({ focusName: 'filter' }), 'filter');
+  });
+
   test('draws, from the left, the back button, the box with its input, the counter and the three toggles at its right end, and the previous and next buttons', () => {
     const document = page();
     const shown = document.querySelector('.search-bar');

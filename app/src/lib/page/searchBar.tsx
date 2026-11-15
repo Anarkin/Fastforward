@@ -3,6 +3,7 @@ import type { SearchOptions } from '../shared/searchOptions';
 import { strings } from '../shared/strings';
 import { matchCount, type MatchesFound } from '../shared/textMatches';
 import { BackIcon, NextIcon, PreviousIcon } from './icons';
+import { focusNameAttribute } from './keptFocus';
 
 const toggles = [
   {
@@ -77,6 +78,7 @@ export function SearchBar({
   countTitle,
   placeholder = strings.find.placeholder,
   input,
+  focusName = 'find',
   compact = false,
   noRegex,
   combobox,
@@ -93,6 +95,7 @@ export function SearchBar({
   countTitle?: string;
   placeholder?: string;
   input?: RefObject<HTMLInputElement | null>;
+  focusName?: string;
   compact?: boolean;
   noRegex?: string;
   combobox?: ComboboxProps;
@@ -133,6 +136,7 @@ export function SearchBar({
           aria-label={placeholder}
           spellCheck={false}
           value={query}
+          {...{ [focusNameAttribute]: focusName }}
           {...combobox}
           onChange={(event) => onQuery(event.target.value)}
           onKeyDown={onKeyDown}
