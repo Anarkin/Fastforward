@@ -2,8 +2,6 @@ import type { Sentence } from '../../lib/shared/sentences';
 import type { ImageView, TextView } from './views';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
-export const maxNotices = 4;
-
 export interface TabInfo {
   readonly id: string;
   readonly tool: ToolId;
@@ -62,10 +60,6 @@ export type UpdateStatus =
   | { readonly kind: 'ready'; readonly version: string }
   | { readonly kind: 'available'; readonly version: string }
   | { readonly kind: 'failed' };
-
-export const themes = ['auto', 'light', 'dark'] as const;
-
-export type Theme = (typeof themes)[number];
 
 export type ToHost =
   | { readonly type: 'ready' }

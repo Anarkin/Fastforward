@@ -1,5 +1,6 @@
 import { plainOf, type Sentence } from '../../lib/shared/sentences';
-import { maxNotices } from './protocol';
+
+const maxNotices = 4;
 
 export function addNotice<Notice extends { readonly message: Sentence }>(
   notices: readonly Notice[],

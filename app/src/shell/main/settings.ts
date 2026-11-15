@@ -14,10 +14,13 @@ import {
   indentStyles,
   type EditorSettings,
 } from './editorSettings';
-import { themes, type Theme } from '../shared/protocol';
 import { type ImageView, type TextView } from '../shared/views';
 import { cursorStyles, type CursorLook } from '../../lib/shared/cursorSettings';
 import { isObject, type Json } from '../../lib/main/json';
+
+const themes = ['auto', 'light', 'dark'] as const;
+
+export type Theme = (typeof themes)[number];
 
 export interface Settings {
   readonly tabs: {
