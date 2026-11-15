@@ -1,8 +1,13 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { parseFilePatch, parsePatch } from '../../../../../tools/git/page/diff';
+import {
+  parseFilePatch,
+  parsePatch,
+  type DiffFile,
+} from '../../../../../tools/git/page/diff';
 import { collapseThreshold } from '../../../../../tools/git/shared/protocol';
 import {
+  filteredDiffFiles,
   shownFiles,
   withLargeFiles,
 } from '../../../../../tools/git/page/diffFiles';
@@ -97,5 +102,40 @@ suite('Files whose changes are all whitespace', () => {
       parseFilePatch('large.json', '').whitespaceOnly,
       undefined,
     );
+  });
+});
+
+const diffFile = (path: string, oldPath?: string): DiffFile => ({
+  path,
+  ...(oldPath === undefined ? {} : { oldPath }),
+  binary: false,
+  hunks: [],
+});
+
+suite('File filter', () => {
+  test('shows the diffs of only the files the search finds while no file is selected, and the one selected whatever it is', () => {
+    const files = [
+      diffFile('a/view.ts'),
+      diffFile('b/api.ts', 'b/view.ts'),
+      diffFile('c.ts'),
+    ];
+    const paths = (path: string | undefined, filter: string | undefined) =>
+      filteredDiffFiles(files, path, filter).map((shown) => shown.path);
+    assert.deepStrictEqual(paths(undefined, 'view'), ['a/view.ts', 'b/api.ts']);
+    assert.deepStrictEqual(paths(undefined, undefined), [
+      'a/view.ts',
+      'b/api.ts',
+      'c.ts',
+    ]);
+    assert.deepStrictEqual(paths(undefined, ' '), [
+      'a/view.ts',
+      'b/api.ts',
+      'c.ts',
+    ]);
+    assert.deepStrictEqual(paths('c.ts', 'view'), [
+      'a/view.ts',
+      'b/api.ts',
+      'c.ts',
+    ]);
   });
 });
