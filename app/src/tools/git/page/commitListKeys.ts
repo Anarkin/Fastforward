@@ -7,10 +7,19 @@ import {
 import { CommitHistory } from './commitHistory';
 import { commitMenuTarget, type MenuTarget } from './menus';
 import {
+  listMoveOf,
   moveInList,
   type ListMove,
   type VisibleRows,
 } from '../../../lib/page/listMoves';
+import { gitKeymap } from './keymap';
+import { keyPressed } from '../../../lib/page/shortcuts';
+
+export function commitMoveOf(
+  event: Parameters<typeof listMoveOf>[0],
+): ListMove | undefined {
+  return listMoveOf(event) ?? keyPressed(gitKeymap.peekStep, event);
+}
 
 export function keySelection(
   history: CommitHistory,

@@ -69,6 +69,7 @@ import {
   PendingKey,
   pendingSelection,
   listKeyPosition,
+  commitMoveOf,
 } from './commitListKeys';
 import {
   useRowLineHeight,
@@ -79,7 +80,6 @@ import {
 } from './commitListRows';
 import {
   noRefs,
-  commitMoveOf,
   isCompareClick,
   selectionClasses,
   commitOption,

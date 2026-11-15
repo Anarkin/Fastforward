@@ -3,18 +3,10 @@ import { comparedOf, shownSide, sidesOf } from '../shared/comparisons';
 import { type RefInfo } from '../shared/protocol';
 import { clicked, type Click } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
-import { keyPressed } from '../../../lib/page/shortcuts';
 import { strings } from '../../../lib/shared/strings';
-import { listMoveOf, type ListMove } from '../../../lib/page/listMoves';
 import { activeDescendant, rowId } from '../../../lib/page/rowIds';
 
 export const noRefs: readonly RefInfo[] = [];
-
-export function commitMoveOf(
-  event: Parameters<typeof listMoveOf>[0],
-): ListMove | undefined {
-  return listMoveOf(event) ?? keyPressed(gitKeymap.peekStep, event);
-}
 
 export function isCompareClick(event: Click): boolean {
   return clicked(gitKeymap.compare, event) !== undefined;
