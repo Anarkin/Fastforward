@@ -19,13 +19,9 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
-import {
-  closeViews,
-  failOnErrorsLogged,
-  type FakePage,
-  openView,
-} from '../../../../helpers/harness';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
+import { closeViews, openView } from '../../../../helpers/harness';
+import { type FakePage } from '../../../../helpers/fakePage';
 
 suite('Git tool comparing', () => {
   let repository: TempRepository;

@@ -8,7 +8,6 @@ import { FakeStore } from '../../../../helpers/fakeStore';
 import {
   attach,
   closeViews,
-  failOnErrorsLogged,
   gitState,
   newView,
   openView,
@@ -17,7 +16,6 @@ import {
   settingsForViews,
   stubMethod,
   tabOf,
-  takeErrorsLogged,
 } from '../../../../helpers/harness';
 import {
   installedGit,
@@ -26,7 +24,11 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 
 const storageOf = (store: FakeStore) =>
   new GitStorage(settingsForViews(), gitState(store));

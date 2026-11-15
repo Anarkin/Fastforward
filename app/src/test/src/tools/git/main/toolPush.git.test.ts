@@ -11,17 +11,18 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
 import {
-  closeViews,
+  recordingLog,
   failOnErrorsLogged,
-  type FakePage,
-  holdFetches,
-  openView,
   takeErrorsLogged,
+} from '../../../../helpers/stub';
+import { closeViews, openView } from '../../../../helpers/harness';
+import {
+  type FakePage,
   withNotices,
   type PageMessage,
-} from '../../../../helpers/harness';
+} from '../../../../helpers/fakePage';
+import { holdFetches } from '../../../../helpers/gitFixtures';
 
 function runningState(message: PageMessage): string[] {
   return message.type === 'pushing' || message.type === 'fetching'

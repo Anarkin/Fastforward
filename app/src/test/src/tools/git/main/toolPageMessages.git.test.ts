@@ -12,11 +12,9 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,
-  commitsSent,
-  failOnErrorsLogged,
   gitState,
   openView,
   type OpenView,
@@ -25,6 +23,7 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { commitsSent } from '../../../../helpers/fakePage';
 
 suite('Git tool checking what the page sends', () => {
   let folder: string;

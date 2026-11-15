@@ -11,17 +11,15 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
   gate,
-  numberedLines,
   stubMethod,
   withView,
   tabOf,
 } from '../../../../helpers/harness';
-import { fortyLines } from '../../../../helpers/gitFixtures';
+import { fortyLines, numberedLines } from '../../../../helpers/gitFixtures';
 
 const forged = (json: string): ToHost => JSON.parse(json);
 

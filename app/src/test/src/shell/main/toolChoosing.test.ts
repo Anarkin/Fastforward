@@ -3,10 +3,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
-import { recordingLog } from '../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
   gate,
   stubMethod,
   withView,

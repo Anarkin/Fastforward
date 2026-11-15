@@ -15,18 +15,19 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  commitsSent,
-  failOnErrorsLogged,
   gate,
   openView,
   reopen,
   rootOf,
   savedBookmarks,
   stubMethod,
-  takeErrorsLogged,
   withView,
   type OpenView,
   tabOf,
@@ -36,6 +37,7 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { commitsSent } from '../../../../helpers/fakePage';
 
 suite('Git tool preloading tabs', () => {
   let folder: string;

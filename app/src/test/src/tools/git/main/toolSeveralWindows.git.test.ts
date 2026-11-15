@@ -9,17 +9,16 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   attach,
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
   gitState,
   openView,
-  type FakePage,
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
+import { FakeHost } from '../../../../helpers/fakeHost';
+import { type FakePage } from '../../../../helpers/fakePage';
 
 const shownIn = (page: FakePage) => [
   page.tabs?.tabs.map((tab) => tab.id),

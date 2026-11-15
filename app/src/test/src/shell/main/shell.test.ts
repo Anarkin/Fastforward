@@ -3,15 +3,14 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
-import { recordingLog } from '../../../helpers/stub';
 import {
-  closeViews,
+  recordingLog,
   failOnErrorsLogged,
-  FakeHost,
   takeErrorsLogged,
-  withView,
-} from '../../../helpers/harness';
+} from '../../../helpers/stub';
+import { closeViews, withView } from '../../../helpers/harness';
 import { noticesOf } from './shellFixtures';
+import { FakeHost } from '../../../helpers/fakeHost';
 
 suite('Shell with no tab open', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');

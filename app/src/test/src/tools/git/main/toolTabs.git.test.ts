@@ -19,23 +19,25 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
   gate,
   rootOf,
   stubMethod,
-  takeErrorsLogged,
   withView,
   type OpenView,
   tabOf,
   shownTabs,
   openView,
-  commitsSent,
   gitState,
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
+import { commitsSent } from '../../../../helpers/fakePage';
 
 function savedRoots(view: OpenView): unknown[] {
   const saved = view.store.values.get(tabsKey);

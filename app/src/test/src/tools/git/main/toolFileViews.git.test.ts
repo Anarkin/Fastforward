@@ -13,16 +13,14 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
 import {
-  closeViews,
-  FakeHost,
+  recordingLog,
   failOnErrorsLogged,
   takeErrorsLogged,
-  withView,
-  gitState,
-} from '../../../../helpers/harness';
+} from '../../../../helpers/stub';
+import { closeViews, withView, gitState } from '../../../../helpers/harness';
 import { fortyLines } from '../../../../helpers/gitFixtures';
+import { FakeHost } from '../../../../helpers/fakeHost';
 
 const url = (root: string, file: string, id: string, disk = false) =>
   new URL(imageUrl({ root, path: file, id, disk }), 'fastforward://app');

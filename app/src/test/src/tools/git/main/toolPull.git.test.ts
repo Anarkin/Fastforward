@@ -9,16 +9,17 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
 import {
-  closeViews,
+  recordingLog,
   failOnErrorsLogged,
-  type FakePage,
-  openView,
   takeErrorsLogged,
+} from '../../../../helpers/stub';
+import { closeViews, openView } from '../../../../helpers/harness';
+import {
+  type FakePage,
   withNotices,
   type PageMessage,
-} from '../../../../helpers/harness';
+} from '../../../../helpers/fakePage';
 
 function runningState(message: PageMessage): string[] {
   return message.type === 'pulling' || message.type === 'fetching'

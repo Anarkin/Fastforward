@@ -9,12 +9,8 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
-import {
-  closeViews,
-  failOnErrorsLogged,
-  withView,
-} from '../../../../helpers/harness';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
+import { closeViews, withView } from '../../../../helpers/harness';
 
 suite('Git tool staged and unstaged changes', () => {
   const { log, error: logged } = recordingLog();

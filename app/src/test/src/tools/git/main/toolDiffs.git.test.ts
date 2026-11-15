@@ -10,10 +10,9 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
   gate,
   stubMethod,
   withView,

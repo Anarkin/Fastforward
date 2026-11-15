@@ -12,12 +12,13 @@ import {
   tempFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
-  takeErrorsLogged,
   withView,
   tabOf,
   shownTabs,
@@ -25,6 +26,7 @@ import {
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
 import { keptOf, keepAll } from './toolOtherRepositoriesFixtures';
+import { FakeHost } from '../../../../helpers/fakeHost';
 
 suite('Git tool of other repositories', () => {
   let folder: string;

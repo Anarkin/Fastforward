@@ -11,17 +11,19 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  failOnErrorsLogged,
-  type FakePage,
   openView,
-  takeErrorsLogged,
   gitState,
 } from '../../../../helpers/harness';
 import { deleteTags } from '../../../../helpers/gitFixtures';
+import { type FakePage } from '../../../../helpers/fakePage';
 
 function remoteTag(name: string, tag: string, commit: string): RefInfo {
   return { kind: 'remote-tag', name: `${name}/${tag}`, commit, remote: name };

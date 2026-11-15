@@ -4,18 +4,14 @@ import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
-import { recordingLog } from '../../../helpers/stub';
-import {
-  attach,
-  closeViews,
-  failOnErrorsLogged,
-  FakeHost,
-  type FakePage,
-} from '../../../helpers/harness';
+import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
+import { attach, closeViews } from '../../../helpers/harness';
 import { removeFolder, tempFolder } from '../../../helpers/repositories';
 import { Pages } from '../../../../shell/main/pages';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
 import { noticesOf, shownIn, twoWindows } from './shellFixtures';
+import { FakeHost } from '../../../helpers/fakeHost';
+import { type FakePage } from '../../../helpers/fakePage';
 
 const savedIds = (saved: unknown) =>
   Array.isArray(saved)

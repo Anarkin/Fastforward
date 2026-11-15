@@ -6,11 +6,9 @@ import {
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,
-  commitsSent,
-  failOnErrorsLogged,
   gate,
   stubMethod,
   withView,
@@ -19,6 +17,7 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { commitsSent } from '../../../../helpers/fakePage';
 
 suite('Git tool reading the history', () => {
   let folder: string;

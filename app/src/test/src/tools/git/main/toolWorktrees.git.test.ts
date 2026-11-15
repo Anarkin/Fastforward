@@ -8,17 +8,18 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  commitsSent,
-  failOnErrorsLogged,
   gate,
   idleOnlyOnceOpened,
   openView,
   reopen,
   stubMethod,
-  takeErrorsLogged,
   withView,
   tabOf,
   shownTabs,
@@ -29,6 +30,7 @@ import {
   worktreeRoot,
   worktreeRepositories,
 } from './toolWorktreesFixtures';
+import { commitsSent } from '../../../../helpers/fakePage';
 
 suite('Git tool of worktrees', () => {
   const { log, error: logged } = recordingLog();

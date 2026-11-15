@@ -14,24 +14,25 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  failOnErrorsLogged,
-  type FakePage,
   gate,
   openView,
   holderOf,
   stubMethod,
-  takeErrorsLogged,
-  withNotices,
 } from '../../../../helpers/harness';
 import {
   restoreRepository,
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { type FakePage, withNotices } from '../../../../helpers/fakePage';
 
 suite('Git tool checking out', () => {
   let folder: string;

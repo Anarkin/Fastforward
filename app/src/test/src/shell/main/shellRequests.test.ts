@@ -4,15 +4,14 @@ import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
-import { recordingLog } from '../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
   shellOf,
   terminalHostOf,
   withView,
 } from '../../../helpers/harness';
+import { FakeHost } from '../../../helpers/fakeHost';
 
 suite('Shell with no tab open', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');

@@ -9,17 +9,19 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
   shownTabs,
-  takeErrorsLogged,
-  withNotices,
   withView,
   savedBookmarks,
 } from '../../../../helpers/harness';
+import { FakeHost } from '../../../../helpers/fakeHost';
+import { withNotices } from '../../../../helpers/fakePage';
 
 function hostPicking(picked: string | undefined): FakeHost {
   const host = new FakeHost();

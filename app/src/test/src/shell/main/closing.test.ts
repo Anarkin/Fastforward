@@ -4,17 +4,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { ChangeSet } from '@codemirror/state';
 import { afterAll, suite, test } from 'vitest';
-import { recordingLog } from '../../../helpers/stub';
-import {
-  closeViews,
-  failOnErrorsLogged,
-  FakeHost,
-  shellOf,
-  withView,
-} from '../../../helpers/harness';
+import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
+import { closeViews, shellOf, withView } from '../../../helpers/harness';
 import { removeFolder, tempFolder } from '../../../helpers/repositories';
 import { quitNoteOf } from '../../../../shell/main/closing';
 import { saying, twoWindows } from './shellFixtures';
+import { FakeHost } from '../../../helpers/fakeHost';
 
 suite('Quitting and closing windows', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');

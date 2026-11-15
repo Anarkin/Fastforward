@@ -8,12 +8,8 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
-import {
-  closeViews,
-  failOnErrorsLogged,
-  withView,
-} from '../../../../helpers/harness';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
+import { closeViews, withView } from '../../../../helpers/harness';
 
 suite('Git tool stashes', () => {
   const { log, error: logged } = recordingLog();

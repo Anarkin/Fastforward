@@ -18,12 +18,10 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  failOnErrorsLogged,
-  type FakePage,
   gate,
   openView,
   stubMethod,
@@ -33,6 +31,7 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { type FakePage } from '../../../../helpers/fakePage';
 
 suite('Git tool refreshing one repository', () => {
   let folder: string;

@@ -4,16 +4,15 @@ import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
 import type { Sentence } from '../../../../lib/shared/sentences';
-import { recordingLog } from '../../../helpers/stub';
-import type { CommandInstall } from '../../../../shell/main/commandOffer';
 import {
-  closeViews,
+  recordingLog,
   failOnErrorsLogged,
-  FakeHost,
   takeErrorsLogged,
-  withView,
-} from '../../../helpers/harness';
+} from '../../../helpers/stub';
+import type { CommandInstall } from '../../../../shell/main/commandOffer';
+import { closeViews, withView } from '../../../helpers/harness';
 import { noticesOf } from './shellFixtures';
+import { FakeHost } from '../../../helpers/fakeHost';
 
 suite('Offering the ff command', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');

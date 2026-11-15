@@ -12,22 +12,23 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
   gate,
-  type FakePage,
   openView,
   stubMethod,
-  takeErrorsLogged,
-  withNotices,
   tabOf,
   gitState,
 } from '../../../../helpers/harness';
 import { lockedRepository } from '../../../../helpers/gitFixtures';
+import { FakeHost } from '../../../../helpers/fakeHost';
+import { type FakePage, withNotices } from '../../../../helpers/fakePage';
 
 suite('Git tool fetching', () => {
   let folder: string;

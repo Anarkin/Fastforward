@@ -1,12 +1,9 @@
 import type { Sentence } from '../../../../lib/shared/sentences';
 import type { Log } from '../../../../shell/main/log';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
-import {
-  attach,
-  FakeHost,
-  openView,
-  type FakePage,
-} from '../../../helpers/harness';
+import { attach, openView } from '../../../helpers/harness';
+import { FakeHost } from '../../../helpers/fakeHost';
+import { type FakePage } from '../../../helpers/fakePage';
 
 export const saying = (note?: string) => ({ quitNote: () => note });
 

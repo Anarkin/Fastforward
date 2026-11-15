@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
+import { collapseThreshold } from '../../tools/git/shared/patchBudget';
 import {
   tempFolder,
   tempRepository,
@@ -143,4 +144,47 @@ export async function restoreRepository(
 ): Promise<void> {
   await repository.git('checkout', '-f', 'main');
   await repository.git('reset', '--hard', merge);
+}
+
+export function numberedLines(text: string): string {
+  return Array.from(
+    { length: collapseThreshold + 1 },
+    (_, index) => `${text} ${index}\n`,
+  ).join('');
+}
+
+export interface HeldFetches {
+  readonly reached: () => boolean;
+  readonly release: () => void;
+  readonly restore: () => Promise<void>;
+}
+
+export async function holdFetches(
+  repository: TempRepository,
+  remote: string,
+  folder: string,
+): Promise<HeldFetches> {
+  const inFolder = (name: string) =>
+    path.join(folder, name).replaceAll('\\', '/');
+  const opened = inFolder(`${remote}-fetch-opened`);
+  const started = inFolder(`${remote}-fetch-started`);
+  const uploadPack = inFolder(`${remote}-held-upload-pack.sh`);
+  fs.writeFileSync(
+    uploadPack,
+    `#!/bin/sh\ntouch '${started}'\nwhile [ ! -e '${opened}' ]; do sleep 0.1; done\nexec git upload-pack "$@"\n`,
+    { mode: 0o755 },
+  );
+  await repository.git('config', `remote.${remote}.uploadpack`, uploadPack);
+  const release = () => fs.writeFileSync(opened, '');
+  return {
+    reached: () => fs.existsSync(started),
+    release,
+    restore: async () => {
+      release();
+      await repository.git('config', '--unset', `remote.${remote}.uploadpack`);
+      for (const file of [opened, started, uploadPack]) {
+        fs.rmSync(file, { force: true });
+      }
+    },
+  };
 }

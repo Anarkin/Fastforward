@@ -14,27 +14,31 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   type Connection,
   attach,
   closeViews,
-  commitsSent,
-  failOnErrorsLogged,
-  type FakePage,
   gate,
   openView,
   reopen,
   stubMethod,
-  takeErrorsLogged,
   withView,
-  workingTreesSent,
   holderOf,
 } from '../../../../helpers/harness';
 import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import {
+  commitsSent,
+  type FakePage,
+  workingTreesSent,
+} from '../../../../helpers/fakePage';
 
 async function letARefreshThatSkippedTheQueueStart(): Promise<void> {
   for (let turn = 0; turn < 3; turn++) {

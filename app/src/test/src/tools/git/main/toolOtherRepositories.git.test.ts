@@ -8,11 +8,9 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
   reopen,
   withView,
   tabOf,
@@ -21,6 +19,7 @@ import {
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
 import { keptOf, keepAll } from './toolOtherRepositoriesFixtures';
+import { FakeHost } from '../../../../helpers/fakeHost';
 
 suite('Git tool of other repositories', () => {
   let folder: string;

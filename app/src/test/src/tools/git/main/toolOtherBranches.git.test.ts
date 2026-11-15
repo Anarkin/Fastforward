@@ -11,19 +11,23 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
-  type FakePage,
   gate,
   openView,
   holderOf,
   stubMethod,
-  takeErrorsLogged,
+} from '../../../../helpers/harness';
+import {
+  type FakePage,
   withNotices,
   type PageMessage,
-} from '../../../../helpers/harness';
+} from '../../../../helpers/fakePage';
 
 function running(message: PageMessage): string[] {
   return message.type === 'pullingBranch' || message.type === 'pushingBranch'

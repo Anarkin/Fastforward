@@ -19,17 +19,17 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
   gate,
   openView,
   rootOf,
   stubMethod,
-  takeErrorsLogged,
-  withNotices,
   withView,
   type OpenView,
   tabOf,
@@ -39,6 +39,8 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { FakeHost } from '../../../../helpers/fakeHost';
+import { withNotices } from '../../../../helpers/fakePage';
 
 suite('Git tool with tabs that fail', () => {
   let folder: string;

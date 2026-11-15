@@ -17,19 +17,21 @@ import {
   tempFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   gitState,
   attach,
   newView,
   saveTabs,
   closeViews,
-  failOnErrorsLogged,
   gate,
   openView,
   savedBookmarks,
   settingsForViews,
-  takeErrorsLogged,
 } from '../../../../helpers/harness';
 import {
   viewRepositories,

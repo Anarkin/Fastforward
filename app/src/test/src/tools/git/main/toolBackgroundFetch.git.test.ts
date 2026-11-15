@@ -9,19 +9,21 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
   gate,
   idleOnlyOnceOpened,
   openView,
   rootOf,
   stubMethod,
-  takeErrorsLogged,
-  withNotices,
   tabOf,
 } from '../../../../helpers/harness';
+import { withNotices } from '../../../../helpers/fakePage';
 
 suite('Git tool fetching in the background', () => {
   let folder: string;

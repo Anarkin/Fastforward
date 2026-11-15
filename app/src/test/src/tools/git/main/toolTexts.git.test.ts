@@ -15,18 +15,17 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  failOnErrorsLogged,
-  FakePage,
   openView,
 } from '../../../../helpers/harness';
 import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { FakePage } from '../../../../helpers/fakePage';
 
 suite('Git tool sending the texts of a diff', () => {
   let folder: string;

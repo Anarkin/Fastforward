@@ -3,15 +3,11 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
-import { recordingLog } from '../../../helpers/stub';
-import {
-  attach,
-  closeViews,
-  failOnErrorsLogged,
-  FakeHost,
-} from '../../../helpers/harness';
+import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
+import { attach, closeViews } from '../../../helpers/harness';
 import { windowsKey } from '../../../../shell/main/storage';
 import { shownIn, twoWindows } from './shellFixtures';
+import { FakeHost } from '../../../helpers/fakeHost';
 
 suite('Moving tabs between windows', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');

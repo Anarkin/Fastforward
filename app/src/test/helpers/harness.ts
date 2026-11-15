@@ -1,23 +1,14 @@
-import { plainOf, type Sentence } from '../../lib/shared/sentences';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach } from 'vitest';
 import {
   type GitToHost,
-  type GitToWebview,
   type Bookmark,
   type RepositoryInfo,
   type WorktreeInfo,
 } from '../../tools/git/shared/protocol';
-import { collapseThreshold } from '../../tools/git/shared/patchBudget';
-import type {
-  AboutInfo,
-  ToHost,
-  ToWebview,
-  UpdateStatus,
-} from '../../shell/shared/protocol';
+import type { ToHost } from '../../shell/shared/protocol';
 import type { Timer } from '../../lib/main/timer';
 import { nodeFileSystem } from '../../tools/commander/main/nodeFileSystem';
 import { isRepository } from '../../tools/commander/main/repositories';
@@ -27,15 +18,9 @@ import type { HostListener } from '../../tools/terminal/main/hostLink';
 import {
   GitTool,
   refreshDelays,
-  type FolderPurpose,
   type GitHost,
 } from '../../tools/git/main/tool';
 import type { Log } from '../../shell/main/log';
-import type {
-  CommandInstall,
-  CommandState,
-} from '../../shell/main/commandOffer';
-import type { DragEvent } from '../../shell/main/dragEvents';
 import { Shell, type ShellHost } from '../../shell/main/shell';
 import {
   activeTabKey,
@@ -47,47 +32,11 @@ import { sameRoot } from '../../lib/main/paths';
 import type { Store } from '../../shell/main/stateFile';
 import { GitStorage } from '../../tools/git/main/storage';
 import { UserSettings } from '../../shell/main/userSettings';
+import { FakeHost } from './fakeHost';
+import { FakePage } from './fakePage';
 import { FakeStore } from './fakeStore';
 import { defaultSettings } from './fixtures';
-import { installedGit, type TempRepository } from './repositories';
-
-export type PageMessage =
-  Exclude<ToWebview, { readonly type: 'tool' }> | GitToWebview;
-
-export type PageMessageOf<T extends PageMessage['type']> = Extract<
-  PageMessage,
-  { readonly type: T }
->;
-
-export class FakePage {
-  readonly messages: PageMessage[] = [];
-  readonly listeners = new Set<(message: PageMessage) => void>();
-  tabs: PageMessageOf<'tabs'> | undefined;
-
-  receive(sent: ToWebview): void {
-    if (sent.type === 'tool' && sent.tool !== 'git') {
-      return;
-    }
-    const message = sent.type === 'tool' ? sent.message : sent;
-    if (message.type === 'tabs') {
-      this.tabs = message;
-    }
-    this.messages.push(message);
-    for (const listener of this.listeners) {
-      listener(message);
-    }
-  }
-
-  last<T extends PageMessage['type']>(type: T): PageMessageOf<T> | undefined {
-    return this.messages.findLast(
-      (message): message is PageMessageOf<T> => message.type === type,
-    );
-  }
-
-  clear(): void {
-    this.messages.length = 0;
-  }
-}
+import { installedGit } from './repositories';
 
 export interface Connection {
   receive(message: ToHost | GitToHost): Promise<void>;
@@ -102,143 +51,6 @@ export interface OpenView {
   connection: Connection;
   store: FakeStore;
   settings: UserSettings;
-}
-
-export class FakeHost implements ShellHost, GitHost {
-  readonly viewedFiles = path.join(os.tmpdir(), 'fastforward-viewed-files');
-  folders: readonly string[] = [];
-  folder: string | undefined;
-  readonly foldersAsked: [FolderPurpose, string | undefined][] = [];
-  clipboard = '';
-  problems: readonly string[] = [];
-  unsavedState: Sentence[] = [];
-  update: UpdateStatus = { kind: 'idle' };
-  commandPlace = false;
-  command: CommandState = 'missing';
-  installs: CommandInstall | Error = {
-    kind: 'installed',
-    path: '/usr/local/bin/ff',
-    onPath: true,
-  };
-  readonly opened: string[] = [];
-  canInstallCommand(): boolean {
-    return this.commandPlace;
-  }
-
-  commandState(): Promise<CommandState> {
-    return Promise.resolve(this.command);
-  }
-
-  installCommand(): Promise<CommandInstall> {
-    this.opened.push('install command');
-    return this.installs instanceof Error
-      ? Promise.reject(this.installs)
-      : Promise.resolve(this.installs);
-  }
-
-  chooseFolders(): Promise<readonly string[]> {
-    return Promise.resolve(this.folders);
-  }
-
-  chooseFolder(
-    purpose: FolderPurpose,
-    from?: string,
-  ): Promise<string | undefined> {
-    this.foldersAsked.push([purpose, from]);
-    return Promise.resolve(this.folder);
-  }
-
-  clipboardText(): Promise<string> {
-    return Promise.resolve(this.clipboard);
-  }
-
-  userSettingsFile(): Promise<string> {
-    this.opened.push('settings');
-    return Promise.resolve(path.resolve('settings.user.json'));
-  }
-
-  defaultSettingsFile(): Promise<string> {
-    this.opened.push('defaults');
-    return Promise.resolve(path.resolve('settings.defaults.json'));
-  }
-
-  settingsProblems(): readonly Sentence[] {
-    return this.problems;
-  }
-
-  stateProblems(): readonly Sentence[] {
-    return this.unsavedState.splice(0);
-  }
-
-  checkForUpdates(): void {
-    this.opened.push('update check');
-  }
-
-  installUpdate(): void {
-    this.opened.push('update install');
-  }
-
-  quit(): void {
-    this.opened.push('quit');
-  }
-
-  openWindow(window: string, near: string | undefined): void {
-    this.opened.push(`open window ${window} near ${near ?? 'none'}`);
-  }
-
-  closeWindow(window: string): void {
-    this.opened.push(`close window ${window}`);
-  }
-
-  showWindow(window: string): void {
-    this.opened.push(`show window ${window}`);
-  }
-
-  tearsOff(): boolean {
-    return true;
-  }
-
-  readonly dragged: (readonly [string, DragEvent])[] = [];
-
-  drag(window: string, event: DragEvent): void {
-    this.dragged.push([window, event]);
-  }
-
-  updateStatus(): UpdateStatus {
-    return this.update;
-  }
-
-  about(): AboutInfo {
-    return {
-      version: '1.2.3',
-      development: true,
-      git: '2.52.0',
-      system: 'Windows 11, build 26300, x64',
-    };
-  }
-
-  copyText(text: string): void {
-    this.opened.push(`copy ${text}`);
-  }
-}
-
-export async function withNotices(
-  page: FakePage,
-  level: 'info' | 'error',
-  run: (messages: string[]) => Promise<void>,
-): Promise<void> {
-  const messages: string[] = [];
-  const listener = (message: PageMessage) => {
-    if (message.type === 'notice' && message.level === level) {
-      messages.push(plainOf(message.message));
-    }
-  };
-  page.listeners.add(listener);
-  try {
-    await run(messages);
-  } finally {
-    page.listeners.delete(listener);
-  }
 }
 
 export function settingsForViews(): UserSettings {
@@ -528,21 +340,6 @@ export function attach(
   return { page, connection };
 }
 
-export function commitsSent(messages: readonly PageMessage[]): number {
-  return messages.filter((message) => message.type === 'commits').length;
-}
-
-export function workingTreesSent(messages: readonly PageMessage[]): number {
-  return messages.filter((message) => message.type === 'workingTree').length;
-}
-
-export function numberedLines(text: string): string {
-  return Array.from(
-    { length: collapseThreshold + 1 },
-    (_, index) => `${text} ${index}\n`,
-  ).join('');
-}
-
 const gates = new Set<() => void>();
 
 export function gate(): { opened: Promise<void>; open: () => void } {
@@ -557,42 +354,6 @@ function openGates(): void {
     open();
   }
   gates.clear();
-}
-
-export interface HeldFetches {
-  readonly reached: () => boolean;
-  readonly release: () => void;
-  readonly restore: () => Promise<void>;
-}
-
-export async function holdFetches(
-  repository: TempRepository,
-  remote: string,
-  folder: string,
-): Promise<HeldFetches> {
-  const inFolder = (name: string) =>
-    path.join(folder, name).replaceAll('\\', '/');
-  const opened = inFolder(`${remote}-fetch-opened`);
-  const started = inFolder(`${remote}-fetch-started`);
-  const uploadPack = inFolder(`${remote}-held-upload-pack.sh`);
-  fs.writeFileSync(
-    uploadPack,
-    `#!/bin/sh\ntouch '${started}'\nwhile [ ! -e '${opened}' ]; do sleep 0.1; done\nexec git upload-pack "$@"\n`,
-    { mode: 0o755 },
-  );
-  await repository.git('config', `remote.${remote}.uploadpack`, uploadPack);
-  const release = () => fs.writeFileSync(opened, '');
-  return {
-    reached: () => fs.existsSync(started),
-    release,
-    restore: async () => {
-      release();
-      await repository.git('config', '--unset', `remote.${remote}.uploadpack`);
-      for (const file of [opened, started, uploadPack]) {
-        fs.rmSync(file, { force: true });
-      }
-    },
-  };
 }
 
 export async function idleOnlyOnceOpened(
@@ -644,33 +405,6 @@ export function holderOf(view: GitTool, name: string): object {
   );
   assert.strictEqual(holders.length, 1, name);
   return holders[0];
-}
-
-export function failOnErrorsLogged(logged: unknown[]): void {
-  afterEach(() => {
-    assert.deepStrictEqual(logged.splice(0), []);
-  });
-}
-
-export function takeErrorsLogged(
-  logged: unknown[],
-  ...expected: RegExp[]
-): void {
-  const messages = logged
-    .splice(0)
-    .map((entry) => (entry instanceof Error ? entry.message : String(entry)));
-  for (const pattern of expected) {
-    assert.ok(
-      messages.some((message) => pattern.test(message)),
-      `${pattern} in ${JSON.stringify(messages)}`,
-    );
-  }
-  for (const message of messages) {
-    assert.ok(
-      expected.some((pattern) => pattern.test(message)),
-      `unexpected error logged: ${message}`,
-    );
-  }
 }
 
 export function rootOf(context: unknown): string | undefined {

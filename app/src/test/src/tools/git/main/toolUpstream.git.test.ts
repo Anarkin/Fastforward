@@ -7,13 +7,9 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
-import {
-  closeViews,
-  failOnErrorsLogged,
-  withNotices,
-  withView,
-} from '../../../../helpers/harness';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
+import { closeViews, withView } from '../../../../helpers/harness';
+import { withNotices } from '../../../../helpers/fakePage';
 
 suite('Git tool upstream', () => {
   const { log, error: logged } = recordingLog();

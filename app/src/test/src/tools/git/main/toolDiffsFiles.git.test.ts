@@ -17,13 +17,10 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  failOnErrorsLogged,
-  FakePage,
-  numberedLines,
   openView,
   stubMethod,
   withView,
@@ -32,7 +29,9 @@ import {
   fortyLines,
   viewRepositories,
   type ViewRepositories,
+  numberedLines,
 } from '../../../../helpers/gitFixtures';
+import { FakePage } from '../../../../helpers/fakePage';
 
 suite('Git tool showing diffs', () => {
   let folder: string;

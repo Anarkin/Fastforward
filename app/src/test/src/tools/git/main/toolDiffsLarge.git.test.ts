@@ -16,16 +16,14 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
   gate,
-  numberedLines,
   stubMethod,
   withView,
 } from '../../../../helpers/harness';
-import { fortyLines } from '../../../../helpers/gitFixtures';
+import { fortyLines, numberedLines } from '../../../../helpers/gitFixtures';
 
 const longLines = (text: string) =>
   `${text} ${'x'.repeat(1024)}\n`.repeat(maxFileSize / 1024 + 1);

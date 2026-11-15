@@ -11,13 +11,14 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
   openView,
-  takeErrorsLogged,
   withView,
   tabOf,
   shownTabs,
@@ -29,6 +30,7 @@ import {
   worktreeRoot,
   worktreeRepositories,
 } from './toolWorktreesFixtures';
+import { FakeHost } from '../../../../helpers/fakeHost';
 
 suite('Git tool of worktrees', () => {
   const { log, error: logged } = recordingLog();

@@ -21,15 +21,16 @@ import {
   tempRepository,
   commitAtTime,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  failOnErrorsLogged,
-  type FakePage,
   openView,
   stubMethod,
-  takeErrorsLogged,
   gitState,
   withView,
 } from '../../../../helpers/harness';
@@ -38,6 +39,7 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { type FakePage } from '../../../../helpers/fakePage';
 
 suite('Git tool refreshing one repository', () => {
   let folder: string;

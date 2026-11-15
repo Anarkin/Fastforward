@@ -9,21 +9,21 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  failOnErrorsLogged,
-  type FakePage,
   gate,
-  holdFetches,
   openView,
   holderOf,
   stubMethod,
+} from '../../../../helpers/harness';
+import { deleteTags, holdFetches } from '../../../../helpers/gitFixtures';
+import {
+  type FakePage,
   withNotices,
   type PageMessage,
-} from '../../../../helpers/harness';
-import { deleteTags } from '../../../../helpers/gitFixtures';
+} from '../../../../helpers/fakePage';
 
 function pushingTag(message: PageMessage): string[] {
   return message.type === 'pushingTag' ? [message.names.join(' ')] : [];

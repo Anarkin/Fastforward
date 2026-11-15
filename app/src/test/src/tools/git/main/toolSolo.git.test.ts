@@ -15,13 +15,10 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
   closeViews,
-  commitsSent,
-  failOnErrorsLogged,
-  type FakePage,
   gate,
   openView,
   reopen,
@@ -37,6 +34,7 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { commitsSent, type FakePage } from '../../../../helpers/fakePage';
 
 suite('Git tool applying Solo', () => {
   let folder: string;

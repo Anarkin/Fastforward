@@ -10,21 +10,23 @@ import {
   removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import { watchesRecursively } from '../../../../../tools/git/main/watch';
 import {
   closeViews,
-  failOnErrorsLogged,
   gate,
   idleOnlyOnceOpened,
   openView,
   reopen,
   stubMethod,
-  takeErrorsLogged,
-  withNotices,
   type OpenView,
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
+import { withNotices } from '../../../../helpers/fakePage';
 
 suite('Git tool watching the folder of a tab', () => {
   let folder: string;

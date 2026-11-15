@@ -17,18 +17,20 @@ import {
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
-  FakeHost,
   gitState,
   shownTabs,
-  takeErrorsLogged,
-  withNotices,
   withView,
   type OpenView,
 } from '../../../../helpers/harness';
+import { FakeHost } from '../../../../helpers/fakeHost';
+import { withNotices } from '../../../../helpers/fakePage';
 
 function views(view: OpenView): (CloneView | undefined)[] {
   return view.page.messages.flatMap((message) =>

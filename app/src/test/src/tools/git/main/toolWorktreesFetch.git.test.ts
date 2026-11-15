@@ -6,12 +6,14 @@ import { strings } from '../../../../../lib/shared/strings';
 import { worktreesKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import { removeFolder, tempRepository } from '../../../../helpers/repositories';
-import { recordingLog } from '../../../../helpers/stub';
+import {
+  recordingLog,
+  failOnErrorsLogged,
+  takeErrorsLogged,
+} from '../../../../helpers/stub';
 import {
   closeViews,
-  failOnErrorsLogged,
   openView,
-  takeErrorsLogged,
   withView,
   tabOf,
   gitState,
