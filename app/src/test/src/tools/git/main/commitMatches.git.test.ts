@@ -79,7 +79,7 @@ suite('Commit search', { timeout: 60000 }, () => {
       '-m',
       'Élan in the description',
       '--author',
-      'Old Name <old@example.com>',
+      'Former Writer <old@example.com>',
     );
     await search.commit('unrelated');
     await search.commit('Separated\x1eby a record separator');
@@ -129,7 +129,7 @@ suite('Commit search', { timeout: 60000 }, () => {
   test('finds authors by their mailmapped names, and takes special characters and any letters literally, ignoring case', async () => {
     const literal = 'Literal (a+b)*[c]\\d? text';
     assert.deepStrictEqual(await subjectsFound('NEW NAME <old@'), [literal]);
-    assert.deepStrictEqual(await subjectsFound('old name'), []);
+    assert.deepStrictEqual(await subjectsFound('former writer'), []);
     assert.deepStrictEqual(await subjectsFound('(A+B)*[C]\\D?'), [literal]);
     assert.deepStrictEqual(await subjectsFound('ÉLAN in'), [literal]);
     assert.deepStrictEqual(await subjectsFound('text\n\nélan'), [literal]);
