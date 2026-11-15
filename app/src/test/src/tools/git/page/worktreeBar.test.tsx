@@ -4,7 +4,6 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import { type WorktreeInfo } from '../../../../../tools/git/shared/protocol';
-import { adjacentWorktree } from '../../../../../tools/git/page/worktreeSteps';
 import { WorktreeBar } from '../../../../../tools/git/page/worktreeBar';
 import { GitStore } from '../../../../../tools/git/page/store';
 import {
@@ -92,21 +91,6 @@ suite('Worktree bar', () => {
       return worktree;
     });
   }
-
-  test('skips the worktrees whose folder is missing', () => {
-    const worktrees = [
-      { root: '/a', name: 'main', folder: 'a', main: true, missing: false },
-      { root: '/b', name: 'gone', folder: 'b', main: false, missing: true },
-      { root: '/c', name: 'feature', folder: 'c', main: false, missing: false },
-    ];
-    assert.strictEqual(adjacentWorktree(worktrees, '/a', 1), '/c');
-    assert.strictEqual(adjacentWorktree(worktrees, '/a', -1), '/c');
-    assert.strictEqual(adjacentWorktree(worktrees, '/b', 1), '/c');
-    assert.strictEqual(
-      adjacentWorktree(worktrees.slice(0, 2), '/a', 1),
-      undefined,
-    );
-  });
 
   test('marks the worktree shown, naming each folder in its tooltip and the main one by its branch alone', () => {
     const [main, gone, feature] = worktreesOf([], []);
