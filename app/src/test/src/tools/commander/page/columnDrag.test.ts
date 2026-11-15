@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { draggedWidth } from '../../../../../tools/commander/page/columnDrag';
 import { maxColumnWidth } from '../../../../../tools/commander/shared/settings';
 
-suite('Commander column header', () => {
+suite('Commander column drag', () => {
   test('resizes a column by whole characters as it is dragged, never below one or over the most', () => {
     assert.strictEqual(draggedWidth(10, 7, 0), 10);
     assert.strictEqual(draggedWidth(10, 7, 14), 12);
