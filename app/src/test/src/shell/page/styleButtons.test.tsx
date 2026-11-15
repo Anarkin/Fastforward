@@ -23,7 +23,7 @@ import {
 } from './stylesheetFixtures';
 import { FileHeader } from '../../../../tools/git/page/diffRowParts';
 import { emptyTabView } from '../../../../tools/git/page/tabView';
-import { SoloButton } from '../../../../tools/git/page/commitList';
+import { SoloButton } from '../../../../tools/git/page/soloButton';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { renderedBy } from '../../../helpers/componentFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';

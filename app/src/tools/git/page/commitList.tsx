@@ -11,7 +11,6 @@ import {
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { sidesOf } from '../shared/comparisons';
-import { workingTreeHash } from '../shared/protocol';
 import { Column } from './column';
 import { useOpenMenu } from './menus';
 import { graphWidth, rowLanes, withoutWorkingTreeLink } from './graphLanes';
@@ -22,14 +21,13 @@ import { listError } from './columnsShown';
 import { MenuButton } from '../../../lib/page/menu';
 import { MessageBody, MessagePeek } from './messagePeek';
 import { useSkeleton } from './skeletonDelay';
-import { menuFromKeyboard, type Click } from '../../../lib/shared/keymap';
+import { menuFromKeyboard } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { fullyVisible } from '../../../lib/page/listMoves';
-import { SoloIcon } from '../../../lib/page/icons';
 import { useCappedScroll } from './cappedVirtualizer';
 import { SearchButton } from '../../../lib/page/search';
 import { realHeight } from './cappedScroll';
@@ -58,13 +56,9 @@ import {
   drawnRows,
   fixedRowHeight,
 } from './commitListRows';
-import {
-  isCompareClick,
-  selectionClasses,
-  commitOption,
-  commitListbox,
-} from './commitListItems';
-import { CommitRow, ListedCommitRow } from './commitRow';
+import { commitOption, commitListbox } from './commitListItems';
+import { CommitRow, ListedCommitRow, WorkingTreeRow } from './commitRow';
+import { SoloButton } from './soloButton';
 
 const loadDelay = 80;
 
@@ -83,39 +77,6 @@ function selectionOfRow(
   selection: string | undefined,
 ): string | undefined {
   return sidesOf(selection).includes(hash) ? selection : undefined;
-}
-
-export function WorkingTreeRow({
-  count,
-  selection,
-  indent,
-  onSelect,
-  onCompare,
-}: {
-  count: number;
-  selection: string | undefined;
-  indent: number;
-  onSelect: (hash: string | undefined) => void;
-  onCompare?: (hash: string) => void;
-}) {
-  const dirty = count > 0;
-  return (
-    <div
-      style={{ paddingLeft: indent }}
-      className={`commit working-tree ${dirty ? '' : 'empty'} ${selectionClasses(workingTreeHash, selection).join(' ')}`}
-      onClick={(event: Click) =>
-        onCompare && isCompareClick(event)
-          ? onCompare(workingTreeHash)
-          : onSelect(workingTreeHash)
-      }
-    >
-      <div className="commit-line">
-        <span className="subject">
-          {strings.commits.uncommittedChanges(count)}
-        </span>
-      </div>
-    </div>
-  );
 }
 
 export function Commits({
@@ -486,24 +447,5 @@ export function Commits({
         )}
       />
     </Column>
-  );
-}
-
-export function SoloButton() {
-  const solo = useGit((state) => state.solo);
-  const applying = useGit((state) => state.tab.applyingSolo);
-  const { changeSolo: onSolo } = useGitActions();
-  return (
-    <button
-      className={`nav-button toggle ${solo ? 'active' : ''} ${applying ? 'running' : ''}`}
-      title={strings.commits.solo}
-      aria-pressed={solo}
-      disabled={applying}
-      onClick={() => onSolo(!solo)}
-    >
-      <span className="spin-icon">
-        <SoloIcon />
-      </span>
-    </button>
   );
 }

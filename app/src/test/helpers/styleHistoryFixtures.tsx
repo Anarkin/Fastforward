@@ -7,7 +7,7 @@ import type {
 } from '../../tools/git/shared/protocol';
 import { emptyTabView } from '../../tools/git/page/tabView';
 import { ChangesTreeItem } from '../../tools/git/page/changesTree';
-import { WorkingTreeRow } from '../../tools/git/page/commitList';
+import { WorkingTreeRow } from '../../tools/git/page/commitRow';
 import { CommitRow } from '../../tools/git/page/commitRow';
 import { gitStore, type ShownGit } from './componentFixtures';
 import { LocationsPopup } from '../../tools/git/page/locations';

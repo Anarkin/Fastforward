@@ -1,10 +1,15 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { isValidElement } from 'react';
-import type { RefInfo } from '../../../../../tools/git/shared/protocol';
+import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import {
+  workingTreeHash,
+  type RefInfo,
+} from '../../../../../tools/git/shared/protocol';
 import {
   CommitBubbles,
   CommitRow,
+  WorkingTreeRow,
 } from '../../../../../tools/git/page/commitRow';
 import { defaultDateFormat, formatDate } from '../../../../../lib/page/dates';
 import { createShellStore, ShellStore } from '../../../../../shell/page/store';
@@ -16,6 +21,7 @@ import {
 } from '../../../../helpers/componentFixtures';
 import { renderToStaticMarkup, noop, plainClick } from './commitListFixtures';
 import { commitInfo } from '../../../../helpers/gitValues';
+import { withMacKeys } from '../../../../helpers/keys';
 
 suite('Commit row', () => {
   test('shows the subject, author, the date it was last committed and bubbles, but no file count', () => {
@@ -291,5 +297,100 @@ suite('Commit list rows', () => {
 
   test('draws no bubble line for a commit without refs', () => {
     assert.strictEqual(bubblesOf('a'.repeat(40)), '');
+  });
+});
+
+function clickedHash(
+  count: number,
+  click = plainClick,
+): { selected?: string; compared?: string } {
+  const clicked: { selected?: string; compared?: string } = {};
+  const row = WorkingTreeRow({
+    count,
+    selection: undefined,
+    indent: 26,
+    onSelect: (hash) => (clicked.selected = hash),
+    onCompare: (hash) => (clicked.compared = hash),
+  });
+  assert.ok(isValidElement<{ onClick: (event: typeof click) => void }>(row));
+  row.props.onClick(click);
+  return clicked;
+}
+
+function workingTreeHtml(selection: string): string {
+  return renderToStaticMarkup(
+    <WorkingTreeRow
+      count={1}
+      selection={selection}
+      indent={0}
+      onSelect={noop}
+    />,
+  );
+}
+
+suite('Commit list working tree row', () => {
+  test('shows a clean working tree, which clicking selects, as the keys do', () => {
+    const html = renderToStaticMarkup(
+      <WorkingTreeRow
+        count={0}
+        selection={undefined}
+        indent={26}
+        onSelect={noop}
+      />,
+    );
+    assert.match(
+      html,
+      /^<div [^>]*class="commit working-tree empty\s*"><div class="commit-line"><span class="subject">No uncommitted changes<\/span><\/div><\/div>$/,
+    );
+    assert.deepStrictEqual(clickedHash(0), { selected: workingTreeHash });
+  });
+
+  test('shows how many files changed, and clicking selects them', () => {
+    const html = renderToStaticMarkup(
+      <WorkingTreeRow
+        count={3}
+        selection={undefined}
+        indent={26}
+        onSelect={noop}
+      />,
+    );
+    assert.doesNotMatch(html, /empty/);
+    assert.match(
+      html,
+      /<div class="commit-line"><span class="subject">3 uncommitted changes<\/span><\/div><\/div>$/,
+    );
+    assert.match(
+      renderToStaticMarkup(
+        <WorkingTreeRow
+          count={1}
+          selection={undefined}
+          indent={26}
+          onSelect={noop}
+        />,
+      ),
+      /<span class="subject">1 uncommitted change<\/span>/,
+    );
+    assert.deepStrictEqual(clickedHash(3), { selected: workingTreeHash });
+  });
+
+  test('compares with the working tree when clicked with Ctrl, or Cmd on macOS', () => {
+    assert.deepStrictEqual(clickedHash(3, { ...plainClick, ctrlKey: true }), {
+      compared: workingTreeHash,
+    });
+    assert.deepStrictEqual(
+      withMacKeys(() => clickedHash(0, { ...plainClick, metaKey: true })),
+      { compared: workingTreeHash },
+    );
+  });
+
+  test('shows the working tree selected as either side of a comparison', () => {
+    assert.match(
+      workingTreeHtml(comparisonOf(workingTreeHash, 'a')),
+      /class="commit working-tree\s+selected compare-from"/,
+    );
+    assert.match(
+      workingTreeHtml(comparisonOf('a', workingTreeHash)),
+      /class="commit working-tree\s+selected"/,
+    );
   });
 });
