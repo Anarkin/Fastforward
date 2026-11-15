@@ -13,10 +13,13 @@ import {
 } from './commanderAppFixtures';
 import { findMarks, findCount } from './viewerAppFixtures';
 
+const toggle = (title: string) =>
+  page.locator(`.viewer .search-toggle[title="${title}"]`);
+
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('searches a file viewed on Ctrl+F as the diff does, counting the matches, stepping to them with Enter and Shift+Enter, and closes the search on Esc, then the viewer', async () => {
+  test('searches a file viewed on Ctrl+F as the diff does, counting the matches, stepping to them with Enter and Shift+Enter, matching the case or a regular expression while their toggles are pressed, and closes the search on Esc, then the viewer', async () => {
     const lines = Array.from({ length: 300 }, (_, index) =>
       index % 100 === 50 ? `Needle ${index}` : `row ${index}`,
     );
@@ -31,12 +34,12 @@ suite('App commander', () => {
 
       await page.keyboard.press('ControlOrMeta+F');
       await waitForFocus(
-        page.locator('.viewer .find-field-input'),
+        page.locator('.viewer .search-box-input'),
         'the search',
       );
       assert.ok(
         (await page
-          .locator('.viewer .search-row')
+          .locator('.viewer .search-bar')
           .evaluate(
             (row) =>
               row.getBoundingClientRect().left -
@@ -75,21 +78,36 @@ suite('App commander', () => {
       );
       await page.keyboard.press('1');
       assert.strictEqual(
-        await page.locator('.viewer .find-field-input').inputValue(),
+        await page.locator('.viewer .search-box-input').inputValue(),
         'needle1',
       );
       await page.keyboard.press('Backspace');
+      await toggle('Match Case').click();
+      await waitFor(
+        async () => (await findCount()) === 'No matches',
+        'nothing in the case of the query',
+      );
+      await toggle('Match Case').click();
+      await toggle('Use Regular Expression').click();
+      await page.locator('.viewer .search-box-input').fill('^Needle [12]50$');
+      await waitFor(
+        async () => (await findCount()) === '1 of 2',
+        'what the pattern matches',
+      );
+      await toggle('Use Regular Expression').click();
+      await page.locator('.viewer .search-box-input').fill('needle');
+      await waitFor(async () => (await findCount()) === '1 of 3', 'the count');
 
       await page.keyboard.press('Escape');
-      await page.locator('.viewer .find-field').waitFor({ state: 'detached' });
+      await page.locator('.viewer .search-box').waitFor({ state: 'detached' });
       await waitForFocus(page.locator('.viewer-body'), 'the viewer again');
       assert.deepStrictEqual(await findMarks(), []);
       assert.strictEqual(await page.locator('.viewer').count(), 1);
     } finally {
-      if (await page.locator('.viewer .find-field').isVisible()) {
+      if (await page.locator('.viewer .search-box').isVisible()) {
         await page.keyboard.press('Escape');
         await page
-          .locator('.viewer .find-field')
+          .locator('.viewer .search-box')
           .waitFor({ state: 'detached' });
       }
       if (await page.locator('.viewer').isVisible()) {

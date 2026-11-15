@@ -34,7 +34,7 @@ export const findMarks = () =>
       ]),
     );
 export const findCount = () =>
-  page.locator('.viewer .find-field-count').textContent();
+  page.locator('.viewer .search-count').textContent();
 export const viewerThumb = () =>
   page.locator('.viewer-thumb').evaluate((element) => {
     const box = element.getBoundingClientRect();

@@ -1,4 +1,5 @@
 import type { Sentence } from '../../../lib/shared/sentences';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { PdfPlace } from './pdf';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths } from './columnWidths';
@@ -210,6 +211,7 @@ export type CommanderToHost =
       readonly tab: string;
       readonly encoding: TextEncoding;
       readonly query: string;
+      readonly options: SearchOptions;
       readonly request: number;
     }
   | {

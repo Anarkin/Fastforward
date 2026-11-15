@@ -1,5 +1,5 @@
 import type { TextEncoding } from '../shared/textEncodings';
-import { codingOf } from './textCodings';
+import { codingOf, type TextCoding } from './textCodings';
 import type { ReadBytes } from './fileBlocks';
 import {
   maxMatches,
@@ -10,6 +10,7 @@ import type { SearchOptions } from '../../../lib/shared/searchOptions';
 
 const defaultChunk = 1024 * 1024;
 const widestCharacter = 4;
+const lineReach = 64 * 1024;
 
 function continuationRange(lead: number): readonly [number, number] {
   return lead === 0xe0
@@ -97,6 +98,52 @@ function byteOffsets(
   return utf8Offsets(text, bytes);
 }
 
+function lineEndAfter(
+  bytes: Buffer,
+  from: number,
+  end: number,
+  coding: TextCoding,
+): number | undefined {
+  for (
+    let at = bytes.indexOf(coding.newline, from);
+    at !== -1 && at + coding.newline.length <= end;
+    at = bytes.indexOf(coding.newline, at + 1)
+  ) {
+    if (at % coding.unit === 0) {
+      return at + coding.newline.length;
+    }
+  }
+  return undefined;
+}
+
+const lineBreaks = /\r\n|[\n\r]/g;
+
+function rangesIn(
+  text: string,
+  query: string,
+  options: SearchOptions,
+): FindRange[] {
+  if (!options.regex) {
+    return matchesIn(text, query, options);
+  }
+  const ranges: FindRange[] = [];
+  let at = 0;
+  for (const { index } of [
+    ...text.matchAll(lineBreaks),
+    { index: text.length },
+  ]) {
+    for (const { start, end } of matchesIn(
+      text.slice(at, index),
+      query,
+      options,
+    )) {
+      ranges.push({ start: at + start, end: at + end });
+    }
+    at = index + (text.startsWith('\r\n', index) ? 2 : 1);
+  }
+  return ranges;
+}
+
 export async function findInFile(
   read: ReadBytes,
   size: number,
@@ -122,40 +169,49 @@ export async function findInFile(
     return { matches, capped: false };
   }
   const coding = codingOf(encoding);
-  const overlap = query.length * widestCharacter + widestCharacter;
+  const overlap = options.regex
+    ? lineReach
+    : query.length * widestCharacter + widestCharacter;
   let position = 0;
+  let lead = 0;
   while (position < size && matches.length < limit) {
-    const asked = chunk + overlap;
-    const bytes = await read(position, asked);
+    const from = position - lead;
+    const asked = lead + chunk + overlap;
+    const bytes = await read(from, asked);
     if (signal?.aborted) {
       return undefined;
     }
     const ended = bytes.length < asked;
-    const last = ended || position + bytes.length >= size;
+    const last = ended || from + bytes.length >= size;
     const end = last
       ? bytes.length
       : coding.boundaryBefore(bytes, bytes.length);
+    const nominal = Math.min(lead + chunk, end);
     const core =
       last || position + chunk >= size
         ? end
-        : Math.max(
-            coding.unit,
-            coding.boundaryBefore(bytes, Math.min(chunk, end)),
-          );
+        : ((options.regex
+            ? lineEndAfter(bytes, nominal, end, coding)
+            : undefined) ??
+          Math.max(lead + coding.unit, coding.boundaryBefore(bytes, nominal)));
     const decoded = bytes.subarray(0, end);
     const text = coding.decode(decoded);
     const offset = byteOffsets(text, decoded, encoding);
-    for (const range of matchesIn(text, query, options)) {
+    for (const range of rangesIn(text, query, options)) {
       const start = offset(range.start);
+      if (start < lead) {
+        continue;
+      }
       if (start >= core || matches.length >= limit) {
         break;
       }
       matches.push({
-        start: position + start,
-        end: position + offset(range.end),
+        start: from + start,
+        end: from + offset(range.end),
       });
     }
-    position += core;
+    position = from + core;
+    lead = core - coding.boundaryBefore(bytes, core - 1);
     onChunk?.(matches);
     if (signal?.aborted) {
       return undefined;

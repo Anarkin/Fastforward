@@ -431,7 +431,7 @@ suite('App commander', () => {
       );
       await page.keyboard.press('ControlOrMeta+F');
       await waitForFocus(
-        page.locator('.viewer .find-field-input'),
+        page.locator('.viewer .search-box-input'),
         'the search',
       );
       await page.keyboard.type('Cafe');
@@ -441,10 +441,10 @@ suite('App commander', () => {
         gridLines.slice(1).map(() => 0),
       );
     } finally {
-      if (await page.locator('.viewer .find-field').isVisible()) {
+      if (await page.locator('.viewer .search-box').isVisible()) {
         await page.keyboard.press('Escape');
         await page
-          .locator('.viewer .find-field')
+          .locator('.viewer .search-box')
           .waitFor({ state: 'detached' });
       }
       if (await page.locator('.viewer').isVisible()) {

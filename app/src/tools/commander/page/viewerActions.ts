@@ -63,7 +63,7 @@ export function viewerActions({ post }: StoreParts): {
     actions: {
       request: post,
       listenViewer,
-      findText: (tab, encoding, query, onFound) => {
+      findText: (tab, encoding, query, options, onFound) => {
         if (query.length > maxFindLength) {
           onFound({ matches: [], done: true });
           return () => undefined;
@@ -78,7 +78,7 @@ export function viewerActions({ post }: StoreParts): {
             onFound({ matches: message.matches, done: message.done });
           }
         });
-        post({ type: 'findText', tab, encoding, query, request });
+        post({ type: 'findText', tab, encoding, query, options, request });
         return () => {
           stop();
           post({ type: 'stopFind', tab, request });

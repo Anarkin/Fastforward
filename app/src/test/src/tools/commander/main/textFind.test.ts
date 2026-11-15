@@ -201,3 +201,102 @@ suite('Finding text in a file viewed', () => {
     );
   });
 });
+
+const wholeWord = { ...plainSearch, wholeWord: true };
+const regex = { ...plainSearch, regex: true };
+
+const everyChunk = async (
+  text: string,
+  query: string,
+  options: typeof plainSearch,
+  encoding: Parameters<typeof findInFile>[4],
+) => {
+  const bytes =
+    encoding === 'utf-16le'
+      ? Buffer.from(text, 'utf16le')
+      : Buffer.from(text, 'utf8');
+  const { read, size } = inMemory(bytes);
+  const whole = (await findInFile(read, size, query, options, encoding))
+    ?.matches;
+  for (const chunk of [1, 2, 3, 4, 5, 6, 7, 9, 13]) {
+    assert.deepStrictEqual(
+      (await findInFile(read, size, query, options, encoding, { chunk }))
+        ?.matches,
+      whole,
+      `${query} in chunks of ${chunk}`,
+    );
+  }
+  return whole;
+};
+
+suite('Finding text in a file viewed, with options', () => {
+  test('keeps whole words whole across the edges of the slices it reads, a letter before a match in the slice before it counting', async () => {
+    assert.deepStrictEqual(
+      await everyChunk(
+        'amatch match matchb match',
+        'match',
+        wholeWord,
+        'utf-8',
+      ),
+      [
+        { start: 7, end: 12 },
+        { start: 20, end: 25 },
+      ],
+    );
+    assert.deepStrictEqual(
+      await everyChunk('ématch match', 'match', wholeWord, 'utf-8'),
+      [{ start: 8, end: 13 }],
+    );
+    assert.deepStrictEqual(
+      await everyChunk('őmatch match', 'match', wholeWord, 'utf-16le'),
+      [{ start: 14, end: 24 }],
+    );
+  });
+
+  test('matches the case when asked, giving the bytes each match takes', async () => {
+    assert.deepStrictEqual(
+      await everyChunk(
+        'Árvíz ÁRVÍZ árvíz',
+        'ÁRVÍZ',
+        { ...plainSearch, caseSensitive: true },
+        'utf-8',
+      ),
+      [{ start: 8, end: 15 }],
+    );
+  });
+
+  test('matches a regular expression within a line, its anchors at the ends of lines, never across a line break or at the edge of a slice inside a line', async () => {
+    const text = 'one\nneedle two\r\nthree needle\nxxneedle\n';
+    assert.deepStrictEqual(await everyChunk(text, '^needle', regex, 'utf-8'), [
+      { start: 4, end: 10 },
+    ]);
+    assert.deepStrictEqual(await everyChunk(text, 'needle$', regex, 'utf-8'), [
+      { start: 22, end: 28 },
+      { start: 31, end: 37 },
+    ]);
+    assert.deepStrictEqual(
+      await everyChunk(text, String.raw`o\s+n`, regex, 'utf-8'),
+      [],
+    );
+    assert.deepStrictEqual(
+      await everyChunk(text, String.raw`n\w+e\b`, regex, 'utf-8'),
+      [
+        { start: 4, end: 10 },
+        { start: 22, end: 28 },
+        { start: 31, end: 37 },
+      ],
+    );
+    assert.deepStrictEqual(
+      await everyChunk(text, String.raw`^\w+ needle$`, regex, 'utf-16le'),
+      [{ start: 32, end: 56 }],
+    );
+  });
+
+  test('finds nothing for a regular expression that is not valid', async () => {
+    const { read, size } = inMemory(Buffer.from('(a)'));
+    assert.deepStrictEqual(
+      (await findInFile(read, size, '(', regex, 'utf-8'))?.matches,
+      [],
+    );
+  });
+});

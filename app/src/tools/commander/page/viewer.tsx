@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { viewerKeymap, type ViewMode } from './viewerKeymap';
+import type { ViewMode } from './viewerKeymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
-import {
-  FindActions,
-  FindField,
-  SearchButton,
-  SearchRow,
-} from '../../../lib/page/search';
+import { SearchButton } from '../../../lib/page/search';
 import { useViewerFind } from './viewerFind';
+import { ViewerFindBar } from './viewerFindBar';
 import { usePdfPreview } from './pdfPreview';
 import { strings } from '../../../lib/shared/strings';
 import {
@@ -120,10 +116,8 @@ export function Viewer() {
     mode === 'hex' || shown === 'bytes' ? 'windows-1252' : shown,
   );
   const pdf = usePdfPreview(viewing?.tab);
-  const searched =
-    mode === 'preview' && preview === 'pdf'
-      ? pdf.find
-      : { ...finder, matches: finder.matches.length };
+  const inPdf = mode === 'preview' && preview === 'pdf';
+  const searched = inPdf ? pdf.find : finder;
   const [finding, setFinding] = useState(false);
   const [focusAsks, setFocusAsks] = useState(0);
   const findInput = useRef<HTMLInputElement>(null);
@@ -195,20 +189,12 @@ export function Viewer() {
       }}
     >
       {finding ? (
-        <header className="column-title searching">
-          <SearchRow onClose={closeFind}>
-            <FindField
-              query={searched.query}
-              count={searched.count}
-              input={findInput}
-              keys={viewerKeymap}
-              onQuery={searched.search}
-              onStep={searched.step}
-              onClose={closeFind}
-            />
-            <FindActions matches={searched.matches} onStep={searched.step} />
-          </SearchRow>
-        </header>
+        <ViewerFindBar
+          searched={searched}
+          inPdf={inPdf}
+          input={findInput}
+          onClose={closeFind}
+        />
       ) : (
         <header className="column-title">
           <div className="column-start nav-buttons viewer-actions">

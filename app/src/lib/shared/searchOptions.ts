@@ -16,6 +16,21 @@ const searchOptionNames = [
   'regex',
 ] as const satisfies readonly (keyof SearchOptions)[];
 
+export function isSearchOptions(value: unknown): value is SearchOptions {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const entries = Object.entries(value);
+  return (
+    entries.length === searchOptionNames.length &&
+    entries.every(
+      ([key, each]) =>
+        searchOptionNames.some((name) => name === key) &&
+        typeof each === 'boolean',
+    )
+  );
+}
+
 export function sameSearchOptions(
   one: SearchOptions,
   other: SearchOptions,

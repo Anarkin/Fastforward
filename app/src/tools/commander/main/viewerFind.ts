@@ -4,7 +4,7 @@ import { maxFindLength, type CommanderToHost } from '../shared/protocol';
 import { isTextEncoding } from '../shared/textEncodings';
 import { readingFile } from './fileBlocks';
 import { findInFile } from './textFind';
-import { plainSearch } from '../../../lib/shared/searchOptions';
+import { isSearchOptions } from '../../../lib/shared/searchOptions';
 import { reasonOf } from './reasons';
 import type { Sides } from './sides';
 import { post } from './post';
@@ -21,6 +21,7 @@ export class ViewerFind {
       request,
       encoding,
       query,
+      options,
     }: Extract<CommanderToHost, { type: 'findText' }>,
   ): Promise<void> {
     const showing = this.sides.shown.get(page);
@@ -32,7 +33,8 @@ export class ViewerFind {
       !Number.isSafeInteger(request) ||
       !isTextEncoding(encoding) ||
       typeof query !== 'string' ||
-      query.length > maxFindLength
+      query.length > maxFindLength ||
+      !isSearchOptions(options)
     ) {
       return;
     }
@@ -43,7 +45,7 @@ export class ViewerFind {
     let told = Date.now();
     let failed: unknown;
     const found = await readingFile(viewing.file, (read) =>
-      findInFile(read, viewing.size, query, plainSearch, encoding, {
+      findInFile(read, viewing.size, query, options, encoding, {
         signal: finding.signal,
         onChunk: (matches) => {
           if (Date.now() - told >= findProgressEvery) {

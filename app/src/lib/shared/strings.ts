@@ -1253,6 +1253,7 @@ export const strings = {
     wordGlyph: 'W',
     regexGlyph: '.*',
     badPattern: 'Not a valid pattern',
+    noRegexInPdf: "A PDF can't be searched by a regular expression.",
     searching: 'Searching…',
     count: (current: number, matches: number, capped: boolean) =>
       `${current} of ${matches}${capped ? '+' : ''}`,

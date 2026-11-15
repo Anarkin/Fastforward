@@ -1,4 +1,5 @@
 import type { EditorState } from '@codemirror/state';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { IconSource } from '../shared/icons';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
 import type { PdfPlace } from '../shared/pdf';
@@ -163,6 +164,7 @@ export interface CommanderActions {
     tab: string,
     encoding: TextEncoding,
     query: string,
+    options: SearchOptions,
     onFound: (found: {
       readonly matches: readonly ByteRange[];
       readonly done: boolean;

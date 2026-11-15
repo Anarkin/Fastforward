@@ -83,6 +83,7 @@ export function PreviewBody({
           url={previewUrl(viewing, file)}
           size={viewing.size}
           query={pdf.query}
+          options={pdf.options}
           zoomKeys={viewerKeymap.zoomPdf}
           placeOf={pdf.placeOf}
           onPlace={pdf.onPlace}

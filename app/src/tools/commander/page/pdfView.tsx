@@ -8,11 +8,13 @@ import {
 import { wheeled, type Binding } from '../../../lib/shared/keymap';
 import type { PdfPlace } from '../shared/pdf';
 import type { PdfFound, ShownPdf } from './pdfDocument';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 
 export function PdfPane({
   url,
   size,
   query,
+  options,
   zoomKeys,
   placeOf,
   onPlace,
@@ -22,6 +24,7 @@ export function PdfPane({
   url: string;
   size: number;
   query: string;
+  options: SearchOptions;
   zoomKeys: Binding<true>;
   placeOf: (fingerprint: string) => Promise<PdfPlace | undefined>;
   onPlace: (fingerprint: string, place: PdfPlace) => void;
@@ -36,6 +39,7 @@ export function PdfPane({
   const foundEvent = useEffectEvent(onFound);
   const shownEvent = useEffectEvent(onShown);
   const queryEvent = useEffectEvent(() => query);
+  const optionsEvent = useEffectEvent(() => options);
   const opened = useRef(false);
 
   useLayoutEffect(() => () => shown.current?.tellPlace(), []);
@@ -87,7 +91,7 @@ export function PdfPane({
           shownEvent(pdf);
           const finding = queryEvent();
           if (finding !== '') {
-            pdf.find(finding, 0);
+            pdf.find(finding, optionsEvent(), 0);
           }
         }
       }, failed);

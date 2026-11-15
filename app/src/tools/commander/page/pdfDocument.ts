@@ -17,6 +17,7 @@ import {
 import { strings } from '../../../lib/shared/strings';
 import { pdfPlaceOf, type PdfPlace } from '../shared/pdf';
 import { pdfText } from './pdfText';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 
 const textLayerOn = 1;
 
@@ -28,7 +29,11 @@ export interface PdfFound {
 
 export interface ShownPdf {
   readonly fingerprint: string;
-  readonly find: (query: string, step: 0 | 1 | -1) => void;
+  readonly find: (
+    query: string,
+    options: SearchOptions,
+    step: 0 | 1 | -1,
+  ) => void;
   readonly closeFind: () => void;
   readonly zoomBy: (steps: number) => void;
   readonly tellPlace: () => void;
@@ -223,13 +228,13 @@ export async function showPdf(
   linkService.setDocument(pdf);
   return {
     fingerprint,
-    find: (query, step) =>
+    find: (query, { caseSensitive, wholeWord }, step) =>
       eventBus.dispatch('find', {
         source: null,
         type: step === 0 ? '' : 'again',
         query,
-        caseSensitive: false,
-        entireWord: false,
+        caseSensitive,
+        entireWord: wholeWord,
         highlightAll: true,
         findPrevious: step === -1,
         matchDiacritics: false,

@@ -1,5 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
+
+const wholeWord = { ...plainSearch, wholeWord: true };
 import { maxFindLength } from '../../../../../tools/commander/shared/protocol';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { noop } from '../../../../helpers/fixtures';
@@ -18,8 +21,12 @@ suite('Commander store', () => {
 
     store
       .getState()
-      .findText('3', 'utf-8', 'x'.repeat(maxFindLength + 1), (answer) =>
-        found.push(answer),
+      .findText(
+        '3',
+        'utf-8',
+        'x'.repeat(maxFindLength + 1),
+        plainSearch,
+        (answer) => found.push(answer),
       )();
 
     assert.deepStrictEqual(found, [{ matches: [], done: true }]);
@@ -31,12 +38,19 @@ suite('Commander store', () => {
     const found: (readonly unknown[])[] = [];
     const stop = store
       .getState()
-      .findText('3', 'utf-8', 'needle', ({ matches }) => found.push(matches));
+      .findText('3', 'utf-8', 'needle', wholeWord, ({ matches }) =>
+        found.push(matches),
+      );
     const [ask] = posted;
     assert.ok(ask?.type === 'findText');
     assert.deepStrictEqual(
-      { tab: ask.tab, encoding: ask.encoding, query: ask.query },
-      { tab: '3', encoding: 'utf-8', query: 'needle' },
+      {
+        tab: ask.tab,
+        encoding: ask.encoding,
+        query: ask.query,
+        options: ask.options,
+      },
+      { tab: '3', encoding: 'utf-8', query: 'needle', options: wholeWord },
     );
     const answer = {
       type: 'found',

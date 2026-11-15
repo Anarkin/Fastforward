@@ -14,12 +14,15 @@ import {
   sharedCommanderApp,
 } from './commanderAppFixtures';
 
-const count = () => page.locator('.viewer .find-field-count').textContent();
+const count = () => page.locator('.viewer .search-count').textContent();
+
+const toggle = (title: string) =>
+  page.locator(`.viewer .search-toggle[title="${title}"]`);
 
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('previews a PDF, searching it on Ctrl+F without leaving the preview, and opens it again where it was left', async () => {
+  test('previews a PDF, searching it on Ctrl+F without leaving the preview, in the case of the query while its toggle is pressed and never by a regular expression, and opens it again where it was left', async () => {
     fs.writeFileSync(
       path.join(opened, 'book.pdf'),
       pdfOf(
@@ -57,13 +60,29 @@ suite('App commander', () => {
 
       await page.keyboard.press('ControlOrMeta+F');
       await waitForFocus(
-        page.locator('.viewer .find-field-input'),
+        page.locator('.viewer .search-box-input'),
         'the search',
       );
       await page.keyboard.type('needle');
       await waitFor(
         async () => (await count()) === '1 of 2',
         'the matches counted',
+      );
+      assert.strictEqual(
+        await toggle(
+          "A PDF can't be searched by a regular expression.",
+        ).isDisabled(),
+        true,
+      );
+      await toggle('Match Case').click();
+      await waitFor(
+        async () => (await count()) === 'No matches',
+        'nothing in the case of the query',
+      );
+      await toggle('Match Case').click();
+      await waitFor(
+        async () => (await count()) === '1 of 2',
+        'the matches counted again',
       );
       await page.locator('.viewer .textLayer .highlight.selected').waitFor();
       await page.keyboard.press('Enter');
@@ -73,7 +92,7 @@ suite('App commander', () => {
         'the page of the match',
       );
       await page.keyboard.press('Escape');
-      await page.locator('.viewer .find-field').waitFor({ state: 'detached' });
+      await page.locator('.viewer .search-box').waitFor({ state: 'detached' });
       assert.strictEqual(await page.locator('.viewer .pdf-pane').count(), 1);
 
       await scroller.evaluate((element) => {
@@ -114,7 +133,7 @@ suite('App commander', () => {
         );
       });
     } finally {
-      if (await page.locator('.viewer .find-field').isVisible()) {
+      if (await page.locator('.viewer .search-box').isVisible()) {
         await page.keyboard.press('Escape');
       }
       if (await page.locator('.viewer').isVisible()) {

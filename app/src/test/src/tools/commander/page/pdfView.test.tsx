@@ -2,6 +2,10 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test, vi } from 'vitest';
+import {
+  plainSearch,
+  type SearchOptions,
+} from '../../../../../lib/shared/searchOptions';
 import { viewerKeymap } from '../../../../../tools/commander/page/viewerKeymap';
 import type {
   PdfEvents,
@@ -82,6 +86,7 @@ async function paned(
               url="viewed?file=book.pdf"
               size={size}
               query={query}
+              options={{ ...plainSearch, wholeWord: true }}
               zoomKeys={viewerKeymap.zoomPdf}
               placeOf={() => Promise.resolve(undefined)}
               onPlace={noop}
@@ -170,15 +175,17 @@ suite('PDF pane', () => {
         'the find kept the focus',
       );
       assert.deepStrictEqual(founds, [{ current: 0, total: 0, done: false }]);
-      const finds: [string, number][] = [];
+      const finds: [string, SearchOptions, number][] = [];
       await act(async () => {
         openings[1]?.shown.resolve({
           ...shownPdf,
-          find: (query, step) => finds.push([query, step]),
+          find: (query, options, step) => finds.push([query, options, step]),
         });
         await Promise.resolve();
       });
-      assert.deepStrictEqual(finds, [['fox', 0]]);
+      assert.deepStrictEqual(finds, [
+        ['fox', { ...plainSearch, wholeWord: true }, 0],
+      ]);
 
       act(() => pane?.focus());
       show(30, 'fox');
