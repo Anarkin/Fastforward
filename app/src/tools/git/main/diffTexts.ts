@@ -1,10 +1,10 @@
-import { BlobTexts } from './blobTexts';
+import { BlobTexts, uniqueTexts } from './blobTexts';
 import { readBlobs, readFile } from './files';
 import { workingTreeSide } from '../shared/comparisons';
 import { isFullHash } from '../shared/hashes';
 import type { TabMessage, TextRequest } from '../shared/protocol';
 import { changesOf } from './tabState';
-import { type Context, uniqueTexts } from './tabContext';
+import type { Context } from './tabContext';
 import type { TreePaths } from './treePaths';
 
 export class DiffTexts {

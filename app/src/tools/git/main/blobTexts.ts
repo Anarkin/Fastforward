@@ -1,3 +1,5 @@
+import type { TextRequest } from '../shared/protocol';
+
 export class BlobTexts {
   private readonly texts = new Map<string, string>();
   private chars = 0;
@@ -47,4 +49,12 @@ export class BlobTexts {
       this.chars -= dropped.length;
     }
   }
+}
+
+export function uniqueTexts(requests: readonly TextRequest[]): TextRequest[] {
+  return [
+    ...new Map(
+      requests.map((request) => [`${request.side}\0${request.path}`, request]),
+    ).values(),
+  ];
 }

@@ -3,18 +3,13 @@ import type { Refs } from './refReads';
 import { UntrackedPatches } from './workingTree';
 import type { Fetched } from './fetches';
 import type { RepositoryAt, Notify } from './operations';
-import {
-  type GitToWebview,
-  workingTreeHash,
-  type TextRequest,
-} from '../shared/protocol';
+import type { GitToWebview } from '../shared/protocol';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import type { Page } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Compared } from '../../../shell/main/savedTabs';
 import type { TabState } from './tabState';
-import { shownSide } from '../shared/comparisons';
 import type { Changed } from './watch';
 import type { Watcher } from './watchFolders';
 
@@ -109,33 +104,9 @@ export function notInHistory(context: Context, hash: string): void {
   });
 }
 
-export function uniqueTexts(requests: readonly TextRequest[]): TextRequest[] {
-  return [
-    ...new Map(
-      requests.map((request) => [`${request.side}\0${request.path}`, request]),
-    ).values(),
-  ];
-}
-
-export function shownCommit(hash: string): string | undefined {
-  const shown = shownSide(hash);
-  return shown === workingTreeHash ? undefined : shown;
-}
-
 export const nothing: Changed = { refs: false, workingTree: false };
 
 export const refsAlone: Changed = { refs: true, workingTree: false };
-
-export async function allSettled(
-  promises: readonly Promise<unknown>[],
-): Promise<void> {
-  const failed = (await Promise.allSettled(promises)).find(
-    (result) => result.status === 'rejected',
-  );
-  if (failed) {
-    throw failed.reason;
-  }
-}
 
 export interface GitCore {
   readonly context: (

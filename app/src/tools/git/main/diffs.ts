@@ -26,7 +26,11 @@ import {
   type WorkingTree,
   type WorkingTreeDiff,
 } from './workingTree';
-import { comparedOf, workingTreeSide } from '../shared/comparisons';
+import {
+  comparedOf,
+  shownCommit,
+  workingTreeSide,
+} from '../shared/comparisons';
 import { isFullHash } from '../shared/hashes';
 import {
   includedChanges,
@@ -39,12 +43,7 @@ import {
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import type { GitStorage } from './storage';
 import { changesOf, pickable, stillThere } from './tabState';
-import {
-  type EarlyPatch,
-  type Context,
-  notInHistory,
-  shownCommit,
-} from './tabContext';
+import { type EarlyPatch, type Context, notInHistory } from './tabContext';
 import type { TreePaths } from './treePaths';
 
 export class Diffs {

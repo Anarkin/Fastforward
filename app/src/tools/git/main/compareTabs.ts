@@ -14,7 +14,8 @@ import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Compared } from '../../../shell/main/savedTabs';
 import type { GitStorage } from './storage';
-import { type Session, type Comparing, uniqueTexts } from './tabContext';
+import type { Session, Comparing } from './tabContext';
+import { uniqueTexts } from './blobTexts';
 import type { Watching } from './watching';
 
 export class CompareTabs {

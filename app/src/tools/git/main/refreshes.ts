@@ -10,7 +10,7 @@ import {
 } from './workingTree';
 import type { Log } from '../../../shell/main/log';
 import { fingerprint } from './refs';
-import { workingTreeSide } from '../shared/comparisons';
+import { shownCommit, workingTreeSide } from '../shared/comparisons';
 import { workingTreeHash } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import type { GitStorage } from './storage';
@@ -29,10 +29,9 @@ import {
   type Session,
   type Refresh,
   type Context,
-  shownCommit,
   nothing,
-  allSettled,
 } from './tabContext';
+import { allSettled } from './allSettled';
 import type { Diffs } from './diffs';
 import type { TreePaths } from './treePaths';
 import type { HistoryPages } from './historyPages';

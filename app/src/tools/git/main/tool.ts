@@ -24,10 +24,10 @@ import {
   type TabWork,
   type Session,
   type Context,
-  allSettled,
   type GitCore,
   OpeningFailed,
 } from './tabContext';
+import { allSettled } from './allSettled';
 import { Diffs } from './diffs';
 import { DiffTexts } from './diffTexts';
 import { TreePaths } from './treePaths';

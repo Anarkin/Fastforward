@@ -21,10 +21,10 @@ import {
   type TabWork,
   type Session,
   type Context,
-  allSettled,
   type GitCore,
   OpeningFailed,
 } from './tabContext';
+import { allSettled } from './allSettled';
 import type { CommitSearch } from './commitSearch';
 import { tabName } from './tabNames';
 import type { Watching } from './watching';

@@ -31,6 +31,11 @@ export function shownSide<T extends string | undefined>(
   return comparedOf(selection)?.to ?? selection;
 }
 
+export function shownCommit(hash: string): string | undefined {
+  const shown = shownSide(hash);
+  return shown === workingTreeHash ? undefined : shown;
+}
+
 export function workingTreeSide(hash: string): 'old' | 'new' | undefined {
   const { from, to } = comparedOf(hash) ?? { from: undefined, to: hash };
   if (to === workingTreeHash) {
