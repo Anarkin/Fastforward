@@ -1,108 +1,38 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ElectronApplication, Page } from 'playwright-core';
-import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
-import { closeOrKill, launchApp } from './appLaunch';
+import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
-import { removeFolder, tempFolder } from '../helpers/repositories';
+import {
+  opened,
+  profile,
+  page,
+  right,
+  content,
+  activeTab,
+  editedText,
+  backToCommander,
+  edit,
+  toStart,
+  toEnd,
+  notices,
+  sharedEditorApp,
+} from './editorAppFixtures';
+
+const tabCount = () => page.locator('.tabs [role="tab"]').count();
+
+const typeAndClose = async (typed: string) => {
+  await backToCommander();
+  await edit('notes.txt');
+  await toStart();
+  await page.keyboard.type(typed);
+  await activeTab().locator('.tab-unsaved').waitFor();
+  await activeTab().locator('.tab-close').click();
+  await page.locator('.confirm-popup').waitFor();
+};
 
 suite('App editor', () => {
-  let folder: string;
-  let opened: string;
-  let profile: string;
-  let app: ElectronApplication;
-  let page: Page;
-
-  const right = () => page.locator('.commander-pane').nth(1);
-  const content = () => page.locator('.editor .cm-content');
-  const activeTab = () => page.locator('.tabs .tab.active');
-  const editedText = () =>
-    content().evaluate((element) =>
-      Array.from(
-        element.querySelectorAll('.cm-line'),
-        (line) => line.textContent ?? '',
-      ).join('\n'),
-    );
-  const select = async (file: string) => {
-    const name = file.replace(/\.[^.]*$/, '');
-    await right().locator('.commander-row', { hasText: name }).first().click();
-    await waitFor(
-      async () =>
-        (
-          await right().locator('.commander-row.selected').textContent()
-        )?.includes(name) === true,
-      `${name} to be selected`,
-    );
-  };
-  const backToCommander = async () => {
-    await page.locator('.tabs [role="tab"]').first().click();
-    await right().locator('.commander-row').first().waitFor();
-  };
-  const edit = async (name: string) => {
-    await select(name);
-    await page.keyboard.press('F4');
-    await content().waitFor();
-  };
-  const toStart = () =>
-    content()
-      .locator('.cm-line')
-      .first()
-      .click({ position: { x: 0, y: 2 } });
-  const toEnd = async () => {
-    await content().locator('.cm-line').last().click();
-    await page.keyboard.press('End');
-  };
-  const notices = () => page.locator('.notice').allTextContents();
-  const closeNotices = async () => {
-    const close = page.locator('.notice-close').first();
-    while ((await close.count()) > 0) {
-      await close.click({ timeout: 1000 }).catch(() => undefined);
-    }
-  };
-
-  beforeAll(async () => {
-    folder = tempFolder('app-editor');
-    profile = path.join(folder, 'profile');
-    opened = path.join(folder, 'opened');
-    fs.mkdirSync(path.join(opened, 'folder'), { recursive: true });
-    fs.writeFileSync(path.join(opened, 'notes.txt'), 'one\r\ntwo\r\n');
-    fs.writeFileSync(
-      path.join(opened, 'mixed.txt'),
-      Buffer.from('caf\xe9\nline\r\nend', 'latin1'),
-    );
-    fs.writeFileSync(path.join(opened, 'image.bin'), Buffer.alloc(64));
-    fs.writeFileSync(
-      path.join(opened, 'code.ts'),
-      'const a = 1;\nlet b = 2;\n',
-    );
-    fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify({
-        tabs: [{ id: '1', tool: 'commander', root: opened }],
-        activeTab: '1',
-      }),
-    );
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify({ scrolling: { smooth: true } }),
-    );
-    app = await launchApp(profile);
-    page = await app.firstWindow();
-    await right().locator('.commander-row').first().waitFor();
-  });
-
-  beforeEach(async () => {
-    await closeNotices();
-  });
-
-  afterAll(async () => {
-    if (app !== undefined) {
-      await closeOrKill(app);
-    }
-    removeFolder(folder);
-  });
+  sharedEditorApp();
 
   test('opens the file selected on F4 in an editor tab of its own named and iconed after it, its text in the editor, and goes back to that tab on F4 again rather than opening another', async () => {
     await edit('notes.txt');
@@ -197,28 +127,24 @@ suite('App editor', () => {
   test("asks whether to save the changes of a tab before closing it, saving them on Save and leaving the file as it was on Don't Save", async () => {
     const file = path.join(opened, 'notes.txt');
     const before = fs.readFileSync(file, 'latin1');
-    const tabs = () => page.locator('.tabs [role="tab"]').count();
-    const typeAndClose = async (typed: string) => {
-      await backToCommander();
-      await edit('notes.txt');
-      await toStart();
-      await page.keyboard.type(typed);
-      await activeTab().locator('.tab-unsaved').waitFor();
-      await activeTab().locator('.tab-close').click();
-      await page.locator('.confirm-popup').waitFor();
-    };
-    const count = await tabs();
+    const count = await tabCount();
     await typeAndClose('x');
     assert.match(
       (await page.locator('.confirm-popup').textContent()) ?? '',
       /Save the changes to this file before closing it\?.*notes\.txt/,
     );
     await page.locator('.confirm-button.default').click();
-    await waitFor(async () => (await tabs()) === count - 1, 'the tab closed');
+    await waitFor(
+      async () => (await tabCount()) === count - 1,
+      'the tab closed',
+    );
     assert.strictEqual(fs.readFileSync(file, 'latin1'), `x${before}`);
     await typeAndClose('y');
     await page.locator('.confirm-button', { hasText: "Don't Save" }).click();
-    await waitFor(async () => (await tabs()) === count - 1, 'the tab closed');
+    await waitFor(
+      async () => (await tabCount()) === count - 1,
+      'the tab closed',
+    );
     assert.strictEqual(fs.readFileSync(file, 'latin1'), `x${before}`);
   });
 
@@ -280,300 +206,5 @@ suite('App editor', () => {
     await page.locator('.confirm-button.default').click();
     await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
     assert.strictEqual(fs.readFileSync(file, 'utf8'), 'mine second\n');
-  });
-
-  test('colors the code edited by its language as the viewer does, coloring again as it is typed', async () => {
-    await backToCommander();
-    await edit('code.ts');
-    const keywords = content()
-      .locator('.cm-line')
-      .first()
-      .locator('.syntax-keyword');
-    await keywords.first().waitFor();
-    assert.strictEqual(await keywords.first().textContent(), 'const');
-    await toStart();
-    await page.keyboard.type('// ');
-    await waitFor(
-      async () =>
-        (
-          await content()
-            .locator('.cm-line')
-            .first()
-            .locator('.syntax-comment')
-            .allTextContents()
-        ).join('') === '// const a = 1;',
-      'the line colored as a comment',
-    );
-    await content()
-      .locator('.cm-line')
-      .nth(1)
-      .locator('.syntax-keyword')
-      .first()
-      .waitFor();
-  });
-
-  test('shows a file of mixed line endings as Mixed and converts every line of it to the one chosen, saving it so, and saves a file read in a code page in the encoding chosen', async () => {
-    const endings = path.join(opened, 'endings.txt');
-    const latin = path.join(opened, 'latin.txt');
-    fs.writeFileSync(endings, 'a\r\nb\nc\r\n');
-    fs.writeFileSync(latin, Uint8Array.of(0x63, 0x61, 0x66, 0xe9, 0x0a));
-    const trigger = (label: RegExp) =>
-      page.locator('.editor .menu-button-trigger', { hasText: label });
-    await backToCommander();
-    await waitFor(
-      async () =>
-        (await right()
-          .locator('.commander-row', { hasText: 'latin' })
-          .count()) > 0,
-      'the files listed',
-    );
-    await edit('endings.txt');
-    const endingsButton = trigger(/^Mixed$/);
-    await endingsButton.waitFor();
-    await endingsButton.click();
-    await page
-      .locator('.menu-item', { hasText: 'Convert all line endings to CRLF' })
-      .click();
-    await trigger(/^CRLF$/).waitFor();
-    await trigger(/^CRLF$/).click();
-    assert.ok(
-      await page
-        .locator('.menu-item', { hasText: 'Convert all line endings to CRLF' })
-        .isDisabled(),
-    );
-    assert.ok(
-      await page
-        .locator('.menu-item', { hasText: 'Convert all line endings to LF' })
-        .isEnabled(),
-    );
-    await page.keyboard.press('Escape');
-    await content().click();
-    await activeTab().locator('.tab-unsaved').waitFor();
-    await page.keyboard.press('ControlOrMeta+S');
-    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
-    assert.strictEqual(fs.readFileSync(endings, 'latin1'), 'a\r\nb\r\nc\r\n');
-
-    await backToCommander();
-    await edit('latin.txt');
-    const readButton = page.locator(
-      '.editor .menu-button-trigger[title="Encoding to read in"]',
-    );
-    const writeButton = page.locator(
-      '.editor .menu-button-trigger[title="Encoding to write in"]',
-    );
-    await writeButton.click();
-    await page.locator('.menu-item', { hasText: /^UTF-8 with BOM$/ }).click();
-    await writeButton.filter({ hasText: /^UTF-8 BOM \(write\)$/ }).waitFor();
-    assert.ok(
-      await writeButton
-        .locator('.menu-button-label')
-        .evaluate((label) => label.scrollWidth <= label.clientWidth),
-      'the whole label shown',
-    );
-    await writeButton.click();
-    await page.locator('.menu-item', { hasText: /^UTF-8$/ }).click();
-    await writeButton.filter({ hasText: /^UTF-8 \(write\)$/ }).waitFor();
-    assert.strictEqual(await readButton.textContent(), '1252 (read)');
-    await page.keyboard.press('ControlOrMeta+S');
-    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
-    assert.deepStrictEqual(
-      [...fs.readFileSync(latin)],
-      [0x63, 0x61, 0x66, 0xc3, 0xa9, 0x0a],
-    );
-    await readButton.filter({ hasText: /^UTF-8 \(read\)$/ }).waitFor();
-  });
-
-  test('indents on Tab, comments a line out on Ctrl+K, moves it on Alt+Down, goes to a line on Ctrl+G and types at every occurrence Ctrl+D selected, telling the line, column and cursors below', async () => {
-    fs.writeFileSync(path.join(opened, 'keys.ts'), 'let a = 1;\nlet b = 2;\n');
-    const status = () =>
-      page.locator('.editor .column-status-text').textContent();
-    await backToCommander();
-    await waitFor(
-      async () =>
-        (await right().locator('.commander-row', { hasText: 'keys' }).count()) >
-        0,
-      'the file listed',
-    );
-    await edit('keys.ts');
-    await waitFor(
-      async () => (await editedText()).startsWith('let a'),
-      'the text',
-    );
-    await toStart();
-    await waitFor(async () => (await status()) === 'Ln 1, Col 1', 'the place');
-    await page.keyboard.press('Tab');
-    await waitFor(async () => (await status()) === 'Ln 1, Col 5', 'the indent');
-    await page.keyboard.press('ControlOrMeta+K');
-    await page.keyboard.press('Alt+ArrowDown');
-    await waitFor(
-      async () => (await editedText()) === 'let b = 2;\n    // let a = 1;\n',
-      'the line commented out and moved down',
-    );
-    await page.keyboard.press('Control+G');
-    const prompt = page.locator('.prompt-input');
-    await prompt.waitFor();
-    await prompt.fill('1');
-    await prompt.press('Enter');
-    await waitFor(async () => (await status()) === 'Ln 1, Col 1', 'line 1');
-    await page.keyboard.press('ControlOrMeta+D');
-    await page.keyboard.press('ControlOrMeta+D');
-    await waitFor(
-      async () => (await status())?.includes('2 cursors') === true,
-      'two cursors',
-    );
-    await page.keyboard.type('const');
-    await waitFor(
-      async () =>
-        (await editedText()) === 'const b = 2;\n    // const a = 1;\n',
-      'both occurrences typed over',
-    );
-    await page.keyboard.press('Escape');
-    await waitFor(
-      async () => (await status())?.includes('cursors') === false,
-      'one cursor',
-    );
-  });
-
-  test('finds the text typed on Ctrl+F, going to the next match on Enter, and replaces every match on Ctrl+H', async () => {
-    fs.writeFileSync(path.join(opened, 'find.txt'), 'one two one\nthree one\n');
-    await backToCommander();
-    await waitFor(
-      async () =>
-        (await right().locator('.commander-row', { hasText: 'find' }).count()) >
-        0,
-      'the file listed',
-    );
-    await edit('find.txt');
-    await waitFor(
-      async () => (await editedText()).startsWith('one'),
-      'the text',
-    );
-    await toStart();
-    await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.editor .find-field .find-field-input');
-    await field.waitFor();
-    await field.fill('one');
-    const count = page.locator('.editor .find-field-count');
-    await waitFor(
-      async () => (await count.textContent()) === '1 of 3',
-      'the first match',
-    );
-    await field.press('Enter');
-    await waitFor(
-      async () => (await count.textContent()) === '2 of 3',
-      'the next match',
-    );
-    assert.strictEqual(await content().locator('.find-match').count(), 3);
-    await field.press('Control+H');
-    const replacing = page.locator('.editor-replace-input');
-    await replacing.waitFor();
-    await replacing.fill('ONE');
-    await page
-      .locator('.editor-replace .confirm-button', { hasText: 'Replace All' })
-      .click();
-    await waitFor(
-      async () => (await editedText()) === 'ONE two ONE\nthree ONE\n',
-      'every match replaced',
-    );
-    await field.press('Escape');
-    await page
-      .locator('.editor .find-field .find-field-input')
-      .waitFor({ state: 'detached' });
-  });
-
-  test('shows each match whole as Enter goes from match to match, below the rows shown and back to the first, on whole rows, a match ending where a line may break too', async () => {
-    const lines = Array.from({ length: 600 }, (_, at) => `line ${at + 1}`);
-    for (const at of [39, 40, 299, 300, 564, 565]) {
-      lines[at] = `  "cursor": "needle(--color-${at + 1})",`;
-    }
-    fs.writeFileSync(path.join(opened, 'needles.txt'), `${lines.join('\n')}\n`);
-    await backToCommander();
-    await waitFor(
-      async () =>
-        (await right()
-          .locator('.commander-row', { hasText: 'needles' })
-          .count()) > 0,
-      'the file listed',
-    );
-    await edit('needles.txt');
-    await waitFor(
-      async () => (await editedText()).startsWith('line 1\n'),
-      'the text',
-    );
-    await toStart();
-    await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.editor .find-field .find-field-input');
-    await field.waitFor();
-    await field.fill('needle');
-    const count = page.locator('.editor .find-field-count');
-    await waitFor(
-      async () => (await count.textContent()) === '1 of 6',
-      'the first match',
-    );
-    const shownWhole = () =>
-      page.locator('.editor .cm-scroller').evaluate((scroller) => {
-        const top = scroller.getBoundingClientRect().top;
-        const bottom = top + scroller.clientHeight;
-        const match = scroller.querySelector('.find-match.current');
-        const rect = match?.getBoundingClientRect();
-        const row = parseFloat(getComputedStyle(scroller).lineHeight);
-        return {
-          match: match?.textContent ?? '',
-          whole:
-            rect !== undefined &&
-            rect.top >= top - 0.5 &&
-            rect.bottom <= bottom + 0.5,
-          onRows:
-            Math.abs(
-              scroller.scrollTop / row - Math.round(scroller.scrollTop / row),
-            ) < 0.01,
-        };
-      });
-    const wrong: string[] = [];
-    for (let press = 1; press <= 8; press++) {
-      await field.press('Enter');
-      await waitFor(
-        async () => (await count.textContent()) === `${(press % 6) + 1} of 6`,
-        `match ${(press % 6) + 1}`,
-      );
-      let last = '';
-      let shown = await shownWhole();
-      await waitFor(async () => {
-        shown = await shownWhole();
-        const now = JSON.stringify(shown);
-        const settled = now === last;
-        last = now;
-        await new Promise((resolve) => setTimeout(resolve, 150));
-        return settled;
-      }, 'the text to stop scrolling');
-      if (!shown.whole || !shown.onRows) {
-        wrong.push(`${(press % 6) + 1}: ${JSON.stringify(shown)}`);
-      }
-    }
-    assert.deepStrictEqual(wrong, []);
-  });
-
-  test('ends the lines of a new file as the .editorconfig beside it says', async () => {
-    fs.writeFileSync(
-      path.join(opened, '.editorconfig'),
-      '[*.crlf.txt]\nend_of_line = crlf\n',
-    );
-    const file = path.join(opened, 'made.crlf.txt');
-    await backToCommander();
-    await right().locator('.commander-row').first().click();
-    await page.keyboard.press('Shift+F4');
-    const prompt = page.locator('.prompt-input');
-    await prompt.waitFor();
-    await prompt.fill('made.crlf.txt');
-    await prompt.press('Enter');
-    await content().waitFor();
-    await content().click();
-    await page.keyboard.type('one');
-    await page.keyboard.press('Enter');
-    await page.keyboard.type('two');
-    await activeTab().locator('.tab-unsaved').waitFor();
-    await page.keyboard.press('ControlOrMeta+S');
-    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
-    assert.strictEqual(fs.readFileSync(file, 'latin1'), 'one\r\ntwo');
   });
 });
