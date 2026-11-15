@@ -39,6 +39,8 @@ suite('Virtual rows', () => {
     for (const [side, size] of [
       ['offsetWidth', 400],
       ['offsetHeight', 240],
+      ['clientWidth', 400],
+      ['clientHeight', 240],
     ] as const) {
       Object.defineProperty(dom.window.HTMLElement.prototype, side, {
         get: () => size,
