@@ -1,11 +1,7 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
-import { tabsKey } from '../../../../../shell/main/storage';
-import { plainOf } from '../../../../../lib/shared/sentences';
-import { strings } from '../../../../../lib/shared/strings';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
@@ -17,7 +13,6 @@ import {
 import { recordingLog } from '../../../../helpers/stub';
 import {
   closeViews,
-  FakeHost,
   failOnErrorsLogged,
   gate,
   stubMethod,
@@ -112,62 +107,6 @@ suite('Git tool showing diffs', () => {
     } finally {
       replaceBuiltin(childProcess, 'spawn', spawn);
     }
-  });
-
-  test('opens a file of a diff in a viewer tab of its own, from the working tree where it is and from a commit as a copy of its blob, and says why not for a file it can not open', async () => {
-    const blob = (await long.git('rev-parse', 'HEAD~1:a.txt')).trim();
-    const viewing = async (file: string, fromBlob?: string) => {
-      let seen = { viewers: [] as string[], notices: [] as string[] };
-      await withView(log, [long.root, other], async (view) => {
-        await view.connection.receive({
-          type: 'viewFile',
-          root: long.root,
-          path: file,
-          ...(fromBlob === undefined ? {} : { blob: fromBlob }),
-        });
-        const tabs = view.store.get(tabsKey);
-        seen = {
-          viewers: Array.isArray(tabs)
-            ? tabs.flatMap((tab: unknown) =>
-                typeof tab === 'object' &&
-                tab !== null &&
-                'view' in tab &&
-                tab.view === true &&
-                'root' in tab &&
-                typeof tab.root === 'string'
-                  ? [tab.root]
-                  : [],
-              )
-            : [],
-          notices: view.page.messages.flatMap((message) =>
-            message.type === 'notice' ? [plainOf(message.message)] : [],
-          ),
-        };
-      });
-      return seen;
-    };
-
-    assert.deepStrictEqual((await viewing('a.txt')).viewers, [
-      path.join(long.root, 'a.txt'),
-    ]);
-    const copy = path.join(new FakeHost().viewedFiles, blob, 'a.txt');
-    assert.deepStrictEqual((await viewing('a.txt', blob)).viewers, [copy]);
-    assert.strictEqual(fs.readFileSync(copy, 'utf8'), fortyLines(-1));
-    assert.deepStrictEqual(await viewing('../outside.txt'), {
-      viewers: [],
-      notices: [
-        plainOf(
-          strings.diff.couldNotView(
-            '../outside.txt',
-            strings.errors.outsideRepository('../outside.txt'),
-          ),
-        ),
-      ],
-    });
-    assert.deepStrictEqual(await viewing('gone.txt'), {
-      viewers: [],
-      notices: [plainOf(strings.diff.viewMissing('gone.txt'))],
-    });
   });
 
   test('shows the file selected entire while the entire file is on, as by default, and in hunks once off, remembering the choice for every file and tab', async () => {

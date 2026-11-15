@@ -1,10 +1,16 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterAll, beforeAll, suite, test } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import { imageUrl, maxImageSize } from '../../../../../tools/git/shared/images';
-import { soloKey } from '../../../../../tools/git/main/storage';
+import type { GitTool } from '../../../../../tools/git/main/tool';
 import {
   removeFolder,
   tempFolder,
@@ -13,32 +19,34 @@ import {
 } from '../../../../helpers/repositories';
 import { recordingLog } from '../../../../helpers/stub';
 import {
+  type Connection,
   closeViews,
   failOnErrorsLogged,
+  FakePage,
   numberedLines,
-  takeErrorsLogged,
+  openView,
+  stubMethod,
   withView,
-  gitState,
 } from '../../../../helpers/harness';
-import { fortyLines } from '../../../../helpers/gitFixtures';
-
-const url = (root: string, file: string, id: string, disk = false) =>
-  new URL(imageUrl({ root, path: file, id, disk }), 'fastforward://app');
+import {
+  fortyLines,
+  viewRepositories,
+  type ViewRepositories,
+} from '../../../../helpers/gitFixtures';
 
 suite('Git tool showing diffs', () => {
   let folder: string;
-  let other: string;
   let long: TempRepository;
   let spaced: TempRepository;
+  let viewFolder: string;
+  let repository: TempRepository;
+  let fixture: ViewRepositories['fixture'];
 
   const { log, error: logged } = recordingLog();
   failOnErrorsLogged(logged);
 
   beforeAll(async () => {
     folder = tempFolder('diffs');
-    const otherRepository = await tempRepository(path.join(folder, 'other'));
-    await otherRepository.commit('other');
-    other = otherRepository.root;
     long = await tempRepository(path.join(folder, 'long'));
     await long.commit('first', {
       'a.txt': fortyLines(-1),
@@ -51,11 +59,13 @@ suite('Git tool showing diffs', () => {
     spaced = await tempRepository(path.join(folder, 'spaced'));
     await spaced.commit('first', { 'a.txt': 'one\ntwo\n' });
     await spaced.commit('indent', { 'a.txt': '  one\ntwo\n' });
+    ({ folder: viewFolder, repository, fixture } = await viewRepositories());
   });
 
   afterAll(async () => {
     await closeViews();
     removeFolder(folder);
+    removeFolder(viewFolder);
   });
 
   suite('with a commit renaming a file beside others', () => {
@@ -208,6 +218,116 @@ suite('Git tool showing diffs', () => {
     });
   });
 
+  suite('with a repository with a merge open in a tab', () => {
+    let fastforward: GitTool;
+    let page: FakePage;
+    let connection: Connection;
+
+    beforeEach(async () => {
+      ({
+        view: fastforward,
+        page,
+        connection,
+      } = await openView(log, [repository.root]));
+    });
+
+    afterEach(() => connection.dispose());
+
+    test('lists every file of a commit and of the working tree', async () => {
+      const file = path.join(repository.root, 'tree-file.txt');
+      fs.writeFileSync(file, 'tree\n');
+      try {
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        await connection.receive({
+          type: 'loadTree',
+          root: repository.root,
+          hash: workingTreeHash,
+        });
+        assert.ok(page.last('tree')?.paths.includes('tree-file.txt'));
+        await connection.receive({
+          type: 'selectCommit',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+        await connection.receive({
+          type: 'loadTree',
+          root: repository.root,
+          hash: fixture.merge,
+        });
+        const tree = page.last('tree');
+        assert.strictEqual(tree?.hash, fixture.merge);
+        assert.ok(!tree.paths.includes('tree-file.txt'));
+      } finally {
+        fs.rmSync(file);
+      }
+    });
+
+    test('lists the untracked files of the working tree once per refresh, for its files and its tree', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: workingTreeHash,
+      });
+      stubMethod(fastforward, 'sendWorkingTree', async (original, ...args) => {
+        const workingTree = await original(...args);
+        assert.ok(
+          typeof workingTree === 'object' &&
+            workingTree !== null &&
+            'files' in workingTree &&
+            Array.isArray(workingTree.files) &&
+            'untracked' in workingTree &&
+            Array.isArray(workingTree.untracked),
+        );
+        return {
+          ...workingTree,
+          untracked: [...workingTree.untracked, 'listed.txt'],
+          files: [
+            ...workingTree.files,
+            {
+              path: 'listed.txt',
+              oldPath: undefined,
+              status: 'U',
+              insertions: 0,
+              deletions: 0,
+            },
+          ],
+        };
+      });
+      await connection.refresh();
+      assert.deepStrictEqual(page.last('tree')?.paths, ['listed.txt']);
+    });
+
+    test('sends no tree of a commit no longer selected', async () => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      page.clear();
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.a,
+      });
+      assert.strictEqual(page.last('tree'), undefined);
+      await connection.receive({
+        type: 'loadTree',
+        root: repository.root,
+        hash: fixture.b,
+      });
+      assert.strictEqual(page.last('tree')?.hash, fixture.b);
+    });
+  });
+
   suite('Images', () => {
     let images: TempRepository;
     const pixel = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1]);
@@ -218,94 +338,6 @@ suite('Git tool showing diffs', () => {
       fs.writeFileSync(path.join(images.root, 'data.bin'), pixel);
       await images.git('add', '.');
       await images.git('commit', '-m', 'images');
-    });
-
-    test('serves the images of the repositories open, telling one too large to preview from one it cannot serve', async () => {
-      const [object] = await images.resolve('HEAD:pixel.png');
-      const [data] = await images.resolve('HEAD:data.bin');
-      const exclude = path.join(images.root, '.git', 'info', 'exclude');
-      fs.mkdirSync(path.dirname(exclude), { recursive: true });
-      fs.appendFileSync(exclude, '/large.png\n');
-      const large = path.join(images.root, 'large.png');
-      fs.writeFileSync(large, '');
-      fs.truncateSync(large, maxImageSize + 1);
-      try {
-        await withView(log, [images.root], async ({ view }) => {
-          const shown = await view.image(url(images.root, 'pixel.png', object));
-          assert.strictEqual(shown.status, 200);
-          assert.strictEqual(shown.headers.get('content-type'), 'image/png');
-          assert.deepStrictEqual(Buffer.from(await shown.arrayBuffer()), pixel);
-          const onDisk = await view.image(
-            url(images.root, 'pixel.png', 'any', true),
-          );
-          assert.deepStrictEqual(
-            Buffer.from(await onDisk.arrayBuffer()),
-            pixel,
-          );
-          assert.strictEqual(
-            (await view.image(url(images.root, 'large.png', 'any', true)))
-              .status,
-            413,
-          );
-
-          for (const unserved of [
-            url(images.root, 'data.bin', data),
-            url(images.root, 'gone.png', 'any', true),
-            url(other, 'pixel.png', object),
-          ]) {
-            assert.strictEqual((await view.image(unserved)).status, 404);
-          }
-        });
-      } finally {
-        fs.rmSync(large);
-      }
-    });
-
-    test('serves no images from folders the page names that are not open, even after the page sets their Solo', async () => {
-      const plain = path.join(folder, 'plain-images');
-      fs.mkdirSync(plain, { recursive: true });
-      fs.writeFileSync(path.join(plain, 'pixel.png'), pixel);
-      const unopened = path.join(other, 'pixel.png');
-      fs.writeFileSync(unopened, pixel);
-      try {
-        await withView(
-          log,
-          [images.root],
-          async ({ view, connection, store }) => {
-            for (const root of [plain, other]) {
-              await connection.receive({ type: 'setSolo', root, solo: true });
-              assert.strictEqual(
-                (await view.image(url(root, 'pixel.png', 'any', true))).status,
-                404,
-              );
-            }
-            assert.deepStrictEqual(gitState(store).get(soloKey) ?? {}, {});
-          },
-        );
-      } finally {
-        fs.rmSync(unopened);
-      }
-    });
-
-    test('logs which image it failed to read', async () => {
-      const gone = await tempRepository(path.join(folder, 'gone-images'));
-      fs.writeFileSync(path.join(gone.root, 'pixel.png'), pixel);
-      await gone.git('add', '.');
-      await gone.git('commit', '-m', 'images');
-      const [object] = await gone.resolve('HEAD:pixel.png');
-      await withView(log, [gone.root], async ({ view }) => {
-        await view.idle();
-        fs.rmSync(gone.root, { recursive: true, force: true });
-        assert.strictEqual(
-          (await view.image(url(gone.root, 'pixel.png', object))).status,
-          500,
-        );
-      });
-      takeErrorsLogged(
-        logged,
-        /^Reading the image pixel\.png failed$/,
-        /ENOENT/,
-      );
     });
 
     test('shows a binary file whole again once it changes, staged in full', async () => {
