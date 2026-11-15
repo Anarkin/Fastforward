@@ -20,18 +20,15 @@ import { strings } from '../../lib/shared/strings';
 import { useBinding } from '../../lib/page/shortcuts';
 import { useShell, useShellActions } from './store';
 import { visitedSlot, slide, useTabDrag } from './tabDrag';
+import { adjacentTab, Cycle } from '../../lib/page/tabCycle';
+import { preloadDelay, resting } from '../../lib/page/resting';
 import {
-  adjacentTab,
-  Cycle,
   sidewaysDelta,
   stripOverflows,
   tabsWidth,
   revealingScroll,
-  tabMenuItems,
-  preloadDelay,
-  resting,
-  newTabTrigger,
 } from './tabStrip';
+import { tabMenuItems, newTabTrigger } from './tabMenus';
 
 function useOverflowing(
   strip: React.RefObject<HTMLElement | null>,

@@ -18,7 +18,7 @@ import {
   useShell,
   useShellActions,
 } from './store';
-import { newTabItems, newTabTrigger } from './tabStrip';
+import { newTabItems, newTabTrigger } from './tabMenus';
 import { TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './windowTitle';
 import { ToolViews } from './tools';

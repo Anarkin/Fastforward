@@ -1,5 +1,5 @@
 import { type WorktreeInfo } from '../shared/protocol';
-import { adjacentTab } from '../../../shell/page/tabStrip';
+import { adjacentTab } from '../../../lib/page/tabCycle';
 
 export function adjacentWorktree(
   worktrees: readonly WorktreeInfo[],

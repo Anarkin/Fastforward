@@ -3,7 +3,8 @@ import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { useGit, useGitActions } from './store';
-import { Cycle, preloadDelay, resting } from '../../../shell/page/tabStrip';
+import { Cycle } from '../../../lib/page/tabCycle';
+import { preloadDelay, resting } from '../../../lib/page/resting';
 import { adjacentWorktree } from './worktreeSteps';
 
 export function WorktreeBar() {

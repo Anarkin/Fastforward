@@ -4,23 +4,11 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, suite, test, vi } from 'vitest';
 import type { TabInfo } from '../../../../shell/shared/protocol';
-import type { ToolId } from '../../../../shell/shared/tools';
 import { strings } from '../../../../lib/shared/strings';
 import { AddIcon } from '../../../../lib/page/icons';
 import { rested, tabsStore } from '../../../helpers/componentFixtures';
-import { noModifiers, noop, renderedBy } from '../../../helpers/fixtures';
+import { noModifiers, renderedBy } from '../../../helpers/fixtures';
 import { ShellStore, createShellStore } from '../../../../shell/page/store';
-import {
-  adjacentTab,
-  Cycle,
-  newTabItems,
-  resting,
-  revealingScroll,
-  sidewaysDelta,
-  stripOverflows,
-  tabMenuItems,
-  tabsWidth,
-} from '../../../../shell/page/tabStrip';
 import { TabBar } from '../../../../shell/page/tabBar';
 import {
   movedTab,
@@ -72,19 +60,8 @@ function addButton(adding: boolean): Element | null {
   ).window.document.querySelector('.tab-add');
 }
 
-function laidOutTab(left: number, width: number, marginRight = 0) {
-  return { offsetLeft: left, offsetWidth: width, marginRight };
-}
-
 suite('Tab bar', () => {
   afterEach(() => vi.useRealTimers());
-
-  const tabs = ['a', 'b', 'c'].map((name) => ({
-    id: `/${name}`,
-    tool: 'git' as const,
-    root: `/${name}`,
-    name,
-  }));
 
   test('draws the icon a tab gives instead of its tool’s, as a viewer tab gives its file’s', () => {
     const document = new JSDOM(
@@ -117,58 +94,6 @@ suite('Tab bar', () => {
     );
   });
 
-  test('wraps around at either end, and stays put with one tab', () => {
-    assert.strictEqual(adjacentTab(tabs, '/a', 1), '/b');
-    assert.strictEqual(adjacentTab(tabs, '/c', 1), '/a');
-    assert.strictEqual(adjacentTab(tabs, '/a', -1), '/c');
-    assert.strictEqual(adjacentTab(tabs, undefined, 1), '/a');
-    assert.strictEqual(adjacentTab(tabs.slice(0, 1), '/a', 1), undefined);
-  });
-
-  test('steps on from the tab it last asked for until that one shows, as a key held down repeats faster than tabs open, and from the one shown once another is picked', () => {
-    let cycle = new Cycle();
-    const next = (active: string) =>
-      cycle.next(active, (from: string | undefined) =>
-        adjacentTab(tabs, from, 1),
-      );
-    assert.strictEqual(next('/a'), '/b');
-    assert.strictEqual(next('/a'), '/c');
-    assert.strictEqual(next('/b'), '/a');
-    assert.strictEqual(next('/c'), '/b');
-    assert.strictEqual(next('/a'), '/c');
-    cycle = new Cycle();
-    assert.strictEqual(next('/a'), '/b');
-    assert.strictEqual(next('/c'), '/a');
-  });
-
-  test('steps on from the tab shown once the one asked for shows and another is picked, though it is the one shown at the last press', () => {
-    for (const shown of [tabs, tabs.slice(0, 2)]) {
-      const cycle = new Cycle();
-      const next = (active: string) =>
-        cycle.next(active, (from: string | undefined) =>
-          adjacentTab(shown, from, 1),
-        );
-      cycle.seen('/a');
-      assert.strictEqual(next('/a'), '/b');
-      cycle.seen('/b');
-      cycle.seen('/a');
-      assert.strictEqual(next('/a'), '/b');
-    }
-  });
-
-  test('acts on what the pointer rests on, not on what it only passes over', async () => {
-    const done: string[] = [];
-    const rest = resting(10);
-    rest.start(() => done.push('a'));
-    rest.start(() => done.push('b'));
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    assert.deepStrictEqual(done, ['b']);
-    rest.start(() => done.push('c'));
-    rest.cancel();
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    assert.deepStrictEqual(done, ['b']);
-  });
-
   test('marks the + button open while its menu is, as the menu button is, telling assistive technology it opens a menu', () => {
     const open = addButton(true);
     assert.ok(open);
@@ -179,22 +104,6 @@ suite('Tab bar', () => {
     assert.ok(closed);
     assert.ok(!closed.classList.contains('open'));
     assert.strictEqual(closed.getAttribute('aria-expanded'), 'false');
-  });
-
-  test('offers every tool in the + menu by name, with its icon, as a submenu where the tool gives one, or opening a new tab of it', () => {
-    const opened: ToolId[] = [];
-    const recent = [{ label: 'main', onClick: noop }];
-    const items = newTabItems({ git: recent }, (tool) => opened.push(tool));
-    assert.deepStrictEqual(
-      items.map((item) => ('label' in item ? item.label : undefined)),
-      [strings.tools.terminal, strings.tools.commander, strings.tools.git],
-    );
-    const [, files, git] = items;
-    assert.ok(git && 'label' in git && files && 'label' in files);
-    assert.strictEqual(git.submenu, recent);
-    assert.ok(git.icon !== undefined && files.icon !== undefined);
-    files.onClick?.();
-    assert.deepStrictEqual(opened, ['commander']);
   });
 
   test('keeps the focus where it is when a tab is pressed, and stops the middle button from autoscrolling, as pressing the open terminal tab left the keys with nothing, and so a middle click closes the tab', () => {
@@ -306,113 +215,6 @@ suite('Tab bar', () => {
     close.props.onClick({ stopPropagation: () => stopped++ });
     assert.strictEqual(stopped, 1);
     assert.deepStrictEqual(closed, ['/a']);
-  });
-});
-
-suite('Menu of a tab', () => {
-  test('moves the tab to a new window, unless it is the only tab of its window, or into another window named after the tab it shows', () => {
-    const moved: (readonly [string, string | undefined])[] = [];
-    const move = (tab: string, window?: string) => moved.push([tab, window]);
-    const items = tabMenuItems(
-      '4',
-      false,
-      [
-        { id: '2', name: 'repo' },
-        { id: '3', name: strings.tabs.noTabWindow },
-      ],
-      move,
-    );
-    assert.deepStrictEqual(
-      items.map((item) =>
-        'separator' in item
-          ? '-'
-          : [
-              item.label,
-              item.disabled === true,
-              item.submenu?.map((each) =>
-                'separator' in each ? '-' : each.label,
-              ),
-            ],
-      ),
-      [
-        ['Move to New Window', false, undefined],
-        ['Move to Window', false, ['repo', 'Window with no tab']],
-      ],
-    );
-    for (const item of items) {
-      if (!('separator' in item)) {
-        item.onClick?.();
-        for (const each of item.submenu ?? []) {
-          if (!('separator' in each)) {
-            each.onClick?.();
-          }
-        }
-      }
-    }
-    assert.deepStrictEqual(moved, [
-      ['4', undefined],
-      ['4', '2'],
-      ['4', '3'],
-    ]);
-  });
-
-  test('offers no other window while there is none, and no new window for the only tab of a window', () => {
-    const [only, ...rest] = tabMenuItems('1', true, [], () => 0);
-    assert.ok(only && !('separator' in only));
-    assert.strictEqual(only.disabled, true);
-    assert.deepStrictEqual(rest, []);
-  });
-});
-
-suite('Tabs too many for one row', () => {
-  test('scrolls the tabs sideways by how far the wheel turns either way, as the row has nothing to scroll up or down', () => {
-    assert.strictEqual(sidewaysDelta(0, 120), 120);
-    assert.strictEqual(sidewaysDelta(0, -120), -120);
-    assert.strictEqual(sidewaysDelta(40, 0), 40);
-    assert.strictEqual(sidewaysDelta(30, -10), 30);
-  });
-
-  test('measures the tabs to the end of the last one’s margin, which takes back the gap before it as it grows or shrinks, so a full row does not flicker between too many and few', () => {
-    assert.strictEqual(tabsWidth([]), 0);
-    assert.strictEqual(tabsWidth([laidOutTab(48, 80)]), 80);
-    assert.strictEqual(
-      tabsWidth([
-        laidOutTab(48, 80),
-        laidOutTab(134, 0, -6),
-        laidOutTab(134, 80),
-      ]),
-      166,
-    );
-    assert.strictEqual(
-      tabsWidth([laidOutTab(48, 80), laidOutTab(134, 12, -6)]),
-      92,
-    );
-  });
-
-  test('takes the tabs for too many once even their narrowest overflow the row, and for few again only once they fit without the room left inside its edges, so it does not flip back and forth', () => {
-    const padding = 12;
-    assert.strictEqual(stripOverflows(false, 1000, 1000, 0), false);
-    assert.strictEqual(stripOverflows(false, 1002, 1000, 0), true);
-    assert.strictEqual(stripOverflows(true, 1024, 1000, padding), false);
-    assert.strictEqual(stripOverflows(true, 1030, 1000, padding), true);
-  });
-
-  test('scrolls the open tab into view by as little as it takes, its curves included, and leaves the row be when it shows already', () => {
-    const view = { scrolled: 100, width: 300 };
-    const reach = 12;
-    assert.strictEqual(
-      revealingScroll(view, { start: 150, end: 250 }, reach),
-      100,
-    );
-    assert.strictEqual(
-      revealingScroll(view, { start: 50, end: 150 }, reach),
-      38,
-    );
-    assert.strictEqual(
-      revealingScroll(view, { start: 380, end: 480 }, reach),
-      192,
-    );
-    assert.strictEqual(revealingScroll(view, { start: 5, end: 105 }, reach), 0);
   });
 });
 
