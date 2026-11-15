@@ -14,7 +14,7 @@ export class DiffImages {
 
   constructor(
     private readonly log: Log,
-    private readonly gitPath: string,
+    private readonly gitPath: () => string,
     private readonly shell: () => ShellAccess,
     private readonly tabStates: ReadonlyMap<string, TabWork>,
     private readonly compareTabs: CompareTabs,
@@ -40,7 +40,7 @@ export class DiffImages {
     try {
       const read = await this.imageReads.read(source, (limit) =>
         compared === undefined
-          ? readImage(this.gitPath, source.root, source, limit)
+          ? readImage(this.gitPath(), source.root, source, limit)
           : comparedImage(compared, source.path, source.id, limit),
       );
       if (read.kind !== 'image') {

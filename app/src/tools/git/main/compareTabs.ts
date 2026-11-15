@@ -23,7 +23,7 @@ export class CompareTabs {
 
   constructor(
     private readonly log: Log,
-    private readonly gitPath: string,
+    private readonly gitPath: () => string,
     private readonly storage: GitStorage,
     private readonly watching: Watching,
   ) {}
@@ -142,7 +142,7 @@ export class CompareTabs {
     let error: Sentence | undefined;
     try {
       patch = await comparedFilesPatch(
-        this.gitPath,
+        this.gitPath(),
         compared,
         { entireFile: entire, ignoreWhitespace },
         running.signal,

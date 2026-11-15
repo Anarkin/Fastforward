@@ -20,7 +20,7 @@ import type { Place, SavedPlace } from './places';
 export function createWindow(
   saved: SavedPlace,
   settings: Settings,
-  shown: Promise<boolean>,
+  shown: boolean,
   dist: string,
   development: boolean,
 ): { readonly window: BrowserWindow; readonly place: () => Place } {
@@ -57,18 +57,14 @@ export function createWindow(
     },
   });
   const { maximized } = saved;
-  window.once(
-    'ready-to-show',
-    () =>
-      void shown.then((show) => {
-        if (show) {
-          if (maximized) {
-            window.maximize();
-          }
-          window.show();
-        }
-      }),
-  );
+  window.once('ready-to-show', () => {
+    if (shown) {
+      if (maximized) {
+        window.maximize();
+      }
+      window.show();
+    }
+  });
   const restores = restoresMaximized(window, maximized);
   window.on('maximize', restores);
   window.on('unmaximize', restores);

@@ -43,7 +43,6 @@ export interface AppWindowsDeps {
   readonly settings: () => Settings;
   readonly quitGuard: QuitGuard;
   readonly views: Promise<{ readonly shell: Shell }>;
-  readonly gitFound: Promise<boolean>;
   readonly asking: () => Shell | undefined;
 }
 
@@ -136,7 +135,7 @@ export class AppWindows {
   }
 
   openLaidOut(): Promise<void> {
-    const { storage, state, gitFound } = this.deps;
+    const { storage, state } = this.deps;
     const [firstWindow] = storage.layout.map((window, index) =>
       this.open(
         window.id,
@@ -144,18 +143,8 @@ export class AppWindows {
       ),
     );
     const loading = firstWindow?.loading ?? Promise.resolve();
-    void Promise.all([loading, gitFound]).then(([, found]) => {
-      if (found) {
-        this.keepSpare();
-      }
-    });
+    void loading.then(() => this.keepSpare());
     return loading;
-  }
-
-  destroyAll(): void {
-    for (const { window } of this.opened.values()) {
-      window.destroy();
-    }
   }
 
   sendToEvery(channel: string, message: unknown): void {
@@ -215,11 +204,11 @@ export class AppWindows {
   }
 
   private open(id: string, saved: SavedPlace, kept = false): OpenedWindow {
-    const { log, quitGuard, views, gitFound } = this.deps;
+    const { log, quitGuard, views } = this.deps;
     const { window, place } = createWindow(
       saved,
       this.deps.settings(),
-      kept ? Promise.resolve(false) : gitFound,
+      !kept,
       this.deps.dist,
       this.deps.development,
     );

@@ -7,7 +7,7 @@ import type { Context } from './tabContext';
 
 export class FileViews {
   constructor(
-    private readonly gitPath: string,
+    private readonly gitPath: () => string,
     private readonly viewedFiles: string,
     private readonly shell: () => ShellAccess,
     private readonly sessions: GitSessions,
@@ -25,7 +25,7 @@ export class FileViews {
     const notify = this.sessions.notify(context);
     try {
       const viewed = await viewedFile(
-        this.gitPath,
+        this.gitPath(),
         context.root,
         file,
         blob,

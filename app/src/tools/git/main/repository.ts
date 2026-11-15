@@ -41,6 +41,17 @@ export function hasGitFolder(folder: string): Promise<boolean> {
     .catch(() => false);
 }
 
+export async function inFolderWithGit(folder: string): Promise<boolean> {
+  for (let at = path.resolve(folder); ; at = path.dirname(at)) {
+    if (await hasGitFolder(at)) {
+      return true;
+    }
+    if (path.dirname(at) === at) {
+      return false;
+    }
+  }
+}
+
 export async function initRepository(
   gitPath: string,
   folder: string,

@@ -47,7 +47,9 @@ import { runsAsAppImage, updateMode } from './installation';
 import { removeUnviewedCopies } from './viewedFiles';
 import { workFolders } from '../tools/commander/main/workFolders';
 import type { CommanderTool } from '../tools/commander/main/tool';
-import { reportMissingGit, searchGit } from './gitSearch';
+import { gitLocator } from './gitSearch';
+import { needsGit } from '../tools/git/main/gitLocator';
+import type { GitSearch } from '../tools/git/main/locate';
 import { gitToolOf } from './gitHost';
 import { terminalToolOf } from './terminalHost';
 import { commanderToolOf } from './commanderHost';
@@ -107,7 +109,7 @@ function startApp(): void {
 
 async function start(asked: readonly string[]): Promise<void> {
   setKeyPlatform(process.platform);
-  const gitSearch = searchGit();
+  const locating = gitLocator();
   await app.whenReady();
   const log = fileLog(
     path.join(app.getPath('logs'), 'Fastforward.log'),
@@ -159,7 +161,6 @@ async function start(asked: readonly string[]): Promise<void> {
   serveApp(dist, () => userSettings.settings, views.promise);
   setMenu();
   const storage = new Storage(userSettings, state);
-  const gitFound = gitSearch.then((git) => git.kind === 'found');
   let asking: Shell | undefined;
   const quitGuard = new QuitGuard(() => asking);
   powerMonitor.on('shutdown', () => quitGuard.systemEnding());
@@ -173,7 +174,6 @@ async function start(asked: readonly string[]): Promise<void> {
     settings: () => userSettings.settings,
     quitGuard,
     views: views.promise,
-    gitFound,
     asking: () => asking,
   });
   windows.listen();
@@ -210,14 +210,8 @@ async function start(asked: readonly string[]): Promise<void> {
       : dialog.showOpenDialog(parent, options);
   };
 
-  const git = await gitSearch;
-  if (git.kind !== 'found') {
-    await reportMissingGit(log, git);
-    windows.destroyAll();
-    app.quit();
-    return;
-  }
-  log.info(strings.log.usingGit(git.version, git.path));
+  const git = await locating;
+  logGit(log, git.git);
   const commandPlace = commandPlaceOf({
     platform: process.platform,
     packaged: app.isPackaged,
@@ -279,7 +273,7 @@ async function start(asked: readonly string[]): Promise<void> {
   keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
   const gitTool = gitToolOf({
     log,
-    gitPath: git.path,
+    git,
     userSettings,
     state,
     viewedFiles,
@@ -300,36 +294,36 @@ async function start(asked: readonly string[]): Promise<void> {
     userSettings,
     state,
     pdfPlaces,
-    gitPath: git.path,
+    git,
     gitTool,
     windows,
     defaultSettingsCopy,
     archiveWork,
     viewedFiles,
   });
-  const view = new Shell(
-    log,
-    storage,
-    shellHostOf({
-      dist,
-      development,
-      userSettingsFile,
-      defaultSettingsCopy,
-      userSettings,
-      untoldStateProblems,
-      updates,
-      quitGuard,
-      gitVersion: git.version,
-      system,
-      commandPlace,
-      windows,
-    }),
-    {
-      terminal: terminalTool,
-      commander: commanderTool,
-      git: gitTool,
-    },
-  );
+  const shellHost = shellHostOf({
+    dist,
+    development,
+    userSettingsFile,
+    defaultSettingsCopy,
+    userSettings,
+    untoldStateProblems,
+    updates,
+    quitGuard,
+    git,
+    system,
+    commandPlace,
+    windows,
+  });
+  const view = new Shell(log, storage, shellHost, {
+    terminal: terminalTool,
+    commander: commanderTool,
+    git: gitTool,
+  });
+  git.whenFound((found) => {
+    logGit(log, found);
+    windows.sendToEvery('message', { type: 'about', ...shellHost.about() });
+  });
   if (asked.length > 0) {
     void view.openFolders(asked);
   }
@@ -389,6 +383,14 @@ async function start(asked: readonly string[]): Promise<void> {
     );
   }
   keepExplorerMenu(log);
+}
+
+function logGit(log: Log, git: GitSearch): void {
+  if (git.kind === 'found') {
+    log.info(strings.log.usingGit(git.version, git.path));
+  } else {
+    log.warn(plainOf(needsGit(git)));
+  }
 }
 
 function distributionName(): string | undefined {

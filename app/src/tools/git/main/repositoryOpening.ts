@@ -42,7 +42,7 @@ export interface RepositoryOpeningHost {
 export class RepositoryOpening {
   constructor(
     private readonly log: Log,
-    private readonly gitPath: string,
+    private readonly gitPath: () => string,
     private readonly storage: GitStorage,
     private readonly shell: () => ShellAccess,
     private readonly core: GitCore,
@@ -74,7 +74,7 @@ export class RepositoryOpening {
     for (const folder of folders) {
       let location: Location | undefined;
       try {
-        location = await locateRepository(this.gitPath, folder);
+        location = await locateRepository(this.gitPath(), folder);
       } catch (error) {
         this.log.error(strings.log.openingFailed(folder));
         this.log.error(error instanceof Error ? error : String(error));

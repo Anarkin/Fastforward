@@ -1,11 +1,12 @@
 import * as assert from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Page } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
+import { plainOf } from '../../lib/shared/sentences';
+import { needsGit } from '../../tools/git/main/gitLocator';
 import {
   appArguments,
   appFolder,
@@ -233,17 +234,6 @@ suite('App whose page is gone', () => {
   });
 });
 
-const windowsNotedIn = (file: string) =>
-  [
-    "const { app } = require('electron');",
-    "const { appendFileSync } = require('node:fs');",
-    `const note = (what) => appendFileSync(${JSON.stringify(file)}, what + '\\n');`,
-    "app.on('browser-window-created', (_event, window) => {",
-    "  note(window.isVisible() ? 'shown' : 'created');",
-    "  window.on('show', () => note('shown'));",
-    '});',
-  ].join('\n');
-
 const toolsGtkRunsToLoadIcons = ['bwrap'];
 
 function linkFromPath(names: readonly string[], folder: string): void {
@@ -260,69 +250,61 @@ function linkFromPath(names: readonly string[], folder: string): void {
   }
 }
 
+function fakeRepositoryAt(folder: string): void {
+  const git = path.join(folder, '.git');
+  for (const inside of ['objects', 'refs']) {
+    fs.mkdirSync(path.join(git, inside), { recursive: true });
+  }
+  fs.writeFileSync(path.join(git, 'HEAD'), 'ref: refs/heads/main\n');
+  fs.writeFileSync(path.join(folder, 'notes.txt'), 'notes\n');
+}
+
 suite('App without git', () => {
-  test('says it needs git, showing no window, whether its alert keeps it running or it quits by itself, with git kept off its PATH but the tools GTK runs to load the icon of the alert left on it, as Ubuntu 26.04 aborts without them', async () => {
+  test('starts, saying in the log that the git tool needs git, and opens a repository asked for in the commander, saying why in a notice, with git kept off its PATH but the tools GTK runs to load icons left on it, as Ubuntu 26.04 aborts without them', async () => {
     const folder = tempFolder('no-git');
     const profile = path.join(folder, 'profile');
     const log = path.join(profile, 'logs', 'Fastforward.log');
-    const windows = path.join(folder, 'windows.txt');
-    const noting = path.join(folder, 'noteWindows.cjs');
-    fs.writeFileSync(noting, windowsNotedIn(windows));
+    const repository = path.join(folder, 'repository');
+    fakeRepositoryAt(repository);
     linkFromPath(toolsGtkRunsToLoadIcons, folder);
     const app = await launchApp(profile, {
-      before: ['-r', noting],
+      after: ['--', repository],
       env: {
         ...process.env,
         PATH: folder,
         Path: folder,
         SHELL: path.join(folder, 'no-shell'),
-        ELECTRON_ENABLE_STACK_DUMPING: 'true',
       },
     });
-    const child = app.process();
-    const exited = once(child, 'exit');
-    let printed = '';
-    for (const output of [child.stdout, child.stderr]) {
-      output?.on('data', (chunk: Buffer) => {
-        printed += chunk.toString();
-      });
-    }
     try {
-      await waitFor(() => {
-        try {
-          return fs.readFileSync(log, 'utf8').includes('Install git');
-        } catch {
-          return false;
-        }
-      }, 'the missing git to be logged');
-      const gitAlertHoldsTheMainProcess = process.platform === 'darwin';
-      if (!gitAlertHoldsTheMainProcess) {
-        await Promise.race([
-          app.firstWindow().then(async (page) => {
-            await page.waitForLoadState('load');
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }),
-          exited,
-        ]).catch(async (error: unknown) => {
-          await within(exited, 'the app to quit').catch(() => {
-            throw error;
-          });
-        });
-      }
-      assert.strictEqual(fs.readFileSync(windows, 'utf8'), 'created\n');
-      if (child.exitCode !== null || child.signalCode !== null) {
-        assert.deepStrictEqual(
-          [child.exitCode, child.signalCode],
-          [0, null],
-          `The app quit with ${String(child.exitCode ?? child.signalCode)}, printing:\n${printed}`,
-        );
-      }
+      const page = await app.firstWindow();
+      const popup = page.locator('.open-with-popup');
+      await popup.waitFor();
+      await waitForFocus(
+        popup.locator('.open-with-tool', { hasText: strings.tools.commander }),
+        'Commander',
+      );
+      await page
+        .locator('.notice.error', {
+          hasText: plainOf(needsGit({ kind: 'missing' })),
+        })
+        .waitFor();
+      await page.keyboard.press('Enter');
+      await popup.waitFor({ state: 'detached' });
+      await page
+        .locator('.commander-pane')
+        .nth(1)
+        .locator('.commander-row', { hasText: 'notes' })
+        .waitFor();
+      await waitFor(
+        () =>
+          fs
+            .readFileSync(log, 'utf8')
+            .includes(plainOf(needsGit({ kind: 'missing' }))),
+        'the missing git to be logged',
+      );
     } finally {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill('SIGKILL');
-        await exited;
-      }
-      await app.close();
+      await closeOrKill(app);
       removeFolder(folder);
     }
   });

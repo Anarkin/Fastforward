@@ -6,10 +6,11 @@ import type { JsonFileStore } from '../shell/main/stateFile';
 import { toolState } from '../shell/main/storage';
 import { GitStorage } from '../tools/git/main/storage';
 import { GitTool } from '../tools/git/main/tool';
+import type { GitLocator } from '../tools/git/main/gitLocator';
 
 export interface GitHostDeps {
   readonly log: Log;
-  readonly gitPath: string;
+  readonly git: GitLocator;
   readonly userSettings: UserSettings;
   readonly state: JsonFileStore;
   readonly viewedFiles: string;
@@ -20,7 +21,7 @@ export interface GitHostDeps {
 
 export function gitToolOf({
   log,
-  gitPath,
+  git,
   userSettings,
   state,
   viewedFiles,
@@ -28,7 +29,7 @@ export function gitToolOf({
 }: GitHostDeps): GitTool {
   return new GitTool(
     log,
-    gitPath,
+    git,
     new GitStorage(userSettings, toolState(state, 'git')),
     {
       viewedFiles,

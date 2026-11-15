@@ -31,6 +31,8 @@ import {
 import { sameRoot } from '../../lib/main/paths';
 import type { Store } from '../../shell/main/stateFile';
 import { GitStorage } from '../../tools/git/main/storage';
+import { GitLocator } from '../../tools/git/main/gitLocator';
+import { minimumGitVersion } from '../../tools/git/main/locate';
 import { UserSettings } from '../../shell/main/userSettings';
 import { FakeHost } from './fakeHost';
 import { FakePage } from './fakePage';
@@ -77,7 +79,7 @@ export async function openView(
   opening: boolean | Opening = {},
   host: ShellHost & GitHost = new FakeHost(),
   timer?: Timer,
-  gitPath?: string,
+  git?: string | GitLocator,
 ): Promise<OpenView> {
   const { ready = true, watched = false } =
     typeof opening === 'boolean' ? { ready: opening } : opening;
@@ -86,7 +88,7 @@ export async function openView(
   const settings = settingsForViews();
   const view = newView(
     log,
-    gitPath ?? (await installedGit()),
+    git ?? (await installedGit()),
     settings,
     store,
     host,
@@ -122,9 +124,18 @@ export async function saveTabs(
 const shells = new WeakMap<GitTool, Shell>();
 const terminalHosts = new WeakMap<GitTool, HostListener[]>();
 
+function locatorOf(git: string | GitLocator): GitLocator {
+  return typeof git === 'string'
+    ? new GitLocator(
+        { kind: 'found', path: git, version: minimumGitVersion.join('.') },
+        () => Promise.resolve({ kind: 'missing' }),
+      )
+    : git;
+}
+
 export function newView(
   log: Log,
-  gitPath: string,
+  git: string | GitLocator,
   settings: UserSettings,
   store: Store,
   host: ShellHost & GitHost = new FakeHost(),
@@ -133,7 +144,7 @@ export function newView(
 ): GitTool {
   const view = new GitTool(
     log,
-    gitPath,
+    locatorOf(git),
     new GitStorage(settings, gitState(store)),
     host,
     timer,
@@ -289,9 +300,9 @@ export async function withView(
   run: (view: OpenView) => Promise<void>,
   opening: boolean | Opening = {},
   host?: ShellHost & GitHost,
-  gitPath?: string,
+  git?: string | GitLocator,
 ): Promise<void> {
-  const view = await openView(log, tabs, opening, host, undefined, gitPath);
+  const view = await openView(log, tabs, opening, host, undefined, git);
   try {
     await run(view);
   } finally {

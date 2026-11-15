@@ -179,7 +179,7 @@ export class Fetches {
       ? this.access.core.noticesOf(session, repository)
       : silent;
     const fetched = await this.fetchRemotes(
-      { gitPath: this.access.gitPath, root, repository },
+      { gitPath: this.access.gitPath(), root, repository },
       log,
       notify,
       false,

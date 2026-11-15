@@ -35,6 +35,7 @@ import { TabLoads } from './tabLoads';
 import { Runs } from './runs';
 import { GitMessages } from './gitMessages';
 import type { GitHost } from './tool';
+import type { GitLocator } from './gitLocator';
 
 export interface GitParts {
   readonly tabStates: Map<string, TabWork>;
@@ -68,7 +69,7 @@ export interface GitParts {
 
 export function buildParts(
   log: Log,
-  gitPath: string,
+  locator: GitLocator,
   storage: GitStorage,
   host: GitHost,
   shell: () => ShellAccess,
@@ -80,6 +81,7 @@ export function buildParts(
     gitDirDelay?: number;
   },
 ): GitParts {
+  const gitPath = () => locator.pathToRun();
   const tabStates = new Map<string, TabWork>();
   const repositories = new Map<string, string>();
   const worktreeLists = new Map<string, readonly WorktreeInfo[]>();
@@ -242,7 +244,10 @@ export function buildParts(
   const autoFetch = new AutoFetch(
     () => storage.preferences.autoFetchMinutes,
     () => fetchOrder(sessions.repositoryTabs, sessions.shownRepositories()),
-    (root) => shell().track(fetches.fetchInBackground(root)),
+    (root) =>
+      locator.path === undefined
+        ? Promise.resolve()
+        : shell().track(fetches.fetchInBackground(root)),
     timer,
   );
   autoFetch.update();

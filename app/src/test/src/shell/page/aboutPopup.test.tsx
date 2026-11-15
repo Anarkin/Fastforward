@@ -62,6 +62,12 @@ suite('About popup', () => {
     );
   });
 
+  test('says there is no git where it found none, or none it can run', () => {
+    const { git: _found, ...withoutGit } = about;
+    assert.match(aboutMarkup(withoutGit), />No git</);
+    assert.match(aboutText(withoutGit), /\nNo git\n/);
+  });
+
   test('says Copied on its copy button for a moment after copying, so the click shows it took', () => {
     const copied = renderToStaticMarkup(<CopyButton copied onClick={noop} />);
     assert.match(tagWith(copied, '', 'about-copy', 'copied'), /title="/);

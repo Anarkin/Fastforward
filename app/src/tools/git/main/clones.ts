@@ -61,7 +61,7 @@ export class Clones {
 
   constructor(
     private readonly log: Log,
-    private readonly gitPath: string,
+    private readonly gitPath: () => string,
     private readonly host: CloneHost,
     private readonly quitting: AbortSignal,
   ) {}
@@ -174,7 +174,7 @@ export class Clones {
     const { ask, target, stop } = running;
     const url = withoutCredentials(ask.url);
     try {
-      await cloneRepository(this.gitPath, ask.folder, ask.url, ask.name, {
+      await cloneRepository(this.gitPath(), ask.folder, ask.url, ask.name, {
         stop: AbortSignal.any([stop.signal, this.quitting]),
         onProgress: (progress) => this.progressed(running, progress),
       });

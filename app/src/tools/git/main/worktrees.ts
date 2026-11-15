@@ -40,7 +40,7 @@ export class Worktrees {
 
   constructor(
     private readonly log: Log,
-    private readonly gitPath: string,
+    private readonly gitPath: () => string,
     private readonly storage: GitStorage,
     private readonly core: GitCore,
     private readonly commitSearch: CommitSearch,
@@ -147,6 +147,6 @@ export class Worktrees {
     repository: string,
     known: readonly string[],
   ): Promise<Worktree[]> {
-    return listWorktrees(this.gitPath, repository, known);
+    return listWorktrees(this.gitPath(), repository, known);
   }
 }

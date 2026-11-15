@@ -4,6 +4,7 @@ import { app, clipboard } from 'electron';
 import type { ShellHost } from '../shell/main/shell';
 import type { UserSettings } from '../shell/main/userSettings';
 import type { Sentence } from '../lib/shared/sentences';
+import type { GitLocator } from '../tools/git/main/gitLocator';
 import { writeReadOnly } from './readOnlyFile';
 import type { AppWindows } from './appWindows';
 import type { QuitGuard } from './quitGuard';
@@ -26,7 +27,7 @@ export interface ShellHostDeps {
   readonly untoldStateProblems: Sentence[];
   readonly updates: Updates;
   readonly quitGuard: QuitGuard;
-  readonly gitVersion: string;
+  readonly git: GitLocator;
   readonly system: string;
   readonly commandPlace: CommandPlace | undefined;
   readonly windows: AppWindows;
@@ -41,7 +42,7 @@ export function shellHostOf({
   untoldStateProblems,
   updates,
   quitGuard,
-  gitVersion,
+  git,
   system,
   commandPlace,
   windows,
@@ -76,7 +77,7 @@ export function shellHostOf({
     about: () => ({
       version: app.getVersion(),
       development,
-      git: gitVersion,
+      ...(git.git.kind === 'found' && { git: git.git.version }),
       system,
     }),
     copyText: (text) => {

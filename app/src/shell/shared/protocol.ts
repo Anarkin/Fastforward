@@ -44,7 +44,7 @@ export interface ToolChoice {
 export interface AboutInfo {
   readonly version: string;
   readonly development: boolean;
-  readonly git: string;
+  readonly git?: string;
   readonly system: string;
 }
 

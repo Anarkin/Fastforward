@@ -13,7 +13,7 @@ export class Inits {
 
   constructor(
     private readonly log: Log,
-    private readonly gitPath: string,
+    private readonly gitPath: () => string,
     private readonly repositoryOpening: RepositoryOpening,
   ) {}
 
@@ -21,7 +21,7 @@ export class Inits {
     let location: Location | undefined;
     try {
       location = (await isFolder(folder))
-        ? await locateRepository(this.gitPath, folder)
+        ? await locateRepository(this.gitPath(), folder)
         : undefined;
     } catch (error) {
       this.initFailed(session, folder, error);
@@ -55,7 +55,7 @@ export class Inits {
 
   private async initAndOpen(session: Session, folder: string): Promise<void> {
     try {
-      await initRepository(this.gitPath, folder);
+      await initRepository(this.gitPath(), folder);
     } catch (error) {
       this.initFailed(session, folder, error);
       return;

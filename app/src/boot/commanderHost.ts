@@ -7,6 +7,7 @@ import type { UserSettings } from '../shell/main/userSettings';
 import type { JsonFileStore } from '../shell/main/stateFile';
 import { toolState } from '../shell/main/storage';
 import type { GitTool } from '../tools/git/main/tool';
+import type { GitLocator } from '../tools/git/main/gitLocator';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
 import type { PdfPlaces } from '../tools/commander/main/pdfPlaces';
@@ -53,7 +54,7 @@ export interface CommanderHostDeps {
   readonly userSettings: UserSettings;
   readonly state: JsonFileStore;
   readonly pdfPlaces: PdfPlaces;
-  readonly gitPath: string;
+  readonly git: GitLocator;
   readonly gitTool: GitTool;
   readonly windows: {
     focusedWindow(): BrowserWindow | undefined;
@@ -70,7 +71,7 @@ export function commanderToolOf({
   userSettings,
   state,
   pdfPlaces,
-  gitPath,
+  git,
   gitTool,
   windows,
   defaultSettingsCopy,
@@ -83,7 +84,10 @@ export function commanderToolOf({
       editorConfigOf(edited, (config) =>
         fs.promises.readFile(config, 'utf8').catch(() => undefined),
       ),
-    gitEnding: (edited) => gitEndingOf(gitPath, edited),
+    gitEnding: (edited) =>
+      git.path === undefined
+        ? Promise.resolve(undefined)
+        : gitEndingOf(git.path, edited),
   });
   return new CommanderTool({
     pdfPlaces,

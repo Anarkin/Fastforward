@@ -19,7 +19,7 @@ const maxKeptUntrackedChars = 32_000_000;
 
 export class Contexts {
   constructor(
-    private readonly gitPath: string,
+    private readonly gitPath: () => string,
     private readonly storage: GitStorage,
     private readonly tabStates: Map<string, TabWork>,
     private readonly sessions: GitSessions,
@@ -95,7 +95,7 @@ export class Contexts {
     }
     const tab = this.tabState(root);
     tab.isRepository ||=
-      (await repositoryRoot(this.gitPath, root)) !== undefined;
+      (await repositoryRoot(this.gitPath(), root)) !== undefined;
     if (!tab.isRepository) {
       if (live && this.sessions.isActiveIn(session, root)) {
         tab.refreshError = strings.messages.notRepository(root);
@@ -104,7 +104,7 @@ export class Contexts {
       return undefined;
     }
     return {
-      gitPath: this.gitPath,
+      gitPath: this.gitPath(),
       root,
       repository: this.sessions.repositoryOf(root),
       tab,

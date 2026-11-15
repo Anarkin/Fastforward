@@ -13,6 +13,7 @@ import {
   type Tool,
 } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { sameRoot } from '../../../lib/main/paths';
 import type { Timer } from '../../../lib/main/timer';
 import type { GitStorage } from './storage';
@@ -44,9 +45,21 @@ import type { TabLoads } from './tabLoads';
 import type { Runs } from './runs';
 import type { GitMessages } from './gitMessages';
 import { buildParts } from './gitParts';
+import { needsGit, type GitLocator } from './gitLocator';
+import { inFolderWithGit } from './repository';
 
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 export type FolderPurpose = 'init' | 'clone';
+
+const runsNoGit: ReadonlySet<GitToHost['type']> = new Set([
+  'forgetRecent',
+  'setColumnWidths',
+  'setShowAllFiles',
+  'setDiffLayout',
+  'setAutoFetch',
+  'scrolled',
+  'stopCommitSearch',
+]);
 
 export interface GitHost {
   readonly viewedFiles: string;
@@ -90,7 +103,7 @@ export class GitTool implements Tool<'git'> {
 
   constructor(
     private readonly log: Log,
-    private readonly gitPath: string,
+    private readonly locator: GitLocator,
     private readonly storage: GitStorage,
     private readonly host: GitHost,
     timer?: Timer,
@@ -102,7 +115,7 @@ export class GitTool implements Tool<'git'> {
   ) {
     const parts = buildParts(
       log,
-      gitPath,
+      locator,
       storage,
       host,
       () => this.shell,
@@ -171,12 +184,23 @@ export class GitTool implements Tool<'git'> {
   async show(page: Page, tab: Tab): Promise<void> {
     const session = this.sessions.of(page);
     if (tab.compare !== undefined) {
+      if (this.locator.path === undefined) {
+        await this.missingGit(page);
+      }
       await this.compareTabs.showCompare(session, tab.id, tab.compare);
       return;
     }
     this.compareTabs.stopComparing(session);
     const { root } = tab;
     if (root === undefined) {
+      return;
+    }
+    const missing =
+      this.locator.path === undefined ? await this.missingGit(page) : undefined;
+    if (missing !== undefined) {
+      this.contexts.tabState(this.storage.worktreeOf(root)).refused = true;
+      this.posts.postTabs(session);
+      session.post({ type: 'error', message: missing });
       return;
     }
     await this.runs.run(
@@ -200,7 +224,7 @@ export class GitTool implements Tool<'git'> {
 
   async preload(page: Page, tab: Tab): Promise<void> {
     const { root } = tab;
-    if (root === undefined) {
+    if (root === undefined || this.locator.path === undefined) {
       return;
     }
     const session = this.sessions.of(page);
@@ -234,12 +258,23 @@ export class GitTool implements Tool<'git'> {
     return this.runs.run(
       strings.log.handlingFailed(message.type),
       session,
-      () => this.messages.handle(message, session),
+      async () => {
+        if (
+          runsNoGit.has(message.type) ||
+          this.locator.path !== undefined ||
+          (await this.missingGit(page)) === undefined
+        ) {
+          await this.messages.handle(message, session);
+        }
+      },
       this.messages.worktreeAsked(message),
     );
   }
 
   refreshShown(page: Page): Promise<void> {
+    if (this.locator.path === undefined) {
+      return Promise.resolve();
+    }
     const session = this.sessions.of(page);
     return this.runs.run(
       strings.log.refreshingFailed,
@@ -259,8 +294,18 @@ export class GitTool implements Tool<'git'> {
   }
 
   async fits(folder: string): Promise<boolean> {
+    const git = await this.locator.located();
+    if (git.kind !== 'found') {
+      if (await inFolderWithGit(folder)) {
+        this.shell.notice(undefined, {
+          level: 'error',
+          message: needsGit(git),
+        });
+      }
+      return false;
+    }
     try {
-      return (await locateRepository(this.gitPath, folder)) !== undefined;
+      return (await locateRepository(git.path, folder)) !== undefined;
     } catch {
       return false;
     }
@@ -276,19 +321,29 @@ export class GitTool implements Tool<'git'> {
 
   open(page: Page, folders: readonly string[]): Promise<void> {
     const session = this.sessions.of(page);
-    return this.runs.run(strings.log.openingAskedFailed, session, () =>
-      this.repositoryOpening.openRepositories(session, folders),
-    );
+    return this.runs.run(strings.log.openingAskedFailed, session, async () => {
+      if (
+        this.locator.path !== undefined ||
+        (await this.missingGit(page)) === undefined
+      ) {
+        await this.repositoryOpening.openRepositories(session, folders);
+      }
+    });
   }
 
   newTab(page: Page): Promise<void> {
     const session = this.sessions.of(page);
-    return this.runs.run(strings.log.openingAskedFailed, session, async () =>
-      this.repositoryOpening.openRepositories(
-        session,
-        await this.host.chooseFolders(),
-      ),
-    );
+    return this.runs.run(strings.log.openingAskedFailed, session, async () => {
+      if (
+        this.locator.path !== undefined ||
+        (await this.missingGit(page)) === undefined
+      ) {
+        await this.repositoryOpening.openRepositories(
+          session,
+          await this.host.chooseFolders(),
+        );
+      }
+    });
   }
 
   idle(): Promise<void> {
@@ -299,16 +354,38 @@ export class GitTool implements Tool<'git'> {
     return this.diffImages.image(url);
   }
 
-  initRepositoryIn(folder: string): Promise<void> {
+  async initRepositoryIn(folder: string): Promise<void> {
     const session = this.sessions.page;
-    return session === undefined
-      ? Promise.resolve()
-      : this.inits.initIn(session, folder);
+    if (
+      session !== undefined &&
+      (this.locator.path !== undefined ||
+        (await this.missingGit(session.page)) === undefined)
+    ) {
+      await this.inits.initIn(session, folder);
+    }
   }
 
-  cloneInto(folder: string): Promise<void> {
-    this.sessions.cloningIn = this.sessions.page;
-    return this.clones.openIn(folder);
+  async cloneInto(folder: string): Promise<void> {
+    const session = this.sessions.page;
+    if (
+      this.locator.path !== undefined ||
+      (await this.missingGit(session?.page)) === undefined
+    ) {
+      this.sessions.cloningIn = session;
+      await this.clones.openIn(folder);
+    }
+  }
+
+  private async missingGit(
+    page: Page | undefined,
+  ): Promise<Sentence | undefined> {
+    const git = await this.locator.located();
+    if (git.kind === 'found') {
+      return undefined;
+    }
+    const message = needsGit(git);
+    this.shell.notice(page, { level: 'error', message });
+    return message;
   }
 
   private save(saving: Promise<void>): void {

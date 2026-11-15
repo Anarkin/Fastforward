@@ -7,7 +7,7 @@ import type { Context, Fetching, GitCore, RunningOn } from './tabContext';
 
 export interface RemoteAccess {
   readonly log: Log;
-  readonly gitPath: string;
+  readonly gitPath: () => string;
   readonly storage: GitStorage;
   readonly shell: () => ShellAccess;
   readonly refreshes: Refreshes;

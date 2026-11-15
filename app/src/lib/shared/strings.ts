@@ -96,13 +96,11 @@ export const strings = {
       `${brand} ${version}${development ? ' Dev' : ''}`,
     windowTitle: (root: string, app: string) => `${root} - ${app}`,
     couldNotStart: (error: string) => `${brand} couldn't start.\n\n${error}`,
-    needsGit: `${brand} needs git`,
+    needsGit: (reason: Sentence) => sentence`The git tool needs git. ${reason}`,
     installGit: (needed: string) =>
-      `Install git ${needed} or later, make sure it is on the PATH, then start ${brand} again.`,
+      `Install git ${needed} or later, make sure it is on the PATH, then try again.`,
     gitTooOld: (version: string, path: string, needed: string) =>
-      `Git ${version} at ${path} is too old. Install git ${needed} or later, then start ${brand} again.`,
-    downloadGit: 'Download Git',
-    quit: 'Quit',
+      sentence`Git ${version} at ${named(path)} is too old. Install git ${needed} or later, then try again.`,
     openRepositories: 'Open Repositories',
     initRepository: 'Init a Repository',
     init: 'Init',
@@ -151,7 +149,8 @@ export const strings = {
     title: 'About',
     version: (version: string, development: boolean) =>
       `Version ${version}${development ? ' Dev' : ''}`,
-    git: (version: string) => `git ${version}`,
+    git: (version: string | undefined) =>
+      version === undefined ? 'No git' : `git ${version}`,
     windows: (version: string, build: string, arch: string) =>
       `Windows ${version}, build ${build}, ${arch}`,
     macos: (version: string, arch: string) => `macOS ${version}, ${arch}`,
