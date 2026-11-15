@@ -1,5 +1,4 @@
 import { tabSize } from '../../../lib/page/tabStops';
-import { codePadding, markerWidth, numberWidth } from './overflow';
 import type { WrapColumns } from './rowMeasures';
 
 declare module 'react' {
@@ -23,6 +22,21 @@ declare module 'react' {
     readonly '--visible-left'?: string;
     readonly '--visible-right'?: string;
   }
+}
+
+export const numberWidth = 56;
+export const codePadding = 6;
+export const markerWidth = 14;
+export const markerInset = 2;
+
+export function lineWidth(
+  columns: number,
+  numbers: number,
+  charWidth: number,
+): number {
+  return (
+    numbers * numberWidth + 2 * codePadding + Math.ceil(columns * charWidth)
+  );
 }
 
 export const unmeasured: WrapColumns = { left: Infinity, right: Infinity };

@@ -3,16 +3,16 @@ import { suite, test } from 'vitest';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { ImageDiff } from '../../../../tools/git/page/imagePreview';
 import { Crash } from '../../../../shell/page/errorBoundary';
-import {
-  codePadding,
-  markerWidth,
-  numberWidth,
-} from '../../../../tools/git/page/overflow';
 import { cascaded, matchingRules } from '../../../helpers/cascade';
 import { Columns } from '../../../helpers/styleFixtures';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { noop, compact, looks, paddingOf, after } from './stylesheetFixtures';
-import { layoutVariables } from '../../../../tools/git/page/textLayout';
+import {
+  codePadding,
+  layoutVariables,
+  markerWidth,
+  numberWidth,
+} from '../../../../tools/git/page/textLayout';
 import { diffRowClass } from '../../../../tools/git/page/diffRowClasses';
 import {
   FileNote,

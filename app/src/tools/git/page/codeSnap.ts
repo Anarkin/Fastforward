@@ -1,5 +1,5 @@
 import { snapOffset } from '../../../lib/page/devicePixels';
-import { codePadding } from './overflow';
+import { codePadding } from './textLayout';
 
 export const sideSnaps: readonly React.CSSProperties[] = [
   { '--diff-side-snap': 'var(--diff-snap-left)' },

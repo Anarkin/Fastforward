@@ -7,7 +7,7 @@ import {
   type RowBreak,
 } from '../../../lib/page/rowBreaks';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
-import { numberWidth } from './overflow';
+import { numberWidth } from './textLayout';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import {
   laidOutRowStarts,

@@ -33,7 +33,6 @@ import { useShell } from '../../../shell/page/store';
 import { pickedFor } from './gitSelectors';
 import { useGit, useGitActions } from './store';
 import {
-  lineWidth,
   shownSideways,
   widestColumns,
   type Sideways,
@@ -63,7 +62,7 @@ import {
 } from './lineMarks';
 import { useDiffMinimapMarks } from './diffMinimap';
 import { Code } from './codeMarks';
-import { unmeasured, gapWidth, layoutVariables } from './textLayout';
+import { unmeasured, gapWidth, layoutVariables, lineWidth } from './textLayout';
 import { WrapProbe, TextProbe } from './textProbes';
 import { selectionSide } from './selectionSide';
 import { DiffRowShown, type DiffRowParts } from './diffRowShown';

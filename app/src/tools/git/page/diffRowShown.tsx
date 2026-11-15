@@ -19,15 +19,8 @@ import { lineKey } from './diffLines';
 import { imagePanes } from './imagePanes';
 import { ImageDiff } from './imagePreview';
 import { wholeImageUrl, type ImageOrigin } from './images';
-import {
-  inlineArea,
-  markerInset,
-  markerWidth,
-  numberWidth,
-  sideArea,
-  type Sideways,
-  type TextArea,
-} from './overflow';
+import { inlineArea, sideArea, type Sideways, type TextArea } from './overflow';
+import { markerInset, markerWidth, numberWidth } from './textLayout';
 import type { WrapColumns } from './rowMeasures';
 import { sideSnaps } from './codeSnap';
 import type { WordRanges } from './wordDiff';

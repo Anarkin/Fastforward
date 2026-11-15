@@ -2,6 +2,12 @@ import type { FindRange } from './find';
 import type { DiffRow } from './diffRows';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type TextWidths } from '../../../lib/page/textWidths';
+import {
+  codePadding,
+  markerInset,
+  markerWidth,
+  numberWidth,
+} from './textLayout';
 
 export interface Columns {
   readonly first: number;
@@ -73,10 +79,6 @@ export function revealScroll(
   return Math.max(0, Math.min(room, (start + end) / 2 - width / 2));
 }
 
-export const numberWidth = 56;
-export const codePadding = 6;
-export const markerWidth = 14;
-export const markerInset = 2;
 const markerRoom = markerInset + markerWidth + markerInset;
 
 export interface Sideways {
@@ -104,16 +106,6 @@ export function inlineArea(view: Sideways, numbers: number): TextArea {
     origin: numbers * numberWidth + codePadding,
     visible: view.width - view.minimap,
   };
-}
-
-export function lineWidth(
-  columns: number,
-  numbers: number,
-  charWidth: number,
-): number {
-  return (
-    numbers * numberWidth + 2 * codePadding + Math.ceil(columns * charWidth)
-  );
 }
 
 export function sideArea(view: Sideways, last: boolean): TextArea {
