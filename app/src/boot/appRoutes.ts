@@ -1,0 +1,49 @@
+import { strings } from '../lib/shared/strings';
+import type { Settings } from '../shell/main/settings';
+import { themeCss } from '../shell/main/theme';
+import { viewedFileRoute } from '../tools/commander/shared/files';
+import { iconRoute } from '../tools/commander/shared/icons';
+import { thumbnailRoute } from '../tools/commander/shared/thumbnails';
+import type { CommanderTool } from '../tools/commander/main/tool';
+import type { GitTool } from '../tools/git/main/tool';
+import { imageRoute } from '../tools/git/shared/images';
+import { appFile } from './files';
+
+export interface RoutedTools {
+  readonly git: Pick<GitTool, 'image'>;
+  readonly commander: Pick<CommanderTool, 'icon' | 'thumbnail' | 'file'>;
+}
+
+export function appRoutes(
+  dist: string,
+  settings: () => Settings,
+  tools: Promise<RoutedTools>,
+  fetchFile: (file: string) => Promise<Response>,
+): (request: Request) => Response | Promise<Response> {
+  return (request) => {
+    const url = new URL(request.url);
+    if (url.pathname === '/theme.css') {
+      return new Response(themeCss(settings()), {
+        headers: { 'content-type': 'text/css', 'cache-control': 'no-store' },
+      });
+    }
+    if (url.pathname === imageRoute) {
+      return tools.then(({ git }) => git.image(url));
+    }
+    if (url.pathname === iconRoute) {
+      return tools.then(({ commander }) => commander.icon(url));
+    }
+    if (url.pathname === thumbnailRoute) {
+      return tools.then(({ commander }) => commander.thumbnail(url));
+    }
+    if (url.pathname === viewedFileRoute) {
+      return tools.then(({ commander }) =>
+        commander.file(url, request.headers.get('range')),
+      );
+    }
+    const file = appFile(dist, request.url);
+    return file
+      ? fetchFile(file)
+      : new Response(strings.errors.notFound, { status: 404 });
+  };
+}
