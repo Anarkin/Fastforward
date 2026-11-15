@@ -1,8 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { parsePatch } from '../../../../../tools/git/page/diff';
+import type { TextWidths } from '../../../../../lib/page/textWidths';
+import { diffRows } from '../../../../../tools/git/page/diffRows';
 import {
   codeSnapOf,
   gapWidth,
+  widestColumns,
   wordPadding,
 } from '../../../../../tools/git/page/textLayout';
 
@@ -65,5 +69,56 @@ suite('Drawing code', () => {
         pixels * 64,
       ]);
     }
+  });
+});
+
+suite('Diff row heights', () => {
+  test('measures how far the widest line of an inline diff reaches, a tab to its next stop, to widen every row to it', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1,2 +1,2 @@',
+        ' short',
+        '-abcdefghi\tx',
+        '+longer line',
+      ].join('\n'),
+    );
+    assert.strictEqual(
+      widestColumns(diffRows(files, new Map(), undefined)),
+      13,
+    );
+    assert.strictEqual(
+      widestColumns(
+        diffRows([], new Map(), {
+          path: 'a.ts',
+          content: 'a\nbbb\n',
+          binary: false,
+        }),
+      ),
+      3,
+    );
+  });
+
+  test('measures the widest line of an inline diff by how wide its characters are drawn, as a line of wide characters reached past its count of them and the view jumped once it left the drawn rows', () => {
+    const files = parsePatch(
+      [
+        'diff --git a/a.ts b/a.ts',
+        '--- a/a.ts',
+        '+++ b/a.ts',
+        '@@ -1 +1 @@',
+        '-abcd',
+        '+中中中',
+      ].join('\n'),
+    );
+    const wide: TextWidths = {
+      char: 8,
+      of: (cluster) => (cluster === '中' ? 16 : 8),
+    };
+    assert.strictEqual(
+      widestColumns(diffRows(files, new Map(), undefined), wide),
+      6,
+    );
   });
 });
