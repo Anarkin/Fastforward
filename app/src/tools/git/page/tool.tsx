@@ -17,7 +17,8 @@ import {
   useGitActions,
   type GitState,
 } from './store';
-import { columnsClass, showsDiff, templateOf } from './columns';
+import { templateOf } from './columns';
+import { columnsClass, showsDiff } from './columnsShown';
 import {
   columnOf,
   columnOrder,

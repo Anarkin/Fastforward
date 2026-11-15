@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { columnsClass } from '../../../../tools/git/page/columns';
+import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { ImageDiff } from '../../../../tools/git/page/imagePreview';
 import { Crash } from '../../../../shell/page/errorBoundary';
 import {

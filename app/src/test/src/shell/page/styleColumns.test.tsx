@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { Column } from '../../../../tools/git/page/column';
-import { columnsClass } from '../../../../tools/git/page/columns';
+import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import {
   allWithClass,
   cascaded,

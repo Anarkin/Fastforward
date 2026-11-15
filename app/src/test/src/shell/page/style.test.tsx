@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { columnsClass } from '../../../../tools/git/page/columns';
+import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { Highlight } from '../../../../tools/git/page/highlight';
 import { KeyCombo } from '../../../../lib/page/keyCombo';
 import { allWithClass, rendered, withClass } from '../../../helpers/cascade';

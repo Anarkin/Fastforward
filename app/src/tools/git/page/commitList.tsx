@@ -29,7 +29,7 @@ import {
   useGit,
   useGitActions,
 } from './store';
-import { listError } from './columns';
+import { listError } from './columnsShown';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
 import { MenuButton } from '../../../lib/page/menu';

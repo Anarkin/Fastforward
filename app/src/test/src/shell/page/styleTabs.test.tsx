@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { columnsClass } from '../../../../tools/git/page/columns';
+import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { TabBar } from '../../../../shell/page/tabBar';
 import {
   allWithClass,

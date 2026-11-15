@@ -2,9 +2,6 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
 import {
-  columnsClass,
-  showsDiff,
-  listError,
   dragColumn,
   draggedWidths,
   drawnWidths,
@@ -12,33 +9,11 @@ import {
   minColumnWidths,
   minLastColumnWidth,
   resetWidth,
-  shownSelection,
   templateOf,
   widthsToLoad,
 } from '../../../../../tools/git/page/columns';
-import { followDrag } from '../../../../../lib/page/followDrag';
 import { minimumWindowSize } from '../../../../../boot/windowPlacement';
-import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { stylesheetPx } from '../../../../helpers/fixtures';
-
-type DragListener = (event: { buttons: number }) => void;
-
-function dragTarget() {
-  const listeners = new Map<string, Set<DragListener>>();
-  return {
-    addEventListener: (type: string, listener: DragListener) => {
-      listeners.set(type, (listeners.get(type) ?? new Set()).add(listener));
-    },
-    removeEventListener: (type: string, listener: DragListener) => {
-      listeners.get(type)?.delete(listener);
-    },
-    dispatch: (type: string, buttons: number) => {
-      for (const listener of listeners.get(type) ?? []) {
-        listener({ buttons });
-      }
-    },
-  };
-}
 
 suite('Columns', () => {
   test('gives a hidden column no width instead of dropping it, so it keeps its place', () => {
@@ -147,49 +122,6 @@ suite('Columns', () => {
   test('resets only the column asked', () => {
     assert.deepStrictEqual(resetWidth([400, 250], 1, [460, 300]), [400, 300]);
   });
-
-  test('stops following a drag the browser cancels or takes the pointer from, or whose button went up unseen', () => {
-    for (const [type, buttons] of [
-      ['pointercancel', 1],
-      ['lostpointercapture', 1],
-      ['pointerup', 0],
-      ['pointermove', 0],
-    ] as const) {
-      const target = dragTarget();
-      let moves = 0;
-      let ends = 0;
-      followDrag(
-        target,
-        () => moves++,
-        () => ends++,
-      );
-      target.dispatch('pointermove', 1);
-      target.dispatch(type, buttons);
-      target.dispatch('pointermove', 1);
-      target.dispatch('pointerup', 0);
-      assert.deepStrictEqual([moves, ends], [1, 1], type);
-    }
-  });
-
-  test('hides the commits on request, and the other columns while no commit is selected', () => {
-    assert.strictEqual(columnsClass(true, 'a'), 'columns');
-    assert.strictEqual(columnsClass(false, 'a'), 'columns commits-hidden');
-    assert.strictEqual(
-      columnsClass(true, undefined),
-      'columns nothing-selected',
-    );
-    assert.strictEqual(
-      columnsClass(false, undefined),
-      'columns commits-hidden nothing-selected',
-    );
-    assert.strictEqual(columnsClass(true, 'a', false), 'columns no-changes');
-  });
-
-  test('shows the diff unless the files list nothing, or while it has an error to show', () => {
-    assert.strictEqual(showsDiff(undefined, false), true);
-    assert.strictEqual(showsDiff(undefined, true), false);
-    assert.strictEqual(showsDiff('Bad object', true), true);
-  });
 });
 
 suite('Column drags', () => {
@@ -228,26 +160,5 @@ suite('Column drags', () => {
     } finally {
       Object.assign(globalThis, saved);
     }
-  });
-});
-
-suite('Error placement', () => {
-  test('shows an error in the commit list while nothing is selected, as the other columns are hidden then', () => {
-    assert.strictEqual(
-      listError('Not a repository', undefined),
-      'Not a repository',
-    );
-    assert.strictEqual(listError('Not a repository', 'a'), undefined);
-    assert.strictEqual(listError(undefined, undefined), undefined);
-  });
-});
-
-suite('Shown selection', () => {
-  test('lays out a clean working tree, selected, like nothing selected, as there is nothing to show beside it', () => {
-    assert.strictEqual(shownSelection(workingTreeHash, 0), undefined);
-    assert.strictEqual(shownSelection(workingTreeHash, undefined), undefined);
-    assert.strictEqual(shownSelection(workingTreeHash, 2), workingTreeHash);
-    assert.strictEqual(shownSelection('a', 0), 'a');
-    assert.strictEqual(shownSelection(undefined, 2), undefined);
   });
 });
