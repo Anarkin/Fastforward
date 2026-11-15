@@ -32,7 +32,7 @@ import { helperOf } from '../tools/commander/main/helperProtocol';
 import type { GitTool } from '../tools/git/main/tool';
 import { Shell } from '../shell/main/shell';
 import { appScheme } from './files';
-import { showAgain } from './windowPlacement';
+import { showAgain } from './showAgain';
 import { AppWindows } from './appWindows';
 import { serveApp } from './appProtocol';
 import { keepCommandPointed, keepExplorerMenu } from './installs';

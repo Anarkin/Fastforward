@@ -1,7 +1,7 @@
 import type { BrowserWindow } from 'electron';
 import type { Shell } from '../shell/main/shell';
 import type { DragEvent, Strip } from '../shell/main/dragEvents';
-import { showAgain } from './windowPlacement';
+import { showAgain } from './showAgain';
 import {
   TabDrag,
   tearsOffTabs,

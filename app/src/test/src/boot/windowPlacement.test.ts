@@ -3,11 +3,9 @@ import { suite, test } from 'vitest';
 import {
   cascaded,
   firstWindowSize,
-  keptBounds,
   minimumHeight,
   minimumWidth,
   restoresMaximized,
-  showAgain,
   visibleBounds,
 } from '../../../boot/windowPlacement';
 
@@ -123,29 +121,6 @@ suite('Window bounds', () => {
     assert.strictEqual(restoresMaximized(window, true)(), true);
   });
 
-  test('brings the window to the front when the app is started again, restoring it once minimized, but leaves one closed as the app quits, as that threw', () => {
-    const calls: string[] = [];
-    let minimized = true;
-    let destroyed = false;
-    const window = {
-      isDestroyed: () => destroyed,
-      isMinimized: () => {
-        if (destroyed) {
-          throw new TypeError('Object has been destroyed');
-        }
-        return minimized;
-      },
-      restore: () => calls.push('restore'),
-      focus: () => calls.push('focus'),
-    };
-    showAgain(window);
-    minimized = false;
-    showAgain(window);
-    destroyed = true;
-    showAgain(window);
-    assert.deepStrictEqual(calls, ['restore', 'focus', 'focus']);
-  });
-
   test('opens a first window at 1400 by 900, or only as large as the work area of a smaller screen', () => {
     assert.deepStrictEqual(
       firstWindowSize({ x: 0, y: 0, width: 1920, height: 1040 }),
@@ -155,46 +130,5 @@ suite('Window bounds', () => {
       firstWindowSize({ x: 0, y: 0, width: 1366, height: 728 }),
       { width: 1366, height: 728 },
     );
-  });
-
-  test('keeps the bounds a window was made with until it is moved or resized, as a window with a hidden title bar says it is larger than made on a scaled screen', () => {
-    const made = { x: 100, y: 80, width: 1400, height: 900 };
-    let normal = { x: 100, y: 80, width: 1406, height: 905 };
-    const kept = keptBounds({ getNormalBounds: () => normal }, made);
-    assert.deepStrictEqual(kept.bounds(), made);
-    normal = { x: 300, y: 80, width: 1200, height: 800 };
-    kept.resized();
-    assert.deepStrictEqual(kept.bounds(), normal);
-  });
-
-  test('keeps the size a window was made or last resized to when a move changes it only by what a scaled screen adds, as a window with a hidden title bar says it is larger than that there, so it would grow with each start', () => {
-    const made = { x: 100, y: 80, width: 1200, height: 800 };
-    let normal = { x: 300, y: 120, width: 1207, height: 805 };
-    const kept = keptBounds({ getNormalBounds: () => normal }, made);
-    kept.moved();
-    assert.deepStrictEqual(kept.bounds(), {
-      x: 300,
-      y: 120,
-      width: 1200,
-      height: 800,
-    });
-    normal = { x: 300, y: 120, width: 1000, height: 700 };
-    kept.resized();
-    normal = { x: 50, y: 60, width: 1006, height: 705 };
-    kept.moved();
-    assert.deepStrictEqual(kept.bounds(), {
-      x: 50,
-      y: 60,
-      width: 1000,
-      height: 700,
-    });
-  });
-
-  test('takes the size a window has when a move changes it by more than a scaled screen adds, as Windows and macOS tell only that a window moved when it is snapped or tiled to a side', () => {
-    const made = { x: 100, y: 80, width: 1400, height: 900 };
-    const snapped = { x: 1024, y: 0, width: 1024, height: 1114 };
-    const kept = keptBounds({ getNormalBounds: () => snapped }, made);
-    kept.moved();
-    assert.deepStrictEqual(kept.bounds(), snapped);
   });
 });

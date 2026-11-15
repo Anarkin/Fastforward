@@ -10,12 +10,12 @@ import { isAppUrl } from './files';
 import { lockDown, opensExternally } from './lockDown';
 import {
   firstWindowSize,
-  keptBounds,
   minimumHeight,
   minimumWidth,
   restoresMaximized,
   visibleBounds,
 } from './windowPlacement';
+import { keptBounds } from './keptBounds';
 import type { Place, SavedPlace } from './places';
 
 export function createWindow(
