@@ -146,7 +146,12 @@ export function PaneLine(props: PaneItemProps) {
     >
       {row.entry !== undefined && <MarkBox onToggle={toggleMark} />}
       <span className="commander-icon">
-        <RowIcon row={row} source={iconSource} onDropIcon={actions.dropIcon} />
+        <RowIcon
+          row={row}
+          source={iconSource}
+          onDropIcon={actions.dropIcon}
+          tickets={actions}
+        />
       </span>
       <NameCell row={row} filter={filter} />
       <ExtensionCell
@@ -190,6 +195,7 @@ export function PaneTile(props: PaneItemProps) {
             }
           }}
           onDropIcon={actions.dropIcon}
+          tickets={actions}
         />
       </div>
       <div className="commander-tile-name">

@@ -380,4 +380,71 @@ suite('Commander pane counting the sizes of folders', () => {
       '<span class="commander-size"></span>',
     );
   });
+
+  test('asks for the icon of a file that came before by the address it came by once its row is drawn again, so the icon shows at once from the images the page holds, and drops no ticket of it', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const dropped: string[] = [];
+      const tickets = new Map<string, string>();
+      const icons = {
+        iconTicketOf: (url: string) => tickets.get(url),
+        iconCame: (url: string, ticket: string) => {
+          tickets.set(url, ticket);
+        },
+      };
+      const [row] = rowsOf(
+        [
+          {
+            name: 'app.exe',
+            folder: false,
+            link: false,
+            hidden: false,
+            size: 1,
+            modified: 0,
+          },
+        ],
+        false,
+        true,
+        { column: 'name', descending: false, groupByColor: false },
+      );
+      assert.ok(row);
+      const drawn = () => (
+        <RowIcon
+          row={row}
+          source={{ tab: '1', side: 'left', folder: '/work', name: 'app.exe' }}
+          onDropIcon={(ticket) => dropped.push(ticket)}
+          tickets={icons}
+        />
+      );
+      await act(async () => root.render(drawn()));
+      const first = main.querySelector('img')?.getAttribute('src');
+      await act(async () => {
+        main.querySelector('img')?.dispatchEvent(new dom.window.Event('load'));
+      });
+      await act(async () => root.render(<></>));
+      await act(async () => root.render(drawn()));
+      const image = main.querySelector('img');
+      assert.strictEqual(image?.getAttribute('src'), first);
+      assert.ok(!image?.classList.contains('loading'), 'shown at once');
+      assert.strictEqual(main.querySelector('.file-icon'), null);
+      await act(async () => root.unmount());
+      assert.deepStrictEqual(dropped, []);
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
 });

@@ -32,6 +32,8 @@ import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
 import { viewerActions } from './viewerActions';
 
+const maxCameIcons = 5000;
+
 export function createCommanderStore(
   post: (message: CommanderToHost) => void,
   initial: Partial<CommanderSource> = {},
@@ -42,6 +44,7 @@ export function createCommanderStore(
   ) => void = () => {},
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
+  const cameIcons = new Map<string, string>();
   const scrolls = new ScrollPlaces();
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
@@ -394,6 +397,15 @@ export function createCommanderStore(
           post({ type: 'countSizes', tab, side, folder, names }),
         ),
       keepScroll: (key, offset) => scrolls.keep(key, offset),
+      iconTicketOf: (url) => cameIcons.get(url),
+      iconCame: (url, ticket) => {
+        cameIcons.delete(url);
+        cameIcons.set(url, ticket);
+        const oldest = cameIcons.keys().next().value;
+        if (cameIcons.size > maxCameIcons && oldest !== undefined) {
+          cameIcons.delete(oldest);
+        }
+      },
       dropIcon: (ticket) => {
         if (dropped.push(ticket) > 1) {
           return;

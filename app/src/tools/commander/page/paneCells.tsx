@@ -15,21 +15,28 @@ import {
 } from '../../../lib/page/icons';
 import { strings } from '../../../lib/shared/strings';
 import { tileThumbnailUrl } from './paneTiles';
+import type { CommanderActions } from './commanderState';
+
+type IconTickets = Pick<CommanderActions, 'iconTicketOf' | 'iconCame'>;
 
 function SystemIcon({
   source,
   generic,
   onDropIcon,
   onFailed,
+  tickets,
 }: {
   source: IconSource;
   generic: React.ReactNode;
   onDropIcon: (ticket: string) => void;
   onFailed: () => void;
+  tickets: IconTickets | undefined;
 }) {
-  const ticket = useId();
-  const came = useRef(false);
-  const [shown, setShown] = useState(false);
+  const id = useId();
+  const url = iconUrl(source);
+  const [ticket] = useState(() => tickets?.iconTicketOf(url) ?? id);
+  const came = useRef(ticket !== id);
+  const [shown, setShown] = useState(ticket !== id);
   useEffect(
     () => () => {
       if (!came.current) {
@@ -49,6 +56,7 @@ function SystemIcon({
         onLoad={() => {
           came.current = true;
           setShown(true);
+          tickets?.iconCame(url, ticket);
         }}
         onError={() => {
           came.current = true;
@@ -63,10 +71,12 @@ export function RowIcon({
   row,
   source,
   onDropIcon,
+  tickets,
 }: {
   row: Row;
   source: IconSource | undefined;
   onDropIcon: (ticket: string) => void;
+  tickets?: IconTickets;
 }) {
   const [failed, setFailed] = useState<string>();
   const generic =
@@ -80,6 +90,7 @@ export function RowIcon({
         generic={generic}
         onDropIcon={onDropIcon}
         onFailed={() => setFailed(url)}
+        tickets={tickets}
       />
     );
   }
@@ -164,16 +175,23 @@ export function TileImage({
   box,
   onMade,
   onDropIcon,
+  tickets,
 }: {
   row: Row;
   source: IconSource | undefined;
   box: number;
   onMade: (made: Blob, pixelRatio: number) => void;
   onDropIcon: (ticket: string) => void;
+  tickets?: IconTickets;
 }) {
   const icon = (
     <span className="commander-icon">
-      <RowIcon row={row} source={source} onDropIcon={onDropIcon} />
+      <RowIcon
+        row={row}
+        source={source}
+        onDropIcon={onDropIcon}
+        tickets={tickets}
+      />
     </span>
   );
   const type = imageType(row.key);

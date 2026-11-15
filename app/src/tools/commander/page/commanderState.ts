@@ -313,6 +313,8 @@ export interface CommanderActions {
   readonly saveColumn: (column: SizedColumn, width: number) => void;
   readonly resetColumn: (column: SizedColumn) => void;
   readonly dropIcon: (ticket: string) => void;
+  readonly iconTicketOf: (url: string) => string | undefined;
+  readonly iconCame: (url: string, ticket: string) => void;
   readonly scrollOf: (key: string) => number;
   readonly placeOf: (tab: string) => number;
   readonly keepPlace: (tab: string, byte: number) => void;
