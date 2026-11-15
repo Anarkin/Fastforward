@@ -30,7 +30,8 @@ import {
   shownColumns,
   type ColumnName,
 } from './activeColumn';
-import { AddressBar, NavButtons } from './navBar';
+import { NavButtons } from './navBar';
+import { AddressBar } from './addressBar';
 
 const CommitColumn = memo(Commits);
 

@@ -10,15 +10,11 @@ import {
   RefreshIcon,
 } from '../../../lib/page/icons';
 import { fetchStatus } from './fetchStatus';
-import { LocationsPopup } from './locations';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
-import { useBinding } from '../../../lib/page/shortcuts';
-import { gitKeymap } from './keymap';
 import {
   historyButtonClick,
   nextHistoryOpen,
-  locationsPopupKey,
   historyLabel,
 } from './navHistory';
 
@@ -215,34 +211,6 @@ export function HistoryMenu({
           </button>
         </div>
       ))}
-    </div>
-  );
-}
-
-export function AddressBar() {
-  const open = useGit((state) => state.searching);
-  const findsHere = useGit((state) => state.activeColumn === 'commits');
-  const { search } = useGitActions();
-  const [asked, setAsked] = useState(0);
-  useBinding(
-    gitKeymap.find,
-    () => {
-      setAsked((count) => count + 1);
-      search(true);
-    },
-    findsHere,
-  );
-  const root = useGit((state) => state.tab.root);
-  const container = useRef<HTMLDivElement>(null);
-
-  return (
-    <div className="address" ref={container}>
-      {open && (
-        <LocationsPopup
-          key={locationsPopupKey(asked, root)}
-          anchor={container}
-        />
-      )}
     </div>
   );
 }

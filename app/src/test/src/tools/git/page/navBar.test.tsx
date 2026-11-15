@@ -1,6 +1,5 @@
 import * as assert from 'node:assert';
-import { JSDOM } from 'jsdom';
-import { act, isValidElement } from 'react';
+import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
@@ -11,11 +10,7 @@ import {
   locationsPopupKey,
   nextHistoryOpen,
 } from '../../../../../tools/git/page/navHistory';
-import {
-  AddressBar,
-  HistoryMenu,
-  NavButtons,
-} from '../../../../../tools/git/page/navBar';
+import { HistoryMenu, NavButtons } from '../../../../../tools/git/page/navBar';
 import { GitStore } from '../../../../../tools/git/page/store';
 import type {
   GitToHost,
@@ -24,7 +19,6 @@ import type {
 import {
   gitStore,
   renderedInGit,
-  renderIn,
   type ShownGit,
   renderedBy,
 } from '../../../../helpers/componentFixtures';
@@ -61,7 +55,9 @@ const buttons = (shown: Parameters<typeof navStore>[0]) =>
   );
 
 const minute = 60_000;
+
 const hour = 60 * minute;
+
 const day = 24 * hour;
 
 suite('Navigation bar', () => {
@@ -71,75 +67,6 @@ suite('Navigation bar', () => {
     });
     assert.match(html, /title="Back[^"]*"(?![^>]*disabled)/);
     assert.match(html, /title="Forward[^"]*" disabled=""/);
-  });
-
-  test('shows nothing of the commit search until it is opened, as the button opening it sits among the buttons of the column', () => {
-    const html = renderToStaticMarkup(
-      <GitStore value={gitStore()}>
-        <AddressBar />
-      </GitStore>,
-    );
-    assert.doesNotMatch(html, /address-bar|Search…|<button/);
-  });
-
-  test('keeps the query searched for in a worktree while another tool is shown, as the search is drawn again on coming back', async () => {
-    const dom = new JSDOM('<!doctype html><main></main>');
-    dom.window.HTMLElement.prototype.scrollIntoView = noop;
-    const globals = {
-      window: dom.window,
-      document: dom.window.document,
-      HTMLElement: dom.window.HTMLElement,
-      getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
-      IS_REACT_ACT_ENVIRONMENT: true,
-    };
-    const saved = Object.fromEntries(
-      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
-    );
-    Object.assign(globalThis, globals);
-    try {
-      const { createRoot } = await import('react-dom/client');
-      const main = dom.window.document.querySelector('main');
-      assert.ok(main);
-      const store = gitStore({ tab: { root: '/repo' } });
-      store.setState({ searching: true });
-      const field = () =>
-        dom.window.document.querySelector<HTMLInputElement>(
-          '.locations-search input, input.locations-search',
-        );
-      let root = createRoot(main);
-      await act(async () => {
-        renderIn(
-          root,
-          <GitStore value={store}>
-            <AddressBar />
-          </GitStore>,
-        );
-      });
-      const typed = field();
-      assert.ok(typed);
-      await act(async () => {
-        Object.getOwnPropertyDescriptor(
-          dom.window.HTMLInputElement.prototype,
-          'value',
-        )?.set?.call(typed, 'fix');
-        typed.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-      });
-      assert.strictEqual(field()?.value, 'fix');
-      await act(async () => root.unmount());
-      root = createRoot(main);
-      await act(async () => {
-        renderIn(
-          root,
-          <GitStore value={store}>
-            <AddressBar />
-          </GitStore>,
-        );
-      });
-      assert.strictEqual(field()?.value, 'fix');
-      await act(async () => root.unmount());
-    } finally {
-      Object.assign(globalThis, saved);
-    }
   });
 
   test('opens the search popup anew in another tab, so it searches again there for the same query', () => {

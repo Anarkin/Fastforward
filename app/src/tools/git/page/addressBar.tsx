@@ -1,0 +1,34 @@
+import { useRef, useState } from 'react';
+import { LocationsPopup } from './locations';
+import { useGit, useGitActions } from './store';
+import { useBinding } from '../../../lib/page/shortcuts';
+import { gitKeymap } from './keymap';
+import { locationsPopupKey } from './navHistory';
+
+export function AddressBar() {
+  const open = useGit((state) => state.searching);
+  const findsHere = useGit((state) => state.activeColumn === 'commits');
+  const { search } = useGitActions();
+  const [asked, setAsked] = useState(0);
+  useBinding(
+    gitKeymap.find,
+    () => {
+      setAsked((count) => count + 1);
+      search(true);
+    },
+    findsHere,
+  );
+  const root = useGit((state) => state.tab.root);
+  const container = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="address" ref={container}>
+      {open && (
+        <LocationsPopup
+          key={locationsPopupKey(asked, root)}
+          anchor={container}
+        />
+      )}
+    </div>
+  );
+}
