@@ -8,12 +8,8 @@ import {
   type PluginValue,
   type ViewUpdate,
 } from '@codemirror/view';
-import {
-  cellClass,
-  cellParts,
-  elementWidths,
-  type TextWidths,
-} from '../../../lib/page/textWidths';
+import { cellClass, cellParts } from '../../../lib/page/cellParts';
+import { elementWidths, type TextWidths } from '../../../lib/page/textWidths';
 import { type CellTable } from '../../../lib/page/cellTable';
 import {
   breakOffsets,

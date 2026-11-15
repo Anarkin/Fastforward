@@ -1,9 +1,6 @@
 import { imagePath } from './markdownRender';
-import {
-  cellClass,
-  cellParts,
-  type TextWidths,
-} from '../../../lib/page/textWidths';
+import { cellClass, cellParts } from '../../../lib/page/cellParts';
+import type { TextWidths } from '../../../lib/page/textWidths';
 
 export function cellNodes(
   code: Element,

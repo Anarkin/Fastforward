@@ -93,10 +93,6 @@ export function spacingOf(element: Element): number {
   return Number.isFinite(spacing) ? spacing : 0;
 }
 
-export const graphemes = new Intl.Segmenter(undefined, {
-  granularity: 'grapheme',
-});
-
 export function elementWidths(
   element: Element,
   table: CellTable,
@@ -112,43 +108,4 @@ export function elementWidths(
   return char > 0
     ? textWidths(char, font, spacing, table, () => measurer)
     : undefined;
-}
-
-const cellClasses = ['cell zero', 'cell', 'cell wide'];
-
-export const cellClass = (cells: number): string =>
-  cellClasses[cells] ?? 'cell';
-
-export const nonAscii = /[^\0-\x7f]/;
-
-export type CellPart =
-  | { readonly text: string; readonly cells?: undefined }
-  | {
-      readonly text: string;
-      readonly cells: number;
-      readonly scale: number | undefined;
-    };
-
-export function cellParts(text: string, widths: TextWidths): CellPart[] {
-  if (widths.boxed === undefined || !nonAscii.test(text)) {
-    return [{ text }];
-  }
-  const parts: CellPart[] = [];
-  let plain = '';
-  for (const { segment } of graphemes.segment(text)) {
-    const cells = nonAscii.test(segment) ? widths.boxed(segment) : undefined;
-    if (cells === undefined) {
-      plain += segment;
-      continue;
-    }
-    if (plain !== '') {
-      parts.push({ text: plain });
-      plain = '';
-    }
-    parts.push({ text: segment, cells, scale: widths.scaled?.(segment) });
-  }
-  if (plain !== '') {
-    parts.push({ text: plain });
-  }
-  return parts;
 }

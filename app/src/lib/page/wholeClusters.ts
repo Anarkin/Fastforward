@@ -1,4 +1,4 @@
-import { graphemes, nonAscii } from './textWidths';
+import { graphemes, nonAscii } from './graphemes';
 
 interface Range {
   readonly start: number;

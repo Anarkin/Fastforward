@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
-import { cellClass, cellParts, type TextWidths } from './textWidths';
+import { cellClass, cellParts } from './cellParts';
+import type { TextWidths } from './textWidths';
 import { blank, spacesBlanksAndText, blankSignOf } from './blankSigns';
 
 function boxedText(text: string, widths: TextWidths): React.ReactNode {

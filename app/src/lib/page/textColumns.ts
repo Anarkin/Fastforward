@@ -1,5 +1,6 @@
 import { tabStop } from './tabStops';
-import { graphemes, type TextWidths } from './textWidths';
+import { graphemes } from './graphemes';
+import type { TextWidths } from './textWidths';
 
 export function columnsOf(
   text: string,
