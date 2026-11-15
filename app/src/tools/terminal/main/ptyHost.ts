@@ -2,7 +2,8 @@ import * as os from 'node:os';
 import { spawn } from 'node-pty';
 import { flowLimits } from './flowControl';
 import type { HostCommand } from './hostProtocol';
-import { PtyHost, realTimer } from './sessions';
+import { PtyHost } from './sessions';
+import { realTimer } from '../../../lib/main/timer';
 import { windowsPtyOf } from './windowsPty';
 
 const parent = process.parentPort;

@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import type { IParser } from '@xterm/headless';
 
 export interface FolderPlace {
   readonly platform: NodeJS.Platform;
@@ -58,4 +59,31 @@ export function folderOfUrl(
   return url.protocol === 'file:' && local.includes(url.hostname)
     ? folderOfPath(pathname, place)
     : undefined;
+}
+
+export function reportFolders(
+  parser: IParser,
+  place: FolderPlace,
+  tell: (folder: string) => void,
+): (cwd: string) => void {
+  let startedOn: string | undefined;
+  const reported = (folder: string | undefined): boolean => {
+    if (folder === undefined) {
+      return true;
+    }
+    const server = serverOf(folder, place);
+    if (server === undefined || server === startedOn) {
+      tell(folder);
+    }
+    return true;
+  };
+  parser.registerOscHandler(7, (data) => reported(folderOfUrl(data, place)));
+  parser.registerOscHandler(9, (data) =>
+    reported(
+      data.startsWith('9;') ? folderOfPath(data.slice(2), place) : undefined,
+    ),
+  );
+  return (cwd) => {
+    startedOn = serverOf(cwd, place);
+  };
 }

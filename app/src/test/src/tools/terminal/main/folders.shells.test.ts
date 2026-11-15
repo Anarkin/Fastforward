@@ -5,10 +5,8 @@ import { spawn } from 'node-pty';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { flowLimits } from '../../../../../tools/terminal/main/flowControl';
 import type { HostEvent } from '../../../../../tools/terminal/main/hostProtocol';
-import {
-  PtyHost,
-  realTimer,
-} from '../../../../../tools/terminal/main/sessions';
+import { PtyHost } from '../../../../../tools/terminal/main/sessions';
+import { realTimer } from '../../../../../lib/main/timer';
 import { writeShellIntegration } from '../../../../../tools/terminal/main/shellIntegration';
 import {
   isProgram,

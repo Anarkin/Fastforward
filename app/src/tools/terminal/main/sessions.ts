@@ -1,15 +1,11 @@
 import * as os from 'node:os';
 import { Backlog, flowLimits, type FlowLimits } from './flowControl';
-import {
-  folderOfPath,
-  folderOfUrl,
-  serverOf,
-  type FolderPlace,
-} from './folders';
+import { reportFolders, type FolderPlace } from './folders';
 import type { HostCommand, HostEvent, ShellLaunch } from './hostProtocol';
 import { createMirror, type Mirror } from './mirror';
 import type { WindowsPty } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
+import { realTimer, type Timer } from '../../../lib/main/timer';
 
 interface Disposable {
   dispose(): void;
@@ -30,13 +26,6 @@ export type SpawnPty = (
   columns: number,
   rows: number,
 ) => Pty;
-
-export type Timer = (run: () => void, ms: number) => () => void;
-
-export const realTimer: Timer = (run, ms) => {
-  const timeout = setTimeout(run, ms);
-  return () => clearTimeout(timeout);
-};
 
 function line(text: string): string {
   return `\r\n${text}\r\n`;
@@ -75,7 +64,7 @@ class Session {
   private paused = false;
   private exited = false;
   private started = false;
-  private startedOn: string | undefined;
+  private readonly startedIn: (cwd: string) => void;
   constructor(
     private readonly id: string,
     private columns: number,
@@ -86,7 +75,7 @@ class Session {
     private readonly timer: Timer,
     scrollback: number,
     private readonly windowsPty: WindowsPty | undefined,
-    private readonly place: FolderPlace,
+    place: FolderPlace,
   ) {
     this.mirror = createMirror({ columns, rows, scrollback, windowsPty });
     this.toMirror = new Backlog(limits);
@@ -96,14 +85,10 @@ class Session {
         this.pty?.write(reply);
       }
     });
-    const { parser } = this.mirror.terminal;
-    parser.registerOscHandler(7, (data) =>
-      this.reported(folderOfUrl(data, place)),
-    );
-    parser.registerOscHandler(9, (data) =>
-      this.reported(
-        data.startsWith('9;') ? folderOfPath(data.slice(2), place) : undefined,
-      ),
+    this.startedIn = reportFolders(
+      this.mirror.terminal.parser,
+      place,
+      (folder) => this.post({ type: 'folder', id: this.id, folder }),
     );
   }
 
@@ -118,7 +103,7 @@ class Session {
     this.stopListening();
     this.exited = false;
     this.paused = false;
-    this.startedOn = serverOf(launch.cwd, this.place);
+    this.startedIn(launch.cwd);
     if (this.started) {
       this.take(cleanScreen(this.rows));
     }
@@ -254,17 +239,6 @@ class Session {
       this.post({ type: 'output', id: this.id, data });
     }
     this.balance();
-  }
-
-  private reported(folder: string | undefined): boolean {
-    if (folder === undefined) {
-      return true;
-    }
-    const server = serverOf(folder, this.place);
-    if (server === undefined || server === this.startedOn) {
-      this.post({ type: 'folder', id: this.id, folder });
-    }
-    return true;
   }
 
   private end(): void {
