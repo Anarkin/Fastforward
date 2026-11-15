@@ -3,17 +3,9 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  CommanderPage,
-  root,
-  at,
-  folder,
-  file,
-  type Listed,
-  commander,
-  tab,
-  forged,
-} from './commanderFixtures';
+import { type Listed, commander, tab, forged } from './commanderFixtures';
+import { CommanderPage } from './fakePage';
+import { root, at, folder, file } from './entryFixtures';
 
 const progressOf = (page: CommanderPage) =>
   page.of('flatFiles').at(-1)?.progress;

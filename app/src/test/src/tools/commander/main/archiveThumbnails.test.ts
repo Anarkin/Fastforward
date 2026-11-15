@@ -9,14 +9,9 @@ import {
 } from '../../../../../tools/commander/shared/thumbnails';
 import { waitFor } from '../../../../helpers/fixtures';
 import { thumbnailKey } from '../../../../../tools/commander/main/thumbnailStore';
-import {
-  root,
-  at,
-  file,
-  commander,
-  tab,
-  withCopiesFolder,
-} from './commanderFixtures';
+import { commander, tab } from './commanderFixtures';
+import { root, at, file } from './entryFixtures';
+import { withCopiesFolder } from './copiesFixtures';
 import { archiveItem, zipped } from './fakeArchives';
 
 const keyOf = (name: string) =>

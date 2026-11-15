@@ -4,16 +4,8 @@ import { suite, test } from 'vitest';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  root,
-  at,
-  folder,
-  file,
-  commander,
-  plansOf,
-  tab,
-  forged,
-} from './commanderFixtures';
+import { commander, plansOf, tab, forged } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
 
 suite('Commander tool', () => {
   test('copies or moves the items asked for into the folder of the other side, only when every one is listed in the folder named, never its parent, and the other side still shows the folder named as the target', async () => {

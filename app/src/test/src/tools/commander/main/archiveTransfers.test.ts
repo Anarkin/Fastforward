@@ -6,17 +6,9 @@ import type { Side } from '../../../../../tools/commander/shared/sides';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  root,
-  at,
-  folder,
-  file,
-  commander,
-  plansOf,
-  tab,
-  withCopiesFolder,
-  commanderInArchive,
-} from './commanderFixtures';
+import { commander, plansOf, tab } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
+import { withCopiesFolder, commanderInArchive } from './copiesFixtures';
 import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {

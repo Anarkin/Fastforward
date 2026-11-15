@@ -11,7 +11,8 @@ import {
 } from '../../../../../tools/commander/shared/thumbnails';
 import { maxImageSize } from '../../../../../lib/shared/images';
 import { thumbnailKey } from '../../../../../tools/commander/main/thumbnailStore';
-import { root, folder, file, commander, tab } from './commanderFixtures';
+import { commander, tab } from './commanderFixtures';
+import { root, folder, file } from './entryFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool serving images', () => {

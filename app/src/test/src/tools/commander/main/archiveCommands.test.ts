@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
-import { root, at, file, commander, tab } from './commanderFixtures';
+import { commander, tab } from './commanderFixtures';
+import { root, at, file } from './entryFixtures';
 import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {

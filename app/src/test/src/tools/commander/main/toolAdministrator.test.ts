@@ -3,15 +3,8 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { strings } from '../../../../../lib/shared/strings';
-import {
-  root,
-  at,
-  folder,
-  file,
-  type Listed,
-  commander,
-  tab,
-} from './commanderFixtures';
+import { type Listed, commander, tab } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
 
 suite('Commander tool', () => {
   test('keeps the folder of a side and asks the page to say there is no access, in a window rather than a notice, when another can’t be read', async () => {

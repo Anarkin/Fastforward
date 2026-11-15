@@ -1,14 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  root,
-  at,
-  folder,
-  file,
-  commander,
-  tab,
-  forged,
-} from './commanderFixtures';
+import { commander, tab, forged } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
 
 suite('Commander tool', () => {
   test('puts the files asked for on the clipboard, only when every one is listed in the folder named, never its parent', async () => {

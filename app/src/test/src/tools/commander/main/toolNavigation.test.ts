@@ -4,16 +4,8 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../../lib/shared/strings';
-import {
-  root,
-  at,
-  folder,
-  file,
-  type Listed,
-  commander,
-  tab,
-  forged,
-} from './commanderFixtures';
+import { type Listed, commander, tab, forged } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {

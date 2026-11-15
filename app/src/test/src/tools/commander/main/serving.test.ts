@@ -9,15 +9,8 @@ import {
 } from '../../../../../tools/commander/shared/icons';
 import { maxImageSize } from '../../../../../lib/shared/images';
 import { viewedFileUrl } from '../../../../../tools/commander/shared/files';
-import {
-  root,
-  at,
-  folder,
-  file,
-  commander,
-  tab,
-  forged,
-} from './commanderFixtures';
+import { commander, tab, forged } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool serving icons', () => {

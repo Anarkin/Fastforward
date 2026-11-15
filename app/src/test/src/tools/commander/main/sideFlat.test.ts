@@ -6,17 +6,14 @@ import { iconUrl } from '../../../../../tools/commander/shared/icons';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  CommanderPage,
-  root,
-  at,
-  folder,
-  file,
   type Listed,
   commander,
   plansOf,
   tab,
   forged,
 } from './commanderFixtures';
+import { CommanderPage } from './fakePage';
+import { root, at, folder, file } from './entryFixtures';
 
 const under = (...names: string[]) =>
   names.map((name) => `${name}${path.sep}`).join('');

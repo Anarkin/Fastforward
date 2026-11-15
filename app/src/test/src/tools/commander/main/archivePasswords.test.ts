@@ -3,16 +3,10 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  CommanderPage,
-  root,
-  at,
-  file,
-  commander,
-  tab,
-  withCopiesFolder,
-  commanderInArchive,
-} from './commanderFixtures';
+import { commander, tab } from './commanderFixtures';
+import { CommanderPage } from './fakePage';
+import { root, at, file } from './entryFixtures';
+import { withCopiesFolder, commanderInArchive } from './copiesFixtures';
 import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {

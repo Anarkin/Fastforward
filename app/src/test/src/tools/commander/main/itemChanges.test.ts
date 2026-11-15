@@ -4,16 +4,8 @@ import { suite, test } from 'vitest';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  root,
-  at,
-  folder,
-  file,
-  type Listed,
-  commander,
-  tab,
-  forged,
-} from './commanderFixtures';
+import { type Listed, commander, tab, forged } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
 
 suite('Commander tool', () => {
   test('moves the items asked for to the Recycle Bin, or deletes them for good, only when every one is listed in the folder and never its parent, saying which could not be deleted and why', async () => {

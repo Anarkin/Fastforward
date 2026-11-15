@@ -1,17 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { Sorts } from '../../../../../tools/commander/shared/sorts';
-import {
-  CommanderPage,
-  root,
-  at,
-  folder,
-  commander,
-  tab,
-  defaultColumns,
-  defaultSorts,
-  forged,
-} from './commanderFixtures';
+import { commander, tab, forged } from './commanderFixtures';
+import { CommanderPage } from './fakePage';
+import { root, at, folder } from './entryFixtures';
+import { defaultColumns, defaultSorts } from './defaultSettings';
 
 suite('Commander tool', () => {
   test('holds the widths of the columns and the size of the tiles the settings give in the range they may take, as a width too wide failed every drag after it and a size below the least drew no tiles', async () => {

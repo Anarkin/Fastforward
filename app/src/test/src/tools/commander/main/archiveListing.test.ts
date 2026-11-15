@@ -3,15 +3,9 @@ import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
 import { FakeStore } from '../../../../helpers/fakeStore';
-import {
-  root,
-  at,
-  folder,
-  file,
-  commander,
-  tab,
-  lastFolder,
-} from './commanderFixtures';
+import { commander, tab } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
+import { lastFolder } from './fakePage';
 import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {

@@ -6,19 +6,9 @@ import type { Tab } from '../../../../../shell/main/toolContract';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  CommanderPage,
-  root,
-  at,
-  folder,
-  file,
-  type Listed,
-  commander,
-  tab,
-  lastFolder,
-  hiddenIn,
-  forged,
-} from './commanderFixtures';
+import { type Listed, commander, tab, forged } from './commanderFixtures';
+import { CommanderPage, lastFolder } from './fakePage';
+import { root, at, folder, file, hiddenIn } from './entryFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {

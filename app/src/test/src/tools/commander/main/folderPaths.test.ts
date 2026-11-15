@@ -4,7 +4,7 @@ import {
   childToward,
   rootFolder,
 } from '../../../../../tools/commander/main/folderPaths';
-import { root, at } from './commanderFixtures';
+import { root, at } from './entryFixtures';
 
 suite('The folder to select', () => {
   test('is the child of a folder on the way to the one left, and none for a folder elsewhere', () => {

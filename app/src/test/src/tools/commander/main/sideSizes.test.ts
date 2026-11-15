@@ -5,17 +5,9 @@ import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import type { SizeWalk } from '../../../../../tools/commander/main/sizeWalk';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  CommanderPage,
-  root,
-  at,
-  folder,
-  file,
-  type Listed,
-  commander,
-  tab,
-  forged,
-} from './commanderFixtures';
+import { type Listed, commander, tab, forged } from './commanderFixtures';
+import { CommanderPage } from './fakePage';
+import { root, at, folder, file } from './entryFixtures';
 
 const downloads = at('Downloads');
 const inDownloads = (...names: string[]) => path.join(downloads, ...names);

@@ -1,14 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  root,
-  at,
-  folder,
-  file,
-  type Listed,
-  commander,
-  tab,
-} from './commanderFixtures';
+import { type Listed, commander, tab } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
 
 suite('Commander tool', () => {
   test('tells the page the folder a side shows is in a repository once it is listed, and again when it is read again', async () => {

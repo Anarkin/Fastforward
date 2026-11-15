@@ -1,78 +1,25 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterEach, beforeEach } from 'vitest';
 import type { Page, Tab } from '../../../../../shell/main/toolContract';
 import type { Store } from '../../../../../shell/main/stateFile';
-import type { ToWebview } from '../../../../../shell/shared/protocol';
 import type { LocalFileSystem } from '../../../../../tools/commander/main/fileSystem';
 import { CommanderTool } from '../../../../../tools/commander/main/tool';
 import type {
   CommanderToHost,
-  CommanderToWebview,
   Entry,
 } from '../../../../../tools/commander/shared/protocol';
 import type { Side } from '../../../../../tools/commander/shared/sides';
-import type { ColumnWidths } from '../../../../../tools/commander/shared/columnWidths';
-import type { Sorts } from '../../../../../tools/commander/shared/sorts';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import type { SizeWalker } from '../../../../../tools/commander/main/sizeWalk';
-import { pathParts } from '../../../../../tools/commander/shared/paths';
 import type { PdfPlace } from '../../../../../tools/commander/shared/pdf';
 import { FakeStore } from '../../../../helpers/fakeStore';
-import { fakeArchives, zipped } from './fakeArchives';
+import { fakeArchives } from './fakeArchives';
 import { fakeShell } from './fakeShell';
+import { CommanderPage } from './fakePage';
+import { at, root } from './entryFixtures';
+import { defaultColumns, defaultSorts } from './defaultSettings';
 import type { TransferCommand } from '../../../../../tools/commander/main/transferProtocol';
 import type { TransferListener } from '../../../../../tools/commander/main/transfers';
 import type { TransferPlan } from '../../../../../tools/commander/main/transfer';
-import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
-
-export class CommanderPage implements Page {
-  readonly messages: CommanderToWebview[] = [];
-  disposed = false;
-
-  post(message: ToWebview): void {
-    if (message.type === 'tool' && message.tool === 'commander') {
-      this.messages.push(message.message);
-    }
-  }
-
-  of<T extends CommanderToWebview['type']>(
-    type: T,
-  ): Extract<CommanderToWebview, { readonly type: T }>[] {
-    return this.messages.filter(
-      (message): message is Extract<CommanderToWebview, { readonly type: T }> =>
-        message.type === type,
-    );
-  }
-
-  listings(): string[] {
-    return this.of('listing').map(
-      (listing) =>
-        `${listing.side} ${listing.folder}${listing.parent ? ' ↑' : ''}: ${listing.entries.map((entry) => entry.name).join(' ')}${listing.selected === undefined ? '' : ` [${listing.selected}]`}`,
-    );
-  }
-}
-
-export const root = path.resolve('/');
-export const at = (...names: string[]) => path.join(root, ...names);
-
-export const folder = (name: string): Entry => ({
-  name,
-  folder: true,
-  link: false,
-  hidden: false,
-  size: undefined,
-  modified: 0,
-});
-
-export const file = (name: string): Entry => ({
-  name,
-  folder: false,
-  link: false,
-  hidden: false,
-  size: 1,
-  modified: 0,
-});
 
 export type Listed = readonly Entry[] | Error | Promise<readonly Entry[]>;
 
@@ -523,57 +470,5 @@ export const plansOf = (
   );
 
 export const tab: Tab = { id: '1', tool: 'commander' };
-
-export function withCopiesFolder(made: (folder: string) => void): void {
-  let copiesFolder = '';
-
-  beforeEach(() => {
-    copiesFolder = tempFolder('archive-copies');
-    made(copiesFolder);
-  });
-
-  afterEach(() => {
-    for (const copy of fs.readdirSync(copiesFolder, {
-      recursive: true,
-      encoding: 'utf8',
-    })) {
-      fs.chmodSync(path.join(copiesFolder, copy), 0o777);
-    }
-    removeFolder(copiesFolder);
-  });
-}
-
-export const commanderInArchive = async (copiesFolder: string) => {
-  const made = commander({ [root]: [file('a.zip'), file('notes.txt')] });
-  made.archived.set(at('a.zip'), zipped);
-  made.copies.folder = copiesFolder;
-  await made.tool.show(made.page, tab);
-  await made.send({
-    type: 'enterArchive',
-    tab: '1',
-    side: 'right',
-    name: 'a.zip',
-  });
-  return made;
-};
-
-export const lastFolder = (page: CommanderPage, id: string, side: Side) =>
-  page
-    .of('listing')
-    .findLast((listing) => listing.tab === id && listing.side === side)?.folder;
-
-export const hiddenIn = (listed: string, ...hidden: string[]) =>
-  pathParts(listed).map((part) => hidden.includes(part.path));
-
-export const defaultColumns: ColumnWidths = {
-  extension: 10,
-  size: 15,
-  date: 16,
-};
-
-export const defaultSorts: Sorts = {
-  left: { column: 'extension', descending: false, groupByColor: false },
-  right: { column: 'extension', descending: false, groupByColor: false },
-};
 
 export const forged = (json: string): CommanderToHost => JSON.parse(json);

@@ -6,15 +6,8 @@ import type { Tab } from '../../../../../shell/main/toolContract';
 import type { Side } from '../../../../../tools/commander/shared/sides';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
-import {
-  root,
-  at,
-  folder,
-  file,
-  commander,
-  tab,
-  forged,
-} from './commanderFixtures';
+import { commander, tab, forged } from './commanderFixtures';
+import { root, at, folder, file } from './entryFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {
