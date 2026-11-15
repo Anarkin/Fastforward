@@ -6,7 +6,8 @@ import {
 } from './changeBlocks';
 import { type FindRange } from './find';
 import { keyedLine } from './diffLines';
-import { changePairs, tokenSteps } from './pairing';
+import { changePairs } from './pairing';
+import { tokenSteps } from './tokenSteps';
 
 const maxTokens = 1_000_000;
 
