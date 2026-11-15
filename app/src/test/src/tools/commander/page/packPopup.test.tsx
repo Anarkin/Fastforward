@@ -12,10 +12,8 @@ import {
   CommanderStore,
   createCommanderStore,
 } from '../../../../../tools/commander/page/store';
-import {
-  emptyView,
-  type PaneView,
-} from '../../../../../tools/commander/page/view';
+import { emptyView } from '../../../../../tools/commander/page/view';
+import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
 import { renderIn } from '../../../../helpers/componentFixtures';
 

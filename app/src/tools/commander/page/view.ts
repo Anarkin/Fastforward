@@ -1,7 +1,6 @@
 import {
   sides,
   type CommanderToWebviewOf,
-  type Entry,
   type FlatProgress,
   type Side,
 } from '../shared/protocol';
@@ -15,113 +14,23 @@ import {
 } from '../shared/settings';
 import type { ViewMode } from './viewerKeymap';
 import type { EncodingChoice } from './encodings';
-import { parentRow, rowsOf, type Row } from './listing';
-import {
-  filteredSelection,
-  selectionAfter,
-  type Selection,
-} from './rowSelection';
+import { rowsOf, type Row } from './listing';
 import {
   fileColorsOf,
   noFileColors,
   sameGrouping,
   type FileColors,
 } from './fileColors';
-
-interface Listed {
-  readonly folder: string;
-  readonly hidden: readonly boolean[];
-  readonly entries: readonly Entry[];
-  readonly parent: boolean;
-  readonly back: boolean;
-  readonly forward: boolean;
-  readonly elevated: boolean;
-  readonly binOff?: true;
-  readonly archive?: string;
-}
-
-interface FlatShown {
-  readonly query: string;
-  readonly rows: readonly Row[];
-}
-
-interface FlatView {
-  readonly walk: number;
-  readonly progress: FlatProgress;
-  readonly shown: FlatShown | undefined;
-}
-
-interface DuplicatesView {
-  readonly look: number;
-  readonly groups: readonly (readonly string[])[];
-  readonly reading: boolean;
-}
-
-function duplicatesOf(
-  before: DuplicatesView | undefined,
-  look: number | undefined,
-): DuplicatesView | undefined {
-  if (look === undefined) {
-    return undefined;
-  }
-  return before?.look === look ? before : { look, groups: [], reading: true };
-}
-
-export interface PaneView extends Listed {
-  readonly sort: Sort;
-  readonly rows: readonly Row[];
-  readonly selected: string | undefined;
-  readonly marked: ReadonlySet<string>;
-  readonly repositories: ReadonlySet<string>;
-  readonly inRepository?: boolean;
-  readonly flat?: FlatView;
-  readonly duplicates?: DuplicatesView;
-  readonly counting: number;
-}
-
-const startedReading: FlatProgress = {
-  reading: true,
-  stopped: false,
-  folders: 0,
-  failed: 0,
-};
-
-const noMarks: ReadonlySet<string> = new Set();
-
-const noRepositories: ReadonlySet<string> = new Set();
-
-function countingIn(entries: readonly Entry[]): number {
-  return entries.reduce(
-    (count, entry) => (entry.counting === true ? count + 1 : count),
-    0,
-  );
-}
-
-function repositoriesKept(
-  pane: PaneView | undefined,
-  folder: string,
-): ReadonlySet<string> {
-  return pane === undefined || pane.folder !== folder
-    ? noRepositories
-    : pane.repositories;
-}
-
-function marksKept(
-  pane: PaneView | undefined,
-  folder: string,
-  rows: readonly Row[],
-): ReadonlySet<string> {
-  if (pane === undefined || pane.folder !== folder || pane.marked.size === 0) {
-    return noMarks;
-  }
-  const present = new Set<string>();
-  for (const row of rows) {
-    if (pane.marked.has(row.key)) {
-      present.add(row.key);
-    }
-  }
-  return new Set([...pane.marked].filter((key) => present.has(key)));
-}
+import { flatListed, folderOfSelected, withFlatRows } from './flatPane';
+import {
+  duplicatesOf,
+  relisted,
+  withFolderSizes,
+  withMarks,
+  withRepositories,
+  type FlatShown,
+  type PaneView,
+} from './paneView';
 
 export interface CommanderView {
   readonly tab: string | undefined;
@@ -266,16 +175,6 @@ export type ViewAction =
   | { readonly type: 'activate'; readonly side: Side }
   | { readonly type: 'switchSide' };
 
-function selectionIn(pane: PaneView | undefined): Selection | undefined {
-  return (
-    pane && {
-      folder: pane.folder,
-      key: pane.selected,
-      index: pane.rows.findIndex((row) => row.key === pane.selected),
-    }
-  );
-}
-
 function sameFolders(
   one: readonly string[],
   other: readonly string[],
@@ -292,165 +191,6 @@ function sameSort(one: Sort, other: Sort): boolean {
     one.descending === other.descending &&
     one.groupByColor === other.groupByColor
   );
-}
-
-function relisted(
-  pane: PaneView | undefined,
-  sort: Sort,
-  {
-    folder,
-    hidden,
-    entries,
-    parent,
-    back,
-    forward,
-    elevated,
-    binOff,
-    archive,
-  }: Listed,
-  showHidden: boolean,
-  fileColors: FileColors,
-  selected: string | undefined,
-  sortedBefore?: PaneView,
-): PaneView {
-  const repositories = repositoriesKept(pane, folder);
-  const rows = rowsOf(
-    entries,
-    parent,
-    showHidden,
-    sort,
-    repositories,
-    fileColors,
-    sortedBefore,
-  );
-  return {
-    folder,
-    hidden,
-    entries,
-    parent,
-    back,
-    forward,
-    elevated,
-    ...(binOff && { binOff }),
-    ...(archive !== undefined && { archive }),
-    sort,
-    rows,
-    selected: selectionAfter(selectionIn(pane), folder, rows, selected),
-    marked: marksKept(pane, folder, rows),
-    repositories,
-    inRepository: inRepositoryKept(pane, folder),
-    ...(pane?.folder === folder &&
-      pane.duplicates !== undefined && { duplicates: pane.duplicates }),
-    counting: countingIn(entries),
-  };
-}
-
-function inRepositoryKept(pane: PaneView | undefined, folder: string): boolean {
-  return pane?.folder === folder && pane.inRepository === true;
-}
-
-function flatListed(
-  pane: PaneView | undefined,
-  sort: Sort,
-  {
-    folder,
-    hidden,
-    parent,
-    back,
-    forward,
-    elevated,
-    binOff,
-    archive,
-    selected,
-    flat,
-  }: Listed & { readonly selected: string | undefined; readonly flat: number },
-): PaneView {
-  const listed = {
-    folder,
-    hidden,
-    entries: [],
-    parent,
-    back,
-    forward,
-    elevated,
-    ...(binOff && { binOff }),
-    ...(archive !== undefined && { archive }),
-  };
-  if (pane?.flat?.walk === flat && pane.folder === folder) {
-    return {
-      ...pane,
-      ...listed,
-      selected:
-        selected !== undefined && pane.rows.some((row) => row.key === selected)
-          ? selected
-          : pane.selected,
-    };
-  }
-  const rows = parent ? [parentRow] : [];
-  const selectedFile =
-    pane?.folder === folder
-      ? pane.rows.find(
-          (row) =>
-            row.key === pane.selected &&
-            row.entry !== undefined &&
-            !row.entry.folder,
-        )?.key
-      : undefined;
-  return {
-    ...listed,
-    sort,
-    rows,
-    selected:
-      selectedFile ?? selectionAfter(selectionIn(pane), folder, rows, selected),
-    marked: noMarks,
-    repositories: noRepositories,
-    inRepository: inRepositoryKept(pane, folder),
-    flat: { walk: flat, progress: startedReading, shown: undefined },
-    counting: 0,
-  };
-}
-
-function flatSelection(
-  pane: PaneView,
-  rows: readonly Row[],
-  shown: FlatShown | undefined,
-  complete: boolean,
-): string | undefined {
-  const { selected } = pane;
-  if (shown !== undefined) {
-    return filteredSelection(shown.rows, selected);
-  }
-  if (selected !== undefined && rows.some((row) => row.key === selected)) {
-    return selected;
-  }
-  const before = selectionIn(pane);
-  if (before === undefined || before.index !== -1) {
-    return selectionAfter(before, pane.folder, rows, undefined);
-  }
-  return pane.flat?.progress.reading === true || !complete
-    ? selected
-    : rows.at(0)?.key;
-}
-
-function folderOfSelected(pane: PaneView): string | undefined {
-  const row = pane.rows.find((each) => each.key === pane.selected);
-  const under = row?.under ?? '';
-  return under === '' ? row?.key : under.slice(0, under.search(/[\\/]/));
-}
-
-function withFlatRows(
-  pane: PaneView,
-  rows: readonly Row[],
-  shown: FlatShown | undefined,
-  complete: boolean,
-): PaneView {
-  return {
-    ...pane,
-    rows,
-    selected: flatSelection(pane, rows, shown, complete),
-    marked: marksKept(pane, pane.folder, rows),
-    flat: pane.flat && { ...pane.flat, shown },
-  };
 }
 
 function withPane(
@@ -655,74 +395,23 @@ export function reduceView(
         : view;
     }
     case 'repositories': {
-      const pane = view.panes[action.side];
-      if (
-        action.tab !== view.tab ||
-        pane === undefined ||
-        pane.folder !== action.folder ||
-        pane.flat !== undefined
-      ) {
-        return view;
-      }
-      const repositories = new Set(action.names);
-      const inRepository = action.inRepository === true;
-      if (
-        repositories.size === pane.repositories.size &&
-        [...repositories].every((name) => pane.repositories.has(name)) &&
-        inRepository === (pane.inRepository === true)
-      ) {
-        return view;
-      }
-      return withPane(view, action.side, {
-        ...pane,
-        repositories,
-        inRepository,
-        rows: pane.rows.map((row) => {
-          const repository =
-            row.entry?.folder === true && repositories.has(row.key);
-          return row.repository === repository ? row : { ...row, repository };
-        }),
-      });
+      const pane =
+        action.tab === view.tab
+          ? withRepositories(view.panes[action.side], action)
+          : undefined;
+      return pane === undefined ? view : withPane(view, action.side, pane);
     }
     case 'folderSizes': {
-      const pane = view.panes[action.side];
-      if (
-        action.tab !== view.tab ||
-        pane === undefined ||
-        pane.folder !== action.folder ||
-        pane.flat !== undefined
-      ) {
-        return view;
-      }
-      const told = new Map(
-        action.entries
-          .filter((entry) => entry.folder)
-          .map((entry) => [entry.name, entry]),
-      );
-      let changed = false;
-      const entries = pane.entries.map((entry) => {
-        const sized = entry.folder ? told.get(entry.name) : undefined;
-        if (sized === undefined) {
-          return entry;
-        }
-        changed = true;
-        return sized;
-      });
-      return changed
-        ? withPane(
-            view,
-            action.side,
-            relisted(
-              pane,
-              pane.sort,
-              { ...pane, entries },
+      const pane =
+        action.tab === view.tab
+          ? withFolderSizes(
+              view.panes[action.side],
+              action,
               view.showHidden,
               view.fileColors,
-              undefined,
-              pane,
-            ),
-          )
-        : view;
+            )
+          : undefined;
+      return pane === undefined ? view : withPane(view, action.side, pane);
     }
     case 'select': {
       const pane = view.panes[action.side];
@@ -731,29 +420,8 @@ export function reduceView(
         : view;
     }
     case 'mark': {
-      const pane = view.panes[action.side];
-      if (pane === undefined) {
-        return view;
-      }
-      const asked = new Set(action.keys);
-      const markable = new Set<string>();
-      for (const row of pane.rows) {
-        if (row.entry !== undefined && asked.has(row.key)) {
-          markable.add(row.key);
-        }
-      }
-      const marked = new Set(pane.marked);
-      for (const key of action.keys) {
-        if (!markable.has(key)) {
-          continue;
-        }
-        if (action.marked) {
-          marked.add(key);
-        } else {
-          marked.delete(key);
-        }
-      }
-      return withPane(view, action.side, { ...pane, marked });
+      const pane = withMarks(view.panes[action.side], action);
+      return pane === undefined ? view : withPane(view, action.side, pane);
     }
     case 'sort': {
       const pane = view.panes[action.side];

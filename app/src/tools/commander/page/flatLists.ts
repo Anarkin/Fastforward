@@ -8,7 +8,8 @@ import type {
 } from './flatMessages';
 import { flatRowOf, parentRow, type Row } from './listing';
 import { filterKey } from './sideFilters';
-import type { CommanderView, PaneView } from './view';
+import type { PaneView } from './paneView';
+import type { CommanderView } from './view';
 
 export interface FlatWorker {
   postMessage(message: ToFlatWorker, transfer?: Transferable[]): void;

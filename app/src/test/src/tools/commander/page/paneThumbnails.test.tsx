@@ -4,10 +4,8 @@ import { act } from 'react';
 import { suite, test, vi } from 'vitest';
 import { Pane } from '../../../../../tools/commander/page/pane';
 import { rowsOf } from '../../../../../tools/commander/page/listing';
-import {
-  emptyView,
-  type PaneView,
-} from '../../../../../tools/commander/page/view';
+import { emptyView } from '../../../../../tools/commander/page/view';
+import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import {
   CommanderStore,
   createCommanderStore,

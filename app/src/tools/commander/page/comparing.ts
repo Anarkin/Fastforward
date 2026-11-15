@@ -1,6 +1,6 @@
 import type { ComparedFile, Side } from '../shared/protocol';
 import type { Row } from './listing';
-import type { PaneView } from './view';
+import type { PaneView } from './paneView';
 
 function markedFiles(
   rows: readonly Row[],

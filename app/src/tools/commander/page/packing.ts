@@ -10,7 +10,7 @@ import {
   type PackFormat,
 } from '../shared/packing';
 import { folderKey } from '../shared/paths';
-import type { PaneView } from './view';
+import type { PaneView } from './paneView';
 
 function separatorsOf(platform: string | undefined): RegExp {
   return platform === 'win32' ? /[\\/]/ : /\//;

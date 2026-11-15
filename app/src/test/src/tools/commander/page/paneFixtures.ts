@@ -7,10 +7,8 @@ import {
   parentRow,
   rowsOf,
 } from '../../../../../tools/commander/page/listing';
-import {
-  emptyView,
-  type PaneView,
-} from '../../../../../tools/commander/page/view';
+import { emptyView } from '../../../../../tools/commander/page/view';
+import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import type {
   CommanderToHost,

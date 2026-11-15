@@ -1,9 +1,7 @@
 import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
-import {
-  emptyView,
-  type PaneView,
-} from '../../../../../tools/commander/page/view';
+import { emptyView } from '../../../../../tools/commander/page/view';
+import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import { noop } from '../../../../helpers/fixtures';
 
 export const left: PaneView = {
