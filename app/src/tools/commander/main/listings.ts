@@ -209,6 +209,7 @@ export class Listings {
           pane.denied = folder;
           post(page, {
             type: 'noAccess',
+            tab,
             side,
             folder,
             asAdministrator:

@@ -169,6 +169,7 @@ export function received(
     case 'noAccess':
       return {
         noAccess: {
+          tab: message.tab,
           side: message.side,
           folder: message.folder,
           asAdministrator: message.asAdministrator,
@@ -180,6 +181,9 @@ export function received(
     }
   }
 }
+
+export const noAccessShown = ({ noAccess, view }: CommanderSource) =>
+  noAccess?.tab === view.tab ? noAccess : undefined;
 
 export function stillShown(
   view: CommanderView,

@@ -87,6 +87,7 @@ export class Elevation {
           this.listings.postListing(shownIn, tab, side, pane, undefined);
           post(shownIn, {
             type: 'noAccess',
+            tab,
             side,
             folder: pane.folder,
             asAdministrator: true,

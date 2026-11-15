@@ -119,6 +119,7 @@ interface MarkingPattern extends MakingFolder {
 }
 
 interface NoAccess {
+  readonly tab: string;
   readonly side: Side;
   readonly folder: string;
   readonly asAdministrator: boolean;

@@ -59,7 +59,6 @@ export function dialogActions({
   set,
   get,
   post,
-  onTab,
   onPane,
   onDisk,
 }: StoreParts): DialogActions {
@@ -289,7 +288,7 @@ export function dialogActions({
       const { noAccess } = get();
       set({ noAccess: undefined });
       if (noAccess !== undefined) {
-        onTab((tab) => post({ type: 'elevate', tab, side: noAccess.side }));
+        post({ type: 'elevate', tab: noAccess.tab, side: noAccess.side });
       }
     },
     closeNoAccess: () => set({ noAccess: undefined }),

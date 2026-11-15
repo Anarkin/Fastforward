@@ -16,6 +16,7 @@ import { strings } from '../../../lib/shared/strings';
 import { shownRowsOf } from './shownRows';
 import { useCommander, useCommanderActions } from './store';
 import { keysMatching } from './markPattern';
+import { noAccessShown } from './commanderReceived';
 
 export function CommanderPopups() {
   const tab = useCommander((state) => state.view.tab);
@@ -35,7 +36,7 @@ export function CommanderPopups() {
       ? undefined
       : state.view.panes[state.makingFolder.side]?.entries,
   );
-  const noAccess = useCommander((state) => state.noAccess);
+  const noAccess = useCommander(noAccessShown);
   const renaming = useCommander((state) => state.renaming);
   const renamedIn = useCommander((state) =>
     state.renaming === undefined

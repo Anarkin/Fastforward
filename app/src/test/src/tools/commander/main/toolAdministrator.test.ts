@@ -30,12 +30,14 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(page.of('noAccess'), [
       {
         type: 'noAccess',
+        tab: '1',
         side: 'left',
         folder: at('System Volume Information'),
         asAdministrator: false,
       },
       {
         type: 'noAccess',
+        tab: '1',
         side: 'right',
         folder: at('Config.Msi'),
         asAdministrator: false,
@@ -206,18 +208,21 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(page.of('noAccess'), [
       {
         type: 'noAccess',
+        tab: '1',
         side: 'left',
         folder: at('Config.Msi'),
         asAdministrator: true,
       },
       {
         type: 'noAccess',
+        tab: '1',
         side: 'left',
         folder: at('Config.Msi'),
         asAdministrator: false,
       },
       {
         type: 'noAccess',
+        tab: '1',
         side: 'left',
         folder: at('Locked'),
         asAdministrator: false,
@@ -325,6 +330,7 @@ suite('Commander tool', () => {
     );
     assert.deepStrictEqual(page.of('noAccess').at(-1), {
       type: 'noAccess',
+      tab: '1',
       side: 'left',
       folder: at('Config.Msi'),
       asAdministrator: true,

@@ -4,6 +4,7 @@ import { createCommanderStore } from '../../../../../tools/commander/page/store'
 import { emptyView } from '../../../../../tools/commander/page/view';
 import { noop } from '../../../../helpers/fixtures';
 import { left, shown, listing } from './storeFixtures';
+import { noAccessShown } from '../../../../../tools/commander/page/commanderReceived';
 
 suite('Commander store', () => {
   test('asks before deleting, deleting once confirmed and nothing once cancelled', () => {
@@ -447,6 +448,7 @@ suite('Commander store', () => {
     const { posted, store } = shown();
     const noAccess = {
       type: 'noAccess',
+      tab: '1',
       side: 'left',
       folder: 'C:\\x',
       asAdministrator: true,
@@ -460,5 +462,25 @@ suite('Commander store', () => {
     assert.deepStrictEqual(posted, [
       { type: 'elevate', tab: '1', side: 'left' },
     ]);
+  });
+
+  test('asks about a folder it may not read in the tab it was opened in alone, keeping the question there while another tab is shown, and reads it as administrator for that tab', () => {
+    const { posted, store } = shown();
+    store.getState().receive({
+      type: 'noAccess',
+      tab: '1',
+      side: 'right',
+      folder: 'C:\\x',
+      asAdministrator: true,
+    });
+    store.getState().receive({ type: 'show', tab: '2' });
+    assert.strictEqual(noAccessShown(store.getState()), undefined);
+    store.getState().receive({ type: 'show', tab: '1' });
+    assert.strictEqual(noAccessShown(store.getState())?.folder, 'C:\\x');
+    store.getState().elevate();
+    assert.deepStrictEqual(
+      posted.filter(({ type }) => type === 'elevate'),
+      [{ type: 'elevate', tab: '1', side: 'right' }],
+    );
   });
 });

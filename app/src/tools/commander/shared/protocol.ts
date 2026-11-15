@@ -589,6 +589,7 @@ export type CommanderToWebview =
     }
   | {
       readonly type: 'noAccess';
+      readonly tab: string;
       readonly side: Side;
       readonly folder: string;
       readonly asAdministrator: boolean;

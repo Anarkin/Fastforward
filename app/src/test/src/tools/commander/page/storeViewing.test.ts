@@ -165,6 +165,7 @@ suite('Commander store', () => {
     receive({ type: 'viewing', tab: '1', size: 10, binary: true });
     receive({
       type: 'noAccess',
+      tab: '1',
       side: 'left',
       folder: 'C:\\System Volume Information',
       asAdministrator: true,
@@ -174,6 +175,7 @@ suite('Commander store', () => {
     assert.deepStrictEqual(state.drives, ['C:', 'D:']);
     assert.deepStrictEqual(state.viewed, { tab: '1', size: 10, binary: true });
     assert.deepStrictEqual(state.noAccess, {
+      tab: '1',
       side: 'left',
       folder: 'C:\\System Volume Information',
       asAdministrator: true,
