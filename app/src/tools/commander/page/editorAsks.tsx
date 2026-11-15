@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react';
+import type { RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { strings } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
@@ -18,25 +18,17 @@ export function EditorAsks({
 }) {
   const file = useCommander((state) => state.view.editing) ?? '';
   const tab = useCommander((state) => state.view.tab);
-  const { listenEditor, saveText, reloadEdited } = useCommanderActions();
-  const [askingOverwrite, setAskingOverwrite] = useState(false);
-  const [askingChanged, setAskingChanged] = useState(false);
-  useEffect(
-    () =>
-      listenEditor((message) => {
-        if (message.tab !== tab) {
-          return;
-        }
-        if (message.type === 'askOverwrite') {
-          setAskingOverwrite(true);
-          return;
-        }
-        if (message.type === 'askChangedOnDisk') {
-          setAskingChanged(true);
-        }
-      }),
-    [listenEditor, tab],
+  const { saveText, reloadEdited, answerEditorAsk } = useCommanderActions();
+  const asking = useCommander((state) =>
+    tab === undefined ? undefined : state.editorAsks.get(tab),
   );
+  const answer = (then: (shown: string) => void) => {
+    if (tab !== undefined) {
+      answerEditorAsk(tab);
+      then(tab);
+    }
+    view.current?.focus();
+  };
 
   return (
     <>
@@ -70,7 +62,7 @@ export function EditorAsks({
           }}
         />
       )}
-      {askingChanged && tab !== undefined && (
+      {asking === 'changed' && (
         <ConfirmPopup
           title={strings.editor.changedTitle}
           message={strings.editor.changedAsked}
@@ -78,38 +70,24 @@ export function EditorAsks({
           confirm={strings.editor.saveOver}
           extra={{
             label: strings.editor.readAgain,
-            onClick: () => {
-              setAskingChanged(false);
-              reloadEdited(tab);
-              view.current?.focus();
-            },
+            onClick: () => answer(reloadEdited),
           }}
-          onConfirm={() => {
-            setAskingChanged(false);
-            saveText(tab, { changed: true });
-            view.current?.focus();
-          }}
-          onCancel={() => {
-            setAskingChanged(false);
-            view.current?.focus();
-          }}
+          onConfirm={() =>
+            answer((shown) => saveText(shown, { changed: true }))
+          }
+          onCancel={() => answer(() => undefined)}
         />
       )}
-      {askingOverwrite && tab !== undefined && (
+      {asking === 'overwrite' && (
         <ConfirmPopup
           title={strings.editor.overwriteTitle}
           message={strings.editor.overwriteAsked}
           lines={strings.editor.overwriteLines(file)}
           confirm={strings.editor.overwrite}
-          onConfirm={() => {
-            setAskingOverwrite(false);
-            saveText(tab, { readOnly: true });
-            view.current?.focus();
-          }}
-          onCancel={() => {
-            setAskingOverwrite(false);
-            view.current?.focus();
-          }}
+          onConfirm={() =>
+            answer((shown) => saveText(shown, { readOnly: true }))
+          }
+          onCancel={() => answer(() => undefined)}
         />
       )}
     </>

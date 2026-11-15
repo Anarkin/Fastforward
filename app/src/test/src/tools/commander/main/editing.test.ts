@@ -642,4 +642,24 @@ suite('Editing a file', () => {
     );
     assert.strictEqual(page.last('editedText')?.shown.encoding, 'windows-1252');
   });
+
+  test('says a file with changes here changed on disk once its tab is shown again, when no page showed the tab as the file changed, rather than never', async () => {
+    const { edits, changeOnDisk, showing, notices } = editing({
+      'a.txt': 'one\n',
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'x' }));
+    showing.length = 0;
+    await changeOnDisk('a.txt', 'two\n');
+    assert.deepStrictEqual(notices, []);
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.show(page, '1', 'a.txt');
+    assert.deepStrictEqual(notices, [
+      '"a.txt" changed on disk while edited here. Saving it writes over those changes.',
+    ]);
+  });
 });

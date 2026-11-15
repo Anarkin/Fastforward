@@ -20,7 +20,7 @@ import type { ClashAnswer, TransferView } from '../shared/transfers';
 import type { EditorPlace } from './editorPlace';
 import type { EditedTab, ToEditor } from './editorState';
 import type { KeptViewer } from './viewerKept';
-import type { KeptEditing } from './editorKept';
+import type { EditorAsk, KeptEditing } from './editorKept';
 import {
   emptyView,
   type CommanderView,
@@ -131,6 +131,7 @@ export interface CommanderSource {
   readonly viewed: Viewing | undefined;
   readonly keptViewed: ReadonlyMap<string, Viewing>;
   readonly edited: EditedTab | undefined;
+  readonly editorAsks: ReadonlyMap<string, EditorAsk>;
   readonly deleting: Deleting | undefined;
   readonly transferring: Transferring | undefined;
   readonly transfer: TransferView | undefined;
@@ -231,6 +232,7 @@ export interface CommanderActions {
   readonly keptEditor: (tab: string) => KeptEditor | undefined;
   readonly keptEditing: (tab: string) => KeptEditing;
   readonly keepEditing: (tab: string, change: Partial<KeptEditing>) => void;
+  readonly answerEditorAsk: (tab: string) => void;
   readonly editorKeeper: (tab: string) => (kept: KeptEditor) => void;
   readonly openRepository: (side: Side, name: string) => void;
   readonly folderCommand: (
@@ -348,6 +350,7 @@ export const commanderDefaults: CommanderSource = {
   viewed: undefined,
   keptViewed: new Map(),
   edited: undefined,
+  editorAsks: new Map(),
   deleting: undefined,
   transferring: undefined,
   transfer: undefined,

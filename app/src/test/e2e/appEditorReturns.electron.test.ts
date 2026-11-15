@@ -6,7 +6,13 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { comesBackAsLeft, settledLooks, showTab, tabs } from './tabReturns';
+import {
+  comesBackAsLeft,
+  scrolledAround,
+  settledLooks,
+  showTab,
+  tabs,
+} from './tabReturns';
 
 const lines = (count: number, line: (index: number) => string) =>
   Array.from({ length: count }, (_, index) => line(index)).join(
@@ -33,7 +39,7 @@ suite('App editor tabs shown again', () => {
     const opened = path.join(folder, 'opened');
     fs.mkdirSync(opened, { recursive: true });
     fs.writeFileSync(path.join(opened, 'edited.txt'), editedText);
-    fs.writeFileSync(path.join(opened, 'other.txt'), lines(40, String));
+    fs.writeFileSync(path.join(opened, 'other.txt'), lines(200, String));
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
@@ -169,5 +175,69 @@ suite('App editor tabs shown again', () => {
         wrapped,
       );
     await throughEveryOther('The editor scrolled into a wrapped row');
+  });
+
+  test('brings back a file edited scrolled to its middle while its find is open, at the same line and the same pixel of it, from every other tab', async () => {
+    await showTab(page, editorTab);
+    await page.locator('.editor .cm-line').first().click();
+    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.type('adam');
+    await page
+      .locator('.editor .search-bar:has(:focus) .search-toggle')
+      .first()
+      .click();
+    await scrolledAround(page);
+    await throughEveryOther('The editor scrolled while finding');
+  });
+
+  test('keeps the cursor and the place of a file with no changes here once it is read again for a change on disk made while its tab was away', async () => {
+    await showTab(page, otherTab);
+    await page.locator('.editor .cm-line').nth(5).click();
+    await page.keyboard.press('End');
+    const cursorLine = () =>
+      page.evaluate(
+        () =>
+          document.getSelection()?.focusNode?.parentElement?.closest('.cm-line')
+            ?.textContent,
+      );
+    assert.strictEqual(await cursorLine(), '5');
+    await page
+      .locator('.editor .cm-scroller')
+      .evaluate((scroller) => scroller.scrollTo({ top: 400 }));
+    const left = await settledLooks(page);
+    await showTab(page, commanderTab);
+    await settledLooks(page);
+    fs.appendFileSync(
+      path.join(folder, 'opened', 'other.txt'),
+      `${String.fromCharCode(10)}added`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await showTab(page, otherTab);
+    assert.deepStrictEqual(await settledLooks(page), left);
+    assert.strictEqual(await cursorLine(), '5');
+    await page
+      .locator('.editor .cm-scroller')
+      .evaluate((scroller) =>
+        scroller.scrollTo({ top: scroller.scrollHeight }),
+      );
+    await waitFor(
+      async () =>
+        (
+          await page
+            .locator('.editor .cm-line')
+            .evaluateAll((all) => all.map((line) => line.textContent))
+        ).includes('added'),
+      'the text read again',
+    ).catch(async (error: unknown) => {
+      throw new Error(
+        `${String(error)}: ${JSON.stringify(
+          await page
+            .locator('.editor .cm-line')
+            .evaluateAll((all) =>
+              all.slice(-3).map((line) => line.textContent),
+            ),
+        )} ${await cursorLine()}`,
+      );
+    });
   });
 });

@@ -167,6 +167,7 @@ export function useEditorView(language: string | undefined) {
     });
     const kept = keptEditor(tab);
     const reused = kept !== undefined && kept.version === version;
+    let readAgain = reused ? undefined : kept;
     let settling = false;
     let stopSettling = () => {};
     const onScroll = () => {
@@ -244,9 +245,26 @@ export function useEditorView(language: string | undefined) {
       } else if (keptPlace !== undefined) {
         place = keptPlace;
         remount(next, keptPlace);
-      } else {
+      } else if (readAgain === undefined) {
         shown.setState(next);
+      } else {
+        const length = next.doc.length;
+        const cursor = EditorSelection.cursor(
+          Math.min(readAgain.state.selection.main.head, length),
+        );
+        const left = readAgain.place;
+        place =
+          left === undefined
+            ? undefined
+            : { ...left, from: Math.min(left.from, length) };
+        const moved = next.update({ selection: cursor }).state;
+        if (place === undefined) {
+          shown.setState(moved);
+        } else {
+          remount(moved, place);
+        }
       }
+      readAgain = undefined;
       keepEditor({ state: shown.state, version, place });
       setEndingsShown(endingsShownOf(shown.state));
       setStatus(statusOf(shown.state, table));

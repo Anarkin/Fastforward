@@ -10,6 +10,7 @@ type EditorActions = Pick<
   | 'keptEditor'
   | 'keptEditing'
   | 'keepEditing'
+  | 'answerEditorAsk'
   | 'editorKeeper'
   | 'readEdited'
   | 'editText'
@@ -22,7 +23,12 @@ type EditorActions = Pick<
   | 'reopenIn'
 >;
 
-export function editorActions({ post, onPane }: StoreParts): {
+const asks = {
+  askOverwrite: 'overwrite',
+  askChangedOnDisk: 'changed',
+} as const;
+
+export function editorActions({ set, post, onPane }: StoreParts): {
   readonly actions: EditorActions;
   readonly heard: (message: ToEditor) => void;
   readonly forget: (tab: string) => void;
@@ -40,6 +46,15 @@ export function editorActions({ post, onPane }: StoreParts): {
     openTabs.set(tab, open);
     return open;
   };
+  const answered = (tab: string) =>
+    set((state) => {
+      if (!state.editorAsks.has(tab)) {
+        return state;
+      }
+      const editorAsks = new Map(state.editorAsks);
+      editorAsks.delete(tab);
+      return { editorAsks };
+    });
   const listenEditor = (handler: (message: ToEditor) => void) => {
     editorListeners.add(handler);
     return () => {
@@ -48,6 +63,17 @@ export function editorActions({ post, onPane }: StoreParts): {
   };
   return {
     heard: (message) => {
+      if (
+        message.type === 'askOverwrite' ||
+        message.type === 'askChangedOnDisk'
+      ) {
+        set((state) => ({
+          editorAsks: new Map(state.editorAsks).set(
+            message.tab,
+            asks[message.type],
+          ),
+        }));
+      }
       for (const handler of editorListeners) {
         handler(message);
       }
@@ -56,6 +82,7 @@ export function editorActions({ post, onPane }: StoreParts): {
       keptEditors.delete(tab);
       keptEditings.delete(tab);
       openTabs.delete(tab);
+      answered(tab);
     },
     actions: {
       editFile: (side, name) =>
@@ -65,6 +92,7 @@ export function editorActions({ post, onPane }: StoreParts): {
       listenEditor,
       keptEditor: (tab) => keptEditors.get(tab),
       keptEditing: (tab) => keptEditings.get(tab) ?? noKeptEditing,
+      answerEditorAsk: answered,
       keepEditing: (tab, change) => {
         keptEditings.set(tab, {
           ...(keptEditings.get(tab) ?? noKeptEditing),

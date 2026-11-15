@@ -40,4 +40,24 @@ suite('Editor actions', () => {
     store.getState().receive({ type: 'closed', tab: '3' });
     assert.strictEqual(store.getState().keptEditor('4'), other);
   });
+
+  test('keeps a question about saving a file for its tab until it is answered, whether or not an editor of the tab shows then, as a question asked while the tab was left was lost and the file never saved, and forgets it once the tab closes', () => {
+    const { store } = shown();
+    store.getState().receive({ type: 'askChangedOnDisk', tab: '3' });
+    store.getState().receive({ type: 'askOverwrite', tab: '4' });
+    assert.deepStrictEqual(
+      [...store.getState().editorAsks],
+      [
+        ['3', 'changed'],
+        ['4', 'overwrite'],
+      ],
+    );
+    store.getState().answerEditorAsk('3');
+    assert.deepStrictEqual(
+      [...store.getState().editorAsks],
+      [['4', 'overwrite']],
+    );
+    store.getState().receive({ type: 'closed', tab: '4' });
+    assert.strictEqual(store.getState().editorAsks.size, 0);
+  });
 });

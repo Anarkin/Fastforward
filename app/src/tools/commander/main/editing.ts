@@ -112,6 +112,7 @@ interface Opened {
   endings?: readonly EndingSource[];
   changed: boolean;
   outside: boolean;
+  untold: boolean;
   saving: boolean;
   kept?: { readonly version: number; readonly state: unknown };
   stop: () => void;
@@ -162,6 +163,9 @@ export class Editing {
       return;
     }
     this.postEditing(page, tab, opened);
+    if (opened.untold) {
+      this.tellChanged(page, opened);
+    }
     void this.findSources(tab, opened);
   }
 
@@ -228,6 +232,7 @@ export class Editing {
         ...(start?.encoding !== undefined && { chosen: start.encoding }),
         changed: false,
         outside: false,
+        untold: false,
         saving: false,
         stop: noWatching,
       }),
@@ -337,13 +342,20 @@ export class Editing {
     }
     if (!opened.outside) {
       opened.outside = true;
-      for (const page of this.shell.pagesShowing(tab)) {
-        this.shell.notice(page, {
-          level: 'info',
-          message: strings.editor.changedOutside(opened.file),
-        });
+      const pages = this.shell.pagesShowing(tab);
+      opened.untold = pages.length === 0;
+      for (const page of pages) {
+        this.tellChanged(page, opened);
       }
     }
+  }
+
+  private tellChanged(page: Page, opened: Opened): void {
+    opened.untold = false;
+    this.shell.notice(page, {
+      level: 'info',
+      message: strings.editor.changedOutside(opened.file),
+    });
   }
 
   private async readAgain(
