@@ -2,13 +2,8 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   FlatOrder,
-  FlatSorter,
   type FlatChoices,
 } from '../../../../../tools/commander/page/flatOrder';
-import type {
-  FromFlatWorker,
-  ToFlatWorker,
-} from '../../../../../tools/commander/page/flatMessages';
 import {
   fileColorsOf,
   noFileColors,
@@ -174,96 +169,5 @@ suite('The order of the files of a flat view', () => {
 
     order.choose({ ...choices, query: 'owl' });
     assert.deepStrictEqual(result().shown, ['more/owl.jpg']);
-  });
-});
-
-const start: ToFlatWorker = {
-  type: 'start',
-  pane: 'tab left',
-  walk: 1,
-  choices,
-};
-
-function sorter() {
-  const answers: FromFlatWorker[] = [];
-  const scheduled: (() => void)[] = [];
-  const sorting = new FlatSorter(
-    (answer) => answers.push(answer),
-    (run) => scheduled.push(run),
-  );
-  const run = () => {
-    for (const each of scheduled.splice(0)) {
-      each();
-    }
-  };
-  return { sorting, answers, run, scheduled };
-}
-
-suite('The sorter of flat views', () => {
-  test('answers a burst of messages once, with the slots in order and the last batch of files they include', () => {
-    const { sorting, answers, run, scheduled } = sorter();
-
-    sorting.receive(start);
-    sorting.receive({
-      type: 'files',
-      pane: 'tab left',
-      walk: 1,
-      batch: 1,
-      folders: [{ under: '', entries: [file('b'), file('a')], slots: [0, 1] }],
-      freed: [],
-    });
-    sorting.receive({
-      type: 'files',
-      pane: 'tab left',
-      walk: 1,
-      batch: 2,
-      folders: [{ under: 'sub/', entries: [file('c')], slots: [2] }],
-      freed: [],
-    });
-    assert.strictEqual(scheduled.length, 1);
-    run();
-
-    assert.deepStrictEqual(
-      answers.map((answer) => ({ ...answer, order: [...answer.order] })),
-      [
-        {
-          type: 'order',
-          pane: 'tab left',
-          walk: 1,
-          batch: 2,
-          query: '',
-          order: [1, 0, 2],
-          shown: undefined,
-        },
-      ],
-    );
-  });
-
-  test('takes nothing from an earlier walk, and forgets a pane dropped', () => {
-    const { sorting, answers, run } = sorter();
-    sorting.receive({ ...start, walk: 2 });
-    run();
-    answers.length = 0;
-
-    sorting.receive({
-      type: 'files',
-      pane: 'tab left',
-      walk: 1,
-      batch: 1,
-      folders: [{ under: '', entries: [file('old')], slots: [0] }],
-      freed: [],
-    });
-    run();
-    assert.deepStrictEqual(answers, []);
-
-    sorting.receive({ type: 'drop', pane: 'tab left' });
-    sorting.receive({
-      type: 'choose',
-      pane: 'tab left',
-      walk: 2,
-      choices: { ...choices, query: 'x' },
-    });
-    run();
-    assert.deepStrictEqual(answers, []);
   });
 });

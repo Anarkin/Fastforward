@@ -1,5 +1,5 @@
 import type { FromFlatWorker, ToFlatWorker } from './flatMessages';
-import { FlatSorter } from './flatOrder';
+import { FlatSorter } from './flatSorter';
 
 interface WorkerScope {
   postMessage(

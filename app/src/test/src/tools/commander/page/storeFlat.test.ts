@@ -7,7 +7,7 @@ import type {
   Entry,
   FlatFolder,
 } from '../../../../../tools/commander/shared/protocol';
-import { FlatSorter } from '../../../../../tools/commander/page/flatOrder';
+import { FlatSorter } from '../../../../../tools/commander/page/flatSorter';
 import type {
   FromFlatWorker,
   ToFlatWorker,

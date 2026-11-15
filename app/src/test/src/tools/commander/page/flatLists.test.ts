@@ -4,7 +4,7 @@ import {
   FlatLists,
   type FlatWorker,
 } from '../../../../../tools/commander/page/flatLists';
-import { FlatSorter } from '../../../../../tools/commander/page/flatOrder';
+import { FlatSorter } from '../../../../../tools/commander/page/flatSorter';
 import type {
   FlatChoices,
   FromFlatWorker,
