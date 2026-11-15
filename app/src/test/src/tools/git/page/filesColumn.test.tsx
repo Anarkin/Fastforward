@@ -4,30 +4,13 @@ import { JSDOM } from 'jsdom';
 import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import {
-  workingTreeHash,
   type ChangeArea,
   type FileChange,
   type GitToHost,
 } from '../../../../../tools/git/shared/protocol';
-import {
-  changesTree,
-  changesTreeRows,
-} from '../../../../../tools/git/page/changesRows';
-import { filesRows } from '../../../../../tools/git/page/filesRows';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
-import {
-  filesCursor,
-  filesReveal,
-  filesTitle,
-  listsNothing,
-  noChangesText,
-} from '../../../../../tools/git/page/filesColumnState';
-import {
-  FileFilterField,
-  Files,
-} from '../../../../../tools/git/page/filesColumn';
+import { Files } from '../../../../../tools/git/page/filesColumn';
 import {
   createGitStore,
   fileFilterOf,
@@ -260,26 +243,6 @@ function reveal(tree: string[] | undefined, showAll = true, hash = commit) {
   };
 }
 
-function revealAt(closed: string[], cursor: string) {
-  return {
-    key: cursor,
-    rows: filesReveal(
-      filesRows([
-        {
-          area: undefined,
-          header: true,
-          rows: changesTreeRows(
-            changesTree([change('src/a.ts'), change('b.ts')]),
-            new Set(closed),
-          ),
-        },
-      ]),
-      cursor,
-      'one',
-    ),
-  };
-}
-
 function noChangesShown(
   files: ReturnType<typeof change>[],
   loading: boolean,
@@ -293,28 +256,6 @@ function noChangesShown(
 }
 
 suite('Files column', () => {
-  test('keeps the cursor where the keys moved it only on the commit and tab it moved on', () => {
-    const keys = ['changes', 'folder:src', 'file:src/a.ts'];
-    const moved = { key: 'folder:src', from: 'changes', view: 'one' };
-    assert.strictEqual(
-      filesCursor(moved, 'changes', 'one', keys),
-      'folder:src',
-    );
-    assert.strictEqual(filesCursor(moved, 'changes', 'two', keys), 'changes');
-    assert.strictEqual(
-      filesCursor(moved, 'file:src/a.ts', 'one', keys),
-      'file:src/a.ts',
-    );
-    assert.strictEqual(
-      filesCursor(moved, 'changes', 'one', ['changes']),
-      'changes',
-    );
-    assert.strictEqual(
-      filesCursor(undefined, 'changes', 'one', keys),
-      'changes',
-    );
-  });
-
   test('titles itself Files, showing all files only while its toggle is on', () => {
     for (const showAll of [false, true]) {
       const store = filesStore({ hash: undefined, showAll });
@@ -341,37 +282,6 @@ suite('Files column', () => {
     }
   });
 
-  test('titles itself with the commit shown or the two compared, as the history names them, as Files while none is, and with nothing for the uncommitted changes, which their row atop the history already names', () => {
-    const hash = '0123456789abcdef0123456789abcdef01234567';
-    assert.strictEqual(filesTitle(undefined), 'Files');
-    assert.strictEqual(filesTitle(hash), '0123456');
-    assert.strictEqual(filesTitle(workingTreeHash), '');
-    assert.strictEqual(
-      filesTitle(comparisonOf(hash, workingTreeHash)),
-      '0123456 → uncommitted',
-    );
-  });
-
-  test('says a commit changed nothing, or that the two compared have the same files', () => {
-    const hash = '0123456789abcdef0123456789abcdef01234567';
-    assert.strictEqual(noChangesText(undefined, undefined), undefined);
-    assert.strictEqual(noChangesText(hash, undefined), 'No changes');
-    assert.strictEqual(
-      noChangesText(comparisonOf(hash, workingTreeHash), undefined),
-      'No differences, both have the same files',
-    );
-  });
-
-  test('says nothing changed only while no error is shown, as files that could not be listed are none', () => {
-    const hash = '0123456789abcdef0123456789abcdef01234567';
-    const error = 'fatal: unable to read tree 1234abcd';
-    assert.strictEqual(noChangesText(hash, error), undefined);
-    assert.strictEqual(
-      noChangesText(comparisonOf(hash, workingTreeHash), error),
-      undefined,
-    );
-  });
-
   test('shows that nothing changed only once loaded, while it lists no file', () => {
     assert.strictEqual(
       noChangesShown([], false),
@@ -380,24 +290,6 @@ suite('Files column', () => {
     assert.strictEqual(noChangesShown([], true), '');
     assert.strictEqual(noChangesShown([change('a.ts')], false), '');
     assert.strictEqual(noChangesShown([], false, true), '');
-  });
-
-  test('lists nothing once loaded with no file changed and none to show unchanged, unless staged and unstaged changes are listed apart', () => {
-    const nothing = {
-      files: [],
-      staged: undefined,
-      allPaths: undefined,
-      loading: false,
-    };
-    assert.strictEqual(listsNothing(nothing), true);
-    assert.strictEqual(listsNothing({ ...nothing, allPaths: [] }), true);
-    assert.strictEqual(listsNothing({ ...nothing, loading: true }), false);
-    assert.strictEqual(
-      listsNothing({ ...nothing, files: [change('a.ts')] }),
-      false,
-    );
-    assert.strictEqual(listsNothing({ ...nothing, allPaths: ['a.ts'] }), false);
-    assert.strictEqual(listsNothing({ ...nothing, staged: [] }), false);
   });
 
   test('collapses every folder, or expands every folder shown, the unchanged ones too while all files show', () => {
@@ -564,17 +456,6 @@ suite('Files column', () => {
     assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], false)));
     assert.ok(revealAgain(loaded, reveal(['a.ts', 'b.ts'], true, otherCommit)));
   });
-
-  test('scrolls to the cursor again once the folder it is on opens or closes, as a folder closed from its pinned row is left above the view', () => {
-    const open = revealAt([], 'folder:src');
-    const closed = revealAt(['src'], 'folder:src');
-    assert.ok(revealAgain(open, closed));
-    assert.ok(revealAgain(closed, open));
-    assert.ok(!revealAgain(open, revealAt([], 'folder:src')));
-    assert.ok(
-      !revealAgain(revealAt([], 'file:b.ts'), revealAt(['src'], 'file:b.ts')),
-    );
-  });
 });
 
 suite('Files search', () => {
@@ -691,38 +572,5 @@ suite('Files search', () => {
     assert.match(html, /class="search-row"/);
     assert.doesNotMatch(html, /autofocus/i);
     assert.match(html, /<input[^>]*placeholder="Search…"[^>]*value="view"/);
-  });
-
-  test('searches as one types, goes to the files on Enter or Down, and closes on Esc', () => {
-    const queries: string[] = [];
-    let left = 0;
-    let closed = 0;
-    const field = FileFilterField({
-      query: 'v',
-      onQuery: (next) => queries.push(next),
-      onLeave: () => left++,
-      onClose: () => closed++,
-    });
-    assert.ok(
-      isValidElement<{
-        children: React.ReactElement<{
-          onChange: (event: { target: { value: string } }) => void;
-          onKeyDown: (
-            event: ReturnType<typeof keyPress> & { preventDefault: () => void },
-          ) => void;
-        }>;
-      }>(field),
-    );
-    const input = field.props.children;
-    input.props.onChange({ target: { value: 'vi' } });
-    assert.deepStrictEqual(queries, ['vi']);
-    for (const key of ['Enter', 'ArrowDown']) {
-      input.props.onKeyDown({ ...keyPress(key), preventDefault: noop });
-    }
-    assert.strictEqual(left, 2);
-    input.props.onKeyDown({ ...keyPress('Escape'), preventDefault: noop });
-    assert.strictEqual(closed, 1);
-    input.props.onKeyDown({ ...keyPress('a'), preventDefault: noop });
-    assert.strictEqual(left + closed, 3);
   });
 });

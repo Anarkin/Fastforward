@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { type ChangeArea, type FileChange } from '../shared/protocol';
+import { useMemo, useState } from 'react';
+import { type ChangeArea } from '../shared/protocol';
 import {
   areaKey,
   changesTree,
@@ -18,9 +18,8 @@ import {
   treeRowOf,
 } from './filesRows';
 import { ChangesTreeItem } from './changesTree';
-import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { Column } from './column';
-import { filterWords, matchesFilter } from '../../../lib/page/fileFilter';
+import { filterWords } from '../../../lib/page/fileFilter';
 import { SearchButton, SearchRow } from '../../../lib/page/search';
 import { useSettled } from './settled';
 import {
@@ -53,110 +52,16 @@ import {
   filesTitle,
   noChangesText,
   listsNothing,
+  sidesOf,
+  filteredSide,
+  toggled,
+  foldersOn,
+  headerTitle,
 } from './filesColumnState';
-
-interface Side {
-  readonly area: ChangeArea | undefined;
-  readonly files: readonly FileChange[];
-  readonly allPaths: readonly string[] | undefined;
-}
-
-function sidesOf(
-  files: readonly FileChange[],
-  staged: readonly FileChange[] | undefined,
-  allPaths: readonly string[] | undefined,
-): Side[] {
-  return staged === undefined
-    ? [{ area: undefined, files, allPaths }]
-    : [
-        { area: undefined, files: [], allPaths: undefined },
-        { area: 'staged', files: staged, allPaths: undefined },
-        { area: 'unstaged', files, allPaths },
-      ];
-}
-
-function filteredSide(side: Side, words: readonly string[]): Side {
-  return words.length === 0
-    ? side
-    : {
-        area: side.area,
-        files: side.files.filter((file) =>
-          matchesFilter(words, file.path, file.oldPath),
-        ),
-        allPaths: side.allPaths?.filter((path) => matchesFilter(words, path)),
-      };
-}
-
-function toggled(folders: ReadonlySet<string>, folder: string): Set<string> {
-  const next = new Set(folders);
-  if (!next.delete(folder)) {
-    next.add(folder);
-  }
-  return next;
-}
-
-const noneClosed: ReadonlySet<string> = new Set();
+import { FileFilterField } from './filesFilterField';
+import { noneClosed, useFilesFilter } from './filesFilter';
 
 const settlingPaths = 20_000;
-
-export function FileFilterField({
-  query,
-  input,
-  onQuery,
-  onLeave,
-  onClose,
-}: {
-  query: string;
-  input?: RefObject<HTMLInputElement | null>;
-  onQuery: (query: string) => void;
-  onLeave: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className={`search-field ${query ? 'active' : ''}`}>
-      <input
-        ref={input}
-        className="search-input"
-        placeholder={strings.find.placeholder}
-        spellCheck={false}
-        value={query}
-        onChange={(event) => onQuery(event.target.value)}
-        onKeyDown={(event) => {
-          if (keyPressed(gitKeymap.stopFinding, event)) {
-            event.preventDefault();
-            onClose();
-          } else if (keyPressed(gitKeymap.toFiles, event)) {
-            event.preventDefault();
-            onLeave();
-          }
-        }}
-      />
-    </div>
-  );
-}
-
-function foldersOn(
-  folders: ReadonlySet<string>,
-  area: ChangeArea | undefined,
-): ReadonlySet<string> {
-  if (area === undefined) {
-    return folders;
-  }
-  const prefix = areaKey(area, '');
-  return new Set(
-    [...folders]
-      .filter((folder) => folder.startsWith(prefix))
-      .map((folder) => folder.slice(prefix.length)),
-  );
-}
-
-function headerTitle(area: ChangeArea | undefined): string {
-  return area === undefined
-    ? strings.files.allChanges
-    : area === 'staged'
-      ? strings.files.staged
-      : strings.files.unstaged;
-}
 
 export function Files() {
   const hash = useGit((state) => state.tab.hash);
@@ -218,14 +123,14 @@ export function Files() {
       ),
     [sides, trees],
   );
-  const searched = words.join(' ');
-  const [folds, setFolds] = useState({ view, searched, closed: noneClosed });
-  const closedWhileFiltering =
-    folds.view === view && folds.searched === searched
-      ? folds.closed
-      : noneClosed;
-  const foldWhileFiltering = (closed: ReadonlySet<string>) =>
-    setFolds({ view, searched, closed });
+  const {
+    closedWhileFiltering,
+    foldWhileFiltering,
+    input,
+    toList,
+    closeFilter,
+    openFilter,
+  } = useFilesFilter({ view, words, filter, onFilter, filterAsked });
   const shownClosed = filtering ? closedWhileFiltering : closedFolders;
   const shownOpened = useMemo(
     () =>
@@ -389,19 +294,6 @@ export function Files() {
     cursor,
     words,
   });
-  const input = useRef<HTMLInputElement>(null);
-  const [clicked, setClicked] = useState(0);
-  useEffect(() => {
-    if (filterAsked + clicked > 0) {
-      input.current?.focus();
-      input.current?.select();
-    }
-  }, [filterAsked, clicked]);
-  const toList = () => columnFocusOf(input.current)?.focus();
-  const closeFilter = () => {
-    toList();
-    onFilter(undefined);
-  };
   const nothingFound =
     filtering && !loading && !rows.some((row) => row.kind === 'tree');
   return (
@@ -410,13 +302,7 @@ export function Files() {
       index={1}
       start={start}
       search={
-        <SearchButton
-          title={strings.files.search}
-          onClick={() => {
-            onFilter(filter ?? '');
-            setClicked((count) => count + 1);
-          }}
-        />
+        <SearchButton title={strings.files.search} onClick={openFilter} />
       }
       searching={
         filter !== undefined && (

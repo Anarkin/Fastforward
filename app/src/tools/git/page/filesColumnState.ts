@@ -1,10 +1,16 @@
 import { comparedOf, comparisonLabel } from '../shared/comparisons';
 import { shortHash } from '../shared/hashes';
-import { workingTreeHash, type FileChange } from '../shared/protocol';
+import {
+  workingTreeHash,
+  type ChangeArea,
+  type FileChange,
+} from '../shared/protocol';
 import { listedFilesRows, treeRowOf, type FilesRow } from './filesRows';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { type ListedRows } from '../../../lib/page/listRows';
+import { areaKey } from './changesRows';
+import { matchesFilter } from '../../../lib/page/fileFilter';
 
 export interface MovedCursor {
   readonly key: string;
@@ -78,4 +84,70 @@ export function listsNothing({
     staged === undefined &&
     (allPaths ?? []).length === 0
   );
+}
+
+interface Side {
+  readonly area: ChangeArea | undefined;
+  readonly files: readonly FileChange[];
+  readonly allPaths: readonly string[] | undefined;
+}
+
+export function sidesOf(
+  files: readonly FileChange[],
+  staged: readonly FileChange[] | undefined,
+  allPaths: readonly string[] | undefined,
+): Side[] {
+  return staged === undefined
+    ? [{ area: undefined, files, allPaths }]
+    : [
+        { area: undefined, files: [], allPaths: undefined },
+        { area: 'staged', files: staged, allPaths: undefined },
+        { area: 'unstaged', files, allPaths },
+      ];
+}
+
+export function filteredSide(side: Side, words: readonly string[]): Side {
+  return words.length === 0
+    ? side
+    : {
+        area: side.area,
+        files: side.files.filter((file) =>
+          matchesFilter(words, file.path, file.oldPath),
+        ),
+        allPaths: side.allPaths?.filter((path) => matchesFilter(words, path)),
+      };
+}
+
+export function toggled(
+  folders: ReadonlySet<string>,
+  folder: string,
+): Set<string> {
+  const next = new Set(folders);
+  if (!next.delete(folder)) {
+    next.add(folder);
+  }
+  return next;
+}
+
+export function foldersOn(
+  folders: ReadonlySet<string>,
+  area: ChangeArea | undefined,
+): ReadonlySet<string> {
+  if (area === undefined) {
+    return folders;
+  }
+  const prefix = areaKey(area, '');
+  return new Set(
+    [...folders]
+      .filter((folder) => folder.startsWith(prefix))
+      .map((folder) => folder.slice(prefix.length)),
+  );
+}
+
+export function headerTitle(area: ChangeArea | undefined): string {
+  return area === undefined
+    ? strings.files.allChanges
+    : area === 'staged'
+      ? strings.files.staged
+      : strings.files.unstaged;
 }
