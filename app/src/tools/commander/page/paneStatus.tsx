@@ -1,33 +1,10 @@
 import { type Side } from '../shared/protocol';
 import { readingKey } from './commanderReceived';
-import { useCommander, useCommanderActions } from './store';
-import { FlatViewIcon } from '../../../lib/page/icons';
+import { useCommander } from './store';
 import { StatusLine } from './statusLine';
 import { sentencesOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { Words } from '../../../lib/page/name';
-
-export function FlatButton({ side }: { side: Side }) {
-  const flat = useCommander(
-    (state) => state.view.panes[side]?.flat !== undefined,
-  );
-  const reading = useCommander(
-    (state) => state.view.panes[side]?.flat?.progress.reading === true,
-  );
-  const { flat: onFlat } = useCommanderActions();
-  return (
-    <button
-      className={`nav-button toggle${flat ? ' active' : ''}${reading ? ' running' : ''}`}
-      title={strings.commander.flatView}
-      aria-pressed={flat}
-      onClick={() => onFlat(side)}
-    >
-      <span className="spin-icon">
-        <FlatViewIcon />
-      </span>
-    </button>
-  );
-}
 
 export function ReadingStatus({ side }: { side: Side }) {
   const reading = useCommander((state) =>

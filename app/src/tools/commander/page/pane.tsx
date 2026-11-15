@@ -58,7 +58,6 @@ import {
   TileImage,
 } from './paneCells';
 import {
-  FlatButton,
   ReadingStatus,
   DuplicatesStatus,
   CountingStatus,
@@ -66,7 +65,7 @@ import {
 } from './paneStatus';
 import { layoutMenu } from './paneLayoutMenu';
 import { archivePart } from './archivePart';
-import { BookmarkButton } from './paneHeader';
+import { BookmarkButton, FlatButton } from './paneHeader';
 declare module 'react' {
   interface CSSProperties {
     readonly '--commander-extension'?: string;

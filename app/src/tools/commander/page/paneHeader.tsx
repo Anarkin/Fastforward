@@ -1,6 +1,6 @@
 import { type Side } from '../shared/protocol';
 import { useCommander, useCommanderActions } from './store';
-import { BookmarkIcon } from '../../../lib/page/icons';
+import { BookmarkIcon, FlatViewIcon } from '../../../lib/page/icons';
 import { MenuButton } from '../../../lib/page/menu';
 import { strings } from '../../../lib/shared/strings';
 import { bookmarkMenu, bookmarkOf } from './bookmarks';
@@ -38,5 +38,27 @@ export function BookmarkButton({
         onGo: (folder) => goToBookmark(side, folder),
       })}
     />
+  );
+}
+
+export function FlatButton({ side }: { side: Side }) {
+  const flat = useCommander(
+    (state) => state.view.panes[side]?.flat !== undefined,
+  );
+  const reading = useCommander(
+    (state) => state.view.panes[side]?.flat?.progress.reading === true,
+  );
+  const { flat: onFlat } = useCommanderActions();
+  return (
+    <button
+      className={`nav-button toggle${flat ? ' active' : ''}${reading ? ' running' : ''}`}
+      title={strings.commander.flatView}
+      aria-pressed={flat}
+      onClick={() => onFlat(side)}
+    >
+      <span className="spin-icon">
+        <FlatViewIcon />
+      </span>
+    </button>
   );
 }
