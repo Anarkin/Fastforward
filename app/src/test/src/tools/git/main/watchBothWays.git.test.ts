@@ -22,7 +22,7 @@ import {
   watchingRepositories,
   worktreeInBareRepository,
 } from './watchFixtures';
-import { ignoredPaths } from '../../../../../tools/git/main/watchFolders';
+import { ignoredPaths } from '../../../../../tools/git/main/ignoredFiles';
 import {
   watchRepository,
   type Changed,

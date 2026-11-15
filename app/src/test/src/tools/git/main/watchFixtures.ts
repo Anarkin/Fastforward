@@ -8,10 +8,8 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import {
-  ignoredPaths,
-  type Watcher,
-} from '../../../../../tools/git/main/watchFolders';
+import { ignoredPaths } from '../../../../../tools/git/main/ignoredFiles';
+import type { Watcher } from '../../../../../tools/git/main/watchFolders';
 import {
   watchesRecursively,
   watchRepository,

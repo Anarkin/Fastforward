@@ -12,18 +12,16 @@ import {
   nestedGitDir,
   watchedFolder,
 } from './gitDirPaths';
+import { Ignored, ignoredPaths, NotIgnored } from './ignoredFiles';
+import { isInside } from './insideFolder';
 import { runGit } from './run';
 
 import {
   Watcher,
-  Ignored,
   watchEach,
   TreeWatcher,
   watchTree,
   watchOneFolder,
-  ignoredPaths,
-  isInside,
-  NotIgnored,
 } from './watchFolders';
 
 export interface Changed {

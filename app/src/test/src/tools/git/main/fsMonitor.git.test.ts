@@ -13,7 +13,7 @@ import {
   tempFolder,
   tempRepository,
 } from '../../../../helpers/repositories';
-import { ignoredPaths } from '../../../../../tools/git/main/watchFolders';
+import { ignoredPaths } from '../../../../../tools/git/main/ignoredFiles';
 
 suite('A file system monitor the repository sets', () => {
   test('is never run when it is a command, which git would run on every read of the index', async () => {
