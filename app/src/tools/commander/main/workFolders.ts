@@ -1,6 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { removed } from './archiveFiles';
+
+export async function removed(folder: string): Promise<void> {
+  await fs.promises
+    .rm(folder, { recursive: true, force: true, maxRetries: 3 })
+    .catch(() => undefined);
+}
 
 function running(pid: number): boolean {
   try {

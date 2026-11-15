@@ -9,9 +9,11 @@ import {
 import { sevenZipReader } from '../../../../../tools/commander/main/sevenZipReader';
 import { strings } from '../../../../../lib/shared/strings';
 import { storedZip } from '../../../../helpers/zips';
-import { Archives } from '../../../../../tools/commander/main/archives';
+import {
+  Archives,
+  filesUnder,
+} from '../../../../../tools/commander/main/archives';
 import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
-import { filesUnder } from '../../../../../tools/commander/main/archiveFiles';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..', '..');

@@ -1,48 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-export async function removed(folder: string): Promise<void> {
-  await fs.promises
-    .rm(folder, { recursive: true, force: true, maxRetries: 3 })
-    .catch(() => undefined);
-}
-
-export async function linkedTree(from: string, to: string): Promise<void> {
-  const stats = await fs.promises.stat(from);
-  if (stats.isDirectory()) {
-    await fs.promises.mkdir(to);
-    for (const name of await fs.promises.readdir(from)) {
-      await linkedTree(path.join(from, name), path.join(to, name));
-    }
-    await fs.promises.utimes(to, stats.atime, stats.mtime);
-    return;
-  }
-  try {
-    await fs.promises.link(from, to);
-  } catch {
-    await fs.promises.copyFile(from, to, fs.constants.COPYFILE_EXCL);
-    await fs.promises.utimes(to, stats.atime, stats.mtime);
-  }
-}
-
-export async function temporariesOf(file: string): Promise<string[]> {
-  const folder = path.dirname(file);
-  const name = `${path.basename(file)}.tmp`;
-  const names = await fs.promises.readdir(folder).catch(() => []);
-  return names
-    .filter((each) => each.startsWith(name))
-    .map((each) => path.join(folder, each));
-}
-
-export async function filesUnder(folder: string): Promise<string[]> {
-  const found = await fs.promises
-    .readdir(folder, { recursive: true, withFileTypes: true })
-    .catch(() => []);
-  return found
-    .filter((entry) => entry.isFile())
-    .map((entry) => path.join(entry.parentPath, entry.name));
-}
-
 export async function itemsAt(
   folder: string,
   depth: number,

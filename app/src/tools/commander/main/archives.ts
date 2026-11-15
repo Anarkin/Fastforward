@@ -7,7 +7,7 @@ import { fileVersion } from '../shared/files';
 import { folderKey } from '../shared/paths';
 
 import { ArchiveTree } from './archiveTree';
-import { removed, filesUnder } from './archiveFiles';
+import { removed } from './workFolders';
 import type {
   ArchiveReader,
   ExtractOptions,
@@ -85,6 +85,15 @@ const tarName = /\.tar$/i;
 
 function reasonOfError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+export async function filesUnder(folder: string): Promise<string[]> {
+  const found = await fs.promises
+    .readdir(folder, { recursive: true, withFileTypes: true })
+    .catch(() => []);
+  return found
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
 export class Archives implements ArchiveAccess {

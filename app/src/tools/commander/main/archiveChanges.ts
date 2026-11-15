@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { folderKey } from '../shared/paths';
-import { removed, linkedTree, temporariesOf } from './archiveFiles';
+import { removed } from './workFolders';
 import type { ArchiveReader, PackOptions, Packing } from './archiveReader';
 import type { OpenedArchive } from './archives';
 
@@ -17,6 +17,33 @@ export interface ArchiveChangesAccess {
 
 export interface ArchiveChangesHost {
   readonly passwordOf: (file: string) => { readonly password?: string };
+}
+
+async function linkedTree(from: string, to: string): Promise<void> {
+  const stats = await fs.promises.stat(from);
+  if (stats.isDirectory()) {
+    await fs.promises.mkdir(to);
+    for (const name of await fs.promises.readdir(from)) {
+      await linkedTree(path.join(from, name), path.join(to, name));
+    }
+    await fs.promises.utimes(to, stats.atime, stats.mtime);
+    return;
+  }
+  try {
+    await fs.promises.link(from, to);
+  } catch {
+    await fs.promises.copyFile(from, to, fs.constants.COPYFILE_EXCL);
+    await fs.promises.utimes(to, stats.atime, stats.mtime);
+  }
+}
+
+async function temporariesOf(file: string): Promise<string[]> {
+  const folder = path.dirname(file);
+  const name = `${path.basename(file)}.tmp`;
+  const names = await fs.promises.readdir(folder).catch(() => []);
+  return names
+    .filter((each) => each.startsWith(name))
+    .map((each) => path.join(folder, each));
 }
 
 export class ArchiveChanges {
