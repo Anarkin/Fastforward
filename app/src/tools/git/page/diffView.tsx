@@ -14,7 +14,8 @@ import {
   useState,
 } from 'react';
 import type { TextRequest } from '../shared/protocol';
-import type { DiffFile, DiffLine, LoadedText } from './diff';
+import type { DiffFile, DiffLine } from './diff';
+import type { LoadedText } from './sideTexts';
 import { lineKey, type FindMatch } from './find';
 import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';

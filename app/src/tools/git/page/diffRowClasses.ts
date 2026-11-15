@@ -1,4 +1,4 @@
-import type { NumberedLine } from './diff';
+import type { NumberedLine } from './changeBlocks';
 import type { DiffRow } from './diffRows';
 
 export function diffRowClass(kind: DiffRow['kind']): string {

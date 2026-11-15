@@ -11,12 +11,8 @@ import type {
   GitToWebviewOf,
 } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
-import {
-  parseFilePatch,
-  textKey,
-  type DiffFile,
-  type LoadedText,
-} from './diff';
+import { parseFilePatch, type DiffFile } from './diff';
+import { textKey, type LoadedText } from './sideTexts';
 import type { WholeFile } from './diffRows';
 
 export interface TabView {

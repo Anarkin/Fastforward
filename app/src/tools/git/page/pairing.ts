@@ -1,4 +1,4 @@
-import type { ChangeBlock } from './diff';
+import type { ChangeBlock } from './changeBlocks';
 
 export const similarEnough = 0.5;
 

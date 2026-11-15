@@ -2,10 +2,8 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act, type ReactElement } from 'react';
 import { beforeAll } from 'vitest';
-import {
-  parsePatch,
-  type LoadedText,
-} from '../../../../../tools/git/page/diff';
+import { parsePatch } from '../../../../../tools/git/page/diff';
+import type { LoadedText } from '../../../../../tools/git/page/sideTexts';
 import { syntaxSources } from '../../../../../tools/git/page/syntax';
 import { noop } from '../../../../helpers/fixtures';
 import {

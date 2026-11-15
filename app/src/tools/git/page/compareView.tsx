@@ -7,7 +7,8 @@ import type {
   LeftOut,
 } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
-import type { DiffFile, LoadedText } from './diff';
+import type { DiffFile } from './diff';
+import type { LoadedText } from './sideTexts';
 import { Diff, DiffLanguage, DiffOptions } from './diffColumn';
 import { compareLanguageKey, useGit, useGitActions } from './store';
 

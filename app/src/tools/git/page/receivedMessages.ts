@@ -2,7 +2,7 @@ import type { CloneView } from '../shared/clone';
 import type { GitToWebview, GitToWebviewOf } from '../shared/protocol';
 import type { CloneTarget } from './cloneForm';
 import { widthsToLoad } from './columns';
-import { textKey } from './diff';
+import { textKey } from './sideTexts';
 import { reduceTabView, type TabAction } from './tabView';
 
 import type { Cloning, ComparedTexts, GitState } from './store';

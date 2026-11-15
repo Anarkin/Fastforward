@@ -1,4 +1,5 @@
-import type { DiffFile, DiffLine, LoadedText } from './diff';
+import type { DiffFile, DiffLine } from './diff';
+import type { LoadedText } from './sideTexts';
 import { lineKey, type FindMatch, type FindRange } from './find';
 import { matchMarks, minimapMarks, type MinimapMark } from './minimapMarks';
 import type { SyntaxRange } from './syntax';

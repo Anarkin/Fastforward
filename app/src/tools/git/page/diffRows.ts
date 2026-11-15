@@ -1,11 +1,6 @@
 import { collapseThreshold } from '../shared/protocol';
-import {
-  changeBlocks,
-  type DiffFile,
-  type DiffLine,
-  type LinkTargets,
-  type NumberedLine,
-} from './diff';
+import type { DiffFile, DiffLine, LinkTargets } from './diff';
+import { changeBlocks, type NumberedLine } from './changeBlocks';
 import { lineKey, wholeLines } from './find';
 import { changePairs, pairingBudget, type PairingBudget } from './pairing';
 import type { Pair } from './wordDiff';

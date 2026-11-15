@@ -15,7 +15,8 @@ import { languageChoiceOf } from '../../../lib/page/languageMenu';
 import { LanguageButton } from '../../../lib/page/languageChoice';
 import { languageOf } from '../../../lib/page/languages';
 import { useBinding } from '../../../lib/page/shortcuts';
-import { parsePatch, type DiffFile, type LoadedText } from './diff';
+import { parsePatch, type DiffFile } from './diff';
+import type { LoadedText } from './sideTexts';
 import { findMatches, unsearchedFiles } from './find';
 import { matchCount, stepMatch } from '../../../lib/shared/textMatches';
 import {

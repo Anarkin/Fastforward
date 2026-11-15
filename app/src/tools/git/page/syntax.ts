@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { TextRequest } from '../shared/protocol';
-import { parsePatch, textKey, type DiffFile, type LoadedText } from './diff';
+import { parsePatch, type DiffFile } from './diff';
+import { textKey, type LoadedText } from './sideTexts';
 import { lineKey, wholeLines } from './find';
 import { languageOf } from '../../../lib/page/languages';
 import type { SyntaxRange } from '../../../lib/page/syntaxEngine';

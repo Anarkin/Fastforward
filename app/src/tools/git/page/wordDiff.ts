@@ -1,9 +1,9 @@
+import type { DiffFile } from './diff';
 import {
   changeBlocks,
   type ChangeBlock,
-  type DiffFile,
   type NumberedLine,
-} from './diff';
+} from './changeBlocks';
 import { keyedLine, type FindRange } from './find';
 import { changePairs, tokenSteps } from './pairing';
 

@@ -1,10 +1,8 @@
 import * as assert from 'node:assert';
 import { createElement, Fragment, useLayoutEffect } from 'react';
 import { suite, test } from 'vitest';
-import {
-  parsePatch,
-  type LoadedText,
-} from '../../../../../tools/git/page/diff';
+import { parsePatch } from '../../../../../tools/git/page/diff';
+import type { LoadedText } from '../../../../../tools/git/page/sideTexts';
 import type { TextRequest } from '../../../../../tools/git/shared/protocol';
 import {
   keepColors,
