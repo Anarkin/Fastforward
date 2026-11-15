@@ -3,7 +3,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   root,
@@ -14,6 +13,7 @@ import {
   tab,
   forged,
 } from './commanderFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {
   test('packs the items a side lists into the archive asked for, shown in the dialog of copies as packing, and nothing of items it does not list, nor an archive of a name no folder can hold, into one of the items, nor with a password a zip cannot hold', async () => {

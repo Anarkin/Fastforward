@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { watchFiles } from '../../../../../tools/git/main/compareWatch';
 import { waitFor } from '../../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const noFailure = () => undefined;
 

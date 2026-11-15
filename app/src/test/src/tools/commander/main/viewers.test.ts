@@ -11,9 +11,9 @@ import { plainOf } from '../../../../../lib/shared/sentences';
 import { readBudgetBytes } from '../../../../../tools/commander/main/textRows';
 import { fileVersion } from '../../../../../tools/commander/shared/files';
 import { pathParts } from '../../../../../tools/commander/shared/paths';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
 import { commander, forged } from './commanderFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool viewing a file', () => {
   let opened: string;

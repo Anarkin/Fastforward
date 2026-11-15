@@ -14,10 +14,7 @@ import type {
 } from '../../../../../tools/git/shared/protocol';
 import { bookmarksKey } from '../../../../../tools/git/main/storage';
 import { FakeStore } from '../../../../helpers/fakeStore';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
@@ -31,6 +28,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { FakePage } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool keeping bookmarks', () => {
   let folder: string;

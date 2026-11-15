@@ -5,11 +5,7 @@ import { suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { runGit } from '../../../../../tools/git/main/run';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../../../../helpers/repositories';
+import { tempRepository } from '../../../../helpers/repositories';
 import {
   askingGit,
   changes,
@@ -27,6 +23,7 @@ import {
   watchRepository,
   type Changed,
 } from '../../../../../tools/git/main/watch';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const start = async (git = askingGit()) => {
   await startWatching({

@@ -11,10 +11,7 @@ import {
 } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
@@ -26,6 +23,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { FakePage } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool sending the texts of a diff', () => {
   let folder: string;

@@ -9,12 +9,8 @@ import {
   suite,
   test,
 } from 'vitest';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-  type TempRepository,
-} from '../helpers/repositories';
+import { tempRepository, type TempRepository } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const script = path.join(__dirname, '..', '..', '..', 'scripts', 'push.mts');
 

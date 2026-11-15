@@ -13,12 +13,11 @@ import { tipsInGitOrder } from '../../../../../tools/git/main/tabHistory';
 import {
   commitAtTime,
   objectId,
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { entriesOf } from './historyFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 async function repositoryWithBranches(name: string): Promise<TempRepository> {
   const repository = await tempRepository(tempFolder(name));

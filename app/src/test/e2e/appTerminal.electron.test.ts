@@ -8,7 +8,7 @@ import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp } from './appLaunch';
 import { barsOffGrid, gridLines } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
-import { removeFolder, tempFolder } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const hundredLines =
   process.platform === 'win32'

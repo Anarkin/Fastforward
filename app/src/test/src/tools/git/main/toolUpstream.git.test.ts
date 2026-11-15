@@ -2,14 +2,13 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import { closeViews, withView } from '../../../../helpers/harness';
 import { withNotices } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool upstream', () => {
   const { log, error: logged } = recordingLog();

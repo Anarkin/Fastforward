@@ -13,13 +13,11 @@ import { gitErrorText } from '../../../../../tools/git/main/errorText';
 import { waitFor } from '../../../../helpers/fixtures';
 import { renamingRepository } from '../../../../helpers/gitFixtures';
 import {
-  removeFolder,
-  savedEnv,
-  tempFolder,
   tempRepository,
-  withEnv,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { savedEnv, withEnv } from '../../../../helpers/env';
 
 suite('Git repository', () => {
   let gitPath: string;

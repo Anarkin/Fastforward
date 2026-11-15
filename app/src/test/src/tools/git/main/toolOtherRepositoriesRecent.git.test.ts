@@ -8,8 +8,6 @@ import { sameRoot } from '../../../../../lib/main/paths';
 import { recentKey } from '../../../../../tools/git/main/storage';
 import {
   asIfOwnedByAnother,
-  removeFolder,
-  tempFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import {
@@ -27,6 +25,7 @@ import {
 import { viewRepositories } from '../../../../helpers/gitFixtures';
 import { keptOf, keepAll } from './toolOtherRepositoriesFixtures';
 import { FakeHost } from '../../../../helpers/fakeHost';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool of other repositories', () => {
   let folder: string;

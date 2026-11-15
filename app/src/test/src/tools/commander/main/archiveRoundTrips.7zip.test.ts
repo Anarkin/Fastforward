@@ -10,7 +10,6 @@ import {
 import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import type { PackFormat } from '../../../../../tools/commander/shared/packing';
 import { plainOf } from '../../../../../lib/shared/sentences';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   reader,
   byText,
@@ -20,6 +19,7 @@ import {
   treeOf,
   writable,
 } from './roundTripFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Archives packed, changed and taken out again', () => {
   let folder: string;

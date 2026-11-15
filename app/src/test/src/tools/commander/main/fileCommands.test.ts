@@ -6,7 +6,6 @@ import type { Tab } from '../../../../../shell/main/toolContract';
 import type { Side } from '../../../../../tools/commander/shared/protocol';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   root,
   at,
@@ -16,6 +15,7 @@ import {
   tab,
   forged,
 } from './commanderFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {
   test('opens a file in the app the system opens it with, a program by running it, staying in its folder, and says why one could not be opened', async () => {

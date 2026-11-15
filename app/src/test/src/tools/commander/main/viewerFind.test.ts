@@ -3,8 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { plainOf } from '../../../../../lib/shared/sentences';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { commander, forged } from './commanderFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool finding in a file viewed', () => {
   let opened: string;

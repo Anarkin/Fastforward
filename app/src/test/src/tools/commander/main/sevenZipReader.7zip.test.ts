@@ -8,11 +8,11 @@ import {
 } from '../../../../../tools/commander/main/sevenZip';
 import { sevenZipReader } from '../../../../../tools/commander/main/sevenZipReader';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { storedZip } from '../../../../helpers/zips';
 import { Archives } from '../../../../../tools/commander/main/archives';
 import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import { filesUnder } from '../../../../../tools/commander/main/archiveFiles';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..', '..');
 

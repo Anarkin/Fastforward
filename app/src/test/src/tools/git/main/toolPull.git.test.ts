@@ -4,8 +4,6 @@ import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { Connection } from '../../../../helpers/harness';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -20,6 +18,7 @@ import {
   withNotices,
   type PageMessage,
 } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function runningState(message: PageMessage): string[] {
   return message.type === 'pulling' || message.type === 'fetching'

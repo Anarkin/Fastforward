@@ -2,9 +2,9 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { sevenZipReader } from '../../../../../tools/commander/main/sevenZipReader';
 import { type Asked, listedBy } from './sevenZipFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('deleting with 7-Zip', () => {
   test('deletes the items named from a list file without wildcards, telling what it keeps and how far it got, the password on its input', async () => {

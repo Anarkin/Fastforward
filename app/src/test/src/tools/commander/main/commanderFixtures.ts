@@ -21,12 +21,12 @@ import type { SizeWalker } from '../../../../../tools/commander/main/sizeWalk';
 import { pathParts } from '../../../../../tools/commander/shared/paths';
 import type { PdfPlace } from '../../../../../tools/commander/shared/pdf';
 import { FakeStore } from '../../../../helpers/fakeStore';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { fakeArchives, zipped } from './fakeArchives';
 import { fakeShell } from './fakeShell';
 import type { TransferCommand } from '../../../../../tools/commander/main/transferProtocol';
 import type { TransferListener } from '../../../../../tools/commander/main/transfers';
 import type { TransferPlan } from '../../../../../tools/commander/main/transfer';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 export class CommanderPage implements Page {
   readonly messages: CommanderToWebview[] = [];

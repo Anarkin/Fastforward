@@ -4,11 +4,10 @@ import * as path from 'node:path';
 import { stopRunningGit } from '../../../../../tools/git/main/run';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 export function heldHook(folder: string, name: string) {
   const mark = (what: string) =>

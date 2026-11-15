@@ -6,9 +6,6 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { lastFetchesKey } from '../../../../../tools/git/main/lastFetches';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  savedEnv,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -29,6 +26,8 @@ import {
 import { lockedRepository } from '../../../../helpers/gitFixtures';
 import { FakeHost } from '../../../../helpers/fakeHost';
 import { type FakePage, withNotices } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { savedEnv } from '../../../../helpers/env';
 
 suite('Git tool fetching', () => {
   let folder: string;

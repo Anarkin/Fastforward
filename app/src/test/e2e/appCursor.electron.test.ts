@@ -20,7 +20,6 @@ import type * as editorTextModule from '../../tools/commander/page/editorText';
 import type * as cellTableModule from '../../lib/page/cellTable';
 import { closeOrKill, launchApp, within } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
-import { removeFolder, tempFolder } from '../helpers/repositories';
 import {
   type Shot,
   pixelAt,
@@ -41,6 +40,7 @@ import {
   windowOfPage,
   focusColor,
 } from './cursorPixels';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const shell =
   process.platform === 'win32'

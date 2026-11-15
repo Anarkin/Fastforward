@@ -13,7 +13,7 @@ import {
   shellLaunch,
 } from '../../../../../tools/terminal/main/shellLaunch';
 import { waitFor } from '../../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const windows = process.platform === 'win32';
 

@@ -5,7 +5,6 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor, defaultSettings } from '../helpers/fixtures';
-import { removeFolder, tempFolder } from '../helpers/repositories';
 import {
   opened as editorOpened,
   profile as editorProfile,
@@ -20,6 +19,7 @@ import {
   scrolledDown,
   sharedEditorApp,
 } from './editorAppFixtures';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const shortLines = (count: number, name: string) =>
   Array.from({ length: count }, (_, at) => `${name} ${at + 1}`);

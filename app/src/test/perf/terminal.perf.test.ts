@@ -5,7 +5,7 @@ import { afterAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { floodDone, floodReady } from './perfData';
 import { launchedForPerf, measure, perfData, sleep } from './perfFixtures';
-import { removeFolder, tempFolder } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 suite('Frames of the terminal', () => {
   const { flood } = perfData();

@@ -11,8 +11,6 @@ import { sameRoot } from '../../../../../lib/main/paths';
 import { cloneFolderKey } from '../../../../../tools/git/main/storage';
 import type { CloneView } from '../../../../../tools/git/shared/clone';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -31,6 +29,7 @@ import {
 } from '../../../../helpers/harness';
 import { FakeHost } from '../../../../helpers/fakeHost';
 import { withNotices } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function views(view: OpenView): (CloneView | undefined)[] {
   return view.page.messages.flatMap((message) =>

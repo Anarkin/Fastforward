@@ -6,7 +6,7 @@ import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
 import { JsonFileStore } from '../../../../shell/main/stateFile';
 import { toolState } from '../../../../shell/main/storage';
-import { removeFolder, tempFolder } from '../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
 
 suite('State file', () => {
   let folder: string;

@@ -9,8 +9,6 @@ import { writesEnded } from '../../../../../tools/git/main/gitProcesses';
 import { runGit, stopRunningGit } from '../../../../../tools/git/main/run';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -21,6 +19,7 @@ import {
   filteredSlowly,
   stuckWriting,
 } from './runFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Running git in a repository', () => {
   let gitPath: string;

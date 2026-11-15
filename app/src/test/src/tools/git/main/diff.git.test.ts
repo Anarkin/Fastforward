@@ -33,11 +33,10 @@ import {
   submoduleRepository,
 } from '../../../../helpers/gitFixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function headers(patch: string): string[] {
   return patch.split('\n').filter((line) => line.startsWith('diff --git'));

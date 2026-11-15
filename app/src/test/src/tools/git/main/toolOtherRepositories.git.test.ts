@@ -4,7 +4,6 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { sameRoot } from '../../../../../lib/main/paths';
 import { recentKey } from '../../../../../tools/git/main/storage';
 import {
-  removeFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -20,6 +19,7 @@ import {
 import { viewRepositories } from '../../../../helpers/gitFixtures';
 import { keptOf, keepAll } from './toolOtherRepositoriesFixtures';
 import { FakeHost } from '../../../../helpers/fakeHost';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool of other repositories', () => {
   let folder: string;

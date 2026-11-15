@@ -16,11 +16,8 @@ import {
 } from './appLaunch';
 import { waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../helpers/repositories';
+import { tempRepository } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const syntaxWorkers = (page: Page) =>
   page.workers().filter((worker) => worker.url().endsWith('/syntaxWorker.js'))

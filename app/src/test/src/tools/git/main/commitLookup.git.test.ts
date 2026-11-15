@@ -11,10 +11,9 @@ import { renamingRepository } from '../../../../helpers/gitFixtures';
 import {
   commitText,
   objectId,
-  removeFolder,
-  tempFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const emptyTree = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 

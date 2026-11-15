@@ -9,11 +9,10 @@ import {
 } from '../../../../../tools/git/main/fileLists';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Repository files', () => {
   let parent: string;

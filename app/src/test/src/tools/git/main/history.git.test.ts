@@ -15,11 +15,10 @@ import { tipsInGitOrder } from '../../../../../tools/git/main/tabHistory';
 import { renamingRepository } from '../../../../helpers/gitFixtures';
 import { entriesOf } from './historyFixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const fastImported = (count: number, from: string) =>
   Array.from(

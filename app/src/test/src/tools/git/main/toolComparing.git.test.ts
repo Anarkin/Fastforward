@@ -14,14 +14,13 @@ import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import type { Connection } from '../../../../helpers/harness';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import { closeViews, openView } from '../../../../helpers/harness';
 import { type FakePage } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool comparing', () => {
   let repository: TempRepository;

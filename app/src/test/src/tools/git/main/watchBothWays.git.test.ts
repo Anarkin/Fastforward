@@ -3,12 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  createsAnewThroughJunctions,
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../../../../helpers/repositories';
+import { tempRepository } from '../../../../helpers/repositories';
 import {
   askingGit,
   changes,
@@ -27,6 +22,8 @@ import {
   watchRepository,
   type Changed,
 } from '../../../../../tools/git/main/watch';
+import { createsAnewThroughJunctions } from '../../../../helpers/links';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Watching a repository recursively and folder by folder', () => {
   watchingRepositories();

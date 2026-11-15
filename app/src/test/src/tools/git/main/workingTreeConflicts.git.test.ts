@@ -7,11 +7,10 @@ import { workingTreeFiles } from '../../../../../tools/git/main/workingTree';
 import { workingTreePatch } from '../../../../../tools/git/main/workingTreePatch';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('A conflicted merge', () => {
   let conflicted: TempRepository;

@@ -4,7 +4,6 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { recentKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -31,6 +30,7 @@ import {
   worktreeRepositories,
 } from './toolWorktreesFixtures';
 import { commitsSent } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool of worktrees', () => {
   const { log, error: logged } = recordingLog();

@@ -10,11 +10,7 @@ import {
 import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import type { GitTool } from '../../../../../tools/git/main/tool';
-import {
-  removeFolder,
-  tempFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import {
   recordingLog,
   failOnErrorsLogged,
@@ -31,6 +27,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { commitsSent, FakePage } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool listing the history', () => {
   let folder: string;

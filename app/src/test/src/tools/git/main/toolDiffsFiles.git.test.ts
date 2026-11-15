@@ -12,8 +12,6 @@ import {
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -32,6 +30,7 @@ import {
   numberedLines,
 } from '../../../../helpers/gitFixtures';
 import { FakePage } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool showing diffs', () => {
   let folder: string;

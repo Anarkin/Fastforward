@@ -3,9 +3,6 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  savedEnv,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -24,6 +21,8 @@ import {
   tabOf,
 } from '../../../../helpers/harness';
 import { withNotices } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { savedEnv } from '../../../../helpers/env';
 
 suite('Git tool fetching in the background', () => {
   let folder: string;

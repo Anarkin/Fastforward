@@ -11,10 +11,7 @@ import {
 } from 'vitest';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import {
   recordingLog,
   failOnErrorsLogged,
@@ -38,6 +35,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { commitsSent } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool preloading tabs', () => {
   let folder: string;

@@ -5,11 +5,8 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../helpers/builtins';
 import { watchSettings } from '../../../../shell/main/settingsWatch';
 import { waitFor } from '../../../helpers/fixtures';
-import {
-  removeFolder,
-  symlinkOrSkip,
-  tempFolder,
-} from '../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
+import { symlinkOrSkip } from '../../../helpers/links';
 
 function watchersMade(run: () => void): fs.FSWatcher[] {
   const nodeFs = process.getBuiltinModule('node:fs');

@@ -5,8 +5,6 @@ import { replaceBuiltin } from '../../../../helpers/builtins';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -20,6 +18,7 @@ import {
   shownTabs,
 } from '../../../../helpers/harness';
 import { fortyLines } from '../../../../helpers/gitFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const forged = (json: string): ToHost => JSON.parse(json);
 

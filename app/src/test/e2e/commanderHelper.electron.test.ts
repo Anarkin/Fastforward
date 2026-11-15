@@ -8,7 +8,7 @@ import { elevatedFileSystem } from '../../tools/commander/main/elevated';
 import { helperArguments } from '../../tools/commander/main/helperProtocol';
 import { appFolder } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
-import { removeFolder, tempFolder } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const electron: string = createRequire(__filename)('electron');
 

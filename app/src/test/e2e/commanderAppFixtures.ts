@@ -7,7 +7,7 @@ import { afterAll, beforeAll } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { closeOrKill, launchApp } from './appLaunch';
 import { clippedCorner } from './scrollProbes';
-import { removeFolder, tempFolder } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 export let folder: string;
 export let opened: string;

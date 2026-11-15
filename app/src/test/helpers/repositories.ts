@@ -2,10 +2,9 @@ import * as assert from 'node:assert';
 import { execFile, type SpawnOptions } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import type { TestContext } from 'vitest';
 import { replaceBuiltin } from './builtins';
+import { removeFolder, tempFolder } from './tempFolders';
 import { findGit, minimumGitVersion } from '../../tools/git/main/locate';
 import { type GitCommand, realGit } from '../../tools/git/main/gitCommand';
 
@@ -32,70 +31,6 @@ export interface TempRepository {
   ): Promise<string[]>;
 }
 
-export function tempFolder(name: string): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), `fastforward-${name}-`));
-}
-
-const unremoved = new Set<string>();
-
-function tryRemoving(folder: string, maxRetries = 5): unknown {
-  try {
-    fs.rmSync(folder, {
-      recursive: true,
-      force: true,
-      maxRetries,
-      retryDelay: 100,
-    });
-    return undefined;
-  } catch (error) {
-    return error;
-  }
-}
-
-export function removeFolder(
-  folder: string,
-  remove: (folder: string) => unknown = tryRemoving,
-): void {
-  if (remove(folder) !== undefined) {
-    unremoved.add(folder);
-  }
-}
-
-export async function assertNoFoldersLeft(): Promise<void> {
-  if (templateFolder !== undefined) {
-    removeFolder(templateFolder);
-    templateFolder = undefined;
-    templates.clear();
-  }
-  const left = [...unremoved];
-  unremoved.clear();
-  assert.deepStrictEqual(
-    await foldersLeft(left, Date.now() + 7000),
-    [],
-    'folders left behind',
-  );
-}
-
-export async function foldersLeft(
-  folders: readonly string[],
-  until: number,
-  remove = (folder: string) => tryRemoving(folder, 0),
-): Promise<string[]> {
-  const removing = (left: readonly string[]) =>
-    left.flatMap((folder) => {
-      const error = remove(folder);
-      return error === undefined ? [] : [{ folder, error }];
-    });
-  let left = removing(folders);
-  while (left.length > 0 && Date.now() < until) {
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    left = removing(left.map(({ folder }) => folder));
-  }
-  return left.map(({ folder, error }) =>
-    error instanceof Error ? `${folder}: ${error.message}` : folder,
-  );
-}
-
 const withoutConfigThatMayTrustEveryFolder = {
   GIT_CONFIG_NOSYSTEM: '1',
   ...withoutTheUsersGitConfig,
@@ -105,34 +40,6 @@ const ownedByAnother = {
   GIT_TEST_ASSUME_DIFFERENT_OWNER: '1',
   ...withoutConfigThatMayTrustEveryFolder,
 };
-
-export function savedEnv(names: readonly string[]): () => void {
-  const saved = names.map((name) => [name, process.env[name]] as const);
-  return () => setEnv(Object.fromEntries(saved));
-}
-
-function setEnv(variables: Readonly<Record<string, string | undefined>>) {
-  for (const [name, value] of Object.entries(variables)) {
-    if (value === undefined) {
-      delete process.env[name];
-    } else {
-      process.env[name] = value;
-    }
-  }
-}
-
-export async function withEnv(
-  variables: Readonly<Record<string, string | undefined>>,
-  run: () => Promise<void>,
-): Promise<void> {
-  const restore = savedEnv(Object.keys(variables));
-  setEnv(variables);
-  try {
-    await run();
-  } finally {
-    restore();
-  }
-}
 
 function isInside(folder: string, cwd: unknown): boolean {
   if (typeof cwd !== 'string') {
@@ -187,44 +94,6 @@ export async function gitsStarted<T>(
   }
 }
 
-export function createsAnewThroughJunctions(): boolean {
-  const folder = tempFolder('junction');
-  try {
-    const target = path.join(folder, 'target');
-    const link = path.join(folder, 'link');
-    fs.mkdirSync(target);
-    fs.symlinkSync(target, link, 'junction');
-    fs.closeSync(fs.openSync(path.join(link, 'lock'), 'wx'));
-    return true;
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'EEXIST') {
-      return false;
-    }
-    throw error;
-  } finally {
-    removeFolder(folder);
-  }
-}
-
-export function symlinkOrSkip(
-  context: TestContext,
-  target: string,
-  link: string,
-): void {
-  try {
-    fs.symlinkSync(target, link);
-  } catch (error) {
-    if (!(
-      error instanceof Error &&
-      'code' in error &&
-      error.code === 'EPERM'
-    )) {
-      throw error;
-    }
-    context.skip();
-  }
-}
-
 function runGit(
   cwd: string,
   date: Date,
@@ -275,6 +144,14 @@ function runGit(
 
 let templateFolder: string | undefined;
 const templates = new Map<string, Promise<string>>();
+
+export function removeTemplates(): void {
+  if (templateFolder !== undefined) {
+    removeFolder(templateFolder);
+    templateFolder = undefined;
+    templates.clear();
+  }
+}
 
 function template(branch: string, bare: boolean): Promise<string> {
   const key = JSON.stringify([branch, bare]);

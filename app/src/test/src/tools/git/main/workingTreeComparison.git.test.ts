@@ -9,12 +9,11 @@ import {
 } from '../../../../../tools/git/main/workingTreePatch';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { holdingGit } from './workingTreeFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Comparing a commit with the working tree', () => {
   let repository: TempRepository;

@@ -11,7 +11,6 @@ import type {
 import type { TransferListener } from '../../../../../tools/commander/main/transfers';
 import { unpackingFirst } from '../../../../../tools/commander/main/unpacking';
 import { waitFor } from '../../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
 import type {
   ArchiveAccess,
@@ -24,6 +23,7 @@ import type {
   Packing,
   PackOptions,
 } from '../../../../../tools/commander/main/archiveReader';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const archive: OpenedArchive = {
   file: path.join('C:', 'Downloads', 'a.zip'),

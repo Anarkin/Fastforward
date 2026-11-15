@@ -4,7 +4,7 @@ import {
   gitStarter,
   threadFor,
 } from '../../../../../tools/git/main/spawnedGit';
-import { tempFolder } from '../../../../helpers/repositories';
+import { tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Starting git', () => {
   test('says git could not be started, as for a command not found', async () => {

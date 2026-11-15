@@ -11,10 +11,7 @@ import { soloKey } from '../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import type { FakeStore } from '../../../../helpers/fakeStore';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
@@ -35,6 +32,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { commitsSent, type FakePage } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool applying Solo', () => {
   let folder: string;

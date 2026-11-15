@@ -9,7 +9,7 @@ import type {
 } from '../../../../../tools/commander/main/archiveReader';
 import { packInto } from '../../../../../tools/commander/main/packing';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('packInto', () => {
   let folder: string;

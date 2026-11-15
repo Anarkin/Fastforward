@@ -6,8 +6,6 @@ import type { GitTool } from '../../../../../tools/git/main/tool';
 import type { Connection } from '../../../../helpers/harness';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -28,6 +26,7 @@ import {
   withNotices,
   type PageMessage,
 } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function running(message: PageMessage): string[] {
   return message.type === 'pullingBranch' || message.type === 'pushingBranch'

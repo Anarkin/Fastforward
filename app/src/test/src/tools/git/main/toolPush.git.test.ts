@@ -6,8 +6,6 @@ import { replaceBuiltin } from '../../../../helpers/builtins';
 import type { Connection } from '../../../../helpers/harness';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -23,6 +21,7 @@ import {
   type PageMessage,
 } from '../../../../helpers/fakePage';
 import { holdFetches } from '../../../../helpers/gitFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function runningState(message: PageMessage): string[] {
   return message.type === 'pushing' || message.type === 'fetching'

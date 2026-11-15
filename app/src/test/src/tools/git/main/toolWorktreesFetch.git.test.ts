@@ -5,7 +5,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { worktreesKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
-import { removeFolder, tempRepository } from '../../../../helpers/repositories';
+import { tempRepository } from '../../../../helpers/repositories';
 import {
   recordingLog,
   failOnErrorsLogged,
@@ -19,6 +19,7 @@ import {
   gitState,
 } from '../../../../helpers/harness';
 import { worktreeRepositories, worktreeRoot } from './toolWorktreesFixtures';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool fetching worktrees', () => {
   const { log, error: logged } = recordingLog();

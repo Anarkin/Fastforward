@@ -8,9 +8,9 @@ import { renamingRepository } from '../../../../helpers/gitFixtures';
 import { entriesOf } from './historyFixtures';
 import {
   objectId,
-  removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git commit log', () => {
   let gitPath: string;

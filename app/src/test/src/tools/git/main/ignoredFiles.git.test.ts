@@ -3,12 +3,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { ignoredPaths } from '../../../../../tools/git/main/ignoredFiles';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Telling the ignored paths', () => {
   let ignoring: TempRepository;

@@ -4,10 +4,10 @@ import * as path from 'node:path';
 import type { GitToWebviewOf } from '../../../../../tools/git/shared/protocol';
 import { type OpenView, shownTabs } from '../../../../helpers/harness';
 import {
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { tempFolder } from '../../../../helpers/tempFolders';
 
 export interface WorktreeRepositories {
   readonly folder: string;

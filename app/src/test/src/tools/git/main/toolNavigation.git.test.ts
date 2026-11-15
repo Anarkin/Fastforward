@@ -15,7 +15,6 @@ import { waitFor } from '../../../../helpers/fixtures';
 import {
   commitText,
   objectId,
-  removeFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import {
@@ -35,6 +34,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { type FakePage, withNotices } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool navigating the history', () => {
   let folder: string;

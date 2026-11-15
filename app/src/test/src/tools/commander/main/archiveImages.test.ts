@@ -3,7 +3,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { ArchiveImages } from '../../../../../tools/commander/main/archiveImages';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   ArchiveTree,
   entryParts,
@@ -12,6 +11,7 @@ import type {
   ArchiveAccess,
   OpenedArchive,
 } from '../../../../../tools/commander/main/archives';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const refused = () => Promise.reject(new Error('Nothing is done here.'));
 

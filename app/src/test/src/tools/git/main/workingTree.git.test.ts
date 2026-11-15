@@ -13,12 +13,11 @@ import {
 } from '../../../../../tools/git/main/workingTreePatch';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { holdingGit } from './workingTreeFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('A repository without commits', () => {
   let gitPath: string;

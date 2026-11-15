@@ -8,8 +8,6 @@ import { parsePatch } from '../../../../../tools/git/page/diff';
 import { strings } from '../../../../../lib/shared/strings';
 import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -22,6 +20,7 @@ import {
   stubMethod,
   type OpenView,
 } from '../../../../helpers/harness';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const linesOf = (compare: CompareView | undefined) =>
   parsePatch(compare?.patch ?? '').flatMap((file) =>

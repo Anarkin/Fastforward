@@ -10,8 +10,8 @@ import {
   stubMethod,
   withView,
 } from '../../../helpers/harness';
-import { removeFolder, tempFolder } from '../../../helpers/repositories';
 import { noticesOf } from './shellFixtures';
+import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
 
 suite('Choosing the tool that opens a folder', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');

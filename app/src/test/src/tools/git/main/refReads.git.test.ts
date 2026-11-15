@@ -6,11 +6,10 @@ import { readHead, readRefs } from '../../../../../tools/git/main/refReads';
 import { renamingRepository } from '../../../../helpers/gitFixtures';
 import {
   gitsStarted,
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git refs', () => {
   let gitPath: string;

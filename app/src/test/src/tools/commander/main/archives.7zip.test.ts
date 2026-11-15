@@ -7,8 +7,8 @@ import {
   sevenZipProgram,
 } from '../../../../../tools/commander/main/sevenZip';
 import { sevenZipReader } from '../../../../../tools/commander/main/sevenZipReader';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { Archives } from '../../../../../tools/commander/main/archives';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const appFolder = path.join(__dirname, '..', '..', '..', '..', '..', '..');
 

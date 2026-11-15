@@ -8,7 +8,7 @@ import {
   ReadOnlyFile,
   saveFile,
 } from '../../../../../tools/commander/main/fileSaving';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const bytes = (text: string) => new TextEncoder().encode(text);
 

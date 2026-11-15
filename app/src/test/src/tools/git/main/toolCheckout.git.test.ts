@@ -10,10 +10,7 @@ import {
 } from 'vitest';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import {
   recordingLog,
   failOnErrorsLogged,
@@ -33,6 +30,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { type FakePage, withNotices } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool checking out', () => {
   let folder: string;

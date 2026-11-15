@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { suite, test } from 'vitest';
-import { foldersLeft, removeFolder, tempFolder } from './repositories';
+import { foldersLeft, removeFolder, tempFolder } from './tempFolders';
 
 suite('Folders left behind', () => {
   test('tries the folders again until its time is up, then names each one still there with why, rather than outlasting the hook', async () => {

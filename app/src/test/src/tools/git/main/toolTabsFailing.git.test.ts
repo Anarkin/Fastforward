@@ -15,7 +15,6 @@ import { sameRoot } from '../../../../../lib/main/paths';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   asIfOwnedByAnother,
-  removeFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -41,6 +40,7 @@ import {
 } from '../../../../helpers/gitFixtures';
 import { FakeHost } from '../../../../helpers/fakeHost';
 import { withNotices } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool with tabs that fail', () => {
   let folder: string;

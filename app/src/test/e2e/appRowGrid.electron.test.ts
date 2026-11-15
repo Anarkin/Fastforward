@@ -5,11 +5,8 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../helpers/repositories';
+import { tempRepository } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const ratios = [1.1, 1.25, 1.5, 1.75];
 

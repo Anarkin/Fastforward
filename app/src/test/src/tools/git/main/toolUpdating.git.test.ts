@@ -5,8 +5,6 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { Connection } from '../../../../helpers/harness';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -19,6 +17,7 @@ import {
   tabOf,
 } from '../../../../helpers/harness';
 import { type FakePage } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool updating by itself', () => {
   let folder: string;

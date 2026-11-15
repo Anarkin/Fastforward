@@ -6,11 +6,8 @@ import { UserSettings } from '../../../../shell/main/userSettings';
 import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
 import { defaultSettings } from '../../../helpers/fixtures';
-import {
-  removeFolder,
-  symlinkOrSkip,
-  tempFolder,
-} from '../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
+import { symlinkOrSkip } from '../../../helpers/links';
 
 const defaults = defaultSettings();
 

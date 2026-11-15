@@ -25,7 +25,7 @@ import {
   type SourceOf,
   type TraceEvent,
 } from './perfTrace';
-import { removeFolder, tempFolder } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 export interface PerfApp {
   readonly app: ElectronApplication;

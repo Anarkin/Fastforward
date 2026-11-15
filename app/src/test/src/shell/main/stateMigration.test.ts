@@ -7,7 +7,7 @@ import { JsonFileStore } from '../../../../shell/main/stateFile';
 import { migratedState } from '../../../../shell/main/stateMigration';
 import { Storage } from '../../../../shell/main/storage';
 import { defaultSettings } from '../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
 
 suite('State of version 22', () => {
   let folder: string;

@@ -7,12 +7,11 @@ import {
   locateRepository,
 } from '../../../../../tools/git/main/repositoryLocation';
 import {
-  removeFolder,
-  savedEnv,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { savedEnv } from '../../../../helpers/env';
 
 async function submoduleWithLinkedWorktree(where: string) {
   const superproject = await tempRepository(path.join(where, 'super'));

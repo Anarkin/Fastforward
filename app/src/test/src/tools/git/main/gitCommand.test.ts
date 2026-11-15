@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { gitEnv, realGit } from '../../../../../tools/git/main/gitCommand';
-import { withEnv } from '../../../../helpers/repositories';
+import { withEnv } from '../../../../helpers/env';
 
 suite('Running git', () => {
   test('runs git without prompting for credentials', () => {

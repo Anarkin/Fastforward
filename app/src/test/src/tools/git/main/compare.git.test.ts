@@ -14,11 +14,8 @@ import {
 import { runGit } from '../../../../../tools/git/main/run';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import { replaceBuiltin } from '../../../../helpers/builtins';
-import {
-  installedGit,
-  removeFolder,
-  tempFolder,
-} from '../../../../helpers/repositories';
+import { installedGit } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Comparing two files outside any repository', () => {
   let gitPath: string;

@@ -5,7 +5,6 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { PackFormat } from '../../../../../tools/commander/shared/packing';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   reader,
   old,
@@ -23,6 +22,7 @@ import {
 } from '../../../../../tools/commander/main/archives';
 import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import { itemsAt } from '../../../../../tools/commander/main/archiveFiles';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Archives packed, changed and taken out again', () => {
   let folder: string;

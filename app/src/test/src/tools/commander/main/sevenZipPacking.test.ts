@@ -3,11 +3,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import type { SevenZipRun } from '../../../../../tools/commander/main/sevenZip';
 import { sevenZipReader } from '../../../../../tools/commander/main/sevenZipReader';
 import type { PackPlan } from '../../../../../tools/commander/main/archiveReader';
 import { type Asked, listedBy } from './sevenZipFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('packing with 7-Zip', () => {
   const plan: PackPlan = {

@@ -6,12 +6,9 @@ import { replaceBuiltin } from '../../../../helpers/builtins';
 import { runGit } from '../../../../../tools/git/main/run';
 import { workingTreeFiles } from '../../../../../tools/git/main/workingTree';
 import { workingTreePatch } from '../../../../../tools/git/main/workingTreePatch';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../../../../helpers/repositories';
+import { tempRepository } from '../../../../helpers/repositories';
 import { ignoredPaths } from '../../../../../tools/git/main/ignoredFiles';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('A file system monitor the repository sets', () => {
   test('is never run when it is a command, which git would run on every read of the index', async () => {

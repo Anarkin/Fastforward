@@ -2,11 +2,11 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   sevenZipAt,
   sevenZipProgram,
 } from '../../../../../tools/commander/main/sevenZip';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('sevenZipAt', () => {
   const node = sevenZipAt(process.execPath);

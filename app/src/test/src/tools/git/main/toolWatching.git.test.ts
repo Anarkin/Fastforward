@@ -6,10 +6,7 @@ import { replaceBuiltin } from '../../../../helpers/builtins';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import {
   recordingLog,
   failOnErrorsLogged,
@@ -27,6 +24,7 @@ import {
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
 import { withNotices } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool watching the folder of a tab', () => {
   let folder: string;

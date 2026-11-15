@@ -5,11 +5,8 @@ import * as path from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { runPlayground, stopPlaygrounds, type Ran } from './playgroundRuns';
-import {
-  createsAnewThroughJunctions,
-  removeFolder,
-  tempFolder,
-} from '../../helpers/repositories';
+import { createsAnewThroughJunctions } from '../../helpers/links';
+import { removeFolder, tempFolder } from '../../helpers/tempFolders';
 
 const playground = (folder: string, ...flags: string[]): Promise<Ran> =>
   runPlayground('git.mts', folder, ...flags);

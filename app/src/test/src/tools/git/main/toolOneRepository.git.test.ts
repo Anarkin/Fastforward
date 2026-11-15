@@ -13,8 +13,6 @@ import { FakeStore } from '../../../../helpers/fakeStore';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   installedGit,
-  removeFolder,
-  tempFolder,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import {
@@ -37,6 +35,7 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool of one repository', () => {
   let folder: string;

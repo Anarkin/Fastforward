@@ -10,7 +10,7 @@ import {
   stopPlaygrounds,
   type Ran,
 } from './playgroundRuns';
-import { removeFolder, tempFolder } from '../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../helpers/tempFolders';
 
 const playground = (folder: string, ...flags: string[]): Promise<Ran> =>
   runPlayground('files.mts', folder, ...flags);

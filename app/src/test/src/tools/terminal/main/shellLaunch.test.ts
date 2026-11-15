@@ -8,7 +8,7 @@ import {
   type ShellSystem,
 } from '../../../../../tools/terminal/main/shellLaunch';
 import type { TerminalSettings } from '../../../../../tools/terminal/shared/settings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const defaults: TerminalSettings = {
   shell: '',

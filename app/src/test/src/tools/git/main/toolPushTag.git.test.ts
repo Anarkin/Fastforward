@@ -4,8 +4,6 @@ import { afterAll, afterEach, beforeAll, suite, test } from 'vitest';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -24,6 +22,7 @@ import {
   withNotices,
   type PageMessage,
 } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function pushingTag(message: PageMessage): string[] {
   return message.type === 'pushingTag' ? [message.names.join(' ')] : [];

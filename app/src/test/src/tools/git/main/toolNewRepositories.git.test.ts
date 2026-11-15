@@ -4,8 +4,6 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { sameRoot } from '../../../../../lib/main/paths';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -22,6 +20,7 @@ import {
 } from '../../../../helpers/harness';
 import { FakeHost } from '../../../../helpers/fakeHost';
 import { withNotices } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function hostPicking(picked: string | undefined): FakeHost {
   const host = new FakeHost();

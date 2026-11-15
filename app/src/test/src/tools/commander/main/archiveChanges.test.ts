@@ -4,13 +4,13 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { item, notPacked, readerOf } from './archivesFixtures';
 import { Archives } from '../../../../../tools/commander/main/archives';
 import type {
   ArchiveReader,
   Packing,
 } from '../../../../../tools/commander/main/archiveReader';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Archives', () => {
   let folder: string;

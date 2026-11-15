@@ -15,7 +15,6 @@ import { tabsKey } from '../../../../../shell/main/storage';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -38,6 +37,7 @@ import {
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
 import { commitsSent } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 function savedRoots(view: OpenView): unknown[] {
   const saved = view.store.values.get(tabsKey);

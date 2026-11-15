@@ -6,11 +6,8 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp, savedTabs } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../helpers/repositories';
+import { tempRepository } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 suite('App with several tabs', () => {
   test('moves a tab dragged past the middle of the next one while it is still dragged, keeping it under the pointer, opening it, and keeps that order once dropped', async () => {

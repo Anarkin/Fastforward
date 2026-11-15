@@ -9,7 +9,6 @@ import {
 } from '../../../../../tools/commander/shared/icons';
 import { maxImageSize } from '../../../../../lib/shared/images';
 import { viewedFileUrl } from '../../../../../tools/commander/shared/files';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   root,
   at,
@@ -19,6 +18,7 @@ import {
   tab,
   forged,
 } from './commanderFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool serving icons', () => {
   test('gives a viewing or editing tab the icon of its file, at an address naming the file, as a closed tab’s id comes back for another file, served for that tab and file only', async () => {

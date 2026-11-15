@@ -4,7 +4,6 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   root,
   at,
@@ -15,6 +14,7 @@ import {
   tab,
   forged,
 } from './commanderFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {
   test('opens a folder of a side, and goes up from it selecting the folder it came from', async () => {

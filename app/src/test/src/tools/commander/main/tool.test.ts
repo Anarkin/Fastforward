@@ -5,7 +5,6 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/toolContract';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   CommanderPage,
@@ -20,6 +19,7 @@ import {
   hiddenIn,
   forged,
 } from './commanderFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {
   test('lists the root on both sides of a tab opened without a folder, and the drives', async () => {

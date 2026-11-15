@@ -6,11 +6,10 @@ import { withoutTouched } from '../../../../../tools/git/main/touchedFiles';
 import { workingTreeFiles } from '../../../../../tools/git/main/workingTree';
 import { workingTreePatch } from '../../../../../tools/git/main/workingTreePatch';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Files touched but unchanged', () => {
   let repository: TempRepository;

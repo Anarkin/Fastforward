@@ -6,8 +6,6 @@ import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -20,6 +18,7 @@ import {
   tabOf,
 } from '../../../../helpers/harness';
 import { fortyLines, numberedLines } from '../../../../helpers/gitFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const forged = (json: string): ToHost => JSON.parse(json);
 

@@ -11,7 +11,7 @@ import {
   archiveTests,
 } from '../../../../../tools/commander/main/archiveJobs';
 import type { TransferEvent } from '../../../../../tools/commander/main/transferProtocol';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const ending = (events: readonly TransferEvent[]) =>
   events.filter((event) => event.type !== 'progress');

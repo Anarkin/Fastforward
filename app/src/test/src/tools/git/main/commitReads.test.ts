@@ -10,8 +10,8 @@ import {
   type ReadOptions,
 } from '../../../../../tools/git/main/commitReads';
 import { headsOf } from '../../../../../tools/git/main/heads';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { entriesOf } from './historyFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 async function builtReader(folder: string): Promise<void> {
   await build({

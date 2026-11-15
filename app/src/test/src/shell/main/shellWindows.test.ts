@@ -6,12 +6,12 @@ import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
 import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
 import { attach, closeViews } from '../../../helpers/harness';
-import { removeFolder, tempFolder } from '../../../helpers/repositories';
 import { Pages } from '../../../../shell/main/pages';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
 import { noticesOf, shownIn, twoWindows } from './shellFixtures';
 import { FakeHost } from '../../../helpers/fakeHost';
 import { type FakePage } from '../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
 
 const savedIds = (saved: unknown) =>
   Array.isArray(saved)

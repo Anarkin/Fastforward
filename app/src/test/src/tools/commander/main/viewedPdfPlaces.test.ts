@@ -3,8 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/toolContract';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { commander, forged } from './commanderFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool remembering the place in a PDF viewed', () => {
   let opened: string;

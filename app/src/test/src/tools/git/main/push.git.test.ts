@@ -7,12 +7,11 @@ import {
   type Pushed,
 } from '../../../../../tools/git/main/push';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { recordingLog } from '../../../../helpers/stub';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 type Notices = (readonly ['info' | 'error', string])[];
 

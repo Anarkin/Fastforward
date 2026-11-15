@@ -11,8 +11,6 @@ import {
 import { maxFileSize } from '../../../../../tools/git/main/files';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -24,6 +22,7 @@ import {
   withView,
 } from '../../../../helpers/harness';
 import { fortyLines, numberedLines } from '../../../../helpers/gitFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const longLines = (text: string) =>
   `${text} ${'x'.repeat(1024)}\n`.repeat(maxFileSize / 1024 + 1);

@@ -8,8 +8,6 @@ import { strings } from '../../../../../lib/shared/strings';
 import { imageUrl, maxImageSize } from '../../../../../tools/git/shared/images';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -21,6 +19,7 @@ import {
 import { closeViews, withView, gitState } from '../../../../helpers/harness';
 import { fortyLines } from '../../../../helpers/gitFixtures';
 import { FakeHost } from '../../../../helpers/fakeHost';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const url = (root: string, file: string, id: string, disk = false) =>
   new URL(imageUrl({ root, path: file, id, disk }), 'fastforward://app');

@@ -13,12 +13,11 @@ import { parsePatch } from '../../../../../tools/git/page/diff';
 import { submoduleRepository } from '../../../../helpers/gitFixtures';
 import {
   gitsStarted,
-  removeFolder,
-  symlinkOrSkip,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { symlinkOrSkip } from '../../../../helpers/links';
 
 suite('Large files and submodules', () => {
   let repository: TempRepository;

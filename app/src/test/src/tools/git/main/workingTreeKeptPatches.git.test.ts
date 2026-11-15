@@ -7,11 +7,8 @@ import {
   UntrackedPatches,
   workingTreePatch,
 } from '../../../../../tools/git/main/workingTreePatch';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../../../../helpers/repositories';
+import { tempRepository } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Uncommitted changes', () => {
   let gitPath: string;

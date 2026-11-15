@@ -2,8 +2,8 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { workFolders } from '../../../../../tools/commander/main/workFolders';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('The work folders of archives', () => {
   let folder: string;

@@ -9,7 +9,7 @@ import {
 } from '../../../../../tools/commander/main/fileSystem';
 import { nodeFileSystem } from '../../../../../tools/commander/main/nodeFileSystem';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const windows = process.platform === 'win32';
 

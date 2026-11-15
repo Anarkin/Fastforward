@@ -7,7 +7,7 @@ import {
   gitStarter,
   type GitChild,
 } from '../../../../../tools/git/main/spawnedGit';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 async function ran(
   child: GitChild,

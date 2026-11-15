@@ -7,8 +7,6 @@ import { sameRoot } from '../../../../../lib/main/paths';
 import { toolState } from '../../../../../shell/main/storage';
 import { visitsIn } from '../../../../../tools/terminal/main/folderRanks';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -21,6 +19,7 @@ import {
   type OpenView,
   shownTabs,
 } from '../../../../helpers/harness';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function sameRealFolder(a: string | undefined, b: string): boolean {
   return (

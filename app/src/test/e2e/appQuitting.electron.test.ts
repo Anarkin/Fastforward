@@ -6,11 +6,8 @@ import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp, savedTabs } from './appLaunch';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../helpers/repositories';
+import { tempRepository } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 async function quitWithoutChromium(
   app: ElectronApplication,

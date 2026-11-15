@@ -14,7 +14,7 @@ import type {
   TransferProgress,
 } from '../../../../../tools/commander/shared/transfers';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 let folder: string;
 let source: string;

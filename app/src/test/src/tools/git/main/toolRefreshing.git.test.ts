@@ -10,10 +10,7 @@ import {
 import { plainOf } from '../../../../../lib/shared/sentences';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import {
   recordingLog,
   failOnErrorsLogged,
@@ -39,6 +36,7 @@ import {
   type FakePage,
   workingTreesSent,
 } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 async function letARefreshThatSkippedTheQueueStart(): Promise<void> {
   for (let turn = 0; turn < 3; turn++) {

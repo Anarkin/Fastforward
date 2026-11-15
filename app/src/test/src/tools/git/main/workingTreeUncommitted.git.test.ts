@@ -13,12 +13,9 @@ import {
   leftOutChanges,
 } from '../../../../../tools/git/shared/patchBudget';
 import { parsePatch } from '../../../../../tools/git/page/diff';
-import {
-  removeFolder,
-  symlinkOrSkip,
-  tempFolder,
-  tempRepository,
-} from '../../../../helpers/repositories';
+import { tempRepository } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { symlinkOrSkip } from '../../../../helpers/links';
 
 suite('Uncommitted changes', () => {
   let gitPath: string;

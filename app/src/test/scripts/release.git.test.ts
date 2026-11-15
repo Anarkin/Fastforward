@@ -12,11 +12,10 @@ import {
 } from 'vitest';
 import {
   commitAtTime,
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const script = path.join(__dirname, '..', '..', '..', 'scripts', 'release.mts');
 

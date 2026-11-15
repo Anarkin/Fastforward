@@ -9,10 +9,8 @@ import {
   remoteDefaultBranches,
 } from '../../../../../tools/git/main/branches';
 import { renamingRepository } from '../../../../helpers/gitFixtures';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git branches', () => {
   let gitPath: string;

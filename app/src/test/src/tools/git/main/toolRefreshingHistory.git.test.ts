@@ -15,8 +15,6 @@ import { soloKey } from '../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import type { FakeStore } from '../../../../helpers/fakeStore';
 import {
-  removeFolder,
-  tempFolder,
   type TempRepository,
   tempRepository,
   commitAtTime,
@@ -40,6 +38,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { type FakePage } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool refreshing one repository', () => {
   let folder: string;

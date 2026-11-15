@@ -7,7 +7,6 @@ import { plainOf } from '../../../../../lib/shared/sentences';
 import { worktreesKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -31,6 +30,7 @@ import {
   worktreeRepositories,
 } from './toolWorktreesFixtures';
 import { FakeHost } from '../../../../helpers/fakeHost';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool of worktrees', () => {
   const { log, error: logged } = recordingLog();

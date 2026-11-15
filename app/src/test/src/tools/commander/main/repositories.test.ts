@@ -7,7 +7,7 @@ import {
   isRepository,
   repositoriesIn,
 } from '../../../../../tools/commander/main/repositories';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const gitFolder = (at: string, head = 'ref: refs/heads/main\n') => ({
   [`${at}/HEAD`]: head,

@@ -12,11 +12,8 @@ import {
 import { scrollPlaces } from './scrollProbes';
 import { longLines, firstLongLine } from './wrappingFixtures';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../helpers/repositories';
+import { tempRepository } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 suite('App', () => {
   sharedApp({

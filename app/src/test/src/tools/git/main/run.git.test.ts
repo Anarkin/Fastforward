@@ -14,13 +14,12 @@ import { fetchAllRemotes } from '../../../../../tools/git/main/transfers';
 import { runGit, runGitBytes } from '../../../../../tools/git/main/run';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
-  withEnv,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { filteredSlowly } from './runFixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { withEnv } from '../../../../helpers/env';
 
 async function printing300MB(run: () => Promise<unknown>): Promise<void> {
   const childProcess = process.getBuiltinModule('node:child_process');

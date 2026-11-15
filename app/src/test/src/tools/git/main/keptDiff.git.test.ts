@@ -13,11 +13,10 @@ import {
 import { patchByteBudget } from '../../../../../tools/git/shared/patchBudget';
 import {
   gitsStarted,
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const scopes: PatchScope[] = [
   {},

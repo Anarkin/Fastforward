@@ -12,7 +12,7 @@ import {
   readingFile,
   type ReadBytes,
 } from '../../../../../tools/commander/main/fileBlocks';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function inMemory(text: string | Buffer): {
   readonly read: ReadBytes;

@@ -7,11 +7,10 @@ import { replaceBuiltin } from '../../../../helpers/builtins';
 import { gitErrorText } from '../../../../../tools/git/main/errorText';
 import { searchCommits } from '../../../../../tools/git/main/commitMatches';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 type Spawn = (
   command: string,

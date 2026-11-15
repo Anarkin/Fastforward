@@ -7,7 +7,7 @@ import {
   watchFolder,
 } from '../../../../../tools/commander/main/watch';
 import { waitFor } from '../../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const deaf = (elsewhere: string) => (): fs.FSWatcher =>
   fs.watch(elsewhere, { persistent: false }, () => {});

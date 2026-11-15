@@ -19,8 +19,6 @@ import {
 } from '../../../../helpers/harness';
 import {
   installedGit,
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -29,6 +27,7 @@ import {
   failOnErrorsLogged,
   takeErrorsLogged,
 } from '../../../../helpers/stub';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const storageOf = (store: FakeStore) =>
   new GitStorage(settingsForViews(), gitState(store));

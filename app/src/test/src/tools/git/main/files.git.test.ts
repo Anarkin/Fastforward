@@ -5,12 +5,11 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { readFile, readImage } from '../../../../../tools/git/main/files';
 import {
   gitsStarted,
-  removeFolder,
-  symlinkOrSkip,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { symlinkOrSkip } from '../../../../helpers/links';
 
 suite('Repository files', () => {
   let parent: string;

@@ -5,12 +5,12 @@ import type { Page } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { baseSettings, closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
-import { removeFolder, tempFolder } from '../helpers/repositories';
 import {
   page as sharedPage,
   profile as sharedProfile,
   sharedApp,
 } from './appFixtures';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const dark = (page: Page) =>
   page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);

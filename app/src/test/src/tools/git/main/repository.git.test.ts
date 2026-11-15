@@ -7,11 +7,10 @@ import { gitErrorText } from '../../../../../tools/git/main/errorText';
 import { renamingRepository } from '../../../../helpers/gitFixtures';
 import {
   asIfOwnedByAnother,
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git repository', () => {
   let gitPath: string;

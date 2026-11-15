@@ -10,11 +10,10 @@ import {
 } from '../../../../../tools/git/main/stashes';
 import { entriesOf } from './historyFixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git stashes', () => {
   let folder: string;

@@ -5,11 +5,8 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { scriptForAppImage } from '../../boot/terminalCommand';
 import { waitFor } from '../helpers/fixtures';
-import {
-  installedGit,
-  removeFolder,
-  tempFolder,
-} from '../helpers/repositories';
+import { installedGit } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const appFolder = path.join(__dirname, '..', '..', '..');
 const posixScript = path.join(appFolder, 'build', 'bin', 'ff');

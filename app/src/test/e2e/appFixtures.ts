@@ -4,13 +4,9 @@ import { isDeepStrictEqual } from 'node:util';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-  type TempRepository,
-} from '../helpers/repositories';
+import { tempRepository, type TempRepository } from '../helpers/repositories';
 import { baseSettings, closeOrKill, launchApp, savedTabs } from './appLaunch';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 export let folder: string;
 export let profile: string;

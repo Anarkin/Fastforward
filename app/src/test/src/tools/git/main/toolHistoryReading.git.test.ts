@@ -1,10 +1,7 @@
 import * as assert from 'node:assert';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
@@ -18,6 +15,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { commitsSent } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool reading the history', () => {
   let folder: string;

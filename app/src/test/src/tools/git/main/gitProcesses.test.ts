@@ -8,11 +8,8 @@ import { suite, test } from 'vitest';
 import { gitProcessOptions } from '../../../../../tools/git/main/gitCommand';
 import { stopGit } from '../../../../../tools/git/main/gitProcesses';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  withEnv,
-} from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { withEnv } from '../../../../helpers/env';
 
 suite('Running git', () => {
   test('starts git in a process group of its own outside Windows and stops the whole group, as git leaves running the ssh or https helper it started', async () => {

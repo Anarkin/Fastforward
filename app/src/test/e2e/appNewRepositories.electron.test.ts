@@ -7,12 +7,8 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { baseSettings, closeOrKill, launchApp } from './appLaunch';
 import { shownText } from '../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-  type TempRepository,
-} from '../helpers/repositories';
+import { tempRepository, type TempRepository } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 suite('App making new repositories', () => {
   let folder: string;

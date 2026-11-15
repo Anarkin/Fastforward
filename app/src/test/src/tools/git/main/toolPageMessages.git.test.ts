@@ -8,10 +8,7 @@ import {
   test,
 } from 'vitest';
 import { soloKey } from '../../../../../tools/git/main/storage';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,
@@ -24,6 +21,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { commitsSent } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool checking what the page sends', () => {
   let folder: string;

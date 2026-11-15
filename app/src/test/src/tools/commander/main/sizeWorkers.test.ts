@@ -11,7 +11,7 @@ import {
   unpacked,
 } from '../../../../../tools/commander/main/sizeWorkers';
 import { nodeSizeReader } from '../../../../../tools/commander/main/sizeReaders';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 let built = '';
 let tree = '';

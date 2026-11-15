@@ -7,11 +7,8 @@ import { strings } from '../../lib/shared/strings';
 import { baseSettings, launchApp } from './appLaunch';
 import { longLines } from './wrappingFixtures';
 import { waitFor } from '../helpers/fixtures';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../helpers/repositories';
+import { tempRepository } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const scale = 1.25;
 

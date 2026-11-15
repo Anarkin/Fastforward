@@ -3,8 +3,6 @@ import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -14,6 +12,7 @@ import {
   watchesRecursively,
   watchRepository,
 } from '../../../../../tools/git/main/watch';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 export let repository: TempRepository;
 export let changes: boolean[];

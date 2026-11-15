@@ -14,10 +14,7 @@ import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { waitFor } from '../../../../helpers/fixtures';
-import {
-  removeFolder,
-  type TempRepository,
-} from '../../../../helpers/repositories';
+import { type TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,
@@ -32,6 +29,7 @@ import {
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
 import { type FakePage } from '../../../../helpers/fakePage';
+import { removeFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool refreshing one repository', () => {
   let folder: string;

@@ -12,12 +12,8 @@ import {
   keepGitRunningWhile,
   keptGits,
 } from '../../../../../tools/git/main/run';
-import {
-  gitsStarted,
-  removeFolder,
-  tempFolder,
-  tempRepository,
-} from '../../../../helpers/repositories';
+import { gitsStarted, tempRepository } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Repository files', () => {
   test('reads files and objects through one git kept running once that is turned on, starting no other git for later reads, with what a git started for each read gives', async () => {

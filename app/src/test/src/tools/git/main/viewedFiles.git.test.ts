@@ -4,11 +4,10 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { viewedFile } from '../../../../../tools/git/main/viewedFiles';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Repository files', () => {
   let parent: string;

@@ -4,7 +4,7 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
-import { removeFolder, tempFolder } from '../helpers/repositories';
+import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 let folder: string;
 export let opened: string;

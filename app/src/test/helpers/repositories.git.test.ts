@@ -2,12 +2,9 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import {
-  removeFolder,
-  tempFolder,
-  tempRepository,
-  withEnv,
-} from './repositories';
+import { tempRepository } from './repositories';
+import { removeFolder, tempFolder } from './tempFolders';
+import { withEnv } from './env';
 
 suite('Test repository', () => {
   test("commits whatever the user's own git config says, which may sign commits or run hooks", async () => {

@@ -7,8 +7,8 @@ import type {
   TransferCommand,
   TransferEvent,
 } from '../../../../../tools/commander/main/transferProtocol';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { waitFor } from '../../../../helpers/fixtures';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 let folder: string;
 let source: string;

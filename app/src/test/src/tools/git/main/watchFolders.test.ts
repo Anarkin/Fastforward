@@ -4,12 +4,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { waitFor } from '../../../../helpers/fixtures';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import {
   watchEach,
   watchTree,
   type FolderWatcher,
 } from '../../../../../tools/git/main/watchFolders';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 class FakeWatcher extends EventEmitter implements FolderWatcher {
   closed = false;

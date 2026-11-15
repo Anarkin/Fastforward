@@ -11,7 +11,7 @@ import { waitFor } from '../../../../helpers/fixtures';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { watchFolder } from '../../../../../tools/commander/main/watch';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const notes: Entry = {
   name: 'notes.txt',

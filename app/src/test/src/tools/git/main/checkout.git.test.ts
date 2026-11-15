@@ -6,12 +6,11 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { checkout } from '../../../../../tools/git/main/checkout';
 import type { CheckoutTarget } from '../../../../../tools/git/shared/protocol';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { recordingLog } from '../../../../helpers/stub';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 type Notices = (readonly ['info' | 'error', string])[];
 

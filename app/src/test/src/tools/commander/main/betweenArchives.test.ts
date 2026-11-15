@@ -4,7 +4,6 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { copiedBetween } from '../../../../../tools/commander/main/betweenArchives';
 import { strings } from '../../../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../../../helpers/repositories';
 import { ArchiveTree } from '../../../../../tools/commander/main/archiveTree';
 import type {
   ArchiveAccess,
@@ -15,6 +14,7 @@ import type {
   ArchiveItem,
   Packing,
 } from '../../../../../tools/commander/main/archiveReader';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const openedAt = (file: string): OpenedArchive => ({
   file,

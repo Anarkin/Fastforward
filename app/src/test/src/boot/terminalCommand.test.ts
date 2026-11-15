@@ -18,7 +18,7 @@ import {
   type SyncCommandFiles,
 } from '../../../boot/terminalCommand';
 import { strings } from '../../../lib/shared/strings';
-import { removeFolder, tempFolder } from '../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../helpers/tempFolders';
 
 const script = [
   '#!/bin/sh',

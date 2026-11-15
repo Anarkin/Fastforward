@@ -4,13 +4,12 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import { closeViews, withView } from '../../../../helpers/harness';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool staged and unstaged changes', () => {
   const { log, error: logged } = recordingLog();

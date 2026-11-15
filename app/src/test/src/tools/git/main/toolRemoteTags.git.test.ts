@@ -6,8 +6,6 @@ import type { RefInfo } from '../../../../../tools/git/shared/protocol';
 import { remoteTagsKey } from '../../../../../tools/git/main/remoteTagStore';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
@@ -24,6 +22,7 @@ import {
 } from '../../../../helpers/harness';
 import { deleteTags } from '../../../../helpers/gitFixtures';
 import { type FakePage } from '../../../../helpers/fakePage';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function remoteTag(name: string, tag: string, commit: string): RefInfo {
   return { kind: 'remote-tag', name: `${name}/${tag}`, commit, remote: name };

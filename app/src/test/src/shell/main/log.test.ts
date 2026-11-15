@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../helpers/builtins';
 import { fileLog } from '../../../../shell/main/log';
-import { removeFolder, tempFolder } from '../../../helpers/repositories';
+import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
 
 const megabyte = 1024 * 1024;
 

@@ -3,13 +3,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import {
-  removeFolder,
-  tempFolder,
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import { closeViews, withView } from '../../../../helpers/harness';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool stashes', () => {
   const { log, error: logged } = recordingLog();
