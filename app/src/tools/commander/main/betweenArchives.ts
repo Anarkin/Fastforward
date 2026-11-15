@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { sentencesOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
-import { movedOut, presentIn } from './unpacking';
+import { movedOut, presentIn } from './movedOut';
 import { itemsAt } from './archiveFiles';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { Packing, PackOptions } from './archiveReader';
