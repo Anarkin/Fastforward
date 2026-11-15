@@ -260,7 +260,7 @@ function fakeRepositoryAt(folder: string): void {
 }
 
 suite('App without git', () => {
-  test('starts, saying in the log that the git tool needs git, and opens a repository asked for in the commander, saying why in a notice, with git kept off its PATH but the tools GTK runs to load icons left on it, as Ubuntu 26.04 aborts without them', async () => {
+  test('starts, saying in the log that the git tool needs git, and opens a repository asked for in the commander, saying why in a notice, the commander showing no git icon or item, with git kept off its PATH but the tools GTK runs to load icons left on it, as Ubuntu 26.04 aborts without them', async () => {
     const folder = tempFolder('no-git');
     const profile = path.join(folder, 'profile');
     const log = path.join(profile, 'logs', 'Fastforward.log');
@@ -291,11 +291,31 @@ suite('App without git', () => {
         .waitFor();
       await page.keyboard.press('Enter');
       await popup.waitFor({ state: 'detached' });
-      await page
-        .locator('.commander-pane')
-        .nth(1)
-        .locator('.commander-row', { hasText: 'notes' })
-        .waitFor();
+      const right = page.locator('.commander-pane').nth(1);
+      await right.locator('.commander-row', { hasText: 'notes' }).click();
+      await page.keyboard.press('Backspace');
+      const repositoryRow = right.locator('.commander-row', {
+        hasText: 'repository',
+      });
+      await repositoryRow.click({ button: 'right' });
+      const menu = page.locator('.context-menu');
+      await menu.waitFor();
+      const items = await menu.locator('.menu-item').allTextContents();
+      assert.ok(items.includes(strings.commander.newTerminalHere));
+      assert.deepStrictEqual(
+        items.filter((item) =>
+          [
+            strings.commander.openInGit,
+            strings.commander.cloneHere,
+            strings.commander.initHere,
+          ].includes(item),
+        ),
+        [],
+      );
+      assert.strictEqual(
+        await repositoryRow.locator('.commander-mark').count(),
+        0,
+      );
       await waitFor(
         () =>
           fs

@@ -36,6 +36,7 @@ export interface CommanderView {
   readonly defaultColumns: ColumnWidths;
   readonly canElevate: boolean;
   readonly closeBrackets: boolean;
+  readonly gitMissing: boolean;
   readonly platform: string | undefined;
   readonly layouts: Layouts;
   readonly thumbnailSize: number;
@@ -108,6 +109,7 @@ export const emptyView: CommanderView = {
   defaultColumns: { extension: 10, size: 17, date: 16 },
   canElevate: false,
   closeBrackets: false,
+  gitMissing: false,
   platform: undefined,
   layouts: defaultLayouts,
   thumbnailSize: 144,
@@ -280,6 +282,7 @@ export function reduceView(
         defaultColumns: action.defaultColumns,
         canElevate: action.canElevate,
         closeBrackets: action.closeBrackets === true,
+        gitMissing: action.gitMissing === true,
         platform: action.platform,
         thumbnailSize: action.thumbnailSize,
         fileColors: fileColorsOf(action.fileColors),

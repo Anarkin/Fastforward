@@ -86,6 +86,7 @@ export function Pane({
   const { dropInto, onDragOver, onDragLeave, onDrop } = useFileDrop(side);
   const { showMenu, copyText } = useShellActions();
   const platform = useCommander((state) => state.view.platform);
+  const gitMissing = useCommander((state) => state.view.gitMissing);
   const copyItems = (copied: Copied, names: readonly string[]) => {
     if (pane !== undefined) {
       copyText(copiedText(copied, pane.folder, names, platform));
@@ -143,7 +144,7 @@ export function Pane({
             ? (names) => onShellMenu(names, at, false)
             : undefined,
       },
-      inArchive,
+      { inArchive, gitMissing },
     );
     if (items.length > 0) {
       showMenu({ x: at.x, y: at.y, items });

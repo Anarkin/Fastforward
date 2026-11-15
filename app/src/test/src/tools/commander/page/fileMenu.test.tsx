@@ -42,7 +42,12 @@ type Chosen =
   | { readonly goTo: true }
   | { readonly system: readonly string[] };
 
-function menuOf(target: MenuTarget, windows = true, inArchive = false) {
+function menuOf(
+  target: MenuTarget,
+  windows = true,
+  inArchive = false,
+  gitMissing = false,
+) {
   const chosen: Chosen[] = [];
   const items = fileMenuItems(
     target,
@@ -55,7 +60,7 @@ function menuOf(target: MenuTarget, windows = true, inArchive = false) {
         ? (names) => chosen.push({ system: names })
         : undefined,
     },
-    inArchive,
+    { inArchive, gitMissing },
   );
   const choose = (label: string) => {
     const item = items.find(
@@ -166,6 +171,17 @@ suite('Commander file menu', () => {
       'git',
       'git',
     ]);
+  });
+
+  test('offers a folder no git while git is missing, whether it is in a repository or not', () => {
+    for (const target of [docs(false), docs(true), folderShown(true)]) {
+      const { items } = menuOf(target, true, false, true);
+      assert.deepStrictEqual(toolsOf(items), ['terminal']);
+      assert.deepStrictEqual(labels(items).slice(0, 2), [
+        strings.commander.newTerminalHere,
+        '-',
+      ]);
+    }
   });
 
   test('asks for each command on the folder the menu is on, naming none for the folder shown', () => {

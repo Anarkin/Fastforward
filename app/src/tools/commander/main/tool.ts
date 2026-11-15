@@ -83,6 +83,11 @@ export class CommanderTool implements Tool<'commander'> {
     this.elevation = parts.elevation;
     this.settings = parts.settings;
     this.messages = parts.messages;
+    access.whenGitFound?.(() => {
+      for (const page of this.shell.pages()) {
+        this.settings.post(page);
+      }
+    });
   }
 
   attach(shell: ShellAccess): void {

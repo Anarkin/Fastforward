@@ -147,6 +147,8 @@ export function commanderToolOf({
     inRepository: (folder) => inRepository(folder),
     initRepository: (folder) => gitTool.initRepositoryIn(folder),
     cloneInto: (folder) => gitTool.cloneInto(folder),
+    gitMissing: () => git.path === undefined,
+    whenGitFound: (found) => git.whenFound(found),
     stamp: folderStamp,
     watch: watchFolder,
     ...(process.platform !== 'linux' && { watchTree }),

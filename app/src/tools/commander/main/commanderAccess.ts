@@ -34,6 +34,8 @@ export interface CommanderAccess {
   readonly inRepository?: (folder: string) => Promise<boolean>;
   readonly initRepository?: (folder: string) => Promise<void>;
   readonly cloneInto?: (folder: string) => Promise<void>;
+  readonly gitMissing?: () => boolean;
+  readonly whenGitFound?: (found: () => void) => void;
   readonly stamp?: (folder: string) => Promise<string | undefined>;
   readonly watch: WatchFolder;
   readonly watchTree?: WatchTree;

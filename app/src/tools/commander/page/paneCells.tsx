@@ -92,11 +92,11 @@ export function ExtensionCell({
 }: {
   row: Row;
   words: readonly string[];
-  onOpenRepository: (name: string) => void;
+  onOpenRepository: ((name: string) => void) | undefined;
 }) {
   return (
     <span className="commander-extension">
-      {row.repository ? (
+      {row.repository && onOpenRepository !== undefined ? (
         <button
           className="commander-mark"
           title={strings.commander.openRepository}

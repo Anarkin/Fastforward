@@ -131,7 +131,10 @@ export function PaneLine(props: PaneItemProps) {
   const { side, row, words } = props;
   const { entry } = row;
   const actions = useCommanderActions();
-  const onOpenRepository = (name: string) => actions.openRepository(side, name);
+  const gitMissing = useCommander((state) => state.view.gitMissing);
+  const onOpenRepository = gitMissing
+    ? undefined
+    : (name: string) => actions.openRepository(side, name);
   const { rowClass, colorStyle, iconSource, date, itemEvents, toggleMark } =
     usePaneItem(props);
   return (

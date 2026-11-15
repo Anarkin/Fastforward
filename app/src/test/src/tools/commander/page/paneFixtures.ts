@@ -12,6 +12,7 @@ import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import type {
   CommanderToHost,
+  CommanderToWebview,
   FlatProgress,
 } from '../../../../../tools/commander/shared/protocol';
 import type { ToHost } from '../../../../../shell/shared/protocol';
@@ -124,6 +125,7 @@ export async function inSide(
     readonly goingTo: () => string | undefined;
     readonly selected: () => string | undefined;
     readonly marked: () => readonly string[];
+    readonly receive: (message: CommanderToWebview) => void;
   }) => Promise<void>,
   layout: Layout = 'details',
   shownPane: PaneView = workPane(),
@@ -230,6 +232,9 @@ export async function inSide(
       goingTo: () => commander.getState().goingTo?.folder,
       selected: () => commander.getState().view.panes.left?.selected,
       marked: () => [...(commander.getState().view.panes.left?.marked ?? [])],
+      receive: (message) => {
+        act(() => commander.getState().receive(message));
+      },
     });
     await act(async () => root.unmount());
   } finally {

@@ -495,6 +495,7 @@ export type CommanderToWebview =
       readonly fileColors: readonly FileColor[];
       readonly bookmarks: readonly string[];
       readonly closeBrackets?: true;
+      readonly gitMissing?: true;
     }
   | { readonly type: 'drives'; readonly drives: readonly string[] }
   | { readonly type: 'transfer'; readonly view: TransferView | undefined }

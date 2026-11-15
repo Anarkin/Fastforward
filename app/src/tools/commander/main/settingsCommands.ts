@@ -26,6 +26,7 @@ export type SettingsCommandsAccess = Pick<
   | 'elevate'
   | 'platform'
   | 'closesBrackets'
+  | 'gitMissing'
 >;
 
 export class SettingsCommands {
@@ -113,6 +114,7 @@ export class SettingsCommands {
       fileColors,
       bookmarks: shownBookmarks(bookmarks, this.bookmarkSystem),
       ...(this.access.closesBrackets?.() === true && { closeBrackets: true }),
+      ...(this.access.gitMissing?.() === true && { gitMissing: true }),
     });
   }
 

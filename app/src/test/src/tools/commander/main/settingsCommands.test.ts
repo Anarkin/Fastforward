@@ -24,6 +24,25 @@ suite('Commander tool', () => {
     assert.strictEqual(page.of('settings').at(-1)?.thumbnailSize, 1024);
   });
 
+  test('tells the page while git is missing, so it hides the git icons and items, and tells every page once git is found', () => {
+    const { tool, page, pages, git } = commander({});
+    const other = new CommanderPage();
+    pages.push(other);
+    git.missing = true;
+    tool.ready(page);
+    tool.ready(other);
+    assert.strictEqual(page.of('settings').at(-1)?.gitMissing, true);
+
+    git.find();
+
+    for (const each of [page, other]) {
+      assert.deepStrictEqual(
+        each.of('settings').map((told) => told.gitMissing),
+        [true, undefined],
+      );
+    }
+  });
+
   test('saves the order of the side whose header was clicked, or whose files are grouped by color, keeping the other, and tells the page', async () => {
     const { tool, page, send, saved } = commander({});
     tool.ready(page);

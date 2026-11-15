@@ -102,6 +102,16 @@ export function commander(
   const insideRepositories = new Set<string>();
   const clonedInto: string[] = [];
   const initedIn: string[] = [];
+  const gitFound: (() => void)[] = [];
+  const git = {
+    missing: false,
+    find: () => {
+      git.missing = false;
+      for (const found of gitFound) {
+        found();
+      }
+    },
+  };
   const deletesHeld: { until: Promise<unknown> | undefined } = {
     until: undefined,
   };
@@ -248,6 +258,10 @@ export function commander(
     cloneInto: (folderAsked) => {
       clonedInto.push(folderAsked);
       return Promise.resolve();
+    },
+    gitMissing: () => git.missing,
+    whenGitFound: (found) => {
+      gitFound.push(found);
     },
     clipboardFiles: {
       write: (files) => {
@@ -436,6 +450,7 @@ export function commander(
     insideRepositories,
     clonedInto,
     initedIn,
+    git,
     deletesHeld,
     settled,
     openedIn,

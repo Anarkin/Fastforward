@@ -5,7 +5,8 @@ import { strings } from '../../../../../lib/shared/strings';
 import { Pane } from '../../../../../tools/commander/page/pane';
 import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import type { Layout } from '../../../../../tools/commander/page/layouts';
-import { inSide, rowNamed } from './paneFixtures';
+import type { CommanderToWebview } from '../../../../../tools/commander/shared/protocol';
+import { inSide, rowNamed, sort } from './paneFixtures';
 
 vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
   const { createElement, Fragment } = await import('react');
@@ -48,6 +49,20 @@ const inPane = (
     layout,
     shownPane,
   );
+
+const settings = (gitMissing: boolean): CommanderToWebview => ({
+  type: 'settings',
+  showHidden: true,
+  sort: { left: sort, right: sort },
+  columns: { extension: 10, size: 17, date: 16 },
+  defaultColumns: { extension: 10, size: 17, date: 16 },
+  canElevate: false,
+  platform: 'win32',
+  thumbnailSize: 144,
+  fileColors: [],
+  bookmarks: ['/work/docs'],
+  ...(gitMissing && { gitMissing: true }),
+});
 
 const shownFolderMenu = [
   strings.commander.newTerminalHere,
@@ -179,6 +194,43 @@ suite('Commander menu on a side', () => {
         ]);
       },
     );
+  });
+
+  test('hides the git icon of a repository and the git items of the menus while the main process says git is missing, and shows them again once it says git is found', async () => {
+    await inPane(async ({ main, rightClick, menu, receive }) => {
+      const mark = () =>
+        rowNamed(main, 'app')?.querySelector('.commander-mark');
+      const gitItems = () =>
+        menu().filter((label) =>
+          [
+            strings.commander.openInGit,
+            strings.commander.cloneHere,
+            strings.commander.initHere,
+          ].includes(label),
+        );
+      const shownGit = () => {
+        rightClick(rowNamed(main, 'app'));
+        const onRepository = gitItems();
+        rightClick(main.querySelector('.column-body'));
+        return [mark() !== null, onRepository, gitItems()];
+      };
+      const withGit = [
+        true,
+        [strings.commander.openInGit],
+        [strings.commander.cloneHere, strings.commander.initHere],
+      ];
+
+      assert.deepStrictEqual(shownGit(), withGit);
+      receive(settings(true));
+      assert.deepStrictEqual(shownGit(), [false, [], []]);
+      assert.strictEqual(
+        rowNamed(main, 'app')?.querySelector('.commander-extension')
+          ?.textContent,
+        '',
+      );
+      receive(settings(false));
+      assert.deepStrictEqual(shownGit(), withGit);
+    });
   });
 
   test('shows the extended menu of Windows straight away on Shift and a right click, of the folder shown on the empty space', async () => {

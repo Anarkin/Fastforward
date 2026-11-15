@@ -70,10 +70,15 @@ function namesOf(target: MenuTarget): readonly string[] {
   }
 }
 
+export interface FileMenuPlace {
+  readonly inArchive?: boolean;
+  readonly gitMissing?: boolean;
+}
+
 function ownItems(
   target: MenuTarget,
   { onFolder, onEnterArchive }: FileMenuActions,
-  inArchive: boolean,
+  { inArchive = false, gitMissing = false }: FileMenuPlace,
 ): ContextMenuItem[] {
   const enterArchive = (name: string): ContextMenuItem => ({
     label: strings.commander.openWithSevenZip,
@@ -93,26 +98,28 @@ function ownItems(
           icon: 'terminal',
           onClick: run('newTerminal'),
         },
-        ...(target.inRepository
-          ? [
-              {
-                label: strings.commander.openInGit,
-                icon: 'git' as const,
-                onClick: run('openInGit'),
-              },
-            ]
-          : [
-              {
-                label: strings.commander.cloneHere,
-                icon: 'git' as const,
-                onClick: run('cloneHere'),
-              },
-              {
-                label: strings.commander.initHere,
-                icon: 'git' as const,
-                onClick: run('initHere'),
-              },
-            ]),
+        ...(gitMissing
+          ? []
+          : target.inRepository
+            ? [
+                {
+                  label: strings.commander.openInGit,
+                  icon: 'git' as const,
+                  onClick: run('openInGit'),
+                },
+              ]
+            : [
+                {
+                  label: strings.commander.cloneHere,
+                  icon: 'git' as const,
+                  onClick: run('cloneHere'),
+                },
+                {
+                  label: strings.commander.initHere,
+                  icon: 'git' as const,
+                  onClick: run('initHere'),
+                },
+              ]),
       ];
     }
     case 'file':
@@ -150,11 +157,11 @@ function copyItems(
 export function fileMenuItems(
   target: MenuTarget,
   actions: FileMenuActions,
-  inArchive = false,
+  place: FileMenuPlace = {},
 ): ContextMenuItem[] {
   const { onGoTo, onSystemMenu } = actions;
   const groups: ContextMenuItem[][] = [
-    ownItems(target, actions, inArchive),
+    ownItems(target, actions, place),
     copyItems(target, actions),
     target.kind === 'folder' && target.name === undefined
       ? [{ label: strings.commander.goToItem, onClick: onGoTo }]
