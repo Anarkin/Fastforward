@@ -11,7 +11,8 @@ import {
   sharedApp,
 } from './appFixtures';
 import { waitForCount, waitForFocus } from './waits';
-import { drawnCodeRow, longLines } from './wrappingFixtures';
+import { drawnCodeRow } from './wrappingFixtures';
+import { longLines } from './wrappingSamples';
 import { waitFor } from '../helpers/fixtures';
 
 const commented = (answer: number) =>

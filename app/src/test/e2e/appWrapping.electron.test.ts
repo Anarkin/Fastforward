@@ -16,6 +16,15 @@ import { waitFor } from '../helpers/fixtures';
 import {
   drawnCodeRow,
   near,
+  wrappingInPage,
+  browserStarts,
+  wrappedRows,
+  laidOutCode,
+  pressWrap,
+  clickView,
+  marksFollowRows,
+} from './wrappingFixtures';
+import {
   hyphenatedLine,
   dottedLine,
   breakLines,
@@ -24,17 +33,10 @@ import {
   breakCharacters,
   breakContexts,
   breakSentences,
-  wrappingInPage,
-  browserStarts,
   paddedLine,
-  wrappedRows,
-  laidOutCode,
-  pressWrap,
-  clickView,
-  marksFollowRows,
   firstLongLine,
   longLines,
-} from './wrappingFixtures';
+} from './wrappingSamples';
 
 suite('App', () => {
   sharedApp({

@@ -19,19 +19,21 @@ import { waitFor } from '../helpers/fixtures';
 import {
   codeRow,
   near,
+  firsts,
+  lineHeights,
+  laidOutCode,
+  matchInView,
+  marksFollowRows,
+} from './wrappingFixtures';
+import {
   hyphenatedLine,
   dottedLine,
   breakLines,
   longestLine,
   minifiedLine,
-  firsts,
-  lineHeights,
   paddedLine,
-  laidOutCode,
-  matchInView,
-  marksFollowRows,
   longLines,
-} from './wrappingFixtures';
+} from './wrappingSamples';
 
 suite('App', () => {
   sharedApp({

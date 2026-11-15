@@ -5,7 +5,7 @@ import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { baseSettings, launchApp } from './appLaunch';
-import { longLines } from './wrappingFixtures';
+import { longLines } from './wrappingSamples';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';

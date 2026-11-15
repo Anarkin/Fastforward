@@ -10,7 +10,7 @@ import {
   sharedApp,
 } from './appFixtures';
 import { scrollPlaces } from './scrollProbes';
-import { longLines, firstLongLine } from './wrappingFixtures';
+import { longLines, firstLongLine } from './wrappingSamples';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
