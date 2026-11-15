@@ -73,7 +73,7 @@ export function pendingSelection(
     : { hash, repeat: pending.repeat };
 }
 
-export function startPosition(
+function startPosition(
   history: CommitHistory,
   selection: string | undefined,
 ): number | null | undefined {
