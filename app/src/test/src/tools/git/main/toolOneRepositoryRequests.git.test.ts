@@ -14,7 +14,7 @@ import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { runGit } from '../../../../../tools/git/main/run';
 import type { GitTool } from '../../../../../tools/git/main/tool';
-import { type TempRepository } from '../../../../helpers/repositories';
+import type { TempRepository } from '../../../../helpers/repositories';
 import {
   recordingLog,
   failOnErrorsLogged,

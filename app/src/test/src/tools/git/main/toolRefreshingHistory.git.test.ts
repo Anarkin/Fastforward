@@ -37,7 +37,7 @@ import {
   viewRepositories,
   type ViewRepositories,
 } from '../../../../helpers/gitFixtures';
-import { type FakePage } from '../../../../helpers/fakePage';
+import type { FakePage } from '../../../../helpers/fakePage';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool refreshing one repository', () => {

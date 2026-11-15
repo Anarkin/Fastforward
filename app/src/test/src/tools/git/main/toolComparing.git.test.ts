@@ -19,7 +19,7 @@ import {
 } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import { closeViews, openView } from '../../../../helpers/harness';
-import { type FakePage } from '../../../../helpers/fakePage';
+import type { FakePage } from '../../../../helpers/fakePage';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool comparing', () => {

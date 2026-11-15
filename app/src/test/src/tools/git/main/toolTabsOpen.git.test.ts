@@ -7,7 +7,7 @@ import {
   suite,
   test,
 } from 'vitest';
-import { type TempRepository } from '../../../../helpers/repositories';
+import type { TempRepository } from '../../../../helpers/repositories';
 import {
   recordingLog,
   failOnErrorsLogged,

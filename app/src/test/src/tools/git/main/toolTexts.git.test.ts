@@ -11,7 +11,7 @@ import {
 } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import { type TempRepository } from '../../../../helpers/repositories';
+import type { TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,

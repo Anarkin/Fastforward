@@ -14,7 +14,7 @@ import type {
 } from '../../../../../tools/git/shared/protocol';
 import { bookmarksKey } from '../../../../../tools/git/main/storage';
 import { FakeStore } from '../../../../helpers/fakeStore';
-import { type TempRepository } from '../../../../helpers/repositories';
+import type { TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,

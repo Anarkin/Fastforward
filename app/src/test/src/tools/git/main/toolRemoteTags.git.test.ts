@@ -21,7 +21,7 @@ import {
   gitState,
 } from '../../../../helpers/harness';
 import { deleteTags } from '../../../../helpers/gitFixtures';
-import { type FakePage } from '../../../../helpers/fakePage';
+import type { FakePage } from '../../../../helpers/fakePage';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 function remoteTag(name: string, tag: string, commit: string): RefInfo {

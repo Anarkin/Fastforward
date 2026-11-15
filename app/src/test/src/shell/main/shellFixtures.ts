@@ -3,7 +3,7 @@ import type { Log } from '../../../../shell/main/log';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
 import { attach, openView } from '../../../helpers/harness';
 import { FakeHost } from '../../../helpers/fakeHost';
-import { type FakePage } from '../../../helpers/fakePage';
+import type { FakePage } from '../../../helpers/fakePage';
 
 export const saying = (note?: string) => ({ quitNote: () => note });
 

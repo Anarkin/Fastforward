@@ -8,7 +8,7 @@ import {
   test,
 } from 'vitest';
 import { soloKey } from '../../../../../tools/git/main/storage';
-import { type TempRepository } from '../../../../helpers/repositories';
+import type { TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,

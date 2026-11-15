@@ -14,7 +14,7 @@ import { soloKey } from '../../../../../tools/git/main/storage';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { FakeStore } from '../../../../helpers/fakeStore';
 import { waitFor } from '../../../../helpers/fixtures';
-import { type TempRepository } from '../../../../helpers/repositories';
+import type { TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   type Connection,

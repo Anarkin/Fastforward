@@ -10,7 +10,7 @@ import { Pages } from '../../../../shell/main/pages';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
 import { noticesOf, shownIn, twoWindows } from './shellFixtures';
 import { FakeHost } from '../../../helpers/fakeHost';
-import { type FakePage } from '../../../helpers/fakePage';
+import type { FakePage } from '../../../helpers/fakePage';
 import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
 
 const savedIds = (saved: unknown) =>

@@ -5,7 +5,7 @@ import { sameRoot } from '../../../../../lib/main/paths';
 import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
 import { recentKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
-import { type TempRepository } from '../../../../helpers/repositories';
+import type { TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   attach,
@@ -15,7 +15,7 @@ import {
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
 import { FakeHost } from '../../../../helpers/fakeHost';
-import { type FakePage } from '../../../../helpers/fakePage';
+import type { FakePage } from '../../../../helpers/fakePage';
 import { removeFolder } from '../../../../helpers/tempFolders';
 
 const shownIn = (page: FakePage) => [

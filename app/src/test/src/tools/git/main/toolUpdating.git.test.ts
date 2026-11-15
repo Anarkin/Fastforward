@@ -16,7 +16,7 @@ import {
   stubMethod,
   tabOf,
 } from '../../../../helpers/harness';
-import { type FakePage } from '../../../../helpers/fakePage';
+import type { FakePage } from '../../../../helpers/fakePage';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Git tool updating by itself', () => {
