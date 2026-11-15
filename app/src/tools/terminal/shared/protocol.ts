@@ -2,8 +2,6 @@ import type { Renderer } from './settings';
 
 export const maxInputLength = 65_536;
 
-const maxSize = 1000;
-
 export interface WindowsPty {
   readonly backend: 'conpty';
   readonly buildNumber: number;
@@ -54,45 +52,3 @@ export type TerminalToWebviewOf<T extends TerminalToWebview['type']> = Extract<
   TerminalToWebview,
   { readonly type: T }
 >;
-
-export interface TerminalSize {
-  readonly columns: number;
-  readonly rows: number;
-}
-
-const isCount = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isInteger(value) && value >= 1;
-
-export function sizeWithin(
-  columns: unknown,
-  rows: unknown,
-): TerminalSize | undefined {
-  return isCount(columns) && isCount(rows)
-    ? { columns: Math.min(columns, maxSize), rows: Math.min(rows, maxSize) }
-    : undefined;
-}
-
-export function inputChunks(
-  data: string,
-  length: number = maxInputLength,
-): string[] {
-  const chunks: string[] = [];
-  let start = 0;
-  while (start < data.length) {
-    let end = Math.min(start + length, data.length);
-    if (
-      end < data.length &&
-      end - 1 > start &&
-      isHighSurrogate(data.charCodeAt(end - 1))
-    ) {
-      end -= 1;
-    }
-    chunks.push(data.slice(start, end));
-    start = end;
-  }
-  return chunks;
-}
-
-function isHighSurrogate(code: number): boolean {
-  return code >= 0xd800 && code <= 0xdbff;
-}

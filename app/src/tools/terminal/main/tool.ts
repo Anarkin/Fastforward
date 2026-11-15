@@ -13,12 +13,12 @@ import {
   type Tool,
 } from '../../../shell/main/toolContract';
 import {
-  sizeWithin,
   maxInputLength,
   type TerminalToHost,
   type TerminalToWebview,
   type WindowsPty,
 } from '../shared/protocol';
+import { sizeWithin } from '../shared/terminalSize';
 import {
   contrastRatio,
   scrollbackLines,

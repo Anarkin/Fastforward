@@ -11,11 +11,9 @@ import { notchesOf, type Wheel } from '../../../lib/page/wheelTurns';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
 import { withHiddenCursor, terminalTheme } from './theme';
 import { cellsOf } from './cells';
-import {
-  inputChunks,
-  sizeWithin,
-  type TerminalToWebview,
-} from '../shared/protocol';
+import { type TerminalToWebview } from '../shared/protocol';
+import { inputChunks } from './inputChunks';
+import { sizeWithin } from '../shared/terminalSize';
 import type { Renderer } from '../shared/settings';
 import type { WindowsPty } from '../shared/protocol';
 import type { FromScreen } from './store';
