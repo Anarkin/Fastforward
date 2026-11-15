@@ -110,6 +110,29 @@ suite('Shell with several windows', () => {
     assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
   });
 
+  test('gives a window opened after others closed an id no window had since the app started, as the pages and windows of the app are kept by its id', async () => {
+    const { first, second } = await twoWindows(log, noGit);
+    const opened = async () => {
+      const before = first.shell.windows();
+      await second.connection.receive({ type: 'newWindow' });
+      const made = first.shell.windows().find((id) => !before.includes(id));
+      assert.ok(made !== undefined);
+      return made;
+    };
+    const third = await opened();
+    first.shell.closeWindow(third);
+    const fourth = await opened();
+    first.shell.closeWindow(fourth);
+    first.shell.closeWindow('2');
+    await first.connection.receive({ type: 'newWindow' });
+    const fifth = first.shell.windows().find((id) => id !== '1');
+    assert.deepStrictEqual(
+      new Set(['1', '2', third, fourth, fifth]).size,
+      5,
+      JSON.stringify([third, fourth, fifth]),
+    );
+  });
+
   test('tells each window the others, named after the tab each shows, again only once they change', async () => {
     const { first, second } = await twoWindows(log, noGit);
     assert.deepStrictEqual(windowsListed(first.page).at(-1), [

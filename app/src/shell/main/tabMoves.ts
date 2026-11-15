@@ -54,6 +54,8 @@ function pointOf(x: unknown, y: unknown): Point | undefined {
 }
 
 export class TabMoves {
+  private lastWindowId = 0;
+
   constructor(
     private readonly storage: Storage,
     private readonly shellHost: ShellHost,
@@ -62,11 +64,20 @@ export class TabMoves {
     private readonly host: TabMovesHost,
   ) {}
 
+  private newWindowId(): string {
+    const id = Math.max(
+      Number(nextWindowId(this.storage.layout)),
+      this.lastWindowId + 1,
+    );
+    this.lastWindowId = id;
+    return String(id);
+  }
+
   async receive(page: Page, message: TabMove): Promise<void> {
     const { storage, shellHost } = this;
     switch (message.type) {
       case 'newWindow': {
-        const window = nextWindowId(storage.layout);
+        const window = this.newWindowId();
         this.host.save(
           storage.setLayout([...storage.layout, { id: window, tabs: [] }]),
         );
@@ -238,7 +249,7 @@ export class TabMoves {
       );
       return;
     }
-    const into = nextWindowId(storage.layout);
+    const into = this.newWindowId();
     const moving = this.relocate(tab, from.id, into, 0, true);
     this.shellHost.openWindow(into, from.id);
     await moving;
