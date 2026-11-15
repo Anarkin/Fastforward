@@ -25,13 +25,9 @@ import { cellWidthsOf } from '../../../lib/page/textWidths';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type CellTable } from '../../../lib/page/cellTable';
 import { editorFind } from './editorFind';
-import {
-  commentsOf,
-  editorKeys,
-  indentField,
-  indentionOf,
-  type EditorKeyActions,
-} from './editorCommands';
+import { commentsOf } from './editorComments';
+import { editorKeys, type EditorKeyActions } from './editorCommands';
+import { indentField, indentionOf } from './editorIndent';
 import {
   savingRulesField,
   savingRulesOf,
