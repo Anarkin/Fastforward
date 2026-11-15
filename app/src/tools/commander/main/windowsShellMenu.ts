@@ -1,4 +1,5 @@
 import koffi from 'koffi';
+import { textOf } from './nativeCalls';
 
 export interface ScreenPoint {
   readonly x: number;
@@ -265,9 +266,7 @@ function verbOf(commands: Pointer, command: number): string | undefined {
   if (!succeeded(found)) {
     return undefined;
   }
-  const text = name.toString('utf16le');
-  const end = text.indexOf('\0');
-  return end === -1 ? text : text.slice(0, end);
+  return textOf(name);
 }
 
 export function shellVerbs(

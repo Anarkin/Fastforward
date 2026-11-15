@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import koffi, { type LibraryHandle } from 'koffi';
+import koffi from 'koffi';
 import type { Entry } from '../shared/protocol';
 import type { LocalFileSystem } from './fileSystem';
 import {
@@ -23,6 +23,7 @@ import {
   record,
   shareAll,
 } from './windowsDirectory';
+import { called } from './nativeCalls';
 
 const invalidAttributes = 0xffff_ffff;
 const cloudAttributes = 0x1000 | 0x4_0000 | 0x40_0000;
@@ -91,22 +92,6 @@ async function entryOf(folder: string, found: Found): Promise<Entry> {
       target === undefined || target.isDirectory() ? undefined : target.size,
     modified: target?.mtimeMs ?? found.modified,
   };
-}
-
-type Native = ReturnType<LibraryHandle['func']>;
-
-export function called(native: Native, ...args: unknown[]): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    native.async(...args, (error: unknown, result: unknown) => {
-      if (error) {
-        reject(
-          error instanceof Error ? error : new Error(JSON.stringify(error)),
-        );
-      } else {
-        resolve(result);
-      }
-    });
-  });
 }
 
 async function failure(folder: string): Promise<Error> {

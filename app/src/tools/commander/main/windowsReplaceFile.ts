@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import koffi from 'koffi';
 import type { ReplaceFile } from './fileSaving';
-import { called } from './windowsFileSystem';
+import { called } from './nativeCalls';
 
 const writeThrough = 0x1;
 

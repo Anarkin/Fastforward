@@ -1,4 +1,5 @@
 import koffi from 'koffi';
+import { textOf } from './nativeCalls';
 
 const apartmentThreaded = 0x2;
 const changedMode = 0x80010106 | 0;
@@ -25,12 +26,6 @@ function native() {
 }
 
 let api: ReturnType<typeof native> | undefined;
-
-function textOf(buffer: Buffer): string {
-  const all = buffer.toString('utf16le');
-  const end = all.indexOf('\0');
-  return end === -1 ? all : all.slice(0, end);
-}
 
 export function windowsKnownFolder(name: string): string | undefined {
   api ??= native();

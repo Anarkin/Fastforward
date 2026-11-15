@@ -1,6 +1,6 @@
 import koffi from 'koffi';
 import { recycleBinOff, type Hive, type WindowsRegistry } from './recycleBin';
-import { called } from './windowsFileSystem';
+import { called, textOf } from './nativeCalls';
 
 const hives: Record<Hive, number> = {
   currentUser: 0x8000_0001 | 0,
@@ -9,12 +9,6 @@ const hives: Record<Hive, number> = {
 const dwordOnly = 0x10;
 const volumeNameLength = 50;
 const shortestPath = 260;
-
-function text(buffer: Buffer): string {
-  const all = buffer.toString('utf16le');
-  const end = all.indexOf('\0');
-  return end === -1 ? all : all.slice(0, end);
-}
 
 export function windowsRegistry(): WindowsRegistry {
   const kernel32 = koffi.load('kernel32.dll');
@@ -38,11 +32,11 @@ export function windowsRegistry(): WindowsRegistry {
       const name = Buffer.alloc(volumeNameLength * 2);
       return (await called(
         volumeName,
-        text(mountPoint),
+        textOf(mountPoint),
         name,
         volumeNameLength,
       )) === true
-        ? text(name)
+        ? textOf(name)
         : undefined;
     },
     number: (hive, key, name) => {

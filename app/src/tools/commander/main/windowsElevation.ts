@@ -1,6 +1,7 @@
-import koffi, { type LibraryHandle } from 'koffi';
+import koffi from 'koffi';
 import type { LaunchHelper } from './elevated';
 import { helperArguments, type HelperAddress } from './helperProtocol';
+import type { Native } from './nativeCalls';
 
 const flagNoUi = 0x400;
 const hidden = 0;
@@ -24,8 +25,6 @@ export function elevatedCommand(
       .join(' '),
   };
 }
-
-type Native = ReturnType<LibraryHandle['func']>;
 
 let shellExecute: Native | undefined;
 
