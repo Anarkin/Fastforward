@@ -9,7 +9,8 @@ import type {
 import { strings } from '../../../lib/shared/strings';
 import type { DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
-import { Diff, DiffLanguage, DiffOptions } from './diffColumn';
+import { Diff } from './diffColumn';
+import { DiffLanguage, DiffOptions } from './diffOptions';
 import { compareLanguageKey, useGit, useGitActions } from './store';
 
 const noFiles: readonly FileChange[] = [];

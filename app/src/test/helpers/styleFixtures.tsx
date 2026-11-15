@@ -20,7 +20,7 @@ import {
   type ShownOptions,
   tabsStore,
 } from './componentFixtures';
-import { DiffOptions } from '../../tools/git/page/diffColumn';
+import { DiffOptions } from '../../tools/git/page/diffOptions';
 import { FindField, SearchButton } from '../../lib/page/search';
 import { gitKeymap } from '../../tools/git/page/keymap';
 import type { FindRange } from '../../lib/shared/textMatches';

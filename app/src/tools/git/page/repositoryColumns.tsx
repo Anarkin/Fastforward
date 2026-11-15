@@ -3,7 +3,8 @@ import { useShell } from '../../../shell/page/store';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { gitKeymap } from './keymap';
 import { diffSelection } from './diffFiles';
-import { Diff, DiffLanguage, DiffOptions } from './diffColumn';
+import { Diff } from './diffColumn';
+import { DiffLanguage, DiffOptions } from './diffOptions';
 import { Commits } from './commitList';
 import { Files } from './filesColumn';
 import {

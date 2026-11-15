@@ -6,7 +6,7 @@ import { suite, test } from 'vitest';
 import {
   DiffLanguage,
   DiffOptions,
-} from '../../../../../tools/git/page/diffColumn';
+} from '../../../../../tools/git/page/diffOptions';
 import {
   createGitStore,
   languageKeyOf,
