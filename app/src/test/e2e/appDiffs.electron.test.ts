@@ -55,7 +55,7 @@ suite('App', () => {
     );
     assert.strictEqual(middles[0], middles[1]);
     await page.keyboard.press('l');
-    await button.locator('.menu-filter').waitFor();
+    await button.locator('.search-box-input').waitFor();
     assert.ok((await button.locator('.menu-item').count()) > 200);
     const [menuBox, buttonBox] = await Promise.all([
       button.locator('.menu').boundingBox(),
@@ -83,7 +83,7 @@ suite('App', () => {
       await button.locator('.menu-item').allTextContents(),
       ['Auto', '✓Plain Text'],
     );
-    assert.strictEqual(await button.locator('.menu-filter').count(), 0);
+    assert.strictEqual(await button.locator('.search-box-input').count(), 0);
     await button.locator('.menu-item', { hasText: /^Auto$/ }).click();
     await keyword.waitFor();
     assert.strictEqual(await label(), 'Auto');

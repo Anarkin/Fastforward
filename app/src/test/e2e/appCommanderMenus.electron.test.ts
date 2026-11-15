@@ -80,7 +80,7 @@ suite('App commander', () => {
       await thumb.waitFor();
       const [menuBox, filterBox, thumbBox] = await Promise.all([
         menu.boundingBox(),
-        page.locator('.viewer .language-button .menu-filter').boundingBox(),
+        page.locator('.viewer .language-button .search-bar').boundingBox(),
         thumb.boundingBox(),
       ]);
       assert.ok(menuBox && filterBox && thumbBox);

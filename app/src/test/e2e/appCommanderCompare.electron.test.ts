@@ -109,7 +109,7 @@ suite('App commander', () => {
       'Plain Text',
     );
     await page.keyboard.press('l');
-    await language.locator('.menu-filter').waitFor();
+    await language.locator('.search-box-input').waitFor();
     await page.keyboard.press('Escape');
     await language.locator('.menu').waitFor({ state: 'detached' });
     await page.keyboard.press('Escape');

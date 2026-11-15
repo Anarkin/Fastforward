@@ -123,6 +123,10 @@ input[type='checkbox']:focus-visible {
   padding: 0 3px 0 10px;
 }
 
+.search-bar.compact .search-box-input {
+  width: 0;
+}
+
 .search-bar.compact .search-toggles {
   gap: 0;
 }

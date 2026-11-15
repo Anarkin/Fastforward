@@ -1,5 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { SearchBar } from '../../../../lib/page/searchBar';
+import { plainSearch } from '../../../../lib/shared/searchOptions';
 import { ContextMenu } from '../../../../shell/page/contextMenu';
 import { MenuButton } from '../../../../lib/page/menu';
 import { cascaded } from '../../../helpers/cascade';
@@ -157,9 +159,28 @@ suite('Style', () => {
   });
 
   test("draws the line of a filtered menu's edge along the top of its filter, which stays atop the menu as it scrolls and would cover that line", () => {
-    looks(rendered(<input className="menu-filter" />), {
-      'box-shadow': 'inset 0 var(--hairline) 0 var(--color-border)',
-    });
+    looks(
+      withClass(
+        rendered(
+          <div className="menu filtered-menu">
+            <SearchBar
+              compact
+              query=""
+              options={plainSearch}
+              found={{ current: 0, matches: 0 }}
+              onQuery={noop}
+              onOptions={noop}
+            />
+          </div>,
+        ),
+        'search-bar',
+      ),
+      {
+        position: 'sticky',
+        top: '0',
+        'box-shadow': 'inset 0 var(--hairline) 0 var(--color-border)',
+      },
+    );
   });
 
   test('scrolls a submenu taller than the window, which lists every ref at a commit', () => {

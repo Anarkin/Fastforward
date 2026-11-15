@@ -64,7 +64,7 @@ suite('App commander', () => {
       'the end of the file as bytes',
     );
     await page.keyboard.press('e');
-    await page.locator('.viewer-encoding .menu-filter').waitFor();
+    await page.locator('.viewer-encoding .search-box-input').waitFor();
     await page.keyboard.type('latin2');
     await page.keyboard.press('Enter');
     await waitFor(

@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
+import { noop } from '../../../helpers/fixtures';
 import { MenuButton } from '../../../../lib/page/menu';
 
 const triggerOf = (button: React.ReactElement) =>
@@ -173,7 +174,8 @@ suite('Menu button', () => {
           '.menu-button-trigger',
         );
         await act(async () => trigger?.click());
-        const filter = main.querySelector<HTMLInputElement>('.menu-filter');
+        const filter =
+          main.querySelector<HTMLInputElement>('.search-box-input');
         assert.ok(filter);
         assert.strictEqual(window.document.activeElement, filter);
         assert.strictEqual(filter.placeholder, 'Find');
@@ -234,6 +236,72 @@ suite('Menu button', () => {
       },
     );
   });
+  test('filters in the compact search bar, the counter and the toggles inside its box and no back or step buttons, counting the item with the focus of those kept and matching with its toggles', async () => {
+    const items = ['Plain Text', 'JavaScript', 'TypeScript'].map((label) => ({
+      label,
+      onClick: noop,
+    }));
+    await rendered(
+      <MenuButton title="Language" label="Auto" filter="Find" items={items} />,
+      async (main, window) => {
+        await act(async () =>
+          main
+            .querySelector<HTMLButtonElement>('.menu-button-trigger')
+            ?.click(),
+        );
+        const bar = main.querySelector('.filtered-menu > .search-bar.compact');
+        assert.ok(bar);
+        assert.deepStrictEqual(
+          Array.from(bar.children, (child) => child.className),
+          ['search-box'],
+        );
+        assert.strictEqual(
+          bar.querySelectorAll('.search-box .search-toggle').length,
+          3,
+        );
+        const filter = bar.querySelector<HTMLInputElement>('.search-box-input');
+        assert.ok(filter);
+        const type = (text: string) =>
+          act(async () => {
+            Reflect.set(
+              window.HTMLInputElement.prototype,
+              'value',
+              text,
+              filter,
+            );
+            filter.dispatchEvent(new window.Event('input', { bubbles: true }));
+          });
+        const count = () => bar.querySelector('.search-count')?.textContent;
+        await type('script');
+        assert.strictEqual(count(), '1 of 2');
+        const [, second] =
+          main.querySelectorAll<HTMLButtonElement>('.menu .menu-item');
+        await act(async () => second?.focus());
+        assert.strictEqual(count(), '2 of 2');
+        await act(async () => filter.focus());
+        const matchCase =
+          bar.querySelectorAll<HTMLButtonElement>('.search-toggle')[0];
+        await act(async () => matchCase?.click());
+        assert.strictEqual(matchCase?.getAttribute('aria-pressed'), 'true');
+        assert.strictEqual(count(), 'No matches');
+        await type('Script');
+        assert.strictEqual(count(), '1 of 2');
+        await type('^java');
+        const regex =
+          bar.querySelectorAll<HTMLButtonElement>('.search-toggle')[2];
+        await act(async () => regex?.click());
+        await act(async () => matchCase?.click());
+        assert.deepStrictEqual(
+          Array.from(
+            main.querySelectorAll('.menu .menu-item'),
+            (item) => item.textContent,
+          ),
+          ['JavaScript'],
+        );
+      },
+    );
+  });
+
   test('tells once an item is chosen, from a submenu too, after the item acts, so the focus can go where the choice is used, keeping it on its button once closed without a choice', async () => {
     const told: string[] = [];
     await rendered(
@@ -316,7 +384,8 @@ suite('Menu button', () => {
         assert.ok(trigger);
         await act(async () => trigger.focus());
         await act(async () => trigger.click());
-        const filter = main.querySelector<HTMLInputElement>('.menu-filter');
+        const filter =
+          main.querySelector<HTMLInputElement>('.search-box-input');
         assert.strictEqual(window.document.activeElement, filter);
         await act(async () =>
           filter?.dispatchEvent(

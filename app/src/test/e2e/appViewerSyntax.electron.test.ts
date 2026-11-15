@@ -27,7 +27,7 @@ const checkedLanguage = () =>
 
 const chooseLanguage = async (typed: string) => {
   await page.keyboard.press('l');
-  await page.locator('.viewer .language-button .menu-filter').waitFor();
+  await page.locator('.viewer .language-button .search-box-input').waitFor();
   await page.keyboard.type(typed);
   await page.keyboard.press('Enter');
   await page.locator('.viewer .language-button .menu').waitFor({

@@ -10,7 +10,8 @@ import { Name } from './name';
 import { keyPressed } from './shortcuts';
 import { filteredItems } from './menuFilter';
 import { searchFilter } from '../shared/filter';
-import { plainSearch } from '../shared/searchOptions';
+import { noSearch } from '../shared/searchOptions';
+import { SearchBar } from './searchBar';
 
 function thenChosen(
   items: readonly ContextMenuItem[],
@@ -145,19 +146,28 @@ function FilteredDropdown({
 }) {
   const menu = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState('');
-  const filter = searchFilter(query, plainSearch);
+  const [{ query, options }, setSearch] = useState(noSearch);
+  const [current, setCurrent] = useState(0);
+  const filter = searchFilter(query, options);
+  const shown = filteredItems(items, filter);
   useDismiss(container, onClose);
   useMenuFocus(menu, false, input);
   const firstItem = () =>
     menu.current?.querySelector<HTMLButtonElement>(
       ':scope > .menu-entry > .menu-item:not(:disabled)',
     );
+  const itemsShown = () =>
+    Array.from(
+      menu.current?.querySelectorAll(':scope > .menu-entry > .menu-item') ?? [],
+    );
   return (
     <div
       className="menu filtered-menu"
       role="menu"
       ref={menu}
+      onFocus={(event) => {
+        setCurrent(Math.max(0, itemsShown().indexOf(event.target)));
+      }}
       onKeyDown={(event) => {
         if (event.target === input.current) {
           return;
@@ -177,14 +187,18 @@ function FilteredDropdown({
         onMenuKeyDown(event);
       }}
     >
-      <input
-        ref={input}
-        className="menu-filter"
+      <SearchBar
+        compact
+        query={query}
+        options={options}
+        found={{
+          current,
+          matches: shown.filter((item) => !('separator' in item)).length,
+        }}
         placeholder={placeholder}
-        aria-label={placeholder}
-        spellCheck={false}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
+        input={input}
+        onQuery={(next) => setSearch({ query: next, options })}
+        onOptions={(next) => setSearch({ query, options: next })}
         onKeyDown={(event) => {
           const wanted = keyPressed(keymap.menuFilter, event);
           if (wanted === 'items') {
@@ -197,11 +211,7 @@ function FilteredDropdown({
           event.stopPropagation();
         }}
       />
-      <MenuItems
-        items={filteredItems(items, filter)}
-        filter={filter}
-        onClose={onClose}
-      />
+      <MenuItems items={shown} filter={filter} onClose={onClose} />
     </div>
   );
 }
