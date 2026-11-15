@@ -13,6 +13,8 @@ import {
   edit,
   toStart,
   sharedEditorApp,
+  profile,
+  activeTab,
 } from './editorAppFixtures';
 
 const status = () => page.locator('.editor .column-status-text').textContent();
@@ -187,5 +189,70 @@ suite('App editor', () => {
       }
     }
     assert.deepStrictEqual(wrong, []);
+  });
+
+  test('closes the brackets and quotes typed once the settings say so, and types them alone otherwise', async () => {
+    const settings = path.join(profile, 'settings.user.json');
+    const before = fs.readFileSync(settings, 'utf8');
+    fs.writeFileSync(path.join(opened, 'closing.txt'), '\n');
+    await backToCommander();
+    await edit('closing.txt');
+    await toStart();
+    await page.keyboard.type('a(');
+    await waitFor(async () => (await editedText()) === 'a(\n', 'one bracket');
+    await page.keyboard.press('ControlOrMeta+Z');
+    await waitFor(async () => (await editedText()) === '\n', 'undone');
+    const reloaded = page.waitForEvent('load');
+    fs.writeFileSync(
+      settings,
+      JSON.stringify({
+        scrolling: { smooth: true },
+        editor: { closeBrackets: true },
+      }),
+    );
+    try {
+      await reloaded;
+      await content().waitFor();
+      await toStart();
+      await page.keyboard.type('f([');
+      await waitFor(
+        async () => (await editedText()) === 'f([])\n',
+        'the brackets closed',
+      );
+      await page.keyboard.type('])');
+      await waitFor(
+        async () => (await editedText()) === 'f([])\n',
+        'the closing brackets typed over',
+      );
+      await page.keyboard.press('ControlOrMeta+S');
+      await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    } finally {
+      const restored = page.waitForEvent('load');
+      fs.writeFileSync(settings, before);
+      await restored;
+      await content().waitFor();
+    }
+  });
+
+  test('marks the bracket matching the one beside the cursor, and one matching none', async () => {
+    fs.writeFileSync(path.join(opened, 'brackets.txt'), 'call(a[0])\nopen(\n');
+    await backToCommander();
+    await edit('brackets.txt');
+    await waitFor(
+      async () => (await editedText()) === 'call(a[0])\nopen(\n',
+      'the text',
+    );
+    await content().locator('.cm-line').first().click();
+    await page.keyboard.press('End');
+    await waitFor(
+      async () =>
+        (await content().locator('.cm-matchingBracket').allTextContents()).join(
+          '',
+        ) === '()',
+      'the brackets around the call matched',
+    );
+    await content().locator('.cm-line').nth(1).click();
+    await page.keyboard.press('End');
+    await content().locator('.cm-nonmatchingBracket').waitFor();
   });
 });

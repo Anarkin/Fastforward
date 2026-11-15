@@ -4,8 +4,22 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
-import { waitFor } from '../helpers/fixtures';
+import { waitFor, defaultSettings } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/repositories';
+import {
+  opened as editorOpened,
+  profile as editorProfile,
+  page as editorPage,
+  content as editorContent,
+  editedText,
+  backToCommander,
+  edit as editorEdit,
+  toStart,
+  activeIndex,
+  topLine,
+  scrolledDown,
+  sharedEditorApp,
+} from './editorAppFixtures';
 
 const shortLines = (count: number, name: string) =>
   Array.from({ length: count }, (_, at) => `${name} ${at + 1}`);
@@ -383,5 +397,233 @@ suite('App editor, long lines and places shown again', () => {
     const frames = await recordedRows();
     assert.ok(frames.length > 0, 'frames drawn');
     assert.deepStrictEqual([...new Set(frames)], [JSON.stringify(scrolledTo)]);
+  });
+});
+
+suite('App editor', () => {
+  sharedEditorApp();
+
+  test('scrolls the text by the rows of a notch of the wheel on whole rows, as the diff and the viewer do, the rows whole at the end too', async () => {
+    const lines = Array.from({ length: 300 }, (_, at) => `row ${at + 1}`);
+    fs.writeFileSync(
+      path.join(editorOpened, 'rows.txt'),
+      `${lines.join('\n')}\n`,
+    );
+    await backToCommander();
+    await editorEdit('rows.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('row 1\n'),
+      'the text',
+    );
+    const scroller = editorPage.locator('.editor .cm-scroller');
+    const box = await scroller.boundingBox();
+    assert.ok(box !== null);
+    await editorPage.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const rowsScrolled = () =>
+      scroller.evaluate((element) => {
+        const row =
+          element.querySelector('.cm-line')?.getBoundingClientRect().height ??
+          1;
+        return element.scrollTop / row;
+      });
+    await editorPage.mouse.wheel(0, 100);
+    await waitFor(
+      async () =>
+        Math.abs(
+          (await rowsScrolled()) - defaultSettings().scrolling.wheelRows,
+        ) < 0.01,
+      'the text to scroll the rows of a notch',
+    );
+    await scroller.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await waitFor(async () => {
+      const rows = await rowsScrolled();
+      return rows > 200 && Math.abs(rows - Math.round(rows)) < 0.01;
+    }, 'the last rows whole');
+  });
+
+  test('keeps the text still as it is typed into the top or the bottom row shown, scrolled down by whole rows, and shows the row the cursor moves onto above or below them whole, scrolled by whole rows', async () => {
+    const lines = Array.from({ length: 300 }, (_, at) => `line ${at + 1}`);
+    fs.writeFileSync(
+      path.join(editorOpened, 'typed.txt'),
+      `${lines.join('\n')}\n`,
+    );
+    await backToCommander();
+    await editorEdit('typed.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('line 1\n'),
+      'the text',
+    );
+    await toStart();
+    const scroller = editorPage.locator('.editor .cm-scroller');
+    const shown = 20;
+    const row = await scroller.evaluate((element, rows) => {
+      const height =
+        element.querySelector('.cm-line')?.getBoundingClientRect().height ?? 1;
+      element.style.flex = 'none';
+      element.style.height = `${rows * height}px`;
+      element.scrollTop = (rows / 2) * height;
+      element.dataset.scrolls = '0';
+      element.addEventListener('scroll', () => {
+        element.dataset.scrolls = String(
+          Number(element.dataset.scrolls ?? '0') + 1,
+        );
+      });
+      return height;
+    }, shown);
+    const scrolledTop = () => scroller.evaluate((element) => element.scrollTop);
+    const settled = async () => {
+      let last = NaN;
+      await waitFor(async () => {
+        await editorPage.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            ),
+        );
+        const now = await scrolledTop();
+        const still = now === last;
+        last = now;
+        return still;
+      }, 'the text to stop scrolling');
+      return Math.round((last / row) * 100) / 100;
+    };
+    const onRow = async (number: number) => {
+      const place = await scroller.evaluate((element, wanted) => {
+        const line = Array.from(element.querySelectorAll('.cm-line')).find(
+          (each) => each.textContent === `line ${wanted}`,
+        );
+        if (line === undefined) {
+          return undefined;
+        }
+        const range = document.createRange();
+        range.selectNodeContents(line);
+        const text = range.getBoundingClientRect();
+        return { x: text.right + 20, y: text.top + text.height / 2 };
+      }, number);
+      assert.ok(place !== undefined, `line ${number} shown`);
+      await editorPage.mouse.click(place.x, place.y);
+      await editorPage.keyboard.press('End');
+      await settled();
+      await scroller.evaluate((element) => {
+        element.dataset.scrolls = '0';
+      });
+    };
+    const scrolls = () =>
+      scroller.evaluate((element) => Number(element.dataset.scrolls));
+    assert.strictEqual(await settled(), shown / 2);
+
+    const topRow = shown / 2 + 1;
+    await onRow(topRow);
+    await editorPage.keyboard.type('xyz');
+    assert.strictEqual(await settled(), shown / 2, 'typed into the top row');
+    assert.strictEqual(await scrolls(), 0, 'scrolls typing into the top row');
+
+    const bottomRow = shown / 2 + shown;
+    await onRow(bottomRow);
+    await editorPage.keyboard.type('xyz');
+    assert.strictEqual(await settled(), shown / 2, 'typed into the bottom row');
+    assert.strictEqual(
+      await scrolls(),
+      0,
+      'scrolls typing into the bottom row',
+    );
+
+    const shownWhole = async (number: number) => {
+      const rows = await settled();
+      const whole = await scroller.evaluate((element, wanted) => {
+        const line = Array.from(element.querySelectorAll('.cm-line')).find(
+          (each) => (each.textContent ?? '').startsWith(`line ${wanted}`),
+        );
+        const rect = line?.getBoundingClientRect();
+        const top = element.getBoundingClientRect().top + element.clientTop;
+        return (
+          rect !== undefined &&
+          rect.top >= top - 0.5 &&
+          rect.bottom <= top + element.clientHeight + 0.5
+        );
+      }, number);
+      return { rows: Number.isInteger(rows), whole };
+    };
+    await editorPage.keyboard.press('ArrowDown');
+    assert.deepStrictEqual(
+      await shownWhole(bottomRow + 1),
+      { rows: true, whole: true },
+      'moved below the rows',
+    );
+    const rowsNow = await settled();
+    await onRow(rowsNow + 1);
+    await editorPage.keyboard.press('ArrowUp');
+    assert.deepStrictEqual(
+      await shownWhole(rowsNow),
+      { rows: true, whole: true },
+      'moved above the rows',
+    );
+    await editorPage.keyboard.press('Control+s');
+  });
+
+  test('shows the text where it was scrolled to and the cursor where it was once its tab is shown again', async () => {
+    const lines = Array.from({ length: 300 }, (_, at) => `place ${at + 1}`);
+    fs.writeFileSync(
+      path.join(editorOpened, 'places.txt'),
+      `${lines.join('\n')}\n`,
+    );
+    await backToCommander();
+    await editorEdit('places.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('place 1\n'),
+      'the text',
+    );
+    const editorTab = await activeIndex();
+    const status = editorPage.locator('.editor .column-status-text');
+    await editorContent().locator('.cm-line').nth(4).click();
+    await waitFor(
+      async () => (await status.textContent())?.startsWith('Ln 5,') === true,
+      'the cursor on the fifth line',
+    );
+    const cursor = await status.textContent();
+    const scrolledTo = await scrolledDown(150);
+    await backToCommander();
+    await editorPage.locator('.tabs [role="tab"]').nth(editorTab).click();
+    await waitFor(
+      async () => (await editedText()).length > 0,
+      'the text shown again',
+    );
+    await waitFor(
+      async () => (await topLine()) === scrolledTo,
+      `${scrolledTo} at the top again`,
+    );
+    assert.strictEqual(await status.textContent(), cursor);
+  });
+
+  test('shows the text where it was scrolled to while the page reloads as the settings are saved', async () => {
+    const lines = Array.from({ length: 300 }, (_, at) => `reread ${at + 1}`);
+    fs.writeFileSync(
+      path.join(editorOpened, 'reread.txt'),
+      `${lines.join('\n')}\n`,
+    );
+    await backToCommander();
+    await editorEdit('reread.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('reread 1\n'),
+      'the text',
+    );
+    const scrolledTo = await scrolledDown(120);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const reloaded = editorPage.waitForEvent('load');
+    fs.writeFileSync(
+      path.join(editorProfile, 'settings.user.json'),
+      JSON.stringify({ scrolling: { smooth: true }, dateFormat: 'DD.MM.YYYY' }),
+    );
+    await reloaded;
+    await waitFor(
+      async () => (await editedText()).startsWith('reread 1\n'),
+      'the text read again',
+    );
+    await waitFor(
+      async () => (await topLine()) === scrolledTo,
+      `${scrolledTo} at the top again`,
+    );
   });
 });

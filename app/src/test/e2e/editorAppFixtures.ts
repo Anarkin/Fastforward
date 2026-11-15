@@ -51,6 +51,40 @@ export const toEnd = async () => {
   await content().locator('.cm-line').last().click();
   await page.keyboard.press('End');
 };
+export const activeIndex = () =>
+  page
+    .locator('.tabs [role="tab"]')
+    .evaluateAll((tabs) =>
+      tabs.findIndex((tab) => tab.classList.contains('active')),
+    );
+export const topLine = () =>
+  page.locator('.editor .cm-scroller').evaluate((scroller) => {
+    const top = scroller.getBoundingClientRect().top;
+    return (
+      Array.from(scroller.querySelectorAll('.cm-line')).find(
+        (line) => line.getBoundingClientRect().bottom > top + 1,
+      )?.textContent ?? ''
+    );
+  });
+export const scrolledDown = async (rows: number) => {
+  await page.locator('.editor .cm-scroller').evaluate((scroller, by) => {
+    const row =
+      scroller.querySelector('.cm-line')?.getBoundingClientRect().height ?? 1;
+    scroller.scrollTop = row * by;
+  }, rows);
+  let shown = '';
+  await waitFor(async () => {
+    const was = shown;
+    shown = await topLine();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return (
+      shown === was &&
+      shown !== '' &&
+      shown !== (await editedText()).split('\n')[0]
+    );
+  }, 'the text to stop scrolling');
+  return shown;
+};
 export const notices = () => page.locator('.notice').allTextContents();
 const closeNotices = async () => {
   const close = page.locator('.notice-close').first();

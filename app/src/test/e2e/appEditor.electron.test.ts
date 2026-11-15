@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { storedZip } from '../helpers/zips';
 import {
   opened,
   profile,
@@ -17,6 +18,9 @@ import {
   toEnd,
   notices,
   sharedEditorApp,
+  select,
+  activeIndex,
+  topLine,
 } from './editorAppFixtures';
 
 const tabCount = () => page.locator('.tabs [role="tab"]').count();
@@ -206,5 +210,96 @@ suite('App editor', () => {
     await page.locator('.confirm-button.default').click();
     await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
     assert.strictEqual(fs.readFileSync(file, 'utf8'), 'mine second\n');
+  });
+
+  test('edits a file inside a zip on F4, putting it back into the zip as it is saved', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'packed.zip'),
+      storedZip([['top.txt', 'the top of the zip']]),
+    );
+    await backToCommander();
+    await select('packed.zip');
+    await page.keyboard.press('Shift+Enter');
+    await right().locator('.commander-row', { hasText: 'top' }).waitFor();
+    await edit('top.txt');
+    await waitFor(
+      async () => (await editedText()) === 'the top of the zip',
+      'the text of the copy',
+    );
+    await toEnd();
+    await page.keyboard.type('!');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await waitFor(
+      async () =>
+        (await notices()).some((notice) => notice.includes('back into')),
+      'the copy put back',
+    );
+    await backToCommander();
+    await select('top.txt');
+    await page.keyboard.press('F3');
+    await page.locator('.viewer', { hasText: 'the top of the zip!' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('Backspace');
+    await right().locator('.commander-row', { hasText: 'packed' }).waitFor();
+  });
+
+  test('turns the tab of a file viewed into one editing it on F4, in its place among the tabs, the cursor on the line the viewer showed at its top', async () => {
+    const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
+    fs.writeFileSync(path.join(opened, 'long.txt'), `${lines.join('\n')}\n`);
+    await backToCommander();
+    await select('long.txt');
+    await page.keyboard.press('F3');
+    const rows = page.locator('.viewer .viewer-rows .viewer-row');
+    await rows.first().waitFor();
+    const tabs = await page.locator('.tabs [role="tab"]').count();
+    const viewerTab = await activeIndex();
+    await page.keyboard.press('End');
+    await rows.filter({ hasText: 'line 400' }).waitFor();
+    let shownTop = '';
+    await waitFor(async () => {
+      const was = shownTop;
+      shownTop = (await rows.first().textContent()) ?? '';
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return shownTop === was;
+    }, 'the viewer to stop scrolling');
+    const top = /line (\d+)/.exec(shownTop);
+    assert.ok(top !== null);
+    await page.keyboard.press('F4');
+    await content().waitFor();
+    await waitFor(
+      async () =>
+        (await page.locator('.editor .column-status-text').textContent()) ===
+        `Ln ${top[1]}, Col 1`,
+      'the cursor on the line the viewer showed',
+    );
+    assert.strictEqual(await page.locator('.tabs [role="tab"]').count(), tabs);
+    assert.strictEqual(await activeIndex(), viewerTab);
+    await waitFor(
+      async () => (await topLine()) === `line ${top[1]}`,
+      'the line at the top of the editor',
+    );
+  });
+
+  test('says why it opens no editor for a folder or a file of binary data', async () => {
+    await backToCommander();
+    const tabs = await page.locator('.tabs [role="tab"]').count();
+    await select('folder');
+    await page.keyboard.press('F4');
+    await waitFor(
+      async () =>
+        (await notices()).some((notice) => notice.includes('is a folder')),
+      'a notice about the folder',
+    );
+    await select('image.bin');
+    await page.keyboard.press('F4');
+    await waitFor(
+      async () =>
+        (await notices()).some((notice) => notice.includes('binary data')),
+      'a notice about the binary file',
+    );
+    assert.strictEqual(await page.locator('.tabs [role="tab"]').count(), tabs);
   });
 });

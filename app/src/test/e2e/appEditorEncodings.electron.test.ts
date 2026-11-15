@@ -12,6 +12,8 @@ import {
   backToCommander,
   edit,
   sharedEditorApp,
+  editedText,
+  toEnd,
 } from './editorAppFixtures';
 
 const trigger = (label: RegExp) =>
@@ -111,5 +113,81 @@ suite('App editor', () => {
     await page.keyboard.press('ControlOrMeta+S');
     await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
     assert.strictEqual(fs.readFileSync(file, 'latin1'), 'one\r\ntwo');
+  });
+
+  test('lists where the line ending of new lines and the encoding come from in their menus, and edits the .editorconfig one comes from once its row is clicked', async () => {
+    const config = path.join(opened, '.editorconfig');
+    fs.writeFileSync(
+      config,
+      '[*.crlf.txt]\nend_of_line = crlf\n[sourced.txt]\nend_of_line = lf\n',
+    );
+    fs.writeFileSync(path.join(opened, 'sourced.txt'), 'a\r\nb\r\n');
+    await backToCommander();
+    await edit('sourced.txt');
+    const items = page.locator('.menu-item');
+    await page
+      .locator('.editor .menu-button-trigger[title="Encoding to read in"]')
+      .click();
+    await items.filter({ hasText: 'UTF-8, as its bytes are UTF-8' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page
+      .locator('.editor .menu-button-trigger', { hasText: /^CRLF$/ })
+      .click();
+    const fromConfig = `LF, from end_of_line in ${config}`;
+    await waitFor(
+      async () =>
+        (await items.allTextContents()).some((text) =>
+          text.endsWith(fromConfig),
+        ),
+      'the .editorconfig among the sources',
+    );
+    const texts = await items.allTextContents();
+    assert.ok(
+      texts.some((text) =>
+        text.endsWith('CRLF, as most lines of the file end'),
+      ),
+      texts.join('\n'),
+    );
+    assert.ok(
+      texts.some((text) =>
+        text.endsWith('LF, from editor.endOfLine in the settings'),
+      ),
+      texts.join('\n'),
+    );
+    await items.filter({ hasText: fromConfig }).click();
+    await waitFor(
+      async () =>
+        (await activeTab().locator('.tab-name').textContent()) ===
+        '.editorconfig',
+      'the .editorconfig in a tab of its own',
+    );
+    await waitFor(
+      async () => (await editedText()).includes('[sourced.txt]'),
+      'the .editorconfig edited',
+    );
+  });
+
+  test('trims the whitespace at the end of the lines edited and ends the file with a line break as saved where the .editorconfig says so, leaving the lines not edited as they were', async () => {
+    fs.writeFileSync(
+      path.join(opened, '.editorconfig'),
+      '[trimmed.txt]\ntrim_trailing_whitespace = true\ninsert_final_newline = true\n',
+    );
+    const file = path.join(opened, 'trimmed.txt');
+    fs.writeFileSync(file, 'keep  \r\nlast');
+    await backToCommander();
+    await edit('trimmed.txt');
+    await waitFor(
+      async () => (await editedText()) === 'keep  \nlast',
+      'the text',
+    );
+    await toEnd();
+    await page.keyboard.type(' word  ');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.strictEqual(
+      fs.readFileSync(file, 'latin1'),
+      'keep  \r\nlast word\r\n',
+    );
   });
 });
