@@ -46,7 +46,6 @@ suite('App', () => {
         return undefined;
       }
       const colors: unknown[] = [];
-      const overlay = window.setTitleBarOverlay.bind(window);
       window.setTitleBarOverlay = (options) => {
         colors.push(options.symbolColor);
       };
@@ -62,7 +61,7 @@ suite('App', () => {
           );
         }
       } finally {
-        window.setTitleBarOverlay = overlay;
+        Reflect.deleteProperty(window, 'setTitleBarOverlay');
       }
       return colors;
     });
