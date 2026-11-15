@@ -32,6 +32,7 @@ import type { Watching } from './watching';
 import type { CompareTabs } from './compareTabs';
 import { wellFormed } from './messageChecks';
 import type { Worktrees } from './worktrees';
+import type { RepositoryOpening } from './repositoryOpening';
 import { namesOfTabs } from './tabNames';
 import type { GitSessions } from './sessions';
 import type { Contexts } from './contexts';
@@ -82,6 +83,7 @@ export class GitTool implements Tool<'git'> {
   private readonly watching: Watching;
   private readonly compareTabs: CompareTabs;
   private readonly worktrees: Worktrees;
+  private readonly repositoryOpening: RepositoryOpening;
   private readonly tabLoads: TabLoads;
   private readonly runs: Runs;
   private readonly messages: GitMessages;
@@ -131,6 +133,7 @@ export class GitTool implements Tool<'git'> {
     this.watching = parts.watching;
     this.compareTabs = parts.compareTabs;
     this.worktrees = parts.worktrees;
+    this.repositoryOpening = parts.repositoryOpening;
     this.tabLoads = parts.tabLoads;
     this.runs = parts.runs;
     this.messages = parts.messages;
@@ -179,7 +182,7 @@ export class GitTool implements Tool<'git'> {
     await this.runs.run(
       strings.log.showingTabFailed(root),
       session,
-      () => this.worktrees.openTab(session, root),
+      () => this.repositoryOpening.openTab(session, root),
       this.storage.worktreeOf(root),
     );
   }
@@ -219,7 +222,7 @@ export class GitTool implements Tool<'git'> {
         this.worktrees.forgetTab(root, state);
       }
     }
-    this.save(this.worktrees.forgetUnused([closed]));
+    this.save(this.repositoryOpening.forgetUnused([closed]));
     this.posts.sendRecentEverywhere();
   }
 
@@ -274,14 +277,17 @@ export class GitTool implements Tool<'git'> {
   open(page: Page, folders: readonly string[]): Promise<void> {
     const session = this.sessions.of(page);
     return this.runs.run(strings.log.openingAskedFailed, session, () =>
-      this.worktrees.openRepositories(session, folders),
+      this.repositoryOpening.openRepositories(session, folders),
     );
   }
 
   newTab(page: Page): Promise<void> {
     const session = this.sessions.of(page);
     return this.runs.run(strings.log.openingAskedFailed, session, async () =>
-      this.worktrees.openRepositories(session, await this.host.chooseFolders()),
+      this.repositoryOpening.openRepositories(
+        session,
+        await this.host.chooseFolders(),
+      ),
     );
   }
 

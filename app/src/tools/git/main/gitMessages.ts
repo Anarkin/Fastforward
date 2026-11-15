@@ -8,7 +8,7 @@ import type { GitHost } from './tool';
 import type { GitSessions } from './sessions';
 import type { Contexts } from './contexts';
 import type { TabPosts } from './tabPosts';
-import type { Worktrees } from './worktrees';
+import type { RepositoryOpening } from './repositoryOpening';
 import type { Inits } from './inits';
 import type { Clones } from './clones';
 import type { TabLoads } from './tabLoads';
@@ -30,7 +30,7 @@ export class GitMessages {
     private readonly sessions: GitSessions,
     private readonly contexts: Contexts,
     private readonly posts: TabPosts,
-    private readonly worktrees: Worktrees,
+    private readonly repositoryOpening: RepositoryOpening,
     private readonly inits: Inits,
     private readonly clones: Clones,
     private readonly tabLoads: TabLoads,
@@ -70,7 +70,7 @@ export class GitMessages {
           return;
         }
         this.save(storage.setWorktree(repository, root));
-        await this.worktrees.openTab(session, repository);
+        await this.repositoryOpening.openTab(session, repository);
         return;
       }
       case 'openRepository': {
@@ -78,12 +78,16 @@ export class GitMessages {
           sameRoot(root, message.root),
         );
         if (recent !== undefined) {
-          await this.worktrees.openRepositories(session, [recent], true);
+          await this.repositoryOpening.openRepositories(
+            session,
+            [recent],
+            true,
+          );
         }
         return;
       }
       case 'browseRepositories':
-        await this.worktrees.openRepositories(
+        await this.repositoryOpening.openRepositories(
           session,
           await this.host.chooseFolders(),
         );
@@ -109,7 +113,7 @@ export class GitMessages {
         return;
       case 'forgetRecent':
         await this.storage.removeRecent(message.root);
-        await this.worktrees.forgetUnused([message.root]);
+        await this.repositoryOpening.forgetUnused([message.root]);
         this.posts.sendRecentEverywhere();
         return;
       case 'preloadWorktree': {

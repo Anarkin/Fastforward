@@ -21,6 +21,7 @@ import { Remotes } from './remotes';
 import { Watching } from './watching';
 import { CompareTabs } from './compareTabs';
 import { Worktrees } from './worktrees';
+import { RepositoryOpening } from './repositoryOpening';
 import { GitSessions } from './sessions';
 import { Selections } from './selections';
 import { RepositoryChoices } from './repositoryChoices';
@@ -59,6 +60,7 @@ export interface GitParts {
   readonly watching: Watching;
   readonly compareTabs: CompareTabs;
   readonly worktrees: Worktrees;
+  readonly repositoryOpening: RepositoryOpening;
   readonly tabLoads: TabLoads;
   readonly runs: Runs;
   readonly messages: GitMessages;
@@ -196,22 +198,36 @@ export function buildParts(
     log,
     gitPath,
     storage,
-    shell,
     core,
-    watching,
     commitSearch,
     tabStates,
     repositories,
     worktreeLists,
     {
-      repositoryTabs: () => sessions.repositoryTabs,
       repositoryOf: (root) => sessions.repositoryOf(root),
       isActive: (root) => sessions.isActive(root),
+      sendTabs: (session) => posts.sendTabs(session),
+    },
+  );
+  const repositoryOpening = new RepositoryOpening(
+    log,
+    gitPath,
+    storage,
+    shell,
+    core,
+    watching,
+    repositories,
+    worktreeLists,
+    {
+      repositoryTabs: () => sessions.repositoryTabs,
       tabState: (root) => contexts.tabState(root),
       showTab: (context) => tabLoads.showTab(context),
       postTabs: (session) => posts.postTabs(session),
-      sendTabs: (session) => posts.sendTabs(session),
       sendRecentEverywhere: () => posts.sendRecentEverywhere(),
+      takeWorktrees: (repository, listed) =>
+        worktrees.takeWorktrees(repository, listed),
+      loadWorktrees: (session, repository) =>
+        worktrees.loadWorktrees(session, repository),
     },
   );
   const fileViews = new FileViews(gitPath, host.viewedFiles, shell, sessions);
@@ -222,7 +238,7 @@ export function buildParts(
     tabStates,
     compareTabs,
   );
-  const inits = new Inits(log, gitPath, worktrees);
+  const inits = new Inits(log, gitPath, repositoryOpening);
   const autoFetch = new AutoFetch(
     () => storage.preferences.autoFetchMinutes,
     () => fetchOrder(sessions.repositoryTabs, sessions.shownRepositories()),
@@ -249,7 +265,7 @@ export function buildParts(
         const session = sessions.cloneSession();
         if (session !== undefined) {
           await runs.runNow(strings.log.openingFailed(target), session, () =>
-            worktrees.openRepositories(session, [target]),
+            repositoryOpening.openRepositories(session, [target]),
           );
         }
       },
@@ -268,7 +284,7 @@ export function buildParts(
     sessions,
     contexts,
     posts,
-    worktrees,
+    repositoryOpening,
     inits,
     clones,
     tabLoads,
@@ -307,6 +323,7 @@ export function buildParts(
     watching,
     compareTabs,
     worktrees,
+    repositoryOpening,
     tabLoads,
     runs,
     messages,

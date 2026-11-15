@@ -6,7 +6,7 @@ import { isFolder } from './folders';
 import { initRepository } from './repository';
 import { locateRepository, type Location } from './repositoryLocation';
 import type { Session } from './tabContext';
-import type { Worktrees } from './worktrees';
+import type { RepositoryOpening } from './repositoryOpening';
 
 export class Inits {
   private initAsked: string | undefined;
@@ -14,7 +14,7 @@ export class Inits {
   constructor(
     private readonly log: Log,
     private readonly gitPath: string,
-    private readonly worktrees: Worktrees,
+    private readonly repositoryOpening: RepositoryOpening,
   ) {}
 
   async initIn(session: Session, folder: string): Promise<void> {
@@ -38,7 +38,7 @@ export class Inits {
         level: 'info',
         message: strings.messages.alreadyRepository(folder),
       });
-      await this.worktrees.openRepositories(session, [folder]);
+      await this.repositoryOpening.openRepositories(session, [folder]);
       return;
     }
     this.initAsked = folder;
@@ -61,7 +61,7 @@ export class Inits {
       return;
     }
     this.log.info(strings.log.initialized(folder));
-    await this.worktrees.openRepositories(session, [folder]);
+    await this.repositoryOpening.openRepositories(session, [folder]);
   }
 
   private initFailed(session: Session, folder: string, error: unknown): void {
