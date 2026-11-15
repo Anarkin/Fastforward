@@ -675,4 +675,51 @@ suite('App commander', () => {
     await page.locator('.viewer').waitFor({ state: 'detached' });
     await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
   });
+
+  test.skipIf(process.platform !== 'win32')(
+    'opens the drive menu of the right side with Alt+F2 and changes the drive by its letter',
+    async () => {
+      await right().locator('.virtual-rows').focus();
+      await page.keyboard.press('Alt+F1');
+      await page.locator('.commander-pane').nth(0).locator('.menu').waitFor();
+      await page.keyboard.press('Alt+F2');
+      await right().locator('.menu').waitFor();
+      await page
+        .locator('.commander-pane')
+        .nth(0)
+        .locator('.menu')
+        .waitFor({ state: 'detached' });
+      await page.keyboard.press(opened.charAt(0).toLowerCase());
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) ===
+          `${opened.charAt(0).toUpperCase()}:\\`,
+        'the root of the drive of the folder opened',
+      );
+      await page
+        .locator('.commander-pane .menu')
+        .waitFor({ state: 'detached' });
+    },
+  );
+
+  test.skipIf(process.platform !== 'win32')(
+    'opens Users for Documents and Settings, a link no one may list, without saying there is no access',
+    async () => {
+      const drive = `${opened.charAt(0).toUpperCase()}:\\`;
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === drive,
+        'the right side to show the root of the drive',
+      );
+      await select('Documents and Settings');
+      await page.keyboard.press('Enter');
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) ===
+          `${drive}Users`,
+        'the right side to open Users',
+      );
+      assert.strictEqual(await page.locator('.confirm-popup').count(), 0);
+    },
+  );
 });
