@@ -7,7 +7,7 @@ import { cascaded } from '../../../helpers/cascade';
 import { defaultSettings } from '../../../helpers/fixtures';
 import { noop, looks, hovered } from './stylesheetFixtures';
 import { SkeletonRows } from '../../../../tools/git/page/skeleton';
-import { defaultScrolling } from '../../../../lib/page/rowScroll';
+import { defaultScrolling } from '../../../../lib/page/scrollSettings';
 import { fileChange } from '../../../helpers/gitValues';
 import { renderedBy } from '../../../helpers/componentFixtures';
 import { stylesheet } from '../../../helpers/pageSources';

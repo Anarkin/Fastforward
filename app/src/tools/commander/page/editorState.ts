@@ -18,7 +18,7 @@ import { syntaxColors } from './editorColors';
 import { appSelection } from './editorSelection';
 import { appTextLook, blanksShown } from './editorText';
 import { rowScrolling } from './editorScroll';
-import type { ScrollSettings } from '../../../lib/page/rowScroll';
+import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { colorer } from '../../../lib/page/syntax';
 import { type CellTable } from '../../../lib/page/cellTable';
 import { editorFind } from './editorFind';

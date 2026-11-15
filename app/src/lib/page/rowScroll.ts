@@ -2,11 +2,9 @@ import { pressedAlone } from '../shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
 import { glideAt, glideEnded, type Glide } from './glide';
 import { setRowScroller } from './scrollbarLinks';
+import { wheelTurn } from './wheelTurns';
 
 const onRow = 0.01;
-const lineMode = 1;
-const pageMode = 2;
-const notch = 120;
 
 export function snappedTop(top: number, row: number, max: number): number {
   if (row <= 0) {
@@ -15,19 +13,7 @@ export function snappedTop(top: number, row: number, max: number): number {
   return Math.max(0, Math.min(max, Math.ceil(top / row - onRow) * row));
 }
 
-export interface ScrollSettings {
-  readonly wheelRows: number;
-  readonly smooth: boolean;
-}
-
-export const defaultScrolling: ScrollSettings = {
-  wheelRows: 1,
-  smooth: false,
-};
-
 export const rowGlide = 150;
-
-export const sidewaysColumns = 4;
 
 export function glideRows(
   glide: Glide | undefined,
@@ -52,50 +38,6 @@ export function revealGlides(
 ): boolean {
   const distance = Math.abs(to - from);
   return distance > row + onRow && distance <= page + onRow;
-}
-
-export interface Wheel {
-  readonly deltaY: number;
-  readonly deltaMode: number;
-  readonly wheelDeltaY?: number;
-}
-
-export interface WheelSizes {
-  readonly row: number;
-  readonly step: number;
-  readonly page: number;
-  readonly perNotch: number;
-}
-
-export function notchesOf({
-  deltaY,
-  wheelDeltaY = 0,
-}: Wheel): number | undefined {
-  return deltaY !== 0 && wheelDeltaY !== 0 && wheelDeltaY % notch === 0
-    ? (Math.sign(deltaY) * Math.abs(wheelDeltaY)) / notch
-    : undefined;
-}
-
-export function wheelTurn(
-  pending: number,
-  wheel: Wheel,
-  { row, step, page, perNotch }: WheelSizes,
-): { readonly rows: number; readonly pending: number } {
-  const notches = notchesOf(wheel);
-  if (notches !== undefined) {
-    return { rows: notches * perNotch, pending: 0 };
-  }
-  const { deltaY, deltaMode } = wheel;
-  const pixels =
-    deltaMode === lineMode
-      ? deltaY * step
-      : deltaMode === pageMode
-        ? ((deltaY * page) / row) * step
-        : deltaY;
-  const total = pending + pixels;
-  const rows = Math.trunc(total / step + (total > 0 ? onRow : -onRow));
-  const left = total - rows * step;
-  return { rows, pending: Math.abs(left) < onRow ? 0 : left };
 }
 
 export function rowPadding(viewport: number, row: number): number {

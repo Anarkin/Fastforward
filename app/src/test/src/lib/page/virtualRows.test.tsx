@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import { estimatedRowHeight } from '../../../../lib/page/listRows';
 import { VirtualRows } from '../../../../lib/page/virtualRows';
 import { noop } from '../../../helpers/fixtures';
-import { defaultScrolling } from '../../../../lib/page/rowScroll';
+import { defaultScrolling } from '../../../../lib/page/scrollSettings';
 
 suite('Virtual rows', () => {
   test('draws only the rows in view of a long list, not every row', () => {

@@ -7,7 +7,7 @@ import { defaultImageView } from './imageView';
 import {
   defaultScrolling,
   type ScrollSettings,
-} from '../../lib/page/rowScroll';
+} from '../../lib/page/scrollSettings';
 import { defaultTextView } from './textView';
 import { addNotice } from '../shared/notices';
 import type {

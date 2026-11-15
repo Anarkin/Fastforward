@@ -1,6 +1,6 @@
 import { wheeled, type Modifiers } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
-import { sidewaysColumns } from '../../../lib/page/rowScroll';
+import { sidewaysColumns } from '../../../lib/page/scrollSettings';
 
 export function sideScroll(scroll: number, widest: number): number {
   return Math.max(0, Math.min(widest, scroll));

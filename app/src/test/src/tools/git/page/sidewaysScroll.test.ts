@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { sidewaysColumns } from '../../../../../lib/page/rowScroll';
+import { sidewaysColumns } from '../../../../../lib/page/scrollSettings';
 import { suite, test } from 'vitest';
 import { diffScrollLeft } from '../../../../../tools/git/page/sidewaysScroll';
 

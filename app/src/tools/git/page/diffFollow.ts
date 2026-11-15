@@ -4,8 +4,8 @@ import {
   followRows,
   rowPadding,
   type RowFollower,
-  type ScrollSettings,
 } from '../../../lib/page/rowScroll';
+import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 
 export function useDiffFollow({
   list,

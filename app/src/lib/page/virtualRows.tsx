@@ -17,8 +17,8 @@ import {
   revealGlides,
   rowPadding,
   type RowFollower,
-  type ScrollSettings,
 } from './rowScroll';
+import type { ScrollSettings } from './scrollSettings';
 
 import {
   endCovered,
