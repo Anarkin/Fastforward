@@ -175,13 +175,14 @@ suite('Git tool navigating the history', () => {
     let waiting = false;
     let abortedWhenFound = false;
     stubMethod(fastforward, 'commitsMatching', async (original, ...args) => {
-      const [context, query, signal] = args;
+      const [context, query, options, signal] = args;
       if (query !== 'nothing like it') {
         return original(...args);
       }
       const found = await original(
         context,
         query,
+        options,
         new AbortController().signal,
       );
       waiting = true;
@@ -232,6 +233,7 @@ suite('Git tool navigating the history', () => {
     assert.deepStrictEqual(page.last('commitSearch'), {
       type: 'commitSearch',
       query: 'test',
+      options: plainSearch,
       result: { commits: [], capped: false },
     });
     assert.deepStrictEqual(page.last('hashLookup'), {
@@ -252,7 +254,7 @@ suite('Git tool navigating the history', () => {
     const held = gate();
     let searching: AbortSignal | undefined;
     stubMethod(fastforward, 'commitsMatching', async (original, ...args) => {
-      const [, , signal] = args;
+      const [, , , signal] = args;
       assert.ok(signal instanceof AbortSignal);
       searching = signal;
       await held.opened;
