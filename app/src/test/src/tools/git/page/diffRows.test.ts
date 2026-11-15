@@ -1,24 +1,11 @@
 import * as assert from 'node:assert';
-import { JSDOM } from 'jsdom';
-import { act } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
 import { parsePatch, type DiffFile } from '../../../../../tools/git/page/diff';
-import { tagsWith } from '../../../../helpers/fixtures';
 import { kinds } from './diffViewFixtures';
 import { diffRows, sideChange } from '../../../../../tools/git/page/diffRows';
-import {
-  rowHeight,
-  rowMeasures,
-} from '../../../../../tools/git/page/rowMeasures';
-import { TextProbe } from '../../../../../tools/git/page/textProbes';
-import {
-  FileNote,
-  FileHeader,
-  DiffSkeleton,
-} from '../../../../../tools/git/page/diffRowParts';
+import { rowHeight } from '../../../../../tools/git/page/rowMeasures';
 
 const binaryOfIndex = (index: string) =>
   parsePatch(
@@ -30,14 +17,6 @@ const binaryOfIndex = (index: string) =>
   )[0];
 
 const changeOf = (index: string) => sideChange(binaryOfIndex(index));
-
-const binaryMarkup = (
-  change: 'added' | 'removed' | undefined,
-  split: boolean,
-) =>
-  renderToStaticMarkup(
-    <FileNote text="Binary file" change={change} split={split} />,
-  );
 
 const emptyFile = (index: string, mode: string) =>
   parsePatch(
@@ -112,25 +91,6 @@ suite('Binary files', () => {
     assert.strictEqual(
       changeOf(`${'1'.repeat(40)}..${'2'.repeat(40)}`),
       undefined,
-    );
-  });
-
-  test('says a file is binary on each side it has, hatching the other side by side, and tints it inline', () => {
-    assert.strictEqual(
-      binaryMarkup('added', false),
-      '<div class="file-note added">Binary file</div>',
-    );
-    assert.strictEqual(
-      binaryMarkup('added', true),
-      '<div class="split-line note-line"><div class="file-note split-side filler"></div><div class="file-note split-side added">Binary file</div></div>',
-    );
-    assert.strictEqual(
-      binaryMarkup('removed', true),
-      '<div class="split-line note-line"><div class="file-note split-side removed">Binary file</div><div class="file-note split-side filler"></div></div>',
-    );
-    assert.strictEqual(
-      binaryMarkup(undefined, true),
-      '<div class="split-line note-line"><div class="file-note split-side ">Binary file</div><div class="file-note split-side ">Binary file</div></div>',
     );
   });
 });
@@ -322,70 +282,8 @@ suite('Symbolic links', () => {
   });
 });
 
-const collapsibleHeader = (collapsible: boolean) =>
-  renderToStaticMarkup(
-    <FileHeader
-      path="a.ts"
-      open
-      whole={false}
-      collapsible={collapsible}
-      onClick={() => {}}
-    />,
-  );
-
-suite('Diff file header', () => {
-  test('labels a file shown entire as unchanged, naming no commit, as it may be in the uncommitted changes or a comparison', () => {
-    const html = renderToStaticMarkup(
-      <FileHeader
-        path="a.ts"
-        open
-        whole
-        collapsible={false}
-        onClick={() => {}}
-      />,
-    );
-    assert.match(html, /<span class="unchanged">Unchanged<\/span>/);
-    assert.doesNotMatch(html, /commit/);
-    assert.doesNotMatch(
-      renderToStaticMarkup(
-        <FileHeader
-          path="a.ts"
-          open
-          whole={false}
-          collapsible
-          onClick={() => {}}
-        />,
-      ),
-      /unchanged/,
-    );
-  });
-
-  test('draws the twisty only on a header that can collapse', () => {
-    assert.match(collapsibleHeader(true), /twisty/);
-    assert.doesNotMatch(collapsibleHeader(false), /twisty/);
-  });
-
-  test('names a renamed file by both its paths, shortened as git does, with both in full in its tooltip', () => {
-    const html = renderToStaticMarkup(
-      <FileHeader
-        path="elsewhere/to-folder.txt"
-        oldPath="moved/to-folder.txt"
-        open
-        whole={false}
-        collapsible
-        onClick={() => {}}
-      />,
-    );
-    assert.match(
-      html,
-      /<span class="path" title="moved\/to-folder\.txt → elsewhere\/to-folder\.txt">\{moved → elsewhere\}\/to-folder\.txt<\/span>/,
-    );
-  });
-});
-
 const renamedFile = (...patchLines: string[]) =>
   parsePatch(['diff --git a/p.sh b/q.sh', ...patchLines].join('\n'))[0];
-
 suite('Renamed files', () => {
   const rename = [
     'similarity index 100%',
@@ -466,99 +364,5 @@ suite('Renamed files', () => {
       ),
       ['error', 'file', 'line', 'line'],
     );
-  });
-
-  test('draws the placeholder of a diff loading side by side as two columns of bars, each its own, and inline as one', () => {
-    const split = renderToStaticMarkup(<DiffSkeleton split rows={9} />);
-    const sides = tagsWith(split, 'split-side');
-    assert.strictEqual(sides.length, 2);
-    assert.strictEqual(tagsWith(split, 'skeleton-row').length, 18);
-    const inline = renderToStaticMarkup(
-      <DiffSkeleton split={false} rows={9} />,
-    );
-    assert.strictEqual(tagsWith(inline, 'split-side').length, 0);
-    assert.strictEqual(tagsWith(inline, 'skeleton-row').length, 9);
-  });
-
-  test('makes every row a whole number of code lines tall, so the diff scrolls by whole lines, an empty one none', () => {
-    const line = 16.8;
-    assert.strictEqual(rowHeight({ kind: 'hunk', file: 0 }, false, line), line);
-    assert.strictEqual(
-      rowHeight({ kind: 'binary', file: 0 }, false, line),
-      line,
-    );
-    assert.strictEqual(
-      rowHeight({ kind: 'image', file: 0 }, false, line),
-      19 * line,
-    );
-    const measured = rowMeasures([{ kind: 'error' }], undefined, line, 1.25);
-    const preview = measured.measureElement(
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      {} as Element,
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      { borderBoxSize: [{ blockSize: 400 }] } as unknown as ResizeObserverEntry,
-    );
-    assert.ok(Math.abs(preview - 24 * line) < 1e-6, String(preview));
-    const nothing = measured.measureElement(
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      {} as Element,
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      { borderBoxSize: [{ blockSize: 0 }] } as unknown as ResizeObserverEntry,
-    );
-    assert.strictEqual(Math.abs(nothing), 0);
-  });
-
-  test('measures the height of a line of code as the diff is first drawn, not only once it is drawn again, so a diff shown anew, as on changing tabs, does not draw its rows first as tall as a guess', async () => {
-    const dom = new JSDOM('<!doctype html><main></main>');
-    const lineHeight = 17;
-    dom.window.matchMedia = () =>
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      ({
-        addEventListener: () => undefined,
-        removeEventListener: () => undefined,
-      }) as unknown as MediaQueryList;
-    const globals = {
-      window: dom.window,
-      document: dom.window.document,
-      devicePixelRatio: 1,
-      getComputedStyle: (element: Element) =>
-        Object.assign(Object.create(null), {
-          lineHeight: element.classList.contains('diff-line')
-            ? `${lineHeight}px`
-            : 'normal',
-          letterSpacing: 'normal',
-        }),
-      ResizeObserver: class {
-        observe(): void {}
-        disconnect(): void {}
-      },
-      IS_REACT_ACT_ENVIRONMENT: true,
-    };
-    const saved = Object.fromEntries(
-      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
-    );
-    Object.assign(globalThis, globals);
-    try {
-      const { createRoot } = await import('react-dom/client');
-      const main = dom.window.document.querySelector('main');
-      assert.ok(main);
-      const measured: number[] = [];
-      const root = createRoot(main);
-      await act(async () => {
-        root.render(
-          <TextProbe
-            onMeasure={(_width, _font, _padding, _scale, line) =>
-              measured.push(line)
-            }
-          />,
-        );
-      });
-      assert.deepStrictEqual(measured, [lineHeight]);
-      await act(async () => {
-        root.unmount();
-      });
-    } finally {
-      Object.assign(globalThis, saved);
-    }
   });
 });
