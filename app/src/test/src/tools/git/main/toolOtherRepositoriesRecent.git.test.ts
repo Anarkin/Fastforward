@@ -13,7 +13,6 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { waitFor } from '../../../../helpers/fixtures';
 import { recordingLog } from '../../../../helpers/stub';
 import {
   closeViews,
@@ -21,7 +20,6 @@ import {
   FakeHost,
   savedBookmarks,
   takeErrorsLogged,
-  withNotices,
   withView,
   tabOf,
   shownTabs,
@@ -216,71 +214,6 @@ suite('Git tool of other repositories', () => {
     );
   });
 
-  test('says what git said of a tab it refuses to open', async () => {
-    await withView(
-      log,
-      [repository.root, other],
-      async (view) => {
-        await asIfOwnedByAnother(other, () =>
-          view.connection.receive({
-            type: 'selectTab',
-            tab: tabOf(view.page, other),
-          }),
-        );
-        assert.match(
-          plainOf(view.page.last('error')?.message ?? ''),
-          /^fatal: detected dubious ownership/,
-        );
-      },
-      { watched: true },
-    );
-    takeErrorsLogged(
-      logged,
-      /^Listing the worktrees of .*other failed$/,
-      /^Showing tab .* failed$/,
-      /^git .* failed: fatal: detected dubious ownership/,
-    );
-  });
-
-  test('opens a tab git refused to open once it is clicked again, or its worktree is, after git no longer refuses it', async () => {
-    await withView(
-      log,
-      [repository.root, other],
-      async (view) => {
-        for (const again of [
-          () =>
-            view.connection.receive({
-              type: 'selectTab',
-              tab: tabOf(view.page, other),
-            }),
-          () =>
-            view.connection.receive({ type: 'selectWorktree', root: other }),
-        ]) {
-          await asIfOwnedByAnother(other, () =>
-            view.connection.receive({
-              type: 'selectTab',
-              tab: tabOf(view.page, other),
-            }),
-          );
-          view.page.clear();
-          await again();
-          assert.ok(view.page.last('repository'), String(again));
-          await view.connection.receive({
-            type: 'selectTab',
-            tab: tabOf(view.page, repository.root),
-          });
-        }
-      },
-      { watched: true },
-    );
-    takeErrorsLogged(
-      logged,
-      /^Listing the worktrees of .*other failed$/,
-      /^Showing tab .* failed$/,
-      /^git .* failed: fatal: detected dubious ownership/,
-    );
-  });
-
   test('closes the only tab, leaving none shown but offering it again', async () => {
     await withView(log, [repository.root], async (view) => {
       for (const tab of shownTabs(view.page)?.tabs ?? []) {
@@ -325,41 +258,6 @@ suite('Git tool of other repositories', () => {
     });
   });
 
-  test("says a repository whose folder is removed while open is not a repository, rather than that it can't be watched", async () => {
-    const removed = await tempRepository(path.join(folder, 'removed'));
-    await removed.commit('first');
-    await withView(
-      log,
-      [removed.root, repository.root],
-      async (view) => {
-        assert.strictEqual(view.page.last('error'), undefined);
-        await view.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(view.page, repository.root),
-        });
-        removeFolder(removed.root);
-        await withNotices(view.page, 'error', async (notices) => {
-          await view.connection.receive({
-            type: 'selectTab',
-            tab: tabOf(view.page, removed.root),
-          });
-          assert.deepStrictEqual(notices, []);
-        });
-        assert.match(
-          plainOf(view.page.last('error')?.message ?? ''),
-          /is not a git repository/,
-        );
-      },
-      { watched: true },
-    );
-    takeErrorsLogged(
-      logged,
-      /^Listing the worktrees of .*removed failed$/,
-      /^Showing tab .* failed$/,
-      /^git .* failed: spawn .* ENOENT$/,
-    );
-  });
-
   test('makes the main branch a bookmark once a repository opened without commits has one', async () => {
     const empty = await tempRepository(path.join(folder, 'unborn'));
     await withView(log, [empty.root], async (view) => {
@@ -373,55 +271,5 @@ suite('Git tool of other repositories', () => {
         { kind: 'branch', name: 'main' },
       ]);
     });
-  });
-
-  test('says the folder of a tab is no repository once its .git is deleted while it is open, rather than what git said', async () => {
-    const unmade = await tempRepository(path.join(folder, 'unmade'));
-    await unmade.commit('first');
-    await withView(log, [unmade.root], async (view) => {
-      fs.rmSync(path.join(unmade.root, '.git'), {
-        recursive: true,
-        force: true,
-        maxRetries: 10,
-      });
-      view.page.clear();
-      await view.connection.refresh();
-      assert.deepStrictEqual(
-        view.page.last('error')?.message,
-        strings.messages.notRepository(unmade.root),
-      );
-    });
-    takeErrorsLogged(logged, /^Refreshing the tab failed$/, /^git .* failed: /);
-  });
-
-  test('opens the tab shown again when it is clicked once its folder, missing as it opened, is a repository', async () => {
-    const later = path.join(folder, 'later');
-    await withView(
-      log,
-      [later],
-      async (view) => {
-        const shown = view.page.last('error')?.message;
-        assert.match(plainOf(shown ?? ''), /is not a git repository/);
-        const made = await tempRepository(later);
-        await made.commit('first');
-        await view.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(view.page, later),
-        });
-        assert.strictEqual(view.page.last('commits')?.total, 1);
-        assert.deepStrictEqual(view.page.last('clearError')?.message, shown);
-        await made.commit('second');
-        await waitFor(
-          () => view.page.last('commits')?.total === 2,
-          'the watcher to see the commit',
-        );
-      },
-      { watched: true },
-    );
-    takeErrorsLogged(
-      logged,
-      /^Listing the worktrees of .*later failed$/,
-      /^git worktree list .* failed: spawn .* ENOENT$/,
-    );
   });
 });

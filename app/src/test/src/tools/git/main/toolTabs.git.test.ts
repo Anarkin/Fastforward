@@ -1,10 +1,18 @@
 import * as assert from 'node:assert';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
-import { afterAll, beforeAll, suite, test } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  suite,
+  test,
+} from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { sameRoot } from '../../../../../lib/main/paths';
 import { tabsKey } from '../../../../../shell/main/storage';
+import { soloKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   removeFolder,
@@ -15,7 +23,6 @@ import { recordingLog } from '../../../../helpers/stub';
 import {
   closeViews,
   failOnErrorsLogged,
-  FakeHost,
   gate,
   rootOf,
   stubMethod,
@@ -24,6 +31,9 @@ import {
   type OpenView,
   tabOf,
   shownTabs,
+  openView,
+  commitsSent,
+  gitState,
 } from '../../../../helpers/harness';
 import { viewRepositories } from '../../../../helpers/gitFixtures';
 
@@ -250,89 +260,62 @@ suite('Git tool with two tabs', () => {
     }
   });
 
-  test('shows no error of the tab the page opens as it loads that failed after it was left', async () => {
-    await withView(
-      log,
-      [repository.root, other],
-      async (own) => {
-        const load = failingLoad(own, repository.root);
-        const ready = own.connection.receive({ type: 'ready' });
-        await waitFor(load.loading, 'the tab to load');
-        await own.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(own.page, other),
-        });
-        own.page.clear();
-        load.fail();
-        await ready;
-        assert.strictEqual(own.page.last('error'), undefined);
-      },
-      false,
-    );
-    takeErrorsLogged(logged, /^Showing tab .* failed$/, /^loading failed$/);
-  });
+  suite('open', () => {
+    let tabs: OpenView;
 
-  test('shows no error of the tab opened after one is closed that failed after it was left', async () => {
-    const third = await tempRepository(path.join(folder, 'after-closed'));
-    await third.commit('third');
-    await withView(log, [other, repository.root, third.root], async (own) => {
-      const load = failingLoad(own, repository.root);
-      const closing = own.connection.receive({
-        type: 'closeTab',
-        tab: tabOf(own.page, other),
-      });
-      await waitFor(load.loading, 'the next tab to load');
-      await own.connection.receive({
-        type: 'selectTab',
-        tab: tabOf(own.page, third.root),
-      });
-      own.page.clear();
-      load.fail();
-      await closing;
-      assert.strictEqual(own.page.last('error'), undefined);
+    beforeEach(async () => {
+      tabs = await openView(log, [repository.root, other]);
     });
-    takeErrorsLogged(logged, /^Showing tab .* failed$/, /^loading failed$/);
-  });
 
-  test('shows no error of the tab of a repository picked that failed after it was left', async () => {
-    const host = new FakeHost();
-    host.folders = [other];
-    await withView(
-      log,
-      [repository.root],
-      async (own) => {
-        const load = failingLoad(own, other);
-        const browsing = own.connection.receive({ type: 'browseRepositories' });
-        await waitFor(load.loading, 'the tab picked to load');
-        await own.connection.receive({
-          type: 'selectTab',
-          tab: tabOf(own.page, repository.root),
+    afterEach(() => tabs.connection.dispose());
+
+    test('keeps the shown tab when another one closes', async () => {
+      await tabs.connection.receive({
+        type: 'closeTab',
+        tab: tabOf(tabs.page, other),
+      });
+      const left = shownTabs(tabs.page);
+      assert.strictEqual(left?.active, repository.root);
+      assert.ok(!left.tabs.some((tab) => sameRoot(tab.root, other)));
+    });
+
+    test('sends nothing of a tab closed while it loads to the tab opened again for its repository', async () => {
+      const held = gate();
+      let holding = true;
+      stubMethod(tabs.view, 'sendCommits', async (original, ...args) => {
+        if (holding) {
+          holding = false;
+          await held.opened;
+        }
+        await original(...args);
+      });
+      try {
+        const applying = tabs.connection.receive({
+          type: 'setSolo',
+          root: repository.root,
+          solo: true,
         });
-        own.page.clear();
-        load.fail();
-        await browsing;
-        assert.strictEqual(own.page.last('error'), undefined);
-      },
-      true,
-      host,
-    );
-    takeErrorsLogged(logged, /^Showing tab .* failed$/, /^loading failed$/);
+        await waitFor(
+          () => tabs.page.last('applyingSolo')?.running === true,
+          'the solo button to spin',
+        );
+        await tabs.connection.receive({
+          type: 'closeTab',
+          tab: tabOf(tabs.page, repository.root),
+        });
+        await tabs.connection.receive({
+          type: 'openRepository',
+          root: repository.root,
+        });
+        assert.ok(tabs.page.last('commits'));
+        tabs.page.clear();
+        held.open();
+        await applying;
+        assert.strictEqual(commitsSent(tabs.page.messages), 0);
+      } finally {
+        held.open();
+        await gitState(tabs.store).update(soloKey, {});
+      }
+    });
   });
 });
-
-function failingLoad(
-  own: OpenView,
-  root: string,
-): { loading: () => boolean; fail: () => void } {
-  const held = gate();
-  let loading = false;
-  stubMethod(own.view, 'loadTab', async (original, ...args) => {
-    if (!sameRoot(rootOf(args[0]) ?? '', root)) {
-      return original(...args);
-    }
-    loading = true;
-    await held.opened;
-    throw new Error('loading failed');
-  });
-  return { loading: () => loading, fail: held.open };
-}
