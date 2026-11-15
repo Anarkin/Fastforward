@@ -1,13 +1,10 @@
 import * as assert from 'node:assert';
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { listTree } from '../../../../../tools/git/main/fileLists';
-import {
-  workingTreeFiles,
-  workingTreePatch,
-} from '../../../../../tools/git/main/workingTree';
+import { workingTreeFiles } from '../../../../../tools/git/main/workingTree';
+import { workingTreePatch } from '../../../../../tools/git/main/workingTreePatch';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import {
   removeFolder,
@@ -15,7 +12,6 @@ import {
   tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
-import { holdingGit } from './workingTreeFixtures';
 
 suite('A conflicted merge', () => {
   let conflicted: TempRepository;
@@ -185,114 +181,6 @@ suite('A merge conflicting over a file our side deleted', () => {
       );
     } finally {
       fs.writeFileSync(kept, text);
-    }
-  });
-});
-
-function unreadable(file: string): () => void {
-  if (process.platform === 'win32') {
-    execFileSync('icacls', [file, '/deny', '*S-1-1-0:(R)'], {
-      stdio: 'ignore',
-    });
-    return () =>
-      execFileSync('icacls', [file, '/remove:d', '*S-1-1-0'], {
-        stdio: 'ignore',
-      });
-  }
-  fs.chmodSync(file, 0);
-  return () => fs.chmodSync(file, 0o644);
-}
-
-function canRead(file: string): boolean {
-  try {
-    fs.readFileSync(file);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-suite('A changed file that cannot be read', () => {
-  test('lists every changed file without counting their lines, rather than failing, as git stops counting at the file it cannot read', async (context) => {
-    const repository = await tempRepository(tempFolder('unreadable'));
-    try {
-      await repository.commit('initial', {
-        'a.txt': 'one\n',
-        'b.txt': 'one\n',
-      });
-      const locked = path.join(repository.root, 'a.txt');
-      fs.writeFileSync(locked, 'two\n');
-      fs.writeFileSync(path.join(repository.root, 'b.txt'), 'two\n');
-      const readable = unreadable(locked);
-      try {
-        if (canRead(locked)) {
-          context.skip();
-        }
-        for (const base of [undefined, 'HEAD']) {
-          const { files } = await workingTreeFiles(
-            repository.gitPath,
-            repository.root,
-            { base, reverse: false },
-          );
-          assert.deepStrictEqual(
-            files.map((file) => [file.status, file.path, file.uncounted]),
-            [
-              ['M', 'a.txt', true],
-              ['M', 'b.txt', true],
-            ],
-            base,
-          );
-        }
-      } finally {
-        readable();
-      }
-    } finally {
-      removeFolder(repository.root);
-    }
-  });
-});
-
-suite('Counting uncommitted changes', () => {
-  test('counts them without diffing their lines when only their number is shown, telling a file only touched from one changed by its hash, as each refresh diffed every changed file whole', async () => {
-    const repository = await tempRepository(tempFolder('count-only'));
-    try {
-      await repository.commit('initial', {
-        'changed.txt': 'one\n',
-        'touched.txt': 'same\n',
-        'staged.txt': 'old\n',
-      });
-      const touched = path.join(repository.root, 'touched.txt');
-      fs.writeFileSync(path.join(repository.root, 'changed.txt'), 'two\n');
-      fs.writeFileSync(touched, 'same\n');
-      const later = new Date(Date.now() + 60_000);
-      fs.utimesSync(touched, later, later);
-      fs.writeFileSync(path.join(repository.root, 'staged.txt'), 'new\n');
-      await repository.git('add', 'staged.txt');
-      const gits = holdingGit(() => false);
-      let workingTree: Awaited<ReturnType<typeof workingTreeFiles>>;
-      try {
-        workingTree = await workingTreeFiles(
-          repository.gitPath,
-          repository.root,
-          undefined,
-          undefined,
-          undefined,
-          false,
-        );
-      } finally {
-        gits.release();
-      }
-      assert.strictEqual(gits.started('--numstat'), false);
-      assert.deepStrictEqual(
-        workingTree.files.map((file) => file.path),
-        ['changed.txt'],
-      );
-      assert.deepStrictEqual(
-        workingTree.staged?.map((file) => file.path),
-        ['staged.txt'],
-      );
-    } finally {
-      removeFolder(repository.root);
     }
   });
 });

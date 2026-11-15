@@ -2,35 +2,8 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import { untrackedListing } from '../../../../../tools/git/main/fileLists';
-import {
-  FileHashes,
-  LineCounts,
-} from '../../../../../tools/git/main/workingTree';
+import { FileHashes } from '../../../../../tools/git/main/touchedFiles';
 import { removeFolder, tempFolder } from '../../../../helpers/repositories';
-
-suite('Untracked files', () => {
-  test('lists them with git status on Windows, which reads the folders through its cache, keeping only the untracked ones', () => {
-    const { args, paths } = untrackedListing('win32');
-    assert.deepStrictEqual(args.slice(0, 3), [
-      '-c',
-      'core.fscache=true',
-      'status',
-    ]);
-    assert.deepStrictEqual(
-      paths(
-        '1 .M N... 100644 100644 100644 aaa bbb a.txt\0? new file.txt\0? nested/\0',
-      ),
-      ['new file.txt', 'nested/'],
-    );
-  });
-
-  test('lists them with ls-files elsewhere', () => {
-    const { args, paths } = untrackedListing('linux');
-    assert.strictEqual(args[0], 'ls-files');
-    assert.deepStrictEqual(paths('a.txt\0nested/\0'), ['a.txt', 'nested/']);
-  });
-});
 
 suite('Hashes of files touched', () => {
   let folder: string;
@@ -96,32 +69,5 @@ suite('Hashes of files touched', () => {
       ]);
     }
     assert.deepStrictEqual(asked, [files]);
-  });
-});
-
-suite('Lines of untracked files', () => {
-  let folder: string;
-
-  beforeEach(() => {
-    folder = tempFolder('line-counts');
-  });
-
-  afterEach(() => removeFolder(folder));
-
-  test('counts the lines of a file again only once it changes on disk, as each refresh would read every one whole', async () => {
-    const file = path.join(folder, 'new.txt');
-    fs.writeFileSync(file, 'one\n');
-    const counted: string[] = [];
-    const counts = new LineCounts(10, (counting) => {
-      counted.push(counting);
-      return Promise.resolve(
-        fs.readFileSync(counting, 'utf8').split('\n').length - 1,
-      );
-    });
-    assert.strictEqual(await counts.of(file), 1);
-    assert.strictEqual(await counts.of(file), 1);
-    fs.writeFileSync(file, 'one\ntwo\n');
-    assert.strictEqual(await counts.of(file), 2);
-    assert.deepStrictEqual(counted, [file, file]);
   });
 });

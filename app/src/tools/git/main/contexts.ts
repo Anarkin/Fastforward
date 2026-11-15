@@ -13,7 +13,7 @@ import {
 } from './tabContext';
 import { newTabState } from './tabState';
 import { keep } from './tabReplay';
-import { UntrackedPatches } from './workingTree';
+import { UntrackedPatches } from './workingTreePatch';
 
 const maxKeptUntrackedChars = 32_000_000;
 

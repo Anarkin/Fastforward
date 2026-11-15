@@ -4,10 +4,8 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { runGit } from '../../../../../tools/git/main/run';
-import {
-  workingTreeFiles,
-  workingTreePatch,
-} from '../../../../../tools/git/main/workingTree';
+import { workingTreeFiles } from '../../../../../tools/git/main/workingTree';
+import { workingTreePatch } from '../../../../../tools/git/main/workingTreePatch';
 import {
   removeFolder,
   tempFolder,

@@ -22,11 +22,11 @@ import { collapseThreshold } from '../../../../../tools/git/shared/protocol';
 import { readFile } from '../../../../../tools/git/main/files';
 import { listTree } from '../../../../../tools/git/main/fileLists';
 import { runGit } from '../../../../../tools/git/main/run';
+import { workingTreeFiles } from '../../../../../tools/git/main/workingTree';
 import {
   stagedPatch,
-  workingTreeFiles,
   workingTreePatch,
-} from '../../../../../tools/git/main/workingTree';
+} from '../../../../../tools/git/main/workingTreePatch';
 import { parsePatch } from '../../../../../tools/git/page/diff';
 import {
   renamingRepository,

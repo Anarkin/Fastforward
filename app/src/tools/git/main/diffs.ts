@@ -20,12 +20,11 @@ import {
 import { readFile } from './files';
 import { stashFiles, stashPatch } from './stashes';
 import {
-  stagedPatch,
   workingTreeFiles,
-  workingTreePatch,
   type WorkingTree,
   type WorkingTreeDiff,
 } from './workingTree';
+import { stagedPatch, workingTreePatch } from './workingTreePatch';
 import {
   comparedOf,
   shownCommit,

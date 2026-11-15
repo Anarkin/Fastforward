@@ -1,6 +1,6 @@
 import type { ReadPatch } from './patchBudget';
 import type { Refs } from './refReads';
-import { UntrackedPatches } from './workingTree';
+import { UntrackedPatches } from './workingTreePatch';
 import type { Fetched } from './fetches';
 import type { RepositoryAt, Notify } from './operations';
 import type { GitToWebview } from '../shared/protocol';
