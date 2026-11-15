@@ -1,4 +1,6 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { suite, test } from 'vitest';
 import { wrapColumns, wrappedLines, wrapStarts } from '../../lib/page/wordWrap';
@@ -6,6 +8,7 @@ import {
   diffLineNumbered,
   openChangedFile,
   page,
+  repository,
   savedSetting,
   sharedApp,
   viewSaved,
@@ -23,6 +26,7 @@ import {
   pressWrap,
   clickView,
   marksFollowRows,
+  drawnBlocks,
 } from './wrappingFixtures';
 import {
   hyphenatedLine,
@@ -36,7 +40,12 @@ import {
   paddedLine,
   firstLongLine,
   longLines,
+  reportDataLine,
+  reportPage,
 } from './wrappingSamples';
+
+const rowsFrom = (first: number, last: number) =>
+  Array.from({ length: last - first + 1 }, (_, at) => first + at);
 
 suite('App', () => {
   sharedApp({
@@ -49,6 +58,7 @@ suite('App', () => {
     'minified.txt': `${minifiedLine}\n`,
     'grid.txt': `${gridLines.join('\n')}\n`,
     'grid.js': `${gridLines.join('\n')}\n`,
+    'report.html': reportPage(2_000),
   });
 
   test('lists the history and shows a commit entire, with its change, inline, then side by side on its button, the default, and inline again on the other, and wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, keeping the line at the top in place as it wraps and changes layout, saving each choice', async () => {
@@ -404,6 +414,130 @@ suite('App', () => {
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
+  test('scrolls into a line of over a megabyte, through it and out of it without stalling, drawing only the blocks of its rows near the rows in sight, each row where the browser breaks the line and the app expects it, marked on its row, as laying out the whole line each time it came into view or left it stalled the diff for seconds', async () => {
+    const file = path.join(repository.root, 'report.html');
+    const report = reportPage(16_000);
+    const data = report.split('\n')[reportDataLine - 1];
+    assert.ok(data.length > 1024 * 1024);
+    fs.writeFileSync(file, report);
+    try {
+      await page.locator('.commit', { hasText: 'second' }).click();
+      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await page
+        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
+        .click();
+      await page.locator('.row.file', { hasText: 'report.html' }).click();
+      await clickView('Side by Side')();
+      await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+      await page.locator('.diff-view.wrap.side-by-side').waitFor();
+      const list = page.locator('.diff-view .virtual-rows');
+      await list.locator('.diff-row .split-line').first().waitFor();
+      const line = page.locator('.split-side.added').filter({
+        has: page.locator('.number', {
+          hasText: new RegExp(`^${reportDataLine}$`),
+        }),
+      });
+      const stalls: number[] = [];
+      const scrollTo = async (top: number) => {
+        stalls.push(
+          await list.evaluate(async (element, to) => {
+            const started = performance.now();
+            element.scrollTop = to;
+            await new Promise((drawn) =>
+              requestAnimationFrame(() => requestAnimationFrame(drawn)),
+            );
+            return performance.now() - started;
+          }, top),
+        );
+      };
+      const scrollByHalf = async () =>
+        scrollTo(
+          await list.evaluate(
+            (element) => element.scrollTop + element.clientHeight / 2,
+          ),
+        );
+      const drawnInSight = async (where: string) => {
+        const { width, char } = await drawnBlocks(line);
+        const starts = wrapStarts(data, wrapColumns(width, char));
+        const drawnRows = async () => {
+          const { runs, marks, inSight } = await drawnBlocks(line);
+          const drawn = runs.flatMap(({ rows }) => rows.map(([, row]) => row));
+          const unseen = rowsFrom(inSight[0], inSight[1]).filter(
+            (row) => row >= 0 && row < starts.length && !drawn.includes(row),
+          );
+          const unmarked = drawn.filter(
+            (row) => row < starts.length - 1 && !marks.includes(row),
+          );
+          return { runs, left: unseen.length + unmarked.length };
+        };
+        await waitFor(
+          async () => (await drawnRows()).left === 0,
+          `the rows in sight drawn and marked ${where}`,
+        );
+        const { runs } = await drawnRows();
+        for (const { text, rows } of runs) {
+          const from = starts[rows[0][1]];
+          const to = starts.at((rows.at(-1)?.[1] ?? 0) + 1) ?? data.length;
+          assert.strictEqual(text, data.slice(from, to));
+          assert.deepStrictEqual(
+            rows,
+            rows.map(([, row]) => [starts[row] - from, row]),
+          );
+        }
+        assert.ok(
+          runs.reduce((sum, { text }) => sum + text.length, 0) <
+            data.length / 10,
+          `more than a tenth of the line drawn ${where}`,
+        );
+      };
+
+      await scrollTo(0);
+      await waitFor(
+        async () => (await line.count()) === 0,
+        'the line of over a megabyte to leave',
+      );
+      for (let step = 0; (await line.count()) === 0; step++) {
+        assert.ok(step < 40, 'The line of over a megabyte never came');
+        await scrollByHalf();
+      }
+      const { top, height, view } = await line.evaluate((element) => {
+        const rows = element.closest('.virtual-rows');
+        const row = element.closest('.diff-row');
+        if (!rows || !row) {
+          throw new Error('No row');
+        }
+        const box = row.getBoundingClientRect();
+        return {
+          top: rows.scrollTop + box.top - rows.getBoundingClientRect().top,
+          height: box.height,
+          view: rows.clientHeight,
+        };
+      });
+      assert.ok(height > 100 * view, `${height} is not over a hundred views`);
+      await scrollTo(top + height / 2);
+      await scrollTo(top + height - view / 2);
+      for (let step = 0; (await line.count()) > 0; step++) {
+        assert.ok(step < 40, 'The line of over a megabyte never left');
+        await scrollByHalf();
+      }
+      await scrollTo(top + height / 2);
+      assert.ok(
+        Math.max(...stalls) < 1000,
+        `scrolling stalled for ${stalls.map(Math.round).join(', ')} ms`,
+      );
+
+      await scrollTo(top - view / 2);
+      await drawnInSight('as it comes into view');
+      await scrollTo(top + height / 2);
+      await drawnInSight('in its middle');
+      await scrollTo(top + height - view / 2);
+      await drawnInSight('at its end');
+    } finally {
+      await repository.git('checkout', '-q', 'HEAD', '--', 'report.html');
+    }
+    await page.locator('.commit.working-tree.empty').waitFor();
+  });
+
   test('wraps a line longer than 64 KiB only where the browser breaks it, where the app expects it to, keeping its indentation on the row with its code, as the app expected breaks after punctuation it no longer marks in such a line, its marks drifting from the rows, and the browser broke it right after its indentation', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'minified.txt' }).click();
@@ -411,14 +545,16 @@ suite('App', () => {
     const line = await diffLineNumbered(1);
     await line.locator('.wrap-break').first().waitFor();
     const laidOut = await browserStarts(line);
-    assert.strictEqual(laidOut.text, minifiedLine);
+    assert.ok(minifiedLine.startsWith(laidOut.text));
     assert.ok(
       laidOut.starts[1] > 4,
       `the first row ends at ${laidOut.starts[1]}`,
     );
     assert.deepStrictEqual(
       laidOut.starts,
-      wrapStarts(minifiedLine, wrapColumns(laidOut.width, laidOut.char)),
+      wrapStarts(minifiedLine, wrapColumns(laidOut.width, laidOut.char)).filter(
+        (start) => start < laidOut.text.length,
+      ),
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });

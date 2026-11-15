@@ -2,10 +2,16 @@ import { memo, Fragment } from 'react';
 import { type FindRange } from './find';
 import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
 import { DrawnText } from '../../../lib/page/blanks';
-import { breakOffsets, leadLength } from '../../../lib/page/wordWrap';
+import {
+  breakOffsets,
+  breaksMarked,
+  leadLength,
+} from '../../../lib/page/wordWrap';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { type CodeProps } from './lineMarks';
-import { codePieces } from './codePieces';
+import { codePieces, piecesWithin } from './codePieces';
+import { CodeBlocks } from './codeBlocks';
+import { keptWrapStarts } from './keptStarts';
 
 function firstFrom(offsets: readonly number[], at: number): number {
   let low = 0;
@@ -77,6 +83,8 @@ export function MarkedCode({
   whitespace = false,
   indent,
   widths,
+  from = 0,
+  to = text.length,
 }: {
   readonly text: string;
   readonly syntax: readonly SyntaxRange[];
@@ -87,36 +95,40 @@ export function MarkedCode({
   readonly whitespace?: boolean;
   readonly indent?: number;
   readonly widths?: TextWidths;
+  readonly from?: number;
+  readonly to?: number;
 }): React.ReactNode {
   const shown = breakable(text, indent, (piece) => (
     <DrawnText text={piece} blanks={whitespace} widths={widths} />
   ));
   const { pieces, gapAfter } = codePieces(text, syntax, words, found, foundNow);
   if (pieces === undefined) {
-    return shown(text, 0);
+    return shown(text.slice(from, to), from);
   }
   const gap = (has: boolean) =>
     has && <span className={`word-gap ${wordClass}`} />;
-  const drawn = pieces.map(({ start, end, find, token, word, gapBefore }) => {
-    const piece = text.slice(start, end);
-    let content: React.ReactNode = find ? (
-      <mark className={`find-match ${find === 'current' ? 'current' : ''}`}>
-        {shown(piece, start)}
-      </mark>
-    ) : (
-      shown(piece, start)
-    );
-    if (token) {
-      content = <span className={`syntax-${token}`}>{content}</span>;
-    }
-    return (
-      <Fragment key={start}>
-        {gap(gapBefore)}
-        {word ? <span className={wordClass}>{content}</span> : content}
-      </Fragment>
-    );
-  });
-  return gapAfter ? (
+  const drawn = piecesWithin(pieces, from, to).map(
+    ({ start, end, find, token, word, gapBefore }) => {
+      const piece = text.slice(start, end);
+      let content: React.ReactNode = find ? (
+        <mark className={`find-match ${find === 'current' ? 'current' : ''}`}>
+          {shown(piece, start)}
+        </mark>
+      ) : (
+        shown(piece, start)
+      );
+      if (token) {
+        content = <span className={`syntax-${token}`}>{content}</span>;
+      }
+      return (
+        <Fragment key={start}>
+          {gap(gapBefore)}
+          {word ? <span className={wordClass}>{content}</span> : content}
+        </Fragment>
+      );
+    },
+  );
+  return gapAfter && to === text.length ? (
     <>
       {drawn}
       {gap(true)}
@@ -136,7 +148,24 @@ export const Code = memo(function Code({
   whitespace,
   indent,
   widths,
+  columns,
+  lineHeight,
 }: CodeProps) {
+  const draw = (from?: number, to?: number) => (
+    <MarkedCode
+      text={text}
+      syntax={syntax}
+      words={words}
+      wordClass={wordClass}
+      found={finds}
+      foundNow={current}
+      whitespace={whitespace}
+      indent={indent}
+      widths={widths}
+      from={from}
+      to={to}
+    />
+  );
   return (
     <span
       className="code"
@@ -146,17 +175,20 @@ export const Code = memo(function Code({
           : undefined
       }
     >
-      <MarkedCode
-        text={text}
-        syntax={syntax}
-        words={words}
-        wordClass={wordClass}
-        found={finds}
-        foundNow={current}
-        whitespace={whitespace}
-        indent={indent}
-        widths={widths}
-      />
+      {indent === undefined ||
+      columns === undefined ||
+      lineHeight === undefined ||
+      breaksMarked(text) ? (
+        draw()
+      ) : (
+        <CodeBlocks
+          starts={keptWrapStarts(text, columns, indent, widths)}
+          length={text.length}
+          lineHeight={lineHeight}
+          current={current}
+          draw={draw}
+        />
+      )}
     </span>
   );
 });

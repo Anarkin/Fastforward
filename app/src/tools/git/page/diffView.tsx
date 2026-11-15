@@ -319,6 +319,8 @@ export function DiffView({
     <Code
       {...codeProps(lineMarks, key, text, kind)}
       indent={wrapsAt === undefined ? undefined : wrapIndent(text, wrapsAt)}
+      columns={wrapsAt}
+      lineHeight={lineHeight}
     />
   );
 

@@ -26,6 +26,8 @@ export interface CodeProps {
   readonly whitespace: boolean;
   readonly indent?: number;
   readonly widths?: TextWidths;
+  readonly columns?: number;
+  readonly lineHeight?: number;
 }
 
 const unmarked: readonly never[] = [];

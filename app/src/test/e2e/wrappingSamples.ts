@@ -107,3 +107,31 @@ export const breakSentences = [
 ];
 
 export const paddedLine = `| Feature${' '.repeat(100)}| What it does${' '.repeat(100)}| Notes${' '.repeat(50)}|`;
+
+const reportEntry = (index: number) =>
+  `{"id": ${index}, "name": "Entry ${index}", "path": "/a/b/${index}.json", "values": [${index % 7}, ${index % 11}, ${index % 13}]}`;
+
+export const reportDataLine = 222;
+
+export function reportPage(entries: number): string {
+  return [
+    '<!doctype html>',
+    '<html>',
+    '<body>',
+    ...Array.from(
+      { length: reportDataLine - 5 },
+      (_, index) => `<div class="row">Row ${index}</div>`,
+    ),
+    '<script>',
+    `const DATA = [${Array.from({ length: entries }, (_, index) => reportEntry(index)).join(', ')}];`,
+    'const OVERVIEW = DATA.length;',
+    ...Array.from(
+      { length: 300 },
+      (_, index) => `  console.log(OVERVIEW + ${index});`,
+    ),
+    '</script>',
+    '</body>',
+    '</html>',
+    '',
+  ].join('\n');
+}

@@ -5,6 +5,7 @@ import { strings } from '../../../../../lib/shared/strings';
 import { codeProps } from '../../../../../tools/git/page/lineMarks';
 import { Code, MarkedCode } from '../../../../../tools/git/page/codeMarks';
 import { codePieces } from '../../../../../tools/git/page/codePieces';
+import { wrapStarts } from '../../../../../lib/page/wordWrap';
 
 function sign(glyph: string, text: string): string {
   return `<span class="blank" data-glyph="${glyph}">${text}</span>`;
@@ -211,6 +212,52 @@ suite('Drawing code', () => {
     const markup = wrapMarkup(indented, 4);
     assert.ok(markup.startsWith('<span class="lead">    </span>a.b(c) '));
     assert.doesNotMatch(markup, /<wbr/);
+  });
+
+  test('draws a wrapped line longer than 64 KiB in blocks of 64 rows, each starting where the app expects the browser to wrap it, only those near the rows in sight and the one of the current match, as laying out the whole of a line of a megabyte each time it scrolled into view or out of it stalled the diff for seconds', () => {
+    const long = Array.from(
+      { length: 12_000 },
+      (_, index) => `word${index}`,
+    ).join(' ');
+    assert.ok(long.length > 64 * 1024);
+    const starts = wrapStarts(long, 80, 0);
+    const block = 3;
+    const at = starts[block * 64 + 10];
+    const match = { start: at, end: at + 4 };
+    const html = renderToStaticMarkup(
+      <Code
+        text={long}
+        syntax={[]}
+        words={[]}
+        wordClass={'word-added'}
+        finds={[match]}
+        current={match}
+        whitespace={false}
+        indent={0}
+        columns={80}
+        lineHeight={17}
+      />,
+    );
+
+    const blocks = Array.from(
+      { length: Math.ceil(starts.length / 64) },
+      (_, index) =>
+        `<span class="code-block" style="top:${index === 0 ? '0' : `${index * 64 * 17}px`};height:${Math.min(64, starts.length - index * 64) * 17}px"></span>`,
+    );
+    const from = starts[block * 64];
+    const to = starts[(block + 1) * 64];
+    assert.strictEqual(
+      html,
+      [
+        `<span class="code"><span class="code-blocks" style="height:${starts.length * 17}px">`,
+        ...blocks,
+        `<span class="code-run" style="top:${block * 64 * 17}px;text-indent:0">`,
+        long.slice(from, at),
+        `<mark class="find-match current">${long.slice(at, at + 4)}</mark>`,
+        long.slice(at + 4, to),
+        '</span></span></span>',
+      ].join(''),
+    );
   });
 
   test('lets a wrapped line break where VS Code would, inside its colors too, keeping its indentation on the row with the code it indents', () => {

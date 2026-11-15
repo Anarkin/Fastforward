@@ -49,7 +49,7 @@ function breaksAt(text: string, at: number): boolean {
 
 const longestMarkedLine = 64 * 1024;
 
-const breaksMarked = (text: string) => text.length <= longestMarkedLine;
+export const breaksMarked = (text: string) => text.length <= longestMarkedLine;
 
 export function breakOffsets(
   text: string,

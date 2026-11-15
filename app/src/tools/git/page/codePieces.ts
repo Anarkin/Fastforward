@@ -83,3 +83,25 @@ export function codePieces(
   });
   return { pieces, gapAfter: gaps.has(text.length) };
 }
+
+export function piecesWithin(
+  pieces: readonly CodePiece[],
+  from: number,
+  to: number,
+): readonly CodePiece[] {
+  if (from === 0 && to === (pieces.at(-1)?.end ?? 0)) {
+    return pieces;
+  }
+  return pieces.flatMap((piece) =>
+    piece.end <= from || piece.start >= to
+      ? []
+      : [
+          {
+            ...piece,
+            start: Math.max(piece.start, from),
+            end: Math.min(piece.end, to),
+            gapBefore: piece.gapBefore && piece.start >= from,
+          },
+        ],
+  );
+}

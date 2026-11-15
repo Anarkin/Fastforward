@@ -6,7 +6,12 @@ import {
   type ColumnsIn,
   type RowBreak,
 } from '../../../lib/page/rowBreaks';
-import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
+import {
+  breaksMarked,
+  wrapIndent,
+  wrapStarts,
+} from '../../../lib/page/wordWrap';
+import { keptWrapStarts } from './keptStarts';
 import { numberWidth } from './textLayout';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import {
@@ -48,8 +53,10 @@ export function WrapMarks({
       const indent = wrapIndent(text, columns);
       const measured = rowBreaksAt(
         text,
-        laidOutRowStarts(code, lineHeight) ??
-          wrapStarts(text, columns, indent, widths),
+        breaksMarked(text)
+          ? (laidOutRowStarts(code, lineHeight) ??
+              wrapStarts(text, columns, indent, widths))
+          : keptWrapStarts(text, columns, indent, widths),
         columns,
         columnsIn,
         indent,

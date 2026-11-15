@@ -183,6 +183,22 @@
   white-space: pre;
 }
 
+.code-blocks {
+  display: block;
+  position: relative;
+}
+
+.code-block,
+.code-run {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.code-block {
+  pointer-events: none;
+}
+
 .wrap-marks {
   pointer-events: none;
   user-select: none;

@@ -249,3 +249,63 @@ export async function marksFollowRows(line: Locator): Promise<boolean> {
     rows.length > 1 && rows.every((row) => row.last === '-' && row.follows)
   );
 }
+
+export function drawnBlocks(line: Locator) {
+  return line.evaluate((element) => {
+    const code = element.querySelector<HTMLElement>('.code');
+    const blocks = code?.querySelector<HTMLElement>('.code-blocks');
+    const list = element.closest('.virtual-rows');
+    if (!code || !blocks || !list) {
+      throw new Error('No blocks of rows');
+    }
+    const top = blocks.getBoundingClientRect().top;
+    const rowHeight = parseFloat(getComputedStyle(blocks).lineHeight);
+    const rowAt = (y: number) => Math.round((y - top) / rowHeight);
+    const range = document.createRange();
+    const runs = [...blocks.querySelectorAll('.code-run')].map((run) => {
+      const rows: [number, number][] = [];
+      let offset = 0;
+      const walker = document.createTreeWalker(run, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!(node instanceof Text)) {
+          continue;
+        }
+        for (let at = 0; at < node.length; at++) {
+          range.setStart(node, at);
+          range.setEnd(node, at + 1);
+          const row = rowAt(range.getBoundingClientRect().top);
+          if (rows.at(-1)?.[1] !== row) {
+            rows.push([offset + at, row]);
+          }
+        }
+        offset += node.length;
+      }
+      return { text: run.textContent ?? '', rows };
+    });
+    const shown = list.getBoundingClientRect();
+    const style = getComputedStyle(code);
+    const sample = document.createElement('span');
+    sample.style.font = style.font;
+    sample.style.letterSpacing = style.letterSpacing;
+    sample.style.whiteSpace = 'pre';
+    sample.textContent = '0'.repeat(100);
+    document.body.append(sample);
+    const char = sample.getBoundingClientRect().width / 100;
+    sample.remove();
+    return {
+      runs,
+      marks: [...element.querySelectorAll('.wrap-break')].map((mark) =>
+        rowAt(mark.getBoundingClientRect().top),
+      ),
+      inSight: [
+        Math.floor((shown.top - top) / rowHeight),
+        Math.ceil((shown.bottom - top) / rowHeight) - 1,
+      ],
+      width:
+        code.getBoundingClientRect().width -
+        parseFloat(style.paddingLeft) -
+        parseFloat(style.paddingRight),
+      char,
+    };
+  });
+}
