@@ -12,7 +12,7 @@ import {
   type PluginValue,
   type ViewUpdate,
 } from '@codemirror/view';
-import { layerOrigin } from './editorSelection';
+import { layerOrigin } from './editorRows';
 
 export interface DotLook {
   readonly advance: number;
