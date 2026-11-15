@@ -28,7 +28,6 @@ import type { ViewerFind } from './viewerFind';
 import { textMarks, type FindMark } from './markPieces';
 import { MarkedText } from './findMarks';
 import {
-  bytesOf,
   firstOf,
   marksWithin,
   piecesWithin,
@@ -37,6 +36,7 @@ import {
   screenRows,
   type ScreenRow,
 } from './screenRows';
+import { bytesOf } from './encodedBytes';
 import { useShell } from '../../../shell/page/store';
 import { columnAt, columnsOf, shownWithin, widestColumns } from './columns';
 import { strings } from '../../../lib/shared/strings';

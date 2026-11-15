@@ -2,7 +2,7 @@ import type { ByteRange, TextEncoding, TextRow } from '../shared/protocol';
 import type { CodeSegment } from './codeSegments';
 import { matchesIn } from '../../../lib/shared/textMatches';
 import { wholeClusters } from '../../../lib/page/wholeClusters';
-import { bytesOf } from './screenRows';
+import { bytesOf } from './encodedBytes';
 
 const groupBytes = 8;
 
