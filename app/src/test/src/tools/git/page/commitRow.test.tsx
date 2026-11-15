@@ -9,9 +9,13 @@ import {
 import { defaultDateFormat, formatDate } from '../../../../../lib/page/dates';
 import { createShellStore, ShellStore } from '../../../../../shell/page/store';
 import { GitStore } from '../../../../../tools/git/page/store';
-import { gitStore, type ShownGit } from '../../../../helpers/componentFixtures';
-import { commitInfo, renderedBy } from '../../../../helpers/fixtures';
+import {
+  gitStore,
+  type ShownGit,
+  renderedBy,
+} from '../../../../helpers/componentFixtures';
 import { renderToStaticMarkup, noop, plainClick } from './commitListFixtures';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 suite('Commit row', () => {
   test('shows the subject, author, the date it was last committed and bubbles, but no file count', () => {

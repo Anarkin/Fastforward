@@ -8,8 +8,7 @@ import { AppMenu } from '../../../../shell/page/appMenu';
 import { createShellStore } from '../../../../shell/page/store';
 import type { ContextMenuItem } from '../../../../lib/page/menuControls';
 import { allWithClass, cascaded, rendered } from '../../../helpers/cascade';
-import { renderedBy } from '../../../helpers/fixtures';
-import { withStores } from '../../../helpers/componentFixtures';
+import { withStores, renderedBy } from '../../../helpers/componentFixtures';
 
 function menuOf(
   update: UpdateStatus,

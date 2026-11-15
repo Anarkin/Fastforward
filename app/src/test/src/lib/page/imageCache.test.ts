@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { ImageCache } from '../../../../lib/page/imageCache';
-import { policyOfPage } from '../../../helpers/fixtures';
+import { policyOfPage } from '../../../helpers/pageSources';
 
 function fakeImages(
   responses: Record<string, () => Promise<Response>>,

@@ -8,9 +8,9 @@ import {
   type Notice,
 } from '../../../../shell/page/noticeFading';
 import { Notices } from '../../../../shell/page/notices';
-import { noop, renderedBy } from '../../../helpers/fixtures';
+import { noop } from '../../../helpers/fixtures';
 import { createShellStore } from '../../../../shell/page/store';
-import { withStores } from '../../../helpers/componentFixtures';
+import { withStores, renderedBy } from '../../../helpers/componentFixtures';
 
 const withNotices = (notices: readonly Notice[]) =>
   withStores(<Notices />, { shell: createShellStore(noop, { notices }) });

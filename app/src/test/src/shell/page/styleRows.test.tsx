@@ -4,12 +4,7 @@ import { listedFilesRows } from '../../../../tools/git/page/filesRows';
 import { Column } from '../../../../tools/git/page/column';
 import { VirtualRows } from '../../../../lib/page/virtualRows';
 import { cascaded, rendered, withClass } from '../../../helpers/cascade';
-import {
-  defaultSettings,
-  fileChange,
-  renderedBy,
-  stylesheet,
-} from '../../../helpers/fixtures';
+import { defaultSettings } from '../../../helpers/fixtures';
 import {
   FileRowShown,
   FolderRowShown,
@@ -18,6 +13,9 @@ import {
 import { noop, looks, hovered } from './stylesheetFixtures';
 import { SkeletonRows } from '../../../../tools/git/page/skeleton';
 import { defaultScrolling } from '../../../../lib/page/rowScroll';
+import { fileChange } from '../../../helpers/gitValues';
+import { renderedBy } from '../../../helpers/componentFixtures';
+import { stylesheet } from '../../../helpers/pageSources';
 
 suite('Style', () => {
   test('draws the rows of the lists as tall as one line of the line height of the settings, the size of the font rounded to the device pixel, with nothing above or below the text', () => {

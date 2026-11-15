@@ -11,7 +11,7 @@ import {
   renderedInGit,
   rested,
 } from '../../../../helpers/componentFixtures';
-import { tagsWith } from '../../../../helpers/fixtures';
+import { tagsWith } from '../../../../helpers/markup';
 
 function rowsShown(worktrees: WorktreeInfo[] | undefined): number {
   return tagsWith(

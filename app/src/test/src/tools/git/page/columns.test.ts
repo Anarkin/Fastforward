@@ -13,7 +13,7 @@ import {
   widthsToLoad,
 } from '../../../../../tools/git/page/columns';
 import { minimumWindowSize } from '../../../../../boot/windowPlacement';
-import { stylesheetPx } from '../../../../helpers/fixtures';
+import { stylesheetPx } from '../../../../helpers/pageSources';
 
 suite('Columns', () => {
   test('gives a hidden column no width instead of dropping it, so it keeps its place', () => {

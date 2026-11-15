@@ -13,7 +13,9 @@ import {
 import { gitKeymap } from '../../../../tools/git/page/keymap';
 import { strings } from '../../../../lib/shared/strings';
 import { matchCount } from '../../../../lib/shared/textMatches';
-import { keyPress, noop, tagWith } from '../../../helpers/fixtures';
+import { noop } from '../../../helpers/fixtures';
+import { keyPress } from '../../../helpers/keys';
+import { tagWith } from '../../../helpers/markup';
 
 const page = (html: string) => new JSDOM(html).window.document;
 

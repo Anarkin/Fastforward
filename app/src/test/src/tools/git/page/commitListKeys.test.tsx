@@ -7,7 +7,6 @@ import {
   workingTreeIndex,
 } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
-import { commitInfo, keyPress } from '../../../../helpers/fixtures';
 import { loaded } from './commitListFixtures';
 import {
   listKeyPosition,
@@ -17,6 +16,8 @@ import {
   commitMoveOf,
   keyboardMenuTarget,
 } from '../../../../../tools/git/page/commitListKeys';
+import { commitInfo } from '../../../../helpers/gitValues';
+import { keyPress } from '../../../../helpers/keys';
 
 suite('Commit list keys', () => {
   const visible = { first: 0, last: 0 };

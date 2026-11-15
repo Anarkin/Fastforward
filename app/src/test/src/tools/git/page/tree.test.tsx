@@ -4,12 +4,10 @@ import { suite, test } from 'vitest';
 import type { FileChange } from '../../../../../tools/git/shared/protocol';
 import { twistyWidth } from '../../../../../tools/git/page/treeLayout';
 import { FileRow } from '../../../../../tools/git/page/tree';
-import {
-  fileChange as change,
-  noop,
-  stylesheetPx,
-  tagWith,
-} from '../../../../helpers/fixtures';
+import { noop } from '../../../../helpers/fixtures';
+import { fileChange as change } from '../../../../helpers/gitValues';
+import { stylesheetPx } from '../../../../helpers/pageSources';
+import { tagWith } from '../../../../helpers/markup';
 
 suite('Tree', () => {
   test('draws the twisty as wide as a level of the tree is indented', () => {

@@ -16,13 +16,13 @@ import {
   shownFiles,
   withLargeFiles,
 } from '../../../../../tools/git/page/diffFiles';
-import { fileChange } from '../../../../helpers/fixtures';
 import { patch, kinds } from './diffViewFixtures';
 import {
   diffRows,
   largeDiffText,
 } from '../../../../../tools/git/page/diffRows';
 import { largeFilesToLoad } from '../../../../../tools/git/page/diffLargeFiles';
+import { fileChange } from '../../../../helpers/gitValues';
 
 const lines = (files: readonly DiffFile[]) =>
   files.map((file) => [

@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test, vi } from 'vitest';
-import { stylesheet } from '../../../helpers/fixtures';
 import {
   drawsOverlay,
   followedScroller,
@@ -9,6 +8,7 @@ import {
   overlayScrollbarClass,
   scrolledScroller,
 } from '../../../../lib/page/overlayScrollbars';
+import { stylesheet } from '../../../helpers/pageSources';
 
 const none = () => null;
 

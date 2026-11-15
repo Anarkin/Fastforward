@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { listenForDismiss } from '../../../../lib/page/dismiss';
-import { noModifiers } from '../../../helpers/fixtures';
+import { noModifiers } from '../../../helpers/keys';
 
 function keyDown(key: string): Event {
   return Object.assign(new Event('keydown', { cancelable: true }), {

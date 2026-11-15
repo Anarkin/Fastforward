@@ -6,7 +6,8 @@ import { suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
 import type { ToHost, ToWebview } from '../../../../shell/shared/protocol';
 import { App, EmptyStateView } from '../../../../shell/page/App';
-import { noop, tagsWith } from '../../../helpers/fixtures';
+import { noop } from '../../../helpers/fixtures';
+import { tagsWith } from '../../../helpers/markup';
 
 suite('Window', () => {
   test('says no tab is open only once the host says which tabs are', () => {

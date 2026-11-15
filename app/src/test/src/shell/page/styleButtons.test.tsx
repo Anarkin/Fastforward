@@ -7,7 +7,6 @@ import {
   rendered,
   withClass,
 } from '../../../helpers/cascade';
-import { renderedBy } from '../../../helpers/fixtures';
 import {
   AboutPopupShown,
   DiffOptionsShown,
@@ -36,6 +35,7 @@ import { FileHeader } from '../../../../tools/git/page/diffRowParts';
 import { emptyTabView } from '../../../../tools/git/page/tabView';
 import { SoloButton } from '../../../../tools/git/page/commitList';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
+import { renderedBy } from '../../../helpers/componentFixtures';
 
 function SoloButtonShown({
   solo,

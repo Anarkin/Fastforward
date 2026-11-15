@@ -5,8 +5,8 @@ import {
   whitespaceOnlyChanges,
   withoutFilesInside,
 } from '../../../../../tools/git/main/patchText';
-import { fileChange } from '../../../../helpers/fixtures';
 import { section } from './patchFixtures';
+import { fileChange } from '../../../../helpers/gitValues';
 
 suite('Whitespace ignored', () => {
   test('names the modified files a patch ignoring whitespace has no section for, but no untracked or other file it lacks', () => {

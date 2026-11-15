@@ -2,7 +2,8 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { suite, test } from 'vitest';
 import { FileFilterField } from '../../../../../tools/git/page/filesFilterField';
-import { keyPress, noop } from '../../../../helpers/fixtures';
+import { noop } from '../../../../helpers/fixtures';
+import { keyPress } from '../../../../helpers/keys';
 
 suite('Files search', () => {
   test('searches as one types, goes to the files on Enter or Down, and closes on Esc', () => {

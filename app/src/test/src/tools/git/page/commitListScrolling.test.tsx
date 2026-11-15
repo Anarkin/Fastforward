@@ -10,7 +10,6 @@ import {
 } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
-import { commitInfo } from '../../../../helpers/fixtures';
 import { laidOutElement } from '../../../../helpers/elementFixtures';
 import { noop, loaded } from './commitListFixtures';
 import {
@@ -39,6 +38,7 @@ const unchangingMedia = (window: JSDOM['window']) => (): MediaQueryList =>
     removeListener: () => undefined,
   });
 import { renderIn } from '../../../../helpers/componentFixtures';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 suite('Commit list top', () => {
   const rows = [0, 1, 2].map((index) => ({

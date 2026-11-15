@@ -1,13 +1,13 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { tagsWith } from '../../../../helpers/fixtures';
 import {
   FileNote,
   FileHeader,
   DiffSkeleton,
   HunkDivider,
 } from '../../../../../tools/git/page/diffRowParts';
+import { tagsWith } from '../../../../helpers/markup';
 
 const binaryMarkup = (
   change: 'added' | 'removed' | undefined,

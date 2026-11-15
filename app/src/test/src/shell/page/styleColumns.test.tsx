@@ -10,7 +10,6 @@ import {
   rendered,
   withClass,
 } from '../../../helpers/cascade';
-import { renderedBy } from '../../../helpers/fixtures';
 import {
   Columns,
   ColumnShown,
@@ -39,6 +38,7 @@ import {
   after,
   halved,
 } from './stylesheetFixtures';
+import { renderedBy } from '../../../helpers/componentFixtures';
 
 function columnVisibility(columns: React.ReactElement) {
   return allWithClass(rendered(columns), 'column').map((column) =>

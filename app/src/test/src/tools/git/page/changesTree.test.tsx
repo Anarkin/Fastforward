@@ -12,13 +12,9 @@ import { ChangesTreeItem } from '../../../../../tools/git/page/changesTree';
 import { fileRowKey } from '../../../../../tools/git/page/treeLayout';
 import { FileRow } from '../../../../../tools/git/page/tree';
 import { clickRow } from '../../../../helpers/componentFixtures';
-import {
-  classesOf,
-  fileChange,
-  noop,
-  tagsWith,
-  tagWith,
-} from '../../../../helpers/fixtures';
+import { noop } from '../../../../helpers/fixtures';
+import { classesOf, tagsWith, tagWith } from '../../../../helpers/markup';
+import { fileChange } from '../../../../helpers/gitValues';
 
 const changesTreeElements = ({
   rows,

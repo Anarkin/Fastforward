@@ -5,7 +5,7 @@ import {
   commitPagesAsked,
 } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
-import { commitInfo } from '../../../../helpers/fixtures';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 suite('Commit history', () => {
   test('places pages at their positions', () => {

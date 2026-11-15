@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { SkeletonRows } from '../../../../../tools/git/page/skeleton';
-import { tagsWith } from '../../../../helpers/fixtures';
+import { tagsWith } from '../../../../helpers/markup';
 
 const widthsOf = (html: string) =>
   [...html.matchAll(/width:([0-9.]+%)/g)].map(([, width]) => width);

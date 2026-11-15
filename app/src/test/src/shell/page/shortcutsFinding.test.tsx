@@ -16,7 +16,6 @@ import {
   ShortcutsPopup,
 } from '../../../../shell/page/shortcutsPopup';
 import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
-import { renderedBy, tagsWith } from '../../../helpers/fixtures';
 import {
   shortcutsStore,
   shortcutsMarkup,
@@ -29,6 +28,8 @@ import {
   openTool,
   headingsOf,
 } from './shortcutsFixtures';
+import { renderedBy } from '../../../helpers/componentFixtures';
+import { tagsWith } from '../../../helpers/markup';
 
 const counts = (query: string) =>
   shown(query).map((each) => [each.id, each.count]);

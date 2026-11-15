@@ -6,8 +6,9 @@ import { aboutText } from '../../../../shell/page/aboutText';
 import { AboutPopup, CopyButton } from '../../../../shell/page/aboutPopup';
 import type { AboutInfo, ToHost } from '../../../../shell/shared/protocol';
 import { createShellStore } from '../../../../shell/page/store';
-import { withStores } from '../../../helpers/componentFixtures';
-import { noop, renderedBy, tagWith } from '../../../helpers/fixtures';
+import { withStores, renderedBy } from '../../../helpers/componentFixtures';
+import { noop } from '../../../helpers/fixtures';
+import { tagWith } from '../../../helpers/markup';
 
 const about = {
   version: '16.0.0',

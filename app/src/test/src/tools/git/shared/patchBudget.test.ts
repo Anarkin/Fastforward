@@ -8,7 +8,7 @@ import {
   patchLineBudget,
   patchPathBudget,
 } from '../../../../../tools/git/shared/patchBudget';
-import { fileChange } from '../../../../helpers/fixtures';
+import { fileChange } from '../../../../helpers/gitValues';
 
 const filesChanging = (...counts: readonly number[]) =>
   counts.map((insertions, index) =>

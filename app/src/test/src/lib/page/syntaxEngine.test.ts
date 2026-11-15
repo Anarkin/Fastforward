@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { policyOfPage } from '../../../helpers/fixtures';
 import { coloredText, warmsUpTheGrammar } from './syntaxFixtures';
+import { policyOfPage } from '../../../helpers/pageSources';
 
 suite('Syntax', () => {
   warmsUpTheGrammar();

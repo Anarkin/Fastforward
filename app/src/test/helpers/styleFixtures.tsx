@@ -39,7 +39,6 @@ import { AppMenu } from '../../shell/page/appMenu';
 import { TabBar } from '../../shell/page/tabBar';
 import { FileRow } from '../../tools/git/page/tree';
 import { WorktreeBar } from '../../tools/git/page/worktreeBar';
-import { commitInfo } from './fixtures';
 import { createShellStore, ShellStore } from '../../shell/page/store';
 import { Code, MarkedCode } from '../../tools/git/page/codeMarks';
 import { diffRowClass } from '../../tools/git/page/diffRowClasses';
@@ -49,6 +48,7 @@ import { AboutPopup } from '../../shell/page/aboutPopup';
 import { ShortcutsPopup } from '../../shell/page/shortcutsPopup';
 import { FileHeader } from '../../tools/git/page/diffRowParts';
 import { PathTitle } from '../../tools/commander/page/pathTitle';
+import { commitInfo } from './gitValues';
 
 const noop = () => undefined;
 

@@ -4,7 +4,6 @@ import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { Highlight } from '../../../../tools/git/page/highlight';
 import { KeyCombo } from '../../../../lib/page/keyCombo';
 import { allWithClass, rendered, withClass } from '../../../helpers/cascade';
-import { fileChange } from '../../../helpers/fixtures';
 import {
   AboutPopupShown,
   Columns,
@@ -44,6 +43,7 @@ import {
 import { HunkDivider } from '../../../../tools/git/page/diffRowParts';
 import { Crash } from '../../../../shell/page/errorBoundary';
 import { SkeletonRows } from '../../../../tools/git/page/skeleton';
+import { fileChange } from '../../../helpers/gitValues';
 
 const inside = (classes: string, child: React.ReactNode) =>
   rendered(<div className={classes}>{child}</div>);

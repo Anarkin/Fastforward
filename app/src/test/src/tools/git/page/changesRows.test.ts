@@ -6,8 +6,9 @@ import {
   changesTreeRows,
   treeFolders,
 } from '../../../../../tools/git/page/changesRows';
-import { countingReads, fileChange } from '../../../../helpers/fixtures';
+import { countingReads } from '../../../../helpers/fixtures';
 import { files } from './changesRowsFixtures';
+import { fileChange } from '../../../../helpers/gitValues';
 
 const lines = (rows: ReturnType<typeof changesTreeRows>) =>
   rows.map((row) =>

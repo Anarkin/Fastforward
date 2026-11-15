@@ -19,7 +19,7 @@ import {
 import { keyLabels } from '../../../../lib/page/keyLabels';
 import { keymap } from '../../../../lib/page/keymap';
 import { gitKeymap } from '../../../../tools/git/page/keymap';
-import { keyPress, noModifiers, withMacKeys } from '../../../helpers/fixtures';
+import { keyPress, noModifiers, withMacKeys } from '../../../helpers/keys';
 
 const altPress = (key: string, code?: string) =>
   keyPress(key, { altKey: true, ...(code === undefined ? {} : { code }) });

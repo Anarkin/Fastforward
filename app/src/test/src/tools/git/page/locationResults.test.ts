@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { RefInfo } from '../../../../../tools/git/shared/protocol';
 import { indexRefs } from '../../../../../tools/git/page/refIndex';
-import { commitInfo } from '../../../../helpers/fixtures';
 import { refs } from './locationsFixtures';
 import {
   itemKey,
@@ -13,6 +12,7 @@ import {
   shownStashes,
 } from '../../../../../tools/git/page/locationResults';
 import { enterTarget } from '../../../../../tools/git/page/locationKeys';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 const branchNamed = (name: string): RefInfo => ({
   kind: 'branch',

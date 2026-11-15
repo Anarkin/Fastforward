@@ -3,7 +3,8 @@ import { suite, test } from 'vitest';
 import { shellKeymap } from '../../../../shell/shared/keymap';
 import { gitKeymap } from '../../../../tools/git/page/keymap';
 import { appKeyPressed, keyPressed } from '../../../../lib/page/shortcuts';
-import { element, keyPress } from '../../../helpers/fixtures';
+import { element } from '../../../helpers/fixtures';
+import { keyPress } from '../../../helpers/keys';
 
 const within = (inMenu: boolean) =>
   Object.assign(element('BUTTON'), {

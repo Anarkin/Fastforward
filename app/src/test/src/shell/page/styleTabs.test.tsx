@@ -30,10 +30,10 @@ import {
   hovered,
   after,
 } from './stylesheetFixtures';
-import { stylesheet } from '../../../helpers/fixtures';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { tabsStore } from '../../../helpers/componentFixtures';
 import { createElement } from 'react';
+import { stylesheet } from '../../../helpers/pageSources';
 
 function TabRow({
   count,

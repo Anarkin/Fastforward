@@ -11,9 +11,9 @@ import {
   shownFiles,
   withLargeFiles,
 } from '../../../../../tools/git/page/diffFiles';
-import { fileChange } from '../../../../helpers/fixtures';
 import { patch, kinds } from './diffViewFixtures';
 import { diffRows } from '../../../../../tools/git/page/diffRows';
+import { fileChange } from '../../../../helpers/gitValues';
 
 const loadedWhitespaceOnly = (filePatch: string) =>
   withLargeFiles(

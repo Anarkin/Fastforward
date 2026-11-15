@@ -6,12 +6,10 @@ import { suite, test } from 'vitest';
 import { onMenuKeyDown } from '../../../../lib/page/menuControls';
 import { MenuItems } from '../../../../lib/page/menuItems';
 import { SubmenuIcon } from '../../../../lib/page/icons';
-import {
-  keyPress,
-  noop,
-  renderedBy,
-  tagsWith,
-} from '../../../helpers/fixtures';
+import { noop } from '../../../helpers/fixtures';
+import { keyPress } from '../../../helpers/keys';
+import { renderedBy } from '../../../helpers/componentFixtures';
+import { tagsWith } from '../../../helpers/markup';
 
 suite('Menu items', () => {
   test('sets an item whose label is a name, as a folder or a drive, apart as a name, and the others in the words of the menu', () => {

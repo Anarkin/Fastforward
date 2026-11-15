@@ -3,7 +3,6 @@ import { suite, test } from 'vitest';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
-import { commitInfo } from '../../../../helpers/fixtures';
 import {
   laidOutElement,
   laidOutRow,
@@ -20,6 +19,7 @@ import {
   workingTreeRowHeight,
 } from '../../../../../tools/git/page/commitListRows';
 import { commitOption } from '../../../../../tools/git/page/commitListItems';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 function laidOut(line = bubbleLineHeight, ratio = 1) {
   const scroller = laidOutElement({ clientHeight: 500 });

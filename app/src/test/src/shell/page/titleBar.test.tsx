@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { TitleBar } from '../../../../shell/page/titleBar';
-import { stylesheet } from '../../../helpers/fixtures';
+import { stylesheet } from '../../../helpers/pageSources';
 
 suite('Title bar', () => {
   test('shows the icon and the title', () => {

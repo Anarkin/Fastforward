@@ -6,7 +6,7 @@ import {
   holdingAfterPointer,
   liftOf,
 } from '../../../../../tools/git/page/messageHolding';
-import { keyPress, noModifiers } from '../../../../helpers/fixtures';
+import { keyPress, noModifiers } from '../../../../helpers/keys';
 
 const alt = { ...noModifiers, altKey: true };
 const altDown = keyPress('Alt', { altKey: true });

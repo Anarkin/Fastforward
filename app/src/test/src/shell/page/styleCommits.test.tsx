@@ -4,7 +4,6 @@ import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { GraphCell } from '../../../../tools/git/page/graph';
 import { Column } from '../../../../tools/git/page/column';
 import { cascaded, rendered, withClass } from '../../../helpers/cascade';
-import { renderedBy } from '../../../helpers/fixtures';
 import {
   ColumnShown,
   CommitColumn,
@@ -27,6 +26,7 @@ import {
   commitRowHeight,
   workingTreeRowHeight,
 } from '../../../../tools/git/page/commitListRows';
+import { renderedBy } from '../../../helpers/componentFixtures';
 
 function GraphBesideCommit({ selected }: { readonly selected?: string }) {
   return (

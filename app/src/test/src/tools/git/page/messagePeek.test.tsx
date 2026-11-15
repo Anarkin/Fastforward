@@ -11,7 +11,8 @@ import {
   MessagePanel,
   MessagePeek,
 } from '../../../../../tools/git/page/messagePeek';
-import { classesOf, commitInfo, tagsWith } from '../../../../helpers/fixtures';
+import { classesOf, tagsWith } from '../../../../helpers/markup';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 const metric = (value: (element: Element) => number) => ({
   configurable: true,

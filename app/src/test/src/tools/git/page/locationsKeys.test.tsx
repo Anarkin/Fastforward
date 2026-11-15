@@ -7,10 +7,12 @@ import type {
   RepositoryState,
 } from '../../../../../tools/git/shared/protocol';
 import { LocationsPopup } from '../../../../../tools/git/page/locations';
-import { commitInfo, noop, stylesheet } from '../../../../helpers/fixtures';
+import { noop } from '../../../../helpers/fixtures';
 import { renderIn } from '../../../../helpers/componentFixtures';
 import { GitStore } from '../../../../../tools/git/page/store';
 import { type Shown, locationsStore, repository } from './locationsFixtures';
+import { commitInfo } from '../../../../helpers/gitValues';
+import { stylesheet } from '../../../../helpers/pageSources';
 
 async function browsed(
   props: Shown,

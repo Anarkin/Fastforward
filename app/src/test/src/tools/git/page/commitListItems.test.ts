@@ -8,8 +8,8 @@ import {
   commitOption,
   isCompareClick,
 } from '../../../../../tools/git/page/commitListItems';
-import { withMacKeys } from '../../../../helpers/fixtures';
 import { plainClick } from './commitListFixtures';
+import { withMacKeys } from '../../../../helpers/keys';
 
 suite('Commit row', () => {
   test('marks the checked-out commit, whether or not it is selected', () => {

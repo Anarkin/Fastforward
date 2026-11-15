@@ -3,7 +3,7 @@ import { newTabState } from '../../../../../tools/git/main/tabState';
 import { loadHistory } from '../../../../../tools/git/main/tabHistory';
 import { layOutHistory } from '../../../../../tools/git/main/tabLayout';
 import { Commits } from '../../../../../tools/git/main/commits';
-import { commitInfo } from '../../../../helpers/fixtures';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 export const at = (commit: string) => ({
   kind: 'branch' as const,

@@ -9,12 +9,12 @@ import {
   pointerFraction,
 } from '../../../../../tools/git/page/minimapMarks';
 import { Minimap } from '../../../../../tools/git/page/minimap';
-import { noModifiers } from '../../../../helpers/fixtures';
 import type { DiffRow } from '../../../../../tools/git/page/diffRows';
 import {
   uniformHeight as row,
   minimapRows,
 } from '../../../../../tools/git/page/rowMeasures';
+import { noModifiers } from '../../../../helpers/keys';
 
 const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
   kind: 'line',

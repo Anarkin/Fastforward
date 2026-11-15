@@ -29,14 +29,12 @@ import {
   clickRow,
   renderIn,
   type RowProps,
-} from '../../../../helpers/componentFixtures';
-import {
-  fileChange as change,
-  keyPress,
-  noop,
   renderedBy,
-  tagWith,
-} from '../../../../helpers/fixtures';
+} from '../../../../helpers/componentFixtures';
+import { noop } from '../../../../helpers/fixtures';
+import { fileChange as change } from '../../../../helpers/gitValues';
+import { keyPress } from '../../../../helpers/keys';
+import { tagWith } from '../../../../helpers/markup';
 
 const commit = '0123456789abcdef0123456789abcdef01234567';
 const otherCommit = 'fedcba9876543210fedcba9876543210fedcba98';

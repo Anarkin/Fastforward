@@ -9,8 +9,8 @@ import {
   collapseThreshold,
   patchByteBudget,
 } from '../../../../../tools/git/shared/patchBudget';
-import { fileChange } from '../../../../helpers/fixtures';
 import { section } from './patchFixtures';
+import { fileChange } from '../../../../helpers/gitValues';
 
 function read(chunks: readonly string[]) {
   const budget = new PatchBudget();

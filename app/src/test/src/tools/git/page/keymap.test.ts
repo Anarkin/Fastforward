@@ -8,12 +8,8 @@ import {
 } from '../../../../../lib/shared/keymap';
 import { gitKeymap } from '../../../../../tools/git/page/keymap';
 import { keyPressed } from '../../../../../lib/page/shortcuts';
-import {
-  element,
-  keyPress,
-  noModifiers,
-  withMacKeys,
-} from '../../../../helpers/fixtures';
+import { element } from '../../../../helpers/fixtures';
+import { keyPress, noModifiers, withMacKeys } from '../../../../helpers/keys';
 
 type KeyEvent = Parameters<typeof keyPressed>[1];
 

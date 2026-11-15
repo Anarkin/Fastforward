@@ -15,8 +15,9 @@ import {
 } from '../../../../../tools/git/page/filesRows';
 import { listMoveOf } from '../../../../../lib/page/listMoves';
 import { keyPressed } from '../../../../../lib/page/shortcuts';
-import { fileChange, keyPress } from '../../../../helpers/fixtures';
 import { files } from './changesRowsFixtures';
+import { fileChange } from '../../../../helpers/gitValues';
+import { keyPress } from '../../../../helpers/keys';
 
 suite('Changes tree', () => {
   test('keys the rows the same while they stay the same, so the list keeps their sizes', () => {

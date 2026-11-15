@@ -5,12 +5,12 @@ import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
-import { withMacKeys } from '../../../../helpers/fixtures';
 import { renderToStaticMarkup, noop, plainClick } from './commitListFixtures';
 import {
   SoloButton,
   WorkingTreeRow,
 } from '../../../../../tools/git/page/commitList';
+import { withMacKeys } from '../../../../helpers/keys';
 
 function soloButton(applying: boolean): string {
   return renderToStaticMarkup(

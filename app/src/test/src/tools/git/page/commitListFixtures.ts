@@ -1,7 +1,8 @@
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import { withStores } from '../../../../helpers/componentFixtures';
-import { commitInfo, noModifiers } from '../../../../helpers/fixtures';
+import { commitInfo } from '../../../../helpers/gitValues';
+import { noModifiers } from '../../../../helpers/keys';
 
 export const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));

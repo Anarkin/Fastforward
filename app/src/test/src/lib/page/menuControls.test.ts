@@ -7,7 +7,8 @@ import {
   openedSubmenu,
   submenuPlacement,
 } from '../../../../lib/page/menuControls';
-import { keyPress, noop } from '../../../helpers/fixtures';
+import { noop } from '../../../helpers/fixtures';
+import { keyPress } from '../../../helpers/keys';
 
 suite('Menu keys', () => {
   test('moves through the items with the arrows, wrapping around, and to either end with Home and End', () => {

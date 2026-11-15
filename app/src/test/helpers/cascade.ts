@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { stylesheet } from './fixtures';
 import { withStores } from './componentFixtures';
+import { stylesheet } from './pageSources';
 
 export interface MarkupElement {
   readonly tag: string;

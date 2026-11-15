@@ -6,7 +6,7 @@ import { keyLabels, keyParts } from '../../../../lib/page/keyLabels';
 import { keymap } from '../../../../lib/page/keymap';
 import { strings } from '../../../../lib/shared/strings';
 import { gitKeymap } from '../../../../tools/git/page/keymap';
-import { withMacKeys } from '../../../helpers/fixtures';
+import { withMacKeys } from '../../../helpers/keys';
 
 const parts = (keys: string) =>
   keyParts(keys, false).map(({ label, pointer }) =>

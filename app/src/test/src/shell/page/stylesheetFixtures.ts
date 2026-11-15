@@ -7,8 +7,8 @@ import {
   type MarkupElement,
   type States,
 } from '../../../helpers/cascade';
-import { stylesheet } from '../../../helpers/fixtures';
 import { columnTitle } from '../../../helpers/styleMarkup';
+import { stylesheet } from '../../../helpers/pageSources';
 
 export const css = stylesheet();
 

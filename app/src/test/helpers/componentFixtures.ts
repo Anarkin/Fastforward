@@ -159,6 +159,20 @@ export function renderedInGit<P>(
   return rendered;
 }
 
+export function renderedBy<P>(
+  component: (props: P) => React.ReactNode,
+  props: P,
+  stores?: Parameters<typeof withStores>[1],
+): React.ReactNode {
+  let rendered: React.ReactNode;
+  function Probe() {
+    rendered = component(props);
+    return null;
+  }
+  renderToStaticMarkup(withStores(createElement(Probe), stores));
+  return rendered;
+}
+
 export function withStores(
   node: React.ReactNode,
   {

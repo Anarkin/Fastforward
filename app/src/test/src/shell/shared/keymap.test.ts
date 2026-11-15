@@ -3,12 +3,8 @@ import { suite, test } from 'vitest';
 import { shellKeymap } from '../../../../shell/shared/keymap';
 import { keyPressed } from '../../../../lib/page/shortcuts';
 import { clicked, pressed, type Binding } from '../../../../lib/shared/keymap';
-import {
-  element,
-  keyPress,
-  noModifiers,
-  withMacKeys,
-} from '../../../helpers/fixtures';
+import { element } from '../../../helpers/fixtures';
+import { keyPress, noModifiers, withMacKeys } from '../../../helpers/keys';
 
 type KeyEvent = Parameters<typeof keyPressed>[1];
 

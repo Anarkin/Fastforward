@@ -9,8 +9,8 @@ import {
   nearestSteps,
 } from '../../../../../tools/git/main/tabSteps';
 import { Commits } from '../../../../../tools/git/main/commits';
-import { commitInfo } from '../../../../helpers/fixtures';
 import { history, laidOut, page } from './tabStateFixtures';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 suite('Tab steps', () => {
   test('names navigation entries after their subjects', () => {

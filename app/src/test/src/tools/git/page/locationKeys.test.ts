@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { indexRefs } from '../../../../../tools/git/page/refIndex';
-import { commitInfo, keyPress } from '../../../../helpers/fixtures';
 import { refs } from './locationsFixtures';
 import {
   enterTarget,
@@ -14,6 +13,8 @@ import {
   resultItems,
   searchRefs,
 } from '../../../../../tools/git/page/locationResults';
+import { commitInfo } from '../../../../helpers/gitValues';
+import { keyPress } from '../../../../helpers/keys';
 
 const focused = (inside: boolean, menu = false) => ({
   inside,

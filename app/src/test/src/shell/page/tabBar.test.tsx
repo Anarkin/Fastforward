@@ -6,10 +6,14 @@ import { afterEach, suite, test, vi } from 'vitest';
 import type { TabInfo } from '../../../../shell/shared/protocol';
 import { strings } from '../../../../lib/shared/strings';
 import { AddIcon } from '../../../../lib/page/icons';
-import { rested, tabsStore } from '../../../helpers/componentFixtures';
-import { noModifiers, renderedBy } from '../../../helpers/fixtures';
+import {
+  rested,
+  tabsStore,
+  renderedBy,
+} from '../../../helpers/componentFixtures';
 import { ShellStore, createShellStore } from '../../../../shell/page/store';
 import { TabBar } from '../../../../shell/page/tabBar';
+import { noModifiers } from '../../../helpers/keys';
 
 function tabsShell(
   tabs: readonly TabInfo[],

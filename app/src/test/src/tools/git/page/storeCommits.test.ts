@@ -14,8 +14,9 @@ import { checkoutOptions } from '../../../../../tools/git/page/checkout';
 import { bookmarkOptions } from '../../../../../tools/git/page/bookmarks';
 import { strings } from '../../../../../lib/shared/strings';
 import { compareWith } from '../../../../../tools/git/shared/comparisons';
-import { commitInfo, noop } from '../../../../helpers/fixtures';
+import { noop } from '../../../../helpers/fixtures';
 import { at, shown, labelled, posting } from './storeFixtures';
+import { commitInfo } from '../../../../helpers/gitValues';
 
 suite('Git store', () => {
   test('offers to check out a commit and to bookmark it or a ref on it, checking out and bookmarking for the worktree shown', () => {

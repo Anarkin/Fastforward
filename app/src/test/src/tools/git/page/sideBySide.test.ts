@@ -1,7 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../../tools/git/page/diff';
-import { noModifiers } from '../../../../helpers/fixtures';
 import {
   diffRows,
   lineKeys,
@@ -16,6 +15,7 @@ import {
 } from '../../../../../tools/git/page/sidewaysScroll';
 import { minimapRows } from '../../../../../tools/git/page/rowMeasures';
 import { splitSideClass } from '../../../../../tools/git/page/diffRowClasses';
+import { noModifiers } from '../../../../helpers/keys';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',

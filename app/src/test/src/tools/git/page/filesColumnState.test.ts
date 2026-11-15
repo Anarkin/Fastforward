@@ -15,7 +15,7 @@ import {
   noChangesText,
 } from '../../../../../tools/git/page/filesColumnState';
 import { revealAgain } from '../../../../../lib/page/listRows';
-import { fileChange as change } from '../../../../helpers/fixtures';
+import { fileChange as change } from '../../../../helpers/gitValues';
 
 function revealAt(closed: string[], cursor: string) {
   return {

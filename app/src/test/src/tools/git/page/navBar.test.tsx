@@ -26,13 +26,10 @@ import {
   renderedInGit,
   renderIn,
   type ShownGit,
-} from '../../../../helpers/componentFixtures';
-import {
-  classesOf,
-  noop,
   renderedBy,
-  tagWith,
-} from '../../../../helpers/fixtures';
+} from '../../../../helpers/componentFixtures';
+import { noop } from '../../../../helpers/fixtures';
+import { classesOf, tagWith } from '../../../../helpers/markup';
 
 const at = 'a'.repeat(40);
 

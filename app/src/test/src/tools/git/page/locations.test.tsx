@@ -5,12 +5,6 @@ import type {
   GitToWebviewOf,
   RefInfo,
 } from '../../../../../tools/git/shared/protocol';
-import {
-  commitInfo,
-  renderedBy,
-  tagsWith,
-  tagWith,
-} from '../../../../helpers/fixtures';
 import { GitStore } from '../../../../../tools/git/page/store';
 import {
   renderToStaticMarkup,
@@ -20,6 +14,9 @@ import {
 } from './locationsFixtures';
 import { leafIndent } from '../../../../../tools/git/page/locationRows';
 import { LocationsPopup } from '../../../../../tools/git/page/locations';
+import { commitInfo } from '../../../../helpers/gitValues';
+import { renderedBy } from '../../../../helpers/componentFixtures';
+import { tagsWith, tagWith } from '../../../../helpers/markup';
 
 const popup = (query: string, result?: Shown['lookup'], shown: Shown = {}) =>
   renderToStaticMarkup(

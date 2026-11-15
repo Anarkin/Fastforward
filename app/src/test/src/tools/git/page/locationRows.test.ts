@@ -3,7 +3,6 @@ import { suite, test } from 'vitest';
 import type { RefInfo } from '../../../../../tools/git/shared/protocol';
 import { FolderRow } from '../../../../../tools/git/page/tree';
 import { buildTree, indexRefs } from '../../../../../tools/git/page/refIndex';
-import { commitInfo, stylesheetPx } from '../../../../helpers/fixtures';
 import { renderToStaticMarkup } from './locationsFixtures';
 import {
   currentActive,
@@ -17,6 +16,8 @@ import {
   resultItems,
   searchRefs,
 } from '../../../../../tools/git/page/locationResults';
+import { commitInfo } from '../../../../helpers/gitValues';
+import { stylesheetPx } from '../../../../helpers/pageSources';
 
 const branchNamed = (name: string): RefInfo => ({
   kind: 'branch',

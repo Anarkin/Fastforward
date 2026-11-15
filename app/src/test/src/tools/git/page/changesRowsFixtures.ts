@@ -1,4 +1,4 @@
-import { fileChange } from '../../../../helpers/fixtures';
+import { fileChange } from '../../../../helpers/gitValues';
 
 export const files = [
   '.editorconfig',
