@@ -37,6 +37,42 @@ suite('App', () => {
     );
   });
 
+  test('colors the window buttons only as its own page asks, as it takes messages from no other', async () => {
+    const colored = await app.evaluate(({ BrowserWindow, ipcMain }) => {
+      const window = BrowserWindow.getAllWindows().find((each) =>
+        each.isVisible(),
+      );
+      if (window === undefined) {
+        return undefined;
+      }
+      const colors: unknown[] = [];
+      const overlay = window.setTitleBarOverlay.bind(window);
+      window.setTitleBarOverlay = (options) => {
+        colors.push(options.symbolColor);
+      };
+      try {
+        for (const [url, color] of [
+          ['https://example.com/', '#ff0000'],
+          ['fastforward://app/index.html', '#00ff00'],
+        ]) {
+          ipcMain.emit(
+            'windowButtonColor',
+            { sender: window.webContents, senderFrame: { url } },
+            color,
+          );
+        }
+      } finally {
+        window.setTitleBarOverlay = overlay;
+      }
+      return colors;
+    });
+
+    assert.deepStrictEqual(
+      colored,
+      process.platform === 'darwin' ? [] : ['#00ff00'],
+    );
+  });
+
   test('shows About on Shift+F1, its copy button focused, closing it on Esc or Shift+F1', async () => {
     const about = page.getByRole('dialog', { name: 'About' });
     await page.keyboard.press('Shift+F1');

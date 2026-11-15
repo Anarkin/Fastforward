@@ -116,7 +116,7 @@ export class AppWindows {
       },
     );
     ipcMain.on('windowButtonColor', (event, color: unknown) => {
-      const entry = this.openedBy(event.sender);
+      const entry = fromApp(event);
       if (
         entry !== undefined &&
         typeof color === 'string' &&
