@@ -73,9 +73,6 @@ const lastFetchedAgo = (elapsed: number) =>
       count === 1 ? 'Last fetched 1 day ago' : `Last fetched ${count} days ago`,
   });
 
-const filesIn = (files: number, folders: number) =>
-  `${files === 1 ? '1 file' : `${files.toLocaleString()} files`} in ${folders === 1 ? '1 folder' : `${folders.toLocaleString()} folders`}`;
-
 function fileSize(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;
@@ -123,6 +120,7 @@ export const strings = {
     auto: 'Auto',
     autoChoice: (chosen: string) => `Auto: ${chosen}`,
     plainText: 'Plain Text',
+    reading: 'Reading…',
     gone: (name: string) => `${name} doesn't exist anymore`,
     fromTo: (from: string, to: string) => `${from} → ${to}`,
     fromToWithin: (start: string, from: string, to: string, end: string) =>
@@ -648,7 +646,6 @@ export const strings = {
     notArchive: (name: string, reason: Sentence) =>
       sentence`${named(name)} could not be opened as an archive: ${reason}`,
     openWithSevenZip: 'Open with 7-Zip...',
-    readingArchive: (name: string) => sentence`Reading ${named(name)}…`,
     passwordTitle: 'Password',
     passwordAsked: 'The archive is encrypted. Type its password.',
     passwordWrong: 'The password is wrong. Type it again.',
@@ -794,8 +791,6 @@ export const strings = {
         : count === 1
           ? 'Matches 1 item'
           : `Matches ${count.toLocaleString()} items`,
-    findingDuplicates: 'Looking for duplicates…',
-    noDuplicates: 'No duplicates found',
     noPath: 'Type the path to go to.',
     copyPath: 'Copy Path',
     copyPaths: 'Copy Paths',
@@ -1021,20 +1016,6 @@ export const strings = {
     filterFolder: 'Filter the folder',
     filterPlaceholder: 'Filter…',
     flatView: 'List the files of every folder in it',
-    flatReading: (files: number, folders: number) =>
-      `Reading ${filesIn(files, folders)}…`,
-    flatRead: (files: number, folders: number) => filesIn(files, folders),
-    flatStopped: (files: number, folders: number) =>
-      `Stopped after ${filesIn(files, folders)}`,
-    flatFailed: (count: number) =>
-      count === 1
-        ? "1 folder couldn't be read"
-        : `${count.toLocaleString()} folders couldn't be read`,
-    escapeStops: 'Esc stops',
-    countingSizes: (folders: number) =>
-      folders === 1
-        ? 'Counting the size of a folder…'
-        : `Counting the sizes of ${folders.toLocaleString()} folders…`,
     unreadUnder: (count: number) =>
       count === 1
         ? "1 folder in it couldn't be read, so it may be larger"
@@ -1146,12 +1127,12 @@ export const strings = {
     readAgain: 'Read Again',
     askedInTab: (file: string) =>
       sentence`${named(file)} isn't saved: its tab asks what to do.`,
-    position: (line: number, column: number) => `Ln ${line}, Col ${column}`,
+    column: (column: number) => `Col ${column}`,
     cursors: (cursors: number) => `${cursors} cursors`,
-    selected: (lines: number, characters: number) =>
-      lines > 1
-        ? `${lines} lines, ${characters} characters selected`
-        : `${characters} ${characters === 1 ? 'character' : 'characters'} selected`,
+    selected: (characters: number) =>
+      characters === 1
+        ? '1 character selected'
+        : `${characters.toLocaleString()} characters selected`,
     between: ' · ',
     goToLineTitle: 'Go to Line',
     lineNumber: (lines: number) => `Line, 1 to ${lines}`,

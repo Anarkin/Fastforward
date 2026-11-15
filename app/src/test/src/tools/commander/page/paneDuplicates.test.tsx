@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
-import { suite, test, vi } from 'vitest';
+import { act } from 'react';
+import { afterEach, suite, test, vi } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { rowsOf } from '../../../../../tools/commander/page/listing';
 import { Pane } from '../../../../../tools/commander/page/pane';
@@ -72,10 +73,14 @@ function duplicatesPane(
   };
 }
 
-const statusOf = (duplicates: PaneView['duplicates']) => {
+const statusOf = (duplicates: PaneView['duplicates'], after = 0) => {
   let status: string | null | undefined;
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   return inPane(
     async ({ main }) => {
+      await act(async () => {
+        vi.advanceTimersByTime(after);
+      });
       status = main.querySelector('.column-status')?.textContent;
     },
     'details',
@@ -84,24 +89,23 @@ const statusOf = (duplicates: PaneView['duplicates']) => {
 };
 
 suite('Commander side showing duplicates', () => {
-  test('says under the side that it looks for duplicates while it reads, that Esc stops it, and that it found none once done without any, and nothing once it found some', async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('says under the side that it reads once it has looked for duplicates for half a second, and nothing before, then the full path of the file selected among those found, and nothing once it found none', async () => {
+    const looking = { look: 1, groups: [], reading: true };
     assert.deepStrictEqual(
       [
-        await statusOf({ look: 1, groups: [], reading: true }),
-        await statusOf({ look: 1, groups: [], reading: false }),
-        await statusOf(undefined),
-        await statusOf({
-          look: 1,
-          groups: [['notes.txt', 'copy.txt']],
-          reading: false,
-        }),
+        await statusOf(looking, 499),
+        await statusOf(looking, 500),
+        await statusOf(
+          { look: 1, groups: [['notes.txt', 'copy.txt']], reading: false },
+          500,
+        ),
+        await statusOf({ look: 1, groups: [], reading: false }, 500),
       ],
-      [
-        `${strings.commander.findingDuplicates} · ${strings.commander.escapeStops}`,
-        strings.commander.noDuplicates,
-        undefined,
-        undefined,
-      ],
+      [undefined, strings.common.reading, '/work\\notes.txt', undefined],
     );
   });
 

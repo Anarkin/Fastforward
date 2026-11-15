@@ -25,12 +25,8 @@ import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 import { actOnPane } from './paneActs';
 import { useTiles } from './paneTiles';
 import { PaneLine, PaneTile } from './paneRows';
-import {
-  ReadingStatus,
-  DuplicatesStatus,
-  CountingStatus,
-  FlatStatus,
-} from './paneStatus';
+import { PaneStatus } from './paneStatus';
+import { goesOn } from './sideStatus';
 import { archivePart } from './archivePart';
 import { PaneTitle } from './paneHeader';
 declare module 'react' {
@@ -55,8 +51,8 @@ export function Pane({
   const tab = useCommander((state) => state.view.tab);
   const active = useCommander((state) => state.view.active === side);
   const pane = useCommander((state) => state.view.panes[side]);
-  const readingArchive = useCommander((state) =>
-    state.readingArchives.get(readingKey(state.view.tab, side)),
+  const told = useCommander((state) =>
+    state.readingSides.has(readingKey(state.view.tab, side)),
   );
   const layout = useCommander((state) => state.view.layouts[side]);
   const fileColors = useCommander((state) => state.view.fileColors);
@@ -71,7 +67,7 @@ export function Pane({
     extended: boolean,
   ) => actions.shellMenu(side, names, at, extended);
   const filter = useCommander((state) => filterOf(state, side));
-  const { rows, total } = useCommander((state) => shownRowsOf(state, side));
+  const { rows } = useCommander((state) => shownRowsOf(state, side));
   const setFilter = (query: string | undefined) =>
     actions.filterSide(side, query);
   const filtering = filter !== undefined;
@@ -347,11 +343,7 @@ export function Pane({
                 selectedIndex,
                 marked,
                 filtering,
-                reading:
-                  pane?.flat?.progress.reading === true ||
-                  pane?.duplicates?.reading === true ||
-                  readingArchive !== undefined ||
-                  (pane?.counting ?? 0) > 0,
+                reading: told || goesOn(pane),
                 parent: pane?.parent === true,
                 tiled,
                 across,
@@ -369,14 +361,10 @@ export function Pane({
           />
         )}
       </div>
-      <ReadingStatus side={side} />
-      <DuplicatesStatus side={side} />
-      <FlatStatus
+      <PaneStatus
         side={side}
-        files={total}
-        under={selectedIndex === -1 ? undefined : rows[selectedIndex].under}
+        selected={selectedIndex === -1 ? undefined : rows[selectedIndex]}
       />
-      <CountingStatus side={side} />
       {resizer}
     </section>
   );

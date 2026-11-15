@@ -316,6 +316,18 @@ suite('Style', () => {
     );
   });
 
+  test('draws the text of a status line in the color of the text it sits under, not muted, as what it says is read as the text of the column', () => {
+    for (const font of ['monospace', 'proportional'] as const) {
+      looks(
+        withClass(
+          rendered(<StatusLine font={font}>12 files changed</StatusLine>),
+          'column-status',
+        ),
+        { color: 'var(--color-foreground)' },
+      );
+    }
+  });
+
   test('mutes the search placeholders and the magnifier of the search button like other muted text', () => {
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       color: 'var(--muted-foreground)',

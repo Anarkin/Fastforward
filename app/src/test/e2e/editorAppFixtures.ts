@@ -144,6 +144,12 @@ export const topLine = () =>
       )?.textContent ?? ''
     );
   });
+export const cursorLine = (shown: Page = page) =>
+  shown.locator('.editor .cm-content').evaluate(() => {
+    const node = getSelection()?.focusNode;
+    const element = node instanceof Element ? node : node?.parentElement;
+    return element?.closest('.cm-line')?.textContent ?? '';
+  });
 export const scrolledDown = async (rows: number) => {
   await page.locator('.editor .cm-scroller').evaluate((scroller, by) => {
     const row =

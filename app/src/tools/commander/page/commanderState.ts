@@ -130,7 +130,7 @@ export interface CommanderSource {
   readonly deleting: Deleting | undefined;
   readonly transferring: Transferring | undefined;
   readonly transfer: TransferView | undefined;
-  readonly readingArchives: ReadonlyMap<string, string>;
+  readonly readingSides: ReadonlyMap<string, number>;
   readonly askingPassword:
     | { readonly ask: number; readonly name: string; readonly wrong: boolean }
     | undefined;
@@ -342,7 +342,7 @@ export const commanderDefaults: CommanderSource = {
   deleting: undefined,
   transferring: undefined,
   transfer: undefined,
-  readingArchives: new Map(),
+  readingSides: new Map(),
   askingPassword: undefined,
   askingUpdate: undefined,
   makingFolder: undefined,

@@ -96,7 +96,7 @@
 | Wrap | Wrap long lines | Alt+Z | Common | ✅ Yes | By the wrap button, shared with the viewer and the diff |
 | Show whitespace | Draw the spaces, tabs and line ends | — | Common | ✅ Yes | By the whitespace button, shared with the viewer and the diff and marking the same characters as they do, a test checking every one, with a sign after each line that ends in CRLF or CR |
 | Cursor | Draw the cursor as a block, bar or underline, blinking or steady | — | Common | ✅ Yes | By the `cursor` settings, a steady block by default, or a bar, an underline or an outline as thick as `cursor.width`, as the terminal draws it to the device pixel, in the `cursor` color of the theme, the focus color by default, the character under a block in its `cursor-text` color and its own font; the same without the focus, blinking too; the text boxes of the app draw it alike, in a window without the focus too, and nothing once they lose the focus; a selection fills the rows of device pixels the cursor fills, in the editor, the text boxes and the terminal alike |
-| Status line | Show the line, column and selection | — | Common | ✅ Yes | The column counted in cells, as drawn, the characters selected as they are seen, and the cursors |
+| Status line | Show the line, column and selection | — | Common | 🟡 Partial | In monospace, the column counted in cells, as drawn, the characters selected as they are seen, by every cursor, and the cursors once there are several; no line number |
 | Minimap | Show the whole file in small beside it | — | Common | ❌ No |  |
 | Folding | Fold blocks of code away | Ctrl+Shift+[ | Common | ❌ No |  |
 

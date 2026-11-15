@@ -21,18 +21,16 @@ export function statusOf(state: EditorState, table: CellTable): string {
   const line = state.doc.lineAt(main.head);
   const column =
     columnsOf(line.text, cellWidthsOf(table))(main.head - line.from) + 1;
-  const parts = [strings.editor.position(line.number, column)];
-  if (ranges.length > 1) {
-    parts.push(strings.editor.cursors(ranges.length));
-  } else if (!main.empty) {
-    parts.push(
-      strings.editor.selected(
-        state.doc.lineAt(main.to).number -
-          state.doc.lineAt(main.from).number +
-          1,
-        charactersIn(state.sliceDoc(main.from, main.to)),
-      ),
-    );
-  }
-  return parts.join(strings.editor.between);
+  const characters = ranges.reduce(
+    (count, range) =>
+      count + charactersIn(state.sliceDoc(range.from, range.to)),
+    0,
+  );
+  return [
+    strings.editor.column(column),
+    characters > 0 ? strings.editor.selected(characters) : undefined,
+    ranges.length > 1 ? strings.editor.cursors(ranges.length) : undefined,
+  ]
+    .filter((part) => part !== undefined)
+    .join(strings.editor.between);
 }

@@ -115,15 +115,16 @@ export function received(
         transferring: { tab, side, folder, names, target, move, existing },
       };
     }
-    case 'readingArchive': {
-      const readingArchives = new Map(state.readingArchives);
+    case 'reading': {
+      const readingSides = new Map(state.readingSides);
       const key = readingKey(message.tab, message.side);
-      if (message.name === undefined) {
-        readingArchives.delete(key);
+      const reads = (readingSides.get(key) ?? 0) + (message.reading ? 1 : -1);
+      if (reads > 0) {
+        readingSides.set(key, reads);
       } else {
-        readingArchives.set(key, message.name);
+        readingSides.delete(key);
       }
-      return { readingArchives };
+      return { readingSides };
     }
     case 'flatFiles': {
       const view = reduceView(state.view, {

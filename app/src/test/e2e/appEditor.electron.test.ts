@@ -19,6 +19,7 @@ import {
   toEnd,
   activeIndex,
   topLine,
+  cursorLine,
   notices,
   sharedEditorApp,
 } from './editorAppFixtures';
@@ -303,9 +304,10 @@ suite('App editor', () => {
     await content().waitFor();
     await waitFor(
       async () =>
+        (await cursorLine()) === `line ${top[1]}` &&
         (await page.locator('.editor .column-status-text').textContent()) ===
-        `Ln ${top[1]}, Col 1`,
-      'the cursor on the line the viewer showed',
+          'Col 1',
+      'the cursor at the start of the line the viewer showed',
     );
     assert.strictEqual(await page.locator('.tabs [role="tab"]').count(), tabs);
     assert.strictEqual(await activeIndex(), viewerTab);

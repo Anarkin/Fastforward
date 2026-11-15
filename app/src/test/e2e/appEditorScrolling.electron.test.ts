@@ -16,6 +16,7 @@ import {
   toStart,
   activeIndex,
   topLine,
+  cursorLine,
   scrolledDown,
   sharedEditorApp,
 } from './editorAppFixtures';
@@ -325,7 +326,8 @@ suite('App editor, long lines and places shown again', () => {
         ),
       'the editor focused',
     );
-    await statusIs(/^Ln 223, .*12 characters selected$/);
+    await statusIs(/^Col \d+ · 12 characters selected$/);
+    assert.ok((await cursorLine(page)).includes('number 90 of'));
     const scrolledTo = await settledTopRow();
     assert.match(scrolledTo.text, /^(?!<script)/, 'deep inside the line');
     for (let time = 0; time < 6; time++) {
@@ -579,7 +581,7 @@ suite('App editor', () => {
     const status = editorPage.locator('.editor .column-status-text');
     await editorContent().locator('.cm-line').nth(4).click();
     await waitFor(
-      async () => (await status.textContent())?.startsWith('Ln 5,') === true,
+      async () => (await cursorLine()) === 'place 5',
       'the cursor on the fifth line',
     );
     const cursor = await status.textContent();
@@ -595,6 +597,10 @@ suite('App editor', () => {
       `${scrolledTo} at the top again`,
     );
     assert.strictEqual(await status.textContent(), cursor);
+    await waitFor(
+      async () => (await cursorLine()) === 'place 5',
+      'the cursor on the fifth line again',
+    );
   });
 
   test('shows the text where it was scrolled to while the page reloads as the settings are saved', async () => {

@@ -314,7 +314,7 @@ suite('Commander tool in archives', () => {
       permanently: true,
     });
     await waitFor(
-      () => page.of('readingArchive').length === 1,
+      () => page.of('reading').length === 1,
       'the archive to be read again once changed',
     );
     await change(at('a.zip'));
@@ -325,7 +325,7 @@ suite('Commander tool in archives', () => {
     assert.strictEqual(lastFolder(page, '1', 'right'), at('a.zip'));
   });
 
-  test('tells the page a side is reading an archive once it takes a while, stopping on Esc and staying where it was', async () => {
+  test('tells the page a side is reading an archive once that has lasted half a second, and that it is done once stopped on Esc, staying where it was', async () => {
     const { tool, page, send, archived, opensHeld, notices } = commander({
       [root]: [file('a.zip')],
     });
@@ -340,15 +340,15 @@ suite('Commander tool in archives', () => {
       name: 'a.zip',
     });
     await waitFor(
-      () => page.of('readingArchive').length === 1,
+      () => page.of('reading').length === 1,
       'the page to be told the archive is being read',
     );
     await send({ type: 'stopReading', tab: '1', side: 'right' });
     await entering;
 
-    assert.deepStrictEqual(page.of('readingArchive'), [
-      { type: 'readingArchive', tab: '1', side: 'right', name: 'a.zip' },
-      { type: 'readingArchive', tab: '1', side: 'right' },
+    assert.deepStrictEqual(page.of('reading'), [
+      { type: 'reading', tab: '1', side: 'right', reading: true },
+      { type: 'reading', tab: '1', side: 'right', reading: false },
     ]);
     assert.strictEqual(page.listings().length, 2);
     assert.deepStrictEqual(notices, []);
@@ -368,7 +368,7 @@ suite('Commander tool in archives', () => {
 
     const showing = tool.show(page, tab);
     await waitFor(
-      () => page.of('readingArchive').length === 1,
+      () => page.of('reading').length === 1,
       'the page to be told the archive is being read',
     );
     opensHeld.until = undefined;

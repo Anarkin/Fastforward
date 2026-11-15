@@ -74,8 +74,6 @@ export function filteredRows(
 
 export interface ShownRows {
   readonly rows: readonly Row[];
-  readonly files: number;
-  readonly total: number;
   readonly starts?: ReadonlySet<string>;
 }
 
@@ -85,13 +83,6 @@ const shownByRows = new WeakMap<
   readonly Row[],
   { readonly search: Search; readonly shown: ShownRows }
 >();
-
-function filesIn(rows: readonly Row[]): number {
-  return rows.reduce(
-    (count, row) => (row.entry === undefined ? count : count + 1),
-    0,
-  );
-}
 
 function shownRowsIn(all: readonly Row[], search: Search): ShownRows {
   const kept = shownByRows.get(all);
@@ -103,8 +94,7 @@ function shownRowsIn(all: readonly Row[], search: Search): ShownRows {
     return kept.shown;
   }
   const rows = filteredRows(all, searchFilter(search.query, search.options));
-  const total = filesIn(all);
-  const shown = { rows, files: rows === all ? total : filesIn(rows), total };
+  const shown = { rows };
   shownByRows.set(all, { search, shown });
   return shown;
 }
@@ -123,12 +113,7 @@ function flatShownRows(
   if (kept?.all === all) {
     return kept.shown;
   }
-  const total = filesIn(all);
-  const shown = {
-    rows,
-    files: rows === all ? total : filesIn(rows),
-    total,
-  };
+  const shown = { rows };
   flatShownByRows.set(rows, { all, shown });
   return shown;
 }
@@ -147,7 +132,7 @@ function withDuplicates(
     return kept.shown;
   }
   const { rows, starts } = duplicateRows(all.rows, groups);
-  const shown = { rows, files: filesIn(rows), total: all.total, starts };
+  const shown = { rows, starts };
   duplicatesShown.set(all, { groups, shown });
   return shown;
 }

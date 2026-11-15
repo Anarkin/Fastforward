@@ -169,7 +169,7 @@ body.resizing {
   box-sizing: border-box;
   height: var(--status-height);
   padding: 0 8px;
-  color: var(--muted-foreground);
+  color: var(--color-foreground);
   white-space: nowrap;
   border-top: 1px solid var(--color-border);
   border-radius: 0 0 var(--card-radius) var(--card-radius);
@@ -180,25 +180,9 @@ body.resizing {
   font-size: var(--monospace-font-size);
 }
 
-.column-status-text,
-.column-status-end {
+.column-status-text {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.column-status-text {
-  flex: 1 1 auto;
-}
-
-.column-status-end {
-  flex: 0 1000 auto;
-}
-
-.column-status.warning {
-  color: var(--color-warning-foreground);
-}
-
-.column-status.error {
-  color: var(--color-error-foreground);
 }

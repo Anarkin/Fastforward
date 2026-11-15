@@ -3,7 +3,7 @@ import { baseNameOf } from './naming';
 
 export type Copied = 'paths' | 'names';
 
-function pathIn(
+export function pathIn(
   folder: string,
   key: string,
   platform: string | undefined,

@@ -247,20 +247,22 @@ suite('The commander store in archives', () => {
     ]);
   });
 
-  test('keeps the archive each side of a tab is reading while the page is told so, forgetting it once it is done', () => {
+  test('keeps how many reads each side of a tab is told it runs, forgetting the side once each is done, as a read of a folder may end while another of the side goes on', () => {
     const { store } = shown();
-    const archivesRead = () => [...store.getState().readingArchives];
-    store.getState().receive({
-      type: 'readingArchive',
-      tab: '1',
-      side: 'right',
-      name: 'big.tar.gz',
-    });
-    assert.deepStrictEqual(archivesRead(), [['1 right', 'big.tar.gz']]);
-    store
-      .getState()
-      .receive({ type: 'readingArchive', tab: '1', side: 'right' });
-    assert.deepStrictEqual(archivesRead(), []);
+    const sidesRead = () => [...store.getState().readingSides];
+    const told = (reading: boolean) =>
+      store
+        .getState()
+        .receive({ type: 'reading', tab: '1', side: 'right', reading });
+    told(true);
+    assert.deepStrictEqual(sidesRead(), [['1 right', 1]]);
+    told(true);
+    told(false);
+    assert.deepStrictEqual(sidesRead(), [['1 right', 1]]);
+    told(false);
+    assert.deepStrictEqual(sidesRead(), []);
+    told(false);
+    assert.deepStrictEqual(sidesRead(), []);
   });
 
   test('shows the password the main process asks for, sending what is typed, or nothing once cancelled, for that question alone', () => {

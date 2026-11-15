@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import { strings } from '../../../../../lib/shared/strings';
+import { waitFor } from '../../../../helpers/fixtures';
 import { type Listed, commander, tab, forged } from './commanderFixtures';
 import { root, at, folder, file } from './entryFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
@@ -23,6 +24,43 @@ suite('Commander tool', () => {
       `right ${at('Users')} ↑: me`,
       `right ${root}: Users notes.txt [Users]`,
     ]);
+  });
+
+  test('tells the page a side is reading a folder once that has lasted half a second, and that it is done once read, telling nothing of a folder read at once', async () => {
+    const slow = Promise.withResolvers<readonly Entry[]>();
+    const { tool, page, send } = commander({
+      [root]: [folder('quick'), folder('slow')],
+      [at('quick')]: [],
+      [at('slow')]: slow.promise,
+    });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'right', name: 'quick' });
+    await send({ type: 'open', tab: '1', side: 'right', name: '..' });
+    const started = Date.now();
+
+    const opening = send({
+      type: 'open',
+      tab: '1',
+      side: 'right',
+      name: 'slow',
+    });
+    await waitFor(
+      () => page.of('reading').length === 1,
+      'the page to be told the folder is being read',
+    );
+    const told = Date.now() - started;
+    slow.resolve([file('late.txt')]);
+    await opening;
+
+    assert.ok(told >= 490, `told after ${told} ms`);
+    assert.deepStrictEqual(page.of('reading'), [
+      { type: 'reading', tab: '1', side: 'right', reading: true },
+      { type: 'reading', tab: '1', side: 'right', reading: false },
+    ]);
+    assert.strictEqual(
+      page.listings().at(-1),
+      `right ${at('slow')} ↑: late.txt`,
+    );
   });
 
   test('leaves a side going to another folder to get there when the folder it is leaving is deleted meanwhile, as listing the nearest folder still there took it elsewhere', async () => {

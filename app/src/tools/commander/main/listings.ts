@@ -20,6 +20,13 @@ import type { CommanderAccess } from './commanderAccess';
 import { isFolder } from './fileStats';
 import type { SideRepositories } from './sideRepositories';
 import { ReadingStopped, type Opener, ArchiveListing } from './archiveListing';
+import { toldReading } from './readingTold';
+
+type Reading = (
+  read: () => Promise<readonly Entry[]>,
+) => Promise<readonly Entry[]>;
+
+const untold: Reading = (read) => read();
 
 const maxHistory = 100;
 
@@ -78,6 +85,7 @@ export class Listings {
   async listed(
     folder: string,
     opener?: Opener,
+    reading = untold,
   ): Promise<{
     readonly entries: readonly Entry[];
     readonly elevated: boolean;
@@ -95,7 +103,10 @@ export class Listings {
     const files = await this.host.files();
     const elevated = this.host.elevated();
     try {
-      return { entries: await files.list(folder), elevated: false };
+      return {
+        entries: await reading(() => files.list(folder)),
+        elevated: false,
+      };
     } catch (error) {
       const holding = isGone(error)
         ? await this.access.archives?.fileHolding(folder)
@@ -113,7 +124,10 @@ export class Listings {
       }
     }
     try {
-      return { entries: await elevated.list(folder), elevated: true };
+      return {
+        entries: await reading(() => elevated.list(folder)),
+        elevated: true,
+      };
     } catch (error) {
       throw isDenied(error) ? new RefusedAsAdministrator(error) : error;
     }
@@ -152,8 +166,10 @@ export class Listings {
     const stamp = await this.access.stamp?.(folder);
     let listing: Awaited<ReturnType<Listings['listed']>>;
     try {
-      listing = await this.listed(folder, (file) =>
-        this.parts.archiveListing.openFor(page, tab, side, file),
+      listing = await this.listed(
+        folder,
+        (file) => this.parts.archiveListing.openFor(page, tab, side, file),
+        (read) => toldReading(page, tab, side, read),
       );
     } catch (error) {
       if (error instanceof ReadingStopped) {

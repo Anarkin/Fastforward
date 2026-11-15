@@ -11,10 +11,10 @@ import { isSide, type Side } from '../shared/sides';
 import type { OpenedArchive, Opening } from './archives';
 import { type Pane, type Sides, type Listing } from './sides';
 import { listedIn } from './listedEntries';
-import { post } from './post';
 import type { ArchivePasswords } from './archivePasswords';
 import type { CommanderAccess } from './commanderAccess';
 import { isFile } from './fileStats';
+import { tellReading } from './readingTold';
 
 export type ArchiveListingAccess = Pick<CommanderAccess, 'archives'>;
 
@@ -30,8 +30,6 @@ export interface ArchiveListingHost {
     selecting?: string,
   ) => Promise<void>;
 }
-
-const readingToldAfter = 300;
 
 export class ReadingStopped extends Error {
   constructor(readonly file: string) {
@@ -151,28 +149,8 @@ export class ArchiveListing {
     pane.opening = aborting;
     const { promise: read, resolve: landed } = Promise.withResolvers<void>();
     pane.reading = read;
-    let told = false;
-    let telling: ReturnType<typeof setTimeout> | undefined;
-    const tellLater = () => {
-      telling = setTimeout(() => {
-        told = true;
-        post(page, {
-          type: 'readingArchive',
-          tab,
-          side,
-          name: path.basename(file),
-        });
-      }, readingToldAfter);
-    };
-    const stopTelling = () => {
-      clearTimeout(telling);
-      if (told) {
-        told = false;
-        post(page, { type: 'readingArchive', tab, side });
-      }
-    };
     const attempt = () => opening(aborting.signal) ?? archives.open(file);
-    tellLater();
+    let stopTelling = tellReading(page, tab, side);
     try {
       let opened = await attempt();
       while (opened.kind === 'refused' && opened.needsPassword === true) {
@@ -187,7 +165,7 @@ export class ArchiveListing {
         ) {
           return undefined;
         }
-        tellLater();
+        stopTelling = tellReading(page, tab, side);
         opened = await attempt();
       }
       return opened;

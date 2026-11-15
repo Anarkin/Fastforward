@@ -63,7 +63,7 @@ suite('Commander store', () => {
     );
   });
 
-  test('filters the rows of a side once for each change of its rows or its filter, counting the files shown and listed', () => {
+  test('filters the rows of a side once for each change of its rows or its filter', () => {
     const store = byName();
     const { receive, filterSide, select } = store.getState();
     receive(withFiles(left.folder, 'a.txt', 'b.log', 'c.txt'));
@@ -79,7 +79,6 @@ suite('Commander store', () => {
       filtered.rows.map((row) => row.key),
       ['..', 'a.txt', 'c.txt'],
     );
-    assert.deepStrictEqual([filtered.files, filtered.total], [2, 3]);
     assert.strictEqual(shownRowsOf(store.getState(), 'left'), filtered);
   });
 

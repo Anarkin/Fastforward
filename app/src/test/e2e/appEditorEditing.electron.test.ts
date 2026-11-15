@@ -15,6 +15,7 @@ import {
   backToCommander,
   edit,
   toStart,
+  cursorLine,
   sharedEditorApp,
 } from './editorAppFixtures';
 
@@ -43,7 +44,7 @@ const shownWhole = () =>
 suite('App editor', () => {
   sharedEditorApp();
 
-  test('indents on Tab, comments a line out on Ctrl+K, moves it on Alt+Down, goes to a line on Ctrl+G and types at every occurrence Ctrl+D selected, telling the line, column and cursors below', async () => {
+  test('indents on Tab, comments a line out on Ctrl+K, moves it on Alt+Down, goes to a line on Ctrl+G and types at every occurrence Ctrl+D selected, telling the column and cursors below', async () => {
     fs.writeFileSync(path.join(opened, 'keys.ts'), 'let a = 1;\nlet b = 2;\n');
     await backToCommander();
     await waitFor(
@@ -58,9 +59,13 @@ suite('App editor', () => {
       'the text',
     );
     await toStart();
-    await waitFor(async () => (await status()) === 'Ln 1, Col 1', 'the place');
+    await waitFor(
+      async () =>
+        (await status()) === 'Col 1' && (await cursorLine()) === 'let a = 1;',
+      'the place',
+    );
     await page.keyboard.press('Tab');
-    await waitFor(async () => (await status()) === 'Ln 1, Col 5', 'the indent');
+    await waitFor(async () => (await status()) === 'Col 5', 'the indent');
     await page.keyboard.press('ControlOrMeta+K');
     await page.keyboard.press('Alt+ArrowDown');
     await waitFor(
@@ -72,7 +77,11 @@ suite('App editor', () => {
     await prompt.waitFor();
     await prompt.fill('1');
     await prompt.press('Enter');
-    await waitFor(async () => (await status()) === 'Ln 1, Col 1', 'line 1');
+    await waitFor(
+      async () =>
+        (await status()) === 'Col 1' && (await cursorLine()) === 'let b = 2;',
+      'line 1',
+    );
     await page.keyboard.press('ControlOrMeta+D');
     await page.keyboard.press('ControlOrMeta+D');
     await waitFor(

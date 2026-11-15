@@ -658,10 +658,10 @@ export type CommanderToWebview =
       readonly existing: readonly string[];
     }
   | {
-      readonly type: 'readingArchive';
+      readonly type: 'reading';
       readonly tab: string;
       readonly side: Side;
-      readonly name?: string;
+      readonly reading: boolean;
     }
   | {
       readonly type: 'repositories';

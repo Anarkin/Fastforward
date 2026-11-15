@@ -25,7 +25,7 @@ const count = () => right().locator('.search-count').textContent();
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('shows only the files of a side that have a copy of the same content on Ctrl+Shift+G, whatever their names, a line above the first of each group that moves no row and adds no space, in flat view too, follows a delete, says when it found none, and shows every file again on Ctrl+Shift+G', async () => {
+  test('shows only the files of a side that have a copy of the same content on Ctrl+Shift+G, whatever their names, a line above the first of each group that moves no row and adds no space, in flat view too, the whole path of the file selected under the side, follows a delete, saying nothing under the side once it found none, and shows every file again on Ctrl+Shift+G', async () => {
     const dupes = path.join(opened, 'dupes');
     fs.mkdirSync(path.join(dupes, 'sub'), { recursive: true });
     fs.writeFileSync(path.join(dupes, 'one.txt'), 'same content');
@@ -63,11 +63,22 @@ suite('App commander', () => {
         (await right().locator('.path-title').textContent()) ?? '',
         new RegExp(`${strings.commander.duplicatesTag}$`),
       );
+      await select('two');
+      await waitFor(
+        async () => (await statusShown()) === path.join(dupes, 'two.log'),
+        'the path of the file selected',
+      );
 
       await page.keyboard.press('Control+B');
       await waitFor(
         async () => (await sortedRows()) === '..,one.txt,three.md,two.log',
         'the files with a copy under the folder',
+      );
+      await select('three');
+      await waitFor(
+        async () =>
+          (await statusShown()) === path.join(dupes, 'sub', 'three.md'),
+        'the path of the file selected in a folder under the side',
       );
       await page.keyboard.press('Control+B');
       await waitFor(
@@ -80,10 +91,7 @@ suite('App commander', () => {
         async () => (await rowNames()).join() === '..',
         'the group left with one file to go',
       );
-      await waitFor(
-        async () => (await statusShown()) === strings.commander.noDuplicates,
-        'the side to say it found none',
-      );
+      assert.strictEqual(await right().locator('.column-status').count(), 0);
 
       await page.keyboard.press('Control+Shift+G');
       await waitFor(
@@ -105,7 +113,7 @@ suite('App commander', () => {
     }
   });
 
-  test('lists the files of every folder in the folder of a side on Ctrl+B, saying how many it read in how many folders and the folder of the file selected, following changes in them, and the folder alone again on Ctrl+B', async () => {
+  test('lists the files of every folder in the folder of a side on Ctrl+B, giving the whole path of the file selected once read, following changes in them, and the folder alone again on Ctrl+B', async () => {
     const later = path.join(opened, 'src', 'later.ts');
     try {
       await select('notes');
@@ -117,33 +125,25 @@ suite('App commander', () => {
         'the files of every folder',
       );
       await waitFor(
-        async () =>
-          (await right().locator('.column-status-text').textContent()) ===
-          strings.commander.flatRead(3, 2),
-        'the count of what was read',
+        async () => (await statusShown()) === path.join(opened, 'notes.txt'),
+        'the path of the file selected',
       );
       assert.strictEqual(
         await right().locator('.path-title').textContent(),
         `${opened}${path.sep}**`,
       );
       assert.ok((await selected()).includes('notes'));
-      assert.strictEqual(
-        await right().locator('.column-status-end').count(),
-        0,
-      );
       await select('main');
-      assert.strictEqual(
-        await right().locator('.column-status-end').textContent(),
-        'src',
+      await waitFor(
+        async () =>
+          (await statusShown()) === path.join(opened, 'src', 'main.ts'),
+        'the path of the file selected in a folder under the side',
       );
 
       if (process.platform !== 'linux') {
         fs.writeFileSync(later, '');
         await waitFor(
-          async () =>
-            (await rowNames()).includes('later.ts') &&
-            (await right().locator('.column-status-text').textContent()) ===
-              strings.commander.flatRead(4, 2),
+          async () => (await rowNames()).includes('later.ts'),
           'the file made in a folder under the side',
         );
       }

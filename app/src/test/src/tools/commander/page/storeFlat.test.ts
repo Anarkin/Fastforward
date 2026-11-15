@@ -111,11 +111,9 @@ suite('The commander store in flat view', () => {
       store.getState().view.panes.left?.flat?.progress,
       reading,
     );
-    const { files, total } = shownRowsOf(store.getState(), 'left');
-    assert.deepStrictEqual([files, total], [2, 2]);
   });
 
-  test('filters a flat side through the worker, counting the files shown and read', () => {
+  test('filters a flat side through the worker', () => {
     const { store, sort, keys } = flat();
     const { receive, filterSide } = store.getState();
     receive(
@@ -136,8 +134,6 @@ suite('The commander store in flat view', () => {
     sort();
 
     assert.deepStrictEqual(keys(), ['..', 'cat.jpg', 'more/cat.png']);
-    const { files, total } = shownRowsOf(store.getState(), 'left');
-    assert.deepStrictEqual([files, total], [2, 3]);
     assert.strictEqual(
       shownRowsOf(store.getState(), 'left'),
       shownRowsOf(store.getState(), 'left'),
