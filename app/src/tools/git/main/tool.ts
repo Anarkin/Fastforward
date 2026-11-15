@@ -1,12 +1,9 @@
-import { AutoFetch, fetchOrder } from './autoFetch';
-import { gitErrorText } from './errorText';
+import type { AutoFetch } from './autoFetch';
 import { keptGits } from './run';
-import { isFolder } from './folders';
-import { hasGitFolder } from './repository';
 import { locateRepository } from './repositoryLocation';
-import { Clones } from './clones';
+import type { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
-import type { TabMessage, GitToHost, WorktreeInfo } from '../shared/protocol';
+import type { GitToHost } from '../shared/protocol';
 import {
   unattachedShell,
   type Page,
@@ -19,43 +16,33 @@ import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../lib/main/paths';
 import type { Timer } from '../../../lib/main/timer';
 import type { GitStorage } from './storage';
-import { newTabState } from './tabState';
-import { historyLoaded } from './tabHistory';
-import { toggleMerges } from './tabLayout';
-import {
-  type TabWork,
-  type Session,
-  type Context,
-  type GitCore,
-  OpeningFailed,
-} from './tabContext';
+import type { TabWork } from './tabContext';
 import { allSettled } from './allSettled';
-import { Diffs } from './diffs';
-import { DiffTexts } from './diffTexts';
-import { TreePaths } from './treePaths';
-import { HistoryPages } from './historyPages';
-import { Refreshes } from './refreshes';
-import { CommitNavigation } from './commitNavigation';
-import { CommitSearch } from './commitSearch';
-import { Fetches } from './fetches';
-import { RemoteTags } from './remoteTags';
-import { RemoteWork } from './remoteWork';
-import { Remotes } from './remotes';
-import { Watching } from './watching';
-import { CompareTabs } from './compareTabs';
-import { needsNoWholeHistory } from './historyWait';
+import type { Diffs } from './diffs';
+import type { TreePaths } from './treePaths';
+import type { HistoryPages } from './historyPages';
+import type { Refreshes } from './refreshes';
+import type { CommitNavigation } from './commitNavigation';
+import type { CommitSearch } from './commitSearch';
+import type { Fetches } from './fetches';
+import type { RemoteTags } from './remoteTags';
+import type { RemoteWork } from './remoteWork';
+import type { Remotes } from './remotes';
+import type { Watching } from './watching';
+import type { CompareTabs } from './compareTabs';
 import { wellFormed } from './messageChecks';
-import { Worktrees } from './worktrees';
+import type { Worktrees } from './worktrees';
 import { namesOfTabs } from './tabNames';
-import { GitSessions } from './sessions';
-import { Selections } from './selections';
-import { RepositoryChoices } from './repositoryChoices';
-import { Contexts } from './contexts';
-import { TabPosts } from './tabPosts';
-import { FileViews } from './fileViews';
-import { DiffImages } from './diffImages';
-import { Inits } from './inits';
-import { ViewSettings } from './viewSettings';
+import type { GitSessions } from './sessions';
+import type { Contexts } from './contexts';
+import type { TabPosts } from './tabPosts';
+import type { DiffImages } from './diffImages';
+import type { Inits } from './inits';
+import type { ViewSettings } from './viewSettings';
+import type { TabLoads } from './tabLoads';
+import type { Runs } from './runs';
+import type { GitMessages } from './gitMessages';
+import { buildParts } from './gitParts';
 
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 export type FolderPurpose = 'init' | 'clone';
@@ -72,35 +59,32 @@ export interface GitHost {
 
 export class GitTool implements Tool<'git'> {
   private shell: ShellAccess = unattachedShell;
-  private readonly tabStates = new Map<string, TabWork>();
-  private readonly repositories = new Map<string, string>();
-  private readonly worktreeLists = new Map<string, readonly WorktreeInfo[]>();
+  private readonly tabStates: Map<string, TabWork>;
   private readonly autoFetch: AutoFetch;
-  private readonly quitting = new AbortController();
+  private readonly quitting: AbortController;
   private readonly clones: Clones;
   private readonly sessions: GitSessions;
   private readonly contexts: Contexts;
   private readonly posts: TabPosts;
-  private readonly fileViews: FileViews;
   private readonly diffImages: DiffImages;
   private readonly inits: Inits;
   private readonly viewSettings: ViewSettings;
-  private readonly selections: Selections;
-  private readonly choices: RepositoryChoices;
-  private readonly core: GitCore;
   private readonly diffs: Diffs;
-  private readonly treePaths = new TreePaths();
+  private readonly treePaths: TreePaths;
   private readonly historyPages: HistoryPages;
   private readonly refreshes: Refreshes;
   private readonly commitNavigation: CommitNavigation;
   private readonly commitSearch: CommitSearch;
-  private readonly remoteWork = new RemoteWork();
+  private readonly remoteWork: RemoteWork;
   private readonly remoteTags: RemoteTags;
   private readonly fetches: Fetches;
   private readonly remotes: Remotes;
   private readonly watching: Watching;
   private readonly compareTabs: CompareTabs;
   private readonly worktrees: Worktrees;
+  private readonly tabLoads: TabLoads;
+  private readonly runs: Runs;
+  private readonly messages: GitMessages;
 
   constructor(
     private readonly log: Log,
@@ -114,196 +98,42 @@ export class GitTool implements Tool<'git'> {
       gitDirDelay?: number;
     } = refreshDelays,
   ) {
-    const save = (saving: Promise<void>) => this.save(saving);
-    this.sessions = new GitSessions(
-      () => this.shell,
-      storage,
-      this.tabStates,
-      this.repositories,
-    );
-    this.contexts = new Contexts(
-      gitPath,
-      storage,
-      this.tabStates,
-      this.sessions,
-    );
-    this.posts = new TabPosts(
-      storage,
-      () => this.shell,
-      this.sessions,
-      this.contexts,
-      () => this.fetches,
-      this.worktreeLists,
-      save,
-    );
-    this.core = {
-      context: (session, root, live) =>
-        this.contexts.context(session, root, live),
-      run: (failed, session, action, root) =>
-        this.run(failed, session, action, root),
-      live: (session) => this.sessions.live(session),
-      page: () => this.sessions.page,
-      sessionShowing: (root) => this.sessions.sessionShowing(root),
-      sessionShowingRepository: (repository) =>
-        this.sessions.sessionShowingRepository(repository),
-      isActiveIn: (session, root) => this.sessions.isActiveIn(session, root),
-      hasRepository: (root) => this.sessions.hasRepository(root),
-      notify: (context) => this.sessions.notify(context),
-      noticesOf: (session, repository) =>
-        this.sessions.noticesOf(session, repository),
-      refsOf: (context) => this.contexts.refsOf(context),
-      sendRepository: (context, refs) =>
-        this.posts.sendRepository(context, refs),
-      rememberSelection: (context) => this.selections.remember(context),
-      save,
-    };
-    this.diffs = new Diffs(storage, () => this.shell, this.treePaths);
-    this.selections = new Selections(
-      storage,
-      this.diffs,
-      new DiffTexts(this.treePaths),
-      this.treePaths,
-      () => this.commitNavigation,
-      save,
-    );
-    this.historyPages = new HistoryPages(log, storage, () => this.shell, {
-      rememberSelection: (context) => this.selections.remember(context),
-      bookmarkedOf: (repository) => this.choices.bookmarkedOf(repository),
-      sendNavigation: (context, current) =>
-        this.commitNavigation.sendNavigation(context, current),
-    });
-    this.refreshes = new Refreshes(
-      log,
-      storage,
-      this.diffs,
-      this.treePaths,
-      this.historyPages,
-      this.core,
-    );
-    this.choices = new RepositoryChoices(
-      storage,
-      this.tabStates,
-      this.sessions,
-      this.contexts,
-      this.refreshes,
-      this.historyPages,
-      save,
-    );
-    this.commitNavigation = new CommitNavigation(
-      log,
-      storage,
-      () => this.shell,
-      this.diffs,
-      this.historyPages,
-      this.core,
-    );
-    this.commitSearch = new CommitSearch(storage, this.core);
-    const remote = {
+    const parts = buildParts(
       log,
       gitPath,
       storage,
-      shell: () => this.shell,
-      refreshes: this.refreshes,
-      commitNavigation: this.commitNavigation,
-      core: this.core,
-      quitting: this.quitting,
-      repositories: this.repositories,
-      remoteWork: this.remoteWork,
-    };
-    this.remoteTags = new RemoteTags(remote);
-    this.fetches = new Fetches(remote, this.remoteTags);
-    this.remotes = new Remotes(remote, this.fetches, this.remoteTags);
-    this.watching = new Watching(
-      log,
-      delays,
+      host,
       () => this.shell,
-      this.refreshes,
-      this.core,
-      this.tabStates,
-      {
-        loadWorktrees: (session, repository) =>
-          this.worktrees.loadWorktrees(session, repository),
-      },
-    );
-    this.compareTabs = new CompareTabs(log, gitPath, storage, this.watching);
-    this.worktrees = new Worktrees(
-      log,
-      gitPath,
-      storage,
-      () => this.shell,
-      this.core,
-      this.watching,
-      this.commitSearch,
-      this.tabStates,
-      this.repositories,
-      this.worktreeLists,
-      {
-        repositoryTabs: () => this.sessions.repositoryTabs,
-        repositoryOf: (root) => this.sessions.repositoryOf(root),
-        isActive: (root) => this.sessions.isActive(root),
-        tabState: (root) => this.contexts.tabState(root),
-        showTab: (context) => this.showTab(context),
-        postTabs: (session) => this.posts.postTabs(session),
-        sendTabs: (session) => this.posts.sendTabs(session),
-        sendRecentEverywhere: () => this.posts.sendRecentEverywhere(),
-      },
-    );
-    this.fileViews = new FileViews(
-      gitPath,
-      host.viewedFiles,
-      () => this.shell,
-      this.sessions,
-    );
-    this.diffImages = new DiffImages(
-      log,
-      gitPath,
-      () => this.shell,
-      this.tabStates,
-      this.compareTabs,
-    );
-    this.inits = new Inits(log, gitPath, this.worktrees);
-    this.autoFetch = new AutoFetch(
-      () => storage.preferences.autoFetchMinutes,
-      () =>
-        fetchOrder(
-          this.sessions.repositoryTabs,
-          this.sessions.shownRepositories(),
-        ),
-      (root) => this.shell.track(this.fetches.fetchInBackground(root)),
+      (saving) => this.save(saving),
       timer,
+      delays,
     );
-    this.autoFetch.update();
-    this.viewSettings = new ViewSettings(
-      storage,
-      this.tabStates,
-      () => this.autoFetch,
-      this.compareTabs,
-      this.diffs,
-      this.historyPages,
-      this.contexts,
-      save,
-    );
-    this.clones = new Clones(
-      log,
-      gitPath,
-      {
-        post: (message) => this.sessions.cloneSession()?.post(message),
-        open: async (target) => {
-          const session = this.sessions.cloneSession();
-          if (session !== undefined) {
-            await this.runNow(strings.log.openingFailed(target), session, () =>
-              this.worktrees.openRepositories(session, [target]),
-            );
-          }
-        },
-        track: (work) => void this.shell.track(work),
-        chooseFolder: (from) => host.chooseFolder('clone', from),
-        clipboardText: () => host.clipboardText(),
-        savedFolder: () => storage.cloneFolder,
-        saveFolder: (folder) => this.save(storage.setCloneFolder(folder)),
-      },
-      this.quitting.signal,
-    );
+    this.tabStates = parts.tabStates;
+    this.autoFetch = parts.autoFetch;
+    this.quitting = parts.quitting;
+    this.clones = parts.clones;
+    this.sessions = parts.sessions;
+    this.contexts = parts.contexts;
+    this.posts = parts.posts;
+    this.diffImages = parts.diffImages;
+    this.inits = parts.inits;
+    this.viewSettings = parts.viewSettings;
+    this.diffs = parts.diffs;
+    this.treePaths = parts.treePaths;
+    this.historyPages = parts.historyPages;
+    this.refreshes = parts.refreshes;
+    this.commitNavigation = parts.commitNavigation;
+    this.commitSearch = parts.commitSearch;
+    this.remoteWork = parts.remoteWork;
+    this.remoteTags = parts.remoteTags;
+    this.fetches = parts.fetches;
+    this.remotes = parts.remotes;
+    this.watching = parts.watching;
+    this.compareTabs = parts.compareTabs;
+    this.worktrees = parts.worktrees;
+    this.tabLoads = parts.tabLoads;
+    this.runs = parts.runs;
+    this.messages = parts.messages;
   }
 
   quit(): void {
@@ -346,7 +176,7 @@ export class GitTool implements Tool<'git'> {
     if (root === undefined) {
       return;
     }
-    await this.run(
+    await this.runs.run(
       strings.log.showingTabFailed(root),
       session,
       () => this.worktrees.openTab(session, root),
@@ -371,10 +201,10 @@ export class GitTool implements Tool<'git'> {
       return;
     }
     const session = this.sessions.of(page);
-    await this.run(strings.log.preloadingFailed(root), session, () =>
+    await this.runs.run(strings.log.preloadingFailed(root), session, () =>
       allSettled([
         this.worktrees.loadWorktrees(session, root),
-        this.preloadRoot(session, this.storage.worktreeOf(root), root),
+        this.tabLoads.preloadRoot(session, this.storage.worktreeOf(root), root),
       ]),
     );
   }
@@ -398,17 +228,17 @@ export class GitTool implements Tool<'git'> {
       return Promise.resolve();
     }
     const session = this.sessions.of(page);
-    return this.run(
+    return this.runs.run(
       strings.log.handlingFailed(message.type),
       session,
-      () => this.handle(message, session),
-      this.worktreeAsked(message),
+      () => this.messages.handle(message, session),
+      this.messages.worktreeAsked(message),
     );
   }
 
   refreshShown(page: Page): Promise<void> {
     const session = this.sessions.of(page);
-    return this.run(
+    return this.runs.run(
       strings.log.refreshingFailed,
       session,
       async () => {
@@ -443,14 +273,14 @@ export class GitTool implements Tool<'git'> {
 
   open(page: Page, folders: readonly string[]): Promise<void> {
     const session = this.sessions.of(page);
-    return this.run(strings.log.openingAskedFailed, session, () =>
+    return this.runs.run(strings.log.openingAskedFailed, session, () =>
       this.worktrees.openRepositories(session, folders),
     );
   }
 
   newTab(page: Page): Promise<void> {
     const session = this.sessions.of(page);
-    return this.run(strings.log.openingAskedFailed, session, async () =>
+    return this.runs.run(strings.log.openingAskedFailed, session, async () =>
       this.worktrees.openRepositories(session, await this.host.chooseFolders()),
     );
   }
@@ -475,327 +305,10 @@ export class GitTool implements Tool<'git'> {
     return this.clones.openIn(folder);
   }
 
-  private worktreeAsked(message: GitToHost): string | undefined {
-    switch (message.type) {
-      case 'openRepository':
-        return this.storage.worktreeOf(message.root);
-      default:
-        return 'root' in message ? message.root : undefined;
-    }
-  }
-
-  private run(
-    failed: string,
-    session: Session,
-    action: () => Promise<void>,
-    root?: string,
-  ): Promise<void> {
-    return this.shell.track(this.runNow(failed, session, action, root));
-  }
-
-  private async runNow(
-    failed: string,
-    session: Session,
-    action: () => Promise<void>,
-    asked?: string,
-  ): Promise<void> {
-    try {
-      await action();
-    } catch (thrown) {
-      const { root, error } =
-        thrown instanceof OpeningFailed
-          ? thrown
-          : { root: asked, error: thrown };
-      const text = gitErrorText(error);
-      this.log.error(failed);
-      this.log.error(error instanceof Error ? error : text);
-      const gone = root !== undefined && (await this.folderGone(root));
-      if (root === undefined || this.sessions.isActiveIn(session, root)) {
-        session.post({
-          type: 'error',
-          message: gone ? strings.messages.notRepository(root) : text,
-        });
-      }
-    }
-  }
-
-  private async folderGone(root: string): Promise<boolean> {
-    const tab = this.tabStates.get(root);
-    if (!tab || ((await isFolder(root)) && (await hasGitFolder(root)))) {
-      return false;
-    }
-    tab.isRepository = false;
-    if (tab.refreshError !== undefined) {
-      tab.refreshError = strings.messages.notRepository(root);
-    }
-    return true;
-  }
-
-  private async handle(message: GitToHost, session: Session): Promise<void> {
-    const { storage, sessions } = this;
-    switch (message.type) {
-      case 'selectWorktree': {
-        const repository = sessions.activeRepositoryIn(session);
-        const root = sessions.knownRoot(message.root);
-        if (
-          repository === undefined ||
-          !sameRoot(sessions.repositoryOf(root), repository) ||
-          (sessions.isActiveIn(session, root) &&
-            sessions.showsActiveTab(session))
-        ) {
-          return;
-        }
-        this.save(storage.setWorktree(repository, root));
-        await this.worktrees.openTab(session, repository);
-        return;
-      }
-      case 'openRepository': {
-        const recent = storage.recent.find((root) =>
-          sameRoot(root, message.root),
-        );
-        if (recent !== undefined) {
-          await this.worktrees.openRepositories(session, [recent], true);
-        }
-        return;
-      }
-      case 'browseRepositories':
-        await this.worktrees.openRepositories(
-          session,
-          await this.host.chooseFolders(),
-        );
-        return;
-      case 'initRepository': {
-        const folder = await this.host.chooseFolder('init');
-        if (folder !== undefined) {
-          await this.inits.initIn(session, folder);
-        }
-        return;
-      }
-      case 'initInside':
-        await this.inits.initInside(session, message.folder);
-        return;
-      case 'openClone':
-      case 'closeClone':
-      case 'chooseCloneFolder':
-      case 'checkCloneTarget':
-      case 'clone':
-      case 'stopClone':
-        sessions.cloningIn = session;
-        await this.clones.receive(message);
-        return;
-      case 'forgetRecent':
-        await this.storage.removeRecent(message.root);
-        await this.worktrees.forgetUnused([message.root]);
-        this.posts.sendRecentEverywhere();
-        return;
-      case 'preloadWorktree': {
-        const repository = sessions.activeRepositoryIn(session);
-        const root = sessions.knownRoot(message.root);
-        if (
-          repository !== undefined &&
-          sameRoot(sessions.repositoryOf(root), repository) &&
-          !sessions.isActiveIn(session, root)
-        ) {
-          await this.preloadRoot(session, root, repository);
-        }
-        return;
-      }
-      case 'setColumnWidths':
-      case 'setShowAllFiles':
-      case 'setCollapseMerges':
-      case 'setShowEntireFile':
-      case 'setAutoFetch':
-      case 'setDiffLayout':
-      case 'setIgnoreWhitespace':
-        await this.viewSettings.receive(session, message);
-        return;
-      case 'loadCompareTexts':
-        await this.compareTabs.sendCompareTexts(session, message.requests);
-        return;
-      case 'setSolo':
-      case 'setBookmarks':
-        await this.choices.receive(session, message);
-        return;
-      case 'scrolled': {
-        const tab = this.tabStates.get(sessions.knownRoot(message.root));
-        if (tab) {
-          tab.anchor = {
-            hash: message.hash,
-            offset: message.offset,
-            report: message.report,
-          };
-        }
-        return;
-      }
-      case 'searchCommits':
-        await this.commitSearch.searchCommits(
-          session,
-          sessions.knownRoot(message.root),
-          message.query,
-        );
-        return;
-      case 'stopCommitSearch':
-        this.commitSearch.commitSearches
-          .get(sessions.knownRoot(message.root))
-          ?.abort();
-        return;
-      default:
-        if (sessions.isActiveIn(session, message.root)) {
-          await this.handleTab(message, session);
-        }
-    }
-  }
-
-  private async handleTab(
-    message: Exclude<
-      TabMessage,
-      {
-        type:
-          | 'setBookmarks'
-          | 'setSolo'
-          | 'scrolled'
-          | 'searchCommits'
-          | 'stopCommitSearch';
-      }
-    >,
-    session: Session,
-  ): Promise<void> {
-    const context = await this.contexts.context(session);
-    if (!context) {
-      return;
-    }
-    const picked = context.tab.selection;
-    const { loadingHistory } = context.tab;
-    if (loadingHistory && !needsNoWholeHistory(context.tab, message)) {
-      await loadingHistory;
-    }
-    switch (message.type) {
-      case 'loadCommits':
-        await this.historyPages.sendCommitPage(
-          context,
-          message.generation,
-          message.start,
-          message.count,
-        );
-        break;
-      case 'toggleMerge':
-        if (context.tab.fullHistory.isMerge(message.hash)) {
-          toggleMerges(context.tab, [message.hash]);
-          await this.historyPages.sendShownHistory(context, {
-            scrollTo: message.hash,
-          });
-        }
-        break;
-      case 'checkout':
-      case 'fetch':
-      case 'pull':
-      case 'push':
-      case 'pushTag':
-      case 'pullBranch':
-      case 'pushBranch':
-        await this.remotes.receive(context, message, picked);
-        break;
-      case 'jump':
-      case 'showUpstream':
-      case 'showParent':
-      case 'navigate':
-        await this.commitNavigation.receive(context, message, picked);
-        break;
-      case 'lookupHash':
-        await this.commitSearch.lookupHash(context, message.query);
-        break;
-      case 'selectCommit':
-      case 'selectFile':
-      case 'loadTree':
-      case 'loadTexts':
-      case 'prefetchDiff':
-      case 'prefetchTexts':
-      case 'loadFileDiff':
-        await this.selections.receive(context, message);
-        break;
-      case 'viewFile':
-        await this.fileViews.viewFile(context, message.path, message.blob);
-        break;
-    }
-  }
-
-  private async showTab(context: Context): Promise<void> {
-    const { tab } = context;
-    const resend = tab.diffStale && tab.opened;
-    tab.diffStale = false;
-    if (resend && tab.hash !== undefined) {
-      await this.diffs.sendDiff(context, tab.hash);
-    }
-    const firstOpen = !context.tab.opened;
-    context.tab.opened = true;
-    if (!firstOpen && context.tab.shown.commits) {
-      this.log.info(strings.log.tabShownAsLeft(context.root));
-      await this.posts.addDefaultBookmarks(context);
-      await this.refreshes.refresh(context);
-      return;
-    }
-    await this.loadTab(context);
-  }
-
   private save(saving: Promise<void>): void {
     void saving.catch((error: unknown) => {
       this.log.error(strings.log.savingFailed);
       this.log.error(error);
     });
-  }
-
-  private async loadTab(context: Context): Promise<void> {
-    const refs = this.contexts.refsOf(context);
-    await allSettled([
-      this.posts.addDefaultBookmarks(context, refs),
-      this.refreshes.refresh(context, () => {
-        context.tab.indexPaths = undefined;
-        return allSettled([
-          (async () => {
-            if (!historyLoaded(context.tab)) {
-              await this.historyPages.sendCommits(context, refs);
-            } else if (context.tab.shownStale) {
-              await this.historyPages.sendShownHistory(context, {
-                keepPlace: true,
-              });
-            }
-            await this.diffs.sendCommit(context);
-          })(),
-          this.refreshes.sendWorkingTree(context),
-        ]);
-      }),
-      this.posts.sendRepository(context, refs),
-    ]);
-  }
-
-  private async preloadRoot(
-    session: Session,
-    root: string,
-    repository: string,
-  ): Promise<void> {
-    this.repositories.set(root, repository);
-    const tab = this.contexts.tabState(root);
-    if (tab.opened || tab.preloading) {
-      return;
-    }
-    const selected = { hash: tab.hash, path: tab.path, area: tab.area };
-    tab.preloading = (async () => {
-      try {
-        const context = await this.contexts.context(session, root, false);
-        if (!context || tab.opened) {
-          return;
-        }
-        this.log.info(strings.log.preloading(root));
-        tab.opened = true;
-        await this.loadTab(context);
-      } catch (error) {
-        Object.assign(tab, newTabState(), selected);
-        this.log.error(strings.log.preloadingFailed(root));
-        this.log.error(error);
-      } finally {
-        tab.preloading = undefined;
-      }
-    })();
-    await tab.preloading;
   }
 }
