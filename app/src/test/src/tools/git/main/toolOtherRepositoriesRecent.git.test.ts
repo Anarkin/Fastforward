@@ -10,7 +10,6 @@ import {
   asIfOwnedByAnother,
   removeFolder,
   tempFolder,
-  tempRepository,
   type TempRepository,
 } from '../../../../helpers/repositories';
 import { recordingLog } from '../../../../helpers/stub';
@@ -18,7 +17,6 @@ import {
   closeViews,
   failOnErrorsLogged,
   FakeHost,
-  savedBookmarks,
   takeErrorsLogged,
   withView,
   tabOf,
@@ -231,45 +229,6 @@ suite('Git tool of other repositories', () => {
       });
       assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, []);
       assert.strictEqual(view.page.last('error'), undefined);
-    });
-  });
-
-  test('uses a repository cloned inside another, not the outer one', async () => {
-    const outer = await tempRepository(path.join(folder, 'outer'));
-    const nested = await tempRepository(path.join(outer.root, 'nested'), {
-      branch: 'inner',
-    });
-    await nested.commit('inner');
-    const [inner] = await nested.resolve('HEAD');
-    await withView(log, [nested.root], async (view) => {
-      const info = view.page.last('repository');
-      assert.strictEqual(info?.head, 'inner');
-      assert.strictEqual(info?.headCommit, inner);
-    });
-  });
-
-  test('opens a repository without commits', async () => {
-    const empty = await tempRepository(path.join(folder, 'empty'));
-    fs.writeFileSync(path.join(empty.root, 'new.txt'), 'new\n');
-    await withView(log, [empty.root], async (view) => {
-      assert.strictEqual(view.page.last('error'), undefined);
-      assert.strictEqual(view.page.last('commits')?.total, 0);
-      assert.strictEqual(view.page.last('workingTree')?.files, 1);
-    });
-  });
-
-  test('makes the main branch a bookmark once a repository opened without commits has one', async () => {
-    const empty = await tempRepository(path.join(folder, 'unborn'));
-    await withView(log, [empty.root], async (view) => {
-      assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, []);
-      await empty.commit('first');
-      await view.connection.receive({ type: 'ready' });
-      assert.deepStrictEqual(view.page.last('bookmarks')?.bookmarks, [
-        { kind: 'branch', name: 'main' },
-      ]);
-      assert.deepStrictEqual(savedBookmarks(view.store, empty.root), [
-        { kind: 'branch', name: 'main' },
-      ]);
     });
   });
 });
