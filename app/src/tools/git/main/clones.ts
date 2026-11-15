@@ -15,7 +15,7 @@ import { strings } from '../../../lib/shared/strings';
 import { cloneRepository, cloneTargetProblem, removeClone } from './clone';
 import { withoutCredentials } from './credentials';
 import { gitErrorText } from './errorText';
-import { isFolder } from './repository';
+import { isFolder } from './folders';
 
 export type CloneMessage = Extract<
   GitToHost,

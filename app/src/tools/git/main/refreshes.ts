@@ -1,7 +1,7 @@
 import { gitErrorText } from './errorText';
 import { extendedHistory } from './history';
 import type { Commits } from './commits';
-import type { Refs } from './repository';
+import type { Refs } from './refReads';
 import type { Changed } from './watch';
 import {
   uncommittedCount,

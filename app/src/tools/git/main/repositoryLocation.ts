@@ -1,13 +1,8 @@
 import { lstat } from 'node:fs/promises';
 import * as path from 'node:path';
 import { gitErrorText } from './errorText';
-import {
-  isFolder,
-  repositoryRoot,
-  sameFolder,
-  spelledFrom,
-  spellingOf,
-} from './repository';
+import { isFolder, sameFolder, spelledFrom, spellingOf } from './folders';
+import { repositoryRoot } from './repository';
 import { runGit, splitNul } from './run';
 
 export interface Worktree {

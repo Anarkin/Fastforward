@@ -1,7 +1,8 @@
 import { aheadBehind, readUpstream } from './branches';
 import { readPushTarget } from './pushTarget';
 import { gitErrorText } from './errorText';
-import { listRemotes, pushRef, readHead } from './repository';
+import { listRemotes, readHead } from './refReads';
+import { pushRef } from './transfers';
 import { strings } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';
 import {

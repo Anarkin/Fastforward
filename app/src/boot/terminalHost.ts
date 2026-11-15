@@ -7,7 +7,7 @@ import { strings } from '../lib/shared/strings';
 import type { UserSettings } from '../shell/main/userSettings';
 import type { JsonFileStore } from '../shell/main/stateFile';
 import { toolState } from '../shell/main/storage';
-import { isFolder } from '../tools/git/main/repository';
+import { isFolder } from '../tools/git/main/folders';
 import { hostProcess } from '../tools/terminal/main/hostProcess';
 import { writeShellIntegration } from '../tools/terminal/main/shellIntegration';
 import { isProgram, shellLaunch } from '../tools/terminal/main/shellLaunch';

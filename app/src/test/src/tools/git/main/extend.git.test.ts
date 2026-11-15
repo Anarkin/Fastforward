@@ -6,7 +6,7 @@ import {
   extendedHistory,
   listHistory,
 } from '../../../../../tools/git/main/history';
-import { readRefs } from '../../../../../tools/git/main/repository';
+import { readRefs } from '../../../../../tools/git/main/refReads';
 import { runGit } from '../../../../../tools/git/main/run';
 import { headsOf } from '../../../../../tools/git/main/heads';
 import { tipsInGitOrder } from '../../../../../tools/git/main/tabState';

@@ -1,5 +1,6 @@
 import { readUpstream } from './branches';
-import { fetchRemote, readHead, readRefs, type Head } from './repository';
+import { readHead, readRefs, type Head } from './refReads';
+import { fetchRemote } from './transfers';
 import { listWorktrees } from './repositoryLocation';
 import { checkout } from './checkout';
 import type { Fetched, Fetches } from './fetches';

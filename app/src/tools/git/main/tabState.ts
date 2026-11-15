@@ -1,4 +1,4 @@
-import type { Head } from './repository';
+import type { Head } from './refReads';
 import type { Stash } from './stashes';
 import type { WorkingTree } from './workingTree';
 import { Commits } from './commits';

@@ -1,4 +1,4 @@
-import type { Head } from './repository';
+import type { Head } from './refReads';
 import type { Positions } from './merges';
 import type { RefInfo, StashInfo } from '../shared/protocol';
 

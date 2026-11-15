@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { gitErrorText } from './errorText';
 import { keptGits } from './run';
-import { isFolder, spellingOf } from './repository';
+import { isFolder, spellingOf } from './folders';
 import {
   listWorktrees,
   locateRepository,

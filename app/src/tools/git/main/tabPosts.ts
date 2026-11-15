@@ -5,7 +5,7 @@ import type { Contexts } from './contexts';
 import { defaultBookmarks } from './bookmarks';
 import type { Fetches } from './fetches';
 import { tagRemoteOf } from './push';
-import type { Refs } from './repository';
+import type { Refs } from './refReads';
 import type { GitSessions } from './sessions';
 import type { GitStorage } from './storage';
 import type { Context, ReadRefs, Session } from './tabContext';

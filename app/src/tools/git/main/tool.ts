@@ -1,7 +1,8 @@
 import { AutoFetch, fetchOrder } from './autoFetch';
 import { gitErrorText } from './errorText';
 import { keptGits } from './run';
-import { hasGitFolder, isFolder } from './repository';
+import { isFolder } from './folders';
+import { hasGitFolder } from './repository';
 import { locateRepository } from './repositoryLocation';
 import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';

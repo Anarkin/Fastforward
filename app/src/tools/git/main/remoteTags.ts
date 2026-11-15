@@ -1,5 +1,6 @@
 import { gitErrorText } from './errorText';
-import { listRemoteTags, listRemotes } from './repository';
+import { listRemotes } from './refReads';
+import { listRemoteTags } from './transfers';
 import { pickTagRemote, pushTag } from './push';
 import type { RefInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';

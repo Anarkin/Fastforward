@@ -7,10 +7,10 @@ import { gitErrorText } from '../../../../../tools/git/main/errorText';
 import { fastForward } from '../../../../../tools/git/main/branches';
 import {
   checkoutNewBranch,
-  fetchAllRemotes,
   switchToBranch,
   switchToCommit,
-} from '../../../../../tools/git/main/repository';
+} from '../../../../../tools/git/main/switches';
+import { fetchAllRemotes } from '../../../../../tools/git/main/transfers';
 import {
   runGit,
   runGitBytes,

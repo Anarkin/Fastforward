@@ -9,7 +9,7 @@ import {
   listHistory,
   listRecentHistory,
 } from '../../../../../tools/git/main/history';
-import { readRefs } from '../../../../../tools/git/main/repository';
+import { readRefs } from '../../../../../tools/git/main/refReads';
 import { runGit } from '../../../../../tools/git/main/run';
 import { tipsInGitOrder } from '../../../../../tools/git/main/tabState';
 import { renamingRepository } from '../../../../helpers/gitFixtures';

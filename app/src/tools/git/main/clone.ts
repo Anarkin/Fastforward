@@ -4,7 +4,8 @@ import { StringDecoder } from 'node:string_decoder';
 import type { CloneProgress } from '../shared/clone';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
-import { isFolder, quietFor, remoteTimeout } from './repository';
+import { isFolder } from './folders';
+import { quietFor, remoteTimeout } from './transfers';
 import { runGit } from './run';
 
 const progressLine =

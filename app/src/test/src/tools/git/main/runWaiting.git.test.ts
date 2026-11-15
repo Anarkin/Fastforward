@@ -5,7 +5,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { gitErrorText } from '../../../../../tools/git/main/errorText';
 import { fastForward } from '../../../../../tools/git/main/branches';
-import { switchToBranch } from '../../../../../tools/git/main/repository';
+import { switchToBranch } from '../../../../../tools/git/main/switches';
 import {
   runGit,
   stopRunningGit,

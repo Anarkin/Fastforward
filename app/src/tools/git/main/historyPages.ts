@@ -1,7 +1,7 @@
 import { logCommits } from './commitLog';
 import { listHistory, listRecentHistory, recentTips } from './history';
 import type { Commits } from './commits';
-import type { Refs } from './repository';
+import type { Refs } from './refReads';
 import type { Log } from '../../../shell/main/log';
 import { commitPageSize } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/toolContract';

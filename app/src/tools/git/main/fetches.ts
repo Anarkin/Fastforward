@@ -1,5 +1,6 @@
 import { gitErrorText } from './errorText';
-import { fetchAllRemotes, isFolder, remotesNotFetched } from './repository';
+import { isFolder } from './folders';
+import { fetchAllRemotes, remotesNotFetched } from './transfers';
 import type { Log } from '../../../shell/main/log';
 import { reportFailure, type Notify, type RepositoryAt } from './operations';
 import { strings } from '../../../lib/shared/strings';
