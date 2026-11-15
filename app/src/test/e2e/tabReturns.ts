@@ -1,0 +1,220 @@
+import * as assert from 'node:assert';
+import type { Page } from 'playwright-core';
+import { waitFor } from '../helpers/fixtures';
+
+export interface TabLooks {
+  readonly focus: string | null;
+  readonly caret: readonly [number, number, string] | null;
+  readonly fields: readonly (readonly [string, string])[];
+  readonly scrolls: readonly (readonly [string, number, number])[];
+  readonly states: readonly (readonly [string, string])[];
+  readonly text: string;
+}
+
+const tabLooks = (page: Page): Promise<TabLooks> =>
+  page.evaluate(() => {
+    const root = document.querySelector('.app');
+    const shown = (element: Element) =>
+      root?.contains(element) === true &&
+      element.closest('nav, .notices, [role="tooltip"]') === null;
+    const seen = (box: DOMRect, from: Element | null) => {
+      if (from === null || getComputedStyle(from).visibility !== 'visible') {
+        return false;
+      }
+      let left = Math.max(box.left, 0);
+      let top = Math.max(box.top, 0);
+      let right = Math.min(box.right, window.innerWidth);
+      let bottom = Math.min(box.bottom, window.innerHeight);
+      for (
+        let at: Element | null = from;
+        at !== null && at !== root;
+        at = at.parentElement
+      ) {
+        const style = getComputedStyle(at);
+        if (style.opacity === '0') {
+          return false;
+        }
+        if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
+          const clip = at.getBoundingClientRect();
+          left = Math.max(left, clip.left);
+          top = Math.max(top, clip.top);
+          right = Math.min(right, clip.right);
+          bottom = Math.min(bottom, clip.bottom);
+        }
+      }
+      return right > left && bottom > top;
+    };
+    const onScreen = (element: Element) =>
+      seen(element.getBoundingClientRect(), element);
+    const pathOf = (element: Element) => {
+      const steps: string[] = [];
+      for (
+        let at: Element | null = element;
+        at !== null && at !== root;
+        at = at.parentElement
+      ) {
+        const { tagName } = at;
+        const classes = [...at.classList]
+          .filter((part) => !/^xterm-dom-renderer-owner-\d+$/.test(part))
+          .join('.');
+        const name = `${tagName.toLowerCase()}${classes ? `.${classes}` : ''}`;
+        const twins = [...(at.parentElement?.children ?? [])].filter(
+          (other) =>
+            other.tagName === tagName &&
+            [...other.classList]
+              .filter((part) => !/^xterm-dom-renderer-owner-\d+$/.test(part))
+              .join('.') === classes &&
+            (other === at || onScreen(other)),
+        );
+        steps.unshift(
+          twins.length > 1 ? `${name}[${twins.indexOf(at)}]` : name,
+        );
+      }
+      return steps.join(' > ');
+    };
+    const inside = [...(root?.querySelectorAll('*') ?? [])].filter(shown);
+    const fields = inside.filter(
+      (element): element is HTMLInputElement | HTMLTextAreaElement =>
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLTextAreaElement,
+    );
+    const active = document.activeElement;
+    const focused = active !== null && shown(active) ? active : undefined;
+    const field = fields.find((each) => each === focused);
+    const texts: string[] = [];
+    if (root !== null) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const range = document.createRange();
+      for (
+        let node = walker.nextNode();
+        node !== null;
+        node = walker.nextNode()
+      ) {
+        const parent = node.parentElement;
+        const text = node.textContent?.trim() ?? '';
+        if (parent !== null && text !== '' && shown(parent)) {
+          range.selectNodeContents(node);
+          if ([...range.getClientRects()].some((box) => seen(box, parent))) {
+            texts.push(text);
+          }
+        }
+      }
+    }
+    return {
+      focus: focused === undefined ? null : pathOf(focused),
+      caret:
+        field === undefined || field.selectionStart === null
+          ? null
+          : [
+              field.selectionStart,
+              field.selectionEnd ?? field.selectionStart,
+              field.selectionDirection ?? 'none',
+            ],
+      fields: fields.map((each) => [
+        pathOf(each),
+        each instanceof HTMLInputElement && each.type === 'checkbox'
+          ? String(each.checked)
+          : each.value,
+      ]),
+      scrolls: inside
+        .filter(
+          (element) => element.scrollTop !== 0 || element.scrollLeft !== 0,
+        )
+        .map((element) => [
+          pathOf(element),
+          Math.round(element.scrollTop),
+          Math.round(element.scrollLeft),
+        ]),
+      states: inside
+        .filter(onScreen)
+        .flatMap((element) =>
+          ['aria-pressed', 'aria-expanded', 'aria-selected', 'aria-checked']
+            .filter((name) => element.hasAttribute(name))
+            .map((name) => [
+              `${pathOf(element)} ${name}`,
+              element.getAttribute(name) ?? '',
+            ]),
+        ),
+      text: texts.join(String.fromCharCode(10)),
+    };
+  });
+
+const looksAlike = (one: TabLooks, other: TabLooks) =>
+  JSON.stringify(one) === JSON.stringify(other);
+
+export async function settledLooks(page: Page): Promise<TabLooks> {
+  let last = await tabLooks(page);
+  let since = Date.now();
+  await waitFor(async () => {
+    const now = await tabLooks(page);
+    if (!looksAlike(now, last)) {
+      last = now;
+      since = Date.now();
+    }
+    return Date.now() - since >= 400;
+  }, 'the tab to settle');
+  return last;
+}
+
+export async function scrolledAround(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    for (const element of document.querySelectorAll('.app *')) {
+      const style = getComputedStyle(element);
+      const down =
+        ['auto', 'scroll'].includes(style.overflowY) &&
+        element.scrollHeight > element.clientHeight + 1;
+      const across =
+        ['auto', 'scroll'].includes(style.overflowX) &&
+        element.scrollWidth > element.clientWidth + 1;
+      if (element.closest('nav, .notices') === null && (down || across)) {
+        element.scrollTo({
+          top: down ? (element.scrollHeight - element.clientHeight) / 2 : 0,
+          left: across ? (element.scrollWidth - element.clientWidth) / 2 : 0,
+        });
+      }
+    }
+  });
+}
+
+export const tabs = (page: Page) => page.locator('nav [role="tab"]');
+
+export async function showTab(page: Page, index: number): Promise<void> {
+  const tab = tabs(page).nth(index);
+  await tab.click();
+  await waitFor(
+    async () => (await tab.getAttribute('aria-selected')) === 'true',
+    `tab ${index} shown`,
+  );
+}
+
+export async function comesBackAsLeft(
+  page: Page,
+  away: number,
+  what: string,
+): Promise<void> {
+  const index = await tabs(page).evaluateAll((all) =>
+    all.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'),
+  );
+  const left = await settledLooks(page);
+  await showTab(page, away);
+  await settledLooks(page);
+  await showTab(page, index);
+  let back = await tabLooks(page);
+  try {
+    await waitFor(
+      async () => {
+        back = await tabLooks(page);
+        return looksAlike(back, left);
+      },
+      what,
+      10_000,
+    );
+  } catch {
+    assert.deepStrictEqual(back, left, `${what} comes back as it was left`);
+  }
+  assert.deepStrictEqual(
+    await settledLooks(page),
+    left,
+    `${what} stays as it was left once settled`,
+  );
+}
