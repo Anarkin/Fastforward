@@ -4,19 +4,17 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { wrapColumns, wrappedLines } from '../../lib/page/wordWrap';
 import {
-  barsOffGrid,
-  baseSettings,
-  gridLines,
-  longLines,
   openChangedFile,
   page,
   profile,
   savedSetting,
   sharedApp,
-  waitForFocus,
   whitespaceShownSaved,
   wrapsSaved,
 } from './appFixtures';
+import { baseSettings } from './appLaunch';
+import { barsOffGrid, gridLines } from './gridLines';
+import { waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
 import {
   codeRow,
@@ -32,6 +30,7 @@ import {
   laidOutCode,
   matchInView,
   marksFollowRows,
+  longLines,
 } from './wrappingFixtures';
 
 suite('App', () => {

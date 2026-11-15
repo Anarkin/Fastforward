@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
-import { waitForFocus } from './appFixtures';
+import { waitForFocus } from './waits';
 import {
   opened,
   page,

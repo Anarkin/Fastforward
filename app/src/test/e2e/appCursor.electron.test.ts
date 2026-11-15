@@ -18,7 +18,7 @@ import type * as cursorModule from '../../lib/page/cursor';
 import type * as editorSelectionModule from '../../tools/commander/page/editorSelection';
 import type * as editorTextModule from '../../tools/commander/page/editorText';
 import type * as cellTableModule from '../../lib/page/cellTable';
-import { closeOrKill, launchApp, within } from './appFixtures';
+import { closeOrKill, launchApp, within } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/repositories';
 import {

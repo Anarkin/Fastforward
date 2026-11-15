@@ -4,9 +4,6 @@ import { suite, test } from 'vitest';
 import { wrapColumns, wrappedLines, wrapStarts } from '../../lib/page/wordWrap';
 import {
   diffLineNumbered,
-  firstLongLine,
-  gridLines,
-  longLines,
   openChangedFile,
   page,
   savedSetting,
@@ -14,6 +11,7 @@ import {
   viewSaved,
   wrapsSaved,
 } from './appFixtures';
+import { gridLines } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
 import {
   drawnCodeRow,
@@ -34,6 +32,8 @@ import {
   pressWrap,
   clickView,
   marksFollowRows,
+  firstLongLine,
+  longLines,
 } from './wrappingFixtures';
 
 suite('App', () => {

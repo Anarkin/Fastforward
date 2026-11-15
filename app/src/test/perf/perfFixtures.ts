@@ -8,7 +8,7 @@ import {
   type Page,
 } from 'playwright-core';
 import { afterAll, beforeAll, inject } from 'vitest';
-import { appFolder, closeOrKill } from '../e2e/appFixtures';
+import { appFolder, closeOrKill } from '../e2e/appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { perfBuild, type PerfData } from './perfData';
 import {

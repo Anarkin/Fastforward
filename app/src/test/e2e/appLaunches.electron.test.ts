@@ -11,13 +11,12 @@ import {
   appFolder,
   baseSettings,
   closeOrKill,
-  firstLongLine,
   launchApp,
-  longLines,
   savedTabs,
-  waitForFocus,
   within,
-} from './appFixtures';
+} from './appLaunch';
+import { waitForFocus } from './waits';
+import { firstLongLine, longLines } from './wrappingFixtures';
 import { waitFor } from '../helpers/fixtures';
 import {
   removeFolder,

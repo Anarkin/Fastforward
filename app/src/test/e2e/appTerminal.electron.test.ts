@@ -5,7 +5,8 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
-import { barsOffGrid, closeOrKill, gridLines, launchApp } from './appFixtures';
+import { closeOrKill, launchApp } from './appLaunch';
+import { barsOffGrid, gridLines } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/repositories';
 

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import type { ElectronApplication } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
-import { closeOrKill, launchApp, savedTabs } from './appFixtures';
+import { closeOrKill, launchApp, savedTabs } from './appLaunch';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 import {
   removeFolder,

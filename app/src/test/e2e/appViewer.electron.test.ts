@@ -4,7 +4,8 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { pdfOf } from './pdfs';
-import { clippedCorner, waitForFocus } from './appFixtures';
+import { clippedCorner } from './scrollProbes';
+import { waitForFocus } from './waits';
 import {
   opened,
   profile,

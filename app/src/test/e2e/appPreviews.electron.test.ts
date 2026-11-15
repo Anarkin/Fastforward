@@ -4,14 +4,8 @@ import * as path from 'node:path';
 import type { JSHandle } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
-import {
-  gridLines,
-  linesOffGrid,
-  page,
-  profile,
-  repository,
-  sharedApp,
-} from './appFixtures';
+import { page, profile, repository, sharedApp } from './appFixtures';
+import { gridLines, linesOffGrid } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
 
 const focusColor = () =>

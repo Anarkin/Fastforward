@@ -4,7 +4,8 @@ import * as path from 'node:path';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
-import { baseSettings, launchApp, longLines } from './appFixtures';
+import { baseSettings, launchApp } from './appLaunch';
+import { longLines } from './wrappingFixtures';
 import { waitFor } from '../helpers/fixtures';
 import {
   removeFolder,

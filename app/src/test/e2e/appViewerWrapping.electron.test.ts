@@ -4,7 +4,8 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
-import { barsOffGrid, gridLines, gridRuler, waitForFocus } from './appFixtures';
+import { barsOffGrid, gridLines, gridRuler } from './gridLines';
+import { waitForFocus } from './waits';
 import {
   opened,
   profile,

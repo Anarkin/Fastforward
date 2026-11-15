@@ -23,6 +23,15 @@ export function near(actual: number | undefined, expected: number): boolean {
   return actual !== undefined && Math.abs(actual - expected) < 0.01;
 }
 
+const longLine = Array.from({ length: 80 }, (_, index) => `word${index}`).join(
+  ' ',
+);
+export const longLines = Array.from(
+  { length: 200 },
+  (_, index) => `line${index} ${longLine}`,
+);
+export const [firstLongLine] = longLines;
+
 export const hyphenatedLine = Array.from(
   { length: 60 },
   (_, index) => `part${index}`,

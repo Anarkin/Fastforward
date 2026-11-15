@@ -10,9 +10,8 @@ import {
   repository,
   savedSetting,
   sharedApp,
-  waitForCount,
-  waitForFocus,
 } from './appFixtures';
+import { waitForCount, waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
 
 async function removeWorktree(worktree: string, branch: string): Promise<void> {

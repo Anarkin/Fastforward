@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
-import { baseSettings, closeOrKill, launchApp } from './appFixtures';
+import { baseSettings, closeOrKill, launchApp } from './appLaunch';
 import { shownText } from '../helpers/fixtures';
 import {
   removeFolder,

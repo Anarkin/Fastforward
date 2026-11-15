@@ -11,10 +11,10 @@ import type * as cellTableModule from '../../lib/page/cellTable';
 import {
   app as electronApp,
   diffLineNumbered,
-  gridLines,
   page,
   sharedApp,
 } from './appFixtures';
+import { gridLines } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
 
 const editorLines = [

@@ -4,16 +4,15 @@ import * as path from 'node:path';
 import type { JSHandle } from 'playwright-core';
 import { suite, test } from 'vitest';
 import {
-  longLines,
   openChangedFile,
   page,
   repository,
   savedSetting,
-  scrollPlaces,
   sharedApp,
-  waitForCount,
-  waitForFocus,
 } from './appFixtures';
+import { scrollPlaces } from './scrollProbes';
+import { waitForCount, waitForFocus } from './waits';
+import { longLines } from './wrappingFixtures';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 
 async function drawnCodeRow(): Promise<number> {

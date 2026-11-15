@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach, suite, test } from 'vitest';
-import { closeOrKill, launchApp } from './appFixtures';
+import { closeOrKill, launchApp } from './appLaunch';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/repositories';
 import { storedZip } from '../helpers/zips';

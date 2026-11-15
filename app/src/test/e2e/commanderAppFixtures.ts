@@ -5,7 +5,8 @@ import { crc32, deflateSync } from 'node:zlib';
 import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
-import { clippedCorner, closeOrKill, launchApp } from './appFixtures';
+import { closeOrKill, launchApp } from './appLaunch';
+import { clippedCorner } from './scrollProbes';
 import { removeFolder, tempFolder } from '../helpers/repositories';
 
 export let folder: string;

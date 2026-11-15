@@ -6,7 +6,7 @@ import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
-import { waitForFocus } from './appFixtures';
+import { waitForFocus } from './waits';
 import { storedZip } from '../helpers/zips';
 import {
   folder,

@@ -3,7 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
-import { scrollPlaces, waitForFocus } from './appFixtures';
+import { scrollPlaces } from './scrollProbes';
+import { waitForFocus } from './waits';
 import {
   opened,
   profile,
