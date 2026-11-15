@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
+import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import {
   opened,
@@ -14,6 +15,8 @@ import {
   markingRow,
   select,
   sharedCommanderApp,
+  markedSorted,
+  openFolder,
 } from './commanderAppFixtures';
 
 const selectedName = () =>
@@ -133,5 +136,65 @@ suite('App commander', () => {
       async () => !(await rowNames()).includes('marking'),
       'the markingFolder to be gone from the list',
     );
+  });
+
+  test('marks the files and folders whose names match a pattern typed on Num+, saying how many it matches as it is typed, inverts the marks on Num*, marks those of the extension of the file selected on Alt and Num+, and unmarks by the last pattern on Num-', async () => {
+    const marking = path.join(opened, 'marking');
+    fs.mkdirSync(path.join(marking, 'album.jpg'), { recursive: true });
+    for (const name of ['a.jpg', 'b.jpg', 'c.png', 'd.png']) {
+      fs.writeFileSync(path.join(marking, name), name);
+    }
+    const field = page.locator('.prompt-input');
+    try {
+      await openFolder('marking', marking);
+
+      await page.keyboard.press('NumpadAdd');
+      await field.waitFor();
+      await field.fill('*.jpg');
+      await waitFor(
+        async () =>
+          (await page.locator('.prompt-note').textContent()) ===
+          strings.commander.patternMatches(3),
+        'the count of what the pattern matches',
+      );
+      await page.keyboard.press('Enter');
+      await field.waitFor({ state: 'detached' });
+      await waitFor(
+        async () => (await markedSorted()) === 'a,album.jpg,b',
+        'the files and the folder the pattern matches to be marked',
+      );
+
+      await page.keyboard.press('NumpadMultiply');
+      await waitFor(
+        async () => (await markedSorted()) === 'c,d',
+        'the marks to be inverted',
+      );
+
+      await page.keyboard.press('NumpadSubtract');
+      await field.waitFor();
+      assert.strictEqual(await field.inputValue(), '*.jpg');
+      await field.fill('*.png');
+      await page.keyboard.press('Enter');
+      await field.waitFor({ state: 'detached' });
+      await waitFor(
+        async () => (await markedSorted()) === '',
+        'the marks gone',
+      );
+
+      await select('c');
+      await page.keyboard.press('Alt+NumpadAdd');
+      await waitFor(
+        async () => (await markedSorted()) === 'c,d',
+        'the files of the extension of the one selected to be marked',
+      );
+    } finally {
+      await page.keyboard.press('Backspace');
+      fs.rmSync(marking, { recursive: true, force: true });
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    }
   });
 });

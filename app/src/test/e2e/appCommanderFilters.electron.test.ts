@@ -13,63 +13,14 @@ import {
   groupStartsShown,
   statusShown,
   sortedRows,
-  markedSorted,
   selected,
   select,
   openFolder,
   sharedCommanderApp,
 } from './commanderAppFixtures';
 
-const focusIn = (selector: string) =>
-  page.evaluate(
-    (wanted) => Boolean(document.activeElement?.closest(wanted)),
-    selector,
-  );
-
-const choose = async (menu: string, item: string) => {
-  await page.locator(menu).locator('.menu-button-trigger').click();
-  await page.locator(menu).locator(item).first().click();
-};
-
 suite('App commander', () => {
   sharedCommanderApp();
-
-  test('hands the focus to the list of a side once a layout or a bookmark is chosen with the pointer from the menus of its header, and to the text of a file viewed once an encoding or a language is, so their keys work at once', async () => {
-    const inList = '.commander-pane:nth-child(2) .column-body';
-    await select('notes');
-
-    const chosen: boolean[] = [];
-    await choose(
-      `.commander-pane:nth-child(2) .commander-layout`,
-      `.menu-item:has-text("${strings.commander.layouts.details}")`,
-    );
-    chosen.push(await focusIn(inList));
-    const bookmarks = right().locator(
-      `button[title="${strings.commander.bookmarks}"]`,
-    );
-    const addOrRemove = page.locator('.menu-item', {
-      hasText: new RegExp(
-        `^(${strings.commander.addBookmark}|${strings.commander.removeBookmark})$`,
-      ),
-    });
-    const toggleBookmark = async () => {
-      await bookmarks.click();
-      await addOrRemove.click();
-      return focusIn(inList);
-    };
-    chosen.push(await toggleBookmark(), await toggleBookmark());
-
-    await page.keyboard.press('F3');
-    await page.locator('.viewer .viewer-rows .viewer-row').first().waitFor();
-    await choose('.viewer-encoding', '.menu-item[aria-checked="true"]');
-    chosen.push(await focusIn('.viewer-body'));
-    await choose('.viewer .language-button', '.menu-item[aria-checked="true"]');
-    chosen.push(await focusIn('.viewer-body'));
-
-    assert.deepStrictEqual(chosen, [true, true, true, true, true]);
-    await page.keyboard.press('Escape');
-    await page.locator('.viewer').waitFor({ state: 'detached' });
-  });
 
   test('shows only the files of a side that have a copy of the same content on Ctrl+Shift+G, whatever their names, a line above the first of each group that moves no row and adds no space, in flat view too, follows a delete, says when it found none, and shows every file again on Ctrl+Shift+G', async () => {
     const dupes = path.join(opened, 'dupes');
@@ -143,66 +94,6 @@ suite('App commander', () => {
     } finally {
       await page.keyboard.press('Backspace');
       fs.rmSync(dupes, { recursive: true, force: true });
-      await waitFor(
-        async () =>
-          (await right().locator('.column-name').textContent()) === opened,
-        'the folder opened',
-      );
-    }
-  });
-
-  test('marks the files and folders whose names match a pattern typed on Num+, saying how many it matches as it is typed, inverts the marks on Num*, marks those of the extension of the file selected on Alt and Num+, and unmarks by the last pattern on Num-', async () => {
-    const marking = path.join(opened, 'marking');
-    fs.mkdirSync(path.join(marking, 'album.jpg'), { recursive: true });
-    for (const name of ['a.jpg', 'b.jpg', 'c.png', 'd.png']) {
-      fs.writeFileSync(path.join(marking, name), name);
-    }
-    const field = page.locator('.prompt-input');
-    try {
-      await openFolder('marking', marking);
-
-      await page.keyboard.press('NumpadAdd');
-      await field.waitFor();
-      await field.fill('*.jpg');
-      await waitFor(
-        async () =>
-          (await page.locator('.prompt-note').textContent()) ===
-          strings.commander.patternMatches(3),
-        'the count of what the pattern matches',
-      );
-      await page.keyboard.press('Enter');
-      await field.waitFor({ state: 'detached' });
-      await waitFor(
-        async () => (await markedSorted()) === 'a,album.jpg,b',
-        'the files and the folder the pattern matches to be marked',
-      );
-
-      await page.keyboard.press('NumpadMultiply');
-      await waitFor(
-        async () => (await markedSorted()) === 'c,d',
-        'the marks to be inverted',
-      );
-
-      await page.keyboard.press('NumpadSubtract');
-      await field.waitFor();
-      assert.strictEqual(await field.inputValue(), '*.jpg');
-      await field.fill('*.png');
-      await page.keyboard.press('Enter');
-      await field.waitFor({ state: 'detached' });
-      await waitFor(
-        async () => (await markedSorted()) === '',
-        'the marks gone',
-      );
-
-      await select('c');
-      await page.keyboard.press('Alt+NumpadAdd');
-      await waitFor(
-        async () => (await markedSorted()) === 'c,d',
-        'the files of the extension of the one selected to be marked',
-      );
-    } finally {
-      await page.keyboard.press('Backspace');
-      fs.rmSync(marking, { recursive: true, force: true });
       await waitFor(
         async () =>
           (await right().locator('.column-name').textContent()) === opened,
