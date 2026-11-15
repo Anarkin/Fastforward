@@ -11,7 +11,8 @@ import { PdfPane } from './pdfView';
 import { viewerKeymap } from './viewerKeymap';
 import { useWholeText } from './wholeText';
 import { keyPressed } from '../../../lib/page/shortcuts';
-import { imageScrolled, previewUrl, type Preview } from './previews';
+import { previewUrl, type Preview } from './previews';
+import { imageScrolled } from './imageScroll';
 import type { PdfControls } from './pdfPreview';
 import type { Viewing } from './commanderState';
 
