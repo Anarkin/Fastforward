@@ -6,7 +6,8 @@ import type {
   CommanderSettings,
 } from '../shared/settings';
 import type { LocalFileSystem } from './fileSystem';
-import type { WatchFolder, WatchTree } from './watch';
+import type { WatchFolder } from './watch';
+import type { WatchTree } from './watchTree';
 import type { ContentReader } from './duplicates';
 import type { ArchiveAccess } from './archives';
 import type { ElevatedFileSystem } from './elevated';

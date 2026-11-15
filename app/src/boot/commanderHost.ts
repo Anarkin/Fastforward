@@ -15,11 +15,8 @@ import {
   inRepository,
   isRepository,
 } from '../tools/commander/main/repositories';
-import {
-  folderStamp,
-  watchFolder,
-  watchTree,
-} from '../tools/commander/main/watch';
+import { folderStamp, watchFolder } from '../tools/commander/main/watch';
+import { watchTree } from '../tools/commander/main/watchTree';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { transferProcess } from '../tools/commander/main/transferProcess';
 import {

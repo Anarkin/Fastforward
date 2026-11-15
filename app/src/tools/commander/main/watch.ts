@@ -11,7 +11,7 @@ const changeDelay = 50;
 const settleDelay = 250;
 const longestRetry = 60_000;
 
-type StartWatching = (
+export type StartWatching = (
   folder: string,
   listener: (event: string, name: string | null) => void,
 ) => fs.FSWatcher;
@@ -19,7 +19,7 @@ type StartWatching = (
 const startWatching: StartWatching = (folder, listener) =>
   fs.watch(folder, { persistent: false }, listener);
 
-function watched(
+export function watched(
   start: StartWatching,
   folder: string,
   listener: (event: string, name: string | null) => void,
@@ -169,49 +169,5 @@ export function watchFolder(
     clearTimeout(pending);
     clearTimeout(retrying);
     stopWatching?.();
-  };
-}
-
-export type WatchTree = (
-  folder: string,
-  onChange: (changed: string | undefined) => void,
-) => () => void;
-
-const startWatchingTree: StartWatching = (folder, listener) =>
-  fs.watch(folder, { persistent: false, recursive: true }, listener);
-
-export function watchTree(
-  folder: string,
-  onChange: (changed: string | undefined) => void,
-  start: StartWatching = startWatchingTree,
-): () => void {
-  let stopped = false;
-  const watcher = watched(start, folder, (_event, name) => {
-    if (stopped) {
-      return;
-    }
-    if (name !== null && path.isAbsolute(name)) {
-      stopped = true;
-      watcher?.close();
-      onChange(undefined);
-      return;
-    }
-    onChange(name ?? undefined);
-  });
-  if (watcher === undefined) {
-    return () => {};
-  }
-  watcher.on('error', () => {
-    if (!stopped) {
-      stopped = true;
-      watcher.close();
-      onChange(undefined);
-    }
-  });
-  return () => {
-    if (!stopped) {
-      stopped = true;
-      watcher.close();
-    }
   };
 }
