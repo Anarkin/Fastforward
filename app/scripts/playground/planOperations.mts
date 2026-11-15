@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { encoded } from './encodings.mts';
-import { dotnetPair, rustPair } from './projectSamples.mts';
+import { dotnetPair } from './dotnetSamples.mts';
+import { rustPair } from './rustSamples.mts';
 import { binary } from './samples.mts';
 import { emojiGrid } from './emojiGrid.mts';
 import { imageKinds } from './imageSamples.mts';

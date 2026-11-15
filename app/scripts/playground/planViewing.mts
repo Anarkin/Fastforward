@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { pdf, pdfParts, png, shade } from './formats.mts';
 import { encoded } from './encodings.mts';
 import { images } from './gitImages.mts';
-import { dotnetFiles, rustFiles } from './projectSamples.mts';
+import { dotnetFiles } from './dotnetSamples.mts';
+import { rustFiles } from './rustSamples.mts';
 import {
   binary,
   diagrams,
