@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { gitErrorText } from './errorText';
 import { isFolder, sameFolder, spelledFrom, spellingOf } from './folders';
 import { repositoryRoot } from './repository';
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 
 export interface Worktree {
   readonly path: string;

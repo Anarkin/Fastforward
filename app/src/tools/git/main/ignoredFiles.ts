@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isInside } from './insideFolder';
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 
 export type Ignored = (
   repo: string,

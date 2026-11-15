@@ -1,5 +1,6 @@
 import { strings } from '../../../lib/shared/strings';
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 
 export const remoteTimeout = 5 * 60_000;
 

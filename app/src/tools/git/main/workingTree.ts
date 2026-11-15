@@ -7,7 +7,8 @@ import { maxFileSize } from './files';
 import { listUntracked } from './fileLists';
 import { headCommit } from './commitLookup';
 import { untrackedLines } from './lineCounts';
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 import { touchedChanges } from './touchedFiles';
 
 export interface WorkingTreeDiff {

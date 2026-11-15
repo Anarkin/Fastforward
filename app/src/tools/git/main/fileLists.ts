@@ -1,4 +1,5 @@
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 
 export async function listTree(
   gitPath: string,

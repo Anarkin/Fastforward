@@ -1,5 +1,6 @@
 import type { CommitInfo } from '../shared/protocol';
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 
 export async function logCommits(
   gitPath: string,

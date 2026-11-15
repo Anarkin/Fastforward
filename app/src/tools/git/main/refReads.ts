@@ -1,7 +1,8 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RefInfo, Tracking } from '../shared/protocol';
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 import { listStashes, type Stash } from './stashes';
 
 export interface Head {

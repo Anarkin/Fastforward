@@ -1,5 +1,6 @@
 import { gitErrorText } from './errorText';
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 
 export type Upstream =
   | { readonly kind: 'detached' }

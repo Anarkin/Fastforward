@@ -141,7 +141,9 @@ export function keepGitRunningWhile(enabled: () => boolean): void {
 export const keptGits = new KeptGits(startGit, () => keepingGitRunning());
 
 const processNotInitialized = 0xc0000142;
+
 const startAttempts = 3;
+
 const notStarted = Symbol('notStarted');
 
 function runGitOnce(
@@ -317,8 +319,4 @@ export function exitedWith(
   okExitCodes: readonly number[],
 ): boolean {
   return typeof error.code === 'number' && okExitCodes.includes(error.code);
-}
-
-export function splitNul(output: string): string[] {
-  return output.split('\0');
 }

@@ -1,5 +1,6 @@
 import { commitOf, readUpstream, type Upstream } from './branches';
-import { runGit, splitNul } from './run';
+import { runGit } from './run';
+import { splitNul } from './splitNul';
 
 export interface PushSettings {
   readonly pushDefault: string;
