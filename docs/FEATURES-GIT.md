@@ -80,7 +80,7 @@
 | Jumps | Select HEAD, the upstream or the first parent | — | Common | ✅ Yes | H, U, Mod+Down |
 | Back and forward | Retrace the selected commits like a browser | — | Advanced | ✅ Yes | Alt+Left and Alt+Right, the mouse buttons, held for a list |
 | Bookmarks | Keep branches, tags or commits at hand | — | Advanced | ✅ Yes | Kept by the app per repository, not as refs; the main branch is bookmarked on first open |
-| Search messages and people | Find commits by message, author or committer | `git log --grep`, `--author`, `--committer` | Core | ✅ Yes | Runs `git log` and matches in the app every word of the search, each in the message, the author or the committer, ignoring case, as every filter of the app; every word marked in the list |
+| Search messages and people | Find commits by message, author or committer | `git log --grep`, `--author`, `--committer` | Core | ✅ Yes | Runs `git log` and matches in the app every word of the search, each in the message, the author or the committer, ignoring case, as every filter of the app; Aa matches the case, W whole words and .* the search as one regular expression, the main process checking them; every word marked in the list, and the result highlighted counted of all found in the box |
 | Find a hash | Go to a commit from the start of its hash | `git rev-parse --disambiguate` | Common | ✅ Yes | Lists up to 20 commits it may be |
 | Branches containing a commit | List the branches and tags a commit is on | `git branch --contains`, `git tag --contains` | Advanced | ❌ No |  |
 | Search the content | Find commits that add or remove some text | `git log -S`, `-G` | Advanced | ❌ No |  |
@@ -112,7 +112,7 @@
 | Encodings | Show files that aren't UTF-8 | `working-tree-encoding` in `.gitattributes` | Advanced | 🟡 Partial | A file opened in a viewer tab is read in the encoding a byte order mark names or, when not UTF-8, the code page of the system, or in one chosen with E; diffs read files as UTF-8; git turns messages into UTF-8 |
 | Context | Show more lines around the changes, or the whole file | `git diff -U<n>` | Common | ✅ Yes | The whole file of the file selected, on one toggle kept for every file and on by default; no expanding a few lines at a time |
 | Line wrapping | Wrap long lines | — | Common | ✅ Yes | On by default; W |
-| Find in the diff | Search the diff's text | — | Common | ✅ Yes | Mod+F |
+| Find in the diff | Search the diff's text | — | Common | ✅ Yes | Mod+F; Aa matches the case, W whole words and .* a regular expression within a line, as every search of the app |
 | Next change | Move from change to change | — | Common | ✅ Yes | J and K, from the files too |
 | Minimap | Mark the changes on a strip beside the diff | — | Advanced | ✅ Yes | Marks the changes of a file shown whole, and what a find matches |
 | Renames and copies | Pair a moved file's old and new path | `git diff -M`, `-C` | Core | 🟡 Partial | Renames only; notes the ones without changes |
@@ -131,7 +131,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Browse a revision | List every file of a commit | `git ls-tree -r` | Common | ✅ Yes | Show All Files, the unchanged with the changed |
 | A file at a revision | Show a file as a commit has it | `git show <rev>:<path>` | Common | ✅ Yes | Show the Entire File for a changed file, Show All Files for the rest; read with `git cat-file` |
-| Filter the files | Narrow the files to those matching a search | — | Common | ✅ Yes | Every word must be in the path or the old path |
+| Filter the files | Narrow the files to those matching a search | — | Common | ✅ Yes | Every word must be in the path or the old path; Aa matches the case and W whole words of each, .* takes the search as one regular expression; counts the file selected of those kept, ↑ and ↓ stepping among them |
 | File history | List the commits that changed a file | `git log --follow -- <path>` | Core | ❌ No |  |
 | Blame | Show who last changed each line | `git blame` | Core | ❌ No |  |
 | Line history | List the commits that changed some lines | `git log -L` | Advanced | ❌ No |  |
@@ -157,7 +157,7 @@
 | Upstream | Set or unset the branch a branch tracks | `git branch --set-upstream-to`, `--unset-upstream` | Common | 🟡 Partial | Set when checking out a remote branch or publishing; never changed or unset |
 | Ahead and behind | Count the commits to pull and to push | `git rev-list --left-right --count` | Core | ✅ Yes | On the Pull and Push buttons of every local branch with an upstream, since the last fetch, from `git for-each-ref`; Pull and Push say when the upstream is gone |
 | Fast-forward another branch | Move a branch that isn't checked out to its upstream | `git fetch . <upstream>:<branch>` | Advanced | ✅ Yes | Pull on any branch's bubble; knows branches checked out in other worktrees |
-| Find a branch | Search the branches | — | Common | ✅ Yes | Every word must be in its name, as every filter of the app; tags, stashes and bookmarks alike |
+| Find a branch | Search the branches | — | Common | ✅ Yes | Every word must be in its name, as every filter of the app, with the toggles of case, whole words and regular expressions; tags, stashes and bookmarks alike |
 | Branching models | Start and finish features and releases | `git flow` | Advanced | ❌ No |  |
 
 ## Tags

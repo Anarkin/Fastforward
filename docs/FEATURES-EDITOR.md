@@ -81,7 +81,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Find | Find text in the file | Ctrl+F | Core | ✅ Yes | The text selected filled in, every match marked and counted, the nearest selected as typed, Enter and Shift+Enter going to the next and previous |
-| Case, whole words, regular expressions | Find in its case, as whole words or by a pattern | Alt+C, Alt+W, Alt+R | Common | 🟡 Partial | By toggles of the find bar, no keys |
+| Case, whole words, regular expressions | Find in its case, as whole words or by a pattern | Alt+C, Alt+W, Alt+R | Common | 🟡 Partial | By toggles of the find bar, the same in every search of the app and matching as they do, no keys |
 | Replace | Replace the match or every match | Ctrl+H | Core | ✅ Yes | A regular expression putting its groups in; every match as one change Ctrl+Z undoes |
 | Find in files | Find in every file of a folder | Ctrl+Shift+F | Common | ❌ No |  |
 

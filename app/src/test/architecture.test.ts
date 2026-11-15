@@ -561,6 +561,53 @@ suite('Architecture', () => {
     );
   });
 
+  test('draws every box people search in with the SearchBar, so every search looks and works alike: the classes of the boxes before it are gone, and no other page code draws an input but the dialogs that ask for a text and the replace box of the editor', () => {
+    const before =
+      /\b(?:find-field|search-field|search-input|locations-search|menu-filter|commander-filter-input)\b/;
+    assert.deepStrictEqual(
+      sourceFiles.filter(
+        (file) => /\.(?:tsx?|css)$/.test(file) && before.test(read(file)),
+      ),
+      [],
+    );
+    assert.deepStrictEqual(
+      sourceFiles.filter(
+        (file) => file.endsWith('.tsx') && /<input\b/.test(read(file)),
+      ),
+      [
+        'lib/page/searchBar.tsx',
+        'shell/page/promptPopup.tsx',
+        'tools/commander/page/editorFindBar.tsx',
+        'tools/commander/page/packPopup.tsx',
+        'tools/commander/page/transferPopup.tsx',
+        'tools/git/page/clonePopup.tsx',
+      ],
+    );
+    const editorFindBar = read('tools/commander/page/editorFindBar.tsx');
+    assert.strictEqual(editorFindBar.match(/<input\b/g)?.length, 1);
+    assert.match(editorFindBar, /<input\s+className="editor-replace-input"/);
+  });
+
+  test('hands the options of a search, its case, whole words and regular expression, on whole as one SearchOptions, naming them one by one only where it is defined and checked, in the SearchBar that toggles them, in the matchers and the finds that match by them, and where the PDF hands them to PDF.js', () => {
+    assert.deepStrictEqual(
+      sourceFiles.filter(
+        (file) =>
+          /\.tsx?$/.test(file) &&
+          file !== 'lib/shared/strings.ts' &&
+          /\b(?:caseSensitive|wholeWord|regex)\b/.test(read(file)),
+      ),
+      [
+        'lib/page/searchBar.tsx',
+        'lib/shared/filter.ts',
+        'lib/shared/searchOptions.ts',
+        'lib/shared/textMatches.ts',
+        'tools/commander/main/textFind.ts',
+        'tools/commander/page/editorFind.ts',
+        'tools/commander/page/pdfDocument.ts',
+      ],
+    );
+  });
+
   test('leaves telling keys, modifiers and buttons apart to itself, so the shortcuts screen lists every one', () => {
     const own = [
       path.join(source, 'lib', 'shared', 'keymap.ts'),
