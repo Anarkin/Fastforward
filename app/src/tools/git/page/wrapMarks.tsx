@@ -14,7 +14,7 @@ import {
   noBreaks,
   knownBreaks,
   rememberBreaks,
-} from './rowMeasures';
+} from './rowBreaks';
 
 export function WrapMarks({
   text,

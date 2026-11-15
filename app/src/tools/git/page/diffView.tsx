@@ -47,7 +47,8 @@ import {
   splitPairs,
   lineKeys,
 } from './diffRows';
-import { RowContent, rowOverscan, rowMeasures, rowHeight } from './rowMeasures';
+import { rowMeasures, rowHeight } from './rowMeasures';
+import { RowContent, rowOverscan } from './rowContent';
 import { sideScroll, sideRoom } from './sidewaysScroll';
 import { useScrollAnchor } from './diffScrollAnchor';
 import { scrollOnToggle, stuckHeader } from './diffStuckHeader';
