@@ -5,7 +5,8 @@ import { planNames } from './planNames.mts';
 import { planColors } from './planColors.mts';
 import { planArchives } from './planArchives.mts';
 import { planOperations } from './planOperations.mts';
-import { planFolders, planThumbnails } from './planFolders.mts';
+import { planFolders } from './planFolders.mts';
+import { planThumbnails } from './planThumbnails.mts';
 
 export { limits } from './appFacts.mts';
 
