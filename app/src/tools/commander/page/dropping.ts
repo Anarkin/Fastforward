@@ -5,7 +5,7 @@ import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { useShellActions } from '../../../shell/page/store';
 import { useCommander, useCommanderActions } from './store';
-import { whatOf } from './transferring';
+import { whatOf } from './items';
 
 export function dropTargetOf(
   folder: string,

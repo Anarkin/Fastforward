@@ -11,7 +11,7 @@ import { useShell } from '../../../shell/page/store';
 import type { ClashSide, TransferView } from '../shared/transfers';
 import { useCommander, useCommanderActions } from './store';
 import { NameLines, Words } from '../../../lib/page/name';
-import { progressLines, runningLines, shareDone } from './transferring';
+import { progressLines, runningLines, shareDone } from './transferProgress';
 
 type Clash = NonNullable<TransferView['clash']>;
 

@@ -27,7 +27,7 @@ import {
   withFormat,
 } from './packing';
 import { useCommander, useCommanderActions } from './store';
-import { whatOf } from './transferring';
+import { whatOf } from './items';
 
 function Choices<Choice extends string>({
   label,
