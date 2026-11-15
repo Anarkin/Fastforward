@@ -348,6 +348,30 @@ suite('App with tabs dragged between windows', () => {
       );
     }
   };
+  const rowsApart = async (source: Page, target: Page) => {
+    const moved = await launched().browserWindow(source);
+    const [x, y] = await moved.evaluate((shown) => shown.getPosition());
+    const below = await (
+      await launched().browserWindow(target)
+    ).evaluate((shown) => {
+      const content = shown.getContentBounds();
+      return { x: content.x, y: content.y + 160 };
+    });
+    await moved.evaluate((shown, to) => shown.setPosition(to.x, to.y), below);
+    await waitFor(
+      async () => (await contentOf(source)).y >= below.y - 40,
+      'the row of tabs dragged from below the row dragged into',
+    );
+    return () =>
+      moved.evaluate(
+        (shown, to) => {
+          if (!shown.isDestroyed()) {
+            shown.setPosition(to.x, to.y);
+          }
+        },
+        { x, y },
+      );
+  };
   const sparesReady = () =>
     waitFor(
       async () =>
@@ -397,33 +421,39 @@ suite('App with tabs dragged between windows', () => {
     const source = await byTabs(3);
     const target = await byTabs(1);
     await inFront(target);
-    await recordSelected(target);
-    await grabTab(source, 1);
-    const sourceContent = await contentOf(source);
-    const targetContent = await contentOf(target);
-    const row = await target.locator('.tabs .tab-list').boundingBox();
-    assert.ok(row);
-    const at = {
-      x: targetContent.x + row.x + row.width - 60,
-      y: targetContent.y + row.y + row.height / 2,
-    };
-    await source.mouse.move(at.x - sourceContent.x, at.y - sourceContent.y, {
-      steps: 10,
-    });
-    await explained(
-      waitFor(
-        async () => (await selectedIn(target)) === 'false,true',
-        'the tab to show in the other window before it is dropped',
-      ),
-      at,
-      { source, target },
-    );
-    await source.mouse.up();
-    await waitFor(
-      async () => (await tabsIn(target)) === 2 && (await tabsIn(source)) === 2,
-      'the tab to be in the other window',
-    );
-    await shownWindows(launched(), 2);
+    const back = await rowsApart(source, target);
+    try {
+      await recordSelected(target);
+      await grabTab(source, 1);
+      const sourceContent = await contentOf(source);
+      const targetContent = await contentOf(target);
+      const row = await target.locator('.tabs .tab-list').boundingBox();
+      assert.ok(row);
+      const at = {
+        x: targetContent.x + row.x + row.width - 60,
+        y: targetContent.y + row.y + row.height / 2,
+      };
+      await source.mouse.move(at.x - sourceContent.x, at.y - sourceContent.y, {
+        steps: 10,
+      });
+      await explained(
+        waitFor(
+          async () => (await selectedIn(target)) === 'false,true',
+          'the tab to show in the other window before it is dropped',
+        ),
+        at,
+        { source, target },
+      );
+      await source.mouse.up();
+      await waitFor(
+        async () =>
+          (await tabsIn(target)) === 2 && (await tabsIn(source)) === 2,
+        'the tab to be in the other window',
+      );
+      await shownWindows(launched(), 2);
+    } finally {
+      await back();
+    }
   });
 
   test('tears a tab off into a window of its own when it is dropped over no row of tabs', async () => {
@@ -486,45 +516,50 @@ suite('App with tabs dragged between windows', () => {
         });
       }
     });
-    await recordSelected(target);
-    await grabTab(source, 1);
-    const sourceContent = await contentOf(source);
-    const targetContent = await contentOf(target);
-    const first = await target
-      .locator('.tabs [role="tab"]')
-      .first()
-      .boundingBox();
-    assert.ok(first);
-    const over = {
-      x: targetContent.x + first.x + 20 - sourceContent.x,
-      y: targetContent.y + first.y + first.height / 2 - sourceContent.y,
-    };
-    await source.mouse.move(over.x, over.y, { steps: 10 });
-    await explained(
-      waitFor(
-        async () => (await selectedIn(target)) === 'true,false',
-        'the tab to show first in the other window',
-      ),
-      { x: over.x + sourceContent.x, y: over.y + sourceContent.y },
-      { source, target },
-    );
-    await source.mouse.move(over.x, over.y + 300, { steps: 5 });
-    await waitFor(
-      async () => (await tabsIn(target)) === 1,
-      'the tab to leave the other window',
-    );
-    const leaving = await target.evaluate(() =>
-      'leaving' in window && Array.isArray(window.leaving)
-        ? window.leaving.filter((index) => typeof index === 'number')
-        : [],
-    );
-    assert.deepStrictEqual([...new Set(leaving)], [0]);
-    await source.keyboard.press('Escape');
-    await source.mouse.up();
-    await waitFor(
-      async () => (await tabsIn(source)) === 2,
-      'the tab to be back where it was',
-    );
-    await shownWindows(launched(), 3);
+    const back = await rowsApart(source, target);
+    try {
+      await recordSelected(target);
+      await grabTab(source, 1);
+      const sourceContent = await contentOf(source);
+      const targetContent = await contentOf(target);
+      const first = await target
+        .locator('.tabs [role="tab"]')
+        .first()
+        .boundingBox();
+      assert.ok(first);
+      const over = {
+        x: targetContent.x + first.x + 20 - sourceContent.x,
+        y: targetContent.y + first.y + first.height / 2 - sourceContent.y,
+      };
+      await source.mouse.move(over.x, over.y, { steps: 10 });
+      await explained(
+        waitFor(
+          async () => (await selectedIn(target)) === 'true,false',
+          'the tab to show first in the other window',
+        ),
+        { x: over.x + sourceContent.x, y: over.y + sourceContent.y },
+        { source, target },
+      );
+      await source.mouse.move(over.x, over.y + 300, { steps: 5 });
+      await waitFor(
+        async () => (await tabsIn(target)) === 1,
+        'the tab to leave the other window',
+      );
+      const leaving = await target.evaluate(() =>
+        'leaving' in window && Array.isArray(window.leaving)
+          ? window.leaving.filter((index) => typeof index === 'number')
+          : [],
+      );
+      assert.deepStrictEqual([...new Set(leaving)], [0]);
+      await source.keyboard.press('Escape');
+      await source.mouse.up();
+      await waitFor(
+        async () => (await tabsIn(source)) === 2,
+        'the tab to be back where it was',
+      );
+      await shownWindows(launched(), 3);
+    } finally {
+      await back();
+    }
   });
 });
