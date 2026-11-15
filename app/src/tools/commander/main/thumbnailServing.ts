@@ -5,12 +5,12 @@ import {
   fillsThumbnail,
   isThumbnailBox,
   type ThumbnailBox,
-  isWebp,
   madeThumbnailHeader,
   maxThumbnailBytes,
   thumbnailBoxOf,
   thumbnailSourceOf,
 } from '../shared/thumbnails';
+import { isWebp } from './webp';
 import { imageType, maxImageSize } from '../../../lib/shared/images';
 import { thumbnailKey } from './thumbnailStore';
 import { ArchiveImages } from './archiveImages';
