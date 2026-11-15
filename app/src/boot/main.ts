@@ -3,7 +3,6 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   app,
-  clipboard,
   dialog,
   Menu,
   nativeTheme,
@@ -25,13 +24,12 @@ import { UserSettings } from '../shell/main/userSettings';
 import { watchSettings } from '../shell/main/settingsWatch';
 import { JsonFileStore } from '../shell/main/stateFile';
 import { migratedState } from '../shell/main/stateMigration';
-import { Storage, toolState } from '../shell/main/storage';
+import { Storage } from '../shell/main/storage';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
 import { runHelper } from '../tools/commander/main/helper';
 import { helperOf } from '../tools/commander/main/helperProtocol';
-import { GitStorage } from '../tools/git/main/storage';
-import { GitTool } from '../tools/git/main/tool';
+import type { GitTool } from '../tools/git/main/tool';
 import { Shell } from '../shell/main/shell';
 import { appScheme } from './files';
 import { showAgain } from './windowPlacement';
@@ -50,6 +48,7 @@ import { removeUnviewedCopies } from './viewedFiles';
 import { workFolders } from '../tools/commander/main/workFolders';
 import type { CommanderTool } from '../tools/commander/main/tool';
 import { reportMissingGit, searchGit } from './gitSearch';
+import { gitToolOf } from './gitHost';
 import { terminalToolOf } from './terminalHost';
 import { commanderToolOf } from './commanderHost';
 import { shellHostOf } from './shellHost';
@@ -278,39 +277,14 @@ async function start(asked: readonly string[]): Promise<void> {
   }
   await archiveWork.clearEnded();
   keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
-  const gitTool = new GitTool(
+  const gitTool = gitToolOf({
     log,
-    git.path,
-    new GitStorage(userSettings, toolState(state, 'git')),
-    {
-      viewedFiles,
-      chooseFolders: async () => {
-        const chosen = await chooseFolders({
-          title: strings.app.openRepositories,
-          buttonLabel: strings.app.open,
-          properties: ['openDirectory', 'multiSelections'],
-        });
-        return chosen.canceled ? [] : chosen.filePaths;
-      },
-      chooseFolder: async (purpose, from) => {
-        const chosen = await chooseFolders({
-          ...(purpose === 'init'
-            ? {
-                title: strings.app.initRepository,
-                buttonLabel: strings.app.init,
-              }
-            : {
-                title: strings.app.cloneInto,
-                buttonLabel: strings.app.choose,
-              }),
-          ...(from !== undefined && { defaultPath: from }),
-          properties: ['openDirectory', 'createDirectory'],
-        });
-        return chosen.canceled ? undefined : chosen.filePaths[0];
-      },
-      clipboardText: () => clipboard.readText(),
-    },
-  );
+    gitPath: git.path,
+    userSettings,
+    state,
+    viewedFiles,
+    chooseFolders,
+  });
   const terminalTool = terminalToolOf({
     log,
     dist,
