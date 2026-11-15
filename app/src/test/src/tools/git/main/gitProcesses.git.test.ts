@@ -3,14 +3,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
-import { gitErrorText } from '../../../../../tools/git/main/errorText';
 import { fastForward } from '../../../../../tools/git/main/branches';
 import { switchToBranch } from '../../../../../tools/git/main/switches';
-import {
-  runGit,
-  stopRunningGit,
-  writesEnded,
-} from '../../../../../tools/git/main/run';
+import { writesEnded } from '../../../../../tools/git/main/gitProcesses';
+import { runGit, stopRunningGit } from '../../../../../tools/git/main/run';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
   removeFolder,
@@ -260,171 +256,115 @@ suite('Running git in a repository', () => {
     );
   });
 
-  test("runs the real git behind Git for Windows' launcher, its shell seeing what the launcher would give it, for commands that run the user's hooks and credential helpers too", async (context) => {
-    const bin = path.dirname(gitPath);
-    const root =
-      path.basename(bin).toLowerCase() === 'cmd'
-        ? path.dirname(bin)
-        : path.dirname(path.dirname(bin));
-    const launcher = path.join(root, 'cmd', 'git.exe');
-    if (process.platform !== 'win32' || !fs.existsSync(launcher)) {
+  test('stops what git started too, even what outlived the process that started it', async (context) => {
+    if (process.platform === 'win32') {
       context.skip();
     }
-    const childProcess = process.getBuiltinModule('node:child_process');
-    const { spawn } = childProcess;
-    const started: string[] = [];
-    const seen = ['-c', 'alias.seen=!echo "$MSYSTEM $PATH"', 'seen'];
-    replaceBuiltin(
-      childProcess,
-      'spawn',
-      (...args: Parameters<typeof spawn>) => {
-        const [command, gitArgs] = args;
-        if (gitArgs.includes('seen')) {
-          started.push(command);
-        }
-        return spawn(...args);
-      },
-    );
-    let direct: string;
-    let hooked: string;
+    const folder = tempFolder('outlived');
+    const started = path.join(folder, 'started');
+    const stopping = new AbortController();
     try {
-      direct = await runGit(launcher, cwd, seen);
-      hooked = await runGit(launcher, cwd, seen, { runsUserCode: true });
-    } finally {
-      replaceBuiltin(childProcess, 'spawn', spawn);
-    }
-    assert.strictEqual(direct, hooked);
-    assert.strictEqual(started.length, 2);
-    for (const command of started) {
-      assert.match(command, /\\(ucrt64|mingw64|clangarm64)\\bin\\git\.exe$/i);
-    }
-  });
-
-  test('runs its own commands in the C locale, so the messages it reads, such as a folder not being a repository, are in English, sparing git setting up translations each time it starts', async () => {
-    const locale = await runGit(gitPath, cwd, [
-      '-c',
-      'alias.locale=!echo "[$LC_ALL]"',
-      'locale',
-    ]);
-    assert.strictEqual(locale.trim(), '[C]');
-  });
-
-  test("asks every git to give no advice, its own commands and those running the user's code, as git words its hints in the user's language, where they can't be told from what git says", async () => {
-    for (const runsUserCode of [false, true]) {
-      const advice = await runGit(
+      const stalled = runGit(
         gitPath,
         cwd,
-        ['-c', 'alias.advice=!echo "[$GIT_ADVICE]"', 'advice'],
-        { runsUserCode },
+        [
+          '-c',
+          `alias.stall=!(sleep 15 & echo $! > '${started}'); sleep 15`,
+          'stall',
+        ],
+        { signal: stopping.signal },
       );
-      assert.strictEqual(advice.trim(), '[0]', String(runsUserCode));
+      await waitFor(
+        () =>
+          fs.existsSync(started) && /\d/.test(fs.readFileSync(started, 'utf8')),
+        'git to start',
+      );
+      const outlived = Number(fs.readFileSync(started, 'utf8'));
+      stopping.abort();
+      await assert.rejects(stalled);
+      await waitFor(() => !running(outlived), 'what git started to stop', 5000);
+    } finally {
+      removeFolder(folder);
     }
   });
 
-  test('says only what git said when it fails, keeping the command for the log', async () => {
-    await assert.rejects(
-      switchToBranch(gitPath, cwd, 'no-such-branch'),
-      (error) => {
-        assert.strictEqual(
-          gitErrorText(error),
-          'fatal: invalid reference: no-such-branch',
-        );
-        assert.match(String(error), /git switch .*no-such-branch failed/);
-        return true;
-      },
-    );
-  });
-
-  test('leaves the user and password of a URL out of what it says when git fails, as git itself does, the log and the notices showing it', async () => {
-    const url = 'https://x-token:ghp_secret@example.invalid/org/repo.git';
-    for (const args of [
-      ['rev-parse', url],
-      ['config', '--get', `remote.${url}.url`],
-    ]) {
-      await assert.rejects(runGit(gitPath, cwd, args), (error) => {
-        for (const said of [String(error), gitErrorText(error)]) {
-          assert.doesNotMatch(said, /x-token|ghp_secret/, said);
-        }
-        assert.match(String(error), /https:\/\/example\.invalid\/org\/repo/);
-        return true;
-      });
+  test('stops every git still running when asked, as the app does when it quits', async () => {
+    const folder = tempFolder('quitting');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
+    try {
+      const stalled = runGit(gitPath, cwd, [
+        '-c',
+        `alias.stall=!echo > '${started}'; sleep 15`,
+        'stall',
+      ]);
+      await waitFor(() => fs.existsSync(started), 'git to start');
+      const stopped = performance.now();
+      const failed = assert.rejects(stalled);
+      await stopRunningGit();
+      await failed;
+      assert.ok(performance.now() - stopped < 5000);
+    } finally {
+      removeFolder(folder);
     }
   });
 
-  test('starts git again when Windows could not initialize its process, as it fails now and then on a loaded machine before git runs at all', async (context) => {
+  test('is done stopping every git only once a git it was already stopping is stopped, though that git has exited, as Windows may end it before what it started, and the app quit with its ssh still running', async (context) => {
     if (process.platform !== 'win32') {
       context.skip();
     }
     const childProcess = process.getBuiltinModule('node:child_process');
-    const { spawn } = childProcess;
-    let started = 0;
+    const { execFile } = childProcess;
+    const folder = tempFolder('stopping');
+    const started = path.join(folder, 'started').replaceAll('\\', '/');
+    const stopping = new AbortController();
+    const done: string[] = [];
+    let first = true;
     replaceBuiltin(
       childProcess,
-      'spawn',
-      (command: string, args: readonly string[], options: object) => {
-        if (!args.includes('rev-parse')) {
-          return spawn(command, args, options);
+      'execFile',
+      (
+        file: string,
+        args: readonly string[],
+        options: object,
+        callback: () => void,
+      ) => {
+        if (!first || !file.endsWith('taskkill.exe')) {
+          return execFile(file, args, options, callback);
         }
-        started += 1;
-        return started < 3
-          ? spawn(process.execPath, ['-e', 'process.exit(0xc0000142)'], options)
-          : spawn(command, args, options);
+        first = false;
+        return execFile(file, args, options, () => {
+          setTimeout(() => {
+            done.push('stopping git');
+            callback();
+          }, 100);
+        });
       },
     );
     try {
-      const head = await runGit(gitPath, cwd, ['rev-parse', 'HEAD']);
-      assert.match(head.trim(), /^[0-9a-f]{40,64}$/);
-      assert.strictEqual(started, 3);
-    } finally {
-      replaceBuiltin(childProcess, 'spawn', spawn);
-    }
-  });
-
-  test('gives up starting git once Windows could not initialize its process three times', async (context) => {
-    if (process.platform !== 'win32') {
-      context.skip();
-    }
-    const childProcess = process.getBuiltinModule('node:child_process');
-    const { spawn } = childProcess;
-    let started = 0;
-    replaceBuiltin(
-      childProcess,
-      'spawn',
-      (command: string, args: readonly string[], options: object) => {
-        if (!args.includes('rev-parse')) {
-          return spawn(command, args, options);
-        }
-        started += 1;
-        return spawn(
-          process.execPath,
-          ['-e', 'process.exit(0xc0000142)'],
-          options,
-        );
-      },
-    );
-    try {
-      await assert.rejects(
-        runGit(gitPath, cwd, ['rev-parse', 'HEAD']),
-        /git rev-parse HEAD failed: it exited with code 3221225794/,
+      const stalled = runGit(
+        gitPath,
+        cwd,
+        ['-c', `alias.stall=!echo > '${started}'; sleep 15`, 'stall'],
+        { signal: stopping.signal },
       );
-      assert.strictEqual(started, 3);
+      await waitFor(() => fs.existsSync(started), 'git to start');
+      stopping.abort();
+      await assert.rejects(stalled);
+      await stopRunningGit();
+      done.push('stopping every git');
+      assert.deepStrictEqual(done, ['stopping git', 'stopping every git']);
     } finally {
-      replaceBuiltin(childProcess, 'spawn', spawn);
+      replaceBuiltin(childProcess, 'execFile', execFile);
+      removeFolder(folder);
     }
-  });
-
-  test('says what git said when it exits before reading all its input', async () => {
-    await assert.rejects(
-      runGit(gitPath, cwd, ['rev-parse', '--verify', 'no-such-ref'], {
-        input: 'x\n'.repeat(4 * 1024 * 1024),
-      }),
-      (error) => {
-        assert.strictEqual(
-          gitErrorText(error),
-          'fatal: Needed a single revision',
-        );
-        return true;
-      },
-    );
   });
 });
+
+function running(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}

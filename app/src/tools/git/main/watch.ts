@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { InFlight } from '../../../lib/main/inFlight';
-import { forgetMonitor, runGit } from './run';
+import { forgetMonitor } from './fsMonitor';
+import { runGit } from './run';
 
 import {
   Watcher,

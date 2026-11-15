@@ -14,11 +14,8 @@ import {
 import { autoUpdater } from 'electron-updater';
 import { foldersHandedOff, foldersOf, handOff } from './commandLine';
 import { prettyName, systemOf } from './system';
-import {
-  keepGitRunningWhile,
-  stopRunningGit,
-  writesEnded,
-} from '../tools/git/main/run';
+import { writesEnded } from '../tools/git/main/gitProcesses';
+import { keepGitRunningWhile, stopRunningGit } from '../tools/git/main/run';
 import { errorLine, fileLog, type Log } from '../shell/main/log';
 import { setKeyPlatform } from '../lib/shared/keymap';
 import type { Theme } from '../shell/shared/protocol';
