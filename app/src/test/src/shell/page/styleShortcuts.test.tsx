@@ -198,17 +198,20 @@ suite('Style', () => {
     );
   });
 
-  test('lays the shortcuts on lines of the row height, so the pane comes to rest on a line wherever it stops: a heading one line with no line drawn between the groups, each shortcut as many as it wraps to, a blank line after each group, and the heading stuck at the top one line of cover', () => {
+  test('lays the shortcuts on lines of the row height, so the pane comes to rest on a line wherever it stops: a heading two lines, its words and a blank line under them, with no line drawn between the groups, each shortcut as many as it wraps to, a blank line after each group, and the heading stuck at the top its two lines of cover', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
     const line = 'var(--row-line-height)';
     looks(withClass(popup, 'shortcuts-pane'), {
       'line-height': line,
-      'scroll-padding-top': line,
+      'scroll-padding-top': `calc(2 * ${line})`,
     });
     const headings = allWithClass(popup, 'shortcuts-heading');
     assert.ok(headings.length > 1);
     for (const heading of headings) {
-      looks(heading, { padding: '0 16px', 'box-shadow': undefined });
+      looks(heading, {
+        padding: `0 16px ${line}`,
+        'box-shadow': undefined,
+      });
     }
     looks(withClass(popup, 'shortcuts-group'), { padding: `0 0 ${line}` });
     looks(withClass(popup, 'shortcut-row'), {

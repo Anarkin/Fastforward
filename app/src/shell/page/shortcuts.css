@@ -110,7 +110,7 @@
   overflow-y: auto;
   padding: 0 16px 16px;
   line-height: var(--row-line-height);
-  scroll-padding-top: var(--row-line-height);
+  scroll-padding-top: calc(2 * var(--row-line-height));
 }
 
 .shortcuts-heading {
@@ -118,7 +118,7 @@
   top: 0;
   z-index: 1;
   margin: 0 -16px;
-  padding: 0 16px;
+  padding: 0 16px var(--row-line-height);
   font-weight: 700;
   background: var(--color-panel-background);
 }
