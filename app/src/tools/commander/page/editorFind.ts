@@ -271,3 +271,20 @@ export function countOf(state: EditorState): {
     invalid,
   };
 }
+
+export interface FindAsk {
+  readonly replace: boolean;
+  readonly selected: string;
+  readonly at: number;
+}
+
+export const findAskOf =
+  (withReplace: boolean, state: EditorState | undefined) =>
+  (was: FindAsk | undefined): FindAsk => ({
+    replace: withReplace,
+    selected:
+      state === undefined
+        ? ''
+        : state.sliceDoc(state.selection.main.from, state.selection.main.to),
+    at: (was?.at ?? 0) + 1,
+  });

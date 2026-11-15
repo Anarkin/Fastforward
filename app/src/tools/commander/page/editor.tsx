@@ -30,6 +30,8 @@ import {
   replace,
   replaceAll,
   step,
+  findAskOf,
+  type FindAsk,
   type FindQuery,
 } from './editorFind';
 import { PromptPopup } from '../../../shell/page/promptPopup';
@@ -47,6 +49,11 @@ import {
   endingsChanged,
   endingsField,
   endingsSent,
+  endingsShownOf,
+  endingsLabel,
+  linesEnding,
+  endingsTitle,
+  type EndingsShown,
 } from './editorEndings';
 import { colorOfFileNamed } from './fileColors';
 import { viewerChoices } from './view';
@@ -76,18 +83,11 @@ import {
   extensionsOf,
   stateOf,
   lineBreak,
-  EndingsShown,
-  endingsShownOf,
-  endingsLabel,
-  linesEnding,
-  endingsTitle,
   keptJson,
   colorsOf,
   fieldsKept,
-  FindAsk,
-  findAskOf,
-  statusOf,
 } from './editorState';
+import { statusOf } from './editorStatus';
 
 export function Editor() {
   useEffect(startColorer, []);

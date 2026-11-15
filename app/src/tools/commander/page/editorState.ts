@@ -13,7 +13,6 @@ import {
   lineNumbers,
   type ViewUpdate,
 } from '@codemirror/view';
-import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { syntaxColors } from './editorColors';
 import { appSelection } from './editorSelection';
@@ -21,8 +20,6 @@ import { appTextLook, blanksShown } from './editorText';
 import { rowScrolling } from './editorScroll';
 import type { ScrollSettings } from '../../../lib/page/rowScroll';
 import { colorer } from '../../../lib/page/syntax';
-import { cellWidthsOf } from '../../../lib/page/textWidths';
-import { columnsOf } from '../../../lib/page/textColumns';
 import { type CellTable } from '../../../lib/page/cellTable';
 import { editorFind } from './editorFind';
 import { commentsOf } from './editorComments';
@@ -43,13 +40,11 @@ import {
   type EndingSource,
 } from '../shared/protocol';
 import {
-  endingCounts,
   endingsField,
   endingsFrom,
   endingSigns,
   endingsUndone,
 } from './editorEndings';
-import type { LineEnding } from '../shared/textMarks';
 import { type Encoded } from './editorEncodings';
 import { type EditorPlace } from './editorPlace';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
@@ -167,44 +162,6 @@ export function stateOf(
 
 export const lineBreak = String.fromCharCode(10);
 
-export interface EndingsShown {
-  readonly ending: LineEnding;
-  readonly counts: Readonly<Record<LineEnding, number>>;
-}
-
-const endingOrder: readonly LineEnding[] = ['lf', 'crlf', 'cr'];
-
-export function endingsShownOf(state: EditorState): EndingsShown {
-  return {
-    ending: state.field(endingsField).ending,
-    counts: endingCounts(state),
-  };
-}
-
-export function endingsLabel({ ending, counts }: EndingsShown): string {
-  const used = endingOrder.filter((each) => counts[each] > 0);
-  return used.length > 1
-    ? strings.editor.mixed
-    : strings.editor.endingNames[used[0] ?? ending];
-}
-
-export const linesEnding = ({ ending, counts }: EndingsShown) =>
-  endingOrder.some((each) => counts[each] > 0) ? ending : undefined;
-
-export function endingsTitle({ ending, counts }: EndingsShown): string {
-  return strings.editor.endingCounts(
-    endingOrder
-      .filter((each) => counts[each] > 0)
-      .map((each) =>
-        strings.editor.linesEndingIn(
-          counts[each],
-          strings.editor.endingNames[each],
-        ),
-      ),
-    strings.editor.endingNames[ending],
-  );
-}
-
 export function keptJson(
   state: EditorState,
   place: EditorPlace | undefined,
@@ -233,53 +190,3 @@ export const fieldsKept = [
   sinceSavedField,
   savingRulesField,
 ];
-
-const graphemes = new Intl.Segmenter(undefined, {
-  granularity: 'grapheme',
-});
-
-const countedCharacters = 1_000_000;
-
-function charactersIn(text: string): number {
-  return text.length > countedCharacters
-    ? text.length
-    : [...graphemes.segment(text)].length;
-}
-
-export interface FindAsk {
-  readonly replace: boolean;
-  readonly selected: string;
-  readonly at: number;
-}
-
-export const findAskOf =
-  (withReplace: boolean, state: EditorState | undefined) =>
-  (was: FindAsk | undefined): FindAsk => ({
-    replace: withReplace,
-    selected:
-      state === undefined
-        ? ''
-        : state.sliceDoc(state.selection.main.from, state.selection.main.to),
-    at: (was?.at ?? 0) + 1,
-  });
-
-export function statusOf(state: EditorState, table: CellTable): string {
-  const { main, ranges } = state.selection;
-  const line = state.doc.lineAt(main.head);
-  const column =
-    columnsOf(line.text, cellWidthsOf(table))(main.head - line.from) + 1;
-  const parts = [strings.editor.position(line.number, column)];
-  if (ranges.length > 1) {
-    parts.push(strings.editor.cursors(ranges.length));
-  } else if (!main.empty) {
-    parts.push(
-      strings.editor.selected(
-        state.doc.lineAt(main.to).number -
-          state.doc.lineAt(main.from).number +
-          1,
-        charactersIn(state.sliceDoc(main.from, main.to)),
-      ),
-    );
-  }
-  return parts.join(strings.editor.between);
-}
