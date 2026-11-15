@@ -34,6 +34,32 @@ async function pixelsOf(
   );
 }
 
+async function shotWithThumb(
+  page: Page,
+  bar: Locator,
+  pointer: { readonly x: number; readonly y: number },
+): Promise<{
+  readonly shown: Buffer;
+  readonly thumb: { x: number; y: number; width: number; height: number };
+}> {
+  for (let nudge = 0; nudge < 5; nudge++) {
+    await page.mouse.move(pointer.x + nudge, pointer.y);
+    await bar.waitFor();
+    await page.waitForTimeout(400);
+    const shown = await page.screenshot();
+    const [thumb] = await bar.evaluateAll((elements) =>
+      elements.map((element) => {
+        const { x, y, width, height } = element.getBoundingClientRect();
+        return { x, y, width, height };
+      }),
+    );
+    if (thumb !== undefined) {
+      return { shown, thumb };
+    }
+  }
+  return assert.fail('the thumb hid before each screenshot was taken');
+}
+
 async function thumbAgainstLine(
   page: Page,
   list: Locator,
@@ -50,21 +76,16 @@ async function thumbAgainstLine(
   const bare = await page.screenshot();
   const box = await list.boundingBox();
   assert.ok(box, 'the list has no box');
-  await page.mouse.move(
-    box.x + 20,
-    edge === 'right' ? box.y + box.height - 10 : box.y + 10,
-  );
-  await bar.waitFor();
-  await page.waitForTimeout(400);
-  const shown = await page.screenshot();
-  const thumb = await bar.boundingBox();
+  const { shown, thumb } = await shotWithThumb(page, bar, {
+    x: box.x + 20,
+    y: edge === 'right' ? box.y + box.height - 10 : box.y + 10,
+  });
   const column = await list.evaluate((element) => {
     const { right, bottom } = element
       .closest('.column')
       ?.getBoundingClientRect() ?? { right: 0, bottom: 0 };
     return { right, bottom };
   });
-  assert.ok(thumb, 'the thumb has no box');
   const points: [number, number][] =
     edge === 'right'
       ? Array.from(
