@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePixelRatio } from '../../../lib/page/imageSizes';
-import { type Thumbnail, keyOf, thumbnails } from './thumbnailFills';
+import { type Thumbnail, keyOf, thumbnails } from './thumbnailCache';
 
 function useInView(element: React.RefObject<Element | null>): boolean {
   const [inView, setInView] = useState(false);
