@@ -198,14 +198,18 @@ suite('Style', () => {
     );
   });
 
-  test('lays the shortcuts on lines of the row height, so the pane comes to rest on a line wherever it stops: a heading one line, each shortcut as many as it wraps to, a blank line after each group, and the heading stuck at the top one line of cover', () => {
+  test('lays the shortcuts on lines of the row height, so the pane comes to rest on a line wherever it stops: a heading one line with no line drawn between the groups, each shortcut as many as it wraps to, a blank line after each group, and the heading stuck at the top one line of cover', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
     const line = 'var(--row-line-height)';
     looks(withClass(popup, 'shortcuts-pane'), {
       'line-height': line,
       'scroll-padding-top': line,
     });
-    looks(withClass(popup, 'shortcuts-heading'), { padding: '0 16px' });
+    const headings = allWithClass(popup, 'shortcuts-heading');
+    assert.ok(headings.length > 1);
+    for (const heading of headings) {
+      looks(heading, { padding: '0 16px', 'box-shadow': undefined });
+    }
     looks(withClass(popup, 'shortcuts-group'), { padding: `0 0 ${line}` });
     looks(withClass(popup, 'shortcut-row'), {
       'align-items': 'start',
@@ -270,7 +274,7 @@ suite('Style', () => {
     }
   });
 
-  test('draws a shortcut as one key cap holding its keys inside its line, two pixels short of it and centered, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted', () => {
+  test('draws a shortcut as one key cap holding its keys inside its line, two pixels short of it and centered, its keys on the line of the words beside it, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
     const combo = withClass(popup, 'shortcut-combo');
     looks(combo, {
@@ -289,7 +293,8 @@ suite('Style', () => {
     looks(key, {
       border: undefined,
       padding: '0 5px',
-      'line-height': 'calc(var(--row-line-height) - 2px)',
+      margin: '-1px 0',
+      'line-height': 'var(--row-line-height)',
     });
     looks(withClass(combo, 'shortcut-joiner'), {
       'align-self': 'stretch',
