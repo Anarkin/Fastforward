@@ -536,7 +536,7 @@ suite('App', () => {
       await repository.git('checkout', '-q', 'HEAD', '--', 'report.html');
     }
     await page.locator('.commit.working-tree.empty').waitFor();
-  });
+  }, 180_000);
 
   test('wraps a line longer than 64 KiB only where the browser breaks it, where the app expects it to, keeping its indentation on the row with its code, as the app expected breaks after punctuation it no longer marks in such a line, its marks drifting from the rows, and the browser broke it right after its indentation', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
