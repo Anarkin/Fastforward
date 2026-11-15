@@ -20,6 +20,7 @@ export function useSideways({
   encoding,
   counting,
   columns,
+  keptColumn = 0,
 }: {
   readonly whole: boolean;
   readonly text: WholeText | undefined;
@@ -29,6 +30,7 @@ export function useSideways({
   readonly encoding: TextEncoding;
   readonly counting: TextWidths;
   readonly columns: number | undefined;
+  readonly keptColumn?: number;
 }) {
   const widestLine = useMemo(
     () =>
@@ -62,7 +64,9 @@ export function useSideways({
       columns: wide.key === widthKey ? Math.max(wide.columns, widest) : widest,
     });
   }
-  const [across, setAcross] = useState(0);
+  const [across, setAcross] = useState(
+    Math.floor(keptColumn / sidewaysStep) * sidewaysStep,
+  );
   const onSideways = useCallback(
     (column: number) =>
       setAcross(Math.floor(column / sidewaysStep) * sidewaysStep),

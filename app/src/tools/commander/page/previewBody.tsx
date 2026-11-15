@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { maxPreviewBytes } from '../shared/protocol';
 import { viewedFileUrl } from '../shared/files';
 import { strings } from '../../../lib/shared/strings';
@@ -15,6 +22,8 @@ import { previewUrl, type Preview } from './previews';
 import { imageScrolled } from './imageScroll';
 import type { PdfControls } from './pdfPreview';
 import type { Viewing } from './commanderState';
+import { useCommanderActions } from './store';
+import { blockAtTop, topOfBlock } from './previewPlace';
 
 function MarkdownPreview({
   file,
@@ -60,13 +69,39 @@ export function PreviewBody({
 }) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => body.current?.focus(), []);
+  const { tab } = viewing;
+  const { keptViewer, keepViewer } = useCommanderActions();
+  const [kept] = useState(() => keptViewer(tab).preview);
+  const back = useRef(kept);
   const centerImage = useCallback(() => {
     const scroller = body.current;
-    if (scroller) {
+    const left = back.current;
+    back.current = undefined;
+    if (scroller && left !== undefined) {
+      scroller.scrollTo({ top: left.top, left: left.left });
+    } else if (scroller) {
       scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
       scroller.scrollTop = (scroller.scrollHeight - scroller.clientHeight) / 2;
     }
   }, []);
+  useLayoutEffect(() => {
+    const scroller = body.current;
+    const left = back.current;
+    if (preview !== 'markdown' || scroller === null || left === undefined) {
+      return;
+    }
+    const top =
+      left.block === undefined ? left.top : topOfBlock(scroller, left);
+    if (top !== undefined) {
+      back.current = undefined;
+      scroller.scrollTop = top;
+    }
+  });
+  useLayoutEffect(() => {
+    if (preview === 'image' && !realSize) {
+      back.current = undefined;
+    }
+  }, [preview, realSize]);
   const vector = imageType(file) === vectorType;
   const sizing = useMemo(
     () => ({ vector, realSize, onRealSize: centerImage }),
@@ -100,6 +135,18 @@ export function PreviewBody({
       ref={body}
       tabIndex={0}
       data-column-focus=""
+      onScroll={(event) => {
+        if (back.current === undefined) {
+          const scroller = event.currentTarget;
+          keepViewer(tab, {
+            preview: {
+              top: scroller.scrollTop,
+              left: scroller.scrollLeft,
+              ...blockAtTop(scroller),
+            },
+          });
+        }
+      }}
       onKeyDown={(event) => {
         const scroller = body.current;
         if (preview !== 'image' || scroller === null) {

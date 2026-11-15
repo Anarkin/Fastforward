@@ -21,6 +21,26 @@ const commanderTab = 0;
 const envTab = 1;
 const terminalTab = 2;
 const otherTab = 3;
+const wideTab = 4;
+const imageTab = 5;
+const markdownTab = 6;
+
+const wideText = Array.from(
+  { length: 200 },
+  (_, index) => `${index} ${'wide '.repeat(120)}`,
+).join(String.fromCharCode(10));
+
+const imageText = [
+  '<svg xmlns="http://www.w3.org/2000/svg" width="3000" height="3000">',
+  '<rect width="3000" height="3000" fill="#336"/>',
+  '<circle cx="1500" cy="1500" r="1400" fill="#c63"/>',
+  '</svg>',
+].join('');
+
+const markdownText = Array.from(
+  { length: 200 },
+  (_, index) => `Paragraph ${index}, adam.${String.fromCharCode(10)}`,
+).join(String.fromCharCode(10));
 
 suite('App viewer tabs shown again', () => {
   let folder: string;
@@ -34,6 +54,9 @@ suite('App viewer tabs shown again', () => {
     fs.mkdirSync(opened, { recursive: true });
     fs.writeFileSync(path.join(opened, '.env'), envText);
     fs.writeFileSync(path.join(opened, 'other.txt'), otherText);
+    fs.writeFileSync(path.join(opened, 'wide.txt'), wideText);
+    fs.writeFileSync(path.join(opened, 'image.svg'), imageText);
+    fs.writeFileSync(path.join(opened, 'readme.md'), markdownText);
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
@@ -53,13 +76,19 @@ suite('App viewer tabs shown again', () => {
             root: path.join(opened, 'other.txt'),
             view: true,
           },
+          ...['wide.txt', 'image.svg', 'readme.md'].map((name, index) => ({
+            id: String(index + 5),
+            tool: 'commander',
+            root: path.join(opened, name),
+            view: true,
+          })),
         ],
         activeTab: '2',
       }),
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
-    await waitFor(async () => (await tabs(page).count()) === 4, 'every tab');
+    await waitFor(async () => (await tabs(page).count()) === 7, 'every tab');
   });
 
   afterAll(async () => {
@@ -129,5 +158,54 @@ suite('App viewer tabs shown again', () => {
     await comesBackAsLeft(page, otherTab, 'The viewer once its find closed');
     assert.strictEqual(await page.locator('.viewer .search-box').count(), 0);
     assert.strictEqual(await page.locator('.viewer .find-match').count(), 0);
+  });
+
+  const throughOthers = async (shown: number, what: string) => {
+    for (const away of [commanderTab, terminalTab, otherTab]) {
+      await comesBackAsLeft(page, away, `${what} left for tab ${away}`);
+    }
+    assert.strictEqual(
+      await tabs(page).nth(shown).getAttribute('aria-selected'),
+      'true',
+    );
+  };
+
+  test('brings back a file viewed with its long lines unwrapped, scrolled down and sideways, from every other tab', async () => {
+    await showTab(page, wideTab);
+    await page.locator('.viewer-rows .viewer-row').first().click();
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+    await page
+      .getByRole('button', { name: 'Wrap Long Lines', pressed: false })
+      .waitFor();
+    await page
+      .locator('.viewer-sideways')
+      .evaluate((area) => area.scrollTo({ left: 1234 }));
+    await page.keyboard.press('PageDown');
+    await throughOthers(wideTab, 'The viewer scrolled sideways');
+    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+  });
+
+  test('brings back an image viewed at its real size where it was scrolled to, rather than centered again, from every other tab', async () => {
+    await showTab(page, imageTab);
+    await page.locator('.viewer-preview img').waitFor();
+    await page.locator('.viewer-preview').click();
+    await page.keyboard.press('f');
+    await page.locator('.viewer-image.real-size').waitFor();
+    await page
+      .locator('.viewer-preview')
+      .evaluate((scroller) => scroller.scrollTo({ top: 321, left: 456 }));
+    await throughOthers(imageTab, 'The image at its real size');
+    await page.keyboard.press('f');
+  });
+
+  test('brings back a Markdown preview where it was scrolled to, from every other tab', async () => {
+    await showTab(page, markdownTab);
+    await page.locator('.markdown p').first().waitFor();
+    await page.locator('.viewer-preview').evaluate((scroller) =>
+      scroller.scrollTo({
+        top: (scroller.scrollHeight - scroller.clientHeight) / 2,
+      }),
+    );
+    await throughOthers(markdownTab, 'The Markdown preview');
   });
 });

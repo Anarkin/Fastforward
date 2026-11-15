@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { type TextEncoding } from '../shared/textEncodings';
 import { ScrollBody } from './scrollBody';
 import type { Viewing } from './commanderState';
@@ -32,7 +32,17 @@ export function TextBody({
   place: React.RefObject<number>;
   onPlace: (byte: number) => void;
 }) {
-  const { request: post, listenViewer: listen } = useCommanderActions();
+  const {
+    request: post,
+    listenViewer: listen,
+    keptViewer,
+    keepViewer,
+  } = useCommanderActions();
+  const [keptSideways] = useState(() => {
+    const kept = keptViewer(viewing.tab).sideways;
+    return kept?.body === `text ${encoding}` ? kept : undefined;
+  });
+  const sidewaysColumn = useRef(keptSideways?.column ?? 0);
   const [measured, setMeasured] = useState<number>();
   const screen = measured ?? 1;
   const [columns, setColumns] = useState<number>();
@@ -90,7 +100,26 @@ export function TextBody({
     encoding,
     counting,
     columns,
+    keptColumn: keptSideways?.column,
   });
+  const onAcross = useCallback(
+    (column: number) => {
+      sidewaysColumn.current = column;
+      onSideways(column);
+    },
+    [onSideways],
+  );
+  const onLeft = useCallback(
+    (left: number) =>
+      keepViewer(tab, {
+        sideways: {
+          body: `text ${encoding}`,
+          left,
+          column: sidewaysColumn.current,
+        },
+      }),
+    [keepViewer, tab, encoding],
+  );
   const texts = new Map(
     shown.map((row, index) => [
       `${row.row.start}:${row.from}`,
@@ -135,7 +164,9 @@ export function TextBody({
       error={viewing.error}
       width={width}
       wrapped={!whole}
-      onSideways={onSideways}
+      onSideways={onAcross}
+      keptLeft={keptSideways?.left}
+      onLeft={onLeft}
       reveal={
         matched === undefined || matchStart === undefined
           ? undefined

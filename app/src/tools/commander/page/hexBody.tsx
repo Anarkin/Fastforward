@@ -56,6 +56,15 @@ export function ByteBody({
   const [screen, setScreen] = useState(1);
   const [columns, setColumns] = useState(minTextColumns);
   const [topByte, setTopByte] = useState(() => place.current);
+  const body = layout === 'hex' ? 'hex' : 'bytes';
+  const [keptLeft] = useState(() => {
+    const kept = keptViewer(tab).sideways;
+    return kept?.body === body ? kept.left : undefined;
+  });
+  const onLeft = useCallback(
+    (left: number) => keepViewer(tab, { sideways: { body, left, column: 0 } }),
+    [keepViewer, tab, body],
+  );
   const [bytes, setBytes] = useState<Bytes | undefined>(() => {
     const kept = keptViewer(tab).bytes;
     return kept?.version === version ? kept : undefined;
@@ -195,6 +204,8 @@ export function ByteBody({
       move={move}
       jump={jump}
       error={viewing.error}
+      keptLeft={keptLeft}
+      onLeft={onLeft}
     >
       {rows.map(({ offset, data }) => {
         if (layout === 'text') {

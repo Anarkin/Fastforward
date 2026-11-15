@@ -40,6 +40,8 @@ export function ScrollBody({
   wrapped = false,
   numbered = false,
   onSideways,
+  keptLeft = 0,
+  onLeft,
   reveal,
   rowText,
   barPinned = false,
@@ -58,6 +60,8 @@ export function ScrollBody({
   wrapped?: boolean;
   numbered?: boolean;
   onSideways?: (column: number) => void;
+  keptLeft?: number;
+  onLeft?: (left: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
   rowText?: (row: Element) => RowText | undefined;
   barPinned?: boolean;
@@ -73,6 +77,17 @@ export function ScrollBody({
   const advance = useRef(1);
   const inset = useRef(0);
   const revealed = useRef(0);
+  const leftBack = useRef(keptLeft);
+  useLayoutEffect(() => {
+    const area = sideways.current;
+    if (area === null || leftBack.current === 0) {
+      return;
+    }
+    if (area.scrollWidth - area.clientWidth >= leftBack.current - 1) {
+      area.scrollLeft = leftBack.current;
+      leftBack.current = 0;
+    }
+  });
   useLayoutEffect(() => {
     const area = sideways.current;
     if (
@@ -249,11 +264,13 @@ export function ScrollBody({
         <div
           className="viewer-sideways"
           ref={sideways}
-          onScroll={(event) =>
-            onSideways?.(
-              Math.floor(event.currentTarget.scrollLeft / advance.current),
-            )
-          }
+          onScroll={(event) => {
+            const { scrollLeft } = event.currentTarget;
+            onSideways?.(Math.floor(scrollLeft / advance.current));
+            if (leftBack.current === 0) {
+              onLeft?.(scrollLeft);
+            }
+          }}
         >
           <div
             className={`viewer-rows${wrapped ? ' wrapped' : ''}${numbered ? ' numbered' : ''}`}
