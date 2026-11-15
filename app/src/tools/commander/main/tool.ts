@@ -14,7 +14,7 @@ import { sides, type CommanderToHost } from '../shared/protocol';
 import type { LocalFileSystem } from './fileSystem';
 import { Editing } from './editing';
 import { editingFiles } from './editingFiles';
-import { CommanderSettings } from './commanderSettings';
+import { SettingsCommands } from './settingsCommands';
 import { Icons } from './icons';
 import { Transfers } from './transfers';
 import { maxDroppedIcons, viewerIconUrl } from '../shared/icons';
@@ -74,7 +74,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly listings: Listings;
   private readonly navigation: Navigation;
   private readonly elevation: Elevation;
-  private readonly settings: CommanderSettings;
+  private readonly settings: SettingsCommands;
 
   constructor(private readonly access: CommanderAccess) {
     this.icons = new Icons(access.fileIcon, access.platform);
@@ -234,7 +234,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.elevation = new Elevation(access, this.sides, this.listings, {
       shell: () => this.shell,
     });
-    this.settings = new CommanderSettings(access, this.sides);
+    this.settings = new SettingsCommands(access, this.sides);
   }
 
   attach(shell: ShellAccess): void {

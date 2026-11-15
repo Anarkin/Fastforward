@@ -13,7 +13,7 @@ import type { Sides } from './sides';
 import { post } from './post';
 import type { CommanderAccess } from './commanderAccess';
 
-export type CommanderSettingsAccess = Pick<
+export type SettingsCommandsAccess = Pick<
   CommanderAccess,
   | 'settings'
   | 'saveColumns'
@@ -26,9 +26,9 @@ export type CommanderSettingsAccess = Pick<
   | 'closesBrackets'
 >;
 
-export class CommanderSettings {
+export class SettingsCommands {
   constructor(
-    private readonly access: CommanderSettingsAccess,
+    private readonly access: SettingsCommandsAccess,
     private readonly sides: Sides,
   ) {}
 

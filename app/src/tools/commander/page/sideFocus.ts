@@ -1,4 +1,3 @@
-import './style.css';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 
 export function sideToFocus(
