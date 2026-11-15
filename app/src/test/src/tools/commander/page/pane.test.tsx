@@ -27,7 +27,6 @@ import {
 } from '../../../../../tools/commander/page/sideFocus';
 import { JSDOM } from 'jsdom';
 import { withStores } from '../../../../helpers/componentFixtures';
-import { driveOf } from '../../../../../tools/commander/page/paneTiles';
 import {
   ExtensionCell,
   NameCell,
@@ -353,14 +352,6 @@ suite('Commander pane', () => {
     } finally {
       Object.assign(globalThis, saved);
     }
-  });
-
-  test('shows the drive a folder is on, whatever the case of its letter', () => {
-    const drives = ['C:\\', 'D:\\'];
-    assert.strictEqual(driveOf('C:\\', drives), 'C:\\');
-    assert.strictEqual(driveOf('d:\\backup\\2026', drives), 'D:\\');
-    assert.strictEqual(driveOf('\\\\server\\share', drives), undefined);
-    assert.strictEqual(driveOf('/home', []), undefined);
   });
 
   test('focuses the list of the side made active, unless the focus is in that side already, as in its drive menu', () => {

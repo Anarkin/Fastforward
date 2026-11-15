@@ -13,3 +13,12 @@ export function driveMenu(
     onClick: () => onDrive(drive),
   }));
 }
+
+export function driveOf(
+  folder: string,
+  drives: readonly string[],
+): string | undefined {
+  return drives.find((drive) =>
+    folder.toUpperCase().startsWith(drive.toUpperCase()),
+  );
+}

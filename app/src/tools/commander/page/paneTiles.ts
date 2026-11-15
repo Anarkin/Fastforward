@@ -9,20 +9,6 @@ import { type FillItem } from './thumbnailFills';
 import { type Entry, type Side } from '../shared/protocol';
 import { type Row } from './listing';
 
-export function driveOf(
-  folder: string,
-  drives: readonly string[],
-): string | undefined {
-  return drives.find((drive) =>
-    folder.toUpperCase().startsWith(drive.toUpperCase()),
-  );
-}
-
-export function dropIntoOf(target: EventTarget | null): string | null {
-  const row = target instanceof Element ? target.closest('[data-drop]') : null;
-  return row?.getAttribute('data-drop') ?? null;
-}
-
 export function tileThumbnailUrl(source: IconSource, entry: Entry): string {
   return thumbnailUrl(source, `${entry.size ?? ''}:${entry.modified ?? ''}`);
 }

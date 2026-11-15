@@ -1,6 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { driveMenu } from '../../../../../tools/commander/page/driveMenu';
+import {
+  driveMenu,
+  driveOf,
+} from '../../../../../tools/commander/page/driveMenu';
 
 suite('Commander drive menu', () => {
   test('lists the drives as names, each chosen by its letter, the drive of the side checked', () => {
@@ -25,5 +28,13 @@ suite('Commander drive menu', () => {
       }
     }
     assert.deepStrictEqual(chosen, ['C:\\', 'D:\\']);
+  });
+
+  test('shows the drive a folder is on, whatever the case of its letter', () => {
+    const drives = ['C:\\', 'D:\\'];
+    assert.strictEqual(driveOf('C:\\', drives), 'C:\\');
+    assert.strictEqual(driveOf('d:\\backup\\2026', drives), 'D:\\');
+    assert.strictEqual(driveOf('\\\\server\\share', drives), undefined);
+    assert.strictEqual(driveOf('/home', []), undefined);
   });
 });

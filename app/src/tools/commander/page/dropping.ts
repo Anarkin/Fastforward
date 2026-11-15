@@ -17,3 +17,8 @@ export function dropTargetOf(
     ? `${folder}${into}`
     : `${folder}${separator}${into}`;
 }
+
+export function dropIntoOf(target: EventTarget | null): string | null {
+  const row = target instanceof Element ? target.closest('[data-drop]') : null;
+  return row?.getAttribute('data-drop') ?? null;
+}

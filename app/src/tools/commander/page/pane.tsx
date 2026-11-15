@@ -29,7 +29,7 @@ import { filterOf, shownColumns, shownRowsOf } from './shownRows';
 import { useCommander, useCommanderActions } from './store';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { dropTargetOf } from './dropping';
+import { dropIntoOf, dropTargetOf } from './dropping';
 import { whatOf } from './transferring';
 import { BackIcon, ForwardIcon, ShieldIcon } from '../../../lib/page/icons';
 import { MenuButton } from '../../../lib/page/menu';
@@ -39,16 +39,10 @@ import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { fileColorOf } from './fileColors';
 import { PathTitle } from './pathTitle';
-import { driveMenu } from './driveMenu';
+import { driveMenu, driveOf } from './driveMenu';
 import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 
-import {
-  driveOf,
-  dropIntoOf,
-  fillDelay,
-  thumbnailFills,
-  tileRowsOf,
-} from './paneTiles';
+import { fillDelay, thumbnailFills, tileRowsOf } from './paneTiles';
 import {
   RowIcon,
   ExtensionCell,
