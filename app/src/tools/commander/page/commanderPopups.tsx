@@ -1,3 +1,4 @@
+import { joinedPath } from '../../../lib/page/pathLooks';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../shell/page/promptPopup';
 import {
@@ -136,7 +137,9 @@ export function CommanderPopups() {
       {renaming !== undefined && renamed !== undefined && (
         <PromptPopup
           title={strings.commander.renameTitle}
-          lines={strings.commander.itemLines(renamed)}
+          lines={strings.commander.itemLines(
+            joinedPath(renaming.folder, renamed),
+          )}
           label={strings.commander.newName}
           confirm={strings.commander.renameConfirm}
           initial={renamed}
@@ -217,6 +220,7 @@ export function CommanderPopups() {
             document.documentElement.dataset.platform,
             deleting.binOff,
             deleting.archive,
+            deleting.folder,
           )}
           onConfirm={confirmDelete}
           onCancel={cancelDelete}

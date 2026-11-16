@@ -101,12 +101,12 @@ suite('Quitting and closing windows', () => {
           shell.askToCloseWindow('1');
           assert.deepStrictEqual(view.page.last('confirmCloseWindow'), {
             type: 'confirmCloseWindow',
-            unsaved: ['notes.txt'],
+            unsaved: [file],
           });
           shell.askToQuit();
           assert.deepStrictEqual(view.page.last('confirmQuit'), {
             type: 'confirmQuit',
-            unsaved: ['notes.txt'],
+            unsaved: [file],
           });
           await view.connection.receive({ type: 'quit', save: true });
           assert.strictEqual(fs.readFileSync(file, 'utf8'), 'xone\n');

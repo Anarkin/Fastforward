@@ -82,7 +82,7 @@ export class ItemChanges {
         this.host.shell().notice(page, {
           level: 'error',
           message: strings.commander.deleteFailed(
-            name,
+            path.join(folder, name),
             error instanceof Error ? error.message : String(error),
           ),
         });
@@ -138,8 +138,11 @@ export class ItemChanges {
         level: 'error',
         message:
           codeOf(error) === 'EEXIST'
-            ? strings.commander.nameTaken(name)
-            : strings.commander.makeFolderFailed(name, reasonOf(error)),
+            ? strings.commander.nameTaken(path.join(made, name))
+            : strings.commander.makeFolderFailed(
+                path.join(made, name),
+                reasonOf(error),
+              ),
       });
       return;
     }
@@ -201,11 +204,8 @@ export class ItemChanges {
         level: 'error',
         message:
           codeOf(error) === 'EEXIST'
-            ? strings.commander.nameTaken(to)
-            : strings.commander.renameFailed(
-                path.basename(from),
-                reasonOf(error),
-              ),
+            ? strings.commander.nameTaken(path.join(renamed, to))
+            : strings.commander.renameFailed(from, reasonOf(error)),
       });
       return;
     }

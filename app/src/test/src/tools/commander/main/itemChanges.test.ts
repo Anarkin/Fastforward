@@ -39,7 +39,10 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(notices, [
       {
         level: 'error',
-        message: strings.commander.deleteFailed('locked.txt', 'It is in use'),
+        message: strings.commander.deleteFailed(
+          at('locked.txt'),
+          'It is in use',
+        ),
       },
     ]);
   });
@@ -93,7 +96,7 @@ suite('Commander tool', () => {
 
     assert.deepStrictEqual(madeFolders, [at('photos'), at('taken')]);
     assert.deepStrictEqual(notices, [
-      { level: 'error', message: strings.commander.nameTaken('taken') },
+      { level: 'error', message: strings.commander.nameTaken(at('taken')) },
     ]);
   });
   test('renames a file or folder the side lists to the name asked for, selecting it once listed, and nothing the side does not list nor to a name reaching another folder or one Windows would refuse there, saying when the name is taken or the system refuses', async () => {
@@ -141,9 +144,12 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(notices, [
       {
         level: 'error',
-        message: strings.commander.renameFailed('locked.txt', 'EBUSY: refused'),
+        message: strings.commander.renameFailed(
+          at('locked.txt'),
+          'EBUSY: refused',
+        ),
       },
-      { level: 'error', message: strings.commander.nameTaken('taken.txt') },
+      { level: 'error', message: strings.commander.nameTaken(at('taken.txt')) },
     ]);
   });
   test('renames a file listed flat in its own folder, reading that folder again', async () => {

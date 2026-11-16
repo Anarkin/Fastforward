@@ -19,6 +19,7 @@ export interface PathLooksSource {
   readonly known: () => KnownLooks;
   readonly ask: (path: string) => void;
   readonly know: (path: string, looks: PartLooks) => void;
+  readonly dotHides: () => boolean;
 }
 
 const unchanging = () => () => {};
@@ -31,6 +32,7 @@ export const PathLooksContext = createContext<PathLooksSource>({
   known: () => nothingKnown,
   ask: () => {},
   know: () => {},
+  dotHides: () => false,
 });
 
 export function knownWith(
@@ -81,6 +83,7 @@ export function shownParts(
   file: boolean,
   looks: PartLooks | undefined,
   fileColors: FileColors,
+  dotHides = false,
 ): readonly ShownPart[] {
   const parts = pathParts(path);
   const last = parts.length - 1;
@@ -96,6 +99,8 @@ export function shownParts(
       },
       fileColors,
     );
+    const hidden =
+      look === undefined ? dotHides && part.name.startsWith('.') : look.hidden;
     const shown = {
       key: part.path,
       name: part.name,
@@ -104,7 +109,7 @@ export function shownParts(
       className: [
         'path-part',
         ...(color === undefined ? [] : ['colored']),
-        ...(look?.hidden === true ? ['hidden'] : []),
+        ...(hidden ? ['hidden'] : []),
       ].join(' '),
       style: color === undefined ? undefined : { '--file-color': color },
     };
@@ -146,8 +151,11 @@ export function usePathParts(
     source.fileColors,
     source.fileColors,
   );
+  const whole = joinedPath(root, path);
   const wanted =
-    looks === undefined && path !== '' ? joinedPath(root, path) : undefined;
+    looks === undefined && /^(?:[a-zA-Z]:|[\\/])/.test(whole)
+      ? whole
+      : undefined;
   const known = useSyncExternalStore(
     source.subscribe,
     source.known,
@@ -174,5 +182,6 @@ export function usePathParts(
     file,
     looks ?? lastOf(asked, pathParts(path).length),
     fileColors,
+    source.dotHides(),
   );
 }

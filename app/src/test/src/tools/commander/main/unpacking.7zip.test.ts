@@ -286,7 +286,7 @@ suite('Archives packed, changed and taken out again', () => {
         [
           {
             type: 'warned',
-            reason: strings.commander.keptUnmatched('twins.zip', 2),
+            reason: strings.commander.keptUnmatched(at('twins.zip'), 2),
           },
           { type: 'done', stopped: false },
         ],

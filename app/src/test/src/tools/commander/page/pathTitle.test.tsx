@@ -24,6 +24,7 @@ const titled = (path: string, looks: PartLooks, file = false) =>
         known: () => new Map(),
         ask: () => {},
         know: () => {},
+        dotHides: () => false,
       }}
     >
       <PathTitle path={path} file={file} looks={looks} />

@@ -7,7 +7,7 @@ suite('Commander deleting', () => {
     assert.deepStrictEqual(deleteQuestion(['a.txt'], false, 'win32'), {
       title: 'Delete',
       message: 'Move to the Recycle Bin?',
-      lines: [{ label: 'Item', name: 'a.txt' }],
+      lines: [{ label: 'Item', name: 'a.txt', path: 'file' }],
       confirm: 'Move to the Recycle Bin',
     });
     assert.deepStrictEqual(
@@ -25,7 +25,7 @@ suite('Commander deleting', () => {
     assert.deepStrictEqual(deleteQuestion(['a.txt'], true, 'win32'), {
       title: 'Delete Permanently',
       message: 'Delete permanently? This cannot be undone.',
-      lines: [{ label: 'Item', name: 'a.txt' }],
+      lines: [{ label: 'Item', name: 'a.txt', path: 'file' }],
       confirm: 'Delete Permanently',
     });
     assert.deepStrictEqual(deleteQuestion(['a.txt', 'b'], true, 'linux'), {
@@ -41,7 +41,7 @@ suite('Commander deleting', () => {
       title: 'Delete Permanently',
       message:
         'The Recycle Bin of this drive is turned off. Delete permanently? This cannot be undone.',
-      lines: [{ label: 'Item', name: 'a.txt' }],
+      lines: [{ label: 'Item', name: 'a.txt', path: 'file' }],
       confirm: 'Delete Permanently',
     });
     assert.deepStrictEqual(
@@ -67,7 +67,7 @@ suite('Commander deleting', () => {
         title: 'Delete Permanently',
         message: 'Delete from the archive permanently? This cannot be undone.',
         lines: [
-          { label: 'Item', name: 'a.txt' },
+          { label: 'Item', name: 'a.txt', path: 'file' },
           { label: 'Archive', name: 'photos.zip', path: 'file' },
         ],
         confirm: 'Delete Permanently',

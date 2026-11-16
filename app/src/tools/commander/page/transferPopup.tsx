@@ -1,3 +1,4 @@
+import { joinedPath } from '../../../lib/page/pathLooks';
 import { useEffect, useId, useRef, useState } from 'react';
 import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
@@ -30,7 +31,15 @@ function ClashSideRow({ label, side }: { label: string; side: ClashSide }) {
   );
 }
 
-function ClashBody({ clash, move }: { clash: Clash; move: boolean }) {
+function ClashBody({
+  clash,
+  move,
+  target,
+}: {
+  clash: Clash;
+  move: boolean;
+  target: string;
+}) {
   const { answerClash, stopTransfer } = useCommanderActions();
   const [all, setAll] = useState(false);
   const id = useId();
@@ -40,7 +49,11 @@ function ClashBody({ clash, move }: { clash: Clash; move: boolean }) {
   return (
     <div className="confirm-body transfer-body">
       <span className="transfer-clash">
-        <Words>{commander.clashQuestion(commander.oneItem(clash.name))}</Words>
+        <Words>
+          {commander.clashQuestion(
+            commander.oneItem(joinedPath(target, clash.name)),
+          )}
+        </Words>
       </span>
       <div className="transfer-sides">
         <ClashSideRow
@@ -213,6 +226,7 @@ function TransferDialog({ transfer }: { transfer: TransferView }) {
             key={transfer.clash.asked}
             clash={transfer.clash}
             move={transfer.move}
+            target={transfer.target}
           />
         )}
       </div>

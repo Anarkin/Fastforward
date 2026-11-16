@@ -42,6 +42,7 @@ function source(known: KnownLooks, asked: string[] = []): PathLooksSource {
     known: () => known,
     ask: (path) => asked.push(path),
     know: () => {},
+    dotHides: () => false,
   };
 }
 

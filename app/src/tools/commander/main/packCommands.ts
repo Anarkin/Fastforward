@@ -155,7 +155,9 @@ export class PackCommands {
     if (into !== undefined) {
       this.host.shell().notice(page, {
         level: 'error',
-        message: strings.commander.intoItself(into),
+        message: strings.commander.intoItself(
+          path.join(shown.pane.folder, into),
+        ),
       });
       return;
     }

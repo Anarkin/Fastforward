@@ -96,8 +96,8 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(plansOf(transfers), []);
     assert.deepStrictEqual(notices, [
       { level: 'error', message: strings.commander.alreadyIn(root) },
-      { level: 'error', message: strings.commander.intoItself('dir') },
-      { level: 'error', message: strings.commander.intoItself('dir') },
+      { level: 'error', message: strings.commander.intoItself(at('dir')) },
+      { level: 'error', message: strings.commander.intoItself(at('dir')) },
       { level: 'error', message: strings.commander.transferAsAdministrator },
       { level: 'error', message: strings.commander.transferAsAdministrator },
     ]);
@@ -253,7 +253,7 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(notices, [
       { level: 'info', message: strings.commander.nothingToPaste },
       { level: 'error', message: strings.commander.alreadyIn(root) },
-      { level: 'error', message: strings.commander.intoItself('dir') },
+      { level: 'error', message: strings.commander.intoItself(at('dir')) },
     ]);
   });
 

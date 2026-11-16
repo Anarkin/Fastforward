@@ -87,11 +87,11 @@ suite('Commander tool in archives', () => {
       },
     );
     assert.deepStrictEqual(notices, [
-      { level: 'error', message: strings.commander.intoItself('a.zip') },
+      { level: 'error', message: strings.commander.intoItself(at('a.zip')) },
       {
         level: 'error',
         message: strings.commander.movedWithout(
-          'a.zip',
+          at('a.zip'),
           'locked.txt: It is in use',
         ),
       },
@@ -436,7 +436,10 @@ suite('Commander tool in archives', () => {
           level: 'error',
           message: strings.commander.archiveUnchangeable('inner.zip'),
         },
-        { level: 'error', message: strings.commander.intoItself('docs') },
+        {
+          level: 'error',
+          message: strings.commander.intoItself(at('a.zip', 'docs')),
+        },
         { level: 'error', message: strings.commander.alreadyIn(at('a.zip')) },
         { level: 'error', message: strings.commander.namesAlike('top.txt') },
       ]);

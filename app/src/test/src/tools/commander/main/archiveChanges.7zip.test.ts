@@ -277,7 +277,7 @@ suite('Archives packed, changed and taken out again', () => {
       ]) {
         assert.deepStrictEqual(changed, {
           kind: 'refused',
-          reason: strings.commander.archiveInVolumes('parts.zip.001'),
+          reason: strings.commander.archiveInVolumes(at('parts.zip.001')),
         });
       }
       assert.deepStrictEqual(parts(), before);
@@ -338,7 +338,7 @@ suite('Archives packed, changed and taken out again', () => {
       ]) {
         assert.deepStrictEqual(changed, {
           kind: 'refused',
-          reason: strings.commander.archiveGone('gone.zip'),
+          reason: strings.commander.archiveGone(at('gone.zip')),
         });
       }
       assert.ok(!fs.existsSync(at('gone.zip')));

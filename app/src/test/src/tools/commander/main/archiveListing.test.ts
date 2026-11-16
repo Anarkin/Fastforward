@@ -59,7 +59,7 @@ suite('Commander tool in archives', () => {
       {
         level: 'error',
         message: strings.commander.notArchive(
-          'notes.txt',
+          at('notes.txt'),
           'Cannot open the file as archive',
         ),
       },
@@ -171,7 +171,7 @@ suite('Commander tool in archives', () => {
       {
         level: 'error',
         message: strings.commander.notArchive(
-          'broken.zip',
+          at('broken.zip'),
           'Unexpected end of archive',
         ),
       },

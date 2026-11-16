@@ -7,6 +7,7 @@ import {
   type Value,
   namedFile,
   namedFolder,
+  namedItem,
 } from './sentences';
 
 export const brand = 'Fastforward';
@@ -198,7 +199,7 @@ export const strings = {
       'Save the changes to these files before closing the window?',
     saveQuitFiles: `Save the changes to these files before quitting ${brand}?`,
     filesLines: (names: readonly string[]) =>
-      names.map((name) => labeled('File', named(name))),
+      names.map((name) => labeled('File', namedItem(name))),
     save: 'Save',
     saveAll: 'Save All',
     dontSave: "Don't Save",
@@ -636,7 +637,7 @@ export const strings = {
     urlExt: "ext:: URLs run commands, so they aren't cloned",
     noName: 'Name the folder to clone into',
     badName: (name: string) =>
-      sentence`${named(name)} can't be the name of a folder`,
+      sentence`${namedFolder(name)} can't be the name of a folder`,
     notFullPath: (folder: string) =>
       sentence`${namedFolder(folder)} is not a full path`,
     noFolder: (folder: string) =>
@@ -654,12 +655,12 @@ export const strings = {
       'The terminal process stopped, so the shell did too. Press Enter to start a new one.',
   },
   commander: {
-    openFailed: (name: string, reason: Sentence) =>
-      sentence`${named(name)} could not be opened: ${reason}`,
-    deleteFailed: (name: string, reason: Sentence) =>
-      sentence`${named(name)} could not be deleted: ${reason}`,
-    notArchive: (name: string, reason: Sentence) =>
-      sentence`${named(name)} could not be opened as an archive: ${reason}`,
+    openFailed: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} could not be opened: ${reason}`,
+    deleteFailed: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} could not be deleted: ${reason}`,
+    notArchive: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} could not be opened as an archive: ${reason}`,
     openWithSevenZip: 'Open with 7-Zip...',
     passwordTitle: 'Password',
     passwordAsked: 'The archive is encrypted. Type its password.',
@@ -678,7 +679,7 @@ export const strings = {
     lineBreakInName:
       "7-Zip can't be told the name of an item that holds a line break.",
     namesAlike: (name: string) =>
-      sentence`More than one of the files is named ${named(name)}, and only one of them can go into a folder.`,
+      sentence`More than one of the files is named ${namedFile(name)}, and only one of them can go into a folder.`,
     couldNotExtract: (reason: Sentence) =>
       sentence`Nothing could be taken out of the archive: ${reason}`,
     sevenZipEnded: (code: number | null) =>
@@ -703,8 +704,8 @@ export const strings = {
       'The Recycle Bin of this drive is turned off. Delete permanently? This cannot be undone.',
     binOffItems: (what: string) =>
       `The Recycle Bin of this drive is turned off. Delete ${what} permanently? This cannot be undone.`,
-    itemLines: (name: string) => [labeled('Item', named(name))],
-    oneItem: (name: string) => named(name),
+    itemLines: (item: string) => [labeled('Item', namedItem(item))],
+    oneItem: (item: string) => namedItem(item),
     items: (count: number) => `${count} items`,
     copyTitle: 'Copy',
     moveTitle: 'Move',
@@ -750,14 +751,14 @@ export const strings = {
       sentence`Copied ${what} to ${namedFolder(target)}`,
     moved: (what: Value | string, target: string) =>
       sentence`Moved ${what} to ${namedFolder(target)}`,
-    copyFailed: (name: string, reason: Sentence) =>
-      sentence`${named(name)} could not be copied: ${reason}`,
-    moveFailed: (name: string, reason: Sentence) =>
-      sentence`${named(name)} could not be moved: ${reason}`,
-    copyFailedMany: (count: number, name: string, reason: Sentence) =>
-      sentence`${String(count)} items could not be copied, among them ${named(name)}: ${reason}`,
-    moveFailedMany: (count: number, name: string, reason: Sentence) =>
-      sentence`${String(count)} items could not be moved, among them ${named(name)}: ${reason}`,
+    copyFailed: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} could not be copied: ${reason}`,
+    moveFailed: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} could not be moved: ${reason}`,
+    copyFailedMany: (count: number, item: string, reason: Sentence) =>
+      sentence`${String(count)} items could not be copied, among them ${namedItem(item)}: ${reason}`,
+    moveFailedMany: (count: number, item: string, reason: Sentence) =>
+      sentence`${String(count)} items could not be moved, among them ${namedItem(item)}: ${reason}`,
     alreadyIn: (target: string) =>
       sentence`The items are in ${namedFolder(target)} already.`,
     nothingToPaste: 'The clipboard holds no files to paste.',
@@ -778,12 +779,12 @@ export const strings = {
     nameCantHold: (characters: string) =>
       sentence`A name can't hold ${named(characters)}`,
     reservedName: (name: string) =>
-      sentence`Windows keeps the name ${named(name)} for itself.`,
+      sentence`Windows keeps the name ${namedFile(name)} for itself.`,
     nameEnd: "A name can't end in a dot or a space on Windows.",
-    nameTaken: (name: string) => sentence`${named(name)} is there already.`,
+    nameTaken: (item: string) => sentence`${namedItem(item)} is there already.`,
     nameThere: 'An item of that name is there already.',
-    makeFolderFailed: (name: string, reason: Sentence) =>
-      sentence`${named(name)} could not be made: ${reason}`,
+    makeFolderFailed: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item, 'folder')} could not be made: ${reason}`,
     makeFolderAsAdministrator:
       "Folders can't be made yet in a folder read as administrator.",
     renameTitle: 'Rename',
@@ -811,14 +812,14 @@ export const strings = {
     copyPaths: 'Copy Paths',
     copyName: 'Copy Name',
     copyNames: 'Copy Names',
-    renameFailed: (name: string, reason: Sentence) =>
-      sentence`${named(name)} could not be renamed: ${reason}`,
+    renameFailed: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} could not be renamed: ${reason}`,
     renameAsAdministrator:
       "Items can't be renamed yet in a folder read as administrator.",
     packAsAdministrator:
       "Items can't be packed yet in a folder read as administrator.",
-    intoItself: (name: string) =>
-      sentence`${named(name)} can't go into itself or a folder in it.`,
+    intoItself: (item: string) =>
+      sentence`${namedItem(item, 'folder')} can't go into itself or a folder in it.`,
     transferAsAdministrator:
       "Items can't be copied or moved yet in a folder read as administrator.",
     packTitle: 'Pack',
@@ -869,19 +870,19 @@ export const strings = {
     ],
     packed: (what: Value | string, archive: string) =>
       sentence`Packed ${what} into ${namedFile(archive)}`,
-    packFailed: (name: string, reason: Sentence) =>
-      sentence`${named(name)} could not be packed: ${reason}`,
+    packFailed: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} could not be packed: ${reason}`,
     warnedMore: (count: number) => `And ${count.toLocaleString()} more.`,
-    packedWithout: (name: string, reason: Sentence) =>
-      sentence`${named(name)} was packed without some of the files: ${reason}`,
+    packedWithout: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} was packed without some of the files: ${reason}`,
     deletingFrom: (what: Value, archive: string) => [
       labeled('Deleting', what),
       labeled('From', namedFile(archive)),
     ],
     deletedFrom: (what: Value | string, archive: string) =>
       sentence`Deleted ${what} from ${namedFile(archive)}`,
-    deleteFromFailed: (name: string, reason: Sentence) =>
-      sentence`Nothing could be deleted from ${named(name)}: ${reason}`,
+    deleteFromFailed: (item: string, reason: Sentence) =>
+      sentence`Nothing could be deleted from ${namedItem(item)}: ${reason}`,
     deletingStopped: (archive: string) =>
       sentence`Deleting from ${namedFile(archive)} stopped unexpectedly.`,
     renamingIn: (what: Value, archive: string) => [
@@ -890,8 +891,8 @@ export const strings = {
     ],
     renamedIn: (what: Value | string, archive: string) =>
       sentence`Renamed ${what} in ${namedFile(archive)}`,
-    renameInFailed: (name: string, reason: Sentence) =>
-      sentence`Nothing could be renamed in ${named(name)}: ${reason}`,
+    renameInFailed: (item: string, reason: Sentence) =>
+      sentence`Nothing could be renamed in ${namedItem(item)}: ${reason}`,
     renamingStopped: (archive: string) =>
       sentence`Renaming in ${namedFile(archive)} stopped unexpectedly.`,
     makingFolderIn: (what: Value, archive: string) => [
@@ -900,32 +901,32 @@ export const strings = {
     ],
     madeFolderIn: (what: Value | string, archive: string) =>
       sentence`Made the folder ${what} in ${namedFile(archive)}`,
-    folderInFailed: (name: string, reason: Sentence) =>
-      sentence`No folder could be made in ${named(name)}: ${reason}`,
+    folderInFailed: (item: string, reason: Sentence) =>
+      sentence`No folder could be made in ${namedItem(item)}: ${reason}`,
     makingFolderStopped: (archive: string) =>
       sentence`Making a folder in ${namedFile(archive)} stopped unexpectedly.`,
-    copyInFailed: (name: string, reason: Sentence) =>
-      sentence`Nothing could be copied into ${named(name)}: ${reason}`,
-    moveInFailed: (name: string, reason: Sentence) =>
-      sentence`Nothing could be moved into ${named(name)}: ${reason}`,
-    movedWithout: (name: string, reason: Sentence) =>
-      sentence`Not every file could be moved into ${named(name)}: ${reason}`,
+    copyInFailed: (item: string, reason: Sentence) =>
+      sentence`Nothing could be copied into ${namedItem(item)}: ${reason}`,
+    moveInFailed: (item: string, reason: Sentence) =>
+      sentence`Nothing could be moved into ${namedItem(item)}: ${reason}`,
+    movedWithout: (item: string, reason: Sentence) =>
+      sentence`Not every file could be moved into ${namedItem(item)}: ${reason}`,
     originalsKept: 'Every file moved is kept where it was.',
-    keptUnmatched: (name: string, count: number) =>
+    keptUnmatched: (item: string, count: number) =>
       count === 1
-        ? sentence`A file is kept in ${named(name)}, as 7-Zip took it out under another name, or not at all.`
-        : sentence`${count.toLocaleString()} files are kept in ${named(name)}, as 7-Zip took them out under other names, or not at all.`,
-    movedOutKept: (name: string, reason: Sentence) =>
-      sentence`What was moved out of ${named(name)} is kept in it too, as it could not be deleted from it: ${reason}`,
-    movedOutWarned: (name: string, warning: Sentence) =>
-      sentence`7-Zip warned while deleting from ${named(name)} what was moved out of it: ${warning}`,
-    archiveGone: (name: string) =>
-      sentence`${named(name)} is no longer there, so it was not changed.`,
+        ? sentence`A file is kept in ${namedItem(item)}, as 7-Zip took it out under another name, or not at all.`
+        : sentence`${count.toLocaleString()} files are kept in ${namedItem(item)}, as 7-Zip took them out under other names, or not at all.`,
+    movedOutKept: (item: string, reason: Sentence) =>
+      sentence`What was moved out of ${namedItem(item)} is kept in it too, as it could not be deleted from it: ${reason}`,
+    movedOutWarned: (item: string, warning: Sentence) =>
+      sentence`7-Zip warned while deleting from ${namedItem(item)} what was moved out of it: ${warning}`,
+    archiveGone: (item: string) =>
+      sentence`${namedItem(item)} is no longer there, so it was not changed.`,
     updateTitle: 'Update the Archive',
     updateAsked:
       'A file was changed since it was taken out of its archive. Put it back into the archive?',
     updateLines: (name: string, archive: string) => [
-      labeled('File', named(name)),
+      labeled('File', namedFile(name)),
       labeled('Archive', namedFile(archive)),
     ],
     updateConfirm: 'Update',
@@ -933,14 +934,14 @@ export const strings = {
     puttingBack: (what: Value) => [labeled('Putting back', what)],
     putBack: (what: Value | string, archive: string) =>
       sentence`Put ${what} back into ${namedFile(archive)}`,
-    putBackFailed: (name: string, reason: Sentence) =>
-      sentence`Nothing could be put back into ${named(name)}: ${reason}`,
+    putBackFailed: (item: string, reason: Sentence) =>
+      sentence`Nothing could be put back into ${namedItem(item)}: ${reason}`,
     puttingBackStopped: (archive: string) =>
       sentence`Putting back into ${namedFile(archive)} stopped unexpectedly.`,
-    putBackWithout: (name: string, reason: Sentence) =>
-      sentence`Not everything could be put back into ${named(name)}: ${reason}`,
-    deletingMovedFrom: (name: string) =>
-      sentence`Deleting from ${named(name)} what was moved out of it…`,
+    putBackWithout: (item: string, reason: Sentence) =>
+      sentence`Not everything could be put back into ${namedItem(item)}: ${reason}`,
+    deletingMovedFrom: (item: string) =>
+      sentence`Deleting from ${namedItem(item)} what was moved out of it…`,
     thereAlready: (count: number, total: number) =>
       count < total
         ? `${count.toLocaleString()} of them are there already.`
@@ -956,20 +957,20 @@ export const strings = {
     testTitle: 'Test',
     testingArchives: (what: Value) => [labeled('Testing', what)],
     testPassed: (what: Value | string) => sentence`${what} passed the test.`,
-    testFailed: (name: string, reason: Sentence) =>
-      sentence`${named(name)} failed the test: ${reason}`,
-    testFailedMany: (count: number, name: string, reason: Sentence) =>
-      sentence`${count.toLocaleString()} archives failed the test, among them ${named(name)}: ${reason}`,
+    testFailed: (item: string, reason: Sentence) =>
+      sentence`${namedItem(item)} failed the test: ${reason}`,
+    testFailedMany: (count: number, item: string, reason: Sentence) =>
+      sentence`${count.toLocaleString()} archives failed the test, among them ${namedItem(item)}: ${reason}`,
     testingStopped: () => 'Testing stopped unexpectedly.',
     noPasswordGiven: 'No password was given.',
     testAsAdministrator:
       "Archives can't be tested yet in a folder read as administrator.",
     archiveTestFailed: (reason: Sentence) =>
       sentence`The archive packed failed its test, so nothing was put in place: ${reason}`,
-    archiveInVolumes: (name: string) =>
-      sentence`${named(name)} is cut into volumes, which 7-Zip cannot change.`,
-    archiveUnchangeable: (name: string) =>
-      sentence`${named(name)} cannot be changed yet, as it is inside another archive or a compressed file.`,
+    archiveInVolumes: (item: string) =>
+      sentence`${namedItem(item)} is cut into volumes, which 7-Zip cannot change.`,
+    archiveUnchangeable: (item: string) =>
+      sentence`${namedItem(item)} cannot be changed yet, as it is inside another archive or a compressed file.`,
     packingStopped: (archive: string) =>
       sentence`Packing into ${namedFile(archive)} stopped unexpectedly.`,
     copyingStopped: (target: string) =>
@@ -1115,12 +1116,12 @@ export const strings = {
       sentence`${namedFile(file)} is over 50 MB, too large to edit. F3 views it.`,
     binary: (file: string) =>
       sentence`${namedFile(file)} holds binary data, so it can't be edited as text. F3 views it.`,
-    folder: (name: string) =>
-      sentence`${named(name)} is a folder. F4 edits files.`,
-    asAdministrator: (name: string) =>
-      sentence`${named(name)} is in a folder read as administrator, where files can't be edited yet.`,
-    viewedCopy: (name: string) =>
-      sentence`${named(name)} is a copy taken out of an archive or a commit to view it, so it can't be edited.`,
+    folder: (item: string) =>
+      sentence`${namedItem(item, 'folder')} is a folder. F4 edits files.`,
+    asAdministrator: (item: string) =>
+      sentence`${namedItem(item)} is in a folder read as administrator, where files can't be edited yet.`,
+    viewedCopy: (item: string) =>
+      sentence`${namedItem(item)} is a copy taken out of an archive or a commit to view it, so it can't be edited.`,
     couldNotSave: (file: string, reason: Sentence) =>
       sentence`Couldn't save ${namedFile(file)}. ${reason}`,
     noRoom: (file: string) =>

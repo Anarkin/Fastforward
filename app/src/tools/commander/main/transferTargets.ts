@@ -22,5 +22,5 @@ export function refusedTarget(
   });
   return intoItself === undefined
     ? undefined
-    : strings.commander.intoItself(path.basename(intoItself));
+    : strings.commander.intoItself(intoItself);
 }

@@ -32,15 +32,22 @@ export function Name({
 export function NamedPath({
   path,
   file = false,
+  root,
   filter = noFilter,
 }: {
   readonly path: string;
   readonly file?: boolean;
+  readonly root?: string;
   readonly filter?: Filter;
 }) {
   return (
     <code className="name">
-      <PathName path={path} file={file} filter={filter} />
+      <PathName
+        path={path}
+        file={file}
+        {...(root !== undefined && { root })}
+        filter={filter}
+      />
     </code>
   );
 }
@@ -49,13 +56,22 @@ function NamedPart({
   part,
   filter = noFilter,
 }: {
-  readonly part: { readonly name: string; readonly path?: 'file' | 'folder' };
+  readonly part: {
+    readonly name: string;
+    readonly path?: 'file' | 'folder';
+    readonly root?: string;
+  };
   readonly filter?: Filter;
 }) {
   return part.path === undefined ? (
     <Name filter={filter}>{part.name}</Name>
   ) : (
-    <NamedPath path={part.name} file={part.path === 'file'} filter={filter} />
+    <NamedPath
+      path={part.name}
+      file={part.path === 'file'}
+      {...(part.root !== undefined && { root: part.root })}
+      filter={filter}
+    />
   );
 }
 

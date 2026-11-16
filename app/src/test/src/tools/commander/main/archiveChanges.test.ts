@@ -90,13 +90,10 @@ suite('Archives', () => {
     );
     const tar = await archives.open(tgz);
     assert.ok(inner.kind === 'opened' && tar.kind === 'opened');
-    for (const [unchangeable, name] of [
-      [inner.archive, 'inner.zip'],
-      [tar.archive, 'b.tgz'],
-    ] as const) {
+    for (const unchangeable of [inner.archive, tar.archive]) {
       assert.deepStrictEqual(await archives.remove(unchangeable, ['x']), {
         kind: 'refused',
-        reason: strings.commander.archiveUnchangeable(name),
+        reason: strings.commander.archiveUnchangeable(unchangeable.file),
       });
     }
     assert.deepStrictEqual(asked, [

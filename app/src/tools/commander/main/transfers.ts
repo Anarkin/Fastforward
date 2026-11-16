@@ -60,9 +60,18 @@ interface Running {
   clash: (Clash & { readonly asked: number }) | undefined;
 }
 
-function whatOf({ names }: TransferAsk): Value | string {
+const onDisk = (archive: TransferAsk['archive']) =>
+  archive === undefined ||
+  archive.job === 'pack' ||
+  archive.job === 'test' ||
+  archive.job === 'copyIn' ||
+  archive.job === 'moveIn';
+
+function whatOf({ names, folder, archive }: TransferAsk): Value | string {
   return names.length === 1
-    ? strings.commander.oneItem(path.basename(names[0]))
+    ? strings.commander.oneItem(
+        onDisk(archive) ? path.join(folder, names[0]) : path.basename(names[0]),
+      )
     : strings.commander.items(names.length);
 }
 
@@ -137,27 +146,21 @@ function failureNotice({ ask, failures }: Running): Sentence | undefined {
   }
   if (ask.archive !== undefined) {
     const sentences = archiveSentences[ask.archive.job];
+    const item = path.join(path.dirname(ask.archive.file), first.name);
     return failures.length > 1 && sentences.failedMany !== undefined
-      ? sentences.failedMany(failures.length, first.name, first.reason)
-      : sentences.failed(first.name, first.reason);
+      ? sentences.failedMany(failures.length, item, first.reason)
+      : sentences.failed(item, first.reason);
   }
-  const { move } = ask.plan;
+  const { move, target } = ask.plan;
+  const item = path.join(target, first.name);
   if (failures.length === 1) {
     return move
-      ? strings.commander.moveFailed(first.name, first.reason)
-      : strings.commander.copyFailed(first.name, first.reason);
+      ? strings.commander.moveFailed(item, first.reason)
+      : strings.commander.copyFailed(item, first.reason);
   }
   return move
-    ? strings.commander.moveFailedMany(
-        failures.length,
-        first.name,
-        first.reason,
-      )
-    : strings.commander.copyFailedMany(
-        failures.length,
-        first.name,
-        first.reason,
-      );
+    ? strings.commander.moveFailedMany(failures.length, item, first.reason)
+    : strings.commander.copyFailedMany(failures.length, item, first.reason);
 }
 
 export class Transfers {
@@ -346,7 +349,7 @@ export class Transfers {
       this.host.notice({
         level: 'error',
         message: (sentences.warned ?? strings.commander.packedWithout)(
-          path.basename(file),
+          file,
           sentencesOf(running.warnings),
         ),
       });

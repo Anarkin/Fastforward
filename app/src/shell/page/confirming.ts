@@ -50,7 +50,9 @@ export function confirmation(confirming: Confirming): {
       return {
         title: strings.confirm.saveTitle,
         message: strings.confirm.saveFile,
-        lines: strings.confirm.filesLines([confirming.tab.name]),
+        lines: strings.confirm.filesLines([
+          confirming.tab.root ?? confirming.tab.name,
+        ]),
         confirm: strings.confirm.save,
         dontSave: true,
       };

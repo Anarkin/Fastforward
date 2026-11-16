@@ -535,6 +535,26 @@ suite('Architecture', () => {
     );
   });
 
+  test('draws every path and every name of a file or folder through the path component, each part as the commander lists it, so a sentence names none as a plain name and only the name module draws one', () => {
+    const code = sourceFiles.filter((file) => /\.tsx?$/.test(file));
+    assert.deepStrictEqual(
+      [
+        ...read('lib/shared/strings.ts').matchAll(
+          /\bnamed\((\w*(?:file|folder|path|target|archive|root|item|repository|copy|old|changed)\w*)\)/gi,
+        ),
+      ].map(([found]) => found),
+      [],
+    );
+    assert.deepStrictEqual(
+      code.filter((file) => /<Name\b/.test(read(file))),
+      ['lib/page/name.tsx'],
+    );
+    assert.deepStrictEqual(
+      code.filter((file) => /\bpath-part\b/.test(read(file))),
+      ['lib/page/pathLooks.ts'],
+    );
+  });
+
   test('marks what a filter found only through HighlightWords and what a find found only through the marks of the finds, in the colors of the search, so every match looks alike', () => {
     const code = sourceFiles.filter((file) => /\.tsx?$/.test(file));
     assert.deepStrictEqual(

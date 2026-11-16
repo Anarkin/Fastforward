@@ -113,7 +113,10 @@ export class ArchiveTransferCommands {
       );
     });
     if (into !== undefined) {
-      this.host.refuse(page, strings.commander.intoItself(into));
+      this.host.refuse(
+        page,
+        strings.commander.intoItself(path.join(folder, into)),
+      );
       return;
     }
     if (kept.length === 0 || !this.archiveCommands.changeable(page, archive)) {

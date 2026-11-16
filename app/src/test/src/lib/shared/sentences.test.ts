@@ -19,9 +19,9 @@ suite('Sentences', () => {
         strings.commander.archiveGone('b.zip'),
       ),
       [
-        { name: 'a.txt' },
+        { name: 'a.txt', path: 'file' },
         ' could not be copied: ',
-        { name: 'b.zip' },
+        { name: 'b.zip', path: 'file' },
         ' is no longer there, so it was not changed.',
       ],
     );

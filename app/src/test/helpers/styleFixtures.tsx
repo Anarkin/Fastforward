@@ -181,6 +181,7 @@ export function PathTitleShown({
         known: () => new Map(),
         ask: () => {},
         know: () => {},
+        dotHides: () => false,
       }}
     >
       <PathTitle path="C:/cache/notes.txt" file looks={fileLooks(hidden)} />

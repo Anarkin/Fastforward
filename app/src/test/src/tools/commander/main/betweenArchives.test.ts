@@ -252,7 +252,10 @@ suite('Copying from one archive into another', () => {
       ).done,
       {
         kind: 'packed',
-        warning: strings.commander.movedOutKept('from.zip', 'It is read-only.'),
+        warning: strings.commander.movedOutKept(
+          source.file,
+          'It is read-only.',
+        ),
       },
     );
   });
@@ -267,7 +270,7 @@ suite('Copying from one archive into another', () => {
       }).done,
       {
         kind: 'packed',
-        warning: strings.commander.keptUnmatched('from.zip', 2),
+        warning: strings.commander.keptUnmatched(source.file, 2),
       },
     );
     assert.deepStrictEqual(calls.at(-1), ['remove', source.file, ['top.txt']]);

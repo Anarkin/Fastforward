@@ -72,7 +72,7 @@ export async function copiedBetween(
         warning: sentencesOf([added.warning, strings.commander.originalsKept]),
       };
     }
-    const name = path.basename(from.archive.file);
+    const name = from.archive.file;
     const { paths: moved, unmatched } = movedOut(
       from.roots,
       await presentIn(extracted.folder, from.platform),

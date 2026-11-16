@@ -50,7 +50,7 @@ suite('Confirmations', () => {
       {
         title: 'Unsaved Changes',
         message: 'Save the changes to this file before closing it?',
-        lines: [{ label: 'File', name: 'notes.txt' }],
+        lines: [{ label: 'File', name: 'notes.txt', path: 'file' }],
         confirm: 'Save',
         dontSave: true,
       },
@@ -61,8 +61,8 @@ suite('Confirmations', () => {
         title: 'Close Window',
         message: 'Save the changes to these files before closing the window?',
         lines: [
-          { label: 'File', name: 'a.txt' },
-          { label: 'File', name: 'b.txt' },
+          { label: 'File', name: 'a.txt', path: 'file' },
+          { label: 'File', name: 'b.txt', path: 'file' },
         ],
         confirm: 'Save All',
         dontSave: true,
@@ -77,7 +77,7 @@ suite('Confirmations', () => {
       {
         title: 'Quit',
         message: 'Save the changes to these files before quitting Fastforward?',
-        lines: [{ label: 'File', name: 'a.txt' }],
+        lines: [{ label: 'File', name: 'a.txt', path: 'file' }],
         note: strings.commander.quitStopsTransfers,
         confirm: 'Save All',
         dontSave: true,

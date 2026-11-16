@@ -84,7 +84,7 @@ suite('Commander tool', () => {
       },
     ]);
     assert.deepStrictEqual(notices, [
-      { level: 'error', message: strings.commander.intoItself('docs') },
+      { level: 'error', message: strings.commander.intoItself(at('docs')) },
     ]);
   });
   test('packs over an archive there already, or its first volume, only when the dialog said it replaces it, saying so otherwise', async () => {
@@ -192,12 +192,15 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(notices, [
       {
         level: 'error',
-        message: strings.commander.testFailed('c.zip', 'CRC Failed : x.txt'),
+        message: strings.commander.testFailed(
+          at('c.zip'),
+          'CRC Failed : x.txt',
+        ),
       },
       {
         level: 'info',
         message: strings.commander.testPassed(
-          strings.commander.oneItem('a.zip'),
+          strings.commander.oneItem(at('a.zip')),
         ),
       },
     ]);

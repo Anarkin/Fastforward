@@ -72,7 +72,7 @@ export class Closing {
   }
 
   private namesOf(tabs: readonly Tab[]): string[] {
-    return this.pages.infos(tabs).map((info) => info.name);
+    return this.pages.infos(tabs).map((info) => info.root ?? info.name);
   }
 
   private tabsOfWindow(window: string): readonly Tab[] {

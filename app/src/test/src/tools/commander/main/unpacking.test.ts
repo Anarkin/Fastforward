@@ -403,7 +403,7 @@ suite('Moving out of an archive', () => {
           totalFiles: 3,
           bytes: 50,
           totalBytes: 100,
-          current: 'a.zip',
+          current: archive.file,
           deleting: true,
         },
       },
@@ -449,7 +449,7 @@ suite('Moving out of an archive', () => {
     assert.deepStrictEqual(events, [
       {
         type: 'warned',
-        reason: strings.commander.keptUnmatched('a.zip', 4),
+        reason: strings.commander.keptUnmatched(archive.file, 4),
       },
       { type: 'done', stopped: false },
     ]);
@@ -469,7 +469,7 @@ suite('Moving out of an archive', () => {
     assert.deepStrictEqual(events, [
       {
         type: 'warned',
-        reason: strings.commander.keptUnmatched('a.zip', 2),
+        reason: strings.commander.keptUnmatched(archive.file, 2),
       },
       { type: 'done', stopped: false },
     ]);
@@ -506,7 +506,10 @@ suite('Moving out of an archive', () => {
     assert.deepStrictEqual(refused.events, [
       {
         type: 'warned',
-        reason: strings.commander.movedOutKept('a.zip', 'It is read-only.'),
+        reason: strings.commander.movedOutKept(
+          archive.file,
+          'It is read-only.',
+        ),
       },
       { type: 'done', stopped: false },
     ]);
@@ -522,7 +525,10 @@ suite('Moving out of an archive', () => {
     assert.deepStrictEqual(warned.events, [
       {
         type: 'warned',
-        reason: strings.commander.movedOutWarned('a.zip', 'Something odd.'),
+        reason: strings.commander.movedOutWarned(
+          archive.file,
+          'Something odd.',
+        ),
       },
       { type: 'done', stopped: false },
     ]);

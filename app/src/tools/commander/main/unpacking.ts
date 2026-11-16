@@ -88,7 +88,7 @@ export function unpackingFirst(
         platform,
       );
       if (unmatched > 0) {
-        warn(strings.commander.keptUnmatched(name, unmatched));
+        warn(strings.commander.keptUnmatched(archive.file, unmatched));
       }
       if (moved.length === 0) {
         end(done);
@@ -105,7 +105,7 @@ export function unpackingFirst(
                 totalFiles: files,
                 bytes: Math.round((bytes * percent) / 100),
                 totalBytes: bytes,
-                current: name,
+                current: archive.file,
                 deleting: true,
               },
             });
@@ -117,9 +117,9 @@ export function unpackingFirst(
         return;
       }
       if (removed.kind === 'refused') {
-        warn(strings.commander.movedOutKept(name, removed.reason));
+        warn(strings.commander.movedOutKept(archive.file, removed.reason));
       } else if (removed.warning !== undefined) {
-        warn(strings.commander.movedOutWarned(name, removed.warning));
+        warn(strings.commander.movedOutWarned(archive.file, removed.warning));
       }
       end(done);
     };
@@ -143,7 +143,7 @@ export function unpackingFirst(
         if (aborting.signal.aborted) {
           end({ type: 'done', stopped: true });
         } else {
-          warn(strings.commander.movedOutKept(name, reasonOf(error)));
+          warn(strings.commander.movedOutKept(archive.file, reasonOf(error)));
           end(done);
         }
       });

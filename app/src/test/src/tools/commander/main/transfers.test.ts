@@ -138,7 +138,7 @@ suite('Transfers', () => {
       {
         level: 'info',
         message: strings.commander.copied(
-          strings.commander.oneItem('a.txt'),
+          strings.commander.oneItem(path.join(source, 'a.txt')),
           target,
         ),
       },
@@ -174,7 +174,7 @@ suite('Transfers', () => {
     assert.deepStrictEqual(notices, [
       {
         level: 'error',
-        message: strings.commander.packedWithout('photos.zip', locked),
+        message: strings.commander.packedWithout(archive, locked),
       },
       {
         level: 'info',
@@ -182,7 +182,7 @@ suite('Transfers', () => {
       },
       {
         level: 'error',
-        message: strings.commander.packFailed('photos.zip', 'disk full'),
+        message: strings.commander.packFailed(archive, 'disk full'),
       },
     ]);
   });
@@ -214,7 +214,7 @@ suite('Transfers', () => {
       },
       {
         level: 'error',
-        message: strings.commander.deleteFromFailed('photos.zip', 'read-only'),
+        message: strings.commander.deleteFromFailed(archive, 'read-only'),
       },
     ]);
   });
@@ -239,11 +239,18 @@ suite('Transfers', () => {
       },
       {
         level: 'error',
-        message: strings.commander.testFailed('a.zip', 'CRC Failed'),
+        message: strings.commander.testFailed(
+          path.join(source, 'a.zip'),
+          'CRC Failed',
+        ),
       },
       {
         level: 'error',
-        message: strings.commander.testFailedMany(2, 'a.zip', 'CRC Failed'),
+        message: strings.commander.testFailedMany(
+          2,
+          path.join(source, 'a.zip'),
+          'CRC Failed',
+        ),
       },
     ]);
   });
@@ -274,7 +281,7 @@ suite('Transfers', () => {
       },
       {
         level: 'error',
-        message: strings.commander.putBackFailed('a.zip', 'It is read-only.'),
+        message: strings.commander.putBackFailed(archive, 'It is read-only.'),
       },
     ]);
   });
@@ -295,7 +302,7 @@ suite('Transfers', () => {
       {
         level: 'info',
         message: strings.commander.moved(
-          strings.commander.oneItem('a.txt'),
+          strings.commander.oneItem(path.join(source, 'a.txt')),
           target,
         ),
       },
@@ -365,13 +372,16 @@ suite('Transfers', () => {
     assert.deepStrictEqual(notices, [
       {
         level: 'error',
-        message: strings.commander.copyFailed('a.txt', 'It is in use'),
+        message: strings.commander.copyFailed(
+          path.join(target, 'a.txt'),
+          'It is in use',
+        ),
       },
       {
         level: 'error',
         message: strings.commander.moveFailedMany(
           3,
-          'b.txt',
+          path.join(target, 'b.txt'),
           'Access is denied',
         ),
       },

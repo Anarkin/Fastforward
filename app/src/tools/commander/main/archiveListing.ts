@@ -256,7 +256,7 @@ export class ArchiveListing {
     if (opening.kind === 'refused') {
       this.host.refuse(
         page,
-        strings.commander.notArchive(path.basename(file), opening.reason),
+        strings.commander.notArchive(file, opening.reason),
       );
       return;
     }
@@ -300,7 +300,7 @@ export class ArchiveListing {
       if (opening.kind === 'refused' && opening.noArchive !== true) {
         this.host.refuse(
           page,
-          strings.commander.notArchive(name, opening.reason),
+          strings.commander.notArchive(file, opening.reason),
         );
         return undefined;
       }

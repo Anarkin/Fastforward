@@ -258,7 +258,7 @@ suite('Commander file keys', () => {
         });
         assert.strictEqual(
           document.querySelector('.transfer-clash')?.innerHTML,
-          '<code class="name"><span>a.txt</span></code> is there already.',
+          '<code class="name"><span><span class="path-part">a.txt</span></span></code> is there already.',
         );
         assert.ok(!dialogText().includes(strings.commander.clashReadOnly));
         await send({
@@ -315,7 +315,7 @@ suite('Commander file keys', () => {
         await type('con');
         assert.strictEqual(
           document.querySelector('.prompt-problem')?.innerHTML,
-          'Windows keeps the name <code class="name"><span>con</span></code> for itself.',
+          'Windows keeps the name <code class="name"><span><span class="path-part">con</span></span></code> for itself.',
         );
         await type('  photos  ');
         assert.strictEqual(problem(), undefined);

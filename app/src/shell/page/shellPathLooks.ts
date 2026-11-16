@@ -12,6 +12,7 @@ export function shellPathLooks(store: StoreApi<ShellState>): PathLooksSource {
     fileColors: () => store.getState().fileColors,
     known: () => store.getState().partLooks,
     ask: (path) => store.getState().askLooks(path),
+    dotHides: () => document.documentElement.dataset.platform !== 'win32',
     know: (path, looks) => {
       const known = store.getState().partLooks;
       if (newlyKnown(known, path, looks)) {

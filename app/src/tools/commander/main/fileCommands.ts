@@ -83,12 +83,12 @@ export class FileCommands {
       } else {
         await this.copies.watchCopy(putBack, copy);
       }
-      await this.openFileNamed(page, copy, name);
+      await this.openFileNamed(page, copy);
       return;
     }
     const opened = path.join(folder, name);
     if (!entry.folder) {
-      await this.openFileNamed(page, opened, name);
+      await this.openFileNamed(page, opened);
       return;
     }
     const target = entry.link
@@ -104,16 +104,12 @@ export class FileCommands {
     );
   }
 
-  private async openFileNamed(
-    page: Page,
-    file: string,
-    name: string,
-  ): Promise<void> {
+  private async openFileNamed(page: Page, file: string): Promise<void> {
     const failure = await this.access.openFile?.(file);
     if (failure) {
       this.host.shell().notice(page, {
         level: 'error',
-        message: strings.commander.openFailed(name, failure),
+        message: strings.commander.openFailed(file, failure),
       });
     }
   }
@@ -172,9 +168,9 @@ export class FileCommands {
     }
     const file = path.join(shown.pane.folder, name);
     const refusal = entry.folder
-      ? strings.editor.folder(name)
+      ? strings.editor.folder(file)
       : shown.pane.elevated === true
-        ? strings.editor.asAdministrator(name)
+        ? strings.editor.asAdministrator(file)
         : await this.editing.refusal(file);
     if (refusal !== undefined) {
       this.host.shell().notice(page, { level: 'error', message: refusal });
@@ -204,7 +200,7 @@ export class FileCommands {
     const refusal =
       this.copies.copyOf(file) === undefined
         ? await this.editing.refusal(file)
-        : strings.editor.viewedCopy(path.basename(file));
+        : strings.editor.viewedCopy(file);
     if (refusal !== undefined) {
       this.host.shell().notice(page, { level: 'error', message: refusal });
       return;
@@ -250,7 +246,7 @@ export class FileCommands {
     const file = path.join(shown.pane.folder, name);
     const refusal =
       shown.pane.elevated === true
-        ? strings.editor.asAdministrator(name)
+        ? strings.editor.asAdministrator(file)
         : await this.editing.refusal(file);
     if (refusal !== undefined) {
       this.host.shell().notice(page, { level: 'error', message: refusal });

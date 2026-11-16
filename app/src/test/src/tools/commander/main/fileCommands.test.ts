@@ -28,7 +28,7 @@ suite('Commander tool', () => {
       {
         level: 'error',
         message: strings.commander.openFailed(
-          'unknown.xyz',
+          at('unknown.xyz'),
           'No app is associated with it',
         ),
       },

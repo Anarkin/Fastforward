@@ -1,3 +1,4 @@
+import { joinedPath } from '../../../lib/page/pathLooks';
 import { strings } from '../../../lib/shared/strings';
 import type { Line } from '../../../lib/shared/sentences';
 
@@ -7,13 +8,14 @@ export function deleteQuestion(
   platform: string | undefined,
   binOff = false,
   archive?: string,
+  folder?: string,
 ): { title: string; message: string; lines: Line[]; confirm: string } {
   const { commander } = strings;
   const [name] = names;
   const one = names.length === 1 && name !== undefined;
   const what = commander.items(names.length);
   const lines = [
-    ...(one ? commander.itemLines(name) : []),
+    ...(one ? commander.itemLines(joinedPath(folder, name)) : []),
     ...(archive === undefined
       ? []
       : commander.archiveLines(archive.split(/[\\/]/).at(-1) ?? archive)),

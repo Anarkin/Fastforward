@@ -159,12 +159,11 @@ export class ArchiveChanges {
   }
 
   unchangeable(archive: OpenedArchive): Sentence | undefined {
-    const name = path.basename(archive.file);
     if (archive.outer !== undefined || archive.source !== archive.file) {
-      return strings.commander.archiveUnchangeable(name);
+      return strings.commander.archiveUnchangeable(archive.file);
     }
     return firstVolume.test(archive.file)
-      ? strings.commander.archiveInVolumes(name)
+      ? strings.commander.archiveInVolumes(archive.file)
       : undefined;
   }
 
@@ -210,7 +209,7 @@ export class ArchiveChanges {
     if (!there) {
       return {
         kind: 'refused',
-        reason: strings.commander.archiveGone(path.basename(archive.file)),
+        reason: strings.commander.archiveGone(archive.file),
       };
     }
     const before = new Set(await temporariesOf(archive.file));
