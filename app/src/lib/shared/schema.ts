@@ -18,8 +18,8 @@ export interface Optional<T> {
 export type Infer<S> = S extends Schema<infer T> ? T : never;
 
 interface AnySchema {
-  readonly decode: (value: unknown) => unknown;
-  readonly encode: (value: never) => Json | undefined;
+  decode(value: unknown): unknown;
+  encode(value: unknown): Json | undefined;
 }
 
 interface AnyOptional {
@@ -102,9 +102,8 @@ export function never<T>(): Optional<T> {
   };
 }
 
-function schemaOf(field: AnySchema | AnyOptional): Schema<unknown> {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-  return ('optional' in field ? field.optional : field) as Schema<unknown>;
+function schemaOf(field: AnySchema | AnyOptional): AnySchema {
+  return 'optional' in field ? field.optional : field;
 }
 
 export function record<const F extends Fields>(fields: F): Schema<RecordOf<F>> {
