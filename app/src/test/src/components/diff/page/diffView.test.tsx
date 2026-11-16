@@ -23,6 +23,8 @@ suite('A diff shown anew', () => {
     const html = renderToStaticMarkup(
       <DiffView
         error={null}
+        keptPlace={undefined}
+        onPlace={noop}
         files={[]}
         whole={undefined}
         origin={undefined}

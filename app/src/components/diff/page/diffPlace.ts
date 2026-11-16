@@ -38,6 +38,11 @@ export function diffPlaceKey(scope: string, selection: string): string {
   return JSON.stringify([scope, selection]);
 }
 
+export function diffPlaceScopeOf(key: string): string | undefined {
+  const [scope]: unknown[] = JSON.parse(key);
+  return typeof scope === 'string' ? scope : undefined;
+}
+
 export function currentOf(
   place: DiffPlace | undefined,
   search: Search,

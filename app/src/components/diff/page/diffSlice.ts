@@ -4,7 +4,7 @@ import {
   type Search,
 } from '../../../lib/shared/searchOptions';
 import { flag, optional, record, text } from '../../../lib/shared/schema';
-import type { KeptPlaces } from '../../../lib/page/keptPlaces';
+import { withRecent } from '../../../lib/page/recentPlaces';
 import { withEntry } from '../../../lib/page/tabKeyed';
 import type { CodeSnap } from './codeSnap';
 import {
@@ -41,7 +41,11 @@ export interface DiffSource {
   readonly diffMeasures: DiffMeasures;
   readonly diffFinds: ReadonlyMap<string, KeptFind>;
   readonly pickedLanguages: ReadonlyMap<string, PickedLanguage>;
+  readonly diffPlaces: ReadonlyMap<string, DiffPlace>;
 }
+
+export type PlaceChange =
+  Partial<DiffPlace> | ((place: DiffPlace) => Partial<DiffPlace>);
 
 export interface DiffActions {
   readonly changeShowEntireFile: (show: boolean) => void;
@@ -59,7 +63,7 @@ export interface DiffActions {
   readonly keepDiffPlace: (
     scope: string,
     selection: string,
-    change: Partial<DiffPlace>,
+    change: PlaceChange,
   ) => void;
   readonly pickLanguage: (
     key: string | undefined,
@@ -75,6 +79,7 @@ export const diffDefaults: DiffSource = {
   diffMeasures: unmeasuredDiff,
   diffFinds: new Map(),
   pickedLanguages: new Map(),
+  diffPlaces: new Map(),
 };
 
 const closedFind: KeptFind = {
@@ -86,6 +91,11 @@ export const diffFindOf =
   (scope: string) =>
   ({ diffFinds }: DiffSource): KeptFind =>
     diffFinds.get(scope) ?? closedFind;
+
+export const diffPlaceFor =
+  (scope: string, selection: string) =>
+  ({ diffPlaces }: DiffSource): DiffPlace | undefined =>
+    diffPlaces.get(diffPlaceKey(scope, selection));
 
 function languageScopeOf(key: string): string {
   const [scope]: unknown[] = JSON.parse(key);
@@ -111,7 +121,6 @@ export const diffViewFields = {
 export function diffSlice<S extends DiffSource>(
   set: (change: (state: S) => Partial<DiffSource> | S) => void,
   get: () => S,
-  places: KeptPlaces<DiffPlace>,
   post: (message: DiffSettingMessage) => void,
 ): DiffActions {
   return {
@@ -149,18 +158,22 @@ export function diffSlice<S extends DiffSource>(
           },
         }),
       })),
-    diffPlaceOf: (scope, selection) =>
-      places.of(diffPlaceKey(scope, selection)),
-    keepDiffPlace: (scope, selection, change) => {
-      const key = diffPlaceKey(scope, selection);
-      places.keep(key, {
-        ...(places.of(key) ?? unplaced),
-        ...change,
-        ...(change.current !== undefined && {
-          currentFor: diffFindOf(scope)(get()).search,
-        }),
-      });
-    },
+    diffPlaceOf: (scope, selection) => diffPlaceFor(scope, selection)(get()),
+    keepDiffPlace: (scope, selection, change) =>
+      set((state) => {
+        const key = diffPlaceKey(scope, selection);
+        const was = state.diffPlaces.get(key) ?? unplaced;
+        const changed = typeof change === 'function' ? change(was) : change;
+        return {
+          diffPlaces: withRecent(state.diffPlaces, key, {
+            ...was,
+            ...changed,
+            ...(changed.current !== undefined && {
+              currentFor: diffFindOf(scope)(state).search,
+            }),
+          }),
+        };
+      }),
     seeLanguageKey: (key) =>
       set((state) => {
         const scope = key === undefined ? undefined : languageScopeOf(key);

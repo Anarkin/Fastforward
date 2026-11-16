@@ -62,13 +62,12 @@ export function useSideways(
   listRef: RefObject<HTMLDivElement | null>,
   scrollsSides: boolean,
   wordWrap: boolean,
+  sideways: number,
+  setSideways: (sideways: number) => void,
 ): {
-  readonly sideways: number;
-  readonly setSideways: (sideways: number) => void;
   readonly measured: Sideways | undefined;
   readonly measureSideways: () => void;
 } {
-  const [sideways, setSideways] = useState(0);
   const scrolledSideways = useRef(sideways);
   const [measured, setMeasured] = useState<Sideways>();
   useEffect(() => {
@@ -134,7 +133,7 @@ export function useSideways(
         cancelAnimationFrame(frame);
       }
     };
-  }, [listRef, scrollsSides]);
+  }, [listRef, scrollsSides, setSideways]);
   useEffect(() => {
     if (scrolledSideways.current !== sideways) {
       scrolledSideways.current = sideways;
@@ -165,5 +164,5 @@ export function useSideways(
       painted.cancel();
     };
   }, [listRef, measureSideways]);
-  return { sideways, setSideways, measured, measureSideways };
+  return { measured, measureSideways };
 }

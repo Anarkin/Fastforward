@@ -60,6 +60,13 @@ export function locationsOf({
   return tab.root === undefined ? undefined : locations.get(tab.root);
 }
 
+export function locationsScrollOf({
+  tab,
+  locationScrolls,
+}: GitSource): number | undefined {
+  return tab.root === undefined ? undefined : locationScrolls.get(tab.root);
+}
+
 export function fileFoldsOf({
   tab,
   fileFolds,

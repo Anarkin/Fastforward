@@ -1,11 +1,10 @@
-import type { KeptFocus } from '../../../lib/page/keptFocus';
 import {
   diffPlaceKey,
-  type DiffPlace,
+  diffPlaceScopeOf,
 } from '../../../components/diff/page/diffPlace';
 import type { GitSource } from './gitState';
 import { tabScopeOf } from './gitSelectors';
-import type { KeptPlaces } from '../../../lib/page/keptPlaces';
+import { withoutWhere, withRecent } from '../../../lib/page/recentPlaces';
 import { withEntry, withKey } from '../../../lib/page/tabKeyed';
 import { maxViewChars } from '../../../shell/shared/protocol';
 import {
@@ -18,13 +17,6 @@ import {
 
 const lastNamed = (names: Iterable<string>): string[] =>
   [...names].slice(-mostNamed);
-
-export interface TabPlaces {
-  readonly diffPlaces: KeptPlaces<DiffPlace>;
-  readonly focuses: KeptPlaces<KeptFocus>;
-  readonly filesScrolls: KeptPlaces<number>;
-  readonly locationScrolls: KeptPlaces<number>;
-}
 
 interface KeptTarget {
   readonly kind: 'worktree';
@@ -75,11 +67,7 @@ function lastOf<T>(
   return entries.length > 0 ? new Map(entries.slice(-mostPlaces)) : undefined;
 }
 
-function worktreeViewOf(
-  source: GitSource,
-  places: TabPlaces,
-  root: string,
-): WorktreeView {
+function worktreeViewOf(source: GitSource, root: string): WorktreeView {
   const scope = worktreeScope(root);
   const folders = source.folders.get(root);
   const folds = source.fileFolds.get(root);
@@ -110,16 +98,14 @@ function worktreeViewOf(
       highlight: locations.highlight,
       toggled: lastNamed(locations.toggled),
     },
-    locationsScroll: places.locationScrolls.of(root),
+    locationsScroll: source.locationScrolls.get(root),
     filesScrolls: lastOf(
-      places.filesScrolls
-        .entries()
-        .filter(([view]) => rootOfView(view) === root),
+      [...source.filesScrolls].filter(([view]) => rootOfView(view) === root),
     ),
     find: source.diffFinds.get(scope),
-    focus: places.focuses.of(scope),
+    focus: source.focuses.get(scope),
     places: lastOf(
-      places.diffPlaces.entries().flatMap(([key, place]) => {
+      [...source.diffPlaces].flatMap(([key, place]) => {
         const selection = selectionIn(scope, key);
         return selection === undefined ? [] : [[selection, place] as const];
       }),
@@ -130,13 +116,12 @@ function worktreeViewOf(
 
 export function tabViewOf(
   source: GitSource,
-  places: TabPlaces,
   worktrees: readonly string[],
 ): string {
   const kept = worktrees.map((root) =>
     JSON.stringify([
       root,
-      worktreeViewSchema.encode(worktreeViewOf(source, places, root)) ?? {},
+      worktreeViewSchema.encode(worktreeViewOf(source, root)) ?? {},
     ]),
   );
   const fits = (from: number) =>
@@ -147,11 +132,6 @@ export function tabViewOf(
     from += 1;
   }
   return `{"worktrees":[${kept.slice(from).join(',')}]}`;
-}
-
-export function placeScopeOf(key: string): string | undefined {
-  const [scope] = partsOf(key) ?? [];
-  return typeof scope === 'string' ? scope : undefined;
 }
 
 export function handedWorktrees(
@@ -168,23 +148,16 @@ export function handedWorktrees(
 
 function restoreScope(
   source: GitSource,
-  places: TabPlaces,
   root: string,
   view: WorktreeView,
-): Pick<GitSource, 'diffFinds' | 'pickedLanguages'> {
+): Pick<GitSource, 'diffFinds' | 'pickedLanguages' | 'diffPlaces' | 'focuses'> {
   const scope = worktreeScope(root);
-  for (const [key] of places.diffPlaces.entries()) {
-    if (selectionIn(scope, key) !== undefined) {
-      places.diffPlaces.forget(key);
-    }
-  }
+  let diffPlaces = withoutWhere(
+    source.diffPlaces,
+    (key) => selectionIn(scope, key) !== undefined,
+  );
   for (const [selection, place] of view.places ?? []) {
-    places.diffPlaces.keep(diffPlaceKey(scope, selection), place);
-  }
-  if (view.focus === undefined) {
-    places.focuses.forget(scope);
-  } else {
-    places.focuses.keep(scope, view.focus);
+    diffPlaces = withRecent(diffPlaces, diffPlaceKey(scope, selection), place);
   }
   const language =
     view.language !== undefined &&
@@ -192,6 +165,8 @@ function restoreScope(
       ? view.language
       : undefined;
   return {
+    diffPlaces,
+    focuses: withRecent(source.focuses, scope, view.focus),
     diffFinds: withEntry(source.diffFinds, scope, view.find),
     pickedLanguages: withEntry(source.pickedLanguages, root, language),
   };
@@ -199,23 +174,16 @@ function restoreScope(
 
 export function restoredWorktree(
   source: GitSource,
-  places: TabPlaces,
   root: string,
   view: WorktreeView,
 ): Partial<GitSource> {
-  if (view.locationsScroll === undefined) {
-    places.locationScrolls.forget(root);
-  } else {
-    places.locationScrolls.keep(root, view.locationsScroll);
-  }
-  for (const [shown] of places.filesScrolls.entries()) {
-    if (rootOfView(shown) === root) {
-      places.filesScrolls.forget(shown);
-    }
-  }
+  let filesScrolls = withoutWhere(
+    source.filesScrolls,
+    (shown) => rootOfView(shown) === root,
+  );
   for (const [shown, offset] of view.filesScrolls ?? []) {
     if (rootOfView(shown) === root) {
-      places.filesScrolls.keep(shown, offset);
+      filesScrolls = withRecent(filesScrolls, shown, offset);
     }
   }
   const { folders, folds, locations } = view;
@@ -258,7 +226,13 @@ export function restoredWorktree(
       },
     ),
     foundCommits: withEntry(source.foundCommits, root, undefined),
-    ...restoreScope(source, places, root, view),
+    locationScrolls: withRecent(
+      source.locationScrolls,
+      root,
+      view.locationsScroll,
+    ),
+    filesScrolls,
+    ...restoreScope(source, root, view),
   };
 }
 
@@ -306,6 +280,16 @@ export function changedScopes(next: GitSource, prev: GitSource): string[] {
         changedKeys(next[name], prev[name]).map(worktreeScope),
       ),
       ...changedKeys(next.diffFinds, prev.diffFinds),
+      ...changedKeys(next.focuses, prev.focuses),
+      ...changedKeys(next.diffPlaces, prev.diffPlaces).flatMap(
+        (key) => diffPlaceScopeOf(key) ?? [],
+      ),
+      ...changedKeys(next.filesScrolls, prev.filesScrolls).flatMap(
+        (view) => viewScope(view) ?? [],
+      ),
+      ...changedKeys(next.locationScrolls, prev.locationScrolls).map(
+        worktreeScope,
+      ),
       ...changedKeys(next.pickedLanguages, prev.pickedLanguages).map((key) =>
         worktreeScope(key),
       ),
@@ -313,7 +297,7 @@ export function changedScopes(next: GitSource, prev: GitSource): string[] {
   ];
 }
 
-export function viewScope(view: string): string | undefined {
+function viewScope(view: string): string | undefined {
   const root = rootOfView(view);
   return root === undefined ? undefined : worktreeScope(root);
 }

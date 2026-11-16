@@ -178,6 +178,8 @@ export function DiffViewShown({
   return (
     <DiffView
       error={null}
+      keptPlace={undefined}
+      onPlace={noop}
       files={[]}
       whole={undefined}
       origin={undefined}

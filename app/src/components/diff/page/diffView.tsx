@@ -52,6 +52,7 @@ import { RowContent, rowOverscan } from './rowContent';
 import { sideScroll, sideRoom } from './sidewaysScroll';
 import { rowAnchors, useScrollAnchor } from './diffScrollAnchor';
 import { unplaced, type DiffPlace } from './diffPlace';
+import type { PlaceChange } from './diffSlice';
 import { useKeptPlace } from './diffKeptPlace';
 import { scrollOnToggle, stuckHeader } from './diffStuckHeader';
 import {
@@ -98,8 +99,8 @@ export function DiffView({
   keptPlace,
   onPlace,
 }: {
-  keptPlace?: DiffPlace;
-  onPlace?: (change: Partial<DiffPlace>) => void;
+  keptPlace: DiffPlace | undefined;
+  onPlace: (change: PlaceChange) => void;
   error: React.ReactNode;
   files: readonly DiffFile[];
   whole: WholeFile | undefined;
@@ -145,15 +146,28 @@ export function DiffView({
     measureText,
     snap,
   } = useDiffText(list, measures, measuring);
-  const { sideways, setSideways, measured, measureSideways } = useSideways(
+  const sideways = keptPlace?.sideways ?? unplaced.sideways;
+  const setSideways = useCallback(
+    (scrolled: number) => onPlace({ sideways: scrolled }),
+    [onPlace],
+  );
+  const { measured, measureSideways } = useSideways(
     list,
     scrollsSides,
     wordWrap,
+    sideways,
+    setSideways,
   );
   const view = measured && shownSideways(measured, scrollsSides, sideways);
   const changeColumns = keepWrapColumns;
-  const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(
-    keptPlace?.toggled ?? unplaced.toggled,
+  const toggled = keptPlace?.toggled ?? unplaced.toggled;
+  const setToggled = useCallback(
+    (
+      change: (
+        toggled: ReadonlyMap<string, boolean>,
+      ) => ReadonlyMap<string, boolean>,
+    ) => onPlace((place) => ({ toggled: change(place.toggled) })),
+    [onPlace],
   );
   const skeleton = useSkeleton(loading);
   const rows = useMemo(
@@ -482,9 +496,7 @@ export function DiffView({
     virtualizer,
     anchors,
     scrollsSides,
-    sideways,
     reveal,
-    toggled,
   });
 
   return (

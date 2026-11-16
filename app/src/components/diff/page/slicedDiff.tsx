@@ -3,12 +3,13 @@ import { useStore, type StoreApi } from 'zustand';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { Diff, type DiffProps } from './diffColumn';
 import { DiffLanguage } from './diffLanguage';
-import type { DiffPlace } from './diffPlace';
 import {
   diffFindOf,
+  diffPlaceFor,
   pickedFor,
   type DiffActions,
   type DiffSource,
+  type PlaceChange,
 } from './diffSlice';
 import { DiffToggles } from './diffToggles';
 
@@ -109,10 +110,10 @@ export function SlicedDiff({
   const keepWrapColumns = useStore(store, (state) => state.keepWrapColumns);
   const keepDiffFind = useStore(store, (state) => state.keepDiffFind);
   const closeDiffFind = useStore(store, (state) => state.closeDiffFind);
-  const diffPlaceOf = useStore(store, (state) => state.diffPlaceOf);
+  const place = useStore(store, diffPlaceFor(scope, selection));
   const keepDiffPlace = useStore(store, (state) => state.keepDiffPlace);
   const keepPlace = useCallback(
-    (change: Partial<DiffPlace>) => keepDiffPlace(scope, selection, change),
+    (change: PlaceChange) => keepDiffPlace(scope, selection, change),
     [keepDiffPlace, scope, selection],
   );
   const { wordWrap, showWhitespace, highlightSyntax, scrolling } = textView;
@@ -146,7 +147,7 @@ export function SlicedDiff({
         find,
         keepFind: (next) => keepDiffFind(scope, next),
         closeFind: () => closeDiffFind(scope),
-        place: diffPlaceOf(scope, selection),
+        place,
         keepPlace,
       }}
     />

@@ -1,5 +1,5 @@
 import type { Virtualizer } from '@tanstack/react-virtual';
-import { useEffect, useEffectEvent, useRef, type RefObject } from 'react';
+import { useEffect, useEffectEvent, type RefObject } from 'react';
 import { useRestore } from '../../../lib/page/restore';
 import { anchoredScrollTop, scrollAnchor } from './diffScrollAnchor';
 import type { DiffPlace } from './diffPlace';
@@ -14,20 +14,16 @@ export function useKeptPlace({
   virtualizer,
   anchors,
   scrollsSides,
-  sideways,
   reveal,
-  toggled,
 }: {
   readonly list: RefObject<HTMLDivElement | null>;
   readonly place: DiffPlace | undefined;
-  readonly onPlace: ((change: Partial<DiffPlace>) => void) | undefined;
+  readonly onPlace: (change: Partial<DiffPlace>) => void;
   readonly settled: boolean;
   readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
   readonly anchors: readonly (readonly string[])[];
   readonly scrollsSides: boolean;
-  readonly sideways: number;
   readonly reveal: (scrolled: number) => void;
-  readonly toggled: ReadonlyMap<string, boolean>;
 }): void {
   const restoring = useRestore(
     place,
@@ -51,7 +47,7 @@ export function useKeptPlace({
     if (restoring.current !== undefined || !element) {
       return;
     }
-    onPlace?.({
+    onPlace({
       top: element.scrollTop,
       left: element.scrollLeft,
       anchor: scrollAnchor(
@@ -70,18 +66,4 @@ export function useKeptPlace({
     element.addEventListener('scroll', scrolled, { passive: true });
     return () => element.removeEventListener('scroll', scrolled);
   }, [list]);
-  const sidewaysKept = useRef(sideways);
-  useEffect(() => {
-    if (restoring.current === undefined && sidewaysKept.current !== sideways) {
-      sidewaysKept.current = sideways;
-      onPlace?.({ sideways });
-    }
-  }, [sideways, onPlace, restoring]);
-  const toggledKept = useRef(toggled);
-  useEffect(() => {
-    if (toggledKept.current !== toggled) {
-      toggledKept.current = toggled;
-      onPlace?.({ toggled });
-    }
-  }, [toggled, onPlace]);
 }

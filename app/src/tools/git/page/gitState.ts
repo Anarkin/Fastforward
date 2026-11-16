@@ -76,6 +76,9 @@ export interface GitSource extends DiffSource {
   readonly fileCursors: ReadonlyMap<string, MovedCursor>;
   readonly pinnedMessages: ReadonlyMap<string, KeptPin>;
   readonly locations: ReadonlyMap<string, KeptLocations>;
+  readonly focuses: ReadonlyMap<string, KeptFocus>;
+  readonly filesScrolls: ReadonlyMap<string, number>;
+  readonly locationScrolls: ReadonlyMap<string, number>;
 }
 
 export interface GitCollections {
@@ -200,6 +203,9 @@ export const gitDefaults: GitSource = {
   fileCursors: new Map(),
   pinnedMessages: new Map(),
   locations: new Map(),
+  focuses: new Map(),
+  filesScrolls: new Map(),
+  locationScrolls: new Map(),
 };
 
 export type GitData = GitSource & GitCollections;

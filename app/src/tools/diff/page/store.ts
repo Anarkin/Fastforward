@@ -3,16 +3,15 @@ import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
 import { TabLife } from '../../../lib/page/tabLife';
 import type { Infer } from '../../../lib/shared/schema';
-import { KeptPlaces } from '../../../lib/page/keptPlaces';
+import { withRecent } from '../../../lib/page/recentPlaces';
 import { withEntry } from '../../../lib/page/tabKeyed';
-import type { KeptFocus } from '../../../lib/page/keptFocus';
 import {
   textKey,
   type LoadedText,
 } from '../../../components/diff/page/sideTexts';
 import {
   diffPlaceKey,
-  type DiffPlace,
+  diffPlaceScopeOf,
 } from '../../../components/diff/page/diffPlace';
 import { diffSlice } from '../../../components/diff/page/diffSlice';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
@@ -58,39 +57,28 @@ export function createDiffStore(
   views: ToolViews = noViews,
 ): StoreApi<CompareState> {
   let life: TabLife<Infer<typeof compareViewSchema>> | undefined;
-  const places = new KeptPlaces<DiffPlace>(undefined, (key) => {
-    const [tab]: unknown[] = JSON.parse(key);
-    if (typeof tab === 'string') {
-      life?.changed(tab);
-    }
-  });
   const store = createStore<CompareState>()((set, get) => {
-    const focuses = new Map<string, KeptFocus>();
     const tabs = new TabLife(
       views,
       compareViewSchema,
       {
         viewOf: (tab) => {
-          const { diffFinds, pickedLanguages } = get();
+          const { diffFinds, pickedLanguages, diffPlaces, focuses } = get();
           return {
             find: diffFinds.get(tab),
-            place: places.of(diffPlaceKey(tab, tab)),
+            place: diffPlaces.get(diffPlaceKey(tab, tab)),
             language: pickedLanguages.get(tab)?.language,
             focus: focuses.get(tab),
           };
         },
         restore: (tab, { find, place, language, focus }) => {
-          if (place === undefined) {
-            places.forget(diffPlaceKey(tab, tab));
-          } else {
-            places.keep(diffPlaceKey(tab, tab), place);
-          }
-          if (focus === undefined) {
-            focuses.delete(tab);
-          } else {
-            focuses.set(tab, focus);
-          }
           set((state) => ({
+            diffPlaces: withRecent(
+              state.diffPlaces,
+              diffPlaceKey(tab, tab),
+              place,
+            ),
+            focuses: withRecent(state.focuses, tab, focus),
             diffFinds: withEntry(state.diffFinds, tab, find),
             pickedLanguages: withEntry(
               state.pickedLanguages,
@@ -102,9 +90,13 @@ export function createDiffStore(
           }));
         },
         forget: (tab) => {
-          places.forget(diffPlaceKey(tab, tab));
-          focuses.delete(tab);
           set((state) => ({
+            diffPlaces: withRecent(
+              state.diffPlaces,
+              diffPlaceKey(tab, tab),
+              undefined,
+            ),
+            focuses: withRecent(state.focuses, tab, undefined),
             diffFinds: withEntry(state.diffFinds, tab, undefined),
             pickedLanguages: withEntry(state.pickedLanguages, tab, undefined),
           }));
@@ -114,7 +106,7 @@ export function createDiffStore(
     );
     life = tabs;
     const actions: CompareActions = {
-      ...diffSlice(set, get, places, post),
+      ...diffSlice(set, get, post),
       receive: (message) => {
         const leaving = get().tab;
         switch (message.type) {
@@ -156,15 +148,9 @@ export function createDiffStore(
         }
       },
       loadTexts: (requests) => post({ type: 'loadTexts', requests }),
-      focusOf: (tab) => focuses.get(tab),
-      keepFocus: (tab, focus) => {
-        if (focus === undefined) {
-          focuses.delete(tab);
-        } else {
-          focuses.set(tab, focus);
-        }
-        tabs.changed(tab);
-      },
+      focusOf: (tab) => get().focuses.get(tab),
+      keepFocus: (tab, focus) =>
+        set((state) => ({ focuses: withRecent(state.focuses, tab, focus) })),
       keepTabs: () => tabs.flush(),
       releaseTab: (tab) => tabs.release(tab, get().tab),
     };
@@ -174,8 +160,12 @@ export function createDiffStore(
     for (const tab of new Set([
       ...changedKeys(next.diffFinds, prev.diffFinds),
       ...changedKeys(next.pickedLanguages, prev.pickedLanguages),
+      ...changedKeys(next.focuses, prev.focuses),
+      ...changedKeys(next.diffPlaces, prev.diffPlaces).map(diffPlaceScopeOf),
     ])) {
-      life?.changed(tab);
+      if (tab !== undefined) {
+        life?.changed(tab);
+      }
     }
   });
   return store;

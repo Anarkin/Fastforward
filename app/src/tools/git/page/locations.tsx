@@ -1,17 +1,10 @@
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 import { searchedBookmarks } from './bookmarks';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { noRefs } from './commitListItems';
-import { locationsOf, searchOf } from './gitSelectors';
+import { locationsOf, locationsScrollOf, searchOf } from './gitSelectors';
+import { useRestore } from '../../../lib/page/restore';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
 import { searchFilter } from '../../../lib/shared/filter';
@@ -54,6 +47,7 @@ import {
   StashesSection,
 } from './locationGroups';
 
+const locationsWithin = 10_000;
 const noneToggled: ReadonlySet<string> = new Set();
 
 export function LocationsPopup({
@@ -76,7 +70,6 @@ export function LocationsPopup({
     search: openSearch,
     searchFor: onQuery,
     keepLocations,
-    locationsScrollOf,
     keepLocationsScroll,
   } = useGitActions();
   const onClose = useCallback(() => openSearch(false), [openSearch]);
@@ -180,22 +173,29 @@ export function LocationsPopup({
     },
   };
   const activeId = activeKey === undefined ? undefined : rows.id(activeKey);
-  const [scrolledTo] = useState(locationsScrollOf);
-  const restoring = useRef(scrolledTo);
+  const scrolledTo = useGit(locationsScrollOf);
+  const restoring = useRestore(
+    scrolledTo,
+    (top) => {
+      const element = groups.current;
+      return (
+        element !== null && element.scrollHeight - element.clientHeight >= top
+      );
+    },
+    (top) => {
+      if (groups.current !== null) {
+        groups.current.scrollTop = top;
+      }
+    },
+    {
+      key: groups,
+      on: groups,
+      watch: groups,
+      within: locationsWithin,
+      beforePaint: true,
+    },
+  );
   const revealed = useRef(scrolledTo === undefined ? undefined : activeId);
-  useLayoutEffect(() => {
-    const element = groups.current;
-    const top = restoring.current;
-    if (
-      element === null ||
-      top === undefined ||
-      element.scrollHeight - element.clientHeight < top
-    ) {
-      return;
-    }
-    restoring.current = undefined;
-    element.scrollTop = top;
-  });
   useEffect(() => {
     const element = groups.current;
     if (element === null) {
@@ -208,7 +208,7 @@ export function LocationsPopup({
     };
     element.addEventListener('scroll', scrolled, { passive: true });
     return () => element.removeEventListener('scroll', scrolled);
-  }, [keepLocationsScroll]);
+  }, [keepLocationsScroll, restoring]);
   useEffect(() => {
     if (activeId !== undefined && activeId !== revealed.current) {
       popup.current?.ownerDocument

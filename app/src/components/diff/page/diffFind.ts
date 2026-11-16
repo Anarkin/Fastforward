@@ -13,14 +13,14 @@ import { findMatches, type FindMatch } from './find';
 import { stepMatch } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import { currentOf, type DiffPlace } from './diffPlace';
-import type { KeptFind } from './diffSlice';
+import type { KeptFind, PlaceChange } from './diffSlice';
 
 export interface DiffTab {
   readonly find: KeptFind;
   readonly keepFind: (find: KeptFind) => void;
   readonly closeFind: () => void;
   readonly place: DiffPlace | undefined;
-  readonly keepPlace: (change: Partial<DiffPlace>) => void;
+  readonly keepPlace: (change: PlaceChange) => void;
 }
 
 export function useDiffFind({
@@ -58,18 +58,13 @@ export function useDiffFind({
     keepFind({ finding, search: { query: next, options } });
   const setOptions = (next: SearchOptions) =>
     keepFind({ finding, search: { query, options: next } });
-  const [at, setAt] = useState({
+  const [shownFor, setShownFor] = useState({
     shownAt,
-    current: currentOf(place, kept.search),
     placed: place !== undefined,
   });
   const [jump, setJump] = useState(0);
-  if (at.shownAt !== shownAt) {
-    setAt({
-      shownAt,
-      current: currentOf(place, kept.search),
-      placed: place !== undefined,
-    });
+  if (shownFor.shownAt !== shownAt) {
+    setShownFor({ shownAt, placed: place !== undefined });
     if (place === undefined) {
       setJump((count) => count + 1);
     }
@@ -79,9 +74,11 @@ export function useDiffFind({
     () => findMatches(diffFiles, fileContent, query, options),
     [diffFiles, fileContent, query, options],
   );
-  const shown = Math.min(at.current, Math.max(0, matches.length - 1));
+  const shown = Math.min(
+    currentOf(place, kept.search),
+    Math.max(0, matches.length - 1),
+  );
   const goTo = (index: number) => {
-    setAt({ shownAt, current: index, placed: at.placed });
     keepPlace({ current: index });
     setJump((count) => count + 1);
   };
@@ -115,7 +112,7 @@ export function useDiffFind({
     setQuery,
     setOptions,
     jump,
-    placed: at.placed,
+    placed: shownFor.placed,
     input,
     matches,
     shown,

@@ -12,6 +12,7 @@ export interface CompareSource extends DiffSource {
   readonly tab: string | undefined;
   readonly compare: CompareView | undefined;
   readonly texts: ReadonlyMap<string, LoadedText>;
+  readonly focuses: ReadonlyMap<string, KeptFocus>;
 }
 
 export interface CompareActions extends DiffActions {
@@ -30,4 +31,5 @@ export const compareDefaults: CompareSource = {
   tab: undefined,
   compare: undefined,
   texts: new Map(),
+  focuses: new Map(),
 };

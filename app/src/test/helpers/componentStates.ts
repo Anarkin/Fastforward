@@ -23,14 +23,6 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the colors of the text, kept per tab in the kept viewers of viewerActions.ts for its language and text',
   'tools/viewer/page/wholeText.ts text':
     'the whole text read, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
-  'components/diff/page/diffFind.ts at':
-    'the match shown, kept per scope and selection in the diff places of the git store, read back as mounted',
-  'components/diff/page/diffSideways.ts sideways':
-    'kept per scope and selection in the diff places of the git store, scrolled back to as the diff settles',
-  'components/diff/page/diffView.tsx toggled':
-    'kept per scope and selection in the diff places of the git store (store.ts), read back as the diff mounts',
-  'tools/git/page/locations.tsx scrolledTo':
-    'kept per repository in the location scrolls of the git store (store.ts), read back as the search mounts',
   'tools/git/page/messagePeek.tsx pinned':
     'the pin, kept per worktree with whether its keys made it in pinnedMessages, pinned again as its row is drawn',
 };
@@ -220,6 +212,8 @@ export const passingStates: Readonly<Record<string, string>> = {
     'counts the asks to focus the find box, read only as changes after mounting',
   'components/diff/page/diffFind.ts jump':
     'counts the jumps to a match; a diff shown again keeps its place rather than jumping again',
+  'components/diff/page/diffFind.ts shownFor':
+    'a moment: the selection shown and whether a place was kept for it as it was shown, so a selection without one jumps to its first match',
   'components/diff/page/diffFollow.ts viewportHeight':
     'the height of the diff, measured anew by a resize observer once mounted',
   'components/diff/page/diffJumps.ts revealing':

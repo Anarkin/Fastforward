@@ -26,11 +26,14 @@ import {
   type GitSource,
   type GitState,
 } from './gitState';
-import { commitsShownOf, detachedHead, folderViewOf } from './gitSelectors';
+import {
+  commitsShownOf,
+  detachedHead,
+  folderViewOf,
+  locationsScrollOf,
+} from './gitSelectors';
 import { diffSlice } from '../../../components/diff/page/diffSlice';
-import { KeptPlaces } from '../../../lib/page/keptPlaces';
-import type { KeptFocus } from '../../../lib/page/keptFocus';
-import type { DiffPlace } from '../../../components/diff/page/diffPlace';
+import { withRecent } from '../../../lib/page/recentPlaces';
 import { withEntry, withKey } from '../../../lib/page/tabKeyed';
 import { collected } from './collections';
 import { menuItemsOf } from './commitMenuItems';
@@ -38,13 +41,10 @@ import { checking, received, withTab } from './receivedMessages';
 import {
   changedScopes,
   handedWorktrees,
-  placeScopeOf,
   restoredWorktree,
   tabViewOf,
   targetOf,
-  viewScope,
   worktreeScope,
-  type TabPlaces,
 } from './keptTab';
 import { TabWorktrees } from './tabWorktrees';
 import { ViewKeeper } from '../../../lib/page/viewKeeper';
@@ -137,26 +137,10 @@ export function createGitStore(
     (tab) =>
       made === undefined || !worktreesOfTabs.knows(tab)
         ? undefined
-        : tabViewOf(made.getState(), places, worktreesOfTabs.of(tab)),
+        : tabViewOf(made.getState(), worktreesOfTabs.of(tab)),
     shownTab,
   );
   const owe = (scope: string | undefined) => keeper.changed(tabOfScope(scope));
-  const diffPlaces = new KeptPlaces<DiffPlace>(undefined, (key) =>
-    owe(placeScopeOf(key)),
-  );
-  const focuses = new KeptPlaces<KeptFocus>(undefined, owe);
-  const filesScrolls = new KeptPlaces<number>(undefined, (view) =>
-    owe(viewScope(view)),
-  );
-  const locationScrolls = new KeptPlaces<number>(undefined, (root) =>
-    owe(worktreeScope(root)),
-  );
-  const places: TabPlaces = {
-    diffPlaces,
-    focuses,
-    filesScrolls,
-    locationScrolls,
-  };
   const store = createStore<GitState>()((set, get) => {
     const apply = (next: (state: GitState) => GitState) =>
       set((state) => {
@@ -236,7 +220,7 @@ export function createGitStore(
         return;
       }
       for (const [root, worktree] of handedWorktrees(view)) {
-        set(restoredWorktree(get(), places, root, worktree));
+        set(restoredWorktree(get(), root, worktree));
         worktreesOfTabs.shown(tab, root);
       }
     };
@@ -252,7 +236,7 @@ export function createGitStore(
     };
     return {
       ...collected({ ...gitDefaults, ...initial }),
-      ...diffSlice(set, get, diffPlaces, post),
+      ...diffSlice(set, get, post),
       receive: (message) => {
         shown(message);
         const from = get().tab.root;
@@ -264,9 +248,15 @@ export function createGitStore(
             ? { from, to: message.worktree }
             : undefined;
         if (switched !== undefined && get().searching.has(switched.from)) {
-          const focus = focuses.of(worktreeScope(switched.from));
+          const focus = get().focuses.get(worktreeScope(switched.from));
           if (focus?.name === searchFocusName) {
-            focuses.keep(worktreeScope(switched.to), focus);
+            set((state) => ({
+              focuses: withRecent(
+                state.focuses,
+                worktreeScope(switched.to),
+                focus,
+              ),
+            }));
           }
         }
         apply((state) => {
@@ -286,7 +276,7 @@ export function createGitStore(
         const roots = worktreesOfTabs.of(tab);
         worktreesOfTabs.forget(tab);
         for (const root of roots) {
-          set(restoredWorktree(get(), places, root, {}));
+          set(restoredWorktree(get(), root, {}));
         }
         return view;
       },
@@ -446,8 +436,11 @@ export function createGitStore(
         set((state) => ({
           pinnedMessages: withEntry(state.pinnedMessages, state.tab.root, pin),
         })),
-      filesScrollOf: (view) => filesScrolls.of(view),
-      keepFilesScroll: (view, offset) => filesScrolls.keep(view, offset),
+      filesScrollOf: (view) => get().filesScrolls.get(view),
+      keepFilesScroll: (view, offset) =>
+        set((state) => ({
+          filesScrolls: withRecent(state.filesScrolls, view, offset),
+        })),
       pull: () => postTab({ type: 'pull' }),
       push: () => postTab({ type: 'push' }),
       pullBranch: (name) => postTab({ type: 'pullBranch', name }),
@@ -507,13 +500,17 @@ export function createGitStore(
       search: (open) =>
         set((state) => {
           const { root } = state.tab;
-          if (!open && root !== undefined) {
-            locationScrolls.forget(root);
-          }
           return {
             searching: withKey(state.searching, root, open),
             ...(!open && {
               locations: withEntry(state.locations, root, undefined),
+              ...(root !== undefined && {
+                locationScrolls: withRecent(
+                  state.locationScrolls,
+                  root,
+                  undefined,
+                ),
+              }),
             }),
           };
         }),
@@ -521,16 +518,20 @@ export function createGitStore(
         set((state) => ({
           locations: withEntry(state.locations, state.tab.root, kept),
         })),
-      locationsScrollOf: () => {
-        const { root } = get().tab;
-        return root === undefined ? undefined : locationScrolls.of(root);
-      },
-      keepLocationsScroll: (offset) => {
-        const { root } = get().tab;
-        if (root !== undefined) {
-          locationScrolls.keep(root, offset);
-        }
-      },
+      locationsScrollOf: () => locationsScrollOf(get()),
+      keepLocationsScroll: (offset) =>
+        set((state) => {
+          const { root } = state.tab;
+          return root === undefined
+            ? state
+            : {
+                locationScrolls: withRecent(
+                  state.locationScrolls,
+                  root,
+                  offset,
+                ),
+              };
+        }),
       checkout: (target) => postTab({ type: 'checkout', target }),
       toggleBookmark: (bookmark) =>
         get().changeBookmarks(toggleBookmark(get().bookmarks, bookmark)),
@@ -547,14 +548,9 @@ export function createGitStore(
           state.toggleBookmark,
         );
       },
-      keptFocusOf: (scope) => focuses.of(scope),
-      keepFocus: (scope, focus) => {
-        if (focus === undefined) {
-          focuses.forget(scope);
-        } else {
-          focuses.keep(scope, focus);
-        }
-      },
+      keptFocusOf: (scope) => get().focuses.get(scope),
+      keepFocus: (scope, focus) =>
+        set((state) => ({ focuses: withRecent(state.focuses, scope, focus) })),
     };
   });
   made = store;
