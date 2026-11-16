@@ -49,7 +49,8 @@ suite('Style', () => {
       looks(dialog, {
         transform: undefined,
         translate: undefined,
-        position: undefined,
+        position: 'relative',
+        inset: undefined,
         flex: 'none',
         'max-height': '100%',
       });
@@ -174,9 +175,9 @@ suite('Style', () => {
     });
   });
 
-  test("keeps the heading of the group scrolled under it at the top of the pane, over the shortcuts passing beneath it, a hairline short of the popup's edge, whose line the popup's inset shadow draws under it", () => {
+  test("keeps the heading of the group scrolled under it at the top of the pane, over the shortcuts passing beneath it, up to the popup's edge, whose line the popup draws over it", () => {
     looks(withClass(popupOf(<ShortcutsPopupShown />), 'shortcuts-main'), {
-      'margin-right': 'var(--hairline)',
+      'margin-right': undefined,
     });
     const heading = withClass(
       popupOf(<ShortcutsPopupShown />),

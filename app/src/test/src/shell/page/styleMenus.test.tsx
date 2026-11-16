@@ -234,7 +234,7 @@ suite('Style', () => {
     }
   });
 
-  test("edges a popup with an inset shadow rather than a border, which Chromium rounds to whole device pixels, shifting the popup's contents at scales like 125%, the shadow a hairline rounded down to whole device pixels as a border is, so it shows no faint pixel inside it", () => {
+  test("edges a popup with an inset shadow rather than a border, which Chromium rounds to whole device pixels, shifting the popup's contents at scales like 125%, the shadow a hairline rounded down to whole device pixels as a border is, so it shows no faint pixel inside it, a dialog drawing it over its contents as the line of its frame, so the thumb of a list in it rounds its end inside the corner of the dialog", () => {
     assert.strictEqual(
       bodyVariable('hairline'),
       'round(down, 1px, var(--device-pixel, 1px))',
@@ -243,14 +243,35 @@ suite('Style', () => {
       bodyVariable('popup-shadow') ?? '',
       /^inset 0 0 0 var\(--hairline\) var\(--color-border\),/,
     );
+    assert.strictEqual(
+      bodyVariable('popup-shadow'),
+      'inset 0 0 0 var(--hairline) var(--color-border), var(--popup-drop)',
+    );
     for (const popup of [
       rendered(<ContextMenuShown />),
       rendered(<HistoryMenuShown />),
-      popupOf(<ShortcutsPopupShown />),
       withClass(rendered(<NoticesShown />), 'notice'),
     ]) {
       looks(popup, { 'box-shadow': 'var(--popup-shadow)', border: undefined });
     }
+    const dialog = popupOf(<ShortcutsPopupShown />);
+    looks(dialog, {
+      'box-shadow': 'var(--popup-drop)',
+      border: undefined,
+      '--popup-line': 'var(--hairline)',
+    });
+    looks(
+      dialog,
+      {
+        position: 'absolute',
+        inset: '0',
+        'border-radius': 'inherit',
+        '--frame-line': 'var(--popup-line)',
+        'box-shadow': 'inset 0 0 0 var(--frame-line) var(--color-border)',
+        'pointer-events': 'none',
+      },
+      { pseudoElement: '::after' },
+    );
   });
 
   test('keeps a context menu within the window, scrolling one taller than it, as the repositories may be, unless it opens submenus, which scrolling would cut off', () => {

@@ -15,7 +15,6 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr);
-  margin-right: var(--hairline);
 }
 
 .shortcuts-tree {

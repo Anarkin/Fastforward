@@ -84,7 +84,7 @@ suite('Style', () => {
 
   test('pads the notices for the shadow of a popup, which their scrolling would clip, keeping them 16px from the bottom of the window', () => {
     const shadows = [
-      ...(bodyVariable('popup-shadow') ?? '').matchAll(
+      ...(bodyVariable('popup-drop') ?? '').matchAll(
         /(?<!inset )0 (\d+)px (\d+)px rgba/g,
       ),
     ].map(([, y, blur]) => ({ y: Number(y), blur: Number(blur) }));

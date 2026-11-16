@@ -368,6 +368,50 @@ suite('App at a scale of 125%', () => {
     assert.strictEqual(row[edge], line, JSON.stringify(row));
   });
 
+  test('rounds the end of the thumb of the shortcuts scrolled to their end as their window rounds its corner, as it stood square past the corner where the side of the shortcuts fell between pixels', async () => {
+    await page.keyboard.press('F1');
+    const pane = page.locator('.shortcuts-pane');
+    await pane.waitFor();
+    await pane.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const box = await pane.boundingBox();
+    assert.ok(box, 'the shortcuts have no box');
+    const bar = page.locator('.overlay-scrollbar.vertical.shown');
+    await page.mouse.move(box.x + box.width - 4, box.y + box.height - 20);
+    await bar.waitFor();
+    const corner = await page.evaluate(() => {
+      const window = document.querySelector('.shortcuts-window');
+      const thumb = document.querySelector<HTMLElement>(
+        '.overlay-scrollbar.vertical.shown',
+      );
+      const style = window === null ? undefined : getComputedStyle(window);
+      const line =
+        window === null
+          ? 0
+          : parseFloat(
+              getComputedStyle(window, '::after').getPropertyValue(
+                '--frame-line',
+              ),
+            );
+      return {
+        clip: thumb?.style.getPropertyValue('clip-path'),
+        rounded:
+          style === undefined
+            ? 0
+            : parseFloat(style.borderBottomRightRadius) -
+              Math.floor(line * devicePixelRatio + 0.001) / devicePixelRatio,
+      };
+    });
+    await page.keyboard.press('Escape');
+    await pane.waitFor({ state: 'detached' });
+    const bottom = Number(
+      /round \S+ \S+ ([\d.]+)px/.exec(corner.clip ?? '')?.[1] ?? 0,
+    );
+    assert.ok(corner.rounded > 0, JSON.stringify(corner));
+    assert.strictEqual(bottom, corner.rounded, JSON.stringify(corner));
+  });
+
   test('runs the thumb of a file viewed at its end over every pixel up to the bottom line of its column, and over none the line fills', async () => {
     await page.locator('.tabs [role="tab"]').nth(1).click();
     const side = page.locator('.commander-pane').nth(1);
