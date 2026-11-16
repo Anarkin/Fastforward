@@ -11,7 +11,7 @@ import { type TextWidths } from '../../../lib/page/textWidths';
 import { type CodeProps } from './lineMarks';
 import { codePieces, piecesWithin } from './codePieces';
 import { CodeBlocks } from './codeBlocks';
-import { keptWrapStarts } from './keptStarts';
+import { keptWrapStarts } from '../../../lib/page/keptStarts';
 
 function firstFrom(offsets: readonly number[], at: number): number {
   let low = 0;

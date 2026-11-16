@@ -1,6 +1,7 @@
-import { wrapStarts } from '../../../lib/page/wordWrap';
-import type { TextWidths } from '../../../lib/page/textWidths';
-import { beyondAscii } from './rowMeasures';
+import { wrapStarts } from './wordWrap';
+import type { TextWidths } from './textWidths';
+
+const beyondAscii = /[^\0-\x7f]/;
 
 interface Kept {
   readonly text: string;

@@ -157,8 +157,9 @@ suite('Word wrap', () => {
     assert.strictEqual(wrapColumns(3, 7.2), 1);
   });
 
-  test('expects no line to wrap while the characters have no width, as in a hidden column', () => {
+  test('expects no line to wrap while the characters have no width, as in a hidden column, or none that can be measured', () => {
     assert.strictEqual(wrapColumns(0, 0), Infinity);
+    assert.strictEqual(wrapColumns(100, Number.NaN), Infinity);
     assert.strictEqual(wrappedLines('one two', wrapColumns(0, 0)), 1);
   });
 });

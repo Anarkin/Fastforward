@@ -26,6 +26,8 @@ body {
   --hairline: round(down, 1px, var(--device-pixel, 1px));
   --line-number-width: 56px;
   --line-number-gap: 6px;
+  --wrap-cover: var(--scrollbar-size);
+  --wrap-gap: 8px;
   --check-size: 12px;
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2 7 10.7l4.5-5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --button-size: round(26px, var(--device-pixel, 1px));

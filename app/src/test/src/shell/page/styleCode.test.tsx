@@ -1,9 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { tabSize } from '../../../../lib/page/tabStops';
-import { cascaded } from '../../../helpers/cascade';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
-import { looks } from './stylesheetFixtures';
+import { cascaded } from '../../../helpers/cascade';
+import { bodyVariable, compact, looks } from './stylesheetFixtures';
 import { layoutVariables } from '../../../../tools/git/page/textLayout';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import {
@@ -12,6 +12,27 @@ import {
   InlineLine,
   SplitLine,
 } from '../../../helpers/styleDiffFixtures';
+
+const inlineCode = (wordWrap: boolean) =>
+  withClass(
+    shownRow(
+      diffView(
+        <DiffViewShown wordWrap={wordWrap} />,
+        <InlineLine kind="added" />,
+      ),
+    ),
+    'code',
+  );
+const sideCodes = (wordWrap: boolean) =>
+  allWithClass(
+    shownRow(
+      diffView(
+        <DiffViewShown sideBySide wordWrap={wordWrap} />,
+        <SplitLine left="" right="" />,
+      ),
+    ),
+    'split-side',
+  ).map((side) => withClass(side, 'code'));
 
 suite('Style', () => {
   test('wraps long lines of code at spaces, breaking a word only where it would not fit, in rows as tall as their lines', () => {
@@ -87,39 +108,43 @@ suite('Style', () => {
     looks(tab, { 'text-indent': '0' }, { pseudoElement: '::before' });
   });
 
-  test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, but wraps lines under it, as text goes under the scrollbars everywhere else, with room for the sign of a break, so both sides wrap alike', () => {
-    for (const wordWrap of [false, true]) {
-      const clear = wordWrap
-        ? 'calc(2 * var(--diff-code-padding) + 2ch)'
-        : 'calc(var(--diff-code-padding) + var(--minimap-width))';
-      looks(
-        withClass(
-          shownRow(
-            diffView(
-              <DiffViewShown wordWrap={wordWrap} />,
-              <InlineLine kind="added" />,
-            ),
-          ),
-          'code',
-        ),
-        { 'padding-right': clear },
+  test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, and wraps the text of the diff, the viewer and the editor inside one right padding, two columns for a blank hanging at the end of a row and the sign of its break, then what covers the edge, the minimap or the scrollbar, and a gap, so no text runs under either and both sides wrap alike', () => {
+    const beforeMinimap =
+      'calc(var(--diff-code-padding) + var(--minimap-width))';
+    looks(inlineCode(false), { 'padding-right': beforeMinimap });
+    const [left, right] = sideCodes(false);
+    looks(right, { 'padding-right': beforeMinimap });
+    looks(left, { 'padding-right': undefined });
+
+    const editor = withClass(
+      rendered(
+        <div className="cm-editor editor-text">
+          <div className="cm-scroller">
+            <div className="cm-content cm-lineWrapping" />
+          </div>
+        </div>,
+      ),
+      'cm-content',
+    );
+    for (const wrapped of [
+      inlineCode(true),
+      ...sideCodes(true),
+      rendered(<div className="viewer-rows wrapped numbered" />),
+      editor,
+    ]) {
+      assert.strictEqual(
+        compact(cascaded(wrapped, 'padding-right')),
+        'calc(2 * var(--text-advance) + var(--wrap-cover) + var(--wrap-gap))',
+        wrapped.classes.join(' '),
       );
-      const [left, right] = allWithClass(
-        shownRow(
-          diffView(
-            <DiffViewShown sideBySide wordWrap={wordWrap} />,
-            <SplitLine left="" right="" />,
-          ),
-        ),
-        'split-side',
-      ).map((side) => withClass(side, 'code'));
-      looks(right, { 'padding-right': clear });
-      looks(left, {
-        'padding-right': wordWrap
-          ? cascaded(right, 'padding-right')
-          : undefined,
-      });
     }
+    looks(withClass(diffView(<DiffViewShown wordWrap />), 'diff-view'), {
+      '--wrap-cover': 'var(--minimap-width)',
+    });
+    assert.deepStrictEqual(
+      [bodyVariable('wrap-cover'), bodyVariable('wrap-gap')],
+      ['var(--scrollbar-size)', '8px'],
+    );
   });
 
   test('draws a tab in the code as wide as the wrapping and the hidden changes count it', () => {

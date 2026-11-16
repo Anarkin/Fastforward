@@ -40,7 +40,7 @@ export async function editorInPage(): Promise<JSHandle<PageEditor>> {
 export async function mountEditor(
   editor: JSHandle<PageEditor>,
   text: string,
-  width: number,
+  textWidth: number,
   wrapping: boolean,
   blanks = false,
   numbers = false,
@@ -55,7 +55,7 @@ export async function mountEditor(
       old?.remove();
       const box = document.createElement('div');
       box.className = 'editor-probe';
-      box.style.cssText = `position: fixed; left: 0; top: 0; width: ${shown.width}px; z-index: 10`;
+      box.style.cssText = `position: fixed; left: 0; top: 0; width: ${shown.textWidth}px; z-index: 10`;
       document.body.append(box);
       const table = await app.terminalCells();
       const view = new app.EditorView({
@@ -73,7 +73,15 @@ export async function mountEditor(
         ],
       });
       box.append(view.dom);
+      const content = view.contentDOM;
+      const style = getComputedStyle(content);
+      const around =
+        view.dom.getBoundingClientRect().width -
+        content.getBoundingClientRect().width +
+        parseFloat(style.paddingLeft) +
+        parseFloat(style.paddingRight);
+      box.style.width = `${shown.textWidth + around}px`;
     },
-    { text, width, wrapping, blanks, numbers },
+    { text, textWidth, wrapping, blanks, numbers },
   );
 }

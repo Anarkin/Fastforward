@@ -1,15 +1,26 @@
 import { findClusterBreak } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type { Box } from '../../../lib/page/pixelBoxes';
+import { boxColumns } from '../../../lib/page/wrapBox';
+
+const onPixel = 1e-6;
+
+function textAdvance(view: EditorView): number {
+  const pixel = 1 / devicePixelRatio;
+  return Math.round(view.defaultCharacterWidth / pixel + onPixel) * pixel;
+}
+
+export const wrapColumnsOf = (view: EditorView): number =>
+  boxColumns(view.contentDOM, textAdvance(view));
+
+export const textLeft = (view: EditorView): number =>
+  view.contentDOM.getBoundingClientRect().left +
+  parseFloat(getComputedStyle(view.contentDOM).paddingLeft);
 
 export function rowEdge(view: EditorView): number | undefined {
-  if (!view.lineWrapping) {
-    return undefined;
-  }
-  const line = view.contentDOM.querySelector('.cm-line');
-  const padding =
-    line === null ? 0 : parseFloat(getComputedStyle(line).paddingRight);
-  return view.contentDOM.getBoundingClientRect().right - padding;
+  return view.lineWrapping
+    ? textLeft(view) + (wrapColumnsOf(view) + 1) * textAdvance(view)
+    : undefined;
 }
 
 export interface Character {

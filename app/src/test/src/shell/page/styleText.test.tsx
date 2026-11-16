@@ -76,6 +76,18 @@ const spaceDotSize =
 const spaceDotStart =
   'round(down, (var(--text-advance) - var(--space-dot)) / 2, var(--device-pixel, 1px))';
 
+const marked = (mark: React.ReactElement, className: string) =>
+  withClass(
+    rendered(
+      <div className="cm-editor editor-text">
+        <div className="cm-scroller">
+          <div className="cm-layer break-mark-layer">{mark}</div>
+        </div>
+      </div>,
+    ),
+    className,
+  );
+
 suite('Style', () => {
   test('makes a cell of the terminal as tall and as wide as a character of the diff, so code looks the same in both', () => {
     const panel = rendered(
@@ -241,5 +253,26 @@ suite('Style', () => {
         spaceDots,
       );
     }
+  });
+
+  test('marks the breaks of the rows of a line wrapped in the editor as the diff and the viewer mark them, the sign muted and centered in a column of the text, the spaces hanging at the end of a row dotted the same, none of it taking the pointer or a selection', () => {
+    looks(marked(<div className="wrap-break" />, 'break-mark-layer'), {
+      'pointer-events': 'none',
+      'user-select': 'none',
+      color: 'var(--muted-foreground)',
+    });
+    for (const sign of ['wrap-break', 'wrap-blank']) {
+      looks(marked(<div className={sign} />, sign), {
+        width: 'var(--text-advance)',
+        height: '1lh',
+        'text-align': 'center',
+      });
+    }
+    const spaces = marked(<div className="wrap-spaces" />, 'wrap-spaces');
+    looks(spaces, { height: '1lh', ...squareDots });
+    assert.strictEqual(
+      compact(cascaded(spaces, 'background-image')),
+      spaceDots,
+    );
   });
 });

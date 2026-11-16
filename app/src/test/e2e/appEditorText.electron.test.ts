@@ -252,6 +252,68 @@ function editorBlanksOf(element: Element): readonly string[] {
   return marked;
 }
 
+interface RowMarks {
+  readonly marks: number;
+  readonly misplaced: readonly string[];
+}
+
+function rowMarksIn(root: Element): RowMarks {
+  const content = root.querySelector('.cm-content');
+  if (content === null) {
+    throw new Error('No editor');
+  }
+  const style = getComputedStyle(content);
+  const box = content.getBoundingClientRect();
+  const rowHeight = parseFloat(style.lineHeight);
+  const cell = document.createElement('span');
+  cell.style.cssText =
+    'display: inline-block; position: absolute; width: var(--text-advance)';
+  root.querySelector('.cm-scroller')?.append(cell);
+  const advance = cell.getBoundingClientRect().width;
+  cell.remove();
+  const textLeft = box.left + parseFloat(style.paddingLeft);
+  const columns = Math.floor(
+    (box.right - parseFloat(style.paddingRight) - textLeft) / advance + 1e-6,
+  );
+  const kept = textLeft + (columns + 2) * advance;
+  const ends = new Map<number, number>();
+  const range = document.createRange();
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!(node instanceof Text)) {
+      continue;
+    }
+    for (let at = 0; at < node.length; at++) {
+      if (node.data[at] === ' ') {
+        continue;
+      }
+      range.setStart(node, at);
+      range.setEnd(node, at + 1);
+      const rect = range.getBoundingClientRect();
+      const top = Math.round(rect.top * 10) / 10;
+      ends.set(top, Math.max(ends.get(top) ?? -Infinity, rect.right));
+    }
+  }
+  const endOnRowOf = (mark: DOMRect) =>
+    [...ends].find(
+      ([top]) => top >= mark.top - 0.5 && top < mark.top + rowHeight / 2,
+    )?.[1];
+  const marks = [...root.querySelectorAll('.wrap-break')].map((mark) =>
+    mark.getBoundingClientRect(),
+  );
+  return {
+    marks: marks.length,
+    misplaced: marks.flatMap((mark) => {
+      const end = endOnRowOf(mark);
+      return end !== undefined &&
+        mark.left >= end - 0.5 &&
+        mark.right <= kept + 0.5
+        ? []
+        : [`${mark.left} ${mark.top} after ${end} within ${kept}`];
+    }),
+  };
+}
+
 interface Numbered {
   readonly numberEnds: number;
   readonly textStarts: number;
@@ -380,5 +442,49 @@ suite('App', () => {
         text: '.cm-line',
       });
     assert.deepStrictEqual(inEditor, inDiff);
+  });
+  test('marks the end of every row of a line wrapped in the editor with the sign of a break right after its text, within the two columns kept past the row, as the viewer and the diff mark it, in a line too long for the editor to draw whole too, as it is paged through', async () => {
+    const editor = await editorInPage();
+    const long = Array.from(
+      { length: 2000 },
+      (_, index) =>
+        `{"row":${index},"words":"a sentence of some words, with commas and dots."},`,
+    ).join('');
+    await mountEditor(editor, long, 600, true);
+    const probe = page.locator('.editor-probe');
+    await probe.evaluate((box) => {
+      if (box instanceof HTMLElement) {
+        box.style.height = '300px';
+      }
+      const editorBox = box.querySelector('.cm-editor');
+      if (editorBox instanceof HTMLElement) {
+        editorBox.style.height = '100%';
+      }
+    });
+    for (const head of [60, 60_000, 120_000]) {
+      await editor.evaluate((app, at) => {
+        const dom = document.querySelector('.editor-probe .cm-editor');
+        const view =
+          dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
+        view?.dispatch({ selection: { anchor: at }, scrollIntoView: true });
+      }, head);
+      let last = '';
+      let found: RowMarks | undefined;
+      await waitFor(async () => {
+        await page.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            ),
+        );
+        found = await probe.evaluate(rowMarksIn);
+        const now = JSON.stringify(found);
+        const settled = now === last && found.marks > 0;
+        last = now;
+        return settled;
+      }, `the marks of the rows around ${head}`);
+      assert.ok((found?.marks ?? 0) > 20, `${head}: ${found?.marks}`);
+      assert.deepStrictEqual(found?.misplaced, [], String(head));
+    }
   });
 });

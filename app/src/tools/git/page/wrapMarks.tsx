@@ -11,7 +11,7 @@ import {
   wrapIndent,
   wrapStarts,
 } from '../../../lib/page/wordWrap';
-import { keptWrapStarts } from './keptStarts';
+import { keptWrapStarts } from '../../../lib/page/keptStarts';
 import { numberWidth } from './textLayout';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import {

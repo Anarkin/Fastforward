@@ -15,8 +15,6 @@ import { useTextRows } from './textRows';
 import { useSideways } from './textSideways';
 import { useColors, useWholeText } from './wholeText';
 
-const marksColumns = 2;
-
 export function TextBody({
   encoding,
   language,
@@ -60,8 +58,8 @@ export function TextBody({
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const wrapAt =
-    wordWrap && columns !== undefined && columns > marksColumns
-      ? columns - marksColumns
+    wordWrap && columns !== undefined && Number.isFinite(columns)
+      ? columns
       : undefined;
   const least = wrapAt === undefined ? screen * 3 : 1;
   const { rows, loaded, move, jump, perRow, lastTop } = useTextRows({

@@ -300,7 +300,7 @@ export function wrappedLines(
 }
 
 export function wrapColumns(width: number, charWidth: number): number {
-  if (charWidth <= 0) {
+  if (!(charWidth > 0)) {
     return Infinity;
   }
   return Math.max(1, Math.floor(width / charWidth + 1e-6));

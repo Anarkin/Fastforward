@@ -1,5 +1,5 @@
 import { memo, useCallback, useRef } from 'react';
-import { wrapColumns } from '../../../lib/page/wordWrap';
+import { boxColumns } from '../../../lib/page/wrapBox';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import { uniformHeight, type WrapColumns } from './rowMeasures';
@@ -12,12 +12,9 @@ function measureWrapColumns(probe: HTMLElement): WrapColumns {
   const [left = Infinity, right = left] = Array.from(
     probe.querySelectorAll<HTMLElement>('.code'),
     (code) => {
-      const style = getComputedStyle(code);
       const sample = code.firstElementChild;
-      return wrapColumns(
-        code.getBoundingClientRect().width -
-          parseFloat(style.paddingLeft) -
-          parseFloat(style.paddingRight),
+      return boxColumns(
+        code,
         sample ? sample.getBoundingClientRect().width / wrapSample.length : 0,
       );
     },

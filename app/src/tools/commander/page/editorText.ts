@@ -1,4 +1,9 @@
-import { Facet, type Extension, type Range } from '@codemirror/state';
+import {
+  Facet,
+  type EditorState,
+  type Extension,
+  type Range,
+} from '@codemirror/state';
 import {
   Decoration,
   EditorView,
@@ -14,7 +19,6 @@ import { type CellTable } from '../../../lib/page/cellTable';
 import {
   breakOffsets,
   leadLength,
-  wrapColumns,
   wrapIndent,
 } from '../../../lib/page/wordWrap';
 import {
@@ -23,6 +27,8 @@ import {
   spacesBlanksAndText,
 } from '../../../lib/page/blankSigns';
 import { spaceDots } from './editorSpaces';
+import { wrapColumnsOf } from './editorRows';
+import { breakMarks, type WrapMeasure } from './editorBreaks';
 
 type LinePart =
   | {
@@ -212,15 +218,6 @@ interface LookSets {
   readonly lines: DecorationSet;
 }
 
-function contentWidth(content: HTMLElement): number {
-  const style = getComputedStyle(content);
-  return (
-    content.clientWidth -
-    parseFloat(style.paddingLeft) -
-    parseFloat(style.paddingRight)
-  );
-}
-
 class LineLook implements PluginValue {
   private widths: TextWidths | undefined;
   private columns: number | undefined;
@@ -233,6 +230,12 @@ class LineLook implements PluginValue {
   ) {
     this.wrapping = view.lineWrapping;
     this.sets = this.build();
+  }
+
+  get wrapMeasure(): WrapMeasure | undefined {
+    return this.wrapping && this.columns !== undefined
+      ? { columns: this.columns, widths: this.widths }
+      : undefined;
   }
 
   update(update: ViewUpdate): void {
@@ -258,10 +261,7 @@ class LineLook implements PluginValue {
       return false;
     }
     const widths = elementWidths(contentDOM, this.table);
-    const columns =
-      widths === undefined
-        ? undefined
-        : wrapColumns(contentWidth(contentDOM), widths.char);
+    const columns = widths === undefined ? undefined : wrapColumnsOf(this.view);
     const changed =
       columns !== this.columns || widths?.char !== this.widths?.char;
     this.widths = widths;
@@ -352,25 +352,29 @@ class LineLook implements PluginValue {
   }
 }
 
+const blanksOf = (state: EditorState) => state.facet(blanksShown);
+
 export function appTextLook(table: CellTable): Extension {
+  const look = ViewPlugin.define((view) => new LineLook(view, table), {
+    provide: (plugin) => [
+      EditorView.decorations.of(
+        (view) => view.plugin(plugin)?.sets.shrunk ?? Decoration.none,
+      ),
+      EditorView.decorations.of(
+        (view) => view.plugin(plugin)?.sets.boxes ?? Decoration.none,
+      ),
+      EditorView.decorations.of(
+        (view) => view.plugin(plugin)?.sets.blanks ?? Decoration.none,
+      ),
+      EditorView.decorations.of(
+        (view) => view.plugin(plugin)?.sets.lines ?? Decoration.none,
+      ),
+    ],
+  });
   return [
     EditorView.editorAttributes.of({ class: 'editor-text' }),
-    spaceDots((state) => state.facet(blanksShown)),
-    ViewPlugin.define((view) => new LineLook(view, table), {
-      provide: (plugin) => [
-        EditorView.decorations.of(
-          (view) => view.plugin(plugin)?.sets.shrunk ?? Decoration.none,
-        ),
-        EditorView.decorations.of(
-          (view) => view.plugin(plugin)?.sets.boxes ?? Decoration.none,
-        ),
-        EditorView.decorations.of(
-          (view) => view.plugin(plugin)?.sets.blanks ?? Decoration.none,
-        ),
-        EditorView.decorations.of(
-          (view) => view.plugin(plugin)?.sets.lines ?? Decoration.none,
-        ),
-      ],
-    }),
+    spaceDots(blanksOf),
+    breakMarks((view) => view.plugin(look)?.wrapMeasure, blanksOf),
+    look,
   ];
 }

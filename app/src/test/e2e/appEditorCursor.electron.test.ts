@@ -35,10 +35,20 @@ function drawnSelection(editor: JSHandle<PageEditor>): Promise<Drawn> {
     if (view === null) {
       throw new Error('No editor');
     }
-    const line = view.contentDOM.querySelector('.cm-line');
-    const edge =
-      view.contentDOM.getBoundingClientRect().right -
-      (line ? parseFloat(getComputedStyle(line).paddingRight) : 0);
+    const cell = document.createElement('span');
+    cell.style.cssText =
+      'display: inline-block; position: absolute; width: var(--text-advance)';
+    view.scrollDOM.append(cell);
+    const advance = cell.getBoundingClientRect().width;
+    cell.remove();
+    const content = view.contentDOM.getBoundingClientRect();
+    const style = getComputedStyle(view.contentDOM);
+    const textLeft = content.left + parseFloat(style.paddingLeft);
+    const columns = Math.floor(
+      (content.right - parseFloat(style.paddingRight) - textLeft) / advance +
+        1e-6,
+    );
+    const edge = textLeft + (columns + 1) * advance;
     const cursor = view.dom
       .querySelector('.cm-cursor-primary')
       ?.getBoundingClientRect();
@@ -202,7 +212,7 @@ async function cursorOnCharacter(
 suite('App', () => {
   sharedApp({});
 
-  test('draws the cursor in a run of spaces hanging past the edge of a wrapped row on the last cell of that row, whole, as a terminal draws a cursor past its last column, rather than out of sight, a selection ending in one no further, and never scrolls a wrapped line sideways', async () => {
+  test('draws the cursor in a run of spaces hanging past the edge of a wrapped row on the column kept past that row for a blank hanging there, whole, where the viewer and the diff mark that blank, rather than out of sight, a selection ending in one no further, and never scrolls a wrapped line sideways', async () => {
     const editor = await editorInPage();
     await mountEditor(editor, paddedRows, 400, true);
 
@@ -252,7 +262,7 @@ suite('App', () => {
     assert.ok(nearPixel(ended.cursor?.shown, width), JSON.stringify(ended));
   });
 
-  test('moves the cursor on End to the end of a wrapped row, past the run of spaces hanging at its end, drawn whole on the last cell of that row, staying there when pressed again, and selects up to it on Shift+End', async () => {
+  test('moves the cursor on End to the end of a wrapped row, past the run of spaces hanging at its end, drawn whole on the column kept past that row for a blank hanging there, staying there when pressed again, and selects up to it on Shift+End', async () => {
     const editor = await editorInPage();
     await mountEditor(editor, paddedRows, 400, true);
     const firstRow = await select(editor, 9);

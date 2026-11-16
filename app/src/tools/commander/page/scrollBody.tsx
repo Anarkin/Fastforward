@@ -16,6 +16,8 @@ import { sidewaysColumns } from '../../../lib/page/scrollSettings';
 import { wheelTurn } from '../../../lib/page/wheelTurns';
 import { useShell } from '../../../shell/page/store';
 import { hideAfter } from '../../../lib/page/scrollbarGeometry';
+import { wrapColumns } from '../../../lib/page/wordWrap';
+import { boxColumns } from '../../../lib/page/wrapBox';
 import { type Thumb } from './scrollThumbs';
 import { copiedRows, type RowText } from './rowCopy';
 import { ViewerScrollbar } from './viewerScrollbar';
@@ -66,6 +68,7 @@ export function ScrollBody({
   const body = useRef<HTMLDivElement>(null);
   const probe = useRef<HTMLDivElement>(null);
   const sideways = useRef<HTMLDivElement>(null);
+  const rowsBox = useRef<HTMLDivElement>(null);
   const scrollbar = useRef<HTMLDivElement>(null);
   const advance = useRef(1);
   const inset = useRef(0);
@@ -123,7 +126,7 @@ export function ScrollBody({
     return () => element.removeEventListener('wheel', onWheel);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = body.current;
     const row = probe.current;
     if (!element || !row) {
@@ -142,21 +145,22 @@ export function ScrollBody({
       const padding =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
       inset.current = parseFloat(style.paddingLeft) || 0;
-      advance.current =
-        (row.getBoundingClientRect().width - padding) / probeText.length || 1;
+      const char =
+        (row.getBoundingClientRect().width - padding) / probeText.length;
+      advance.current = char || 1;
       onFont?.(advance.current, fontOf(row), spacingOf(row));
+      const wrappedRows = rowsBox.current;
       onColumns?.(
-        Math.max(
-          1,
-          Math.floor((element.clientWidth - padding) / advance.current),
-        ),
+        wrapped && wrappedRows !== null
+          ? boxColumns(wrappedRows, char)
+          : wrapColumns(element.clientWidth - padding, char),
       );
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [onScreen, onColumns, onFont]);
+  }, [onScreen, onColumns, onFont, wrapped]);
 
   const moved = (by: number) => {
     showBar();
@@ -253,6 +257,7 @@ export function ScrollBody({
         >
           <div
             className={`viewer-rows${wrapped ? ' wrapped' : ''}${numbered ? ' numbered' : ''}`}
+            ref={rowsBox}
             style={
               width === undefined
                 ? undefined

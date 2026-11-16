@@ -96,6 +96,14 @@
   padding: 0 var(--line-number-gap);
 }
 
+.viewer-rows.wrapped,
+.cm-editor.editor-text .cm-content.cm-lineWrapping,
+.diff-view.wrap .diff-line .code {
+  padding-right: calc(
+    2 * var(--text-advance) + var(--wrap-cover) + var(--wrap-gap)
+  );
+}
+
 .cm-editor.editor-text .cm-content.cm-lineWrapping {
   white-space: pre-wrap;
   word-break: normal;
@@ -178,6 +186,23 @@ input {
 
 .cm-editor.editor-text .space-dot-layer {
   pointer-events: none;
+}
+
+.cm-editor.editor-text .break-mark-layer {
+  pointer-events: none;
+  user-select: none;
+  color: var(--muted-foreground);
+}
+
+.cm-editor.editor-text .wrap-break,
+.cm-editor.editor-text .wrap-blank {
+  width: var(--text-advance);
+  height: 1lh;
+  text-align: center;
+}
+
+.cm-editor.editor-text .wrap-spaces {
+  height: 1lh;
 }
 
 .cm-editor.editor-text .space-dots {
