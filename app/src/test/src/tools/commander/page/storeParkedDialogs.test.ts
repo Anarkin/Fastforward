@@ -1,9 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
+import type { StoreApi } from 'zustand';
+import type { CommanderState } from '../../../../../tools/commander/page/commanderState';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { noop } from '../../../../helpers/fixtures';
-import { listing, withFiles } from './storeFixtures';
+import { keepingViews, listing, withFiles } from './storeFixtures';
 
 const folder = 'C:/code';
 
@@ -20,8 +21,10 @@ const form = {
   volume: '100M',
 } as const;
 
-function sidesOf(tab: string, post: (message: CommanderToHost) => void = noop) {
-  const store = createCommanderStore(post);
+function sidesOf(
+  tab: string,
+  store: StoreApi<CommanderState> = createCommanderStore(noop),
+) {
   store.getState().receive({ type: 'show', tab });
   store.getState().receive(withFiles(folder, 'a.txt', 'b.txt'));
   store.getState().receive({ ...listing('C:/other', tab), side: 'right' });
@@ -72,21 +75,20 @@ suite('Commander store keeping the dialogs of its tabs', () => {
   });
 
   test('brings the dialog of a tab back in a page that never showed it, as a window reloaded, without a password typed', () => {
-    const posted: CommanderToHost[] = [];
-    const store = sidesOf('1', (message) => posted.push(message));
+    const left = keepingViews();
+    const store = sidesOf('1', left.store);
     store.getState().askPack('left', ['a.txt']);
     store.getState().keepPackForm(form);
     store.getState().askGoTo('right');
     store.getState().keepTyped('goingTo', { value: 'C:/there' });
     store.getState().receive({ type: 'show', tab: '2' });
-    const kept = posted.findLast(
-      (message): message is Extract<CommanderToHost, { type: 'keepTab' }> =>
-        message.type === 'keepTab' && message.tab === '1',
-    )?.kept;
-    assert.ok(!JSON.stringify(kept).includes('secret'));
+    const kept = left.keptOf('1');
+    assert.ok(kept !== undefined && !kept.includes('secret'));
 
-    const other = createCommanderStore(noop);
-    other.getState().receive({ type: 'show', tab: '1', kept });
+    const back = keepingViews();
+    back.hand('1', kept);
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '1' });
     other.getState().receive(withFiles(folder, 'a.txt', 'b.txt'));
     other.getState().receive({ ...listing('C:/other', '1'), side: 'right' });
 
@@ -121,24 +123,18 @@ suite('Commander store keeping the dialogs of its tabs', () => {
   });
 
   test('sends what was typed in a dialog of the tab shown as the page goes, with no other tab shown meanwhile, as a reload while it is open', () => {
-    const posted: CommanderToHost[] = [];
-    const store = sidesOf('1', (message) => posted.push(message));
+    const left = keepingViews();
+    const store = sidesOf('1', left.store);
     store.getState().keepTabs();
-    posted.length = 0;
 
     store.getState().askRename('left', 'a.txt');
     store.getState().keepTyped('renaming', { value: 'b.txt' });
     store.getState().keepTabs();
 
-    const other = createCommanderStore(noop);
-    other.getState().receive({
-      type: 'show',
-      tab: '1',
-      kept: posted.findLast(
-        (message): message is Extract<CommanderToHost, { type: 'keepTab' }> =>
-          message.type === 'keepTab',
-      )?.kept,
-    });
+    const back = keepingViews();
+    back.hand('1', left.keptOf('1') ?? '');
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '1' });
     other.getState().receive(withFiles(folder, 'a.txt', 'b.txt'));
     assert.deepStrictEqual(other.getState().renaming?.typed, {
       value: 'b.txt',
@@ -146,8 +142,8 @@ suite('Commander store keeping the dialogs of its tabs', () => {
   });
 
   test('leaves out whole a dialog naming so many items that keeping it would be too large, never a part of its names, keeping the others', () => {
-    const posted: CommanderToHost[] = [];
-    const store = sidesOf('1', (message) => posted.push(message));
+    const left = keepingViews();
+    const store = sidesOf('1', left.store);
     const many = Array.from(
       { length: 20_000 },
       (_, index) => `a file with a long name of its own, the ${index}th.txt`,
@@ -156,13 +152,12 @@ suite('Commander store keeping the dialogs of its tabs', () => {
     store.getState().askGoTo('right');
     store.getState().keepTabs();
 
-    const kept = posted.findLast(
-      (message): message is Extract<CommanderToHost, { type: 'keepTab' }> =>
-        message.type === 'keepTab',
-    )?.kept;
+    const kept = left.keptOf('1');
     assert.ok(kept !== undefined);
-    const other = createCommanderStore(noop);
-    other.getState().receive({ type: 'show', tab: '1', kept });
+    const back = keepingViews();
+    back.hand('1', kept);
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '1' });
     other.getState().receive(withFiles(folder, 'a.txt', 'b.txt'));
     other.getState().receive({ ...listing('C:/other', '1'), side: 'right' });
     assert.strictEqual(other.getState().deleting, undefined);

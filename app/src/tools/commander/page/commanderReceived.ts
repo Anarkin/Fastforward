@@ -154,8 +154,7 @@ export function received(
         ...(state.edited !== undefined && { edited: undefined }),
       };
     }
-    case 'closed':
-    case 'left': {
+    case 'closed': {
       const view = reduceView(state.view, message);
       const keptViewed = new Map(state.keptViewed);
       keptViewed.delete(message.tab);
@@ -194,4 +193,17 @@ export function withoutNoAccess(
   const left = new Map(noAccess);
   left.delete(tab);
   return left;
+}
+
+export function released(
+  state: CommanderSource,
+  tab: string,
+): Partial<CommanderSource> {
+  const keptViewed = new Map(state.keptViewed);
+  keptViewed.delete(tab);
+  return {
+    view: reduceView(state.view, { type: 'released', tab }),
+    keptViewed,
+    noAccess: withoutNoAccess(state.noAccess, tab),
+  };
 }

@@ -24,8 +24,12 @@ export type TabMove = Extract<
 >;
 
 export interface TabMovesHost {
-  show(page: Page, tab: string | undefined): Promise<void>;
-  left(page: Page, tab: string): void;
+  show(
+    page: Page,
+    tab: string | undefined,
+    released?: Promise<void>,
+  ): Promise<void>;
+  release(page: Page, tab: string): Promise<void>;
   save(saving: Promise<void>): void;
 }
 
@@ -270,21 +274,22 @@ export class TabMoves {
       : storage.layout;
     const layout = withMoved(before, tab, into, index, this.history, emptied);
     this.host.save(storage.setLayout(layout));
+    const page = this.pages.live(from);
+    const releasing =
+      page === undefined ? Promise.resolve() : this.host.release(page, tab);
     const there = this.pages.live(into);
-    const shown = there === undefined ? undefined : this.host.show(there, tab);
+    const shown =
+      there === undefined ? undefined : this.host.show(there, tab, releasing);
     const left = layout.find((window) => window.id === from);
+    const showing =
+      left === undefined || page === undefined
+        ? undefined
+        : this.host.show(page, left.active);
     if (left === undefined) {
+      await releasing;
       this.shellHost.closeWindow(from);
       this.pages.postWindows();
-      await shown;
-      return;
     }
-    const page = this.pages.live(from);
-    const showing =
-      page === undefined ? undefined : this.host.show(page, left.active);
-    if (page !== undefined) {
-      this.host.left(page, tab);
-    }
-    await Promise.all([shown, showing]);
+    await Promise.all([shown, showing, releasing]);
   }
 }

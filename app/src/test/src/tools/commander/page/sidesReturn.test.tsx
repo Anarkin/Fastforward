@@ -76,17 +76,19 @@ suite('A commander tab shown again', () => {
       await sidesShown(tool, 'A');
       await filtered(tool, 1, 'txt', 1);
       await sidesShown(tool, 'B');
-      for (const message of tool.posted) {
-        if (message.type === 'keepTab' && message.tab === 'A') {
-          ({ kept } = message);
+      for (const message of tool.kept) {
+        if (message.type === 'keepView' && message.tab === 'A') {
+          kept = message.view;
         }
       }
     });
     assert.ok(kept !== undefined);
+    const view = kept;
 
     await inCommanderTool(CommanderTool, async (tool) => {
       await tool.send(commanderSettings);
-      await tool.send({ type: 'show', tab: 'A', kept });
+      tool.hand('A', view);
+      await tool.send({ type: 'show', tab: 'A' });
       await tool.send(listingOf('A', 'left', 'C:\\', ['a.txt', 'b.txt']));
       await tool.send(listingOf('A', 'right', 'C:\\work', ['c.txt', 'd.txt']));
 
@@ -104,17 +106,19 @@ suite('A commander tab shown again', () => {
       await sidesShown(tool, 'A');
       await filtered(tool, 1, 'txt', 1);
       await sidesShown(tool, 'B');
-      for (const message of tool.posted) {
-        if (message.type === 'keepTab' && message.tab === 'A') {
-          ({ kept } = message);
+      for (const message of tool.kept) {
+        if (message.type === 'keepView' && message.tab === 'A') {
+          kept = message.view;
         }
       }
     });
     assert.ok(kept !== undefined);
+    const view = kept;
 
     await inCommanderTool(CommanderTool, async (tool) => {
       await tool.send(commanderSettings);
-      await tool.send({ type: 'show', tab: 'A', kept });
+      tool.hand('A', view);
+      await tool.send({ type: 'show', tab: 'A' });
       await tool.press('ArrowDown');
       await tool.send(listingOf('A', 'left', 'C:\\', ['a.txt', 'b.txt']));
       await tool.send(listingOf('A', 'right', 'C:\\work', ['c.txt', 'd.txt']));

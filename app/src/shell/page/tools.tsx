@@ -19,11 +19,13 @@ export function ToolViews() {
         post={channels.commander.post}
         listen={channels.commander.listen}
         dropFiles={channels.commander.dropFiles}
+        views={channels.commander.views}
       />
       <GitTool
         active={active === 'git'}
         post={channels.git.post}
         listen={channels.git.listen}
+        views={channels.git.views}
       />
     </>
   );

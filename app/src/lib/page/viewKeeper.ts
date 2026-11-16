@@ -1,14 +1,19 @@
 export const keepingWait = 300;
 
-export class TabKeeping {
+export interface KeptViews {
+  readonly of: (tab: string) => string | undefined;
+  readonly keep: (tab: string, view: string) => void;
+}
+
+export class ViewKeeper {
   private readonly sent = new Map<string, string>();
   private readonly due = new Set<string>();
   private timer: ReturnType<typeof setTimeout> | undefined;
   private soon = false;
 
   constructor(
-    private readonly keptOf: (tab: string) => unknown,
-    private readonly send: (tab: string, kept: string) => void,
+    private readonly views: KeptViews,
+    private readonly viewOf: (tab: string) => string | undefined,
     private readonly shown: () => string | undefined,
     private readonly wait = keepingWait,
   ) {}
@@ -40,13 +45,27 @@ export class TabKeeping {
     const due = [...this.due];
     this.due.clear();
     for (const tab of due) {
-      const kept = this.keptOf(tab);
-      const json = kept === undefined ? undefined : JSON.stringify(kept);
-      if (json !== undefined && this.sent.get(tab) !== json) {
-        this.sent.set(tab, json);
-        this.send(tab, json);
+      const view = this.viewOf(tab);
+      if (view !== undefined && this.sent.get(tab) !== view) {
+        this.sent.set(tab, view);
+        this.views.keep(tab, view);
       }
     }
+  }
+
+  handed(tab: string): string | undefined {
+    const view = this.views.of(tab);
+    if (view === undefined || view === this.sent.get(tab)) {
+      return undefined;
+    }
+    this.sent.set(tab, view);
+    return view;
+  }
+
+  release(tab: string): string | undefined {
+    const view = this.viewOf(tab);
+    this.forget(tab);
+    return view;
   }
 
   forget(tab: string): void {

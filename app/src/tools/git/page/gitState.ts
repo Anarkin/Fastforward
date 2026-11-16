@@ -115,6 +115,7 @@ export interface GitCollections {
 export interface GitActions {
   readonly receive: (message: GitToWebview) => void;
   readonly flushKept: () => void;
+  readonly releaseTab: (tab: string) => string | undefined;
   readonly dispatch: (action: TabAction) => void;
   readonly changeBookmarks: (bookmarks: readonly Bookmark[]) => void;
   readonly pull: () => void;

@@ -13,7 +13,12 @@ import {
   type CommanderSource,
   type CommanderState,
 } from './commanderState';
-import { isEditorStream, isViewerStream, received } from './commanderReceived';
+import {
+  isEditorStream,
+  isViewerStream,
+  received,
+  released,
+} from './commanderReceived';
 import { filesToCompare } from './comparing';
 import { dialogActions, type StoreParts } from './dialogActions';
 import { editorActions } from './editorActions';
@@ -27,6 +32,7 @@ import { ScrollPlaces } from './scrollPlaces';
 import { viewerActions } from './viewerActions';
 import { dialogSlots, settledDialogs, withoutParked } from './parkedDialogs';
 import { keptTabActions } from './keptTabActions';
+import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 
 const maxCameIcons = 5000;
 
@@ -40,6 +46,7 @@ export function createCommanderStore(
     files: readonly File[],
     message: CommanderDrop,
   ) => void = () => {},
+  views: ToolViews = noViews,
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
   const cameIcons = new Map<string, string>();
@@ -126,7 +133,15 @@ export function createCommanderStore(
     const viewer = viewerActions(parts);
     const editor = editorActions(parts);
     const flat = flatActions(parts, flatOptions);
-    const kept = keptTabActions(parts, scrolls, viewer, editor);
+    const kept = keptTabActions(parts, scrolls, viewer, editor, views);
+    const forgetTab = (tab: string) => {
+      viewer.forget(tab);
+      editor.forget(tab);
+      set((state) => ({
+        filters: withoutTab(state.filters, tab),
+        parked: withoutParked(state.parked, tab),
+      }));
+    };
     api.subscribe((state, before) => {
       if (
         state.view !== before.view ||
@@ -149,9 +164,6 @@ export function createCommanderStore(
       ...commanderDefaults,
       ...initial,
       receive: (message) => {
-        if (message.type === 'left') {
-          kept.forget(message.tab, true);
-        }
         if (isViewerStream(message)) {
           viewer.heard(message);
           return;
@@ -179,21 +191,11 @@ export function createCommanderStore(
           kept.leaving(leaving);
         }
         if (message.type === 'closed') {
-          kept.forget(message.tab, false);
+          kept.forget(message.tab);
+          forgetTab(message.tab);
         }
         if (message.type === 'viewing') {
           viewer.viewingCame(message.tab);
-        }
-        if (message.type === 'left') {
-          scrolls.forget(`${message.tab} `);
-        }
-        if (message.type === 'closed' || message.type === 'left') {
-          viewer.forget(message.tab);
-          editor.forget(message.tab);
-          set((state) => ({
-            filters: withoutTab(state.filters, message.tab),
-            parked: withoutParked(state.parked, message.tab),
-          }));
         }
       },
       ...viewer.actions,
@@ -409,6 +411,16 @@ export function createCommanderStore(
         kept.changed(tabOfScroll(key));
       },
       keepTabs: () => kept.flush(),
+      releaseTab: (tab) => {
+        if (!kept.knows(tab)) {
+          return undefined;
+        }
+        const view = kept.release(tab);
+        announced(() => set((state) => released(state, tab)));
+        scrolls.forget(`${tab} `);
+        forgetTab(tab);
+        return view;
+      },
       iconTicketOf: (url) => cameIcons.get(url),
       iconCame: (url, ticket) => {
         cameIcons.delete(url);

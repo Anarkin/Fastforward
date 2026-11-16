@@ -91,6 +91,8 @@ export type ToHost =
       readonly window?: string;
     }
   | { readonly type: 'preloadTab'; readonly tab: string }
+  | { readonly type: 'keepView'; readonly tab: string; readonly view: string }
+  | { readonly type: 'released'; readonly tab: string; readonly view: string }
   | { readonly type: 'setTextView'; readonly view: TextView }
   | { readonly type: 'setImageView'; readonly view: ImageView }
   | { readonly type: 'newTab'; readonly tool: ToolId }
@@ -121,6 +123,8 @@ export type ToWebview =
     }
   | { readonly type: 'windows'; readonly windows: readonly WindowInfo[] }
   | { readonly type: 'tabVisit'; readonly visit?: TabVisit }
+  | { readonly type: 'view'; readonly tab: string; readonly view: string }
+  | { readonly type: 'release'; readonly tab: string }
   | { readonly type: 'tearsOff'; readonly allowed: boolean }
   | { readonly type: 'dateFormat'; readonly format: string }
   | { readonly type: 'fileColors'; readonly groups: readonly FileColor[] }

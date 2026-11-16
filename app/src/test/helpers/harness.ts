@@ -239,6 +239,8 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   tabStrip: true,
   visitIndex: true,
   preloadTab: true,
+  keepView: true,
+  released: true,
   newTab: true,
   newWindow: true,
   closeWindow: true,
@@ -334,9 +336,19 @@ export function attach(
   connection: Connection;
 } {
   const page = new FakePage();
-  const opened = shellOf(view).connect(window, (message) =>
-    page.receive(message),
-  );
+  const opened = shellOf(view).connect(window, (message) => {
+    page.receive(message);
+    if (message.type === 'release' && page.releases) {
+      const { tab } = message;
+      queueMicrotask(() => {
+        void opened.receive({
+          type: 'released',
+          tab,
+          view: page.views.get(tab) ?? '',
+        });
+      });
+    }
+  });
   const connection: Connection = {
     receive: (message) =>
       opened.receive(

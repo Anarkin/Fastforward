@@ -150,7 +150,7 @@ export type ViewAction =
     }
   | { readonly type: 'hide' }
   | CommanderToWebviewOf<'closed'>
-  | CommanderToWebviewOf<'left'>
+  | { readonly type: 'released'; readonly tab: string }
   | {
       readonly type: 'restore';
       readonly tab: string;
@@ -310,7 +310,7 @@ export function reduceView(
         kept: without(view.kept, action.tab),
         viewers: without(view.viewers, action.tab),
       };
-    case 'left':
+    case 'released':
       return view.tab === action.tab
         ? view
         : {

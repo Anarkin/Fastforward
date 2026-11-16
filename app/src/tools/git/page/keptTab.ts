@@ -1,6 +1,5 @@
 import { keptFocusFrom, type KeptFocus } from '../../../lib/page/keptFocus';
 import type { Search } from '../../../lib/shared/searchOptions';
-import type { GitToHost } from '../shared/protocol';
 import { columnOrder, type ColumnName } from './activeColumn';
 import { diffPlaceKey, type DiffPlace } from './diffPlace';
 import type { ScrollAnchor } from './diffScrollAnchor';
@@ -11,6 +10,7 @@ import type { KeptPlaces } from './keptPlaces';
 import type { Highlighted } from './locationHighlight';
 import { withEntry, withKey } from './tabKeyed';
 import type { FilterFolds, ViewFolders } from './viewFolders';
+import { mostWorktrees } from './tabWorktrees';
 import {
   aBoolean,
   aNumber,
@@ -93,11 +93,11 @@ export function worktreeScope(root: string): string {
   return tabScopeOf(undefined, root);
 }
 
-export function compareScope(tab: string): string {
+function compareScope(tab: string): string {
   return tabScopeOf(tab, undefined);
 }
 
-function targetOf(scope: string): KeptTarget | undefined {
+export function targetOf(scope: string): KeptTarget | undefined {
   const [kind, id] = partsOf(scope) ?? [];
   if (typeof id !== 'string') {
     return undefined;
@@ -238,33 +238,27 @@ function keptCompareOf(
   return scopeKept(source, places, scope, scope);
 }
 
-export function keepingOf(
+export function tabViewOf(
   source: GitSource,
   places: TabPlaces,
-  scope: string,
-): GitToHost | undefined {
-  const target = targetOf(scope);
-  if (target?.kind === 'worktree') {
-    return {
-      type: 'keepTab',
-      root: target.root,
-      kept: JSON.stringify(keptWorktreeOf(source, places, target.root)),
-    };
-  }
-  return target === undefined
-    ? undefined
-    : {
-        type: 'keepCompare',
-        tab: target.tab,
-        kept: JSON.stringify(keptCompareOf(source, places, target.tab)),
-      };
+  worktrees: readonly string[],
+  compare: string | undefined,
+): string {
+  return JSON.stringify(
+    compare === undefined
+      ? {
+          worktrees: worktrees.map((root) => [
+            root,
+            keptWorktreeOf(source, places, root),
+          ]),
+        }
+      : { compare: keptCompareOf(source, places, compare) },
+  );
 }
 
-export function blankKeeping(message: GitToHost): boolean {
-  return (
-    (message.type === 'keepTab' || message.type === 'keepCompare') &&
-    message.kept === '{}'
-  );
+export function placeScopeOf(key: string): string | undefined {
+  const [scope] = partsOf(key) ?? [];
+  return typeof scope === 'string' ? scope : undefined;
 }
 
 const aColumn: Decode<ColumnName> = (value) =>
@@ -454,6 +448,18 @@ export function parsedKept(kept: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+export function handedWorktrees(kept: unknown): [string, unknown][] {
+  return isRecord(kept)
+    ? entriesOf(kept.worktrees, (worktree: unknown) => worktree).slice(
+        -mostWorktrees,
+      )
+    : [];
+}
+
+export function handedCompare(kept: unknown): unknown {
+  return isRecord(kept) ? kept.compare : undefined;
 }
 
 export function restoredWorktree(

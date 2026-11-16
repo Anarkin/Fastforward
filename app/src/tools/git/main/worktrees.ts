@@ -15,7 +15,6 @@ export interface WorktreesHost {
   readonly repositoryOf: (root: string) => string;
   readonly isActive: (root: string) => boolean;
   readonly sendTabs: (session: Session) => void;
-  readonly forgetKept: (root: string) => void;
 }
 
 function worktreeInfos(worktrees: readonly Worktree[]): WorktreeInfo[] {
@@ -118,7 +117,6 @@ export class Worktrees {
 
   forgetTab(root: string, tab: TabWork): void {
     this.tabStates.delete(root);
-    this.host.forgetKept(root);
     keptGits.stopIn(root);
     tab.closed.abort();
     tab.loadingFiles.abort();

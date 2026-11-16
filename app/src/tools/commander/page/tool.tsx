@@ -21,6 +21,7 @@ import { CommanderStore, createCommanderStore } from './store';
 import { sideToFocus } from './sideFocus';
 import { focusBack, type KeptFocus } from '../../../lib/page/keptFocus';
 import { shareOf } from './sideShare';
+import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 
 const ownMoves = ['pointerdown', 'keydown'] as const;
 
@@ -29,14 +30,16 @@ export function CommanderTool({
   post,
   listen,
   dropFiles,
+  views = noViews,
 }: {
   active: boolean;
   post: (message: CommanderToHost) => void;
   listen: (handler: (message: CommanderToWebview) => void) => () => void;
   dropFiles?: (files: readonly File[], message: CommanderDrop) => void;
+  views?: ToolViews;
 }) {
   const [store] = useState(() =>
-    createCommanderStore(post, {}, undefined, dropFiles),
+    createCommanderStore(post, {}, undefined, dropFiles, views),
   );
   const tab = useStore(store, (state) => state.view.tab);
   const viewsFile = useStore(
@@ -79,6 +82,7 @@ export function CommanderTool({
   };
 
   useEffect(() => listen(store.getState().receive), [listen, store]);
+  useEffect(() => views.onRelease(store.getState().releaseTab), [views, store]);
   useEffect(() => {
     const flush = () => store.getState().keepTabs();
     window.addEventListener('pagehide', flush);

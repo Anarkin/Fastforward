@@ -27,7 +27,7 @@ export function createShellStore(
   ) => void = () => {},
 ): StoreApi<ShellState> {
   let noticesShown = 0;
-  const { channels, deliver } = toolChannels(post, dropFiles);
+  const { channels, deliver, views } = toolChannels(post, dropFiles);
   const askLooks = lookAsker((paths) => post({ type: 'partLooks', paths }));
   return createStore<ShellState>()((set, get) => {
     return {
@@ -36,7 +36,14 @@ export function createShellStore(
       receive: (message) => {
         if (message.type === 'tool') {
           deliver(message.tool, message.message);
+        } else if (message.type === 'view') {
+          views.handed(message.tab, message.view);
+        } else if (message.type === 'release') {
+          views.release(message.tab);
         } else {
+          if (message.type === 'tabs') {
+            views.held(message.tabs.map((tab) => tab.id));
+          }
           set((state) => received(state, message, () => ++noticesShown));
         }
       },

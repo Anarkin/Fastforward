@@ -112,10 +112,6 @@ export function wellFormed(message: GitToHost): boolean {
       return diffLayouts.includes(message.layout);
     case 'loadCompareTexts':
       return areTextRequests(message.requests);
-    case 'keepTab':
-      return isString(message.root) && isString(message.kept);
-    case 'keepCompare':
-      return isString(message.tab) && isString(message.kept);
     default:
       return isString(message.root) && wellFormedInTab(message);
   }

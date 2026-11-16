@@ -53,10 +53,7 @@ export class CommanderMessages {
     private readonly postDrives: (page: Page) => Promise<void>,
   ) {}
 
-  async receive(
-    page: Page,
-    message: Exclude<CommanderToHost, { readonly type: 'keepTab' }>,
-  ): Promise<void> {
+  async receive(page: Page, message: CommanderToHost): Promise<void> {
     switch (message.type) {
       case 'editFile':
         return this.fileCommands.editFile(

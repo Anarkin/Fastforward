@@ -4,7 +4,7 @@ import type { PaneFilter } from './commanderState';
 import type { StoreParts } from './dialogActions';
 import type { ScrollPlaces } from './scrollPlaces';
 import { filterKey, withoutTab } from './sideFilters';
-import { TabKeeping } from './tabKeeping';
+import { ViewKeeper, type KeptViews } from '../../../lib/page/viewKeeper';
 import {
   keptTabOf,
   sidesKeptOf,
@@ -51,10 +51,11 @@ export function parsedOf(kept: string): unknown {
 }
 
 export function keptTabActions(
-  { set, get, post }: StoreParts,
+  { set, get }: StoreParts,
   scrolls: ScrollPlaces,
   viewer: Memory<ViewerKept>,
   editor: Memory<EditorKept>,
+  views: KeptViews,
 ) {
   const kinds = new Map<string, TabKind>();
   const keptOf = (tab: string): TabKept | undefined => {
@@ -73,9 +74,12 @@ export function keptTabActions(
         return undefined;
     }
   };
-  const keeping = new TabKeeping(
-    keptOf,
-    (tab, kept) => post({ type: 'keepTab', tab, kept }),
+  const keeping = new ViewKeeper(
+    views,
+    (tab) => {
+      const kept = keptOf(tab);
+      return kept === undefined ? undefined : JSON.stringify(kept);
+    },
     () => get().view.tab,
   );
   const restore = (tab: string, kind: TabKind, value: string) => {
@@ -115,8 +119,12 @@ export function keptTabActions(
     shown: (message: CommanderToWebviewOf<'show'>) => {
       const kind = kindOf(message);
       kinds.set(message.tab, kind);
-      if (message.kept !== undefined && get().view.tab !== message.tab) {
-        restore(message.tab, kind, message.kept);
+      const view =
+        get().view.tab === message.tab
+          ? undefined
+          : keeping.handed(message.tab);
+      if (view !== undefined) {
+        restore(message.tab, kind, view);
       }
     },
     leaving: (tab: string | undefined) => {
@@ -124,10 +132,13 @@ export function keptTabActions(
         keeping.left(tab);
       }
     },
-    forget: (tab: string, flushed: boolean) => {
-      if (flushed) {
-        keeping.left(tab);
-      }
+    knows: (tab: string) => kinds.has(tab),
+    release: (tab: string) => {
+      const view = keeping.release(tab);
+      kinds.delete(tab);
+      return view;
+    },
+    forget: (tab: string) => {
       keeping.forget(tab);
       kinds.delete(tab);
     },

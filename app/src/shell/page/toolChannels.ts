@@ -1,5 +1,6 @@
 import type { ToHost } from '../shared/protocol';
 import type { ToHostOf, ToolId, ToWebviewOfTool } from '../shared/tools';
+import { pageViews, type PageViews, type ToolViews } from './toolViews';
 
 interface ToolChannel<K extends ToolId> {
   readonly post: (message: ToHostOf<K>) => void;
@@ -7,6 +8,7 @@ interface ToolChannel<K extends ToolId> {
   readonly listen: (
     handler: (message: ToWebviewOfTool<K>) => void,
   ) => () => void;
+  readonly views: ToolViews;
 }
 
 export type ToolChannels = { readonly [K in ToolId]: ToolChannel<K> };
@@ -44,31 +46,37 @@ export function toolChannels(
     tool: K,
     message: ToWebviewOfTool<K>,
   ) => void;
+  readonly views: PageViews;
 } {
   const listeners: ToolListeners = {
     terminal: new Set(),
     commander: new Set(),
     git: new Set(),
   };
+  const views = pageViews(post);
   const channels: ToolChannels = {
     terminal: {
       post: (message) => post({ type: 'tool', tool: 'terminal', message }),
       dropFiles: (files, message) => dropFiles(files, 'terminal', message),
       listen: (handler) => listening(listeners.terminal, handler),
+      views: views.views,
     },
     commander: {
       post: (message) => post({ type: 'tool', tool: 'commander', message }),
       dropFiles: (files, message) => dropFiles(files, 'commander', message),
       listen: (handler) => listening(listeners.commander, handler),
+      views: views.views,
     },
     git: {
       post: (message) => post({ type: 'tool', tool: 'git', message }),
       dropFiles: (files, message) => dropFiles(files, 'git', message),
       listen: (handler) => listening(listeners.git, handler),
+      views: views.views,
     },
   };
   return {
     channels,
     deliver: (tool, message) => deliver(listeners, tool, message),
+    views,
   };
 }

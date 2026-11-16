@@ -77,9 +77,12 @@ export class TabPosts {
 
   sendTabs(session: Session): void {
     const active = this.sessions.activeRepositoryIn(session);
+    const worktree = this.sessions.activeWorktreeIn(session);
+    const tab = this.shell().active(session.page);
     session.post({
       type: 'worktrees',
-      worktree: this.sessions.activeWorktreeIn(session),
+      ...(worktree !== undefined && tab !== undefined && { tab: tab.id }),
+      worktree,
       worktrees: active === undefined ? [] : this.worktreeLists.get(active),
     });
     this.sendRecent(session);

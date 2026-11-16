@@ -21,14 +21,14 @@ import {
   tabScopeOf,
 } from '../../../../../tools/git/page/gitSelectors';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
-import type { GitToHost } from '../../../../../tools/git/shared/protocol';
+import type { ToHost } from '../../../../../shell/shared/protocol';
 import { at, compare, posting, shown } from './storeFixtures';
 
-const showing = (worktree: string | undefined) => ({
-  type: 'worktrees' as const,
-  worktree,
+const elsewhere = {
+  type: 'worktrees',
+  worktree: undefined,
   worktrees: [],
-});
+} as const;
 
 const filesOf = (hash: string) => ({
   type: 'files' as const,
@@ -36,12 +36,22 @@ const filesOf = (hash: string) => ({
   files: [],
 });
 
-const keptSent = (posted: readonly GitToHost[]) =>
+const keptSent = (posted: readonly ToHost[]) =>
   posted.flatMap((message) =>
-    message.type === 'keepTab' || message.type === 'keepCompare'
-      ? [{ ...message, kept: JSON.parse(message.kept) as unknown }]
+    message.type === 'keepView'
+      ? [{ tab: message.tab, view: JSON.parse(message.view) as unknown }]
       : [],
   );
+
+const viewOf = (posted: readonly ToHost[], tab = '1') =>
+  posted.findLast(
+    (message): message is Extract<ToHost, { type: 'keepView' }> =>
+      message.type === 'keepView' && message.tab === tab,
+  )?.view;
+
+const worktreesOf = (...worktrees: (readonly [string, unknown])[]) => ({
+  worktrees,
+});
 
 const scope = tabScopeOf(undefined, '/repo');
 
@@ -115,7 +125,7 @@ function leftAsWorked(store: StoreApi<GitState>): void {
   state().pickLanguage(languageKey, 'python');
 }
 
-suite('Git store, keeping each tab with the main process', () => {
+suite('Git store, keeping the view of each tab', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -124,63 +134,92 @@ suite('Git store, keeping each tab with the main process', () => {
     vi.useRealTimers();
   });
 
-  test('sends what a worktree keeps once it settles, at once once the worktree is left, and only once it changed', () => {
-    const { posted, store } = posting();
+  test('sends the view of a tab, holding its worktrees, once it settles, at once once the tab is left, and only once it changed', () => {
+    const { shell, store } = posting();
     store.getState().receive(shown());
     store.getState().toggleCommits();
     vi.advanceTimersByTime(250);
-    assert.deepStrictEqual(keptSent(posted), []);
+    assert.deepStrictEqual(keptSent(shell), []);
     vi.advanceTimersByTime(100);
-    assert.deepStrictEqual(keptSent(posted), [
-      { type: 'keepTab', root: '/repo', kept: { commitsHidden: true } },
+    assert.deepStrictEqual(keptSent(shell), [
+      { tab: '1', view: worktreesOf(['/repo', { commitsHidden: true }]) },
     ]);
     store.getState().search(true);
-    store.getState().receive(showing('/other'));
-    assert.deepStrictEqual(keptSent(posted).slice(1), [
+    store.getState().receive(shown([], '/other', '2'));
+    assert.deepStrictEqual(keptSent(shell).slice(1), [
       {
-        type: 'keepTab',
-        root: '/repo',
-        kept: { commitsHidden: true, searching: true },
+        tab: '1',
+        view: worktreesOf(['/repo', { commitsHidden: true, searching: true }]),
       },
     ]);
     vi.advanceTimersByTime(1000);
-    assert.strictEqual(keptSent(posted).length, 2);
+    assert.strictEqual(keptSent(shell).length, 2);
   });
 
-  test('sends what every tab keeps at once once asked, as the page goes away', () => {
-    const { posted, store } = posting();
+  test('marks the view of a tab changed by every change of what it keeps, a scroll or a focus alone too, so a tab moved comes back as it was left', () => {
+    const { shell, store } = posting();
+    const state = () => store.getState();
+    state().receive(shown());
+    state().receive(filesOf(at));
+    const changes = [
+      () => state().keepFilesScroll(view, 80),
+      () => state().keepLocationsScroll(48),
+      () => state().keepFocus(scope, { name: 'files' }),
+      () => state().keepDiffPlace(scope, at, { top: 120 }),
+    ];
+    for (const change of changes) {
+      change();
+      vi.advanceTimersByTime(300);
+    }
+    const scrolled = { filesScrolls: [[view, 80]] };
+    const located = { ...scrolled, locationsScroll: 48 };
+    const focused = { ...located, focus: { name: 'files' } };
+    const placed = {
+      ...focused,
+      places: [
+        [at, { top: 120, sideways: 0, left: 0, toggled: [], current: 0 }],
+      ],
+    };
+    assert.deepStrictEqual(
+      keptSent(shell).map((sent) => sent.view),
+      [scrolled, located, focused, placed].map((kept) =>
+        worktreesOf(['/repo', kept]),
+      ),
+    );
+  });
+
+  test('sends the view of every tab at once once asked, as the page goes away', () => {
+    const { shell, store } = posting();
     store.getState().receive(shown());
     store.getState().activateColumn('files');
     store.getState().flushKept();
-    assert.deepStrictEqual(keptSent(posted), [
-      { type: 'keepTab', root: '/repo', kept: { column: 'files' } },
+    assert.deepStrictEqual(keptSent(shell), [
+      { tab: '1', view: worktreesOf(['/repo', { column: 'files' }]) },
     ]);
   });
 
-  test('brings a worktree back from what the main process kept of it as it was left in another page, replacing what this page held of it, and tells the main process at once that this page holds it now', () => {
+  test('brings a tab back from the view handed to the page as it was left in another page, each of its worktrees, replacing what this page held of them', () => {
     const left = posting();
+    left.store.getState().receive(shown([], '/repo-wt'));
+    left.store.getState().activateColumn('diff');
     leftAsWorked(left.store);
     const asLeft = looks(left.store);
-    left.store.getState().receive(showing('/other'));
-    const [sent] = keptSent(left.posted);
-    assert.ok(sent?.type === 'keepTab');
+    left.store.getState().receive(elsewhere);
+    const sent = viewOf(left.shell);
+    assert.ok(sent !== undefined);
     const back = posting();
     back.store.getState().receive(shown());
     back.store.getState().activateColumn('files');
-    back.store.getState().receive(showing(undefined));
-    const before = keptSent(back.posted).length;
-    back.store.getState().receive({
-      type: 'keptTab',
-      root: '/repo',
-      kept: JSON.stringify(sent.kept),
-    });
-    assert.deepStrictEqual(keptSent(back.posted).slice(before), [sent]);
+    back.store.getState().receive(elsewhere);
+    back.views.handed('1', sent);
     back.store.getState().receive(shown());
     back.store.getState().receive(filesOf(at));
     assert.deepStrictEqual(looks(back.store), asLeft);
+    back.store.getState().receive(shown([], '/repo-wt'));
+    assert.strictEqual(activeColumnOf(back.store.getState()), 'diff');
   });
 
-  test('brings a compare tab back from what the main process kept of it, its find, focus, place and language', () => {
+  test('brings a compare tab back from the view handed to the page, its find, focus, place and language', () => {
     const left = posting();
     const compared = tabScopeOf('7', undefined);
     const selection = '/a.txt\n/b.txt';
@@ -194,59 +233,67 @@ suite('Git store, keeping each tab with the main process', () => {
     state().keepDiffPlace(compared, selection, { top: 30, current: 1 });
     state().pickLanguage(compareLanguageKey('7'), 'rust');
     state().receive({ type: 'compare', compare: undefined });
-    const [sent] = keptSent(left.posted);
-    assert.ok(sent?.type === 'keepCompare');
-    assert.strictEqual(sent.tab, '7');
-    const back = posting().store;
-    back.getState().receive({
-      type: 'keptCompare',
-      tab: '7',
-      kept: JSON.stringify(sent.kept),
-    });
+    const sent = viewOf(left.shell, '7');
+    assert.ok(sent !== undefined);
+    const back = posting();
+    back.views.handed('7', sent);
+    back.store.getState().receive({ type: 'compare', compare: compare('7') });
     const compareLooks = (store: StoreApi<GitState>) => [
       diffFindOf(compared)(store.getState()),
       store.getState().keptFocusOf(compared),
       store.getState().diffPlaceOf(compared, selection),
       pickedFor(compareLanguageKey('7'))(store.getState()),
     ];
-    assert.deepStrictEqual(compareLooks(back), compareLooks(left.store));
+    assert.deepStrictEqual(compareLooks(back.store), compareLooks(left.store));
   });
 
-  test('lets go of what it keeps of the worktrees and compare tabs the main process names, sending what it held of them first, and sends nothing more of them until it shows them again', () => {
-    const { posted, store } = posting();
+  test('lets go of a tab released, giving its view as it is at once, the changes not sent yet too, and sends nothing more of it until it shows it again', () => {
+    const { shell, store, views } = posting();
     const state = () => store.getState();
     const compared = tabScopeOf('7', undefined);
+    state().receive({ type: 'compare', compare: compare('7') });
+    state().keepDiffFind(compared, {
+      finding: true,
+      search: { query: 'eve', options: plainSearch },
+    });
+    state().receive({ type: 'compare', compare: undefined });
     state().receive(shown());
     state().receive(filesOf(at));
     state().toggleCommits();
     state().keepFocus(scope, { name: 'files' });
     state().keepFilesScroll(view, 80);
-    state().keepDiffFind(compared, {
-      finding: true,
-      search: { query: 'eve', options: plainSearch },
-    });
-    state().receive({ type: 'forgetTabs', roots: ['/repo'], compares: ['7'] });
-    assert.deepStrictEqual(keptSent(posted), [
-      {
-        type: 'keepTab',
-        root: '/repo',
-        kept: {
-          commitsHidden: true,
-          filesScrolls: [[view, 80]],
-          focus: { name: 'files' },
-        },
-      },
-      {
-        type: 'keepCompare',
-        tab: '7',
-        kept: {
-          find: {
-            finding: true,
-            search: { query: 'eve', options: plainSearch },
+    const before = keptSent(shell).length;
+
+    for (const tab of ['1', '7', '9']) {
+      views.release(tab);
+    }
+    const released = shell.flatMap((message) =>
+      message.type === 'released' ? [message.view] : [],
+    );
+    assert.deepStrictEqual(
+      released.map((each) =>
+        each === '' ? each : (JSON.parse(each) as unknown),
+      ),
+      [
+        worktreesOf([
+          '/repo',
+          {
+            commitsHidden: true,
+            filesScrolls: [[view, 80]],
+            focus: { name: 'files' },
+          },
+        ]),
+        {
+          compare: {
+            find: {
+              finding: true,
+              search: { query: 'eve', options: plainSearch },
+            },
           },
         },
-      },
-    ]);
+        '',
+      ],
+    );
     assert.deepStrictEqual(
       [
         commitsShownOf(state()),
@@ -258,52 +305,81 @@ suite('Git store, keeping each tab with the main process', () => {
     );
     state().activateColumn('diff');
     vi.advanceTimersByTime(1000);
-    assert.strictEqual(keptSent(posted).length, 2);
-    state().receive(showing('/other'));
+    assert.strictEqual(keptSent(shell).length, before);
+    state().receive(elsewhere);
     state().receive(shown());
     state().activateColumn('files');
     vi.advanceTimersByTime(1000);
-    assert.deepStrictEqual(keptSent(posted).slice(2), [
-      { type: 'keepTab', root: '/repo', kept: { column: 'files' } },
+    assert.deepStrictEqual(keptSent(shell).slice(before), [
+      { tab: '1', view: worktreesOf(['/repo', { column: 'files' }]) },
     ]);
   });
 
-  test('takes of what the main process kept only what is well formed, field by field, as it comes from a page', () => {
-    const { store } = posting();
-    store.getState().receive({
-      type: 'keptTab',
-      root: '/repo',
-      kept: JSON.stringify({
-        commitsHidden: 'yes',
-        searching: true,
-        column: 'nowhere',
-        search: { query: 7, options: plainSearch },
-        filter: { query: 'src', options: plainSearch },
-        folders: { view, open: ['a', 3], closed: [] },
-        locationsScroll: Number.NaN,
-        filesScrolls: [
-          [view, 'far'],
-          [view, 80],
-        ],
-        places: [
-          [at, { top: 'far' }],
+  test('keeps in the view of a tab the twenty worktrees it showed last', () => {
+    const { shell, store } = posting();
+    for (let index = 0; index < 25; index++) {
+      store.getState().receive(shown([], `/w${index}`));
+    }
+    store.getState().receive(shown([], '/w3'));
+    store.getState().toggleCommits();
+    store.getState().flushKept();
+    const sent = viewOf(shell);
+    assert.ok(sent !== undefined);
+    const parsed: unknown = JSON.parse(sent);
+    assert.ok(
+      typeof parsed === 'object' &&
+        parsed !== null &&
+        'worktrees' in parsed &&
+        Array.isArray(parsed.worktrees),
+    );
+    assert.deepStrictEqual(
+      parsed.worktrees.map((entry: unknown) =>
+        Array.isArray(entry) ? (entry[0] as unknown) : entry,
+      ),
+      [...Array.from({ length: 19 }, (_, index) => `/w${index + 6}`), '/w3'],
+    );
+  });
+
+  test('takes of a view handed only what is well formed, field by field, as it comes from a page', () => {
+    const { store, views } = posting();
+    views.handed(
+      '1',
+      JSON.stringify(
+        worktreesOf(
+          ['/other', 'nothing'],
           [
-            at,
+            '/repo',
             {
-              top: 5,
-              sideways: 0,
-              left: 0,
-              toggled: [['a.txt', true]],
-              current: 1,
+              commitsHidden: 'yes',
+              searching: true,
+              column: 'nowhere',
+              search: { query: 7, options: plainSearch },
+              filter: { query: 'src', options: plainSearch },
+              folders: { view, open: ['a', 3], closed: [] },
+              locationsScroll: Number.NaN,
+              filesScrolls: [
+                [view, 'far'],
+                [view, 80],
+              ],
+              places: [
+                [at, { top: 'far' }],
+                [
+                  at,
+                  {
+                    top: 5,
+                    sideways: 0,
+                    left: 0,
+                    toggled: [['a.txt', true]],
+                    current: 1,
+                  },
+                ],
+              ],
+              focus: { name: 'diff', selection: [1, 'x', 'forward'] },
             },
           ],
-        ],
-        focus: { name: 'diff', selection: [1, 'x', 'forward'] },
-      }),
-    });
-    store
-      .getState()
-      .receive({ type: 'keptTab', root: '/other', kept: 'nothing' });
+        ),
+      ),
+    );
     store.getState().receive(shown());
     store.getState().receive(filesOf(at));
     const state = store.getState();
@@ -357,20 +433,16 @@ suite('Git store, keeping each tab with the main process', () => {
       ),
     });
     state().flushKept();
-    const sent = keptSent(left.posted).at(-1);
-    assert.ok(sent?.type === 'keepTab');
-    const back = posting().store;
-    back.getState().receive(shown());
-    back.getState().receive({
-      type: 'keptTab',
-      root: '/repo',
-      kept: JSON.stringify(sent.kept),
-    });
-    back.getState().receive(filesOf(at));
+    const sent = viewOf(left.shell);
+    assert.ok(sent !== undefined);
+    const back = posting();
+    back.views.handed('1', sent);
+    back.store.getState().receive(shown());
+    back.store.getState().receive(filesOf(at));
 
-    const folders = shownFoldersOf(back.getState());
+    const folders = shownFoldersOf(back.store.getState());
     assert.strictEqual(folders.open.size + folders.closed.size, 1000);
-    const toggled = locationsOf(back.getState())?.toggled;
+    const toggled = locationsOf(back.store.getState())?.toggled;
     assert.strictEqual(toggled?.size, 1000);
     assert.ok(toggled.has('branch:1499') && !toggled.has('branch:0'));
   });

@@ -10,6 +10,8 @@ import type {
 } from '../../../../../tools/commander/shared/protocol';
 import { noop } from '../../../../helpers/fixtures';
 import { terminalCells } from '../../../../../lib/page/cellTable';
+import type { ToHost } from '../../../../../shell/shared/protocol';
+import type { ToolViews } from '../../../../../shell/page/toolViews';
 
 const toolScreen = 10;
 
@@ -112,6 +114,8 @@ export interface ShownTool {
   readonly window: JSDOM['window'];
   readonly document: Document;
   readonly posted: CommanderToHost[];
+  readonly kept: ToHost[];
+  readonly hand: (tab: string, view: string) => void;
   readonly send: (message: CommanderToWebview) => Promise<void>;
   readonly shown: (active: boolean) => Promise<void>;
   readonly press: (
@@ -137,6 +141,7 @@ type Tool = (props: {
   readonly listen: (
     handler: (message: CommanderToWebview) => void,
   ) => () => void;
+  readonly views?: ToolViews;
 }) => ReactNode;
 
 export async function inCommanderTool(
@@ -205,7 +210,8 @@ export async function inCommanderTool(
     const posted: CommanderToHost[] = [];
     const answered = new Set<CommanderToHost>();
     let told: (message: CommanderToWebview) => void = noop;
-    const shell = createShellStore(noop);
+    const kept: ToHost[] = [];
+    const shell = createShellStore((message) => kept.push(message));
     const draw = (active: boolean) =>
       root.render(
         createElement(
@@ -218,6 +224,7 @@ export async function inCommanderTool(
               told = handler;
               return noop;
             },
+            views: shell.getState().channels.commander.views,
           }),
         ),
       );
@@ -234,6 +241,9 @@ export async function inCommanderTool(
       window: dom.window,
       document,
       posted,
+      kept,
+      hand: (tab, view) =>
+        shell.getState().receive({ type: 'view', tab, view }),
       send,
       shown: (active) => act(async () => draw(active)),
       press: (key, modifiers = {}) =>

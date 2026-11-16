@@ -382,6 +382,7 @@ export interface CommanderActions {
   readonly countSizes: (side: Side, names: readonly string[]) => void;
   readonly keepScroll: (key: string, offset: number) => void;
   readonly keepTabs: () => void;
+  readonly releaseTab: (tab: string) => string | undefined;
   readonly saveThumbnail: (
     source: IconSource,
     box: number,

@@ -3,6 +3,7 @@ import type { ToolId } from '../shared/tools';
 import type { Pages } from './pages';
 import type { Storage } from './storage';
 import type { TabHistory } from './tabHistory';
+import type { TabViews } from './tabViews';
 import type { Page, Tab, Tools } from './toolContract';
 import {
   nextTabId,
@@ -28,6 +29,7 @@ export class Tabs {
     private readonly tools: Tools,
     private readonly pages: Pages,
     private readonly history: TabHistory,
+    private readonly views: TabViews,
     private readonly host: TabsHost,
   ) {}
 
@@ -35,7 +37,11 @@ export class Tabs {
     this.shownTools.delete(page);
   }
 
-  async show(page: Page, id: string | undefined): Promise<void> {
+  async show(
+    page: Page,
+    id: string | undefined,
+    released?: Promise<void>,
+  ): Promise<void> {
     const { storage } = this;
     const window = this.pages.windowOf(page);
     const active =
@@ -61,9 +67,17 @@ export class Tabs {
     if (shown !== undefined && shown !== active?.tool) {
       this.tools[shown].hide(page);
     }
-    if (active !== undefined) {
-      await this.tools[active.tool].show(page, active);
+    if (active === undefined) {
+      return;
     }
+    if (released !== undefined) {
+      await released;
+      if (page.disposed || this.pages.windowOf(page).active !== active.id) {
+        return;
+      }
+    }
+    this.views.handTo(page, active.id);
+    await this.tools[active.tool].show(page, active);
   }
 
   async close(page: Page, id: string): Promise<void> {
@@ -80,6 +94,7 @@ export class Tabs {
     this.history.forget(id);
     this.host.save(storage.setLayout(layout));
     this.tools[closed.tool].closed(page, closed);
+    this.views.drop(id);
     if (!layout.some((each) => each.id === window.id)) {
       this.host.closeWindow(window.id);
       this.pages.postWindows();
@@ -166,6 +181,7 @@ export class Tabs {
       return;
     }
     this.tools[viewed.tool].closed(page, viewed);
+    this.views.drop(id);
     this.host.save(
       storage.setLayout(
         withChanged(storage.layout, {

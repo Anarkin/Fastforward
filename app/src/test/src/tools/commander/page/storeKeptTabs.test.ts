@@ -2,29 +2,22 @@ import * as assert from 'node:assert';
 import { EditorState } from '@codemirror/state';
 import { suite, test, vi } from 'vitest';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
-import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
-import { keepingWait } from '../../../../../tools/commander/page/tabKeeping';
+import { keepingWait } from '../../../../../lib/page/viewKeeper';
 import { viewerChoices } from '../../../../../tools/commander/page/view';
 import { filterOf } from '../../../../../tools/commander/page/sideFilters';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { noKeptViewer } from '../../../../../tools/commander/page/viewerKept';
 import { noKeptEditing } from '../../../../../tools/commander/page/editorKept';
 import { noop } from '../../../../helpers/fixtures';
-import { withFiles } from './storeFixtures';
+import { keepingViews, withFiles } from './storeFixtures';
 
 const folder = 'C:\\code';
 
 const wholeWord = { ...plainSearch, wholeWord: true };
 
-const keptSent = (posted: readonly CommanderToHost[]) =>
-  posted.flatMap((message) => (message.type === 'keepTab' ? [message] : []));
-
-const keptOf = (posted: readonly CommanderToHost[], tab: string) =>
-  keptSent(posted).findLast((kept) => kept.tab === tab)?.kept;
-
 suite('Commander store keeping its tabs', () => {
-  test('forgets what it keeps of a tab moved out of its window, as the main process hands it back should the tab come back', () => {
-    const store = createCommanderStore(noop);
+  test('lets go of what it keeps of a tab released, giving its view as it is at once, as the shell hands it back should the tab come back', () => {
+    const { store, release } = keepingViews();
     const { receive } = store.getState();
     receive({ type: 'show', tab: '1' });
     receive(withFiles(folder, 'a.txt'));
@@ -38,9 +31,17 @@ suite('Commander store keeping its tabs', () => {
     store.getState().keepEditing('3', { finding: true });
     receive({ type: 'show', tab: '4' });
 
-    for (const tab of ['1', '2', '3']) {
-      receive({ type: 'left', tab });
-    }
+    const released = ['1', '2', '3', '9'].map(release);
+    assert.deepStrictEqual(
+      released.map((view) => {
+        const parsed: unknown = view === '' ? view : JSON.parse(view ?? '');
+        return typeof parsed === 'object' && parsed !== null
+          ? Object.keys(parsed)
+          : parsed;
+      }),
+      [['sides'], ['viewer'], ['editor'], ''],
+    );
+    assert.ok(released[0]?.includes('"query":"a"'));
 
     const { view } = store.getState();
     assert.deepStrictEqual([...view.kept.keys()], []);
@@ -60,44 +61,35 @@ suite('Commander store keeping its tabs', () => {
   test('sends what it keeps of the tab shown a while after it changes, and of a tab left at once, each only once changed', () => {
     vi.useFakeTimers();
     try {
-      const posted: CommanderToHost[] = [];
-      const store = createCommanderStore((message) => posted.push(message));
+      const { store, keptTabs } = keepingViews();
       const { receive } = store.getState();
       receive({ type: 'show', tab: '1' });
       receive(withFiles(folder, 'a.txt', 'b.txt'));
-      posted.length = 0;
+      const before = keptTabs().length;
+      const keptSent = () => keptTabs().slice(before);
 
       store.getState().select('left', 'b.txt');
-      assert.deepStrictEqual(keptSent(posted), []);
+      assert.deepStrictEqual(keptSent(), []);
       vi.advanceTimersByTime(keepingWait);
-      assert.deepStrictEqual(
-        keptSent(posted).map(({ tab }) => tab),
-        ['1'],
-      );
+      assert.deepStrictEqual(keptSent(), ['1']);
       vi.advanceTimersByTime(keepingWait);
       store.getState().activate('left');
       receive({ type: 'show', tab: '2', file: `${folder}\\a.txt` });
-      assert.deepStrictEqual(
-        keptSent(posted).map(({ tab }) => tab),
-        ['1', '1', '2'],
-      );
+      assert.deepStrictEqual(keptSent(), ['1', '1', '2']);
       store.getState().keepViewer('2', { finding: true });
       vi.advanceTimersByTime(keepingWait);
-      assert.deepStrictEqual(
-        keptSent(posted).map(({ tab }) => tab),
-        ['1', '1', '2', '2'],
-      );
+      assert.deepStrictEqual(keptSent(), ['1', '1', '2', '2']);
       store.getState().keepPlace('2', 0);
       store.getState().keepTabs();
-      assert.strictEqual(keptSent(posted).length, 5);
+      assert.strictEqual(keptSent().length, 5);
     } finally {
       vi.useRealTimers();
     }
   });
 
   test('brings a commander tab back from what another page kept of it, its active side, divider, focus, layouts, filters, scroll places, and the selection and marks of each side once its folder is listed', () => {
-    const posted: CommanderToHost[] = [];
-    const store = createCommanderStore((message) => posted.push(message));
+    const left = keepingViews();
+    const { store } = left;
     const { receive } = store.getState();
     receive({ type: 'show', tab: '1' });
     receive(withFiles(folder, 'a.txt', 'b.txt', 'c.txt'));
@@ -114,10 +106,12 @@ suite('Commander store keeping its tabs', () => {
     store.getState().keepScroll(`1 left ${folder} details`, 40);
     store.getState().keepScroll(`1 left ${folder}\\gone details`, 80);
     store.getState().keepTabs();
-    const kept = keptOf(posted, '1');
+    const kept = left.keptOf('1') ?? '';
 
-    const other = createCommanderStore(noop);
-    other.getState().receive({ type: 'show', tab: '1', kept });
+    const back = keepingViews();
+    back.hand('1', kept);
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '1' });
     other
       .getState()
       .receive({ ...withFiles(folder, 'a.txt', 'b.txt', 'c.txt') });
@@ -154,8 +148,8 @@ suite('Commander store keeping its tabs', () => {
   });
 
   test('brings a viewer tab back from what another page kept of it, its choices, place, find and focus, without what it read', () => {
-    const posted: CommanderToHost[] = [];
-    const store = createCommanderStore((message) => posted.push(message));
+    const left = keepingViews();
+    const { store } = left;
     const { receive } = store.getState();
     const file = `${folder}\\a.txt`;
     receive({ type: 'show', tab: '2', file });
@@ -176,10 +170,12 @@ suite('Commander store keeping its tabs', () => {
       bytes: { version: '1', start: 0, data: [1, 2], asked: 2 },
     });
     receive({ type: 'show', tab: '1' });
-    const kept = keptOf(posted, '2');
+    const kept = left.keptOf('2') ?? '';
 
-    const other = createCommanderStore(noop);
-    other.getState().receive({ type: 'show', tab: '2', file, kept });
+    const back = keepingViews();
+    back.hand('2', kept);
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '2', file });
 
     assert.deepStrictEqual(viewerChoices(other.getState().view), {
       mode: 'hex',
@@ -199,8 +195,8 @@ suite('Commander store keeping its tabs', () => {
   });
 
   test('brings an editor tab back from what another page kept of it, its find and replace and focus, taking its text from the main process rather than an editor state it held', () => {
-    const posted: CommanderToHost[] = [];
-    const store = createCommanderStore((message) => posted.push(message));
+    const left = keepingViews();
+    const { store } = left;
     const { receive } = store.getState();
     const file = `${folder}\\a.txt`;
     receive({ type: 'show', tab: '3', file, edit: true });
@@ -215,27 +211,26 @@ suite('Commander store keeping its tabs', () => {
     } as const;
     store.getState().keepEditing('3', editing);
     receive({ type: 'show', tab: '1' });
-    const kept = keptOf(posted, '3');
+    const kept = left.keptOf('3') ?? '';
 
-    const other = createCommanderStore(noop);
+    const back = keepingViews();
+    const other = back.store;
     other.getState().editorKeeper('3')({
       state: EditorState.create({ doc: 'stale' }),
       version: 1,
     });
-    other
-      .getState()
-      .receive({ type: 'show', tab: '3', file, edit: true, kept });
+    back.hand('3', kept);
+    other.getState().receive({ type: 'show', tab: '3', file, edit: true });
 
     assert.deepStrictEqual(other.getState().keptEditing('3'), editing);
     assert.strictEqual(other.getState().keptEditor('3'), undefined);
   });
 
   test('takes what it is handed field by field, leaving out what is not what it kept', () => {
-    const store = createCommanderStore(noop);
-    store.getState().receive({
-      type: 'show',
-      tab: '1',
-      kept: JSON.stringify({
+    const { store, hand } = keepingViews();
+    hand(
+      '1',
+      JSON.stringify({
         sides: {
           active: 'up',
           share: 7,
@@ -254,7 +249,8 @@ suite('Commander store keeping its tabs', () => {
         },
         viewer: 'not for a commander tab',
       }),
-    });
+    );
+    store.getState().receive({ type: 'show', tab: '1' });
     store.getState().receive({ ...withFiles(folder, 'a', 'b'), side: 'right' });
 
     const { view } = store.getState();
@@ -304,8 +300,8 @@ suite('Commander store keeping its tabs', () => {
   });
 
   test('brings the find of a PDF back from what another page kept of it, its query, toggles and the match it was on', () => {
-    const posted: CommanderToHost[] = [];
-    const store = createCommanderStore((message) => posted.push(message));
+    const left = keepingViews();
+    const { store } = left;
     const { receive } = store.getState();
     const file = `${folder}/a.pdf`;
     receive({ type: 'show', tab: '2', file });
@@ -316,17 +312,17 @@ suite('Commander store keeping its tabs', () => {
     store.getState().keepViewer('2', { pdfFind });
     receive({ type: 'show', tab: '1' });
 
-    const other = createCommanderStore(noop);
-    other
-      .getState()
-      .receive({ type: 'show', tab: '2', file, kept: keptOf(posted, '2') });
+    const back = keepingViews();
+    back.hand('2', left.keptOf('2') ?? '');
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '2', file });
 
     assert.deepStrictEqual(other.getState().keptViewer('2').pdfFind, pdfFind);
   });
 
   test('keeps the marks of a side whole or not at all, none once they are too many to keep', () => {
-    const posted: CommanderToHost[] = [];
-    const store = createCommanderStore((message) => posted.push(message));
+    const left = keepingViews();
+    const { store } = left;
     const { receive } = store.getState();
     const names = Array.from({ length: 6000 }, (_, index) => `${index}.txt`);
     receive({ type: 'show', tab: '1' });
@@ -334,10 +330,10 @@ suite('Commander store keeping its tabs', () => {
     store.getState().mark('left', names, true);
     store.getState().keepTabs();
 
-    const other = createCommanderStore(noop);
-    other
-      .getState()
-      .receive({ type: 'show', tab: '1', kept: keptOf(posted, '1') });
+    const back = keepingViews();
+    back.hand('1', left.keptOf('1') ?? '');
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '1' });
     other.getState().receive(withFiles(folder, ...names));
     assert.strictEqual(other.getState().view.panes.left?.marked.size, 0);
   });

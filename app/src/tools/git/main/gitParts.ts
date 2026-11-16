@@ -34,7 +34,6 @@ import { ViewSettings } from './viewSettings';
 import { TabLoads } from './tabLoads';
 import { Runs } from './runs';
 import { GitMessages } from './gitMessages';
-import { KeptGitTabs } from './keptGitTabs';
 import type { GitHost } from './tool';
 import type { GitLocator } from './gitLocator';
 
@@ -66,7 +65,6 @@ export interface GitParts {
   readonly tabLoads: TabLoads;
   readonly runs: Runs;
   readonly messages: GitMessages;
-  readonly kept: KeptGitTabs;
 }
 
 export function buildParts(
@@ -91,7 +89,6 @@ export function buildParts(
   const treePaths = new TreePaths();
   const remoteWork = new RemoteWork();
   const sessions = new GitSessions(shell, storage, tabStates, repositories);
-  const kept = new KeptGitTabs(shell);
   const runs = new Runs(log, shell, sessions, tabStates);
   const contexts = new Contexts(gitPath, storage, tabStates, sessions);
   const posts = new TabPosts(
@@ -212,7 +209,6 @@ export function buildParts(
       repositoryOf: (root) => sessions.repositoryOf(root),
       isActive: (root) => sessions.isActive(root),
       sendTabs: (session) => posts.sendTabs(session),
-      forgetKept: (root) => kept.forgetWorktree(root),
     },
   );
   const repositoryOpening = new RepositoryOpening(
@@ -229,15 +225,6 @@ export function buildParts(
       tabState: (root) => contexts.tabState(root),
       showTab: (context) => tabLoads.showTab(context),
       postTabs: (session) => posts.postTabs(session),
-      handKept: (session, worktree) => {
-        const handed = kept.worktreeHandedTo(
-          session.page,
-          sessions.knownRoot(worktree),
-        );
-        if (handed !== undefined) {
-          session.post({ type: 'keptTab', root: worktree, kept: handed });
-        }
-      },
       sendRecentEverywhere: () => posts.sendRecentEverywhere(),
       takeWorktrees: (repository, listed) =>
         worktrees.takeWorktrees(repository, listed),
@@ -315,7 +302,6 @@ export function buildParts(
     commitNavigation,
     selections,
     fileViews,
-    kept,
     save,
   );
   return {
@@ -346,6 +332,5 @@ export function buildParts(
     tabLoads,
     runs,
     messages,
-    kept,
   };
 }

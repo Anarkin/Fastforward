@@ -30,6 +30,7 @@ import { Pages } from './pages';
 import { TabMoves } from './tabMoves';
 import { Closing } from './closing';
 import { Tabs } from './tabs';
+import { TabViews } from './tabViews';
 import type { Notice, Page, ShellAccess, Tools } from './toolContract';
 
 export interface ShellHost {
@@ -95,6 +96,7 @@ export class Shell {
   private readonly moves: TabMoves;
   private readonly closing: Closing;
   private readonly tabs: Tabs;
+  private readonly views: TabViews;
 
   constructor(
     private readonly log: Log,
@@ -103,20 +105,20 @@ export class Shell {
     private readonly tools: Tools,
   ) {
     this.pages = new Pages(storage, tools);
-    this.tabs = new Tabs(storage, tools, this.pages, this.history, {
+    this.views = new TabViews(
+      (page, tab) =>
+        this.pages.windowOf(page).tabs.some((each) => each.id === tab),
+      () => this.pages.all(),
+    );
+    this.tabs = new Tabs(storage, tools, this.pages, this.history, this.views, {
       showWindow: (window) => host.showWindow(window),
       closeWindow: (window) => host.closeWindow(window),
       save: (saving) => this.save(saving),
     });
     this.closing = new Closing(storage, tools, this.pages);
     this.moves = new TabMoves(storage, host, this.pages, this.history, {
-      show: (page, tab) => this.tabs.show(page, tab),
-      left: (page, tab) => {
-        const moved = storage.savedTabs.find((each) => each.id === tab);
-        if (moved !== undefined) {
-          this.tools[moved.tool].left?.(page, moved);
-        }
-      },
+      show: (page, tab, released) => this.tabs.show(page, tab, released),
+      release: (page, tab) => this.views.release(page, tab),
       save: (saving) => this.save(saving),
     });
     this.choosing = new ToolChoosing(tools, {
@@ -225,6 +227,7 @@ export class Shell {
       },
       dispose: () => {
         page.disposed = true;
+        this.views.gone(page);
         for (const tool of toolIds) {
           this.tools[tool].hide(page);
         }
@@ -302,6 +305,7 @@ export class Shell {
     for (const tab of closing.tabs) {
       this.history.forget(tab.id);
       this.tools[tab.tool].closed(page, tab);
+      this.views.drop(tab.id);
     }
     this.pages.postWindows();
   }
@@ -441,6 +445,12 @@ export class Shell {
         }
         return;
       }
+      case 'keepView':
+        this.views.keep(page, message.tab, message.view);
+        return;
+      case 'released':
+        this.views.released(page, message.tab, message.view);
+        return;
       case 'setTextView':
         if (!isTextView(message.view)) {
           return;
@@ -499,6 +509,7 @@ export class Shell {
     if (laidOut) {
       this.tellProblems(page);
     }
+    this.views.ready(page);
     for (const tool of toolIds) {
       this.tools[tool].ready(page);
     }

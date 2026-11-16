@@ -4,6 +4,8 @@ import type {
   WorktreeInfo,
 } from '../../../../../tools/git/shared/protocol';
 import { createGitStore } from '../../../../../tools/git/page/store';
+import type { ToHost } from '../../../../../shell/shared/protocol';
+import { pageViews } from '../../../../../shell/page/toolViews';
 import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 
 export const at = 'a'.repeat(40);
@@ -18,9 +20,12 @@ export const worktree = (root: string, name: string): WorktreeInfo => ({
 
 export const shown = (
   worktrees: readonly WorktreeInfo[] = [],
+  root = '/repo',
+  tab = '1',
 ): GitToWebviewOf<'worktrees'> => ({
   type: 'worktrees',
-  worktree: '/repo',
+  tab,
+  worktree: root,
   worktrees,
 });
 
@@ -55,5 +60,13 @@ export const compare = (tab: string, version = 1) => ({
 
 export function posting() {
   const posted: GitToHost[] = [];
-  return { posted, store: createGitStore((message) => posted.push(message)) };
+  const shell: ToHost[] = [];
+  const views = pageViews((message) => shell.push(message));
+  const store = createGitStore(
+    (message) => posted.push(message),
+    {},
+    views.views,
+  );
+  views.views.onRelease(store.getState().releaseTab);
+  return { posted, shell, views, store };
 }

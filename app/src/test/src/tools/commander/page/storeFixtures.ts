@@ -3,6 +3,8 @@ import { createCommanderStore } from '../../../../../tools/commander/page/store'
 import { emptyView } from '../../../../../tools/commander/page/view';
 import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import { noop } from '../../../../helpers/fixtures';
+import type { ToHost } from '../../../../../shell/shared/protocol';
+import { pageViews } from '../../../../../shell/page/toolViews';
 
 export const left: PaneView = {
   folder: 'C:\\code',
@@ -72,3 +74,34 @@ export function byName() {
 
 export const selectedOf = (store: ReturnType<typeof byName>) =>
   store.getState().view.panes.left?.selected;
+
+export function keepingViews(post: (message: CommanderToHost) => void = noop) {
+  const kept: ToHost[] = [];
+  const page = pageViews((message) => kept.push(message));
+  const store = createCommanderStore(
+    post,
+    {},
+    undefined,
+    undefined,
+    page.views,
+  );
+  page.views.onRelease(store.getState().releaseTab);
+  return {
+    store,
+    hand: page.handed,
+    release: (tab: string) => {
+      page.release(tab);
+      const released = kept.at(-1);
+      return released?.type === 'released' ? released.view : undefined;
+    },
+    keptOf: (tab: string) =>
+      kept.findLast(
+        (message): message is Extract<ToHost, { type: 'keepView' }> =>
+          message.type === 'keepView' && message.tab === tab,
+      )?.view,
+    keptTabs: () =>
+      kept.flatMap((message) =>
+        message.type === 'keepView' ? [message.tab] : [],
+      ),
+  };
+}

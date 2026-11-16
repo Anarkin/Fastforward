@@ -14,4 +14,14 @@ suite('Kept places', () => {
       [10, undefined, 3],
     );
   });
+
+  test('tells of the key of every place kept, forgotten or let go beyond its limit, so what keeps them sends them', () => {
+    const changed: string[] = [];
+    const places = new KeptPlaces<number>(1, (key) => changed.push(key));
+    places.keep('one', 1);
+    places.keep('two', 2);
+    places.forget('two');
+    places.forget('two');
+    assert.deepStrictEqual(changed, ['one', 'two', 'one', 'two']);
+  });
 });

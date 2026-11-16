@@ -34,7 +34,6 @@ import type { Listings } from './listings';
 import type { Elevation } from './elevation';
 import type { CommanderMessages } from './commanderMessages';
 import { buildParts } from './commanderParts';
-import { KeptCommanderTabs } from './keptCommanderTabs';
 
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
@@ -57,7 +56,6 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly elevation: Elevation;
   private readonly settings: SettingsCommands;
   private readonly messages: CommanderMessages;
-  private readonly kept = new KeptCommanderTabs(() => this.shell);
 
   constructor(private readonly access: CommanderAccess) {
     const parts = buildParts(
@@ -97,7 +95,6 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   ready(page: Page): void {
-    this.kept.ready(page);
     this.passwords.cancelPasswords(page);
     this.icons.forgetDropped();
     for (const pane of this.sides.allPanes()) {
@@ -118,14 +115,9 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   async show(page: Page, tab: Tab): Promise<void> {
-    const before = this.sides.shown.get(page)?.tab;
-    if (before !== tab.id) {
-      this.kept.leaving(page, before);
-    }
     this.sides.stopShowing(page);
     for (const [other, showing] of this.sides.shown) {
       if (showing.tab === tab.id) {
-        this.kept.leaving(other, tab.id);
         this.sides.stopShowing(other);
         post(other, { type: 'hide' });
       }
@@ -142,7 +134,6 @@ export class CommanderTool implements Tool<'commander'> {
         tab: tab.id,
         file: tab.root,
         edit: true,
-        ...this.kept.handedTo(page, tab.id),
       });
       await this.editing.show(page, tab.id, tab.root);
       return;
@@ -152,16 +143,11 @@ export class CommanderTool implements Tool<'commander'> {
         type: 'show',
         tab: tab.id,
         file: tab.root,
-        ...this.kept.handedTo(page, tab.id),
       });
       await this.viewers.startViewing(page, tab.id, tab.root);
       return;
     }
-    post(page, {
-      type: 'show',
-      tab: tab.id,
-      ...this.kept.handedTo(page, tab.id),
-    });
+    post(page, { type: 'show', tab: tab.id });
     const panes = this.sides.panes.get(tab.id) ?? (await this.start(tab));
     if (!this.shows(page, tab)) {
       return;
@@ -182,7 +168,6 @@ export class CommanderTool implements Tool<'commander'> {
   hide(page: Page): void {
     const shown = this.sides.shown.get(page);
     if (shown !== undefined) {
-      this.kept.leaving(page, shown.tab);
       this.sides.stopShowing(page);
       post(page, { type: 'hide' });
     }
@@ -194,7 +179,6 @@ export class CommanderTool implements Tool<'commander'> {
 
   closed(page: Page, tab: Tab): void {
     post(page, { type: 'closed', tab: tab.id });
-    this.kept.closed(tab.id);
     const panes = this.sides.panes.get(tab.id);
     if (panes !== undefined) {
       for (const side of sides) {
@@ -219,16 +203,7 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
-  left(page: Page, tab: Tab): void {
-    this.kept.movedOut(page, tab.id);
-    post(page, { type: 'left', tab: tab.id });
-  }
-
   receive(page: Page, message: CommanderToHost): Promise<void> {
-    if (message.type === 'keepTab') {
-      this.kept.keep(page, message.tab, message.kept);
-      return Promise.resolve();
-    }
     return this.messages.receive(page, message);
   }
 

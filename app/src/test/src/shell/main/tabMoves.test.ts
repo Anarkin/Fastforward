@@ -8,6 +8,24 @@ import { attach, closeViews } from '../../../helpers/harness';
 import { windowsKey } from '../../../../shell/main/storage';
 import { shownIn, twoWindows } from './shellFixtures';
 import { FakeHost } from '../../../helpers/fakeHost';
+import type { FakePage } from '../../../helpers/fakePage';
+import { releaseWait } from '../../../../shell/main/tabViews';
+
+const movesIn = (page: FakePage) =>
+  page.sent.flatMap((message) => {
+    switch (message.type) {
+      case 'view':
+        return [`view ${message.tab} ${message.view}`];
+      case 'release':
+        return [`release ${message.tab}`];
+      case 'tool':
+        return message.message.type === 'show'
+          ? [`show ${message.message.tab}`]
+          : [];
+      default:
+        return [];
+    }
+  });
 
 suite('Moving tabs between windows', () => {
   const noGit = path.join(os.tmpdir(), 'fastforward-no-git');
@@ -43,26 +61,60 @@ suite('Moving tabs between windows', () => {
     ]);
   });
 
-  test('tells the tool of a tab moved out of a window that the page of that window may forget what it keeps of the tab, once that page is told to show another', async () => {
+  test('asks the page of the window a tab leaves to release it, and shows the tab where it moved only once released, with the view that page sent of it', async () => {
     const host = new FakeHost();
     const { first, second } = await twoWindows(log, noGit, host);
-    first.page.otherTools.length = 0;
+    first.page.sent.length = 0;
+    second.page.sent.length = 0;
+    first.page.views.set('1', '{"left":1}');
     await first.connection.receive({
       type: 'moveTabToWindow',
       tab: '1',
       window: '2',
     });
-    assert.deepStrictEqual(
-      first.page.otherTools.flatMap(({ message }) =>
-        message.type === 'show' || message.type === 'left'
-          ? [`${message.type} ${message.tab}`]
-          : [],
-      ),
-      ['show 5', 'left 1'],
-    );
-    assert.ok(
-      !second.page.otherTools.some(({ message }) => message.type === 'left'),
-    );
+    assert.deepStrictEqual(movesIn(first.page), ['release 1', 'show 5']);
+    assert.deepStrictEqual(movesIn(second.page), [
+      'view 1 {"left":1}',
+      'show 1',
+    ]);
+  });
+
+  test('shows a tab moved on while the page it left still releases it only where it moved last, so a tab dragged back and forth ends where it was dragged last, the windows it passed showing what they held', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(log, noGit, host);
+    first.page.releases = false;
+    const there = first.connection.receive({
+      type: 'moveTabToWindow',
+      tab: '1',
+      window: '2',
+    });
+    const back = first.shell.moveTab('1', '1', 0);
+    await Promise.all([there, back]);
+    assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
+    assert.deepStrictEqual(shownIn(second.page), [['2', '3', '4'], '4']);
+  });
+
+  test('shows a tab where it moved after a while when the page it leaves never releases it, keeping what that page sent of it before', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(log, noGit, host);
+    await first.connection.receive({
+      type: 'keepView',
+      tab: '1',
+      view: '{"kept":1}',
+    });
+    first.page.releases = false;
+    second.page.sent.length = 0;
+    const started = performance.now();
+    await first.connection.receive({
+      type: 'moveTabToWindow',
+      tab: '1',
+      window: '2',
+    });
+    assert.ok(performance.now() - started >= releaseWait - 20);
+    assert.deepStrictEqual(movesIn(second.page), [
+      'view 1 {"kept":1}',
+      'show 1',
+    ]);
   });
 
   test('moves a tab into another window at its end, showing it there and bringing that window to the front', async () => {

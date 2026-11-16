@@ -211,12 +211,6 @@ export type GitToHost =
   | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
   | { readonly type: 'setAutoFetch'; readonly on: boolean }
-  | { readonly type: 'keepTab'; readonly root: string; readonly kept: string }
-  | {
-      readonly type: 'keepCompare';
-      readonly tab: string;
-      readonly kept: string;
-    }
   | (TabMessage & {
       readonly root: string;
     });
@@ -309,17 +303,6 @@ export interface CompareView {
 }
 
 export type GitToWebview =
-  | { readonly type: 'keptTab'; readonly root: string; readonly kept: string }
-  | {
-      readonly type: 'forgetTabs';
-      readonly roots: readonly string[];
-      readonly compares: readonly string[];
-    }
-  | {
-      readonly type: 'keptCompare';
-      readonly tab: string;
-      readonly kept: string;
-    }
   | {
       readonly type: 'compare';
       readonly compare: CompareView | undefined;
@@ -372,6 +355,7 @@ export type GitToWebview =
     }
   | {
       readonly type: 'worktrees';
+      readonly tab?: string;
       readonly worktree: string | undefined;
       readonly worktrees: readonly WorktreeInfo[] | undefined;
     }

@@ -17,11 +17,13 @@ import { repositoryMenuItems } from './repositoryMenu';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { ClonePopup } from './clonePopup';
 import { RepositoryColumns } from './repositoryColumns';
+import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 
 export interface GitToolProps {
   active: boolean;
   post: (message: GitToHost) => void;
   listen: (handler: (message: GitToWebview) => void) => () => void;
+  views?: ToolViews;
 }
 
 function GitPopups() {
@@ -104,13 +106,19 @@ function GitTitleAndMenus({ comparing }: { comparing: string | undefined }) {
   return null;
 }
 
-export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
+export function GitTool({
+  active,
+  post: postToHost,
+  listen,
+  views = noViews,
+}: GitToolProps) {
   const comparing = useShell(comparingOf);
   const { closeTab: onClose, toggleTextView } = useShellActions();
-  const [store] = useState(() => createGitStore(postToHost));
+  const [store] = useState(() => createGitStore(postToHost, {}, views));
   const { navigate, jump, showUpstream, showParent, toggleCommits } =
     store.getState();
   useEffect(() => listen(store.getState().receive), [listen, store]);
+  useEffect(() => views.onRelease(store.getState().releaseTab), [views, store]);
   useEffect(() => {
     const { flushKept } = store.getState();
     window.addEventListener('pagehide', flushKept);
