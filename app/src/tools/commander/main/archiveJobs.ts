@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackOptions, Packing } from './archiveReader';
-import { reasonOf } from './reasons';
+import { reasonOf } from '../../../lib/main/reasons';
 import type { TransferEvent } from './transferProtocol';
 import type { ConnectTransfer } from './transfers';
 

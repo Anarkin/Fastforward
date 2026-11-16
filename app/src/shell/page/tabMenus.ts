@@ -1,7 +1,7 @@
 import { type WindowInfo } from '../shared/protocol';
 import type { ContextMenuItem } from '../../lib/page/contextMenuItem';
 import { strings } from '../../lib/shared/strings';
-import { tools, type ToolId } from '../shared/tools';
+import { folderTools, type ToolId } from '../shared/tools';
 
 export function tabMenuItems(
   tab: string,
@@ -35,7 +35,7 @@ export function newTabItems(
   items: Partial<Record<ToolId, readonly ContextMenuItem[]>>,
   onNewTab: (tool: ToolId) => void,
 ): ContextMenuItem[] {
-  return tools.map((tool) => {
+  return folderTools.map((tool) => {
     const label = strings.tools[tool];
     const icon = tool;
     const submenu = items[tool];

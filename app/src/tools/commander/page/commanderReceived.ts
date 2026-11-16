@@ -1,18 +1,8 @@
 import { type CommanderToWebview } from '../shared/protocol';
 import type { Side } from '../shared/sides';
-import type { CommanderSource, ToViewer, Viewing } from './commanderState';
+import type { CommanderSource } from './commanderState';
 import type { ToEditor } from './editorState';
 import { reduceView } from './view';
-
-const viewerStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
-  ToViewer['type']
->(['rows', 'text', 'bytes', 'found', 'pdfPlace']);
-
-export function isViewerStream(
-  message: CommanderToWebview,
-): message is ToViewer {
-  return viewerStreams.has(message.type);
-}
 
 const editorStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
   ToEditor['type']
@@ -24,32 +14,6 @@ export function isEditorStream(
   return editorStreams.has(message.type);
 }
 
-function viewedOf(message: Extract<CommanderToWebview, { type: 'viewing' }>) {
-  return {
-    tab: message.tab,
-    size: message.size,
-    ...(message.version !== undefined && { version: message.version }),
-    ...(message.binary !== undefined && { binary: message.binary }),
-    ...(message.hidden !== undefined && { hidden: message.hidden }),
-    ...(message.detected !== undefined && { detected: message.detected }),
-    ...(message.error !== undefined && { error: message.error }),
-  };
-}
-
-function sameViewed(shown: Viewing | undefined, told: Viewing): boolean {
-  return (
-    shown !== undefined &&
-    shown.tab === told.tab &&
-    shown.size === told.size &&
-    shown.version === told.version &&
-    shown.binary === told.binary &&
-    shown.detected === told.detected &&
-    shown.error === told.error &&
-    shown.hidden?.length === told.hidden?.length &&
-    (shown.hidden ?? []).every((part, index) => part === told.hidden?.[index])
-  );
-}
-
 export function readingKey(tab: string | undefined, side: Side): string {
   return `${tab ?? ''} ${side}`;
 }
@@ -58,7 +22,7 @@ export function received(
   state: CommanderSource,
   message: CommanderToWebview,
 ): Partial<CommanderSource> {
-  if (isViewerStream(message) || isEditorStream(message)) {
+  if (isEditorStream(message)) {
     return state;
   }
   switch (message.type) {
@@ -130,37 +94,18 @@ export function received(
       });
       return view === state.view ? state : { view };
     }
-    case 'viewing': {
-      const viewed = viewedOf(message);
-      return sameViewed(state.viewed, viewed)
-        ? state
-        : {
-            viewed,
-            keptViewed: new Map(state.keptViewed).set(viewed.tab, viewed),
-          };
-    }
     case 'show':
     case 'hide': {
       const view = reduceView(state.view, message);
-      const viewed =
-        message.type === 'show' &&
-        message.file !== undefined &&
-        message.edit !== true
-          ? state.keptViewed.get(message.tab)
-          : undefined;
       return {
         ...(view !== state.view && { view }),
-        ...(state.viewed !== viewed && { viewed }),
         ...(state.edited !== undefined && { edited: undefined }),
       };
     }
     case 'closed': {
       const view = reduceView(state.view, message);
-      const keptViewed = new Map(state.keptViewed);
-      keptViewed.delete(message.tab);
       return {
         view,
-        keptViewed,
         noAccess: withoutNoAccess(state.noAccess, message.tab),
       };
     }
@@ -199,11 +144,8 @@ export function released(
   state: CommanderSource,
   tab: string,
 ): Partial<CommanderSource> {
-  const keptViewed = new Map(state.keptViewed);
-  keptViewed.delete(tab);
   return {
     view: reduceView(state.view, { type: 'released', tab }),
-    keptViewed,
     noAccess: withoutNoAccess(state.noAccess, tab),
   };
 }

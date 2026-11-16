@@ -21,7 +21,12 @@ suite('Quitting and closing windows', () => {
 
   test('asks before quitting while a tool says quitting would cut its work short, saying what each tool says', () => {
     assert.strictEqual(
-      quitNoteOf({ terminal: saying(), commander: saying(), git: saying() }),
+      quitNoteOf({
+        terminal: saying(),
+        commander: saying(),
+        git: saying(),
+        viewer: saying(),
+      }),
       undefined,
     );
     assert.strictEqual(
@@ -29,6 +34,7 @@ suite('Quitting and closing windows', () => {
         terminal: saying(),
         commander: saying('A copy runs.'),
         git: saying('A clone runs.'),
+        viewer: saying(),
       }),
       'A copy runs. A clone runs.',
     );

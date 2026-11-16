@@ -32,13 +32,13 @@ import {
 } from './editorSaving';
 import { editorKeymap } from './editorKeymap';
 import {
-  maxColoredBytes,
   type CommanderToWebviewOf,
   type TextShown,
   type EncodingSource,
   type EndingSource,
 } from '../shared/protocol';
-import { type TextEncoding } from '../shared/textEncodings';
+import { maxColoredBytes } from '../../../lib/shared/colorLimit';
+import { type TextEncoding } from '../../../lib/shared/textEncodings';
 import { endingsField, endingsFrom, endingsUndone } from './editorEndings';
 import { endingSigns } from './editorEndingSigns';
 import { type Encoded } from './editorEncodings';

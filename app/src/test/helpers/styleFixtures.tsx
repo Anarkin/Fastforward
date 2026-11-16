@@ -1,7 +1,7 @@
 import type { ColumnName } from '../../tools/git/page/activeColumn';
 import { PathLooksContext } from '../../lib/page/pathLooks';
 import { fileColorsOf } from '../../lib/page/fileColors';
-import { fileLooks } from '../../tools/commander/page/headerLooks';
+import { fileLooks } from '../../tools/viewer/page/fileLooks';
 import { Column } from '../../tools/git/page/column';
 import { ContextMenu } from '../../shell/page/contextMenu';
 import { tabsStore } from './componentFixtures';
@@ -14,7 +14,7 @@ import { TabBar } from '../../shell/page/tabBar';
 import { createShellStore, ShellStore } from '../../shell/page/store';
 import { AboutPopup } from '../../shell/page/aboutPopup';
 import { ShortcutsPopup } from '../../shell/page/shortcutsPopup';
-import { PathTitle } from '../../tools/commander/page/pathTitle';
+import { PathTitle } from '../../lib/page/pathTitle';
 import { noop } from './fixtures';
 
 export function ColumnShown({ start }: { readonly start: React.ReactNode }) {

@@ -70,8 +70,8 @@ suite('Git tool viewing files', () => {
             ? tabs.flatMap((tab: unknown) =>
                 typeof tab === 'object' &&
                 tab !== null &&
-                'view' in tab &&
-                tab.view === true &&
+                'tool' in tab &&
+                tab.tool === 'viewer' &&
                 'root' in tab &&
                 typeof tab.root === 'string'
                   ? [tab.root]

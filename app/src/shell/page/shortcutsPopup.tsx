@@ -196,7 +196,6 @@ const everything: PaneView = {
 
 export function ShortcutsPopup() {
   const tool = useShell((state) => activeTabOf(state)?.tool);
-  const view = useShell((state) => activeTabOf(state)?.view);
   const compare = useShell((state) => activeTabOf(state)?.compare);
   const edit = useShell((state) => activeTabOf(state)?.edit);
   const { showPopup } = useShellActions();
@@ -204,7 +203,7 @@ export function ShortcutsPopup() {
   const [open, setOpen] = useState(() =>
     entryFor(
       tool,
-      { view, edit, compare },
+      { edit, compare },
       typeof document === 'undefined'
         ? undefined
         : shortcutsEntryOf(document.activeElement),

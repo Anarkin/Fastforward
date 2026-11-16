@@ -13,12 +13,7 @@ import {
   type CommanderSource,
   type CommanderState,
 } from './commanderState';
-import {
-  isEditorStream,
-  isViewerStream,
-  received,
-  released,
-} from './commanderReceived';
+import { isEditorStream, received, released } from './commanderReceived';
 import { filesToCompare } from './comparing';
 import { dialogActions, type StoreParts } from './dialogActions';
 import { editorActions } from './editorActions';
@@ -29,7 +24,6 @@ import { shownColumns, shownRowsOf } from './shownRows';
 import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
-import { viewerActions } from './viewerActions';
 import { dialogSlots, settledDialogs, withoutParked } from './parkedDialogs';
 import { keptTabActions } from './keptTabActions';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
@@ -130,10 +124,9 @@ export function createCommanderStore(
       }
     };
     const parts: StoreParts = { set, get, post, onTab, onPane, onDisk };
-    const viewer = viewerActions(parts);
     const editor = editorActions(parts);
     const flat = flatActions(parts, flatOptions);
-    const kept = keptTabActions(parts, scrolls, viewer, editor, views);
+    const kept = keptTabActions(parts, scrolls, editor, views);
     const shownWhenReleased = new Set<string>();
     const letGo = (tab: string) => {
       announced(() => set((state) => released(state, tab)));
@@ -141,7 +134,6 @@ export function createCommanderStore(
       forgetTab(tab);
     };
     const forgetTab = (tab: string) => {
-      viewer.forget(tab);
       editor.forget(tab);
       set((state) => ({
         filters: withoutTab(state.filters, tab),
@@ -170,10 +162,6 @@ export function createCommanderStore(
       ...commanderDefaults,
       ...initial,
       receive: (message) => {
-        if (isViewerStream(message)) {
-          viewer.heard(message);
-          return;
-        }
         if (isEditorStream(message)) {
           editor.heard(message);
           return;
@@ -184,13 +172,6 @@ export function createCommanderStore(
         const leaving = get().view.tab;
         if (message.type === 'show') {
           kept.shown(message);
-          viewer.awaitViewing(
-            message.file !== undefined && message.edit !== true
-              ? message.tab
-              : undefined,
-          );
-        } else if (message.type === 'hide') {
-          viewer.awaitViewing(undefined);
         }
         announced(() => set((state) => received(state, message)));
         if (message.type === 'show' || message.type === 'hide') {
@@ -210,18 +191,6 @@ export function createCommanderStore(
           kept.forget(message.tab);
           forgetTab(message.tab);
         }
-        if (message.type === 'viewing') {
-          viewer.viewingCame(message.tab);
-        }
-      },
-      ...viewer.actions,
-      keepPlace: (tab, byte) => {
-        viewer.actions.keepPlace(tab, byte);
-        kept.changed(tab);
-      },
-      keepViewer: (tab, change) => {
-        viewer.actions.keepViewer(tab, change);
-        kept.changed(tab);
       },
       dispatch,
       select: (side, key) => dispatch({ type: 'select', side, key }),

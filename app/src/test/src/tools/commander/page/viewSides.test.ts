@@ -60,34 +60,47 @@ suite('Commander view', () => {
     );
   });
 
-  test('keeps what a viewing tab was chosen to show a file as, its encoding and its language one by one, each choice keeping the others', () => {
-    let view = run({ type: 'show', tab: '3', file: '/work/notes.md' });
-    view = reduceView(view, { type: 'choose', choices: { mode: 'text' } });
+  test('keeps the language an editing tab was chosen to color its file in, the last one chosen', () => {
+    let view = run({
+      type: 'show',
+      tab: '3',
+      file: '/work/notes.md',
+      edit: true,
+    });
+    view = reduceView(view, { type: 'choose', choices: { language: 'json' } });
     view = reduceView(view, {
       type: 'choose',
       choices: { language: 'python' },
     });
-    assert.deepStrictEqual(viewerChoices(view), {
-      mode: 'text',
-      language: 'python',
-    });
+    assert.deepStrictEqual(viewerChoices(view), { language: 'python' });
   });
 
-  test('keeps what each viewing tab was chosen to show a file as, its encoding and its language while another tab is shown, for when it is shown again, and forgets them, and the layouts of a tab, once the tab is closed, as a tab opened later can take its id', () => {
-    const chosen = {
-      mode: 'text',
-      encoding: 'windows-1252',
-      language: 'python',
-    } as const;
-    let view = run({ type: 'show', tab: '3', file: '/work/notes.md' });
+  test('keeps the language each editing tab was chosen to color its file in while another tab is shown, for when it is shown again, and forgets it, and the layouts of a tab, once the tab is closed, as a tab opened later can take its id', () => {
+    const chosen = { language: 'python' } as const;
+    let view = run({
+      type: 'show',
+      tab: '3',
+      file: '/work/notes.md',
+      edit: true,
+    });
     assert.deepStrictEqual(viewerChoices(view), {});
     view = reduceView(view, { type: 'choose', choices: chosen });
     assert.deepStrictEqual(viewerChoices(view), chosen);
 
-    view = reduceView(view, { type: 'show', tab: '4', file: '/work/a.md' });
+    view = reduceView(view, {
+      type: 'show',
+      tab: '4',
+      file: '/work/a.md',
+      edit: true,
+    });
     assert.deepStrictEqual(viewerChoices(view), {});
     view = reduceView(view, { type: 'hide' });
-    view = reduceView(view, { type: 'show', tab: '3', file: '/work/notes.md' });
+    view = reduceView(view, {
+      type: 'show',
+      tab: '3',
+      file: '/work/notes.md',
+      edit: true,
+    });
     assert.deepStrictEqual(viewerChoices(view), chosen);
 
     view = reduceView(view, { type: 'show', tab: '1' });
@@ -99,12 +112,22 @@ suite('Commander view', () => {
     view = reduceView(view, { type: 'show', tab: '2' });
     view = reduceView(view, { type: 'closed', tab: '3' });
     view = reduceView(view, { type: 'closed', tab: '1' });
-    view = reduceView(view, { type: 'show', tab: '3', file: '/work/b.md' });
+    view = reduceView(view, {
+      type: 'show',
+      tab: '3',
+      file: '/work/b.md',
+      edit: true,
+    });
     assert.deepStrictEqual(viewerChoices(view), {});
     view = reduceView(view, { type: 'show', tab: '1' });
     assert.deepStrictEqual(view.layouts, defaultLayouts);
 
-    view = reduceView(view, { type: 'show', tab: '5', file: '/work/c.md' });
+    view = reduceView(view, {
+      type: 'show',
+      tab: '5',
+      file: '/work/c.md',
+      edit: true,
+    });
     view = reduceView(view, { type: 'choose', choices: chosen });
     view = reduceView(view, { type: 'closed', tab: '5' });
     view = reduceView(view, { type: 'show', tab: '1' });
@@ -115,7 +138,12 @@ suite('Commander view', () => {
     });
     view = reduceView(view, { type: 'closed', tab: '1' });
     view = reduceView(view, { type: 'hide' });
-    view = reduceView(view, { type: 'show', tab: '5', file: '/work/d.md' });
+    view = reduceView(view, {
+      type: 'show',
+      tab: '5',
+      file: '/work/d.md',
+      edit: true,
+    });
     assert.deepStrictEqual(viewerChoices(view), {});
     view = reduceView(view, { type: 'show', tab: '1' });
     assert.deepStrictEqual(view.layouts, defaultLayouts);
@@ -123,14 +151,14 @@ suite('Commander view', () => {
 
   test('shows a tab opened under the id of the tab it showed that was closed as a new one, with nothing of the closed tab, as the main process tells no hide once another tool is shown', () => {
     let view = run(
-      { type: 'show', tab: '2', file: '/work/logo.png' },
-      { type: 'choose', choices: { mode: 'preview' } },
+      { type: 'show', tab: '2', file: '/work/logo.png', edit: true },
+      { type: 'choose', choices: { language: 'python' } },
       { type: 'closed', tab: '2' },
-      { type: 'show', tab: '2', file: '/work/README.md' },
+      { type: 'show', tab: '2', file: '/work/README.md', edit: true },
     );
 
     assert.deepStrictEqual(
-      [view.tab, view.viewing, viewerChoices(view), view.closedTab],
+      [view.tab, view.editing, viewerChoices(view), view.closedTab],
       ['2', '/work/README.md', {}, undefined],
     );
 
@@ -138,7 +166,7 @@ suite('Commander view', () => {
     view = reduceView(view, { type: 'show', tab: '2' });
 
     assert.deepStrictEqual(
-      [view.tab, view.viewing, view.panes, view.layouts],
+      [view.tab, view.editing, view.panes, view.layouts],
       ['2', undefined, emptyView.panes, defaultLayouts],
     );
   });

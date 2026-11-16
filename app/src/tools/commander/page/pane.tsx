@@ -21,7 +21,7 @@ import { useFileDrop } from './dropping';
 import { ShieldIcon } from '../../../lib/page/icons';
 import { VirtualRows } from '../../../lib/page/virtualRows';
 import { strings } from '../../../lib/shared/strings';
-import { PathTitle } from './pathTitle';
+import { PathTitle } from '../../../lib/page/pathTitle';
 import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 import { actOnPane } from './paneActs';
 import { useTiles } from './paneTiles';

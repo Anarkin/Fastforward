@@ -5,7 +5,7 @@ import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { ShowWhitespaceIcon, WordWrapIcon } from '../../../lib/page/icons';
 import { SearchButton } from '../../../lib/page/search';
-import { type TextEncoding } from '../shared/textEncodings';
+import { type TextEncoding } from '../../../lib/shared/textEncodings';
 import {
   encodingSourceItems,
   endingSourceItems,

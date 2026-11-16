@@ -100,7 +100,7 @@ suite('Frames of the commander, the viewer and the editor', () => {
     await select(stem(logFile));
     await page().keyboard.press('F3');
     await page()
-      .locator('.viewer .viewer-row:not(.commander-viewer-probe)')
+      .locator('.viewer .viewer-row:not(.viewer-probe)')
       .first()
       .waitFor();
     const result = await measure(perf(), 'viewer: 30 MB log, wheel', () =>

@@ -9,9 +9,6 @@ import { Icons } from './icons';
 import { Transfers } from './transfers';
 import { Sides } from './sides';
 import { post } from './post';
-import { Viewers } from './viewers';
-import { ViewerFind } from './viewerFind';
-import { ViewedPdfPlaces } from './viewedPdfPlaces';
 import { SideFlat } from './sideFlat';
 import { SideSizes } from './sideSizes';
 import { SideDuplicates } from './sideDuplicates';
@@ -36,7 +33,6 @@ import { CommanderMessages } from './commanderMessages';
 
 export interface CommanderParts {
   readonly sides: Sides;
-  readonly viewers: Viewers;
   readonly flat: SideFlat;
   readonly sizes: SideSizes;
   readonly duplicates: SideDuplicates;
@@ -53,6 +49,7 @@ export interface CommanderParts {
   readonly elevation: Elevation;
   readonly settings: SettingsCommands;
   readonly messages: CommanderMessages;
+  readonly fileCommands: FileCommands;
 }
 
 export function buildParts(
@@ -68,14 +65,6 @@ export function buildParts(
   let transferPage: Page | undefined;
   const sides = new Sides();
   const icons = new Icons(access.fileIcon, access.platform);
-  const viewerFind = new ViewerFind(sides);
-  const viewedPdfPlaces = new ViewedPdfPlaces(access, sides);
-  const viewers = new Viewers(
-    access,
-    sides,
-    (file) => listings.hiddenParts(file),
-    (tab, file) => viewedPdfPlaces.viewed(tab, file),
-  );
   const flat = new SideFlat(access, sides, {
     listed: (folder) => listings.listed(folder),
     postListing: (page, tab, side, pane, selected) =>
@@ -209,9 +198,6 @@ export function buildParts(
     transferCommands,
     packCommands,
     transfers,
-    viewers,
-    viewerFind,
-    viewedPdfPlaces,
     listings,
     flat,
     sizes,
@@ -227,7 +213,6 @@ export function buildParts(
   );
   return {
     sides,
-    viewers,
     flat,
     sizes,
     duplicates,
@@ -244,5 +229,6 @@ export function buildParts(
     elevation,
     settings,
     messages,
+    fileCommands,
   };
 }

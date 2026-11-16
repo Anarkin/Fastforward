@@ -13,6 +13,7 @@ import type { Timer } from '../../lib/main/timer';
 import { nodeFileSystem } from '../../tools/commander/main/nodeFileSystem';
 import { isRepository } from '../../tools/commander/main/repositories';
 import { CommanderTool } from '../../tools/commander/main/tool';
+import { ViewerTool } from '../../tools/viewer/main/tool';
 import { TerminalTool } from '../../tools/terminal/main/tool';
 import type { HostListener } from '../../tools/terminal/main/hostLink';
 import {
@@ -173,10 +174,6 @@ export function newView(
         },
       ),
       commander: new CommanderTool({
-        pdfPlaces: {
-          of: () => Promise.resolve(undefined),
-          save: () => Promise.resolve(),
-        },
         fileSystem: () => Promise.resolve(nodeFileSystem),
         isRepository,
         codePage: () => Promise.resolve('windows-1252'),
@@ -201,6 +198,18 @@ export function newView(
         root: commanderRoot(),
       }),
       git: view,
+      viewer: new ViewerTool({
+        codePage: () => Promise.resolve('windows-1252'),
+        watch: () => () => {},
+        pdfPlaces: {
+          of: () => Promise.resolve(undefined),
+          save: () => Promise.resolve(),
+        },
+        hiddenParts: () => Promise.resolve([]),
+        fileIcon: () => Promise.resolve(new Uint8Array()),
+        editViewed: () => Promise.resolve(),
+        closed: () => undefined,
+      }),
     }),
   );
   return view;

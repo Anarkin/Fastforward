@@ -316,19 +316,6 @@ suite('Commander view', () => {
     );
   });
 
-  test('views the file of a viewing tab instead of the sides, and stops once another tab or none is shown', () => {
-    const viewing = run({ type: 'show', tab: '3', file: '/work/notes.txt' });
-    assert.strictEqual(viewing.viewing, '/work/notes.txt');
-    assert.strictEqual(
-      reduceView(viewing, { type: 'show', tab: '1' }).viewing,
-      undefined,
-    );
-    assert.strictEqual(
-      reduceView(viewing, { type: 'hide' }).viewing,
-      undefined,
-    );
-  });
-
   test('keeps the selected rows and the active side of a tab while another tab is shown, for when it is shown again', () => {
     const files = [entry('a.txt'), entry('b.txt')];
     let view = run(

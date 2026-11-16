@@ -6,7 +6,7 @@ import { folderKey } from '../shared/paths';
 import { archiveJob } from './archiveJobs';
 import { copiedBetween } from './betweenArchives';
 import { unpackingFirst } from './unpacking';
-import { reasonOf } from './reasons';
+import { reasonOf } from '../../../lib/main/reasons';
 import type { ConnectTransfer, Transfers } from './transfers';
 import type { Pane, ShownPane } from './sides';
 import { post } from './post';

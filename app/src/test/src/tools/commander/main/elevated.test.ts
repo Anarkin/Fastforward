@@ -10,7 +10,7 @@ import type { Entry } from '../../../../../tools/commander/shared/protocol';
 import { waitFor } from '../../../../helpers/fixtures';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { watchFolder } from '../../../../../tools/commander/main/watch';
+import { watchFolder } from '../../../../../lib/main/watch';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const notes: Entry = {

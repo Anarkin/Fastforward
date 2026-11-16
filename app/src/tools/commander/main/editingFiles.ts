@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
-import { firstBytes } from './encodingDetection';
+import { firstBytes } from '../../../lib/main/encodingDetection';
 import type { EditingAccess } from './editing';
 import { saveFile } from './fileSaving';
-import { bytesVersion } from './fileVersions';
-import { codeOf } from './reasons';
+import { bytesVersion } from '../../../lib/main/fileVersions';
+import { codeOf } from '../../../lib/main/reasons';
 import type { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './commanderAccess';
 

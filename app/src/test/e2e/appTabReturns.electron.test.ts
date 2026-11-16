@@ -35,11 +35,7 @@ const shownTabs = (opened: string, repository: string) =>
     { kind: 'commander', tab: { tool: 'commander', root: opened } },
     {
       kind: 'viewer',
-      tab: {
-        tool: 'commander',
-        root: path.join(opened, 'long.txt'),
-        view: true,
-      },
+      tab: { tool: 'viewer', root: path.join(opened, 'long.txt') },
     },
     {
       kind: 'editor',

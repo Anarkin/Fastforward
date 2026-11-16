@@ -119,7 +119,7 @@ export function shownEntries(
 
 export function entryFor(
   tool: ToolId | undefined,
-  kind: Pick<TabInfo, 'view' | 'edit' | 'compare'> = {},
+  kind: Pick<TabInfo, 'edit' | 'compare'> = {},
   focused?: string,
 ): ShortcutEntryId {
   if (tool === undefined) {
@@ -132,11 +132,7 @@ export function entryFor(
   if (tool === 'git' && kind.compare === true) {
     return 'diff';
   }
-  return tool === 'commander' && kind.view === true
-    ? 'viewer'
-    : tool === 'commander' && kind.edit === true
-      ? 'editor'
-      : tool;
+  return tool === 'commander' && kind.edit === true ? 'editor' : tool;
 }
 
 export function groupsInView(

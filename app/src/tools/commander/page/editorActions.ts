@@ -19,7 +19,6 @@ type EditorActions = Pick<
   | 'saveText'
   | 'reloadEdited'
   | 'editSource'
-  | 'editViewed'
   | 'saveIn'
   | 'reopenIn'
 >;
@@ -136,13 +135,6 @@ export function editorActions({ set, post, onPane }: StoreParts): {
         }),
       reloadEdited: (tab) => post({ type: 'reloadEdited', tab }),
       editSource: (tab, file) => post({ type: 'editSource', tab, file }),
-      editViewed: (tab, at, encoding) =>
-        post({
-          type: 'editViewed',
-          tab,
-          at,
-          ...(encoding !== undefined && { encoding }),
-        }),
       saveIn: (tab, encoding, bom) =>
         post({ type: 'saveIn', tab, encoding, bom }),
       reopenIn: (tab, encoding) => post({ type: 'reopenIn', tab, encoding }),

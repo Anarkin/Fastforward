@@ -22,6 +22,10 @@ import { fileColorProblems } from '../../tools/commander/shared/fileColors';
 import { groupStandIns } from '../../lib/shared/fileColors';
 import { sortColumns } from '../../tools/commander/shared/sorts';
 import type {
+  ViewerToHost,
+  ViewerToWebview,
+} from '../../tools/viewer/shared/protocol';
+import type {
   TerminalToHost,
   TerminalToWebview,
 } from '../../tools/terminal/shared/protocol';
@@ -30,9 +34,15 @@ import {
   type TerminalSettings,
 } from '../../tools/terminal/shared/settings';
 
-export const tools = ['terminal', 'commander', 'git'] as const;
+export const tools = ['terminal', 'commander', 'git', 'viewer'] as const;
 
 export type ToolId = (typeof tools)[number];
+
+export const folderTools = [
+  'terminal',
+  'commander',
+  'git',
+] as const satisfies readonly ToolId[];
 
 export const toolSections = [
   'commander',
@@ -49,6 +59,7 @@ export const confirmsClose: Readonly<Record<ToolId, boolean>> = {
   terminal: true,
   commander: false,
   git: false,
+  viewer: false,
 };
 
 export function isTool(value: unknown): value is ToolId {
@@ -67,6 +78,10 @@ interface ToolMessages {
   readonly git: {
     readonly toHost: GitToHost;
     readonly toWebview: GitToWebview;
+  };
+  readonly viewer: {
+    readonly toHost: ViewerToHost;
+    readonly toWebview: ViewerToWebview;
   };
 }
 

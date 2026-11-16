@@ -12,12 +12,11 @@ import {
   type EditorKept,
   type SidesKept,
   type TabKept,
-  type ViewerKept,
 } from './tabKept';
 import { reduceView } from './view';
 import { withoutParked } from './parkedDialogs';
 
-type TabKind = 'sides' | 'viewer' | 'editor';
+type TabKind = 'sides' | 'editor';
 
 interface Memory<T> {
   readonly kept: (tab: string) => T;
@@ -25,7 +24,7 @@ interface Memory<T> {
 }
 
 const kindOf = ({ file, edit }: CommanderToWebviewOf<'show'>): TabKind =>
-  file === undefined ? 'sides' : edit === true ? 'editor' : 'viewer';
+  file !== undefined && edit === true ? 'editor' : 'sides';
 
 function withFilters(
   filters: ReadonlyMap<string, PaneFilter>,
@@ -53,7 +52,6 @@ export function parsedOf(kept: string): unknown {
 export function keptTabActions(
   { set, get }: StoreParts,
   scrolls: ScrollPlaces,
-  viewer: Memory<ViewerKept>,
   editor: Memory<EditorKept>,
   views: KeptViews,
 ) {
@@ -64,10 +62,6 @@ export function keptTabActions(
         const kept = sidesKeptOf(get(), tab, scrolls);
         return kept && { sides: kept };
       }
-      case 'viewer':
-        return {
-          viewer: { ...viewer.kept(tab), choices: get().view.viewers.get(tab) },
-        };
       case 'editor':
         return { editor: editor.kept(tab) };
       default:
@@ -103,12 +97,6 @@ export function keptTabActions(
       for (const [key, offset] of restored.scrolls ?? []) {
         scrolls.keep(`${tab} ${key}`, offset);
       }
-    } else if (kind === 'viewer' && kept.viewer !== undefined) {
-      const { choices } = kept.viewer;
-      set((state) => ({
-        view: reduceView(state.view, { type: 'restore', tab, choices }),
-      }));
-      viewer.restore(tab, kept.viewer);
     } else if (kind === 'editor' && kept.editor !== undefined) {
       editor.restore(tab, kept.editor);
     }

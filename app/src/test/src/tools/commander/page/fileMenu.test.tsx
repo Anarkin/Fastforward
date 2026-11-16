@@ -1,7 +1,11 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
-import { tools, type ToolId } from '../../../../../shell/shared/tools';
+import {
+  folderTools,
+  tools,
+  type ToolId,
+} from '../../../../../shell/shared/tools';
 import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 import {
   fileMenuItems,
@@ -356,8 +360,8 @@ suite('Commander file menu', () => {
     );
 
     assert.deepStrictEqual(
-      tools.filter((tool) => offered.has(tool)),
-      tools.filter((tool) => tool !== 'commander'),
+      folderTools.filter((tool) => offered.has(tool)),
+      folderTools.filter((tool) => tool !== 'commander'),
     );
   });
 });

@@ -10,14 +10,11 @@ suite('What a commander tab keeps', () => {
       scroll: 18,
     } as const;
 
-    const kept = tabKeptOf(
-      { sides: { focus }, viewer: { focus }, editor: { focus } },
-      '1',
-    );
+    const kept = tabKeptOf({ sides: { focus }, editor: { focus } }, '1');
 
     assert.deepStrictEqual(
-      [kept.sides?.focus, kept.viewer?.focus, kept.editor?.focus],
-      [focus, focus, focus],
+      [kept.sides?.focus, kept.editor?.focus],
+      [focus, focus],
     );
   });
 });

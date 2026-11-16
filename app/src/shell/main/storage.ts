@@ -6,7 +6,7 @@ import type { ImageView, TextView } from '../shared/views';
 import type { ToolId } from '../shared/tools';
 import type { Layout } from './windows';
 import type { Store } from './stateFile';
-import { isSavedTab, savedLayout, sameTab, type SavedTab } from './savedTabs';
+import { savedLayout, savedTabOf, sameTab, type SavedTab } from './savedTabs';
 
 export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
@@ -62,9 +62,10 @@ export class Storage {
     }
     const ids = new Set<string>();
     const layout = savedLayout(
-      (Array.isArray(saved) ? saved.filter(isSavedTab) : []).filter(
-        (tab) => !ids.has(tab.id) && Boolean(ids.add(tab.id)),
-      ),
+      (Array.isArray(saved)
+        ? saved.flatMap((each) => savedTabOf(each) ?? [])
+        : []
+      ).filter((tab) => !ids.has(tab.id) && Boolean(ids.add(tab.id))),
       windows,
       active,
     );
@@ -93,11 +94,10 @@ export class Storage {
       tabsChanged
         ? this.state.update(
             tabsKey,
-            tabs.map(({ id, tool, root, view, edit, compare }) => ({
+            tabs.map(({ id, tool, root, edit, compare }) => ({
               id,
               tool,
               ...(root !== undefined && { root }),
-              ...(view === true && { view }),
               ...(edit === true && { edit }),
               ...(compare !== undefined && {
                 compare: { old: compare.old, new: compare.new },

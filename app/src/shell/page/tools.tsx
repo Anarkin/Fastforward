@@ -1,6 +1,7 @@
 import { CommanderTool } from '../../tools/commander/page/tool';
 import { TerminalTool } from '../../tools/terminal/page/tool';
 import { GitTool } from '../../tools/git/page/tool';
+import { ViewerTool } from '../../tools/viewer/page/tool';
 import { activeTabOf } from './shellSelectors';
 import { useShell, useShellActions } from './store';
 
@@ -26,6 +27,12 @@ export function ToolViews() {
         post={channels.git.post}
         listen={channels.git.listen}
         views={channels.git.views}
+      />
+      <ViewerTool
+        active={active === 'viewer'}
+        post={channels.viewer.post}
+        listen={channels.viewer.listen}
+        views={channels.viewer.views}
       />
     </>
   );

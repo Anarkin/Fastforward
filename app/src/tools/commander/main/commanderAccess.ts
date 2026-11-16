@@ -1,11 +1,11 @@
 import type { Store } from '../../../shell/main/stateFile';
 import type { EndingSource } from '../shared/protocol';
-import type { TextEncoding } from '../shared/textEncodings';
+import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import type { CommanderSettings } from '../shared/settings';
 import type { Sorts } from '../shared/sorts';
 import type { ColumnWidths } from '../shared/columnWidths';
 import type { LocalFileSystem } from './fileSystem';
-import type { WatchFolder } from './watch';
+import type { WatchFolder } from '../../../lib/main/watch';
 import type { WatchTree } from './watchTree';
 import type { ContentReader } from './duplicates';
 import type { ArchiveAccess } from './archives';
@@ -14,11 +14,9 @@ import type { TextDefaults } from './textDefaults';
 import type { Saved } from './fileSaving';
 import type { ConnectTransfer } from './transfers';
 import type { SizeWalker } from './sizeWalk';
-import type { PdfPlaceStore } from './pdfPlaces';
 import type { Thumbnails } from './thumbnailServing';
 
 export interface CommanderAccess {
-  readonly pdfPlaces: PdfPlaceStore;
   readonly fileSystem: () => Promise<LocalFileSystem>;
   readonly settings: () => CommanderSettings;
   readonly closesBrackets?: () => boolean;

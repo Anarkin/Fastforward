@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { packInto } from './packing';
-import { sampledVersion } from './fileVersions';
+import { sampledVersion } from '../../../lib/main/fileVersions';
 import { folderKey } from '../shared/paths';
 
 import { ArchiveTree } from './archiveTree';

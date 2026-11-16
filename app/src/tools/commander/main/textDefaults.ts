@@ -4,7 +4,7 @@ import type {
   EndingSource,
   TextShown,
 } from '../shared/protocol';
-import type { TextEncoding } from '../shared/textEncodings';
+import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import type { EditorSettings } from '../shared/editorSettings';
 import { isLineEnding, type LineEnding } from '../shared/textMarks';
 import type { EditorCharset, EditorConfig } from './editorConfig';

@@ -1,7 +1,9 @@
 import { strings } from '../lib/shared/strings';
 import type { Settings } from '../shell/main/settings';
 import { themeCss } from '../shell/main/theme';
-import { viewedFileRoute } from '../tools/commander/shared/files';
+import { viewedFileRoute } from '../tools/viewer/shared/files';
+import { viewerIconRoute } from '../tools/viewer/main/icons';
+import type { ViewerTool } from '../tools/viewer/main/tool';
 import { iconRoute } from '../tools/commander/shared/icons';
 import { thumbnailRoute } from '../tools/commander/shared/thumbnails';
 import type { CommanderTool } from '../tools/commander/main/tool';
@@ -11,7 +13,8 @@ import { appFile } from './files';
 
 export interface RoutedTools {
   readonly git: Pick<GitTool, 'image'>;
-  readonly commander: Pick<CommanderTool, 'icon' | 'thumbnail' | 'file'>;
+  readonly commander: Pick<CommanderTool, 'icon' | 'thumbnail'>;
+  readonly viewer: Pick<ViewerTool, 'icon' | 'file'>;
 }
 
 const fileHeaders = {
@@ -58,11 +61,12 @@ export function appRoutes(
         .then(({ commander }) => commander.thumbnail(url))
         .then(servedFile);
     }
+    if (url.pathname === viewerIconRoute) {
+      return tools.then(({ viewer }) => viewer.icon(url)).then(servedFile);
+    }
     if (url.pathname === viewedFileRoute) {
       return tools
-        .then(({ commander }) =>
-          commander.file(url, request.headers.get('range')),
-        )
+        .then(({ viewer }) => viewer.file(url, request.headers.get('range')))
         .then(servedFile);
     }
     const file = appFile(dist, request.url);

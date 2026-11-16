@@ -3,7 +3,6 @@ import { useStore } from 'zustand';
 import { clicked } from '../../../lib/shared/keymap';
 import './style.css';
 import { commanderKeymap } from './keymap';
-import { viewerKeymap } from './viewerKeymap';
 import {
   type CommanderDrop,
   type CommanderToHost,
@@ -12,10 +11,8 @@ import {
 import { sides } from '../shared/sides';
 import { Pane } from './pane';
 import { Editor } from './editor';
-import { Viewer } from './viewer';
 import { followDrag } from '../../../lib/page/followDrag';
 import { useBinding } from '../../../lib/page/shortcuts';
-import { useShellActions } from '../../../shell/page/store';
 import { CommanderPopups } from './commanderPopups';
 import { CommanderStore, createCommanderStore } from './store';
 import { sideToFocus } from './sideFocus';
@@ -41,10 +38,6 @@ export function CommanderTool({
     createCommanderStore(post, {}, undefined, dropFiles, views),
   );
   const tab = useStore(store, (state) => state.view.tab);
-  const viewsFile = useStore(
-    store,
-    (state) => state.view.viewing !== undefined,
-  );
   const editsFile = useStore(
     store,
     (state) => state.view.editing !== undefined,
@@ -69,7 +62,6 @@ export function CommanderTool({
     dispatch,
   } = store.getState();
   const setShare = (next: number) => dispatch({ type: 'share', share: next });
-  const { closeTab: onClose } = useShellActions();
   const columns = useRef<HTMLDivElement>(null);
   const triggers = {
     left: useRef<HTMLButtonElement>(null),
@@ -89,8 +81,7 @@ export function CommanderTool({
   }, [store]);
 
   const shown = active && tab !== undefined;
-  const viewing = shown && viewsFile;
-  const panesShown = shown && !viewsFile && !editsFile;
+  const panesShown = shown && !editsFile;
 
   const listed = useStore(store, (state) =>
     sides.every((side) => state.view.panes[side] !== undefined),
@@ -141,15 +132,6 @@ export function CommanderTool({
     commanderKeymap.history,
     (direction) => step(activeSide, direction),
     panesShown,
-  );
-  useBinding(
-    viewerKeymap.closeViewer,
-    () => {
-      if (tab !== undefined) {
-        onClose(tab);
-      }
-    },
-    viewing,
   );
   useBinding(commanderKeymap.reread, reread, panesShown);
   useBinding(
@@ -215,18 +197,6 @@ export function CommanderTool({
         <div className="repository commander">
           <div className="columns viewer-columns">
             <Editor key={tab} />
-          </div>
-        </div>
-      </CommanderStore>
-    );
-  }
-
-  if (viewsFile) {
-    return (
-      <CommanderStore value={store}>
-        <div className="repository commander">
-          <div className="columns viewer-columns">
-            <Viewer key={tab} />
           </div>
         </div>
       </CommanderStore>

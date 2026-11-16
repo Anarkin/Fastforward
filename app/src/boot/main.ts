@@ -25,7 +25,7 @@ import { watchSettings } from '../shell/main/settingsWatch';
 import { JsonFileStore } from '../shell/main/stateFile';
 import { Storage } from '../shell/main/storage';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
-import { PdfPlaces } from '../tools/commander/main/pdfPlaces';
+import { PdfPlaces } from '../tools/viewer/main/pdfPlaces';
 import { runHelper } from '../tools/commander/main/helper';
 import { helperOf } from '../tools/commander/main/helperProtocol';
 import type { GitTool } from '../tools/git/main/tool';
@@ -46,12 +46,14 @@ import { runsAsAppImage, updateMode } from './installation';
 import { removeUnviewedCopies } from './viewedFiles';
 import { workFolders } from '../tools/commander/main/workFolders';
 import type { CommanderTool } from '../tools/commander/main/tool';
+import type { ViewerTool } from '../tools/viewer/main/tool';
 import { gitLocator } from './gitSearch';
 import { needsGit } from '../tools/git/main/gitLocator';
 import type { GitSearch } from '../tools/git/main/locate';
 import { gitToolOf } from './gitHost';
 import { terminalToolOf } from './terminalHost';
 import { commanderToolOf } from './commanderHost';
+import { viewerToolOf } from './viewerHost';
 import { shellHostOf } from './shellHost';
 
 const dist = __dirname;
@@ -153,6 +155,7 @@ async function start(asked: readonly string[]): Promise<void> {
     shell: Shell;
     git: GitTool;
     commander: CommanderTool;
+    viewer: ViewerTool;
   }>();
   serveApp(dist, () => userSettings.settings, views.promise);
   setMenu();
@@ -255,7 +258,7 @@ async function start(asked: readonly string[]): Promise<void> {
     process.env,
   );
   const viewedRoots = storage.savedTabs.flatMap((tab) =>
-    (tab.view === true || tab.edit === true) && tab.root !== undefined
+    (tab.tool === 'viewer' || tab.edit === true) && tab.root !== undefined
       ? [tab.root]
       : [],
   );
@@ -289,7 +292,6 @@ async function start(asked: readonly string[]): Promise<void> {
     development,
     userSettings,
     state,
-    pdfPlaces,
     git,
     gitTool,
     windows,
@@ -311,10 +313,12 @@ async function start(asked: readonly string[]): Promise<void> {
     commandPlace,
     windows,
   });
+  const viewerTool = viewerToolOf({ pdfPlaces, commanderTool });
   const view = new Shell(log, storage, shellHost, {
     terminal: terminalTool,
     commander: commanderTool,
     git: gitTool,
+    viewer: viewerTool,
   });
   git.whenFound((found) => {
     logGit(log, found);
@@ -323,7 +327,12 @@ async function start(asked: readonly string[]): Promise<void> {
   if (asked.length > 0) {
     void view.openFolders(asked);
   }
-  views.resolve({ shell: view, git: gitTool, commander: commanderTool });
+  views.resolve({
+    shell: view,
+    git: gitTool,
+    commander: commanderTool,
+    viewer: viewerTool,
+  });
   asking = view;
   const applySettings = () => {
     log.info(strings.log.settingsChanged);

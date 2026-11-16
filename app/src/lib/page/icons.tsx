@@ -99,6 +99,12 @@ const toolSigns = {
       <path d="M11.5 6.5c0 2.5-6 2-6 4.5" />
     </>
   ),
+  viewer: (
+    <>
+      <path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" />
+      <circle cx="8" cy="8" r="2" />
+    </>
+  ),
 };
 
 export function ShieldIcon() {

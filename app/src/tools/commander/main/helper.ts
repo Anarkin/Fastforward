@@ -8,7 +8,7 @@ import {
   type HelperError,
   type Request,
 } from './helperProtocol';
-import { watchFolder, type WatchFolder } from './watch';
+import { watchFolder, type WatchFolder } from '../../../lib/main/watch';
 
 function isRequest(value: unknown): value is Request {
   if (

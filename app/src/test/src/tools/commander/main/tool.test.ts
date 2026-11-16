@@ -190,24 +190,6 @@ suite('Commander tool', () => {
     assert.strictEqual(tool.folderOf(tab), root);
   });
 
-  test('names a viewing tab after its file and gives its folder as the folder of the tab, showing it without sides', async () => {
-    const { tool, page } = commander({ [root]: [file('notes.txt')] });
-    const viewing: Tab = {
-      id: '3',
-      tool: 'commander',
-      root: at('notes.txt'),
-      view: true,
-    };
-
-    assert.strictEqual(tool.names([viewing]).get('3')?.name, 'notes.txt');
-    assert.strictEqual(tool.folderOf(viewing), root);
-    await tool.show(page, viewing);
-    assert.deepStrictEqual(page.of('show'), [
-      { type: 'show', tab: '3', file: at('notes.txt') },
-    ]);
-    assert.deepStrictEqual(page.listings(), []);
-  });
-
   test('watches the folders of the tab shown, listing a side again when its folder changes', async () => {
     const listed: Record<string, Listed> = {
       [root]: [folder('Users')],
@@ -664,46 +646,5 @@ suite('Commander tool in several windows', () => {
     });
     assert.ok(page.of('transfer').at(-1)?.view?.clash !== undefined);
     assert.deepStrictEqual(other.of('transfer'), []);
-  });
-
-  suite('viewing a file', () => {
-    let opened: string;
-
-    beforeEach(() => {
-      opened = tempFolder('commander');
-    });
-
-    afterEach(() => removeFolder(opened));
-
-    test('reads the rows of a file viewed in one window while another lists a folder, answering only the page that views it, as the page is not trusted', async () => {
-      const notes = path.join(opened, 'notes.txt');
-      fs.writeFileSync(notes, 'one\ntwo\n');
-      const { tool, page, send } = commander({ [root]: [] });
-      const other = new CommanderPage();
-      await tool.show(page, {
-        id: '3',
-        tool: 'commander',
-        root: notes,
-        view: true,
-      });
-      await tool.show(other, tab);
-      const rows = {
-        type: 'readRows',
-        tab: '3',
-        encoding: 'utf-8',
-        anchor: 0,
-        exact: true,
-        before: 0,
-        after: 2,
-        least: 0,
-      } as const;
-      await send({ ...rows, request: 1 }, other);
-      await send({ ...rows, request: 2 });
-      assert.deepStrictEqual(other.of('rows'), []);
-      assert.deepStrictEqual(
-        page.of('rows').map((answer) => answer.rows.map((row) => row.text)),
-        [['one', 'two']],
-      );
-    });
   });
 });

@@ -8,7 +8,10 @@ import {
   type EndingSource,
   type TextShown,
 } from '../shared/protocol';
-import { isTextEncoding, type TextEncoding } from '../shared/textEncodings';
+import {
+  isTextEncoding,
+  type TextEncoding,
+} from '../../../lib/shared/textEncodings';
 import { EditedText } from './editedText';
 import {
   KeptBeside,
@@ -16,10 +19,10 @@ import {
   ReadOnlyFile,
   type Saved,
 } from './fileSaving';
-import { reasonOf } from './reasons';
+import { reasonOf } from '../../../lib/main/reasons';
 import { rulesOf, type TextDefaults, type TextRules } from './textDefaults';
 import { decodedText } from './textCodec';
-import { looksBinary } from './encodingDetection';
+import { looksBinary } from '../../../lib/main/encodingDetection';
 import {
   foundIn,
   sourcesOf,

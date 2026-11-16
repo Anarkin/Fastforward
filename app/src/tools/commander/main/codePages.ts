@@ -1,4 +1,4 @@
-import type { TextEncoding } from '../shared/textEncodings';
+import type { TextEncoding } from '../../../lib/shared/textEncodings';
 
 const windowsCodePages = new Map<number, TextEncoding>([
   [874, 'windows-874'],

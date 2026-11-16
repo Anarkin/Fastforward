@@ -1,12 +1,14 @@
-import * as assert from 'node:assert';
 import { CommanderTool } from '../../../../../tools/commander/page/tool';
+import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   commanderSettings,
   inCommanderTool,
   listingOf,
-  type ShownTool,
 } from './commanderToolFixtures';
+import type { ShownTool as AnyShownTool } from '../../../../helpers/toolFixtures';
+
+type ShownTool = AnyShownTool<'commander'>;
 
 async function sidesShown(tool: ShownTool, tab: string): Promise<void> {
   await tool.send({ type: 'show', tab });

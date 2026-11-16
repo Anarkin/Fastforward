@@ -2,24 +2,15 @@ import type { EditorState } from '@codemirror/state';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { IconSource } from '../shared/icons';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
-import type { PdfPlace } from '../shared/pdf';
-import type { Sentence } from '../../../lib/shared/sentences';
-import type {
-  ByteRange,
-  CommanderToHost,
-  CommanderToWebview,
-  CommanderToWebviewOf,
-  FolderCommand,
-} from '../shared/protocol';
+import type { CommanderToWebview, FolderCommand } from '../shared/protocol';
 import type { Side } from '../shared/sides';
-import type { TextEncoding } from '../shared/textEncodings';
+import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import type { ColumnWidths, SizedColumn } from '../shared/columnWidths';
 import type { Layout } from './layouts';
 import type { SortColumn } from '../shared/sorts';
 import type { ClashAnswer, TransferView } from '../shared/transfers';
 import type { EditorPlace } from './editorPlace';
 import type { EditedTab, ToEditor } from './editorState';
-import type { KeptViewer } from './viewerKept';
 import type { KeptTyped } from '../../../lib/page/keptFocus';
 import type { EditorAsk, KeptEditing } from './editorKept';
 import {
@@ -28,27 +19,6 @@ import {
   type ViewAction,
   type ViewerChoices,
 } from './view';
-
-export interface Viewing {
-  readonly tab: string;
-  readonly size: number | undefined;
-  readonly version?: string;
-  readonly binary?: boolean;
-  readonly hidden?: readonly boolean[];
-  readonly detected?: TextEncoding;
-  readonly error?: Sentence;
-}
-
-export type ToViewer = CommanderToWebviewOf<
-  'rows' | 'text' | 'bytes' | 'found' | 'pdfPlace'
->;
-
-type ViewerRequest = Extract<
-  CommanderToHost,
-  {
-    readonly type: 'readText' | 'readRows' | 'readBytes';
-  }
->;
 
 interface Deleting {
   readonly tab: string;
@@ -148,8 +118,6 @@ interface NoAccess {
 export interface CommanderSource {
   readonly view: CommanderView;
   readonly drives: readonly string[];
-  readonly viewed: Viewing | undefined;
-  readonly keptViewed: ReadonlyMap<string, Viewing>;
   readonly edited: EditedTab | undefined;
   readonly editorAsks: ReadonlyMap<string, EditorAsk>;
   readonly deleting: Deleting | undefined;
@@ -211,33 +179,6 @@ export type ParkedDialogs = Partial<
 
 export interface CommanderActions {
   readonly receive: (message: CommanderToWebview) => void;
-  readonly request: (message: ViewerRequest) => void;
-  readonly listenViewer: (handler: (message: ToViewer) => void) => () => void;
-  readonly findText: (
-    tab: string,
-    encoding: TextEncoding,
-    query: string,
-    options: SearchOptions,
-    onFound: (found: {
-      readonly matches: readonly ByteRange[];
-      readonly done: boolean;
-    }) => void,
-  ) => () => void;
-  readonly readWholeText: (
-    tab: string,
-    encoding: TextEncoding,
-    onText: (text: string) => void,
-  ) => () => void;
-  readonly readPdfPlace: (
-    tab: string,
-    fingerprint: string,
-  ) => Promise<PdfPlace | undefined>;
-  readonly keepPdfPlace: (
-    tab: string,
-    fingerprint: string,
-    place: PdfPlace,
-  ) => void;
-  readonly flushPdfPlace: () => void;
   readonly dispatch: (action: ViewAction) => void;
   readonly select: (side: Side, key: string) => void;
   readonly mark: (side: Side, keys: readonly string[], marked: boolean) => void;
@@ -265,11 +206,6 @@ export interface CommanderActions {
   ) => void;
   readonly reloadEdited: (tab: string) => void;
   readonly editSource: (tab: string, file: string) => void;
-  readonly editViewed: (
-    tab: string,
-    at: number,
-    encoding: TextEncoding | undefined,
-  ) => void;
   readonly saveIn: (
     tab: string,
     encoding: TextEncoding | 'auto',
@@ -367,10 +303,6 @@ export interface CommanderActions {
   readonly iconTicketOf: (url: string) => string | undefined;
   readonly iconCame: (url: string, ticket: string) => void;
   readonly scrollOf: (key: string) => number;
-  readonly placeOf: (tab: string) => number;
-  readonly keepPlace: (tab: string, byte: number) => void;
-  readonly keptViewer: (tab: string) => KeptViewer;
-  readonly keepViewer: (tab: string, change: Partial<KeptViewer>) => void;
   readonly filterSide: (
     side: Side,
     query: string | undefined,
@@ -402,8 +334,6 @@ export type CommanderState = CommanderSource & CommanderActions;
 export const commanderDefaults: CommanderSource = {
   view: emptyView,
   drives: [],
-  viewed: undefined,
-  keptViewed: new Map(),
   edited: undefined,
   editorAsks: new Map(),
   deleting: undefined,

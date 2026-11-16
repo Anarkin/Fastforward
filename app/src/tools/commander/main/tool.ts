@@ -19,7 +19,6 @@ import type { Transfers } from './transfers';
 import { viewerIconUrl } from '../shared/icons';
 import { newPane, type Panes, type Sides } from './sides';
 import { post } from './post';
-import type { Viewers } from './viewers';
 import type { SideFlat } from './sideFlat';
 import type { SideSizes } from './sideSizes';
 import type { SideDuplicates } from './sideDuplicates';
@@ -33,12 +32,13 @@ import { isFolder } from './fileStats';
 import type { Listings } from './listings';
 import type { Elevation } from './elevation';
 import type { CommanderMessages } from './commanderMessages';
+import type { FileCommands } from './fileCommands';
+import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import { buildParts } from './commanderParts';
 
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;
   private readonly sides: Sides;
-  private readonly viewers: Viewers;
   private readonly flat: SideFlat;
   private readonly sizes: SideSizes;
   private readonly duplicates: SideDuplicates;
@@ -56,6 +56,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly elevation: Elevation;
   private readonly settings: SettingsCommands;
   private readonly messages: CommanderMessages;
+  private readonly fileCommands: FileCommands;
 
   constructor(private readonly access: CommanderAccess) {
     const parts = buildParts(
@@ -66,7 +67,6 @@ export class CommanderTool implements Tool<'commander'> {
       (page) => this.postDrives(page),
     );
     this.sides = parts.sides;
-    this.viewers = parts.viewers;
     this.flat = parts.flat;
     this.sizes = parts.sizes;
     this.duplicates = parts.duplicates;
@@ -83,6 +83,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.elevation = parts.elevation;
     this.settings = parts.settings;
     this.messages = parts.messages;
+    this.fileCommands = parts.fileCommands;
     access.whenGitFound?.(() => {
       for (const page of this.shell.pages()) {
         this.settings.post(page);
@@ -125,7 +126,6 @@ export class CommanderTool implements Tool<'commander'> {
     this.sides.shown.set(page, {
       tab: tab.id,
       watching: new Map(),
-      viewingsAsked: 0,
     });
     this.copies.askNextUpdate();
     if (tab.edit === true && tab.root !== undefined) {
@@ -136,15 +136,6 @@ export class CommanderTool implements Tool<'commander'> {
         edit: true,
       });
       await this.editing.show(page, tab.id, tab.root);
-      return;
-    }
-    if (tab.view === true && tab.root !== undefined) {
-      post(page, {
-        type: 'show',
-        tab: tab.id,
-        file: tab.root,
-      });
-      await this.viewers.startViewing(page, tab.id, tab.root);
       return;
     }
     post(page, { type: 'show', tab: tab.id });
@@ -195,9 +186,6 @@ export class CommanderTool implements Tool<'commander'> {
         this.sides.stopShowing(shownIn);
       }
     }
-    if (tab.view === true && tab.root !== undefined) {
-      this.copies.removeCopy(tab.root);
-    }
     if (tab.edit === true) {
       this.editing.closed(tab.id);
     }
@@ -219,12 +207,11 @@ export class CommanderTool implements Tool<'commander'> {
     return new Map(
       tabs.map((tab): [string, TabName] => [
         tab.id,
-        (tab.view === true || tab.edit === true) && tab.root !== undefined
+        tab.edit === true && tab.root !== undefined
           ? {
               name: path.basename(tab.root),
               icon: viewerIconUrl(tab.id, tab.root),
-              ...(tab.edit === true &&
-                this.editing.unsaved(tab.id) && { unsaved: true }),
+              ...(this.editing.unsaved(tab.id) && { unsaved: true }),
             }
           : { name: strings.tools.commander },
       ]),
@@ -236,7 +223,7 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   folderOf(tab: Tab): string | undefined {
-    if ((tab.view === true || tab.edit === true) && tab.root !== undefined) {
+    if (tab.edit === true && tab.root !== undefined) {
       return path.dirname(tab.root);
     }
     const panes = this.sides.panes.get(tab.id);
@@ -298,8 +285,21 @@ export class CommanderTool implements Tool<'commander'> {
     this.elevation.close();
   }
 
-  file(url: URL, range: string | null): Promise<Response> {
-    return this.serving.file(url, range);
+  hiddenParts(file: string): Promise<readonly boolean[]> {
+    return this.listings.hiddenParts(file);
+  }
+
+  editViewed(
+    page: Page,
+    tab: string,
+    file: string,
+    at: { readonly byte: number; readonly encoding?: TextEncoding },
+  ): Promise<void> {
+    return this.fileCommands.editViewed(page, tab, file, at);
+  }
+
+  viewClosed(file: string): void {
+    this.copies.removeCopy(file);
   }
 
   icon(url: URL): Promise<Response> {

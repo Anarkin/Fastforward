@@ -3,12 +3,8 @@ import { EditorState } from '@codemirror/state';
 import { suite, test, vi } from 'vitest';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { keepingWait } from '../../../../../lib/page/viewKeeper';
-import { viewerChoices } from '../../../../../tools/commander/page/view';
 import { filterOf } from '../../../../../tools/commander/page/sideFilters';
-import { createCommanderStore } from '../../../../../tools/commander/page/store';
-import { noKeptViewer } from '../../../../../tools/commander/page/viewerKept';
 import { noKeptEditing } from '../../../../../tools/commander/page/editorKept';
-import { noop } from '../../../../helpers/fixtures';
 import { keepingViews, withFiles } from './storeFixtures';
 
 const folder = 'C:\\code';
@@ -23,15 +19,11 @@ suite('Commander store keeping its tabs', () => {
     receive(withFiles(folder, 'a.txt'));
     store.getState().filterSide('left', 'a');
     store.getState().keepScroll(`1 left ${folder} details`, 40);
-    receive({ type: 'show', tab: '2', file: `${folder}\\a.txt` });
-    store.getState().choose({ mode: 'hex' });
-    store.getState().keepViewer('2', { finding: true });
-    store.getState().keepPlace('2', 12);
     receive({ type: 'show', tab: '3', file: `${folder}\\a.txt`, edit: true });
     store.getState().keepEditing('3', { finding: true });
     receive({ type: 'show', tab: '4' });
 
-    const released = ['1', '2', '3', '9'].map(release);
+    const released = ['1', '3', '9'].map(release);
     assert.deepStrictEqual(
       released.map((view) => {
         const parsed: unknown = view === '' ? view : JSON.parse(view ?? '');
@@ -39,19 +31,16 @@ suite('Commander store keeping its tabs', () => {
           ? Object.keys(parsed)
           : parsed;
       }),
-      [['sides'], ['viewer'], ['editor'], ''],
+      [['sides'], ['editor'], ''],
     );
     assert.ok(released[0]?.includes('"query":"a"'));
 
     const { view } = store.getState();
     assert.deepStrictEqual([...view.kept.keys()], []);
-    assert.deepStrictEqual([...view.viewers.keys()], []);
     assert.strictEqual(
       store.getState().scrollOf(`1 left ${folder} details`),
       0,
     );
-    assert.deepStrictEqual(store.getState().keptViewer('2'), noKeptViewer);
-    assert.strictEqual(store.getState().placeOf('2'), 0);
     assert.deepStrictEqual(store.getState().keptEditing('3'), noKeptEditing);
     receive({ type: 'show', tab: '1' });
     receive(withFiles(folder, 'a.txt'));
@@ -74,12 +63,12 @@ suite('Commander store keeping its tabs', () => {
       assert.deepStrictEqual(keptSent(), ['1']);
       vi.advanceTimersByTime(keepingWait);
       store.getState().activate('left');
-      receive({ type: 'show', tab: '2', file: `${folder}\\a.txt` });
+      receive({ type: 'show', tab: '2', file: `${folder}\\a.txt`, edit: true });
       assert.deepStrictEqual(keptSent(), ['1', '1', '2']);
-      store.getState().keepViewer('2', { finding: true });
+      store.getState().keepEditing('2', { finding: true });
       vi.advanceTimersByTime(keepingWait);
       assert.deepStrictEqual(keptSent(), ['1', '1', '2', '2']);
-      store.getState().keepPlace('2', 0);
+      store.getState().keepEditing('2', { replacing: true });
       store.getState().keepTabs();
       assert.strictEqual(keptSent().length, 5);
     } finally {
@@ -147,53 +136,6 @@ suite('Commander store keeping its tabs', () => {
     );
   });
 
-  test('brings a viewer tab back from what another page kept of it, its choices, place, find and focus, without what it read', () => {
-    const left = keepingViews();
-    const { store } = left;
-    const { receive } = store.getState();
-    const file = `${folder}\\a.txt`;
-    receive({ type: 'show', tab: '2', file });
-    store
-      .getState()
-      .choose({ mode: 'hex', encoding: 'utf-16le', language: 'json' });
-    store.getState().keepPlace('2', 120);
-    const sideways = { body: 'hex', left: 30, column: 0 };
-    const preview = { top: 10, left: 0, block: 3, offset: 4 };
-    const focus = { name: 'find', selection: [1, 3, 'forward'] } as const;
-    store.getState().keepViewer('2', {
-      finding: true,
-      search: { query: 'adam', options: wholeWord },
-      current: 3,
-      focus,
-      sideways,
-      preview,
-      bytes: { version: '1', start: 0, data: [1, 2], asked: 2 },
-    });
-    receive({ type: 'show', tab: '1' });
-    const kept = left.keptOf('2') ?? '';
-
-    const back = keepingViews();
-    back.hand('2', kept);
-    const other = back.store;
-    other.getState().receive({ type: 'show', tab: '2', file });
-
-    assert.deepStrictEqual(viewerChoices(other.getState().view), {
-      mode: 'hex',
-      encoding: 'utf-16le',
-      language: 'json',
-    });
-    assert.strictEqual(other.getState().placeOf('2'), 120);
-    assert.deepStrictEqual(other.getState().keptViewer('2'), {
-      ...noKeptViewer,
-      finding: true,
-      search: { query: 'adam', options: wholeWord },
-      current: 3,
-      focus,
-      sideways,
-      preview,
-    });
-  });
-
   test('brings an editor tab back from what another page kept of it, its find and replace and focus, taking its text from the main process rather than an editor state it held', () => {
     const left = keepingViews();
     const { store } = left;
@@ -247,7 +189,7 @@ suite('Commander store keeping its tabs', () => {
             [`right ${folder} details`, 5],
           ],
         },
-        viewer: 'not for a commander tab',
+        editor: 'not for a commander tab',
       }),
     );
     store.getState().receive({ type: 'show', tab: '1' });
@@ -271,53 +213,6 @@ suite('Commander store keeping its tabs', () => {
       store.getState().scrollOf(`1 right ${folder} details`),
       5,
     );
-  });
-
-  test('keeps what a viewer tab read, its text, colors, rows, bytes and matches, only for the three viewer tabs shown last, and its find, place and focus for every one', () => {
-    const store = createCommanderStore(noop);
-    const { receive } = store.getState();
-    const text = {
-      encoding: 'utf-8',
-      version: '1',
-      text: { text: 'x', marked: false },
-    } as const;
-    for (const tab of ['1', '2', '3', '4']) {
-      receive({ type: 'show', tab, file: `${folder}/${tab}.txt` });
-      store.getState().keepViewer(tab, { finding: true, text });
-      store.getState().keepPlace(tab, 7);
-    }
-
-    assert.strictEqual(store.getState().keptViewer('1').text, undefined);
-    assert.strictEqual(store.getState().keptViewer('1').finding, true);
-    assert.strictEqual(store.getState().placeOf('1'), 7);
-    assert.deepStrictEqual(store.getState().keptViewer('2').text, text);
-    store.getState().keepViewer('1', { text });
-    assert.strictEqual(store.getState().keptViewer('1').text, undefined);
-    receive({ type: 'show', tab: '1', file: `${folder}/1.txt` });
-    store.getState().keepViewer('1', { text });
-    assert.deepStrictEqual(store.getState().keptViewer('1').text, text);
-    assert.strictEqual(store.getState().keptViewer('2').text, undefined);
-  });
-
-  test('brings the find of a PDF back from what another page kept of it, its query, toggles and the match it was on', () => {
-    const left = keepingViews();
-    const { store } = left;
-    const { receive } = store.getState();
-    const file = `${folder}/a.pdf`;
-    receive({ type: 'show', tab: '2', file });
-    const pdfFind = {
-      search: { query: 'adam', options: wholeWord },
-      current: 3,
-    };
-    store.getState().keepViewer('2', { pdfFind });
-    receive({ type: 'show', tab: '1' });
-
-    const back = keepingViews();
-    back.hand('2', left.keptOf('2') ?? '');
-    const other = back.store;
-    other.getState().receive({ type: 'show', tab: '2', file });
-
-    assert.deepStrictEqual(other.getState().keptViewer('2').pdfFind, pdfFind);
   });
 
   test('keeps the marks of a side whole or not at all, none once they are too many to keep', () => {
@@ -345,17 +240,16 @@ suite('Commander store keeping its tabs', () => {
     receive(withFiles(folder, 'a.txt'));
     store.getState().dispatch({ type: 'share', share: 0.3 });
     store.getState().filterSide('left', 'a');
-    receive({ type: 'show', tab: '2', file: `${folder}\\a.txt` });
-    store.getState().choose({ mode: 'hex' });
+    receive({ type: 'show', tab: '2', file: `${folder}\\a.txt`, edit: true });
+    store.getState().keepEditing('2', { finding: true });
 
-    assert.ok(release('2')?.includes('hex'));
+    assert.ok(release('2')?.includes('finding'));
     receive({ type: 'show', tab: '1' });
     assert.ok(release('1')?.includes('0.3'));
     receive({ type: 'show', tab: '3' });
 
     const { view } = store.getState();
     assert.deepStrictEqual([...view.kept.keys()], []);
-    assert.deepStrictEqual([...view.viewers.keys()], []);
     assert.deepStrictEqual([...store.getState().filters.keys()], []);
   });
 });

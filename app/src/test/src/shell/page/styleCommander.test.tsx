@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { PathTitle } from '../../../../tools/commander/page/pathTitle';
+import { PathTitle } from '../../../../lib/page/pathTitle';
 import { cascaded, type States } from '../../../helpers/cascade';
 import { defaultSettings } from '../../../helpers/fixtures';
 import { PathTitleShown } from '../../../helpers/styleFixtures';

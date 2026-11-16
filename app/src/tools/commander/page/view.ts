@@ -7,8 +7,6 @@ import { defaultLayouts, type Layout, type Layouts } from './layouts';
 import { type ColumnWidths } from '../shared/columnWidths';
 import type { KeptFocus } from '../../../lib/page/keptFocus';
 import { type Sort, type Sorts } from '../shared/sorts';
-import type { ViewMode } from './viewerKeymap';
-import type { EncodingChoice } from './encodings';
 import { rowsOf, type Row } from './listing';
 import {
   fileColorsOf,
@@ -31,7 +29,6 @@ import {
 
 export interface CommanderView {
   readonly tab: string | undefined;
-  readonly viewing: string | undefined;
   readonly editing: string | undefined;
   readonly showHidden: boolean;
   readonly sorts: Sorts;
@@ -56,8 +53,6 @@ export interface CommanderView {
 }
 
 export interface ViewerChoices {
-  readonly mode?: ViewMode;
-  readonly encoding?: EncodingChoice;
   readonly language?: string;
 }
 
@@ -95,11 +90,7 @@ export interface KeptTab {
 }
 
 function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
-  if (
-    view.tab === undefined ||
-    view.viewing !== undefined ||
-    view.tab === view.closedTab
-  ) {
+  if (view.tab === undefined || view.tab === view.closedTab) {
     return view.kept;
   }
   return new Map(view.kept).set(view.tab, {
@@ -114,7 +105,6 @@ function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
 
 export const emptyView: CommanderView = {
   tab: undefined,
-  viewing: undefined,
   editing: undefined,
   showHidden: true,
   sorts: {
@@ -277,7 +267,6 @@ export function reduceView(
       return {
         ...view,
         tab: action.tab,
-        viewing: action.edit === true ? undefined : action.file,
         editing: action.edit === true ? action.file : undefined,
         active: back?.active ?? emptyView.active,
         share: back?.share ?? emptyView.share,
@@ -293,7 +282,6 @@ export function reduceView(
       return {
         ...view,
         tab: undefined,
-        viewing: undefined,
         editing: undefined,
         share: emptyView.share,
         focus: undefined,
@@ -333,8 +321,7 @@ export function reduceView(
                 : new Map(view.viewers).set(action.tab, action.choices),
           };
     case 'choose':
-      return view.tab === undefined ||
-        (view.viewing === undefined && view.editing === undefined)
+      return view.tab === undefined || view.editing === undefined
         ? view
         : {
             ...view,
@@ -554,7 +541,6 @@ export function reduceView(
         : { ...view, share: action.share };
     case 'focus':
       return view.tab === undefined ||
-        view.viewing !== undefined ||
         view.editing !== undefined ||
         JSON.stringify(view.focus) === JSON.stringify(action.focus)
         ? view

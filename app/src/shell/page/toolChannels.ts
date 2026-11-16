@@ -52,6 +52,7 @@ export function toolChannels(
     terminal: new Set(),
     commander: new Set(),
     git: new Set(),
+    viewer: new Set(),
   };
   const views = pageViews(post);
   const channels: ToolChannels = {
@@ -71,6 +72,12 @@ export function toolChannels(
       post: (message) => post({ type: 'tool', tool: 'git', message }),
       dropFiles: (files, message) => dropFiles(files, 'git', message),
       listen: (handler) => listening(listeners.git, handler),
+      views: views.views,
+    },
+    viewer: {
+      post: (message) => post({ type: 'tool', tool: 'viewer', message }),
+      dropFiles: (files, message) => dropFiles(files, 'viewer', message),
+      listen: (handler) => listening(listeners.viewer, handler),
       views: views.views,
     },
   };

@@ -4,7 +4,7 @@ import { sentencesOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { movedOut, presentIn } from './movedOut';
 import { itemsAt } from './archiveFiles';
-import { reasonOf } from './reasons';
+import { reasonOf } from '../../../lib/main/reasons';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { Packing, PackOptions } from './archiveReader';
 import type { ArchiveBranch } from './archiveTree';

@@ -1,5 +1,5 @@
 export const keptStates: Readonly<Record<string, string>> = {
-  'tools/commander/page/pdfPreview.ts match':
+  'tools/viewer/page/pdfPreview.ts match':
     'the match the pdf find steps back to, read once from the kept viewers of viewerActions.ts as it mounts and dropped once reached',
   'shell/page/promptPopup.tsx value':
     'the text typed in a prompt, seeded from what its dialog kept (typed) and told to it by onTyped as typed',
@@ -33,11 +33,11 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the zip cipher of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
   'tools/commander/page/packPopup.tsx keptForm':
     'the form of the pack dialog as it was kept, read once to leave its caret alone rather than select the name anew',
-  'tools/commander/page/pdfPreview.ts found':
+  'tools/viewer/page/pdfPreview.ts found':
     'the matches of the pdf find, counted anew by PDF.js as it searches again, stepped to the match kept per tab',
-  'tools/commander/page/pdfPreview.ts search':
+  'tools/viewer/page/pdfPreview.ts search':
     'the query and toggles of the pdf find, kept per tab in the kept viewers (pdfFind) and read back as mounted',
-  'tools/commander/page/pdfPreview.ts kept':
+  'tools/viewer/page/pdfPreview.ts kept':
     'the pdf find of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
   'tools/commander/page/transferPopup.tsx all':
     'whether a clash answer is for the rest, seeded from clashAll of the store for the transfer and question asked',
@@ -57,37 +57,37 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the matches counted, read from the editor state kept per tab in keptEditors as it mounts',
   'tools/commander/page/editorView.ts status':
     'the line, column and selection, read from the editor state kept per tab in keptEditors as it mounts',
-  'tools/commander/page/hexBody.tsx bytes':
+  'tools/viewer/page/hexBody.tsx bytes':
     'the bytes read, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
-  'tools/commander/page/hexBody.tsx keptLeft':
+  'tools/viewer/page/hexBody.tsx keptLeft':
     'the sideways scroll of the bytes, read once from the viewer kept per tab (viewerKept.ts), kept by onLeft',
-  'tools/commander/page/hexBody.tsx topByte':
+  'tools/viewer/page/hexBody.tsx topByte':
     'the byte at the top, kept per tab in the places of viewerActions.ts and read back through the viewer',
   'tools/commander/page/paneTiles.ts fill':
     'where thumbnails fill from, taken from the scroll kept per tab, side, folder and layout in ScrollPlaces',
-  'tools/commander/page/previewBody.tsx kept':
+  'tools/viewer/page/previewBody.tsx kept':
     'where the preview was scrolled, read once from the viewer kept per tab (viewerKept.ts) and scrolled back to',
-  'tools/commander/page/textBody.tsx keptSideways':
+  'tools/viewer/page/textBody.tsx keptSideways':
     'the sideways place of the text, read once from the viewer kept per tab (viewerKept.ts), kept by onLeft',
-  'tools/commander/page/textRows.ts read':
+  'tools/viewer/page/textRows.ts read':
     'the rows read and the top row, kept per tab in the kept viewers of viewerActions.ts until the file changes',
-  'tools/commander/page/textSideways.ts across':
+  'tools/viewer/page/textSideways.ts across':
     'the column scrolled across to, seeded from the sideways kept per tab (viewerKept.ts) and kept by onLeft',
-  'tools/commander/page/viewer.tsx finding':
+  'tools/viewer/page/viewer.tsx finding':
     'whether the find is open, kept per tab in the kept viewers of viewerActions.ts and read back as mounted',
-  'tools/commander/page/viewer.tsx kept':
+  'tools/viewer/page/viewer.tsx kept':
     'the viewer of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
-  'tools/commander/page/viewerFind.ts current':
+  'tools/viewer/page/viewerFind.ts current':
     'the match shown, kept per tab in the kept viewers of viewerActions.ts and read back as mounted',
-  'tools/commander/page/viewerFind.ts found':
+  'tools/viewer/page/viewerFind.ts found':
     'the matches found, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
-  'tools/commander/page/viewerFind.ts kept':
+  'tools/viewer/page/viewerFind.ts kept':
     'the find of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
-  'tools/commander/page/viewerFind.ts search':
+  'tools/viewer/page/viewerFind.ts search':
     'the query and toggles of the find, kept per tab in the kept viewers of viewerActions.ts',
-  'tools/commander/page/wholeText.ts colored':
+  'tools/viewer/page/wholeText.ts colored':
     'the colors of the text, kept per tab in the kept viewers of viewerActions.ts for its language and text',
-  'tools/commander/page/wholeText.ts text':
+  'tools/viewer/page/wholeText.ts text':
     'the whole text read, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
   'tools/git/page/diffFind.ts at':
     'the match shown, kept per scope and selection in the diff places of the git store, read back as mounted',
@@ -172,11 +172,11 @@ export const passingStates: Readonly<Record<string, string>> = {
     'the lines of the text, counted as the go-to-line prompt opens',
   'tools/commander/page/editorView.ts mounts':
     'counts the views of the text mounted, only to apply the find to each',
-  'tools/commander/page/hexBody.tsx columns':
+  'tools/viewer/page/hexBody.tsx columns':
     'the bytes that fit in a row, measured anew from the body once mounted',
-  'tools/commander/page/hexBody.tsx screen':
+  'tools/viewer/page/hexBody.tsx screen':
     'the rows that fit, measured anew from the body once mounted',
-  'tools/commander/page/markdownView.tsx render':
+  'tools/viewer/page/markdownView.tsx render':
     'the markdown renderer, loaded once for the page and read from the module as mounted',
   'tools/commander/page/pane.tsx focusAsks':
     'counts the asks to focus the filter box; the focus of the tab is kept apart in view.kept',
@@ -190,25 +190,25 @@ export const passingStates: Readonly<Record<string, string>> = {
     'the ticket of a system icon, taken once from the icon tickets of the store',
   'tools/commander/page/paneTiles.ts fitting':
     'the tiles that fit across, measured anew by a resize observer once mounted',
-  'tools/commander/page/pdfView.tsx failure':
+  'tools/viewer/page/pdfView.tsx failure':
     'why a pdf could not be shown, found again as it opens anew',
-  'tools/commander/page/scrollBody.tsx barShown':
+  'tools/viewer/page/scrollBody.tsx barShown':
     'true for a moment after the body moves or the pointer moves over it',
-  'tools/commander/page/scrollBody.tsx screen':
+  'tools/viewer/page/scrollBody.tsx screen':
     'the rows that fit, measured anew by a resize observer once mounted',
-  'tools/commander/page/scrollBody.tsx track':
+  'tools/viewer/page/scrollBody.tsx track':
     'the height of the scrollbar track, measured anew once mounted',
-  'tools/commander/page/textBody.tsx columns':
+  'tools/viewer/page/textBody.tsx columns':
     'the columns that fit, measured anew from the body once mounted',
-  'tools/commander/page/textBody.tsx font':
+  'tools/viewer/page/textBody.tsx font':
     'the font of the text, measured anew from a probe row once mounted',
-  'tools/commander/page/textBody.tsx measured':
+  'tools/viewer/page/textBody.tsx measured':
     'the rows that fit, measured anew from the body once mounted',
-  'tools/commander/page/textRows.ts estimate':
+  'tools/viewer/page/textRows.ts estimate':
     'the bytes per row estimated from the rows shown, taken anew as they are read',
-  'tools/commander/page/textRows.ts lastScreen':
+  'tools/viewer/page/textRows.ts lastScreen':
     'the rows of the last screen, asked anew of the main process once mounted',
-  'tools/commander/page/textSideways.ts wide':
+  'tools/viewer/page/textSideways.ts wide':
     'the widest line seen, grown anew from the rows and the whole text kept once mounted',
   'tools/commander/page/thumbnails.tsx failed':
     'the url of a vector thumbnail that failed to load, tried again once remounted',
@@ -218,11 +218,13 @@ export const passingStates: Readonly<Record<string, string>> = {
     'the thumbnail drawn, peeked from the thumbnail cache of the page as mounted',
   'tools/commander/page/tool.tsx store':
     'the commander store, made once for the page; it keeps what each commander tab shows through tab changes',
-  'tools/commander/page/viewer.tsx focusAsks':
+  'tools/viewer/page/tool.tsx store':
+    'the viewer store, made once for the page; it keeps what each viewer tab shows through tab changes',
+  'tools/viewer/page/viewer.tsx focusAsks':
     'counts the asks to focus the find box; the focus of the tab is kept apart in the kept viewers',
-  'tools/commander/page/viewerFind.ts jump':
+  'tools/viewer/page/viewerFind.ts jump':
     'counts the jumps to a match; a viewer shown again keeps its place rather than jumping',
-  'tools/commander/page/viewerScrollbar.tsx dragging':
+  'tools/viewer/page/viewerScrollbar.tsx dragging':
     'true only while the thumb of the viewer is dragged',
   'tools/git/page/addressBar.tsx asked':
     'counts the find key presses only to mount the search anew; the search itself is kept per repository',

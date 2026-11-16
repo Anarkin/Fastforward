@@ -10,7 +10,6 @@ import type {
 import type { Side } from '../../../../../tools/commander/shared/sides';
 import type { ElevatedFileSystem } from '../../../../../tools/commander/main/elevated';
 import type { SizeWalker } from '../../../../../tools/commander/main/sizeWalk';
-import type { PdfPlace } from '../../../../../tools/commander/shared/pdf';
 import { FakeStore } from '../../../../helpers/fakeStore';
 import { fakeArchives } from './fakeArchives';
 import { fakeShell } from './fakeShell';
@@ -152,15 +151,7 @@ export function commander(
     archiveTests,
   } = fakeArchives();
   const counting: { walker: SizeWalker | undefined } = { walker: undefined };
-  const places = new Map<string, { place: PdfPlace; file: string }>();
   const tool = new CommanderTool({
-    pdfPlaces: {
-      of: (fingerprint) => Promise.resolve(places.get(fingerprint)?.place),
-      save: (fingerprint, place, viewed) => {
-        places.set(fingerprint, { place, file: viewed });
-        return Promise.resolve();
-      },
-    },
     fileSystem: () => Promise.resolve(fileSystem),
     settings: () => settings,
     defaultColumns: () => defaultColumns,

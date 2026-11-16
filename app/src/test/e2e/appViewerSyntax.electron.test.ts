@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { maxColoredBytes } from '../../tools/commander/shared/protocol';
+import { maxColoredBytes } from '../../lib/shared/colorLimit';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';

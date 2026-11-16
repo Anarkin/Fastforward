@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { watched, type StartWatching } from './watch';
+import { watched, type StartWatching } from '../../../lib/main/watch';
 
 export type WatchTree = (
   folder: string,

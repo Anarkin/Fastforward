@@ -1,3 +1,5 @@
+import { flag, record, text, type Schema } from './schema';
+
 export interface SearchOptions {
   readonly caseSensitive: boolean;
   readonly wholeWord: boolean;
@@ -44,3 +46,12 @@ export interface Search {
 }
 
 export const noSearch: Search = { query: '', options: plainSearch };
+
+export const searchSchema: Schema<Search> = record({
+  query: text(),
+  options: record({
+    caseSensitive: flag(),
+    wholeWord: flag(),
+    regex: flag(),
+  }),
+});

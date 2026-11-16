@@ -12,7 +12,7 @@ import {
 import {
   viewerGroups,
   viewerKeymap,
-} from '../../tools/commander/page/viewerKeymap';
+} from '../../tools/viewer/page/viewerKeymap';
 import {
   editorGroups,
   editorKeymap,

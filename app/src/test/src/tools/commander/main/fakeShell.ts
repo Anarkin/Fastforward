@@ -28,7 +28,7 @@ export function fakeShell<P extends Page>(page: P) {
     holds: () => true,
     shown: () => [],
     open: () => Promise.resolve(),
-    openView: (_page, _tool, viewedFile) => {
+    openView: (_page, viewedFile) => {
       viewed.push(viewedFile);
       return Promise.resolve();
     },

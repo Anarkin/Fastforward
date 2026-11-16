@@ -10,13 +10,12 @@ import type { GitTool } from '../tools/git/main/tool';
 import type { GitLocator } from '../tools/git/main/gitLocator';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
 import { systemCodePage } from '../tools/commander/main/codePages';
-import type { PdfPlaces } from '../tools/commander/main/pdfPlaces';
 import { renameUnlessTaken } from '../tools/commander/main/renaming';
 import {
   inRepository,
   isRepository,
 } from '../tools/commander/main/repositories';
-import { folderStamp, watchFolder } from '../tools/commander/main/watch';
+import { folderStamp, watchFolder } from '../lib/main/watch';
 import { watchTree } from '../tools/commander/main/watchTree';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { transferProcess } from '../tools/commander/main/transferProcess';
@@ -53,7 +52,6 @@ export interface CommanderHostDeps {
   readonly development: boolean;
   readonly userSettings: UserSettings;
   readonly state: JsonFileStore;
-  readonly pdfPlaces: PdfPlaces;
   readonly git: GitLocator;
   readonly gitTool: GitTool;
   readonly windows: {
@@ -70,7 +68,6 @@ export function commanderToolOf({
   development,
   userSettings,
   state,
-  pdfPlaces,
   git,
   gitTool,
   windows,
@@ -90,7 +87,6 @@ export function commanderToolOf({
         : gitEndingOf(git.path, edited),
   });
   return new CommanderTool({
-    pdfPlaces,
     fileSystem: () => fileSystemFor(process.platform),
     codePage: () => systemCodePage(process.platform),
     saveEdited: async (file, bytes, overwriteReadOnly) =>

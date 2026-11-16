@@ -4,19 +4,16 @@ import { pathToFileURL } from 'node:url';
 import { beforeAll, suite, test } from 'vitest';
 import { imageType, maxImageSize } from '../../../lib/shared/images';
 import { maxMatches } from '../../../lib/shared/textMatches';
-import { rowBytes } from '../../../tools/commander/main/textRows';
+import { rowBytes } from '../../../tools/viewer/main/textRows';
 import { decodedText } from '../../../tools/commander/main/textCodec';
-import {
-  encodingMenu,
-  type EncodingChoice,
-} from '../../../tools/commander/page/encodings';
+import { encodingMenu, type EncodingChoice } from '../../../lib/page/encodings';
 import { fileColorOf, fileColorsOf } from '../../../lib/page/fileColors';
-import { previewOf } from '../../../tools/commander/page/previews';
+import { previewOf } from '../../../tools/viewer/page/previews';
 import {
-  maxColoredBytes,
   maxPreviewBytes,
   wholeLineBytes,
-} from '../../../tools/commander/shared/protocol';
+} from '../../../tools/viewer/shared/protocol';
+import { maxColoredBytes } from '../../../lib/shared/colorLimit';
 import { languageIds, languageOf } from '../../../lib/page/languages';
 import { defaultSettings } from '../../helpers/fixtures';
 

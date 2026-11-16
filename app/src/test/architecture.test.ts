@@ -340,6 +340,7 @@ suite('Architecture', () => {
         'shell/page/store.ts',
         'tools/commander/page/store.ts',
         'tools/git/page/store.ts',
+        'tools/viewer/page/store.ts',
       ],
     );
   });
@@ -546,8 +547,8 @@ suite('Architecture', () => {
       ...matchers,
       'tools/git/page/find.ts',
       'tools/commander/page/editorFind.ts',
-      'tools/commander/main/textFind.ts',
-      'tools/commander/page/markPieces.ts',
+      'tools/viewer/main/textFind.ts',
+      'tools/viewer/page/markPieces.ts',
     ];
     const code = sourceFiles.filter((file) => /\.tsx?$/.test(file));
     assert.deepStrictEqual(
@@ -595,17 +596,17 @@ suite('Architecture', () => {
       code.filter((file) => /<mark\b/.test(read(file))),
       [
         'lib/page/highlight.tsx',
-        'tools/commander/page/findMarks.tsx',
         'tools/git/page/codeMarks.tsx',
+        'tools/viewer/page/findMarks.tsx',
       ],
     );
     assert.deepStrictEqual(
       code.filter((file) => /\bfind-match\b/.test(read(file))),
       [
         'tools/commander/page/editorFind.ts',
-        'tools/commander/page/findMarks.tsx',
         'tools/git/page/codeMarks.tsx',
         'tools/git/page/diffFound.ts',
+        'tools/viewer/page/findMarks.tsx',
       ],
     );
     assert.deepStrictEqual(
@@ -656,9 +657,9 @@ suite('Architecture', () => {
         'lib/shared/filter.ts',
         'lib/shared/searchOptions.ts',
         'lib/shared/textMatches.ts',
-        'tools/commander/main/textFind.ts',
         'tools/commander/page/editorFind.ts',
-        'tools/commander/page/pdfDocument.ts',
+        'tools/viewer/main/textFind.ts',
+        'tools/viewer/page/pdfDocument.ts',
       ],
     );
   });

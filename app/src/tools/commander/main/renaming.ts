@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import { fileIdOf } from './fileIds';
-import { codeOf } from './reasons';
+import { codeOf } from '../../../lib/main/reasons';
 
 async function statOf(file: string): Promise<fs.BigIntStats | undefined> {
   try {

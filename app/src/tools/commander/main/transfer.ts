@@ -9,7 +9,7 @@ import type {
 } from '../shared/transfers';
 import { strings } from '../../../lib/shared/strings';
 import { fileIdOf } from './fileIds';
-import { reasonOf } from './reasons';
+import { reasonOf } from '../../../lib/main/reasons';
 
 export interface TransferPlan {
   readonly sources: readonly string[];

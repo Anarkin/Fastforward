@@ -1,12 +1,12 @@
 import { strings } from '../../../lib/shared/strings';
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
-import type { TextEncoding } from '../shared/textEncodings';
+import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import {
   inGroups,
   keywordsOf,
   textEncodingGroups,
   textEncodingMenu,
-} from './encodings';
+} from '../../../lib/page/encodings';
 
 export interface ReadShown {
   readonly choice: TextEncoding | 'auto';

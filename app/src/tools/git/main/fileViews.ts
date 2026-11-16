@@ -32,7 +32,7 @@ export class FileViews {
         this.viewedFiles,
       );
       if (viewed.kind === 'file') {
-        await this.shell().openView(page, 'commander', viewed.file);
+        await this.shell().openView(page, viewed.file);
       } else {
         notify(
           'error',

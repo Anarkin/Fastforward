@@ -14,7 +14,7 @@ import { isWebp } from './webp';
 import { imageType, maxImageSize } from '../../../lib/shared/images';
 import { thumbnailKey } from './thumbnailStore';
 import { ArchiveImages } from './archiveImages';
-import { fileResponse } from './fileRanges';
+import { fileResponse } from '../../../lib/main/fileRanges';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import { type Pane, type Sides } from './sides';
 import { listedIn } from './listedEntries';

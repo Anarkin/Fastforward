@@ -1,6 +1,6 @@
 import type { ToolChoice, ToWebviewOf } from '../shared/protocol';
 import { strings } from '../../lib/shared/strings';
-import { isTool, tools as toolIds, type ToolId } from '../shared/tools';
+import { folderTools, isTool, type ToolId } from '../shared/tools';
 import { sameRoot } from '../../lib/main/paths';
 
 import type { Notice, Page, Tab, Tools } from './toolContract';
@@ -77,7 +77,7 @@ export class ToolChoosing {
     asker: ToolId | undefined,
   ): Promise<void> {
     const fits = await Promise.all(
-      toolIds.map(async (tool) => ({
+      folderTools.map(async (tool) => ({
         tool,
         folders: await Promise.all(
           folders.map(

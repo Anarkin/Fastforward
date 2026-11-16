@@ -70,7 +70,7 @@ suite('App commander', () => {
       const state: unknown = JSON.parse(
         fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
       );
-      return JSON.stringify(state).includes('"view":true');
+      return JSON.stringify(state).includes('"tool":"viewer"');
     }, 'the viewing tab to be saved');
 
     await page.keyboard.press('Escape');

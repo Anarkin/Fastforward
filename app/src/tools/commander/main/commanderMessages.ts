@@ -10,9 +10,6 @@ import type { ItemChanges } from './itemChanges';
 import type { TransferCommands } from './transferCommands';
 import type { PackCommands } from './packCommands';
 import type { Transfers } from './transfers';
-import type { Viewers } from './viewers';
-import type { ViewerFind } from './viewerFind';
-import type { ViewedPdfPlaces } from './viewedPdfPlaces';
 import type { Listings } from './listings';
 import type { SideFlat } from './sideFlat';
 import type { SideSizes } from './sideSizes';
@@ -36,9 +33,6 @@ export class CommanderMessages {
     private readonly transferCommands: TransferCommands,
     private readonly packCommands: PackCommands,
     private readonly transfers: Transfers,
-    private readonly viewers: Viewers,
-    private readonly viewerFind: ViewerFind,
-    private readonly viewedPdfPlaces: ViewedPdfPlaces,
     private readonly listings: Listings,
     private readonly flat: SideFlat,
     private readonly sizes: SideSizes,
@@ -123,8 +117,6 @@ export class CommanderMessages {
         return this.itemChanges.newFolder(page, message);
       case 'newFile':
         return this.fileCommands.newFile(page, message);
-      case 'editViewed':
-        return this.fileCommands.editViewed(page, message);
       case 'rename':
         return this.itemChanges.rename(page, message);
       case 'pack':
@@ -154,21 +146,6 @@ export class CommanderMessages {
         return undefined;
       case 'compare':
         return this.fileCommands.compare(page, message.tab, message.files);
-      case 'readRows':
-        return this.viewers.readRows(page, message);
-      case 'readText':
-        return this.viewers.readText(page, message);
-      case 'findText':
-        return this.viewerFind.findText(page, message);
-      case 'stopFind':
-        this.viewerFind.stopFind(page, message);
-        return undefined;
-      case 'readPdfPlace':
-        return this.viewedPdfPlaces.readPdfPlace(page, message);
-      case 'savePdfPlace':
-        return this.viewedPdfPlaces.savePdfPlace(page, message);
-      case 'readBytes':
-        return this.viewers.readBytes(page, message);
       case 'reread':
         return this.listings.reread(page, message);
       case 'flat':

@@ -1,6 +1,4 @@
 .commander {
-  --widest-encoding-button: 88px;
-  --widest-language-button: 120px;
   --commander-row-height: round(
     var(--monospace-font-size) * var(--monospace-line-height),
     var(--device-pixel, 1px)

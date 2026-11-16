@@ -2,7 +2,7 @@ import * as net from 'node:net';
 import { strings } from '../../../lib/shared/strings';
 import type { Entry } from '../shared/protocol';
 import type { FileSystem } from './fileSystem';
-import type { WatchFolder } from './watch';
+import type { WatchFolder } from '../../../lib/main/watch';
 import {
   lines,
   newHelperAddress,

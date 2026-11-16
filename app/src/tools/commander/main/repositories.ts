@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { onSameVolume } from './volumes';
+import { onSameVolume } from '../../../lib/main/volumes';
 
 const gitFolder = '.git';
 const lookingAtOnce = 16;

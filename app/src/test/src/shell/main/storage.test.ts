@@ -101,7 +101,7 @@ suite('Storage', () => {
   test('keeps a tab that views a file as one, read and written', async () => {
     const store = new FakeStore();
     const file = path.resolve('notes.txt');
-    const tab = { id: '1', tool: 'commander', root: file, view: true } as const;
+    const tab = { id: '1', tool: 'viewer', root: file } as const;
     await store.update(tabsKey, [tab]);
     assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
 
@@ -110,16 +110,23 @@ suite('Storage', () => {
     assert.deepStrictEqual(written.get(tabsKey), [tab]);
   });
 
+  test('reads a tab of the commander that viewed a file, saved before the viewer was a tool of its own, as a tab of the viewer with the same id', async () => {
+    const store = new FakeStore();
+    const file = path.resolve('notes.txt');
+    await store.update(tabsKey, [
+      { id: '1', tool: 'commander', root: file, view: true },
+      { id: '2', tool: 'commander', root: file, view: true, edit: true },
+    ]);
+    assert.deepStrictEqual(storageOf(store).savedTabs, [
+      { id: '1', tool: 'viewer', root: file },
+    ]);
+  });
+
   test('keeps a tab that edits a file as one, read and written, apart from one viewing it', async () => {
     const store = new FakeStore();
     const file = path.resolve('notes.txt');
     const tab = { id: '1', tool: 'commander', root: file, edit: true } as const;
-    const viewing = {
-      id: '2',
-      tool: 'commander',
-      root: file,
-      view: true,
-    } as const;
+    const viewing = { id: '2', tool: 'viewer', root: file } as const;
     await store.update(tabsKey, [
       tab,
       viewing,

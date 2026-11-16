@@ -44,7 +44,7 @@ const clickOn = (button: Element | undefined) =>
 suite('Shortcuts popup', () => {
   test('opens on the tool of the tab shown, the viewer for a file viewed, the editor for a file edited, the diff for two files compared or a diff with the focus, and the shortcuts of every tab with no tab open', () => {
     assert.strictEqual(entryFor('commander'), 'commander');
-    assert.strictEqual(entryFor('commander', { view: true }), 'viewer');
+    assert.strictEqual(entryFor('viewer'), 'viewer');
     assert.strictEqual(entryFor('git'), 'git');
     assert.strictEqual(entryFor('git', { compare: true }), 'diff');
     assert.strictEqual(entryFor('git', {}, 'diff'), 'diff');
@@ -90,7 +90,7 @@ suite('Shortcuts popup', () => {
   test('opens on the groups of the viewer for a file viewed, of the editor for a file edited, and of the diff for two files compared', () => {
     assert.deepStrictEqual(
       textsOf(
-        shortcutsMarkup(<ShortcutsPopup />, 'commander', { view: true }),
+        shortcutsMarkup(<ShortcutsPopup />, 'viewer'),
         'shortcuts-heading',
       ),
       ['Scrolling', 'Showing the file', 'Text', 'Searching'],

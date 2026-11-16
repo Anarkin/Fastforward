@@ -5,7 +5,7 @@ import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { sameRoot } from '../../../lib/main/paths';
-import type { WatchFolder } from './watch';
+import type { WatchFolder } from '../../../lib/main/watch';
 import { archiveJob } from './archiveJobs';
 import type { Editing } from './editing';
 import type { Transfers } from './transfers';
@@ -89,7 +89,7 @@ export class ArchiveCopies {
       .tabs()
       .some(
         (open) =>
-          open.view === true &&
+          open.tool === 'viewer' &&
           open.root !== undefined &&
           (open.root === copy || open.root.startsWith(`${copy}${path.sep}`)),
       );

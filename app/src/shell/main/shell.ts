@@ -150,8 +150,7 @@ export class Shell {
         }),
       open: (page, tool, roots, reuse) =>
         this.tabs.open(page, tool, roots, reuse),
-      openView: (page, tool, file) =>
-        this.tabs.open(page, tool, [file], false, { view: true }),
+      openView: (page, file) => this.tabs.open(page, 'viewer', [file], false),
       openEdit: (page, tool, file) =>
         this.tabs.open(page, tool, [file], true, { edit: true }),
       editViewed: (page, tab) => this.tabs.editViewed(page, tab),

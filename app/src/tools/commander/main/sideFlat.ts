@@ -6,7 +6,7 @@ import type {
   FlatProgress,
 } from '../shared/protocol';
 import type { Side } from '../shared/sides';
-import type { WatchFolder } from './watch';
+import type { WatchFolder } from '../../../lib/main/watch';
 import type { WatchTree } from './watchTree';
 import { FlatTree } from './flatTree';
 import {

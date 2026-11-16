@@ -12,7 +12,7 @@ import {
 import {
   textEncodings,
   type TextEncoding,
-} from '../../../../../tools/commander/shared/textEncodings';
+} from '../../../../../lib/shared/textEncodings';
 
 const bytesOf = (...parts: (string | readonly number[])[]) =>
   Uint8Array.from(

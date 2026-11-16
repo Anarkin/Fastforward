@@ -85,19 +85,8 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| View a file | Show a file without its app | F3 | Common | ✅ Yes | In a viewer tab of its own, named and iconed after the file, keeping the text, hex or preview, the encoding, the language chosen and where it was in the text, the bytes, a PDF, a Markdown preview or an image at its real size while it is open, sideways too; its tab shown again comes back at once as it was left, its text, bytes and colors drawn as they were, its find open with its query, toggles and the match it was at, and the focus and caret where they were, the file read and searched anew only once it changed, a window reloaded as the settings are saved or the window it moved to bringing it back alike, from where it was, its find and its focus, kept by the main process, the file read and searched again; what it read kept for the three viewer tabs shown last; Escape closes it, F4 turns it into an editor tab |
+| View a file | Show a file without its app | F3 | Common | ✅ Yes | F3 in a viewer tab of its own; FEATURES-VIEWER says what it does |
 | Quick view | Show the selected file on the other side as it is selected | Ctrl+Q | Common | ❌ No |  |
-| Text | Show a file as text, of any size | — | Core | ✅ Yes | Read by byte position a screen at a time, so a gigabyte opens as fast as a kilobyte, each line of up to 64 KiB whole, as the diff shows it, a longer one in rows of 4 KiB, after an empty column as wide as the line numbers of the editor, so the text starts where the editor starts it; 2 |
-| Hex | Show a file as bytes | — | Common | ✅ Yes | 1: its offset, 16 bytes a row and their printable characters |
-| Encodings | Read a text in its encoding | — | Common | ✅ Yes | E: Auto, from a byte order mark or, when not UTF-8, the code page of the system; UTF-16, the Windows, ISO-8859, KOI8, DOS 866 and Mac encodings, or the bytes |
-| Syntax highlighting | Color the code of a file | — | Advanced | ✅ Yes | `shiki`, with VS Code's TextMate grammars, for files up to 10 MB; L chooses the language, or Plain Text |
-| Wrap and whitespace | Wrap long lines, and draw the spaces, tabs and line ends | — | Common | ✅ Yes | W and `.`, wrapping and whitespace on by default, as in the diff; wrapped at the column the editor wraps at, ↵ marking each break, as the editor and the diff mark them |
-| Find in the file | Search the text of a file | F7 | Common | ✅ Yes | Mod+F, through the whole file in its encoding, counting the matches and marking them in the text, the bytes and the hex; Aa matches the case, W whole words, across the slices it reads too, and .* a regular expression within a line; in a PDF, Aa and W through PDF.js, which has no regular expressions, its find kept with its tab and searched again as the PDF opens, stepping to the match it was on |
-| Images | Preview images | — | Common | ✅ Yes | 3: fitted, a large one shrunk to the viewer and a small one at its real size, never larger, or at their real size with F, an SVG drawn among them |
-| Markdown | Preview Markdown rendered | — | Advanced | ✅ Yes | 3: `markdown-it`, its code colored, its diagrams drawn and its images next to it shown |
-| PDF | Preview PDFs | — | Common | ✅ Yes | 3: `pdfjs-dist`, read by ranges, searched with Mod+F, zoomed with Mod and the wheel, opened again where it was left; none locked with a password |
-| Media | Play audio and video | — | Common | ❌ No |  |
-| Other documents | Preview office documents and others | — | Advanced | ❌ No |  |
 | Edit | Edit a file | F4 | Core | ✅ Yes | In an editor tab of its own, drawn as the viewer draws text, inside an archive too, each save putting it back; FEATURES-EDITOR says what it does |
 | Compare files | Diff two files | — | Common | ✅ Yes | Shift+F3, the two files marked on a side or the file of each side, in a git tab of their own that follows their changes, two images side by side; a notice says how to pick them when none are |
 

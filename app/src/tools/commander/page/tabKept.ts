@@ -1,9 +1,8 @@
 import { focusSchema, type KeptFocus } from '../../../lib/page/keptFocus';
 import { sides, type Side } from '../shared/sides';
-import { isTextEncoding } from '../shared/textEncodings';
+import { isTextEncoding } from '../../../lib/shared/textEncodings';
 import type { CommanderSource, PaneFilter } from './commanderState';
 import type { KeptEditing } from './editorKept';
-import type { EncodingChoice } from './encodings';
 import {
   countOf,
   fieldsOf,
@@ -22,9 +21,7 @@ import { dialogsDecoded, dialogsOf } from './keptDialogs';
 import type { Dialogs } from './parkedDialogs';
 import type { ScrollPlaces } from './scrollPlaces';
 import { filterKey } from './sideFilters';
-import type { KeptTab, ViewerChoices } from './view';
-import type { ViewMode } from './viewerKeymap';
-import type { KeptViewer } from './viewerKept';
+import type { KeptTab } from './view';
 
 const maxMarksKept = 5000;
 
@@ -47,27 +44,10 @@ export interface SidesKept {
   readonly dialogs?: Dialogs;
 }
 
-export type ViewerKept = Partial<
-  Pick<
-    KeptViewer,
-    | 'finding'
-    | 'search'
-    | 'current'
-    | 'focus'
-    | 'sideways'
-    | 'preview'
-    | 'pdfFind'
-  >
-> & {
-  readonly choices?: ViewerChoices;
-  readonly place?: number;
-};
-
 export type EditorKept = Partial<KeptEditing>;
 
 export interface TabKept {
   readonly sides?: SidesKept;
-  readonly viewer?: ViewerKept;
   readonly editor?: EditorKept;
 }
 
@@ -84,9 +64,7 @@ export function sidesKeptOf(
 ): SidesKept | undefined {
   const { view, filters } = state;
   const kept: KeptTab | undefined =
-    view.tab === tab && view.viewing === undefined && view.editing === undefined
-      ? view
-      : view.kept.get(tab);
+    view.tab === tab && view.editing === undefined ? view : view.kept.get(tab);
   if (kept === undefined) {
     return undefined;
   }
@@ -195,68 +173,6 @@ export function keptTabOf(kept: SidesKept): KeptTab {
   };
 }
 
-const modes: readonly ViewMode[] = ['text', 'hex', 'preview'];
-
-function encodingDecoded(value: unknown): EncodingChoice | undefined {
-  return value === 'auto' || value === 'bytes' || isTextEncoding(value)
-    ? value
-    : undefined;
-}
-
-function choicesDecoded(value: unknown): ViewerChoices | undefined {
-  const fields = fieldsOf(value);
-  return (
-    fields && {
-      mode: oneOf(modes, fields('mode')),
-      encoding: encodingDecoded(fields('encoding')),
-      language: textOf(fields('language')),
-    }
-  );
-}
-
-function sidewaysDecoded(value: unknown): ViewerKept['sideways'] {
-  const fields = fieldsOf(value);
-  const body = textOf(fields?.('body'));
-  const left = countOf(fields?.('left'));
-  const column = countOf(fields?.('column'));
-  return body === undefined || left === undefined || column === undefined
-    ? undefined
-    : { body, left, column };
-}
-
-function previewDecoded(value: unknown): ViewerKept['preview'] {
-  const fields = fieldsOf(value);
-  const top = countOf(fields?.('top'));
-  const left = countOf(fields?.('left'));
-  const offset = countOf(fields?.('offset'));
-  return top === undefined || left === undefined || offset === undefined
-    ? undefined
-    : { top, left, block: countOf(fields?.('block')), offset };
-}
-
-function pdfFindDecoded(value: unknown): ViewerKept['pdfFind'] {
-  const fields = fieldsOf(value);
-  const search = searchOf(fields?.('search'));
-  const current = countOf(fields?.('current'));
-  return search === undefined || current === undefined
-    ? undefined
-    : { search, current };
-}
-
-function viewerDecoded(fields: Fields): ViewerKept {
-  return {
-    choices: choicesDecoded(fields('choices')),
-    place: countOf(fields('place')),
-    finding: flagOf(fields('finding')),
-    search: searchOf(fields('search')),
-    current: countOf(fields('current')),
-    focus: focusSchema.decode(fields('focus')),
-    sideways: sidewaysDecoded(fields('sideways')),
-    preview: previewDecoded(fields('preview')),
-    pdfFind: pdfFindDecoded(fields('pdfFind')),
-  };
-}
-
 const encodingToReopen = (value: unknown) =>
   value === 'auto' || isTextEncoding(value) ? value : undefined;
 
@@ -280,11 +196,9 @@ export function tabKeptOf(value: unknown, tab: string): TabKept {
   const fields = fieldsOf(value);
   const part = (name: string) => fieldsOf(fields?.(name));
   const sidesPart = part('sides');
-  const viewerPart = part('viewer');
   const editorPart = part('editor');
   return {
     sides: sidesPart && sidesDecoded(sidesPart, tab),
-    viewer: viewerPart && viewerDecoded(viewerPart),
     editor: editorPart && editorDecoded(editorPart),
   };
 }

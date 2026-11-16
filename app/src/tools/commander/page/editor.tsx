@@ -13,7 +13,7 @@ import {
   shownLanguage,
 } from '../../../lib/page/languageMenu';
 import { LanguageButton } from '../../../lib/page/languageChoice';
-import { PathTitle } from './pathTitle';
+import { PathTitle } from '../../../lib/page/pathTitle';
 import { useCommander, useCommanderActions } from './store';
 import { editedShown, useEditorView } from './editorView';
 import { useEditorFinding } from './editorFinding';

@@ -3,7 +3,6 @@ import { type Entry, type FlatProgress } from '../shared/protocol';
 import { isSide, sides, type Side } from '../shared/sides';
 import type { FlatTree } from './flatTree';
 import type { Duplicates } from './duplicates';
-import type { BlockCache } from './fileBlocks';
 import type { FolderSizes } from './folderSizes';
 
 export interface Duplicating {
@@ -74,15 +73,6 @@ export interface ShownPane {
   readonly pane: Pane;
 }
 
-interface Viewing {
-  readonly tab: string;
-  readonly file: string;
-  size: number;
-  readonly binary: boolean;
-  readonly blocks: BlockCache;
-  readonly stop: () => void;
-}
-
 interface Watched {
   readonly folder: string;
   readonly elevated: boolean;
@@ -92,10 +82,6 @@ interface Watched {
 interface Showing {
   readonly tab: string;
   readonly watching: Map<Side, Watched>;
-  viewing?: Viewing;
-  viewingsAsked: number;
-  finding?: AbortController;
-  findingRequest?: number;
 }
 
 export class Sides {
@@ -156,10 +142,6 @@ export class Sides {
       stop();
     }
     showing.watching.clear();
-    showing.viewing?.stop();
-    showing.viewing = undefined;
-    showing.finding?.abort();
-    showing.finding = undefined;
   }
 }
 

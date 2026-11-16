@@ -1,6 +1,12 @@
 import type { Settings } from './settings';
-import { tools as toolIds } from '../shared/tools';
+import type { ToolId } from '../shared/tools';
 import { cursorVariables } from '../../lib/shared/cursorSettings';
+
+const themedTools = [
+  'terminal',
+  'commander',
+  'git',
+] as const satisfies readonly ToolId[];
 
 function declarations(
   values: Readonly<Record<string, string>>,
@@ -21,7 +27,7 @@ export function themeCss({
 }: Settings): string {
   const themed = (theme: 'light' | 'dark', indent: string) => [
     ...declarations(colors[theme], 'color-', indent),
-    ...toolIds.flatMap((tool) =>
+    ...themedTools.flatMap((tool) =>
       declarations(tools[tool].colors[theme], `color-${tool}-`, indent),
     ),
   ];

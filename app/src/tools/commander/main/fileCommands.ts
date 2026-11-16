@@ -9,7 +9,7 @@ import {
   parentFolder,
   type CommanderToHost,
 } from '../shared/protocol';
-import { isTextEncoding } from '../shared/textEncodings';
+import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import { type Side } from '../shared/sides';
 import type { Editing } from './editing';
 import { nameProblem } from '../shared/names';
@@ -131,7 +131,7 @@ export class FileCommands {
     if (shown.pane.archive === undefined) {
       await this.host
         .shell()
-        .openView(page, 'commander', path.join(shown.pane.folder, name));
+        .openView(page, path.join(shown.pane.folder, name));
       return;
     }
     const { viewedCopies } = this.access;
@@ -145,7 +145,7 @@ export class FileCommands {
           : path.join(viewedCopies, randomUUID()),
       )) ?? [];
     if (copy !== undefined) {
-      await this.host.shell().openView(page, 'commander', copy);
+      await this.host.shell().openView(page, copy);
     }
   }
 
@@ -181,22 +181,10 @@ export class FileCommands {
 
   async editViewed(
     page: Page,
-    { tab, at, encoding }: Extract<CommanderToHost, { type: 'editViewed' }>,
+    tab: string,
+    file: string,
+    at: { readonly byte: number; readonly encoding?: TextEncoding },
   ): Promise<void> {
-    const viewed = this.host
-      .shell()
-      .tabs()
-      .find((each) => each.id === tab && each.tool === 'commander');
-    const file = viewed?.view === true ? viewed.root : undefined;
-    if (
-      file === undefined ||
-      this.sides.shown.get(page)?.tab !== tab ||
-      !Number.isSafeInteger(at) ||
-      at < 0 ||
-      (encoding !== undefined && !isTextEncoding(encoding))
-    ) {
-      return;
-    }
     const refusal =
       this.copies.copyOf(file) === undefined
         ? await this.editing.refusal(file)
@@ -219,10 +207,7 @@ export class FileCommands {
       await this.host.shell().openEdit(page, 'commander', file);
       return;
     }
-    this.editing.startAt(tab, {
-      byte: at,
-      ...(encoding !== undefined && { encoding }),
-    });
+    this.editing.startAt(tab, at);
     await this.host.shell().editViewed(page, tab);
   }
 

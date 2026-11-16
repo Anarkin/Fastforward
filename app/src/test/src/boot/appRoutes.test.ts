@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { appRoutes } from '../../../boot/appRoutes';
-import { viewedFileRoute } from '../../../tools/commander/shared/files';
+import { viewedFileRoute } from '../../../tools/viewer/shared/files';
 import { iconRoute } from '../../../tools/commander/shared/icons';
 import { thumbnailRoute } from '../../../tools/commander/shared/thumbnails';
 import { imageRoute } from '../../../tools/git/shared/images';
@@ -31,6 +31,9 @@ const respond = appRoutes(
     commander: {
       icon: () => servedDrawing(),
       thumbnail: () => servedDrawing(),
+    },
+    viewer: {
+      icon: () => servedDrawing(),
       file: (_url, range) => servedDrawing(range),
     },
   }),

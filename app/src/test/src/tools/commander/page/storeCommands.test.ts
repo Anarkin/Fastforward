@@ -507,4 +507,32 @@ suite('Commander store', () => {
       [{ type: 'elevate', tab: '1', side: 'right' }],
     );
   });
+  test('asks to compare no files when no two files are marked or selected, so the app says how to pick them rather than doing nothing', () => {
+    const { posted, store } = shown();
+    store.getState().compare();
+    assert.deepStrictEqual(posted, [{ type: 'compare', tab: '1', files: [] }]);
+  });
+
+  test('applies the messages of the main process to its view through the view reducer, keeping the drives and a folder it may not read', () => {
+    const store = createCommanderStore(noop);
+    const { receive } = store.getState();
+    receive({ type: 'show', tab: '1' });
+    receive({ type: 'drives', drives: ['C:', 'D:'] });
+    receive({
+      type: 'noAccess',
+      tab: '1',
+      side: 'left',
+      folder: 'C:\\System Volume Information',
+      asAdministrator: true,
+    });
+    const state = store.getState();
+    assert.strictEqual(state.view.tab, '1');
+    assert.deepStrictEqual(state.drives, ['C:', 'D:']);
+    assert.deepStrictEqual(noAccessShown(state), {
+      tab: '1',
+      side: 'left',
+      folder: 'C:\\System Volume Information',
+      asAdministrator: true,
+    });
+  });
 });

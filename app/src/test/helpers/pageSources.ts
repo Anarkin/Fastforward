@@ -7,6 +7,7 @@ const stylesheets = [
   'tools/commander/page',
   'tools/terminal/page',
   'tools/git/page',
+  'tools/viewer/page',
 ].map((folder) => `${folder}/style.css`);
 
 export function stylesheet(): string {

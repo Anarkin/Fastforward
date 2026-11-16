@@ -45,8 +45,6 @@ export const listing = (folder: string, tab = '1') =>
     selected: undefined,
   }) as const;
 
-export const place = { page: 2, zoom: 'auto', left: 0, top: 10 } as const;
-
 export const withFiles = (folder: string, ...names: string[]) => ({
   ...listing(folder),
   entries: names.map((name) => ({
