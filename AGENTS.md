@@ -8,6 +8,7 @@
 - @docs/FEATURES-COMMANDER.md
 - @docs/FEATURES-VIEWER.md
 - @docs/FEATURES-EDITOR.md
+- @docs/FEATURES-DIFF.md
 
 ## Protected files
 

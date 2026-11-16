@@ -101,26 +101,10 @@
 | Compare two commits | Diff any two commits | `git diff <a> <b>` | Common | ✅ Yes | Mod+click the second; the first selected is the old side |
 | Compare with the working tree | Diff a commit against the uncommitted changes | `git diff <a>` | Common | ✅ Yes | Mod+click the Uncommitted changes row, or a commit from it for the reverse |
 | Compare from the merge base | Show what a branch adds since it forked | `git diff <a>...<b>` | Common | ❌ No | Comparing two tips shows the changes of both |
-| Compare two files | Diff any two files, in a repository or not | `git diff --no-index` | Advanced | ✅ Yes | Shift+F3 in the commander, the two files marked on a side or the file of each side, in a diff tab of their own that follows their changes, coming back with its find, the match it was on, its scroll and the keyboard as they were left, once shown again, reloaded or moved to another window; images side by side, as a commit shows them; no Markdown preview |
-| Inline and side by side | Show the two sides in one column or two | — | Core | ✅ Yes | Side by side by default |
-| Changed words | Mark the words that changed within lines | `git diff --word-diff` | Common | ✅ Yes | Pairs changed lines by how alike they are, keeping their order |
-| Moved lines | Mark lines moved rather than removed and added | `git diff --color-moved` | Advanced | ❌ No |  |
-| Syntax highlighting | Color the code of the diff | — | Common | ✅ Yes | `shiki`, with VS Code's TextMate grammars, in the language the file's name tells; L chooses another for the one file shown, or Plain Text for every file |
-| Ignore whitespace | Leave out changes of whitespace alone | `git diff -w` | Common | ✅ Yes | On by default; files with only whitespace changes are named |
-| Show whitespace | Draw the spaces, tabs and line ends | — | Advanced | ✅ Yes | On by default; `.` |
-| Line endings | Show changes of line endings, or ignore them | `git diff --ignore-cr-at-eol` | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it |
-| Encodings | Show files that aren't UTF-8 | `working-tree-encoding` in `.gitattributes` | Advanced | 🟡 Partial | A file opened in a viewer tab is read in the encoding a byte order mark names or, when not UTF-8, the code page of the system, or in one chosen with E; diffs read files as UTF-8; git turns messages into UTF-8 |
-| Context | Show more lines around the changes, or the whole file | `git diff -U<n>` | Common | ✅ Yes | The whole file of the file selected, on one toggle kept for every file and on by default; no expanding a few lines at a time |
-| Line wrapping | Wrap long lines | — | Common | ✅ Yes | On by default; W |
-| Find in the diff | Search the diff's text | — | Common | ✅ Yes | Mod+F; Aa matches the case, W whole words and .* a regular expression within a line, as every search of the app |
-| Next change | Move from change to change | — | Common | ✅ Yes | J and K, from the files too |
-| Minimap | Mark the changes on a strip beside the diff | — | Advanced | ✅ Yes | Marks the changes of a file shown whole, and what a find matches |
+| Diff view | Show a diff, its layout, words, colors, whitespace, find, minimap and images | — | Core | ✅ Yes | FEATURES-DIFF says what it does, the diff of a commit and of two files being drawn alike |
 | Renames and copies | Pair a moved file's old and new path | `git diff -M`, `-C` | Core | 🟡 Partial | Renames only; notes the ones without changes |
 | Mode and type changes | Show changes of mode, and files that became links | — | Common | ✅ Yes |  |
-| Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes |  |
-| Image diff | Show the two sides of an image | — | Common | ✅ Yes | Binary images side by side, with the size in a tooltip; an SVG diffs as text, and is drawn in a viewer tab; no swipe or onion skin |
 | Rendered Markdown | Show Markdown rendered | — | Niche | ✅ Yes | In a viewer tab of its own, not in the diff: `markdown-it`, with the HTML GitHub keeps, its code colored, the images next to the file, and Mermaid diagrams drawn |
-| Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for |
 | Diff algorithm | Choose Myers, patience or histogram | `git diff --diff-algorithm=<name>` | Advanced | 🟡 Partial | Always histogram |
 | External diff tool | Open a diff in another app | `git difftool` | Common | ❌ No |  |
 | Diff drivers | Diff through the drivers and filters of `.gitattributes` | `git diff --ext-diff`, `--textconv` | Niche | ❌ No | Turned off with `--no-ext-diff --no-textconv` |

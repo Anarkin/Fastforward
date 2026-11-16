@@ -1,0 +1,71 @@
+# FEATURES-DIFF
+
+<!-- prettier-ignore-start -->
+
+- What a diff can do, and how much of it Fastforward's diff does: the diff git shows in its third column and the tabs of the diff tool comparing two files, drawn by one component
+
+- Fastforward: ✅ Yes, 🟡 Partial, ❌ No
+
+- Tier, a judgement call from what WinMerge, Meld, KDiff3, Beyond Compare, Kaleidoscope and the diff editor of VS Code offer: Core is in nearly every diff, Common in most, Advanced in a few, Niche in one or two, if any
+
+- The key is the one Fastforward uses, as diff tools share few; what git diffs, a commit, the working tree or two commits, FEATURES-GIT says
+
+## Tabs
+
+| Feature | What it does | Key | Tier | Fastforward | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Compare two files | Diff any two files, in a repository or not | Shift+F3 | Advanced | ✅ Yes | Shift+F3 in the commander, the two files marked on a side or the file of each side, in a diff tab of their own that follows their changes, coming back with its find, the match it was on, its scroll and the keyboard as they were left, once shown again, reloaded or moved to another window; images side by side, as a commit shows them; no Markdown preview |
+| Follow changes | Diff the files again once one changes | — | Common | ✅ Yes | The files are watched while their tab shows |
+| Restore after a restart | Open the files compared again once the app starts | — | Common | ✅ Yes | Their tabs come back as tabs of the diff, those git saved before the diff was a tool of its own too |
+| Close | Close the files compared | Esc | Core | ✅ Yes | Esc closes the tab |
+| Compare folders | Diff two folders, file by file | — | Common | ❌ No | The commander marks no files that differ between its sides |
+| Three-way | Compare three files, or two against their base | — | Advanced | ❌ No |  |
+| Compare text | Diff text pasted or typed rather than files | — | Advanced | ❌ No |  |
+
+## Showing
+
+| Feature | What it does | Key | Tier | Fastforward | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Inline and side by side | Show the two sides in one column or two | — | Core | ✅ Yes | Side by side by default |
+| Changed words | Mark the words that changed within lines | — | Common | ✅ Yes | Pairs changed lines by how alike they are, keeping their order |
+| Moved lines | Mark lines moved rather than removed and added | — | Advanced | ❌ No |  |
+| Syntax highlighting | Color the code of the diff | L | Common | ✅ Yes | `shiki`, with VS Code's TextMate grammars, in the language the file's name tells; L chooses another for the one file shown, or Plain Text for every file |
+| Context | Show more lines around the changes, or the whole file | — | Common | ✅ Yes | The whole file of the file selected, on one toggle kept for every file and on by default; no expanding a few lines at a time |
+| Line wrapping | Wrap long lines | W | Common | ✅ Yes | On by default; W |
+| Minimap | Mark the changes on a strip beside the diff | — | Advanced | ✅ Yes | Marks the changes of a file shown whole, and what a find matches |
+
+## Whitespace and text
+
+| Feature | What it does | Key | Tier | Fastforward | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Ignore whitespace | Leave out changes of whitespace alone | — | Common | ✅ Yes | On by default; files with only whitespace changes are named |
+| Show whitespace | Draw the spaces, tabs and line ends | . | Advanced | ✅ Yes | On by default; `.` |
+| Line endings | Show changes of line endings, or ignore them | — | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it |
+| Encodings | Show files that aren't UTF-8 | — | Advanced | 🟡 Partial | A file opened in a viewer tab is read in the encoding a byte order mark names or, when not UTF-8, the code page of the system, or in one chosen with E; diffs read files as UTF-8; git turns messages into UTF-8 |
+| Ignore case | Leave out changes of case alone | — | Advanced | ❌ No |  |
+
+## Moving around
+
+| Feature | What it does | Key | Tier | Fastforward | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Next change | Move from change to change | J, K | Common | ✅ Yes | J and K, from the files too |
+| Find in the diff | Search the diff's text | Mod+F | Common | ✅ Yes | Mod+F; Aa matches the case, W whole words and .* a regular expression within a line, as every search of the app |
+| Sideways | Scroll long lines across | ←, →, Shift+Wheel | Common | ✅ Yes | While lines are not wrapped |
+
+## Not text
+
+| Feature | What it does | Key | Tier | Fastforward | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes |  |
+| Image diff | Show the two sides of an image | — | Common | ✅ Yes | Binary images side by side, with the size in a tooltip; an SVG diffs as text, and is drawn in a viewer tab; no swipe or onion skin |
+| Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for |
+
+## Changing
+
+| Feature | What it does | Key | Tier | Fastforward | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Edit | Edit a side within the diff | — | Common | ❌ No | F4 on a file edits it in an editor tab, from the commander |
+| Copy a change | Take a change over to the other side | — | Common | ❌ No |  |
+| Save a patch | Save the diff as a patch | — | Advanced | ❌ No |  |
+
+<!-- prettier-ignore-end -->
