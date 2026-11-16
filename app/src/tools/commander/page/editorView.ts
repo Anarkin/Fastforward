@@ -29,6 +29,7 @@ import {
   bracketsClosed,
   extensionsOf,
   stateOf,
+  settingsKept,
   keptJson,
   colorsOf,
   fieldsKept,
@@ -201,7 +202,11 @@ export function useEditorView(language: string | undefined) {
       }
       const head = shown.state.selection.main.head;
       version = message.shown.version;
-      const next = stateOf(message.shown, message.state, extensions);
+      const next = settingsKept(
+        stateOf(message.shown, message.state, extensions),
+        shown.state,
+        [wrapping.current, blanking.current, closing.current, coloring.current],
+      );
       const keptPlace = placeIn(message.state);
       if (message.reloaded === true) {
         shown.setState(next);

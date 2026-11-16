@@ -156,6 +156,18 @@ export function stateOf(
   return EditorState.create({ doc, extensions: all });
 }
 
+export function settingsKept(
+  state: EditorState,
+  replaced: EditorState,
+  compartments: readonly Compartment[],
+): EditorState {
+  return state.update({
+    effects: compartments.map((compartment) =>
+      compartment.reconfigure(compartment.get(replaced) ?? []),
+    ),
+  }).state;
+}
+
 export const lineBreak = String.fromCharCode(10);
 
 export function keptJson(
