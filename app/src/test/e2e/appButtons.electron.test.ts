@@ -125,7 +125,15 @@ suite('App buttons', () => {
     assert.ok(git.gaps.length > 10 && commander.gaps.length > 6);
     assert.ok(viewer.gaps.length > 4);
     assert.ok(whole(gaps), gaps.join());
-    assert.strictEqual(distinct(gaps.filter((gap) => gap < 10)).length, 1);
+    assert.strictEqual(
+      distinct(gaps.filter((gap) => gap < 10)).length,
+      1,
+      JSON.stringify({
+        git: git.gaps,
+        commander: commander.gaps,
+        viewer: viewer.gaps,
+      }),
+    );
     assert.ok(whole(widths), widths.join());
     assert.deepStrictEqual(distinct(widths).length, 1);
   });
