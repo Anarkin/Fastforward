@@ -21,6 +21,7 @@ export interface ViewerSource {
   readonly choices: ReadonlyMap<string, ViewerChoices>;
   readonly tabViews: ReadonlyMap<string, ViewerTabView>;
   readonly places: ReadonlyMap<string, number>;
+  readonly caches: ReadonlyMap<string, Partial<KeptViewer>>;
 }
 
 export interface ViewerActions {
@@ -76,6 +77,7 @@ export const viewerDefaults: ViewerSource = {
   choices: new Map(),
   tabViews: new Map(),
   places: new Map(),
+  caches: new Map(),
 };
 
 const noChoices: ViewerChoices = {};

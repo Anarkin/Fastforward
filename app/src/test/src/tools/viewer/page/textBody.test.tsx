@@ -111,7 +111,9 @@ async function viewing(
     assert.ok(main);
     const root = createRoot(main);
     const posted: ViewerToHost[] = [];
-    const store = createViewerStore((message) => posted.push(message));
+    const store = createViewerStore((message) => posted.push(message), {
+      caches: new Map([['3', {}]]),
+    });
     const answered = new Set<number>();
     const places: number[] = [];
     const place = { current: from };

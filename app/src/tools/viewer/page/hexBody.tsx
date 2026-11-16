@@ -67,15 +67,12 @@ export function ByteBody({
     (left: number) => keepViewer(tab, { sideways: { body, left, column: 0 } }),
     [keepViewer, tab, body],
   );
-  const [bytes, setBytes] = useState<Bytes | undefined>(() => {
-    const kept = keptViewer(tab).bytes;
-    return kept?.version === version ? kept : undefined;
-  });
-  useEffect(() => {
-    if (bytes !== undefined) {
-      keepViewer(tab, { bytes });
-    }
-  }, [keepViewer, tab, bytes]);
+  const keptBytes = useViewer((state) => state.caches.get(tab)?.bytes);
+  const bytes = keptBytes?.version === version ? keptBytes : undefined;
+  const setBytes = useCallback(
+    (next: Bytes | undefined) => keepViewer(tab, { bytes: next }),
+    [keepViewer, tab],
+  );
   const rowBytes =
     layout === 'hex' ? hexRowBytes : Math.max(minTextColumns, columns);
   const rowCount = Math.ceil(size / rowBytes);
@@ -108,17 +105,17 @@ export function ByteBody({
           });
         }
       }),
-    [listen, tab, requests],
+    [listen, tab, requests, setBytes],
   );
 
   useEffect(() => {
     if (viewing.size !== undefined) {
       requests.restart();
-      setBytes((shown) =>
-        shown?.version === viewing.version ? shown : undefined,
-      );
+      if (keptViewer(tab).bytes?.version !== viewing.version) {
+        setBytes(undefined);
+      }
     }
-  }, [requests, viewing]);
+  }, [requests, viewing, tab, keptViewer, setBytes]);
 
   useEffect(() => {
     const wanted = bytesToAsk(

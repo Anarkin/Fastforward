@@ -3,8 +3,6 @@ import { maxFindLength } from '../shared/protocol';
 import type { ViewerToHost } from '../shared/protocol';
 import type { ViewerActions } from './viewerState';
 import type { ToViewer } from './viewing';
-import { RecentCache } from './recentCache';
-import { maxCachedViewers, cachesOf, type KeptViewer } from './viewerKept';
 
 const pdfPlaceWait = 2000;
 
@@ -26,12 +24,8 @@ type Asked = ViewerToHost;
 export function viewerActions(sent: (message: ViewerToHost) => void): {
   readonly actions: StreamActions;
   readonly heard: (message: ToViewer) => void;
-  readonly forget: (tab: string) => void;
   readonly awaitViewing: (tab: string | undefined) => void;
   readonly viewingCame: (tab: string) => void;
-  readonly cacheOf: (tab: string) => Partial<KeptViewer>;
-  readonly keepCache: (tab: string, change: Partial<KeptViewer>) => void;
-  readonly freshCache: (tab: string) => void;
 } {
   let awaited: string | undefined;
   let held: Asked[] = [];
@@ -42,7 +36,6 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
       sent(message);
     }
   };
-  const caches = new RecentCache<Partial<KeptViewer>>(maxCachedViewers);
   const viewerListeners = new Set<(message: ToViewer) => void>();
   const listenViewer = (handler: (message: ToViewer) => void) => {
     viewerListeners.add(handler);
@@ -74,17 +67,9 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
         handler(message);
       }
     },
-    forget: (tab) => caches.forget(tab),
-    cacheOf: (tab) => caches.of(tab) ?? {},
-    keepCache: (tab, change) =>
-      caches.keep(tab, { ...caches.of(tab), ...cachesOf(change) }),
-    freshCache: (tab) => caches.keep(tab, {}),
     awaitViewing: (tab) => {
       awaited = tab;
       held = [];
-      if (tab !== undefined) {
-        caches.shown(tab);
-      }
     },
     viewingCame: (tab) => {
       if (awaited !== tab) {

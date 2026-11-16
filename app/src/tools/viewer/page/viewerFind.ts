@@ -9,7 +9,7 @@ import {
 } from '../../../lib/shared/searchOptions';
 import type { Viewing } from './viewing';
 import { useViewer, useViewerActions } from './store';
-import { noKeptViewer, type ViewerFound } from './viewerKept';
+import type { ViewerFound } from './viewerKept';
 
 export interface ViewerFind {
   readonly query: string;
@@ -46,10 +46,7 @@ export function useViewerFind(
   viewing: Viewing | undefined,
   encoding: TextEncoding,
 ) {
-  const { findText, keptViewer, keepViewer } = useViewerActions();
-  const [kept] = useState(() =>
-    tab === undefined ? noKeptViewer : keptViewer(tab),
-  );
+  const { findText, keepViewer } = useViewerActions();
   const { query, options } = useViewer((state) =>
     tab === undefined
       ? noSearch
@@ -58,7 +55,9 @@ export function useViewerFind(
   const current = useViewer((state) =>
     tab === undefined ? 0 : (state.tabViews.get(tab)?.current ?? 0),
   );
-  const [found, setFound] = useState(kept.found);
+  const found = useViewer((state) =>
+    tab === undefined ? undefined : state.caches.get(tab)?.found,
+  );
   const [jump, setJump] = useState(0);
   const awaitingFirst = useRef(false);
   const version = viewing?.version;
@@ -77,13 +76,15 @@ export function useViewerFind(
       query,
       options,
       ({ matches, done }) => {
-        setFound({
-          query,
-          options,
-          encoding,
-          version: searched,
-          matches,
-          done,
+        keepViewer(viewing.tab, {
+          found: {
+            query,
+            options,
+            encoding,
+            version: searched,
+            matches,
+            done,
+          },
         });
         if (awaitingFirst.current && matches.length > 0) {
           awaitingFirst.current = false;
@@ -91,13 +92,7 @@ export function useViewerFind(
         }
       },
     );
-  }, [viewing, encoding, query, options, findText]);
-
-  useEffect(() => {
-    if (tab !== undefined) {
-      keepViewer(tab, { found });
-    }
-  }, [tab, keepViewer, found]);
+  }, [viewing, encoding, query, options, findText, keepViewer]);
 
   const ours = foundFor(found, { query, options }, encoding, version);
   const matches = ours ? found.matches : [];

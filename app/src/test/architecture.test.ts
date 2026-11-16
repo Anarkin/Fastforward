@@ -6,7 +6,7 @@ import { toolSections, tools } from '../shell/shared/tools';
 import { shortcutEntries } from '../shell/page/toolShortcuts';
 import { defaultSettings } from './helpers/fixtures';
 import { programsOfSuffixes } from './helpers/programs';
-import { keptStates, passingStates } from './helpers/componentStates';
+import { componentStates } from './helpers/componentStates';
 import {
   source,
   appFolder,
@@ -88,6 +88,46 @@ function statesIn(text: string): string[] {
   return calls === named.length ? named : [...named, '?'];
 }
 
+function argumentAt(text: string, open: number): string {
+  let depth = 0;
+  for (let at = open; at < text.length; at++) {
+    const char = text[at];
+    if (char === '(') {
+      depth += 1;
+    } else if (char === ')') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(open + 1, at);
+      }
+    }
+  }
+  return text.slice(open + 1);
+}
+
+function seededFromStore(text: string): string[] {
+  const actions = [
+    ...text.matchAll(/const\s*\{([^}]*)\}\s*=\s*use\w*Actions\(\)/g),
+  ].flatMap(([, names = '']) =>
+    names
+      .split(',')
+      .map((name) => name.split(':').at(-1)?.trim() ?? '')
+      .filter((name) => name !== ''),
+  );
+  const reads = new RegExp(
+    [String.raw`\.getState\(\)`, String.raw`\buse[A-Z]\w*\(`]
+      .concat(actions.map((name) => String.raw`\b${name}\(`))
+      .join('|'),
+  );
+  return [
+    ...text.matchAll(
+      /\bconst\s+(\[[^\]]*\]|\w+)\s*(?::[^=]*)?=\s*use(?:State|Reducer)\s*(?:<[^(]*>)?\(/g,
+    ),
+  ].flatMap((match) => {
+    const open = match.index + match[0].length - 1;
+    return reads.test(argumentAt(text, open)) ? [match[1] ?? '?'] : [];
+  });
+}
+
 function partialsOf(folder: string): string[] {
   return [
     ...read(`${folder}/style.css`).matchAll(/^@import '\.\/([^']+)';$/gm),
@@ -95,7 +135,7 @@ function partialsOf(folder: string): string[] {
 }
 
 suite('Architecture', () => {
-  test('holds in a component, by useState or useReducer, only a state helpers/componentStates.ts lists, each with why: kept, read back as the component mounts from what the tab keeps, or passing, a measure, a moment or a trigger a tab shown again may lose, so leaving a tab and coming back finds it as it was left, and a state added later is weighed before it lands', () => {
+  test('holds in a component, by useState or useReducer, only a state helpers/componentStates.ts lists, a state a tab shown again may lose, as everything that outlives the component lives in the store, so a state added later is weighed before it lands', () => {
     const held = sourceFiles
       .filter((file) =>
         /^(?:lib|shell|tools\/[^/]+|components\/[^/]+)\/page\/.+\.tsx?$/.test(
@@ -103,11 +143,35 @@ suite('Architecture', () => {
         ),
       )
       .flatMap((file) => statesIn(read(file)).map((name) => `${file} ${name}`));
-    const listed = [keptStates, passingStates].flatMap((states) =>
-      Object.keys(states),
+    assert.deepStrictEqual(
+      held.toSorted(),
+      Object.keys(componentStates).toSorted(),
     );
-    assert.deepStrictEqual(held.toSorted(), listed.toSorted());
-    assert.strictEqual(new Set(listed).size, listed.length);
+  });
+
+  test('says of each state a component holds which kind it is, a measure, a moment, a trigger or made once, and why a tab shown again may lose it', () => {
+    assert.deepStrictEqual(
+      Object.entries(componentStates).filter(
+        ([, why]) =>
+          !/^(?:a measure|a moment|a trigger|made once): \S/.test(why),
+      ),
+      [],
+    );
+  });
+
+  test('seeds no state a component holds from a store, as what outlives the component lives in the store and is read there, a restore reading it through the restore hook', () => {
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) =>
+          /^(?:lib|shell|tools\/[^/]+|components\/[^/]+)\/page\/.+\.tsx?$/.test(
+            file,
+          ),
+        )
+        .flatMap((file) =>
+          seededFromStore(read(file)).map((name) => `${file} ${name}`),
+        ),
+      [],
+    );
   });
 
   test('keeps each source file in the folder of its part, the library, the shell, a tool or a component, by where it runs, or in boot', () => {

@@ -6,7 +6,12 @@ import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { ViewerToHost } from '../shared/protocol';
 import { viewerActions } from './viewerActions';
 import { noSearch } from '../../../lib/shared/searchOptions';
-import { noKeptViewer, withoutCaches } from './viewerKept';
+import {
+  cachesOf,
+  maxCachedViewers,
+  noKeptViewer,
+  withoutCaches,
+} from './viewerKept';
 import { viewerViewSchema } from './tabView';
 import {
   choicesOf,
@@ -27,6 +32,23 @@ function without<T>(
   }
   const next = new Map(map);
   next.delete(tab);
+  return next;
+}
+
+function recentFirst<T>(
+  map: ReadonlyMap<string, T>,
+  tab: string,
+  value: T,
+): ReadonlyMap<string, T> {
+  const next = new Map(map);
+  next.delete(tab);
+  next.set(tab, value);
+  for (const oldest of next.keys()) {
+    if (next.size <= maxCachedViewers) {
+      break;
+    }
+    next.delete(oldest);
+  }
   return next;
 }
 
@@ -57,8 +79,10 @@ export function createViewerStore(
           };
         },
         restore: (tab, { choices, place, ...view }) => {
-          viewer.freshCache(tab);
           set((state) => ({
+            caches: state.caches.has(tab)
+              ? new Map(state.caches).set(tab, {})
+              : state.caches,
             choices:
               choices === undefined
                 ? without(state.choices, tab)
@@ -79,8 +103,8 @@ export function createViewerStore(
           }));
         },
         forget: (tab) => {
-          viewer.forget(tab);
           set((state) => ({
+            caches: without(state.caches, tab),
             keptViewed: without(state.keptViewed, tab),
             choices: without(state.choices, tab),
             tabViews: without(state.tabViews, tab),
@@ -106,6 +130,11 @@ export function createViewerStore(
             set((state) => ({
               tab: message.tab,
               file: message.file,
+              caches: recentFirst(
+                state.caches,
+                message.tab,
+                state.caches.get(message.tab) ?? {},
+              ),
               viewed:
                 state.tab === message.tab && state.file === message.file
                   ? state.viewed
@@ -169,7 +198,7 @@ export function createViewerStore(
       keptViewer: (tab) => ({
         ...noKeptViewer,
         ...get().tabViews.get(tab),
-        ...viewer.cacheOf(tab),
+        ...get().caches.get(tab),
       }),
       keepViewer: (tab, change) => {
         const view = withoutCaches(change);
@@ -182,8 +211,23 @@ export function createViewerStore(
             }),
           }));
         }
-        viewer.keepCache(tab, change);
-        changed(tab);
+        const cached = cachesOf(change);
+        if (Object.keys(cached).length > 0) {
+          set((state) => {
+            const held = state.caches.get(tab);
+            return held === undefined
+              ? state
+              : {
+                  caches: new Map(state.caches).set(tab, {
+                    ...held,
+                    ...cached,
+                  }),
+                };
+          });
+        }
+        if (Object.keys(view).length > 0) {
+          changed(tab);
+        }
       },
       keepTabs: () => tabs.flush(),
       releaseTab: (tab) => tabs.release(tab, get().tab),

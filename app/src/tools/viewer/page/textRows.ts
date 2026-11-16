@@ -27,7 +27,7 @@ import {
   lastScreenStart,
 } from './textScroll';
 import type { ViewerFind } from './viewerFind';
-import { useViewerActions } from './store';
+import { useViewer, useViewerActions } from './store';
 
 const rowsAboveMatch = 2;
 
@@ -40,6 +40,8 @@ interface Read {
   readonly rows: readonly TextRow[];
   readonly top: Place;
 }
+
+const noRead: Read = { rows: [], top: { index: 0, from: 0 } };
 
 interface Shown {
   readonly read: readonly TextRow[];
@@ -95,19 +97,17 @@ export function useTextRows({
   readonly find: ViewerFind | undefined;
 }) {
   const { tab, size, version } = viewing;
-  const { keptViewer, keepViewer } = useViewerActions();
-  const [read, setRead] = useState<Read>(() => {
-    const kept = keptViewer(tab).rows;
-    return kept?.encoding === encoding && kept.version === version
-      ? { rows: kept.rows, top: kept.top }
-      : { rows: [], top: { index: 0, from: 0 } };
-  });
-  const readVersion = useEffectEvent(() => version);
-  useEffect(() => {
-    keepViewer(tab, {
-      rows: { encoding, version: readVersion(), ...read },
-    });
-  }, [keepViewer, tab, encoding, read]);
+  const { keepViewer } = useViewerActions();
+  const kept = useViewer((state) => state.caches.get(tab)?.rows);
+  const read: Read =
+    kept?.encoding === encoding && kept.version === version ? kept : noRead;
+  const setRead = useCallback(
+    (next: Read) =>
+      keepViewer(tab, {
+        rows: { encoding, version, ...next },
+      }),
+    [keepViewer, tab, encoding, version],
+  );
   const rows = useMemo(
     () => screenRows(read.rows, wrapAt, encoding, counting),
     [read.rows, wrapAt, encoding, counting],
@@ -288,7 +288,7 @@ export function useTextRows({
         });
       }
     },
-    [requests, askPlace, screen, size],
+    [requests, askPlace, screen, size, setRead],
   );
 
   useEffect(
@@ -325,7 +325,7 @@ export function useTextRows({
           move(placed.by);
         }
       }),
-    [listen, tab, screen, requests, wrapAt, encoding, counting, move],
+    [listen, tab, screen, requests, wrapAt, encoding, counting, move, setRead],
   );
 
   const jump = useCallback(
