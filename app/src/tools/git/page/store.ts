@@ -257,7 +257,7 @@ export function createGitStore(
     };
     return {
       ...collected({ ...gitDefaults, ...initial }),
-      ...diffSlice(set, get, diffPlaces),
+      ...diffSlice(set, get, diffPlaces, post),
       receive: (message) => {
         shown(message);
         const from = get().tab.root;
@@ -458,18 +458,6 @@ export function createGitStore(
       pullBranch: (name) => postTab({ type: 'pullBranch', name }),
       pushBranch: (name) => postTab({ type: 'pushBranch', name }),
       pushTag: (name) => postTab({ type: 'pushTag', name }),
-      changeShowEntireFile: (show) => {
-        set({ showEntireFile: show });
-        post({ type: 'setShowEntireFile', show });
-      },
-      changeIgnoreWhitespace: (ignore) => {
-        set({ ignoreWhitespace: ignore });
-        post({ type: 'setIgnoreWhitespace', ignore });
-      },
-      changeDiffLayout: (layout) => {
-        set({ diffLayout: layout });
-        post({ type: 'setDiffLayout', layout });
-      },
       changeShowAllFiles: (show) => {
         apply((state) => ({ ...state, showAllFiles: show }));
         post({ type: 'setShowAllFiles', show });
@@ -590,7 +578,7 @@ export const GitStore = createContext<StoreApi<GitState> | undefined>(
   undefined,
 );
 
-function useGitStore(): StoreApi<GitState> {
+export function useGitStore(): StoreApi<GitState> {
   const store = useContext(GitStore);
   if (store === undefined) {
     throw new Error(strings.errors.storeOutsideProvider('git'));

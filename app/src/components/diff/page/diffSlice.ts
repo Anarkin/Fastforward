@@ -22,6 +22,7 @@ import {
 } from './diffPlace';
 import type { WrapColumns } from './rowMeasures';
 import type { TextMeasures } from './textLayout';
+import type { DiffLayout, DiffSettingMessage } from '../shared/diffProtocol';
 
 export interface KeptFind {
   readonly finding: boolean;
@@ -34,12 +35,18 @@ interface PickedLanguage {
 }
 
 export interface DiffSource {
+  readonly showEntireFile: boolean;
+  readonly ignoreWhitespace: boolean;
+  readonly diffLayout: DiffLayout;
   readonly diffMeasures: DiffMeasures;
   readonly diffFinds: ReadonlyMap<string, KeptFind>;
   readonly pickedLanguages: ReadonlyMap<string, PickedLanguage>;
 }
 
 export interface DiffActions {
+  readonly changeShowEntireFile: (show: boolean) => void;
+  readonly changeIgnoreWhitespace: (ignore: boolean) => void;
+  readonly changeDiffLayout: (layout: DiffLayout) => void;
   readonly measureDiffText: (measures: TextMeasures) => void;
   readonly snapDiffCode: (snap: (last: CodeSnap) => CodeSnap) => void;
   readonly keepWrapColumns: (columns: WrapColumns) => void;
@@ -62,6 +69,9 @@ export interface DiffActions {
 }
 
 export const diffDefaults: DiffSource = {
+  showEntireFile: false,
+  ignoreWhitespace: false,
+  diffLayout: 'sideBySide',
   diffMeasures: unmeasuredDiff,
   diffFinds: new Map(),
   pickedLanguages: new Map(),
@@ -102,8 +112,21 @@ export function diffSlice<S extends DiffSource>(
   set: (change: (state: S) => Partial<DiffSource> | S) => void,
   get: () => S,
   places: KeptPlaces<DiffPlace>,
+  post: (message: DiffSettingMessage) => void,
 ): DiffActions {
   return {
+    changeShowEntireFile: (show) => {
+      set(() => ({ showEntireFile: show }));
+      post({ type: 'setShowEntireFile', show });
+    },
+    changeIgnoreWhitespace: (ignore) => {
+      set(() => ({ ignoreWhitespace: ignore }));
+      post({ type: 'setIgnoreWhitespace', ignore });
+    },
+    changeDiffLayout: (layout) => {
+      set(() => ({ diffLayout: layout }));
+      post({ type: 'setDiffLayout', layout });
+    },
     measureDiffText: (measures) =>
       set((state) => ({
         diffMeasures: withText(state.diffMeasures, measures),

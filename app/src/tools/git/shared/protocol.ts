@@ -10,6 +10,7 @@ import {
 import {
   diffLayouts,
   type DiffLayout,
+  type DiffSettingMessage,
   type LeftOut,
   type TextRequest,
 } from '../../../components/diff/shared/diffProtocol';
@@ -193,9 +194,7 @@ export type GitToHost =
   | { readonly type: 'preloadWorktree'; readonly root: string }
   | { readonly type: 'setColumnWidths'; readonly widths: readonly number[] }
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
-  | { readonly type: 'setShowEntireFile'; readonly show: boolean }
-  | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
-  | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
+  | DiffSettingMessage
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
   | { readonly type: 'setAutoFetch'; readonly on: boolean }
   | (TabMessage & {

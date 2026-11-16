@@ -71,15 +71,14 @@ suite('Diff store', () => {
     const store = createDiffStore((message) => posted.push(message));
     const state = () => store.getState();
     state().receive({ type: 'show', tab: 'c1', settings });
-    state().setShowEntireFile(true);
-    state().setIgnoreWhitespace(false);
-    state().setDiffLayout('inline');
+    state().changeShowEntireFile(true);
+    state().changeIgnoreWhitespace(false);
+    state().changeDiffLayout('inline');
     state().loadTexts([{ path: 'a.txt', side: 'old', blob: 'a' }]);
-    assert.deepStrictEqual(state().settings, {
-      showEntireFile: true,
-      ignoreWhitespace: false,
-      diffLayout: 'inline',
-    });
+    assert.deepStrictEqual(
+      [state().showEntireFile, state().ignoreWhitespace, state().diffLayout],
+      [true, false, 'inline'],
+    );
     assert.deepStrictEqual(posted, [
       { type: 'setShowEntireFile', show: true },
       { type: 'setIgnoreWhitespace', ignore: false },

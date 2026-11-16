@@ -6,7 +6,6 @@ import type {
   ChangeArea,
   CheckoutTarget,
   Direction,
-  DiffLayout,
   GitToWebview,
   GitToWebviewOf,
   LastFetch,
@@ -58,9 +57,6 @@ export interface GitSource extends DiffSource {
   readonly columnWidths: readonly number[];
   readonly defaultColumnWidths: readonly number[];
   readonly collapseMerges: boolean;
-  readonly showEntireFile: boolean;
-  readonly ignoreWhitespace: boolean;
-  readonly diffLayout: DiffLayout;
   readonly showAllFiles: boolean;
   readonly autoFetch: boolean;
   readonly autoFetchMinutes: number;
@@ -102,9 +98,6 @@ export interface GitActions extends DiffActions {
   readonly pullBranch: (name: string) => void;
   readonly pushBranch: (name: string) => void;
   readonly pushTag: (name: string) => void;
-  readonly changeShowEntireFile: (show: boolean) => void;
-  readonly changeIgnoreWhitespace: (ignore: boolean) => void;
-  readonly changeDiffLayout: (layout: DiffLayout) => void;
   readonly changeShowAllFiles: (show: boolean) => void;
   readonly changeCollapseMerges: (collapse: boolean) => void;
   readonly changeAutoFetch: (on: boolean) => void;
@@ -188,9 +181,6 @@ export const gitDefaults: GitSource = {
   columnWidths: [],
   defaultColumnWidths: [],
   collapseMerges: false,
-  showEntireFile: false,
-  ignoreWhitespace: false,
-  diffLayout: 'sideBySide',
   showAllFiles: false,
   autoFetch: false,
   autoFetchMinutes: 0,

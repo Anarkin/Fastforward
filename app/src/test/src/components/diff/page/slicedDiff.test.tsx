@@ -3,12 +3,14 @@ import { JSDOM } from 'jsdom';
 import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import {
-  DiffLanguage,
-  DiffOptions,
-} from '../../../../../tools/git/page/diffOptions';
+import { SlicedOptions } from '../../../../../components/diff/page/slicedDiff';
 import { DiffToggles } from '../../../../../components/diff/page/diffToggles';
-import { createGitStore } from '../../../../../tools/git/page/store';
+import {
+  createGitStore,
+  useGit,
+  useGitStore,
+} from '../../../../../tools/git/page/store';
+import { useTextViewSettings } from '../../../../../shell/page/textViewSettings';
 import { languageKeyOf } from '../../../../../tools/git/page/gitSelectors';
 import { pickedFor } from '../../../../../components/diff/page/diffSlice';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
@@ -17,8 +19,10 @@ import { defaultTextView } from '../../../../../shell/page/textView';
 import {
   inStores,
   optionStores,
+  renderedBy,
   type ShownOptions,
 } from '../../../../helpers/componentFixtures';
+import { noop } from '../../../../helpers/fixtures';
 
 const language = <span className="language-slot" />;
 
@@ -30,20 +34,24 @@ type OptionElement = React.ReactElement<{
 }>;
 
 function diffOptionButtons(shown: ShownOptions = {}, posted: unknown[] = []) {
-  let element: React.ReactNode;
-  function Probe() {
-    const options = DiffOptions({ language });
-    element = isValidElement<React.ComponentProps<typeof DiffToggles>>(options)
-      ? DiffToggles(options.props)
-      : options;
-    return null;
-  }
-  renderToStaticMarkup(
-    inStores(
-      optionStores(shown, (message) => posted.push(message)),
-      <Probe />,
-    ),
+  const stores = optionStores(shown, (message) => posted.push(message));
+  const shell = stores.shell.getState();
+  const options = renderedBy(
+    SlicedOptions,
+    {
+      store: stores.git,
+      textView: {
+        ...shell.textView,
+        scrolling: shell.scrolling,
+        changeTextView: shell.changeTextView,
+      },
+      languageKey: undefined,
+      shown: undefined,
+    },
+    stores,
   );
+  assert.ok(isValidElement<React.ComponentProps<typeof DiffToggles>>(options));
+  const element = renderedBy(DiffToggles, options.props);
   assert.ok(isValidElement<{ children: OptionElement[] }>(element));
   return element.props.children.flatMap((child) =>
     child.type === 'button' ? [child] : (child.props.children ?? []),
@@ -56,7 +64,32 @@ function diffOptionTitles(shown: ShownOptions) {
 
 function optionsHtml(shown: ShownOptions = {}) {
   return renderToStaticMarkup(
-    inStores(optionStores(shown), <DiffOptions language={language} />),
+    <DiffToggles
+      language={language}
+      entire={shown.entire ?? false}
+      ignoreWhitespace={shown.ignoreWhitespace ?? true}
+      layout={shown.layout ?? 'inline'}
+      wordWrap={shown.wordWrap ?? false}
+      showWhitespace={shown.showWhitespace ?? false}
+      onEntire={noop}
+      onIgnoreWhitespace={noop}
+      onLayout={noop}
+      onWordWrap={noop}
+      onShowWhitespace={noop}
+    />,
+  );
+}
+
+function GitLanguage() {
+  const key = useGit((state) => languageKeyOf(state.tab));
+  const path = useGit((state) => state.tab.path);
+  return (
+    <SlicedOptions
+      store={useGitStore()}
+      textView={useTextViewSettings()}
+      languageKey={key}
+      shown={path}
+    />
   );
 }
 
@@ -71,7 +104,7 @@ function optionButtons(shown: ShownOptions = {}) {
     );
 }
 
-suite('Diff options', () => {
+suite('Diff options shown by a host holding the diff slice', () => {
   test('forgets the language picked for a file once another file is shown, as it did before the pick was kept in the store, so the file shows in the language its name tells on coming back', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {
@@ -95,7 +128,7 @@ suite('Diff options', () => {
       const show = (path: string) =>
         act(async () => {
           git.setState({ tab: { ...tab, path } });
-          root.render(inStores({ git, shell }, <DiffLanguage />));
+          root.render(inStores({ git, shell }, <GitLanguage />));
         });
       await show('a.txt');
       const key = languageKeyOf(tab);

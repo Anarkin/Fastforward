@@ -32,16 +32,14 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/diff/main/imageReads.ts',
     'components/diff/main/textRequests.ts',
     'components/diff/page/diff.ts',
-    'components/diff/page/diffColumn.tsx',
     'components/diff/page/diffKeymap.ts',
-    'components/diff/page/diffLanguage.tsx',
     'components/diff/page/diffPlace.ts',
     'components/diff/page/diffRows.ts',
     'components/diff/page/diffScrollAnchor.ts',
     'components/diff/page/diffSlice.ts',
     'components/diff/page/diffSyntax.ts',
-    'components/diff/page/diffToggles.tsx',
     'components/diff/page/sideTexts.ts',
+    'components/diff/page/slicedDiff.tsx',
     'components/diff/page/textsToLoad.ts',
     'components/diff/page/viewedSource.ts',
     'components/diff/shared/diffProtocol.ts',
@@ -231,7 +229,7 @@ suite('Architecture', () => {
     );
   });
 
-  test('lets the other parts reach a component only through the doors it lists, so what lies behind them can change without them', () => {
+  test('lets the other parts reach a component only through the doors it lists, each a door some of them use, so what lies behind them can change without them', () => {
     assert.deepStrictEqual(
       sourceFiles
         .filter((file) => !file.startsWith('components/'))
@@ -249,12 +247,18 @@ suite('Architecture', () => {
         ),
       [],
     );
+    const entered = new Set(
+      sourceFiles
+        .filter((file) => !file.startsWith('components/'))
+        .flatMap((file) => importsOf(file).flatMap(sourceFilesOf)),
+    );
     assert.deepStrictEqual(
       Object.entries(componentDoors).flatMap(([component, doors]) =>
         doors.filter(
           (door) =>
             !door.startsWith(`components/${component}/`) ||
-            !sourceFiles.includes(door),
+            !sourceFiles.includes(door) ||
+            !entered.has(door),
         ),
       ),
       [],
@@ -362,16 +366,25 @@ suite('Architecture', () => {
     );
   });
 
-  test('keeps the stores out of the library and the components, which hold no state of their own', () => {
+  test('keeps the stores out of the library, which holds no state, and out of the components, which make no store but read the one their host hands them', () => {
     assert.deepStrictEqual(
       sourceFiles
-        .filter(
-          (file) => file.startsWith('lib/') || file.startsWith('components/'),
-        )
+        .filter((file) => file.startsWith('lib/'))
         .filter(
           (file) =>
             /from 'zustand[/']/.test(read(file)) ||
             importsOf(file).some((target) => target.endsWith('/store')),
+        ),
+      [],
+    );
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) => file.startsWith('components/'))
+        .filter(
+          (file) =>
+            /\bcreateStore\b|from 'zustand\/|\bcreateContext\b/.test(
+              read(file),
+            ) || importsOf(file).some((target) => target.endsWith('/store')),
         ),
       [],
     );

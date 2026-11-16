@@ -12,3 +12,8 @@ export interface TextRequest {
   readonly side: 'old' | 'new';
   readonly blob: string;
 }
+
+export type DiffSettingMessage =
+  | { readonly type: 'setShowEntireFile'; readonly show: boolean }
+  | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
+  | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout };

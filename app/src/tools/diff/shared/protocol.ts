@@ -1,6 +1,6 @@
 import type { Sentence } from '../../../lib/shared/sentences';
 import type {
-  DiffLayout,
+  DiffSettingMessage,
   TextRequest,
 } from '../../../components/diff/shared/diffProtocol';
 import type { DiffSettings } from '../../../components/diff/shared/diffSettings';
@@ -21,9 +21,7 @@ export type ComparedText = TextRequest & { readonly text: string | undefined };
 
 export type DiffToHost =
   | { readonly type: 'loadTexts'; readonly requests: readonly TextRequest[] }
-  | { readonly type: 'setShowEntireFile'; readonly show: boolean }
-  | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
-  | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout };
+  | DiffSettingMessage;
 
 export type DiffToWebview =
   | {

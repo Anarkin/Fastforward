@@ -127,10 +127,8 @@ export function createDiffStore(
         pickedLanguages: withEntry(state.pickedLanguages, tab, undefined),
       }));
     };
-    const setting = (change: Partial<CompareSource['settings']>) =>
-      set((state) => ({ settings: { ...state.settings, ...change } }));
     const actions: CompareActions = {
-      ...diffSlice(set, get, places),
+      ...diffSlice(set, get, places, post),
       receive: (message) => {
         const leaving = get().tab;
         switch (message.type) {
@@ -144,7 +142,7 @@ export function createDiffStore(
             }
             set((state) => ({
               tab: message.tab,
-              settings: message.settings,
+              ...message.settings,
               ...(state.tab !== message.tab && {
                 compare: undefined,
                 texts: noTexts,
@@ -187,18 +185,6 @@ export function createDiffStore(
         }
       },
       loadTexts: (requests) => post({ type: 'loadTexts', requests }),
-      setShowEntireFile: (show) => {
-        setting({ showEntireFile: show });
-        post({ type: 'setShowEntireFile', show });
-      },
-      setIgnoreWhitespace: (ignore) => {
-        setting({ ignoreWhitespace: ignore });
-        post({ type: 'setIgnoreWhitespace', ignore });
-      },
-      setDiffLayout: (layout) => {
-        setting({ diffLayout: layout });
-        post({ type: 'setDiffLayout', layout });
-      },
       focusOf: (tab) => focuses.get(tab),
       keepFocus: (tab, focus) => {
         if (focus === undefined) {
@@ -239,7 +225,7 @@ export const DiffStore = createContext<StoreApi<CompareState> | undefined>(
   undefined,
 );
 
-function useDiffStore(): StoreApi<CompareState> {
+export function useDiffStore(): StoreApi<CompareState> {
   const store = useContext(DiffStore);
   if (store === undefined) {
     throw new Error(strings.errors.storeOutsideProvider('diff'));

@@ -4,8 +4,8 @@ import { useBinding } from '../../../lib/page/shortcuts';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { gitKeymap } from './keymap';
 import { diffSelection } from './diffSelection';
-import { GitDiff } from './gitDiff';
-import { DiffLanguage, DiffOptions } from './diffOptions';
+import { SlicedDiff } from '../../../components/diff/page/slicedDiff';
+import { useTextViewSettings } from '../../../shell/page/textViewSettings';
 import { Commits } from './commitList';
 import { Files } from './filesColumn';
 import {
@@ -19,7 +19,7 @@ import {
   openingOf,
   searchingOf,
 } from './gitSelectors';
-import { useGit, useGitActions } from './store';
+import { useGit, useGitActions, useGitStore } from './store';
 import { usePrefetchedColors } from '../../../components/diff/page/diffSyntax';
 import { changesShown } from './tabView';
 import { templateOf } from './columns';
@@ -62,6 +62,8 @@ const RepositoryDiff = memo(function RepositoryDiff() {
   const error = useGit((state) => state.tab.error);
   const filter = useGit(fileFilterOf);
   const languageKey = useGit((state) => languageKeyOf(state.tab));
+  const textView = useTextViewSettings();
+  const store = useGitStore();
   const entire = useGit((state) => state.showEntireFile);
   const findsHere = useGit((state) => activeColumnOf(state) === 'diff');
   const prefetchedPatch = useGit((state) => state.tab.prefetched?.patch);
@@ -91,7 +93,10 @@ const RepositoryDiff = memo(function RepositoryDiff() {
     [root, hash, area, diffs, refreshes],
   );
   return (
-    <GitDiff
+    <SlicedDiff
+      store={store}
+      textView={textView}
+      root={root}
       scope={tabScopeOf(root)}
       selection={diffSelection(root, hash, path, area)}
       path={path}
@@ -115,7 +120,6 @@ const RepositoryDiff = memo(function RepositoryDiff() {
       languageKey={languageKey}
       changeMarks={path !== undefined && entire}
       entire={entire}
-      options={<DiffOptions language={<DiffLanguage />} />}
     />
   );
 });

@@ -1,5 +1,5 @@
-import { inStores, optionStores, type ShownOptions } from './componentFixtures';
-import { DiffOptions } from '../../tools/git/page/diffOptions';
+import type { ShownOptions } from './componentFixtures';
+import { DiffToggles } from '../../components/diff/page/diffToggles';
 import { SearchBar } from '../../lib/page/searchBar';
 import { plainSearch } from '../../lib/shared/searchOptions';
 import type { FindRange } from '../../lib/shared/textMatches';
@@ -13,7 +13,21 @@ import { diffLookOf, diffMeasuring } from './diffFixtures';
 import { unmeasuredDiff } from '../../components/diff/page/diffMeasures';
 
 export function DiffOptionsShown(shown: ShownOptions) {
-  return inStores(optionStores(shown), <DiffOptions language={undefined} />);
+  return (
+    <DiffToggles
+      language={undefined}
+      entire={shown.entire ?? false}
+      ignoreWhitespace={shown.ignoreWhitespace ?? true}
+      layout={shown.layout ?? 'inline'}
+      wordWrap={shown.wordWrap ?? false}
+      showWhitespace={shown.showWhitespace ?? false}
+      onEntire={noop}
+      onIgnoreWhitespace={noop}
+      onLayout={noop}
+      onWordWrap={noop}
+      onShowWhitespace={noop}
+    />
+  );
 }
 
 export function DiffFindShown({ query = '' }: { readonly query?: string }) {
