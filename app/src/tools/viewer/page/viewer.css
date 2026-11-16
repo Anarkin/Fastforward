@@ -42,6 +42,14 @@
   --viewer-inset: calc(var(--line-number-width) + var(--line-number-gap));
 }
 
+.viewer-rows.numbered {
+  min-height: 100%;
+  background-image: linear-gradient(var(--color-border), var(--color-border));
+  background-position: calc(var(--line-number-width) - var(--hairline)) 0;
+  background-size: var(--hairline) 100%;
+  background-repeat: no-repeat;
+}
+
 .viewer-rows.wrapped {
   width: 100%;
   overflow-x: clip;

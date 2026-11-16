@@ -89,6 +89,52 @@ const marked = (mark: React.ReactElement, className: string) =>
   );
 
 suite('Style', () => {
+  test('draws a line in the color of the line over the status of a column at the end of the column of line numbers, in the editor, the diff, side by side too, and the viewer, so the numbers stand apart from the text', () => {
+    const status = rendered(<div className="column-status" />);
+    const line = cascaded(status, 'box-shadow')?.split(' ').at(-1);
+    assert.strictEqual(line, 'var(--color-border)');
+    const edge = `inset var(--hairline) 0 ${line}`;
+    const inline = rendered(
+      <div className="diff-line">
+        <span className="number">1</span>
+        <span className="number">1</span>
+        <span className="code">a</span>
+      </div>,
+    );
+    looks(withClass(inline, 'code'), { 'box-shadow': edge });
+    const split = rendered(
+      <div className="diff-line split-side">
+        <span className="number">1</span>
+        <span className="split-code">
+          <span className="code">a</span>
+        </span>
+      </div>,
+    );
+    looks(withClass(split, 'split-code'), { 'box-shadow': edge });
+    looks(withClass(split, 'code'), { 'box-shadow': undefined });
+    const editor = rendered(
+      <div className="cm-editor editor-text">
+        <div className="cm-scroller">
+          <div className="cm-gutters">
+            <div className="cm-gutter cm-lineNumbers" />
+          </div>
+        </div>
+      </div>,
+    );
+    looks(withClass(editor, 'cm-lineNumbers'), {
+      'box-shadow': `inset calc(-1 * var(--hairline)) 0 ${line}`,
+    });
+    const viewer = rendered(<div className="viewer-rows numbered" />);
+    looks(viewer, {
+      'min-height': '100%',
+      'background-image': `linear-gradient(${line}, ${line})`,
+      'background-position':
+        'calc(var(--line-number-width) - var(--hairline)) 0',
+      'background-size': 'var(--hairline) 100%',
+      'background-repeat': 'no-repeat',
+    });
+  });
+
   test('makes a cell of the terminal as tall and as wide as a character of the diff, so code looks the same in both', () => {
     const panel = rendered(
       <TerminalTool active post={noop} listen={() => noop} />,

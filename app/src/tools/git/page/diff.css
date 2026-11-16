@@ -133,6 +133,11 @@
   tab-size: var(--diff-tab-size);
 }
 
+.diff-line > .code,
+.diff-line > .split-code {
+  box-shadow: inset var(--hairline) 0 var(--color-border);
+}
+
 .diff-line.text-line {
   position: relative;
 }

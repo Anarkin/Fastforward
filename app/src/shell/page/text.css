@@ -91,6 +91,10 @@
   border: none;
 }
 
+.cm-editor.editor-text .cm-lineNumbers {
+  box-shadow: inset calc(-1 * var(--hairline)) 0 var(--color-border);
+}
+
 .cm-editor.editor-text .cm-lineNumbers .cm-gutterElement {
   min-width: var(--line-number-width);
   padding: 0 var(--line-number-gap);
