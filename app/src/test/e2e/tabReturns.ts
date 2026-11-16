@@ -192,6 +192,18 @@ const busy: readonly string[] = [
   strings.find.searching,
 ];
 
+const scrollerHeld = (page: Page): Promise<boolean> =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.app *')].some((element) => {
+      const style = getComputedStyle(element);
+      return (
+        element.closest('nav.tabs, .notices') === null &&
+        ['auto', 'scroll'].includes(style.overflowY) &&
+        style.opacity === '0'
+      );
+    }),
+  );
+
 export async function settledLooks(page: Page): Promise<TabLooks> {
   let last = await tabLooks(page);
   let since = Date.now();
@@ -203,7 +215,8 @@ export async function settledLooks(page: Page): Promise<TabLooks> {
     }
     return (
       Date.now() - since >= 400 &&
-      !busy.some((sentence) => now.text.split(newline).includes(sentence))
+      !busy.some((sentence) => now.text.split(newline).includes(sentence)) &&
+      !(await scrollerHeld(page))
     );
   }, 'the tab to settle');
   return last;
