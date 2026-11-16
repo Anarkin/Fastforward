@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
-import { ViewKeeper } from '../../../lib/page/viewKeeper';
+import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { ViewerToHost } from '../shared/protocol';
 import { viewerActions } from './viewerActions';
@@ -28,14 +28,6 @@ function without<T>(
   return next;
 }
 
-function parsedOf(view: string): unknown {
-  try {
-    return JSON.parse(view);
-  } catch {
-    return undefined;
-  }
-}
-
 export function createViewerStore(
   post: (message: ViewerToHost) => void,
   initial: Partial<ViewerSource> = {},
@@ -43,46 +35,34 @@ export function createViewerStore(
 ): StoreApi<ViewerState> {
   return createStore<ViewerState>()((set, get) => {
     const viewer = viewerActions(post);
-    const known = new Set<string>();
-    const shownWhenReleased = new Set<string>();
-    const viewOf = (tab: string) => {
-      if (!known.has(tab)) {
-        return undefined;
-      }
-      const encoded = viewerViewSchema.encode({
-        ...viewer.kept(tab),
-        choices: get().choices.get(tab),
-      });
-      return encoded === undefined ? undefined : JSON.stringify(encoded);
-    };
-    const keeper = new ViewKeeper(views, viewOf, () => get().tab);
-    const restore = (tab: string, view: string) => {
-      const kept = viewerViewSchema.decode(parsedOf(view));
-      if (kept === undefined) {
-        return;
-      }
-      const { choices, ...rest } = kept;
-      set((state) => ({
-        choices:
-          choices === undefined
-            ? without(state.choices, tab)
-            : new Map(state.choices).set(tab, choices),
-      }));
-      viewer.restore(tab, rest);
-    };
-    const forget = (tab: string) => {
-      viewer.forget(tab);
-      set((state) => ({
-        keptViewed: without(state.keptViewed, tab),
-        choices: without(state.choices, tab),
-      }));
-    };
-    const letGo = (tab: string) => {
-      known.delete(tab);
-      keeper.forget(tab);
-      forget(tab);
-    };
-    const changed = (tab: string) => keeper.changed(tab);
+    const tabs = new TabLife(
+      views,
+      viewerViewSchema,
+      {
+        viewOf: (tab) => ({
+          ...viewer.kept(tab),
+          choices: get().choices.get(tab),
+        }),
+        restore: (tab, { choices, ...rest }) => {
+          set((state) => ({
+            choices:
+              choices === undefined
+                ? without(state.choices, tab)
+                : new Map(state.choices).set(tab, choices),
+          }));
+          viewer.restore(tab, rest);
+        },
+        forget: (tab) => {
+          viewer.forget(tab);
+          set((state) => ({
+            keptViewed: without(state.keptViewed, tab),
+            choices: without(state.choices, tab),
+          }));
+        },
+      },
+      () => get().tab,
+    );
+    const changed = (tab: string) => tabs.changed(tab);
     const actions: ViewerActions = {
       ...viewer.actions,
       receive: (message) => {
@@ -93,13 +73,7 @@ export function createViewerStore(
         const leaving = get().tab;
         switch (message.type) {
           case 'show': {
-            known.add(message.tab);
-            if (leaving !== message.tab) {
-              const handed = keeper.handed(message.tab);
-              if (handed !== undefined) {
-                restore(message.tab, handed);
-              }
-            }
+            tabs.showing(message.tab, leaving);
             viewer.awaitViewing(message.tab);
             set((state) => ({
               tab: message.tab,
@@ -119,8 +93,7 @@ export function createViewerStore(
             if (get().tab === message.tab) {
               set({ tab: undefined, file: undefined, viewed: undefined });
             }
-            shownWhenReleased.delete(message.tab);
-            letGo(message.tab);
+            tabs.closed(message.tab);
             break;
           case 'viewing': {
             const viewed = viewingOf(message);
@@ -134,16 +107,8 @@ export function createViewerStore(
             break;
           }
         }
-        if (
-          (message.type === 'show' || message.type === 'hide') &&
-          leaving !== undefined &&
-          leaving !== get().tab
-        ) {
-          if (shownWhenReleased.delete(leaving)) {
-            letGo(leaving);
-          } else {
-            keeper.left(leaving);
-          }
+        if (message.type === 'show' || message.type === 'hide') {
+          tabs.settled(leaving, get().tab);
         }
       },
       choose: (choices: Partial<ViewerChoices>) => {
@@ -174,19 +139,8 @@ export function createViewerStore(
         viewer.actions.keepViewer(tab, change);
         changed(tab);
       },
-      keepTabs: () => keeper.flush(),
-      releaseTab: (tab) => {
-        if (!known.has(tab)) {
-          return undefined;
-        }
-        const view = keeper.release(tab);
-        if (get().tab === tab) {
-          shownWhenReleased.add(tab);
-        } else {
-          letGo(tab);
-        }
-        return view;
-      },
+      keepTabs: () => tabs.flush(),
+      releaseTab: (tab) => tabs.release(tab, get().tab),
     };
     return { ...viewerDefaults, ...initial, ...actions };
   });

@@ -1,7 +1,8 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
-import { ViewKeeper } from '../../../lib/page/viewKeeper';
+import { TabLife } from '../../../lib/page/tabLife';
+import type { Infer } from '../../../lib/shared/schema';
 import { KeptPlaces } from '../../../lib/page/keptPlaces';
 import { withEntry } from '../../../lib/page/tabKeyed';
 import type { KeptFocus } from '../../../lib/page/keptFocus';
@@ -38,14 +39,6 @@ function withTexts(
   return known;
 }
 
-function parsedOf(view: string): unknown {
-  try {
-    return JSON.parse(view);
-  } catch {
-    return undefined;
-  }
-}
-
 function changedKeys(
   next: ReadonlyMap<string, unknown>,
   prev: ReadonlyMap<string, unknown>,
@@ -64,82 +57,69 @@ export function createDiffStore(
   initial: Partial<CompareSource> = {},
   views: ToolViews = noViews,
 ): StoreApi<CompareState> {
-  let keeper: ViewKeeper | undefined;
+  let life: TabLife<Infer<typeof compareViewSchema>> | undefined;
   const places = new KeptPlaces<DiffPlace>(undefined, (key) => {
     const [tab]: unknown[] = JSON.parse(key);
     if (typeof tab === 'string') {
-      keeper?.changed(tab);
+      life?.changed(tab);
     }
   });
   const store = createStore<CompareState>()((set, get) => {
-    const known = new Set<string>();
-    const shownWhenReleased = new Set<string>();
     const focuses = new Map<string, KeptFocus>();
-    const viewOf = (tab: string) => {
-      if (!known.has(tab)) {
-        return undefined;
-      }
-      const { diffFinds, pickedLanguages } = get();
-      const encoded = compareViewSchema.encode({
-        find: diffFinds.get(tab),
-        place: places.of(diffPlaceKey(tab, tab)),
-        language: pickedLanguages.get(tab)?.language,
-        focus: focuses.get(tab),
-      });
-      return encoded === undefined ? undefined : JSON.stringify(encoded);
-    };
-    const kept = new ViewKeeper(views, viewOf, () => get().tab);
-    keeper = kept;
-    const restore = (tab: string, view: string) => {
-      const decoded = compareViewSchema.decode(parsedOf(view));
-      if (decoded === undefined) {
-        return;
-      }
-      const { find, place, language, focus } = decoded;
-      if (place === undefined) {
-        places.forget(diffPlaceKey(tab, tab));
-      } else {
-        places.keep(diffPlaceKey(tab, tab), place);
-      }
-      if (focus === undefined) {
-        focuses.delete(tab);
-      } else {
-        focuses.set(tab, focus);
-      }
-      set((state) => ({
-        diffFinds: withEntry(state.diffFinds, tab, find),
-        pickedLanguages: withEntry(
-          state.pickedLanguages,
-          tab,
-          language === undefined
-            ? undefined
-            : { key: languageKeyOf(tab), language },
-        ),
-      }));
-    };
-    const letGo = (tab: string) => {
-      known.delete(tab);
-      kept.forget(tab);
-      places.forget(diffPlaceKey(tab, tab));
-      focuses.delete(tab);
-      set((state) => ({
-        diffFinds: withEntry(state.diffFinds, tab, undefined),
-        pickedLanguages: withEntry(state.pickedLanguages, tab, undefined),
-      }));
-    };
+    const tabs = new TabLife(
+      views,
+      compareViewSchema,
+      {
+        viewOf: (tab) => {
+          const { diffFinds, pickedLanguages } = get();
+          return {
+            find: diffFinds.get(tab),
+            place: places.of(diffPlaceKey(tab, tab)),
+            language: pickedLanguages.get(tab)?.language,
+            focus: focuses.get(tab),
+          };
+        },
+        restore: (tab, { find, place, language, focus }) => {
+          if (place === undefined) {
+            places.forget(diffPlaceKey(tab, tab));
+          } else {
+            places.keep(diffPlaceKey(tab, tab), place);
+          }
+          if (focus === undefined) {
+            focuses.delete(tab);
+          } else {
+            focuses.set(tab, focus);
+          }
+          set((state) => ({
+            diffFinds: withEntry(state.diffFinds, tab, find),
+            pickedLanguages: withEntry(
+              state.pickedLanguages,
+              tab,
+              language === undefined
+                ? undefined
+                : { key: languageKeyOf(tab), language },
+            ),
+          }));
+        },
+        forget: (tab) => {
+          places.forget(diffPlaceKey(tab, tab));
+          focuses.delete(tab);
+          set((state) => ({
+            diffFinds: withEntry(state.diffFinds, tab, undefined),
+            pickedLanguages: withEntry(state.pickedLanguages, tab, undefined),
+          }));
+        },
+      },
+      () => get().tab,
+    );
+    life = tabs;
     const actions: CompareActions = {
       ...diffSlice(set, get, places, post),
       receive: (message) => {
         const leaving = get().tab;
         switch (message.type) {
           case 'show':
-            known.add(message.tab);
-            if (leaving !== message.tab) {
-              const handed = kept.handed(message.tab);
-              if (handed !== undefined) {
-                restore(message.tab, handed);
-              }
-            }
+            tabs.showing(message.tab, leaving);
             set((state) => ({
               tab: message.tab,
               ...message.settings,
@@ -156,8 +136,7 @@ export function createDiffStore(
             if (get().tab === message.tab) {
               set({ tab: undefined, compare: undefined, texts: noTexts });
             }
-            shownWhenReleased.delete(message.tab);
-            letGo(message.tab);
+            tabs.closed(message.tab);
             break;
           case 'compare':
             if (message.compare.tab === get().tab) {
@@ -172,16 +151,8 @@ export function createDiffStore(
             }
             break;
         }
-        if (
-          (message.type === 'show' || message.type === 'hide') &&
-          leaving !== undefined &&
-          leaving !== get().tab
-        ) {
-          if (shownWhenReleased.delete(leaving)) {
-            letGo(leaving);
-          } else {
-            kept.left(leaving);
-          }
+        if (message.type === 'show' || message.type === 'hide') {
+          tabs.settled(leaving, get().tab);
         }
       },
       loadTexts: (requests) => post({ type: 'loadTexts', requests }),
@@ -192,21 +163,10 @@ export function createDiffStore(
         } else {
           focuses.set(tab, focus);
         }
-        kept.changed(tab);
+        tabs.changed(tab);
       },
-      keepTabs: () => kept.flush(),
-      releaseTab: (tab) => {
-        if (!known.has(tab)) {
-          return undefined;
-        }
-        const view = kept.release(tab);
-        if (get().tab === tab) {
-          shownWhenReleased.add(tab);
-        } else {
-          letGo(tab);
-        }
-        return view;
-      },
+      keepTabs: () => tabs.flush(),
+      releaseTab: (tab) => tabs.release(tab, get().tab),
     };
     return { ...compareDefaults, ...initial, ...actions };
   });
@@ -215,7 +175,7 @@ export function createDiffStore(
       ...changedKeys(next.diffFinds, prev.diffFinds),
       ...changedKeys(next.pickedLanguages, prev.pickedLanguages),
     ])) {
-      keeper?.changed(tab);
+      life?.changed(tab);
     }
   });
   return store;

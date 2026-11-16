@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
-import { ViewKeeper } from '../../../lib/page/viewKeeper';
+import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { EditorToHost, EditorToWebview } from '../shared/protocol';
 import { editorActions } from './editorActions';
@@ -31,14 +31,6 @@ function without<T>(
   return next;
 }
 
-function parsedOf(view: string): unknown {
-  try {
-    return JSON.parse(view);
-  } catch {
-    return undefined;
-  }
-}
-
 export function createEditorStore(
   post: (message: EditorToHost) => void,
   initial: Partial<EditorSource> = {},
@@ -46,40 +38,31 @@ export function createEditorStore(
 ): StoreApi<EditorStoreState> {
   return createStore<EditorStoreState>()((set, get) => {
     const editor = editorActions(set, post);
-    const known = new Set<string>();
-    const shownWhenReleased = new Set<string>();
-    const viewOf = (tab: string) => {
-      if (!known.has(tab)) {
-        return undefined;
-      }
-      const encoded = editorViewSchema.encode({
-        ...editor.kept(tab),
-        language: get().languages.get(tab),
-      });
-      return encoded === undefined ? undefined : JSON.stringify(encoded);
-    };
-    const keeper = new ViewKeeper(views, viewOf, () => get().tab);
-    const restore = (tab: string, view: string) => {
-      const kept = editorViewSchema.decode(parsedOf(view));
-      if (kept === undefined) {
-        return;
-      }
-      const { language, ...rest } = kept;
-      set((state) => ({
-        languages:
-          language === undefined
-            ? without(state.languages, tab)
-            : new Map(state.languages).set(tab, language),
-      }));
-      editor.restore(tab, rest);
-    };
-    const letGo = (tab: string) => {
-      known.delete(tab);
-      keeper.forget(tab);
-      editor.forget(tab);
-      set((state) => ({ languages: without(state.languages, tab) }));
-    };
-    const changed = (tab: string) => keeper.changed(tab);
+    const tabs = new TabLife(
+      views,
+      editorViewSchema,
+      {
+        viewOf: (tab) => ({
+          ...editor.kept(tab),
+          language: get().languages.get(tab),
+        }),
+        restore: (tab, { language, ...rest }) => {
+          set((state) => ({
+            languages:
+              language === undefined
+                ? without(state.languages, tab)
+                : new Map(state.languages).set(tab, language),
+          }));
+          editor.restore(tab, rest);
+        },
+        forget: (tab) => {
+          editor.forget(tab);
+          set((state) => ({ languages: without(state.languages, tab) }));
+        },
+      },
+      () => get().tab,
+    );
+    const changed = (tab: string) => tabs.changed(tab);
     const actions: EditorActions = {
       ...editor.actions,
       receive: (message) => {
@@ -96,13 +79,7 @@ export function createEditorStore(
         const leaving = get().tab;
         switch (message.type) {
           case 'show': {
-            known.add(message.tab);
-            if (leaving !== message.tab) {
-              const handed = keeper.handed(message.tab);
-              if (handed !== undefined) {
-                restore(message.tab, handed);
-              }
-            }
+            tabs.showing(message.tab, leaving);
             set((state) => ({
               tab: message.tab,
               file: message.file,
@@ -118,8 +95,7 @@ export function createEditorStore(
             if (get().tab === message.tab) {
               set({ tab: undefined, file: undefined, edited: undefined });
             }
-            shownWhenReleased.delete(message.tab);
-            letGo(message.tab);
+            tabs.closed(message.tab);
             break;
           case 'settings':
             set({ closeBrackets: message.closeBrackets });
@@ -150,16 +126,8 @@ export function createEditorStore(
             );
             break;
         }
-        if (
-          (message.type === 'show' || message.type === 'hide') &&
-          leaving !== undefined &&
-          leaving !== get().tab
-        ) {
-          if (shownWhenReleased.delete(leaving)) {
-            letGo(leaving);
-          } else {
-            keeper.left(leaving);
-          }
+        if (message.type === 'show' || message.type === 'hide') {
+          tabs.settled(leaving, get().tab);
         }
       },
       keepEditing: (tab, change) => {
@@ -179,19 +147,8 @@ export function createEditorStore(
         }));
         changed(tab);
       },
-      keepTabs: () => keeper.flush(),
-      releaseTab: (tab) => {
-        if (!known.has(tab)) {
-          return undefined;
-        }
-        const view = keeper.release(tab);
-        if (get().tab === tab) {
-          shownWhenReleased.add(tab);
-        } else {
-          letGo(tab);
-        }
-        return view;
-      },
+      keepTabs: () => tabs.flush(),
+      releaseTab: (tab) => tabs.release(tab, get().tab),
     };
     return { ...editorDefaults, ...initial, ...actions };
   });
