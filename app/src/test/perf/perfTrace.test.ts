@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  traceEventsOf,
   frameSummary,
   framesIn,
   inputLatency,
@@ -423,5 +424,18 @@ suite('Taking percentiles', () => {
     assert.strictEqual(percentile(values, 0.95), 19);
     assert.strictEqual(percentile(values, 1), 20);
     assert.strictEqual(percentile([], 0.5), 0);
+  });
+});
+
+suite('Reading a trace', () => {
+  test('reads the events of a trace written as an object of trace events or as an array of them, and none of what is not a trace', () => {
+    const event = { name: 'Frame', ph: 'X', ts: 1, pid: 2, tid: 3 };
+    assert.deepStrictEqual(
+      traceEventsOf(JSON.stringify({ traceEvents: [event] })),
+      [event],
+    );
+    assert.deepStrictEqual(traceEventsOf(JSON.stringify([event])), [event]);
+    assert.strictEqual(traceEventsOf(' protobuf'), undefined);
+    assert.strictEqual(traceEventsOf('{"metadata":{}}'), undefined);
   });
 });

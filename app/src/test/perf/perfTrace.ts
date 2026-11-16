@@ -349,3 +349,20 @@ export function topScripts(
     .toSorted((a, b) => b.ms - a.ms)
     .slice(0, count);
 }
+
+export function traceEventsOf(
+  trace: string,
+): readonly TraceEvent[] | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trace);
+  } catch {
+    return undefined;
+  }
+  const events: unknown = Array.isArray(parsed)
+    ? parsed
+    : typeof parsed === 'object' && parsed !== null
+      ? Reflect.get(parsed, 'traceEvents')
+      : undefined;
+  return Array.isArray(events) ? (events as readonly TraceEvent[]) : undefined;
+}

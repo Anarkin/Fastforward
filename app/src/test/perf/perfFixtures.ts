@@ -19,9 +19,10 @@ import {
   moduleAt,
   spanBetween,
   topScripts,
+  traceEventsOf,
   type SourceOf,
-  type TraceEvent,
 } from './perfTrace';
+import { startTracing } from './perfTracing';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import {
   resultSuffix,
@@ -202,19 +203,15 @@ export async function measure(
   act: () => Promise<void>,
   settleMs = 500,
 ): Promise<ScenarioResult> {
-  const { app, page } = perf;
+  const { page } = perf;
   const results = inject('perfResults');
   const slug = slugOf(name);
   const { pid, hz } = await rendererOf(perf);
   await page.evaluate(observeLongFrames);
-  await app.evaluate(
-    ({ contentTracing }, included) =>
-      contentTracing.startRecording({
-        included_categories: included,
-        excluded_categories: ['*'],
-      }),
-    [...categories, ...(isSampled() ? sampled : [])],
-  );
+  const stopTracing = await startTracing(page, [
+    ...categories,
+    ...(isSampled() ? sampled : []),
+  ]);
   const startedAt = Date.now();
   await page.evaluate((mark) => performance.mark(mark), startMark);
   await act();
@@ -222,19 +219,12 @@ export async function measure(
   await page.evaluate((mark) => performance.mark(mark), endMark);
   const longAnimationFrames = await page.evaluate(longFramesSeen);
   const traceFile = path.join(results, `${slug}.trace.json`);
-  await app.evaluate(
-    ({ contentTracing }, file) => contentTracing.stopRecording(file),
-    traceFile,
-  );
-  const trace: unknown = JSON.parse(fs.readFileSync(traceFile, 'utf8'));
-  const events: unknown =
-    typeof trace === 'object' && trace !== null
-      ? Reflect.get(trace, 'traceEvents')
-      : undefined;
-  if (!Array.isArray(events)) {
+  const trace = await stopTracing();
+  fs.writeFileSync(traceFile, trace);
+  const traced = traceEventsOf(trace);
+  if (traced === undefined) {
     throw new Error(`The trace of ${name} has no events`);
   }
-  const traced = events as readonly TraceEvent[];
   const span = spanBetween(traced, pid, startMark, endMark);
   const result: ScenarioResult = {
     name,
