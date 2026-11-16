@@ -1,4 +1,4 @@
-import type { KeptFocus } from '../../../lib/page/keptFocus';
+import { keptFocusFrom, type KeptFocus } from '../../../lib/page/keptFocus';
 import { sides, type Side } from '../shared/sides';
 import { isTextEncoding } from '../shared/textEncodings';
 import type { CommanderSource, PaneFilter } from './commanderState';
@@ -8,7 +8,6 @@ import {
   countOf,
   fieldsOf,
   flagOf,
-  keptFocusOf,
   keptTypedOf,
   listOf,
   oneOf,
@@ -171,7 +170,7 @@ function sidesDecoded(fields: Fields, tab: string): SidesKept {
   return {
     active: oneOf(sides, fields('active')),
     share: shareDecoded(fields('share')),
-    focus: keptFocusOf(fields('focus')),
+    focus: keptFocusFrom(fields('focus')),
     layouts: sideKeys(fields('layouts'), (item) => oneOf(layouts, item)),
     panes: sideKeys(fields('panes'), marksDecoded),
     filters: sideKeys(fields('filters'), filterDecoded),
@@ -246,7 +245,7 @@ function viewerDecoded(fields: Fields): ViewerKept {
     finding: flagOf(fields('finding')),
     search: searchOf(fields('search')),
     current: countOf(fields('current')),
-    focus: keptFocusOf(fields('focus')),
+    focus: keptFocusFrom(fields('focus')),
     sideways: sidewaysDecoded(fields('sideways')),
     preview: previewDecoded(fields('preview')),
     pdfFind: pdfFindDecoded(fields('pdfFind')),
@@ -266,7 +265,7 @@ function editorDecoded(fields: Fields): EditorKept {
     replacing: flagOf(fields('replacing')),
     query: query && { text: query.query, options: query.options },
     replacement: textOf(fields('replacement')),
-    focus: keptFocusOf(fields('focus')),
+    focus: keptFocusFrom(fields('focus')),
     goingToLine: keptTypedOf(fields('goingToLine')),
     reopening: encodingToReopen(fields('reopening')),
   };

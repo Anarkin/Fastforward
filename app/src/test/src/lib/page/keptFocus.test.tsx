@@ -5,6 +5,7 @@ import { suite, test } from 'vitest';
 import {
   focusBack,
   focusOf,
+  keptFocusFrom,
   useFocusKeeper,
   type KeptFocus,
 } from '../../../../lib/page/keptFocus';
@@ -26,6 +27,50 @@ const named = (document: Document, name: string) =>
   document.querySelector<HTMLInputElement>(`#tool [data-focus-name="${name}"]`);
 
 suite('The focus kept for a tab', () => {
+  test('keeps how far a box was scrolled across its text with its caret, and scrolls it back there, as a narrow box scrolls to show the caret and came back at its start', () => {
+    const document = page();
+    const tool = document.querySelector('#tool');
+    assert.ok(tool);
+    const find = named(document, 'find');
+    assert.ok(find);
+    find.focus();
+    find.setSelectionRange(20, 20);
+    find.scrollLeft = 18;
+    const kept = focusOf(tool, document.activeElement);
+    assert.deepStrictEqual(kept, {
+      name: 'find',
+      selection: [20, 20, 'none'],
+      scroll: 18,
+    });
+    find.scrollLeft = 0;
+    named(document, 'body')?.focus();
+    assert.ok(focusBack(tool, kept));
+    assert.strictEqual(find.scrollLeft, 18);
+  });
+
+  test('reads back a focus kept as data, its name, caret and scroll, leaving out what is not of their shape', () => {
+    assert.deepStrictEqual(
+      keptFocusFrom({
+        name: 'find',
+        selection: [3, 9, 'backward'],
+        scroll: 18,
+      }),
+      { name: 'find', selection: [3, 9, 'backward'], scroll: 18 },
+    );
+    assert.deepStrictEqual(keptFocusFrom({ name: 'body' }), { name: 'body' });
+    assert.deepStrictEqual(
+      keptFocusFrom({ name: 'find', selection: [3, 'x', 'none'], scroll: -1 }),
+      { name: 'find' },
+    );
+    assert.deepStrictEqual(
+      keptFocusFrom({ name: 'find', selection: [3, 9, 'sideways'] }),
+      { name: 'find' },
+    );
+    for (const value of [undefined, null, 'find', [], { name: 3 }]) {
+      assert.strictEqual(keptFocusFrom(value), undefined);
+    }
+  });
+
   test('names the part of a tool that has the focus, with the caret and the selection of a box, and nothing for a part without a name or outside the tool', () => {
     const document = page();
     const tool = document.querySelector('#tool');

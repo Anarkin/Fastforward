@@ -1,4 +1,4 @@
-import type { KeptFocus, KeptTyped } from '../../../lib/page/keptFocus';
+import { keptFocusFrom, type KeptTyped } from '../../../lib/page/keptFocus';
 import {
   isSearchOptions,
   type Search,
@@ -60,33 +60,13 @@ export function searchOf(value: unknown): Search | undefined {
     : { query, options };
 }
 
-const directions = ['forward', 'backward', 'none'] as const;
-
-export function keptFocusOf(value: unknown): KeptFocus | undefined {
-  const fields = fieldsOf(value);
-  const name = textOf(fields?.('name'));
-  if (name === undefined) {
-    return undefined;
-  }
-  const selection = fields?.('selection');
-  if (!Array.isArray(selection) || selection.length !== 3) {
-    return { name };
-  }
-  const start = countOf(selection[0]);
-  const end = countOf(selection[1]);
-  const direction = oneOf(directions, selection[2]);
-  return start === undefined || end === undefined || direction === undefined
-    ? { name }
-    : { name, selection: [start, end, direction] };
-}
-
 export function keptTypedOf(value: unknown): KeptTyped | undefined {
   const fields = fieldsOf(value);
   const typed = textOf(fields?.('value'));
   if (typed === undefined) {
     return undefined;
   }
-  const selection = keptFocusOf({
+  const selection = keptFocusFrom({
     name: '',
     selection: fields?.('selection'),
   })?.selection;

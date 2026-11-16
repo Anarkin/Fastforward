@@ -9,6 +9,7 @@ export interface KeptFocus {
     end: number,
     direction: 'forward' | 'backward' | 'none',
   ];
+  readonly scroll?: number;
 }
 
 export interface KeptTyped {
@@ -58,7 +59,45 @@ export function focusOf(
   }
   const name = part.getAttribute(focusNameAttribute) ?? '';
   const selection = selectionOf(focused);
-  return selection === undefined ? { name } : { name, selection };
+  const scroll = isTextField(focused) ? focused.scrollLeft : 0;
+  return {
+    name,
+    ...(selection !== undefined && { selection }),
+    ...(scroll > 0 && { scroll }),
+  };
+}
+
+const directions = ['forward', 'backward', 'none'] as const;
+
+function countFrom(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : undefined;
+}
+
+export function keptFocusFrom(value: unknown): KeptFocus | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const name: unknown = Reflect.get(value, 'name');
+  if (typeof name !== 'string') {
+    return undefined;
+  }
+  const kept: unknown = Reflect.get(value, 'selection');
+  const [start, end, way]: readonly unknown[] = Array.isArray(kept) ? kept : [];
+  const from = countFrom(start);
+  const to = countFrom(end);
+  const direction = directions.find((each) => each === way);
+  const scroll = countFrom(Reflect.get(value, 'scroll'));
+  return {
+    name,
+    ...(Array.isArray(kept) &&
+      kept.length === 3 &&
+      from !== undefined &&
+      to !== undefined &&
+      direction !== undefined && { selection: [from, to, direction] }),
+    ...(scroll !== undefined && scroll > 0 && { scroll }),
+  };
 }
 
 export function focusBack(root: Element, kept: KeptFocus | undefined): boolean {
@@ -74,6 +113,9 @@ export function focusBack(root: Element, kept: KeptFocus | undefined): boolean {
   part.focus({ preventScroll: true });
   if (kept.selection !== undefined && isTextField(part)) {
     part.setSelectionRange(...kept.selection);
+  }
+  if (kept.scroll !== undefined && isTextField(part)) {
+    part.scrollLeft = kept.scroll;
   }
   return part.ownerDocument.activeElement === part;
 }
