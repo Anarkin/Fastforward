@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffectEvent, useLayoutEffect, useRef } from 'react';
 import { strings } from '../../lib/shared/strings';
 import type { Line, Sentence } from '../../lib/shared/sentences';
 import { useDismiss } from '../../lib/page/dismiss';
@@ -47,26 +47,26 @@ export function PromptPopup({
   secret?: boolean;
   initial?: string;
   selectedUpTo?: number;
-  typed?: KeptTyped;
-  onTyped?: (typed: KeptTyped) => void;
+  typed: KeptTyped | undefined;
+  onTyped: (typed: KeptTyped) => void;
   onConfirm: (value: string) => void;
   onCancel: () => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState(kept?.value ?? initial);
-  const [keptSelection] = useState(kept?.selection);
+  const value = kept?.value ?? initial;
   useDismiss(popup, onCancel, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
-  useLayoutEffect(() => {
+  const placeCaret = useEffectEvent(() => {
     field.current?.focus();
-    if (keptSelection !== undefined) {
-      field.current?.setSelectionRange(...keptSelection);
+    if (kept?.selection !== undefined) {
+      field.current?.setSelectionRange(...kept.selection);
     } else if (selectedUpTo !== undefined) {
       field.current?.setSelectionRange(0, selectedUpTo);
     }
-  }, [selectedUpTo, keptSelection]);
+  });
+  useLayoutEffect(() => placeCaret(), []);
   const typed = secret ? value : value.trim();
   const problem = problemOf(typed);
   const note = noteOf?.(typed);
@@ -117,11 +117,8 @@ export function PromptPopup({
             value={value}
             spellCheck={false}
             autoComplete="off"
-            onChange={(event) => {
-              setValue(event.target.value);
-              onTyped?.(typedIn(event.target));
-            }}
-            onSelect={(event) => onTyped?.(typedIn(event.currentTarget))}
+            onChange={(event) => onTyped(typedIn(event.target))}
+            onSelect={(event) => onTyped(typedIn(event.currentTarget))}
           />
           {typed !== '' && problem !== undefined && (
             <div className="prompt-problem" role="alert">

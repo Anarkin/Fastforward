@@ -16,6 +16,8 @@ const prompted = (secret?: boolean) =>
       confirm="Open"
       problemOf={() => undefined}
       {...(secret !== undefined && { secret })}
+      typed={undefined}
+      onTyped={noop}
       onConfirm={noop}
       onCancel={noop}
     />,
@@ -30,10 +32,25 @@ const noted = (initial: string) =>
       initial={initial}
       problemOf={(value) => (value === 'bad' ? 'Not that.' : undefined)}
       noteOf={(value) => `Matches ${value.length} items`}
+      typed={undefined}
+      onTyped={noop}
       onConfirm={noop}
       onCancel={noop}
     />,
   );
+
+const renamePrompt = (value: string) => (
+  <PromptPopup
+    title="Rename"
+    label="Name"
+    confirm="Rename"
+    problemOf={() => undefined}
+    typed={{ value }}
+    onTyped={noop}
+    onConfirm={noop}
+    onCancel={noop}
+  />
+);
 
 suite('Prompt popup', () => {
   test('notes under its field what the value typed would do, as how many files a pattern matches, unless something is wrong with it', () => {
@@ -57,6 +74,8 @@ suite('Prompt popup', () => {
         label="Name"
         confirm="Make"
         problemOf={() => undefined}
+        typed={undefined}
+        onTyped={noop}
         onConfirm={noop}
         onCancel={noop}
       />,
@@ -160,6 +179,8 @@ suite('Prompt popup', () => {
             problemOf={() => undefined}
             initial="report.pdf"
             selectedUpTo={6}
+            typed={undefined}
+            onTyped={noop}
             onConfirm={noop}
             onCancel={noop}
           />,
@@ -175,6 +196,41 @@ suite('Prompt popup', () => {
           dom.window.document.activeElement === field,
         ],
         ['report.pdf', 0, 6, true],
+      );
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
+  test('shows the text its owner keeps as it changes, holding none of its own, so a dialog shown again finds what was typed', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      await act(async () => {
+        renderIn(root, renamePrompt('notes.pdf'));
+      });
+      await act(async () => {
+        renderIn(root, renamePrompt('notes.txt'));
+      });
+      assert.strictEqual(
+        dom.window.document.querySelector('input')?.value,
+        'notes.txt',
       );
       await act(async () => {
         root.unmount();

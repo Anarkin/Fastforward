@@ -83,6 +83,8 @@ suite('Style', () => {
         label="Name"
         confirm="Make"
         problemOf={() => undefined}
+        typed={undefined}
+        onTyped={noop}
         onConfirm={noop}
         onCancel={noop}
       />,

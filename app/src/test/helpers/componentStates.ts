@@ -1,8 +1,4 @@
 export const keptStates: Readonly<Record<string, string>> = {
-  'shell/page/promptPopup.tsx value':
-    'the text typed in a prompt, seeded from what its dialog kept (typed) and told to it by onTyped as typed',
-  'shell/page/promptPopup.tsx keptSelection':
-    'where the caret of a prompt was, read once from what its dialog kept (typed) and put back as it mounts',
   'tools/viewer/page/pdfPreview.ts found':
     'the matches of the pdf find, counted anew by PDF.js as it searches again, stepped to the match kept per tab',
   'tools/editor/page/editorView.ts endingsShown':
