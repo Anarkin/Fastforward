@@ -1,11 +1,11 @@
 import type { HighlighterCore } from 'shiki/core';
 import { INITIAL, type StateStack } from 'shiki/textmate';
-import { languageIds } from './languages';
-import { packedPart, type CodePart } from './syntaxParts';
-import { SyntaxRange, LineColorer, lineColorer } from './syntaxEngine';
-import { grammars, loadLanguages } from './syntaxLanguages';
-import { sliceTime } from './syntaxSlices';
-import { replacedIn } from './replacedIn';
+import { languageIds } from '../../../lib/page/languages';
+import { packedPart, type CodePart } from './parts';
+import { SyntaxRange, LineColorer, lineColorer } from './engine';
+import { grammars, loadLanguages } from './grammars';
+import { sliceTime } from './slices';
+import { replacedIn } from '../../../lib/page/replacedIn';
 
 export interface EditedColoring {
   edit(from: number, removed: number, lines: readonly string[]): void;

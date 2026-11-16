@@ -6,7 +6,7 @@ import {
   maxRowsAsked,
   type ViewerToHost,
 } from '../shared/protocol';
-import { maxColoredBytes } from '../../../lib/shared/colorLimit';
+import { maxColoredBytes } from '../../../components/syntax/shared/colorLimit';
 import {
   isTextEncoding,
   type TextEncoding,

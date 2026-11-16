@@ -1,6 +1,6 @@
 import type { DiffFile } from './diff';
 import { lineKey, wholeLines } from './diffLines';
-import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
+import type { SyntaxRange } from '../../syntax/page/engine';
 import type { WholeFile } from './diffRows';
 import { syntaxSources } from './diffSyntaxSources';
 

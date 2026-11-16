@@ -16,7 +16,7 @@ import {
   maxPreviewBytes,
   wholeLineBytes,
 } from '../../../tools/viewer/shared/protocol';
-import { maxColoredBytes } from '../../../lib/shared/colorLimit';
+import { maxColoredBytes } from '../../../components/syntax/shared/colorLimit';
 import { languageIds, languageOf } from '../../../lib/page/languages';
 import { defaultSettings } from '../../helpers/fixtures';
 

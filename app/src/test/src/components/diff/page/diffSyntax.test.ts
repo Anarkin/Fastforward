@@ -11,8 +11,8 @@ import {
   keepColors,
   keptColorsOf,
 } from '../../../../../components/diff/page/keptColors';
-import type { SyntaxRange } from '../../../../../lib/page/syntaxEngine';
-import { packedPart } from '../../../../../lib/page/syntaxParts';
+import type { SyntaxRange } from '../../../../../components/syntax/page/engine';
+import { packedPart } from '../../../../../components/syntax/page/parts';
 import {
   workerSeen,
   inPage,

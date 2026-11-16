@@ -14,7 +14,7 @@ import {
   paths,
   farFiles,
 } from '../../../tools/git/page/syntaxFixtures';
-import { warmsUpTheGrammar } from '../../../lib/page/syntaxFixtures';
+import { warmsUpTheGrammar } from '../../syntax/page/fixtures';
 
 suite('Syntax', () => {
   warmsUpTheGrammar();

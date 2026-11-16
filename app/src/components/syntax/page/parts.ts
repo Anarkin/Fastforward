@@ -1,4 +1,4 @@
-import type { LineRanges, SyntaxRange } from './syntaxEngine';
+import type { LineRanges, SyntaxRange } from './engine';
 
 const syntaxKinds = [
   'keyword',

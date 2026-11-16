@@ -4,7 +4,7 @@ import {
   packedPart,
   partLine,
   partLines,
-} from '../../../../lib/page/syntaxParts';
+} from '../../../../../components/syntax/page/parts';
 
 suite('Colors of code sent in parts', () => {
   test('packs the ranges of the lines of a part into four bytes each, and reads each line back by its index in the code, as an object per range took 25 times the memory, about 190 MB for 10 MB of code', () => {

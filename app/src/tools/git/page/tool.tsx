@@ -6,7 +6,7 @@ import { type GitToHost, type GitToWebview } from '../shared/protocol';
 import { createGitStore, GitStore, useGit, useGitActions } from './store';
 import { clicked } from '../../../lib/shared/keymap';
 import { useBinding } from '../../../lib/page/shortcuts';
-import { startColorer } from '../../../lib/page/syntax';
+import { startColorer } from '../../../components/syntax/page/colorer';
 import { strings } from '../../../lib/shared/strings';
 import { WorktreeBar } from './worktreeBar';
 import { treeToLoad } from './tabView';

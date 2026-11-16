@@ -2,7 +2,7 @@ import type { DiffFile } from './diff';
 import { textKey, type LoadedText } from './sideTexts';
 import { lineKey, wholeLines } from './diffLines';
 import { languageOf } from '../../../lib/page/languages';
-import type { SyntaxSource } from '../../../lib/page/syntaxSources';
+import type { SyntaxSource } from '../../syntax/page/colorer';
 import type { WholeFile } from './diffRows';
 
 type Side = 'old' | 'new';

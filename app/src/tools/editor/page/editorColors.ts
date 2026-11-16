@@ -12,10 +12,13 @@ import {
   type PluginValue,
   type ViewUpdate,
 } from '@codemirror/view';
-import type { Colorer, EditedColors } from '../../../lib/page/syntax';
-import { partLines } from '../../../lib/page/syntaxParts';
+import type {
+  Colorer,
+  EditedColors,
+} from '../../../components/syntax/page/colorer';
+import { partLines } from '../../../components/syntax/page/parts';
 import { replacedIn } from '../../../lib/page/replacedIn';
-import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
+import type { SyntaxRange } from '../../../components/syntax/page/engine';
 
 const recolored = StateEffect.define();
 

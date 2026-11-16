@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 import './style.css';
-import { startColorer } from '../../../lib/page/syntax';
+import { startColorer } from '../../../components/syntax/page/colorer';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { diffKeymap } from '../../../components/diff/page/diffKeymap';
 import { useShellActions } from '../../../shell/page/store';

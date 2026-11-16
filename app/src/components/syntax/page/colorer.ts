@@ -1,7 +1,19 @@
-import { partLines, type CodePart } from './syntaxParts';
-import type { FromSyntax, ToSyntax } from './syntaxServing';
-import type { LineRanges, SyntaxRange } from './syntaxEngine';
-import type { SyntaxSource } from './syntaxSources';
+import { partLines, type CodePart } from './parts';
+import type { FromSyntax, ToSyntax } from './serving';
+import type { LineRanges, SyntaxRange } from './engine';
+
+interface Twin {
+  readonly source: number;
+  readonly lines: readonly (number | undefined)[];
+}
+
+export interface SyntaxSource {
+  readonly language: string;
+  readonly lines: readonly string[];
+  readonly keys: readonly (string | undefined)[];
+  readonly twin?: Twin;
+  readonly entire?: true;
+}
 
 export interface SyntaxPort {
   post(message: ToSyntax): void;

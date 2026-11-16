@@ -2,12 +2,12 @@ import type { TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { CodeSegment } from './codeSegments';
 import { bytesOf } from './encodedBytes';
-import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
+import type { SyntaxRange } from '../../../components/syntax/page/engine';
 import {
   partHasRanges,
   partLine,
   type CodePart,
-} from '../../../lib/page/syntaxParts';
+} from '../../../components/syntax/page/parts';
 
 const byteOrderMark = '﻿';
 

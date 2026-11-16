@@ -1,7 +1,7 @@
 import type { DiffFile } from './diff';
 import { lineKey } from './diffLines';
-import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
-import { partLine, type CodePart } from '../../../lib/page/syntaxParts';
+import type { SyntaxRange } from '../../syntax/page/engine';
+import { partLine, type CodePart } from '../../syntax/page/parts';
 import { sidePlans } from './diffSyntaxSources';
 
 interface Kept {

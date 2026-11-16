@@ -1,39 +1,22 @@
+import type { SyntaxSource } from './colorer';
 import type { HighlighterCore } from 'shiki/core';
 import { INITIAL, type StateStack } from 'shiki/textmate';
-import {
-  generationOf,
-  grammars,
-  loadLanguages,
-  ready,
-} from './syntaxLanguages';
+import { generationOf, grammars, loadLanguages, ready } from './grammars';
 import {
   lineColorer,
   type ColoredLine,
   type LineColorer,
   type LineRanges,
   type SyntaxRange,
-} from './syntaxEngine';
-import { publishTime, sliceTime } from './syntaxSlices';
+} from './engine';
+import { publishTime, sliceTime } from './slices';
 import {
   cached,
   cachedPrefix,
   store,
   type CachedPrefix,
   type Colors,
-} from './syntaxCache';
-
-interface Twin {
-  readonly source: number;
-  readonly lines: readonly (number | undefined)[];
-}
-
-export interface SyntaxSource {
-  readonly language: string;
-  readonly lines: readonly string[];
-  readonly keys: readonly (string | undefined)[];
-  readonly twin?: Twin;
-  readonly entire?: true;
-}
+} from './cache';
 
 type EntireColors = (source: number, lines: LineRanges) => void;
 

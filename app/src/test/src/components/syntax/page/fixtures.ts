@@ -1,12 +1,12 @@
 import * as assert from 'node:assert';
 import { beforeAll } from 'vitest';
-import { languageOf } from '../../../../lib/page/languages';
-import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
-import type { SyntaxRange } from '../../../../lib/page/syntaxEngine';
+import { languageOf } from '../../../../../lib/page/languages';
+import { loadLanguages } from '../../../../../components/syntax/page/grammars';
+import type { SyntaxRange } from '../../../../../components/syntax/page/engine';
 import {
   tokenizing,
   uncachedSources,
-} from '../../../../lib/page/syntaxSources';
+} from '../../../../../components/syntax/page/sources';
 
 export type Highlighter = Awaited<ReturnType<typeof loadLanguages>>;
 

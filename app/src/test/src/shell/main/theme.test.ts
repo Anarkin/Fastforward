@@ -97,7 +97,7 @@ suite('Theme', () => {
         'rgba(0, 0, 0, 0.16)',
         'rgba(0, 0, 0, 0.2)',
       ],
-      'lib/page/syntaxEngine.ts': ['#000000', '#ffffff'],
+      'components/syntax/page/engine.ts': ['#000000', '#ffffff'],
       'shell/page/appIcon.tsx': [
         '#FFFFFF',
         '#4285F4',

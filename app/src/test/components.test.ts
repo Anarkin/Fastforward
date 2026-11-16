@@ -37,6 +37,14 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/diff/shared/imageSources.ts',
     'components/diff/shared/patchBudget.ts',
   ],
+  syntax: [
+    'components/syntax/page/colorer.ts',
+    'components/syntax/page/engine.ts',
+    'components/syntax/page/languageChoice.tsx',
+    'components/syntax/page/languageMenu.ts',
+    'components/syntax/page/parts.ts',
+    'components/syntax/shared/colorLimit.ts',
+  ],
 };
 
 suite('Components', () => {

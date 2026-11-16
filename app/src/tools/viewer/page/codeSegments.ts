@@ -1,4 +1,7 @@
-import type { LineRanges, SyntaxRange } from '../../../lib/page/syntaxEngine';
+import type {
+  LineRanges,
+  SyntaxRange,
+} from '../../../components/syntax/page/engine';
 
 export interface CodeSegment {
   readonly text: string;

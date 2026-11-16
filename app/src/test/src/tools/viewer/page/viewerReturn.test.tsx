@@ -7,7 +7,7 @@ import {
   type ShownViewer as ShownTool,
 } from './viewerToolFixtures';
 
-vi.mock('../../../../../lib/page/syntax', () => ({
+vi.mock('../../../../../components/syntax/page/colorer', () => ({
   startColorer: () => undefined,
   colorer: () => ({ colorParts: () => () => undefined }),
 }));

@@ -1,6 +1,6 @@
-import { strings } from '../shared/strings';
-import type { ContextMenuItem } from './contextMenuItem';
-import { languages } from './languages';
+import { strings } from '../../../lib/shared/strings';
+import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
+import { languages } from '../../../lib/page/languages';
 
 export type LanguageChoice = 'auto' | 'plain' | (string & {});
 

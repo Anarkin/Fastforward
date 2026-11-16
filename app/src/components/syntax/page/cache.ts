@@ -1,5 +1,5 @@
 import type { StateStack } from 'shiki/textmate';
-import type { LineRanges } from './syntaxEngine';
+import type { LineRanges } from './engine';
 
 export interface Colors {
   readonly ranges: LineRanges;

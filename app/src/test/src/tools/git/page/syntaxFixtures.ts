@@ -5,12 +5,12 @@ import { parsePatch } from '../../../../../components/diff/page/diff';
 import type { LoadedText } from '../../../../../components/diff/page/sideTexts';
 import { syntaxSources } from '../../../../../components/diff/page/diffSyntaxSources';
 import { noop } from '../../../../helpers/fixtures';
-import type { SyntaxRange } from '../../../../../lib/page/syntaxEngine';
+import type { SyntaxRange } from '../../../../../components/syntax/page/engine';
 import type {
   FromSyntax,
   ToSyntax,
-} from '../../../../../lib/page/syntaxServing';
-import { coloredSources } from '../../../lib/page/syntaxFixtures';
+} from '../../../../../components/syntax/page/serving';
+import { coloredSources } from '../../../components/syntax/page/fixtures';
 
 export const workerSeen: {
   readonly posted: ToSyntax[];

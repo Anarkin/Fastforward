@@ -1,11 +1,14 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { partLines, type CodePart } from '../../../../lib/page/syntaxParts';
-import { waitFor } from '../../../helpers/fixtures';
-import { codeLines, onTickingClock, warmsUpTheGrammar } from './syntaxFixtures';
-import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
-import type { SyntaxRange } from '../../../../lib/page/syntaxEngine';
-import { colorCode } from '../../../../lib/page/codeColors';
+import {
+  partLines,
+  type CodePart,
+} from '../../../../../components/syntax/page/parts';
+import { waitFor } from '../../../../helpers/fixtures';
+import { codeLines, onTickingClock, warmsUpTheGrammar } from './fixtures';
+import { loadLanguages } from '../../../../../components/syntax/page/grammars';
+import type { SyntaxRange } from '../../../../../components/syntax/page/engine';
+import { colorCode } from '../../../../../components/syntax/page/codeColors';
 
 function coloredCode(
   language: string,

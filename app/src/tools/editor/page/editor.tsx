@@ -4,14 +4,14 @@ import { strings } from '../../../lib/shared/strings';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { Words } from '../../../lib/page/name';
 import { languageOf } from '../../../lib/page/languages';
-import { startColorer } from '../../../lib/page/syntax';
+import { startColorer } from '../../../components/syntax/page/colorer';
 import { StatusLine } from '../../../lib/page/statusLine';
 import { findAskOf } from './editorFind';
 import {
   languageChoiceOf,
   shownLanguage,
-} from '../../../lib/page/languageMenu';
-import { LanguageButton } from '../../../lib/page/languageChoice';
+} from '../../../components/syntax/page/languageMenu';
+import { LanguageButton } from '../../../components/syntax/page/languageChoice';
 import { PathTitle } from '../../../lib/page/pathTitle';
 import { useEditor, useEditorActions } from './store';
 import { useEditorView } from './editorView';

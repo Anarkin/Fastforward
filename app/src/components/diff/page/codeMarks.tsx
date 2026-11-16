@@ -1,6 +1,6 @@
 import { memo, Fragment } from 'react';
 import { type FindRange } from './find';
-import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
+import type { SyntaxRange } from '../../syntax/page/engine';
 import { DrawnText } from '../../../lib/page/blanks';
 import {
   breakOffsets,

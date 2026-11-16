@@ -5,9 +5,9 @@ import {
 } from 'shiki/core';
 import { createOnigurumaEngine } from 'shiki/engine/oniguruma';
 import { bundledLanguagesInfo } from 'shiki/langs';
-import { onceMade } from './onceMade';
-import { forgetCached } from './syntaxCache';
-import { theme } from './syntaxEngine';
+import { onceMade } from '../../../lib/page/onceMade';
+import { forgetCached } from './cache';
+import { theme } from './engine';
 
 const registered = new Map<string, LanguageRegistration>();
 const generations = new Map<string, number>();

@@ -8,8 +8,8 @@ import {
 } from '../../../../../tools/viewer/page/textColors';
 import type { TextEncoding } from '../../../../../components/encodings/shared/textEncodings';
 import { bytesOf } from '../../../../../tools/viewer/page/encodedBytes';
-import { packedPart } from '../../../../../lib/page/syntaxParts';
-import type { LineRanges } from '../../../../../lib/page/syntaxEngine';
+import { packedPart } from '../../../../../components/syntax/page/parts';
+import type { LineRanges } from '../../../../../components/syntax/page/engine';
 
 const row = (start: number, end: number, text: string) => ({
   start,

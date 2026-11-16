@@ -1,14 +1,14 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { partLines } from '../../../../lib/page/syntaxParts';
-import { waitFor } from '../../../helpers/fixtures';
-import { syntaxRanges, sideKeys, warmsUpTheGrammar } from './syntaxFixtures';
-import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
+import { partLines } from '../../../../../components/syntax/page/parts';
+import { waitFor } from '../../../../helpers/fixtures';
+import { syntaxRanges, sideKeys, warmsUpTheGrammar } from './fixtures';
+import { loadLanguages } from '../../../../../components/syntax/page/grammars';
 import {
   sendUncaught,
   serveColoring,
   type FromSyntax,
-} from '../../../../lib/page/syntaxServing';
+} from '../../../../../components/syntax/page/serving';
 
 const entireOf = (messages: readonly FromSyntax[]) =>
   messages.flatMap((message) =>

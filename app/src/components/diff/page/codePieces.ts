@@ -1,6 +1,6 @@
 import { wholeClusters } from '../../../lib/page/wholeClusters';
 import type { FindRange } from './find';
-import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
+import type { SyntaxRange } from '../../syntax/page/engine';
 
 interface CodePiece {
   readonly start: number;

@@ -4,16 +4,16 @@ import {
   colorerOf,
   workerPort,
   type SyntaxPort,
-} from '../../../../lib/page/syntax';
-import type { CodePart } from '../../../../lib/page/syntaxParts';
-import { waitFor } from '../../../helpers/fixtures';
-import { codeLines, warmsUpTheGrammar } from './syntaxFixtures';
-import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
+} from '../../../../../components/syntax/page/colorer';
+import type { CodePart } from '../../../../../components/syntax/page/parts';
+import { waitFor } from '../../../../helpers/fixtures';
+import { codeLines, warmsUpTheGrammar } from './fixtures';
+import { loadLanguages } from '../../../../../components/syntax/page/grammars';
 import {
   serveColoring,
   type FromSyntax,
   type ToSyntax,
-} from '../../../../lib/page/syntaxServing';
+} from '../../../../../components/syntax/page/serving';
 
 suite('Coloring away from the page', () => {
   warmsUpTheGrammar();

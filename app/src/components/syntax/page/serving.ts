@@ -1,8 +1,9 @@
-import { errorText } from './errors';
-import { packedPart, type CodePart } from './syntaxParts';
-import { SyntaxRange } from './syntaxEngine';
-import { generationOf } from './syntaxLanguages';
-import { SyntaxSource, startColoring } from './syntaxSources';
+import { errorText } from '../../../lib/page/errors';
+import { packedPart, type CodePart } from './parts';
+import { SyntaxRange } from './engine';
+import { generationOf } from './grammars';
+import type { SyntaxSource } from './colorer';
+import { startColoring } from './sources';
 import { colorCode } from './codeColors';
 import { EditedColoring, colorEdited } from './editedColors';
 

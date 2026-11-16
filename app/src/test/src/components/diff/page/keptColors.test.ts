@@ -4,7 +4,7 @@ import {
   keepColors,
   keptColorsOf,
 } from '../../../../../components/diff/page/keptColors';
-import { packedPart } from '../../../../../lib/page/syntaxParts';
+import { packedPart } from '../../../../../components/syntax/page/parts';
 import { comment, keptPatch } from '../../../tools/git/page/syntaxFixtures';
 
 suite('Syntax', () => {

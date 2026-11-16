@@ -9,7 +9,7 @@ import {
 
 const colored: string[] = [];
 
-vi.mock('../../../../../lib/page/syntax', () => ({
+vi.mock('../../../../../components/syntax/page/colorer', () => ({
   startColorer: () => undefined,
   colorer: () => ({
     colorParts: (

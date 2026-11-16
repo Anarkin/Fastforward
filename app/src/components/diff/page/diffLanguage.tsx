@@ -1,6 +1,6 @@
 import { useRef } from 'react';
-import { languageChoiceOf } from '../../../lib/page/languageMenu';
-import { LanguageButton } from '../../../lib/page/languageChoice';
+import { languageChoiceOf } from '../../syntax/page/languageMenu';
+import { LanguageButton } from '../../syntax/page/languageChoice';
 import { languageOf } from '../../../lib/page/languages';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { diffKeymap } from './diffKeymap';

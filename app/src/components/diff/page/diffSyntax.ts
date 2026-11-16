@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { parsePatch, type DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
-import type { SyntaxRange } from '../../../lib/page/syntaxEngine';
-import { colorer } from '../../../lib/page/syntax';
+import type { SyntaxRange } from '../../syntax/page/engine';
+import { colorer } from '../../syntax/page/colorer';
 import type { WholeFile } from './diffRows';
 import { plannedSources } from './diffSyntaxSources';
 import {

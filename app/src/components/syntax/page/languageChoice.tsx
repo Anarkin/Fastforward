@@ -1,6 +1,6 @@
-import { strings } from '../shared/strings';
-import { MenuButton } from './menu';
-import type { ScrollSettings } from './scrollSettings';
+import { strings } from '../../../lib/shared/strings';
+import { MenuButton } from '../../../lib/page/menu';
+import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import {
   type LanguageChoice,
   languageButtonLabel,

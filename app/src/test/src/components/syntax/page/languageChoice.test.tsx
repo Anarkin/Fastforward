@@ -5,8 +5,8 @@ import {
   languageMenu,
   shownLanguage,
   languageChoiceOf,
-} from '../../../../lib/page/languageMenu';
-import { languages } from '../../../../lib/page/languages';
+} from '../../../../../components/syntax/page/languageMenu';
+import { languages } from '../../../../../lib/page/languages';
 
 const first = languages[0];
 

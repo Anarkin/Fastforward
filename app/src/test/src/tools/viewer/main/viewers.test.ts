@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/toolContract';
 import { maxBytesAsked } from '../../../../../tools/viewer/shared/protocol';
-import { maxColoredBytes } from '../../../../../lib/shared/colorLimit';
+import { maxColoredBytes } from '../../../../../components/syntax/shared/colorLimit';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { readBudgetBytes } from '../../../../../tools/viewer/main/textRows';
 import { sampledVersion } from '../../../../../lib/main/fileVersions';

@@ -1,12 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { loadLanguages } from '../../../../lib/page/syntaxLanguages';
-import type { SyntaxRange } from '../../../../lib/page/syntaxEngine';
+import { loadLanguages } from '../../../../../components/syntax/page/grammars';
+import type { SyntaxRange } from '../../../../../components/syntax/page/engine';
 import {
   startColoring,
   tokenizing,
   uncachedSources,
-} from '../../../../lib/page/syntaxSources';
+} from '../../../../../components/syntax/page/sources';
 import {
   syntaxRanges,
   countingLines,
@@ -14,7 +14,7 @@ import {
   onTickingClock,
   assertNotLoaded,
   warmsUpTheGrammar,
-} from './syntaxFixtures';
+} from './fixtures';
 
 suite('Syntax', () => {
   warmsUpTheGrammar();

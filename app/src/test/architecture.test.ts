@@ -210,13 +210,8 @@ suite('Architecture', () => {
     );
   });
 
-  test('gives the library, the shell, each tool and each component a main, a page and a shared folder, and nothing else', () => {
-    const parts = [
-      'lib',
-      'shell',
-      ...tools.map((tool) => `tools/${tool}`),
-      ...components.map((component) => `components/${component}`),
-    ];
+  test('gives the library, the shell and each tool a main, a page and a shared folder, and nothing else', () => {
+    const parts = ['lib', 'shell', ...tools.map((tool) => `tools/${tool}`)];
     assert.deepStrictEqual(
       Object.fromEntries(
         parts.map((part) => [
@@ -227,6 +222,23 @@ suite('Architecture', () => {
       Object.fromEntries(
         parts.map((part) => [part, ['main', 'page', 'shared']]),
       ),
+    );
+  });
+
+  test('gives each component a page folder, and a main or a shared one only where it runs there, and nothing else', () => {
+    assert.deepStrictEqual(
+      components.flatMap((component) =>
+        fs
+          .readdirSync(path.join(source, 'components', component))
+          .filter((folder) => !['main', 'page', 'shared'].includes(folder))
+          .map((folder) => `components/${component}/${folder}`)
+          .concat(
+            fs.existsSync(path.join(source, 'components', component, 'page'))
+              ? []
+              : [`components/${component} has no page`],
+          ),
+      ),
+      [],
     );
   });
 

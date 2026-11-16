@@ -30,10 +30,10 @@ import {
 import {
   shownLanguage,
   languageChoiceOf,
-} from '../../../lib/page/languageMenu';
-import { LanguageButton } from '../../../lib/page/languageChoice';
+} from '../../../components/syntax/page/languageMenu';
+import { LanguageButton } from '../../../components/syntax/page/languageChoice';
 import { languageOf } from '../../../lib/page/languages';
-import { startColorer } from '../../../lib/page/syntax';
+import { startColorer } from '../../../components/syntax/page/colorer';
 import { PathTitle } from '../../../lib/page/pathTitle';
 import { fileLooks } from './fileLooks';
 import { useViewer, useViewerActions } from './store';
