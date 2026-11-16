@@ -115,10 +115,40 @@ export function focusBack(root: Element, kept: KeptFocus | undefined): boolean {
     part.setSelectionRange(...kept.selection);
   }
   if (kept.scroll !== undefined && isTextField(part)) {
-    part.scrollLeft = kept.scroll;
+    scrolledBack(part, kept.scroll);
   }
   return part.ownerDocument.activeElement === part;
 }
+
+const scrollSettles = 2000;
+
+function scrolledBack(part: HTMLElement & TextField, scroll: number): void {
+  part.scrollLeft = scroll;
+  const Observer = part.ownerDocument.defaultView?.ResizeObserver;
+  if (part.scrollLeft >= scroll - 1 || Observer === undefined) {
+    return;
+  }
+  const stop = () => {
+    observer.disconnect();
+    clearTimeout(timer);
+    for (const move of handsOn) {
+      part.removeEventListener(move, stop);
+    }
+  };
+  const observer = new Observer(() => {
+    part.scrollLeft = scroll;
+    if (part.scrollLeft >= scroll - 1) {
+      stop();
+    }
+  });
+  const timer = setTimeout(stop, scrollSettles);
+  for (const move of handsOn) {
+    part.addEventListener(move, stop);
+  }
+  observer.observe(part);
+}
+
+const handsOn = ['keydown', 'pointerdown', 'input'] as const;
 
 const caretMoves = ['focusin', 'keyup', 'mouseup', 'input', 'select'] as const;
 

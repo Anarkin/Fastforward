@@ -48,6 +48,46 @@ suite('The focus kept for a tab', () => {
     assert.strictEqual(find.scrollLeft, 18);
   });
 
+  test('scrolls a box back again once it is laid out, as a box shown narrower than it ends up cuts the scroll put back short', () => {
+    const document = page();
+    const tool = document.querySelector('#tool');
+    const find = named(document, 'find');
+    const view = document.defaultView;
+    assert.ok(tool && find && view);
+    let room = 11;
+    let scrolled = 0;
+    Object.defineProperty(find, 'scrollLeft', {
+      configurable: true,
+      get: () => scrolled,
+      set: (left: number) => {
+        scrolled = Math.min(left, room);
+      },
+    });
+    const resized: (() => void)[] = [];
+    Object.defineProperty(view, 'ResizeObserver', {
+      configurable: true,
+      value: class {
+        constructor(changed: () => void) {
+          resized.push(changed);
+        }
+        observe(): void {}
+        disconnect(): void {
+          resized.length = 0;
+        }
+      },
+    });
+
+    focusBack(tool, { name: 'find', selection: [20, 20, 'none'], scroll: 18 });
+    assert.strictEqual(find.scrollLeft, 11);
+    room = 30;
+    for (const changed of resized.slice()) {
+      changed();
+    }
+
+    assert.strictEqual(find.scrollLeft, 18);
+    assert.deepStrictEqual(resized, []);
+  });
+
   test('reads back a focus kept as data, its name, caret and scroll, leaving out what is not of their shape', () => {
     assert.deepStrictEqual(
       keptFocusFrom({
