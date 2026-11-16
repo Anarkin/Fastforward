@@ -117,6 +117,13 @@ async function freeName(file: string): Promise<string> {
 
 const ignored = () => undefined;
 
+async function lockedAgain(target: string, was: fs.Stats): Promise<void> {
+  const now = await statsOf(target);
+  if (now !== undefined && now.ino === was.ino && now.dev === was.dev) {
+    await fs.promises.chmod(target, was.mode).catch(ignored);
+  }
+}
+
 class Transfer {
   private readonly counts = new Map<string, Count>();
   private files = 0;
@@ -304,6 +311,7 @@ class Transfer {
     const there = await statsOf(target);
     let into = target;
     let overwrite = false;
+    let unlocked: fs.Stats | undefined;
     if (there !== undefined) {
       if (await sameItem(source, target)) {
         this.events.failed(name, strings.commander.itselfThere);
@@ -337,9 +345,28 @@ class Transfer {
           await fs.promises
             .chmod(target, there.mode | ownerWrites)
             .catch(ignored);
+          unlocked = there;
         }
       }
     }
+    try {
+      await this.placed(source, target, into, from, overwrite, renaming);
+    } finally {
+      if (unlocked !== undefined) {
+        await lockedAgain(target, unlocked);
+      }
+    }
+  }
+
+  private async placed(
+    source: string,
+    target: string,
+    into: string,
+    from: fs.Stats,
+    overwrite: boolean,
+    renaming: boolean,
+  ): Promise<void> {
+    const name = this.nameOf(target);
     if (this.plan.move && renaming) {
       try {
         await this.rename(source, into);
@@ -521,7 +548,7 @@ class Transfer {
     const input = await fs.promises.open(source, 'r');
     let output: fs.promises.FileHandle | undefined;
     try {
-      output = await fs.promises.open(target, 'w', stats.mode & 0o7777);
+      output = await fs.promises.open(target, 'wx', stats.mode & 0o7777);
       const piece = Buffer.allocUnsafe(pieceBytes);
       for (let position = 0; ;) {
         this.stopIfAsked();

@@ -11,7 +11,7 @@ import { listedIn } from './listedEntries';
 import { parentOf } from './folderPaths';
 import type { ArchiveAccess } from './archives';
 import type { ArchiveTransferCommands } from './archiveTransferCommands';
-import { refusedTarget } from './transferTargets';
+import { refusedTargetOnDisk } from './transferTargets';
 
 export interface TransferCommandsAccess {
   readonly archives?: ArchiveAccess;
@@ -79,15 +79,14 @@ export class TransferCommands {
       return Promise.resolve();
     }
     const sources: readonly string[] = files;
-    this.startTransfer(page, {
+    return this.startTransfer(page, {
       plan: { sources, target, move },
       folder: path.dirname(sources[0]),
       names: sources.map((source) => path.basename(source)),
     });
-    return Promise.resolve();
   }
 
-  transfer(
+  async transfer(
     page: Page,
     {
       tab,
@@ -98,7 +97,7 @@ export class TransferCommands {
       move,
       existing,
     }: Extract<CommanderToHost, { type: 'transfer' }>,
-  ): void {
+  ): Promise<void> {
     const shown = this.sides.namingPane(page, tab, side, folder);
     const other =
       shown && this.sides.panes.get(shown.tab)?.[otherSide(shown.side)];
@@ -159,7 +158,7 @@ export class TransferCommands {
         );
       return;
     }
-    this.startTransfer(page, {
+    await this.startTransfer(page, {
       plan: {
         sources: names.map((name) => path.join(shown.pane.folder, name)),
         target,
@@ -170,9 +169,13 @@ export class TransferCommands {
     });
   }
 
-  private startTransfer(page: Page, ask: TransferAsk): void {
+  private async startTransfer(page: Page, ask: TransferAsk): Promise<void> {
     const { sources, target } = ask.plan;
-    const refused = refusedTarget(sources, target, this.access.platform);
+    const refused = await refusedTargetOnDisk(
+      sources,
+      target,
+      this.access.platform,
+    );
     if (refused !== undefined) {
       this.host.refuse(page, refused);
       return;
@@ -202,7 +205,7 @@ export class TransferCommands {
       });
       return;
     }
-    this.startTransfer(page, {
+    await this.startTransfer(page, {
       plan: { sources, target: shown.pane.folder, move: false },
       folder: path.dirname(first),
       names: sources.map((source) => path.basename(source)),

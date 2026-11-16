@@ -383,6 +383,30 @@ suite('Transfer', () => {
     );
   });
 
+  test('keeps a read-only file it was told to overwrite read-only when its copy is stopped, as it is left as it was', async () => {
+    write(path.join(source, 'big.bin'), 'n'.repeat(10_000));
+    const kept = path.join(target, 'big.bin');
+    write(kept, 'old big.bin');
+    fs.chmodSync(kept, 0o444);
+    let asked = 0;
+
+    const stopped = await run(
+      { sources: [path.join(source, 'big.bin')], target, move: false },
+      {
+        piecesFrom: 4000,
+        pieceBytes: 1000,
+        cloning: false,
+        answers: [{ answer: 'overwrite', all: false }],
+        stopped: () => ++asked > 4,
+      },
+    );
+
+    assert.strictEqual(stopped.end, 'stopped');
+    assert.strictEqual(fs.readFileSync(kept, 'utf8'), 'old big.bin');
+    assert.strictEqual(fs.statSync(kept).mode & 0o222, 0);
+    fs.chmodSync(kept, 0o644);
+  });
+
   test('overwrites a hidden file there already, and keeps a file it was told to overwrite as it was until its copy is whole, once stopped too', async () => {
     write(path.join(source, 'desktop.ini'), 'new desktop.ini');
     write(path.join(source, 'big.bin'), 'n'.repeat(10_000));
