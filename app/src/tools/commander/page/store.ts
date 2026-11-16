@@ -31,8 +31,11 @@ import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
 import { viewerActions } from './viewerActions';
+import { keptTabActions } from './keptTabActions';
 
 const maxCameIcons = 5000;
+
+const tabOfScroll = (key: string) => key.slice(0, key.indexOf(' '));
 
 export function createCommanderStore(
   post: (message: CommanderToHost) => void,
@@ -48,7 +51,7 @@ export function createCommanderStore(
   const scrolls = new ScrollPlaces();
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
-  return createStore<CommanderState>()((set, get) => {
+  return createStore<CommanderState>()((set, get, api) => {
     const announced = (change: () => void) => {
       const before = get().view;
       change();
@@ -158,6 +161,12 @@ export function createCommanderStore(
     const viewer = viewerActions(parts);
     const editor = editorActions(parts);
     const flat = flatActions(parts, flatOptions);
+    const kept = keptTabActions(parts, scrolls, viewer, editor);
+    api.subscribe((state, before) => {
+      if (state.view !== before.view || state.filters !== before.filters) {
+        kept.changed(state.view.tab);
+      }
+    });
     const sortOf = (side: Side) => {
       const { panes, sorts } = get().view;
       return panes[side]?.sort ?? sorts[side];
@@ -170,6 +179,9 @@ export function createCommanderStore(
       ...commanderDefaults,
       ...initial,
       receive: (message) => {
+        if (message.type === 'left') {
+          kept.forget(message.tab, true);
+        }
         if (isViewerStream(message)) {
           viewer.heard(message);
           return;
@@ -181,7 +193,9 @@ export function createCommanderStore(
         if (message.type === 'flatFiles') {
           flat.heard(message);
         }
+        const leaving = get().view.tab;
         if (message.type === 'show') {
+          kept.shown(message);
           viewer.awaitViewing(
             message.file !== undefined && message.edit !== true
               ? message.tab
@@ -191,6 +205,12 @@ export function createCommanderStore(
           viewer.awaitViewing(undefined);
         }
         announced(() => set((state) => received(state, message)));
+        if (message.type === 'show' || message.type === 'hide') {
+          kept.leaving(leaving);
+        }
+        if (message.type === 'closed') {
+          kept.forget(message.tab, false);
+        }
         if (message.type === 'viewing') {
           viewer.viewingCame(message.tab);
         }
@@ -204,6 +224,14 @@ export function createCommanderStore(
         }
       },
       ...viewer.actions,
+      keepPlace: (tab, byte) => {
+        viewer.actions.keepPlace(tab, byte);
+        kept.changed(tab);
+      },
+      keepViewer: (tab, change) => {
+        viewer.actions.keepViewer(tab, change);
+        kept.changed(tab);
+      },
       dispatch,
       select: (side, key) => dispatch({ type: 'select', side, key }),
       mark: (side, keys, marked) =>
@@ -229,6 +257,10 @@ export function createCommanderStore(
           post({ type: 'view', tab, side, folder, name }),
         ),
       ...editor.actions,
+      keepEditing: (tab, change) => {
+        editor.actions.keepEditing(tab, change);
+        kept.changed(tab);
+      },
       openRepository: (side, name) =>
         onDisk(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),
@@ -399,7 +431,11 @@ export function createCommanderStore(
         onDisk(side, (tab, folder) =>
           post({ type: 'countSizes', tab, side, folder, names }),
         ),
-      keepScroll: (key, offset) => scrolls.keep(key, offset),
+      keepScroll: (key, offset) => {
+        scrolls.keep(key, offset);
+        kept.changed(tabOfScroll(key));
+      },
+      keepTabs: () => kept.flush(),
       iconTicketOf: (url) => cameIcons.get(url),
       iconCame: (url, ticket) => {
         cameIcons.delete(url);

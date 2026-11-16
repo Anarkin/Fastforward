@@ -19,11 +19,13 @@ import {
 import { flatListed, folderOfSelected, withFlatRows } from './flatPane';
 import {
   duplicatesOf,
+  noMarks,
   relisted,
   withFolderSizes,
   withMarks,
   withRepositories,
   type FlatShown,
+  type KeptMarks,
   type PaneView,
 } from './paneView';
 
@@ -47,6 +49,7 @@ export interface CommanderView {
   readonly share: number;
   readonly focus: KeptFocus | undefined;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
+  readonly awaiting: Awaiting;
   readonly kept: ReadonlyMap<string, KeptTab>;
   readonly viewers: ReadonlyMap<string, ViewerChoices>;
   readonly closedTab: string | undefined;
@@ -78,12 +81,17 @@ function without<T>(
   return left;
 }
 
-interface KeptTab {
+type Awaiting = Readonly<Record<Side, KeptMarks | undefined>>;
+
+const noAwaiting: Awaiting = { left: undefined, right: undefined };
+
+export interface KeptTab {
   readonly active: Side;
   readonly share: number;
   readonly focus: KeptFocus | undefined;
   readonly layouts: Layouts;
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
+  readonly awaiting?: Awaiting;
 }
 
 function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
@@ -100,6 +108,7 @@ function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
     focus: view.focus,
     layouts: view.layouts,
     panes: view.panes,
+    awaiting: view.awaiting,
   });
 }
 
@@ -126,6 +135,7 @@ export const emptyView: CommanderView = {
   share: 0.5,
   focus: undefined,
   panes: { left: undefined, right: undefined },
+  awaiting: noAwaiting,
   kept: new Map(),
   viewers: new Map(),
   closedTab: undefined,
@@ -141,6 +151,12 @@ export type ViewAction =
   | { readonly type: 'hide' }
   | CommanderToWebviewOf<'closed'>
   | CommanderToWebviewOf<'left'>
+  | {
+      readonly type: 'restore';
+      readonly tab: string;
+      readonly kept?: KeptTab;
+      readonly choices?: ViewerChoices;
+    }
   | { readonly type: 'choose'; readonly choices: Partial<ViewerChoices> }
   | (Omit<CommanderToWebviewOf<'settings'>, 'type'> & {
       readonly type: 'settings';
@@ -182,6 +198,17 @@ export type ViewAction =
   | { readonly type: 'share'; readonly share: number }
   | { readonly type: 'focus'; readonly focus: KeptFocus | undefined }
   | { readonly type: 'switchSide' };
+
+function marksAmong(
+  rows: readonly Row[],
+  keys: readonly string[],
+): ReadonlySet<string> {
+  const markable = new Set(
+    rows.flatMap((row) => (row.entry === undefined ? [] : [row.key])),
+  );
+  const marked = keys.filter((key) => markable.has(key));
+  return marked.length === 0 ? noMarks : new Set(marked);
+}
 
 function sameFolders(
   one: readonly string[],
@@ -254,6 +281,7 @@ export function reduceView(
         focus: back?.focus,
         layouts: back?.layouts ?? emptyView.layouts,
         panes: back === undefined ? emptyView.panes : settledPanes(view, back),
+        awaiting: back?.awaiting ?? noAwaiting,
         kept,
         closedTab: undefined,
       };
@@ -268,6 +296,7 @@ export function reduceView(
         focus: undefined,
         layouts: emptyView.layouts,
         panes: emptyView.panes,
+        awaiting: noAwaiting,
         kept: keptAway(view),
         closedTab: undefined,
       };
@@ -285,6 +314,20 @@ export function reduceView(
             ...view,
             kept: without(view.kept, action.tab),
             viewers: without(view.viewers, action.tab),
+          };
+    case 'restore':
+      return view.tab === action.tab
+        ? view
+        : {
+            ...view,
+            kept:
+              action.kept === undefined
+                ? view.kept
+                : new Map(view.kept).set(action.tab, action.kept),
+            viewers:
+              action.choices === undefined
+                ? without(view.viewers, action.tab)
+                : new Map(view.viewers).set(action.tab, action.choices),
           };
     case 'choose':
       return view.tab === undefined ||
@@ -346,6 +389,13 @@ export function reduceView(
       }
       const sort = pane?.sort ?? view.sorts[action.side];
       const { flat } = action;
+      const awaited = view.awaiting[action.side];
+      const restoring =
+        pane === undefined &&
+        flat === undefined &&
+        awaited?.folder === action.folder
+          ? awaited
+          : undefined;
       const leftFlat =
         pane?.flat !== undefined && pane.folder === action.folder
           ? folderOfSelected(pane)
@@ -358,7 +408,7 @@ export function reduceView(
               action,
               view.showHidden,
               view.fileColors,
-              action.selected ?? leftFlat,
+              action.selected ?? leftFlat ?? restoring?.selected,
               pane?.folder === action.folder && pane.flat === undefined
                 ? pane
                 : undefined,
@@ -369,12 +419,21 @@ export function reduceView(
         action.duplicates,
       );
       const { duplicates: _left, ...withoutDuplicates } = listed;
+      const marked =
+        restoring === undefined
+          ? listed.marked
+          : marksAmong(listed.rows, restoring.marked);
       return withPane(
-        view,
+        awaited === undefined
+          ? view
+          : {
+              ...view,
+              awaiting: { ...view.awaiting, [action.side]: undefined },
+            },
         action.side,
         duplicates === undefined
-          ? withoutDuplicates
-          : { ...withoutDuplicates, duplicates },
+          ? { ...withoutDuplicates, marked }
+          : { ...withoutDuplicates, marked, duplicates },
       );
     }
     case 'duplicateGroups': {

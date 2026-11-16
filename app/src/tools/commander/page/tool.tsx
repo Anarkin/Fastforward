@@ -19,7 +19,7 @@ import { useShellActions } from '../../../shell/page/store';
 import { CommanderPopups } from './commanderPopups';
 import { CommanderStore, createCommanderStore } from './store';
 import { sideToFocus } from './sideFocus';
-import { focusBack } from '../../../lib/page/keptFocus';
+import { focusBack, type KeptFocus } from '../../../lib/page/keptFocus';
 import { shareOf } from './sideShare';
 
 export function CommanderTool({
@@ -77,30 +77,47 @@ export function CommanderTool({
   };
 
   useEffect(() => listen(store.getState().receive), [listen, store]);
+  useEffect(() => {
+    const flush = () => store.getState().keepTabs();
+    window.addEventListener('pagehide', flush);
+    return () => window.removeEventListener('pagehide', flush);
+  }, [store]);
 
   const shown = active && tab !== undefined;
   const viewing = shown && viewsFile;
   const panesShown = shown && !viewsFile && !editsFile;
 
+  const listed = useStore(store, (state) =>
+    sides.every((side) => state.view.panes[side] !== undefined),
+  );
   const focusedTab = useRef<string>(undefined);
+  const focusAwaited = useRef<KeptFocus>(undefined);
   useEffect(() => {
     if (!panesShown) {
       focusedTab.current = undefined;
+      focusAwaited.current = undefined;
       return;
     }
     const root = columns.current;
     const column = root?.children[sides.indexOf(activeSide)];
     if (focusedTab.current === tab) {
-      sideToFocus(column, document.activeElement)?.focus();
+      const awaited = focusAwaited.current;
+      if (listed) {
+        focusAwaited.current = undefined;
+      }
+      if (root === null || !listed || !focusBack(root, awaited)) {
+        sideToFocus(column, document.activeElement)?.focus();
+      }
       return;
     }
     focusedTab.current = tab;
     const left =
       tab === undefined ? undefined : store.getState().view.kept.get(tab);
     if (root === null || !focusBack(root, left?.focus)) {
+      focusAwaited.current = listed ? undefined : left?.focus;
       sideToFocus(column, null)?.focus();
     }
-  }, [panesShown, activeSide, tab, store]);
+  }, [panesShown, activeSide, tab, store, listed]);
 
   useBinding(
     commanderKeymap.history,

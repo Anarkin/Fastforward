@@ -2,6 +2,7 @@ import type { CommanderActions, KeptEditor } from './commanderState';
 import type { StoreParts } from './dialogActions';
 import type { ToEditor } from './editorState';
 import { noKeptEditing, type KeptEditing } from './editorKept';
+import type { EditorKept } from './tabKept';
 
 type EditorActions = Pick<
   CommanderActions,
@@ -32,6 +33,8 @@ export function editorActions({ set, post, onPane }: StoreParts): {
   readonly actions: EditorActions;
   readonly heard: (message: ToEditor) => void;
   readonly forget: (tab: string) => void;
+  readonly kept: (tab: string) => EditorKept;
+  readonly restore: (tab: string, kept: EditorKept) => void;
 } {
   const editorListeners = new Set<(message: ToEditor) => void>();
   const keptEditors = new Map<string, KeptEditor>();
@@ -83,6 +86,17 @@ export function editorActions({ set, post, onPane }: StoreParts): {
       keptEditings.delete(tab);
       openTabs.delete(tab);
       answered(tab);
+    },
+    kept: (tab) => keptEditings.get(tab) ?? noKeptEditing,
+    restore: (tab, kept) => {
+      keptEditors.delete(tab);
+      keptEditings.set(tab, {
+        finding: kept.finding ?? noKeptEditing.finding,
+        replacing: kept.replacing ?? noKeptEditing.replacing,
+        query: kept.query ?? noKeptEditing.query,
+        replacement: kept.replacement ?? noKeptEditing.replacement,
+        focus: kept.focus,
+      });
     },
     actions: {
       editFile: (side, name) =>

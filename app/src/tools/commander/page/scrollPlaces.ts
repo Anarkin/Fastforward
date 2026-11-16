@@ -7,6 +7,12 @@ export class ScrollPlaces {
     return this.offsets.get(key) ?? 0;
   }
 
+  under(start: string): (readonly [string, number])[] {
+    return [...this.offsets]
+      .filter(([key]) => key.startsWith(start))
+      .map(([key, offset]) => [key.slice(start.length), offset] as const);
+  }
+
   forget(start: string): void {
     for (const key of this.offsets.keys()) {
       if (key.startsWith(start)) {

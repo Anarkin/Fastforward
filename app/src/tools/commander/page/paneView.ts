@@ -47,6 +47,12 @@ export function duplicatesOf(
   return before?.look === look ? before : { look, groups: [], reading: true };
 }
 
+export interface KeptMarks {
+  readonly folder: string;
+  readonly selected: string | undefined;
+  readonly marked: readonly string[];
+}
+
 export interface PaneView extends Listed {
   readonly sort: Sort;
   readonly rows: readonly Row[];

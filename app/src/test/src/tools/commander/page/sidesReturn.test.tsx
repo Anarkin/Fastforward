@@ -69,6 +69,34 @@ suite('A commander tab shown again', () => {
       assert.ok(focused(tool, lists(tool)[1]), 'the list focused');
     }));
 
+  test('gives the focus back to the filter with its caret in a page that never showed the tab, as a window reloaded, once the folders of its sides are listed', async () => {
+    let kept: unknown;
+    await inCommanderTool(CommanderTool, async (tool) => {
+      await tool.send(commanderSettings);
+      await sidesShown(tool, 'A');
+      await filtered(tool, 1, 'txt', 1);
+      await sidesShown(tool, 'B');
+      for (const message of tool.posted) {
+        if (message.type === 'keepTab' && message.tab === 'A') {
+          ({ kept } = message);
+        }
+      }
+    });
+    assert.ok(kept !== undefined);
+
+    await inCommanderTool(CommanderTool, async (tool) => {
+      await tool.send(commanderSettings);
+      await tool.send({ type: 'show', tab: 'A', kept });
+      await tool.send(listingOf('A', 'left', 'C:\\', ['a.txt', 'b.txt']));
+      await tool.send(listingOf('A', 'right', 'C:\\work', ['c.txt', 'd.txt']));
+
+      const box = filterBox(tool, 1);
+      assert.ok(box);
+      assert.ok(focused(tool, box), 'the filter focused');
+      assert.deepStrictEqual([box.selectionStart, box.selectionEnd], [1, 1]);
+    });
+  });
+
   test('puts the caret of each tab back in the filter of a side both filter, rather than carrying the caret of one tab into the other', () =>
     inCommanderTool(CommanderTool, async (tool) => {
       await tool.send(commanderSettings);

@@ -2,6 +2,8 @@ import type { PdfPlace } from '../shared/pdf';
 import { maxFindLength } from '../shared/protocol';
 import type { CommanderActions, ToViewer } from './commanderState';
 import type { StoreParts } from './dialogActions';
+import { noSearch } from '../../../lib/shared/searchOptions';
+import type { ViewerKept } from './tabKept';
 import { noKeptViewer, type KeptViewer } from './viewerKept';
 
 const pdfPlaceWait = 2000;
@@ -31,6 +33,8 @@ export function viewerActions({ post: sent }: StoreParts): {
   readonly forget: (tab: string) => void;
   readonly awaitViewing: (tab: string | undefined) => void;
   readonly viewingCame: (tab: string) => void;
+  readonly kept: (tab: string) => ViewerKept;
+  readonly restore: (tab: string, kept: ViewerKept) => void;
 } {
   let awaited: string | undefined;
   let held: Asked[] = [];
@@ -77,6 +81,34 @@ export function viewerActions({ post: sent }: StoreParts): {
     forget: (tab) => {
       places.delete(tab);
       keptViewers.delete(tab);
+    },
+    kept: (tab) => {
+      const kept = keptViewers.get(tab) ?? noKeptViewer;
+      return {
+        place: places.get(tab),
+        finding: kept.finding,
+        search: kept.search,
+        current: kept.current,
+        focus: kept.focus,
+        sideways: kept.sideways,
+        preview: kept.preview,
+      };
+    },
+    restore: (tab, kept) => {
+      if (kept.place === undefined) {
+        places.delete(tab);
+      } else {
+        places.set(tab, kept.place);
+      }
+      keptViewers.set(tab, {
+        ...noKeptViewer,
+        finding: kept.finding ?? false,
+        search: kept.search ?? noSearch,
+        current: kept.current ?? 0,
+        focus: kept.focus,
+        sideways: kept.sideways,
+        preview: kept.preview,
+      });
     },
     awaitViewing: (tab) => {
       awaited = tab;
