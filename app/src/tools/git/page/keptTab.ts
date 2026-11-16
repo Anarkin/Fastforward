@@ -1,36 +1,20 @@
-import { focusSchema, type KeptFocus } from '../../../lib/page/keptFocus';
-import type { Search } from '../../../lib/shared/searchOptions';
-import { columnOrder, type ColumnName } from './activeColumn';
+import type { KeptFocus } from '../../../lib/page/keptFocus';
 import {
   diffPlaceKey,
   type DiffPlace,
 } from '../../../components/diff/page/diffPlace';
-import type { ScrollAnchor } from '../../../components/diff/page/diffScrollAnchor';
-import type { MovedCursor } from './filesCursor';
-import type { GitSource, KeptLocations, KeptPin } from './gitState';
-import type { KeptFind } from '../../../components/diff/page/diffSlice';
+import type { GitSource } from './gitState';
 import { tabScopeOf } from './gitSelectors';
 import type { KeptPlaces } from '../../../lib/page/keptPlaces';
-import type { Highlighted } from './locationHighlight';
 import { withEntry, withKey } from '../../../lib/page/tabKeyed';
-import type { FilterFolds, ViewFolders } from './viewFolders';
-import { mostWorktrees } from './tabWorktrees';
 import { maxViewChars } from '../../../shell/shared/protocol';
 import {
-  aBoolean,
-  aNumber,
-  aSearch,
-  aString,
-  entriesOf,
-  isRecord,
-  partsOf,
-  someStrings,
-  type Decode,
-} from './keptDecoding';
-
-const mostPlaces = 20;
-
-const mostNamed = 1000;
+  gitViewSchema,
+  mostNamed,
+  mostPlaces,
+  worktreeViewSchema,
+  type WorktreeView,
+} from './worktreeView';
 
 const lastNamed = (names: Iterable<string>): string[] =>
   [...names].slice(-mostNamed);
@@ -42,57 +26,18 @@ export interface TabPlaces {
   readonly locationScrolls: KeptPlaces<number>;
 }
 
-interface Picked {
-  readonly key: string;
-  readonly language: string;
-}
-
-interface KeptPlace {
-  readonly top: number;
-  readonly anchor?: ScrollAnchor;
-  readonly sideways: number;
-  readonly left: number;
-  readonly toggled: readonly (readonly [string, boolean])[];
-  readonly current: number;
-  readonly currentFor?: Search;
-}
-
-interface KeptScope {
-  readonly find?: KeptFind;
-  readonly focus?: KeptFocus;
-  readonly places?: readonly (readonly [string, KeptPlace])[];
-  readonly language?: Picked;
-}
-
-interface KeptWorktree extends KeptScope {
-  readonly commitsHidden?: true;
-  readonly searching?: true;
-  readonly column?: ColumnName;
-  readonly filter?: Search;
-  readonly search?: Search;
-  readonly folders?: {
-    readonly view?: string;
-    readonly open: readonly string[];
-    readonly closed: readonly string[];
-  };
-  readonly folds?: {
-    readonly view: string;
-    readonly searched: string;
-    readonly closed: readonly string[];
-  };
-  readonly cursor?: MovedCursor;
-  readonly pin?: KeptPin;
-  readonly locations?: {
-    readonly highlight?: Highlighted;
-    readonly toggled: readonly string[];
-  };
-  readonly locationsScroll?: number;
-  readonly filesScrolls?: readonly (readonly [string, number])[];
-}
-
 interface KeptTarget {
   readonly kind: 'worktree';
   readonly root: string;
+}
+
+function partsOf(value: string): unknown[] | undefined {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function worktreeScope(root: string): string {
@@ -124,107 +69,62 @@ function languageScopeOfKey(key: string): string {
   return typeof scope !== 'string' ? key : scope;
 }
 
-function given<K extends string, T>(
-  name: K,
-  value: T | undefined,
-): { [P in K]?: T } {
-  const kept: { [P in K]?: T } = {};
-  if (value !== undefined) {
-    kept[name] = value;
-  }
-  return kept;
+function lastOf<T>(
+  entries: readonly (readonly [string, T])[],
+): ReadonlyMap<string, T> | undefined {
+  return entries.length > 0 ? new Map(entries.slice(-mostPlaces)) : undefined;
 }
 
-function keptPlace({
-  top,
-  anchor,
-  sideways,
-  left,
-  toggled,
-  current,
-  currentFor,
-}: DiffPlace): KeptPlace {
-  return {
-    top,
-    ...given('anchor', anchor),
-    sideways,
-    left,
-    toggled: [...toggled].slice(-mostNamed),
-    current,
-    ...given('currentFor', currentFor),
-  };
-}
-
-function scopeKept(
-  source: GitSource,
-  places: TabPlaces,
-  scope: string,
-  languageScope: string,
-): KeptScope {
-  const placed = places.diffPlaces.entries().flatMap(([key, place]) => {
-    const selection = selectionIn(scope, key);
-    return selection === undefined
-      ? []
-      : [[selection, keptPlace(place)] as const];
-  });
-  return {
-    ...given('find', source.diffFinds.get(scope)),
-    ...given('focus', places.focuses.of(scope)),
-    ...(placed.length > 0 && { places: placed.slice(-mostPlaces) }),
-    ...given('language', source.pickedLanguages.get(languageScope)),
-  };
-}
-
-function keptWorktreeOf(
+function worktreeViewOf(
   source: GitSource,
   places: TabPlaces,
   root: string,
-): KeptWorktree {
+): WorktreeView {
+  const scope = worktreeScope(root);
   const folders = source.folders.get(root);
   const folds = source.fileFolds.get(root);
   const locations = source.locations.get(root);
-  const filesScrolls = places.filesScrolls
-    .entries()
-    .filter(([view]) => rootOfView(view) === root);
   return {
-    ...(source.commitsHidden.has(root) && { commitsHidden: true }),
-    ...(source.searching.has(root) && { searching: true }),
-    ...given('column', source.activeColumns.get(root)),
-    ...given('filter', source.fileFilters.get(root)),
-    ...given('search', source.searches.get(root)),
-    ...given(
-      'folders',
+    commitsHidden: source.commitsHidden.has(root) ? true : undefined,
+    searching: source.searching.has(root) ? true : undefined,
+    column: source.activeColumns.get(root),
+    filter: source.fileFilters.get(root),
+    search: source.searches.get(root),
+    folders:
       folders !== undefined &&
-        (folders.open.size > 0 || folders.closed.size > 0)
+      (folders.open.size > 0 || folders.closed.size > 0)
         ? {
-            ...given('view', folders.view),
+            view: folders.view,
             open: lastNamed(folders.open),
             closed: lastNamed(folders.closed),
           }
         : undefined,
+    folds: folds && {
+      view: folds.view,
+      searched: folds.searched,
+      closed: lastNamed(folds.closed),
+    },
+    cursor: source.fileCursors.get(root),
+    pin: source.pinnedMessages.get(root),
+    locations: locations && {
+      highlight: locations.highlight,
+      toggled: lastNamed(locations.toggled),
+    },
+    locationsScroll: places.locationScrolls.of(root),
+    filesScrolls: lastOf(
+      places.filesScrolls
+        .entries()
+        .filter(([view]) => rootOfView(view) === root),
     ),
-    ...given(
-      'folds',
-      folds && {
-        view: folds.view,
-        searched: folds.searched,
-        closed: lastNamed(folds.closed),
-      },
+    find: source.diffFinds.get(scope),
+    focus: places.focuses.of(scope),
+    places: lastOf(
+      places.diffPlaces.entries().flatMap(([key, place]) => {
+        const selection = selectionIn(scope, key);
+        return selection === undefined ? [] : [[selection, place] as const];
+      }),
     ),
-    ...given('cursor', source.fileCursors.get(root)),
-    ...given('pin', source.pinnedMessages.get(root)),
-    ...given(
-      'locations',
-      locations && {
-        ...given('highlight', locations.highlight),
-        toggled: lastNamed(locations.toggled),
-      },
-    ),
-    ...given('locationsScroll', places.locationScrolls.of(root)),
-    ...(filesScrolls.length > 0 && {
-      filesScrolls: filesScrolls.slice(-mostPlaces),
-    }),
-    ...scopeKept(source, places, worktreeScope(root), root),
+    language: source.pickedLanguages.get(root),
   };
 }
 
@@ -234,7 +134,10 @@ export function tabViewOf(
   worktrees: readonly string[],
 ): string {
   const kept = worktrees.map((root) =>
-    JSON.stringify([root, keptWorktreeOf(source, places, root)]),
+    JSON.stringify([
+      root,
+      worktreeViewSchema.encode(worktreeViewOf(source, places, root)) ?? {},
+    ]),
   );
   const fits = (from: number) =>
     kept.slice(from).reduce((chars, each) => chars + each.length + 1, 16) <=
@@ -251,247 +154,111 @@ export function placeScopeOf(key: string): string | undefined {
   return typeof scope === 'string' ? scope : undefined;
 }
 
-const aColumn: Decode<ColumnName> = (value) =>
-  columnOrder.find((column) => column === value);
-
-const aFind: Decode<KeptFind> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
+export function handedWorktrees(
+  view: string,
+): readonly (readonly [string, WorktreeView])[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(view);
+  } catch {
+    return [];
   }
-  const finding = aBoolean(value.finding);
-  const search = aSearch(value.search);
-  return finding === undefined || search === undefined
-    ? undefined
-    : { finding, search };
-};
-
-const aFocus: Decode<KeptFocus> = focusSchema.decode;
-
-const anAnchor: Decode<ScrollAnchor> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const shows = someStrings(value.shows);
-  const fraction = aNumber(value.fraction);
-  return shows === undefined || fraction === undefined
-    ? undefined
-    : { shows, fraction };
-};
-
-const aPlace: Decode<DiffPlace> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const top = aNumber(value.top);
-  const sideways = aNumber(value.sideways);
-  const left = aNumber(value.left);
-  const current = aNumber(value.current);
-  const anchor = anAnchor(value.anchor);
-  const currentFor = aSearch(value.currentFor);
-  const toggled = entriesOf(value.toggled, aBoolean);
-  if (
-    top === undefined ||
-    sideways === undefined ||
-    left === undefined ||
-    current === undefined ||
-    (value.anchor !== undefined && anchor === undefined) ||
-    (value.currentFor !== undefined && currentFor === undefined) ||
-    !Array.isArray(value.toggled) ||
-    toggled.length !== value.toggled.length
-  ) {
-    return undefined;
-  }
-  return {
-    top,
-    anchor,
-    sideways,
-    left,
-    toggled: new Map(toggled),
-    current,
-    ...given('currentFor', currentFor),
-  };
-};
-
-const aFolders: Decode<ViewFolders> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const view = aString(value.view);
-  const open = someStrings(value.open)?.slice(-mostNamed);
-  const closed = someStrings(value.closed)?.slice(-mostNamed);
-  return open === undefined ||
-    closed === undefined ||
-    (value.view !== undefined && view === undefined)
-    ? undefined
-    : { view, open: new Set(open), closed: new Set(closed) };
-};
-
-const aFolds: Decode<FilterFolds> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const view = aString(value.view);
-  const searched = aString(value.searched);
-  const closed = someStrings(value.closed)?.slice(-mostNamed);
-  return view === undefined || searched === undefined || closed === undefined
-    ? undefined
-    : { view, searched, closed: new Set(closed) };
-};
-
-const aCursor: Decode<MovedCursor> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const key = aString(value.key);
-  const from = aString(value.from);
-  const view = aString(value.view);
-  return key === undefined ||
-    view === undefined ||
-    (value.from !== undefined && from === undefined)
-    ? undefined
-    : { key, from, view };
-};
-
-const aPin: Decode<KeptPin> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const hash = aString(value.hash);
-  const byKey = aBoolean(value.byKey);
-  return hash === undefined || byKey === undefined
-    ? undefined
-    : { hash, byKey };
-};
-
-const aHighlight: Decode<Highlighted> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const query = aString(value.query);
-  const key = aString(value.key);
-  return query === undefined || key === undefined ? undefined : { query, key };
-};
-
-const someLocations: Decode<KeptLocations> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const highlight = aHighlight(value.highlight);
-  const toggled = someStrings(value.toggled)?.slice(-mostNamed);
-  return toggled === undefined ||
-    (value.highlight !== undefined && highlight === undefined)
-    ? undefined
-    : { highlight, toggled: new Set(toggled) };
-};
-
-const pickedIn =
-  (scope: string): Decode<Picked> =>
-  (value) => {
-    if (!isRecord(value)) {
-      return undefined;
-    }
-    const key = aString(value.key);
-    const language = aString(value.language);
-    return key === undefined ||
-      language === undefined ||
-      languageScopeOfKey(key) !== scope
-      ? undefined
-      : { key, language };
-  };
+  return [...(gitViewSchema.decode(parsed)?.worktrees ?? [])];
+}
 
 function restoreScope(
   source: GitSource,
   places: TabPlaces,
-  scope: string,
-  languageScope: string,
-  kept: Readonly<Record<string, unknown>>,
+  root: string,
+  view: WorktreeView,
 ): Pick<GitSource, 'diffFinds' | 'pickedLanguages'> {
+  const scope = worktreeScope(root);
   for (const [key] of places.diffPlaces.entries()) {
     if (selectionIn(scope, key) !== undefined) {
       places.diffPlaces.forget(key);
     }
   }
-  for (const [selection, place] of entriesOf(kept.places, aPlace).slice(
-    -mostPlaces,
-  )) {
+  for (const [selection, place] of view.places ?? []) {
     places.diffPlaces.keep(diffPlaceKey(scope, selection), place);
   }
-  const focus = aFocus(kept.focus);
-  if (focus === undefined) {
+  if (view.focus === undefined) {
     places.focuses.forget(scope);
   } else {
-    places.focuses.keep(scope, focus);
+    places.focuses.keep(scope, view.focus);
   }
+  const language =
+    view.language !== undefined &&
+    languageScopeOfKey(view.language.key) === root
+      ? view.language
+      : undefined;
   return {
-    diffFinds: withEntry(source.diffFinds, scope, aFind(kept.find)),
-    pickedLanguages: withEntry(
-      source.pickedLanguages,
-      languageScope,
-      pickedIn(languageScope)(kept.language),
-    ),
+    diffFinds: withEntry(source.diffFinds, scope, view.find),
+    pickedLanguages: withEntry(source.pickedLanguages, root, language),
   };
-}
-
-export function parsedKept(kept: string): unknown {
-  try {
-    return JSON.parse(kept);
-  } catch {
-    return undefined;
-  }
-}
-
-export function handedWorktrees(kept: unknown): [string, unknown][] {
-  return isRecord(kept)
-    ? entriesOf(kept.worktrees, (worktree: unknown) => worktree).slice(
-        -mostWorktrees,
-      )
-    : [];
 }
 
 export function restoredWorktree(
   source: GitSource,
   places: TabPlaces,
   root: string,
-  kept: unknown,
-): Partial<GitSource> | undefined {
-  if (!isRecord(kept)) {
-    return undefined;
-  }
-  const scrolled = aNumber(kept.locationsScroll);
-  if (scrolled === undefined) {
+  view: WorktreeView,
+): Partial<GitSource> {
+  if (view.locationsScroll === undefined) {
     places.locationScrolls.forget(root);
   } else {
-    places.locationScrolls.keep(root, scrolled);
+    places.locationScrolls.keep(root, view.locationsScroll);
   }
-  for (const [view] of places.filesScrolls.entries()) {
-    if (rootOfView(view) === root) {
-      places.filesScrolls.forget(view);
+  for (const [shown] of places.filesScrolls.entries()) {
+    if (rootOfView(shown) === root) {
+      places.filesScrolls.forget(shown);
     }
   }
-  for (const [view, offset] of entriesOf(kept.filesScrolls, aNumber).slice(
-    -mostPlaces,
-  )) {
-    if (rootOfView(view) === root) {
-      places.filesScrolls.keep(view, offset);
+  for (const [shown, offset] of view.filesScrolls ?? []) {
+    if (rootOfView(shown) === root) {
+      places.filesScrolls.keep(shown, offset);
     }
   }
+  const { folders, folds, locations } = view;
   return {
     commitsHidden: withKey(
       source.commitsHidden,
       root,
-      kept.commitsHidden === true,
+      view.commitsHidden === true,
     ),
-    searching: withKey(source.searching, root, kept.searching === true),
-    activeColumns: withEntry(source.activeColumns, root, aColumn(kept.column)),
-    fileFilters: withEntry(source.fileFilters, root, aSearch(kept.filter)),
-    searches: withEntry(source.searches, root, aSearch(kept.search)),
-    folders: withEntry(source.folders, root, aFolders(kept.folders)),
-    fileFolds: withEntry(source.fileFolds, root, aFolds(kept.folds)),
-    fileCursors: withEntry(source.fileCursors, root, aCursor(kept.cursor)),
-    pinnedMessages: withEntry(source.pinnedMessages, root, aPin(kept.pin)),
-    locations: withEntry(source.locations, root, someLocations(kept.locations)),
+    searching: withKey(source.searching, root, view.searching === true),
+    activeColumns: withEntry(source.activeColumns, root, view.column),
+    fileFilters: withEntry(source.fileFilters, root, view.filter),
+    searches: withEntry(source.searches, root, view.search),
+    folders: withEntry(
+      source.folders,
+      root,
+      folders && {
+        view: folders.view,
+        open: new Set(folders.open),
+        closed: new Set(folders.closed),
+      },
+    ),
+    fileFolds: withEntry(
+      source.fileFolds,
+      root,
+      folds && { ...folds, closed: new Set(folds.closed) },
+    ),
+    fileCursors: withEntry(
+      source.fileCursors,
+      root,
+      view.cursor && { ...view.cursor, from: view.cursor.from },
+    ),
+    pinnedMessages: withEntry(source.pinnedMessages, root, view.pin),
+    locations: withEntry(
+      source.locations,
+      root,
+      locations && {
+        highlight: locations.highlight,
+        toggled: new Set(locations.toggled),
+      },
+    ),
     foundCommits: withEntry(source.foundCommits, root, undefined),
-    ...restoreScope(source, places, worktreeScope(root), root, kept),
+    ...restoreScope(source, places, root, view),
   };
 }
 

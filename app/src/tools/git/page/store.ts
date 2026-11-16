@@ -38,7 +38,6 @@ import { checking, received, withTab } from './receivedMessages';
 import {
   changedScopes,
   handedWorktrees,
-  parsedKept,
   placeScopeOf,
   restoredWorktree,
   tabViewOf,
@@ -236,13 +235,9 @@ export function createGitStore(
       if (view === undefined) {
         return;
       }
-      const kept = parsedKept(view);
-      for (const [root, worktree] of handedWorktrees(kept)) {
-        const restored = restoredWorktree(get(), places, root, worktree);
-        if (restored !== undefined) {
-          set(restored);
-          worktreesOfTabs.shown(tab, root);
-        }
+      for (const [root, worktree] of handedWorktrees(view)) {
+        set(restoredWorktree(get(), places, root, worktree));
+        worktreesOfTabs.shown(tab, root);
       }
     };
     const shown = (message: GitToWebview) => {
@@ -291,7 +286,7 @@ export function createGitStore(
         const roots = worktreesOfTabs.of(tab);
         worktreesOfTabs.forget(tab);
         for (const root of roots) {
-          set(restoredWorktree(get(), places, root, {}) ?? {});
+          set(restoredWorktree(get(), places, root, {}));
         }
         return view;
       },

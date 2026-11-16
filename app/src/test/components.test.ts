@@ -26,7 +26,6 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/diff/page/diffKeymap.ts',
     'components/diff/page/diffPlace.ts',
     'components/diff/page/diffRows.ts',
-    'components/diff/page/diffScrollAnchor.ts',
     'components/diff/page/diffSlice.ts',
     'components/diff/page/diffSyntax.ts',
     'components/diff/page/sideTexts.ts',
