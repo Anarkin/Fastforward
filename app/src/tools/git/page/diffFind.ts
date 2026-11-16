@@ -13,6 +13,7 @@ import { findMatches, type FindMatch } from './find';
 import { stepMatch } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import { diffFindOf } from './gitSelectors';
+import { currentOf } from './diffPlace';
 import { useGit, useGitActions } from './store';
 
 export function useDiffFind({
@@ -56,14 +57,14 @@ export function useDiffFind({
   const place = diffPlaceOf(scope, selection);
   const [at, setAt] = useState({
     shownAt,
-    current: place?.current ?? 0,
+    current: currentOf(place, kept.search),
     placed: place !== undefined,
   });
   const [jump, setJump] = useState(0);
   if (at.shownAt !== shownAt) {
     setAt({
       shownAt,
-      current: place?.current ?? 0,
+      current: currentOf(place, kept.search),
       placed: place !== undefined,
     });
     if (place === undefined) {

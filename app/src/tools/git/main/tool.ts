@@ -3,7 +3,7 @@ import { keptGits } from './run';
 import { locateRepository } from './repositoryLocation';
 import type { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
-import type { GitToHost } from '../shared/protocol';
+import type { GitToHost, GitToWebviewOf } from '../shared/protocol';
 import {
   unattachedShell,
   type Page,
@@ -47,12 +47,15 @@ import type { GitMessages } from './gitMessages';
 import { buildParts } from './gitParts';
 import { needsGit, type GitLocator } from './gitLocator';
 import { inFolderWithGit } from './repository';
+import type { KeptGitTabs } from './keptGitTabs';
 
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 export type FolderPurpose = 'init' | 'clone';
 
 const runsNoGit: ReadonlySet<GitToHost['type']> = new Set([
   'forgetRecent',
+  'keepTab',
+  'keepCompare',
   'setColumnWidths',
   'setShowAllFiles',
   'setDiffLayout',
@@ -100,6 +103,7 @@ export class GitTool implements Tool<'git'> {
   private readonly tabLoads: TabLoads;
   private readonly runs: Runs;
   private readonly messages: GitMessages;
+  private readonly kept: KeptGitTabs;
 
   constructor(
     private readonly log: Log,
@@ -150,6 +154,7 @@ export class GitTool implements Tool<'git'> {
     this.tabLoads = parts.tabLoads;
     this.runs = parts.runs;
     this.messages = parts.messages;
+    this.kept = parts.kept;
   }
 
   quit(): void {
@@ -176,6 +181,7 @@ export class GitTool implements Tool<'git'> {
     ) {
       this.clones.pageLoaded();
     }
+    this.kept.ready(page);
     const session = this.sessions.of(page);
     session.post(this.storage.preferences.layout);
     this.posts.sendRecent(session);
@@ -183,9 +189,14 @@ export class GitTool implements Tool<'git'> {
 
   async show(page: Page, tab: Tab): Promise<void> {
     const session = this.sessions.of(page);
+    this.kept.showing(page, tab.id);
     if (tab.compare !== undefined) {
       if (this.locator.path === undefined) {
         await this.missingGit(page);
+      }
+      const kept = this.kept.compareHandedTo(page, tab.id);
+      if (kept !== undefined) {
+        session.post({ type: 'keptCompare', tab: tab.id, kept });
       }
       await this.compareTabs.showCompare(session, tab.id, tab.compare);
       return;
@@ -237,6 +248,11 @@ export class GitTool implements Tool<'git'> {
   }
 
   closed(page: Page, tab: Tab): void {
+    this.kept.forgetCompare(tab.id);
+    const forgotten = this.forgottenOf(tab);
+    for (const shown of this.shell.pages()) {
+      this.sessions.of(shown).post(forgotten);
+    }
     const { root: closed } = tab;
     if (closed === undefined) {
       return;
@@ -248,6 +264,31 @@ export class GitTool implements Tool<'git'> {
     }
     this.save(this.repositoryOpening.forgetUnused([closed]));
     this.posts.sendRecentEverywhere();
+  }
+
+  left(page: Page, tab: Tab): void {
+    const forgotten = this.forgottenOf(tab);
+    for (const root of forgotten.roots) {
+      this.kept.leftWorktree(page, root);
+    }
+    for (const compare of forgotten.compares) {
+      this.kept.leftCompare(page, compare);
+    }
+    this.sessions.of(page).post(forgotten);
+  }
+
+  private forgottenOf(tab: Tab): GitToWebviewOf<'forgetTabs'> {
+    const { root: repository } = tab;
+    return {
+      type: 'forgetTabs',
+      roots:
+        repository === undefined || tab.compare !== undefined
+          ? []
+          : [...this.tabStates.keys()].filter((root) =>
+              sameRoot(this.sessions.repositoryOf(root), repository),
+            ),
+      compares: tab.compare === undefined ? [] : [tab.id],
+    };
   }
 
   receive(page: Page, message: GitToHost): Promise<void> {

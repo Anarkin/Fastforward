@@ -28,6 +28,7 @@ export interface RepositoryOpeningHost {
   readonly tabState: (root: string) => TabWork;
   readonly showTab: (context: Context) => Promise<void>;
   readonly postTabs: (session: Session) => void;
+  readonly handKept: (session: Session, worktree: string) => void;
   readonly sendRecentEverywhere: () => void;
   readonly takeWorktrees: (
     repository: string,
@@ -140,8 +141,9 @@ export class RepositoryOpening {
     if (session.disposed) {
       return;
     }
-    this.host.postTabs(session);
     const worktree = this.storage.worktreeOf(active);
+    this.host.handKept(session, worktree);
+    this.host.postTabs(session);
     this.repositories.set(worktree, active);
     const tab = this.host.tabState(worktree);
     try {

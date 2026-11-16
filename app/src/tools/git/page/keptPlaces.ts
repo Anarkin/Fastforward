@@ -7,6 +7,10 @@ export class KeptPlaces<T> {
     return this.places.get(key);
   }
 
+  entries(): [string, T][] {
+    return [...this.places];
+  }
+
   forget(key: string): void {
     this.places.delete(key);
   }

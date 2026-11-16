@@ -21,6 +21,7 @@ import type { Remotes } from './remotes';
 import type { CommitNavigation } from './commitNavigation';
 import type { Selections } from './selections';
 import type { FileViews } from './fileViews';
+import type { KeptGitTabs } from './keptGitTabs';
 
 export class GitMessages {
   constructor(
@@ -43,6 +44,7 @@ export class GitMessages {
     private readonly commitNavigation: CommitNavigation,
     private readonly selections: Selections,
     private readonly fileViews: FileViews,
+    private readonly kept: KeptGitTabs,
     private readonly save: (saving: Promise<void>) => void,
   ) {}
 
@@ -167,6 +169,21 @@ export class GitMessages {
         this.commitSearch.commitSearches
           .get(sessions.knownRoot(message.root))
           ?.abort();
+        return;
+      case 'keepTab': {
+        const root = sessions.knownRoot(message.root);
+        if (this.tabStates.has(root)) {
+          this.kept.keepWorktree(
+            session.page,
+            sessions.repositoryOf(root),
+            root,
+            message.kept,
+          );
+        }
+        return;
+      }
+      case 'keepCompare':
+        this.kept.keepCompare(session.page, message.tab, message.kept);
         return;
       default:
         if (sessions.isActiveIn(session, message.root)) {

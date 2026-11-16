@@ -112,6 +112,11 @@ export function GitTool({ active, post: postToHost, listen }: GitToolProps) {
     store.getState();
   useEffect(() => listen(store.getState().receive), [listen, store]);
   useEffect(() => {
+    const { flushKept } = store.getState();
+    window.addEventListener('pagehide', flushKept);
+    return () => window.removeEventListener('pagehide', flushKept);
+  }, [store]);
+  useEffect(() => {
     if (active) {
       startColorer();
     }

@@ -112,6 +112,7 @@ suite('Git store, for each tab', () => {
       left: 8,
       toggled: new Map(),
       current: 3,
+      currentFor: { query: '', options: plainSearch },
     });
     assert.deepStrictEqual(
       diffPlaceOf('/repo', 'two')?.toggled,

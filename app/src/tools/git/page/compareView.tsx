@@ -47,7 +47,7 @@ export function CompareView({ comparing }: { comparing: string }) {
   const scope = tabScopeOf(comparing, undefined);
   useTabFocus({
     container: view,
-    scope,
+    scope: compare === undefined ? undefined : scope,
     focusPart: (kept) => {
       const container = view.current;
       if (container === null) {

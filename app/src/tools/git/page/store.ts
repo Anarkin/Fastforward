@@ -3,7 +3,12 @@ import { plainSearch } from '../../../lib/shared/searchOptions';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
 import { compareWith } from '../shared/comparisons';
-import type { GitToHost, GitToWebview, TabMessage } from '../shared/protocol';
+import type {
+  GitToHost,
+  GitToWebview,
+  GitToWebviewOf,
+  TabMessage,
+} from '../shared/protocol';
 import { toggleBookmark } from './bookmarks';
 import { areaKey } from './changesRows';
 import { resetWidth } from './columns';
@@ -41,6 +46,18 @@ import { withEntry, withKey } from './tabKeyed';
 import { collected } from './collections';
 import { menuItemsOf } from './commitMenuItems';
 import { checking, received, withTab } from './receivedMessages';
+import {
+  blankKeeping,
+  changedScopes,
+  compareScope,
+  keepingOf,
+  restoredCompare,
+  restoredWorktree,
+  viewScope,
+  worktreeScope,
+  type TabPlaces,
+} from './keptTab';
+import { KeptSends } from './keptSends';
 
 function foldersIn(state: GitState, root: string): ViewFolders {
   return state.folders.get(root) ?? noFolders;
@@ -109,7 +126,22 @@ export function createGitStore(
   const focuses = new KeptPlaces<KeptFocus>();
   const filesScrolls = new KeptPlaces<number>();
   const locationScrolls = new KeptPlaces<number>();
-  return createStore<GitState>()((set, get) => {
+  const places: TabPlaces = {
+    diffPlaces,
+    focuses,
+    filesScrolls,
+    locationScrolls,
+  };
+  let made: StoreApi<GitState> | undefined;
+  const sends = new KeptSends(
+    (scope) =>
+      made === undefined
+        ? undefined
+        : keepingOf(made.getState(), places, scope),
+    blankKeeping,
+    postToHost,
+  );
+  const store = createStore<GitState>()((set, get) => {
     const apply = (next: (state: GitState) => GitState) =>
       set((state) => {
         const changed = next(state);
@@ -182,12 +214,55 @@ export function createGitStore(
         );
       }
     };
+    const restore = (message: GitToWebview) => {
+      const restored =
+        message.type === 'keptTab'
+          ? restoredWorktree(get(), places, message.root, message.kept)
+          : message.type === 'keptCompare'
+            ? restoredCompare(get(), places, message.tab, message.kept)
+            : undefined;
+      if (restored !== undefined) {
+        set(restored);
+        sends.resend(
+          message.type === 'keptTab'
+            ? worktreeScope(message.root)
+            : compareScope(message.type === 'keptCompare' ? message.tab : ''),
+        );
+      }
+    };
+    const forget = ({ roots, compares }: GitToWebviewOf<'forgetTabs'>) => {
+      const scopes = [
+        ...roots.map(worktreeScope),
+        ...compares.map(compareScope),
+      ];
+      for (const scope of scopes) {
+        sends.flush(scope);
+      }
+      for (const root of roots) {
+        set(restoredWorktree(get(), places, root, {}) ?? {});
+      }
+      for (const tab of compares) {
+        set(restoredCompare(get(), places, tab, {}) ?? {});
+      }
+      for (const scope of scopes) {
+        sends.drop(scope);
+      }
+    };
     return {
       ...collected({ ...gitDefaults, ...initial }),
       receive: (message) => {
+        if (message.type === 'keptTab' || message.type === 'keptCompare') {
+          restore(message);
+          return;
+        }
+        if (message.type === 'forgetTabs') {
+          forget(message);
+          return;
+        }
         apply((state) => received(state, message));
         readAhead(message);
       },
+      flushKept: () => sends.flush(),
       dispatch: (action) => apply((state) => withTab(state, action)),
       changeBookmarks: (bookmarks) => {
         apply((state) => ({ ...state, bookmarks }));
@@ -345,7 +420,13 @@ export function createGitStore(
           pinnedMessages: withEntry(state.pinnedMessages, state.tab.root, pin),
         })),
       filesScrollOf: (view) => filesScrolls.of(view),
-      keepFilesScroll: (view, offset) => filesScrolls.keep(view, offset),
+      keepFilesScroll: (view, offset) => {
+        filesScrolls.keep(view, offset);
+        const scope = viewScope(view);
+        if (scope !== undefined) {
+          sends.owe(scope);
+        }
+      },
       pull: () => postTab({ type: 'pull' }),
       push: () => postTab({ type: 'push' }),
       pullBranch: (name) => postTab({ type: 'pullBranch', name }),
@@ -441,6 +522,7 @@ export function createGitStore(
         const { root } = get().tab;
         if (root !== undefined) {
           locationScrolls.keep(root, offset);
+          sends.owe(worktreeScope(root));
         }
       },
       checkout: (target) => postTab({ type: 'checkout', target }),
@@ -474,10 +556,14 @@ export function createGitStore(
           }),
         })),
       keptFocusOf: (scope) => focuses.of(scope),
-      keepFocus: (scope, focus) =>
-        focus === undefined
-          ? focuses.forget(scope)
-          : focuses.keep(scope, focus),
+      keepFocus: (scope, focus) => {
+        if (focus === undefined) {
+          focuses.forget(scope);
+        } else {
+          focuses.keep(scope, focus);
+        }
+        sends.owe(scope);
+      },
       diffPlaceOf: (scope, selection) =>
         diffPlaces.of(diffPlaceKey(scope, selection)),
       keepDiffPlace: (scope, selection, change) => {
@@ -485,7 +571,11 @@ export function createGitStore(
         diffPlaces.keep(key, {
           ...(diffPlaces.of(key) ?? unplaced),
           ...change,
+          ...(change.current !== undefined && {
+            currentFor: diffFindOf(scope)(get()).search,
+          }),
         });
+        sends.owe(scope);
       },
       seeLanguageKey: (key) =>
         set((state) => {
@@ -532,6 +622,31 @@ export function createGitStore(
         ),
     };
   });
+  made = store;
+  store.subscribe((next, prev) => {
+    for (const scope of changedScopes(next, prev)) {
+      sends.owe(scope);
+    }
+    if (prev.tab.root !== next.tab.root) {
+      if (prev.tab.root !== undefined) {
+        sends.flush(worktreeScope(prev.tab.root));
+      }
+      if (next.tab.root !== undefined) {
+        sends.shown(worktreeScope(next.tab.root));
+      }
+    }
+    const left = prev.compare?.tab;
+    const comparing = next.compare?.tab;
+    if (left !== comparing) {
+      if (left !== undefined) {
+        sends.flush(compareScope(left));
+      }
+      if (comparing !== undefined) {
+        sends.shown(compareScope(comparing));
+      }
+    }
+  });
+  return store;
 }
 
 export const GitStore = createContext<StoreApi<GitState> | undefined>(
