@@ -1,10 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { parsePatch } from '../../../../../lib/page/diff';
-import { collapseThreshold } from '../../../../../lib/shared/patchBudget';
+import { parsePatch } from '../../../../../components/diff/page/diff';
+import { collapseThreshold } from '../../../../../components/diff/shared/patchBudget';
 import { patch, kinds } from './diffViewFixtures';
-import { diffRows } from '../../../../../lib/page/diffRows';
-import { rowHeight } from '../../../../../lib/page/rowMeasures';
+import { diffRows } from '../../../../../components/diff/page/diffRows';
+import { rowHeight } from '../../../../../components/diff/page/rowMeasures';
 
 const binaryOf = (path: string) =>
   parsePatch(

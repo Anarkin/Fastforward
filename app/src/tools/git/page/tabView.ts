@@ -11,9 +11,15 @@ import type {
   GitToWebviewOf,
 } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
-import { parseFilePatch, type DiffFile } from '../../../lib/page/diff';
-import { textKey, type LoadedText } from '../../../lib/page/sideTexts';
-import type { WholeFile } from '../../../lib/page/diffRows';
+import {
+  parseFilePatch,
+  type DiffFile,
+} from '../../../components/diff/page/diff';
+import {
+  textKey,
+  type LoadedText,
+} from '../../../components/diff/page/sideTexts';
+import type { WholeFile } from '../../../components/diff/page/diffRows';
 
 export interface TabView {
   readonly root: string | undefined;

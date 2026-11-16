@@ -3,7 +3,7 @@ import type { GitToWebview } from '../shared/protocol';
 import type { CloneTarget } from './cloneForm';
 import { widthsToLoad } from './columns';
 import { reduceTabView, type TabAction, type TabView } from './tabView';
-import { withEntry } from './tabKeyed';
+import { withEntry } from '../../../lib/page/tabKeyed';
 
 import type { Cloning, GitState } from './gitState';
 

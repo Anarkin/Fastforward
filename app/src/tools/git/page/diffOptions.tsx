@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { useShell, useShellActions } from '../../../shell/page/store';
-import { languageKeyOf, pickedFor } from './gitSelectors';
+import { languageKeyOf } from './gitSelectors';
+import { pickedFor } from '../../../components/diff/page/diffSlice';
 import { useGit, useGitActions } from './store';
-import { DiffLanguage as LanguagePick } from '../../../lib/page/diffLanguage';
-import { DiffToggles } from '../../../lib/page/diffToggles';
+import { DiffLanguage as LanguagePick } from '../../../components/diff/page/diffLanguage';
+import { DiffToggles } from '../../../components/diff/page/diffToggles';
 
 export function DiffLanguage() {
   const key = useGit((state) => languageKeyOf(state.tab));

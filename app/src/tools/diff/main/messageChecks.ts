@@ -1,5 +1,5 @@
-import { diffLayouts } from '../../../lib/shared/changes';
-import { areTextRequests } from '../../../lib/main/textRequests';
+import { diffLayouts } from '../../../components/diff/shared/diffProtocol';
+import { areTextRequests } from '../../../components/diff/main/textRequests';
 import type { DiffToHost } from '../shared/protocol';
 
 export function isWellFormed(message: DiffToHost): boolean {

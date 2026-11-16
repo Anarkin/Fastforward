@@ -10,6 +10,7 @@ app/src/
 ├─ lib/{main,page,shared}          the library, code several parts use, holding no state
 ├─ shell/{main,page,shared}        the frame the tools open in: windows, tabs, settings, storage
 ├─ tools/<id>/{main,page,shared}   a tool each, as the registries of the shell list them
+├─ components/<id>/{main,page,shared}   a feature several tools show, as the diff, behind the doors it lists
 └─ test/                           the tests
 ```
 

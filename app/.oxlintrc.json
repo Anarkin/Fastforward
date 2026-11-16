@@ -24,7 +24,12 @@
   },
   "overrides": [
     {
-      "files": ["src/lib/page/**", "src/shell/page/**", "src/tools/*/page/**"],
+      "files": [
+        "src/lib/page/**",
+        "src/shell/page/**",
+        "src/tools/*/page/**",
+        "src/components/*/page/**"
+      ],
       "rules": {
         "react/jsx-no-literals": [
           "error",
@@ -57,7 +62,8 @@
       "files": [
         "src/lib/shared/**",
         "src/shell/shared/**",
-        "src/tools/*/shared/**"
+        "src/tools/*/shared/**",
+        "src/components/*/shared/**"
       ],
       "rules": {
         "no-restricted-imports": [
@@ -84,7 +90,8 @@
         "src/boot/**",
         "src/lib/main/**",
         "src/shell/main/**",
-        "src/tools/*/main/**"
+        "src/tools/*/main/**",
+        "src/components/*/main/**"
       ],
       "rules": {
         "no-restricted-imports": [

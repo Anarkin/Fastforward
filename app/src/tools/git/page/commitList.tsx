@@ -70,7 +70,7 @@ import { commitOption, commitListbox } from './commitListItems';
 import { CommitRow, ListedCommitRow, WorkingTreeRow } from './commitRow';
 import { SoloButton } from './soloButton';
 import { ColumnStatus } from '../../../lib/page/columnStatusLine';
-import { commitsCounted } from '../../../lib/page/columnStatus';
+import { commitsCounted } from './columnStatus';
 
 const loadDelay = 80;
 

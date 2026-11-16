@@ -1,7 +1,11 @@
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { FileChange } from '../shared/protocol';
-import { changesArgs, diffArgs, listArgs } from '../../../lib/main/diffArgs';
+import {
+  changesArgs,
+  diffArgs,
+  listArgs,
+} from '../../../components/diff/main/diffArgs';
 import { parseRawChanges, type RawChange, withBytes } from './rawChanges';
 import { maxFileSize } from './files';
 import { listUntracked } from './fileLists';

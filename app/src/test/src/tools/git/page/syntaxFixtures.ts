@@ -1,9 +1,9 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act, type ReactElement } from 'react';
-import { parsePatch } from '../../../../../lib/page/diff';
-import type { LoadedText } from '../../../../../lib/page/sideTexts';
-import { syntaxSources } from '../../../../../lib/page/diffSyntaxSources';
+import { parsePatch } from '../../../../../components/diff/page/diff';
+import type { LoadedText } from '../../../../../components/diff/page/sideTexts';
+import { syntaxSources } from '../../../../../components/diff/page/diffSyntaxSources';
 import { noop } from '../../../../helpers/fixtures';
 import type { SyntaxRange } from '../../../../../lib/page/syntaxEngine';
 import type {

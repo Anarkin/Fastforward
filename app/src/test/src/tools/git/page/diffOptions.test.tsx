@@ -7,12 +7,10 @@ import {
   DiffLanguage,
   DiffOptions,
 } from '../../../../../tools/git/page/diffOptions';
-import { DiffToggles } from '../../../../../lib/page/diffToggles';
+import { DiffToggles } from '../../../../../components/diff/page/diffToggles';
 import { createGitStore } from '../../../../../tools/git/page/store';
-import {
-  languageKeyOf,
-  pickedFor,
-} from '../../../../../tools/git/page/gitSelectors';
+import { languageKeyOf } from '../../../../../tools/git/page/gitSelectors';
+import { pickedFor } from '../../../../../components/diff/page/diffSlice';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import { createShellStore } from '../../../../../shell/page/store';
 import { defaultTextView } from '../../../../../shell/page/textView';

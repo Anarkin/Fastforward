@@ -10,7 +10,7 @@ import {
   diffOptionArgs,
   listArgs,
   type PatchScope,
-} from '../../../lib/main/diffArgs';
+} from '../../../components/diff/main/diffArgs';
 import { PatchBudget, type ReadPatch } from './patchBudget';
 import { parseChanges } from './rawChanges';
 

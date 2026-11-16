@@ -10,7 +10,7 @@ import {
   pathspecs,
   showPatchArgs,
   type PatchScope,
-} from '../../../lib/main/diffArgs';
+} from '../../../components/diff/main/diffArgs';
 import { leftOutOf, readPatch, type ReadPatch } from './patchBudget';
 import {
   newSideUnchanged,
@@ -40,7 +40,7 @@ import {
 import {
   includedChanges,
   leftOutChanges,
-} from '../../../lib/shared/patchBudget';
+} from '../../../components/diff/shared/patchBudget';
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import type { GitStorage } from './storage';
 import { changesOf, pickable, stillThere } from './tabState';

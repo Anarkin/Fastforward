@@ -62,7 +62,7 @@ import { filesCursor, filesReveal } from './filesCursor';
 import { FileFilterField } from './filesFilterField';
 import { noneClosed, useFilesFilter } from './filesFilter';
 import { ColumnStatus } from '../../../lib/page/columnStatusLine';
-import { filesCounted } from '../../../lib/page/columnStatus';
+import { filesCounted } from './columnStatus';
 
 const settlingPaths = 20_000;
 

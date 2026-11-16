@@ -20,7 +20,7 @@ import {
   searchingOf,
 } from './gitSelectors';
 import { useGit, useGitActions } from './store';
-import { usePrefetchedColors } from '../../../lib/page/diffSyntax';
+import { usePrefetchedColors } from '../../../components/diff/page/diffSyntax';
 import { changesShown } from './tabView';
 import { templateOf } from './columns';
 import { columnsClass } from './columnsShown';

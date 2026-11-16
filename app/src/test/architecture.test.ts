@@ -7,91 +7,49 @@ import { shortcutEntries } from '../shell/page/toolShortcuts';
 import { defaultSettings } from './helpers/fixtures';
 import { programsOfSuffixes } from './helpers/programs';
 import { keptStates, passingStates } from './helpers/componentStates';
+import {
+  source,
+  appFolder,
+  testFiles,
+  mirrored,
+  sourceFiles,
+  importsOf,
+  read,
+  toolOf,
+  componentOf,
+  components,
+  sourceAndHelperFiles,
+  filesAmong,
+  sourceFilesOf,
+  reachedFrom,
+  usesOf,
+  partOf,
+} from './helpers/sourceGraph';
 
-const source = path.join(__dirname, '..');
-const appFolder = path.join(source, '..');
-
-const testFiles = fs
-  .readdirSync(__dirname, { recursive: true, encoding: 'utf8' })
-  .map((file) => file.replaceAll('\\', '/'))
-  .filter((file) => /\.tsx?$/.test(file));
-
-function mirrored(folder: string, under: string): boolean {
-  return ['', '.ts', '.tsx'].some((extension) =>
-    fs.existsSync(path.join(under, `${folder}${extension}`)),
-  );
-}
-
-const sourceFiles = fs
-  .readdirSync(source, { recursive: true, encoding: 'utf8' })
-  .map((file) => file.replaceAll('\\', '/'))
-  .filter(
-    (file) =>
-      !file.startsWith('test/') && /\.(ts|tsx|css|html|json)$/.test(file),
-  );
-
-function importsOf(file: string): string[] {
-  const text = fs.readFileSync(path.join(source, file), 'utf8');
-  return [...text.matchAll(/from '(\.{1,2}\/[^']+)'/g)].map(([, spec]) =>
-    path.posix.normalize(path.posix.join(path.posix.dirname(file), spec)),
-  );
-}
-
-function read(file: string): string {
-  return fs.readFileSync(path.join(source, file), 'utf8');
-}
-
-function toolOf(file: string): string | undefined {
-  return /^tools\/([^/]+)\//.exec(file)?.[1];
-}
-
-const sourceAndHelperFiles = [
-  ...sourceFiles,
-  ...testFiles
-    .filter((file) => !/\.test\.tsx?$/.test(file))
-    .map((file) => `test/${file}`),
-];
-
-function filesAmong(files: readonly string[], target: string): string[] {
-  return [target, `${target}.ts`, `${target}.tsx`].filter((file) =>
-    files.includes(file),
-  );
-}
-
-function sourceFilesOf(target: string): string[] {
-  return filesAmong(sourceFiles, target);
-}
-
-function reachedFrom(roots: readonly string[]): ReadonlySet<string> {
-  const reached = new Set<string>();
-  const visit = (file: string): void => {
-    if (reached.has(file)) {
-      return;
-    }
-    reached.add(file);
-    for (const target of importsOf(file).flatMap(sourceFilesOf)) {
-      visit(target);
-    }
-  };
-  for (const root of roots) {
-    visit(root);
-  }
-  return reached;
-}
-
-function usesOf(file: string): string[] {
-  const workers = [...read(file).matchAll(/new URL\('(\w+)\.js'/g)].flatMap(
-    ([, name]) =>
-      sourceFiles.filter(
-        (worker) => path.posix.basename(worker).replace(/\.tsx?$/, '') === name,
-      ),
-  );
-  return [...importsOf(file).flatMap(sourceFilesOf), ...workers];
-}
-
-function partOf(file: string): string | undefined {
-  return /^(?:boot|shell|tools\/[^/]+)/.exec(file)?.[0];
-}
+const componentDoors: Readonly<Record<string, readonly string[]>> = {
+  diff: [
+    'components/diff/main/diffArgs.ts',
+    'components/diff/main/imageReads.ts',
+    'components/diff/main/textRequests.ts',
+    'components/diff/page/diff.ts',
+    'components/diff/page/diffColumn.tsx',
+    'components/diff/page/diffKeymap.ts',
+    'components/diff/page/diffLanguage.tsx',
+    'components/diff/page/diffPlace.ts',
+    'components/diff/page/diffRows.ts',
+    'components/diff/page/diffScrollAnchor.ts',
+    'components/diff/page/diffSlice.ts',
+    'components/diff/page/diffSyntax.ts',
+    'components/diff/page/diffToggles.tsx',
+    'components/diff/page/sideTexts.ts',
+    'components/diff/page/textsToLoad.ts',
+    'components/diff/page/viewedSource.ts',
+    'components/diff/shared/diffProtocol.ts',
+    'components/diff/shared/diffSettings.ts',
+    'components/diff/shared/imageSources.ts',
+    'components/diff/shared/patchBudget.ts',
+  ],
+};
 
 function doorsOf(tool: string): boolean[] {
   return [
@@ -157,11 +115,19 @@ function statesIn(text: string): string[] {
   return calls === named.length ? named : [...named, '?'];
 }
 
+function partialsOf(folder: string): string[] {
+  return [
+    ...read(`${folder}/style.css`).matchAll(/^@import '\.\/([^']+)';$/gm),
+  ].map(([, partial]) => `${folder}/${partial}`);
+}
+
 suite('Architecture', () => {
   test('holds in a component, by useState or useReducer, only a state helpers/componentStates.ts lists, each with why: kept, read back as the component mounts from what the tab keeps, or passing, a measure, a moment or a trigger a tab shown again may lose, so leaving a tab and coming back finds it as it was left, and a state added later is weighed before it lands', () => {
     const held = sourceFiles
       .filter((file) =>
-        /^(?:lib|shell|tools\/[^/]+)\/page\/.+\.tsx?$/.test(file),
+        /^(?:lib|shell|tools\/[^/]+|components\/[^/]+)\/page\/.+\.tsx?$/.test(
+          file,
+        ),
       )
       .flatMap((file) => statesIn(read(file)).map((name) => `${file} ${name}`));
     const listed = [keptStates, passingStates].flatMap((states) =>
@@ -171,9 +137,9 @@ suite('Architecture', () => {
     assert.strictEqual(new Set(listed).size, listed.length);
   });
 
-  test('keeps each source file in the folder of its part, the library, the shell or a tool, by where it runs, or in boot', () => {
+  test('keeps each source file in the folder of its part, the library, the shell, a tool or a component, by where it runs, or in boot', () => {
     const placed =
-      /^(?:(?:lib|shell|tools\/[^/]+)\/(?:main|page|shared)\/.+|boot\/[^/]+)$/;
+      /^(?:(?:lib|shell|tools\/[^/]+|components\/[^/]+)\/(?:main|page|shared)\/.+|boot\/[^/]+)$/;
     assert.deepStrictEqual(
       sourceFiles.filter((file) => !placed.test(file)),
       [],
@@ -207,8 +173,13 @@ suite('Architecture', () => {
     );
   });
 
-  test('gives the library, the shell and each tool a main, a page and a shared folder, and nothing else', () => {
-    const parts = ['lib', 'shell', ...tools.map((tool) => `tools/${tool}`)];
+  test('gives the library, the shell, each tool and each component a main, a page and a shared folder, and nothing else', () => {
+    const parts = [
+      'lib',
+      'shell',
+      ...tools.map((tool) => `tools/${tool}`),
+      ...components.map((component) => `components/${component}`),
+    ];
     assert.deepStrictEqual(
       Object.fromEntries(
         parts.map((part) => [
@@ -236,7 +207,81 @@ suite('Architecture', () => {
     );
   });
 
-  test('lets the library import nothing from boot, the shell or the tools, as every one of them builds on it', () => {
+  test('names each component with the doors it opens to the parts that use it', () => {
+    assert.deepStrictEqual(
+      components.toSorted(),
+      Object.keys(componentDoors).toSorted(),
+    );
+  });
+
+  test('lets a component import only the library and its own code, as it knows nothing of the tools or the shell that show it', () => {
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) => file.startsWith('components/'))
+        .flatMap((file) =>
+          importsOf(file)
+            .filter(
+              (target) =>
+                !target.startsWith('lib/') &&
+                componentOf(target) !== componentOf(file),
+            )
+            .map((target) => `${file} -> ${target}`),
+        ),
+      [],
+    );
+  });
+
+  test('lets the other parts reach a component only through the doors it lists, so what lies behind them can change without them', () => {
+    assert.deepStrictEqual(
+      sourceFiles
+        .filter((file) => !file.startsWith('components/'))
+        .flatMap((file) =>
+          importsOf(file)
+            .flatMap(sourceFilesOf)
+            .filter((target) => {
+              const component = componentOf(target);
+              return (
+                component !== undefined &&
+                !(componentDoors[component] ?? []).includes(target)
+              );
+            })
+            .map((target) => `${file} -> ${target}`),
+        ),
+      [],
+    );
+    assert.deepStrictEqual(
+      Object.entries(componentDoors).flatMap(([component, doors]) =>
+        doors.filter(
+          (door) =>
+            !door.startsWith(`components/${component}/`) ||
+            !sourceFiles.includes(door),
+        ),
+      ),
+      [],
+    );
+  });
+
+  test('keeps a component only while two parts or more use it, as what one tool alone uses belongs to that tool', () => {
+    assert.deepStrictEqual(
+      components.filter(
+        (component) =>
+          new Set(
+            sourceFiles
+              .filter(
+                (file) =>
+                  !file.startsWith('components/') &&
+                  usesOf(file).some(
+                    (target) => componentOf(target) === component,
+                  ),
+              )
+              .map(partOf),
+          ).size < 2,
+      ),
+      [],
+    );
+  });
+
+  test('lets the library import nothing from boot, the shell, the tools or the components, as every one of them builds on it', () => {
     assert.deepStrictEqual(
       sourceFiles
         .filter((file) => file.startsWith('lib/'))
@@ -298,11 +343,11 @@ suite('Architecture', () => {
 
   test('keeps in a shared folder only what both the main process and the page import, directly or through other shared code, as what one side alone imports belongs in the main or the page folder of its part', () => {
     const sides = {
-      main: /^(?:boot|(?:lib|shell|tools\/[^/]+)\/main)\//,
-      page: /^(?:lib|shell|tools\/[^/]+)\/page\//,
+      main: /^(?:boot|(?:lib|shell|tools\/[^/]+|components\/[^/]+)\/main)\//,
+      page: /^(?:lib|shell|tools\/[^/]+|components\/[^/]+)\/page\//,
     };
     const shared = sourceFiles.filter((file) =>
-      /^(?:lib|shell|tools\/[^/]+)\/shared\//.test(file),
+      /^(?:lib|shell|tools\/[^/]+|components\/[^/]+)\/shared\//.test(file),
     );
     assert.deepStrictEqual(
       Object.fromEntries(
@@ -317,10 +362,12 @@ suite('Architecture', () => {
     );
   });
 
-  test('keeps the stores out of the library, which holds no state', () => {
+  test('keeps the stores out of the library and the components, which hold no state of their own', () => {
     assert.deepStrictEqual(
       sourceFiles
-        .filter((file) => file.startsWith('lib/'))
+        .filter(
+          (file) => file.startsWith('lib/') || file.startsWith('components/'),
+        )
         .filter(
           (file) =>
             /from 'zustand[/']/.test(read(file)) ||
@@ -347,12 +394,12 @@ suite('Architecture', () => {
     );
   });
 
-  test("keeps the styles of the shell and of each tool in a sheet of their own, each tool's loaded by its page after the shell's, a long sheet split into partial sheets beside it that it alone imports, in the order of its rules", () => {
-    const sheets = ['shell/page', ...tools.map((tool) => `tools/${tool}/page`)];
-    const partialsOf = (folder: string) =>
-      [
-        ...read(`${folder}/style.css`).matchAll(/^@import '\.\/([^']+)';$/gm),
-      ].map(([, partial]) => `${folder}/${partial}`);
+  test("keeps the styles of the shell, of each tool and of each component in a sheet of their own, each tool's loaded by its page after the shell's and each component's by its own code, a long sheet split into partial sheets beside it that it alone imports, in the order of its rules", () => {
+    const sheets = [
+      'shell/page',
+      ...tools.map((tool) => `tools/${tool}/page`),
+      ...components.map((component) => `components/${component}/page`),
+    ];
     assert.deepStrictEqual(
       sourceFiles.filter((file) => file.endsWith('.css')).toSorted(),
       sheets
@@ -387,6 +434,18 @@ suite('Architecture', () => {
         (tool) =>
           !read(`tools/${tool}/page/tool.tsx`).includes(
             "import './style.css';",
+          ),
+      ),
+      [],
+    );
+    assert.deepStrictEqual(
+      components.filter(
+        (component) =>
+          !sourceFiles.some(
+            (file) =>
+              file.startsWith(`components/${component}/page/`) &&
+              /\.tsx?$/.test(file) &&
+              read(file).includes("import './style.css';"),
           ),
       ),
       [],
@@ -547,7 +606,7 @@ suite('Architecture', () => {
     const matchers = ['lib/shared/filter.ts', 'lib/shared/textMatches.ts'];
     const finds = [
       ...matchers,
-      'lib/page/find.ts',
+      'components/diff/page/find.ts',
       'tools/editor/page/editorFind.ts',
       'tools/viewer/main/textFind.ts',
       'tools/viewer/page/markPieces.ts',
@@ -597,16 +656,16 @@ suite('Architecture', () => {
     assert.deepStrictEqual(
       code.filter((file) => /<mark\b/.test(read(file))),
       [
-        'lib/page/codeMarks.tsx',
         'lib/page/highlight.tsx',
+        'components/diff/page/codeMarks.tsx',
         'tools/viewer/page/findMarks.tsx',
       ],
     );
     assert.deepStrictEqual(
       code.filter((file) => /\bfind-match\b/.test(read(file))),
       [
-        'lib/page/codeMarks.tsx',
-        'lib/page/diffFound.ts',
+        'components/diff/page/codeMarks.tsx',
+        'components/diff/page/diffFound.ts',
         'tools/editor/page/editorFind.ts',
         'tools/viewer/page/findMarks.tsx',
       ],

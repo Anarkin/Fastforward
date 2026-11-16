@@ -1,10 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
 import { createGitStore } from '../../../../../tools/git/page/store';
-import {
-  pickedFor,
-  shownFoldersOf,
-} from '../../../../../tools/git/page/gitSelectors';
+import { shownFoldersOf } from '../../../../../tools/git/page/gitSelectors';
+import { pickedFor } from '../../../../../components/diff/page/diffSlice';
 import { areaKey } from '../../../../../tools/git/page/changesRows';
 import { compareWith } from '../../../../../lib/shared/comparisons';
 import { noop } from '../../../../helpers/fixtures';

@@ -2,10 +2,13 @@ import { gitImageRoute } from '../shared/images';
 import { strings } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';
 import type { ShellAccess } from '../../../shell/main/toolContract';
-import { imageSourceOf, imageType } from '../../../lib/shared/imageSources';
+import {
+  imageSourceOf,
+  imageType,
+} from '../../../components/diff/shared/imageSources';
 import { gitErrorText } from '../../../lib/main/errorText';
 import { readImage } from './files';
-import { ImageReads } from '../../../lib/main/imageReads';
+import { ImageReads } from '../../../components/diff/main/imageReads';
 import type { TabWork } from './tabContext';
 
 export class DiffImages {

@@ -28,7 +28,7 @@ import {
   css,
   currentMatchOutline,
 } from './stylesheetFixtures';
-import { HunkDivider } from '../../../../lib/page/diffRowParts';
+import { HunkDivider } from '../../../../components/diff/page/diffRowParts';
 import { Crash } from '../../../../shell/page/errorBoundary';
 import { SkeletonRows } from '../../../../lib/page/skeleton';
 import { fileChange } from '../../../helpers/gitValues';

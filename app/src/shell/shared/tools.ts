@@ -5,7 +5,7 @@ import {
   type GitToWebview,
 } from '../../tools/git/shared/protocol';
 import type { GitSettings } from '../../tools/git/shared/settings';
-import type { DiffSettings } from '../../lib/shared/diffSettings';
+import type { DiffSettings } from '../../components/diff/shared/diffSettings';
 import {
   editorCharsets,
   editorEndings,

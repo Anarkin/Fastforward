@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { useShell } from '../../../shell/page/store';
-import { Diff, type DiffProps } from '../../../lib/page/diffColumn';
-import type { DiffPlace } from '../../../lib/page/diffPlace';
-import { diffFindOf, pickedFor } from './gitSelectors';
+import { Diff, type DiffProps } from '../../../components/diff/page/diffColumn';
+import type { DiffPlace } from '../../../components/diff/page/diffPlace';
+import { diffFindOf, pickedFor } from '../../../components/diff/page/diffSlice';
 import { useGit, useGitActions } from './store';
 
 export function GitDiff({

@@ -7,11 +7,11 @@ import type { GitToHost, GitToWebview, TabMessage } from '../shared/protocol';
 import { toggleBookmark } from './bookmarks';
 import { areaKey } from './changesRows';
 import { resetWidth } from './columns';
-import { parsePatch } from '../../../lib/page/diff';
+import { parsePatch } from '../../../components/diff/page/diff';
 import { foldersOf } from './fileTree';
 import { settling } from './outbox';
 import { startAfter } from './startAfter';
-import { textsToLoad } from '../../../lib/page/textsToLoad';
+import { textsToLoad } from '../../../components/diff/page/textsToLoad';
 import {
   noFolders,
   openFolders,
@@ -21,31 +21,17 @@ import {
   type ViewFolders,
 } from './viewFolders';
 import {
-  withSnap,
-  withText,
-  withWrapColumns,
-} from '../../../lib/page/diffMeasures';
-import {
   gitDefaults,
   type GitActions,
   type GitSource,
   type GitState,
 } from './gitState';
-import {
-  commitsShownOf,
-  detachedHead,
-  diffFindOf,
-  folderViewOf,
-  languageScopeOf,
-} from './gitSelectors';
-import { KeptPlaces } from './keptPlaces';
+import { commitsShownOf, detachedHead, folderViewOf } from './gitSelectors';
+import { diffSlice } from '../../../components/diff/page/diffSlice';
+import { KeptPlaces } from '../../../lib/page/keptPlaces';
 import type { KeptFocus } from '../../../lib/page/keptFocus';
-import {
-  diffPlaceKey,
-  unplaced,
-  type DiffPlace,
-} from '../../../lib/page/diffPlace';
-import { withEntry, withKey } from './tabKeyed';
+import type { DiffPlace } from '../../../components/diff/page/diffPlace';
+import { withEntry, withKey } from '../../../lib/page/tabKeyed';
 import { collected } from './collections';
 import { menuItemsOf } from './commitMenuItems';
 import { checking, received, withTab } from './receivedMessages';
@@ -271,6 +257,7 @@ export function createGitStore(
     };
     return {
       ...collected({ ...gitDefaults, ...initial }),
+      ...diffSlice(set, get, diffPlaces),
       receive: (message) => {
         shown(message);
         const from = get().tab.root;
@@ -577,20 +564,6 @@ export function createGitStore(
           state.toggleBookmark,
         );
       },
-      keepDiffFind: (scope, find) =>
-        set((state) => ({
-          diffFinds: withEntry(state.diffFinds, scope, find),
-        })),
-      closeDiffFind: (scope) =>
-        set((state) => ({
-          diffFinds: withEntry(state.diffFinds, scope, {
-            finding: false,
-            search: {
-              query: '',
-              options: diffFindOf(scope)(state).search.options,
-            },
-          }),
-        })),
       keptFocusOf: (scope) => focuses.of(scope),
       keepFocus: (scope, focus) => {
         if (focus === undefined) {
@@ -599,53 +572,6 @@ export function createGitStore(
           focuses.keep(scope, focus);
         }
       },
-      diffPlaceOf: (scope, selection) =>
-        diffPlaces.of(diffPlaceKey(scope, selection)),
-      keepDiffPlace: (scope, selection, change) => {
-        const key = diffPlaceKey(scope, selection);
-        diffPlaces.keep(key, {
-          ...(diffPlaces.of(key) ?? unplaced),
-          ...change,
-          ...(change.current !== undefined && {
-            currentFor: diffFindOf(scope)(get()).search,
-          }),
-        });
-      },
-      seeLanguageKey: (key) =>
-        set((state) => {
-          const scope = key === undefined ? undefined : languageScopeOf(key);
-          const picked =
-            scope === undefined ? undefined : state.pickedLanguages.get(scope);
-          return picked === undefined || picked.key === key
-            ? state
-            : {
-                pickedLanguages: withEntry(
-                  state.pickedLanguages,
-                  scope,
-                  undefined,
-                ),
-              };
-        }),
-      pickLanguage: (key, language) =>
-        set((state) => ({
-          pickedLanguages: withEntry(
-            state.pickedLanguages,
-            key === undefined ? undefined : languageScopeOf(key),
-            key === undefined || language === undefined
-              ? undefined
-              : { key, language },
-          ),
-        })),
-      measureDiffText: (measures) =>
-        set((state) => ({
-          diffMeasures: withText(state.diffMeasures, measures),
-        })),
-      snapDiffCode: (snap) =>
-        set((state) => ({ diffMeasures: withSnap(state.diffMeasures, snap) })),
-      keepWrapColumns: (columns) =>
-        set((state) => ({
-          diffMeasures: withWrapColumns(state.diffMeasures, columns),
-        })),
     };
   });
   made = store;

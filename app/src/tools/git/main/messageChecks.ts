@@ -9,7 +9,10 @@ import {
   isBookmark,
 } from '../shared/protocol';
 import { isColumnWidths } from '../shared/settings';
-import { areTextRequests, isPathAsked } from '../../../lib/main/textRequests';
+import {
+  areTextRequests,
+  isPathAsked,
+} from '../../../components/diff/main/textRequests';
 
 const maxBookmarks = 1000;
 

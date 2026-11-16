@@ -5,7 +5,10 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { tabsKey } from '../../../../../shell/main/storage';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
-import { imageUrl, maxImageSize } from '../../../../../lib/shared/imageSources';
+import {
+  imageUrl,
+  maxImageSize,
+} from '../../../../../components/diff/shared/imageSources';
 import { gitImageRoute } from '../../../../../tools/git/shared/images';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import {

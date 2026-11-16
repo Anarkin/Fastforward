@@ -91,17 +91,17 @@ suite('Diff store', () => {
     ]);
   });
 
-  test('keeps the find of each tab, closing it with its query cleared and its options kept', () => {
+  test('keeps the find of each tab, closing it with its query cleared and its options kept, as git keeps the find of each worktree', () => {
     const store = createDiffStore(noop);
     const state = () => store.getState();
     const regex = { ...plainSearch, regex: true };
-    state().keepFind('c1', {
+    state().keepDiffFind('c1', {
       finding: true,
       search: { query: 'adam', options: regex },
     });
-    assert.strictEqual(state().finds.get('c2'), undefined);
-    state().closeFind('c1');
-    assert.deepStrictEqual(state().finds.get('c1'), {
+    assert.strictEqual(state().diffFinds.get('c2'), undefined);
+    state().closeDiffFind('c1');
+    assert.deepStrictEqual(state().diffFinds.get('c1'), {
       finding: false,
       search: { query: '', options: regex },
     });

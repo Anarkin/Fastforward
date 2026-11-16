@@ -6,19 +6,21 @@ import type { GitState } from '../../../../../tools/git/page/gitState';
 import {
   activeColumnOf,
   commitsShownOf,
-  diffFindOf,
   fileCursorOf,
   fileFilterOf,
   fileFoldsOf,
   folderViewOf,
   languageKeyOf,
   locationsOf,
-  pickedFor,
   searchOf,
   searchingOf,
   shownFoldersOf,
   tabScopeOf,
 } from '../../../../../tools/git/page/gitSelectors';
+import {
+  diffFindOf,
+  pickedFor,
+} from '../../../../../components/diff/page/diffSlice';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import {
   maxViewChars,

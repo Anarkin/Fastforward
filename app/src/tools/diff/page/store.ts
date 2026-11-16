@@ -2,40 +2,27 @@ import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
 import { ViewKeeper } from '../../../lib/page/viewKeeper';
-import { textKey, type LoadedText } from '../../../lib/page/sideTexts';
-import {
-  withSnap,
-  withText,
-  withWrapColumns,
-} from '../../../lib/page/diffMeasures';
-import { unplaced, type DiffPlace } from '../../../lib/page/diffPlace';
+import { KeptPlaces } from '../../../lib/page/keptPlaces';
+import { withEntry } from '../../../lib/page/tabKeyed';
 import type { KeptFocus } from '../../../lib/page/keptFocus';
+import {
+  textKey,
+  type LoadedText,
+} from '../../../components/diff/page/sideTexts';
+import {
+  diffPlaceKey,
+  type DiffPlace,
+} from '../../../components/diff/page/diffPlace';
+import { diffSlice } from '../../../components/diff/page/diffSlice';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { ComparedText, DiffToHost } from '../shared/protocol';
-import { diffViewSchema } from './tabView';
+import { compareViewSchema, languageKeyOf } from './tabView';
 import {
-  diffDefaults,
-  type DiffActions,
-  type DiffSource,
-  type DiffState,
+  compareDefaults,
+  type CompareActions,
+  type CompareSource,
+  type CompareState,
 } from './diffState';
-
-function withEntry<T>(
-  map: ReadonlyMap<string, T>,
-  tab: string,
-  value: T | undefined,
-): ReadonlyMap<string, T> {
-  if (value === undefined ? !map.has(tab) : map.get(tab) === value) {
-    return map;
-  }
-  const next = new Map(map);
-  if (value === undefined) {
-    next.delete(tab);
-  } else {
-    next.set(tab, value);
-  }
-  return next;
-}
 
 function withTexts(
   texts: ReadonlyMap<string, LoadedText>,
@@ -59,42 +46,60 @@ function parsedOf(view: string): unknown {
   }
 }
 
+function changedKeys(
+  next: ReadonlyMap<string, unknown>,
+  prev: ReadonlyMap<string, unknown>,
+): string[] {
+  return next === prev
+    ? []
+    : [...new Set([...next.keys(), ...prev.keys()])].filter(
+        (key) => next.get(key) !== prev.get(key),
+      );
+}
+
 const noTexts: ReadonlyMap<string, LoadedText> = new Map();
 
 export function createDiffStore(
   post: (message: DiffToHost) => void,
-  initial: Partial<DiffSource> = {},
+  initial: Partial<CompareSource> = {},
   views: ToolViews = noViews,
-): StoreApi<DiffState> {
-  return createStore<DiffState>()((set, get) => {
+): StoreApi<CompareState> {
+  let keeper: ViewKeeper | undefined;
+  const places = new KeptPlaces<DiffPlace>(undefined, (key) => {
+    const [tab]: unknown[] = JSON.parse(key);
+    if (typeof tab === 'string') {
+      keeper?.changed(tab);
+    }
+  });
+  const store = createStore<CompareState>()((set, get) => {
     const known = new Set<string>();
     const shownWhenReleased = new Set<string>();
-    const places = new Map<string, DiffPlace>();
     const focuses = new Map<string, KeptFocus>();
     const viewOf = (tab: string) => {
       if (!known.has(tab)) {
         return undefined;
       }
-      const { finds, languages } = get();
-      const encoded = diffViewSchema.encode({
-        find: finds.get(tab),
-        place: places.get(tab),
-        language: languages.get(tab),
+      const { diffFinds, pickedLanguages } = get();
+      const encoded = compareViewSchema.encode({
+        find: diffFinds.get(tab),
+        place: places.of(diffPlaceKey(tab, tab)),
+        language: pickedLanguages.get(tab)?.language,
         focus: focuses.get(tab),
       });
       return encoded === undefined ? undefined : JSON.stringify(encoded);
     };
-    const keeper = new ViewKeeper(views, viewOf, () => get().tab);
+    const kept = new ViewKeeper(views, viewOf, () => get().tab);
+    keeper = kept;
     const restore = (tab: string, view: string) => {
-      const kept = diffViewSchema.decode(parsedOf(view));
-      if (kept === undefined) {
+      const decoded = compareViewSchema.decode(parsedOf(view));
+      if (decoded === undefined) {
         return;
       }
-      const { find, place, language, focus } = kept;
+      const { find, place, language, focus } = decoded;
       if (place === undefined) {
-        places.delete(tab);
+        places.forget(diffPlaceKey(tab, tab));
       } else {
-        places.set(tab, place);
+        places.keep(diffPlaceKey(tab, tab), place);
       }
       if (focus === undefined) {
         focuses.delete(tab);
@@ -102,28 +107,37 @@ export function createDiffStore(
         focuses.set(tab, focus);
       }
       set((state) => ({
-        finds: withEntry(state.finds, tab, find),
-        languages: withEntry(state.languages, tab, language),
+        diffFinds: withEntry(state.diffFinds, tab, find),
+        pickedLanguages: withEntry(
+          state.pickedLanguages,
+          tab,
+          language === undefined
+            ? undefined
+            : { key: languageKeyOf(tab), language },
+        ),
       }));
     };
     const letGo = (tab: string) => {
       known.delete(tab);
-      keeper.forget(tab);
-      places.delete(tab);
+      kept.forget(tab);
+      places.forget(diffPlaceKey(tab, tab));
       focuses.delete(tab);
       set((state) => ({
-        finds: withEntry(state.finds, tab, undefined),
-        languages: withEntry(state.languages, tab, undefined),
+        diffFinds: withEntry(state.diffFinds, tab, undefined),
+        pickedLanguages: withEntry(state.pickedLanguages, tab, undefined),
       }));
     };
-    const actions: DiffActions = {
+    const setting = (change: Partial<CompareSource['settings']>) =>
+      set((state) => ({ settings: { ...state.settings, ...change } }));
+    const actions: CompareActions = {
+      ...diffSlice(set, get, places),
       receive: (message) => {
         const leaving = get().tab;
         switch (message.type) {
           case 'show':
             known.add(message.tab);
             if (leaving !== message.tab) {
-              const handed = keeper.handed(message.tab);
+              const handed = kept.handed(message.tab);
               if (handed !== undefined) {
                 restore(message.tab, handed);
               }
@@ -168,61 +182,22 @@ export function createDiffStore(
           if (shownWhenReleased.delete(leaving)) {
             letGo(leaving);
           } else {
-            keeper.left(leaving);
+            kept.left(leaving);
           }
         }
       },
       loadTexts: (requests) => post({ type: 'loadTexts', requests }),
       setShowEntireFile: (show) => {
-        set((state) => ({
-          settings: { ...state.settings, showEntireFile: show },
-        }));
+        setting({ showEntireFile: show });
         post({ type: 'setShowEntireFile', show });
       },
       setIgnoreWhitespace: (ignore) => {
-        set((state) => ({
-          settings: { ...state.settings, ignoreWhitespace: ignore },
-        }));
+        setting({ ignoreWhitespace: ignore });
         post({ type: 'setIgnoreWhitespace', ignore });
       },
       setDiffLayout: (layout) => {
-        set((state) => ({
-          settings: { ...state.settings, diffLayout: layout },
-        }));
+        setting({ diffLayout: layout });
         post({ type: 'setDiffLayout', layout });
-      },
-      keepFind: (tab, find) => {
-        set((state) => ({ finds: withEntry(state.finds, tab, find) }));
-        keeper.changed(tab);
-      },
-      closeFind: (tab) => {
-        const find = get().finds.get(tab);
-        if (find !== undefined) {
-          set((state) => ({
-            finds: withEntry(state.finds, tab, {
-              finding: false,
-              search: { query: '', options: find.search.options },
-            }),
-          }));
-          keeper.changed(tab);
-        }
-      },
-      placeOf: (tab) => places.get(tab),
-      keepPlace: (tab, change) => {
-        const place = { ...(places.get(tab) ?? unplaced), ...change };
-        places.set(tab, {
-          ...place,
-          ...(change.current !== undefined && {
-            currentFor: get().finds.get(tab)?.search,
-          }),
-        });
-        keeper.changed(tab);
-      },
-      pickLanguage: (tab, language) => {
-        set((state) => ({
-          languages: withEntry(state.languages, tab, language),
-        }));
-        keeper.changed(tab);
       },
       focusOf: (tab) => focuses.get(tab),
       keepFocus: (tab, focus) => {
@@ -231,22 +206,14 @@ export function createDiffStore(
         } else {
           focuses.set(tab, focus);
         }
-        keeper.changed(tab);
+        kept.changed(tab);
       },
-      measureText: (measures) =>
-        set((state) => ({ measures: withText(state.measures, measures) })),
-      snapCode: (snap) =>
-        set((state) => ({ measures: withSnap(state.measures, snap) })),
-      keepWrapColumns: (columns) =>
-        set((state) => ({
-          measures: withWrapColumns(state.measures, columns),
-        })),
-      keepTabs: () => keeper.flush(),
+      keepTabs: () => kept.flush(),
       releaseTab: (tab) => {
         if (!known.has(tab)) {
           return undefined;
         }
-        const view = keeper.release(tab);
+        const view = kept.release(tab);
         if (get().tab === tab) {
           shownWhenReleased.add(tab);
         } else {
@@ -255,15 +222,24 @@ export function createDiffStore(
         return view;
       },
     };
-    return { ...diffDefaults, ...initial, ...actions };
+    return { ...compareDefaults, ...initial, ...actions };
   });
+  store.subscribe((next, prev) => {
+    for (const tab of new Set([
+      ...changedKeys(next.diffFinds, prev.diffFinds),
+      ...changedKeys(next.pickedLanguages, prev.pickedLanguages),
+    ])) {
+      keeper?.changed(tab);
+    }
+  });
+  return store;
 }
 
-export const DiffStore = createContext<StoreApi<DiffState> | undefined>(
+export const DiffStore = createContext<StoreApi<CompareState> | undefined>(
   undefined,
 );
 
-function useDiffStore(): StoreApi<DiffState> {
+function useDiffStore(): StoreApi<CompareState> {
   const store = useContext(DiffStore);
   if (store === undefined) {
     throw new Error(strings.errors.storeOutsideProvider('diff'));
@@ -271,10 +247,10 @@ function useDiffStore(): StoreApi<DiffState> {
   return store;
 }
 
-export function useDiff<T>(select: (state: DiffState) => T): T {
+export function useDiff<T>(select: (state: CompareState) => T): T {
   return useStore(useDiffStore(), select);
 }
 
-export function useDiffActions(): DiffActions {
+export function useDiffActions(): CompareActions {
   return useDiffStore().getState();
 }

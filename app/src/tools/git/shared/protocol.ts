@@ -2,15 +2,17 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { CloneAsk, CloneView } from './clone';
 import {
-  diffLayouts,
   linkMode,
   workingTreeHash,
   type ChangeArea,
-  type DiffLayout,
   type FileChange,
+} from '../../../lib/shared/changes';
+import {
+  diffLayouts,
+  type DiffLayout,
   type LeftOut,
   type TextRequest,
-} from '../../../lib/shared/changes';
+} from '../../../components/diff/shared/diffProtocol';
 
 export {
   diffLayouts,

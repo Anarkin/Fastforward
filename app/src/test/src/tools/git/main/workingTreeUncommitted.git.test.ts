@@ -11,8 +11,8 @@ import {
 import {
   isLargeChange,
   leftOutChanges,
-} from '../../../../../lib/shared/patchBudget';
-import { parsePatch } from '../../../../../lib/page/diff';
+} from '../../../../../components/diff/shared/patchBudget';
+import { parsePatch } from '../../../../../components/diff/page/diff';
 import { tempRepository } from '../../../../helpers/repositories';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 import { symlinkOrSkip } from '../../../../helpers/links';

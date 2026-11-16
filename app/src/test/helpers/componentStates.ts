@@ -63,11 +63,11 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the colors of the text, kept per tab in the kept viewers of viewerActions.ts for its language and text',
   'tools/viewer/page/wholeText.ts text':
     'the whole text read, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
-  'lib/page/diffFind.ts at':
+  'components/diff/page/diffFind.ts at':
     'the match shown, kept per scope and selection in the diff places of the git store, read back as mounted',
-  'lib/page/diffSideways.ts sideways':
+  'components/diff/page/diffSideways.ts sideways':
     'kept per scope and selection in the diff places of the git store, scrolled back to as the diff settles',
-  'lib/page/diffView.tsx toggled':
+  'components/diff/page/diffView.tsx toggled':
     'kept per scope and selection in the diff places of the git store (store.ts), read back as the diff mounts',
   'tools/git/page/locations.tsx scrolledTo':
     'kept per repository in the location scrolls of the git store (store.ts), read back as the search mounts',
@@ -228,7 +228,7 @@ export const passingStates: Readonly<Record<string, string>> = {
     'typed in the modal clone dialog, which stays mounted through a tab change from outside, as ff',
   'tools/git/page/clonePopup.tsx url':
     'typed in the modal clone dialog, which stays mounted through a tab change from outside, as ff',
-  'lib/page/codeBlocks.tsx near':
+  'components/diff/page/codeBlocks.tsx near':
     'the blocks of a long line near the view, observed anew by an intersection observer once mounted',
   'lib/page/columnStatusLine.tsx said':
     'the status before a load began, held through the load and read anew from the column once mounted',
@@ -246,25 +246,25 @@ export const passingStates: Readonly<Record<string, string>> = {
     'a scroll function made once around the capped scroll and the tops reported',
   'tools/diff/page/compareView.tsx findAsked':
     'counts the find key presses, read only as changes; the find itself is kept per scope in diffFinds',
-  'lib/page/diffColumn.tsx awaitedDiff':
+  'components/diff/page/diffColumn.tsx awaitedDiff':
     'the diff a toggle of the entire file waits for to jump to its first change; a diff shown again keeps its place',
-  'lib/page/diffColumn.tsx entireSeen':
+  'components/diff/page/diffColumn.tsx entireSeen':
     'the entire-file toggle last seen, only to notice it change while mounted',
-  'lib/page/diffColumn.tsx firstChange':
+  'components/diff/page/diffColumn.tsx firstChange':
     'counts the jumps to the first change once the entire file shows; a diff shown again keeps its place',
-  'lib/page/diffColumn.tsx seen':
+  'components/diff/page/diffColumn.tsx seen':
     'the scope and selection last shown, only to notice them change while mounted',
-  'lib/page/diffFind.ts focusAsks':
+  'components/diff/page/diffFind.ts focusAsks':
     'counts the asks to focus the find box, read only as changes after mounting',
-  'lib/page/diffFind.ts jump':
+  'components/diff/page/diffFind.ts jump':
     'counts the jumps to a match; a diff shown again keeps its place rather than jumping again',
-  'lib/page/diffFollow.ts viewportHeight':
+  'components/diff/page/diffFollow.ts viewportHeight':
     'the height of the diff, measured anew by a resize observer once mounted',
-  'lib/page/diffJumps.ts revealing':
+  'components/diff/page/diffJumps.ts revealing':
     'the match brought into view after a jump, set only until it is drawn',
-  'lib/page/diffSideways.ts measured':
+  'components/diff/page/diffSideways.ts measured':
     'the sideways room of the diff, measured anew from its layout once mounted',
-  'lib/page/diffView.tsx dragged':
+  'components/diff/page/diffView.tsx dragged':
     'true only while the thumb of the minimap is dragged',
   'tools/git/page/filesColumn.tsx filterAsked':
     'counts the find key presses, read only as changes; the filter itself is kept per repository in fileFilters',
@@ -278,8 +278,9 @@ export const passingStates: Readonly<Record<string, string>> = {
     'how far a message panel is lifted to fit, measured anew from its box',
   'tools/git/page/messagePeek.tsx peek':
     'the message peeked at, shown only while alt is held over a row',
-  'lib/page/minimap.tsx dragging': 'true only while the minimap is dragged',
-  'lib/page/minimap.tsx shown':
+  'components/diff/page/minimap.tsx dragging':
+    'true only while the minimap is dragged',
+  'components/diff/page/minimap.tsx shown':
     'true for a moment after the diff scrolls or the pointer moves over it',
   'tools/git/page/navBar.tsx now': 'the clock, read anew every tick',
   'tools/git/page/navBar.tsx open':
@@ -294,15 +295,15 @@ export const passingStates: Readonly<Record<string, string>> = {
     'the value, lagging 200 ms only while it changes; seeded with the value itself as mounted',
   'lib/page/skeletonDelay.ts shown':
     'false until a load has gone on 150 ms, timed anew as mounted',
-  'lib/page/diffSyntax.ts colored':
+  'components/diff/page/diffSyntax.ts colored':
     'the colors drawn, read as mounted from the colors kept per blob (keptColors.ts) and colored anew by the worker',
   'tools/git/page/tool.tsx store':
     'the git store, made once for the page; it keeps what each git tab shows through tab changes',
   'tools/git/page/worktreeBar.tsx cycle':
     'the worktrees stepped to ahead of the one shown while the key repeats, made once for the bar',
-  'lib/page/wrapMarks.tsx breaks':
+  'components/diff/page/wrapMarks.tsx breaks':
     'the breaks of a wrapped line, read from those remembered by rememberBreaks or measured anew',
-  'lib/page/wrapMarks.tsx near':
+  'components/diff/page/wrapMarks.tsx near':
     'whether a block of marks is near the view, observed anew by an intersection observer once mounted',
   'tools/terminal/page/tool.tsx store':
     'the terminal store, made once for the page; each screen is kept by the main process',

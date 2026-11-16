@@ -4,18 +4,20 @@ import { createGitStore } from '../../../../../tools/git/page/store';
 import {
   activeColumnOf,
   commitsShownOf,
-  diffFindOf,
   fileCursorOf,
   fileFoldsOf,
   folderViewOf,
   languageKeyOf,
   locationsOf,
-  pickedFor,
   tabScopeOf,
   searchOf,
   searchingOf,
   shownFoldersOf,
 } from '../../../../../tools/git/page/gitSelectors';
+import {
+  diffFindOf,
+  pickedFor,
+} from '../../../../../components/diff/page/diffSlice';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { noop } from '../../../../helpers/fixtures';

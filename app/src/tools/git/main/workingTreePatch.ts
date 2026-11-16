@@ -5,7 +5,7 @@ import {
   diffOptionArgs,
   pathspecs,
   type PatchScope,
-} from '../../../lib/main/diffArgs';
+} from '../../../components/diff/main/diffArgs';
 import { stampOf } from './fileStamps';
 import { maxFileSize } from './files';
 import { withoutFilesInside } from './patchText';

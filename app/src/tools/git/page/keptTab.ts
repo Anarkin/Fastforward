@@ -1,15 +1,18 @@
 import { focusSchema, type KeptFocus } from '../../../lib/page/keptFocus';
 import type { Search } from '../../../lib/shared/searchOptions';
 import { columnOrder, type ColumnName } from './activeColumn';
-import { diffPlaceKey, type DiffPlace } from '../../../lib/page/diffPlace';
-import type { ScrollAnchor } from '../../../lib/page/diffScrollAnchor';
+import {
+  diffPlaceKey,
+  type DiffPlace,
+} from '../../../components/diff/page/diffPlace';
+import type { ScrollAnchor } from '../../../components/diff/page/diffScrollAnchor';
 import type { MovedCursor } from './filesCursor';
 import type { GitSource, KeptLocations, KeptPin } from './gitState';
-import type { KeptFind } from '../../../lib/page/diffFind';
+import type { KeptFind } from '../../../components/diff/page/diffSlice';
 import { tabScopeOf } from './gitSelectors';
-import type { KeptPlaces } from './keptPlaces';
+import type { KeptPlaces } from '../../../lib/page/keptPlaces';
 import type { Highlighted } from './locationHighlight';
-import { withEntry, withKey } from './tabKeyed';
+import { withEntry, withKey } from '../../../lib/page/tabKeyed';
 import type { FilterFolds, ViewFolders } from './viewFolders';
 import { mostWorktrees } from './tabWorktrees';
 import { maxViewChars } from '../../../shell/shared/protocol';

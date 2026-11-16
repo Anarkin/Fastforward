@@ -13,12 +13,12 @@ import {
   comparePatchArgs,
   pathspecs,
   showPatchArgs,
-} from '../../../../../lib/main/diffArgs';
+} from '../../../../../components/diff/main/diffArgs';
 import {
   leftOutOf,
   readPatch,
 } from '../../../../../tools/git/main/patchBudget';
-import { collapseThreshold } from '../../../../../lib/shared/patchBudget';
+import { collapseThreshold } from '../../../../../components/diff/shared/patchBudget';
 import { readFile } from '../../../../../tools/git/main/files';
 import { listTree } from '../../../../../tools/git/main/fileLists';
 import { runGit } from '../../../../../tools/git/main/run';
@@ -27,7 +27,7 @@ import {
   stagedPatch,
   workingTreePatch,
 } from '../../../../../tools/git/main/workingTreePatch';
-import { parsePatch } from '../../../../../lib/page/diff';
+import { parsePatch } from '../../../../../components/diff/page/diff';
 import {
   renamingRepository,
   submoduleRepository,

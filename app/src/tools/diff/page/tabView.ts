@@ -1,11 +1,12 @@
-import { optional, record, text, flag } from '../../../lib/shared/schema';
-import { searchSchema } from '../../../lib/shared/searchOptions';
+import { optional, record } from '../../../lib/shared/schema';
 import { focusSchema } from '../../../lib/page/keptFocus';
-import { diffPlaceSchema } from '../../../lib/page/diffPlace';
+import { diffViewFields } from '../../../components/diff/page/diffSlice';
 
-export const diffViewSchema = record({
-  find: optional(record({ finding: flag(), search: searchSchema })),
-  place: optional(diffPlaceSchema),
-  language: optional(text({ max: 256 })),
+export const compareViewSchema = record({
+  ...diffViewFields,
   focus: optional(focusSchema),
 });
+
+export function languageKeyOf(tab: string): string {
+  return JSON.stringify([tab]);
+}

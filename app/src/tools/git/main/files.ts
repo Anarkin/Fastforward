@@ -1,10 +1,10 @@
-import type { ImageRead } from '../../../lib/main/imageReads';
+import type { ImageRead } from '../../../components/diff/main/imageReads';
 import * as fs from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import {
   maxImageSize,
   type ImageSource,
-} from '../../../lib/shared/imageSources';
+} from '../../../components/diff/shared/imageSources';
 import { linkMode } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import { headCommit } from './commitLookup';

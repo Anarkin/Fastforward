@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { imageUrl } from '../../../../../lib/shared/imageSources';
+import { imageUrl } from '../../../../../components/diff/shared/imageSources';
 import type {
   CompareView,
   DiffToHost,
@@ -10,7 +10,7 @@ import type {
 } from '../../../../../tools/diff/shared/protocol';
 import { comparedImageRoute } from '../../../../../tools/diff/shared/images';
 import { Comparisons } from '../../../../../tools/diff/main/comparisons';
-import { parsePatch } from '../../../../../lib/page/diff';
+import { parsePatch } from '../../../../../components/diff/page/diff';
 import { strings } from '../../../../../lib/shared/strings';
 import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
 import {

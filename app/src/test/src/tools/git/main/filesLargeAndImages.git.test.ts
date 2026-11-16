@@ -9,7 +9,7 @@ import {
   readFile,
   readImage,
 } from '../../../../../tools/git/main/files';
-import { parsePatch } from '../../../../../lib/page/diff';
+import { parsePatch } from '../../../../../components/diff/page/diff';
 import { submoduleRepository } from '../../../../helpers/gitFixtures';
 import {
   gitsStarted,

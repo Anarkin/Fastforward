@@ -3,7 +3,7 @@ import { useStore } from 'zustand';
 import './style.css';
 import { startColorer } from '../../../lib/page/syntax';
 import { useBinding } from '../../../lib/page/shortcuts';
-import { diffKeymap } from '../../../lib/page/diffKeymap';
+import { diffKeymap } from '../../../components/diff/page/diffKeymap';
 import { useShellActions } from '../../../shell/page/store';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { DiffToHost, DiffToWebview } from '../shared/protocol';

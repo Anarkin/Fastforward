@@ -8,7 +8,7 @@ import { type FileChange } from '../../../../../tools/git/shared/protocol';
 import {
   collapseThreshold,
   patchByteBudget,
-} from '../../../../../lib/shared/patchBudget';
+} from '../../../../../components/diff/shared/patchBudget';
 import { section } from './patchFixtures';
 import { fileChange } from '../../../../helpers/gitValues';
 

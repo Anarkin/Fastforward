@@ -4,7 +4,9 @@ import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { pageViews } from '../../../../../shell/page/toolViews';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import { createDiffStore } from '../../../../../tools/diff/page/store';
-import type { DiffState } from '../../../../../tools/diff/page/diffState';
+import type { CompareState } from '../../../../../tools/diff/page/diffState';
+import { languageKeyOf } from '../../../../../tools/diff/page/tabView';
+import { pickedFor } from '../../../../../components/diff/page/diffSlice';
 import { noop } from '../../../../helpers/fixtures';
 
 const settings = {
@@ -29,11 +31,11 @@ function keepingViews() {
   };
 }
 
-const looksOf = (state: DiffState, tab: string) => [
-  state.finds.get(tab),
+const looksOf = (state: CompareState, tab: string) => [
+  state.diffFinds.get(tab),
   state.focusOf(tab),
-  state.placeOf(tab),
-  state.languages.get(tab),
+  state.diffPlaceOf(tab, tab),
+  pickedFor(languageKeyOf(tab))(state),
 ];
 
 suite('Diff store keeping its tabs', () => {
@@ -41,13 +43,13 @@ suite('Diff store keeping its tabs', () => {
     const left = keepingViews();
     const state = () => left.store.getState();
     state().receive({ type: 'show', tab: '7', settings });
-    state().keepFind('7', {
+    state().keepDiffFind('7', {
       finding: true,
       search: { query: 'eve', options: plainSearch },
     });
     state().keepFocus('7', { name: 'diff' });
-    state().keepPlace('7', { top: 30, current: 1 });
-    state().pickLanguage('7', 'rust');
+    state().keepDiffPlace('7', '7', { top: 30, current: 1 });
+    state().pickLanguage(languageKeyOf('7'), 'rust');
     const looked = looksOf(state(), '7');
     state().receive({ type: 'show', tab: '8', settings });
     const sent = left.release('7') ?? '';

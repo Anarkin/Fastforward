@@ -7,7 +7,7 @@ import {
   collapseThreshold,
   patchByteBudget,
   patchLineBudget,
-} from '../../../../../lib/shared/patchBudget';
+} from '../../../../../components/diff/shared/patchBudget';
 import { maxFileSize } from '../../../../../tools/git/main/files';
 import { waitFor } from '../../../../helpers/fixtures';
 import {

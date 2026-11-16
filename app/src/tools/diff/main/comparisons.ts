@@ -1,9 +1,9 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
-import type { TextRequest } from '../../../lib/shared/changes';
-import type { DiffSettings } from '../../../lib/shared/diffSettings';
+import type { TextRequest } from '../../../components/diff/shared/diffProtocol';
+import type { DiffSettings } from '../../../components/diff/shared/diffSettings';
 import { gitErrorText } from '../../../lib/main/errorText';
-import { uniqueTexts } from '../../../lib/main/textRequests';
+import { uniqueTexts } from '../../../components/diff/main/textRequests';
 import type { Log } from '../../../shell/main/log';
 import type { Compared } from '../../../shell/main/savedTabs';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';

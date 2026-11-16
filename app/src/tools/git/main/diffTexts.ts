@@ -1,5 +1,5 @@
 import { BlobTexts } from './blobTexts';
-import { uniqueTexts } from '../../../lib/main/textRequests';
+import { uniqueTexts } from '../../../components/diff/main/textRequests';
 import { readBlobs, readFile } from './files';
 import { workingTreeSide } from '../../../lib/shared/comparisons';
 import { isFullHash } from '../../../lib/shared/hashes';

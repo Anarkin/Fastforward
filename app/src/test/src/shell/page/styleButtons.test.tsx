@@ -21,7 +21,7 @@ import {
   deviceRounded,
   hovered,
 } from './stylesheetFixtures';
-import { FileHeader } from '../../../../lib/page/diffRowParts';
+import { FileHeader } from '../../../../components/diff/page/diffRowParts';
 import { emptyTabView } from '../../../../tools/git/page/tabView';
 import { SoloButton } from '../../../../tools/git/page/soloButton';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';

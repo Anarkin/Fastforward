@@ -10,8 +10,6 @@ import type { MovedCursor } from './filesCursor';
 import { treeOf, type TabView } from './tabView';
 import { listsNothing } from './filesSides';
 import type { GitData, GitSource, GitState, KeptLocations } from './gitState';
-import type { KeptFind } from '../../../lib/page/diffFind';
-import { plainSearch } from '../../../lib/shared/searchOptions';
 import type { ColumnName } from './activeColumn';
 
 export function languageKeyOf({
@@ -108,16 +106,6 @@ export function tabScopeOf(root: string | undefined): string {
   return JSON.stringify(['worktree', root ?? '']);
 }
 
-const closedFind: KeptFind = {
-  finding: false,
-  search: { query: '', options: plainSearch },
-};
-
-export const diffFindOf =
-  (scope: string) =>
-  ({ diffFinds }: GitSource): KeptFind =>
-    diffFinds.get(scope) ?? closedFind;
-
 function fileLanguageKey(
   root: string | undefined,
   hash: string | undefined,
@@ -125,21 +113,6 @@ function fileLanguageKey(
 ): string {
   return JSON.stringify([root, hash, path]);
 }
-
-export function languageScopeOf(key: string): string {
-  const [scope]: unknown[] = JSON.parse(key);
-  return typeof scope !== 'string' ? key : scope;
-}
-
-export const pickedFor =
-  (key: string | undefined) =>
-  ({ pickedLanguages }: GitSource): string | undefined => {
-    const picked =
-      key === undefined ? undefined : pickedLanguages.get(languageScopeOf(key));
-    return picked !== undefined && picked.key === key
-      ? picked.language
-      : undefined;
-  };
 
 export function detachedHead({ tab }: GitData): string | undefined {
   const { repository } = tab;

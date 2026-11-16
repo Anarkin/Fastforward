@@ -13,7 +13,7 @@ import {
   type GitRun,
 } from '../../../../../tools/diff/main/compare';
 import { runGit } from '../../../../../tools/git/main/run';
-import { parsePatch } from '../../../../../lib/page/diff';
+import { parsePatch } from '../../../../../components/diff/page/diff';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { installedGit } from '../../../../helpers/repositories';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';

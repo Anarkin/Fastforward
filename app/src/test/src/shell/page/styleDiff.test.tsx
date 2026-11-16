@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
-import { ImageDiff } from '../../../../lib/page/imagePreview';
+import { ImageDiff } from '../../../../components/diff/page/imagePreview';
 import { Crash } from '../../../../shell/page/errorBoundary';
 import { cascaded, matchingRules } from '../../../helpers/cascade';
 import { Columns } from '../../../helpers/styleFixtures';
@@ -19,13 +19,13 @@ import {
   layoutVariables,
   markerWidth,
   numberWidth,
-} from '../../../../lib/page/textLayout';
-import { diffRowClass } from '../../../../lib/page/diffRowClasses';
+} from '../../../../components/diff/page/textLayout';
+import { diffRowClass } from '../../../../components/diff/page/diffRowClasses';
 import {
   FileNote,
   FileHeader,
   HunkDivider,
-} from '../../../../lib/page/diffRowParts';
+} from '../../../../components/diff/page/diffRowParts';
 import {
   allWithClass,
   rendered,

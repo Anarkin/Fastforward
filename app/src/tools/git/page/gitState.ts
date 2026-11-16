@@ -17,21 +17,17 @@ import type {
 } from '../shared/protocol';
 import type { ColumnName } from './activeColumn';
 import type { ChosenFolder, CloneTarget } from './cloneForm';
-import type { ViewedSource } from '../../../lib/page/viewedSource';
+import type { ViewedSource } from '../../../components/diff/page/viewedSource';
 import type { MenuTarget } from './menus';
 import type { RefGroup } from './refIndex';
 import type { FilterFolds, Folders, ViewFolders } from './viewFolders';
 import type { MovedCursor } from './filesCursor';
 import { emptyTabView, type TabAction, type TabView } from './tabView';
-import type { WrapColumns } from '../../../lib/page/rowMeasures';
-import type { TextMeasures } from '../../../lib/page/textLayout';
-import type { CodeSnap } from '../../../lib/page/codeSnap';
 import {
-  unmeasuredDiff,
-  type DiffMeasures,
-} from '../../../lib/page/diffMeasures';
-import type { KeptFind } from '../../../lib/page/diffFind';
-import type { DiffPlace } from '../../../lib/page/diffPlace';
+  diffDefaults,
+  type DiffActions,
+  type DiffSource,
+} from '../../../components/diff/page/diffSlice';
 import type { Highlighted } from './locationHighlight';
 import type { KeptFocus } from '../../../lib/page/keptFocus';
 
@@ -54,7 +50,7 @@ export interface Cloning {
   readonly target: CloneTarget | undefined;
 }
 
-export interface GitSource {
+export interface GitSource extends DiffSource {
   readonly tab: TabView;
   readonly worktrees: readonly WorktreeInfo[] | undefined;
   readonly bookmarks: readonly Bookmark[];
@@ -75,21 +71,15 @@ export interface GitSource {
   readonly lastFetch: LastFetch;
   readonly commitsHidden: ReadonlySet<string>;
   readonly searching: ReadonlySet<string>;
-  readonly pickedLanguages: ReadonlyMap<
-    string,
-    { readonly key: string; readonly language: string }
-  >;
   readonly activeColumns: ReadonlyMap<string, ColumnName>;
   readonly fileFilters: ReadonlyMap<string, Search>;
   readonly searches: ReadonlyMap<string, Search>;
-  readonly diffFinds: ReadonlyMap<string, KeptFind>;
   readonly foundCommits: ReadonlyMap<string, FoundCommits>;
   readonly folders: ReadonlyMap<string, ViewFolders>;
   readonly fileFolds: ReadonlyMap<string, FilterFolds>;
   readonly fileCursors: ReadonlyMap<string, MovedCursor>;
   readonly pinnedMessages: ReadonlyMap<string, KeptPin>;
   readonly locations: ReadonlyMap<string, KeptLocations>;
-  readonly diffMeasures: DiffMeasures;
 }
 
 export interface GitCollections {
@@ -101,7 +91,7 @@ export interface GitCollections {
   readonly refIndex: readonly RefGroup[];
 }
 
-export interface GitActions {
+export interface GitActions extends DiffActions {
   readonly receive: (message: GitToWebview) => void;
   readonly flushKept: () => void;
   readonly releaseTab: (tab: string) => string | undefined;
@@ -185,30 +175,12 @@ export interface GitActions {
   readonly checkout: (target: CheckoutTarget) => void;
   readonly toggleBookmark: (bookmark: Bookmark) => void;
   readonly menuItems: (target: MenuTarget) => ContextMenuItem[];
-  readonly pickLanguage: (
-    key: string | undefined,
-    language: string | undefined,
-  ) => void;
-  readonly seeLanguageKey: (key: string | undefined) => void;
-  readonly keepDiffFind: (scope: string, find: KeptFind) => void;
   readonly keptFocusOf: (scope: string) => KeptFocus | undefined;
   readonly keepFocus: (scope: string, focus: KeptFocus | undefined) => void;
-  readonly closeDiffFind: (scope: string) => void;
-  readonly diffPlaceOf: (
-    scope: string,
-    selection: string,
-  ) => DiffPlace | undefined;
-  readonly keepDiffPlace: (
-    scope: string,
-    selection: string,
-    change: Partial<DiffPlace>,
-  ) => void;
-  readonly measureDiffText: (measures: TextMeasures) => void;
-  readonly snapDiffCode: (snap: (last: CodeSnap) => CodeSnap) => void;
-  readonly keepWrapColumns: (columns: WrapColumns) => void;
 }
 
 export const gitDefaults: GitSource = {
+  ...diffDefaults,
   tab: emptyTabView,
   worktrees: undefined,
   bookmarks: [],
@@ -229,18 +201,15 @@ export const gitDefaults: GitSource = {
   lastFetch: {},
   commitsHidden: new Set(),
   searching: new Set(),
-  pickedLanguages: new Map(),
   activeColumns: new Map(),
   fileFilters: new Map(),
   searches: new Map(),
-  diffFinds: new Map(),
   foundCommits: new Map(),
   folders: new Map(),
   fileFolds: new Map(),
   fileCursors: new Map(),
   pinnedMessages: new Map(),
   locations: new Map(),
-  diffMeasures: unmeasuredDiff,
 };
 
 export type GitData = GitSource & GitCollections;

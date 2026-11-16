@@ -3,14 +3,14 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname } from 'node:path';
 import type { Compared } from '../../../shell/main/savedTabs';
-import { maxImageSize } from '../../../lib/shared/imageSources';
-import { patchByteBudget } from '../../../lib/shared/patchBudget';
+import { maxImageSize } from '../../../components/diff/shared/imageSources';
+import { patchByteBudget } from '../../../components/diff/shared/patchBudget';
 import {
   diffArgs,
   diffOptionArgs,
   type PatchScope,
-} from '../../../lib/main/diffArgs';
-import type { ImageRead } from '../../../lib/main/imageReads';
+} from '../../../components/diff/main/diffArgs';
+import type { ImageRead } from '../../../components/diff/main/imageReads';
 
 interface GitRunOptions {
   readonly okExitCodes: readonly number[];

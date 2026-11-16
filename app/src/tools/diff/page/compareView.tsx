@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBinding } from '../../../lib/page/shortcuts';
-import { diffKeymap } from '../../../lib/page/diffKeymap';
-import type { FileChange, LeftOut } from '../../../lib/shared/changes';
+import { diffKeymap } from '../../../components/diff/page/diffKeymap';
+import type { FileChange } from '../../../lib/shared/changes';
+import type { LeftOut } from '../../../components/diff/shared/diffProtocol';
 import { strings } from '../../../lib/shared/strings';
-import type { DiffFile } from '../../../lib/page/diff';
-import type { DiffPlace } from '../../../lib/page/diffPlace';
-import type { KeptFind } from '../../../lib/page/diffFind';
-import type { LoadedText } from '../../../lib/page/sideTexts';
-import { Diff } from '../../../lib/page/diffColumn';
-import { DiffLanguage } from '../../../lib/page/diffLanguage';
-import { DiffToggles } from '../../../lib/page/diffToggles';
+import type { DiffFile } from '../../../components/diff/page/diff';
+import type { DiffPlace } from '../../../components/diff/page/diffPlace';
+import type { LoadedText } from '../../../components/diff/page/sideTexts';
+import { Diff } from '../../../components/diff/page/diffColumn';
+import { DiffLanguage } from '../../../components/diff/page/diffLanguage';
+import { DiffToggles } from '../../../components/diff/page/diffToggles';
 import {
   focusBack,
   useFocusKeeper,
@@ -17,21 +17,18 @@ import {
 } from '../../../lib/page/keptFocus';
 import { useRestore } from '../../../lib/page/restore';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
-import { plainSearch } from '../../../lib/shared/searchOptions';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import type { CompareView as Compared } from '../shared/protocol';
 import { comparedImageRoute } from '../shared/images';
 import { useDiff, useDiffActions } from './store';
+import { languageKeyOf } from './tabView';
+import { diffFindOf, pickedFor } from '../../../components/diff/page/diffSlice';
 
 const noFiles: readonly FileChange[] = [];
 const noLeftOut: readonly LeftOut[] = [];
 const noPaths: readonly string[] = [];
 const noLargeFiles: ReadonlyMap<string, DiffFile> = new Map();
 const ignored = () => undefined;
-const closedFind: KeptFind = {
-  finding: false,
-  search: { query: '', options: plainSearch },
-};
 const noTexts: ReadonlyMap<string, LoadedText> = new Map();
 
 function noteOf(compare: Compared | undefined): string | undefined {
@@ -48,7 +45,7 @@ function CompareOptions({ tab }: { tab: string }) {
   const ignoreWhitespace = useDiff((state) => state.settings.ignoreWhitespace);
   const layout = useDiff((state) => state.settings.diffLayout);
   const shown = useDiff((state) => state.compare?.new);
-  const picked = useDiff((state) => state.languages.get(tab));
+  const picked = useDiff(pickedFor(languageKeyOf(tab)));
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
@@ -67,7 +64,7 @@ function CompareOptions({ tab }: { tab: string }) {
           languageKey={tab}
           shown={shown}
           picked={picked}
-          onPick={(language) => pickLanguage(tab, language)}
+          onPick={(language) => pickLanguage(languageKeyOf(tab), language)}
           highlightSyntax={highlightSyntax}
           onHighlightSyntax={(on) => changeTextView({ highlightSyntax: on })}
           scrolling={scrolling}
@@ -99,28 +96,28 @@ export function CompareView({ tab }: { tab: string }) {
   const sideBySide = useDiff(
     (state) => state.settings.diffLayout === 'sideBySide',
   );
-  const language = useDiff((state) => state.languages.get(tab));
-  const measures = useDiff((state) => state.measures);
-  const find = useDiff((state) => state.finds.get(tab) ?? closedFind);
+  const language = useDiff(pickedFor(languageKeyOf(tab)));
+  const measures = useDiff((state) => state.diffMeasures);
+  const find = useDiff(diffFindOf(tab));
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const scrolling = useShell((state) => state.scrolling);
   const {
     loadTexts,
-    measureText,
-    snapCode,
+    measureDiffText,
+    snapDiffCode,
     keepWrapColumns,
-    keepFind,
-    closeFind,
-    placeOf,
-    keepPlace,
+    keepDiffFind,
+    closeDiffFind,
+    diffPlaceOf,
+    keepDiffPlace,
     focusOf,
     keepFocus,
   } = useDiffActions();
   const keepTabPlace = useCallback(
-    (change: Partial<DiffPlace>) => keepPlace(tab, change),
-    [keepPlace, tab],
+    (change: Partial<DiffPlace>) => keepDiffPlace(tab, tab, change),
+    [keepDiffPlace, tab],
   );
   const view = useRef<HTMLDivElement>(null);
   const shownTab = compare?.tab;
@@ -202,12 +199,16 @@ export function CompareView({ tab }: { tab: string }) {
             language,
           }}
           measures={measures}
-          measuring={{ measureText, snapCode, keepWrapColumns }}
+          measuring={{
+            measureText: measureDiffText,
+            snapCode: snapDiffCode,
+            keepWrapColumns,
+          }}
           tab={{
             find,
-            keepFind: (next) => keepFind(tab, next),
-            closeFind: () => closeFind(tab),
-            place: placeOf(tab),
+            keepFind: (next) => keepDiffFind(tab, next),
+            closeFind: () => closeDiffFind(tab),
+            place: diffPlaceOf(tab, tab),
             keepPlace: keepTabPlace,
           }}
         />

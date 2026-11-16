@@ -13,9 +13,9 @@ const source = join(__dirname, '../../../..');
 const pageFolders = [
   'shell/page',
   'lib/page',
-  'tools/git/page',
-  'tools/commander/page',
-  'tools/terminal/page',
+  ...['tools', 'components'].flatMap((kind) =>
+    readdirSync(join(source, kind)).map((part) => `${kind}/${part}/page`),
+  ),
 ];
 
 function pageFiles(): { name: string; text: string }[] {

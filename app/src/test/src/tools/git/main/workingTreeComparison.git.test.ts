@@ -7,7 +7,7 @@ import {
   UntrackedPatches,
   workingTreePatch,
 } from '../../../../../tools/git/main/workingTreePatch';
-import { parsePatch } from '../../../../../lib/page/diff';
+import { parsePatch } from '../../../../../components/diff/page/diff';
 import {
   tempRepository,
   type TempRepository,

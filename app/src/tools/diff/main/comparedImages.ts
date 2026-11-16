@@ -1,7 +1,10 @@
 import { strings } from '../../../lib/shared/strings';
-import { imageSourceOf, imageType } from '../../../lib/shared/imageSources';
+import {
+  imageSourceOf,
+  imageType,
+} from '../../../components/diff/shared/imageSources';
 import { gitErrorText } from '../../../lib/main/errorText';
-import { ImageReads } from '../../../lib/main/imageReads';
+import { ImageReads } from '../../../components/diff/main/imageReads';
 import type { Log } from '../../../shell/main/log';
 import type { Compared } from '../../../shell/main/savedTabs';
 import { comparedImageRoute } from '../shared/images';
