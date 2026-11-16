@@ -337,4 +337,25 @@ suite('Commander store keeping its tabs', () => {
     other.getState().receive(withFiles(folder, ...names));
     assert.strictEqual(other.getState().view.panes.left?.marked.size, 0);
   });
+
+  test('lets go of what it keeps of the tab it shows once released, as soon as it shows another, rather than keeping it as left', () => {
+    const { store, release } = keepingViews();
+    const { receive } = store.getState();
+    receive({ type: 'show', tab: '1' });
+    receive(withFiles(folder, 'a.txt'));
+    store.getState().dispatch({ type: 'share', share: 0.3 });
+    store.getState().filterSide('left', 'a');
+    receive({ type: 'show', tab: '2', file: `${folder}\\a.txt` });
+    store.getState().choose({ mode: 'hex' });
+
+    assert.ok(release('2')?.includes('hex'));
+    receive({ type: 'show', tab: '1' });
+    assert.ok(release('1')?.includes('0.3'));
+    receive({ type: 'show', tab: '3' });
+
+    const { view } = store.getState();
+    assert.deepStrictEqual([...view.kept.keys()], []);
+    assert.deepStrictEqual([...view.viewers.keys()], []);
+    assert.deepStrictEqual([...store.getState().filters.keys()], []);
+  });
 });

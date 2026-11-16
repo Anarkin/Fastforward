@@ -134,6 +134,12 @@ export function createCommanderStore(
     const editor = editorActions(parts);
     const flat = flatActions(parts, flatOptions);
     const kept = keptTabActions(parts, scrolls, viewer, editor, views);
+    const shownWhenReleased = new Set<string>();
+    const letGo = (tab: string) => {
+      announced(() => set((state) => released(state, tab)));
+      scrolls.forget(`${tab} `);
+      forgetTab(tab);
+    };
     const forgetTab = (tab: string) => {
       viewer.forget(tab);
       editor.forget(tab);
@@ -189,6 +195,16 @@ export function createCommanderStore(
         announced(() => set((state) => received(state, message)));
         if (message.type === 'show' || message.type === 'hide') {
           kept.leaving(leaving);
+          if (
+            leaving !== undefined &&
+            leaving !== get().view.tab &&
+            shownWhenReleased.delete(leaving)
+          ) {
+            letGo(leaving);
+          }
+        }
+        if (message.type === 'show' || message.type === 'closed') {
+          shownWhenReleased.delete(message.tab);
         }
         if (message.type === 'closed') {
           kept.forget(message.tab);
@@ -416,9 +432,10 @@ export function createCommanderStore(
           return undefined;
         }
         const view = kept.release(tab);
-        announced(() => set((state) => released(state, tab)));
-        scrolls.forget(`${tab} `);
-        forgetTab(tab);
+        if (get().view.tab === tab) {
+          shownWhenReleased.add(tab);
+        }
+        letGo(tab);
         return view;
       },
       iconTicketOf: (url) => cameIcons.get(url),
