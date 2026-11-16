@@ -348,13 +348,24 @@ suite('Commander store', () => {
     const { posted, store } = shown();
     const actions = store.getState();
     actions.askPack('left', ['a.txt']);
-    assert.deepStrictEqual(store.getState().packing, {
+    const { form, ...asked } = store.getState().packing ?? {};
+    assert.deepStrictEqual(asked, {
       tab: '1',
       side: 'left',
       folder: left.folder,
       names: ['a.txt'],
       target: left.folder,
+      fresh: true,
     });
+    assert.deepStrictEqual(
+      {
+        format: form?.format,
+        password: form?.password,
+        testing: form?.testing,
+      },
+      { format: 'zip', password: '', testing: true },
+    );
+    assert.match(form?.archive ?? '', /a\.zip$/);
     store.getState().receive({ ...listing('D:\\backup'), side: 'right' });
     actions.askPack('left', ['a.txt', 'docs']);
     assert.strictEqual(store.getState().packing?.target, 'D:\\backup');

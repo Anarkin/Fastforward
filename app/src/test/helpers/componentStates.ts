@@ -11,36 +11,12 @@ export const keptStates: Readonly<Record<string, string>> = {
     'whether the go-to-line prompt is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
   'tools/editor/page/editorAsks.tsx typedLine':
     'the line typed in the go-to-line prompt, read once from keptEditings (editorActions.ts) as the prompt mounts',
-  'tools/commander/page/packPopup.tsx archive':
-    'the name of the archive of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx encryptNames':
-    'the choice to encrypt the names of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx format':
-    'the format of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx level':
-    'the compression of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx password':
-    'the password typed, never sent to the main process, of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx shown':
-    'the choice to show the password of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx splitting':
-    'the choice to cut it into volumes of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx testing':
-    'the choice to test it once packed of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx volume':
-    'the size of volumes of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx zipCipher':
-    'the zip cipher of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
-  'tools/commander/page/packPopup.tsx keptForm':
-    'the form of the pack dialog as it was kept, read once to leave its caret alone rather than select the name anew',
   'tools/viewer/page/pdfPreview.ts found':
     'the matches of the pdf find, counted anew by PDF.js as it searches again, stepped to the match kept per tab',
   'tools/viewer/page/pdfPreview.ts search':
     'the query and toggles of the pdf find, kept per tab in the kept viewers (pdfFind) and read back as mounted',
   'tools/viewer/page/pdfPreview.ts kept':
     'the pdf find of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
-  'tools/commander/page/transferPopup.tsx all':
-    'whether a clash answer is for the rest, seeded from clashAll of the store for the transfer and question asked',
   'tools/editor/page/editorFinding.ts finding':
     'whether the find is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
   'tools/editor/page/editorFinding.ts kept':
@@ -63,8 +39,6 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the sideways scroll of the bytes, read once from the viewer kept per tab (viewerKept.ts), kept by onLeft',
   'tools/viewer/page/hexBody.tsx topByte':
     'the byte at the top, kept per tab in the places of viewerActions.ts and read back through the viewer',
-  'tools/commander/page/paneTiles.ts fill':
-    'where thumbnails fill from, taken from the scroll kept per tab, side, folder and layout in ScrollPlaces',
   'tools/viewer/page/previewBody.tsx kept':
     'where the preview was scrolled, read once from the viewer kept per tab (viewerKept.ts) and scrolled back to',
   'tools/viewer/page/textBody.tsx keptSideways':
@@ -188,6 +162,10 @@ export const passingStates: Readonly<Record<string, string>> = {
     'true once the system icon has loaded, at once when its ticket came before',
   'tools/commander/page/paneCells.tsx ticket':
     'the ticket of a system icon, taken once from the icon tickets of the store',
+  'tools/commander/page/packPopup.tsx openedFresh':
+    'whether the pack dialog opened as asked for rather than shown again, to select the name of the archive only then; the form itself lives in the store',
+  'tools/commander/page/paneTiles.ts fill':
+    'where thumbnails fill from, set as the list scrolls and asked anew once shown again',
   'tools/commander/page/paneTiles.ts fitting':
     'the tiles that fit across, measured anew by a resize observer once mounted',
   'tools/viewer/page/pdfView.tsx failure':

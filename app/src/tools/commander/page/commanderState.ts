@@ -30,7 +30,7 @@ interface Transferring {
   readonly existing?: readonly string[];
 }
 
-export interface PackForm {
+interface PackForm {
   readonly format: PackFormat;
   readonly archive: string;
   readonly level: PackLevel;
@@ -50,6 +50,7 @@ interface Packing {
   readonly names: readonly string[];
   readonly target: string;
   readonly form?: PackForm;
+  readonly fresh?: true;
 }
 
 interface PackChoices {
@@ -251,7 +252,7 @@ export interface CommanderActions {
   readonly cancelPack: () => void;
   readonly keepTyped: (dialog: TypedDialog, typed: KeptTyped) => void;
   readonly keepPasswordTyped: (typed: KeptTyped) => void;
-  readonly keepPackForm: (form: PackForm) => void;
+  readonly keepPackForm: (change: Partial<PackForm>) => void;
   readonly keepClashAll: (all: boolean) => void;
   readonly testArchives: (side: Side, names: readonly string[]) => void;
   readonly stopTransfer: () => void;

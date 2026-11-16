@@ -12,13 +12,11 @@ import {
   packFormats,
   packLevels,
   zipCiphers,
-  type PackFormat,
   type PackLevel,
   type ZipCipher,
 } from '../shared/packing';
 import { sides } from '../shared/sides';
 import {
-  archiveFor,
   archiveThere,
   namedPart,
   packProblem,
@@ -60,91 +58,60 @@ function Choices<Choice extends string>({
   );
 }
 
-function PackForm({
-  names,
-  folder,
-  target,
-}: {
-  names: readonly string[];
-  folder: string;
-  target: string;
-}) {
-  const choices = useCommander((state) => state.packChoices);
+function PackForm({ names }: { names: readonly string[] }) {
   const platform = useCommander((state) => state.view.platform);
-  const onlyIsFolder = useCommander(
-    (state) =>
-      names.length === 1 &&
-      state.packing !== undefined &&
-      state.view.panes[state.packing.side]?.rows.some(
-        (row) => row.key === names[0] && row.entry?.folder === true,
-      ) === true,
-  );
-  const kept = useCommander((state) => state.packing?.form);
+  const form = useCommander((state) => state.packing?.form);
+  const fresh = useCommander((state) => state.packing?.fresh === true);
   const { pack, cancelPack, keepPackForm } = useCommanderActions();
   const { commander } = strings;
   const ids = useId();
   const field = useRef<HTMLInputElement>(null);
-  const [format, setFormat] = useState<PackFormat>(
-    kept?.format ?? choices.format,
-  );
-  const [archive, setArchive] = useState(
-    () =>
-      kept?.archive ??
-      archiveFor(names, folder, target, choices.format, platform, onlyIsFolder),
-  );
-  const [level, setLevel] = useState<PackLevel>(kept?.level ?? choices.level);
-  const [password, setPassword] = useState(kept?.password ?? '');
-  const [shown, setShown] = useState(kept?.shown ?? false);
-  const [encryptNames, setEncryptNames] = useState(kept?.encryptNames ?? false);
-  const [zipCipher, setZipCipher] = useState<ZipCipher>(
-    kept?.zipCipher ?? choices.zipCipher,
-  );
-  const [splitting, setSplitting] = useState(
-    kept?.splitting ?? choices.volume !== undefined,
-  );
-  const [testing, setTesting] = useState(kept?.testing ?? choices.test);
-  const [volume, setVolume] = useState(
-    kept?.volume ?? choices.volume ?? volumeSizes[0]?.size ?? '',
-  );
-  const [keptForm] = useState(kept);
+  const [openedFresh] = useState(fresh);
   useEffect(() => {
     const typed = field.current;
-    if (typed !== null && keptForm === undefined) {
+    if (typed !== null && openedFresh) {
       typed.focus();
       const { start, end } = namedPart(typed.value, platform);
       typed.setSelectionRange(start, end);
     } else {
       typed?.focus();
     }
-  }, [platform, keptForm]);
-  useEffect(
-    () =>
-      keepPackForm({
-        format,
-        archive,
-        level,
-        password,
-        shown,
-        encryptNames,
-        zipCipher,
-        splitting,
-        testing,
-        volume,
-      }),
-    [
-      keepPackForm,
-      format,
-      archive,
-      level,
-      password,
-      shown,
-      encryptNames,
-      zipCipher,
-      splitting,
-      testing,
-      volume,
-    ],
+  }, [platform, openedFresh]);
+  const there = useCommander((state) =>
+    sides.some((side) =>
+      archiveThere(
+        state.view.panes[side],
+        form?.archive.trim() ?? '',
+        form?.splitting === true,
+        platform,
+      ),
+    ),
   );
+  if (form === undefined) {
+    return null;
+  }
+  const {
+    format,
+    archive,
+    level,
+    password,
+    shown,
+    encryptNames,
+    zipCipher,
+    splitting,
+    testing,
+    volume,
+  } = form;
+  const setArchive = (typed: string) => keepPackForm({ archive: typed });
+  const setLevel = (chosen: PackLevel) => keepPackForm({ level: chosen });
+  const setPassword = (typed: string) => keepPackForm({ password: typed });
+  const setShown = (on: boolean) => keepPackForm({ shown: on });
+  const setEncryptNames = (on: boolean) => keepPackForm({ encryptNames: on });
+  const setZipCipher = (chosen: ZipCipher) =>
+    keepPackForm({ zipCipher: chosen });
+  const setSplitting = (on: boolean) => keepPackForm({ splitting: on });
+  const setTesting = (on: boolean) => keepPackForm({ testing: on });
+  const setVolume = (typed: string) => keepPackForm({ volume: typed });
   const problem = packProblem({
     archive,
     format,
@@ -153,11 +120,6 @@ function PackForm({
     volume,
     platform,
   });
-  const there = useCommander((state) =>
-    sides.some((side) =>
-      archiveThere(state.view.panes[side], archive.trim(), splitting, platform),
-    ),
-  );
   const encrypted = encrypts(format) && password !== '';
   return (
     <form
@@ -199,10 +161,12 @@ function PackForm({
           choices={packFormats}
           chosen={format}
           named={(each) => commander.packFormats[each]}
-          onChoose={(chosen) => {
-            setFormat(chosen);
-            setArchive((typed) => withFormat(typed.trim(), chosen));
-          }}
+          onChoose={(chosen) =>
+            keepPackForm({
+              format: chosen,
+              archive: withFormat(archive.trim(), chosen),
+            })
+          }
         />
         {compresses(format) && (
           <>
@@ -369,11 +333,7 @@ function PackDialog() {
             <CloseIcon />
           </button>
         </div>
-        <PackForm
-          names={packing.names}
-          folder={packing.folder}
-          target={packing.target}
-        />
+        <PackForm names={packing.names} />
       </div>
     </div>
   );

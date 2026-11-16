@@ -82,7 +82,7 @@ const place = count({ min: 0, integer: true });
 
 const direction = oneOf(directions);
 
-export const caretSchema: Schema<NonNullable<KeptFocus['selection']>> = {
+const caretSchema: Schema<NonNullable<KeptFocus['selection']>> = {
   decode: (value) => {
     if (!Array.isArray(value) || value.length !== 3) {
       return undefined;

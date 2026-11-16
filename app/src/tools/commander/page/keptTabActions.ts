@@ -7,10 +7,10 @@ import { filterKey, withoutTab } from './sideFilters';
 import { ViewKeeper, type KeptViews } from '../../../lib/page/viewKeeper';
 import {
   keptTabOf,
+  sidesKeptFrom,
   sidesKeptOf,
-  tabKeptOf,
+  sidesViewOf,
   type SidesKept,
-  type TabKept,
 } from './tabKept';
 import { reduceView } from './view';
 import { withoutParked } from './parkedDialogs';
@@ -44,25 +44,17 @@ export function keptTabActions(
   views: KeptViews,
 ) {
   const known = new Set<string>();
-  const keptOf = (tab: string): TabKept | undefined => {
+  const viewOf = (tab: string): string | undefined => {
     if (!known.has(tab)) {
       return undefined;
     }
     const kept = sidesKeptOf(get(), tab, scrolls);
-    return kept && { sides: kept };
+    return kept && sidesViewOf(kept);
   };
-  const keeping = new ViewKeeper(
-    views,
-    (tab) => {
-      const kept = keptOf(tab);
-      return kept === undefined ? undefined : JSON.stringify(kept);
-    },
-    () => get().view.tab,
-  );
+  const keeping = new ViewKeeper(views, viewOf, () => get().view.tab);
   const restore = (tab: string, value: string) => {
-    const kept = tabKeptOf(parsedOf(value), tab);
-    if (kept.sides !== undefined) {
-      const restored = kept.sides;
+    const restored = sidesKeptFrom(parsedOf(value), tab);
+    if (restored !== undefined) {
       set((state) => ({
         view: reduceView(state.view, {
           type: 'restore',

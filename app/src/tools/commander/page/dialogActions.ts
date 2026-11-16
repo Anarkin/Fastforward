@@ -6,6 +6,7 @@ import type { CommanderActions, CommanderState } from './commanderState';
 import { keysMatching } from './markPattern';
 import { baseNameOf } from './naming';
 import { shownRowsOf } from './shownRows';
+import { archiveFor, volumeSizes } from './packing';
 import { noAccessShown, withoutNoAccess } from './commanderReceived';
 
 export type DialogActions = Pick<
@@ -222,7 +223,41 @@ export function dialogActions({
           other !== undefined && other.archive === undefined
             ? other.folder
             : folder;
-        set({ packing: { tab, side, folder, names, target } });
+        const { packChoices: choices, view } = get();
+        const onlyIsFolder =
+          names.length === 1 &&
+          view.panes[side]?.rows.some(
+            (row) => row.key === names[0] && row.entry?.folder === true,
+          ) === true;
+        set({
+          packing: {
+            tab,
+            side,
+            folder,
+            names,
+            target,
+            fresh: true,
+            form: {
+              format: choices.format,
+              archive: archiveFor(
+                names,
+                folder,
+                target,
+                choices.format,
+                view.platform,
+                onlyIsFolder,
+              ),
+              level: choices.level,
+              password: '',
+              shown: false,
+              encryptNames: false,
+              zipCipher: choices.zipCipher,
+              splitting: choices.volume !== undefined,
+              testing: choices.test,
+              volume: choices.volume ?? volumeSizes[0]?.size ?? '',
+            },
+          },
+        });
       }),
     pack: ({
       archive,
@@ -335,12 +370,15 @@ export function dialogActions({
           ? state
           : { askingPassword: { ...state.askingPassword, typed } },
       ),
-    keepPackForm: (form) =>
-      set((state) =>
-        state.packing === undefined
-          ? state
-          : { packing: { ...state.packing, form } },
-      ),
+    keepPackForm: (change) =>
+      set((state) => {
+        const form = state.packing?.form;
+        if (state.packing === undefined || form === undefined) {
+          return state;
+        }
+        const { fresh: _fresh, ...packing } = state.packing;
+        return { packing: { ...packing, form: { ...form, ...change } } };
+      }),
     keepClashAll: (all) =>
       set((state) => {
         const clash = state.transfer?.clash;

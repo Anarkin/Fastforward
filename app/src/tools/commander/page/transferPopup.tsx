@@ -1,5 +1,5 @@
 import { joinedPath } from '../../../lib/page/pathLooks';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { useDismiss } from '../../../lib/page/dismiss';
@@ -41,15 +41,14 @@ function ClashBody({
   target: string;
 }) {
   const { answerClash, stopTransfer, keepClashAll } = useCommanderActions();
-  const keptAll = useCommander(
+  const all = useCommander(
     ({ clashAll, transfer }) =>
       clashAll !== undefined &&
       clashAll.transfer === transfer?.id &&
       clashAll.asked === clash.asked &&
       clashAll.all,
   );
-  const [all, setAll] = useState(keptAll);
-  useEffect(() => keepClashAll(all), [keepClashAll, all]);
+  const setAll = keepClashAll;
   const id = useId();
   const skip = useRef<HTMLButtonElement>(null);
   useEffect(() => skip.current?.focus(), []);

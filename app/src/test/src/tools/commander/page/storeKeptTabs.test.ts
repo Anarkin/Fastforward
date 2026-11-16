@@ -27,7 +27,18 @@ suite('Commander store keeping its tabs', () => {
           ? Object.keys(parsed)
           : parsed;
       }),
-      [['sides'], ''],
+      [
+        [
+          'active',
+          'share',
+          'layouts',
+          'panes',
+          'filters',
+          'scrolls',
+          'dialogs',
+        ],
+        '',
+      ],
     );
     assert.ok(released[0]?.includes('"query":"a"'));
 
@@ -134,22 +145,20 @@ suite('Commander store keeping its tabs', () => {
     hand(
       '1',
       JSON.stringify({
-        sides: {
-          active: 'up',
-          share: 7,
-          focus: { name: 3 },
-          layouts: { left: 'thumbnails', right: 'tiles' },
-          panes: { left: { folder: 1 }, right: { folder, marked: [1, 'b'] } },
-          filters: {
-            left: { query: 'a', options: { caseSensitive: 'yes' } },
-            right: { folder, query: 'b', options: plainSearch },
-          },
-          scrolls: [
-            [`left ${folder} details`, -1],
-            'x',
-            [`right ${folder} details`, 5],
-          ],
+        active: 'up',
+        share: 7,
+        focus: { name: 3 },
+        layouts: { left: 'thumbnails', right: 'tiles' },
+        panes: { left: { folder: 1 }, right: { folder, marked: [1, 'b'] } },
+        filters: {
+          left: { query: 'a', options: { caseSensitive: 'yes' } },
+          right: { folder, query: 'b', options: plainSearch },
         },
+        scrolls: [
+          [`left ${folder} details`, -1],
+          'x',
+          [`right ${folder} details`, 5],
+        ],
         editor: 'not for a commander tab',
       }),
     );

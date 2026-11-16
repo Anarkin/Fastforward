@@ -1,18 +1,14 @@
-import { focusSchema, type KeptFocus } from '../../../lib/page/keptFocus';
+import type { KeptFocus } from '../../../lib/page/keptFocus';
 import { sides, type Side } from '../shared/sides';
 import type { CommanderSource, PaneFilter } from './commanderState';
-import {
-  countOf,
-  fieldsOf,
-  listOf,
-  oneOf,
-  optionsOf,
-  textOf,
-  type Fields,
-} from './keptFields';
-import { defaultLayouts, layouts, type Layout } from './layouts';
+import { defaultLayouts, type Layout } from './layouts';
 import type { KeptMarks, PaneView } from './paneView';
-import { dialogsDecoded, dialogsOf } from './keptDialogs';
+import { dialogsOf } from './keptDialogs';
+import {
+  commanderViewSchema,
+  type KeptDialogs,
+  type SidesView,
+} from './tabView';
 import type { Dialogs } from './parkedDialogs';
 import type { ScrollPlaces } from './scrollPlaces';
 import { filterKey } from './sideFilters';
@@ -37,10 +33,6 @@ export interface SidesKept {
   readonly filters?: Partial<Record<Side, PaneFilter>>;
   readonly scrolls?: readonly (readonly [string, number])[];
   readonly dialogs?: Dialogs;
-}
-
-export interface TabKept {
-  readonly sides?: SidesKept;
 }
 
 const marksOf = (pane: PaneView): KeptMarks => ({
@@ -89,71 +81,6 @@ export function sidesKeptOf(
   };
 }
 
-const sideKeys = <T>(
-  value: unknown,
-  each: (item: unknown) => T | undefined,
-): Partial<Record<Side, T>> => {
-  const fields = fieldsOf(value);
-  const decoded: Partial<Record<Side, T>> = {};
-  for (const side of sides) {
-    const item = each(fields?.(side));
-    if (item !== undefined) {
-      decoded[side] = item;
-    }
-  }
-  return decoded;
-};
-
-function marksDecoded(value: unknown): KeptMarks | undefined {
-  const fields = fieldsOf(value);
-  const folder = textOf(fields?.('folder'));
-  return folder === undefined
-    ? undefined
-    : {
-        folder,
-        selected: textOf(fields?.('selected')),
-        marked: wholeMarks(listOf(fields?.('marked'), textOf) ?? []),
-      };
-}
-
-function filterDecoded(value: unknown): PaneFilter | undefined {
-  const fields = fieldsOf(value);
-  const query = textOf(fields?.('query'));
-  const options = optionsOf(fields?.('options'));
-  return query === undefined || options === undefined
-    ? undefined
-    : { folder: textOf(fields?.('folder')), query, options };
-}
-
-function scrollDecoded(value: unknown): readonly [string, number] | undefined {
-  if (!Array.isArray(value) || value.length !== 2) {
-    return undefined;
-  }
-  const key = textOf(value[0]);
-  const offset = countOf(value[1]);
-  return key === undefined || offset === undefined || offset < 0
-    ? undefined
-    : [key, offset];
-}
-
-const shareDecoded = (value: unknown) => {
-  const share = countOf(value);
-  return share !== undefined && share > 0 && share < 1 ? share : undefined;
-};
-
-function sidesDecoded(fields: Fields, tab: string): SidesKept {
-  return {
-    active: oneOf(sides, fields('active')),
-    share: shareDecoded(fields('share')),
-    focus: focusSchema.decode(fields('focus')),
-    layouts: sideKeys(fields('layouts'), (item) => oneOf(layouts, item)),
-    panes: sideKeys(fields('panes'), marksDecoded),
-    filters: sideKeys(fields('filters'), filterDecoded),
-    scrolls: listOf(fields('scrolls'), scrollDecoded) ?? [],
-    dialogs: dialogsDecoded(tab, fields('dialogs')),
-  };
-}
-
 export function keptTabOf(kept: SidesKept): KeptTab {
   return {
     active: kept.active ?? 'right',
@@ -165,11 +92,110 @@ export function keptTabOf(kept: SidesKept): KeptTab {
   };
 }
 
-export function tabKeptOf(value: unknown, tab: string): TabKept {
-  const fields = fieldsOf(value);
-  const part = (name: string) => fieldsOf(fields?.(name));
-  const sidesPart = part('sides');
+export function sidesViewOf(kept: SidesKept): string | undefined {
+  const encoded = commanderViewSchema.encode({
+    ...kept,
+    scrolls: kept.scrolls === undefined ? undefined : new Map(kept.scrolls),
+  });
+  return encoded === undefined ? undefined : JSON.stringify(encoded);
+}
+
+function marksFrom(
+  marks: NonNullable<NonNullable<SidesView['panes']>['left']> | undefined,
+): KeptMarks | undefined {
+  return (
+    marks && {
+      folder: marks.folder,
+      selected: marks.selected,
+      marked: wholeMarks(marks.marked ?? []),
+    }
+  );
+}
+
+function filterFrom(
+  filter: NonNullable<NonNullable<SidesView['filters']>['left']> | undefined,
+): PaneFilter | undefined {
+  return (
+    filter && {
+      folder: filter.folder,
+      query: filter.query,
+      options: filter.options,
+    }
+  );
+}
+
+function dialogsFrom(tab: string, kept: KeptDialogs | undefined): Dialogs {
+  const dialogs: { -readonly [K in keyof Dialogs]: Dialogs[K] } = {};
+  if (kept === undefined) {
+    return dialogs;
+  }
+  const { deleting, transferring, packing } = kept;
+  if (deleting !== undefined) {
+    dialogs.deleting = { ...deleting, tab };
+  }
+  if (transferring !== undefined) {
+    dialogs.transferring = { ...transferring, tab };
+  }
+  for (const slot of ['makingFolder', 'makingFile', 'goingTo'] as const) {
+    const prompt = kept[slot];
+    if (prompt !== undefined) {
+      dialogs[slot] = { ...prompt, tab };
+    }
+  }
+  if (kept.renaming !== undefined) {
+    dialogs.renaming = { ...kept.renaming, tab };
+  }
+  if (kept.markingPattern !== undefined) {
+    dialogs.markingPattern = { ...kept.markingPattern, tab };
+  }
+  if (packing !== undefined) {
+    const { form, ...rest } = packing;
+    dialogs.packing = {
+      ...rest,
+      tab,
+      ...(form !== undefined && {
+        form: {
+          ...form,
+          password: '',
+          shown: form.shown === true,
+          encryptNames: form.encryptNames === true,
+          splitting: form.splitting === true,
+          testing: form.testing !== false,
+        },
+      }),
+    };
+  }
+  return dialogs;
+}
+
+export function sidesKeptFrom(
+  value: unknown,
+  tab: string,
+): SidesKept | undefined {
+  const view = commanderViewSchema.decode(value);
+  if (view === undefined) {
+    return undefined;
+  }
+  const panes: Partial<Record<Side, KeptMarks>> = {};
+  const filters: Partial<Record<Side, PaneFilter>> = {};
+  for (const each of sides) {
+    const marks = marksFrom(view.panes?.[each]);
+    if (marks !== undefined) {
+      panes[each] = marks;
+    }
+    const filter = filterFrom(view.filters?.[each]);
+    if (filter !== undefined) {
+      filters[each] = filter;
+    }
+  }
   return {
-    sides: sidesPart && sidesDecoded(sidesPart, tab),
+    active: view.active,
+    share: view.share,
+    focus: view.focus,
+    layouts: view.layouts,
+    panes,
+    filters,
+    scrolls: view.scrolls === undefined ? [] : [...view.scrolls],
+    dialogs: dialogsFrom(tab, view.dialogs),
   };
 }
