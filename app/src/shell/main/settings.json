@@ -398,7 +398,7 @@
       "autoFetchMinutes": 1,
       "hideDimmedButtons": true,
       "keepGitRunning": true,
-      "columnWidths": [300, 250],
+      "columnWidths": [300, 300],
       "colors": {
         "light": {
           "icon": "#c63d1d",
