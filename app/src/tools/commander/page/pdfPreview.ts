@@ -7,7 +7,9 @@ import {
   type Search,
   type SearchOptions,
 } from '../../../lib/shared/searchOptions';
-import type { PdfFound, ShownPdf } from './pdfDocument';
+import type { ShownPdf } from './pdfDocument';
+import type { PdfFound } from './pdfFinds';
+import { KeptMatch } from './pdfKeptMatch';
 import { useCommanderActions } from './store';
 
 export function pdfFound(found: PdfFound | undefined): MatchesFound {
@@ -16,32 +18,6 @@ export function pdfFound(found: PdfFound | undefined): MatchesFound {
     matches: found?.total ?? 0,
     searching: found === undefined || !found.done,
   };
-}
-
-export function stepToKept(
-  found: PdfFound,
-  wanted: number | undefined,
-): -1 | 1 | undefined {
-  if (
-    wanted === undefined ||
-    found.current === 0 ||
-    found.current === wanted ||
-    wanted > found.total
-  ) {
-    return undefined;
-  }
-  return wanted > found.current ? 1 : -1;
-}
-
-export function keptPdfFound(
-  found: PdfFound,
-  wanted: number | undefined,
-): number | undefined {
-  return wanted === undefined ||
-    found.current === wanted ||
-    (found.done && wanted > found.total)
-    ? undefined
-    : wanted;
 }
 
 export interface PdfControls {
@@ -62,7 +38,7 @@ export function usePdfPreview(tab: string | undefined) {
   );
   const [{ query, options }, setSearch] = useState(kept?.search ?? noSearch);
   const [found, setFound] = useState<PdfFound>();
-  const wanted = useRef(kept?.current);
+  const [match] = useState(() => new KeptMatch(kept?.current));
   useEffect(() => flushPdfPlace, [flushPdfPlace]);
   const current = found?.current ?? 0;
   useEffect(() => {
@@ -70,14 +46,14 @@ export function usePdfPreview(tab: string | undefined) {
       keepViewer(tab, {
         pdfFind: {
           search: { query, options },
-          current: wanted.current ?? current,
+          current: match.kept ?? current,
         },
       });
     }
-  }, [tab, keepViewer, query, options, current]);
+  }, [tab, keepViewer, query, options, current, match]);
 
   const searchFor = (next: Search) => {
-    wanted.current = undefined;
+    match.drop();
     setSearch(next);
     setFound(undefined);
     if (next.query === '') {
@@ -101,11 +77,7 @@ export function usePdfPreview(tab: string | undefined) {
     },
     onFound: (next) => {
       setFound(next);
-      const step = stepToKept(next, wanted.current);
-      wanted.current = keptPdfFound(next, wanted.current);
-      if (step !== undefined) {
-        shown.current?.find(query, options, step);
-      }
+      match.found(next, (by) => shown.current?.find(query, options, by));
     },
     onShown: (opened) => {
       shown.current = opened;

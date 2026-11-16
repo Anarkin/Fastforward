@@ -7,7 +7,8 @@ import {
 } from 'react';
 import { wheeled, type Binding } from '../../../lib/shared/keymap';
 import type { PdfPlace } from '../shared/pdf';
-import type { PdfFound, ShownPdf } from './pdfDocument';
+import type { ShownPdf } from './pdfDocument';
+import type { PdfFound } from './pdfFinds';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 
 export function PdfPane({
@@ -61,7 +62,7 @@ export function PdfPane({
       element.focus();
     }
     if (reopened && queryEvent() !== '') {
-      foundEvent({ current: 0, total: 0, done: false });
+      foundEvent({ current: 0, total: 0, done: false, settled: false });
     }
     setFailure(undefined);
     const leaving = new AbortController();

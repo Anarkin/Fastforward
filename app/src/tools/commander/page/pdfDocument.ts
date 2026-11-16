@@ -18,14 +18,9 @@ import { strings } from '../../../lib/shared/strings';
 import { pdfPlaceOf, type PdfPlace } from '../shared/pdf';
 import { pdfText } from './pdfText';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
+import { reportFinds, type PdfFound } from './pdfFinds';
 
 const textLayerOn = 1;
-
-export interface PdfFound {
-  readonly current: number;
-  readonly total: number;
-  readonly done: boolean;
-}
 
 export interface ShownPdf {
   readonly fingerprint: string;
@@ -210,20 +205,13 @@ export async function showPdf(
       events.onPlace(fingerprint, place);
     }
   });
-  const found = ({
-    matchesCount,
-    state,
-  }: {
-    matchesCount?: { current: number; total: number };
-    state?: number;
-  }) =>
-    events.onFound({
-      current: matchesCount?.current ?? 0,
-      total: matchesCount?.total ?? 0,
-      done: state === undefined || state !== FindState.PENDING,
-    });
-  eventBus.on('updatefindmatchescount', found);
-  eventBus.on('updatefindcontrolstate', found);
+  reportFinds(
+    eventBus,
+    findController,
+    () => pdf.numPages,
+    FindState.PENDING,
+    (found) => events.onFound(found),
+  );
   viewer.setDocument(pdf);
   linkService.setDocument(pdf);
   return {

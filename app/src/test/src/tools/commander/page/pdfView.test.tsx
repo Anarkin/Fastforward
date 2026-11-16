@@ -9,9 +9,9 @@ import {
 import { viewerKeymap } from '../../../../../tools/commander/page/viewerKeymap';
 import type {
   PdfEvents,
-  PdfFound,
   ShownPdf,
 } from '../../../../../tools/commander/page/pdfDocument';
+import type { PdfFound } from '../../../../../tools/commander/page/pdfFinds';
 import { PdfPane } from '../../../../../tools/commander/page/pdfView';
 import { noop, waitFor } from '../../../../helpers/fixtures';
 
@@ -174,7 +174,9 @@ suite('PDF pane', () => {
         outside.ownerDocument.activeElement === outside,
         'the find kept the focus',
       );
-      assert.deepStrictEqual(founds, [{ current: 0, total: 0, done: false }]);
+      assert.deepStrictEqual(founds, [
+        { current: 0, total: 0, done: false, settled: false },
+      ]);
       const finds: [string, SearchOptions, number][] = [];
       await act(async () => {
         openings[1]?.shown.resolve({
