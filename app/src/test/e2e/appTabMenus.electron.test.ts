@@ -5,7 +5,7 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp } from './appLaunch';
-import { showTab, tabs } from './tabReturns';
+import { settledLooks, showTab, tabs } from './tabReturns';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
@@ -29,32 +29,53 @@ const toolMenus = {
   terminal: undefined,
 } as const;
 
+const countMenusOpened = () =>
+  page.evaluate(() => {
+    const { body } = document;
+    body.dataset.menusOpened = '0';
+    new MutationObserver((records) => {
+      const opened = records.flatMap((record) =>
+        [...record.addedNodes].filter(
+          (node) =>
+            node instanceof Element &&
+            (node.matches('.menu') || node.querySelector('.menu') !== null),
+        ),
+      ).length;
+      body.dataset.menusOpened = String(
+        Number(body.dataset.menusOpened) + opened,
+      );
+    }).observe(body, { childList: true, subtree: true });
+  });
+
+const menusOpened = () =>
+  page.evaluate(() => Number(document.body.dataset.menusOpened));
+
+async function shownAndSettled(index: number, what: string): Promise<void> {
+  await waitFor(async () => (await shownTab()) === index, what);
+  await settledLooks(page);
+}
+
 async function openedThenNextTab(
   index: number,
   trigger: string,
 ): Promise<void> {
   await showTab(page, index);
-  await page.waitForTimeout(500);
+  await settledLooks(page);
   const button = page.locator(trigger).first();
   await button.click();
   await page.locator('.menu .menu-item').first().waitFor();
   await page.locator('.menu .menu-item').first().focus();
+  const opened = await menusOpened();
+  assert.ok(opened > 0, 'the menus opened counted');
   await page.keyboard.press('Control+Tab');
   const what = `${trigger} of the ${kinds[index]} tab ${index}`;
-  await waitFor(
-    async () => (await shownTab()) === index + 1,
-    'the next tab shown',
-  );
-  await page.waitForTimeout(500);
+  await shownAndSettled(index + 1, 'the next tab shown');
   assert.strictEqual(await page.locator('.menu').count(), 0, what);
   await page.keyboard.press('Control+Shift+Tab');
-  await waitFor(
-    async () => (await shownTab()) === index,
-    'the tab shown again',
-  );
-  await page.waitForTimeout(500);
+  await shownAndSettled(index, 'the tab shown again');
   assert.strictEqual(await page.locator('.menu').count(), 0, what);
   assert.strictEqual(await button.getAttribute('aria-expanded'), 'false', what);
+  assert.strictEqual(await menusOpened(), opened, `${what} opened again`);
 }
 
 suite('Menus of a tab', () => {
@@ -90,6 +111,7 @@ suite('Menus of a tab', () => {
     app = await launchApp(profile);
     page = await app.firstWindow();
     await page.locator('.commander-pane').first().waitFor();
+    await countMenusOpened();
   });
 
   afterAll(async () => {
