@@ -1,5 +1,5 @@
 @import './sides.css';
-@import './editor.css';
+@import '../../editor/page/editor.css';
 @import '../../viewer/page/viewer.css';
 @import './tiles.css';
 @import './transferPopup.css';

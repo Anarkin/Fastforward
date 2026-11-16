@@ -48,7 +48,7 @@ suite('Shortcuts popup', () => {
     assert.strictEqual(entryFor('git'), 'git');
     assert.strictEqual(entryFor('git', { compare: true }), 'diff');
     assert.strictEqual(entryFor('git', {}, 'diff'), 'diff');
-    assert.strictEqual(entryFor('commander', { edit: true }), 'editor');
+    assert.strictEqual(entryFor('editor'), 'editor');
     assert.strictEqual(entryFor('terminal'), 'terminal');
     assert.strictEqual(entryFor(undefined), 'everywhere');
   });
@@ -97,7 +97,7 @@ suite('Shortcuts popup', () => {
     );
     assert.deepStrictEqual(
       textsOf(
-        shortcutsMarkup(<ShortcutsPopup />, 'commander', { edit: true }),
+        shortcutsMarkup(<ShortcutsPopup />, 'editor'),
         'shortcuts-heading',
       ),
       entry('editor').groups.map((group) => group.title),

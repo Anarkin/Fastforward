@@ -1,7 +1,7 @@
 import koffi from 'koffi';
 import type { LaunchHelper } from './elevated';
 import { helperArguments, type HelperAddress } from './helperProtocol';
-import type { Native } from './nativeCalls';
+import type { Native } from '../../../lib/main/nativeCalls';
 
 const flagNoUi = 0x400;
 const hidden = 0;

@@ -1,14 +1,9 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { afterEach, beforeEach, suite, test } from 'vitest';
-import type { Tab } from '../../../../../shell/main/toolContract';
+import { suite, test } from 'vitest';
 import type { Side } from '../../../../../tools/commander/shared/sides';
-import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
 import { commander, tab, forged } from './commanderFixtures';
 import { root, at, folder, file } from './entryFixtures';
-import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {
   test('opens a file in the app the system opens it with, a program by running it, staying in its folder, and says why one could not be opened', async () => {
@@ -280,59 +275,5 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(notices, [
       { level: 'info', message: strings.commander.nothingToCompare },
     ]);
-  });
-});
-
-suite('Commander tool in several windows', () => {
-  suite('viewing a file', () => {
-    let opened: string;
-
-    beforeEach(() => {
-      opened = tempFolder('commander');
-    });
-
-    afterEach(() => removeFolder(opened));
-
-    test('turns the tab of a file viewed into one editing it, starting at the line the viewer showed, or goes to the tab editing it already', async () => {
-      const notes = path.join(opened, 'notes.txt');
-      fs.writeFileSync(notes, 'one\ntwo\n');
-      const { tool, page, send, tabs, turned, edited } = commander({
-        [root]: [],
-      });
-      tabs.push({ id: '3', tool: 'viewer', root: notes });
-      await tool.editViewed(page, '3', notes, { byte: 4 });
-      assert.deepStrictEqual(turned, ['3']);
-      const editing: Tab = {
-        id: '3',
-        tool: 'commander',
-        root: notes,
-        edit: true,
-      };
-      tabs.splice(0, 1, editing);
-      await tool.show(page, editing);
-      await send({ type: 'readEdited', tab: '3' });
-      assert.strictEqual(page.of('editedText').at(-1)?.at, 4);
-
-      tabs.push({ id: '4', tool: 'viewer', root: notes });
-      await tool.editViewed(page, '4', notes, { byte: 0 });
-      assert.deepStrictEqual(turned, ['3']);
-      assert.deepStrictEqual(edited, [notes]);
-    });
-    test('edits no copy taken out of an archive or a commit to view it, saying why', async () => {
-      const { tool, page, tabs, turned, notices, copies } = commander({
-        [root]: [],
-      });
-      copies.folder = opened;
-      const copy = path.join(opened, 'viewed', 'ab12', 'notes.txt');
-      fs.mkdirSync(path.dirname(copy), { recursive: true });
-      fs.writeFileSync(copy, 'one\n');
-      tabs.push({ id: '3', tool: 'viewer', root: copy });
-      await tool.editViewed(page, '3', copy, { byte: 0 });
-      assert.deepStrictEqual(turned, []);
-      assert.deepStrictEqual(
-        notices.map((notice) => plainOf(notice.message)),
-        [plainOf(strings.editor.viewedCopy('notes.txt'))],
-      );
-    });
   });
 });

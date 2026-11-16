@@ -16,7 +16,7 @@ import {
 import {
   editorGroups,
   editorKeymap,
-} from '../../tools/commander/page/editorKeymap';
+} from '../../tools/editor/page/editorKeymap';
 import {
   terminalGroups,
   terminalKeymap,

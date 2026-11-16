@@ -48,16 +48,14 @@ suite('App editor tabs shown again', () => {
           { id: '1', tool: 'commander', root: opened },
           {
             id: '2',
-            tool: 'commander',
+            tool: 'editor',
             root: path.join(opened, 'edited.txt'),
-            edit: true,
           },
           { id: '3', tool: 'terminal', root: opened },
           {
             id: '4',
-            tool: 'commander',
+            tool: 'editor',
             root: path.join(opened, 'other.txt'),
-            edit: true,
           },
         ],
         activeTab: '2',

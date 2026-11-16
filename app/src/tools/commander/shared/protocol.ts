@@ -1,11 +1,8 @@
-import type { Sentence } from '../../../lib/shared/sentences';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths } from './columnWidths';
 import type { FileColor } from '../../../lib/shared/fileColors';
 import type { Sort, Sorts } from './sorts';
-import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';
 import type { ClashAnswer, TransferView } from './transfers';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import { isSide, type Side } from './sides';
 
 export interface ComparedFile {
@@ -54,56 +51,6 @@ export function isFolderCommand(value: unknown): value is FolderCommand {
   return folderCommands.some((command) => command === value);
 }
 
-export type EndingSource =
-  | {
-      readonly kind: 'editorConfig';
-      readonly ending?: LineEnding;
-      readonly file?: string;
-    }
-  | {
-      readonly kind: 'git';
-      readonly ending?: LineEnding;
-      readonly by?: 'eol' | 'core.autocrlf' | 'core.eol';
-    }
-  | {
-      readonly kind: 'extension';
-      readonly ending?: LineEnding;
-      readonly extension: string;
-    }
-  | { readonly kind: 'settings'; readonly ending: LineEnding };
-
-export type EncodingSource =
-  | { readonly kind: 'chosen'; readonly encoding?: TextEncoding }
-  | { readonly kind: 'bom'; readonly encoding?: TextEncoding }
-  | { readonly kind: 'utf16'; readonly encoding?: TextEncoding }
-  | { readonly kind: 'utf8'; readonly encoding?: TextEncoding }
-  | { readonly kind: 'codePage'; readonly encoding: TextEncoding }
-  | {
-      readonly kind: 'editorConfig';
-      readonly encoding?: TextEncoding;
-      readonly bom?: boolean;
-      readonly file?: string;
-    }
-  | {
-      readonly kind: 'settings';
-      readonly encoding: TextEncoding;
-      readonly bom: boolean;
-    };
-
-export interface TextShown {
-  readonly text: string;
-  readonly version: number;
-  readonly encoding: TextEncoding;
-  readonly bom: boolean;
-  readonly ending: LineEnding;
-  readonly strayEndings: readonly StrayEnding[];
-  readonly keptBytes: readonly KeptBytes[];
-  readonly indent?: string;
-  readonly fallbackIndent?: string;
-  readonly trimTrailingWhitespace?: true;
-  readonly insertFinalNewline?: true;
-}
-
 export type CommanderToHost =
   | {
       readonly type: 'editFile';
@@ -111,36 +58,6 @@ export type CommanderToHost =
       readonly side: Side;
       readonly folder: string;
       readonly name: string;
-    }
-  | { readonly type: 'readEdited'; readonly tab: string }
-  | {
-      readonly type: 'editText';
-      readonly tab: string;
-      readonly update: unknown;
-    }
-  | {
-      readonly type: 'editState';
-      readonly tab: string;
-      readonly version: number;
-      readonly state: string;
-    }
-  | {
-      readonly type: 'saveText';
-      readonly tab: string;
-      readonly overwriteReadOnly?: true;
-      readonly overwriteChanged?: true;
-    }
-  | { readonly type: 'reloadEdited'; readonly tab: string }
-  | {
-      readonly type: 'saveIn';
-      readonly tab: string;
-      readonly encoding: TextEncoding | 'auto';
-      readonly bom: boolean;
-    }
-  | {
-      readonly type: 'reopenIn';
-      readonly tab: string;
-      readonly encoding: TextEncoding | 'auto';
     }
   | {
       readonly type: 'open';
@@ -216,11 +133,6 @@ export type CommanderToHost =
       readonly side: Side;
       readonly folder: string;
       readonly name: string;
-    }
-  | {
-      readonly type: 'editSource';
-      readonly tab: string;
-      readonly file: string;
     }
   | {
       readonly type: 'testArchives';
@@ -416,7 +328,6 @@ export type CommanderToWebview =
       readonly thumbnailSize: number;
       readonly fileColors: readonly FileColor[];
       readonly bookmarks: readonly string[];
-      readonly closeBrackets?: true;
       readonly gitMissing?: true;
     }
   | { readonly type: 'drives'; readonly drives: readonly string[] }
@@ -424,42 +335,7 @@ export type CommanderToWebview =
   | {
       readonly type: 'show';
       readonly tab: string;
-      readonly file?: string;
-      readonly edit?: true;
     }
-  | {
-      readonly type: 'editing';
-      readonly tab: string;
-      readonly file: string;
-      readonly version?: number;
-      readonly encoding?: TextEncoding;
-      readonly bom?: true;
-      readonly onDisk?: {
-        readonly encoding: TextEncoding;
-        readonly bom: boolean;
-      };
-      readonly changed?: true;
-      readonly readOnly?: true;
-      readonly made?: true;
-      readonly error?: Sentence;
-      readonly endingSources?: readonly EndingSource[];
-      readonly encodingSources?: readonly EncodingSource[];
-    }
-  | {
-      readonly type: 'editedText';
-      readonly tab: string;
-      readonly shown: TextShown;
-      readonly state?: string;
-      readonly reloaded?: true;
-      readonly at?: number;
-    }
-  | {
-      readonly type: 'textChanged';
-      readonly tab: string;
-      readonly changed: boolean;
-    }
-  | { readonly type: 'askOverwrite'; readonly tab: string }
-  | { readonly type: 'askChangedOnDisk'; readonly tab: string }
   | { readonly type: 'hide' }
   | { readonly type: 'closed'; readonly tab: string }
   | {

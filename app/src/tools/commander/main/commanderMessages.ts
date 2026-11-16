@@ -3,7 +3,6 @@ import type { CommanderToHost } from '../shared/protocol';
 import { maxDroppedIcons } from '../shared/icons';
 import type { Sides } from './sides';
 import type { FileCommands } from './fileCommands';
-import type { Editing } from './editing';
 import type { Navigation } from './navigation';
 import type { SystemCommands } from './systemCommands';
 import type { ItemChanges } from './itemChanges';
@@ -26,7 +25,6 @@ export class CommanderMessages {
   constructor(
     private readonly sides: Sides,
     private readonly fileCommands: FileCommands,
-    private readonly editing: Editing,
     private readonly navigation: Navigation,
     private readonly systemCommands: SystemCommands,
     private readonly itemChanges: ItemChanges,
@@ -60,15 +58,6 @@ export class CommanderMessages {
           ),
           message.name,
         );
-      case 'readEdited':
-      case 'editText':
-      case 'editState':
-      case 'saveText':
-      case 'reloadEdited':
-      case 'saveIn':
-      case 'reopenIn':
-      case 'editSource':
-        return this.editing.receive(page, message);
       case 'open':
         return this.fileCommands.openEntry(
           page,

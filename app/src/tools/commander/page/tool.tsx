@@ -10,7 +10,6 @@ import {
 } from '../shared/protocol';
 import { sides } from '../shared/sides';
 import { Pane } from './pane';
-import { Editor } from './editor';
 import { followDrag } from '../../../lib/page/followDrag';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { CommanderPopups } from './commanderPopups';
@@ -38,10 +37,6 @@ export function CommanderTool({
     createCommanderStore(post, {}, undefined, dropFiles, views),
   );
   const tab = useStore(store, (state) => state.view.tab);
-  const editsFile = useStore(
-    store,
-    (state) => state.view.editing !== undefined,
-  );
   const activeSide = useStore(store, (state) => state.view.active);
   const share = useStore(store, (state) => state.view.share);
   const canGroupByColor = useStore(
@@ -81,7 +76,7 @@ export function CommanderTool({
   }, [store]);
 
   const shown = active && tab !== undefined;
-  const panesShown = shown && !editsFile;
+  const panesShown = shown;
 
   const listed = useStore(store, (state) =>
     sides.every((side) => state.view.panes[side] !== undefined),
@@ -190,18 +185,6 @@ export function CommanderTool({
     return null;
   }
   const resizer = <Resizer columns={columns} onShare={setShare} />;
-
-  if (editsFile) {
-    return (
-      <CommanderStore value={store}>
-        <div className="repository commander">
-          <div className="columns viewer-columns">
-            <Editor key={tab} />
-          </div>
-        </div>
-      </CommanderStore>
-    );
-  }
 
   return (
     <CommanderStore value={store}>

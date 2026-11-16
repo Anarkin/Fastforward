@@ -32,7 +32,7 @@ export function fakeShell<P extends Page>(page: P) {
       viewed.push(viewedFile);
       return Promise.resolve();
     },
-    openEdit: (_page, _tool, editedFile) => {
+    openEdit: (_page, editedFile) => {
       edited.push(editedFile);
       return Promise.resolve();
     },

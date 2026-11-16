@@ -98,6 +98,11 @@ export const caretSchema: Schema<NonNullable<KeptFocus['selection']>> = {
   encode: ([start, end, way]) => [start, end, way],
 };
 
+export const typedSchema: Schema<KeptTyped> = record({
+  value: text(),
+  selection: optional(caretSchema),
+});
+
 export const focusSchema: Schema<KeptFocus> = record({
   name: text(),
   selection: optional(caretSchema),

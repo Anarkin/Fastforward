@@ -13,7 +13,6 @@ export interface TabInfo {
   readonly folder?: string;
   readonly icon?: string;
   readonly root?: string;
-  readonly edit?: true;
   readonly compare?: true;
   readonly unsaved?: true;
 }

@@ -5,7 +5,8 @@ import { imageType, maxImageSize } from '../../../lib/shared/images';
 import { fileResponse } from '../../../lib/main/fileRanges';
 import { viewedFileOf } from '../shared/files';
 import { isPdf, pdfType } from '../shared/pdf';
-import { viewerOfIcon } from './icons';
+import { viewerIconRoute } from './icons';
+import { fileTabIcon } from '../../../lib/main/fileTabIcons';
 import { onSameVolume } from '../../../lib/main/volumes';
 
 export interface ServingAccess {
@@ -58,26 +59,12 @@ export class Serving {
     }
   }
 
-  async icon(url: URL): Promise<Response> {
-    const asked = viewerOfIcon(url);
-    const tab =
-      asked &&
-      this.tabs().find(
-        (each) =>
-          each.id === asked.tab &&
-          each.tool === 'viewer' &&
-          each.root === asked.file,
-      );
-    if (tab?.root === undefined) {
-      return notFound();
-    }
-    try {
-      const png = await this.access.fileIcon(tab.root);
-      return new Response(Buffer.from(png), {
-        headers: { 'content-type': 'image/png' },
-      });
-    } catch {
-      return notFound();
-    }
+  icon(url: URL): Promise<Response> {
+    return fileTabIcon(
+      viewerIconRoute,
+      url,
+      this.tabs().filter((tab) => tab.tool === 'viewer'),
+      this.access.fileIcon,
+    );
   }
 }

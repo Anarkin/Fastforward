@@ -1,7 +1,6 @@
 import { caretSchema, type KeptTyped } from '../../../lib/page/keptFocus';
 import {
   isSearchOptions,
-  type Search,
   type SearchOptions,
 } from '../../../lib/shared/searchOptions';
 
@@ -50,15 +49,6 @@ export function listOf<T>(
 
 export const optionsOf = (value: unknown): SearchOptions | undefined =>
   isSearchOptions(value) ? value : undefined;
-
-export function searchOf(value: unknown): Search | undefined {
-  const fields = fieldsOf(value);
-  const query = textOf(fields?.('query'));
-  const options = optionsOf(fields?.('options'));
-  return query === undefined || options === undefined
-    ? undefined
-    : { query, options };
-}
 
 export function keptTypedOf(value: unknown): KeptTyped | undefined {
   const fields = fieldsOf(value);

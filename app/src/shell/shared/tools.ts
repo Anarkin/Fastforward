@@ -11,7 +11,7 @@ import {
   editorEndings,
   indentStyles,
   type EditorSettings,
-} from '../../tools/commander/shared/editorSettings';
+} from '../../tools/editor/shared/editorSettings';
 import type { ImageView } from './views';
 import type {
   CommanderToHost,
@@ -21,6 +21,10 @@ import { type CommanderSettings } from '../../tools/commander/shared/settings';
 import { fileColorProblems } from '../../tools/commander/shared/fileColors';
 import { groupStandIns } from '../../lib/shared/fileColors';
 import { sortColumns } from '../../tools/commander/shared/sorts';
+import type {
+  EditorToHost,
+  EditorToWebview,
+} from '../../tools/editor/shared/protocol';
 import type {
   ViewerToHost,
   ViewerToWebview,
@@ -34,7 +38,13 @@ import {
   type TerminalSettings,
 } from '../../tools/terminal/shared/settings';
 
-export const tools = ['terminal', 'commander', 'git', 'viewer'] as const;
+export const tools = [
+  'terminal',
+  'commander',
+  'git',
+  'viewer',
+  'editor',
+] as const;
 
 export type ToolId = (typeof tools)[number];
 
@@ -60,6 +70,7 @@ export const confirmsClose: Readonly<Record<ToolId, boolean>> = {
   commander: false,
   git: false,
   viewer: false,
+  editor: false,
 };
 
 export function isTool(value: unknown): value is ToolId {
@@ -82,6 +93,10 @@ interface ToolMessages {
   readonly viewer: {
     readonly toHost: ViewerToHost;
     readonly toWebview: ViewerToWebview;
+  };
+  readonly editor: {
+    readonly toHost: EditorToHost;
+    readonly toWebview: EditorToWebview;
   };
 }
 

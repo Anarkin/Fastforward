@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import type { Tab } from '../../../shell/main/toolContract';
 import type { Icons } from './icons';
-import { iconSourceOf, iconTicketOf, viewerOfIcon } from '../shared/icons';
+import { iconSourceOf, iconTicketOf } from '../shared/icons';
 import { type Sides } from './sides';
 import { listedIn } from './listedEntries';
 
@@ -13,18 +13,6 @@ export class Serving {
   ) {}
 
   async icon(url: URL): Promise<Response> {
-    const viewer = viewerOfIcon(url);
-    if (viewer !== undefined) {
-      const tab = this.tabs().find(
-        (each) =>
-          each.id === viewer.tab &&
-          each.edit === true &&
-          each.root === viewer.file,
-      );
-      return tab?.root === undefined
-        ? new Response(null, { status: 404 })
-        : this.iconResponse(tab.root);
-    }
     const source = iconSourceOf(url);
     const pane = source && this.sides.panes.get(source.tab)?.[source.side];
     const entry = listedIn(pane, source?.name);

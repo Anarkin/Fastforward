@@ -14,6 +14,7 @@ import { nodeFileSystem } from '../../tools/commander/main/nodeFileSystem';
 import { isRepository } from '../../tools/commander/main/repositories';
 import { CommanderTool } from '../../tools/commander/main/tool';
 import { ViewerTool } from '../../tools/viewer/main/tool';
+import { EditorTool } from '../../tools/editor/main/tool';
 import { TerminalTool } from '../../tools/terminal/main/tool';
 import type { HostListener } from '../../tools/terminal/main/hostLink';
 import {
@@ -209,6 +210,15 @@ export function newView(
         fileIcon: () => Promise.resolve(new Uint8Array()),
         editViewed: () => Promise.resolve(),
         closed: () => undefined,
+      }),
+      editor: new EditorTool({
+        watch: () => () => {},
+        codePage: () => Promise.resolve('windows-1252'),
+        closesBrackets: () => false,
+        fileIcon: () => Promise.resolve(new Uint8Array()),
+        viewedCopy: () => false,
+        readOnlyCopy: () => false,
+        copySaved: () => undefined,
       }),
     }),
   );

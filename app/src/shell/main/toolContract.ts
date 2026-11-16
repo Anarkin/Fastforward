@@ -39,7 +39,7 @@ export interface ShellAccess {
     reuse: boolean,
   ): Promise<void>;
   openView(page: Page, file: string): Promise<void>;
-  openEdit(page: Page, tool: ToolId, file: string): Promise<void>;
+  openEdit(page: Page, file: string): Promise<void>;
   editViewed(page: Page, tab: string): Promise<void>;
   openCompare(page: Page, tool: ToolId, compare: Compared): Promise<void>;
   openFolders(

@@ -36,6 +36,7 @@ const respond = appRoutes(
       icon: () => servedDrawing(),
       file: (_url, range) => servedDrawing(range),
     },
+    editor: { icon: () => servedDrawing() },
   }),
   () =>
     Promise.resolve(

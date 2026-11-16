@@ -1,5 +1,5 @@
 import koffi from 'koffi';
-import { textOf } from './nativeCalls';
+import { textOf } from '../../../lib/main/nativeCalls';
 import {
   comMethod,
   guid,

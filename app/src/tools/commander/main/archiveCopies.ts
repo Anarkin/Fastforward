@@ -7,7 +7,6 @@ import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { sameRoot } from '../../../lib/main/paths';
 import type { WatchFolder } from '../../../lib/main/watch';
 import { archiveJob } from './archiveJobs';
-import type { Editing } from './editing';
 import type { Transfers } from './transfers';
 import { type Pane, type ShownPane, type Sides } from './sides';
 import { listedIn } from './listedEntries';
@@ -21,6 +20,10 @@ export interface ArchiveCopiesAccess {
   readonly archives?: ArchiveAccess;
   readonly viewedCopies?: string;
   readonly watch: WatchFolder;
+  readonly editRefusal?: (
+    file: string,
+    named?: string,
+  ) => Promise<Sentence | undefined>;
 }
 
 export interface ArchiveCopiesHost {
@@ -59,7 +62,6 @@ export class ArchiveCopies {
     private readonly access: ArchiveCopiesAccess,
     private readonly sides: Sides,
     private readonly passwords: ArchivePasswords,
-    private readonly editing: Editing,
     private readonly transfers: Transfers,
     private readonly host: ArchiveCopiesHost,
   ) {}
@@ -156,11 +158,7 @@ export class ArchiveCopies {
       .shell()
       .tabs()
       .flatMap((open) =>
-        open.tool === 'commander' &&
-        open.edit === true &&
-        open.root !== undefined
-          ? [open.root]
-          : [],
+        open.tool === 'editor' && open.root !== undefined ? [open.root] : [],
       );
     for (const [copy, edited] of this.editedCopies) {
       if (
@@ -181,7 +179,7 @@ export class ArchiveCopies {
   ): Promise<void> {
     const editedCopy = this.editedCopyOf(shown.pane.folder, name);
     if (editedCopy !== undefined) {
-      await this.host.shell().openEdit(page, 'commander', editedCopy);
+      await this.host.shell().openEdit(page, editedCopy);
       return;
     }
     const { viewedCopies } = this.access;
@@ -197,7 +195,7 @@ export class ArchiveCopies {
     if (copy === undefined) {
       return;
     }
-    const refusal = await this.editing.refusal(copy, name);
+    const refusal = await this.access.editRefusal?.(copy, name);
     if (refusal !== undefined) {
       this.host.shell().notice(page, { level: 'error', message: refusal });
       return;
@@ -206,7 +204,7 @@ export class ArchiveCopies {
     if (putBack !== undefined) {
       this.editedCopies.set(copy, { ...putBack, name });
     }
-    await this.host.shell().openEdit(page, 'commander', copy);
+    await this.host.shell().openEdit(page, copy);
   }
 
   async newFileInArchive(
@@ -220,7 +218,7 @@ export class ArchiveCopies {
     }
     const editedCopy = this.editedCopyOf(shown.pane.folder, name);
     if (editedCopy !== undefined) {
-      await this.host.shell().openEdit(page, 'commander', editedCopy);
+      await this.host.shell().openEdit(page, editedCopy);
       return;
     }
     const { archives, viewedCopies } = this.access;
@@ -246,7 +244,7 @@ export class ArchiveCopies {
       inner: inside.inner,
       name,
     });
-    await this.host.shell().openEdit(page, 'commander', copy);
+    await this.host.shell().openEdit(page, copy);
   }
 
   editedCopySaved(copy: string): void {

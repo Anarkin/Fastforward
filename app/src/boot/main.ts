@@ -54,6 +54,8 @@ import { gitToolOf } from './gitHost';
 import { terminalToolOf } from './terminalHost';
 import { commanderToolOf } from './commanderHost';
 import { viewerToolOf } from './viewerHost';
+import { editorToolOf } from './editorHost';
+import type { EditorTool } from '../tools/editor/main/tool';
 import { shellHostOf } from './shellHost';
 
 const dist = __dirname;
@@ -156,6 +158,7 @@ async function start(asked: readonly string[]): Promise<void> {
     git: GitTool;
     commander: CommanderTool;
     viewer: ViewerTool;
+    editor: EditorTool;
   }>();
   serveApp(dist, () => userSettings.settings, views.promise);
   setMenu();
@@ -258,7 +261,7 @@ async function start(asked: readonly string[]): Promise<void> {
     process.env,
   );
   const viewedRoots = storage.savedTabs.flatMap((tab) =>
-    (tab.tool === 'viewer' || tab.edit === true) && tab.root !== undefined
+    (tab.tool === 'viewer' || tab.tool === 'editor') && tab.root !== undefined
       ? [tab.root]
       : [],
   );
@@ -295,9 +298,15 @@ async function start(asked: readonly string[]): Promise<void> {
     git,
     gitTool,
     windows,
-    defaultSettingsCopy,
     archiveWork,
     viewedFiles,
+    editRefusal: (file, named) => editorTool.refusal(file, named),
+  });
+  const editorTool = editorToolOf({
+    userSettings,
+    git,
+    defaultSettingsCopy,
+    commanderTool,
   });
   const shellHost = shellHostOf({
     dist,
@@ -313,12 +322,13 @@ async function start(asked: readonly string[]): Promise<void> {
     commandPlace,
     windows,
   });
-  const viewerTool = viewerToolOf({ pdfPlaces, commanderTool });
+  const viewerTool = viewerToolOf({ pdfPlaces, commanderTool, editorTool });
   const view = new Shell(log, storage, shellHost, {
     terminal: terminalTool,
     commander: commanderTool,
     git: gitTool,
     viewer: viewerTool,
+    editor: editorTool,
   });
   git.whenFound((found) => {
     logGit(log, found);
@@ -332,6 +342,7 @@ async function start(asked: readonly string[]): Promise<void> {
     git: gitTool,
     commander: commanderTool,
     viewer: viewerTool,
+    editor: editorTool,
   });
   asking = view;
   const applySettings = () => {

@@ -47,11 +47,13 @@ export interface Search {
 
 export const noSearch: Search = { query: '', options: plainSearch };
 
+export const searchOptionsSchema: Schema<SearchOptions> = record({
+  caseSensitive: flag(),
+  wholeWord: flag(),
+  regex: flag(),
+});
+
 export const searchSchema: Schema<Search> = record({
   query: text(),
-  options: record({
-    caseSensitive: flag(),
-    wholeWord: flag(),
-    regex: flag(),
-  }),
+  options: searchOptionsSchema,
 });

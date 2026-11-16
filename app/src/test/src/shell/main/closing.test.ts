@@ -26,6 +26,7 @@ suite('Quitting and closing windows', () => {
         commander: saying(),
         git: saying(),
         viewer: saying(),
+        editor: saying(),
       }),
       undefined,
     );
@@ -35,6 +36,7 @@ suite('Quitting and closing windows', () => {
         commander: saying('A copy runs.'),
         git: saying('A clone runs.'),
         viewer: saying(),
+        editor: saying(),
       }),
       'A copy runs. A clone runs.',
     );
@@ -82,13 +84,13 @@ suite('Quitting and closing windows', () => {
             view.page.tabs?.tabs.find((each) => each.root === file)?.id ?? '';
           await view.connection.receive({
             type: 'tool',
-            tool: 'commander',
+            tool: 'editor',
             message: { type: 'readEdited', tab },
           });
           assert.strictEqual(shell.asksBeforeQuit(), false);
           await view.connection.receive({
             type: 'tool',
-            tool: 'commander',
+            tool: 'editor',
             message: {
               type: 'editText',
               tab,
@@ -142,12 +144,12 @@ suite('Quitting and closing windows', () => {
           const edit = async (tab: string, version: number) => {
             await view.connection.receive({
               type: 'tool',
-              tool: 'commander',
+              tool: 'editor',
               message: { type: 'readEdited', tab },
             });
             await view.connection.receive({
               type: 'tool',
-              tool: 'commander',
+              tool: 'editor',
               message: {
                 type: 'editText',
                 tab,
@@ -203,12 +205,12 @@ suite('Quitting and closing windows', () => {
         second.page.tabs?.tabs.find((each) => each.root === file)?.id ?? '';
       await second.connection.receive({
         type: 'tool',
-        tool: 'commander',
+        tool: 'editor',
         message: { type: 'readEdited', tab },
       });
       await second.connection.receive({
         type: 'tool',
-        tool: 'commander',
+        tool: 'editor',
         message: {
           type: 'editText',
           tab,

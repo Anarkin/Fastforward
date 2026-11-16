@@ -1,5 +1,5 @@
 import type { Store } from '../../../shell/main/stateFile';
-import type { EndingSource } from '../shared/protocol';
+import type { Sentence } from '../../../lib/shared/sentences';
 import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import type { CommanderSettings } from '../shared/settings';
 import type { Sorts } from '../shared/sorts';
@@ -10,8 +10,6 @@ import type { WatchTree } from './watchTree';
 import type { ContentReader } from './duplicates';
 import type { ArchiveAccess } from './archives';
 import type { ElevatedFileSystem } from './elevated';
-import type { TextDefaults } from './textDefaults';
-import type { Saved } from './fileSaving';
 import type { ConnectTransfer } from './transfers';
 import type { SizeWalker } from './sizeWalk';
 import type { Thumbnails } from './thumbnailServing';
@@ -19,7 +17,6 @@ import type { Thumbnails } from './thumbnailServing';
 export interface CommanderAccess {
   readonly fileSystem: () => Promise<LocalFileSystem>;
   readonly settings: () => CommanderSettings;
-  readonly closesBrackets?: () => boolean;
   readonly defaultColumns: () => ColumnWidths;
   readonly saveShowHidden: (shown: boolean) => Promise<void>;
   readonly saveColumns: (columns: ColumnWidths) => Promise<void>;
@@ -40,17 +37,10 @@ export interface CommanderAccess {
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly platform: NodeJS.Platform;
   readonly codePage: () => Promise<TextEncoding>;
-  readonly saveEdited?: (
+  readonly editRefusal?: (
     file: string,
-    bytes: Uint8Array,
-    overwriteReadOnly: boolean,
-  ) => Promise<Saved>;
-  readonly readOnlyFile?: (file: string) => boolean;
-  readonly editorDefaults?: (
-    file: string,
-    asksGit: boolean,
-  ) => Promise<TextDefaults>;
-  readonly editorSources?: (file: string) => Promise<readonly EndingSource[]>;
+    named?: string,
+  ) => Promise<Sentence | undefined>;
   readonly elevate?: () => Promise<ElevatedFileSystem | undefined>;
   readonly realPath: (link: string) => Promise<string>;
   readonly openFile?: (file: string) => Promise<string>;

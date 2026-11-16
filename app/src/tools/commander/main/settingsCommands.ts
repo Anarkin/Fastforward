@@ -25,7 +25,6 @@ export type SettingsCommandsAccess = Pick<
   | 'defaultColumns'
   | 'elevate'
   | 'platform'
-  | 'closesBrackets'
   | 'gitMissing'
 >;
 
@@ -113,7 +112,6 @@ export class SettingsCommands {
       thumbnailSize: heldBox(thumbnailSize),
       fileColors,
       bookmarks: shownBookmarks(bookmarks, this.bookmarkSystem),
-      ...(this.access.closesBrackets?.() === true && { closeBrackets: true }),
       ...(this.access.gitMissing?.() === true && { gitMissing: true }),
     });
   }

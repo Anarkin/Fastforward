@@ -4,6 +4,8 @@ import { themeCss } from '../shell/main/theme';
 import { viewedFileRoute } from '../tools/viewer/shared/files';
 import { viewerIconRoute } from '../tools/viewer/main/icons';
 import type { ViewerTool } from '../tools/viewer/main/tool';
+import type { EditorTool } from '../tools/editor/main/tool';
+import { editorIconRoute } from '../tools/editor/main/icons';
 import { iconRoute } from '../tools/commander/shared/icons';
 import { thumbnailRoute } from '../tools/commander/shared/thumbnails';
 import type { CommanderTool } from '../tools/commander/main/tool';
@@ -15,6 +17,7 @@ export interface RoutedTools {
   readonly git: Pick<GitTool, 'image'>;
   readonly commander: Pick<CommanderTool, 'icon' | 'thumbnail'>;
   readonly viewer: Pick<ViewerTool, 'icon' | 'file'>;
+  readonly editor: Pick<EditorTool, 'icon'>;
 }
 
 const fileHeaders = {
@@ -60,6 +63,9 @@ export function appRoutes(
       return tools
         .then(({ commander }) => commander.thumbnail(url))
         .then(servedFile);
+    }
+    if (url.pathname === editorIconRoute) {
+      return tools.then(({ editor }) => editor.icon(url)).then(servedFile);
     }
     if (url.pathname === viewerIconRoute) {
       return tools.then(({ viewer }) => viewer.icon(url)).then(servedFile);

@@ -1,6 +1,6 @@
 import koffi from 'koffi';
 import { recycleBinOff, type Hive, type WindowsRegistry } from './recycleBin';
-import { called, textOf } from './nativeCalls';
+import { called, textOf } from '../../../lib/main/nativeCalls';
 
 const hives: Record<Hive, number> = {
   currentUser: 0x8000_0001 | 0,

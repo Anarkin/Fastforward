@@ -91,7 +91,6 @@ export function commander(
   const contentReads: string[] = [];
   const binsOff = new Set<string>();
   const thumbnailsFull = { now: false };
-  const closing = { now: false };
   const thumbnailWritesFail = { now: false };
   const repositories = new Set<string>();
   const repositoriesAsked: string[] = [];
@@ -304,7 +303,6 @@ export function commander(
       };
     },
     archives,
-    closesBrackets: () => closing.now,
     get viewedCopies() {
       return copies.folder === ''
         ? undefined
@@ -435,7 +433,6 @@ export function commander(
     binsOff,
     thumbnailsFull,
     thumbnailWritesFail,
-    closing,
     settings,
     repositories,
     repositoriesAsked,

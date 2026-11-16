@@ -1,18 +1,7 @@
 import { type CommanderToWebview } from '../shared/protocol';
 import type { Side } from '../shared/sides';
 import type { CommanderSource } from './commanderState';
-import type { ToEditor } from './editorState';
 import { reduceView } from './view';
-
-const editorStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
-  ToEditor['type']
->(['editedText', 'askOverwrite', 'askChangedOnDisk']);
-
-export function isEditorStream(
-  message: CommanderToWebview,
-): message is ToEditor {
-  return editorStreams.has(message.type);
-}
 
 export function readingKey(tab: string | undefined, side: Side): string {
   return `${tab ?? ''} ${side}`;
@@ -22,31 +11,7 @@ export function received(
   state: CommanderSource,
   message: CommanderToWebview,
 ): Partial<CommanderSource> {
-  if (isEditorStream(message)) {
-    return state;
-  }
   switch (message.type) {
-    case 'editing':
-      return {
-        edited: {
-          tab: message.tab,
-          file: message.file,
-          version: message.version,
-          encoding: message.encoding,
-          bom: message.bom === true,
-          onDisk: message.onDisk,
-          changed: message.changed === true,
-          readOnly: message.readOnly === true,
-          made: message.made === true,
-          error: message.error,
-          endingSources: message.endingSources,
-          encodingSources: message.encodingSources,
-        },
-      };
-    case 'textChanged':
-      return state.edited?.tab === message.tab
-        ? { edited: { ...state.edited, changed: message.changed } }
-        : state;
     case 'drives':
       return { drives: message.drives };
     case 'transfer':
@@ -99,7 +64,6 @@ export function received(
       const view = reduceView(state.view, message);
       return {
         ...(view !== state.view && { view }),
-        ...(state.edited !== undefined && { edited: undefined }),
       };
     }
     case 'closed': {

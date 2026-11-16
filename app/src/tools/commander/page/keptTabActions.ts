@@ -9,22 +9,11 @@ import {
   keptTabOf,
   sidesKeptOf,
   tabKeptOf,
-  type EditorKept,
   type SidesKept,
   type TabKept,
 } from './tabKept';
 import { reduceView } from './view';
 import { withoutParked } from './parkedDialogs';
-
-type TabKind = 'sides' | 'editor';
-
-interface Memory<T> {
-  readonly kept: (tab: string) => T;
-  readonly restore: (tab: string, kept: T) => void;
-}
-
-const kindOf = ({ file, edit }: CommanderToWebviewOf<'show'>): TabKind =>
-  file !== undefined && edit === true ? 'editor' : 'sides';
 
 function withFilters(
   filters: ReadonlyMap<string, PaneFilter>,
@@ -41,7 +30,7 @@ function withFilters(
   return next;
 }
 
-export function parsedOf(kept: string): unknown {
+function parsedOf(kept: string): unknown {
   try {
     return JSON.parse(kept);
   } catch {
@@ -52,21 +41,15 @@ export function parsedOf(kept: string): unknown {
 export function keptTabActions(
   { set, get }: StoreParts,
   scrolls: ScrollPlaces,
-  editor: Memory<EditorKept>,
   views: KeptViews,
 ) {
-  const kinds = new Map<string, TabKind>();
+  const known = new Set<string>();
   const keptOf = (tab: string): TabKept | undefined => {
-    switch (kinds.get(tab)) {
-      case 'sides': {
-        const kept = sidesKeptOf(get(), tab, scrolls);
-        return kept && { sides: kept };
-      }
-      case 'editor':
-        return { editor: editor.kept(tab) };
-      default:
-        return undefined;
+    if (!known.has(tab)) {
+      return undefined;
     }
+    const kept = sidesKeptOf(get(), tab, scrolls);
+    return kept && { sides: kept };
   };
   const keeping = new ViewKeeper(
     views,
@@ -76,9 +59,9 @@ export function keptTabActions(
     },
     () => get().view.tab,
   );
-  const restore = (tab: string, kind: TabKind, value: string) => {
+  const restore = (tab: string, value: string) => {
     const kept = tabKeptOf(parsedOf(value), tab);
-    if (kind === 'sides' && kept.sides !== undefined) {
+    if (kept.sides !== undefined) {
       const restored = kept.sides;
       set((state) => ({
         view: reduceView(state.view, {
@@ -97,22 +80,19 @@ export function keptTabActions(
       for (const [key, offset] of restored.scrolls ?? []) {
         scrolls.keep(`${tab} ${key}`, offset);
       }
-    } else if (kind === 'editor' && kept.editor !== undefined) {
-      editor.restore(tab, kept.editor);
     }
   };
   return {
     changed: (tab: string | undefined) => keeping.changed(tab),
     flush: () => keeping.flush(),
     shown: (message: CommanderToWebviewOf<'show'>) => {
-      const kind = kindOf(message);
-      kinds.set(message.tab, kind);
+      known.add(message.tab);
       const view =
         get().view.tab === message.tab
           ? undefined
           : keeping.handed(message.tab);
       if (view !== undefined) {
-        restore(message.tab, kind, view);
+        restore(message.tab, view);
       }
     },
     leaving: (tab: string | undefined) => {
@@ -120,15 +100,15 @@ export function keptTabActions(
         keeping.left(tab);
       }
     },
-    knows: (tab: string) => kinds.has(tab),
+    knows: (tab: string) => known.has(tab),
     release: (tab: string) => {
       const view = keeping.release(tab);
-      kinds.delete(tab);
+      known.delete(tab);
       return view;
     },
     forget: (tab: string) => {
       keeping.forget(tab);
-      kinds.delete(tab);
+      known.delete(tab);
     },
   };
 }

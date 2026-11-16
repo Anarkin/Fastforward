@@ -3,15 +3,12 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
-import { sameRoot } from '../../../lib/main/paths';
 import {
   isFolderCommand,
   parentFolder,
   type CommanderToHost,
 } from '../shared/protocol';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import { type Side } from '../shared/sides';
-import type { Editing } from './editing';
 import { nameProblem } from '../shared/names';
 import { type Pane, type ShownPane, type Sides, type Listing } from './sides';
 import { listedIn } from './listedEntries';
@@ -27,6 +24,7 @@ export type FileCommandsAccess = Pick<
   | 'platform'
   | 'cloneInto'
   | 'initRepository'
+  | 'editRefusal'
 >;
 
 export interface FileCommandsHost {
@@ -47,7 +45,6 @@ export class FileCommands {
     private readonly access: FileCommandsAccess,
     private readonly sides: Sides,
     private readonly copies: ArchiveCopies,
-    private readonly editing: Editing,
     private readonly host: FileCommandsHost,
   ) {}
 
@@ -171,44 +168,12 @@ export class FileCommands {
       ? strings.editor.folder(file)
       : shown.pane.elevated === true
         ? strings.editor.asAdministrator(file)
-        : await this.editing.refusal(file);
+        : await this.access.editRefusal?.(file);
     if (refusal !== undefined) {
       this.host.shell().notice(page, { level: 'error', message: refusal });
       return;
     }
-    await this.host.shell().openEdit(page, 'commander', file);
-  }
-
-  async editViewed(
-    page: Page,
-    tab: string,
-    file: string,
-    at: { readonly byte: number; readonly encoding?: TextEncoding },
-  ): Promise<void> {
-    const refusal =
-      this.copies.copyOf(file) === undefined
-        ? await this.editing.refusal(file)
-        : strings.editor.viewedCopy(file);
-    if (refusal !== undefined) {
-      this.host.shell().notice(page, { level: 'error', message: refusal });
-      return;
-    }
-    const edited = this.host
-      .shell()
-      .tabs()
-      .some(
-        (each) =>
-          each.tool === 'commander' &&
-          each.edit === true &&
-          each.root !== undefined &&
-          sameRoot(each.root, file),
-      );
-    if (edited) {
-      await this.host.shell().openEdit(page, 'commander', file);
-      return;
-    }
-    this.editing.startAt(tab, at);
-    await this.host.shell().editViewed(page, tab);
+    await this.host.shell().openEdit(page, file);
   }
 
   async newFile(
@@ -232,12 +197,12 @@ export class FileCommands {
     const refusal =
       shown.pane.elevated === true
         ? strings.editor.asAdministrator(file)
-        : await this.editing.refusal(file);
+        : await this.access.editRefusal?.(file);
     if (refusal !== undefined) {
       this.host.shell().notice(page, { level: 'error', message: refusal });
       return;
     }
-    await this.host.shell().openEdit(page, 'commander', file);
+    await this.host.shell().openEdit(page, file);
   }
 
   async folderCommand(

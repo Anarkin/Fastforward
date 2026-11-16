@@ -5,11 +5,11 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the text typed in a prompt, seeded from what its dialog kept (typed) and told to it by onTyped as typed',
   'shell/page/promptPopup.tsx keptSelection':
     'where the caret of a prompt was, read once from what its dialog kept (typed) and put back as it mounts',
-  'tools/commander/page/editorToolbar.tsx reopening':
+  'tools/editor/page/editorToolbar.tsx reopening':
     'the question to reopen in another encoding, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/commander/page/editorView.ts goingToLine':
+  'tools/editor/page/editorView.ts goingToLine':
     'whether the go-to-line prompt is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/commander/page/editorAsks.tsx typedLine':
+  'tools/editor/page/editorAsks.tsx typedLine':
     'the line typed in the go-to-line prompt, read once from keptEditings (editorActions.ts) as the prompt mounts',
   'tools/commander/page/packPopup.tsx archive':
     'the name of the archive of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
@@ -41,21 +41,21 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the pdf find of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
   'tools/commander/page/transferPopup.tsx all':
     'whether a clash answer is for the rest, seeded from clashAll of the store for the transfer and question asked',
-  'tools/commander/page/editorFinding.ts finding':
+  'tools/editor/page/editorFinding.ts finding':
     'whether the find is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/commander/page/editorFinding.ts kept':
+  'tools/editor/page/editorFinding.ts kept':
     'the find and replace of the tab, read once from keptEditings (editorActions.ts) as the editor mounts',
-  'tools/commander/page/editorFinding.ts query':
+  'tools/editor/page/editorFinding.ts query':
     'the text and toggles of the find, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/commander/page/editorFinding.ts replacement':
+  'tools/editor/page/editorFinding.ts replacement':
     'the text of the replace, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/commander/page/editorFinding.ts replacing':
+  'tools/editor/page/editorFinding.ts replacing':
     'whether the replace is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/commander/page/editorView.ts endingsShown':
+  'tools/editor/page/editorView.ts endingsShown':
     'the line endings of the text, read from the editor state kept per tab in keptEditors as it mounts',
-  'tools/commander/page/editorView.ts findCount':
+  'tools/editor/page/editorView.ts findCount':
     'the matches counted, read from the editor state kept per tab in keptEditors as it mounts',
-  'tools/commander/page/editorView.ts status':
+  'tools/editor/page/editorView.ts status':
     'the line, column and selection, read from the editor state kept per tab in keptEditors as it mounts',
   'tools/viewer/page/hexBody.tsx bytes':
     'the bytes read, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
@@ -164,13 +164,13 @@ export const passingStates: Readonly<Record<string, string>> = {
     'the slot a tab dragged in from another window takes, set only while it is over the row',
   'tools/commander/page/dropping.ts dropInto':
     'the row files dragged from another app are over, set only while they are dragged',
-  'tools/commander/page/editorFinding.ts focusAsks':
+  'tools/editor/page/editorFinding.ts focusAsks':
     'counts the asks to focus the find box; the focus of the tab is kept apart in keptEditings',
-  'tools/commander/page/editorView.ts findAsk':
+  'tools/editor/page/editorView.ts findAsk':
     'an ask of the find keys with the text selected, handled once; the find itself is kept per tab',
-  'tools/commander/page/editorView.ts lineCount':
+  'tools/editor/page/editorView.ts lineCount':
     'the lines of the text, counted as the go-to-line prompt opens',
-  'tools/commander/page/editorView.ts mounts':
+  'tools/editor/page/editorView.ts mounts':
     'counts the views of the text mounted, only to apply the find to each',
   'tools/viewer/page/hexBody.tsx columns':
     'the bytes that fit in a row, measured anew from the body once mounted',
@@ -218,6 +218,8 @@ export const passingStates: Readonly<Record<string, string>> = {
     'the thumbnail drawn, peeked from the thumbnail cache of the page as mounted',
   'tools/commander/page/tool.tsx store':
     'the commander store, made once for the page; it keeps what each commander tab shows through tab changes',
+  'tools/editor/page/tool.tsx store':
+    'the editor store, made once for the page; it keeps what each editor tab shows through tab changes',
   'tools/viewer/page/tool.tsx store':
     'the viewer store, made once for the page; it keeps what each viewer tab shows through tab changes',
   'tools/viewer/page/viewer.tsx focusAsks':

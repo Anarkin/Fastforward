@@ -1,0 +1,656 @@
+import type { Notice, Page } from '../../../shell/main/toolContract';
+import { strings } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
+import {
+  type EditorToHost,
+  type EditorToWebview,
+  type EncodingSource,
+  type EndingSource,
+  type TextShown,
+} from '../shared/protocol';
+import {
+  isTextEncoding,
+  type TextEncoding,
+} from '../../../lib/shared/textEncodings';
+import { EditedText } from './editedText';
+import {
+  KeptBeside,
+  NoRoomToSave,
+  ReadOnlyFile,
+  type Saved,
+} from './fileSaving';
+import { reasonOf } from '../../../lib/main/reasons';
+import { rulesOf, type TextDefaults, type TextRules } from './textDefaults';
+import { decodedText } from './textCodec';
+import { looksBinary } from '../../../lib/main/encodingDetection';
+import {
+  foundIn,
+  sourcesOf,
+  startBytes,
+  textEncodingOf,
+} from './encodingSources';
+
+const maxEditedBytes = 50 * 1024 * 1024;
+
+const maxKeptState = 16 * 1024 * 1024;
+
+const maxUnencodableNamed = 5;
+
+export interface EditingAccess {
+  readonly readFile: (file: string) => Promise<Buffer>;
+  readonly readStart: (file: string) => Promise<Buffer>;
+  readonly statFile: (
+    file: string,
+  ) => Promise<{ readonly folder: boolean; readonly size: number } | undefined>;
+  readonly stampOf: (file: string) => Promise<string | undefined>;
+  readonly watch: (file: string, onChange: () => void) => () => void;
+  readonly saveFile: (
+    file: string,
+    bytes: Uint8Array,
+    overwriteReadOnly: boolean,
+  ) => Promise<Saved>;
+  readonly codePage: () => Promise<TextEncoding>;
+  readonly readOnly: (file: string) => boolean;
+  readonly textDefaults?: (
+    file: string,
+    asksGit: boolean,
+  ) => Promise<TextDefaults>;
+  readonly endingSources?: (file: string) => Promise<readonly EndingSource[]>;
+}
+
+export interface EditingShell {
+  post(page: Page, message: EditorToWebview): void;
+  notice(page: Page, notice: Notice): void;
+  namesChanged(page: Page): void;
+  pagesShowing(tab: string): readonly Page[];
+  holds(page: Page, tab: string): boolean;
+  openEdit(page: Page, file: string): Promise<void>;
+}
+
+export type EditingMessage = Extract<
+  EditorToHost,
+  {
+    readonly type:
+      | 'readEdited'
+      | 'editText'
+      | 'editState'
+      | 'saveText'
+      | 'reloadEdited'
+      | 'saveIn'
+      | 'reopenIn'
+      | 'editSource';
+  }
+>;
+
+export interface Overwriting {
+  readonly readOnly?: boolean;
+  readonly changed?: boolean;
+}
+
+interface Read {
+  readonly text: EditedText | undefined;
+  readonly error?: Sentence;
+  readonly made: boolean;
+  readonly stamp: string | undefined;
+  readonly rules?: TextRules;
+  readonly startAt?: number;
+  readonly encodings?: readonly EncodingSource[];
+}
+
+export interface ViewedStart {
+  readonly byte: number;
+  readonly encoding?: TextEncoding;
+}
+
+const shownOf = (read: Read, text: EditedText): TextShown => ({
+  ...text.shown(),
+  ...read.rules,
+});
+
+interface Opened {
+  readonly file: string;
+  readonly readOnly: boolean;
+  read: Read;
+  chosen?: TextEncoding;
+  endings?: readonly EndingSource[];
+  changed: boolean;
+  outside: boolean;
+  untold: boolean;
+  saving: boolean;
+  kept?: { readonly version: number; readonly state: string };
+  stop: () => void;
+}
+
+const isMissing = (error: unknown) =>
+  error instanceof Error && 'code' in error && error.code === 'ENOENT';
+
+const noWatching = () => {};
+
+export class Editing {
+  private readonly opened = new Map<string, Opened>();
+  private readonly opening = new Map<
+    string,
+    { readonly file: string; readonly loading: Promise<Opened> }
+  >();
+  private readonly starts = new Map<string, ViewedStart>();
+
+  constructor(
+    private readonly access: EditingAccess,
+    private readonly shell: EditingShell,
+  ) {}
+
+  async refusal(file: string, named = file): Promise<Sentence | undefined> {
+    const stat = await this.access.statFile(file);
+    if (stat === undefined) {
+      return undefined;
+    }
+    if (stat.folder) {
+      return strings.editor.folder(named);
+    }
+    if (stat.size > maxEditedBytes) {
+      return strings.editor.tooLarge(named);
+    }
+    const start = await this.access.readStart(file);
+    return looksBinary(start) && textEncodingOf(start) === undefined
+      ? strings.editor.binary(named)
+      : undefined;
+  }
+
+  startAt(tab: string, start: ViewedStart): void {
+    this.starts.set(tab, start);
+  }
+
+  async show(page: Page, tab: string, file: string): Promise<void> {
+    const opened = await this.open(tab, file);
+    if (this.opened.get(tab) !== opened) {
+      return;
+    }
+    this.postEditing(page, tab, opened);
+    if (opened.untold) {
+      this.tellChanged(page, opened);
+    }
+    void this.findSources(tab, opened);
+  }
+
+  private async findSources(tab: string, opened: Opened): Promise<void> {
+    const { endingSources } = this.access;
+    if (endingSources === undefined) {
+      return;
+    }
+    let endings: readonly EndingSource[];
+    try {
+      endings = await endingSources(opened.file);
+    } catch {
+      return;
+    }
+    if (this.opened.get(tab) !== opened) {
+      return;
+    }
+    opened.endings = endings;
+    for (const page of this.shell.pagesShowing(tab)) {
+      this.postEditing(page, tab, opened);
+    }
+  }
+
+  private postEditing(page: Page, tab: string, opened: Opened): void {
+    const { read } = opened;
+    const target = read.text?.target();
+    const onDisk = read.text?.onDisk();
+    this.shell.post(page, {
+      type: 'editing',
+      tab,
+      file: opened.file,
+      ...(read.text !== undefined && { version: read.text.version }),
+      ...(target !== undefined && { encoding: target.encoding }),
+      ...(target?.bom === true && { bom: true }),
+      ...(onDisk !== undefined &&
+        (onDisk.encoding !== target?.encoding || onDisk.bom !== target.bom) && {
+          onDisk,
+        }),
+      ...(opened.changed && { changed: true }),
+      ...(opened.readOnly && { readOnly: true }),
+      ...(read.made && { made: true }),
+      ...(read.error !== undefined && { error: read.error }),
+      ...(opened.endings !== undefined && { endingSources: opened.endings }),
+      ...(read.encodings !== undefined && { encodingSources: read.encodings }),
+    });
+  }
+
+  private async open(tab: string, file: string): Promise<Opened> {
+    const known = this.opened.get(tab);
+    if (known !== undefined && known.file === file) {
+      return known;
+    }
+    const pending = this.opening.get(tab);
+    if (pending?.file === file) {
+      return pending.loading;
+    }
+    const start = this.starts.get(tab);
+    this.starts.delete(tab);
+    const loading = this.load(file, 0, start?.encoding, start?.byte).then(
+      (read): Opened => ({
+        file,
+        readOnly: this.access.readOnly(file),
+        read,
+        ...(start?.encoding !== undefined && { chosen: start.encoding }),
+        changed: false,
+        outside: false,
+        untold: false,
+        saving: false,
+        stop: noWatching,
+      }),
+    );
+    this.opening.set(tab, { file, loading });
+    try {
+      const opened = await loading;
+      if (this.opening.get(tab)?.loading === loading) {
+        this.opened.get(tab)?.stop();
+        opened.stop = this.access.watch(file, () => {
+          void this.changedOnDisk(tab, opened);
+        });
+        this.opened.set(tab, opened);
+      }
+      return opened;
+    } finally {
+      if (this.opening.get(tab)?.loading === loading) {
+        this.opening.delete(tab);
+      }
+    }
+  }
+
+  private async load(
+    file: string,
+    version: number,
+    chosen?: TextEncoding,
+    startByte?: number,
+  ): Promise<Read> {
+    const stamp = await this.access.stampOf(file);
+    let bytes: Buffer;
+    try {
+      bytes = await this.access.readFile(file);
+    } catch (error) {
+      if (isMissing(error)) {
+        const defaults = await this.access.textDefaults?.(file, true);
+        return {
+          text: new EditedText(
+            {
+              ...decodedText(new Uint8Array(), defaults?.encoding ?? 'utf-8'),
+              bom: defaults?.bom ?? false,
+            },
+            defaults?.ending ?? 'lf',
+            version,
+          ),
+          made: true,
+          stamp: undefined,
+          ...rulesOf(defaults),
+          ...(defaults !== undefined && { encodings: defaults.charsets }),
+        };
+      }
+      return {
+        text: undefined,
+        error: strings.commander.couldNotRead(file, reasonOf(error)),
+        made: false,
+        stamp,
+      };
+    }
+    const start = bytes.subarray(0, startBytes);
+    const marked = textEncodingOf(start);
+    const refusal =
+      bytes.length > maxEditedBytes
+        ? strings.editor.tooLarge(file)
+        : looksBinary(start) && marked === undefined
+          ? strings.editor.binary(file)
+          : undefined;
+    if (refusal !== undefined) {
+      return { text: undefined, error: refusal, made: false, stamp };
+    }
+    const codePage = await this.access.codePage();
+    const found = foundIn(bytes, codePage);
+    const encoding = chosen ?? found.encoding;
+    const decoded = decodedText(bytes, encoding);
+    const defaults = await this.access.textDefaults?.(
+      file,
+      decoded.ending === undefined,
+    );
+    return {
+      text: new EditedText(decoded, defaults?.ending ?? 'lf', version),
+      made: false,
+      stamp,
+      ...rulesOf(defaults),
+      encodings: sourcesOf(found, chosen, codePage),
+      ...(startByte !== undefined && {
+        startAt: Math.min(
+          decodedText(bytes.subarray(0, startByte), encoding).text.length,
+          decoded.text.length,
+        ),
+      }),
+    };
+  }
+
+  private async changedOnDisk(tab: string, opened: Opened): Promise<void> {
+    if (opened.saving) {
+      return;
+    }
+    const stamp = await this.access.stampOf(opened.file);
+    if (
+      this.opened.get(tab) !== opened ||
+      opened.saving ||
+      stamp === opened.read.stamp
+    ) {
+      return;
+    }
+    if (!opened.changed) {
+      await this.readAgain(tab, opened);
+      return;
+    }
+    if (!opened.outside) {
+      opened.outside = true;
+      const pages = this.shell.pagesShowing(tab);
+      opened.untold = pages.length === 0;
+      for (const page of pages) {
+        this.tellChanged(page, opened);
+      }
+    }
+  }
+
+  private tellChanged(page: Page, opened: Opened): void {
+    opened.untold = false;
+    this.shell.notice(page, {
+      level: 'info',
+      message: strings.editor.changedOutside(opened.file),
+    });
+  }
+
+  private async readAgain(
+    tab: string,
+    opened: Opened,
+    choice: TextEncoding | 'auto' = opened.chosen ?? 'auto',
+  ): Promise<void> {
+    const chosen = choice === 'auto' ? undefined : choice;
+    const version = (opened.read.text?.version ?? 0) + 1;
+    const read = await this.load(opened.file, version, chosen);
+    if (this.opened.get(tab) !== opened) {
+      return;
+    }
+    opened.read = read;
+    opened.chosen = chosen;
+    opened.outside = false;
+    opened.kept = undefined;
+    for (const page of this.shell.pagesShowing(tab)) {
+      this.changedTo(page, tab, opened, false);
+      this.postEditing(page, tab, opened);
+      if (read.text !== undefined) {
+        this.shell.post(page, {
+          type: 'editedText',
+          tab,
+          shown: shownOf(read, read.text),
+          reloaded: true,
+        });
+      }
+    }
+  }
+
+  async receive(page: Page, message: EditingMessage): Promise<void> {
+    const opened = this.opened.get(message.tab);
+    const text = opened?.read.text;
+    if (
+      opened === undefined ||
+      text === undefined ||
+      !this.shell.holds(page, message.tab)
+    ) {
+      return;
+    }
+    switch (message.type) {
+      case 'readEdited':
+        this.sendText(page, message.tab, opened, text);
+        return;
+      case 'editText':
+        this.edit(page, message.tab, opened, text, message.update);
+        return;
+      case 'editState':
+        if (
+          message.version === text.version &&
+          typeof message.state === 'string' &&
+          message.state.length <= maxKeptState
+        ) {
+          opened.kept = { version: message.version, state: message.state };
+        }
+        return;
+      case 'saveText':
+        await this.save(page, message.tab, {
+          readOnly: message.overwriteReadOnly === true,
+          changed: message.overwriteChanged === true,
+        });
+        return;
+      case 'reloadEdited':
+        await this.readAgain(message.tab, opened);
+        return;
+      case 'saveIn':
+        this.saveIn(page, message.tab, opened, text, message);
+        return;
+      case 'reopenIn':
+        if (message.encoding === 'auto' || isTextEncoding(message.encoding)) {
+          await this.readAgain(message.tab, opened, message.encoding);
+        }
+        return;
+      case 'editSource':
+        if (
+          [...(opened.endings ?? []), ...(opened.read.encodings ?? [])]
+            .flatMap((source) =>
+              'file' in source && source.file !== undefined
+                ? [source.file]
+                : [],
+            )
+            .some((file) => file === message.file)
+        ) {
+          await this.shell.openEdit(page, message.file);
+        }
+        return;
+      default:
+        message satisfies never;
+    }
+  }
+
+  private saveIn(
+    page: Page,
+    tab: string,
+    opened: Opened,
+    text: EditedText,
+    { encoding, bom }: { readonly encoding: unknown; readonly bom: unknown },
+  ): void {
+    if (
+      (encoding !== 'auto' && !isTextEncoding(encoding)) ||
+      typeof bom !== 'boolean'
+    ) {
+      return;
+    }
+    const wanted = encoding === 'auto' ? text.onDisk() : { encoding, bom };
+    const tried = text.saveIn(wanted.encoding, wanted.bom);
+    if (!('bytes' in tried)) {
+      const characters = [
+        ...new Set(tried.unencodable.map(({ character }) => character)),
+      ].slice(0, maxUnencodableNamed);
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.editor.unencodable(
+          opened.file,
+          wanted.encoding,
+          characters,
+        ),
+      });
+      return;
+    }
+    for (const shownIn of this.shell.pagesShowing(tab)) {
+      this.postEditing(shownIn, tab, opened);
+    }
+    this.changedTo(page, tab, opened, text.changed());
+  }
+
+  private sendText(
+    page: Page,
+    tab: string,
+    opened: Opened,
+    text: EditedText,
+  ): void {
+    const { kept, read } = opened;
+    this.shell.post(page, {
+      type: 'editedText',
+      tab,
+      shown: shownOf(read, text),
+      ...(kept !== undefined && kept.version === text.version
+        ? { state: kept.state }
+        : read.startAt !== undefined && { at: read.startAt }),
+    });
+  }
+
+  private edit(
+    page: Page,
+    tab: string,
+    opened: Opened,
+    text: EditedText,
+    update: unknown,
+  ): void {
+    if (opened.readOnly || !text.edit(update)) {
+      opened.kept = undefined;
+      this.sendText(page, tab, opened, text);
+      return;
+    }
+    this.changedTo(page, tab, opened, text.changed());
+  }
+
+  private changedTo(
+    page: Page,
+    tab: string,
+    opened: Opened,
+    changed: boolean,
+  ): void {
+    if (opened.changed === changed) {
+      return;
+    }
+    opened.changed = changed;
+    this.shell.post(page, { type: 'textChanged', tab, changed });
+    this.shell.namesChanged(page);
+  }
+
+  private ask(
+    page: Page,
+    tab: string,
+    file: string,
+    message: EditorToWebview,
+  ): void {
+    if (this.shell.pagesShowing(tab).includes(page)) {
+      this.shell.post(page, message);
+    } else {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.editor.askedInTab(file),
+      });
+    }
+  }
+
+  async save(
+    page: Page,
+    tab: string,
+    overwriting: Overwriting = {},
+  ): Promise<boolean> {
+    const opened = this.opened.get(tab);
+    const text = opened?.read.text;
+    if (opened === undefined || text === undefined) {
+      return false;
+    }
+    const { file } = opened;
+    if (opened.readOnly) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.editor.readOnly(file),
+      });
+      return false;
+    }
+    if (
+      overwriting.changed !== true &&
+      (opened.outside ||
+        (await this.access.stampOf(file)) !== opened.read.stamp)
+    ) {
+      this.ask(page, tab, file, { type: 'askChangedOnDisk', tab });
+      return false;
+    }
+    const checkpoint = text.checkpoint();
+    const written = text.encoded();
+    if (!('bytes' in written)) {
+      const characters = [
+        ...new Set(written.unencodable.map(({ character }) => character)),
+      ].slice(0, maxUnencodableNamed);
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.editor.unencodable(
+          file,
+          text.shown().encoding,
+          characters,
+        ),
+      });
+      return false;
+    }
+    opened.saving = true;
+    try {
+      await this.access.saveFile(
+        file,
+        written.bytes,
+        overwriting.readOnly === true,
+      );
+    } catch (error) {
+      opened.saving = false;
+      if (error instanceof ReadOnlyFile) {
+        this.ask(page, tab, file, { type: 'askOverwrite', tab });
+      } else {
+        this.shell.notice(page, {
+          level: 'error',
+          message:
+            error instanceof NoRoomToSave
+              ? strings.editor.noRoom(file)
+              : error instanceof KeptBeside
+                ? strings.editor.keptBeside(file, error.beside)
+                : strings.editor.couldNotSave(file, reasonOf(error)),
+        });
+      }
+      return false;
+    }
+    text.saved(checkpoint);
+    const target = text.target().encoding;
+    const codePage = await this.access.codePage();
+    const found = foundIn(
+      Buffer.from(
+        written.bytes.buffer,
+        written.bytes.byteOffset,
+        written.bytes.byteLength,
+      ),
+      codePage,
+    );
+    if (opened.chosen !== undefined || found.encoding !== target) {
+      opened.chosen = target;
+    }
+    opened.read = {
+      ...opened.read,
+      made: false,
+      stamp: await this.access.stampOf(file),
+      encodings: sourcesOf(found, opened.chosen, codePage),
+    };
+    opened.saving = false;
+    opened.outside = false;
+    this.changedTo(page, tab, opened, text.changed());
+    for (const shownIn of this.shell.pagesShowing(tab)) {
+      this.postEditing(shownIn, tab, opened);
+    }
+    return true;
+  }
+
+  unsaved(tab: string): boolean {
+    return this.opened.get(tab)?.changed === true;
+  }
+
+  closed(tab: string): void {
+    this.starts.delete(tab);
+    this.opened.get(tab)?.stop();
+    this.opened.delete(tab);
+    this.opening.delete(tab);
+  }
+}

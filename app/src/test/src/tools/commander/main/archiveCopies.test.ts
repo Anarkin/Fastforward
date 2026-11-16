@@ -1,9 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { ChangeSet } from '@codemirror/state';
 import { suite, test } from 'vitest';
-import type { Tab } from '../../../../../shell/main/toolContract';
 import type { Side } from '../../../../../tools/commander/shared/sides';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
@@ -188,37 +186,19 @@ suite('Commander tool in archives', () => {
           .length,
         2,
       );
-      const editTab = async (id: string, copied: string) => {
-        const editing: Tab = {
-          id,
-          tool: 'commander',
-          root: copied,
-          edit: true,
-        };
-        tabs.push(editing);
-        await tool.show(page, editing);
-        await send({ type: 'readEdited', tab: id });
-        return page.of('editing').findLast((each) => each.tab === id);
+      const editTab = (id: string, copied: string) => {
+        tabs.push({ id, tool: 'editor', root: copied });
+        return tool.readOnlyCopy(copied);
       };
-      assert.strictEqual((await editTab('7', copy))?.readOnly, undefined);
-      const text = page.of('editedText').at(-1)?.shown.text ?? '';
+      assert.strictEqual(editTab('7', copy), false);
+      const text = fs.readFileSync(copy, 'utf8');
       assert.strictEqual(text, 'the top.txt of the archive');
-      const save = async (version: number, insert: string) => {
-        await send({
-          type: 'editText',
-          tab: '7',
-          update: {
-            version,
-            changes: ChangeSet.of(
-              { from: 0, insert },
-              version === 0 ? text.length : text.length + 9,
-            ).toJSON(),
-          },
-        });
-        await send({ type: 'saveText', tab: '7' });
+      const save = async (insert: string) => {
+        fs.writeFileSync(copy, `${insert}${fs.readFileSync(copy, 'utf8')}`);
+        tool.copySaved(copy);
         await settled();
       };
-      await save(0, 'Changed: ');
+      await save('Changed: ');
       assert.strictEqual(
         fs.readFileSync(copy, 'utf8'),
         'Changed: the top.txt of the archive',
@@ -226,7 +206,7 @@ suite('Commander tool in archives', () => {
       assert.deepStrictEqual(made.changedInArchives, [
         ['add', at('a.zip'), [], path.dirname(copy), ['top.txt']],
       ]);
-      await save(1, 'Again: ');
+      await save('Again: ');
       assert.strictEqual(made.changedInArchives.length, 2);
       assert.deepStrictEqual(page.of('askUpdate'), []);
 
@@ -235,16 +215,9 @@ suite('Commander tool in archives', () => {
       const newCopy = edited.at(-1);
       assert.ok(newCopy !== undefined && path.basename(newCopy) === 'new.txt');
       assert.ok(!fs.existsSync(newCopy));
-      await editTab('9', newCopy);
-      await send({
-        type: 'editText',
-        tab: '9',
-        update: {
-          version: 0,
-          changes: ChangeSet.of({ from: 0, insert: 'new' }, 0).toJSON(),
-        },
-      });
-      await send({ type: 'saveText', tab: '9' });
+      editTab('9', newCopy);
+      fs.writeFileSync(newCopy, 'new');
+      tool.copySaved(newCopy);
       await settled();
       assert.strictEqual(fs.readFileSync(newCopy, 'utf8'), 'new');
       assert.deepStrictEqual(made.changedInArchives.at(-1), [
@@ -270,7 +243,7 @@ suite('Commander tool in archives', () => {
       });
       const fromInner = edited.at(-1);
       assert.ok(fromInner !== undefined && fromInner !== copy);
-      assert.strictEqual((await editTab('8', fromInner))?.readOnly, true);
+      assert.strictEqual(editTab('8', fromInner), true);
     });
 
     test('goes back to the tab editing a file of an archive on F4 again, rather than editing a second copy whose save would undo the edits saved from the first, and takes a copy again once that tab is closed', async () => {
@@ -290,7 +263,7 @@ suite('Commander tool in archives', () => {
       await editFile('top.txt');
       const [copy] = edited;
       assert.ok(copy !== undefined);
-      tabs.push({ id: '7', tool: 'commander', root: copy, edit: true });
+      tabs.push({ id: '7', tool: 'editor', root: copy });
       await editFile('top.txt');
       assert.deepStrictEqual(edited, [copy, copy]);
       assert.strictEqual(
@@ -305,7 +278,7 @@ suite('Commander tool in archives', () => {
       await send({ type: 'newFile', tab: '1', side: 'right', name: 'new.txt' });
       const newCopy = edited.at(-1);
       assert.ok(newCopy !== undefined);
-      tabs.push({ id: '9', tool: 'commander', root: newCopy, edit: true });
+      tabs.push({ id: '9', tool: 'editor', root: newCopy });
       await send({ type: 'newFile', tab: '1', side: 'right', name: 'new.txt' });
       assert.strictEqual(edited.at(-1), newCopy);
     });

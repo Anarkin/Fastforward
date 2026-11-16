@@ -5,7 +5,7 @@ import { beforeAll, suite, test } from 'vitest';
 import { imageType, maxImageSize } from '../../../lib/shared/images';
 import { maxMatches } from '../../../lib/shared/textMatches';
 import { rowBytes } from '../../../tools/viewer/main/textRows';
-import { decodedText } from '../../../tools/commander/main/textCodec';
+import { decodedText } from '../../../tools/editor/main/textCodec';
 import { encodingMenu, type EncodingChoice } from '../../../lib/page/encodings';
 import { fileColorOf, fileColorsOf } from '../../../lib/page/fileColors';
 import { previewOf } from '../../../tools/viewer/page/previews';

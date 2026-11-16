@@ -23,7 +23,7 @@ import {
   record,
   shareAll,
 } from './windowsDirectory';
-import { called } from './nativeCalls';
+import { called } from '../../../lib/main/nativeCalls';
 
 const invalidAttributes = 0xffff_ffff;
 const cloudAttributes = 0x1000 | 0x4_0000 | 0x40_0000;

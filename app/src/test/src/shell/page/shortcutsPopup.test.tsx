@@ -7,7 +7,7 @@ import { gitKeymap } from '../../../../tools/git/page/keymap';
 import { compareKeymap } from '../../../../tools/git/page/compareKeymap';
 import { commanderKeymap } from '../../../../tools/commander/page/keymap';
 import { viewerKeymap } from '../../../../tools/viewer/page/viewerKeymap';
-import { editorKeymap } from '../../../../tools/commander/page/editorKeymap';
+import { editorKeymap } from '../../../../tools/editor/page/editorKeymap';
 import { terminalKeymap } from '../../../../tools/terminal/page/keymap';
 import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { entry, contents } from './shortcutsFixtures';

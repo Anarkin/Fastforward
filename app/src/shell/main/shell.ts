@@ -151,8 +151,7 @@ export class Shell {
       open: (page, tool, roots, reuse) =>
         this.tabs.open(page, tool, roots, reuse),
       openView: (page, file) => this.tabs.open(page, 'viewer', [file], false),
-      openEdit: (page, tool, file) =>
-        this.tabs.open(page, tool, [file], true, { edit: true }),
+      openEdit: (page, file) => this.tabs.open(page, 'editor', [file], true),
       editViewed: (page, tab) => this.tabs.editViewed(page, tab),
       openCompare: (page, tool, compare) =>
         this.tabs.open(page, tool, [undefined], false, { compare }),
@@ -330,21 +329,17 @@ export class Shell {
       case 'openSettings':
         await this.tabs.open(
           page,
-          'commander',
+          'editor',
           [await host.userSettingsFile()],
           true,
-          {
-            edit: true,
-          },
         );
         return;
       case 'openDefaultSettings':
         await this.tabs.open(
           page,
-          'commander',
+          'editor',
           [await host.defaultSettingsFile()],
           true,
-          { edit: true },
         );
         return;
       case 'installTerminalCommand':

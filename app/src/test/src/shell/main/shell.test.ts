@@ -36,22 +36,10 @@ suite('Shell with no tab open', () => {
           'settings',
         ]);
         assert.deepStrictEqual(
-          view.page.tabs?.tabs.map(({ tool, root, edit }) => ({
-            tool,
-            root,
-            edit,
-          })),
+          view.page.tabs?.tabs.map(({ tool, root }) => ({ tool, root })),
           [
-            {
-              tool: 'commander',
-              root: path.resolve('settings.user.json'),
-              edit: true,
-            },
-            {
-              tool: 'commander',
-              root: path.resolve('settings.defaults.json'),
-              edit: true,
-            },
+            { tool: 'editor', root: path.resolve('settings.user.json') },
+            { tool: 'editor', root: path.resolve('settings.defaults.json') },
           ],
         );
         assert.strictEqual(view.page.tabs?.active, view.page.tabs?.tabs[0]?.id);

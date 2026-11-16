@@ -1,38 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { Tab } from '../../../../../shell/main/toolContract';
-import {
-  iconUrl,
-  viewerIconUrl,
-} from '../../../../../tools/commander/shared/icons';
+import { iconUrl } from '../../../../../tools/commander/shared/icons';
 import { commander, tab, forged } from './commanderFixtures';
 import { root, at, folder, file } from './entryFixtures';
 
 suite('Commander tool serving icons', () => {
-  test('gives an editing tab the icon of its file, at an address naming the file, served for that tab and file only', async () => {
-    const { tool, tabs, iconsLoaded } = commander({});
-    const editing: Tab = {
-      id: '6',
-      tool: 'commander',
-      root: at('code.ts'),
-      edit: true,
-    };
-    tabs.push({ id: '4', tool: 'commander', root }, editing);
-    const served = async (url: string) =>
-      (await tool.icon(new URL(`fastforward://app${url}`))).status;
-    assert.strictEqual(
-      tool.names([editing]).get('6')?.icon,
-      viewerIconUrl('6', at('code.ts')),
-    );
-    assert.strictEqual(await served(viewerIconUrl('6', at('code.ts'))), 200);
-    assert.strictEqual(await served(viewerIconUrl('6', at('other.md'))), 404);
-    assert.strictEqual(await served(viewerIconUrl('4', root)), 404);
-    assert.deepStrictEqual(iconsLoaded, [at('code.ts')]);
-    assert.strictEqual(
-      tool.names([{ id: '4', tool: 'commander', root }]).get('4')?.icon,
-      undefined,
-    );
-  });
   test('serves the icon of a file a side lists, and nothing else, as folders keep the icon of the app', async () => {
     const { tool, page, iconsLoaded } = commander({
       [root]: [folder('Users'), file('notes.txt')],

@@ -22,18 +22,6 @@ export function iconTicketOf(url: URL): string | undefined {
 
 export const maxDroppedIcons = 1000;
 
-export function viewerIconUrl(tab: string, file: string): string {
-  return `${iconRoute}?${new URLSearchParams({ view: tab, file })}`;
-}
-
-export function viewerOfIcon(
-  url: URL,
-): { readonly tab: string; readonly file: string } | undefined {
-  const tab = url.searchParams.get('view');
-  const file = url.searchParams.get('file');
-  return url.pathname === iconRoute && tab && file ? { tab, file } : undefined;
-}
-
 export function paneFileOf(url: URL, route: string): IconSource | undefined {
   const query = url.searchParams;
   const tab = query.get('tab');

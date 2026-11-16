@@ -200,15 +200,6 @@ suite('Commander tool', () => {
     );
   });
 
-  test('tells the page to close brackets as they are typed in the editor once the settings say so', () => {
-    const { tool, page, closing } = commander({ [root]: [] });
-    tool.reloadSettings();
-    assert.strictEqual(page.of('settings').at(-1)?.closeBrackets, undefined);
-    closing.now = true;
-    tool.reloadSettings();
-    assert.strictEqual(page.of('settings').at(-1)?.closeBrackets, true);
-  });
-
   test('tells every window the settings once they change', () => {
     const { tool, page, pages } = commander({ [root]: [] });
     const other = new CommanderPage();

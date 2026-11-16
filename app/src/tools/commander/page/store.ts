@@ -13,10 +13,9 @@ import {
   type CommanderSource,
   type CommanderState,
 } from './commanderState';
-import { isEditorStream, received, released } from './commanderReceived';
+import { received, released } from './commanderReceived';
 import { filesToCompare } from './comparing';
 import { dialogActions, type StoreParts } from './dialogActions';
-import { editorActions } from './editorActions';
 import { flatActions, startFlatWorker, type FlatOptions } from './flatActions';
 import { filteredSelection, nearestShown } from './rowSelection';
 import { nextSort } from './rowOrder';
@@ -124,9 +123,8 @@ export function createCommanderStore(
       }
     };
     const parts: StoreParts = { set, get, post, onTab, onPane, onDisk };
-    const editor = editorActions(parts);
     const flat = flatActions(parts, flatOptions);
-    const kept = keptTabActions(parts, scrolls, editor, views);
+    const kept = keptTabActions(parts, scrolls, views);
     const shownWhenReleased = new Set<string>();
     const letGo = (tab: string) => {
       announced(() => set((state) => released(state, tab)));
@@ -134,7 +132,6 @@ export function createCommanderStore(
       forgetTab(tab);
     };
     const forgetTab = (tab: string) => {
-      editor.forget(tab);
       set((state) => ({
         filters: withoutTab(state.filters, tab),
         parked: withoutParked(state.parked, tab),
@@ -162,10 +159,6 @@ export function createCommanderStore(
       ...commanderDefaults,
       ...initial,
       receive: (message) => {
-        if (isEditorStream(message)) {
-          editor.heard(message);
-          return;
-        }
         if (message.type === 'flatFiles') {
           flat.heard(message);
         }
@@ -200,7 +193,6 @@ export function createCommanderStore(
       switchSide: () => dispatch({ type: 'switchSide' }),
       chooseLayout: (side, layout) =>
         dispatch({ type: 'layout', side, layout }),
-      choose: (choices) => dispatch({ type: 'choose', choices }),
       sort: (side, column) => sortBy(side, nextSort(sortOf(side), column)),
       groupByColor: (side) => {
         const current = sortOf(side);
@@ -216,11 +208,10 @@ export function createCommanderStore(
         onPane(side, (tab, folder) =>
           post({ type: 'view', tab, side, folder, name }),
         ),
-      ...editor.actions,
-      keepEditing: (tab, change) => {
-        editor.actions.keepEditing(tab, change);
-        kept.changed(tab);
-      },
+      editFile: (side, name) =>
+        onPane(side, (tab, folder) =>
+          post({ type: 'editFile', tab, side, folder, name }),
+        ),
       openRepository: (side, name) =>
         onDisk(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),

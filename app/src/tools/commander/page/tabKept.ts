@@ -1,17 +1,12 @@
 import { focusSchema, type KeptFocus } from '../../../lib/page/keptFocus';
 import { sides, type Side } from '../shared/sides';
-import { isTextEncoding } from '../../../lib/shared/textEncodings';
 import type { CommanderSource, PaneFilter } from './commanderState';
-import type { KeptEditing } from './editorKept';
 import {
   countOf,
   fieldsOf,
-  flagOf,
-  keptTypedOf,
   listOf,
   oneOf,
   optionsOf,
-  searchOf,
   textOf,
   type Fields,
 } from './keptFields';
@@ -44,11 +39,8 @@ export interface SidesKept {
   readonly dialogs?: Dialogs;
 }
 
-export type EditorKept = Partial<KeptEditing>;
-
 export interface TabKept {
   readonly sides?: SidesKept;
-  readonly editor?: EditorKept;
 }
 
 const marksOf = (pane: PaneView): KeptMarks => ({
@@ -64,7 +56,7 @@ export function sidesKeptOf(
 ): SidesKept | undefined {
   const { view, filters } = state;
   const kept: KeptTab | undefined =
-    view.tab === tab && view.editing === undefined ? view : view.kept.get(tab);
+    view.tab === tab ? view : view.kept.get(tab);
   if (kept === undefined) {
     return undefined;
   }
@@ -173,32 +165,11 @@ export function keptTabOf(kept: SidesKept): KeptTab {
   };
 }
 
-const encodingToReopen = (value: unknown) =>
-  value === 'auto' || isTextEncoding(value) ? value : undefined;
-
-function editorDecoded(fields: Fields): EditorKept {
-  const query = searchOf({
-    query: fieldsOf(fields('query'))?.('text'),
-    options: fieldsOf(fields('query'))?.('options'),
-  });
-  return {
-    finding: flagOf(fields('finding')),
-    replacing: flagOf(fields('replacing')),
-    query: query && { text: query.query, options: query.options },
-    replacement: textOf(fields('replacement')),
-    focus: focusSchema.decode(fields('focus')),
-    goingToLine: keptTypedOf(fields('goingToLine')),
-    reopening: encodingToReopen(fields('reopening')),
-  };
-}
-
 export function tabKeptOf(value: unknown, tab: string): TabKept {
   const fields = fieldsOf(value);
   const part = (name: string) => fieldsOf(fields?.(name));
   const sidesPart = part('sides');
-  const editorPart = part('editor');
   return {
     sides: sidesPart && sidesDecoded(sidesPart, tab),
-    editor: editorPart && editorDecoded(editorPart),
   };
 }

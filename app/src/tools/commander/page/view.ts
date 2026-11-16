@@ -29,13 +29,11 @@ import {
 
 export interface CommanderView {
   readonly tab: string | undefined;
-  readonly editing: string | undefined;
   readonly showHidden: boolean;
   readonly sorts: Sorts;
   readonly columns: ColumnWidths;
   readonly defaultColumns: ColumnWidths;
   readonly canElevate: boolean;
-  readonly closeBrackets: boolean;
   readonly gitMissing: boolean;
   readonly platform: string | undefined;
   readonly layouts: Layouts;
@@ -48,20 +46,7 @@ export interface CommanderView {
   readonly panes: Readonly<Record<Side, PaneView | undefined>>;
   readonly awaiting: Awaiting;
   readonly kept: ReadonlyMap<string, KeptTab>;
-  readonly viewers: ReadonlyMap<string, ViewerChoices>;
   readonly closedTab: string | undefined;
-}
-
-export interface ViewerChoices {
-  readonly language?: string;
-}
-
-const noChoices: ViewerChoices = {};
-
-export function viewerChoices(view: CommanderView): ViewerChoices {
-  return view.tab === undefined
-    ? noChoices
-    : (view.viewers.get(view.tab) ?? noChoices);
 }
 
 function without<T>(
@@ -105,7 +90,6 @@ function keptAway(view: CommanderView): ReadonlyMap<string, KeptTab> {
 
 export const emptyView: CommanderView = {
   tab: undefined,
-  editing: undefined,
   showHidden: true,
   sorts: {
     left: { column: 'extension', descending: false, groupByColor: true },
@@ -114,7 +98,6 @@ export const emptyView: CommanderView = {
   columns: { extension: 10, size: 17, date: 16 },
   defaultColumns: { extension: 10, size: 17, date: 16 },
   canElevate: false,
-  closeBrackets: false,
   gitMissing: false,
   platform: undefined,
   layouts: defaultLayouts,
@@ -127,7 +110,6 @@ export const emptyView: CommanderView = {
   panes: { left: undefined, right: undefined },
   awaiting: noAwaiting,
   kept: new Map(),
-  viewers: new Map(),
   closedTab: undefined,
 };
 
@@ -135,8 +117,6 @@ export type ViewAction =
   | {
       readonly type: 'show';
       readonly tab: string;
-      readonly file?: string;
-      readonly edit?: true;
     }
   | { readonly type: 'hide' }
   | CommanderToWebviewOf<'closed'>
@@ -145,9 +125,7 @@ export type ViewAction =
       readonly type: 'restore';
       readonly tab: string;
       readonly kept?: KeptTab;
-      readonly choices?: ViewerChoices;
     }
-  | { readonly type: 'choose'; readonly choices: Partial<ViewerChoices> }
   | (Omit<CommanderToWebviewOf<'settings'>, 'type'> & {
       readonly type: 'settings';
     })
@@ -267,7 +245,6 @@ export function reduceView(
       return {
         ...view,
         tab: action.tab,
-        editing: action.edit === true ? action.file : undefined,
         active: back?.active ?? emptyView.active,
         share: back?.share ?? emptyView.share,
         focus: back?.focus,
@@ -282,7 +259,6 @@ export function reduceView(
       return {
         ...view,
         tab: undefined,
-        editing: undefined,
         share: emptyView.share,
         focus: undefined,
         layouts: emptyView.layouts,
@@ -296,7 +272,6 @@ export function reduceView(
         ...view,
         closedTab: view.tab === action.tab ? action.tab : view.closedTab,
         kept: without(view.kept, action.tab),
-        viewers: without(view.viewers, action.tab),
       };
     case 'released':
       return view.tab === action.tab
@@ -304,7 +279,6 @@ export function reduceView(
         : {
             ...view,
             kept: without(view.kept, action.tab),
-            viewers: without(view.viewers, action.tab),
           };
     case 'restore':
       return view.tab === action.tab
@@ -315,20 +289,6 @@ export function reduceView(
               action.kept === undefined
                 ? view.kept
                 : new Map(view.kept).set(action.tab, action.kept),
-            viewers:
-              action.choices === undefined
-                ? without(view.viewers, action.tab)
-                : new Map(view.viewers).set(action.tab, action.choices),
-          };
-    case 'choose':
-      return view.tab === undefined || view.editing === undefined
-        ? view
-        : {
-            ...view,
-            viewers: new Map(view.viewers).set(view.tab, {
-              ...viewerChoices(view),
-              ...action.choices,
-            }),
           };
     case 'settings': {
       const settled: CommanderView = {
@@ -338,7 +298,6 @@ export function reduceView(
         columns: action.columns,
         defaultColumns: action.defaultColumns,
         canElevate: action.canElevate,
-        closeBrackets: action.closeBrackets === true,
         gitMissing: action.gitMissing === true,
         platform: action.platform,
         thumbnailSize: action.thumbnailSize,
@@ -541,7 +500,6 @@ export function reduceView(
         : { ...view, share: action.share };
     case 'focus':
       return view.tab === undefined ||
-        view.editing !== undefined ||
         JSON.stringify(view.focus) === JSON.stringify(action.focus)
         ? view
         : { ...view, focus: action.focus };

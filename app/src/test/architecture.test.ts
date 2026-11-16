@@ -339,6 +339,7 @@ suite('Architecture', () => {
         'lib/page/pathLooks.ts',
         'shell/page/store.ts',
         'tools/commander/page/store.ts',
+        'tools/editor/page/store.ts',
         'tools/git/page/store.ts',
         'tools/viewer/page/store.ts',
       ],
@@ -546,7 +547,7 @@ suite('Architecture', () => {
     const finds = [
       ...matchers,
       'tools/git/page/find.ts',
-      'tools/commander/page/editorFind.ts',
+      'tools/editor/page/editorFind.ts',
       'tools/viewer/main/textFind.ts',
       'tools/viewer/page/markPieces.ts',
     ];
@@ -603,7 +604,7 @@ suite('Architecture', () => {
     assert.deepStrictEqual(
       code.filter((file) => /\bfind-match\b/.test(read(file))),
       [
-        'tools/commander/page/editorFind.ts',
+        'tools/editor/page/editorFind.ts',
         'tools/git/page/codeMarks.tsx',
         'tools/git/page/diffFound.ts',
         'tools/viewer/page/findMarks.tsx',
@@ -633,13 +634,13 @@ suite('Architecture', () => {
       [
         'lib/page/searchBar.tsx',
         'shell/page/promptPopup.tsx',
-        'tools/commander/page/editorFindBar.tsx',
         'tools/commander/page/packPopup.tsx',
         'tools/commander/page/transferPopup.tsx',
+        'tools/editor/page/editorFindBar.tsx',
         'tools/git/page/clonePopup.tsx',
       ],
     );
-    const editorFindBar = read('tools/commander/page/editorFindBar.tsx');
+    const editorFindBar = read('tools/editor/page/editorFindBar.tsx');
     assert.strictEqual(editorFindBar.match(/<input\b/g)?.length, 1);
     assert.match(editorFindBar, /<input\s+className="editor-replace-input"/);
   });
@@ -657,7 +658,7 @@ suite('Architecture', () => {
         'lib/shared/filter.ts',
         'lib/shared/searchOptions.ts',
         'lib/shared/textMatches.ts',
-        'tools/commander/page/editorFind.ts',
+        'tools/editor/page/editorFind.ts',
         'tools/viewer/main/textFind.ts',
         'tools/viewer/page/pdfDocument.ts',
       ],

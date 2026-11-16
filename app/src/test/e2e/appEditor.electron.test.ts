@@ -74,7 +74,7 @@ suite('App editor', () => {
       fs.readFileSync(path.join(profile, 'state.json'), 'utf8'),
     );
     assert.ok(
-      JSON.stringify(saved).includes('"edit":true'),
+      JSON.stringify(saved).includes('"tool":"editor"'),
       JSON.stringify(saved),
     );
   });

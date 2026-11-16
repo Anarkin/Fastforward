@@ -94,11 +94,10 @@ export class Storage {
       tabsChanged
         ? this.state.update(
             tabsKey,
-            tabs.map(({ id, tool, root, edit, compare }) => ({
+            tabs.map(({ id, tool, root, compare }) => ({
               id,
               tool,
               ...(root !== undefined && { root }),
-              ...(edit === true && { edit }),
               ...(compare !== undefined && {
                 compare: { old: compare.old, new: compare.new },
               }),

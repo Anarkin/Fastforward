@@ -2,8 +2,6 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
 import type { LocalFileSystem } from './fileSystem';
-import { Editing } from './editing';
-import { editingFiles } from './editingFiles';
 import { SettingsCommands } from './settingsCommands';
 import { Icons } from './icons';
 import { Transfers } from './transfers';
@@ -44,12 +42,10 @@ export interface CommanderParts {
   readonly icons: Icons;
   readonly transfers: Transfers;
   readonly savedSides: SavedSides;
-  readonly editing: Editing;
   readonly listings: Listings;
   readonly elevation: Elevation;
   readonly settings: SettingsCommands;
   readonly messages: CommanderMessages;
-  readonly fileCommands: FileCommands;
 }
 
 export function buildParts(
@@ -83,20 +79,6 @@ export function buildParts(
   });
   const serving = new Serving(sides, icons, () => shell().tabs());
   const thumbnailServing = new ThumbnailServing(access, sides);
-  const editing = new Editing(
-    editingFiles(access, () => copies),
-    {
-      post: (page, message) => post(page, message),
-      notice: (page, notice) => shell().notice(page, notice),
-      namesChanged: (page) => shell().postTabs(page),
-      pagesShowing: (tab) =>
-        [...sides.shown]
-          .filter(([, showing]) => showing.tab === tab)
-          .map(([page]) => page),
-      holds: (page, tab) => shell().holds(page, tab),
-      openEdit: (page, file) => shell().openEdit(page, 'commander', file),
-    },
-  );
   const savedSides = new SavedSides(access.store);
   const transfers = new Transfers(access.connectTransfer, {
     show: (view) => {
@@ -111,18 +93,11 @@ export function buildParts(
     finished: (ask) => transferCommands.transferred(ask),
   });
   const passwords = new ArchivePasswords(access);
-  const copies = new ArchiveCopies(
-    access,
-    sides,
-    passwords,
-    editing,
-    transfers,
-    {
-      shell,
-      refuse: (page, message) => refuse(page, message),
-      saveQuietly: (saving) => saveQuietly(saving),
-    },
-  );
+  const copies = new ArchiveCopies(access, sides, passwords, transfers, {
+    shell,
+    refuse: (page, message) => refuse(page, message),
+    saveQuietly: (saving) => saveQuietly(saving),
+  });
   const archiveCommands = new ArchiveCommands(access, transfers, {
     shell,
     refuse: (page, message) => refuse(page, message),
@@ -145,7 +120,7 @@ export function buildParts(
     shell,
     refuse: (page, message) => refuse(page, message),
   });
-  const fileCommands = new FileCommands(access, sides, copies, editing, {
+  const fileCommands = new FileCommands(access, sides, copies, {
     shell,
     list: (...listed) => listings.list(...listed),
   });
@@ -191,7 +166,6 @@ export function buildParts(
   const messages = new CommanderMessages(
     sides,
     fileCommands,
-    editing,
     navigation,
     systemCommands,
     itemChanges,
@@ -224,11 +198,9 @@ export function buildParts(
     icons,
     transfers,
     savedSides,
-    editing,
     listings,
     elevation,
     settings,
     messages,
-    fileCommands,
   };
 }

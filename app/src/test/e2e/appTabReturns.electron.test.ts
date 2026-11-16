@@ -39,11 +39,7 @@ const shownTabs = (opened: string, repository: string) =>
     },
     {
       kind: 'editor',
-      tab: {
-        tool: 'commander',
-        root: path.join(opened, 'edited.txt'),
-        edit: true,
-      },
+      tab: { tool: 'editor', root: path.join(opened, 'edited.txt') },
     },
     { kind: 'git', tab: { tool: 'git', root: repository } },
     { kind: 'terminal', tab: { tool: 'terminal', root: opened } },

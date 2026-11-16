@@ -15,7 +15,7 @@ import { noop } from '../../../helpers/fixtures';
 
 export function shortcutsStore(
   tool?: ToolId,
-  kind: Pick<TabInfo, 'edit' | 'compare'> = {},
+  kind: Pick<TabInfo, 'compare'> = {},
 ) {
   return createShellStore(noop, {
     popups: ['shortcuts'],
@@ -28,7 +28,7 @@ export function shortcutsStore(
 export function shortcutsMarkup(
   popup: React.ReactElement,
   tool?: ToolId,
-  kind?: Pick<TabInfo, 'edit' | 'compare'>,
+  kind?: Pick<TabInfo, 'compare'>,
 ): string {
   return renderToStaticMarkup(
     withStores(popup, { shell: shortcutsStore(tool, kind) }),

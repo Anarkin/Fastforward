@@ -12,11 +12,9 @@ import type { SavedSides } from './savedSides';
 import { type CommanderToHost } from '../shared/protocol';
 import { sides } from '../shared/sides';
 import type { LocalFileSystem } from './fileSystem';
-import type { Editing } from './editing';
 import type { SettingsCommands } from './settingsCommands';
 import type { Icons } from './icons';
 import type { Transfers } from './transfers';
-import { viewerIconUrl } from '../shared/icons';
 import { newPane, type Panes, type Sides } from './sides';
 import { post } from './post';
 import type { SideFlat } from './sideFlat';
@@ -32,8 +30,6 @@ import { isFolder } from './fileStats';
 import type { Listings } from './listings';
 import type { Elevation } from './elevation';
 import type { CommanderMessages } from './commanderMessages';
-import type { FileCommands } from './fileCommands';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import { buildParts } from './commanderParts';
 
 export class CommanderTool implements Tool<'commander'> {
@@ -51,12 +47,10 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly icons: Icons;
   private readonly transfers: Transfers;
   private readonly savedSides: SavedSides;
-  private readonly editing: Editing;
   private readonly listings: Listings;
   private readonly elevation: Elevation;
   private readonly settings: SettingsCommands;
   private readonly messages: CommanderMessages;
-  private readonly fileCommands: FileCommands;
 
   constructor(private readonly access: CommanderAccess) {
     const parts = buildParts(
@@ -78,12 +72,10 @@ export class CommanderTool implements Tool<'commander'> {
     this.icons = parts.icons;
     this.transfers = parts.transfers;
     this.savedSides = parts.savedSides;
-    this.editing = parts.editing;
     this.listings = parts.listings;
     this.elevation = parts.elevation;
     this.settings = parts.settings;
     this.messages = parts.messages;
-    this.fileCommands = parts.fileCommands;
     access.whenGitFound?.(() => {
       for (const page of this.shell.pages()) {
         this.settings.post(page);
@@ -128,16 +120,6 @@ export class CommanderTool implements Tool<'commander'> {
       watching: new Map(),
     });
     this.copies.askNextUpdate();
-    if (tab.edit === true && tab.root !== undefined) {
-      post(page, {
-        type: 'show',
-        tab: tab.id,
-        file: tab.root,
-        edit: true,
-      });
-      await this.editing.show(page, tab.id, tab.root);
-      return;
-    }
     post(page, { type: 'show', tab: tab.id });
     const panes = this.sides.panes.get(tab.id) ?? (await this.start(tab));
     if (!this.shows(page, tab)) {
@@ -186,9 +168,6 @@ export class CommanderTool implements Tool<'commander'> {
         this.sides.stopShowing(shownIn);
       }
     }
-    if (tab.edit === true) {
-      this.editing.closed(tab.id);
-    }
   }
 
   receive(page: Page, message: CommanderToHost): Promise<void> {
@@ -207,13 +186,7 @@ export class CommanderTool implements Tool<'commander'> {
     return new Map(
       tabs.map((tab): [string, TabName] => [
         tab.id,
-        tab.edit === true && tab.root !== undefined
-          ? {
-              name: path.basename(tab.root),
-              icon: viewerIconUrl(tab.id, tab.root),
-              ...(this.editing.unsaved(tab.id) && { unsaved: true }),
-            }
-          : { name: strings.tools.commander },
+        { name: strings.tools.commander },
       ]),
     );
   }
@@ -223,9 +196,6 @@ export class CommanderTool implements Tool<'commander'> {
   }
 
   folderOf(tab: Tab): string | undefined {
-    if (tab.edit === true && tab.root !== undefined) {
-      return path.dirname(tab.root);
-    }
     const panes = this.sides.panes.get(tab.id);
     if (panes === undefined) {
       return tab.root;
@@ -248,16 +218,6 @@ export class CommanderTool implements Tool<'commander'> {
     for (const page of this.shell.pages()) {
       this.settings.post(page);
     }
-  }
-
-  unsaved(tab: Tab): boolean {
-    return tab.edit === true && this.editing.unsaved(tab.id);
-  }
-
-  saveUnsaved(page: Page, tab: Tab): Promise<boolean> {
-    return tab.edit === true
-      ? this.editing.save(page, tab.id)
-      : Promise.resolve(true);
   }
 
   quitNote(): string | undefined {
@@ -289,17 +249,23 @@ export class CommanderTool implements Tool<'commander'> {
     return this.listings.hiddenParts(file);
   }
 
-  editViewed(
-    page: Page,
-    tab: string,
-    file: string,
-    at: { readonly byte: number; readonly encoding?: TextEncoding },
-  ): Promise<void> {
-    return this.fileCommands.editViewed(page, tab, file, at);
-  }
-
   viewClosed(file: string): void {
     this.copies.removeCopy(file);
+  }
+
+  viewedCopy(file: string): boolean {
+    return this.copies.copyOf(file) !== undefined;
+  }
+
+  readOnlyCopy(file: string): boolean {
+    return (
+      this.copies.copyOf(file) !== undefined &&
+      !this.copies.editedCopies.has(file)
+    );
+  }
+
+  copySaved(file: string): void {
+    this.copies.editedCopySaved(file);
   }
 
   icon(url: URL): Promise<Response> {

@@ -116,7 +116,7 @@ export class Tabs {
     tool: ToolId,
     roots: readonly (string | undefined)[],
     reuse: boolean,
-    kind: Pick<Tab, 'edit' | 'compare'> = {},
+    kind: Pick<Tab, 'compare'> = {},
   ): Promise<void> {
     const { storage } = this;
     const window = this.pages.windowOf(page);
@@ -129,7 +129,6 @@ export class Tabs {
         ? [...tabs, ...added].find(
             (tab) =>
               tab.tool === tool &&
-              tab.edit === kind.edit &&
               tab.root !== undefined &&
               root !== undefined &&
               sameRoot(tab.root, root),
@@ -189,9 +188,8 @@ export class Tabs {
       storage.setLayout(
         withChanged(storage.layout, {
           id,
-          tool: 'commander',
+          tool: 'editor',
           root: viewed.root,
-          edit: true,
         }),
       ),
     );

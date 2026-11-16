@@ -11,7 +11,6 @@ export interface SavedTab {
   readonly id: string;
   readonly tool: ToolId;
   readonly root?: string;
-  readonly edit?: true;
   readonly compare?: Compared;
 }
 
@@ -29,22 +28,25 @@ function isSavedTab(value: unknown): value is SavedTab {
     typeof value.id === 'string' &&
     isTool(value.tool) &&
     (value.root === undefined || typeof value.root === 'string') &&
-    (value.edit === undefined || value.edit === true) &&
     (value.compare === undefined || isCompared(value.compare))
   );
 }
 
 export function savedTabOf(value: unknown): SavedTab | undefined {
-  if (
-    isObject(value) &&
-    value.tool === 'commander' &&
-    value.view === true &&
-    value.edit === undefined
-  ) {
-    const { view: _view, ...rest } = value;
-    return savedTabOf({ ...rest, tool: 'viewer' });
+  if (isObject(value) && value.tool === 'commander') {
+    const { view, edit, ...rest } = value;
+    if (view === true && edit === undefined) {
+      return savedTabOf({ ...rest, tool: 'viewer' });
+    }
+    if (edit === true && view === undefined) {
+      return savedTabOf({ ...rest, tool: 'editor' });
+    }
   }
-  return isSavedTab(value) && !Object.hasOwn(value, 'view') ? value : undefined;
+  return isSavedTab(value) &&
+    !Object.hasOwn(value, 'view') &&
+    !Object.hasOwn(value, 'edit')
+    ? value
+    : undefined;
 }
 
 interface SavedWindow {
@@ -107,7 +109,6 @@ export function sameTab(a: SavedTab, b: SavedTab | undefined): boolean {
     a.id === b.id &&
     a.tool === b.tool &&
     a.root === b.root &&
-    a.edit === b.edit &&
     a.compare?.old === b.compare?.old &&
     a.compare?.new === b.compare?.new
   );

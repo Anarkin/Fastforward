@@ -105,6 +105,12 @@ const toolSigns = {
       <circle cx="8" cy="8" r="2" />
     </>
   ),
+  editor: (
+    <>
+      <path d="M10.5 2.5l3 3-8 8H2.5v-3z" />
+      <path d="M9 4l3 3" />
+    </>
+  ),
 };
 
 export function ShieldIcon() {

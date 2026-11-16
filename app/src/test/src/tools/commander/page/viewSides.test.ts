@@ -3,7 +3,6 @@ import { suite, test } from 'vitest';
 import {
   emptyView,
   reduceView,
-  viewerChoices,
 } from '../../../../../tools/commander/page/view';
 import { defaultLayouts } from '../../../../../tools/commander/page/layouts';
 import {
@@ -60,77 +59,18 @@ suite('Commander view', () => {
     );
   });
 
-  test('keeps the language an editing tab was chosen to color its file in, the last one chosen', () => {
-    let view = run({
-      type: 'show',
-      tab: '3',
-      file: '/work/notes.md',
-      edit: true,
-    });
-    view = reduceView(view, { type: 'choose', choices: { language: 'json' } });
-    view = reduceView(view, {
-      type: 'choose',
-      choices: { language: 'python' },
-    });
-    assert.deepStrictEqual(viewerChoices(view), { language: 'python' });
-  });
-
-  test('keeps the language each editing tab was chosen to color its file in while another tab is shown, for when it is shown again, and forgets it, and the layouts of a tab, once the tab is closed, as a tab opened later can take its id', () => {
-    const chosen = { language: 'python' } as const;
-    let view = run({
-      type: 'show',
-      tab: '3',
-      file: '/work/notes.md',
-      edit: true,
-    });
-    assert.deepStrictEqual(viewerChoices(view), {});
-    view = reduceView(view, { type: 'choose', choices: chosen });
-    assert.deepStrictEqual(viewerChoices(view), chosen);
-
-    view = reduceView(view, {
-      type: 'show',
-      tab: '4',
-      file: '/work/a.md',
-      edit: true,
-    });
-    assert.deepStrictEqual(viewerChoices(view), {});
-    view = reduceView(view, { type: 'hide' });
-    view = reduceView(view, {
-      type: 'show',
-      tab: '3',
-      file: '/work/notes.md',
-      edit: true,
-    });
-    assert.deepStrictEqual(viewerChoices(view), chosen);
-
-    view = reduceView(view, { type: 'show', tab: '1' });
+  test('forgets the layouts of a tab once the tab is closed, as a tab opened later can take its id', () => {
+    let view = run({ type: 'show', tab: '1' });
     view = reduceView(view, {
       type: 'layout',
       side: 'left',
       layout: 'thumbnails',
     });
     view = reduceView(view, { type: 'show', tab: '2' });
-    view = reduceView(view, { type: 'closed', tab: '3' });
     view = reduceView(view, { type: 'closed', tab: '1' });
-    view = reduceView(view, {
-      type: 'show',
-      tab: '3',
-      file: '/work/b.md',
-      edit: true,
-    });
-    assert.deepStrictEqual(viewerChoices(view), {});
     view = reduceView(view, { type: 'show', tab: '1' });
     assert.deepStrictEqual(view.layouts, defaultLayouts);
 
-    view = reduceView(view, {
-      type: 'show',
-      tab: '5',
-      file: '/work/c.md',
-      edit: true,
-    });
-    view = reduceView(view, { type: 'choose', choices: chosen });
-    view = reduceView(view, { type: 'closed', tab: '5' });
-    view = reduceView(view, { type: 'show', tab: '1' });
     view = reduceView(view, {
       type: 'layout',
       side: 'right',
@@ -138,36 +78,21 @@ suite('Commander view', () => {
     });
     view = reduceView(view, { type: 'closed', tab: '1' });
     view = reduceView(view, { type: 'hide' });
-    view = reduceView(view, {
-      type: 'show',
-      tab: '5',
-      file: '/work/d.md',
-      edit: true,
-    });
-    assert.deepStrictEqual(viewerChoices(view), {});
     view = reduceView(view, { type: 'show', tab: '1' });
     assert.deepStrictEqual(view.layouts, defaultLayouts);
   });
 
   test('shows a tab opened under the id of the tab it showed that was closed as a new one, with nothing of the closed tab, as the main process tells no hide once another tool is shown', () => {
     let view = run(
-      { type: 'show', tab: '2', file: '/work/logo.png', edit: true },
-      { type: 'choose', choices: { language: 'python' } },
+      { type: 'show', tab: '2' },
+      { type: 'layout', side: 'left', layout: 'thumbnails' },
       { type: 'closed', tab: '2' },
-      { type: 'show', tab: '2', file: '/work/README.md', edit: true },
+      { type: 'show', tab: '2' },
     );
 
     assert.deepStrictEqual(
-      [view.tab, view.editing, viewerChoices(view), view.closedTab],
-      ['2', '/work/README.md', {}, undefined],
-    );
-
-    view = reduceView(view, { type: 'closed', tab: '2' });
-    view = reduceView(view, { type: 'show', tab: '2' });
-
-    assert.deepStrictEqual(
-      [view.tab, view.editing, view.panes, view.layouts],
-      ['2', undefined, emptyView.panes, defaultLayouts],
+      [view.tab, view.panes, view.layouts, view.closedTab],
+      ['2', emptyView.panes, defaultLayouts, undefined],
     );
   });
 

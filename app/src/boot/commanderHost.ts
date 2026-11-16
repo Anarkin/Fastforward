@@ -1,3 +1,4 @@
+import type { Sentence } from '../lib/shared/sentences';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -31,14 +32,6 @@ import {
   writeClipboardFiles,
 } from '../tools/commander/main/clipboardFiles';
 import { ThumbnailStore } from '../tools/commander/main/thumbnailStore';
-import { editorConfigOf } from '../tools/commander/main/editorConfig';
-import { saveFile } from '../tools/commander/main/fileSaving';
-import { gitEndingOf } from '../tools/commander/main/gitEnding';
-import {
-  textDefaultsOf,
-  endingSourcesOf,
-  type TextDefaultSources,
-} from '../tools/commander/main/textDefaults';
 import { Archives } from '../tools/commander/main/archives';
 import { CommanderTool } from '../tools/commander/main/tool';
 import { rootFolder } from '../tools/commander/main/folderPaths';
@@ -57,9 +50,12 @@ export interface CommanderHostDeps {
   readonly windows: {
     focusedWindow(): BrowserWindow | undefined;
   };
-  readonly defaultSettingsCopy: string;
   readonly archiveWork: { readonly next: () => Promise<string> };
   readonly viewedFiles: string;
+  readonly editRefusal: (
+    file: string,
+    named?: string,
+  ) => Promise<Sentence | undefined>;
 }
 
 export function commanderToolOf({
@@ -71,39 +67,14 @@ export function commanderToolOf({
   git,
   gitTool,
   windows,
-  defaultSettingsCopy,
   archiveWork,
   viewedFiles,
+  editRefusal,
 }: CommanderHostDeps): CommanderTool {
-  const editorSourcesOf = (): TextDefaultSources => ({
-    settings: userSettings.settings.tools.editor,
-    editorConfig: (edited) =>
-      editorConfigOf(edited, (config) =>
-        fs.promises.readFile(config, 'utf8').catch(() => undefined),
-      ),
-    gitEnding: (edited) =>
-      git.path === undefined
-        ? Promise.resolve(undefined)
-        : gitEndingOf(git.path, edited),
-  });
   return new CommanderTool({
     fileSystem: () => fileSystemFor(process.platform),
     codePage: () => systemCodePage(process.platform),
-    saveEdited: async (file, bytes, overwriteReadOnly) =>
-      saveFile(file, bytes, {
-        overwriteReadOnly,
-        ...(process.platform === 'win32' && {
-          replaceFile: (
-            await import('../tools/commander/main/windowsReplaceFile.js')
-          ).windowsReplaceFile(),
-        }),
-      }),
-    readOnlyFile: (file) => path.relative(file, defaultSettingsCopy) === '',
-    editorDefaults: (file, asksGit) =>
-      textDefaultsOf(file, asksGit, editorSourcesOf()),
-    editorSources: (file) => endingSourcesOf(file, editorSourcesOf()),
     settings: () => userSettings.settings.tools.commander,
-    closesBrackets: () => userSettings.settings.tools.editor.closeBrackets,
     defaultColumns: () => userSettings.defaults.tools.commander.columns,
     saveShowHidden: (shown) =>
       userSettings.setIn('commander', 'showHidden', shown),
@@ -203,6 +174,7 @@ export function commanderToolOf({
       archiveWork.next,
     ),
     viewedCopies: viewedFiles,
+    editRefusal: (file, named) => editRefusal(file, named),
     realPath: (link) => fs.promises.realpath(link),
     openFile: (file) => shell.openPath(file),
     trash: (file) => shell.trashItem(file),

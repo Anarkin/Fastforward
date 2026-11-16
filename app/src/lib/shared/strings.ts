@@ -171,6 +171,7 @@ export const strings = {
     commander: 'Commander',
     git: 'Git',
     viewer: 'Viewer',
+    editor: 'Editor',
   },
   openWith: {
     title: 'Open With',

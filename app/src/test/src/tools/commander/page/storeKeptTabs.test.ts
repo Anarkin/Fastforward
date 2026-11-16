@@ -1,10 +1,8 @@
 import * as assert from 'node:assert';
-import { EditorState } from '@codemirror/state';
 import { suite, test, vi } from 'vitest';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { keepingWait } from '../../../../../lib/page/viewKeeper';
 import { filterOf } from '../../../../../tools/commander/page/sideFilters';
-import { noKeptEditing } from '../../../../../tools/commander/page/editorKept';
 import { keepingViews, withFiles } from './storeFixtures';
 
 const folder = 'C:\\code';
@@ -19,11 +17,9 @@ suite('Commander store keeping its tabs', () => {
     receive(withFiles(folder, 'a.txt'));
     store.getState().filterSide('left', 'a');
     store.getState().keepScroll(`1 left ${folder} details`, 40);
-    receive({ type: 'show', tab: '3', file: `${folder}\\a.txt`, edit: true });
-    store.getState().keepEditing('3', { finding: true });
     receive({ type: 'show', tab: '4' });
 
-    const released = ['1', '3', '9'].map(release);
+    const released = ['1', '9'].map(release);
     assert.deepStrictEqual(
       released.map((view) => {
         const parsed: unknown = view === '' ? view : JSON.parse(view ?? '');
@@ -31,7 +27,7 @@ suite('Commander store keeping its tabs', () => {
           ? Object.keys(parsed)
           : parsed;
       }),
-      [['sides'], ['editor'], ''],
+      [['sides'], ''],
     );
     assert.ok(released[0]?.includes('"query":"a"'));
 
@@ -41,7 +37,6 @@ suite('Commander store keeping its tabs', () => {
       store.getState().scrollOf(`1 left ${folder} details`),
       0,
     );
-    assert.deepStrictEqual(store.getState().keptEditing('3'), noKeptEditing);
     receive({ type: 'show', tab: '1' });
     receive(withFiles(folder, 'a.txt'));
     assert.strictEqual(filterOf(store.getState(), 'left'), undefined);
@@ -63,14 +58,12 @@ suite('Commander store keeping its tabs', () => {
       assert.deepStrictEqual(keptSent(), ['1']);
       vi.advanceTimersByTime(keepingWait);
       store.getState().activate('left');
-      receive({ type: 'show', tab: '2', file: `${folder}\\a.txt`, edit: true });
+      receive({ type: 'show', tab: '2' });
       assert.deepStrictEqual(keptSent(), ['1', '1', '2']);
-      store.getState().keepEditing('2', { finding: true });
-      vi.advanceTimersByTime(keepingWait);
-      assert.deepStrictEqual(keptSent(), ['1', '1', '2', '2']);
-      store.getState().keepEditing('2', { replacing: true });
+      receive({ ...withFiles(folder, 'a.txt', 'b.txt'), tab: '2' });
+      store.getState().select('left', 'b.txt');
       store.getState().keepTabs();
-      assert.strictEqual(keptSent().length, 5);
+      assert.deepStrictEqual(keptSent(), ['1', '1', '2', '2']);
     } finally {
       vi.useRealTimers();
     }
@@ -134,38 +127,6 @@ suite('Commander store keeping its tabs', () => {
       other.getState().scrollOf(`1 left ${folder}\\gone details`),
       0,
     );
-  });
-
-  test('brings an editor tab back from what another page kept of it, its find and replace and focus, taking its text from the main process rather than an editor state it held', () => {
-    const left = keepingViews();
-    const { store } = left;
-    const { receive } = store.getState();
-    const file = `${folder}\\a.txt`;
-    receive({ type: 'show', tab: '3', file, edit: true });
-    const editing = {
-      finding: true,
-      replacing: true,
-      query: { text: 'adam', options: wholeWord },
-      replacement: 'eve',
-      focus: { name: 'replace' },
-      goingToLine: { value: '12', selection: [2, 2, 'none'] },
-      reopening: 'utf-16le',
-    } as const;
-    store.getState().keepEditing('3', editing);
-    receive({ type: 'show', tab: '1' });
-    const kept = left.keptOf('3') ?? '';
-
-    const back = keepingViews();
-    const other = back.store;
-    other.getState().editorKeeper('3')({
-      state: EditorState.create({ doc: 'stale' }),
-      version: 1,
-    });
-    back.hand('3', kept);
-    other.getState().receive({ type: 'show', tab: '3', file, edit: true });
-
-    assert.deepStrictEqual(other.getState().keptEditing('3'), editing);
-    assert.strictEqual(other.getState().keptEditor('3'), undefined);
   });
 
   test('takes what it is handed field by field, leaving out what is not what it kept', () => {
@@ -240,11 +201,7 @@ suite('Commander store keeping its tabs', () => {
     receive(withFiles(folder, 'a.txt'));
     store.getState().dispatch({ type: 'share', share: 0.3 });
     store.getState().filterSide('left', 'a');
-    receive({ type: 'show', tab: '2', file: `${folder}\\a.txt`, edit: true });
-    store.getState().keepEditing('2', { finding: true });
 
-    assert.ok(release('2')?.includes('finding'));
-    receive({ type: 'show', tab: '1' });
     assert.ok(release('1')?.includes('0.3'));
     receive({ type: 'show', tab: '3' });
 

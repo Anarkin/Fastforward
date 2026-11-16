@@ -1,24 +1,14 @@
-import type { EditorState } from '@codemirror/state';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { IconSource } from '../shared/icons';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
 import type { CommanderToWebview, FolderCommand } from '../shared/protocol';
 import type { Side } from '../shared/sides';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
 import type { ColumnWidths, SizedColumn } from '../shared/columnWidths';
 import type { Layout } from './layouts';
 import type { SortColumn } from '../shared/sorts';
 import type { ClashAnswer, TransferView } from '../shared/transfers';
-import type { EditorPlace } from './editorPlace';
-import type { EditedTab, ToEditor } from './editorState';
 import type { KeptTyped } from '../../../lib/page/keptFocus';
-import type { EditorAsk, KeptEditing } from './editorKept';
-import {
-  emptyView,
-  type CommanderView,
-  type ViewAction,
-  type ViewerChoices,
-} from './view';
+import { emptyView, type CommanderView, type ViewAction } from './view';
 
 interface Deleting {
   readonly tab: string;
@@ -118,8 +108,6 @@ interface NoAccess {
 export interface CommanderSource {
   readonly view: CommanderView;
   readonly drives: readonly string[];
-  readonly edited: EditedTab | undefined;
-  readonly editorAsks: ReadonlyMap<string, EditorAsk>;
   readonly deleting: Deleting | undefined;
   readonly transferring: Transferring | undefined;
   readonly transfer: TransferView | undefined;
@@ -185,38 +173,12 @@ export interface CommanderActions {
   readonly activate: (side: Side) => void;
   readonly switchSide: () => void;
   readonly chooseLayout: (side: Side, layout: Layout) => void;
-  readonly choose: (choices: Partial<ViewerChoices>) => void;
   readonly sort: (side: Side, column: SortColumn) => void;
   readonly groupByColor: (side: Side) => void;
   readonly open: (side: Side, name: string) => void;
   readonly step: (side: Side, step: -1 | 1) => void;
   readonly viewFile: (side: Side, name: string) => void;
   readonly editFile: (side: Side, name: string) => void;
-  readonly listenEditor: (handler: (message: ToEditor) => void) => () => void;
-  readonly readEdited: (tab: string) => void;
-  readonly editText: (tab: string, update: unknown) => void;
-  readonly keepEditState: (
-    tab: string,
-    version: number,
-    state: unknown,
-  ) => void;
-  readonly saveText: (
-    tab: string,
-    overwrite?: { readonly readOnly?: boolean; readonly changed?: boolean },
-  ) => void;
-  readonly reloadEdited: (tab: string) => void;
-  readonly editSource: (tab: string, file: string) => void;
-  readonly saveIn: (
-    tab: string,
-    encoding: TextEncoding | 'auto',
-    bom: boolean,
-  ) => void;
-  readonly reopenIn: (tab: string, encoding: TextEncoding | 'auto') => void;
-  readonly keptEditor: (tab: string) => KeptEditor | undefined;
-  readonly keptEditing: (tab: string) => KeptEditing;
-  readonly keepEditing: (tab: string, change: Partial<KeptEditing>) => void;
-  readonly answerEditorAsk: (tab: string) => void;
-  readonly editorKeeper: (tab: string) => (kept: KeptEditor) => void;
   readonly openRepository: (side: Side, name: string) => void;
   readonly folderCommand: (
     side: Side,
@@ -323,19 +285,11 @@ export interface CommanderActions {
   ) => Promise<void>;
 }
 
-export interface KeptEditor {
-  readonly state: EditorState;
-  readonly version: number;
-  readonly place?: EditorPlace | undefined;
-}
-
 export type CommanderState = CommanderSource & CommanderActions;
 
 export const commanderDefaults: CommanderSource = {
   view: emptyView,
   drives: [],
-  edited: undefined,
-  editorAsks: new Map(),
   deleting: undefined,
   transferring: undefined,
   transfer: undefined,
