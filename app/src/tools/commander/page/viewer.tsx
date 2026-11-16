@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ViewMode } from './viewerKeymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { focusBack, useFocusKeeper } from '../../../lib/page/keptFocus';
+import { useRestore } from '../../../lib/page/restore';
 import { SearchButton } from '../../../lib/page/search';
 import { useViewerFind } from './viewerFind';
 import { ViewerFindBar } from './viewerFindBar';
@@ -142,15 +143,12 @@ export function Viewer() {
       keepViewer(tab, { focus });
     }
   });
-  const focusKept = useRef(kept?.focus);
   const bodyShown = viewing !== undefined;
-  useEffect(() => {
-    const root = viewer.current;
-    if (root !== null && bodyShown && focusKept.current !== undefined) {
-      focusBack(root, focusKept.current);
-      focusKept.current = undefined;
-    }
-  }, [bodyShown]);
+  useRestore(
+    kept?.focus,
+    () => bodyShown && viewer.current !== null,
+    (focus) => viewer.current !== null && focusBack(viewer.current, focus),
+  );
   const focusBody = () => columnFocusOf(viewer.current)?.focus();
   const closeFind = () => {
     columnFocusOf(findInput.current)?.focus();

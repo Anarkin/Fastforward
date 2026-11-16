@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, type RefObject } from 'react';
+import { restoreWhen } from './restore';
 
 export const focusNameAttribute = 'data-focus-name';
 
@@ -120,35 +121,28 @@ export function focusBack(root: Element, kept: KeptFocus | undefined): boolean {
   return part.ownerDocument.activeElement === part;
 }
 
-const scrollSettles = 2000;
-
 function scrolledBack(part: HTMLElement & TextField, scroll: number): void {
-  part.scrollLeft = scroll;
   const Observer = part.ownerDocument.defaultView?.ResizeObserver;
-  if (part.scrollLeft >= scroll - 1 || Observer === undefined) {
-    return;
-  }
-  const stop = () => {
-    observer.disconnect();
-    clearTimeout(timer);
-    for (const move of handsOn) {
-      part.removeEventListener(move, stop);
-    }
-  };
-  const observer = new Observer(() => {
-    part.scrollLeft = scroll;
-    if (part.scrollLeft >= scroll - 1) {
-      stop();
-    }
-  });
-  const timer = setTimeout(stop, scrollSettles);
-  for (const move of handsOn) {
-    part.addEventListener(move, stop);
-  }
-  observer.observe(part);
+  restoreWhen(
+    scroll,
+    (wanted) => {
+      part.scrollLeft = wanted;
+      return part.scrollLeft >= wanted - 1;
+    },
+    () => undefined,
+    {
+      on: part,
+      watch:
+        Observer === undefined
+          ? undefined
+          : (check) => {
+              const observer = new Observer(check);
+              observer.observe(part);
+              return () => observer.disconnect();
+            },
+    },
+  );
 }
-
-const handsOn = ['keydown', 'pointerdown', 'input'] as const;
 
 const caretMoves = ['focusin', 'keyup', 'mouseup', 'input', 'select'] as const;
 

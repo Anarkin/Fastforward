@@ -19,11 +19,10 @@ import { useShellActions } from '../../../shell/page/store';
 import { CommanderPopups } from './commanderPopups';
 import { CommanderStore, createCommanderStore } from './store';
 import { sideToFocus } from './sideFocus';
-import { focusBack, type KeptFocus } from '../../../lib/page/keptFocus';
+import { focusBack } from '../../../lib/page/keptFocus';
+import { useRestore } from '../../../lib/page/restore';
 import { shareOf } from './sideShare';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
-
-const ownMoves = ['pointerdown', 'keydown'] as const;
 
 export function CommanderTool({
   active,
@@ -97,49 +96,46 @@ export function CommanderTool({
     sides.every((side) => state.view.panes[side] !== undefined),
   );
   const focusedTab = useRef<string>(undefined);
-  const focusAwaited = useRef<KeptFocus>(undefined);
-  useEffect(() => {
-    if (!panesShown) {
-      return undefined;
-    }
-    const moved = () => {
-      focusAwaited.current = undefined;
-    };
-    for (const move of ownMoves) {
-      window.addEventListener(move, moved, { capture: true });
-    }
-    return () => {
-      for (const move of ownMoves) {
-        window.removeEventListener(move, moved, { capture: true });
+  const restored = useRef(false);
+  const keptFocus = useStore(store, (state) =>
+    tab === undefined ? undefined : state.view.kept.get(tab)?.focus,
+  );
+  useRestore(
+    panesShown ? keptFocus : undefined,
+    () => columns.current !== null,
+    (focus) => {
+      const root = columns.current;
+      if (root !== null && focusBack(root, focus)) {
+        restored.current = true;
+        return true;
       }
-    };
-  }, [panesShown]);
+      if (!listed) {
+        return false;
+      }
+      sideToFocus(
+        root?.children[sides.indexOf(activeSide)],
+        document.activeElement,
+      )?.focus();
+      return true;
+    },
+    { key: panesShown ? tab : undefined },
+  );
   useEffect(() => {
     if (!panesShown) {
       focusedTab.current = undefined;
-      focusAwaited.current = undefined;
       return;
     }
-    const root = columns.current;
-    const column = root?.children[sides.indexOf(activeSide)];
-    if (focusedTab.current === tab) {
-      const awaited = focusAwaited.current;
-      if (listed) {
-        focusAwaited.current = undefined;
-      }
-      if (root === null || !listed || !focusBack(root, awaited)) {
-        sideToFocus(column, document.activeElement)?.focus();
-      }
-      return;
-    }
+    const column = columns.current?.children[sides.indexOf(activeSide)];
+    const fresh = focusedTab.current !== tab;
     focusedTab.current = tab;
-    const left =
-      tab === undefined ? undefined : store.getState().view.kept.get(tab);
-    if (root === null || !focusBack(root, left?.focus)) {
-      focusAwaited.current = listed ? undefined : left?.focus;
-      sideToFocus(column, null)?.focus();
+    if (restored.current) {
+      return;
     }
-  }, [panesShown, activeSide, tab, store, listed]);
+    sideToFocus(column, fresh ? null : document.activeElement)?.focus();
+  }, [panesShown, activeSide, tab]);
+  useEffect(() => {
+    restored.current = false;
+  });
 
   useBinding(
     commanderKeymap.history,

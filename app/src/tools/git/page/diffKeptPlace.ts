@@ -1,15 +1,10 @@
 import type { Virtualizer } from '@tanstack/react-virtual';
-import {
-  useEffect,
-  useEffectEvent,
-  useLayoutEffect,
-  useRef,
-  type RefObject,
-} from 'react';
+import { useEffect, useEffectEvent, useRef, type RefObject } from 'react';
+import { useRestore } from '../../../lib/page/restore';
 import { anchoredScrollTop, scrollAnchor } from './diffScrollAnchor';
 import type { DiffPlace } from './diffPlace';
 
-const ownMoves = ['wheel', 'keydown', 'pointerdown'] as const;
+const placeWithin = 10_000;
 
 export function useKeptPlace({
   list,
@@ -34,25 +29,23 @@ export function useKeptPlace({
   readonly reveal: (scrolled: number) => void;
   readonly toggled: ReadonlyMap<string, boolean>;
 }): void {
-  const restoring = useRef(place);
-  useLayoutEffect(() => {
-    const target = restoring.current;
-    const element = list.current;
-    if (target === undefined || !element || !settled) {
-      return;
-    }
-    restoring.current = undefined;
-    const top =
-      (target.anchor &&
-        anchoredScrollTop(
-          target.anchor,
-          virtualizer.measurementsCache,
-          anchors,
-        )) ??
-      target.top;
-    virtualizer.scrollToOffset(top);
-    reveal(scrollsSides ? target.sideways : target.left);
-  });
+  const restoring = useRestore(
+    place,
+    () => settled && list.current !== null,
+    (target) => {
+      const top =
+        (target.anchor &&
+          anchoredScrollTop(
+            target.anchor,
+            virtualizer.measurementsCache,
+            anchors,
+          )) ??
+        target.top;
+      virtualizer.scrollToOffset(top);
+      reveal(scrollsSides ? target.sideways : target.left);
+    },
+    { key: list, on: list, within: placeWithin, beforePaint: true },
+  );
   const keepScroll = useEffectEvent(() => {
     const element = list.current;
     if (restoring.current !== undefined || !element) {
@@ -74,19 +67,8 @@ export function useKeptPlace({
       return undefined;
     }
     const scrolled = () => keepScroll();
-    const moved = () => {
-      restoring.current = undefined;
-    };
     element.addEventListener('scroll', scrolled, { passive: true });
-    for (const move of ownMoves) {
-      element.addEventListener(move, moved, { passive: true });
-    }
-    return () => {
-      element.removeEventListener('scroll', scrolled);
-      for (const move of ownMoves) {
-        element.removeEventListener(move, moved);
-      }
-    };
+    return () => element.removeEventListener('scroll', scrolled);
   }, [list]);
   const sidewaysKept = useRef(sideways);
   useEffect(() => {
@@ -94,7 +76,7 @@ export function useKeptPlace({
       sidewaysKept.current = sideways;
       onPlace?.({ sideways });
     }
-  }, [sideways, onPlace]);
+  }, [sideways, onPlace, restoring]);
   const toggledKept = useRef(toggled);
   useEffect(() => {
     if (toggledKept.current !== toggled) {

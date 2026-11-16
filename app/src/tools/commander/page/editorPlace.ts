@@ -5,6 +5,7 @@ import type {
   Text,
 } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { restoreWhen } from '../../../lib/page/restore';
 
 export interface EditorPlace {
   readonly from: number;
@@ -74,7 +75,6 @@ function backTo(
 
 const settleChecks = 30;
 const settleTries = 3;
-const userInputs = ['wheel', 'keydown', 'pointerdown'] as const;
 
 export function samePlace(one: EditorPlace, other: EditorPlace): boolean {
   return one.from === other.from && Math.abs(one.offset - other.offset) < 1;
@@ -87,51 +87,66 @@ function shownWhenBack(
 ): () => void {
   const scroller = view.scrollDOM;
   scroller.style.opacity = '0';
-  const channel = new MessageChannel();
-  let frame = 0;
   let checks = 0;
   let tries = 0;
   let last = '';
-  const stop = () => {
-    cancelAnimationFrame(frame);
-    channel.port1.close();
-    for (const input of userInputs) {
-      view.dom.removeEventListener(input, interrupted, true);
-    }
-    scroller.style.opacity = '';
-  };
-  const interrupted = () => {
-    stop();
-    onShown();
-  };
-  for (const input of userInputs) {
-    view.dom.addEventListener(input, interrupted, true);
-  }
-  const next = () => {
-    frame = requestAnimationFrame(() => channel.port2.postMessage(undefined));
-  };
-  channel.port1.addEventListener('message', () => {
+  let framed = false;
+  const settledThere = () => {
     checks += 1;
     const now = placeOf(view);
     const seen = JSON.stringify([scroller.scrollTop, now]);
     const settled = seen === last;
     last = seen;
     if ((settled && samePlace(now, wanted)) || checks > settleChecks) {
-      if (wanted.left !== undefined) {
-        scroller.scrollLeft = wanted.left;
-      }
-      interrupted();
-      return;
+      return true;
     }
     if (settled && tries < settleTries) {
       tries += 1;
       view.dispatch({ effects: backTo(view.state.doc, wanted) });
     }
-    next();
-  });
-  channel.port1.start();
-  next();
-  return stop;
+    return false;
+  };
+  const restoring = restoreWhen(
+    wanted,
+    () => framed && settledThere(),
+    () => {
+      if (wanted.left !== undefined) {
+        scroller.scrollLeft = wanted.left;
+      }
+    },
+    {
+      on: view.dom,
+      watch: (check) => {
+        const channel = new MessageChannel();
+        let frame = 0;
+        let watching = true;
+        const next = () => {
+          frame = requestAnimationFrame(() =>
+            channel.port2.postMessage(undefined),
+          );
+        };
+        channel.port1.addEventListener('message', () => {
+          framed = true;
+          check();
+          if (watching) {
+            next();
+          }
+        });
+        channel.port1.start();
+        next();
+        return () => {
+          watching = false;
+          cancelAnimationFrame(frame);
+          channel.port1.close();
+        };
+      },
+      ended: () => {
+        scroller.style.opacity = '';
+        onShown();
+      },
+    },
+  );
+  return restoring.stop;
 }
 
 export function editorAt(

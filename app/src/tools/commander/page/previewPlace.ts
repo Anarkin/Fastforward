@@ -1,3 +1,5 @@
+import { restoreWhen } from '../../../lib/page/restore';
+
 interface PreviewPlace {
   readonly block: number | undefined;
   readonly offset: number;
@@ -45,7 +47,7 @@ function topOfBlock(
 
 export const settleWait = 1500;
 
-const handsOn = ['wheel', 'pointerdown', 'keydown', 'touchstart'] as const;
+const holdsAtMost = 10_000;
 
 export function holdBlockAtTop(
   scroller: HTMLElement,
@@ -54,39 +56,45 @@ export function holdBlockAtTop(
   watch: (element: Element, changed: () => void) => () => void,
   wait = settleWait,
 ): () => void {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let stopWatching: (() => void) | undefined;
-  let held = true;
-  const stop = () => {
-    if (!held) {
-      return;
-    }
-    held = false;
-    clearTimeout(timer);
-    stopWatching?.();
-    for (const kind of handsOn) {
-      scroller.removeEventListener(kind, stop);
-    }
-    done();
-  };
-  const settledSoon = () => {
-    clearTimeout(timer);
-    timer = setTimeout(stop, wait);
-  };
-  const hold = () => {
-    const top = topOfBlock(scroller, place);
-    if (top !== undefined) {
-      scroller.scrollTop = top;
-    }
-    settledSoon();
-  };
+  let settled = false;
   const content = scroller.querySelector('.markdown');
-  if (content !== null) {
-    stopWatching = watch(content, hold);
-  }
-  for (const kind of handsOn) {
-    scroller.addEventListener(kind, stop, { passive: true });
-  }
-  hold();
-  return stop;
+  const restoring = restoreWhen(
+    place,
+    () => true,
+    (wanted) => {
+      const top = topOfBlock(scroller, wanted);
+      if (top !== undefined) {
+        scroller.scrollTop = top;
+      }
+      return settled;
+    },
+    {
+      within: holdsAtMost,
+      on: scroller,
+      watch: (check) => {
+        let quiet: ReturnType<typeof setTimeout> | undefined;
+        const settling = () => {
+          clearTimeout(quiet);
+          quiet = setTimeout(() => {
+            settled = true;
+            check();
+          }, wait);
+        };
+        const unwatch =
+          content === null
+            ? undefined
+            : watch(content, () => {
+                check();
+                settling();
+              });
+        settling();
+        return () => {
+          clearTimeout(quiet);
+          unwatch?.();
+        };
+      },
+      ended: done,
+    },
+  );
+  return restoring.stop;
 }
