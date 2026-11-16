@@ -254,7 +254,7 @@ suite('Style', () => {
     });
   });
 
-  test('fills the tool open as the selected row of a list, the others tinted under the pointer, and marks the group in view by a line in the color of focus beside its name, the others muted, dimming what has no match', () => {
+  test('fills the tool open as the selected row of a list, the others tinted under the pointer, and marks the group in view by a line in the color of focus beside its name alone, not in bold, tinted under the pointer too as it takes a click, the others in the color of the text and tinted under the pointer as the tools are, rounded on the right alone so the line stays straight, dimming what has no match', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
     looks(withClass(popup, 'shortcuts-tool', 'open'), {
       background: 'var(--selection-background)',
@@ -267,16 +267,24 @@ suite('Style', () => {
     looks(closed, { background: 'var(--hover-background)' }, hovered);
     looks(withClass(popup, 'shortcuts-group-link', 'in-view'), {
       color: 'var(--color-foreground)',
+      'font-weight': undefined,
       'box-shadow': 'inset 2px 0 var(--color-focus)',
     });
+    looks(
+      withClass(popup, 'shortcuts-group-link', 'in-view'),
+      { background: 'var(--hover-background)' },
+      hovered,
+    );
     const other = allWithClass(popup, 'shortcuts-group-link').find(
       (link) => !link.classes.includes('in-view'),
     );
     assert.ok(other);
     looks(other, {
-      color: 'var(--muted-foreground)',
+      color: 'inherit',
       'box-shadow': undefined,
+      'border-radius': '0 4px 4px 0',
     });
+    looks(other, { background: 'var(--hover-background)' }, hovered);
     for (const className of ['shortcuts-tool empty', 'shortcuts-group-link']) {
       const dimmed = withClass(
         rendered(

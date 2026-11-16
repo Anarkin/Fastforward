@@ -39,12 +39,18 @@
   border: none;
 }
 
-.shortcuts-tool {
+.shortcuts-tool,
+.shortcuts-group-link {
   padding: 0 8px;
   border-radius: 4px;
 }
 
-.shortcuts-tool:hover {
+.shortcuts-group-link {
+  border-radius: 0 4px 4px 0;
+}
+
+.shortcuts-tool:hover,
+.shortcuts-group-link:hover:not(:disabled) {
   background: var(--hover-background);
 }
 
@@ -90,16 +96,9 @@
 
 .shortcuts-group-link {
   justify-content: space-between;
-  padding: 0 8px;
-  color: var(--muted-foreground);
-}
-
-.shortcuts-group-link:hover:not(:disabled) {
-  color: var(--color-foreground);
 }
 
 .shortcuts-group-link.in-view {
-  font-weight: 700;
   color: var(--color-foreground);
   box-shadow: inset 2px 0 var(--color-focus);
 }
