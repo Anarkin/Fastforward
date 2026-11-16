@@ -192,32 +192,6 @@ suite('Restoring what a view describes', () => {
     assert.strictEqual(quick.pending(), false);
   });
 
-  test('waits as long as it takes when given no time limit, as for a file read slowly, still giving up as the person acts', () => {
-    const { target, fire } = events();
-    let ready = false;
-    const applied: string[] = [];
-    const waiting = restoreWhen(
-      'focus',
-      () => ready,
-      (wanted) => {
-        applied.push(wanted);
-      },
-      { on: target, within: Infinity },
-    );
-    vi.advanceTimersByTime(60 * 60 * 1000);
-    ready = true;
-    waiting.check();
-    assert.deepStrictEqual(applied, ['focus']);
-    const stopped = restoreWhen(
-      'focus',
-      () => false,
-      () => undefined,
-      { on: target, within: Infinity },
-    );
-    fire('keydown');
-    assert.strictEqual(stopped.pending(), false);
-  });
-
   test('restores in a component once what it wants is drawn, as it renders or what it watches changes, anew for each thing wanted', async () => {
     await rendering(async (draw, applied, dom) => {
       await draw('first', false);

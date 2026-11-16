@@ -148,7 +148,6 @@ export function Viewer() {
     kept?.focus,
     () => bodyShown && viewer.current !== null,
     (focus) => viewer.current !== null && focusBack(viewer.current, focus),
-    { within: Infinity },
   );
   const focusBody = () => columnFocusOf(viewer.current)?.focus();
   const closeFind = () => {

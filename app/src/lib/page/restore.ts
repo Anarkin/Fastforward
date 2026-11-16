@@ -55,14 +55,12 @@ export function restoreWhen<T>(
       stop();
     }
   };
-  const timer = Number.isFinite(within)
-    ? setTimeout(() => {
-        if (pending) {
-          stop();
-          late?.();
-        }
-      }, within)
-    : undefined;
+  const timer = setTimeout(() => {
+    if (pending) {
+      stop();
+      late?.();
+    }
+  }, within);
   for (const hand of handsOn) {
     on.addEventListener(hand, stop, { capture: true, passive: true });
   }
