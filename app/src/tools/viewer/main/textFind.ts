@@ -1,5 +1,8 @@
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
-import { codingOf, type TextCoding } from '../../../lib/main/textCodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
+import {
+  codingOf,
+  type TextCoding,
+} from '../../../components/encodings/main/textCodings';
 import type { ReadBytes } from '../../../lib/main/fileBlocks';
 import {
   maxMatches,

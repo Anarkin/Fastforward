@@ -1,6 +1,6 @@
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { PdfPlace } from './pdf';
 
 export interface TextRow {

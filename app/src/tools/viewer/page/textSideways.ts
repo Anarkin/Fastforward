@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { wholeLineBytes } from '../shared/protocol';
-import { type TextEncoding } from '../../../lib/shared/textEncodings';
+import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { columnsOf, shownWithin, widestColumns } from './columns';
 import { bytesOf } from './encodedBytes';

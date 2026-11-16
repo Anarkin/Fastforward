@@ -10,7 +10,7 @@ import { toolState } from '../shell/main/storage';
 import type { GitTool } from '../tools/git/main/tool';
 import type { GitLocator } from '../tools/git/main/gitLocator';
 import { fileSystemFor } from '../tools/commander/main/fileSystem';
-import { systemCodePage } from '../tools/commander/main/codePages';
+import { systemCodePage } from '../components/encodings/main/codePages';
 import { renameUnlessTaken } from '../tools/commander/main/renaming';
 import {
   inRepository,

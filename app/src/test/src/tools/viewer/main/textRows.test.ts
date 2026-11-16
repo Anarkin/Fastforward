@@ -6,7 +6,7 @@ import {
   rowsBefore,
   rowsFrom,
 } from '../../../../../tools/viewer/main/textRows';
-import { codingOf } from '../../../../../lib/main/textCodings';
+import { codingOf } from '../../../../../components/encodings/main/textCodings';
 import type { ReadBytes } from '../../../../../lib/main/fileBlocks';
 import { wholeLineBytes } from '../../../../../tools/viewer/shared/protocol';
 

@@ -1,4 +1,4 @@
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 
 const isHigh = (code: number) => code >= 0xd800 && code <= 0xdbff;
 const isLow = (code: number) => code >= 0xdc00 && code <= 0xdfff;

@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { ByteRange } from '../shared/protocol';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { stepMatch, type MatchesFound } from '../../../lib/shared/textMatches';
 import type { Search, SearchOptions } from '../../../lib/shared/searchOptions';
 import type { Viewing } from './viewing';

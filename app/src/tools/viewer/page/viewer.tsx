@@ -26,7 +26,7 @@ import {
   encodingMenu,
   shownEncoding,
   type EncodingChoice,
-} from '../../../lib/page/encodings';
+} from '../../../components/encodings/page/encodings';
 import {
   shownLanguage,
   languageChoiceOf,

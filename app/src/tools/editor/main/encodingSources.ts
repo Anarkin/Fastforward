@@ -1,10 +1,10 @@
 import type { EncodingSource } from '../shared/protocol';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
   byteOrderMarkOf,
   isUtf8,
   utf16Order,
-} from '../../../lib/main/encodingDetection';
+} from '../../../components/encodings/main/encodingDetection';
 
 export function textEncodingOf(start: Buffer): TextEncoding | undefined {
   return byteOrderMarkOf(start) ?? utf16Order(start);

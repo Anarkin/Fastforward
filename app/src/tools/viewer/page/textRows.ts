@@ -8,7 +8,7 @@ import {
   useEffectEvent,
 } from 'react';
 import { maxRowsAsked, type TextRow } from '../shared/protocol';
-import { type TextEncoding } from '../../../lib/shared/textEncodings';
+import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { ViewerActions } from './viewerState';
 import type { Viewing } from './viewing';

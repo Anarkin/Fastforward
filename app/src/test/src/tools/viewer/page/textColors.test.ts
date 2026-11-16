@@ -6,7 +6,7 @@ import {
   wholeText,
   withPart,
 } from '../../../../../tools/viewer/page/textColors';
-import type { TextEncoding } from '../../../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../../../components/encodings/shared/textEncodings';
 import { bytesOf } from '../../../../../tools/viewer/page/encodedBytes';
 import { packedPart } from '../../../../../lib/page/syntaxParts';
 import type { LineRanges } from '../../../../../lib/page/syntaxEngine';

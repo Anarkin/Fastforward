@@ -8,7 +8,7 @@ import type {
   ViewerToHost,
   ViewerToWebview,
 } from '../../../../../tools/viewer/shared/protocol';
-import type { TextEncoding } from '../../../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../../../components/encodings/shared/textEncodings';
 import { fakeShell } from '../../commander/main/fakeShell';
 
 export class ViewerPage implements Page {

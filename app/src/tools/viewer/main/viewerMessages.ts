@@ -2,7 +2,7 @@ import type { Page } from '../../../shell/main/toolContract';
 import {
   isTextEncoding,
   type TextEncoding,
-} from '../../../lib/shared/textEncodings';
+} from '../../../components/encodings/shared/textEncodings';
 import type { ViewerToHost } from '../shared/protocol';
 import type { ViewerPages } from './viewerPages';
 import type { Viewers } from './viewers';

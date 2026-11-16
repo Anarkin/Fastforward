@@ -1,7 +1,7 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/toolContract';
 import { maxFindLength, type ViewerToHost } from '../shared/protocol';
-import { isTextEncoding } from '../../../lib/shared/textEncodings';
+import { isTextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { readingFile } from '../../../lib/main/fileBlocks';
 import { findInFile } from './textFind';
 import { isSearchOptions } from '../../../lib/shared/searchOptions';

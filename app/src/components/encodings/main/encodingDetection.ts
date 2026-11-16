@@ -1,6 +1,6 @@
 import type { TextEncoding } from '../shared/textEncodings';
 import { continuation, high } from './textCodings';
-import { readingFile } from './fileBlocks';
+import { readingFile } from '../../../lib/main/fileBlocks';
 
 const binaryCheckBytes = 8000;
 

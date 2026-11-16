@@ -1,5 +1,5 @@
 import type { Sentence } from '../../../lib/shared/sentences';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';
 
 export type EndingSource =

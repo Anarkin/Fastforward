@@ -11,7 +11,7 @@ import {
 import {
   isTextEncoding,
   type TextEncoding,
-} from '../../../lib/shared/textEncodings';
+} from '../../../components/encodings/shared/textEncodings';
 import { EditedText } from './editedText';
 import {
   KeptBeside,
@@ -22,7 +22,7 @@ import {
 import { reasonOf } from '../../../lib/main/reasons';
 import { rulesOf, type TextDefaults, type TextRules } from './textDefaults';
 import { decodedText } from './textCodec';
-import { looksBinary } from '../../../lib/main/encodingDetection';
+import { looksBinary } from '../../../components/encodings/main/encodingDetection';
 import {
   foundIn,
   sourcesOf,

@@ -2,7 +2,7 @@ import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 import { plainOf, type Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type { EncodingSource, EndingSource } from '../shared/protocol';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { LineEnding } from '../shared/textMarks';
 
 export interface SourceOpening {

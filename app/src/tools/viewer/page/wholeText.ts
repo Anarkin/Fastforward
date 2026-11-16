@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 import { maxColoredBytes } from '../../../lib/shared/colorLimit';
-import { type TextEncoding } from '../../../lib/shared/textEncodings';
+import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { colorer } from '../../../lib/page/syntax';
 import {
   coloredText,

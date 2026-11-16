@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import {
   encodingOfCodePage,
   encodingOfLocale,
-} from '../../../../../tools/commander/main/codePages';
+} from '../../../../../components/encodings/main/codePages';
 
 suite('The code page of the system', () => {
   test('reads the Windows code page of programs without Unicode', () => {

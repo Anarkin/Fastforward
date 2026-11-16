@@ -38,7 +38,7 @@ import {
   type EndingSource,
 } from '../shared/protocol';
 import { maxColoredBytes } from '../../../lib/shared/colorLimit';
-import { type TextEncoding } from '../../../lib/shared/textEncodings';
+import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { endingsField, endingsFrom, endingsUndone } from './editorEndings';
 import { endingSigns } from './editorEndingSigns';
 import { type Encoded } from './editorEncodings';

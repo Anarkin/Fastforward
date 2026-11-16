@@ -1,6 +1,6 @@
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
-import type { EncodingChoice } from '../../../lib/page/encodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
+import type { EncodingChoice } from '../../../components/encodings/page/encodings';
 import type { ByteRange, ViewerToWebview } from '../shared/protocol';
 import type { PdfPlace } from '../shared/pdf';
 import type { ViewMode } from './viewerKeymap';

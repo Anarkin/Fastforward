@@ -10,18 +10,18 @@ import { maxColoredBytes } from '../../../lib/shared/colorLimit';
 import {
   isTextEncoding,
   type TextEncoding,
-} from '../../../lib/shared/textEncodings';
+} from '../../../components/encodings/shared/textEncodings';
 import type { WatchFolder } from '../../../lib/main/watch';
 import { sampledVersion } from '../../../lib/main/fileVersions';
 import { readBudgetBytes, rowsBefore, rowsFrom, rowStartAt } from './textRows';
-import { codingOf } from '../../../lib/main/textCodings';
+import { codingOf } from '../../../components/encodings/main/textCodings';
 import {
   byteOrderMarkOf,
   firstBytes,
   isUtf8,
   looksBinary,
   utf16Order,
-} from '../../../lib/main/encodingDetection';
+} from '../../../components/encodings/main/encodingDetection';
 import { blockCache, readingFile } from '../../../lib/main/fileBlocks';
 import { reasonOf } from '../../../lib/main/reasons';
 import type { ViewerPages } from './viewerPages';

@@ -4,7 +4,7 @@ import { app } from 'electron';
 import type { UserSettings } from '../shell/main/userSettings';
 import type { GitLocator } from '../tools/git/main/gitLocator';
 import { watchFolder } from '../lib/main/watch';
-import { systemCodePage } from '../tools/commander/main/codePages';
+import { systemCodePage } from '../components/encodings/main/codePages';
 import type { CommanderTool } from '../tools/commander/main/tool';
 import { editorConfigOf } from '../tools/editor/main/editorConfig';
 import { saveFile } from '../tools/editor/main/fileSaving';

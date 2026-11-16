@@ -4,7 +4,7 @@ import {
   isUtf8,
   utf16Order,
   looksBinary,
-} from '../../../../lib/main/encodingDetection';
+} from '../../../../../components/encodings/main/encodingDetection';
 
 suite('The encoding of a file', () => {
   test('takes a file for binary as git does, when its first 8000 bytes hold a NUL', () => {

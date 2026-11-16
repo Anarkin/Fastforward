@@ -1,6 +1,9 @@
 import { wholeLineBytes, type TextRow } from '../shared/protocol';
 import { blockBytes, type ReadBytes } from '../../../lib/main/fileBlocks';
-import { utf8, type TextCoding } from '../../../lib/main/textCodings';
+import {
+  utf8,
+  type TextCoding,
+} from '../../../components/encodings/main/textCodings';
 
 export const rowBytes = 4096;
 

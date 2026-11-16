@@ -1,4 +1,4 @@
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
   keptPlaceholder,
   type KeptBytes,

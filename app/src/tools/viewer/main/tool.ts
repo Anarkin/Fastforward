@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
   unattachedShell,
   type Page,

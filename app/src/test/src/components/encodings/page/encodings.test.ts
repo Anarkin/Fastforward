@@ -1,8 +1,11 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { plainFilter } from '../../../helpers/filters';
-import { filteredItems } from '../../../../lib/page/menuFilter';
-import { encodingMenu, shownEncoding } from '../../../../lib/page/encodings';
+import { plainFilter } from '../../../../helpers/filters';
+import { filteredItems } from '../../../../../lib/page/menuFilter';
+import {
+  encodingMenu,
+  shownEncoding,
+} from '../../../../../components/encodings/page/encodings';
 
 const labels = (menu: ReturnType<typeof encodingMenu>) =>
   menu.map((item) =>

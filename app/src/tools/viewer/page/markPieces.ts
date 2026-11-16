@@ -1,5 +1,5 @@
 import type { ByteRange, TextRow } from '../shared/protocol';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { CodeSegment } from './codeSegments';
 import { matchesIn } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';

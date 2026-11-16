@@ -1,6 +1,6 @@
 import { app } from 'electron';
 import { watchFolder } from '../lib/main/watch';
-import { systemCodePage } from '../tools/commander/main/codePages';
+import { systemCodePage } from '../components/encodings/main/codePages';
 import type { CommanderTool } from '../tools/commander/main/tool';
 import type { EditorTool } from '../tools/editor/main/tool';
 import type { PdfPlaces } from '../tools/viewer/main/pdfPlaces';

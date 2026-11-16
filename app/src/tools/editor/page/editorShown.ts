@@ -1,5 +1,5 @@
 import type { EditorState } from '@codemirror/state';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { EditorToWebview } from '../shared/protocol';
 import type { EditorAsk, KeptEditing } from './editorKept';
 import type { EditorPlace } from './editorPlace';

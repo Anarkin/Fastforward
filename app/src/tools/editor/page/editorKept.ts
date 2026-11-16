@@ -1,5 +1,5 @@
 import type { KeptFocus, KeptTyped } from '../../../lib/page/keptFocus';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { plainSearch } from '../../../lib/shared/searchOptions';
 import type { FindQuery } from './editorFind';
 

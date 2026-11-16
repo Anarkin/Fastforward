@@ -8,7 +8,7 @@ import {
   type Infer,
 } from '../../../lib/shared/schema';
 import { focusSchema } from '../../../lib/page/keptFocus';
-import { textEncodings } from '../../../lib/shared/textEncodings';
+import { textEncodings } from '../../../components/encodings/shared/textEncodings';
 import { searchSchema } from '../../../lib/shared/searchOptions';
 
 const offset = count();

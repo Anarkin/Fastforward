@@ -1,6 +1,6 @@
 import type { Store } from '../../../shell/main/stateFile';
 import type { Sentence } from '../../../lib/shared/sentences';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { CommanderSettings } from '../shared/settings';
 import type { Sorts } from '../shared/sorts';
 import type { ColumnWidths } from '../shared/columnWidths';

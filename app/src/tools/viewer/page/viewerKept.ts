@@ -1,7 +1,7 @@
 import type { KeptFocus } from '../../../lib/page/keptFocus';
 import { noSearch, type Search } from '../../../lib/shared/searchOptions';
 import type { ByteRange, TextRow } from '../shared/protocol';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { ColoredText, WholeText } from './textColors';
 
 export interface ViewerFound extends Search {

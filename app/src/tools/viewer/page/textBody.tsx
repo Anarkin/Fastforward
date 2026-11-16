@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { type TextEncoding } from '../../../lib/shared/textEncodings';
+import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { ScrollBody } from './scrollBody';
 import type { Viewing } from './viewing';
 import type { ViewerFind } from './viewerFind';

@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
-import { firstBytes } from '../../../lib/main/encodingDetection';
+import { firstBytes } from '../../../components/encodings/main/encodingDetection';
 import type { EditingAccess } from './editing';
 import { saveFile } from './fileSaving';
 import { bytesVersion } from '../../../lib/main/fileVersions';
 import { codeOf } from '../../../lib/main/reasons';
 import type { Saved } from './fileSaving';
 import type { TextDefaults } from './textDefaults';
-import type { TextEncoding } from '../../../lib/shared/textEncodings';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { EndingSource } from '../shared/protocol';
 
 export interface EditingFilesAccess {

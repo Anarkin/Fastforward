@@ -7,7 +7,7 @@ import {
 } from '../../../lib/shared/schema';
 import { focusSchema, typedSchema } from '../../../lib/page/keptFocus';
 import { searchOptionsSchema } from '../../../lib/shared/searchOptions';
-import { textEncodings } from '../../../lib/shared/textEncodings';
+import { textEncodings } from '../../../components/encodings/shared/textEncodings';
 
 export const editorViewSchema = record({
   finding: optional(flag()),

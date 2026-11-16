@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { plainFilter } from '../../../../helpers/filters';
 import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 import { filteredItems } from '../../../../../lib/page/menuFilter';
-import { encodingMenu } from '../../../../../lib/page/encodings';
+import { encodingMenu } from '../../../../../components/encodings/page/encodings';
 import {
   readMenu,
   saveMenu,
